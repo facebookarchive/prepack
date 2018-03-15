@@ -42,6 +42,9 @@ export type AdditionalFunctionEffects = {
   effects: Effects,
   generator: Generator,
   transforms: Array<Function>,
+  joinedEffects?: Effects,
+  returnArguments?: Array<Value>,
+  returnBuildNode?: (Array<BabelNodeExpression>) => BabelNodeStatement,
 };
 
 export type AdditionalFunctionInfo = {
@@ -50,6 +53,7 @@ export type AdditionalFunctionInfo = {
   // TODO: use for storing modified residual function bindings (captured by other functions)
   modifiedBindings: Map<Binding, ResidualFunctionBinding>,
   instance: FunctionInstance,
+  hasReturn: boolean,
 };
 
 export type ClassMethodInstance = {|

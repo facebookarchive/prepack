@@ -77,11 +77,15 @@ export class EnvironmentRecord {
   realm: Realm;
   isReadOnly: boolean;
   $NewTarget: void | ObjectValue;
+  id: number;
+
+  static nextId: number = 0;
 
   constructor(realm: Realm) {
     invariant(realm, "expected realm");
     this.realm = realm;
     this.isReadOnly = false;
+    this.id = EnvironmentRecord.nextId++;
   }
 
   +HasBinding: (N: string) => boolean;
@@ -166,7 +170,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
   }
 
   // ECMA262 8.1.1.1.3
-  CreateImmutableBinding(N: string, S: boolean, isGlobal: boolean = false): Value {
+  CreateImmutableBinding(N: string, S: boolean, isGlobal: boolean = false, skipRecord: boolean = false): Value {
     invariant(!this.frozen);
     let realm = this.realm;
 
@@ -177,7 +181,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     invariant(!envRec.bindings[N], `shouldn't have the binding ${N}`);
 
     // 3. Create an immutable binding in envRec for N and record that it is uninitialized. If S is true, record that the newly created binding is a strict binding.
-    this.bindings[N] = realm.recordModifiedBinding({
+    let binding = {
       initialized: false,
       strict: S,
       deletable: false,
@@ -185,14 +189,15 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       name: N,
       isGlobal: isGlobal,
       hasLeaked: false,
-    });
+    };
+    this.bindings[N] = skipRecord ? binding : realm.recordModifiedBinding(binding);
 
     // 4. Return NormalCompletion(empty).
     return realm.intrinsics.undefined;
   }
 
   // ECMA262 8.1.1.1.4
-  InitializeBinding(N: string, V: Value): Value {
+  InitializeBinding(N: string, V: Value, skipRecord: boolean = false): Value {
     // 1. Let envRec be the declarative Environment Record for which the method was invoked.
     let envRec = this;
 
@@ -202,7 +207,9 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     invariant(binding && !binding.initialized, `shouldn't have the binding ${N}`);
 
     // 3. Set the bound value for N in envRec to V.
-    this.realm.recordModifiedBinding(binding).value = V;
+    if (!skipRecord)
+      this.realm.recordModifiedBinding(binding).value = V;
+    else binding.value = V;
 
     // 4. Record that the binding for N in envRec has been initialized.
     binding.initialized = true;

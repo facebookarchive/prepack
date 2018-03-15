@@ -678,12 +678,22 @@ export class ResidualFunctions {
       }
     }
 
-    for (let [additionalFunction, body] of rewrittenAdditionalFunctions.entries()) {
+    for (let [additionalFunction, body] of Array.from(rewrittenAdditionalFunctions.entries()).reverse()) {
+      let additionalFunctionInfo = this.additionalFunctionValueInfos.get(additionalFunction);
+      invariant(additionalFunctionInfo);
       let bodySegment = additionalFunctionModifiedBindingsSegment.get(additionalFunction);
+      let funcBody = getFunctionBody(additionalFunctionInfo.instance);
       let prelude = additionalFunctionPreludes.get(additionalFunction);
+      let insertionPoint = additionalFunctionInfo.instance.insertionPoint;
+      invariant(insertionPoint);
+      // TODO: I think this inserts things in the wrong place
+      Array.prototype.splice.apply(
+        insertionPoint.body.entries,
+        ([insertionPoint.index, 0]: Array<any>).concat((funcBody: Array<any>))
+      );
       if (prelude) body.unshift(...prelude);
       if (bodySegment) {
-        if (body.length > 0 && t.isReturnStatement(body[body.length - 1])) {
+        if (body.length > 0 && additionalFunctionInfo.hasReturn) {
           let returnStatement = body.pop();
           body.push(...bodySegment, returnStatement);
         } else {

@@ -23,6 +23,7 @@ import {
   ArrayValue,
   ObjectValue,
   AbstractObjectValue,
+  FunctionValue,
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState, type ReactEvaluatedNode } from "../serializer/types.js";
 import {
@@ -139,6 +140,9 @@ export class Reconciler {
         this.alreadyEvaluatedRootNodes.set(componentType, evaluatedRootNode);
         return result;
       } catch (error) {
+        if (error.name === "Invariant Violation") {
+          throw error;
+        }
         // if we get an error and we're not dealing with the root
         // rather than throw a FatalError, we log the error as a warning
         // and continue with the other tree roots
@@ -243,7 +247,7 @@ export class Reconciler {
     let renderMethod = Get(this.realm, instance, "render");
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
     // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    return getValueFromRenderCall(this.realm, renderMethod, instance, []);
+    return getValueFromRenderCall(this.realm, renderMethod, instance, [], this.componentTreeConfig);
   }
 
   _renderSimpleClassComponent(
@@ -259,7 +263,7 @@ export class Reconciler {
     let renderMethod = Get(this.realm, instance, "render");
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
     // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    return getValueFromRenderCall(this.realm, renderMethod, instance, []);
+    return getValueFromRenderCall(this.realm, renderMethod, instance, [], this.componentTreeConfig);
   }
 
   _renderFunctionalComponent(
@@ -267,7 +271,13 @@ export class Reconciler {
     props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue
   ) {
-    return getValueFromRenderCall(this.realm, componentType, this.realm.intrinsics.undefined, [props, context]);
+    return getValueFromRenderCall(
+      this.realm,
+      componentType,
+      this.realm.intrinsics.undefined,
+      [props, context],
+      this.componentTreeConfig
+    );
   }
 
   _getClassComponentMetadata(
@@ -403,7 +413,13 @@ export class Reconciler {
             // make sure this context is in our tree
             if (this._hasReferenceForContextNode(typeValue)) {
               let valueProp = Get(this.realm, typeValue, "currentValue");
-              let result = getValueFromRenderCall(this.realm, renderProp, this.realm.intrinsics.undefined, [valueProp]);
+              let result = getValueFromRenderCall(
+                this.realm,
+                renderProp,
+                this.realm.intrinsics.undefined,
+                [valueProp],
+                this.componentTreeConfig
+              );
               this.statistics.inlinedComponents++;
               this.statistics.componentsEvaluated++;
               evaluatedChildNode.status = "INLINED";
@@ -548,8 +564,7 @@ export class Reconciler {
       componentWillMount.$Call(instance, []);
     }
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
-    // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    return getValueFromRenderCall(this.realm, renderMethod, instance, []);
+    return getValueFromRenderCall(this.realm, renderMethod, instance, [], this.componentTreeConfig);
   }
 
   _renderComponent(
@@ -565,6 +580,7 @@ export class Reconciler {
       invariant(componentType instanceof AbstractValue);
       this._queueNewComponentTree(componentType, evaluatedNode);
       evaluatedNode.status = "NEW_TREE";
+      evaluatedNode.message = "RelayContainer";
       throw new NewComponentTreeBranch();
     }
     invariant(componentType instanceof ECMAScriptSourceFunctionValue);
@@ -928,6 +944,9 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ): Value {
+    if (error.name === "Invariant Violation") {
+      throw error;
+    }
     let typeValue = Get(this.realm, reactElement, "type");
     let propsValue = Get(this.realm, reactElement, "props");
     // assign a bail out message
@@ -1040,7 +1059,13 @@ export class Reconciler {
   }
 
   _findReactComponentTrees(value: Value, evaluatedNode: ReactEvaluatedNode): void {
-    if (value instanceof AbstractValue) {
+    if (value instanceof FunctionValue && !(value instanceof ECMAScriptSourceFunctionValue)) {
+      // TODO treat as nested additional function
+      // until then we don't support this so we need to bail out on first render
+      if (this.componentTreeConfig.firstRenderOnly) {
+        throw new ExpectedBailOut("non script function is not currently supported on first render");
+      }
+    } else if (value instanceof AbstractValue) {
       if (value.args.length > 0) {
         for (let arg of value.args) {
           this._findReactComponentTrees(arg, evaluatedNode);
@@ -1050,7 +1075,7 @@ export class Reconciler {
       }
     } else if (value instanceof ObjectValue) {
       for (let [propName, binding] of value.properties) {
-        if (binding && binding.descriptor && binding.enumerable) {
+        if (binding && binding.descriptor && binding.descriptor.enumerable) {
           this._findReactComponentTrees(getProperty(this.realm, value, propName), evaluatedNode);
         }
       }

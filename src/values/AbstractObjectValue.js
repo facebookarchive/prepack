@@ -360,11 +360,10 @@ export default class AbstractObjectValue extends AbstractValue {
       let generateAbstractGet = () => {
         let type = Value;
         if (P === "length" && Value.isTypeCompatibleWith(this.getType(), ArrayValue)) type = NumberValue;
-        let object = this.kind === "sentinel ToObject" ? this.args[0] : this;
         return AbstractValue.createTemporalFromBuildFunction(
           this.$Realm,
           type,
-          [object],
+          [this],
           ([o]) => {
             invariant(typeof P === "string");
             return t.isValidIdentifier(P)

@@ -28,11 +28,13 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
+import { CompilerDiagnostic } from "../errors.js";
 import type { AbstractValueBuildNodeFunction } from "../values/AbstractValue.js";
 import { hashString } from "../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
+import { Completion, JoinedAbruptCompletions, ThrowCompletion, ReturnCompletion, PossiblyNormalCompletion } from "../completions.js";
 import type {
   BabelNodeExpression,
   BabelNodeIdentifier,
@@ -72,6 +74,8 @@ export type DerivedExpressionBuildNodeFunction = (
 ) => BabelNodeExpression;
 
 export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, SerializationContext) => BabelNodeStatement;
+
+type ArgsAndBuildNode = [Array<Value>, (Array<BabelNodeExpression>) => BabelNodeStatement];
 
 export class GeneratorEntry {
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator) {
@@ -234,6 +238,47 @@ class ReturnValueEntry extends GeneratorEntry {
   }
 }
 
+class PossiblyNormalReturnEntry extends GeneratorEntry {
+  constructor(generator: Generator, completion: PossiblyNormalCompletion, realm: Realm) {
+    super();
+    this.completion = completion;
+    this.containingGenerator = generator;
+
+    this.condition = completion.joinCondition;
+    this.consequentGenerator = Generator.fromEffects(completion.consequentEffects, realm);
+    this.alternateGenerator = Generator.fromEffects(completion.alternateEffects, realm);
+  }
+
+  completion: PossiblyNormalCompletion;
+  containingGenerator: Generator;
+
+  condition: AbstractValue;
+  consequentGenerator: Generator;
+  alternateGenerator: Generator;
+
+  visit(context: VisitEntryCallbacks, containingGenerator: Generator) {
+    invariant(
+      containingGenerator === this.containingGenerator,
+      "This entry requires effects to be applied and may not be moved"
+    );
+    context.visitValues([this.condition]);
+    context.visitGenerator(this.consequentGenerator, containingGenerator);
+    context.visitGenerator(this.alternateGenerator, containingGenerator);
+  }
+
+  serialize(context: SerializationContext) {
+    let condition = context.serializeValue(this.condition);
+    let consequentBody = context.serializeGenerator(this.consequentGenerator);
+    let alternateBody = context.serializeGenerator(this.alternateGenerator);
+    context.emit(
+      t.ifStatement(
+        condition,
+        t.blockStatement(consequentBody),
+        t.blockStatement(alternateBody),
+    ));
+  }
+}
+
 function serializeBody(generator: Generator, context: SerializationContext): BabelNodeBlockStatement {
   let statements = context.serializeGenerator(generator);
   if (statements.length === 1 && statements[0].type === "BlockStatement") return (statements[0]: any);
@@ -281,7 +326,18 @@ export class Generator {
       output.emitBindingModification(modifiedBinding, oldBinding.value);
     }
 
-    if (!(result instanceof UndefinedValue)) output.emitReturnValue(result);
+    if (result instanceof UndefinedValue) return output;
+    if (result instanceof Value) {
+      output.emitReturnValue(result);
+    } else if (result instanceof PossiblyNormalCompletion) {
+      output.emitPossiblyNormalReturn(result, realm);
+    } else if (result instanceof ThrowCompletion) {
+      output.emitThrow(result.value);
+    } /*else if (result instanceof JoinedAbruptCompletions) {
+
+    } */ else {
+      invariant(false);
+    }
     return output;
   }
 
@@ -314,6 +370,10 @@ export class Generator {
 
   emitReturnValue(result: Value) {
     this._entries.push(new ReturnValueEntry(this, result));
+  }
+
+  emitPossiblyNormalReturn(result: PossiblyNormalCompletion, realm: Realm) {
+    this._entries.push(new PossiblyNormalReturnEntry(this, result, realm));
   }
 
   getName(): string {
@@ -460,6 +520,106 @@ export class Generator {
       },
       dependencies: [body],
     });
+  }
+
+  emitConditionalThrow(condition: AbstractValue, trueBranch: Completion | Value, falseBranch: Completion | Value) {
+    let [args, buildfunc] = this._deconstruct(
+      condition,
+      trueBranch,
+      falseBranch,
+      completion => {
+        this._issueThrowCompilerDiagnostic(completion.value);
+        let serializationArgs = [completion.value];
+        let func = ([arg]) => t.throwStatement(arg);
+        return [serializationArgs, func];
+      },
+      () => [[], () => t.emptyStatement()]
+    );
+    this.emitStatement(args, buildfunc);
+  }
+
+  getThrowOrReturn(condition: AbstractValue, trueBranch: Completion | Value, falseBranch: Completion | Value) {
+    let [args, buildfunc] = this._deconstruct(
+      condition,
+      trueBranch,
+      falseBranch,
+      completion => {
+        return [[completion.value], ([arg]) => t.throwStatement(arg)];
+      },
+      value => [[value], ([returnValue]) => t.returnStatement(returnValue)]
+    );
+    return [args, buildfunc];
+  }
+
+  _deconstruct(
+    condition: AbstractValue,
+    trueBranch: Completion | Value,
+    falseBranch: Completion | Value,
+    onThrowCompletion: ThrowCompletion => ArgsAndBuildNode,
+    onNormalValue: Value => ArgsAndBuildNode
+  ) {
+    let targs;
+    let tfunc;
+    let fargs;
+    let ffunc;
+    if (trueBranch instanceof JoinedAbruptCompletions) {
+      [targs, tfunc] = this._deconstruct(
+        trueBranch.joinCondition,
+        trueBranch.consequent,
+        trueBranch.alternate,
+        onThrowCompletion,
+        onNormalValue
+      );
+    } else if (trueBranch instanceof ThrowCompletion) {
+      [targs, tfunc] = onThrowCompletion(trueBranch);
+    } else {
+      let value = trueBranch instanceof ReturnCompletion ? trueBranch.value : trueBranch;
+      invariant(value instanceof Value);
+      [targs, tfunc] = onNormalValue(value);
+    }
+    if (falseBranch instanceof JoinedAbruptCompletions) {
+      [fargs, ffunc] = this._deconstruct(
+        falseBranch.joinCondition,
+        falseBranch.consequent,
+        falseBranch.alternate,
+        onThrowCompletion,
+        onNormalValue
+      );
+    } else if (falseBranch instanceof ThrowCompletion) {
+      [fargs, ffunc] = onThrowCompletion(falseBranch);
+    } else {
+      invariant(falseBranch instanceof Value);
+      [fargs, ffunc] = onNormalValue(falseBranch);
+    }
+    let args = [condition].concat(targs).concat(fargs);
+    let func = nodes => {
+      return t.ifStatement(
+        nodes[0],
+        tfunc(nodes.slice().splice(1, targs.length)),
+        ffunc(nodes.slice().splice(targs.length + 1, fargs.length))
+      );
+    };
+    return [args, func];
+  }
+
+  _issueThrowCompilerDiagnostic(value: Value) {
+    let message = "Program may terminate with exception";
+    if (value instanceof ObjectValue) {
+      let object = ((value: any): ObjectValue);
+      let objectMessage = this.realm.evaluateWithUndo(() => object.$Get("message", value));
+      if (objectMessage instanceof StringValue) message += `: ${objectMessage.value}`;
+      const objectStack = this.realm.evaluateWithUndo(() => object.$Get("stack", value));
+      if (objectStack instanceof StringValue)
+        message += `
+  ${objectStack.value}`;
+    }
+    const diagnostic = new CompilerDiagnostic(message, value.expressionLocation, "PP1023", "Warning");
+    this.realm.handleError(diagnostic);
+  }
+
+  emitThrow(value: Value) {
+    this._issueThrowCompilerDiagnostic(value);
+    this.emitStatement([value], ([argument]) => t.throwStatement(argument));
   }
 
   // Checks the full set of possible concrete values as well as typeof

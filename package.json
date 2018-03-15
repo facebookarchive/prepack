@@ -1,6 +1,6 @@
 {
   "name": "prepack",
-  "version": "0.2.26-alpha.0",
+  "version": "0.2.27-alpha.0",
   "description": "Execute a JS bundle, serialize global state and side effects to a snapshot that can be quickly restored.",
   "homepage": "https://github.com/facebook/prepack",
   "repository": {
@@ -55,7 +55,7 @@
     "depcheck": "babel-node scripts/detect_bad_deps.js",
     "prettier": "node ./scripts/prettier.js write-changed",
     "prettier-all": "node ./scripts/prettier.js write",
-    "debug-fb-www": "node ./scripts/debug-fb-www.js"
+    "debug-fb-www": "node --stack_trace_limit=200 --stack_size=10000 ./scripts/debug-fb-www.js"
   },
   "dependencies": {
     "babel-core": "^6.26.0",

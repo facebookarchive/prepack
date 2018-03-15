@@ -9,6 +9,7 @@
 
 /* @flow */
 
+import { EnvironmentRecord } from "../environment.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { SourceFile } from "../types.js";
@@ -104,7 +105,11 @@ export class Serializer {
       timingStats.totalTime = Date.now();
       timingStats.globalCodeTime = Date.now();
     }
+    if (this.realm.react.verbose) {
+      this.logger.logInformation(`Evaluating initialization path...`);
+    }
     let code = this._execute(sources);
+    let environmentRecordIdAfterGlobalCode = EnvironmentRecord.nextId;
     if (timingStats !== undefined) timingStats.globalCodeTime = Date.now() - timingStats.globalCodeTime;
     if (this.logger.hasErrors()) return undefined;
     this.modules.resolveInitializedModules();
@@ -136,17 +141,24 @@ export class Serializer {
       preludeGenerator.createNameGenerator("$"),
       this.statistics
     );
+    if (this.realm.react.verbose) {
+      this.logger.logInformation(`Visiting evaluated nodes...`);
+    }
     let residualHeapVisitor = new ResidualHeapVisitor(
       this.realm,
       this.logger,
       this.modules,
       additionalFunctionValuesAndEffects,
-      referentializer
+      referentializer,
+      environmentRecordIdAfterGlobalCode
     );
     residualHeapVisitor.visitRoots();
     if (this.logger.hasErrors()) return undefined;
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now() - timingStats.deepTraversalTime;
 
+    if (this.realm.react.verbose) {
+      this.logger.logInformation(`Serializing evaluated nodes...`);
+    }
     const realmPreludeGenerator = this.realm.preludeGenerator;
     invariant(realmPreludeGenerator);
     const residualHeapValueIdentifiers = new ResidualHeapValueIdentifiers(

@@ -47,6 +47,19 @@ function getDataFile(directory, name) {
   return data;
 }
 
+function MockURI(url) {
+  this.url = url;
+}
+
+MockURI.prototype.addQueryData = function() {
+  this.url += "&queryData";
+  return this;
+};
+
+MockURI.prototype.makeString = function() {
+  return this.url;
+};
+
 function runTestSuite(outputJsx, shouldTranspileSource) {
   let errorsCaptured = [];
   let reactTestRoot = path.join(__dirname, "../test/react/");
@@ -118,6 +131,8 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
           return cxShim;
         case "FBEnvironment":
           return {};
+        case "URI":
+          return MockURI;
         default:
           throw new Error(`Unrecognized import: "${name}".`);
       }
@@ -252,6 +267,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Simple children", async () => {
         await runTest(directory, "simple-children.js");
+      });
+
+      it("Simple with new expression", async () => {
+        await runTest(directory, "simple-with-new-expression.js");
       });
 
       it("Simple refs", async () => {
@@ -421,6 +440,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
     describe("Class component folding", () => {
       let directory = "class-components";
+
+      it("Simple", async () => {
+        await runTest(directory, "simple.js");
+      });
 
       it("Simple classes", async () => {
         await runTest(directory, "simple-classes.js");
@@ -611,6 +634,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("Hacker News app", async () => {
         let data = JSON.parse(getDataFile(directory, "hacker-news.json"));
         await runTest(directory, "hacker-news.js", false, data);
+      });
+
+      it("Function bind", async () => {
+        await runTest(directory, "function-bind.js");
       });
     });
   });

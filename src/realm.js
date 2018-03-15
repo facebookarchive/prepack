@@ -33,7 +33,13 @@ import {
   Value,
 } from "./values/index.js";
 import type { TypesDomain, ValuesDomain } from "./domains/index.js";
-import { LexicalEnvironment, Reference, GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "./environment.js";
+import {
+  LexicalEnvironment,
+  Reference,
+  GlobalEnvironmentRecord,
+  FunctionEnvironmentRecord,
+  DeclarativeEnvironmentRecord,
+} from "./environment.js";
 import type { Binding } from "./environment.js";
 import { cloneDescriptor, Construct } from "./methods/index.js";
 import {
@@ -196,6 +202,7 @@ export class Realm {
       hoistableReactElements: new WeakMap(),
       reactElements: new WeakSet(),
       symbols: new Map(),
+      verbose: opts.reactVerbose || false,
     };
 
     this.stripFlow = opts.stripFlow || false;
@@ -264,6 +271,7 @@ export class Realm {
     output?: ReactOutputTypes,
     reactElements: WeakSet<ObjectValue>,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
+    verbose: boolean,
   };
   stripFlow: boolean;
 
@@ -383,7 +391,8 @@ export class Realm {
   clearBlockBindings(modifiedBindings: void | Bindings, environmentRecord: DeclarativeEnvironmentRecord) {
     if (modifiedBindings === undefined) return;
     for (let b of modifiedBindings.keys())
-      if (environmentRecord.bindings[b.name] && environmentRecord.bindings[b.name] === b) modifiedBindings.delete(b);
+      if (environmentRecord.bindings[b.name] && environmentRecord.bindings[b.name] === b)
+        modifiedBindings.delete(b);
   }
 
   clearBlockBindingsFromCompletion(completion: Completion, environmentRecord: DeclarativeEnvironmentRecord) {
@@ -435,7 +444,8 @@ export class Realm {
   clearFunctionBindings(modifiedBindings: void | Bindings, funcVal: FunctionValue) {
     if (modifiedBindings === undefined) return;
     for (let b of modifiedBindings.keys()) {
-      if (b.environment.$FunctionObject === funcVal) modifiedBindings.delete(b);
+      if (b.environment.$FunctionObject === funcVal)
+        modifiedBindings.delete(b);
     }
   }
 
@@ -658,6 +668,12 @@ export class Realm {
         let astBindings = this.modifiedBindings;
         let astProperties = this.modifiedProperties;
         let astCreatedObjects = this.createdObjects;
+
+        // Check invariant that modified bindings to not refer to environment record belonging to
+        // newly created closure objects.
+        for (let binding of astBindings.keys())
+          if (binding.environment instanceof FunctionEnvironmentRecord)
+            invariant(!astCreatedObjects.has(binding.environment.$FunctionObject));
 
         // Return the captured state changes and evaluation result
         result = [c, astGenerator, astBindings, astProperties, astCreatedObjects];
@@ -952,22 +968,23 @@ export class Realm {
     if (this.savedCompletion === undefined) {
       this.savedCompletion = completion;
       this.savedCompletion.savedPathConditions = this.pathConditions;
+      this.pathConditions = [].concat(this.pathConditions);
       this.captureEffects(completion);
     } else {
       this.savedCompletion = Join.composePossiblyNormalCompletions(this, this.savedCompletion, completion);
     }
-    if (completion.consequent instanceof AbruptCompletion) {
-      Path.pushInverseAndRefine(completion.joinCondition);
-      if (completion.alternate instanceof PossiblyNormalCompletion) {
-        completion.alternate.pathConditions.forEach(Path.pushAndRefine);
-      }
-    } else if (completion.alternate instanceof AbruptCompletion) {
-      Path.pushAndRefine(completion.joinCondition);
-      if (completion.consequent instanceof PossiblyNormalCompletion) {
-        completion.consequent.pathConditions.forEach(Path.pushAndRefine);
+    pushPathConditionsLeadingToNormalCompletion(completion);
+    return completion.value;
+
+    function pushPathConditionsLeadingToNormalCompletion(c: PossiblyNormalCompletion) {
+      if (c.consequent instanceof AbruptCompletion) {
+        Path.pushInverseAndRefine(c.joinCondition);
+        if (c.alternate instanceof PossiblyNormalCompletion) pushPathConditionsLeadingToNormalCompletion(c.alternate);
+      } else if (c.alternate instanceof AbruptCompletion) {
+        Path.pushAndRefine(c.joinCondition);
+        if (c.consequent instanceof PossiblyNormalCompletion) pushPathConditionsLeadingToNormalCompletion(c.consequent);
       }
     }
-    return completion.value;
   }
 
   incorporatePriorSavedCompletion(priorCompletion: void | PossiblyNormalCompletion) {
