@@ -1123,7 +1123,10 @@ export class FunctionImplementation {
     let savedCompletion = realm.savedCompletion;
     if (savedCompletion !== undefined) {
       if (savedCompletion.savedPathConditions) {
+        // Since we are joining several control flow paths, we need the curent path conditions to reflect
+        // only the refinements that applied at the corresponding fork point.
         realm.pathConditions = savedCompletion.savedPathConditions;
+        savedCompletion.savedPathConditions = [];
       }
       realm.savedCompletion = undefined;
       if (c === undefined) return savedCompletion;

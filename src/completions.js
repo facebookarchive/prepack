@@ -106,7 +106,6 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     consequentEffects: Effects,
     alternate: Completion | Value,
     alternateEffects: Effects,
-    pathConditions: Array<AbstractValue>,
     savedPathConditions: Array<AbstractValue>,
     savedEffects: void | Effects = undefined
   ) {
@@ -140,7 +139,6 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     this.alternate = alternate;
     this.alternateEffects = alternateEffects;
     this.savedEffects = savedEffects;
-    this.pathConditions = pathConditions;
     this.savedPathConditions = savedPathConditions;
   }
 
@@ -150,7 +148,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   alternate: Completion | Value;
   alternateEffects: Effects;
   savedEffects: void | Effects;
-  pathConditions: Array<AbstractValue>;
+  // The path conditions that applied at the time of the oldest fork that caused this completion to arise.
   savedPathConditions: Array<AbstractValue>;
 
   containsBreakOrContinue(): boolean {
