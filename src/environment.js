@@ -90,8 +90,8 @@ export class EnvironmentRecord {
 
   +HasBinding: (N: string) => boolean;
   +CreateMutableBinding: (N: string, D: boolean, isGlobal?: boolean) => Value;
-  +CreateImmutableBinding: (N: string, S: boolean, isGlobal?: boolean) => Value;
-  +InitializeBinding: (N: string, V: Value) => Value;
+  +CreateImmutableBinding: (N: string, S: boolean, isGlobal?: boolean, skipRecord?: boolean) => Value;
+  +InitializeBinding: (N: string, V: Value, skipRecord?: boolean) => Value;
   +SetMutableBinding: (N: string, V: Value, S: boolean) => Value;
   +GetBindingValue: (N: string, S: boolean) => Value;
   +DeleteBinding: (N: string) => boolean;
@@ -207,8 +207,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     invariant(binding && !binding.initialized, `shouldn't have the binding ${N}`);
 
     // 3. Set the bound value for N in envRec to V.
-    if (!skipRecord)
-      this.realm.recordModifiedBinding(binding).value = V;
+    if (!skipRecord) this.realm.recordModifiedBinding(binding).value = V;
     else binding.value = V;
 
     // 4. Record that the binding for N in envRec has been initialized.

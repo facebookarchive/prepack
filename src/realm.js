@@ -391,8 +391,7 @@ export class Realm {
   clearBlockBindings(modifiedBindings: void | Bindings, environmentRecord: DeclarativeEnvironmentRecord) {
     if (modifiedBindings === undefined) return;
     for (let b of modifiedBindings.keys())
-      if (environmentRecord.bindings[b.name] && environmentRecord.bindings[b.name] === b)
-        modifiedBindings.delete(b);
+      if (environmentRecord.bindings[b.name] && environmentRecord.bindings[b.name] === b) modifiedBindings.delete(b);
   }
 
   clearBlockBindingsFromCompletion(completion: Completion, environmentRecord: DeclarativeEnvironmentRecord) {
@@ -444,8 +443,7 @@ export class Realm {
   clearFunctionBindings(modifiedBindings: void | Bindings, funcVal: FunctionValue) {
     if (modifiedBindings === undefined) return;
     for (let b of modifiedBindings.keys()) {
-      if (b.environment.$FunctionObject === funcVal)
-        modifiedBindings.delete(b);
+      if (b.environment.$FunctionObject === funcVal) modifiedBindings.delete(b);
     }
   }
 

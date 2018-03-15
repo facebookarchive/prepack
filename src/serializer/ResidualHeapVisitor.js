@@ -13,7 +13,6 @@ import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord, EnvironmentRecor
 import { Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
 import type { Binding } from "../environment.js";
-import { PossiblyNormalCompletion } from "../completions.js";
 import { HashSet, IsArray, Get } from "../methods/index.js";
 import {
   BoundFunctionValue,
@@ -538,7 +537,7 @@ export class ResidualHeapVisitor {
     environment: EnvironmentRecord,
     name: string,
     createBinding?: boolean = true,
-    skipBindingUpdate?: boolean = false,
+    skipBindingUpdate?: boolean = false
   ): ResidualFunctionBinding | void {
     if (environment === this.globalEnvironmentRecord.$DeclarativeRecord) environment = this.globalEnvironmentRecord;
 
@@ -871,7 +870,13 @@ export class ResidualHeapVisitor {
         let residualBinding;
         this._withScope(functionValue, () => {
           // Also visit the original value of the binding
-          residualBinding = this.visitBinding(functionValue, modifiedBinding.environment, modifiedBinding.name, true, false);
+          residualBinding = this.visitBinding(
+            functionValue,
+            modifiedBinding.environment,
+            modifiedBinding.name,
+            true,
+            false
+          );
           invariant(residualBinding !== undefined);
           // named functions inside an additional function that have a global binding
           // can be skipped, as we don't want them to bind to the global
@@ -884,7 +889,8 @@ export class ResidualHeapVisitor {
           }
           // Fixup the binding to have the correct value
           // No previousValue means this is a binding for a nested function
-          if (previousValue && residualBinding.value === modifiedBinding.value) residualBinding.value = this.visitEquivalentValue(previousValue);
+          if (previousValue && residualBinding.value === modifiedBinding.value)
+            residualBinding.value = this.visitEquivalentValue(previousValue);
           invariant(functionInfo !== undefined);
           if (functionInfo.modified.has(modifiedBinding.name)) residualBinding.modified;
         });
@@ -900,7 +906,7 @@ export class ResidualHeapVisitor {
         // This should be enforced by checkThatFunctionsAreIndependent
         invariant(
           !residualBinding.additionalFunctionOverridesValue ||
-          residualBinding.additionalFunctionOverridesValue === functionValue,
+            residualBinding.additionalFunctionOverridesValue === functionValue,
           "We should only have one additional function value modifying any given residual binding"
         );
         if (previousValue) residualBinding.additionalFunctionOverridesValue = functionValue;

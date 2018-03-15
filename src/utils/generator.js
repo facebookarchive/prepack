@@ -34,7 +34,13 @@ import { hashString } from "../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
-import { Completion, JoinedAbruptCompletions, ThrowCompletion, ReturnCompletion, PossiblyNormalCompletion } from "../completions.js";
+import {
+  Completion,
+  JoinedAbruptCompletions,
+  ThrowCompletion,
+  ReturnCompletion,
+  PossiblyNormalCompletion,
+} from "../completions.js";
 import type {
   BabelNodeExpression,
   BabelNodeIdentifier,
@@ -270,12 +276,7 @@ class PossiblyNormalReturnEntry extends GeneratorEntry {
     let condition = context.serializeValue(this.condition);
     let consequentBody = context.serializeGenerator(this.consequentGenerator);
     let alternateBody = context.serializeGenerator(this.alternateGenerator);
-    context.emit(
-      t.ifStatement(
-        condition,
-        t.blockStatement(consequentBody),
-        t.blockStatement(alternateBody),
-    ));
+    context.emit(t.ifStatement(condition, t.blockStatement(consequentBody), t.blockStatement(alternateBody)));
   }
 }
 
@@ -333,10 +334,10 @@ export class Generator {
       output.emitPossiblyNormalReturn(result, realm);
     } else if (result instanceof ThrowCompletion) {
       output.emitThrow(result.value);
-    } /*else if (result instanceof JoinedAbruptCompletions) {
+    } else {
+      /*else if (result instanceof JoinedAbruptCompletions) {
 
-    } */ else {
-      invariant(false);
+    } */ invariant(false);
     }
     return output;
   }

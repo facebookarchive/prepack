@@ -29,7 +29,6 @@ import {
   UndefinedValue,
   PrimitiveValue,
 } from "../values/index.js";
-import { PossiblyNormalCompletion } from "../completions.js";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,

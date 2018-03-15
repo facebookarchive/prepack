@@ -681,7 +681,9 @@ export class ResidualFunctions {
     for (let [additionalFunction, body] of Array.from(rewrittenAdditionalFunctions.entries()).reverse()) {
       let additionalFunctionInfo = this.additionalFunctionValueInfos.get(additionalFunction);
       invariant(additionalFunctionInfo);
+      // Modified bindings portion of optimized function
       let bodySegment = additionalFunctionModifiedBindingsSegment.get(additionalFunction);
+      // initializers from Referentialization
       let funcBody = getFunctionBody(additionalFunctionInfo.instance);
       let prelude = additionalFunctionPreludes.get(additionalFunction);
       let insertionPoint = additionalFunctionInfo.instance.insertionPoint;
