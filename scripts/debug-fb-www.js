@@ -143,7 +143,7 @@ function lintCompiledSource(source) {
 async function compileFile() {
   let source = await readFileAsync(inputPath, "utf8");
   let { stats, code } = await compileSource(source);
-  writeFileAsync(outputPath, code);
+  await writeFileAsync(outputPath, code);
   lintCompiledSource(code);
   return stats;
 }
