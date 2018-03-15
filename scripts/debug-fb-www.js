@@ -136,8 +136,8 @@ function lintCompiledSource(source) {
     for (let error of errors) {
       console.log(`${chalk.red(error.message)} ${chalk.gray(`(${error.line}:${error.column})`)}`);
     }
+    process.exit(1);
   }
-  process.exit(1);
 }
 
 async function compileFile() {
