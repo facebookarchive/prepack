@@ -1801,8 +1801,11 @@ export class ResidualHeapSerializer {
         let effectsGenerator = additionalEffects.generator;
         effectsGenerator.serialize(this._getContext());
 
-        const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
-        Array.prototype.push.apply(this.mainBody.entries, lazyHoistedReactNodes);
+        this.realm.withEffectsAppliedInGlobalEnv(() => {
+          const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
+          this.mainBody.entries.push(...lazyHoistedReactNodes);
+          return null;
+        }, additionalEffects.effects);
       } finally {
         this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
       }
@@ -1829,10 +1832,7 @@ export class ResidualHeapSerializer {
     // function instead of adding them at global scope
     // TODO: make sure this generator isn't getting mutated oddly
     ((nestedFunctions: any): Set<FunctionValue>).forEach(val => this.additionalFunctionValueNestedFunctions.add(val));
-    let body = this.realm.withEffectsAppliedInGlobalEnv(
-      this._serializeAdditionalFunctionGeneratorAndEffects.bind(this, generator, additionalEffects),
-      effects
-    );
+    let body = this._serializeAdditionalFunctionGeneratorAndEffects(generator, additionalEffects);
     invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
     for (let transform of transforms) {
       transform(body);

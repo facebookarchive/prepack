@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { Realm, Effects, BindingEntry } from "../realm.js";
+import type { Realm, Effects } from "../realm.js";
 import type { PropertyBinding, Descriptor } from "../types.js";
 import type { ResidualFunctionBinding } from "../serializer/types.js";
 import type { Binding } from "../environment.js";
@@ -74,13 +74,7 @@ export type DerivedExpressionBuildNodeFunction = (
 export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, SerializationContext) => BabelNodeStatement;
 
 export class GeneratorEntry {
-  constructor(generator: Generator) {
-    this.containingGenerator = generator;
-  }
-
-  containingGenerator: Generator;
-
-  visit(callbacks: VisitEntryCallbacks) {
+  visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator) {
     invariant(false, "GeneratorEntry is an abstract base class");
   }
 
@@ -99,8 +93,8 @@ type TemporalBuildNodeEntryArgs = {
 };
 
 class TemporalBuildNodeEntry extends GeneratorEntry {
-  constructor(generator: Generator, args: TemporalBuildNodeEntryArgs) {
-    super(generator);
+  constructor(args: TemporalBuildNodeEntryArgs) {
+    super();
     Object.assign(this, args);
   }
 
@@ -111,14 +105,14 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
   dependencies: void | Array<Generator>;
   isPure: void | boolean;
 
-  visit(callbacks: VisitEntryCallbacks) {
+  visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator) {
     if (this.isPure && this.declared && callbacks.canSkip(this.declared)) {
-      callbacks.recordDelayedEntry(this.containingGenerator, this);
+      callbacks.recordDelayedEntry(containingGenerator, this);
     } else {
       if (this.declared) callbacks.recordDeclaration(this.declared);
       callbacks.visitValues(this.args);
       if (this.dependencies)
-        for (let dependency of this.dependencies) callbacks.visitGenerator(dependency, this.containingGenerator);
+        for (let dependency of this.dependencies) callbacks.visitGenerator(dependency, containingGenerator);
     }
   }
 
@@ -144,18 +138,18 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
 
 type ModifiedPropertyEntryArgs = {|
   propertyBinding: PropertyBinding,
-  // TODO make these mutable?
   newDescriptor: void | Descriptor,
+  containingGenerator: Generator,
 |};
 
 class ModifiedPropertyEntry extends GeneratorEntry {
-  constructor(generator: Generator, args: ModifiedPropertyEntryArgs) {
-    super(generator);
+  constructor(args: ModifiedPropertyEntryArgs) {
+    super();
     Object.assign(this, args);
   }
 
+  containingGenerator: Generator;
   propertyBinding: PropertyBinding;
-  // TODO make these mutable?
   newDescriptor: void | Descriptor;
 
   serialize(context: SerializationContext) {
@@ -164,7 +158,11 @@ class ModifiedPropertyEntry extends GeneratorEntry {
     context.emitPropertyModification(this.propertyBinding);
   }
 
-  visit(context: VisitEntryCallbacks) {
+  visit(context: VisitEntryCallbacks, containingGenerator: Generator) {
+    invariant(
+      containingGenerator === this.containingGenerator,
+      "This entry requires effects to be applied and may not be moved"
+    );
     let desc = this.propertyBinding.descriptor;
     invariant(desc === this.newDescriptor);
     context.visitObjectProperty(this.propertyBinding);
@@ -173,19 +171,20 @@ class ModifiedPropertyEntry extends GeneratorEntry {
 
 type ModifiedBindingEntryArgs = {|
   modifiedBinding: Binding,
-  newBinding: BindingEntry,
+  newValue: void | Value,
   oldValue: void | Value,
+  containingGenerator: Generator,
 |};
 
 class ModifiedBindingEntry extends GeneratorEntry {
-  constructor(generator: Generator, args: ModifiedBindingEntryArgs) {
-    super(generator);
+  constructor(args: ModifiedBindingEntryArgs) {
+    super();
     Object.assign(this, args);
   }
 
   containingGenerator: Generator;
   modifiedBinding: Binding;
-  newBinding: BindingEntry;
+  newValue: void | Value;
   oldValue: void | Value;
   residualFunctionBinding: void | ResidualFunctionBinding;
 
@@ -195,13 +194,16 @@ class ModifiedBindingEntry extends GeneratorEntry {
       invariant(this.modifiedBinding.value instanceof FunctionValue);
       return;
     }
-    invariant(this.modifiedBinding.value === this.newBinding.value);
-    if (this.newBinding.value)
-      residualFunctionBinding.additionalValueSerialized = context.serializeValue(this.newBinding.value);
+    invariant(this.modifiedBinding.value === this.newValue);
+    if (this.newValue) residualFunctionBinding.additionalValueSerialized = context.serializeValue(this.newValue);
   }
 
-  visit(context: VisitEntryCallbacks) {
-    invariant(this.modifiedBinding.value === this.newBinding.value);
+  visit(context: VisitEntryCallbacks, containingGenerator: Generator) {
+    invariant(
+      containingGenerator === this.containingGenerator,
+      "This entry requires effects to be applied and may not be moved"
+    );
+    invariant(this.modifiedBinding.value === this.newValue);
     let residualBinding = context.visitModifiedBinding(this.modifiedBinding, this.oldValue);
     invariant(this.residualFunctionBinding === undefined || this.residualFunctionBinding === residualBinding);
     this.residualFunctionBinding = residualBinding;
@@ -210,13 +212,19 @@ class ModifiedBindingEntry extends GeneratorEntry {
 
 class ReturnValueEntry extends GeneratorEntry {
   constructor(generator: Generator, returnValue: Value) {
-    super(generator);
+    super();
     this.returnValue = returnValue;
+    this.containingGenerator = generator;
   }
 
   returnValue: Value;
+  containingGenerator: Generator;
 
-  visit(context: VisitEntryCallbacks) {
+  visit(context: VisitEntryCallbacks, containingGenerator: Generator) {
+    invariant(
+      containingGenerator === this.containingGenerator,
+      "This entry requires effects to be applied and may not be moved"
+    );
     context.visitValues([this.returnValue]);
   }
 
@@ -253,46 +261,53 @@ export class Generator {
   id: number;
   _name: string;
 
-  // Make sure to to fixup
-  // how to apply things around sets of things
-  static fromEffects(effects: Effects, realm: Realm): Generator {
+  static _generatorOfEffects(realm: Realm, effects: Effects) {
     let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects;
 
     let output = new Generator(realm, "AdditionalFunctionEffects", effects);
     output.appendGenerator(generator, "Additional function generator");
 
-    for (let [propertyBinding, newValue] of modifiedProperties) {
+    for (let [propertyBinding] of modifiedProperties) {
       let object = propertyBinding.object;
       if (object instanceof ObjectValue && createdObjects.has(object)) continue; // Created Object's binding
       if (object.refuseSerialization) continue; // modification to internal state
       // modifications to intrinsic objects are tracked in the generator
       if (object.isIntrinsic()) continue;
+      let newValue = propertyBinding.descriptor;
       output.emitPropertyModification(propertyBinding, newValue);
     }
 
-    for (let [modifiedBinding, newValue] of modifiedBindings) {
-      output.emitBindingModification(modifiedBinding, newValue);
+    for (let [modifiedBinding, oldBinding] of modifiedBindings) {
+      output.emitBindingModification(modifiedBinding, oldBinding.value);
     }
 
     if (!(result instanceof UndefinedValue)) output.emitReturnValue(result);
     return output;
   }
 
-  emitPropertyModification(propertyBinding: PropertyBinding, newDescriptor: void | Descriptor) {
+  // Make sure to to fixup
+  // how to apply things around sets of things
+  static fromEffects(effects: Effects, realm: Realm): Generator {
+    return realm.withEffectsAppliedInGlobalEnv(this._generatorOfEffects.bind(this, realm), effects);
+  }
+
+  emitPropertyModification(propertyBinding: PropertyBinding) {
     this._entries.push(
-      new ModifiedPropertyEntry(this, {
+      new ModifiedPropertyEntry({
         propertyBinding,
-        newDescriptor,
+        newDescriptor: propertyBinding.descriptor,
+        containingGenerator: this,
       })
     );
   }
 
-  emitBindingModification(modifiedBinding: Binding, newBinding: BindingEntry) {
+  emitBindingModification(modifiedBinding: Binding, oldValue: Value) {
     this._entries.push(
-      new ModifiedBindingEntry(this, {
+      new ModifiedBindingEntry({
         modifiedBinding,
-        newBinding,
-        oldValue: modifiedBinding.value,
+        newValue: modifiedBinding.value,
+        oldValue,
+        containingGenerator: this,
       })
     );
   }
@@ -671,15 +686,31 @@ export class Generator {
   }
 
   visit(callbacks: VisitEntryCallbacks) {
-    for (let entry of this._entries) entry.visit(callbacks);
+    let visitFn = () => {
+      for (let entry of this._entries) entry.visit(callbacks, this);
+      return null;
+    };
+    if (this.effectsToApply) {
+      this.realm.withEffectsAppliedInGlobalEnv(visitFn, this.effectsToApply);
+    } else {
+      visitFn();
+    }
   }
 
   serialize(context: SerializationContext) {
-    for (let entry of this._entries) entry.serialize(context);
+    let serializeFn = () => {
+      for (let entry of this._entries) entry.serialize(context);
+      return null;
+    };
+    if (this.effectsToApply) {
+      this.realm.withEffectsAppliedInGlobalEnv(serializeFn, this.effectsToApply);
+    } else {
+      serializeFn();
+    }
   }
 
   _addEntry(entry: TemporalBuildNodeEntryArgs) {
-    this._entries.push(new TemporalBuildNodeEntry(this, entry));
+    this._entries.push(new TemporalBuildNodeEntry(entry));
   }
 
   appendGenerator(other: Generator, leadingComment: string): void {

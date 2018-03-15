@@ -12,7 +12,6 @@
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
-import type { Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
 import type { Binding } from "../environment.js";
 import { HashSet, IsArray, Get } from "../methods/index.js";
@@ -932,16 +931,11 @@ export class ResidualHeapVisitor {
     };
     this.additionalFunctionValueInfos.set(functionValue, additionalFunctionInfo);
 
-    this.realm.withEffectsAppliedInGlobalEnv((effects: Effects) => {
-      // All modified properties and bindings should be accessible
-      // from its containing additional function scope.
-      this._withScope(functionValue, () => {
-        let effectsGenerator = additionalEffects.generator;
-        let callbacks = this.createGeneratorVisitCallbacks(this.commonScope, additionalFunctionInfo);
-        effectsGenerator.visit(callbacks);
-      });
-      return this.realm.intrinsics.undefined;
-    }, additionalEffects.effects);
+    this._withScope(functionValue, () => {
+      let effectsGenerator = additionalEffects.generator;
+      let callbacks = this.createGeneratorVisitCallbacks(this.commonScope, additionalFunctionInfo);
+      effectsGenerator.visit(callbacks);
+    });
     for (let createdObject of createdObjects) this.additionalRoots.delete(createdObject);
 
     // Cleanup
@@ -991,7 +985,7 @@ export class ResidualHeapVisitor {
       for (let { commonScope, generator: entryGenerator, entry } of oldDelayedEntries) {
         this.commonScope = commonScope;
         this._withScope(entryGenerator, () => {
-          entry.visit(this.createGeneratorVisitCallbacks(commonScope));
+          entry.visit(this.createGeneratorVisitCallbacks(commonScope), entryGenerator);
         });
       }
     }
