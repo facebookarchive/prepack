@@ -20,6 +20,7 @@ let { promisify } = require("util");
 let readFileAsync = promisify(readFile);
 let writeFileAsync = promisify(writeFile);
 let chalk = require("chalk");
+let { Linter } = require("eslint");
 
 let errorsCaptured = [];
 
@@ -83,10 +84,67 @@ async function readComponentsList() {
   }
 }
 
+function lintCompiledSource(source) {
+  let linter = new Linter();
+  let errors = linter.verify(source, {
+    env: {
+      commonjs: true,
+      browser: true,
+    },
+    rules: { "no-undef": "error" },
+    parserOptions: {
+      ecmaFeatures: {
+        jsx: true,
+      },
+    },
+    globals: {
+      // FB
+      Env: true,
+      Bootloader: true,
+      JSResource: true,
+      babelHelpers: true,
+      asset: true,
+      cx: true,
+      cssVar: true,
+      csx: true,
+      errorDesc: true,
+      errorHelpCenterID: true,
+      errorSummary: true,
+      gkx: true,
+      glyph: true,
+      ifRequired: true,
+      ix: true,
+      fbglyph: true,
+      requireWeak: true,
+      xuiglyph: true,
+      // ES 6
+      Promise: true,
+      Map: true,
+      Set: true,
+      Proxy: true,
+      Symbol: true,
+      WeakMap: true,
+      // Vendor specific
+      MSApp: true,
+      __REACT_DEVTOOLS_GLOBAL_HOOK__: true,
+      // CommonJS / Node
+      process: true,
+    },
+  });
+  if (errors.length > 0) {
+    console.log(`\n${chalk.inverse(`=== Validation Failed ===`)}\n`);
+    for (let error of errors) {
+      console.log(`${chalk.red(error.message)} ${chalk.gray(`(${error.line}:${error.column})`)}`);
+    }
+  }
+  process.exit(1);
+}
+
 async function compileFile() {
   let source = await readFileAsync(inputPath, "utf8");
   let { stats, code } = await compileSource(source);
-  await writeFileAsync(outputPath, code);
+  writeFileAsync(outputPath, code);
+  lintCompiledSource(code);
   return stats;
 }
 
