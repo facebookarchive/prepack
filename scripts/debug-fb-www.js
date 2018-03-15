@@ -93,12 +93,14 @@ function lintCompiledSource(source) {
     },
     rules: { "no-undef": "error" },
     parserOptions: {
+      ecmaVersion: 6,
       ecmaFeatures: {
         jsx: true,
       },
     },
     globals: {
       // FB
+      React: true,
       Env: true,
       Bootloader: true,
       JSResource: true,
