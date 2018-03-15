@@ -1,3 +1,4 @@
+// skip this test for now
 // throws introspection error
 let n = global.__abstract ? global.__abstract("number", "4") : 4;
 
