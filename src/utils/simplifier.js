@@ -31,6 +31,9 @@ export default function simplifyAndRefineAbstractValue(
     };
     return simplify(realm, value, isCondition);
   } catch (e) {
+    if (e instanceof FatalError) {
+      throw e;
+    }
     return value;
   } finally {
     realm.errorHandler = savedHandler;

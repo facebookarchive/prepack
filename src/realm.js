@@ -160,6 +160,8 @@ export class Realm {
     }
     this.strictlyMonotonicDateNow = !!opts.strictlyMonotonicDateNow;
 
+    // 0 = disabled
+    this.kLimitingCounterMax = opts.kLimit || 0;
     this.timeout = opts.timeout;
     if (this.timeout) {
       // We'll call Date.now for every this.timeoutCounterThreshold'th AST node.
@@ -228,6 +230,7 @@ export class Realm {
   trackLeaks: boolean;
   debugNames: void | boolean;
   isInPureTryStatement: boolean; // TODO(1264): Remove this once we implement proper exception handling in abstract calls.
+  kLimitingCounterMax: number;
   timeout: void | number;
   mathRandomGenerator: void | (() => number);
   strictlyMonotonicDateNow: boolean;
