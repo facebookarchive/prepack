@@ -49,6 +49,7 @@ import type {
   BabelNodeMemberExpression,
   BabelNodeVariableDeclaration,
   BabelNodeBlockStatement,
+  BabelNodeLVal,
 } from "babel-types";
 import { nullExpression } from "./internalizer.js";
 import { Utils, concretize } from "../singletons.js";
@@ -205,7 +206,20 @@ class ModifiedBindingEntry extends GeneratorEntry {
       return;
     }
     invariant(this.modifiedBinding.value === this.newValue);
-    if (this.newValue) residualFunctionBinding.additionalValueSerialized = context.serializeValue(this.newValue);
+    invariant(
+      residualFunctionBinding.serializedValue,
+      "ResidualFunctionBinding must be referentialized before serializing a mutation to it."
+    );
+    let newValue = this.newValue;
+    if (newValue) {
+      let bindingReference = ((residualFunctionBinding.serializedValue: any): BabelNodeLVal);
+      invariant(
+        t.isLVal(bindingReference),
+        "Referentialized values must be LVals even though serializedValues may be any Expression"
+      );
+      let serializedNewValue = context.serializeValue(newValue);
+      context.emit(t.expressionStatement(t.assignmentExpression("=", bindingReference, serializedNewValue)));
+    }
   }
 
   visit(context: VisitEntryCallbacks, containingGenerator: Generator) {

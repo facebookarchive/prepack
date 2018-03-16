@@ -42,9 +42,6 @@ export type AdditionalFunctionEffects = {
   effects: Effects,
   generator: Generator,
   transforms: Array<Function>,
-  joinedEffects?: Effects,
-  returnArguments?: Array<Value>,
-  returnBuildNode?: (Array<BabelNodeExpression>) => BabelNodeStatement,
 };
 
 export type AdditionalFunctionInfo = {
@@ -107,7 +104,6 @@ export type ResidualFunctionBinding = {
   // new values
   // TODO #1087: make this a map and support arbitrary binding modifications
   additionalFunctionOverridesValue?: true,
-  additionalValueSerialized?: BabelNodeExpression,
 };
 
 export type ScopeBinding = {

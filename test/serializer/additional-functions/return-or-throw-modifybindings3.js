@@ -1,6 +1,5 @@
 // does not contain:z = 5;
 // add at runtime: x = 3;
-// skip this test for now
 var x;
 if (global.__abstract) x = __abstract("number", "(3)");
 else x = 3;
