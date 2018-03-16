@@ -85,10 +85,7 @@ function tryToEvaluateConstructOrLeaveAsAbstract(
       "tryToEvaluateConstructOrLeaveAsAbstract"
     );
   } catch (error) {
-    // if the constructor is abstract, then create a unary op for it,
-    // otherwise we rethrow the error as we don't handle it at this
-    // point in time
-    if (error instanceof FatalError && constructor instanceof AbstractValue) {
+    if (error instanceof FatalError) {
       // we need to havoc all the arguments and the constructor
       Havoc.value(realm, constructor);
       for (let arg of argsList) {
