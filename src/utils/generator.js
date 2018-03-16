@@ -213,7 +213,10 @@ class ModifiedBindingEntry extends GeneratorEntry {
     let newValue = this.newValue;
     if (newValue) {
       let bindingReference = ((residualFunctionBinding.serializedValue: any): BabelNodeLVal);
-      invariant(t.isLVal(bindingReference), "Referentialized values must be LVals");
+      invariant(
+        t.isLVal(bindingReference),
+        "Referentialized values must be LVals even though serializedValues may be any Expression"
+      );
       let serializedNewValue = context.serializeValue(newValue);
       context.emit(t.expressionStatement(t.assignmentExpression("=", bindingReference, serializedNewValue)));
     }

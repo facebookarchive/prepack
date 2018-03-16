@@ -116,6 +116,7 @@ export class ResidualHeapVisitor {
     let environment = realm.$GlobalEnv.environmentRecord;
     invariant(environment instanceof GlobalEnvironmentRecord);
     this.globalEnvironmentRecord = environment;
+    this.createdObjects = new Set();
   }
 
   realm: Realm;
@@ -147,6 +148,9 @@ export class ResidualHeapVisitor {
 
   // We only want to add to additionalRoots when we're in an additional function
   containingAdditionalFunction: void | FunctionValue;
+  // CreatedObjects corresponding to the union of the createdObjects for all the effects that are
+  // currently applied
+  createdObjects: Set<ObjectValue>;
   // Tracks objects + functions that were visited from inside additional functions that need to be serialized in a
   // parent scope of the additional function (e.g. functions/objects only used from additional functions that were
   // declared outside the additional function need to be serialized in the additional function's parent scope for
@@ -160,6 +164,9 @@ export class ResidualHeapVisitor {
   _registerAdditionalRoot(value: ObjectValue) {
     let additionalFunction = this.containingAdditionalFunction;
     if (additionalFunction !== undefined && !this.inClass) {
+      // If the value is a member of CreatedObjects, it isn't an additional root
+      invariant(this.createdObjects);
+      if (this.createdObjects.has(value)) return;
       let s = this.additionalRoots.get(value);
       if (s === undefined) this.additionalRoots.set(value, (s = new Set()));
       s.add(additionalFunction);
@@ -917,9 +924,15 @@ export class ResidualHeapVisitor {
   }
 
   visitGenerator(generator: Generator, additionalFunctionInfo?: AdditionalFunctionInfo): void {
+    let oldCreatedObjects;
+    if (generator.effectsToApply) {
+      oldCreatedObjects = this.createdObjects;
+      this.createdObjects = new Set([...oldCreatedObjects, ...generator.effectsToApply[4]]);
+    }
     this._withScope(generator, () => {
       generator.visit(this.createGeneratorVisitCallbacks(this.commonScope, additionalFunctionInfo));
     });
+    if (oldCreatedObjects) this.createdObjects = oldCreatedObjects;
   }
 
   // result -- serialized as a return statement
@@ -958,7 +971,7 @@ export class ResidualHeapVisitor {
     this.additionalRoots = new Map();
 
     let modifiedBindingInfo = new Map();
-    let [result, , , , createdObjects] = additionalEffects.effects;
+    let [result] = additionalEffects.effects;
 
     invariant(funcInstance !== undefined);
     invariant(functionInfo !== undefined);
@@ -973,12 +986,14 @@ export class ResidualHeapVisitor {
 
     this._withScope(functionValue, () => {
       let effectsGenerator = additionalEffects.generator;
-      let callbacks = this.createGeneratorVisitCallbacks(this.commonScope, additionalFunctionInfo);
-      effectsGenerator.visit(callbacks);
+      let oldCreatedObjects;
+      if (effectsGenerator.effectsToApply) {
+        oldCreatedObjects = this.createdObjects;
+        this.createdObjects = new Set([...oldCreatedObjects, ...effectsGenerator.effectsToApply[4]]);
+      }
+      this.visitGenerator(effectsGenerator, additionalFunctionInfo);
+      if (oldCreatedObjects) this.createdObjects = oldCreatedObjects;
     });
-    for (let createdObject of createdObjects) this.additionalRoots.delete(createdObject);
-    if (additionalEffects.joinedEffects)
-      for (let createdObject of additionalEffects.joinedEffects[4]) this.additionalRoots.delete(createdObject);
 
     // Cleanup
     this.commonScope = prevCommonScope;

@@ -42,9 +42,6 @@ export type AdditionalFunctionEffects = {
   effects: Effects,
   generator: Generator,
   transforms: Array<Function>,
-  joinedEffects?: Effects,
-  returnArguments?: Array<Value>,
-  returnBuildNode?: (Array<BabelNodeExpression>) => BabelNodeStatement,
 };
 
 export type AdditionalFunctionInfo = {

@@ -662,10 +662,7 @@ export class ResidualFunctions {
         invariant(insertionPoint instanceof BodyReference);
         // v8 seems to do something clever with array splicing, so this potentially
         // expensive operations seems to be actually cheap.
-        Array.prototype.splice.apply(
-          insertionPoint.body.entries,
-          ([insertionPoint.index, 0]: Array<any>).concat((functionBody: Array<any>))
-        );
+        insertionPoint.body.entries.splice(insertionPoint.index, 0, ...functionBody);
       }
     }
 
@@ -680,10 +677,7 @@ export class ResidualFunctions {
       let insertionPoint = additionalFunctionInfo.instance.insertionPoint;
       invariant(insertionPoint);
       // TODO: I think this inserts things in the wrong place
-      Array.prototype.splice.apply(
-        insertionPoint.body.entries,
-        ([insertionPoint.index, 0]: Array<any>).concat((initializationStatements: Array<any>))
-      );
+      insertionPoint.body.entries.splice(insertionPoint.index, 0, ...initializationStatements);
       if (bodySegment) body.unshift(...bodySegment);
       if (prelude) body.unshift(...prelude);
     }
