@@ -60,7 +60,7 @@ let uniqueEvaluatedComponents = 0;
 function compileSource(source) {
   let serialized;
   try {
-    serialized = prepackSources([{ filePath: "", fileContents: source, sourceMapContents: "" }], prepackOptions);
+    serialized = prepackSources([{ filePath: inputPath, fileContents: source, sourceMapContents: "" }], prepackOptions);
   } catch (e) {
     errorsCaptured.forEach(error => {
       console.error(error);
