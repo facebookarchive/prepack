@@ -55,7 +55,7 @@ export type PrepackOptions = {|
   maxStackDepth?: number,
   debugInFilePath?: string,
   debugOutFilePath?: string,
-  kLimit?: number,
+  abstractValueImpliesMax?: number,
 |};
 
 export function getRealmOptions({
@@ -77,7 +77,7 @@ export function getRealmOptions({
   stripFlow,
   timeout,
   maxStackDepth,
-  kLimit,
+  abstractValueImpliesMax,
 }: PrepackOptions): RealmOptions {
   return {
     abstractEffectsInAdditionalFunctions,
@@ -98,7 +98,7 @@ export function getRealmOptions({
     stripFlow,
     timeout,
     maxStackDepth,
-    kLimit,
+    abstractValueImpliesMax,
   };
 }
 

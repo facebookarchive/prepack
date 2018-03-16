@@ -51,7 +51,7 @@ export type RealmOptions = {
   reactVerbose?: boolean,
   stripFlow?: boolean,
   abstractEffectsInAdditionalFunctions?: boolean,
-  kLimit?: number,
+  abstractValueImpliesMax?: number,
 };
 
 export type SerializerOptions = {

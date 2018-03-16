@@ -66,7 +66,7 @@ export default class AbstractValue extends Value {
     this.args = args;
     this.hashValue = hashValue;
     this.kind = optionalArgs ? optionalArgs.kind : undefined;
-    this.kLimitingCounter = 0;
+    this.impliesCounter = 0;
   }
 
   hashValue: number;
@@ -76,7 +76,7 @@ export default class AbstractValue extends Value {
   mightBeEmpty: boolean;
   args: Array<Value>;
   _buildNode: void | AbstractValueBuildNodeFunction | BabelNodeExpression;
-  kLimitingCounter: number;
+  impliesCounter: number;
 
   addSourceLocationsTo(locations: Array<BabelNodeSourceLocation>, seenValues?: Set<AbstractValue> = new Set()) {
     if (seenValues.has(this)) return;
@@ -176,13 +176,14 @@ export default class AbstractValue extends Value {
     return this._buildNode && this._buildNode.type === "Identifier";
   }
 
-  _checkKLimitingCounter() {
+  _checkAbstractValueImpliesCounter() {
     let realm = this.$Realm;
-    let kLimit = realm.kLimitingCounterMax;
-    // if kLimit is 0, then the counter is disabled
-    if (kLimit !== 0 && this.kLimitingCounter++ > kLimit) {
+    let abstractValueImpliesMax = realm.abstractValueImpliesMax;
+    // if abstractValueImpliesMax is 0, then the counter is disabled
+    if (abstractValueImpliesMax !== 0 && this.impliesCounter++ > abstractValueImpliesMax) {
+      this.impliesCounter = 0;
       let diagnostic = new CompilerDiagnostic(
-        `the limiting counter has exceeded the maximum value when trying to simplify abstract values`,
+        `the implies counter has exceeded the maximum value when trying to simplify abstract values`,
         realm.currentLocation,
         "PP0029",
         "FatalError"
@@ -194,10 +195,10 @@ export default class AbstractValue extends Value {
 
   // this => val. A false value does not imply that !(this => val).
   implies(val: Value): boolean {
+    this._checkAbstractValueImpliesCounter();
     if (this.equals(val)) return true; // x => x regardless of its value
     if (!this.mightNotBeFalse()) return true; // false => val
     if (!val.mightNotBeTrue()) return true; // x => true regardless of the value of x
-    this._checkKLimitingCounter();
     if (val instanceof AbstractValue) {
       // Neither this (x) nor val (y) is a known value, so we need to do some reasoning based on the structure
       // x => x || y
