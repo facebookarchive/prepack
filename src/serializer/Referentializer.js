@@ -222,30 +222,17 @@ export class Referentializer {
   referentialize(
     unbound: Set<string>,
     instances: Array<FunctionInstance>,
-    shouldReferentializeInstanceFn: FunctionInstance => boolean
   ): void {
     for (let instance of instances) {
       let residualBindings = instance.residualFunctionBindings;
 
       for (let name of unbound) {
         let residualBinding = residualBindings.get(name);
-        invariant(residualBinding !== undefined);
+        if (residualBinding === undefined) continue;
         if (residualBinding.modified) {
           // Initialize captured scope at function call instead of globally
           if (!residualBinding.declarativeEnvironmentRecord) residualBinding.referentialized = true;
           if (!residualBinding.referentialized) {
-            if (!shouldReferentializeInstanceFn(instance)) {
-              // TODO #989: Fix additional functions and referentialization
-              this.realm.handleError(
-                new CompilerDiagnostic(
-                  "Referentialization for prepacked functions unimplemented",
-                  instance.functionValue.loc,
-                  "PP1005",
-                  "FatalError"
-                )
-              );
-              throw new FatalError("TODO: implement referentialization for prepacked functions");
-            }
             if (!this._options.simpleClosures) this._getSerializedBindingScopeInstance(residualBinding);
             residualBinding.referentialized = true;
           }

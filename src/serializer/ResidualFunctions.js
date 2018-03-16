@@ -282,15 +282,6 @@ export class ResidualFunctions {
           // flow forces me to do this
           Array.prototype.push.apply(bodySegment, init);
         }
-
-        let newValue = residualBinding.additionalValueSerialized;
-        invariant(newValue);
-        let binding_reference = ((residualBinding.serializedValue: any): BabelNodeLVal);
-        invariant(binding_reference);
-        invariant(t.isLVal(binding_reference), "Referentialized values are always LVals");
-        // This mutation is safe because it should always be either a global identifier (for global bindings)
-        // or an accessor to a referentialized value.
-        bodySegment.push(t.expressionStatement(t.assignmentExpression("=", binding_reference, newValue)));
       }
     }
 
@@ -681,27 +672,20 @@ export class ResidualFunctions {
     for (let [additionalFunction, body] of Array.from(rewrittenAdditionalFunctions.entries()).reverse()) {
       let additionalFunctionInfo = this.additionalFunctionValueInfos.get(additionalFunction);
       invariant(additionalFunctionInfo);
-      // Modified bindings portion of optimized function
+      // Modified bindings initializers of optimized function
       let bodySegment = additionalFunctionModifiedBindingsSegment.get(additionalFunction);
       // initializers from Referentialization
-      let funcBody = getFunctionBody(additionalFunctionInfo.instance);
+      let initializationStatements = getFunctionBody(additionalFunctionInfo.instance);
       let prelude = additionalFunctionPreludes.get(additionalFunction);
       let insertionPoint = additionalFunctionInfo.instance.insertionPoint;
       invariant(insertionPoint);
       // TODO: I think this inserts things in the wrong place
       Array.prototype.splice.apply(
         insertionPoint.body.entries,
-        ([insertionPoint.index, 0]: Array<any>).concat((funcBody: Array<any>))
+        ([insertionPoint.index, 0]: Array<any>).concat((initializationStatements: Array<any>))
       );
+      if (bodySegment) body.unshift(...bodySegment);
       if (prelude) body.unshift(...prelude);
-      if (bodySegment) {
-        if (body.length > 0 && additionalFunctionInfo.hasReturn) {
-          let returnStatement = body.pop();
-          body.push(...bodySegment, returnStatement);
-        } else {
-          body.push(...bodySegment);
-        }
-      }
     }
 
     // Inject initializer code for indexed vars into functions (for delay initializations)

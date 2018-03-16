@@ -1037,12 +1037,9 @@ export class ResidualHeapVisitor {
     if (referentializer !== undefined) {
       let bodyToInstances = new Map();
       for (let instance of this.functionInstances.values()) {
-        // TODO: do something for additional functions
-        if (!this.additionalFunctionValuesAndEffects.has(instance.functionValue)) {
-          let code = instance.functionValue.$ECMAScriptCode;
-          invariant(code !== undefined);
-          getOrDefault(bodyToInstances, code, () => []).push(instance);
-        }
+        let code = instance.functionValue.$ECMAScriptCode;
+        invariant(code !== undefined);
+        getOrDefault(bodyToInstances, code, () => []).push(instance);
       }
 
       for (let [funcBody, instances] of bodyToInstances) {
@@ -1051,7 +1048,6 @@ export class ResidualHeapVisitor {
         referentializer.referentialize(
           functionInfo.unbound,
           instances,
-          instance => !this.additionalFunctionValuesAndEffects.has(instance.functionValue)
         );
       }
     }
