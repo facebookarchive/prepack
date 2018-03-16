@@ -10,7 +10,6 @@
 /* @flow */
 
 import { DeclarativeEnvironmentRecord } from "../environment.js";
-import { FatalError, CompilerDiagnostic } from "../errors.js";
 import { FunctionValue } from "../values/index.js";
 import type { SerializerOptions } from "../options.js";
 import * as t from "babel-types";
@@ -219,10 +218,7 @@ export class Referentializer {
     }
   }
 
-  referentialize(
-    unbound: Set<string>,
-    instances: Array<FunctionInstance>,
-  ): void {
+  referentialize(unbound: Set<string>, instances: Array<FunctionInstance>): void {
     for (let instance of instances) {
       let residualBindings = instance.residualFunctionBindings;
 

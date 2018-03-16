@@ -206,18 +206,16 @@ class ModifiedBindingEntry extends GeneratorEntry {
       return;
     }
     invariant(this.modifiedBinding.value === this.newValue);
-    invariant(residualFunctionBinding.serializedValue, "ResidualFunctionBinding must be referentialized before serializing a mutation to it.")
+    invariant(
+      residualFunctionBinding.serializedValue,
+      "ResidualFunctionBinding must be referentialized before serializing a mutation to it."
+    );
     let newValue = this.newValue;
     if (newValue) {
       let bindingReference = ((residualFunctionBinding.serializedValue: any): BabelNodeLVal);
-      invariant(t.isLVal(bindingReference), "Referentialized values must be LVals")
+      invariant(t.isLVal(bindingReference), "Referentialized values must be LVals");
       let serializedNewValue = context.serializeValue(newValue);
-      context.emit(
-        t.expressionStatement(
-          t.assignmentExpression(
-            "=",
-            bindingReference,
-            serializedNewValue)));
+      context.emit(t.expressionStatement(t.assignmentExpression("=", bindingReference, serializedNewValue)));
     }
   }
 

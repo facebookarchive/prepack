@@ -1045,10 +1045,7 @@ export class ResidualHeapVisitor {
       for (let [funcBody, instances] of bodyToInstances) {
         let functionInfo = this.functionInfos.get(funcBody);
         invariant(functionInfo !== undefined);
-        referentializer.referentialize(
-          functionInfo.unbound,
-          instances,
-        );
+        referentializer.referentialize(functionInfo.unbound, instances);
       }
     }
   }
