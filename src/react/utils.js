@@ -194,9 +194,7 @@ export function addKeyToReactElement(
   if (currentKeyValue !== realm.intrinsics.null) {
     newKeyValue = computeBinary(realm, "+", currentKeyValue, newKeyValue);
   }
-  // TODO: This might not be safe in DEV because these objects are frozen (Object.freeze).
-  // We should probably go behind the scenes in this case to by-pass that.
-  reactElement.$Set("key", newKeyValue, reactElement);
+  setProperty(reactElement, "key", newKeyValue);
 }
 // we create a unique key for each JSXElement to prevent collisions
 // otherwise React will detect a missing/conflicting key at runtime and
@@ -495,24 +493,10 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
 // to ensure that when dealing with creating ReactElements with partial config,
 // we don't have to bail out becuase "config" may or may not have "key" or/and "ref"
 export function deleteRefAndKeyFromProps(realm: Realm, props: ObjectValue | AbstractObjectValue): void {
-  let objectValue;
-  if (props instanceof AbstractObjectValue) {
-    let elements = props.values.getElements();
-    if (elements && elements.size > 0) {
-      objectValue = Array.from(elements)[0];
-    }
-    // we don't want to serialize in the output that we're making these deletes
-    invariant(objectValue instanceof ObjectValue);
-    objectValue.refuseSerialization = true;
-  }
-  Properties.Set(realm, props, "ref", realm.intrinsics.undefined, true);
-  props.$Delete("ref");
-  Properties.Set(realm, props, "key", realm.intrinsics.undefined, true);
-  props.$Delete("key");
-  if (props instanceof AbstractObjectValue) {
-    invariant(objectValue instanceof ObjectValue);
-    objectValue.refuseSerialization = false;
-  }
+  setProperty(props, "ref", realm.intrinsics.undefined);
+  deleteProperty(props, "ref");
+  setProperty(props, "key", realm.intrinsics.undefined);
+  deleteProperty(props, "key");
 }
 
 export function objectHasNoPartialKeyAndRef(
@@ -575,12 +559,12 @@ export function evaluateComponentTreeBranch(
   }
 }
 
-export function setProperty(
-  realm: Realm,
-  object: ObjectValue | AbstractObjectValue,
-  property: string | SymbolValue,
-  value: Value
-): void {
+// This function is mainly use to delete internal properties
+// on objects that we know are safe to access internally
+// such as ReactElements. Deleting here does not
+// emit change to modified bindings and is intended
+// for only internal usage – not for user-land code
+export function deleteProperty(object: ObjectValue | AbstractObjectValue, property: string | SymbolValue): void {
   if (object instanceof AbstractObjectValue) {
     let elements = object.values.getElements();
     if (elements && elements.size > 0) {
@@ -597,6 +581,59 @@ export function setProperty(
   if (!binding) {
     return;
   }
+  binding.descriptor = undefined;
+}
+
+// This function is mainly use to set internal properties
+// on objects that we know are safe to access internally
+// such as ReactElements. Setting properties here does not
+// emit change to modified bindings and is intended
+// for only internal usage – not for user-land code
+export function setProperty(
+  object: ObjectValue | AbstractObjectValue,
+  property: string | SymbolValue,
+  value: Value
+): void {
+  if (object instanceof AbstractObjectValue) {
+    let elements = object.values.getElements();
+    if (elements && elements.size > 0) {
+      object = Array.from(elements)[0];
+    }
+    invariant(object instanceof ObjectValue);
+  }
+  let binding;
+  if (typeof property === "string") {
+    binding = object.properties.get(property);
+    if (!binding) {
+      binding = {
+        descriptor: {
+          configureable: true,
+          enumerable: true,
+          writable: true,
+          value,
+        },
+        key: property,
+        object,
+      };
+      object.properties.set(property, binding);
+    }
+  } else if (property instanceof SymbolValue) {
+    binding = object.symbols.get(property);
+    if (!binding) {
+      binding = {
+        descriptor: {
+          configureable: true,
+          enumerable: true,
+          writable: true,
+          value,
+        },
+        key: property,
+        object,
+      };
+      object.symbols.set(property, binding);
+    }
+  }
+  invariant(binding);
   let descriptor = binding.descriptor;
 
   if (!descriptor) {
@@ -605,6 +642,11 @@ export function setProperty(
   descriptor.value = value;
 }
 
+// This function is mainly use to get internal properties
+// on objects that we know are safe to access internally
+// such as ReactElements. Getting properties here does
+// not emit change to modified bindings and is intended
+// for only internal usage – not for user-land code
 export function getProperty(
   realm: Realm,
   object: ObjectValue | AbstractObjectValue,
@@ -624,6 +666,7 @@ export function getProperty(
     binding = object.symbols.get(property);
   }
   if (!binding) {
+    invariant(!object.isPartialObject(), "getProperty used on a partial object with no binding");
     return realm.intrinsics.undefined;
   }
   let descriptor = binding.descriptor;
@@ -853,7 +896,7 @@ export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElemen
   let typeValue = Get(realm, reactElement, "type");
 
   // ensure ref is null, as we don't use that on first render
-  setProperty(realm, reactElement, "ref", realm.intrinsics.null);
+  setProperty(reactElement, "ref", realm.intrinsics.null);
   // when dealing with host nodes, we want to sanitize them futher
   if (typeValue instanceof StringValue) {
     let propsValue = Get(realm, reactElement, "props");
@@ -862,7 +905,7 @@ export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElemen
       for (let [propName] of propsValue.properties) {
         // check for onSomething prop event handlers, i.e. onClick
         if (isEventProp(propName)) {
-          propsValue.$Delete(propName);
+          deleteProperty(reactElement, "ref");
         }
       }
     }
