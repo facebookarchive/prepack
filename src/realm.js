@@ -230,7 +230,7 @@ export class Realm {
   trackLeaks: boolean;
   debugNames: void | boolean;
   isInPureTryStatement: boolean; // TODO(1264): Remove this once we implement proper exception handling in abstract calls.
-  abstractValueImpliesCounter: number;
+  abstractValueImpliesMax: number;
   timeout: void | number;
   mathRandomGenerator: void | (() => number);
   strictlyMonotonicDateNow: boolean;
