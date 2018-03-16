@@ -85,6 +85,8 @@ function tryToEvaluateConstructOrLeaveAsAbstract(
       "tryToEvaluateConstructOrLeaveAsAbstract"
     );
   } catch (error) {
+    // if a FatalError occurs when constructing the constructor
+    // then try and recover and create an abstract for this construct
     if (error instanceof FatalError) {
       // we need to havoc all the arguments and the constructor
       Havoc.value(realm, constructor);
