@@ -601,35 +601,27 @@ export function setProperty(
     }
     invariant(object instanceof ObjectValue);
   }
+  let defaultBinding = {
+    descriptor: {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      value,
+    },
+    key: property,
+    object,
+  };
   let binding;
   if (typeof property === "string") {
     binding = object.properties.get(property);
     if (!binding) {
-      binding = {
-        descriptor: {
-          configureable: true,
-          enumerable: true,
-          writable: true,
-          value,
-        },
-        key: property,
-        object,
-      };
+      binding = defaultBinding;
       object.properties.set(property, binding);
     }
   } else if (property instanceof SymbolValue) {
     binding = object.symbols.get(property);
     if (!binding) {
-      binding = {
-        descriptor: {
-          configureable: true,
-          enumerable: true,
-          writable: true,
-          value,
-        },
-        key: property,
-        object,
-      };
+      binding = defaultBinding;
       object.symbols.set(property, binding);
     }
   }
