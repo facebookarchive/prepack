@@ -186,8 +186,8 @@ function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: Pro
   if (!ownDesc || ownDescValue.mightHaveBeenDeleted()) {
     // O might not object, so first ask its parent
     let parent = O.$GetPrototypeOf();
-    parent.throwIfNotConcrete(); //TODO #1016: deal with abstract parents
     if (!(parent instanceof NullValue)) {
+      parent = parent.throwIfNotConcreteObject(); //TODO #1016: deal with abstract parents
       if (!parentPermitsChildPropertyCreation(realm, parent, P)) return false;
     }
 
@@ -265,10 +265,10 @@ export class PropertiesImplementation {
     if (!ownDesc || ownDescValue.mightHaveBeenDeleted()) {
       // a. Let parent be ? O.[[GetPrototypeOf]]().
       let parent = O.$GetPrototypeOf();
-      parent.throwIfNotConcrete(); //TODO #1016: deal with abstract parents
 
       // b. If parent is not null, then
       if (!(parent instanceof NullValue)) {
+        parent = parent.throwIfNotConcreteObject(); //TODO #1016: deal with abstract parents
         if (!ownDesc) {
           // i. Return ? parent.[[Set]](P, V, Receiver).
           return parent.$Set(P, V, Receiver);
@@ -1327,7 +1327,7 @@ export class PropertiesImplementation {
     let current = O.$Prototype;
 
     // 4. If SameValue(V, current) is true, return true.
-    if (SameValue(realm, V, current)) return true;
+    if (SameValuePartial(realm, V, current)) return true;
 
     // 5. If extensible is false, return false.
     if (!extensible) return false;
@@ -1343,7 +1343,7 @@ export class PropertiesImplementation {
       // a. If p is null, let done be true.
       if (p instanceof NullValue) {
         done = true;
-      } else if (SameValue(realm, p, O)) {
+      } else if (SameValuePartial(realm, p, O)) {
         // b. Else if SameValue(p, O) is true, return false.
         return false;
       } else {
@@ -1352,6 +1352,10 @@ export class PropertiesImplementation {
 
         // ii. Else, let p be the value of p's [[Prototype]] internal slot.
         p = p.$Prototype;
+        if (p instanceof AbstractObjectValue) {
+          AbstractValue.reportIntrospectionError(p);
+          throw new FatalError();
+        }
       }
     }
 
