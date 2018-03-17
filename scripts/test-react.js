@@ -572,6 +572,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("React Context 5", async () => {
         await runTest(directory, "react-context5.js");
       });
+
+      it.only("Replace this in callbacks", async () => {
+        await runTest(directory, "replace-this-in-callbacks.js");
+      });
     });
 
     describe("fb-www mocks", () => {
