@@ -111,7 +111,7 @@ function execute(timeout: number, test: TestObject): Result {
     let stack = err.stack;
     if (attrs.negative && attrs.negative.type) {
       let type = attrs.negative.type;
-      if (err && err instanceof ThrowCompletion && Get(realm, err.value, "name").value === type) {
+      if (err && err instanceof ThrowCompletion && (Get(realm, err.value, "name"): any).value === type) {
         // Expected an error and got one.
         return new Result(true);
       } else {

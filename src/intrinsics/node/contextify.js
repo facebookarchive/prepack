@@ -144,7 +144,7 @@ export default function(realm: Realm): ObjectValue {
     }
     // TODO: Pick up source map files and automatically fix up source locations.
 
-    self.$InternalSlot = new ContextifyScriptInternal(ast);
+    (self: any).$InternalSlot = new ContextifyScriptInternal(ast);
 
     return self;
   }
@@ -301,7 +301,11 @@ export default function(realm: Realm): ObjectValue {
       return new Uint8Array(0);
     }
 
-    if (!value.$ViewedArrayBuffer || !(value.$ViewedArrayBuffer.$ArrayBufferData instanceof Uint8Array)) {
+    if (
+      !(value instanceof ObjectValue) ||
+      !value.$ViewedArrayBuffer ||
+      !(value.$ViewedArrayBuffer.$ArrayBufferData instanceof Uint8Array)
+    ) {
       throw realm.createErrorThrowCompletion(
         realm.intrinsics.TypeError,
         "options.cachedData must be a Buffer instance"
@@ -342,13 +346,13 @@ export default function(realm: Realm): ObjectValue {
   }
 
   function evalMachine(self: Value, timeout: number, displayErrors: boolean, breakOnSigint: boolean): Value {
-    if (!(self instanceof ObjectValue) || !(self.$InternalSlot instanceof ContextifyScriptInternal)) {
+    if (!(self instanceof ObjectValue) || !((self: any).$InternalSlot instanceof ContextifyScriptInternal)) {
       throw realm.createErrorThrowCompletion(
         realm.intrinsics.Error,
         "Script methods can only be called on script instances."
       );
     }
-    let script = (self.$InternalSlot: ContextifyScriptInternal);
+    let script = ((self: any).$InternalSlot: ContextifyScriptInternal);
 
     let environment = realm.$GlobalEnv;
 

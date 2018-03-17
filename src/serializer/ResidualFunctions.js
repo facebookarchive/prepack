@@ -11,7 +11,7 @@
 
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
-import { FunctionValue, type ECMAScriptSourceFunctionValue, ObjectValue } from "../values/index.js";
+import { FunctionValue, ECMAScriptSourceFunctionValue, ObjectValue } from "../values/index.js";
 import type { SerializerOptions } from "../options.js";
 import * as t from "babel-types";
 import type {
@@ -355,7 +355,7 @@ export class ResidualFunctions {
       let id = this.locationService.getLocation(funcValue);
       invariant(id !== undefined);
 
-      if (funcValue.$Strict) {
+      if (funcValue instanceof ECMAScriptSourceFunctionValue && funcValue.$Strict) {
         strictFunctionBodies.push(funcOrClassNode);
       } else {
         unstrictFunctionBodies.push(funcOrClassNode);
