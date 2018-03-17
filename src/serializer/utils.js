@@ -119,7 +119,7 @@ export function getObjectPrototypeMetadata(realm: Realm, obj: ObjectValue) {
   if (obj.$IsClassPrototype) {
     skipPrototype = true;
   }
-  if (proto.$IsClassPrototype) {
+  if (proto && proto.$IsClassPrototype) {
     invariant(proto instanceof ObjectValue);
     // we now need to check if the prototpe has a constructor
     if (proto.properties.has("constructor")) {
