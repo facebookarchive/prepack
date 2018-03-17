@@ -17,7 +17,7 @@ import type {
   BabelNodeSourceLocation,
   BabelUnaryOperator,
 } from "babel-types";
-import { FatalError } from "../errors.js";
+import { FatalError, CompilerDiagnostic } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
 import { PreludeGenerator } from "../utils/generator.js";
@@ -66,6 +66,7 @@ export default class AbstractValue extends Value {
     this.args = args;
     this.hashValue = hashValue;
     this.kind = optionalArgs ? optionalArgs.kind : undefined;
+    this.impliesCounter = 0;
   }
 
   hashValue: number;
@@ -75,6 +76,7 @@ export default class AbstractValue extends Value {
   mightBeEmpty: boolean;
   args: Array<Value>;
   _buildNode: void | AbstractValueBuildNodeFunction | BabelNodeExpression;
+  impliesCounter: number;
 
   addSourceLocationsTo(locations: Array<BabelNodeSourceLocation>, seenValues?: Set<AbstractValue> = new Set()) {
     if (seenValues.has(this)) return;
@@ -174,8 +176,26 @@ export default class AbstractValue extends Value {
     return this._buildNode && this._buildNode.type === "Identifier";
   }
 
+  _checkAbstractValueImpliesCounter() {
+    let realm = this.$Realm;
+    let abstractValueImpliesMax = realm.abstractValueImpliesMax;
+    // if abstractValueImpliesMax is 0, then the counter is disabled
+    if (abstractValueImpliesMax !== 0 && this.impliesCounter++ > abstractValueImpliesMax) {
+      this.impliesCounter = 0;
+      let diagnostic = new CompilerDiagnostic(
+        `the implies counter has exceeded the maximum value when trying to simplify abstract values`,
+        realm.currentLocation,
+        "PP0029",
+        "FatalError"
+      );
+      realm.handleError(diagnostic);
+      if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
+    }
+  }
+
   // this => val. A false value does not imply that !(this => val).
   implies(val: Value): boolean {
+    this._checkAbstractValueImpliesCounter();
     if (this.equals(val)) return true; // x => x regardless of its value
     if (!this.mightNotBeFalse()) return true; // false => val
     if (!val.mightNotBeTrue()) return true; // x => true regardless of the value of x

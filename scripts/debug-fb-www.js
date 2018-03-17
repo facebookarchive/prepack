@@ -48,6 +48,7 @@ let prepackOptions = {
   omitInvariants: true,
   abstractEffectsInAdditionalFunctions: true,
   simpleClosures: true,
+  abstractValueImpliesMax: 1000,
 };
 let inputPath = path.resolve("fb-www/input.js");
 let outputPath = path.resolve("fb-www/output.js");
