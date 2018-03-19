@@ -446,7 +446,8 @@ export class Realm {
   clearFunctionBindings(modifiedBindings: void | Bindings, funcVal: FunctionValue) {
     if (modifiedBindings === undefined) return;
     for (let b of modifiedBindings.keys()) {
-      if (b.environment.$FunctionObject === funcVal) modifiedBindings.delete(b);
+      if (b.environment instanceof FunctionEnvironmentRecord && b.environment.$FunctionObject === funcVal)
+        modifiedBindings.delete(b);
     }
   }
 

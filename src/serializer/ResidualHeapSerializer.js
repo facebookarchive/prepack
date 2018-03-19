@@ -842,7 +842,7 @@ export class ResidualHeapSerializer {
   }
 
   serializeValue(val: Value, referenceOnly?: boolean, bindingType?: BabelVariableKind): BabelNodeExpression {
-    invariant(!val.refuseSerialization);
+    invariant(!(val instanceof ObjectValue && val.refuseSerialization));
     if (val instanceof AbstractValue) {
       if (val.kind === "widened") {
         this.serializedValues.add(val);
@@ -1573,7 +1573,6 @@ export class ResidualHeapSerializer {
         return this._serializeValueSet(val);
       default:
         invariant(kind === "Object", "invariant established by visitor");
-        invariant(this.$ParameterMap === undefined, "invariant established by visitor");
 
         let proto = val.$Prototype;
         let createViaAuxiliaryConstructor =

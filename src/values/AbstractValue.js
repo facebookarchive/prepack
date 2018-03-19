@@ -249,8 +249,8 @@ export default class AbstractValue extends Value {
         }
 
         // (c ? x : (c || false)) => c (if c were false this value could not be true)
+        invariant(y instanceof AbstractValue);
         if (y.kind === "||") {
-          invariant(y instanceof AbstractValue);
           let [yx, yy] = y.args;
           return c.equals(yx) && !yy.mightNotBeFalse() && c.equals(val);
         }

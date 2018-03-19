@@ -109,6 +109,7 @@ export type Binding = {
   initialized?: boolean,
   mutable?: boolean,
   deletable?: boolean,
+  strict?: boolean,
   // back-references to the environment containing the binding and the key
   // used to access this binding
   environment: EnvironmentRecord,

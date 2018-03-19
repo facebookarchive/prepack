@@ -16,18 +16,19 @@ import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
 import { PossiblyNormalCompletion } from "../completions.js";
 import { HashSet, IsArray, Get } from "../methods/index.js";
 import {
+  AbstractObjectValue,
+  AbstractValue,
   BoundFunctionValue,
+  ECMAScriptFunctionValue,
+  ECMAScriptSourceFunctionValue,
+  EmptyValue,
+  FunctionValue,
+  NativeFunctionValue,
+  ObjectValue,
   ProxyValue,
   SymbolValue,
-  AbstractValue,
-  EmptyValue,
-  ECMAScriptSourceFunctionValue,
-  FunctionValue,
-  Value,
-  ObjectValue,
-  AbstractObjectValue,
-  NativeFunctionValue,
   UndefinedValue,
+  Value,
 } from "../values/index.js";
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
@@ -37,12 +38,12 @@ import type { GeneratorEntry, VisitEntryCallbacks } from "../utils/generator.js"
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
 import type {
-  ResidualFunctionBinding,
-  FunctionInfo,
-  AdditionalFunctionInfo,
-  FunctionInstance,
-  ClassMethodInstance,
   AdditionalFunctionEffects,
+  AdditionalFunctionInfo,
+  ClassMethodInstance,
+  FunctionInfo,
+  FunctionInstance,
+  ResidualFunctionBinding,
 } from "./types.js";
 import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "../utils/logger.js";
@@ -51,12 +52,12 @@ import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
 import { Referentializer } from "./Referentializer.js";
 import type { ReferentializationScope } from "./Referentializer.js";
 import {
-  getSuggestedArrayLiteralLength,
-  getOrDefault,
-  ClassPropertiesToIgnore,
-  withDescriptorValue,
   canIgnoreClassLengthProperty,
+  ClassPropertiesToIgnore,
   getObjectPrototypeMetadata,
+  getOrDefault,
+  getSuggestedArrayLiteralLength,
+  withDescriptorValue,
 } from "./utils.js";
 import { Environment, To } from "../singletons.js";
 import { isReactElement, valueIsReactLibraryObject } from "../react/utils.js";
@@ -206,6 +207,7 @@ export class ResidualHeapVisitor {
       // via a different logic route for classes
       let descriptor = propertyBindingValue.descriptor;
       if (
+        obj instanceof ECMAScriptFunctionValue &&
         obj.$FunctionKind === "classConstructor" &&
         (ClassPropertiesToIgnore.has(propertyBindingKey) ||
           (propertyBindingKey === "length" && canIgnoreClassLengthProperty(obj, descriptor, this.logger)))
@@ -370,7 +372,7 @@ export class ResidualHeapVisitor {
     let isClass = false;
 
     this._registerAdditionalRoot(val);
-    if (val.$FunctionKind === "classConstructor") {
+    if (val instanceof ECMAScriptFunctionValue && val.$FunctionKind === "classConstructor") {
       invariant(val instanceof ECMAScriptSourceFunctionValue);
       let homeObject = val.$HomeObject;
       if (homeObject instanceof ObjectValue && homeObject.$IsClassPrototype) {
@@ -723,9 +725,6 @@ export class ResidualHeapVisitor {
         return;
       default:
         if (kind !== "Object") this.logger.logError(val, `Object of kind ${kind} is not supported in residual heap.`);
-        if (this.$ParameterMap !== undefined) {
-          this.logger.logError(val, `Arguments object is not supported in residual heap.`);
-        }
         if (this.realm.react.enabled && valueIsReactLibraryObject(this.realm, val, this.logger)) {
           this.realm.fbLibraries.react = val;
         }
@@ -784,13 +783,13 @@ export class ResidualHeapVisitor {
   }
 
   visitValue(val: Value): void {
-    invariant(!val.refuseSerialization);
+    invariant(!(val instanceof ObjectValue && val.refuseSerialization));
     if (val instanceof AbstractValue) {
       if (this.preProcessValue(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
       // All intrinsic values exist from the beginning of time...
       // ...except for a few that come into existence as templates for abstract objects via executable code.
-      if (val._isScopedTemplate) this.preProcessValue(val);
+      if (val instanceof ObjectValue && val._isScopedTemplate) this.preProcessValue(val);
       else
         this._withScope(this.commonScope, () => {
           this.preProcessValue(val);

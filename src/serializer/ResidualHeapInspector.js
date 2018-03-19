@@ -13,18 +13,20 @@ import { Realm } from "../realm.js";
 import type { Descriptor } from "../types.js";
 import { IsArray } from "../methods/index.js";
 import {
-  SymbolValue,
-  BooleanValue,
   AbstractValue,
-  FunctionValue,
+  BooleanValue,
+  ConcreteValue,
   ECMAScriptSourceFunctionValue,
+  FunctionValue,
   NumberValue,
-  Value,
   ObjectValue,
   PrimitiveValue,
-  UndefinedValue,
   ProxyValue,
+  SymbolValue,
+  UndefinedValue,
+  Value,
 } from "../values/index.js";
+import { To } from "../singletons.js";
 import invariant from "../invariant.js";
 import { Logger } from "../utils/logger.js";
 import { isReactElement } from "../react/utils.js";
@@ -165,7 +167,10 @@ export class ResidualHeapInspector {
           !this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION) &&
           !this.realm.isCompatibleWith("mobile") &&
           (desc.value instanceof AbstractValue ||
-            (val.__originalName && val.__originalName !== "" && desc.value.value !== val.__originalName))
+            (desc.value instanceof ConcreteValue &&
+              val.__originalName &&
+              val.__originalName !== "" &&
+              To.ToString(this.realm, desc.value) !== val.__originalName))
         )
           return false;
         return true;

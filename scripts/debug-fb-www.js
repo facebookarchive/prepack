@@ -68,7 +68,6 @@ function compileSource(source) {
     throw e;
   }
   return {
-    // $FlowFixMe: reactStatistics do exist as we're passing reactEnabled in config
     stats: serialized.reactStatistics,
     code: serialized.code,
   };
@@ -148,6 +147,7 @@ async function compileFile() {
   let { stats, code } = await compileSource(source);
   await writeFileAsync(outputPath, code);
   lintCompiledSource(code);
+  // $FlowFixMe: no idea what this is about
   return stats;
 }
 

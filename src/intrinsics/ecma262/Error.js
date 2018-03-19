@@ -39,7 +39,7 @@ export function describeLocation(
     if (!name.mightBeUndefined()) displayName = To.ToStringPartial(realm, name);
     else name.throwIfNotConcrete();
 
-    if (env && env.$NewTarget) displayName = `new ${displayName}`;
+    if (env && env.environmentRecord.$NewTarget) displayName = `new ${displayName}`;
   }
 
   if (!locString) {
