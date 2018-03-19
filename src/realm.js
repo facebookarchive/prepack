@@ -56,6 +56,7 @@ import { Generator, PreludeGenerator } from "./utils/generator.js";
 import { emptyExpression, voidExpression } from "./utils/internalizer.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
+import type { Reconciler } from "./react/reconcilation.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
 
@@ -198,6 +199,7 @@ export class Realm {
       abstractHints: new WeakMap(),
       classComponentMetadata: new Map(),
       currentOwner: undefined,
+      currentReconciler: null,
       enabled: opts.reactEnabled || false,
       output: opts.reactOutput || "create-element",
       hoistableFunctions: new WeakMap(),
@@ -268,6 +270,7 @@ export class Realm {
     abstractHints: WeakMap<AbstractValue | ObjectValue, ReactHint>,
     classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
     currentOwner?: ObjectValue,
+    currentReconciler: null | Reconciler,
     enabled: boolean,
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,

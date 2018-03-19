@@ -10,7 +10,6 @@
 /* @flow */
 
 import { Realm, type Effects } from "../realm.js";
-import { ModuleTracer } from "../utils/modules.js";
 import {
   AbstractValue,
   ECMAScriptSourceFunctionValue,
@@ -37,7 +36,6 @@ import {
   flattenChildren,
   getProperty,
   setProperty,
-  isRenderPropFunctionSelfContained,
   createReactEvaluatedNode,
   getComponentName,
   sanitizeReactElementForFirstRenderOnly,
@@ -59,6 +57,7 @@ import { ExpectedBailOut, SimpleClassBailOut, NewComponentTreeBranch } from "./e
 import { AbruptCompletion, Completion } from "../completions.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig } from "../types.js";
+import { Functions } from "../serializer/functions.js";
 
 type ComponentResolutionStrategy =
   | "NORMAL"
@@ -86,29 +85,31 @@ export type ComponentTreeState = {
 export class Reconciler {
   constructor(
     realm: Realm,
-    moduleTracer: ModuleTracer,
+    functions: Functions,
     statistics: ReactStatistics,
     reactSerializerState: ReactSerializerState,
     componentTreeConfig: ReactComponentTreeConfig
   ) {
     this.realm = realm;
-    this.moduleTracer = moduleTracer;
     this.statistics = statistics;
+    this.functions = functions;
     this.reactSerializerState = reactSerializerState;
-    this.logger = moduleTracer.modules.logger;
+    this.logger = functions.moduleTracer.modules.logger;
     this.componentTreeState = this._createComponentTreeState();
     this.alreadyEvaluatedRootNodes = new Map();
     this.componentTreeConfig = componentTreeConfig;
+    this.functionsToEvalaute = null;
   }
 
   realm: Realm;
-  moduleTracer: ModuleTracer;
   statistics: ReactStatistics;
+  functions: Functions;
   reactSerializerState: ReactSerializerState;
   logger: Logger;
   componentTreeState: ComponentTreeState;
   alreadyEvaluatedRootNodes: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>;
   componentTreeConfig: ReactComponentTreeConfig;
+  functionsToEvalaute: null | Set<FunctionValue>;
 
   render(
     componentType: ECMAScriptSourceFunctionValue,
@@ -127,6 +128,7 @@ export class Reconciler {
       try {
         let initialProps = props || getInitialProps(this.realm, componentType);
         let initialContext = context || getInitialContext(this.realm, componentType);
+        this.realm.react.currentReconciler = this;
         let { result } = this._renderComponent(
           componentType,
           initialProps,
@@ -174,6 +176,8 @@ export class Reconciler {
           if (this.realm.handleError(diagnostic) === "Fail") throw new FatalError();
         }
         throw error;
+      } finally {
+        this.realm.react.currentReconciler = null;
       }
     };
 
@@ -246,7 +250,7 @@ export class Reconciler {
     let renderMethod = Get(this.realm, instance, "render");
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
     // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    return getValueFromRenderCall(this.realm, renderMethod, instance, [], this.componentTreeConfig);
+    return getValueFromRenderCall(this.realm, componentType, renderMethod, instance, []);
   }
 
   _renderSimpleClassComponent(
@@ -262,7 +266,7 @@ export class Reconciler {
     let renderMethod = Get(this.realm, instance, "render");
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
     // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    return getValueFromRenderCall(this.realm, renderMethod, instance, [], this.componentTreeConfig);
+    return getValueFromRenderCall(this.realm, componentType, renderMethod, instance, []);
   }
 
   _renderFunctionalComponent(
@@ -270,13 +274,10 @@ export class Reconciler {
     props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue
   ) {
-    return getValueFromRenderCall(
-      this.realm,
-      componentType,
-      this.realm.intrinsics.undefined,
-      [props, context],
-      this.componentTreeConfig
-    );
+    return getValueFromRenderCall(this.realm, componentType, componentType, this.realm.intrinsics.undefined, [
+      props,
+      context,
+    ]);
   }
 
   _getClassComponentMetadata(
@@ -414,10 +415,10 @@ export class Reconciler {
               let valueProp = Get(this.realm, typeValue, "currentValue");
               let result = getValueFromRenderCall(
                 this.realm,
+                componentType,
                 renderProp,
                 this.realm.intrinsics.undefined,
-                [valueProp],
-                this.componentTreeConfig
+                [valueProp]
               );
               this.statistics.inlinedComponents++;
               this.statistics.componentsEvaluated++;
@@ -426,17 +427,7 @@ export class Reconciler {
             }
           }
         }
-        // if the render prop function is self contained, we can make it a new component tree root
-        // and this also has a nice side-effect of hoisting the function up to the top scope
-        if (isRenderPropFunctionSelfContained(this.realm, componentType, renderProp, this.logger)) {
-          this._queueNewComponentTree(renderProp, evaluatedChildNode, true);
-          return;
-        } else {
-          // we don't have nested additional function support right now
-          // but the render prop is likely to have references to other components
-          // that we need to also evaluate. given we can't find those components
-          return;
-        }
+        return;
       } else {
         this._findReactComponentTrees(propsValue, evaluatedChildNode);
         return;
@@ -452,37 +443,8 @@ export class Reconciler {
     evaluatedNode: ReactEvaluatedNode
   ): Value | void {
     let typeValue = getProperty(this.realm, reactElement, "type");
-    let propsValue = getProperty(this.realm, reactElement, "props");
-
     let evaluatedChildNode = createReactEvaluatedNode("RENDER_PROPS", getComponentName(this.realm, typeValue));
     evaluatedNode.children.push(evaluatedChildNode);
-
-    if (propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue) {
-      // get the "render" method off the instance
-      let renderProp = Get(this.realm, propsValue, "render");
-      if (renderProp instanceof ECMAScriptSourceFunctionValue && renderProp.$Call) {
-        // if the render prop function is self contained, we can make it a new component tree root
-        // and this also has a nice side-effect of hoisting the function up to the top scope
-        if (isRenderPropFunctionSelfContained(this.realm, componentType, renderProp, this.logger)) {
-          this._queueNewComponentTree(renderProp, evaluatedChildNode, true);
-          return;
-        } else {
-          // we don't have nested additional function support right now
-          // but the render prop is likely to have references to other components
-          // that we need to also evaluate. given we can't find those components
-          this.componentTreeState.deadEnds++;
-          return;
-        }
-      } else {
-        this._findReactComponentTrees(propsValue, evaluatedChildNode);
-        return;
-      }
-    }
-    // this is the worst case, we were unable to find the render prop function
-    // and won't be able to find any further components to evaluate as trees
-    // because of that
-    this.componentTreeState.deadEnds++;
-    return;
   }
 
   _renderClassComponent(
@@ -563,7 +525,7 @@ export class Reconciler {
       componentWillMount.$Call(instance, []);
     }
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
-    return getValueFromRenderCall(this.realm, renderMethod, instance, [], this.componentTreeConfig);
+    return getValueFromRenderCall(this.realm, componentType, renderMethod, instance, []);
   }
 
   _renderComponent(
@@ -1058,13 +1020,7 @@ export class Reconciler {
   }
 
   _findReactComponentTrees(value: Value, evaluatedNode: ReactEvaluatedNode): void {
-    if (value instanceof FunctionValue && !(value instanceof ECMAScriptSourceFunctionValue)) {
-      // TODO treat as nested additional function
-      // until then we don't support this so we need to bail out on first render
-      if (this.componentTreeConfig.firstRenderOnly) {
-        throw new ExpectedBailOut("non script function is not currently supported on first render");
-      }
-    } else if (value instanceof AbstractValue) {
+    if (value instanceof AbstractValue) {
       if (value.args.length > 0) {
         for (let arg of value.args) {
           this._findReactComponentTrees(arg, evaluatedNode);

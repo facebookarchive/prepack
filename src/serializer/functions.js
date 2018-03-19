@@ -25,6 +25,7 @@ import {
   AbstractValue,
   ECMAScriptSourceFunctionValue,
   UndefinedValue,
+  BoundFunctionValue,
 } from "../values/index.js";
 import { Get } from "../methods/index.js";
 import { ModuleTracer } from "../utils/modules.js";
@@ -236,7 +237,7 @@ export class Functions {
     }
     for (let [componentRoot, { config }] of recordedReactRootValues) {
       invariant(config);
-      let reconciler = new Reconciler(this.realm, this.moduleTracer, statistics, react, config);
+      let reconciler = new Reconciler(this.realm, this, statistics, react, config);
       let componentType = getComponentTypeFromRootValue(this.realm, componentRoot);
       if (componentType === null) {
         continue;
@@ -309,6 +310,10 @@ export class Functions {
     const globalThis = this.realm.$GlobalEnv.environmentRecord.WithBaseObject();
     let call = funcValue.$Call;
     invariant(call);
+    if (funcValue instanceof BoundFunctionValue) {
+      invariant(funcValue.$BoundTargetFunction instanceof FunctionValue);
+      funcValue = funcValue.$BoundTargetFunction;
+    }
     let numArgs = funcValue.getLength();
     let args = [];
     invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
@@ -340,19 +345,27 @@ export class Functions {
     return call.bind(this, globalThis, args);
   }
 
+  optimizeFunction(funcValue: ECMAScriptSourceFunctionValue | BoundFunctionValue) {
+    let call = this._callOfFunction(funcValue);
+    let effects = this.realm.evaluatePure(() =>
+      this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
+    );
+    invariant(effects);
+    let additionalFunctionEffects = this._createAdditionalEffects(effects, true);
+    invariant(additionalFunctionEffects);
+    if (funcValue instanceof BoundFunctionValue) {
+      this.writeEffects.set(funcValue.$BoundTargetFunction, additionalFunctionEffects);
+    } else {
+      this.writeEffects.set(funcValue, additionalFunctionEffects);
+    }
+  }
+
   checkThatFunctionsAreIndependent() {
     let additionalFunctions = this.__generateAdditionalFunctionsMap("__optimizedFunctions");
 
     for (let [funcValue] of additionalFunctions) {
       invariant(funcValue instanceof FunctionValue);
-      let call = this._callOfFunction(funcValue);
-      let effects = this.realm.evaluatePure(() =>
-        this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
-      );
-      invariant(effects);
-      let additionalFunctionEffects = this._createAdditionalEffects(effects, true);
-      invariant(additionalFunctionEffects);
-      this.writeEffects.set(funcValue, additionalFunctionEffects);
+      this.optimizeFunction(funcValue);
     }
 
     // check that functions are independent

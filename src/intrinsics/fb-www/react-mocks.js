@@ -85,6 +85,7 @@ let reactCode = `
       this.props = props;
       this.context = context;
       this.refs = {};
+      this.setState = () => {}; // NO-OP
     }
     
     Component.prototype.isReactComponent = {};
@@ -93,6 +94,7 @@ let reactCode = `
       this.props = props;
       this.context = context;
       this.refs = {};
+      this.setState = () => {}; // NO-OP
     }
 
     PureComponent.prototype.isReactComponent = {};

@@ -20,7 +20,12 @@ import {
 } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
-import { valueIsClassComponent, deleteRefAndKeyFromProps, getProperty } from "./utils";
+import {
+  valueIsClassComponent,
+  deleteRefAndKeyFromProps,
+  getProperty,
+  evaluateAndCaptureNewFunctionsForEvaluation,
+} from "./utils";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get, Construct } from "../methods/index.js";
 import { Properties } from "../singletons.js";
@@ -160,7 +165,9 @@ export function createClassInstanceForFirstRenderOnly(
   props: ObjectValue | AbstractValue,
   context: ObjectValue | AbstractValue
 ): ObjectValue {
-  let instance = Construct(realm, componentType, [props, context]);
+  let instance = evaluateAndCaptureNewFunctionsForEvaluation(realm, componentType, () =>
+    Construct(realm, componentType, [props, context])
+  );
   invariant(instance instanceof ObjectValue);
   instance.intrinsicName = "this";
   instance.refuseSerialization = true;
