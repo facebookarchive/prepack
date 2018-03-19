@@ -114,7 +114,7 @@ export class Serializer {
     if (this.logger.hasErrors()) return undefined;
     this.modules.resolveInitializedModules();
     this.functions.checkThatFunctionsAreIndependent();
-    let reactStatistics = null;
+    let reactStatistics;
     if (this.realm.react.enabled) {
       reactStatistics = new ReactStatistics();
       this.functions.optimizeReactComponentTreeRoots(reactStatistics, this.react);
@@ -262,7 +262,7 @@ export class Serializer {
     return {
       code: generated.code,
       map: generated.map,
-      reactStatistics,
+      reactStatistics: reactStatistics,
       statistics: residualHeapSerializer.statistics,
       timingStats: timingStats,
       heapGraph,

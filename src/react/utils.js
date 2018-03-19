@@ -94,8 +94,9 @@ export function getReactSymbol(symbolKey: ReactSymbolTypes, realm: Realm): Symbo
 
     if (SymbolForDescriptor !== undefined) {
       let SymbolForValue = SymbolForDescriptor.value;
-      if (SymbolForValue !== undefined && typeof SymbolForValue.$Call === "function") {
+      if (SymbolForValue instanceof ObjectValue && typeof SymbolForValue.$Call === "function") {
         reactSymbol = SymbolForValue.$Call(realm.intrinsics.Symbol, [new StringValue(realm, symbolKey)]);
+        invariant(reactSymbol instanceof SymbolValue);
         realm.react.symbols.set(symbolKey, reactSymbol);
       }
     }

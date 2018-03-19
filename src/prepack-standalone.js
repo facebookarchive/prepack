@@ -14,7 +14,6 @@
 import Serializer from "./serializer/index.js";
 import construct_realm from "./construct_realm.js";
 import initializeGlobals from "./globals.js";
-import * as t from "babel-types";
 import { EvaluateDirectCallWithArgList } from "./methods/index.js";
 import { getRealmOptions, getSerializerOptions } from "./prepack-options";
 import { FatalError } from "./errors.js";
@@ -22,7 +21,6 @@ import type { SourceFile } from "./types.js";
 import { AbruptCompletion } from "./completions.js";
 import type { PrepackOptions } from "./prepack-options";
 import { defaultOptions } from "./options";
-import type { BabelNodeFile, BabelNodeProgram } from "babel-types";
 import invariant from "./invariant.js";
 import { version } from "../package.json";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
@@ -99,57 +97,6 @@ export function prepackSources(
     if (result instanceof AbruptCompletion) throw result;
     return { ...result };
   }
-}
-
-/* deprecated: please use prepackSources instead. */
-export function prepackString(
-  filename: string,
-  code: string,
-  sourceMap: string,
-  options: PrepackOptions = defaultOptions
-): SerializedResult {
-  return prepackSources([{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }], options);
-}
-
-/* deprecated: please use prepackSources instead. */
-export function prepack(code: string, options: PrepackOptions = defaultOptions): SerializedResult {
-  let filename = options.filename || "unknown";
-  let sources = [{ filePath: filename, fileContents: code }];
-
-  let realmOptions = getRealmOptions(options);
-  realmOptions.errorHandler = options.errorHandler;
-  let realm = construct_realm(realmOptions);
-  initializeGlobals(realm);
-
-  let serializer = new Serializer(realm, getSerializerOptions(options));
-  let serialized = serializer.init(sources, options.sourceMaps);
-  if (!serialized) {
-    throw new FatalError("serializer failed");
-  }
-  return serialized;
-}
-
-/* deprecated: please use prepackSources instead. */
-export function prepackFromAst(
-  ast: BabelNodeFile | BabelNodeProgram,
-  code: string,
-  options: PrepackOptions = defaultOptions
-): SerializedResult {
-  if (ast && ast.type === "Program") {
-    ast = t.file(ast, [], []);
-  }
-  invariant(ast && ast.type === "File");
-  let filename = options.filename || (ast.loc && ast.loc.source) || "unknown";
-  let sources = [{ filePath: filename, fileContents: code }];
-
-  let realm = construct_realm(getRealmOptions(options));
-  initializeGlobals(realm);
-  let serializer = new Serializer(realm, getSerializerOptions(options));
-  let serialized = serializer.init(sources, options.sourceMaps);
-  if (!serialized) {
-    throw new FatalError("serializer failed");
-  }
-  return serialized;
 }
 
 function checkResidualFunctions(modules: Modules, startFunc: number, totalToAnalyze: number) {

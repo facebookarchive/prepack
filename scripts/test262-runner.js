@@ -996,7 +996,7 @@ function runTest(
     let stack = err.stack;
     if (data.negative.type) {
       let type = data.negative.type;
-      if (err && err instanceof ThrowCompletion && Get(realm, err.value, "name").value === type) {
+      if (err && err instanceof ThrowCompletion && (Get(realm, err.value, "name"): any).value === type) {
         // Expected an error and got one.
         return new TestResult(true, strict);
       } else {
