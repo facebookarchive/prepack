@@ -214,6 +214,6 @@ readComponentsList()
     console.log(`${chalk.gray(`Compile time`)}: ${timeTaken}s\n`);
   })
   .catch(e => {
-    console.error(e.natickStack || e.stack);
+    console.error(e.nativeStack || e.stack);
     process.exit(1);
   });
