@@ -240,6 +240,7 @@ export type ObjectRefCount = {
 export type SerializedResult = {
   code: string,
   map: void | SourceMap,
+  reactStatistics?: ReactStatistics,
   statistics?: SerializerStatistics,
   timingStats?: TimingStatistics,
   heapGraph?: string,

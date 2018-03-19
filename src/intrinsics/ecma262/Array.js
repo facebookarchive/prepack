@@ -85,6 +85,7 @@ export default function(realm: Realm): NativeFunctionValue {
 
         // a. Let intLen be ToUint32(len).
         intLen = To.ToUint32(realm, len.throwIfNotConcreteNumber());
+        invariant(len instanceof NumberValue);
 
         // b If intLen ≠ len, throw a RangeError exception.
         if (intLen !== len.value) {
