@@ -1,4 +1,3 @@
-// abstract effects
 // does contain: "barone"
 // does not contain: "23"
 

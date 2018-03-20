@@ -1,5 +1,3 @@
-// abstract effects
-
 var Foo = global.__abstract ? __abstract(undefined, "(function () { this.x = 10 })") : function () { this.x = 10 };
 
 function additional1() {

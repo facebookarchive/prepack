@@ -1,5 +1,3 @@
-// abstract effects
-
 let obj = global.__abstract ? __abstract('object', '({foo: function() { return 1; }})') : {foo: function() { return 1; }};
 if (global.__makeSimple) {
   __makeSimple(obj);
