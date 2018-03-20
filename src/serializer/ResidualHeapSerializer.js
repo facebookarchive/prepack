@@ -1986,8 +1986,11 @@ export class ResidualHeapSerializer {
       }
     }
 
-    // Make sure that the visitor visited as many values as the serializer
-    if (this.serializedValues.size !== this.residualValues.size) {
+    // Make sure that the visitor visited exactly the same values as the serializer
+    if (
+      this.serializedValues.size !== this.residualValues.size ||
+      !Array.from(this.serializedValues).every(val => this.residualValues.has(val))
+    ) {
       this._logSerializedResidualMismatches();
       invariant(false, "serialized " + this.serializedValues.size + " of " + this.residualValues.size);
     }
