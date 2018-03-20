@@ -636,7 +636,6 @@ export class ResidualHeapSerializer {
       } else {
         invariant(scope instanceof FunctionValue);
         if (this.additionalFunctionGenerators.has(scope)) {
-          if (additionalFunction !== undefined && additionalFunction !== scope) return undefined;
           additionalFunction = scope;
         } else {
           let f = this.isReferencedOnlyByAdditionalFunction(scope);

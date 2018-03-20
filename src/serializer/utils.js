@@ -72,6 +72,9 @@ export function commonAncestorOf<T>(node1: void | T, node2: void | T, getParent:
     invariant(n2 !== undefined);
     n2 = getParent(n2);
   }
+  if (!n1) {
+    return node1;
+  }
   return n1;
 }
 

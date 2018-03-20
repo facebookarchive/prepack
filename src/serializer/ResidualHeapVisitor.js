@@ -109,6 +109,7 @@ export class ResidualHeapVisitor {
     this.reactElementEquivalenceSet = new ReactElementSet(realm, this.equivalenceSet);
     this.additionalFunctionValueInfos = new Map();
     this.containingAdditionalFunction = undefined;
+    this.parentGenerator = undefined;
     this.additionalRoots = new Map();
     this.inClass = false;
     this.functionToCapturedScopes = new Map();
@@ -161,6 +162,7 @@ export class ResidualHeapVisitor {
   environmentRecordIdAfterGlobalCode: number;
 
   globalEnvironmentRecord: GlobalEnvironmentRecord;
+  parentGenerator: void | Generator;
 
   _registerAdditionalRoot(value: ObjectValue) {
     let additionalFunction = this.containingAdditionalFunction;
@@ -928,9 +930,17 @@ export class ResidualHeapVisitor {
       oldCreatedObjects = this.createdObjects;
       this.createdObjects = new Set([...oldCreatedObjects, ...generator.effectsToApply[4]]);
     }
+    let lastGenerator = this.parentGenerator;
+    if (lastGenerator !== undefined && lastGenerator._name !== "main") {
+      this.generatorParents.set(generator, lastGenerator);
+    }
+    this.parentGenerator = generator;
     this._withScope(generator, () => {
       generator.visit(this.createGeneratorVisitCallbacks(this.commonScope, additionalFunctionInfo));
     });
+    if (lastGenerator !== undefined) {
+      this.parentGenerator = lastGenerator;
+    }
     if (oldCreatedObjects) this.createdObjects = oldCreatedObjects;
   }
 

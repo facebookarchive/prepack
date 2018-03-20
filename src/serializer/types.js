@@ -181,6 +181,7 @@ export class ReactStatistics {
   inlinedComponents: number;
   evaluatedRootNodes: Array<ReactEvaluatedNode>;
   componentsEvaluated: number;
+  optimizedNestedClosures: number;
 }
 
 export class SerializerStatistics {
