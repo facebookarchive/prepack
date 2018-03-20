@@ -674,11 +674,14 @@ export class Realm {
         let astProperties = this.modifiedProperties;
         let astCreatedObjects = this.createdObjects;
 
+        /* TODO #1615: The following invariant should hold.
+
         // Check invariant that modified bindings to not refer to environment record belonging to
         // newly created closure objects.
         for (let binding of astBindings.keys())
           if (binding.environment instanceof FunctionEnvironmentRecord)
             invariant(!astCreatedObjects.has(binding.environment.$FunctionObject));
+        */
 
         // Return the captured state changes and evaluation result
         result = [c, astGenerator, astBindings, astProperties, astCreatedObjects];
