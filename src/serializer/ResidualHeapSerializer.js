@@ -29,7 +29,6 @@ import {
   UndefinedValue,
   PrimitiveValue,
 } from "../values/index.js";
-import { PossiblyNormalCompletion } from "../completions.js";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
@@ -1759,6 +1758,11 @@ export class ResidualHeapSerializer {
       declare: (value: AbstractValue) => {
         this.emitter.declare(value);
       },
+      emitPropertyModification: (propertyBinding: PropertyBinding) => {
+        let object = propertyBinding.object;
+        invariant(object instanceof ObjectValue);
+        this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
+      },
     };
     return context;
   }
@@ -1790,14 +1794,19 @@ export class ResidualHeapSerializer {
     return false;
   }
 
-  _serializeAdditionalFunctionGeneratorAndEffects(generator: Generator, postGeneratorCallback: () => void) {
-    let context = this._getContext();
+  _serializeAdditionalFunctionGeneratorAndEffects(generator: Generator, additionalEffects: AdditionalFunctionEffects) {
     return this._withGeneratorScope("AdditionalFunction", generator, newBody => {
       let oldSerialiedValueWithIdentifiers = this._serializedValueWithIdentifiers;
       this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
       try {
-        generator.serialize(context);
-        postGeneratorCallback();
+        let effectsGenerator = additionalEffects.generator;
+        effectsGenerator.serialize(this._getContext());
+
+        this.realm.withEffectsAppliedInGlobalEnv(() => {
+          const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
+          this.mainBody.entries.push(...lazyHoistedReactNodes);
+          return null;
+        }, additionalEffects.effects);
       } finally {
         this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
       }
@@ -1811,71 +1820,20 @@ export class ResidualHeapSerializer {
   //          -- we don't overwrite anything they capture
   // PropertyBindings -- visit any property bindings that aren't to createdobjects
   // CreatedObjects -- should take care of itself
-  _serializeAdditionalFunctionEffects(
-    additionalFunctionValue: FunctionValue,
-    additionalEffects: AdditionalFunctionEffects
-  ) {
-    let { effects, joinedEffects, returnArguments, returnBuildNode } = additionalEffects;
-    let [result, , , modifiedProperties, createdObjects] = effects;
-    for (let propertyBinding of modifiedProperties.keys()) {
-      let object = propertyBinding.object;
-      if (object instanceof ObjectValue && createdObjects.has(object)) continue;
-      if (object.refuseSerialization) continue;
-      if (object.isIntrinsic()) continue;
-      invariant(object instanceof ObjectValue);
-      this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
-    }
-    invariant(
-      result instanceof Value || result instanceof PossiblyNormalCompletion,
-      "Should not be serializing an additional function with an unconditional throw, JoinedAbruptCompletions not yet supported"
-    );
-    // Handle ModifiedBindings
-    let additionalFunctionValueInfo = this.additionalFunctionValueInfos.get(additionalFunctionValue);
-    invariant(additionalFunctionValueInfo);
-    for (let [modifiedBinding, residualBinding] of additionalFunctionValueInfo.modifiedBindings) {
-      let newVal = modifiedBinding.value;
-      invariant(newVal);
-      residualBinding.additionalValueSerialized = this.serializeValue(newVal);
-    }
-    if (result instanceof Value && !(result instanceof UndefinedValue)) {
-      this.emitter.emit(t.returnStatement(this.serializeValue(result)));
-    } else if (result instanceof PossiblyNormalCompletion) {
-      invariant(joinedEffects !== undefined);
-
-      this.realm.withEffectsAppliedInGlobalEnv(() => {
-        invariant(returnArguments !== undefined);
-        invariant(returnBuildNode !== undefined);
-        let args = returnArguments.map(arg => this.serializeValue(arg));
-        this.emitter.emit(returnBuildNode(args));
-        return null;
-      }, joinedEffects);
-    }
-
-    const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
-    Array.prototype.push.apply(this.mainBody.entries, lazyHoistedReactNodes);
-  }
-
   _serializeAdditionalFunction(additionalFunctionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects) {
-    let { effects, transforms } = additionalEffects;
+    let { effects, transforms, generator } = additionalEffects;
     if (!this.additionalFunctionValueInfos.has(additionalFunctionValue)) {
       // the additionalFunction has no info, so it likely has been dead code eliminated
       return;
     }
     let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
-    let [, generator, , , createdObjects] = effects;
+    let createdObjects = effects[4];
     let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
     // Allows us to emit function declarations etc. inside of this additional
     // function instead of adding them at global scope
     // TODO: make sure this generator isn't getting mutated oddly
     ((nestedFunctions: any): Set<FunctionValue>).forEach(val => this.additionalFunctionValueNestedFunctions.add(val));
-    let body = this.realm.withEffectsAppliedInGlobalEnv(
-      this._serializeAdditionalFunctionGeneratorAndEffects.bind(
-        this,
-        generator,
-        this._serializeAdditionalFunctionEffects.bind(this, additionalFunctionValue, additionalEffects)
-      ),
-      effects
-    );
+    let body = this._serializeAdditionalFunctionGeneratorAndEffects(generator, additionalEffects);
     invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
     for (let transform of transforms) {
       transform(body);
@@ -1895,8 +1853,7 @@ export class ResidualHeapSerializer {
   prepareAdditionalFunctionValues() {
     let additionalFVEffects = this.additionalFunctionValuesAndEffects;
     if (additionalFVEffects)
-      for (let [additionalFunctionValue, { effects }] of additionalFVEffects.entries()) {
-        let generator = effects[1];
+      for (let [additionalFunctionValue, { generator }] of additionalFVEffects.entries()) {
         invariant(!this.additionalFunctionGenerators.has(additionalFunctionValue));
         this.additionalFunctionGenerators.set(additionalFunctionValue, generator);
         invariant(!this.additionalFunctionGeneratorsInverse.has(generator));
