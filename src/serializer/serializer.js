@@ -117,7 +117,7 @@ export class Serializer {
     let reactStatistics = null;
     if (this.realm.react.enabled) {
       reactStatistics = new ReactStatistics();
-      this.functions.checkRootReactComponentTrees(reactStatistics, this.react);
+      this.functions.optimizeReactComponentTreeRoots(reactStatistics, this.react);
     }
 
     if (this.options.initializeMoreModules) {

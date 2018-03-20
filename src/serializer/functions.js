@@ -43,7 +43,6 @@ import {
   normalizeFunctionalComponentParamaters,
   getComponentTypeFromRootValue,
   valueIsKnownReactAbstraction,
-  evaluateComponentTreeBranch,
   createReactEvaluatedNode,
   getComponentName,
   convertConfigObjectToReactComponentTreeConfig,
@@ -228,7 +227,7 @@ export class Functions {
     }
   }
 
-  checkRootReactComponentTrees(statistics: ReactStatistics, react: ReactSerializerState): void {
+  optimizeReactComponentTreeRoots(statistics: ReactStatistics, react: ReactSerializerState): void {
     let logger = this.moduleTracer.modules.logger;
     let recordedReactRootValues = this.__generateAdditionalFunctionsMap("__reactComponentTrees");
     // Get write effects of the components
@@ -237,7 +236,7 @@ export class Functions {
     }
     for (let [componentRoot, { config }] of recordedReactRootValues) {
       invariant(config);
-      let reconciler = new Reconciler(this.realm, this, statistics, react, config);
+      let reconciler = new Reconciler(this.realm, this.moduleTracer.modules.logger, statistics, react, config);
       let componentType = getComponentTypeFromRootValue(this.realm, componentRoot);
       if (componentType === null) {
         continue;
@@ -248,38 +247,70 @@ export class Functions {
       if (reconciler.hasEvaluatedRootNode(componentType, evaluatedRootNode)) {
         continue;
       }
-      let effects = reconciler.render(componentType, null, null, true, evaluatedRootNode);
-      let componentTreeState = reconciler.componentTreeState;
-      this._generateWriteEffectsForReactComponentTree(componentType, effects, componentTreeState, evaluatedRootNode);
+      let componentTreeEffects = reconciler.renderReactComponentTree(
+        componentType,
+        null,
+        null,
+        true,
+        evaluatedRootNode
+      );
+      this._generateWriteEffectsForReactComponentTree(
+        componentType,
+        componentTreeEffects,
+        reconciler.componentTreeState,
+        evaluatedRootNode
+      );
+      this._optimizeReactComponentTreeBranches(reconciler);
+      this._optimizeReactNestedClosures(reconciler);
+    }
+  }
 
-      // for now we just use abstract props/context, in the future we'll create a new branch with a new component
-      // that used the props/context. It will extend the original component and only have a render method
-      for (let { rootValue: branchRootValue, nested, evaluatedNode } of componentTreeState.branchedComponentTrees) {
-        evaluateComponentTreeBranch(this.realm, effects, nested, () => {
-          let branchComponentType = getComponentTypeFromRootValue(this.realm, branchRootValue);
-          if (branchComponentType === null) {
-            evaluatedNode.status = "UNKNOWN_TYPE";
-            return;
-          }
-          // so we don't process the same component multiple times (we might change this logic later)
-          if (reconciler.hasEvaluatedRootNode(branchComponentType, evaluatedNode)) {
-            return;
-          }
-          reconciler.clearComponentTreeState();
-          logger.logInformation(`  - ${evaluatedNode.name} (branch)...`);
-          let branchEffects = reconciler.render(branchComponentType, null, null, false, evaluatedNode);
-          let branchComponentTreeState = reconciler.componentTreeState;
-          this._generateWriteEffectsForReactComponentTree(
-            branchComponentType,
-            branchEffects,
-            branchComponentTreeState,
-            evaluatedNode
-          );
-        });
+  _optimizeReactNestedClosures(reconciler: Reconciler): void {
+    let componentTreeState = reconciler.componentTreeState;
+    let logger = this.moduleTracer.modules.logger;
+
+    for (let { func, funcThis, evaluatedNode, nestedEffects } of componentTreeState.optimizedClosures) {
+      logger.logInformation(`  # Nested optimized closure...`);
+      let closureEffects = reconciler.renderNestedOptimizedClosure(func, funcThis, nestedEffects, evaluatedNode);
+      if (closureEffects[0] === this.realm.intrinsics.undefined) {
+        continue;
       }
-      if (this.realm.react.output === "bytecode") {
-        throw new FatalError("TODO: implement React bytecode output format");
+      let additionalFunctionEffects = this._createAdditionalEffects(closureEffects, true);
+      invariant(additionalFunctionEffects);
+      if (func instanceof BoundFunctionValue) {
+        invariant(func.$BoundTargetFunction instanceof FunctionValue);
+        this.writeEffects.set(func.$BoundTargetFunction, additionalFunctionEffects);
+      } else {
+        this.writeEffects.set(func, additionalFunctionEffects);
       }
+    }
+  }
+
+  _optimizeReactComponentTreeBranches(reconciler: Reconciler): void {
+    let componentTreeState = reconciler.componentTreeState;
+    let logger = this.moduleTracer.modules.logger;
+    // for now we just use abstract props/context, in the future we'll create a new branch with a new component
+    // that used the props/context. It will extend the original component and only have a render method
+    for (let { rootValue: branchRootValue, evaluatedNode } of componentTreeState.branchedComponentTrees) {
+      let branchComponentType = getComponentTypeFromRootValue(this.realm, branchRootValue);
+      if (branchComponentType === null) {
+        evaluatedNode.status = "UNKNOWN_TYPE";
+        return;
+      }
+      // so we don't process the same component multiple times (we might change this logic later)
+      if (reconciler.hasEvaluatedRootNode(branchComponentType, evaluatedNode)) {
+        return;
+      }
+      reconciler.clearComponentTreeState();
+      logger.logInformation(`  - ${evaluatedNode.name} (branch)...`);
+      let branchEffects = reconciler.renderReactComponentTree(branchComponentType, null, null, false, evaluatedNode);
+      let branchComponentTreeState = reconciler.componentTreeState;
+      this._generateWriteEffectsForReactComponentTree(
+        branchComponentType,
+        branchEffects,
+        branchComponentTreeState,
+        evaluatedNode
+      );
     }
   }
 
@@ -345,7 +376,7 @@ export class Functions {
     return call.bind(this, globalThis, args);
   }
 
-  optimizeFunction(funcValue: ECMAScriptSourceFunctionValue | BoundFunctionValue) {
+  _optimizeFunction(funcValue: ECMAScriptSourceFunctionValue | BoundFunctionValue) {
     let call = this._callOfFunction(funcValue);
     let effects = this.realm.evaluatePure(() =>
       this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
@@ -354,6 +385,7 @@ export class Functions {
     let additionalFunctionEffects = this._createAdditionalEffects(effects, true);
     invariant(additionalFunctionEffects);
     if (funcValue instanceof BoundFunctionValue) {
+      invariant(funcValue.$BoundTargetFunction instanceof ECMAScriptSourceFunctionValue);
       this.writeEffects.set(funcValue.$BoundTargetFunction, additionalFunctionEffects);
     } else {
       this.writeEffects.set(funcValue, additionalFunctionEffects);
@@ -364,8 +396,8 @@ export class Functions {
     let additionalFunctions = this.__generateAdditionalFunctionsMap("__optimizedFunctions");
 
     for (let [funcValue] of additionalFunctions) {
-      invariant(funcValue instanceof FunctionValue);
-      this.optimizeFunction(funcValue);
+      invariant(funcValue instanceof ECMAScriptSourceFunctionValue || funcValue instanceof BoundFunctionValue);
+      this._optimizeFunction(funcValue);
     }
 
     // check that functions are independent

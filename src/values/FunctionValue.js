@@ -21,8 +21,8 @@ export default class FunctionValue extends ObjectValue {
     super(realm, realm.intrinsics.FunctionPrototype, intrinsicName);
     let currentReconciler = realm.react.currentReconciler;
 
-    if (realm.react.enabled && currentReconciler !== null && currentReconciler.functionsToEvalaute !== null) {
-      currentReconciler.functionsToEvalaute.add(this);
+    if (realm.react.enabled && currentReconciler !== null && currentReconciler.evaluatedFunctions !== null) {
+      currentReconciler.evaluatedFunctions.add(this);
     }
   }
 

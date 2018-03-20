@@ -20,17 +20,13 @@ import {
 } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
-import {
-  valueIsClassComponent,
-  deleteRefAndKeyFromProps,
-  getProperty,
-  evaluateAndCaptureNewFunctionsForEvaluation,
-} from "./utils";
+import { valueIsClassComponent, deleteRefAndKeyFromProps, getProperty, getValueFromFunctionCall } from "./utils";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get, Construct } from "../methods/index.js";
 import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { ClassComponentMetadata } from "../types.js";
+import type { ReactEvaluatedNode } from "../serializer/types.js";
 
 const lifecycleMethods = new Set([
   "componentWillUnmount",
@@ -163,10 +159,16 @@ export function createClassInstanceForFirstRenderOnly(
   realm: Realm,
   componentType: ECMAScriptSourceFunctionValue,
   props: ObjectValue | AbstractValue,
-  context: ObjectValue | AbstractValue
+  context: ObjectValue | AbstractValue,
+  evalautedNode: ReactEvaluatedNode
 ): ObjectValue {
-  let instance = evaluateAndCaptureNewFunctionsForEvaluation(realm, componentType, () =>
-    Construct(realm, componentType, [props, context])
+  let instance = getValueFromFunctionCall(
+    realm,
+    componentType,
+    realm.intrinsics.undefined,
+    [props, context],
+    evalautedNode,
+    true
   );
   invariant(instance instanceof ObjectValue);
   instance.intrinsicName = "this";
@@ -178,6 +180,7 @@ export function createClassInstanceForFirstRenderOnly(
   // assign a mocked setState
   let setState = new NativeFunctionValue(realm, undefined, `setState`, 1, (_context, [state, callback]) => {
     let stateToUpdate = state;
+    invariant(instance instanceof ObjectValue);
     let currentState = Get(realm, instance, "state");
     invariant(currentState instanceof ObjectValue);
 

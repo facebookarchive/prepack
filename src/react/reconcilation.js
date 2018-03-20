@@ -23,6 +23,7 @@ import {
   ObjectValue,
   AbstractObjectValue,
   FunctionValue,
+  BoundFunctionValue,
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState, type ReactEvaluatedNode } from "../serializer/types.js";
 import {
@@ -39,12 +40,14 @@ import {
   createReactEvaluatedNode,
   getComponentName,
   sanitizeReactElementForFirstRenderOnly,
-  getValueFromRenderCall,
+  getValueFromFunctionCall,
+  evalauteWithEffectsStack,
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { BranchState, type BranchStatusEnum } from "./branching.js";
+import * as t from "babel-types";
 import {
   getInitialProps,
   getInitialContext,
@@ -57,7 +60,7 @@ import { ExpectedBailOut, SimpleClassBailOut, NewComponentTreeBranch } from "./e
 import { AbruptCompletion, Completion } from "../completions.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig } from "../types.js";
-import { Functions } from "../serializer/functions.js";
+import { createAbstractArgument } from "../intrinsics/prepack/utils.js";
 
 type ComponentResolutionStrategy =
   | "NORMAL"
@@ -66,10 +69,16 @@ type ComponentResolutionStrategy =
   | "CONTEXT_PROVIDER"
   | "CONTEXT_CONSUMER";
 
+export type OptimizedClosure = {
+  evaluatedNode: ReactEvaluatedNode,
+  func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
+  funcThis: ObjectValue | AbstractObjectValue | UndefinedValue,
+  nestedEffects: Array<Effects>,
+};
+
 export type BranchReactComponentTree = {
   context: ObjectValue | AbstractObjectValue | null,
   evaluatedNode: ReactEvaluatedNode,
-  nested: boolean,
   props: ObjectValue | AbstractObjectValue | null,
   rootValue: ECMAScriptSourceFunctionValue | AbstractValue,
 };
@@ -78,6 +87,7 @@ export type ComponentTreeState = {
   branchedComponentTrees: Array<BranchReactComponentTree>,
   componentType: void | ECMAScriptSourceFunctionValue,
   deadEnds: number,
+  optimizedClosures: Array<OptimizedClosure>,
   status: "SIMPLE" | "COMPLEX",
   contextNodeReferences: Map<ObjectValue | AbstractObjectValue, number>,
 };
@@ -85,33 +95,32 @@ export type ComponentTreeState = {
 export class Reconciler {
   constructor(
     realm: Realm,
-    functions: Functions,
+    logger: Logger,
     statistics: ReactStatistics,
     reactSerializerState: ReactSerializerState,
     componentTreeConfig: ReactComponentTreeConfig
   ) {
     this.realm = realm;
     this.statistics = statistics;
-    this.functions = functions;
     this.reactSerializerState = reactSerializerState;
-    this.logger = functions.moduleTracer.modules.logger;
+    this.logger = logger;
     this.componentTreeState = this._createComponentTreeState();
     this.alreadyEvaluatedRootNodes = new Map();
     this.componentTreeConfig = componentTreeConfig;
-    this.functionsToEvalaute = null;
+    this.evaluatedFunctions = null;
   }
 
   realm: Realm;
   statistics: ReactStatistics;
-  functions: Functions;
   reactSerializerState: ReactSerializerState;
   logger: Logger;
   componentTreeState: ComponentTreeState;
   alreadyEvaluatedRootNodes: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>;
   componentTreeConfig: ReactComponentTreeConfig;
-  functionsToEvalaute: null | Set<FunctionValue>;
+  currentEffectsStack: Array<Effects>;
+  evaluatedFunctions: null | Set<FunctionValue>;
 
-  render(
+  renderReactComponentTree(
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractObjectValue | null,
     context: ObjectValue | AbstractObjectValue | null,
@@ -181,7 +190,7 @@ export class Reconciler {
       }
     };
 
-    return this.realm.wrapInGlobalEnv(() =>
+    let effects = this.realm.wrapInGlobalEnv(() =>
       this.realm.evaluatePure(() =>
         // TODO: (sebmarkbage): You could use the return value of this to detect if there are any mutations on objects other
         // than newly created ones. Then log those to the error logger. That'll help us track violations in
@@ -193,10 +202,108 @@ export class Reconciler {
         )
       )
     );
+    for (let { nestedEffects } of this.componentTreeState.optimizedClosures) {
+      if (nestedEffects.length === 0) {
+        nestedEffects.push(...nestedEffects, effects);
+      }
+    }
+    return effects;
   }
 
-  clearComponentTreeState() {
+  renderNestedOptimizedClosure(
+    func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
+    funcThis: ObjectValue | AbstractObjectValue | UndefinedValue,
+    nestedEffects: Array<Effects>,
+    evaluatedNode: ReactEvaluatedNode
+  ): Effects {
+    const renderOptimizedClosure = () => {
+      let numArgs = func.getLength();
+      let args = [];
+      let targetFunc = func;
+      let baseObject = funcThis;
+
+      if (func instanceof BoundFunctionValue) {
+        invariant(func.$BoundTargetFunction instanceof FunctionValue);
+        targetFunc = func.$BoundTargetFunction;
+        args.push(...func.$BoundArguments);
+        baseObject = func.$BoundThis;
+      }
+      invariant(targetFunc instanceof ECMAScriptSourceFunctionValue);
+      let params = targetFunc.$FormalParameters;
+      if (numArgs && numArgs > 0 && params) {
+        for (let parameterId of params) {
+          if (t.isIdentifier(parameterId)) {
+            // Create an AbstractValue similar to __abstract being called
+            args.push(
+              createAbstractArgument(
+                this.realm,
+                ((parameterId: any): BabelNodeIdentifier).name,
+                targetFunc.expressionLocation
+              )
+            );
+          } else {
+            this.realm.handleError(
+              new CompilerDiagnostic(
+                "Non-identifier args to additional functions unsupported",
+                targetFunc.expressionLocation,
+                "PP1005",
+                "FatalError"
+              )
+            );
+            throw new FatalError("Non-identifier args to additional functions unsupported");
+          }
+        }
+      }
+      this.realm.react.currentReconciler = this;
+      try {
+        return getValueFromFunctionCall(this.realm, func, baseObject, args, evaluatedNode);
+      } catch (error) {
+        if (error.name === "Invariant Violation") {
+          throw error;
+        }
+        return this.realm.intrinsics.undefined;
+      } finally {
+        // remove the binding to global this
+        if (func instanceof BoundFunctionValue) {
+          func.$BoundThis = this.realm.intrinsics.undefined;
+        }
+        this.realm.react.currentReconciler = null;
+      }
+    };
+
+    let effects = this.realm.wrapInGlobalEnv(() =>
+      this.realm.evaluatePure(() =>
+        this.realm.evaluateForEffects(
+          () => evalauteWithEffectsStack(this.realm, nestedEffects, renderOptimizedClosure),
+          /*state*/ null,
+          `react nested optimized closure`
+        )
+      )
+    );
+
+    for (let { nestedEffects: nextNestedEffects } of this.componentTreeState.optimizedClosures) {
+      if (nextNestedEffects.length === 0) {
+        nextNestedEffects.push(effects, ...nestedEffects);
+      }
+    }
+    return effects;
+  }
+
+  clearComponentTreeState(): void {
     this.componentTreeState = this._createComponentTreeState();
+  }
+
+  queueOptimizedClosure(
+    func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
+    funcThis: ObjectValue | AbstractObjectValue | UndefinedValue,
+    evaluatedNode: ReactEvaluatedNode
+  ): void {
+    this.componentTreeState.optimizedClosures.push({
+      evaluatedNode,
+      func,
+      funcThis,
+      nestedEffects: [],
+    });
   }
 
   _queueNewComponentTree(
@@ -211,7 +318,6 @@ export class Reconciler {
     this.componentTreeState.branchedComponentTrees.push({
       context,
       evaluatedNode,
-      nested,
       props,
       rootValue,
     });
@@ -250,7 +356,7 @@ export class Reconciler {
     let renderMethod = Get(this.realm, instance, "render");
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
     // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    return getValueFromRenderCall(this.realm, componentType, renderMethod, instance, []);
+    return getValueFromFunctionCall(this.realm, renderMethod, instance, [], evaluatedNode);
   }
 
   _renderSimpleClassComponent(
@@ -258,7 +364,8 @@ export class Reconciler {
     props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
-    branchState: BranchState | null
+    branchState: BranchState | null,
+    evaluatedNode: ReactEvaluatedNode
   ): Value {
     // create a new simple instance of this React class component
     let instance = createSimpleClassInstance(this.realm, componentType, props, context);
@@ -266,18 +373,22 @@ export class Reconciler {
     let renderMethod = Get(this.realm, instance, "render");
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
     // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    return getValueFromRenderCall(this.realm, componentType, renderMethod, instance, []);
+    return getValueFromFunctionCall(this.realm, renderMethod, instance, [], evaluatedNode);
   }
 
   _renderFunctionalComponent(
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractValue | AbstractObjectValue,
-    context: ObjectValue | AbstractObjectValue
+    context: ObjectValue | AbstractObjectValue,
+    evaluatedNode: ReactEvaluatedNode
   ) {
-    return getValueFromRenderCall(this.realm, componentType, componentType, this.realm.intrinsics.undefined, [
-      props,
-      context,
-    ]);
+    return getValueFromFunctionCall(
+      this.realm,
+      componentType,
+      this.realm.intrinsics.undefined,
+      [props, context],
+      evaluatedNode
+    );
   }
 
   _getClassComponentMetadata(
@@ -413,12 +524,12 @@ export class Reconciler {
             // make sure this context is in our tree
             if (this._hasReferenceForContextNode(typeValue)) {
               let valueProp = Get(this.realm, typeValue, "currentValue");
-              let result = getValueFromRenderCall(
+              let result = getValueFromFunctionCall(
                 this.realm,
-                componentType,
                 renderProp,
                 this.realm.intrinsics.undefined,
-                [valueProp]
+                [valueProp],
+                evaluatedNode
               );
               this.statistics.inlinedComponents++;
               this.statistics.componentsEvaluated++;
@@ -480,7 +591,14 @@ export class Reconciler {
       // a simple component using the above heuristics. If an error occurs during this process, we assume
       // that the class wasn't simple, then try again with the "complex" heuristics.
       try {
-        value = this._renderSimpleClassComponent(componentType, props, context, branchStatus, branchState);
+        value = this._renderSimpleClassComponent(
+          componentType,
+          props,
+          context,
+          branchStatus,
+          branchState,
+          evaluatedNode
+        );
       } catch (error) {
         // if we get back a SimpleClassBailOut error, we know that this class component
         // wasn't a simple one and is likely to be a complex class component instead
@@ -516,7 +634,7 @@ export class Reconciler {
     evaluatedNode: ReactEvaluatedNode
   ): Value {
     // create a new simple instance of this React class component
-    let instance = createClassInstanceForFirstRenderOnly(this.realm, componentType, props, context);
+    let instance = createClassInstanceForFirstRenderOnly(this.realm, componentType, props, context, evaluatedNode);
     // get the "componentWillMount" and "render" methods off the instance
     let componentWillMount = Get(this.realm, instance, "componentWillMount");
     let renderMethod = Get(this.realm, instance, "render");
@@ -525,7 +643,7 @@ export class Reconciler {
       componentWillMount.$Call(instance, []);
     }
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
-    return getValueFromRenderCall(this.realm, componentType, renderMethod, instance, []);
+    return getValueFromFunctionCall(this.realm, renderMethod, instance, [], evaluatedNode);
   }
 
   _renderComponent(
@@ -565,7 +683,7 @@ export class Reconciler {
         value = this._renderClassComponent(componentType, props, context, branchStatus, branchState, evaluatedNode);
       }
     } else {
-      value = this._renderFunctionalComponent(componentType, props, context);
+      value = this._renderFunctionalComponent(componentType, props, context, evaluatedNode);
       if (valueIsFactoryClassComponent(this.realm, value)) {
         invariant(value instanceof ObjectValue);
         if (branchStatus !== "ROOT") {
@@ -598,6 +716,7 @@ export class Reconciler {
       branchedComponentTrees: [],
       componentType: undefined,
       deadEnds: 0,
+      optimizedClosures: [],
       status: "SIMPLE",
       contextNodeReferences: new Map(),
     };
