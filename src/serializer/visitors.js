@@ -237,13 +237,21 @@ function ignorePath(path: BabelTraversePath) {
   return t.isLabeledStatement(parent) || t.isBreakStatement(parent) || t.isContinueStatement(parent);
 }
 
-// TODO #886: doesn't check that `arguments` and `this` is in top function
 export let ClosureRefVisitor = {
+  "FunctionDeclaration|FunctionExpression": {
+    enter(path: BabelTraversePath, state: ClosureRefVisitorState) {
+      state.functionInfo.depth++;
+    },
+    exit(path: BabelTraversePath, state: ClosureRefVisitorState) {
+      state.functionInfo.depth--;
+    },
+  },
+
   ReferencedIdentifier(path: BabelTraversePath, state: ClosureRefVisitorState) {
     if (ignorePath(path)) return;
 
     let innerName = path.node.name;
-    if (innerName === "arguments") {
+    if (innerName === "arguments" && state.functionInfo.depth === 1) {
       state.functionInfo.usesArguments = true;
       return;
     }
@@ -251,7 +259,9 @@ export let ClosureRefVisitor = {
   },
 
   ThisExpression(path: BabelTraversePath, state: ClosureRefVisitorState) {
-    state.functionInfo.usesThis = true;
+    if (state.functionInfo.depth === 1) {
+      state.functionInfo.usesThis = true;
+    }
   },
 
   "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: ClosureRefVisitorState) {

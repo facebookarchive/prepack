@@ -74,6 +74,7 @@ export type FunctionInstance = {
 };
 
 export type FunctionInfo = {
+  depth: number,
   unbound: Set<string>,
   modified: Set<string>,
   usesArguments: boolean,
