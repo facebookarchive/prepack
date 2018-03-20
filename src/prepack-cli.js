@@ -130,7 +130,7 @@ function run(
         case "out":
           arg = args.shift();
           outputFilename = arg;
-          // skip for repro purposes
+          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
           break;
         case "compatibility":
           arg = args.shift();
@@ -151,11 +151,11 @@ function run(
           break;
         case "srcmapOut":
           outputSourceMap = args.shift();
-          // skip for repro purposes
+          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
           break;
         case "statsFile":
           statsFileName = args.shift();
-          // skip for repro purposes
+          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
           break;
         case "maxStackDepth":
           let value = args.shift();
@@ -203,11 +203,11 @@ function run(
           break;
         case "debugInFilePath":
           debugInFilePath = args.shift();
-          // skip for repro purposes
+          // do not include this in reproArguments needed by --repro, as debugger behavior is not currently supported for repros
           break;
         case "debugOutFilePath":
           debugOutFilePath = args.shift();
-          // skip for repro purposes
+          // do not include this in reproArguments needed by --repro, as debugger behavior is not currently supported for repros
           break;
         case "lazyObjectsRuntime":
           lazyObjectsRuntime = args.shift();
@@ -215,7 +215,7 @@ function run(
           break;
         case "heapGraphFilePath":
           heapGraphFilePath = args.shift();
-          // skip for repro purposes
+          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
           break;
         case "reactOutput":
           arg = args.shift();
@@ -228,11 +228,11 @@ function run(
           break;
         case "repro":
           reproFilePath = args.shift();
-          // skip for repro purposes
+          // do not include this in reproArguments needed by --repro, as we don't need to create a repro from the repro...
           break;
         case "cpuprofile":
           cpuprofilePath = args.shift();
-          // skip for repro purposes
+          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
           break;
         case "help":
           const options = [
