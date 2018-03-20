@@ -321,7 +321,7 @@ export class Generator {
   id: number;
   _name: string;
 
-  static _generatorOfEffects(realm: Realm, effects: Effects) {
+  static _generatorOfEffects(realm: Realm, environmentRecordIdAfterGlobalCode: number, effects: Effects) {
     let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects;
 
     let output = new Generator(realm, "AdditionalFunctionEffects", effects);
@@ -338,6 +338,11 @@ export class Generator {
     }
 
     for (let [modifiedBinding, oldBinding] of modifiedBindings) {
+      // TODO: Instead of looking at the environment ids, keep instead track of a createdEnvironmentRecords set,
+      // and only consider bindings here from environment records that already existed, or even better,
+      // ensure upstream that only such bindings are ever added to the modified-bindings set.
+      if (modifiedBinding.environment.id >= environmentRecordIdAfterGlobalCode) continue;
+
       output.emitBindingModification(modifiedBinding, oldBinding.value);
     }
 
@@ -358,8 +363,11 @@ export class Generator {
 
   // Make sure to to fixup
   // how to apply things around sets of things
-  static fromEffects(effects: Effects, realm: Realm): Generator {
-    return realm.withEffectsAppliedInGlobalEnv(this._generatorOfEffects.bind(this, realm), effects);
+  static fromEffects(effects: Effects, realm: Realm, environmentRecordIdAfterGlobalCode: number = 0): Generator {
+    return realm.withEffectsAppliedInGlobalEnv(
+      this._generatorOfEffects.bind(this, realm, environmentRecordIdAfterGlobalCode),
+      effects
+    );
   }
 
   emitPropertyModification(propertyBinding: PropertyBinding) {

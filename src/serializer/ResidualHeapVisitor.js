@@ -82,8 +82,7 @@ export class ResidualHeapVisitor {
     modules: Modules,
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>,
     // Referentializer is null if we're just checking what values exist
-    referentializer: Referentializer | "NO_REFERENTIALIZE",
-    environmentRecordIdAfterGlobalCode: number = 0
+    referentializer: Referentializer | "NO_REFERENTIALIZE"
   ) {
     invariant(realm.useAbstractInterpretation);
     this.realm = realm;
@@ -113,7 +112,6 @@ export class ResidualHeapVisitor {
     this.inClass = false;
     this.functionToCapturedScopes = new Map();
     this.generatorParents = new Map();
-    this.environmentRecordIdAfterGlobalCode = environmentRecordIdAfterGlobalCode;
     let environment = realm.$GlobalEnv.environmentRecord;
     invariant(environment instanceof GlobalEnvironmentRecord);
     this.globalEnvironmentRecord = environment;
@@ -158,7 +156,6 @@ export class ResidualHeapVisitor {
   // identity to work).
   additionalRoots: Map<ObjectValue, Set<FunctionValue>>;
   inClass: boolean;
-  environmentRecordIdAfterGlobalCode: number;
 
   globalEnvironmentRecord: GlobalEnvironmentRecord;
 
