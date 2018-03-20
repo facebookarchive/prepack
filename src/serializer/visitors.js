@@ -251,7 +251,8 @@ export let ClosureRefVisitor = {
     if (ignorePath(path)) return;
 
     let innerName = path.node.name;
-    if (innerName === "arguments" && state.functionInfo.depth === 1) {
+    // TODO #1621: doesn't check that `arguments` is in top function.
+    if (innerName === "arguments") {
       state.functionInfo.usesArguments = true;
       return;
     }
