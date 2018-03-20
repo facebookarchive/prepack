@@ -90,7 +90,9 @@ export default function(
       let name = ast.id.name;
 
       // 6. Perform envRec.CreateImmutableBinding(name, false).
-      envRec.CreateImmutableBinding(name, false);
+      envRec.CreateImmutableBinding(name, false, false, true);
+      // I don't think this gets deleted anywhere else
+      //if (realm.modifiedBindings) realm.modifiedBindings.delete(name);
 
       // 7. Let closure be FunctionCreate(Normal, FormalParameters, FunctionBody, funcEnv, strict).
       let closure = Functions.FunctionCreate(realm, "normal", ast.params, ast.body, funcEnv, strict);
@@ -103,7 +105,7 @@ export default function(
       Functions.SetFunctionName(realm, closure, new StringValue(realm, name));
 
       // 10. Perform envRec.InitializeBinding(name, closure).
-      envRec.InitializeBinding(name, closure);
+      envRec.InitializeBinding(name, closure, true);
 
       // 11. Return closure.
       return closure;
