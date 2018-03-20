@@ -1,5 +1,3 @@
-// abstract effects
-
 let obj = {};
 if (global.__makeSimple) {
   __makeSimple(obj);
