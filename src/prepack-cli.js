@@ -400,6 +400,7 @@ fi
   } finally {
     if (profiler !== undefined) {
       let data = profiler.stopProfiling("");
+      invariant(cpuprofilePath !== undefined);
       fs.writeFileSync(cpuprofilePath, JSON.stringify(data));
     }
   }
