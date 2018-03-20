@@ -69,6 +69,7 @@ function run(
     --emitConcreteModel      Synthesize concrete model values for abstract models(defined by __assumeDataProperty).
     --version                Output the version number.
     --repro                  Create a zip file with all information needed to reproduce a Prepack run"
+    --cpuprofile             Create a CPU profile file for the run that can be loaded into the Chrome JavaScript CPU Profile viewer",
   `;
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -89,6 +90,7 @@ function run(
   let debugOutFilePath: string;
   let reactOutput: ReactOutputTypes = "create-element";
   let reproFilePath: void | string;
+  let cpuprofilePath: void | string;
   let flags = {
     initializeMoreModules: false,
     trace: false,
@@ -228,6 +230,10 @@ function run(
           reproFilePath = args.shift();
           // skip for repro purposes
           break;
+        case "cpuprofile":
+          cpuprofilePath = args.shift();
+          // skip for repro purposes
+          break;
         case "help":
           const options = [
             "-- | input.js",
@@ -244,6 +250,7 @@ function run(
             "--heapGraphFilePath heapGraphFilePath",
             "--reactOutput " + ReactOutputValues.join(" | "),
             "--repro reprofile.zip",
+            "--cpuprofile name.cpuprofile",
           ];
           for (let flag of Object.keys(flags)) options.push(`--${flag}`);
 
@@ -363,23 +370,37 @@ fi
     return foundFatal;
   }
 
+  let profiler;
   try {
-    if (inputFilenames.length === 0) {
-      prepackStdin(resolvedOptions, processSerializedCode, printDiagnostics);
-      return;
+    if (cpuprofilePath !== undefined) {
+      profiler = require("v8-profiler");
+      profiler.setSamplingInterval(100); // default is 1000us
+      profiler.startProfiling("");
     }
-    let serialized = prepackFileSync(inputFilenames, resolvedOptions);
-    printDiagnostics();
-    if (resolvedOptions.serialize && serialized) processSerializedCode(serialized);
-  } catch (err) {
-    printDiagnostics();
-    //FatalErrors must have generated at least one CompilerDiagnostic.
-    if (err instanceof FatalError) {
-      invariant(errors.size > 0 || errorList.length > 0, "FatalError must generate at least one CompilerDiagnostic");
-    } else {
-      // if it is not a FatalError, it means prepack failed, and we should display the Prepack stack trace.
-      console.error(err.stack);
-      process.exit(1);
+
+    try {
+      if (inputFilenames.length === 0) {
+        prepackStdin(resolvedOptions, processSerializedCode, printDiagnostics);
+        return;
+      }
+      let serialized = prepackFileSync(inputFilenames, resolvedOptions);
+      printDiagnostics();
+      if (resolvedOptions.serialize && serialized) processSerializedCode(serialized);
+    } catch (err) {
+      printDiagnostics();
+      //FatalErrors must have generated at least one CompilerDiagnostic.
+      if (err instanceof FatalError) {
+        invariant(errors.size > 0 || errorList.length > 0, "FatalError must generate at least one CompilerDiagnostic");
+      } else {
+        // if it is not a FatalError, it means prepack failed, and we should display the Prepack stack trace.
+        console.error(err.stack);
+        process.exit(1);
+      }
+    }
+  } finally {
+    if (profiler !== undefined) {
+      let data = profiler.stopProfiling("");
+      fs.writeFileSync(cpuprofilePath, JSON.stringify(data));
     }
   }
 
