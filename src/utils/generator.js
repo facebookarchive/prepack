@@ -889,6 +889,7 @@ export class Generator {
   }
 
   appendGenerator(other: Generator, leadingComment: string): void {
+    invariant(other !== this);
     if (other.empty()) return;
     this._addEntry({
       args: [],
@@ -909,6 +910,7 @@ export class Generator {
   }
 
   composeGenerators(generator1: Generator, generator2: Generator): void {
+    invariant(generator1 !== this && generator2 !== this && generator1 !== generator2);
     this._addEntry({
       args: [],
       buildNode: function([], context) {
@@ -923,6 +925,7 @@ export class Generator {
   }
 
   joinGenerators(joinCondition: AbstractValue, generator1: Generator, generator2: Generator): void {
+    invariant(generator1 !== this && generator2 !== this && generator1 !== generator2);
     this._addEntry({
       args: [joinCondition],
       buildNode: function([cond], context) {
