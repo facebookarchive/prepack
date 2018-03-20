@@ -50,7 +50,6 @@ export type RealmOptions = {
   reactOutput?: ReactOutputTypes,
   reactVerbose?: boolean,
   stripFlow?: boolean,
-  abstractEffectsInAdditionalFunctions?: boolean,
   abstractValueImpliesMax?: number,
 };
 

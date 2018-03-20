@@ -46,7 +46,6 @@ let prepackOptions = {
   reactVerbose: true,
   inlineExpressions: true,
   omitInvariants: true,
-  abstractEffectsInAdditionalFunctions: true,
   simpleClosures: true,
   abstractValueImpliesMax: 1000,
 };
