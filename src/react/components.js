@@ -160,14 +160,14 @@ export function createClassInstanceForFirstRenderOnly(
   componentType: ECMAScriptSourceFunctionValue,
   props: ObjectValue | AbstractValue,
   context: ObjectValue | AbstractValue,
-  evalautedNode: ReactEvaluatedNode
+  evaluatedNode: ReactEvaluatedNode
 ): ObjectValue {
   let instance = getValueFromFunctionCall(
     realm,
     componentType,
     realm.intrinsics.undefined,
     [props, context],
-    evalautedNode,
+    evaluatedNode,
     true
   );
   invariant(instance instanceof ObjectValue);

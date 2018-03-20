@@ -527,7 +527,7 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   return flattenedChildren;
 }
 
-export function evalauteWithNestedEffects(
+export function evaluateWithNestedEffects(
   realm: Realm,
   nestedEffects: Array<Effects>,
   f: (generator?: Generator, value?: Value | Reference | Completion) => Value
