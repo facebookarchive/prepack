@@ -56,7 +56,6 @@ import { Generator, PreludeGenerator } from "./utils/generator.js";
 import { emptyExpression, voidExpression } from "./utils/internalizer.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
-import { Reconciler } from "./react/reconcilation.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
 
@@ -270,7 +269,7 @@ export class Realm {
     abstractHints: WeakMap<AbstractValue | ObjectValue, ReactHint>,
     classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
     currentOwner?: ObjectValue,
-    currentReconciler: null | Reconciler,
+    currentReconciler: any, // introducing Reconciler as an import causes a Flow cycle
     enabled: boolean,
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,

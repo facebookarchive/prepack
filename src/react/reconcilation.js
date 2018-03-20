@@ -142,7 +142,6 @@ export class Reconciler {
       try {
         let initialProps = props || getInitialProps(this.realm, componentType);
         let initialContext = context || getInitialContext(this.realm, componentType);
-        invariant(this instanceof Reconciler);
         this.realm.react.currentReconciler = this;
         let { result } = this._renderComponent(
           componentType,
@@ -264,7 +263,6 @@ export class Reconciler {
           }
         }
       }
-      invariant(this instanceof Reconciler);
       this.realm.react.currentReconciler = this;
       try {
         invariant(
