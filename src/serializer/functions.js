@@ -119,11 +119,15 @@ export class Functions {
   }
 
   // This will also handle postprocessing for PossiblyNormalCompletion
-  _createAdditionalEffects(effects: Effects, fatalOnAbrupt: boolean): AdditionalFunctionEffects | null {
+  _createAdditionalEffects(
+    effects: Effects,
+    fatalOnAbrupt: boolean,
+    environmentRecordIdAfterGlobalCode: number
+  ): AdditionalFunctionEffects | null {
     let retValue: AdditionalFunctionEffects = {
       effects,
       transforms: [],
-      generator: Generator.fromEffects(effects, this.realm),
+      generator: Generator.fromEffects(effects, this.realm, environmentRecordIdAfterGlobalCode),
     };
     return retValue;
   }
@@ -132,9 +136,10 @@ export class Functions {
     componentType: ECMAScriptSourceFunctionValue,
     effects: Effects,
     componentTreeState: ComponentTreeState,
-    evaluatedNode: ReactEvaluatedNode
+    evaluatedNode: ReactEvaluatedNode,
+    environmentRecordIdAfterGlobalCode: number
   ): void {
-    let additionalFunctionEffects = this._createAdditionalEffects(effects, false);
+    let additionalFunctionEffects = this._createAdditionalEffects(effects, false, environmentRecordIdAfterGlobalCode);
     if (additionalFunctionEffects === null) {
       // TODO we don't support this yet, but will do very soon
       // to unblock work, we'll just return at this point right now
@@ -182,7 +187,11 @@ export class Functions {
     }
   }
 
-  checkRootReactComponentTrees(statistics: ReactStatistics, react: ReactSerializerState): void {
+  checkRootReactComponentTrees(
+    statistics: ReactStatistics,
+    react: ReactSerializerState,
+    environmentRecordIdAfterGlobalCode: number
+  ): void {
     let logger = this.moduleTracer.modules.logger;
     let recordedReactRootValues = this.__generateAdditionalFunctionsMap("__reactComponentTrees");
     // Get write effects of the components
@@ -204,7 +213,13 @@ export class Functions {
       }
       let effects = reconciler.render(componentType, null, null, true, evaluatedRootNode);
       let componentTreeState = reconciler.componentTreeState;
-      this._generateWriteEffectsForReactComponentTree(componentType, effects, componentTreeState, evaluatedRootNode);
+      this._generateWriteEffectsForReactComponentTree(
+        componentType,
+        effects,
+        componentTreeState,
+        evaluatedRootNode,
+        environmentRecordIdAfterGlobalCode
+      );
 
       // for now we just use abstract props/context, in the future we'll create a new branch with a new component
       // that used the props/context. It will extend the original component and only have a render method
@@ -227,7 +242,8 @@ export class Functions {
             branchComponentType,
             branchEffects,
             branchComponentTreeState,
-            evaluatedNode
+            evaluatedNode,
+            environmentRecordIdAfterGlobalCode
           );
         });
       }
@@ -295,7 +311,7 @@ export class Functions {
     return call.bind(this, globalThis, args);
   }
 
-  checkThatFunctionsAreIndependent() {
+  checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode: number) {
     let additionalFunctions = this.__generateAdditionalFunctionsMap("__optimizedFunctions");
 
     for (let [funcValue] of additionalFunctions) {
@@ -305,7 +321,7 @@ export class Functions {
         this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
       );
       invariant(effects);
-      let additionalFunctionEffects = this._createAdditionalEffects(effects, true);
+      let additionalFunctionEffects = this._createAdditionalEffects(effects, true, environmentRecordIdAfterGlobalCode);
       invariant(additionalFunctionEffects);
       this.writeEffects.set(funcValue, additionalFunctionEffects);
     }
