@@ -20,7 +20,7 @@ import {
   ArrayValue,
   BooleanValue,
   AbstractValue,
-  ECMAScriptFunctionValue,
+  ECMAScriptSourceFunctionValue,
 } from "../values/index.js";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
@@ -101,7 +101,7 @@ export function canHoistFunction(
         }
       }
     }
-    if (func instanceof ECMAScriptFunctionValue) {
+    if (func instanceof ECMAScriptSourceFunctionValue) {
       let code = func.$ECMAScriptCode;
       let functionInfos = residualHeapVisitor.functionInfos.get(code);
       if (functionInfos && functionInfos.unbound.size > 0) {
