@@ -224,9 +224,28 @@ export class Functions {
     let componentTreeState = reconciler.componentTreeState;
     let logger = this.moduleTracer.modules.logger;
 
-    for (let { func, funcThis, evaluatedNode, nestedEffects } of componentTreeState.optimizedClosures) {
+    for (let {
+      func,
+      evaluatedNode,
+      nestedEffects,
+      shouldResolve,
+      componentType,
+      context,
+      branchState,
+    } of componentTreeState.optimizedClosures) {
+      if (reconciler.hasEvaluatedNestedClosure(func)) {
+        continue;
+      }
       logger.logInformation(`  # Nested optimized closure...`);
-      let closureEffects = reconciler.renderNestedOptimizedClosure(func, funcThis, nestedEffects, evaluatedNode);
+      let closureEffects = reconciler.renderNestedOptimizedClosure(
+        func,
+        nestedEffects,
+        shouldResolve,
+        componentType,
+        context,
+        branchState,
+        evaluatedNode
+      );
       if (closureEffects[0] === this.realm.intrinsics.undefined) {
         continue;
       }

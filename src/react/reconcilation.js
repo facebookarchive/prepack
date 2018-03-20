@@ -41,7 +41,7 @@ import {
   getComponentName,
   sanitizeReactElementForFirstRenderOnly,
   getValueFromFunctionCall,
-  evalauteWithEffectsStack,
+  evalauteWithNestedEffects,
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
@@ -72,8 +72,11 @@ type ComponentResolutionStrategy =
 export type OptimizedClosure = {
   evaluatedNode: ReactEvaluatedNode,
   func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
-  funcThis: ObjectValue | AbstractObjectValue | UndefinedValue,
   nestedEffects: Array<Effects>,
+  shouldResolve: boolean,
+  componentType: Value | null,
+  context: ObjectValue | AbstractObjectValue | null,
+  branchState: BranchState | null,
 };
 
 export type BranchReactComponentTree = {
@@ -106,6 +109,7 @@ export class Reconciler {
     this.logger = logger;
     this.componentTreeState = this._createComponentTreeState();
     this.alreadyEvaluatedRootNodes = new Map();
+    this.alreadyEvaluatedNestedClosures = new Set();
     this.componentTreeConfig = componentTreeConfig;
     this.evaluatedFunctions = null;
   }
@@ -116,6 +120,7 @@ export class Reconciler {
   logger: Logger;
   componentTreeState: ComponentTreeState;
   alreadyEvaluatedRootNodes: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>;
+  alreadyEvaluatedNestedClosures: Set<FunctionValue>;
   componentTreeConfig: ReactComponentTreeConfig;
   currentEffectsStack: Array<Effects>;
   evaluatedFunctions: null | Set<FunctionValue>;
@@ -137,6 +142,7 @@ export class Reconciler {
       try {
         let initialProps = props || getInitialProps(this.realm, componentType);
         let initialContext = context || getInitialContext(this.realm, componentType);
+        invariant(this instanceof Reconciler);
         this.realm.react.currentReconciler = this;
         let { result } = this._renderComponent(
           componentType,
@@ -212,21 +218,25 @@ export class Reconciler {
 
   renderNestedOptimizedClosure(
     func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
-    funcThis: ObjectValue | AbstractObjectValue | UndefinedValue,
     nestedEffects: Array<Effects>,
+    shouldResolve: boolean,
+    componentType: Value | null,
+    context: ObjectValue | AbstractObjectValue | null,
+    branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
   ): Effects {
     const renderOptimizedClosure = () => {
       let numArgs = func.getLength();
       let args = [];
       let targetFunc = func;
-      let baseObject = funcThis;
+      let baseObject = this.realm.$GlobalEnv.environmentRecord.WithBaseObject();
 
+      this.alreadyEvaluatedNestedClosures.add(func);
       if (func instanceof BoundFunctionValue) {
         invariant(func.$BoundTargetFunction instanceof FunctionValue);
         targetFunc = func.$BoundTargetFunction;
         args.push(...func.$BoundArguments);
-        baseObject = func.$BoundThis;
+        this.alreadyEvaluatedNestedClosures.add(targetFunc);
       }
       invariant(targetFunc instanceof ECMAScriptSourceFunctionValue);
       let params = targetFunc.$FormalParameters;
@@ -254,17 +264,33 @@ export class Reconciler {
           }
         }
       }
+      invariant(this instanceof Reconciler);
       this.realm.react.currentReconciler = this;
       try {
-        return getValueFromFunctionCall(this.realm, func, baseObject, args, evaluatedNode);
+        invariant(
+          baseObject instanceof ObjectValue ||
+            baseObject instanceof AbstractObjectValue ||
+            baseObject instanceof UndefinedValue
+        );
+        let value = getValueFromFunctionCall(this.realm, func, baseObject, args, evaluatedNode);
+        if (shouldResolve) {
+          invariant(componentType instanceof Value);
+          invariant(context instanceof ObjectValue || context instanceof AbstractObjectValue);
+          let result = this._resolveDeeply(componentType, value, context, "NEW_BRANCH", branchState, evaluatedNode);
+          this.statistics.optimizedNestedClosures++;
+          return result;
+        } else {
+          this.statistics.optimizedNestedClosures++;
+          return value;
+        }
       } catch (error) {
         if (error.name === "Invariant Violation") {
           throw error;
         }
         return this.realm.intrinsics.undefined;
       } finally {
-        // remove the binding to global this
-        if (func instanceof BoundFunctionValue) {
+        // remove the our special "this" binding or it will try and make it global as it's intrinsic
+        if (func instanceof BoundFunctionValue && func.$BoundThis.intrinsicName === "this") {
           func.$BoundThis = this.realm.intrinsics.undefined;
         }
         this.realm.react.currentReconciler = null;
@@ -274,7 +300,7 @@ export class Reconciler {
     let effects = this.realm.wrapInGlobalEnv(() =>
       this.realm.evaluatePure(() =>
         this.realm.evaluateForEffects(
-          () => evalauteWithEffectsStack(this.realm, nestedEffects, renderOptimizedClosure),
+          () => evalauteWithNestedEffects(this.realm, nestedEffects, renderOptimizedClosure),
           /*state*/ null,
           `react nested optimized closure`
         )
@@ -295,15 +321,27 @@ export class Reconciler {
 
   queueOptimizedClosure(
     func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
-    funcThis: ObjectValue | AbstractObjectValue | UndefinedValue,
-    evaluatedNode: ReactEvaluatedNode
+    evaluatedNode: ReactEvaluatedNode,
+    shouldResolve: boolean,
+    componentType: Value | null,
+    context: ObjectValue | AbstractObjectValue | null,
+    branchState: BranchState | null
   ): void {
-    this.componentTreeState.optimizedClosures.push({
+    let optimizedClosure = {
       evaluatedNode,
       func,
-      funcThis,
       nestedEffects: [],
-    });
+      shouldResolve,
+      componentType,
+      context,
+      branchState,
+    };
+    if (shouldResolve) {
+      // closures that need to be resolved should be handled first
+      this.componentTreeState.optimizedClosures.unshift(optimizedClosure);
+    } else {
+      this.componentTreeState.optimizedClosures.push(optimizedClosure);
+    }
   }
 
   _queueNewComponentTree(
@@ -507,6 +545,7 @@ export class Reconciler {
   _resolveContextConsumerComponent(
     componentType: Value,
     reactElement: ObjectValue,
+    context: ObjectValue | AbstractObjectValue,
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
   ): Value | void {
@@ -518,7 +557,7 @@ export class Reconciler {
     if (propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue) {
       // get the "render" prop child off the instance
       let renderProp = Get(this.realm, propsValue, "children");
-      if (renderProp instanceof ECMAScriptSourceFunctionValue && renderProp.$Call) {
+      if (renderProp instanceof ECMAScriptSourceFunctionValue) {
         if (this.componentTreeConfig.firstRenderOnly) {
           if (typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue) {
             // make sure this context is in our tree
@@ -538,6 +577,7 @@ export class Reconciler {
             }
           }
         }
+        this.queueOptimizedClosure(renderProp, evaluatedChildNode, true, componentType, context, branchState);
         return;
       } else {
         this._findReactComponentTrees(propsValue, evaluatedChildNode);
@@ -551,11 +591,31 @@ export class Reconciler {
   _resolveRelayQueryRendererComponent(
     componentType: Value,
     reactElement: ObjectValue,
+    context: ObjectValue | AbstractObjectValue,
+    branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
   ): Value | void {
     let typeValue = getProperty(this.realm, reactElement, "type");
+    let propsValue = getProperty(this.realm, reactElement, "props");
+
     let evaluatedChildNode = createReactEvaluatedNode("RENDER_PROPS", getComponentName(this.realm, typeValue));
     evaluatedNode.children.push(evaluatedChildNode);
+
+    if (propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue) {
+      // get the "render" method off the instance
+      let renderProp = Get(this.realm, propsValue, "render");
+      if (renderProp instanceof ECMAScriptSourceFunctionValue) {
+        this.queueOptimizedClosure(renderProp, evaluatedChildNode, true, componentType, context, branchState);
+      } else {
+        this._findReactComponentTrees(propsValue, evaluatedChildNode);
+      }
+      return;
+    }
+    // this is the worst case, we were unable to find the render prop function
+    // and won't be able to find any further components to evaluate as trees
+    // because of that
+    this.componentTreeState.deadEnds++;
+    return;
   }
 
   _renderClassComponent(
@@ -981,7 +1041,13 @@ export class Reconciler {
         }
         case "RELAY_QUERY_RENDERER": {
           invariant(typeValue instanceof AbstractObjectValue);
-          result = this._resolveRelayQueryRendererComponent(componentType, reactElement, evaluatedNode);
+          result = this._resolveRelayQueryRendererComponent(
+            componentType,
+            reactElement,
+            context,
+            branchState,
+            evaluatedNode
+          );
           break;
         }
         case "CONTEXT_PROVIDER": {
@@ -995,7 +1061,13 @@ export class Reconciler {
           );
         }
         case "CONTEXT_CONSUMER": {
-          result = this._resolveContextConsumerComponent(componentType, reactElement, branchState, evaluatedNode);
+          result = this._resolveContextConsumerComponent(
+            componentType,
+            reactElement,
+            context,
+            branchState,
+            evaluatedNode
+          );
           break;
         }
         default:
@@ -1136,6 +1208,10 @@ export class Reconciler {
       return true;
     }
     return false;
+  }
+
+  hasEvaluatedNestedClosure(func: ECMAScriptSourceFunctionValue | BoundFunctionValue): boolean {
+    return this.alreadyEvaluatedNestedClosures.has(func);
   }
 
   _findReactComponentTrees(value: Value, evaluatedNode: ReactEvaluatedNode): void {

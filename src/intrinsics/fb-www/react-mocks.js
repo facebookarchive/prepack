@@ -85,7 +85,8 @@ let reactCode = `
       this.props = props;
       this.context = context;
       this.refs = {};
-      this.setState = () => {}; // NO-OP
+      this.setState = function () {}; // NO-OP
+      this.setState.__PREPACK_MOCK__ = true;
     }
     
     Component.prototype.isReactComponent = {};
@@ -94,7 +95,8 @@ let reactCode = `
       this.props = props;
       this.context = context;
       this.refs = {};
-      this.setState = () => {}; // NO-OP
+      this.setState = function () {}; // NO-OP
+      this.setState.__PREPACK_MOCK__ = true;
     }
 
     PureComponent.prototype.isReactComponent = {};

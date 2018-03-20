@@ -527,12 +527,12 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   return flattenedChildren;
 }
 
-export function evalauteWithEffectsStack(
+export function evalauteWithNestedEffects(
   realm: Realm,
-  effectsStack: Array<Effects>,
-  f: (generator?: Generator, value?: Value | Reference | Completion) => void | Value
+  nestedEffects: Array<Effects>,
+  f: (generator?: Generator, value?: Value | Reference | Completion) => Value
 ) {
-  let nextEffects = effectsStack.slice();
+  let nextEffects = nestedEffects.slice();
   let effects = nextEffects.shift();
   let [
     value,
@@ -543,7 +543,7 @@ export function evalauteWithEffectsStack(
   ] = effects;
   realm.applyEffects([
     value,
-    new Generator(realm, "evalauteWithEffectsStack"),
+    new Generator(realm, "evalauteWithNestedEffects"),
     modifiedBindings,
     modifiedProperties,
     createdObjects,
@@ -552,7 +552,7 @@ export function evalauteWithEffectsStack(
     if (nextEffects.length === 0) {
       return f(generator, value);
     } else {
-      return evalauteWithEffectsStack(realm, nextEffects, f);
+      return evalauteWithNestedEffects(realm, nextEffects, f);
     }
   } finally {
     realm.restoreBindings(modifiedBindings);
@@ -759,12 +759,7 @@ export function convertConfigObjectToReactComponentTreeConfig(
   };
 }
 
-export function captureNewClosuresCreated(
-  realm: Realm,
-  funcThis: null | ObjectValue | AbstractObjectValue | UndefinedValue,
-  evalautedNode: ReactEvaluatedNode,
-  f: () => Effects
-): Effects {
+export function captureNewClosuresCreated(realm: Realm, evalautedNode: ReactEvaluatedNode, f: () => Effects): Effects {
   // setup a new Set ready to populate with any inner functions
   // found during the evaluation of this component
   let currentReconciler = realm.react.currentReconciler;
@@ -783,13 +778,11 @@ export function captureNewClosuresCreated(
   if (evaluatedFunctions.size > 0) {
     for (let func of evaluatedFunctions) {
       if (func instanceof ECMAScriptSourceFunctionValue || func instanceof BoundFunctionValue) {
-        // if we're dealing with a constructor, "this" will
-        // be the return value of calling the constructor
-        if (funcThis === null) {
-          funcThis = effects[0];
-          invariant(funcThis instanceof ObjectValue);
+        // skip it if we're dealing with an internal mock
+        if (func.properties.has("__PREPACK_MOCK__")) {
+          continue;
         }
-        currentReconciler.queueOptimizedClosure(func, funcThis, evalautedNode);
+        currentReconciler.queueOptimizedClosure(func, evalautedNode, false, null, null, null);
       }
     }
     currentReconciler.evaluatedFunctions = null;
@@ -810,7 +803,7 @@ export function getValueFromFunctionCall(
   let newCall = func.$Construct;
   let effects;
   try {
-    effects = captureNewClosuresCreated(realm, isConstructor ? null : funcThis, evalautedNode, () =>
+    effects = captureNewClosuresCreated(realm, evalautedNode, () =>
       realm.evaluateForEffects(
         () => {
           invariant(func);

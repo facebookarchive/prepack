@@ -175,6 +175,7 @@ export class ReactStatistics {
     this.inlinedComponents = 0;
     this.evaluatedRootNodes = [];
     this.componentsEvaluated = 0;
+    this.optimizedNestedClosures = 0;
   }
   optimizedTrees: number;
   inlinedComponents: number;

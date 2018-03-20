@@ -38,7 +38,7 @@ const lifecycleMethods = new Set([
   "componentWillReceiveProps",
 ]);
 
-const whitelistedProperties = new Set(["props", "context", "refs"]);
+const whitelistedProperties = new Set(["props", "context", "refs", "setState"]);
 
 export function getInitialProps(
   realm: Realm,
