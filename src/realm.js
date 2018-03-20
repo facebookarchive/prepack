@@ -979,6 +979,11 @@ export class Realm {
       this.pathConditions = [].concat(this.pathConditions);
       this.captureEffects(completion);
     } else {
+      invariant(this.savedCompletion.savedEffects !== undefined);
+      invariant(this.generator !== undefined);
+      this.savedCompletion.savedEffects[1].appendGenerator(this.generator, "composeWithSavedCompletion");
+      this.generator = new Generator(this, "composeWithSavedCompletion");
+      invariant(this.savedCompletion !== undefined);
       this.savedCompletion = Join.composePossiblyNormalCompletions(this, this.savedCompletion, completion);
     }
     pushPathConditionsLeadingToNormalCompletion(completion);
