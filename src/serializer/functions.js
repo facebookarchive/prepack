@@ -373,23 +373,19 @@ export class Functions {
     return call.bind(this, globalThis, args);
   }
 
-  _optimizeFunction(funcValue: ECMAScriptSourceFunctionValue, environmentRecordIdAfterGlobalCode: number) {
-    let call = this._callOfFunction(funcValue);
-    let effects = this.realm.evaluatePure(() =>
-      this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
-    );
-    invariant(effects);
-    let additionalFunctionEffects = this._createAdditionalEffects(effects, true, environmentRecordIdAfterGlobalCode);
-    invariant(additionalFunctionEffects);
-    this.writeEffects.set(funcValue, additionalFunctionEffects);
-  }
-
   checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode: number) {
     let additionalFunctions = this.__generateAdditionalFunctionsMap("__optimizedFunctions");
 
     for (let [funcValue] of additionalFunctions) {
       invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
-      this._optimizeFunction(funcValue, environmentRecordIdAfterGlobalCode);
+      let call = this._callOfFunction(funcValue);
+      let effects = this.realm.evaluatePure(() =>
+        this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
+      );
+      invariant(effects);
+      let additionalFunctionEffects = this._createAdditionalEffects(effects, true, environmentRecordIdAfterGlobalCode);
+      invariant(additionalFunctionEffects);
+      this.writeEffects.set(funcValue, additionalFunctionEffects);
     }
 
     // check that functions are independent
