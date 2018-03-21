@@ -24,6 +24,31 @@ let { Linter } = require("eslint");
 
 let errorsCaptured = [];
 
+function printError(error) {
+  let msg = `${error.errorCode}: ${error.message}`;
+  if (error.location) {
+    let loc_start = error.location.start;
+    let loc_end = error.location.end;
+    msg += ` at ${loc_start.line}:${loc_start.column} to ${loc_end.line}:${loc_end.column}`;
+  }
+  switch (error.severity) {
+    case "Information":
+      console.log(`Info: ${msg}`);
+      return "Recover";
+    case "Warning":
+      console.warn(`Warn: ${msg}`);
+      return "Recover";
+    case "RecoverableError":
+      console.error(`Error: ${msg}`);
+      return "Fail";
+    case "FatalError":
+      console.error(`Fatal Error: ${msg}`);
+      return "Fail";
+    default:
+      console.log(msg);
+  }
+}
+
 let prepackOptions = {
   errorHandler: diag => {
     errorsCaptured.push(diag);
@@ -62,9 +87,8 @@ function compileSource(source) {
   try {
     serialized = prepackSources([{ filePath: inputPath, fileContents: source, sourceMapContents: "" }], prepackOptions);
   } catch (e) {
-    errorsCaptured.forEach(error => {
-      console.error(error);
-    });
+    console.log(`\n${chalk.inverse(`=== Diagnostics Log ===`)}\n`);
+    errorsCaptured.forEach(error => printError(error));
     throw e;
   }
   return {
@@ -214,6 +238,7 @@ readComponentsList()
     console.log(`${chalk.gray(`Compile time`)}: ${timeTaken}s\n`);
   })
   .catch(e => {
+    console.log(`\n${chalk.inverse(`=== Compilation Failed ===`)}\n`);
     console.error(e.nativeStack || e.stack);
     process.exit(1);
   });
