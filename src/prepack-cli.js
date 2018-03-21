@@ -68,6 +68,7 @@ function run(
     --emitConcreteModel      Synthesize concrete model values for abstract models(defined by __assumeDataProperty).
     --version                Output the version number.
     --repro                  Create a zip file with all information needed to reproduce a Prepack run"
+    --cpuprofile             Create a CPU profile file for the run that can be loaded into the Chrome JavaScript CPU Profile viewer",
   `;
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -88,6 +89,7 @@ function run(
   let debugOutFilePath: string;
   let reactOutput: ReactOutputTypes = "create-element";
   let reproFilePath: void | string;
+  let cpuprofilePath: void | string;
   let flags = {
     initializeMoreModules: false,
     trace: false,
@@ -126,7 +128,7 @@ function run(
         case "out":
           arg = args.shift();
           outputFilename = arg;
-          // skip for repro purposes
+          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
           break;
         case "compatibility":
           arg = args.shift();
@@ -147,11 +149,11 @@ function run(
           break;
         case "srcmapOut":
           outputSourceMap = args.shift();
-          // skip for repro purposes
+          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
           break;
         case "statsFile":
           statsFileName = args.shift();
-          // skip for repro purposes
+          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
           break;
         case "maxStackDepth":
           let value = args.shift();
@@ -199,11 +201,11 @@ function run(
           break;
         case "debugInFilePath":
           debugInFilePath = args.shift();
-          // skip for repro purposes
+          // do not include this in reproArguments needed by --repro, as debugger behavior is not currently supported for repros
           break;
         case "debugOutFilePath":
           debugOutFilePath = args.shift();
-          // skip for repro purposes
+          // do not include this in reproArguments needed by --repro, as debugger behavior is not currently supported for repros
           break;
         case "lazyObjectsRuntime":
           lazyObjectsRuntime = args.shift();
@@ -211,7 +213,7 @@ function run(
           break;
         case "heapGraphFilePath":
           heapGraphFilePath = args.shift();
-          // skip for repro purposes
+          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
           break;
         case "reactOutput":
           arg = args.shift();
@@ -224,7 +226,11 @@ function run(
           break;
         case "repro":
           reproFilePath = args.shift();
-          // skip for repro purposes
+          // do not include this in reproArguments needed by --repro, as we don't need to create a repro from the repro...
+          break;
+        case "cpuprofile":
+          cpuprofilePath = args.shift();
+          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
           break;
         case "help":
           const options = [
@@ -242,6 +248,7 @@ function run(
             "--heapGraphFilePath heapGraphFilePath",
             "--reactOutput " + ReactOutputValues.join(" | "),
             "--repro reprofile.zip",
+            "--cpuprofile name.cpuprofile",
           ];
           for (let flag of Object.keys(flags)) options.push(`--${flag}`);
 
@@ -361,23 +368,38 @@ fi
     return foundFatal;
   }
 
+  let profiler;
   try {
-    if (inputFilenames.length === 0) {
-      prepackStdin(resolvedOptions, processSerializedCode, printDiagnostics);
-      return;
+    if (cpuprofilePath !== undefined) {
+      profiler = require("v8-profiler");
+      profiler.setSamplingInterval(100); // default is 1000us
+      profiler.startProfiling("");
     }
-    let serialized = prepackFileSync(inputFilenames, resolvedOptions);
-    printDiagnostics();
-    if (resolvedOptions.serialize && serialized) processSerializedCode(serialized);
-  } catch (err) {
-    printDiagnostics();
-    //FatalErrors must have generated at least one CompilerDiagnostic.
-    if (err instanceof FatalError) {
-      invariant(errors.size > 0 || errorList.length > 0, "FatalError must generate at least one CompilerDiagnostic");
-    } else {
-      // if it is not a FatalError, it means prepack failed, and we should display the Prepack stack trace.
-      console.error(err.stack);
-      process.exit(1);
+
+    try {
+      if (inputFilenames.length === 0) {
+        prepackStdin(resolvedOptions, processSerializedCode, printDiagnostics);
+        return;
+      }
+      let serialized = prepackFileSync(inputFilenames, resolvedOptions);
+      printDiagnostics();
+      if (resolvedOptions.serialize && serialized) processSerializedCode(serialized);
+    } catch (err) {
+      printDiagnostics();
+      //FatalErrors must have generated at least one CompilerDiagnostic.
+      if (err instanceof FatalError) {
+        invariant(errors.size > 0 || errorList.length > 0, "FatalError must generate at least one CompilerDiagnostic");
+      } else {
+        // if it is not a FatalError, it means prepack failed, and we should display the Prepack stack trace.
+        console.error(err.stack);
+        process.exit(1);
+      }
+    }
+  } finally {
+    if (profiler !== undefined) {
+      let data = profiler.stopProfiling("");
+      invariant(cpuprofilePath !== undefined);
+      fs.writeFileSync(cpuprofilePath, JSON.stringify(data));
     }
   }
 
