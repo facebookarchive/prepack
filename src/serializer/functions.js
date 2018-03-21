@@ -206,18 +206,20 @@ export class Functions {
         continue;
       }
       let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(this.realm, componentType));
-      logger.logInformation(`- ${evaluatedRootNode.name} (root)...`);
+      if (this.realm.react.verbose) {
+        logger.logInformation(`- ${evaluatedRootNode.name} (root)...`);
+      }
       statistics.evaluatedRootNodes.push(evaluatedRootNode);
       if (reconciler.hasEvaluatedRootNode(componentType, evaluatedRootNode)) {
         continue;
       }
-      let componentTreeEffects = reconciler.renderReactComponentTree(
-        componentType,
-        null,
-        null,
-        true,
-        evaluatedRootNode
-      );
+      let componentTreeEffects = reconciler.renderReactComponentTree(componentType, null, null, evaluatedRootNode);
+      if (componentTreeEffects[0] === this.realm.intrinsics.undefined) {
+        if (this.realm.react.verbose) {
+          logger.logInformation(`- ${evaluatedRootNode.name} failed (root)`);
+        }
+        continue;
+      }
       this._generateWriteEffectsForReactComponentTree(
         componentType,
         componentTreeEffects,
@@ -246,7 +248,9 @@ export class Functions {
       if (reconciler.hasEvaluatedNestedClosure(func)) {
         continue;
       }
-      logger.logInformation(`  # Nested optimized closure...`);
+      if (this.realm.react.verbose) {
+        logger.logInformation(`  # Nested optimized closure...`);
+      }
       let closureEffects = reconciler.renderNestedOptimizedClosure(
         func,
         nestedEffects,
@@ -257,6 +261,9 @@ export class Functions {
         evaluatedNode
       );
       if (closureEffects[0] === this.realm.intrinsics.undefined) {
+        if (this.realm.react.verbose) {
+          logger.logInformation(`  # Nested optimized closure failed`);
+        }
         continue;
       }
       let additionalFunctionEffects = this._createAdditionalEffects(
@@ -283,15 +290,23 @@ export class Functions {
       let branchComponentType = getComponentTypeFromRootValue(this.realm, branchRootValue);
       if (branchComponentType === null) {
         evaluatedNode.status = "UNKNOWN_TYPE";
-        return;
+        continue;
       }
       // so we don't process the same component multiple times (we might change this logic later)
       if (reconciler.hasEvaluatedRootNode(branchComponentType, evaluatedNode)) {
-        return;
+        continue;
       }
       reconciler.clearComponentTreeState();
-      logger.logInformation(`  - ${evaluatedNode.name} (branch)...`);
-      let branchEffects = reconciler.renderReactComponentTree(branchComponentType, null, null, false, evaluatedNode);
+      if (this.realm.react.verbose) {
+        logger.logInformation(`  - ${evaluatedNode.name} (branch)...`);
+      }
+      let branchEffects = reconciler.renderReactComponentTree(branchComponentType, null, null, evaluatedNode);
+      if (branchEffects[0] === this.realm.intrinsics.undefined) {
+        if (this.realm.react.verbose) {
+          logger.logInformation(`- ${evaluatedNode.name} failed (branch)`);
+        }
+        continue;
+      }
       let branchComponentTreeState = reconciler.componentTreeState;
       this._generateWriteEffectsForReactComponentTree(
         branchComponentType,

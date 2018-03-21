@@ -2394,6 +2394,15 @@ ReactStatistics {
           "name": "Middle",
           "status": "INLINED",
         },
+<<<<<<< HEAD
+=======
+        Object {
+          "children": Array [],
+          "message": "completely unknown component render currently supported on first render",
+          "name": "Middle",
+          "status": "BAIL-OUT",
+        },
+>>>>>>> master
       ],
       "message": "",
       "name": "App",
@@ -5233,6 +5242,15 @@ ReactStatistics {
           "name": "Middle",
           "status": "INLINED",
         },
+<<<<<<< HEAD
+=======
+        Object {
+          "children": Array [],
+          "message": "completely unknown component render currently supported on first render",
+          "name": "Middle",
+          "status": "BAIL-OUT",
+        },
+>>>>>>> master
       ],
       "message": "",
       "name": "App",
@@ -8037,6 +8055,15 @@ ReactStatistics {
           "name": "Middle",
           "status": "INLINED",
         },
+<<<<<<< HEAD
+=======
+        Object {
+          "children": Array [],
+          "message": "completely unknown component render currently supported on first render",
+          "name": "Middle",
+          "status": "BAIL-OUT",
+        },
+>>>>>>> master
       ],
       "message": "",
       "name": "App",
@@ -10841,6 +10868,15 @@ ReactStatistics {
           "name": "Middle",
           "status": "INLINED",
         },
+<<<<<<< HEAD
+=======
+        Object {
+          "children": Array [],
+          "message": "completely unknown component render currently supported on first render",
+          "name": "Middle",
+          "status": "BAIL-OUT",
+        },
+>>>>>>> master
       ],
       "message": "",
       "name": "App",
