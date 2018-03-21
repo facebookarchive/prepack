@@ -51,11 +51,11 @@ function printError(error) {
 
 let prepackOptions = {
   errorHandler: diag => {
-    errorsCaptured.push(diag);
     if (diag.severity === "Information") {
       console.log(diag.message);
       return "Recover";
     }
+    errorsCaptured.push(diag);
     if (diag.severity !== "Warning") {
       return "Fail";
     }
