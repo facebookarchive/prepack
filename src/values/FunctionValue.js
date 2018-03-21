@@ -19,11 +19,6 @@ import invariant from "../invariant.js";
 export default class FunctionValue extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {
     super(realm, realm.intrinsics.FunctionPrototype, intrinsicName);
-    let currentReconciler = realm.react.currentReconciler;
-
-    if (realm.react.enabled && currentReconciler !== null && currentReconciler.evaluatedFunctions !== null) {
-      currentReconciler.evaluatedFunctions.add(this);
-    }
   }
 
   $Environment: LexicalEnvironment;

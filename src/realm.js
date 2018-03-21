@@ -198,7 +198,6 @@ export class Realm {
       abstractHints: new WeakMap(),
       classComponentMetadata: new Map(),
       currentOwner: undefined,
-      currentReconciler: null,
       enabled: opts.reactEnabled || false,
       output: opts.reactOutput || "create-element",
       hoistableFunctions: new WeakMap(),
@@ -269,7 +268,6 @@ export class Realm {
     abstractHints: WeakMap<AbstractValue | ObjectValue, ReactHint>,
     classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
     currentOwner?: ObjectValue,
-    currentReconciler: any, // introducing Reconciler as an import causes a Flow cycle
     enabled: boolean,
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,

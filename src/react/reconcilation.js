@@ -111,7 +111,6 @@ export class Reconciler {
     this.alreadyEvaluatedRootNodes = new Map();
     this.alreadyEvaluatedNestedClosures = new Set();
     this.componentTreeConfig = componentTreeConfig;
-    this.evaluatedFunctions = null;
   }
 
   realm: Realm;
@@ -123,7 +122,6 @@ export class Reconciler {
   alreadyEvaluatedNestedClosures: Set<FunctionValue>;
   componentTreeConfig: ReactComponentTreeConfig;
   currentEffectsStack: Array<Effects>;
-  evaluatedFunctions: null | Set<FunctionValue>;
 
   renderReactComponentTree(
     componentType: ECMAScriptSourceFunctionValue,
@@ -142,7 +140,6 @@ export class Reconciler {
       try {
         let initialProps = props || getInitialProps(this.realm, componentType);
         let initialContext = context || getInitialContext(this.realm, componentType);
-        this.realm.react.currentReconciler = this;
         let { result } = this._renderComponent(
           componentType,
           initialProps,
@@ -190,8 +187,6 @@ export class Reconciler {
           if (this.realm.handleError(diagnostic) === "Fail") throw new FatalError();
         }
         throw error;
-      } finally {
-        this.realm.react.currentReconciler = null;
       }
     };
 
@@ -207,12 +202,27 @@ export class Reconciler {
         )
       )
     );
+    this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
+    return effects;
+  }
+
+  _handleNestedOptimizedClosuresFromEffects(effects: Effects, evaluatedNode: ReactEvaluatedNode) {
+    let createdObjects = effects[4];
+
+    for (let createdObject of createdObjects) {
+      if (createdObject instanceof ECMAScriptSourceFunctionValue || createdObject instanceof BoundFunctionValue) {
+        // skip it if we're dealing with an internal mock
+        if (createdObject.properties.has("__PREPACK_MOCK__")) {
+          continue;
+        }
+        this._queueOptimizedClosure(createdObject, evaluatedNode, false, null, null, null);
+      }
+    }
     for (let { nestedEffects } of this.componentTreeState.optimizedClosures) {
       if (nestedEffects.length === 0) {
         nestedEffects.push(...nestedEffects, effects);
       }
     }
-    return effects;
   }
 
   renderNestedOptimizedClosure(
@@ -263,14 +273,13 @@ export class Reconciler {
           }
         }
       }
-      this.realm.react.currentReconciler = this;
       try {
         invariant(
           baseObject instanceof ObjectValue ||
             baseObject instanceof AbstractObjectValue ||
             baseObject instanceof UndefinedValue
         );
-        let value = getValueFromFunctionCall(this.realm, func, baseObject, args, evaluatedNode);
+        let value = getValueFromFunctionCall(this.realm, func, baseObject, args);
         if (shouldResolve) {
           invariant(componentType instanceof Value);
           invariant(context instanceof ObjectValue || context instanceof AbstractObjectValue);
@@ -291,7 +300,6 @@ export class Reconciler {
         if (func instanceof BoundFunctionValue && func.$BoundThis.intrinsicName === "this") {
           func.$BoundThis = this.realm.intrinsics.undefined;
         }
-        this.realm.react.currentReconciler = null;
       }
     };
 
@@ -304,12 +312,7 @@ export class Reconciler {
         )
       )
     );
-
-    for (let { nestedEffects: nextNestedEffects } of this.componentTreeState.optimizedClosures) {
-      if (nextNestedEffects.length === 0) {
-        nextNestedEffects.push(effects, ...nestedEffects);
-      }
-    }
+    this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);
     return effects;
   }
 
@@ -317,7 +320,7 @@ export class Reconciler {
     this.componentTreeState = this._createComponentTreeState();
   }
 
-  queueOptimizedClosure(
+  _queueOptimizedClosure(
     func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
     evaluatedNode: ReactEvaluatedNode,
     shouldResolve: boolean,
@@ -392,7 +395,7 @@ export class Reconciler {
     let renderMethod = Get(this.realm, instance, "render");
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
     // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    return getValueFromFunctionCall(this.realm, renderMethod, instance, [], evaluatedNode);
+    return getValueFromFunctionCall(this.realm, renderMethod, instance, []);
   }
 
   _renderSimpleClassComponent(
@@ -409,7 +412,7 @@ export class Reconciler {
     let renderMethod = Get(this.realm, instance, "render");
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
     // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    return getValueFromFunctionCall(this.realm, renderMethod, instance, [], evaluatedNode);
+    return getValueFromFunctionCall(this.realm, renderMethod, instance, []);
   }
 
   _renderFunctionalComponent(
@@ -418,13 +421,7 @@ export class Reconciler {
     context: ObjectValue | AbstractObjectValue,
     evaluatedNode: ReactEvaluatedNode
   ) {
-    return getValueFromFunctionCall(
-      this.realm,
-      componentType,
-      this.realm.intrinsics.undefined,
-      [props, context],
-      evaluatedNode
-    );
+    return getValueFromFunctionCall(this.realm, componentType, this.realm.intrinsics.undefined, [props, context]);
   }
 
   _getClassComponentMetadata(
@@ -561,13 +558,9 @@ export class Reconciler {
             // make sure this context is in our tree
             if (this._hasReferenceForContextNode(typeValue)) {
               let valueProp = Get(this.realm, typeValue, "currentValue");
-              let result = getValueFromFunctionCall(
-                this.realm,
-                renderProp,
-                this.realm.intrinsics.undefined,
-                [valueProp],
-                evaluatedNode
-              );
+              let result = getValueFromFunctionCall(this.realm, renderProp, this.realm.intrinsics.undefined, [
+                valueProp,
+              ]);
               this.statistics.inlinedComponents++;
               this.statistics.componentsEvaluated++;
               evaluatedChildNode.status = "INLINED";
@@ -575,7 +568,7 @@ export class Reconciler {
             }
           }
         }
-        this.queueOptimizedClosure(renderProp, evaluatedChildNode, true, componentType, context, branchState);
+        this._queueOptimizedClosure(renderProp, evaluatedChildNode, true, componentType, context, branchState);
         return;
       } else {
         this._findReactComponentTrees(propsValue, evaluatedChildNode);
@@ -603,7 +596,7 @@ export class Reconciler {
       // get the "render" method off the instance
       let renderProp = Get(this.realm, propsValue, "render");
       if (renderProp instanceof ECMAScriptSourceFunctionValue) {
-        this.queueOptimizedClosure(renderProp, evaluatedChildNode, true, componentType, context, branchState);
+        this._queueOptimizedClosure(renderProp, evaluatedChildNode, true, componentType, context, branchState);
       } else {
         this._findReactComponentTrees(propsValue, evaluatedChildNode);
       }
@@ -701,7 +694,7 @@ export class Reconciler {
       componentWillMount.$Call(instance, []);
     }
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
-    return getValueFromFunctionCall(this.realm, renderMethod, instance, [], evaluatedNode);
+    return getValueFromFunctionCall(this.realm, renderMethod, instance, []);
   }
 
   _renderComponent(

@@ -162,14 +162,7 @@ export function createClassInstanceForFirstRenderOnly(
   context: ObjectValue | AbstractValue,
   evaluatedNode: ReactEvaluatedNode
 ): ObjectValue {
-  let instance = getValueFromFunctionCall(
-    realm,
-    componentType,
-    realm.intrinsics.undefined,
-    [props, context],
-    evaluatedNode,
-    true
-  );
+  let instance = getValueFromFunctionCall(realm, componentType, realm.intrinsics.undefined, [props, context], true);
   invariant(instance instanceof ObjectValue);
   instance.intrinsicName = "this";
   instance.refuseSerialization = true;

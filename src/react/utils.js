@@ -543,7 +543,7 @@ export function evaluateWithNestedEffects(
   ] = effects;
   realm.applyEffects([
     value,
-    new Generator(realm, "evalauteWithNestedEffects"),
+    new Generator(realm, "evaluateWithNestedEffects"),
     modifiedBindings,
     modifiedProperties,
     createdObjects,
@@ -552,7 +552,7 @@ export function evaluateWithNestedEffects(
     if (nextEffects.length === 0) {
       return f(generator, value);
     } else {
-      return evalauteWithNestedEffects(realm, nextEffects, f);
+      return evaluateWithNestedEffects(realm, nextEffects, f);
     }
   } finally {
     realm.restoreBindings(modifiedBindings);
@@ -759,43 +759,11 @@ export function convertConfigObjectToReactComponentTreeConfig(
   };
 }
 
-export function captureNewClosuresCreated(realm: Realm, evalautedNode: ReactEvaluatedNode, f: () => Effects): Effects {
-  // setup a new Set ready to populate with any inner functions
-  // found during the evaluation of this component
-  let currentReconciler = realm.react.currentReconciler;
-  invariant(currentReconciler !== null);
-  let evaluatedFunctions = new Set();
-  currentReconciler.evaluatedFunctions = evaluatedFunctions;
-  let effects;
-  try {
-    effects = f();
-  } catch (e) {
-    currentReconciler.evaluatedFunctions = null;
-    throw e;
-  }
-  // go through all the functions captured during evaluation and
-  // process any functions that need to be processed
-  if (evaluatedFunctions.size > 0) {
-    for (let func of evaluatedFunctions) {
-      if (func instanceof ECMAScriptSourceFunctionValue || func instanceof BoundFunctionValue) {
-        // skip it if we're dealing with an internal mock
-        if (func.properties.has("__PREPACK_MOCK__")) {
-          continue;
-        }
-        currentReconciler.queueOptimizedClosure(func, evalautedNode, false, null, null, null);
-      }
-    }
-    currentReconciler.evaluatedFunctions = null;
-  }
-  return effects;
-}
-
 export function getValueFromFunctionCall(
   realm: Realm,
   func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
   funcThis: ObjectValue | AbstractObjectValue | UndefinedValue,
   args: Array<Value>,
-  evalautedNode: ReactEvaluatedNode,
   isConstructor?: boolean = false
 ): Value {
   invariant(func.$Call, "Expected function to be a FunctionValue with $Call method");
@@ -803,20 +771,18 @@ export function getValueFromFunctionCall(
   let newCall = func.$Construct;
   let effects;
   try {
-    effects = captureNewClosuresCreated(realm, evalautedNode, () =>
-      realm.evaluateForEffects(
-        () => {
-          invariant(func);
-          if (isConstructor) {
-            invariant(newCall);
-            return newCall(args, func);
-          } else {
-            return funcCall(funcThis, args);
-          }
-        },
-        null,
-        "getValueFromFunctionCall"
-      )
+    effects = realm.evaluateForEffects(
+      () => {
+        invariant(func);
+        if (isConstructor) {
+          invariant(newCall);
+          return newCall(args, func);
+        } else {
+          return funcCall(funcThis, args);
+        }
+      },
+      null,
+      "getValueFromFunctionCall"
     );
   } catch (error) {
     throw error;
