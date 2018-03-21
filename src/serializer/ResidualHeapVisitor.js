@@ -1032,6 +1032,11 @@ export class ResidualHeapVisitor {
       this._visitReactLibrary(this.someReactElement);
     }
 
+    // Make sure to visit all global bindings in global scope
+    this._withScope(generator, () => {
+      for (let binding of this.globalBindings.values()) if (binding.value) this.visitValue(binding.value);
+    });
+
     // Do a fixpoint over all pure generator entries to make sure that we visit
     // arguments of only BodyEntries that are required by some other residual value
     let oldDelayedEntries = [];
