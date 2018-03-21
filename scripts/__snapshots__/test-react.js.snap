@@ -1157,7 +1157,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedNestedClosures": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4005,7 +4005,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedNestedClosures": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6853,7 +6853,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedNestedClosures": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9666,7 +9666,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedNestedClosures": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;

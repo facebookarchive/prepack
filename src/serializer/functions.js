@@ -242,7 +242,6 @@ export class Functions {
       func,
       evaluatedNode,
       nestedEffects,
-      shouldResolve,
       componentType,
       context,
       branchState,
@@ -259,7 +258,6 @@ export class Functions {
       let closureEffects = reconciler.renderNestedOptimizedClosure(
         func,
         nestedEffects,
-        shouldResolve,
         componentType,
         context,
         branchState,
