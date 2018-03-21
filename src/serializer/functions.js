@@ -197,12 +197,20 @@ export class Functions {
         continue;
       }
       let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(this.realm, componentType));
-      logger.logInformation(`- ${evaluatedRootNode.name} (root)...`);
+      if (this.realm.react.verbose) {
+        logger.logInformation(`- ${evaluatedRootNode.name} (root)...`);
+      }
       statistics.evaluatedRootNodes.push(evaluatedRootNode);
       if (reconciler.hasEvaluatedRootNode(componentType, evaluatedRootNode)) {
         continue;
       }
       let effects = reconciler.render(componentType, null, null, evaluatedRootNode);
+      if (effects[0] === this.realm.intrinsics.undefined) {
+        if (this.realm.react.verbose) {
+          logger.logInformation(`- ${evaluatedRootNode.name} failed (root)`);
+        }
+        continue;
+      }
       let componentTreeState = reconciler.componentTreeState;
       this._generateWriteEffectsForReactComponentTree(componentType, effects, componentTreeState, evaluatedRootNode);
 
@@ -220,8 +228,16 @@ export class Functions {
             return;
           }
           reconciler.clearComponentTreeState();
-          logger.logInformation(`  - ${evaluatedNode.name} (branch)...`);
+          if (this.realm.react.verbose) {
+            logger.logInformation(`  - ${evaluatedNode.name} (branch)...`);
+          }
           let branchEffects = reconciler.render(branchComponentType, null, null, evaluatedNode);
+          if (effects[0] === this.realm.intrinsics.undefined) {
+            if (this.realm.react.verbose) {
+              logger.logInformation(`- ${evaluatedNode.name} failed (branch)`);
+            }
+            return;
+          }
           let branchComponentTreeState = reconciler.componentTreeState;
           this._generateWriteEffectsForReactComponentTree(
             branchComponentType,
