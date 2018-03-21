@@ -58,7 +58,7 @@ let prepackOptions = {
     errorsCaptured.push(diag);
     if (diag.severity !== "Warning") {
       if (diag.errorCode === "PP0025") {
-        // recover from `unable to evaluate "key" and "ref" on a ReactElement due to an abstract config passed to createElement`,
+        // recover from `unable to evaluate "key" and "ref" on a ReactElement due to an abstract config passed to createElement`
         return "Recover";
       }
       return "Fail";
@@ -239,6 +239,8 @@ readComponentsList()
 
     let timeTaken = Math.floor((Date.now() - startTime) / 1000);
     console.log(`${chalk.gray(`Compile time`)}: ${timeTaken}s\n`);
+    // warning about ref and keys
+    console.log(`Warning: the build assumes that ref and key aren't being spread.`);
   })
   .catch(e => {
     console.log(`\n${chalk.inverse(`=== Compilation Failed ===`)}\n`);

@@ -78,7 +78,6 @@ function createPropsObject(
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           }
         );
-
       } else {
         // if either are abstract, this will impact the reconcilation process
         // and ultimately prevent us from folding ReactElements properly
