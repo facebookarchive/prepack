@@ -1008,7 +1008,7 @@ export class ResidualHeapVisitor {
         }
         for (let innerName of functionInfo.unbound) {
           let environment = this.resolveBinding(functionValue, innerName);
-          let residualBinding = this.visitBinding(functionValue, environment, innerName, /* createBinding */ false);
+          let residualBinding = this.visitBinding(functionValue, environment, innerName, /* createBinding */ true);
           if (residualBinding) {
             funcInstance.residualFunctionBindings.set(innerName, residualBinding);
             delete residualBinding.referencedOnlyFromAdditionalFunctions;
