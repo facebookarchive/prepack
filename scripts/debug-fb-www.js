@@ -57,6 +57,10 @@ let prepackOptions = {
     }
     errorsCaptured.push(diag);
     if (diag.severity !== "Warning") {
+      if (diag.errorCode === "PP0025") {
+        // recover from `unable to evaluate "key" and "ref" on a ReactElement due to an abstract config passed to createElement`,
+        return "Recover";
+      }
       return "Fail";
     }
     return "Recover";
