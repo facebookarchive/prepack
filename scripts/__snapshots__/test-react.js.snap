@@ -2315,7 +2315,7 @@ ReactStatistics {
         },
         Object {
           "children": Array [],
-          "message": "evaluation failed on new component tree branch",
+          "message": "completely unknown component render currently supported on first render",
           "name": "Middle",
           "status": "BAIL-OUT",
         },
@@ -5065,7 +5065,7 @@ ReactStatistics {
         },
         Object {
           "children": Array [],
-          "message": "evaluation failed on new component tree branch",
+          "message": "completely unknown component render currently supported on first render",
           "name": "Middle",
           "status": "BAIL-OUT",
         },
@@ -7780,7 +7780,7 @@ ReactStatistics {
         },
         Object {
           "children": Array [],
-          "message": "evaluation failed on new component tree branch",
+          "message": "completely unknown component render currently supported on first render",
           "name": "Middle",
           "status": "BAIL-OUT",
         },
@@ -10495,7 +10495,7 @@ ReactStatistics {
         },
         Object {
           "children": Array [],
-          "message": "evaluation failed on new component tree branch",
+          "message": "completely unknown component render currently supported on first render",
           "name": "Middle",
           "status": "BAIL-OUT",
         },

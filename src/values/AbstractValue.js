@@ -189,7 +189,6 @@ export default class AbstractValue extends Value {
         "FatalError"
       );
       realm.handleError(diagnostic);
-      if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
     }
   }
 
