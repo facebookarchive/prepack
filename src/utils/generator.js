@@ -948,11 +948,12 @@ export class Generator {
   }
 }
 
-// some characters are invalid within a JavaScript identifier,
-// such as: . , : ( ) ' " ` [ ] -
-// so we replace these character instances with an underscore
-function replaceInvalidCharactersWithUnderscore(string: string) {
-  return string.replace(/[.,:\(\)\"\'\`\[\]\-]/g, "_");
+function escapeInvalidIdentifierCharacters(s: string) {
+  let res = "";
+  for (let c of s)
+    if ((c >= "0" && c <= "9") || (c >= "a" && c <= "z") || (c >= "A" && c <= "Z")) res += c;
+    else res += "_" + c.charCodeAt(0);
+  return res;
 }
 
 const base62characters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -987,7 +988,7 @@ export class NameGenerator {
       id = this.prefix + base62encode(this.uidCounter++);
       if (this.uniqueSuffix.length > 0) id += this.uniqueSuffix;
       if (this.debugNames) {
-        if (debugSuffix) id += "_" + replaceInvalidCharactersWithUnderscore(debugSuffix);
+        if (debugSuffix) id += "_" + escapeInvalidIdentifierCharacters(debugSuffix);
         else id += "_";
       }
     } while (this.forbiddenNames.has(id));
