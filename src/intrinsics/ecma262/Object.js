@@ -9,6 +9,7 @@
 
 /* @flow */
 
+import { ValuesDomain } from "../../domains/index.js";
 import { FatalError } from "../../errors.js";
 import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
@@ -67,120 +68,117 @@ export default function(realm: Realm): NativeFunctionValue {
 
     // 3. Let sources be the List of argument values starting with the second argument.
     sources;
+    let delayedSources = [];
 
     // 4. For each element nextSource of sources, in ascending index order,
     for (let nextSource of sources) {
-      let keys, frm;
+      let keys, frm, frmSnapshot;
 
       // a. If nextSource is undefined or null, let keys be a new empty List.
-      if (HasSomeCompatibleType(nextSource, NullValue, UndefinedValue)) {
-        continue;
-      } else {
-        // b. Else,
-        // i. Let from be ToObject(nextSource).
-        frm = To.ToObjectPartial(realm, nextSource);
+      if (HasSomeCompatibleType(nextSource, NullValue, UndefinedValue)) continue;
 
-        let frm_was_partial = frm.isPartialObject();
-        if (frm_was_partial) {
-          if (!frm.isSimpleObject()) {
-            // If this is not a simple object, it may have getters on it that can
-            // mutate any state as a result. We don't yet support this.
-            AbstractValue.reportIntrospectionError(nextSource);
-            throw new FatalError();
-          }
+      // b. Else,
+      // i. Let from be ToObject(nextSource).
+      frm = To.ToObjectPartial(realm, nextSource);
 
-          to_must_be_partial = true;
-          // Make this temporally not partial
-          // so that we can call frm.$OwnPropertyKeys below.
-          frm.makeNotPartial();
-        }
-
-        if (to_must_be_partial) {
-          // Generate a residual Object.assign call that copies the
-          // partial properties that we don't know about.
-          AbstractValue.createTemporalFromBuildFunction(
-            realm,
-            ObjectValue,
-            [ObjectAssign, target, nextSource],
-            ([methodNode, targetNode, sourceNode]: Array<BabelNodeExpression>) => {
-              return t.callExpression(methodNode, [targetNode, sourceNode]);
-            }
-          );
-
-          if (frm instanceof ObjectValue || frm instanceof AbstractObjectValue) {
-            // At this point any further mutations to the source would be unsafe
-            // because the Object.assign() call operates on the snapshot of the
-            // object at this point in time. We can't mutate that snapshot.
-            frm.makeFinal();
-          }
-        }
-
-        // ii. Let keys be ? from.[[OwnPropertyKeys]]().
-        keys = frm.$OwnPropertyKeys();
-        if (frm_was_partial) frm.makePartial();
-      }
-
-      if (to_must_be_partial) {
-        // Only OK if to is an empty object because nextSource might have
-        // properties at runtime that will overwrite current properties in to.
-        // For now, just throw if this happens.
-        let to_keys = to.$OwnPropertyKeys();
-        if (to_keys.length !== 0) {
+      // ii. Let keys be ? from.[[OwnPropertyKeys]]().
+      let frm_was_partial = frm.isPartialObject();
+      if (frm_was_partial) {
+        if (!to.isSimpleObject() || !frm.isSimpleObject()) {
+          // If an object is not a simple object, it may have getters on it that can
+          // mutate any state as a result. We don't yet support this.
           AbstractValue.reportIntrospectionError(nextSource);
           throw new FatalError();
         }
-        // If `to` is going to be a partial, we are emitting Object.assign()
-        // calls for each argument. At this point we should not be trying to
-        // assign keys below because that will change the order of the keys on
-        // the resulting object (i.e. the keys assigned later would already be
-        // on the serialized version from the heap).
-        continue;
+
+        to_must_be_partial = true;
+        // Make this temporarily not partial
+        // so that we can call frm.$OwnPropertyKeys below.
+        frm.makeNotPartial();
       }
+      keys = frm.$OwnPropertyKeys();
 
-      invariant(frm, "from required");
-      invariant(keys, "keys required");
+      if (to_must_be_partial) {
+        if (to instanceof AbstractObjectValue && to.values.isTop()) {
+          // We don't know which objects to make partial and making all objects partial is failure in itself
+          AbstractValue.reportIntrospectionError(to);
+          throw new FatalError();
+        } else {
+          // if to has properties, we better remove them because after the temporal call to Object.assign we don't know their values anymore
+          if (to.hasStringOrSymbolProperties()) {
+            // preserve them in a snapshot and add the snapshot to the sources
+            delayedSources.push(to.getSnapshot({ removeProperties: true }));
+          }
 
-      // c. Repeat for each element nextKey of keys in List order,
-      for (let nextKey of keys) {
-        // i. Let desc be ? from.[[GetOwnProperty]](nextKey).
-        let desc = frm.$GetOwnProperty(nextKey);
-
-        // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
-        if (desc && desc.enumerable) {
-          Props.ThrowIfMightHaveBeenDeleted(desc.value);
-
-          // 1. Let propValue be ? Get(from, nextKey).
-          let propValue = Get(realm, frm, nextKey);
-
-          // 2. Perform ? Set(to, nextKey, propValue, true).
-          Props.Set(realm, to, nextKey, propValue, true);
+          if (frm_was_partial) {
+            frmSnapshot = frm.getSnapshot();
+            frm.temporalAlias = frmSnapshot;
+            frm.makePartial();
+            delayedSources.push(frmSnapshot);
+          }
         }
       }
+
+      // c. Repeat for each element nextKey of keys in List order,
+      invariant(frm, "from required");
+      invariant(keys, "keys required");
+      copyKeys(keys, frm, to);
     }
 
     // 5. Return to.
     if (to_must_be_partial) {
-      // We allow partial simple sources (and make `to` partial)
-      // only if `to` has no keys. Therefore, it must also be simple.
-      invariant(to.isSimpleObject());
+      // if to has properties, we copy and delay them (at this stage we do not need to remove them)
+      if (to.hasStringOrSymbolProperties()) {
+        let toSnapshot = to.getSnapshot();
+        delayedSources.push(toSnapshot);
+      }
 
       to.makePartial();
 
-      // Partial objects (and `to` is now partial) can't be calculated to be
-      // simple because we can't iterate over all of their properties.
-      // We already established above that `to` is simple,
-      // so set the `_isSimple` flag.
+      // We already established above that to is simple,
+      // but now that it is partial we need to set the _isSimple flag.
       to.makeSimple();
 
-      if (to instanceof ObjectValue || to instanceof AbstractObjectValue) {
-        // At this point any further mutations to the target would be unsafe
-        // because the Object.assign() call operates on the snapshot of the
-        // object at this point in time. We can't mutate that snapshot.
-        to.makeFinal();
+      // Tell serializer that it may add properties to to only after temporalTo has been emitted
+      let temporalTo = AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        ObjectValue,
+        [ObjectAssign, to, ...delayedSources],
+        ([methodNode, targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
+          return t.callExpression(methodNode, [targetNode, ...sourceNodes]);
+        },
+        { skipInvariant: true }
+      );
+      invariant(temporalTo instanceof AbstractObjectValue);
+      if (to instanceof AbstractObjectValue) {
+        temporalTo.values = to.values;
+      } else {
+        invariant(to instanceof ObjectValue);
+        temporalTo.values = new ValuesDomain(to);
       }
+      to.temporalAlias = temporalTo;
     }
     return to;
   });
+
+  function copyKeys(keys, from, to) {
+    // c. Repeat for each element nextKey of keys in List order,
+    for (let nextKey of keys) {
+      // i. Let desc be ? from.[[GetOwnProperty]](nextKey).
+      let desc = from.$GetOwnProperty(nextKey);
+
+      // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
+      if (desc && desc.enumerable) {
+        Props.ThrowIfMightHaveBeenDeleted(desc.value);
+
+        // 1. Let propValue be ? Get(from, nextKey).
+        let propValue = Get(realm, from, nextKey);
+
+        // 2. Perform ? Set(to, nextKey, propValue, true).
+        Props.Set(realm, to, nextKey, propValue, true);
+      }
+    }
+  }
 
   // ECMA262 19.1.2.2
   func.defineNativeMethod("create", 2, (context, [O, Properties]) => {

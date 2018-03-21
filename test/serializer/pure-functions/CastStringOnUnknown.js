@@ -1,5 +1,3 @@
-// abstract effects
-
 let obj1 = global.__abstract ? __abstract('object', '({get foo() { return "bar"; }})') : {get foo() { return "bar"; }};
 let obj2 = global.__abstract ? __abstract('object', '({foo:{bar:"baz"}})') : {foo:{bar:"baz"}};
 if (global.__makeSimple) {

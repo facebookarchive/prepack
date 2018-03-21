@@ -113,11 +113,11 @@ export class Serializer {
     if (timingStats !== undefined) timingStats.globalCodeTime = Date.now() - timingStats.globalCodeTime;
     if (this.logger.hasErrors()) return undefined;
     this.modules.resolveInitializedModules();
-    this.functions.checkThatFunctionsAreIndependent();
+    this.functions.checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode);
     let reactStatistics;
     if (this.realm.react.enabled) {
       reactStatistics = new ReactStatistics();
-      this.functions.optimizeReactComponentTreeRoots(reactStatistics, this.react);
+      this.functions.optimizeReactComponentTreeRoots(reactStatistics, this.react, environmentRecordIdAfterGlobalCode);
     }
 
     if (this.options.initializeMoreModules) {
@@ -149,8 +149,7 @@ export class Serializer {
       this.logger,
       this.modules,
       additionalFunctionValuesAndEffects,
-      referentializer,
-      environmentRecordIdAfterGlobalCode
+      referentializer
     );
     residualHeapVisitor.visitRoots();
     if (this.logger.hasErrors()) return undefined;

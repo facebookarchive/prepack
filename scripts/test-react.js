@@ -80,7 +80,6 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     reactOutput: outputJsx ? "jsx" : "create-element",
     inlineExpressions: true,
     omitInvariants: true,
-    abstractEffectsInAdditionalFunctions: true,
     stripFlow: true,
   };
 

@@ -1,4 +1,3 @@
-// abstract effects
 // does contain: "barone"
 
 var __evaluatePureFunction = this.__evaluatePureFunction || (f => f());

@@ -119,11 +119,15 @@ export class Functions {
   }
 
   // This will also handle postprocessing for PossiblyNormalCompletion
-  _createAdditionalEffects(effects: Effects, fatalOnAbrupt: boolean): AdditionalFunctionEffects | null {
+  _createAdditionalEffects(
+    effects: Effects,
+    fatalOnAbrupt: boolean,
+    environmentRecordIdAfterGlobalCode: number
+  ): AdditionalFunctionEffects | null {
     let retValue: AdditionalFunctionEffects = {
       effects,
       transforms: [],
-      generator: Generator.fromEffects(effects, this.realm),
+      generator: Generator.fromEffects(effects, this.realm, environmentRecordIdAfterGlobalCode),
     };
     return retValue;
   }
@@ -132,9 +136,10 @@ export class Functions {
     componentType: ECMAScriptSourceFunctionValue,
     effects: Effects,
     componentTreeState: ComponentTreeState,
-    evaluatedNode: ReactEvaluatedNode
+    evaluatedNode: ReactEvaluatedNode,
+    environmentRecordIdAfterGlobalCode: number
   ): void {
-    let additionalFunctionEffects = this._createAdditionalEffects(effects, false);
+    let additionalFunctionEffects = this._createAdditionalEffects(effects, false, environmentRecordIdAfterGlobalCode);
     if (additionalFunctionEffects === null) {
       // TODO we don't support this yet, but will do very soon
       // to unblock work, we'll just return at this point right now
@@ -182,7 +187,11 @@ export class Functions {
     }
   }
 
-  optimizeReactComponentTreeRoots(statistics: ReactStatistics, react: ReactSerializerState): void {
+  optimizeReactComponentTreeRoots(
+    statistics: ReactStatistics,
+    react: ReactSerializerState,
+    environmentRecordIdAfterGlobalCode: number
+  ): void {
     let logger = this.moduleTracer.modules.logger;
     let recordedReactRootValues = this.__generateAdditionalFunctionsMap("__reactComponentTrees");
     // Get write effects of the components
@@ -213,14 +222,15 @@ export class Functions {
         componentType,
         componentTreeEffects,
         reconciler.componentTreeState,
-        evaluatedRootNode
+        evaluatedRootNode,
+        environmentRecordIdAfterGlobalCode
       );
-      this._optimizeReactComponentTreeBranches(reconciler);
-      this._optimizeReactNestedClosures(reconciler);
+      this._optimizeReactComponentTreeBranches(reconciler, environmentRecordIdAfterGlobalCode);
+      this._optimizeReactNestedClosures(reconciler, environmentRecordIdAfterGlobalCode);
     }
   }
 
-  _optimizeReactNestedClosures(reconciler: Reconciler): void {
+  _optimizeReactNestedClosures(reconciler: Reconciler, environmentRecordIdAfterGlobalCode: number): void {
     let componentTreeState = reconciler.componentTreeState;
     let logger = this.moduleTracer.modules.logger;
 
@@ -249,7 +259,11 @@ export class Functions {
       if (closureEffects[0] === this.realm.intrinsics.undefined) {
         continue;
       }
-      let additionalFunctionEffects = this._createAdditionalEffects(closureEffects, true);
+      let additionalFunctionEffects = this._createAdditionalEffects(
+        closureEffects,
+        true,
+        environmentRecordIdAfterGlobalCode
+      );
       invariant(additionalFunctionEffects);
       if (func instanceof BoundFunctionValue) {
         invariant(func.$BoundTargetFunction instanceof FunctionValue);
@@ -260,7 +274,7 @@ export class Functions {
     }
   }
 
-  _optimizeReactComponentTreeBranches(reconciler: Reconciler): void {
+  _optimizeReactComponentTreeBranches(reconciler: Reconciler, environmentRecordIdAfterGlobalCode: number): void {
     let componentTreeState = reconciler.componentTreeState;
     let logger = this.moduleTracer.modules.logger;
     // for now we just use abstract props/context, in the future we'll create a new branch with a new component
@@ -283,7 +297,8 @@ export class Functions {
         branchComponentType,
         branchEffects,
         branchComponentTreeState,
-        evaluatedNode
+        evaluatedNode,
+        environmentRecordIdAfterGlobalCode
       );
     }
   }
@@ -350,13 +365,16 @@ export class Functions {
     return call.bind(this, globalThis, args);
   }
 
-  _optimizeFunction(funcValue: ECMAScriptSourceFunctionValue | BoundFunctionValue) {
+  _optimizeFunction(
+    funcValue: ECMAScriptSourceFunctionValue | BoundFunctionValue,
+    environmentRecordIdAfterGlobalCode: number
+  ) {
     let call = this._callOfFunction(funcValue);
     let effects = this.realm.evaluatePure(() =>
       this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
     );
     invariant(effects);
-    let additionalFunctionEffects = this._createAdditionalEffects(effects, true);
+    let additionalFunctionEffects = this._createAdditionalEffects(effects, true, environmentRecordIdAfterGlobalCode);
     invariant(additionalFunctionEffects);
     if (funcValue instanceof BoundFunctionValue) {
       invariant(funcValue.$BoundTargetFunction instanceof ECMAScriptSourceFunctionValue);
@@ -366,12 +384,12 @@ export class Functions {
     }
   }
 
-  checkThatFunctionsAreIndependent() {
+  checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode: number) {
     let additionalFunctions = this.__generateAdditionalFunctionsMap("__optimizedFunctions");
 
     for (let [funcValue] of additionalFunctions) {
       invariant(funcValue instanceof ECMAScriptSourceFunctionValue || funcValue instanceof BoundFunctionValue);
-      this._optimizeFunction(funcValue);
+      this._optimizeFunction(funcValue, environmentRecordIdAfterGlobalCode);
     }
 
     // check that functions are independent

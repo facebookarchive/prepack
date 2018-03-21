@@ -1,5 +1,3 @@
-// abstract effects
-
 var obj = global.__abstract && global.__makePartial ? __makePartial(__abstract({}, "({foo:1})")) : {foo:1};
 
 function additional1() {

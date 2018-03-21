@@ -104,7 +104,7 @@ function InternalSetProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, 
 function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, oldDesc?: Descriptor) {
   let generator = realm.generator;
   if (!generator) return;
-  if (!O.isIntrinsic()) return;
+  if (!O.isIntrinsic() && O.temporalAlias === undefined) return;
   if (P instanceof SymbolValue) return;
   if (P instanceof StringValue) P = P.value;
   invariant(!O.isHavocedObject()); // havoced objects are never updated
@@ -162,17 +162,15 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
 
 function havocDescriptor(realm: Realm, desc: Descriptor) {
   if (desc.value) {
-    // todo: if the descriptor is readonly and not configurable, leave it alone.
-    invariant(desc.value instanceof Value, "internal fields should not leak");
-    // todo: if the descriptor is configurable, delete the value
-    Havoc.value(realm, desc.value);
+    if (desc.value instanceof Value) Havoc.value(realm, desc.value);
+    else if (desc.value !== undefined) {
+      for (let val of desc.value) Havoc.value(realm, val);
+    }
   }
   if (desc.get) {
-    // todo: if the descriptor is not configurable, leave it alone
     Havoc.value(realm, desc.get);
   }
   if (desc.set) {
-    // todo: if the descriptor is not configurable, leave it alone
     Havoc.value(realm, desc.set);
   }
 }

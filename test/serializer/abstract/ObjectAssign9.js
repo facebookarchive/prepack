@@ -1,5 +1,3 @@
-// abstract effects
-
 var __evaluatePureFunction = this.__evaluatePureFunction || (f => f());
 __evaluatePureFunction(() => {
   let dims = global.__abstract ? __abstract({

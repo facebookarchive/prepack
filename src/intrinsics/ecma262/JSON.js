@@ -495,12 +495,6 @@ export default function(realm: Realm): ObjectValue {
       let result = AbstractValue.createTemporalFromTemplate(realm, JSONStringify, StringValue, [clonedValue], {
         kind: "JSON.stringify(...)",
       });
-      if (clonedValue instanceof ObjectValue) {
-        let iName = result.intrinsicName;
-        invariant(iName);
-        invariant(realm.generator);
-        realm.rebuildNestedProperties(result, iName);
-      }
       return result;
     }
 

@@ -152,7 +152,6 @@ export class Realm {
   constructor(opts: RealmOptions) {
     this.isReadOnly = false;
     this.useAbstractInterpretation = !!opts.serialize || !!opts.residual || !!opts.check;
-    this.trackLeaks = !!opts.abstractEffectsInAdditionalFunctions;
     this.ignoreLeakLogic = false;
     this.isInPureTryStatement = false;
     if (opts.mathRandomSeed !== undefined) {
@@ -227,7 +226,6 @@ export class Realm {
   isReadOnly: boolean;
   isStrict: boolean;
   useAbstractInterpretation: boolean;
-  trackLeaks: boolean;
   debugNames: void | boolean;
   isInPureTryStatement: boolean; // TODO(1264): Remove this once we implement proper exception handling in abstract calls.
   abstractValueImpliesMax: number;
@@ -508,9 +506,6 @@ export class Realm {
   // also won't have effects on any objects or bindings that weren't created in this
   // call.
   evaluatePure<T>(f: () => T) {
-    if (!this.trackLeaks) {
-      return f();
-    }
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
     // Track all objects (including function closures) created during
     // this call. This will be used to make the assumption that every
