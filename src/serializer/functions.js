@@ -24,7 +24,6 @@ import {
   AbstractValue,
   ECMAScriptSourceFunctionValue,
   UndefinedValue,
-  BoundFunctionValue,
 } from "../values/index.js";
 import { Generator } from "../utils/generator.js";
 import { Get } from "../methods/index.js";
