@@ -164,7 +164,6 @@ export function createClassInstanceForFirstRenderOnly(
 ): ObjectValue {
   let instance = getValueFromFunctionCall(realm, componentType, realm.intrinsics.undefined, [props, context], true);
   invariant(instance instanceof ObjectValue);
-  instance.intrinsicName = "this";
   instance.refuseSerialization = true;
   // assign props
   Properties.Set(realm, instance, "props", props, true);
@@ -193,7 +192,7 @@ export function createClassInstanceForFirstRenderOnly(
     }
     return realm.intrinsics.undefined;
   });
-  setState.intrinsicName = "this.setState";
+  setState.intrinsicName = "(function() {})";
   Properties.Set(realm, instance, "setState", setState, true);
 
   instance.refuseSerialization = false;
