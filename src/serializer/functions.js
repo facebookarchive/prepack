@@ -233,7 +233,6 @@ export class Functions {
   }
 
   _optimizeReactNestedClosures(reconciler: Reconciler, environmentRecordIdAfterGlobalCode: number): void {
-    let componentTreeState = reconciler.componentTreeState;
     let logger = this.moduleTracer.modules.logger;
 
     for (let {
@@ -244,12 +243,15 @@ export class Functions {
       componentType,
       context,
       branchState,
-    } of componentTreeState.optimizedClosures) {
+    } of reconciler.optimizedClosures) {
       if (reconciler.hasEvaluatedNestedClosure(func)) {
         continue;
       }
+      if (func instanceof ECMAScriptSourceFunctionValue && reconciler.hasEvaluatedRootNode(func, evaluatedNode)) {
+        continue;
+      }
       if (this.realm.react.verbose) {
-        logger.logInformation(`  # Nested optimized closure...`);
+        logger.logInformation(`  # Nested closure (${getComponentName(this.realm, func)})...`);
       }
       let closureEffects = reconciler.renderNestedOptimizedClosure(
         func,
@@ -262,7 +264,7 @@ export class Functions {
       );
       if (closureEffects[0] === this.realm.intrinsics.undefined) {
         if (this.realm.react.verbose) {
-          logger.logInformation(`  # Nested optimized closure failed`);
+          logger.logInformation(`  # Nested closure (${getComponentName(this.realm, func)}) failed`);
         }
         continue;
       }

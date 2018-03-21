@@ -702,6 +702,7 @@ export function createReactEvaluatedNode(
 export function getComponentName(realm: Realm, componentType: Value): string {
   invariant(
     componentType instanceof ECMAScriptSourceFunctionValue ||
+      componentType instanceof BoundFunctionValue ||
       componentType instanceof AbstractObjectValue ||
       componentType instanceof AbstractValue
   );
@@ -713,7 +714,7 @@ export function getComponentName(realm: Realm, componentType: Value): string {
       return "QueryRenderer";
     }
   }
-  if (componentType instanceof ECMAScriptSourceFunctionValue) {
+  if (componentType instanceof ECMAScriptSourceFunctionValue && componentType.$Prototype !== undefined) {
     let name = Get(realm, componentType, "name");
 
     if (name instanceof StringValue) {

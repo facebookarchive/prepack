@@ -90,7 +90,6 @@ export type ComponentTreeState = {
   branchedComponentTrees: Array<BranchReactComponentTree>,
   componentType: void | ECMAScriptSourceFunctionValue,
   deadEnds: number,
-  optimizedClosures: Array<OptimizedClosure>,
   status: "SIMPLE" | "COMPLEX",
   contextNodeReferences: Map<ObjectValue | AbstractObjectValue, number>,
 };
@@ -111,6 +110,7 @@ export class Reconciler {
     this.alreadyEvaluatedRootNodes = new Map();
     this.alreadyEvaluatedNestedClosures = new Set();
     this.componentTreeConfig = componentTreeConfig;
+    this.optimizedClosures = [];
   }
 
   realm: Realm;
@@ -122,6 +122,7 @@ export class Reconciler {
   alreadyEvaluatedNestedClosures: Set<FunctionValue>;
   componentTreeConfig: ReactComponentTreeConfig;
   currentEffectsStack: Array<Effects>;
+  optimizedClosures: Array<OptimizedClosure>;
 
   renderReactComponentTree(
     componentType: ECMAScriptSourceFunctionValue,
@@ -207,7 +208,7 @@ export class Reconciler {
         this._queueOptimizedClosure(createdObject, evaluatedNode, false, null, null, null);
       }
     }
-    for (let { nestedEffects } of this.componentTreeState.optimizedClosures) {
+    for (let { nestedEffects } of this.optimizedClosures) {
       if (nestedEffects.length === 0) {
         nestedEffects.push(...nestedEffects, effects);
       }
@@ -328,9 +329,9 @@ export class Reconciler {
     };
     if (shouldResolve) {
       // closures that need to be resolved should be handled first
-      this.componentTreeState.optimizedClosures.unshift(optimizedClosure);
+      this.optimizedClosures.unshift(optimizedClosure);
     } else {
-      this.componentTreeState.optimizedClosures.push(optimizedClosure);
+      this.optimizedClosures.push(optimizedClosure);
     }
   }
 
@@ -756,7 +757,6 @@ export class Reconciler {
       branchedComponentTrees: [],
       componentType: undefined,
       deadEnds: 0,
-      optimizedClosures: [],
       status: "SIMPLE",
       contextNodeReferences: new Map(),
     };
@@ -1083,6 +1083,7 @@ export class Reconciler {
     let propsValue = getProperty(this.realm, reactElement, "props");
     // assign a bail out message
     if (error instanceof NewComponentTreeBranch) {
+      this._findReactComponentTrees(propsValue, evaluatedNode);
       // NO-OP (we don't queue a newComponentTree as this was already done)
     } else {
       // handle abrupt completions
@@ -1203,16 +1204,38 @@ export class Reconciler {
       } else {
         this.componentTreeState.deadEnds++;
       }
-    } else if (value instanceof ObjectValue) {
-      for (let [propName, binding] of value.properties) {
-        if (binding && binding.descriptor && binding.descriptor.enumerable) {
-          this._findReactComponentTrees(getProperty(this.realm, value, propName), evaluatedNode);
-        }
-      }
-    } else if (value instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(this.realm, value)) {
+    } else if (valueIsKnownReactAbstraction(this.realm, value)) {
       let evaluatedChildNode = createReactEvaluatedNode("NEW_TREE", getComponentName(this.realm, value));
       evaluatedNode.children.push(evaluatedChildNode);
       this._queueNewComponentTree(value, evaluatedChildNode);
+    } else if (value instanceof ECMAScriptSourceFunctionValue || value instanceof BoundFunctionValue) {
+      if (valueIsClassComponent(this.realm, value)) {
+        let evaluatedChildNode = createReactEvaluatedNode("NEW_TREE", getComponentName(this.realm, value));
+        evaluatedNode.children.push(evaluatedChildNode);
+        this._queueNewComponentTree(value, evaluatedChildNode);
+      } else {
+        this._queueOptimizedClosure(value, evaluatedNode, false, null, null, null);
+      }
+    } else if (value instanceof ObjectValue) {
+      if (isReactElement(value)) {
+        let typeValue = getProperty(this.realm, value, "type");
+        let ref = getProperty(this.realm, value, "ref");
+        let props = getProperty(this.realm, value, "props");
+
+        if (valueIsKnownReactAbstraction(this.realm, typeValue) || typeValue instanceof ECMAScriptSourceFunctionValue) {
+          let evaluatedChildNode = createReactEvaluatedNode("NEW_TREE", getComponentName(this.realm, typeValue));
+          evaluatedNode.children.push(evaluatedChildNode);
+          this._queueNewComponentTree(typeValue, evaluatedChildNode);
+        }
+        this._findReactComponentTrees(ref, evaluatedNode);
+        this._findReactComponentTrees(props, evaluatedNode);
+      } else {
+        for (let [propName, binding] of value.properties) {
+          if (binding && binding.descriptor && binding.descriptor.enumerable) {
+            this._findReactComponentTrees(getProperty(this.realm, value, propName), evaluatedNode);
+          }
+        }
+      }
     }
   }
 }
