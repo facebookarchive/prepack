@@ -78,10 +78,6 @@ function createPropsObject(
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           }
         );
-
-        if (children !== realm.intrinsics.undefined) {
-          setProp("children", children);
-        }
       } else {
         // if either are abstract, this will impact the reconcilation process
         // and ultimately prevent us from folding ReactElements properly
@@ -93,6 +89,9 @@ function createPropsObject(
         );
         realm.handleError(diagnostic);
         if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
+      }
+      if (children !== realm.intrinsics.undefined) {
+        setProp("children", children);
       }
     } else {
       // as the config is partial and simple, we don't know about its prototype or properties
