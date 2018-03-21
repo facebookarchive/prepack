@@ -45,7 +45,7 @@ import {
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
-import { CompilerDiagnostic, FatalError } from "../errors.js";
+import { FatalError } from "../errors.js";
 import { BranchState, type BranchStatusEnum } from "./branching.js";
 import {
   getInitialProps,
@@ -114,7 +114,6 @@ export class Reconciler {
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractObjectValue | null,
     context: ObjectValue | AbstractObjectValue | null,
-    isRoot: boolean,
     evaluatedRootNode: ReactEvaluatedNode
   ): Effects {
     const renderComponentTree = () => {
@@ -142,38 +141,28 @@ export class Reconciler {
         if (error.name === "Invariant Violation") {
           throw error;
         }
-        // if we get an error and we're not dealing with the root
-        // rather than throw a FatalError, we log the error as a warning
-        // and continue with the other tree roots
-        // TODO: maybe control what levels gets treated as warning/error?
-        if (!isRoot) {
-          if (error instanceof AbruptCompletion) {
-            this.logger.logWarning(
-              componentType,
-              `__optimizeReactComponentTree() React component tree (branch) failed due runtime runtime exception thrown`
-            );
-            evaluatedRootNode.status = "ABRUPT_COMPLETION";
-          } else {
-            this.logger.logWarning(
-              componentType,
-              `__optimizeReactComponentTree() React component tree (branch) failed due to - ${error.message}`
-            );
-            evaluatedRootNode.message = "evaluation failed on new component tree branch";
-            evaluatedRootNode.status = "BAIL-OUT";
-          }
-          return this.realm.intrinsics.undefined;
-        }
         if (error instanceof ExpectedBailOut) {
-          let diagnostic = new CompilerDiagnostic(
-            `__optimizeReactComponentTree() React component tree (root) failed due to - ${error.message}`,
-            this.realm.currentLocation,
-            "PP0020",
-            "FatalError"
+          this.logger.logWarning(
+            componentType,
+            `__optimizeReactComponentTree() React component tree failed due expected bail-out - ${error.message}`
           );
-          this.realm.handleError(diagnostic);
-          if (this.realm.handleError(diagnostic) === "Fail") throw new FatalError();
+          evaluatedRootNode.message = error.message;
+          evaluatedRootNode.status = "BAIL-OUT";
+        } else if (error instanceof AbruptCompletion) {
+          this.logger.logWarning(
+            componentType,
+            `__optimizeReactComponentTree() React component tree failed due runtime runtime exception thrown`
+          );
+          evaluatedRootNode.status = "ABRUPT_COMPLETION";
+        } else {
+          this.logger.logWarning(
+            componentType,
+            `__optimizeReactComponentTree() React component tree failed due to - ${error.message}`
+          );
+          evaluatedRootNode.message = "evaluation failed on new component tree branch";
+          evaluatedRootNode.status = "BAIL-OUT";
         }
-        throw error;
+        return this.realm.intrinsics.undefined;
       }
     };
 
