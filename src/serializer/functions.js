@@ -214,7 +214,7 @@ export class Functions {
         continue;
       }
       let componentTreeEffects = reconciler.renderReactComponentTree(componentType, null, null, evaluatedRootNode);
-      if (componentTreeEffects[0] === this.realm.intrinsics.undefined) {
+      if (componentTreeEffects === null) {
         if (this.realm.react.verbose) {
           logger.logInformation(`- ${evaluatedRootNode.name} failed (root)`);
         }
@@ -235,6 +235,9 @@ export class Functions {
   _optimizeReactNestedClosures(reconciler: Reconciler, environmentRecordIdAfterGlobalCode: number): void {
     let logger = this.moduleTracer.modules.logger;
 
+    if (this.realm.react.verbose) {
+      logger.logInformation(`  # Nested optimized closures...`);
+    }
     for (let {
       func,
       evaluatedNode,
@@ -243,7 +246,7 @@ export class Functions {
       componentType,
       context,
       branchState,
-    } of reconciler.optimizedClosures) {
+    } of reconciler.nestedOptimizedClosures) {
       if (reconciler.hasEvaluatedNestedClosure(func)) {
         continue;
       }
@@ -251,7 +254,7 @@ export class Functions {
         continue;
       }
       if (this.realm.react.verbose) {
-        logger.logInformation(`  # Nested closure (${getComponentName(this.realm, func)})...`);
+        logger.logInformation(`    - ${getComponentName(this.realm, func)}...`);
       }
       let closureEffects = reconciler.renderNestedOptimizedClosure(
         func,
@@ -262,9 +265,9 @@ export class Functions {
         branchState,
         evaluatedNode
       );
-      if (closureEffects[0] === this.realm.intrinsics.undefined) {
+      if (closureEffects === null) {
         if (this.realm.react.verbose) {
-          logger.logInformation(`  # Nested closure (${getComponentName(this.realm, func)}) failed`);
+          logger.logInformation(`    - ${getComponentName(this.realm, func)} failed`);
         }
         continue;
       }
@@ -303,7 +306,7 @@ export class Functions {
         logger.logInformation(`  - ${evaluatedNode.name} (branch)...`);
       }
       let branchEffects = reconciler.renderReactComponentTree(branchComponentType, null, null, evaluatedNode);
-      if (branchEffects[0] === this.realm.intrinsics.undefined) {
+      if (branchEffects === null) {
         if (this.realm.react.verbose) {
           logger.logInformation(`- ${evaluatedNode.name} failed (branch)`);
         }

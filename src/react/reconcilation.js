@@ -110,7 +110,7 @@ export class Reconciler {
     this.alreadyEvaluatedRootNodes = new Map();
     this.alreadyEvaluatedNestedClosures = new Set();
     this.componentTreeConfig = componentTreeConfig;
-    this.optimizedClosures = [];
+    this.nestedOptimizedClosures = [];
   }
 
   realm: Realm;
@@ -122,14 +122,15 @@ export class Reconciler {
   alreadyEvaluatedNestedClosures: Set<FunctionValue>;
   componentTreeConfig: ReactComponentTreeConfig;
   currentEffectsStack: Array<Effects>;
-  optimizedClosures: Array<OptimizedClosure>;
+  nestedOptimizedClosures: Array<OptimizedClosure>;
 
   renderReactComponentTree(
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractObjectValue | null,
     context: ObjectValue | AbstractObjectValue | null,
     evaluatedRootNode: ReactEvaluatedNode
-  ): Effects {
+  ): Effects | null {
+    let failed = false;
     const renderComponentTree = () => {
       // initialProps and initialContext are created from Flow types from:
       // - if a functional component, the 1st and 2nd paramater of function
@@ -176,6 +177,7 @@ export class Reconciler {
           evaluatedRootNode.message = "evaluation failed on new component tree branch";
           evaluatedRootNode.status = "BAIL-OUT";
         }
+        failed = true;
         return this.realm.intrinsics.undefined;
       }
     };
@@ -193,22 +195,29 @@ export class Reconciler {
       )
     );
     this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
+    if (failed) {
+      return null;
+    }
     return effects;
   }
 
   _handleNestedOptimizedClosuresFromEffects(effects: Effects, evaluatedNode: ReactEvaluatedNode) {
     let createdObjects = effects[4];
 
+    // TODO if we have nested effects, we should also check those too
     for (let createdObject of createdObjects) {
       if (createdObject instanceof ECMAScriptSourceFunctionValue || createdObject instanceof BoundFunctionValue) {
         // skip it if we're dealing with an internal mock
         if (createdObject.properties.has("__PREPACK_MOCK__")) {
           continue;
         }
+        if (createdObject.$Environment && createdObject.$Environment.destroyed) {
+          continue;
+        }
         this._queueOptimizedClosure(createdObject, evaluatedNode, false, null, null, null);
       }
     }
-    for (let { nestedEffects } of this.optimizedClosures) {
+    for (let { nestedEffects } of this.nestedOptimizedClosures) {
       if (nestedEffects.length === 0) {
         nestedEffects.push(...nestedEffects, effects);
       }
@@ -223,7 +232,8 @@ export class Reconciler {
     context: ObjectValue | AbstractObjectValue | null,
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
-  ): Effects {
+  ): Effects | null {
+    let failed = false;
     const renderOptimizedClosure = () => {
       let numArgs = func.getLength();
       let args = [];
@@ -284,6 +294,7 @@ export class Reconciler {
         if (error.name === "Invariant Violation") {
           throw error;
         }
+        failed = true;
         return this.realm.intrinsics.undefined;
       } finally {
         // remove the our special "this" binding or it will try and make it global as it's intrinsic
@@ -303,6 +314,9 @@ export class Reconciler {
       )
     );
     this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);
+    if (failed) {
+      return null;
+    }
     return effects;
   }
 
@@ -329,9 +343,9 @@ export class Reconciler {
     };
     if (shouldResolve) {
       // closures that need to be resolved should be handled first
-      this.optimizedClosures.unshift(optimizedClosure);
+      this.nestedOptimizedClosures.unshift(optimizedClosure);
     } else {
-      this.optimizedClosures.push(optimizedClosure);
+      this.nestedOptimizedClosures.push(optimizedClosure);
     }
   }
 
@@ -1213,8 +1227,6 @@ export class Reconciler {
         let evaluatedChildNode = createReactEvaluatedNode("NEW_TREE", getComponentName(this.realm, value));
         evaluatedNode.children.push(evaluatedChildNode);
         this._queueNewComponentTree(value, evaluatedChildNode);
-      } else {
-        this._queueOptimizedClosure(value, evaluatedNode, false, null, null, null);
       }
     } else if (value instanceof ObjectValue) {
       if (isReactElement(value)) {
