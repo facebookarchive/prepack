@@ -202,7 +202,7 @@ export class Functions {
       if (reconciler.hasEvaluatedRootNode(componentType, evaluatedRootNode)) {
         continue;
       }
-      let effects = reconciler.render(componentType, null, null, true, evaluatedRootNode);
+      let effects = reconciler.render(componentType, null, null, evaluatedRootNode);
       let componentTreeState = reconciler.componentTreeState;
       this._generateWriteEffectsForReactComponentTree(componentType, effects, componentTreeState, evaluatedRootNode);
 
@@ -221,7 +221,7 @@ export class Functions {
           }
           reconciler.clearComponentTreeState();
           logger.logInformation(`  - ${evaluatedNode.name} (branch)...`);
-          let branchEffects = reconciler.render(branchComponentType, null, null, false, evaluatedNode);
+          let branchEffects = reconciler.render(branchComponentType, null, null, evaluatedNode);
           let branchComponentTreeState = reconciler.componentTreeState;
           this._generateWriteEffectsForReactComponentTree(
             branchComponentType,
