@@ -455,7 +455,7 @@ export class ResidualHeapVisitor {
         invariant(functionInfo);
         for (let innerName of functionInfo.unbound) {
           let environment = this.resolveBinding(val, innerName);
-          let residualBinding = this.visitBinding(val, environment, innerName);
+          let residualBinding = this.visitBinding(val, environment, innerName, /* createBinding */ true);
           invariant(residualBinding !== undefined);
           residualFunctionBindings.set(innerName, residualBinding);
           if (functionInfo.modified.has(innerName)) {
@@ -543,8 +543,7 @@ export class ResidualHeapVisitor {
     val: FunctionValue,
     environment: EnvironmentRecord,
     name: string,
-    createBinding?: boolean = true,
-    skipBindingUpdate?: boolean = false
+    createBinding: boolean
   ): ResidualFunctionBinding | void {
     if (environment === this.globalEnvironmentRecord.$DeclarativeRecord) environment = this.globalEnvironmentRecord;
 
@@ -594,7 +593,7 @@ export class ResidualHeapVisitor {
     }
     if (residualFunctionBinding && residualFunctionBinding.value) {
       let equivalentValue = this.visitEquivalentValue(residualFunctionBinding.value);
-      if (!skipBindingUpdate || createdBinding) residualFunctionBinding.value = equivalentValue;
+      residualFunctionBinding.value = equivalentValue;
     }
     return residualFunctionBinding;
   }
@@ -878,8 +877,7 @@ export class ResidualHeapVisitor {
             functionValue,
             modifiedBinding.environment,
             modifiedBinding.name,
-            true,
-            false
+            /* createBinding */ true
           );
           invariant(residualBinding !== undefined);
           // named functions inside an additional function that have a global binding
@@ -1010,7 +1008,7 @@ export class ResidualHeapVisitor {
         }
         for (let innerName of functionInfo.unbound) {
           let environment = this.resolveBinding(functionValue, innerName);
-          let residualBinding = this.visitBinding(functionValue, environment, innerName, false);
+          let residualBinding = this.visitBinding(functionValue, environment, innerName, /* createBinding */ false);
           if (residualBinding) {
             funcInstance.residualFunctionBindings.set(innerName, residualBinding);
             delete residualBinding.referencedOnlyFromAdditionalFunctions;
