@@ -204,7 +204,8 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
   }
 
   // Override default serializer with lazy mode.
-  serializeValueRawObject(obj: ObjectValue): BabelNodeExpression {
+  serializeValueRawObject(obj: ObjectValue, skipPrototype: boolean): BabelNodeExpression {
+    if (obj.temporalAlias !== undefined) return super.serializeValueRawObject(obj, skipPrototype);
     this._lazyObjectInitializers.set(obj, this._serializeLazyObjectInitializer(obj));
     return this._serializeCreateLazyObject(obj);
   }
