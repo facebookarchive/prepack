@@ -443,6 +443,9 @@ export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFun
       return t.isIdentifier(param) ? param : t.identifier("context");
     }
   });
+  if (func.$FormalParameters.length === 1) {
+    func.$FormalParameters.push(t.identifier("context"));
+  }
 }
 
 export function createReactHintObject(object: ObjectValue, propertyName: string, args: Array<Value>): ReactHint {
