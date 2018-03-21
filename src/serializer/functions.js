@@ -275,12 +275,7 @@ export class Functions {
         environmentRecordIdAfterGlobalCode
       );
       invariant(additionalFunctionEffects);
-      if (func instanceof BoundFunctionValue) {
-        invariant(func.$BoundTargetFunction instanceof FunctionValue);
-        this.writeEffects.set(func.$BoundTargetFunction, additionalFunctionEffects);
-      } else {
-        this.writeEffects.set(func, additionalFunctionEffects);
-      }
+      this.writeEffects.set(func, additionalFunctionEffects);
     }
   }
 
@@ -348,10 +343,6 @@ export class Functions {
     const globalThis = this.realm.$GlobalEnv.environmentRecord.WithBaseObject();
     let call = funcValue.$Call;
     invariant(call);
-    if (funcValue instanceof BoundFunctionValue) {
-      invariant(funcValue.$BoundTargetFunction instanceof FunctionValue);
-      funcValue = funcValue.$BoundTargetFunction;
-    }
     let numArgs = funcValue.getLength();
     let args = [];
     invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
@@ -383,10 +374,7 @@ export class Functions {
     return call.bind(this, globalThis, args);
   }
 
-  _optimizeFunction(
-    funcValue: ECMAScriptSourceFunctionValue | BoundFunctionValue,
-    environmentRecordIdAfterGlobalCode: number
-  ) {
+  _optimizeFunction(funcValue: ECMAScriptSourceFunctionValue, environmentRecordIdAfterGlobalCode: number) {
     let call = this._callOfFunction(funcValue);
     let effects = this.realm.evaluatePure(() =>
       this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
@@ -394,19 +382,14 @@ export class Functions {
     invariant(effects);
     let additionalFunctionEffects = this._createAdditionalEffects(effects, true, environmentRecordIdAfterGlobalCode);
     invariant(additionalFunctionEffects);
-    if (funcValue instanceof BoundFunctionValue) {
-      invariant(funcValue.$BoundTargetFunction instanceof ECMAScriptSourceFunctionValue);
-      this.writeEffects.set(funcValue.$BoundTargetFunction, additionalFunctionEffects);
-    } else {
-      this.writeEffects.set(funcValue, additionalFunctionEffects);
-    }
+    this.writeEffects.set(funcValue, additionalFunctionEffects);
   }
 
   checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode: number) {
     let additionalFunctions = this.__generateAdditionalFunctionsMap("__optimizedFunctions");
 
     for (let [funcValue] of additionalFunctions) {
-      invariant(funcValue instanceof ECMAScriptSourceFunctionValue || funcValue instanceof BoundFunctionValue);
+      invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
       this._optimizeFunction(funcValue, environmentRecordIdAfterGlobalCode);
     }
 

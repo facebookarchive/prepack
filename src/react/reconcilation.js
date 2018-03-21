@@ -225,10 +225,7 @@ export class Reconciler {
 
       this.alreadyEvaluatedNestedClosures.add(func);
       if (func instanceof BoundFunctionValue) {
-        invariant(func.$BoundTargetFunction instanceof FunctionValue);
-        targetFunc = func.$BoundTargetFunction;
-        args.push(...func.$BoundArguments);
-        this.alreadyEvaluatedNestedClosures.add(targetFunc);
+        invariant("TODO: bounded nested optimized closures are not supported");
       }
       invariant(targetFunc instanceof ECMAScriptSourceFunctionValue);
       let params = targetFunc.$FormalParameters;
@@ -274,11 +271,6 @@ export class Reconciler {
         }
         failed = true;
         return this.realm.intrinsics.undefined;
-      } finally {
-        // remove the our special "this" binding or it will try and make it global as it's intrinsic
-        if (func instanceof BoundFunctionValue && func.$BoundThis.intrinsicName === "this") {
-          func.$BoundThis = this.realm.intrinsics.undefined;
-        }
       }
     };
 
