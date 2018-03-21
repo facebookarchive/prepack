@@ -179,6 +179,7 @@ export class ResidualHeapSerializer {
     this.getGeneratorParent = generatorParents.get.bind(generatorParents);
     this.additionalFunctionGenerators = new Map();
     this.additionalFunctionGeneratorsInverse = new Map();
+    this.declaredGlobalLets = new Set();
   }
 
   emitter: Emitter;
@@ -230,6 +231,8 @@ export class ResidualHeapSerializer {
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
 
   getGeneratorParent: Generator => void | Generator;
+
+  declaredGlobalLets: Set<string>;
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -1698,16 +1701,14 @@ export class ResidualHeapSerializer {
       if (boundName === "undefined") {
         residualFunctionBinding.serializedValue = voidExpression;
       } else {
-        let value = this.realm.getGlobalLetBinding(boundName);
+        let value = residualFunctionBinding.value;
         // Check for let binding vs global property
         if (value) {
-          let rval = residualFunctionBinding.value;
-          invariant(rval !== undefined && value.equals(rval));
-          let id = this.serializeValue(rval, true, "let");
-          // increment ref count one more time as the value has been
-          // referentialized (stored in a variable) by serializeValue
-          this.residualHeapValueIdentifiers.incrementReferenceCount(rval);
-          residualFunctionBinding.serializedValue = id;
+          let name = t.identifier(boundName);
+          residualFunctionBinding.serializedValue = name;
+          invariant(value.equals(value));
+          this.declaredGlobalLets.add(boundName);
+          this.emitter.emit(t.expressionStatement(t.assignmentExpression("=", name, this.serializeValue(value))));
         } else {
           residualFunctionBinding.serializedValue = this.preludeGenerator.globalReference(boundName);
         }
@@ -1956,6 +1957,13 @@ export class ResidualHeapSerializer {
         t.variableDeclaration(
           "var",
           Array.from(this.preludeGenerator.declaredGlobals).map(key => t.variableDeclarator(t.identifier(key)))
+        )
+      );
+    if (this.declaredGlobalLets.size > 0)
+      ast_body.push(
+        t.variableDeclaration(
+          "let",
+          Array.from(this.declaredGlobalLets).map(key => t.variableDeclarator(t.identifier(key)))
         )
       );
     if (body.length) {
