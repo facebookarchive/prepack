@@ -709,22 +709,24 @@ export function getComponentName(realm: Realm, componentType: Value): string {
       componentType instanceof AbstractObjectValue ||
       componentType instanceof AbstractValue
   );
+  let boundText = componentType instanceof BoundFunctionValue ? "bound " : "";
+
   if (componentType.__originalName) {
-    return componentType.__originalName;
+    return boundText + componentType.__originalName;
   }
   if (realm.fbLibraries.reactRelay !== undefined) {
     if (componentType === Get(realm, realm.fbLibraries.reactRelay, "QueryRenderer")) {
-      return "QueryRenderer";
+      return boundText + "QueryRenderer";
     }
   }
   if (componentType instanceof ECMAScriptSourceFunctionValue && componentType.$Prototype !== undefined) {
     let name = Get(realm, componentType, "name");
 
     if (name instanceof StringValue) {
-      return name.value;
+      return boundText + name.value;
     }
   }
-  return "Unknown";
+  return boundText + "anonymous function";
 }
 
 export function convertConfigObjectToReactComponentTreeConfig(

@@ -218,15 +218,22 @@ export class Reconciler {
   ): Effects | null {
     let failed = false;
     const renderOptimizedClosure = () => {
+      let baseObject = this.realm.$GlobalEnv.environmentRecord.WithBaseObject();
+      // we want to optimize the function that is bound
+      if (func instanceof BoundFunctionValue) {
+        // we want to set the "this" to be the bound object
+        // for firstRender this will optimize the function
+        // for updates, "this" will be intrinsic, so either way
+        // they should both work
+        baseObject = func.$BoundThis;
+        invariant(func.$BoundTargetFunction instanceof ECMAScriptSourceFunctionValue);
+        func = func.$BoundTargetFunction;
+      }
       let numArgs = func.getLength();
       let args = [];
       let targetFunc = func;
-      let baseObject = this.realm.$GlobalEnv.environmentRecord.WithBaseObject();
 
       this.alreadyEvaluatedNestedClosures.add(func);
-      if (func instanceof BoundFunctionValue) {
-        invariant("TODO: bounded nested optimized closures are not supported");
-      }
       invariant(targetFunc instanceof ECMAScriptSourceFunctionValue);
       let params = targetFunc.$FormalParameters;
       if (numArgs && numArgs > 0 && params) {
@@ -537,7 +544,7 @@ export class Reconciler {
         this._queueOptimizedClosure(renderProp, evaluatedChildNode, componentType, context, branchState);
         return;
       } else {
-        this._findReactComponentTrees(propsValue, evaluatedChildNode);
+        this._findReactComponentTrees(propsValue, evaluatedChildNode, false);
         return;
       }
     }
@@ -559,13 +566,17 @@ export class Reconciler {
     evaluatedNode.children.push(evaluatedChildNode);
 
     if (propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue) {
-      // get the "render" method off the instance
-      let renderProp = Get(this.realm, propsValue, "render");
-      if (renderProp instanceof ECMAScriptSourceFunctionValue) {
-        this._queueOptimizedClosure(renderProp, evaluatedChildNode, componentType, context, branchState);
-      } else {
-        this._findReactComponentTrees(propsValue, evaluatedChildNode);
+      // get the "render" prop
+      if (propsValue instanceof ObjectValue && propsValue.properties.has("render")) {
+        let renderProp = getProperty(this.realm, propsValue, "render");
+
+        if (renderProp instanceof ECMAScriptSourceFunctionValue) {
+          this._queueOptimizedClosure(renderProp, evaluatedChildNode, componentType, context, branchState);
+        } else if (renderProp instanceof AbstractValue) {
+          this._findReactComponentTrees(renderProp, evaluatedChildNode, true, componentType, context, branchState);
+        }
       }
+      this._findReactComponentTrees(propsValue, evaluatedChildNode, false);
       return;
     }
     // this is the worst case, we were unable to find the render prop function
@@ -795,9 +806,9 @@ export class Reconciler {
     let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
 
-    this._findReactComponentTrees(propsValue, evaluatedNode);
+    this._findReactComponentTrees(propsValue, evaluatedNode, false);
     if (typeValue instanceof AbstractValue) {
-      this._findReactComponentTrees(typeValue, evaluatedNode);
+      this._findReactComponentTrees(typeValue, evaluatedNode, false);
       return reactElement;
     } else {
       let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
@@ -820,7 +831,7 @@ export class Reconciler {
     evaluatedChildNode.message = bailOutMessage;
 
     this._queueNewComponentTree(typeValue, evaluatedChildNode);
-    this._findReactComponentTrees(propsValue, evaluatedNode);
+    this._findReactComponentTrees(propsValue, evaluatedNode, false);
     this._assignBailOutMessage(reactElement, bailOutMessage);
     return reactElement;
   }
@@ -840,7 +851,7 @@ export class Reconciler {
     evaluatedChildNode.message = bailOutMessage;
 
     this._assignBailOutMessage(reactElement, bailOutMessage);
-    this._findReactComponentTrees(propsValue, evaluatedNode);
+    this._findReactComponentTrees(propsValue, evaluatedNode, false);
     if (branchStatus === "NEW_BRANCH" && branchState) {
       return branchState.captureBranchedValue(typeValue, reactElement);
     }
@@ -1059,7 +1070,7 @@ export class Reconciler {
     let propsValue = getProperty(this.realm, reactElement, "props");
     // assign a bail out message
     if (error instanceof NewComponentTreeBranch) {
-      this._findReactComponentTrees(propsValue, evaluatedNode);
+      this._findReactComponentTrees(propsValue, evaluatedNode, false);
       // NO-OP (we don't queue a newComponentTree as this was already done)
     } else {
       // handle abrupt completions
@@ -1070,7 +1081,7 @@ export class Reconciler {
         let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
         evaluatedNode.children.push(evaluatedChildNode);
         this._queueNewComponentTree(typeValue, evaluatedChildNode);
-        this._findReactComponentTrees(propsValue, evaluatedNode);
+        this._findReactComponentTrees(propsValue, evaluatedNode, false);
         if (error instanceof ExpectedBailOut) {
           evaluatedChildNode.message = error.message;
           this._assignBailOutMessage(reactElement, error.message);
@@ -1171,11 +1182,18 @@ export class Reconciler {
     return this.alreadyEvaluatedNestedClosures.has(func);
   }
 
-  _findReactComponentTrees(value: Value, evaluatedNode: ReactEvaluatedNode): void {
+  _findReactComponentTrees(
+    value: Value,
+    evaluatedNode: ReactEvaluatedNode,
+    findNestedClosures: boolean,
+    componentType?: Value,
+    context?: ObjectValue | AbstractObjectValue,
+    branchState?: BranchState | null
+  ): void {
     if (value instanceof AbstractValue) {
       if (value.args.length > 0) {
         for (let arg of value.args) {
-          this._findReactComponentTrees(arg, evaluatedNode);
+          this._findReactComponentTrees(arg, evaluatedNode, findNestedClosures, componentType, context, branchState);
         }
       } else {
         this.componentTreeState.deadEnds++;
@@ -1189,6 +1207,10 @@ export class Reconciler {
         let evaluatedChildNode = createReactEvaluatedNode("NEW_TREE", getComponentName(this.realm, value));
         evaluatedNode.children.push(evaluatedChildNode);
         this._queueNewComponentTree(value, evaluatedChildNode);
+      } else if (findNestedClosures) {
+        invariant(componentType && context);
+        invariant(branchState !== undefined);
+        this._queueOptimizedClosure(value, evaluatedNode, componentType, context, branchState);
       }
     } else if (value instanceof ObjectValue) {
       if (isReactElement(value)) {
@@ -1201,12 +1223,19 @@ export class Reconciler {
           evaluatedNode.children.push(evaluatedChildNode);
           this._queueNewComponentTree(typeValue, evaluatedChildNode);
         }
-        this._findReactComponentTrees(ref, evaluatedNode);
-        this._findReactComponentTrees(props, evaluatedNode);
+        this._findReactComponentTrees(ref, evaluatedNode, findNestedClosures, componentType, context, branchState);
+        this._findReactComponentTrees(props, evaluatedNode, findNestedClosures, componentType, context, branchState);
       } else {
         for (let [propName, binding] of value.properties) {
           if (binding && binding.descriptor && binding.descriptor.enumerable) {
-            this._findReactComponentTrees(getProperty(this.realm, value, propName), evaluatedNode);
+            this._findReactComponentTrees(
+              getProperty(this.realm, value, propName),
+              evaluatedNode,
+              findNestedClosures,
+              componentType,
+              context,
+              branchState
+            );
           }
         }
       }

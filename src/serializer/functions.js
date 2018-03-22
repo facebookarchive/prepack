@@ -24,6 +24,7 @@ import {
   AbstractValue,
   ECMAScriptSourceFunctionValue,
   UndefinedValue,
+  BoundFunctionValue,
 } from "../values/index.js";
 import { Generator } from "../utils/generator.js";
 import { Get } from "../methods/index.js";
@@ -234,7 +235,7 @@ export class Functions {
   _optimizeReactNestedClosures(reconciler: Reconciler, environmentRecordIdAfterGlobalCode: number): void {
     let logger = this.moduleTracer.modules.logger;
 
-    if (this.realm.react.verbose) {
+    if (this.realm.react.verbose && reconciler.nestedOptimizedClosures.length > 0) {
       logger.logInformation(`  # Nested optimized closures...`);
     }
     for (let {
@@ -274,7 +275,12 @@ export class Functions {
         environmentRecordIdAfterGlobalCode
       );
       invariant(additionalFunctionEffects);
-      this.writeEffects.set(func, additionalFunctionEffects);
+      if (func instanceof BoundFunctionValue) {
+        invariant(func.$BoundTargetFunction instanceof ECMAScriptSourceFunctionValue);
+        this.writeEffects.set(func.$BoundTargetFunction, additionalFunctionEffects);
+      } else {
+        this.writeEffects.set(func, additionalFunctionEffects);
+      }
     }
   }
 
