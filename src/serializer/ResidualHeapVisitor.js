@@ -43,13 +43,13 @@ import type {
   FunctionInfo,
   FunctionInstance,
   ResidualFunctionBinding,
+  ReferentializationScope,
 } from "./types.js";
 import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "../utils/logger.js";
 import { Modules } from "../utils/modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
 import { Referentializer } from "./Referentializer.js";
-import type { ReferentializationScope } from "./Referentializer.js";
 import {
   canIgnoreClassLengthProperty,
   ClassPropertiesToIgnore,
@@ -555,6 +555,7 @@ export class ResidualHeapVisitor {
             value: this.realm.getGlobalLetBinding(name),
             modified: true,
             declarativeEnvironmentRecord: null,
+            potentialReferentializationScopes: new Set(),
           }: ResidualFunctionBinding)
       );
     } else {
@@ -575,12 +576,11 @@ export class ResidualHeapVisitor {
           value: (binding.initialized && binding.value) || this.realm.intrinsics.undefined,
           modified: false,
           declarativeEnvironmentRecord: environment,
+          potentialReferentializationScopes: new Set(),
         };
       });
-      if (this.containingAdditionalFunction && createdBinding)
-        residualFunctionBinding.referencedOnlyFromAdditionalFunctions = this.containingAdditionalFunction;
-      if (!this.containingAdditionalFunction && residualFunctionBinding.referencedOnlyFromAdditionalFunctions)
-        delete residualFunctionBinding.referencedOnlyFromAdditionalFunctions;
+      if (createdBinding)
+        residualFunctionBinding.potentialReferentializationScopes.add(this.containingAdditionalFunction || "GLOBAL");
       this._recordBindingVisitedAndRevisit(val, residualFunctionBinding);
     }
     if (residualFunctionBinding.value) {
@@ -998,7 +998,8 @@ export class ResidualHeapVisitor {
           let residualBinding = this.visitBinding(functionValue, environment, innerName);
           invariant(residualBinding !== undefined);
           funcInstance.residualFunctionBindings.set(innerName, residualBinding);
-          delete residualBinding.referencedOnlyFromAdditionalFunctions;
+          // TODO nested optimized functions: revisit adding GLOBAL as outer optimized function
+          residualBinding.potentialReferentializationScopes.add("GLOBAL");
         }
         this.additionalRoots = prevReVisit;
       }

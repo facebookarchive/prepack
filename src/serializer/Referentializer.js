@@ -10,21 +10,15 @@
 /* @flow */
 
 import { DeclarativeEnvironmentRecord } from "../environment.js";
-import { FunctionValue } from "../values/index.js";
 import type { SerializerOptions } from "../options.js";
 import * as t from "babel-types";
 import type { BabelNodeStatement, BabelNodeIdentifier } from "babel-types";
 import { NameGenerator } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import type { ResidualFunctionBinding, ScopeBinding, FunctionInstance } from "./types.js";
-import { SerializerStatistics } from "./types.js";
+import { SerializerStatistics, type ReferentializationScope } from "./types.js";
 import { getOrDefault } from "./utils.js";
 import { Realm } from "../realm.js";
-
-// Each of these will correspond to a different preludeGenerator and thus will
-// have different values available for initialization. FunctionValues should
-// only be additional functions.
-export type ReferentializationScope = FunctionValue | "GLOBAL";
 
 type ReferentializationState = {|
   capturedScopeInstanceIdx: number,
@@ -120,10 +114,21 @@ export class Referentializer {
     return t.variableDeclaration("var", [t.variableDeclarator(accessFunctionId, factoryFunction)]);
   }
 
+  _getReferentializationScope(residualBinding: ResidualFunctionBinding): ReferentializationScope {
+    if (residualBinding.potentialReferentializationScopes.has("GLOBAL")) return "GLOBAL";
+    if (residualBinding.potentialReferentializationScopes.size > 1) {
+      // TODO Revisit for nested optimized functions.
+      return "GLOBAL";
+    }
+    for (let scope of residualBinding.potentialReferentializationScopes) return scope;
+    invariant(false);
+  }
+
   _getSerializedBindingScopeInstance(residualBinding: ResidualFunctionBinding): ScopeBinding {
     let declarativeEnvironmentRecord = residualBinding.declarativeEnvironmentRecord;
-    let referentializationScope = residualBinding.referencedOnlyFromAdditionalFunctions || "GLOBAL";
     invariant(declarativeEnvironmentRecord);
+
+    let referentializationScope = this._getReferentializationScope(residualBinding);
 
     // figure out if this is accessed only from additional functions
     let serializedScopes = this._getReferentializationState(referentializationScope).serializedScopes;
@@ -134,20 +139,21 @@ export class Referentializer {
         name: this.scopeNameGenerator.generate(),
         id: refState.capturedScopeInstanceIdx++,
         initializationValues: [],
-        containingAdditionalFunction: residualBinding.referencedOnlyFromAdditionalFunctions,
+        referentializationScope,
       };
       serializedScopes.set(declarativeEnvironmentRecord, scope);
     }
 
+    invariant(scope.referentializationScope === referentializationScope);
     invariant(!residualBinding.scope || residualBinding.scope === scope);
     residualBinding.scope = scope;
     return scope;
   }
 
-  getReferentializedScopeInitialization(scope: ScopeBinding) {
+  getReferentializedScopeInitialization(scope: ScopeBinding): Array<BabelNodeStatement> {
     const capturedScope = scope.capturedScope;
     invariant(capturedScope);
-    const state = this._getReferentializationState(scope.containingAdditionalFunction || "GLOBAL");
+    const state = this._getReferentializationState(scope.referentializationScope);
     const funcName = state.capturedScopeAccessFunctionId;
     const scopeArray = state.capturedScopesArray;
     const scopeName = t.identifier(scope.name);
@@ -204,7 +210,7 @@ export class Referentializer {
       let binding = ((b: any): ResidualFunctionBinding);
       if (binding.referentialized && binding.declarativeEnvironmentRecord) {
         let declarativeEnvironmentRecord = binding.declarativeEnvironmentRecord;
-        let referentializationScope = binding.referencedOnlyFromAdditionalFunctions || "GLOBAL";
+        let referentializationScope = this._getReferentializationScope(binding);
 
         let refState = this.referentializationState.get(referentializationScope);
         if (refState) {
