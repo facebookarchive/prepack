@@ -1,6 +1,5 @@
-// abstract effects
 
-function getURL(getProtocol, getIsGeneric, getPort, getPath, serialize, getQueryData, getFragment, getForceFragmentSeparator) {
+function getURL(getProtocol, getIsGeneric, getDomain, getPort, getPath, serialize, getQueryData, getFragment, getForceFragmentSeparator) {
   var str = "";
   var protocol = getProtocol();
   if (protocol) {
@@ -48,6 +47,9 @@ inspect = function inspect() {
   var getPort = function() {
     return 80;
   }
+  var getDomain = function() {
+    return "foobar.com";
+  }
   var getPath = function() {
     return "test";
   }
@@ -66,6 +68,7 @@ inspect = function inspect() {
   return getURL(
     getProtocol,
     getIsGeneric,
+    getDomain,
     getPort,
     getPath,
     serialize,

@@ -1,5 +1,3 @@
-// abstract effects
-
 var invariant = function(condition, message) {
   if (condition) return;
   throw new Error(message);
