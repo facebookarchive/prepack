@@ -16,7 +16,6 @@ import invariant from "./invariant.js";
 
 export type PrepackOptions = {|
   additionalGlobals?: Realm => void,
-  abstractEffectsInAdditionalFunctions?: boolean,
   lazyObjectsRuntime?: string,
   heapGraphFormat?: "DotLanguage" | "VISJS",
   compatibility?: Compatibility,
@@ -38,6 +37,7 @@ export type PrepackOptions = {|
   profile?: boolean,
   reactEnabled?: boolean,
   reactOutput?: ReactOutputTypes,
+  reactVerbose?: boolean,
   residual?: boolean,
   serialize?: boolean,
   check?: Array<number>,
@@ -54,10 +54,10 @@ export type PrepackOptions = {|
   maxStackDepth?: number,
   debugInFilePath?: string,
   debugOutFilePath?: string,
+  abstractValueImpliesMax?: number,
 |};
 
 export function getRealmOptions({
-  abstractEffectsInAdditionalFunctions = false,
   compatibility = "browser",
   debugNames = false,
   errorHandler,
@@ -67,6 +67,7 @@ export function getRealmOptions({
   uniqueSuffix,
   reactEnabled,
   reactOutput,
+  reactVerbose,
   residual,
   serialize = !residual,
   check,
@@ -74,9 +75,9 @@ export function getRealmOptions({
   stripFlow,
   timeout,
   maxStackDepth,
+  abstractValueImpliesMax,
 }: PrepackOptions): RealmOptions {
   return {
-    abstractEffectsInAdditionalFunctions,
     compatibility,
     debugNames,
     errorHandler,
@@ -86,6 +87,7 @@ export function getRealmOptions({
     uniqueSuffix,
     reactEnabled,
     reactOutput,
+    reactVerbose,
     residual,
     serialize,
     check,
@@ -93,6 +95,7 @@ export function getRealmOptions({
     stripFlow,
     timeout,
     maxStackDepth,
+    abstractValueImpliesMax,
   };
 }
 

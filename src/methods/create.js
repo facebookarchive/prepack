@@ -800,7 +800,7 @@ export class CreateImplementation {
             containsYield = true;
             return true;
           }
-          if (node.type === "Identifier" && node.name === "yield") {
+          if (node.type === "Identifier" && ((node: any): BabelNodeIdentifier).name === "yield") {
             containsYield = true;
             return true;
           }

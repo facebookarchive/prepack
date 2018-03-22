@@ -53,6 +53,26 @@ export default class AbstractObjectValue extends AbstractValue {
     throw new FatalError();
   }
 
+  set temporalAlias(temporalValue: AbstractObjectValue) {
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
+    for (let element of this.values.getElements()) {
+      invariant(element instanceof ObjectValue);
+      element.temoralAlias = temporalValue;
+    }
+  }
+
+  hasStringOrSymbolProperties(): boolean {
+    if (this.values.isTop()) return false;
+    for (let element of this.values.getElements()) {
+      invariant(element instanceof ObjectValue);
+      if (element.hasStringOrSymbolProperties()) return true;
+    }
+    return false;
+  }
+
   isPartialObject(): boolean {
     // At the very least, the identity of the object is unknown
     return true;
@@ -147,6 +167,26 @@ export default class AbstractObjectValue extends AbstractValue {
       }
     }
     this.cachedIsSimpleObject = true;
+  }
+
+  // Use this only if it is known that only the string properties of the snapshot will be accessed.
+  getSnapshot(options?: { removeProperties: boolean }): AbstractObjectValue {
+    if (this.isIntrinsic()) return this; // already temporal
+    if (this.values.isTop()) return this; // always the same
+    if (this.kind === "conditional") {
+      let [c, l, r] = this.args;
+      invariant(l instanceof ObjectValue || l instanceof AbstractObjectValue);
+      let ls = l.getSnapshot(options);
+      invariant(r instanceof ObjectValue || r instanceof AbstractObjectValue);
+      let rs = r.getSnapshot(options);
+      invariant(c instanceof AbstractValue);
+      let absVal = AbstractValue.createFromConditionalOp(this.$Realm, c, ls, rs, this.expressionLocation);
+      invariant(absVal instanceof AbstractObjectValue);
+      return absVal;
+    }
+    // If this is some other kind of abstract object we don't know how to make a copy, so just make this final
+    this.makeFinal();
+    return this;
   }
 
   makeFinal(): void {
@@ -360,11 +400,10 @@ export default class AbstractObjectValue extends AbstractValue {
       let generateAbstractGet = () => {
         let type = Value;
         if (P === "length" && Value.isTypeCompatibleWith(this.getType(), ArrayValue)) type = NumberValue;
-        let object = this.kind === "sentinel ToObject" ? this.args[0] : this;
         return AbstractValue.createTemporalFromBuildFunction(
           this.$Realm,
           type,
-          [object],
+          [this],
           ([o]) => {
             invariant(typeof P === "string");
             return t.isValidIdentifier(P)

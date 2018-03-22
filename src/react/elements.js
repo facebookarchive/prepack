@@ -78,10 +78,6 @@ function createPropsObject(
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           }
         );
-
-        if (children !== realm.intrinsics.undefined) {
-          setProp("children", children);
-        }
       } else {
         // if either are abstract, this will impact the reconcilation process
         // and ultimately prevent us from folding ReactElements properly
@@ -93,6 +89,9 @@ function createPropsObject(
         );
         realm.handleError(diagnostic);
         if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
+      }
+      if (children !== realm.intrinsics.undefined) {
+        setProp("children", children);
       }
     } else {
       // as the config is partial and simple, we don't know about its prototype or properties
@@ -123,7 +122,10 @@ function createPropsObject(
       }
     }
   }
-
+  if (props instanceof ObjectValue || props instanceof AbstractObjectValue) {
+    // ensure the props is marked as final
+    props.makeFinal();
+  }
   return { key, props, ref };
 }
 
@@ -142,5 +144,6 @@ export function createReactElement(
   Create.CreateDataPropertyOrThrow(realm, obj, "ref", ref);
   Create.CreateDataPropertyOrThrow(realm, obj, "props", props);
   Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
+  obj.makeFinal();
   return obj;
 }

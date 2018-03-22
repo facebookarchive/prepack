@@ -47,10 +47,10 @@ export function createDeepIntrinsic(realm: Realm, value: mixed, intrinsicName: s
         throw new FatalError("Arrays are not supported yet.");
       }
       let prototype = Object.getPrototypeOf(value);
-      if (prototype !== Object.prototype) {
+      if (prototype !== (Object: any).prototype) {
         throw new FatalError(
           "Only simple objects are supported for now. Got: " +
-            ((typeof prototype.constructor === "function" && prototype.constructor.name) ||
+            ((typeof (prototype: any).constructor === "function" && prototype.constructor.name) ||
               Object.prototype.toString.call(prototype))
         );
       }

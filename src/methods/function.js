@@ -44,22 +44,23 @@ import IsStrict from "../utils/strict.js";
 import * as t from "babel-types";
 import type {
   BabelNode,
-  BabelNodeLVal,
-  BabelNodeStatement,
   BabelNodeBlockStatement,
-  BabelNodeProgram,
+  BabelNodeClassMethod,
   BabelNodeDoWhileStatement,
-  BabelNodeWhileStatement,
-  BabelNodeLabeledStatement,
-  BabelNodeWithStatement,
-  BabelNodeSwitchStatement,
-  BabelNodeIfStatement,
-  BabelNodeForStatement,
   BabelNodeForInStatement,
   BabelNodeForOfStatement,
-  BabelNodeTryStatement,
+  BabelNodeForStatement,
+  BabelNodeIfStatement,
+  BabelNodeLabeledStatement,
+  BabelNodeLVal,
   BabelNodeObjectMethod,
-  BabelNodeClassMethod,
+  BabelNodeProgram,
+  BabelNodeStatement,
+  BabelNodeSwitchStatement,
+  BabelNodeTryStatement,
+  BabelNodeVariableDeclaration,
+  BabelNodeWhileStatement,
+  BabelNodeWithStatement,
 } from "babel-types";
 
 function InternalCall(
@@ -331,7 +332,7 @@ export class FunctionImplementation {
           if (astTryStatement.handler) statements.push(astTryStatement.handler.body);
           break;
         case "VariableDeclaration":
-          return ast.kind === "var" ? [ast] : [];
+          return ((ast: any): BabelNodeVariableDeclaration).kind === "var" ? [ast] : [];
         case "FunctionDeclaration":
           return level < 2 ? [ast] : [];
         default:
@@ -416,7 +417,7 @@ export class FunctionImplementation {
     // 11. Let varNames be the VarDeclaredNames of code.
     let varNames = [];
     traverseFast(code, node => {
-      if (node.type === "VariableDeclaration" && node.kind === "var") {
+      if (node.type === "VariableDeclaration" && ((node: any): BabelNodeVariableDeclaration).kind === "var") {
         varNames = varNames.concat(Object.keys(t.getBindingIdentifiers(node)));
       }
 
@@ -1123,7 +1124,10 @@ export class FunctionImplementation {
     let savedCompletion = realm.savedCompletion;
     if (savedCompletion !== undefined) {
       if (savedCompletion.savedPathConditions) {
+        // Since we are joining several control flow paths, we need the curent path conditions to reflect
+        // only the refinements that applied at the corresponding fork point.
         realm.pathConditions = savedCompletion.savedPathConditions;
+        savedCompletion.savedPathConditions = [];
       }
       realm.savedCompletion = undefined;
       if (c === undefined) return savedCompletion;
@@ -1253,7 +1257,7 @@ export class FunctionImplementation {
     // 1. Let varNames be the VarDeclaredNames of body.
     let varNames = [];
     traverseFast(body, node => {
-      if (node.type === "VariableDeclaration" && node.kind === "var") {
+      if (node.type === "VariableDeclaration" && ((node: any): BabelNodeVariableDeclaration).kind === "var") {
         varNames = varNames.concat(Object.keys(t.getBindingIdentifiers(node)));
       }
 

@@ -16,6 +16,7 @@ import type { BabelNodeExpression, BabelNodeStatement } from "babel-types";
 import { SameValue } from "../methods/abstract.js";
 import { Realm, type Effects } from "../realm.js";
 import invariant from "../invariant.js";
+import type { Generator } from "../utils/generator.js";
 
 export type TryQuery<T> = (f: () => T, defaultValue: T) => T;
 
@@ -39,10 +40,8 @@ export type SerializedBody = {
 
 export type AdditionalFunctionEffects = {
   effects: Effects,
+  generator: Generator,
   transforms: Array<Function>,
-  joinedEffects?: Effects,
-  returnArguments?: Array<Value>,
-  returnBuildNode?: (Array<BabelNodeExpression>) => BabelNodeStatement,
 };
 
 export type AdditionalFunctionInfo = {
@@ -74,6 +73,7 @@ export type FunctionInstance = {
 };
 
 export type FunctionInfo = {
+  depth: number,
   unbound: Set<string>,
   modified: Set<string>,
   usesArguments: boolean,
@@ -105,7 +105,6 @@ export type ResidualFunctionBinding = {
   // new values
   // TODO #1087: make this a map and support arbitrary binding modifications
   additionalFunctionOverridesValue?: true,
-  additionalValueSerialized?: BabelNodeExpression,
 };
 
 export type ScopeBinding = {
@@ -240,6 +239,7 @@ export type ObjectRefCount = {
 export type SerializedResult = {
   code: string,
   map: void | SourceMap,
+  reactStatistics?: ReactStatistics,
   statistics?: SerializerStatistics,
   timingStats?: TimingStatistics,
   heapGraph?: string,

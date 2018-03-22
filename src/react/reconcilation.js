@@ -45,8 +45,7 @@ import {
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
-import { Properties } from "../singletons.js";
-import { CompilerDiagnostic, FatalError } from "../errors.js";
+import { FatalError } from "../errors.js";
 import { BranchState, type BranchStatusEnum } from "./branching.js";
 import {
   getInitialProps,
@@ -115,7 +114,6 @@ export class Reconciler {
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractObjectValue | null,
     context: ObjectValue | AbstractObjectValue | null,
-    isRoot: boolean,
     evaluatedRootNode: ReactEvaluatedNode
   ): Effects {
     const renderComponentTree = () => {
@@ -140,38 +138,31 @@ export class Reconciler {
         this.alreadyEvaluatedRootNodes.set(componentType, evaluatedRootNode);
         return result;
       } catch (error) {
-        // if we get an error and we're not dealing with the root
-        // rather than throw a FatalError, we log the error as a warning
-        // and continue with the other tree roots
-        // TODO: maybe control what levels gets treated as warning/error?
-        if (!isRoot) {
-          if (error instanceof AbruptCompletion) {
-            this.logger.logWarning(
-              componentType,
-              `__optimizeReactComponentTree() React component tree (branch) failed due runtime runtime exception thrown`
-            );
-            evaluatedRootNode.status = "ABRUPT_COMPLETION";
-          } else {
-            this.logger.logWarning(
-              componentType,
-              `__optimizeReactComponentTree() React component tree (branch) failed due to - ${error.message}`
-            );
-            evaluatedRootNode.message = "evaluation failed on new component tree branch";
-            evaluatedRootNode.status = "BAIL-OUT";
-          }
-          return this.realm.intrinsics.undefined;
+        if (error.name === "Invariant Violation") {
+          throw error;
         }
         if (error instanceof ExpectedBailOut) {
-          let diagnostic = new CompilerDiagnostic(
-            `__optimizeReactComponentTree() React component tree (root) failed due to - ${error.message}`,
-            this.realm.currentLocation,
-            "PP0020",
-            "FatalError"
+          this.logger.logWarning(
+            componentType,
+            `__optimizeReactComponentTree() React component tree failed due expected bail-out - ${error.message}`
           );
-          this.realm.handleError(diagnostic);
-          if (this.realm.handleError(diagnostic) === "Fail") throw new FatalError();
+          evaluatedRootNode.message = error.message;
+          evaluatedRootNode.status = "BAIL-OUT";
+        } else if (error instanceof AbruptCompletion) {
+          this.logger.logWarning(
+            componentType,
+            `__optimizeReactComponentTree() React component tree failed due runtime runtime exception thrown`
+          );
+          evaluatedRootNode.status = "ABRUPT_COMPLETION";
+        } else {
+          this.logger.logWarning(
+            componentType,
+            `__optimizeReactComponentTree() React component tree failed due to - ${error.message}`
+          );
+          evaluatedRootNode.message = "evaluation failed on new component tree branch";
+          evaluatedRootNode.status = "BAIL-OUT";
         }
-        throw error;
+        return this.realm.intrinsics.undefined;
       }
     };
 
@@ -301,14 +292,14 @@ export class Reconciler {
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
   ): Value {
-    let typeValue = Get(this.realm, reactElement, "type");
-    let propsValue = Get(this.realm, reactElement, "props");
+    let typeValue = getProperty(this.realm, reactElement, "type");
+    let propsValue = getProperty(this.realm, reactElement, "props");
 
     let evaluatedChildNode = createReactEvaluatedNode("NORMAL", "Context.Provider");
     evaluatedNode.children.push(evaluatedChildNode);
     this.statistics.componentsEvaluated++;
     invariant(typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue);
-    const contextConsumer = Get(this.realm, typeValue, "context");
+    const contextConsumer = getProperty(this.realm, typeValue, "context");
     invariant(contextConsumer instanceof ObjectValue || contextConsumer instanceof AbstractObjectValue);
     let lastValueProp = getProperty(this.realm, contextConsumer, "currentValue");
     this._incremementReferenceForContextNode(contextConsumer);
@@ -316,7 +307,7 @@ export class Reconciler {
     const setContextCurrentValue = value => {
       if (value instanceof Value) {
         // update the currentValue
-        setProperty(this.realm, contextConsumer, "currentValue", value);
+        setProperty(contextConsumer, "currentValue", value);
       }
     };
     // if we have a value prop, set it
@@ -338,7 +329,7 @@ export class Reconciler {
         this._decremementReferenceForContextNode(contextConsumer);
         // if we no dead ends, we know the rest of the tree and can safely remove the provider
         if (this.componentTreeState.deadEnds === 0) {
-          let childrenValue = getProperty(this.realm, propsValue, "children");
+          let childrenValue = Get(this.realm, propsValue, "children");
           evaluatedChildNode.status = "INLINED";
           this.statistics.inlinedComponents++;
           return childrenValue;
@@ -396,8 +387,8 @@ export class Reconciler {
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
   ): Value | void {
-    let typeValue = Get(this.realm, reactElement, "type");
-    let propsValue = Get(this.realm, reactElement, "props");
+    let typeValue = getProperty(this.realm, reactElement, "type");
+    let propsValue = getProperty(this.realm, reactElement, "props");
     let evaluatedChildNode = createReactEvaluatedNode("RENDER_PROPS", "Context.Consumer");
     evaluatedNode.children.push(evaluatedChildNode);
 
@@ -449,8 +440,8 @@ export class Reconciler {
     reactElement: ObjectValue,
     evaluatedNode: ReactEvaluatedNode
   ): Value | void {
-    let typeValue = Get(this.realm, reactElement, "type");
-    let propsValue = Get(this.realm, reactElement, "props");
+    let typeValue = getProperty(this.realm, reactElement, "type");
+    let propsValue = getProperty(this.realm, reactElement, "props");
 
     let evaluatedChildNode = createReactEvaluatedNode("RENDER_PROPS", getComponentName(this.realm, typeValue));
     evaluatedNode.children.push(evaluatedChildNode);
@@ -577,6 +568,7 @@ export class Reconciler {
       invariant(componentType instanceof AbstractValue);
       this._queueNewComponentTree(componentType, evaluatedNode);
       evaluatedNode.status = "NEW_TREE";
+      evaluatedNode.message = "RelayContainer";
       throw new NewComponentTreeBranch();
     }
     invariant(componentType instanceof ECMAScriptSourceFunctionValue);
@@ -641,7 +633,7 @@ export class Reconciler {
   _getComponentResolutionStrategy(value: Value): ComponentResolutionStrategy {
     // check if it's a ReactRelay.QueryRenderer
     if (this.realm.fbLibraries.reactRelay !== undefined) {
-      let QueryRenderer = Get(this.realm, this.realm.fbLibraries.reactRelay, "QueryRenderer");
+      let QueryRenderer = getProperty(this.realm, this.realm.fbLibraries.reactRelay, "QueryRenderer");
       if (value === QueryRenderer) {
         return "RELAY_QUERY_RENDERER";
       }
@@ -692,8 +684,8 @@ export class Reconciler {
   }
 
   _resolveUnknownComponentType(reactElement: ObjectValue, evaluatedNode: ReactEvaluatedNode) {
-    let typeValue = Get(this.realm, reactElement, "type");
-    let propsValue = Get(this.realm, reactElement, "props");
+    let typeValue = getProperty(this.realm, reactElement, "type");
+    let propsValue = getProperty(this.realm, reactElement, "props");
 
     this._findReactComponentTrees(propsValue, evaluatedNode);
     if (typeValue instanceof AbstractValue) {
@@ -711,8 +703,8 @@ export class Reconciler {
   }
 
   _resolveReactElementBadRef(reactElement: ObjectValue, evaluatedNode: ReactEvaluatedNode) {
-    let typeValue = Get(this.realm, reactElement, "type");
-    let propsValue = Get(this.realm, reactElement, "props");
+    let typeValue = getProperty(this.realm, reactElement, "type");
+    let propsValue = getProperty(this.realm, reactElement, "props");
 
     let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
     evaluatedNode.children.push(evaluatedChildNode);
@@ -731,8 +723,8 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ) {
-    let typeValue = Get(this.realm, reactElement, "type");
-    let propsValue = Get(this.realm, reactElement, "props");
+    let typeValue = getProperty(this.realm, reactElement, "type");
+    let propsValue = getProperty(this.realm, reactElement, "props");
 
     let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
     evaluatedNode.children.push(evaluatedChildNode);
@@ -755,10 +747,10 @@ export class Reconciler {
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
   ) {
-    let propsValue = Get(this.realm, reactElement, "props");
+    let propsValue = getProperty(this.realm, reactElement, "props");
     // terminal host component. Start evaluating its children.
     if (propsValue instanceof ObjectValue && propsValue.properties.has("children")) {
-      let childrenValue = getProperty(this.realm, propsValue, "children");
+      let childrenValue = Get(this.realm, propsValue, "children");
 
       if (childrenValue instanceof Value) {
         let resolvedChildren = this._resolveDeeply(
@@ -775,7 +767,7 @@ export class Reconciler {
         }
         if (propsValue.properties.has("children")) {
           propsValue.refuseSerialization = true;
-          Properties.Set(this.realm, propsValue, "children", resolvedChildren, true);
+          setProperty(propsValue, "children", resolvedChildren);
           propsValue.refuseSerialization = false;
         }
       }
@@ -831,9 +823,9 @@ export class Reconciler {
       ? sanitizeReactElementForFirstRenderOnly(this.realm, reactElement)
       : reactElement;
 
-    let typeValue = Get(this.realm, reactElement, "type");
-    let propsValue = Get(this.realm, reactElement, "props");
-    let refValue = Get(this.realm, reactElement, "ref");
+    let typeValue = getProperty(this.realm, reactElement, "type");
+    let propsValue = getProperty(this.realm, reactElement, "props");
+    let refValue = getProperty(this.realm, reactElement, "ref");
 
     if (typeValue instanceof StringValue) {
       return this._resolveReactElementHostChildren(
@@ -940,8 +932,11 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null
   ): Value {
-    let typeValue = Get(this.realm, reactElement, "type");
-    let propsValue = Get(this.realm, reactElement, "props");
+    if (error.name === "Invariant Violation") {
+      throw error;
+    }
+    let typeValue = getProperty(this.realm, reactElement, "type");
+    let propsValue = getProperty(this.realm, reactElement, "props");
     // assign a bail out message
     if (error instanceof NewComponentTreeBranch) {
       // NO-OP (we don't queue a newComponentTree as this was already done)

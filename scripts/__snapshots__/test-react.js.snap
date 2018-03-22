@@ -1975,6 +1975,22 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output Functional component folding Simple with new expression 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output Functional component folding Simple with unary expressions 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
@@ -2299,7 +2315,7 @@ ReactStatistics {
         },
         Object {
           "children": Array [],
-          "message": "evaluation failed on new component tree branch",
+          "message": "completely unknown component render currently supported on first render",
           "name": "Middle",
           "status": "BAIL-OUT",
         },
@@ -2456,7 +2472,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "message": "",
+          "message": "RelayContainer",
           "name": "WrappedApp",
           "status": "NEW_TREE",
         },
@@ -4709,6 +4725,22 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, create-element output Functional component folding Simple with new expression 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, create-element output Functional component folding Simple with unary expressions 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
@@ -5033,7 +5065,7 @@ ReactStatistics {
         },
         Object {
           "children": Array [],
-          "message": "evaluation failed on new component tree branch",
+          "message": "completely unknown component render currently supported on first render",
           "name": "Middle",
           "status": "BAIL-OUT",
         },
@@ -5190,7 +5222,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "message": "",
+          "message": "RelayContainer",
           "name": "WrappedApp",
           "status": "NEW_TREE",
         },
@@ -7408,6 +7440,22 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output Functional component folding Simple with new expression 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output Functional component folding Simple with unary expressions 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
@@ -7732,7 +7780,7 @@ ReactStatistics {
         },
         Object {
           "children": Array [],
-          "message": "evaluation failed on new component tree branch",
+          "message": "completely unknown component render currently supported on first render",
           "name": "Middle",
           "status": "BAIL-OUT",
         },
@@ -7889,7 +7937,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "message": "",
+          "message": "RelayContainer",
           "name": "WrappedApp",
           "status": "NEW_TREE",
         },
@@ -10107,6 +10155,22 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, create-element output Functional component folding Simple with new expression 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, create-element output Functional component folding Simple with unary expressions 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
@@ -10431,7 +10495,7 @@ ReactStatistics {
         },
         Object {
           "children": Array [],
-          "message": "evaluation failed on new component tree branch",
+          "message": "completely unknown component render currently supported on first render",
           "name": "Middle",
           "status": "BAIL-OUT",
         },
@@ -10588,7 +10652,7 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "message": "",
+          "message": "RelayContainer",
           "name": "WrappedApp",
           "status": "NEW_TREE",
         },

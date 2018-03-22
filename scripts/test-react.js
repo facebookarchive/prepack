@@ -47,6 +47,19 @@ function getDataFile(directory, name) {
   return data;
 }
 
+function MockURI(url) {
+  this.url = url;
+}
+
+MockURI.prototype.addQueryData = function() {
+  this.url += "&queryData";
+  return this;
+};
+
+MockURI.prototype.makeString = function() {
+  return this.url;
+};
+
 function runTestSuite(outputJsx, shouldTranspileSource) {
   let errorsCaptured = [];
   let reactTestRoot = path.join(__dirname, "../test/react/");
@@ -67,7 +80,6 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     reactOutput: outputJsx ? "jsx" : "create-element",
     inlineExpressions: true,
     omitInvariants: true,
-    abstractEffectsInAdditionalFunctions: true,
     stripFlow: true,
   };
 
@@ -118,6 +130,8 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
           return cxShim;
         case "FBEnvironment":
           return {};
+        case "URI":
+          return MockURI;
         default:
           throw new Error(`Unrecognized import: "${name}".`);
       }
@@ -252,6 +266,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Simple children", async () => {
         await runTest(directory, "simple-children.js");
+      });
+
+      it("Simple with new expression", async () => {
+        await runTest(directory, "simple-with-new-expression.js");
       });
 
       it("Simple refs", async () => {

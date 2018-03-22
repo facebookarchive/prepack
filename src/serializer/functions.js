@@ -10,8 +10,7 @@
 /* @flow */
 
 import type { BabelNodeCallExpression, BabelNodeSourceLocation } from "babel-types";
-import { Completion, PossiblyNormalCompletion, JoinedAbruptCompletions, ReturnCompletion } from "../completions.js";
-import { Join } from "../singletons.js";
+import { Completion, PossiblyNormalCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import { type Effects, type PropertyBindings, Realm } from "../realm.js";
@@ -26,6 +25,7 @@ import {
   ECMAScriptSourceFunctionValue,
   UndefinedValue,
 } from "../values/index.js";
+import { Generator } from "../utils/generator.js";
 import { Get } from "../methods/index.js";
 import { ModuleTracer } from "../utils/modules.js";
 import {
@@ -119,57 +119,16 @@ export class Functions {
   }
 
   // This will also handle postprocessing for PossiblyNormalCompletion
-  _createAdditionalEffects(effects: Effects, fatalOnAbrupt: boolean): AdditionalFunctionEffects | null {
-    let [result, generator] = effects;
-    let retValue: AdditionalFunctionEffects = { effects, transforms: [] };
-    // Create the effects, arguments and buildNode for the return value, saving them in AdditionalFunctionEffects
-    if (result instanceof PossiblyNormalCompletion) {
-      let { joinCondition, consequent, alternate, consequentEffects, alternateEffects } = result;
-      let containsValue =
-        consequent instanceof Value ||
-        consequent instanceof ReturnCompletion ||
-        alternate instanceof Value ||
-        alternate instanceof ReturnCompletion;
-      let containsJoinedAbrupt =
-        consequent instanceof JoinedAbruptCompletions || alternate instanceof JoinedAbruptCompletions;
-      if (!containsValue && !containsJoinedAbrupt) {
-        if (!fatalOnAbrupt) {
-          return null;
-        }
-        this.realm.handleError(
-          new CompilerDiagnostic(
-            "Additional function with this type of abrupt exit not supported",
-            result.location,
-            "PP1002",
-            "FatalError"
-          )
-        );
-        throw new FatalError();
-      }
-      // Here we join the two sets of Effects from the PossiblyNormalCompletion after
-      // the additional function's return so that the serializer can emit the proper
-      // throw and return values.
-
-      // Force joinEffects to join the effects by changing result.
-      let consequentResult = consequentEffects[0];
-      let alternateResult = alternateEffects[0];
-      consequentEffects[0] = this.realm.intrinsics.undefined;
-      alternateEffects[0] = this.realm.intrinsics.undefined;
-      let joinedEffects = Join.joinEffects(this.realm, joinCondition, consequentEffects, alternateEffects);
-      consequentEffects[0] = consequentResult;
-      alternateEffects[0] = alternateResult;
-      let args, buildNode;
-      this.realm.withEffectsAppliedInGlobalEnv(() => {
-        this.realm.withEffectsAppliedInGlobalEnv(() => {
-          [args, buildNode] = generator.getThrowOrReturn(joinCondition, consequent, alternate);
-          return null;
-        }, joinedEffects);
-        return null;
-      }, effects);
-      retValue.joinedEffects = joinedEffects;
-      retValue.returnArguments = args;
-      retValue.returnBuildNode = buildNode;
-    }
+  _createAdditionalEffects(
+    effects: Effects,
+    fatalOnAbrupt: boolean,
+    environmentRecordIdAfterGlobalCode: number
+  ): AdditionalFunctionEffects | null {
+    let retValue: AdditionalFunctionEffects = {
+      effects,
+      transforms: [],
+      generator: Generator.fromEffects(effects, this.realm, environmentRecordIdAfterGlobalCode),
+    };
     return retValue;
   }
 
@@ -177,9 +136,10 @@ export class Functions {
     componentType: ECMAScriptSourceFunctionValue,
     effects: Effects,
     componentTreeState: ComponentTreeState,
-    evaluatedNode: ReactEvaluatedNode
+    evaluatedNode: ReactEvaluatedNode,
+    environmentRecordIdAfterGlobalCode: number
   ): void {
-    let additionalFunctionEffects = this._createAdditionalEffects(effects, false);
+    let additionalFunctionEffects = this._createAdditionalEffects(effects, false, environmentRecordIdAfterGlobalCode);
     if (additionalFunctionEffects === null) {
       // TODO we don't support this yet, but will do very soon
       // to unblock work, we'll just return at this point right now
@@ -227,9 +187,17 @@ export class Functions {
     }
   }
 
-  checkRootReactComponentTrees(statistics: ReactStatistics, react: ReactSerializerState): void {
+  checkRootReactComponentTrees(
+    statistics: ReactStatistics,
+    react: ReactSerializerState,
+    environmentRecordIdAfterGlobalCode: number
+  ): void {
+    let logger = this.moduleTracer.modules.logger;
     let recordedReactRootValues = this.__generateAdditionalFunctionsMap("__reactComponentTrees");
     // Get write effects of the components
+    if (this.realm.react.verbose) {
+      logger.logInformation(`Evaluating ${recordedReactRootValues.size} React component tree roots...`);
+    }
     for (let [componentRoot, { config }] of recordedReactRootValues) {
       invariant(config);
       let reconciler = new Reconciler(this.realm, this.moduleTracer, statistics, react, config);
@@ -238,13 +206,28 @@ export class Functions {
         continue;
       }
       let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(this.realm, componentType));
+      if (this.realm.react.verbose) {
+        logger.logInformation(`- ${evaluatedRootNode.name} (root)...`);
+      }
       statistics.evaluatedRootNodes.push(evaluatedRootNode);
       if (reconciler.hasEvaluatedRootNode(componentType, evaluatedRootNode)) {
         continue;
       }
-      let effects = reconciler.render(componentType, null, null, true, evaluatedRootNode);
+      let effects = reconciler.render(componentType, null, null, evaluatedRootNode);
+      if (effects[0] === this.realm.intrinsics.undefined) {
+        if (this.realm.react.verbose) {
+          logger.logInformation(`- ${evaluatedRootNode.name} failed (root)`);
+        }
+        continue;
+      }
       let componentTreeState = reconciler.componentTreeState;
-      this._generateWriteEffectsForReactComponentTree(componentType, effects, componentTreeState, evaluatedRootNode);
+      this._generateWriteEffectsForReactComponentTree(
+        componentType,
+        effects,
+        componentTreeState,
+        evaluatedRootNode,
+        environmentRecordIdAfterGlobalCode
+      );
 
       // for now we just use abstract props/context, in the future we'll create a new branch with a new component
       // that used the props/context. It will extend the original component and only have a render method
@@ -260,13 +243,23 @@ export class Functions {
             return;
           }
           reconciler.clearComponentTreeState();
-          let branchEffects = reconciler.render(branchComponentType, null, null, false, evaluatedNode);
+          if (this.realm.react.verbose) {
+            logger.logInformation(`  - ${evaluatedNode.name} (branch)...`);
+          }
+          let branchEffects = reconciler.render(branchComponentType, null, null, evaluatedNode);
+          if (effects[0] === this.realm.intrinsics.undefined) {
+            if (this.realm.react.verbose) {
+              logger.logInformation(`- ${evaluatedNode.name} failed (branch)`);
+            }
+            return;
+          }
           let branchComponentTreeState = reconciler.componentTreeState;
           this._generateWriteEffectsForReactComponentTree(
             branchComponentType,
             branchEffects,
             branchComponentTreeState,
-            evaluatedNode
+            evaluatedNode,
+            environmentRecordIdAfterGlobalCode
           );
         });
       }
@@ -334,7 +327,7 @@ export class Functions {
     return call.bind(this, globalThis, args);
   }
 
-  checkThatFunctionsAreIndependent() {
+  checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode: number) {
     let additionalFunctions = this.__generateAdditionalFunctionsMap("__optimizedFunctions");
 
     for (let [funcValue] of additionalFunctions) {
@@ -344,7 +337,7 @@ export class Functions {
         this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
       );
       invariant(effects);
-      let additionalFunctionEffects = this._createAdditionalEffects(effects, true);
+      let additionalFunctionEffects = this._createAdditionalEffects(effects, true, environmentRecordIdAfterGlobalCode);
       invariant(additionalFunctionEffects);
       this.writeEffects.set(funcValue, additionalFunctionEffects);
     }

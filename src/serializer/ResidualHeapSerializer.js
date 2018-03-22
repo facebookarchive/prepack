@@ -29,7 +29,6 @@ import {
   UndefinedValue,
   PrimitiveValue,
 } from "../values/index.js";
-import { PossiblyNormalCompletion } from "../completions.js";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
@@ -180,6 +179,7 @@ export class ResidualHeapSerializer {
     this.getGeneratorParent = generatorParents.get.bind(generatorParents);
     this.additionalFunctionGenerators = new Map();
     this.additionalFunctionGeneratorsInverse = new Map();
+    this.declaredGlobalLets = new Set();
   }
 
   emitter: Emitter;
@@ -231,6 +231,8 @@ export class ResidualHeapSerializer {
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
 
   getGeneratorParent: Generator => void | Generator;
+
+  declaredGlobalLets: Set<string>;
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -842,7 +844,7 @@ export class ResidualHeapSerializer {
   }
 
   serializeValue(val: Value, referenceOnly?: boolean, bindingType?: BabelVariableKind): BabelNodeExpression {
-    invariant(!val.refuseSerialization);
+    invariant(!(val instanceof ObjectValue && val.refuseSerialization));
     if (val instanceof AbstractValue) {
       if (val.kind === "widened") {
         this.serializedValues.add(val);
@@ -1437,34 +1439,38 @@ export class ResidualHeapSerializer {
     let remainingProperties = new Map(val.properties);
     const dummyProperties = new Set();
     let props = [];
-    for (let [key, propertyBinding] of val.properties) {
-      if (propertyBinding.pathNode !== undefined) continue; // written to inside loop
-      let descriptor = propertyBinding.descriptor;
-      if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
-      if (this._canEmbedProperty(val, key, descriptor)) {
-        let propValue = descriptor.value;
-        invariant(propValue instanceof Value);
-        if (this.residualHeapInspector.canIgnoreProperty(val, key)) continue;
-        let mightHaveBeenDeleted = propValue.mightHaveBeenDeleted();
-        let serializedKey = this.generator.getAsPropertyNameExpression(key);
-        let delayReason =
-          this.emitter.getReasonToWaitForDependencies(propValue) ||
-          this.emitter.getReasonToWaitForActiveValue(val, mightHaveBeenDeleted);
-        // Although the property needs to be delayed, we still want to emit dummy "undefined"
-        // value as part of the object literal to ensure a consistent property ordering.
-        let serializedValue = voidExpression;
-        if (delayReason) {
-          // May need to be cleaned up later.
+    if (val.temporalAlias !== undefined) {
+      return t.objectExpression(props);
+    } else {
+      for (let [key, propertyBinding] of val.properties) {
+        if (propertyBinding.pathNode !== undefined) continue; // written to inside loop
+        let descriptor = propertyBinding.descriptor;
+        if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
+        if (this._canEmbedProperty(val, key, descriptor)) {
+          let propValue = descriptor.value;
+          invariant(propValue instanceof Value);
+          if (this.residualHeapInspector.canIgnoreProperty(val, key)) continue;
+          let mightHaveBeenDeleted = propValue.mightHaveBeenDeleted();
+          let serializedKey = this.generator.getAsPropertyNameExpression(key);
+          let delayReason =
+            this.emitter.getReasonToWaitForDependencies(propValue) ||
+            this.emitter.getReasonToWaitForActiveValue(val, mightHaveBeenDeleted);
+          // Although the property needs to be delayed, we still want to emit dummy "undefined"
+          // value as part of the object literal to ensure a consistent property ordering.
+          let serializedValue = voidExpression;
+          if (delayReason) {
+            // May need to be cleaned up later.
+            dummyProperties.add(key);
+          } else {
+            remainingProperties.delete(key);
+            serializedValue = this.serializeValue(propValue);
+          }
+          props.push(t.objectProperty(serializedKey, serializedValue));
+        } else if (descriptor.value instanceof Value && descriptor.value.mightHaveBeenDeleted()) {
           dummyProperties.add(key);
-        } else {
-          remainingProperties.delete(key);
-          serializedValue = this.serializeValue(propValue);
+          let serializedKey = this.generator.getAsPropertyNameExpression(key);
+          props.push(t.objectProperty(serializedKey, voidExpression));
         }
-        props.push(t.objectProperty(serializedKey, serializedValue));
-      } else if (descriptor.value instanceof Value && descriptor.value.mightHaveBeenDeleted()) {
-        dummyProperties.add(key);
-        let serializedKey = this.generator.getAsPropertyNameExpression(key);
-        props.push(t.objectProperty(serializedKey, voidExpression));
       }
     }
     this._emitObjectProperties(
@@ -1486,16 +1492,29 @@ export class ResidualHeapSerializer {
       undefined,
       skipPrototype
     );
-    this.needsAuxiliaryConstructor = true;
     let serializedProto = this.serializeValue(classConstructor ? classConstructor : proto);
-    return t.sequenceExpression([
-      t.assignmentExpression(
-        "=",
-        t.memberExpression(constructorExpression, t.identifier("prototype")),
-        classConstructor ? t.memberExpression(serializedProto, t.identifier("prototype")) : serializedProto
-      ),
-      t.newExpression(constructorExpression, []),
-    ]);
+    if (val.temporalAlias === undefined) {
+      this.needsAuxiliaryConstructor = true;
+      return t.sequenceExpression([
+        t.assignmentExpression(
+          "=",
+          t.memberExpression(constructorExpression, t.identifier("prototype")),
+          classConstructor ? t.memberExpression(serializedProto, t.identifier("prototype")) : serializedProto
+        ),
+        t.newExpression(constructorExpression, []),
+      ]);
+    } else {
+      this.emitter.emitAfterWaiting(val.temporalAlias, [], () => {
+        invariant(val.temporalAlias !== undefined);
+        let uid = this.serializeValue(val.temporalAlias);
+        this.emitter.emit(
+          t.expressionStatement(
+            t.callExpression(this.preludeGenerator.memoizeReference("Object.setPrototypeOf"), [uid, serializedProto])
+          )
+        );
+      });
+      return t.objectExpression([]);
+    }
   }
 
   serializeValueObject(val: ObjectValue): BabelNodeExpression | void {
@@ -1573,10 +1592,10 @@ export class ResidualHeapSerializer {
         return this._serializeValueSet(val);
       default:
         invariant(kind === "Object", "invariant established by visitor");
-        invariant(this.$ParameterMap === undefined, "invariant established by visitor");
 
         let proto = val.$Prototype;
         let createViaAuxiliaryConstructor =
+          val.temporalAlias === undefined &&
           proto !== this.realm.intrinsics.ObjectPrototype &&
           this._findLastObjectPrototype(val) === this.realm.intrinsics.ObjectPrototype &&
           proto instanceof ObjectValue;
@@ -1619,6 +1638,11 @@ export class ResidualHeapSerializer {
       invariant(abstractIndex >= 0 && abstractIndex < val.args.length);
       return serializedArgs[abstractIndex];
     }
+    if (val.kind === "implicit conversion to object") {
+      let ob = serializedArgs[0];
+      invariant(ob !== undefined);
+      return ob;
+    }
     let serializedValue = val.buildNode(serializedArgs);
     if (serializedValue.type === "Identifier") {
       let id = ((serializedValue: any): BabelNodeIdentifier);
@@ -1633,10 +1657,7 @@ export class ResidualHeapSerializer {
   }
 
   _serializeAbstractValue(val: AbstractValue): void | BabelNodeExpression {
-    invariant(
-      val.kind !== "sentinel member expression" && val.kind !== "sentinel ToObject",
-      "invariant established by visitor"
-    );
+    invariant(val.kind !== "sentinel member expression", "invariant established by visitor");
     if (val.hasIdentifier()) {
       return this._serializeAbstractValueHelper(val);
     } else {
@@ -1698,16 +1719,14 @@ export class ResidualHeapSerializer {
       if (boundName === "undefined") {
         residualFunctionBinding.serializedValue = voidExpression;
       } else {
-        let value = this.realm.getGlobalLetBinding(boundName);
+        let value = residualFunctionBinding.value;
         // Check for let binding vs global property
         if (value) {
-          let rval = residualFunctionBinding.value;
-          invariant(rval !== undefined && value.equals(rval));
-          let id = this.serializeValue(rval, true, "let");
-          // increment ref count one more time as the value has been
-          // referentialized (stored in a variable) by serializeValue
-          this.residualHeapValueIdentifiers.incrementReferenceCount(rval);
-          residualFunctionBinding.serializedValue = id;
+          let name = t.identifier(boundName);
+          residualFunctionBinding.serializedValue = name;
+          invariant(value.equals(value));
+          this.declaredGlobalLets.add(boundName);
+          this.emitter.emit(t.expressionStatement(t.assignmentExpression("=", name, this.serializeValue(value))));
         } else {
           residualFunctionBinding.serializedValue = this.preludeGenerator.globalReference(boundName);
         }
@@ -1758,6 +1777,11 @@ export class ResidualHeapSerializer {
       declare: (value: AbstractValue) => {
         this.emitter.declare(value);
       },
+      emitPropertyModification: (propertyBinding: PropertyBinding) => {
+        let object = propertyBinding.object;
+        invariant(object instanceof ObjectValue);
+        this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
+      },
     };
     return context;
   }
@@ -1789,14 +1813,19 @@ export class ResidualHeapSerializer {
     return false;
   }
 
-  _serializeAdditionalFunctionGeneratorAndEffects(generator: Generator, postGeneratorCallback: () => void) {
-    let context = this._getContext();
+  _serializeAdditionalFunctionGeneratorAndEffects(generator: Generator, additionalEffects: AdditionalFunctionEffects) {
     return this._withGeneratorScope("AdditionalFunction", generator, newBody => {
       let oldSerialiedValueWithIdentifiers = this._serializedValueWithIdentifiers;
       this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
       try {
-        generator.serialize(context);
-        postGeneratorCallback();
+        let effectsGenerator = additionalEffects.generator;
+        effectsGenerator.serialize(this._getContext());
+
+        this.realm.withEffectsAppliedInGlobalEnv(() => {
+          const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
+          this.mainBody.entries.push(...lazyHoistedReactNodes);
+          return null;
+        }, additionalEffects.effects);
       } finally {
         this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
       }
@@ -1810,71 +1839,20 @@ export class ResidualHeapSerializer {
   //          -- we don't overwrite anything they capture
   // PropertyBindings -- visit any property bindings that aren't to createdobjects
   // CreatedObjects -- should take care of itself
-  _serializeAdditionalFunctionEffects(
-    additionalFunctionValue: FunctionValue,
-    additionalEffects: AdditionalFunctionEffects
-  ) {
-    let { effects, joinedEffects, returnArguments, returnBuildNode } = additionalEffects;
-    let [result, , , modifiedProperties, createdObjects] = effects;
-    for (let propertyBinding of modifiedProperties.keys()) {
-      let object = propertyBinding.object;
-      if (object instanceof ObjectValue && createdObjects.has(object)) continue;
-      if (object.refuseSerialization) continue;
-      if (object.isIntrinsic()) continue;
-      invariant(object instanceof ObjectValue);
-      this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
-    }
-    invariant(
-      result instanceof Value || result instanceof PossiblyNormalCompletion,
-      "Should not be serializing an additional function with an unconditional throw, JoinedAbruptCompletions not yet supported"
-    );
-    // Handle ModifiedBindings
-    let additionalFunctionValueInfo = this.additionalFunctionValueInfos.get(additionalFunctionValue);
-    invariant(additionalFunctionValueInfo);
-    for (let [modifiedBinding, residualBinding] of additionalFunctionValueInfo.modifiedBindings) {
-      let newVal = modifiedBinding.value;
-      invariant(newVal);
-      residualBinding.additionalValueSerialized = this.serializeValue(newVal);
-    }
-    if (result instanceof Value && !(result instanceof UndefinedValue)) {
-      this.emitter.emit(t.returnStatement(this.serializeValue(result)));
-    } else if (result instanceof PossiblyNormalCompletion) {
-      invariant(joinedEffects !== undefined);
-
-      this.realm.withEffectsAppliedInGlobalEnv(() => {
-        invariant(returnArguments !== undefined);
-        invariant(returnBuildNode !== undefined);
-        let args = returnArguments.map(arg => this.serializeValue(arg));
-        this.emitter.emit(returnBuildNode(args));
-        return null;
-      }, joinedEffects);
-    }
-
-    const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
-    Array.prototype.push.apply(this.mainBody.entries, lazyHoistedReactNodes);
-  }
-
   _serializeAdditionalFunction(additionalFunctionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects) {
-    let { effects, transforms } = additionalEffects;
+    let { effects, transforms, generator } = additionalEffects;
     if (!this.additionalFunctionValueInfos.has(additionalFunctionValue)) {
       // the additionalFunction has no info, so it likely has been dead code eliminated
       return;
     }
     let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
-    let [, generator, , , createdObjects] = effects;
+    let createdObjects = effects[4];
     let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
     // Allows us to emit function declarations etc. inside of this additional
     // function instead of adding them at global scope
     // TODO: make sure this generator isn't getting mutated oddly
     ((nestedFunctions: any): Set<FunctionValue>).forEach(val => this.additionalFunctionValueNestedFunctions.add(val));
-    let body = this.realm.withEffectsAppliedInGlobalEnv(
-      this._serializeAdditionalFunctionGeneratorAndEffects.bind(
-        this,
-        generator,
-        this._serializeAdditionalFunctionEffects.bind(this, additionalFunctionValue, additionalEffects)
-      ),
-      effects
-    );
+    let body = this._serializeAdditionalFunctionGeneratorAndEffects(generator, additionalEffects);
     invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
     for (let transform of transforms) {
       transform(body);
@@ -1894,8 +1872,7 @@ export class ResidualHeapSerializer {
   prepareAdditionalFunctionValues() {
     let additionalFVEffects = this.additionalFunctionValuesAndEffects;
     if (additionalFVEffects)
-      for (let [additionalFunctionValue, { effects }] of additionalFVEffects.entries()) {
-        let generator = effects[1];
+      for (let [additionalFunctionValue, { generator }] of additionalFVEffects.entries()) {
         invariant(!this.additionalFunctionGenerators.has(additionalFunctionValue));
         this.additionalFunctionGenerators.set(additionalFunctionValue, generator);
         invariant(!this.additionalFunctionGeneratorsInverse.has(generator));
@@ -2000,6 +1977,13 @@ export class ResidualHeapSerializer {
           Array.from(this.preludeGenerator.declaredGlobals).map(key => t.variableDeclarator(t.identifier(key)))
         )
       );
+    if (this.declaredGlobalLets.size > 0)
+      ast_body.push(
+        t.variableDeclaration(
+          "let",
+          Array.from(this.declaredGlobalLets).map(key => t.variableDeclarator(t.identifier(key)))
+        )
+      );
     if (body.length) {
       if (this.realm.isCompatibleWith("node-source-maps")) {
         ast_body.push(
@@ -2028,8 +2012,11 @@ export class ResidualHeapSerializer {
       }
     }
 
-    // Make sure that the visitor visited as many values as the serializer
-    if (this.serializedValues.size !== this.residualValues.size) {
+    // Make sure that the visitor visited exactly the same values as the serializer
+    if (
+      this.serializedValues.size !== this.residualValues.size ||
+      !Array.from(this.serializedValues).every(val => this.residualValues.has(val))
+    ) {
       this._logSerializedResidualMismatches();
       invariant(false, "serialized " + this.serializedValues.size + " of " + this.residualValues.size);
     }

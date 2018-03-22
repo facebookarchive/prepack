@@ -9,7 +9,9 @@
 
 /* @flow */
 
-import type { Realm } from "../realm.js";
+import type { Realm, Effects } from "../realm.js";
+import type { PropertyBinding, Descriptor } from "../types.js";
+import type { ResidualFunctionBinding } from "../serializer/types.js";
 import type { Binding } from "../environment.js";
 import {
   AbstractObjectValue,
@@ -29,11 +31,16 @@ import {
 import { CompilerDiagnostic } from "../errors.js";
 import type { AbstractValueBuildNodeFunction } from "../values/AbstractValue.js";
 import { hashString } from "../methods/index.js";
-import type { Descriptor } from "../types.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
-import { Completion, JoinedAbruptCompletions, ThrowCompletion, ReturnCompletion } from "../completions.js";
+import {
+  Completion,
+  JoinedAbruptCompletions,
+  ThrowCompletion,
+  ReturnCompletion,
+  PossiblyNormalCompletion,
+} from "../completions.js";
 import type {
   BabelNodeExpression,
   BabelNodeIdentifier,
@@ -42,11 +49,12 @@ import type {
   BabelNodeMemberExpression,
   BabelNodeVariableDeclaration,
   BabelNodeBlockStatement,
+  BabelNodeLVal,
 } from "babel-types";
 import { nullExpression } from "./internalizer.js";
 import { Utils, concretize } from "../singletons.js";
 
-export type SerializationContext = {
+export type SerializationContext = {|
   serializeValue: Value => BabelNodeExpression,
   serializeBinding: Binding => BabelNodeIdentifier | BabelNodeMemberExpression,
   serializeGenerator: Generator => Array<BabelNodeStatement>,
@@ -54,7 +62,18 @@ export type SerializationContext = {
   emit: BabelNodeStatement => void,
   canOmit: AbstractValue => boolean,
   declare: AbstractValue => void,
-};
+  emitPropertyModification: PropertyBinding => void,
+|};
+
+export type VisitEntryCallbacks = {|
+  visitValues: (Array<Value>) => void,
+  visitGenerator: (Generator, Generator) => void,
+  canSkip: AbstractValue => boolean,
+  recordDeclaration: AbstractValue => void,
+  recordDelayedEntry: (Generator, GeneratorEntry) => void,
+  visitObjectProperty: PropertyBinding => void,
+  visitModifiedBinding: (Binding, Value | void) => void | ResidualFunctionBinding,
+|};
 
 export type DerivedExpressionBuildNodeFunction = (
   Array<BabelNodeExpression>,
@@ -65,7 +84,17 @@ export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, Serializat
 
 type ArgsAndBuildNode = [Array<Value>, (Array<BabelNodeExpression>) => BabelNodeStatement];
 
-export type GeneratorEntry = {
+export class GeneratorEntry {
+  visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator) {
+    invariant(false, "GeneratorEntry is an abstract base class");
+  }
+
+  serialize(context: SerializationContext) {
+    invariant(false, "GeneratorEntry is an abstract base class");
+  }
+}
+
+type TemporalBuildNodeEntryArgs = {
   declared?: AbstractValue,
   args: Array<Value>,
   // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
@@ -74,13 +103,196 @@ export type GeneratorEntry = {
   isPure?: boolean,
 };
 
-export type VisitEntryCallbacks = {|
-  visitValues: (Array<Value>) => void,
-  visitGenerator: (Generator, Generator) => void,
-  canSkip: AbstractValue => boolean,
-  recordDeclaration: AbstractValue => void,
-  recordDelayedEntry: (Generator, GeneratorEntry) => void,
+class TemporalBuildNodeEntry extends GeneratorEntry {
+  constructor(args: TemporalBuildNodeEntryArgs) {
+    super();
+    Object.assign(this, args);
+  }
+
+  declared: void | AbstractValue;
+  args: Array<Value>;
+  // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
+  buildNode: void | GeneratorBuildNodeFunction;
+  dependencies: void | Array<Generator>;
+  isPure: void | boolean;
+
+  visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator) {
+    if (this.isPure && this.declared && callbacks.canSkip(this.declared)) {
+      callbacks.recordDelayedEntry(containingGenerator, this);
+    } else {
+      if (this.declared) callbacks.recordDeclaration(this.declared);
+      callbacks.visitValues(this.args);
+      if (this.dependencies)
+        for (let dependency of this.dependencies) callbacks.visitGenerator(dependency, containingGenerator);
+    }
+  }
+
+  serialize(context: SerializationContext) {
+    if (!this.isPure || !this.declared || !context.canOmit(this.declared)) {
+      let nodes = this.args.map((boundArg, i) => context.serializeValue(boundArg));
+      if (this.buildNode) {
+        let node = this.buildNode(nodes, context);
+        if (node.type === "BlockStatement") {
+          let block: BabelNodeBlockStatement = (node: any);
+          let statements = block.body;
+          if (statements.length === 0) return;
+          if (statements.length === 1) {
+            node = statements[0];
+          }
+        }
+        context.emit(node);
+      }
+      if (this.declared !== undefined) context.declare(this.declared);
+    }
+  }
+}
+
+type ModifiedPropertyEntryArgs = {|
+  propertyBinding: PropertyBinding,
+  newDescriptor: void | Descriptor,
+  containingGenerator: Generator,
 |};
+
+class ModifiedPropertyEntry extends GeneratorEntry {
+  constructor(args: ModifiedPropertyEntryArgs) {
+    super();
+    Object.assign(this, args);
+  }
+
+  containingGenerator: Generator;
+  propertyBinding: PropertyBinding;
+  newDescriptor: void | Descriptor;
+
+  serialize(context: SerializationContext) {
+    let desc = this.propertyBinding.descriptor;
+    invariant(desc === this.newDescriptor);
+    context.emitPropertyModification(this.propertyBinding);
+  }
+
+  visit(context: VisitEntryCallbacks, containingGenerator: Generator) {
+    invariant(
+      containingGenerator === this.containingGenerator,
+      "This entry requires effects to be applied and may not be moved"
+    );
+    let desc = this.propertyBinding.descriptor;
+    invariant(desc === this.newDescriptor);
+    context.visitObjectProperty(this.propertyBinding);
+  }
+}
+
+type ModifiedBindingEntryArgs = {|
+  modifiedBinding: Binding,
+  newValue: void | Value,
+  oldValue: void | Value,
+  containingGenerator: Generator,
+|};
+
+class ModifiedBindingEntry extends GeneratorEntry {
+  constructor(args: ModifiedBindingEntryArgs) {
+    super();
+    Object.assign(this, args);
+  }
+
+  containingGenerator: Generator;
+  modifiedBinding: Binding;
+  newValue: void | Value;
+  oldValue: void | Value;
+  residualFunctionBinding: void | ResidualFunctionBinding;
+
+  serialize(context: SerializationContext) {
+    let residualFunctionBinding = this.residualFunctionBinding;
+    if (!residualFunctionBinding) {
+      invariant(this.modifiedBinding.value instanceof FunctionValue);
+      return;
+    }
+    invariant(this.modifiedBinding.value === this.newValue);
+    invariant(
+      residualFunctionBinding.serializedValue,
+      "ResidualFunctionBinding must be referentialized before serializing a mutation to it."
+    );
+    let newValue = this.newValue;
+    if (newValue) {
+      let bindingReference = ((residualFunctionBinding.serializedValue: any): BabelNodeLVal);
+      invariant(
+        t.isLVal(bindingReference),
+        "Referentialized values must be LVals even though serializedValues may be any Expression"
+      );
+      let serializedNewValue = context.serializeValue(newValue);
+      context.emit(t.expressionStatement(t.assignmentExpression("=", bindingReference, serializedNewValue)));
+    }
+  }
+
+  visit(context: VisitEntryCallbacks, containingGenerator: Generator) {
+    invariant(
+      containingGenerator === this.containingGenerator,
+      "This entry requires effects to be applied and may not be moved"
+    );
+    invariant(this.modifiedBinding.value === this.newValue);
+    let residualBinding = context.visitModifiedBinding(this.modifiedBinding, this.oldValue);
+    invariant(this.residualFunctionBinding === undefined || this.residualFunctionBinding === residualBinding);
+    this.residualFunctionBinding = residualBinding;
+  }
+}
+
+class ReturnValueEntry extends GeneratorEntry {
+  constructor(generator: Generator, returnValue: Value) {
+    super();
+    this.returnValue = returnValue;
+    this.containingGenerator = generator;
+  }
+
+  returnValue: Value;
+  containingGenerator: Generator;
+
+  visit(context: VisitEntryCallbacks, containingGenerator: Generator) {
+    invariant(
+      containingGenerator === this.containingGenerator,
+      "This entry requires effects to be applied and may not be moved"
+    );
+    context.visitValues([this.returnValue]);
+  }
+
+  serialize(context: SerializationContext) {
+    let result = context.serializeValue(this.returnValue);
+    context.emit(t.returnStatement(result));
+  }
+}
+
+class PossiblyNormalReturnEntry extends GeneratorEntry {
+  constructor(generator: Generator, completion: PossiblyNormalCompletion, realm: Realm) {
+    super();
+    this.completion = completion;
+    this.containingGenerator = generator;
+
+    this.condition = completion.joinCondition;
+    this.consequentGenerator = Generator.fromEffects(completion.consequentEffects, realm);
+    this.alternateGenerator = Generator.fromEffects(completion.alternateEffects, realm);
+  }
+
+  completion: PossiblyNormalCompletion;
+  containingGenerator: Generator;
+
+  condition: AbstractValue;
+  consequentGenerator: Generator;
+  alternateGenerator: Generator;
+
+  visit(context: VisitEntryCallbacks, containingGenerator: Generator) {
+    invariant(
+      containingGenerator === this.containingGenerator,
+      "This entry requires effects to be applied and may not be moved"
+    );
+    context.visitValues([this.condition]);
+    context.visitGenerator(this.consequentGenerator, containingGenerator);
+    context.visitGenerator(this.alternateGenerator, containingGenerator);
+  }
+
+  serialize(context: SerializationContext) {
+    let condition = context.serializeValue(this.condition);
+    let consequentBody = context.serializeGenerator(this.consequentGenerator);
+    let alternateBody = context.serializeGenerator(this.alternateGenerator);
+    context.emit(t.ifStatement(condition, t.blockStatement(consequentBody), t.blockStatement(alternateBody)));
+  }
+}
 
 function serializeBody(generator: Generator, context: SerializationContext): BabelNodeBlockStatement {
   let statements = context.serializeGenerator(generator);
@@ -89,7 +301,7 @@ function serializeBody(generator: Generator, context: SerializationContext): Bab
 }
 
 export class Generator {
-  constructor(realm: Realm, name: string) {
+  constructor(realm: Realm, name: string, effects?: Effects) {
     invariant(realm.useAbstractInterpretation);
     let realmPreludeGenerator = realm.preludeGenerator;
     invariant(realmPreludeGenerator);
@@ -98,14 +310,94 @@ export class Generator {
     this._entries = [];
     this.id = realm.nextGeneratorId++;
     this._name = name;
+    this.effectsToApply = effects;
   }
 
   realm: Realm;
   _entries: Array<GeneratorEntry>;
   preludeGenerator: PreludeGenerator;
+  effectsToApply: void | Effects;
 
   id: number;
   _name: string;
+
+  static _generatorOfEffects(realm: Realm, environmentRecordIdAfterGlobalCode: number, effects: Effects) {
+    let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects;
+
+    let output = new Generator(realm, "AdditionalFunctionEffects", effects);
+    output.appendGenerator(generator, "Additional function generator");
+
+    for (let [propertyBinding] of modifiedProperties) {
+      let object = propertyBinding.object;
+      if (object instanceof ObjectValue && createdObjects.has(object)) continue; // Created Object's binding
+      if (object.refuseSerialization) continue; // modification to internal state
+      // modifications to intrinsic objects are tracked in the generator
+      if (object.isIntrinsic()) continue;
+      let newValue = propertyBinding.descriptor;
+      output.emitPropertyModification(propertyBinding, newValue);
+    }
+
+    for (let [modifiedBinding, oldBinding] of modifiedBindings) {
+      // TODO: Instead of looking at the environment ids, keep instead track of a createdEnvironmentRecords set,
+      // and only consider bindings here from environment records that already existed, or even better,
+      // ensure upstream that only such bindings are ever added to the modified-bindings set.
+      if (modifiedBinding.environment.id >= environmentRecordIdAfterGlobalCode) continue;
+
+      output.emitBindingModification(modifiedBinding, oldBinding.value);
+    }
+
+    if (result instanceof UndefinedValue) return output;
+    if (result instanceof Value) {
+      output.emitReturnValue(result);
+    } else if (result instanceof PossiblyNormalCompletion) {
+      output.emitPossiblyNormalReturn(result, realm);
+    } else if (result instanceof ThrowCompletion) {
+      output.emitThrow(result.value);
+    } else {
+      /*else if (result instanceof JoinedAbruptCompletions) {
+
+    } */ invariant(false);
+    }
+    return output;
+  }
+
+  // Make sure to to fixup
+  // how to apply things around sets of things
+  static fromEffects(effects: Effects, realm: Realm, environmentRecordIdAfterGlobalCode: number = 0): Generator {
+    return realm.withEffectsAppliedInGlobalEnv(
+      this._generatorOfEffects.bind(this, realm, environmentRecordIdAfterGlobalCode),
+      effects
+    );
+  }
+
+  emitPropertyModification(propertyBinding: PropertyBinding) {
+    this._entries.push(
+      new ModifiedPropertyEntry({
+        propertyBinding,
+        newDescriptor: propertyBinding.descriptor,
+        containingGenerator: this,
+      })
+    );
+  }
+
+  emitBindingModification(modifiedBinding: Binding, oldValue: Value) {
+    this._entries.push(
+      new ModifiedBindingEntry({
+        modifiedBinding,
+        newValue: modifiedBinding.value,
+        oldValue,
+        containingGenerator: this,
+      })
+    );
+  }
+
+  emitReturnValue(result: Value) {
+    this._entries.push(new ReturnValueEntry(this, result));
+  }
+
+  emitPossiblyNormalReturn(result: PossiblyNormalCompletion, realm: Realm) {
+    this._entries.push(new PossiblyNormalReturnEntry(this, result, realm));
+  }
 
   getName(): string {
     return `${this._name}(#${this.id})`;
@@ -576,46 +868,36 @@ export class Generator {
     return res;
   }
 
-  serialize(context: SerializationContext) {
-    for (let entry of this._entries) {
-      if (!entry.isPure || !entry.declared || !context.canOmit(entry.declared)) {
-        let nodes = entry.args.map((boundArg, i) => context.serializeValue(boundArg));
-        if (entry.buildNode) {
-          let node = entry.buildNode(nodes, context);
-          if (node.type === "BlockStatement") {
-            let block: BabelNodeBlockStatement = (node: any);
-            let statements = block.body;
-            if (statements.length === 0) continue;
-            if (statements.length === 1) {
-              node = statements[0];
-            }
-          }
-          context.emit(node);
-        }
-        if (entry.declared !== undefined) context.declare(entry.declared);
-      }
-    }
-  }
-
-  visitEntry(entry: GeneratorEntry, callbacks: VisitEntryCallbacks) {
-    if (entry.isPure && entry.declared && callbacks.canSkip(entry.declared)) {
-      callbacks.recordDelayedEntry(this, entry);
-    } else {
-      if (entry.declared) callbacks.recordDeclaration(entry.declared);
-      callbacks.visitValues(entry.args);
-      if (entry.dependencies) for (let dependency of entry.dependencies) callbacks.visitGenerator(dependency, this);
-    }
-  }
-
   visit(callbacks: VisitEntryCallbacks) {
-    for (let entry of this._entries) this.visitEntry(entry, callbacks);
+    let visitFn = () => {
+      for (let entry of this._entries) entry.visit(callbacks, this);
+      return null;
+    };
+    if (this.effectsToApply) {
+      this.realm.withEffectsAppliedInGlobalEnv(visitFn, this.effectsToApply);
+    } else {
+      visitFn();
+    }
   }
 
-  _addEntry(entry: GeneratorEntry) {
-    this._entries.push(entry);
+  serialize(context: SerializationContext) {
+    let serializeFn = () => {
+      for (let entry of this._entries) entry.serialize(context);
+      return null;
+    };
+    if (this.effectsToApply) {
+      this.realm.withEffectsAppliedInGlobalEnv(serializeFn, this.effectsToApply);
+    } else {
+      serializeFn();
+    }
+  }
+
+  _addEntry(entry: TemporalBuildNodeEntryArgs) {
+    this._entries.push(new TemporalBuildNodeEntry(entry));
   }
 
   appendGenerator(other: Generator, leadingComment: string): void {
+    invariant(other !== this);
     if (other.empty()) return;
     this._addEntry({
       args: [],
@@ -636,6 +918,7 @@ export class Generator {
   }
 
   composeGenerators(generator1: Generator, generator2: Generator): void {
+    invariant(generator1 !== this && generator2 !== this && generator1 !== generator2);
     this._addEntry({
       args: [],
       buildNode: function([], context) {
@@ -650,6 +933,7 @@ export class Generator {
   }
 
   joinGenerators(joinCondition: AbstractValue, generator1: Generator, generator2: Generator): void {
+    invariant(generator1 !== this && generator2 !== this && generator1 !== generator2);
     this._addEntry({
       args: [joinCondition],
       buildNode: function([cond], context) {
@@ -664,11 +948,12 @@ export class Generator {
   }
 }
 
-// some characters are invalid within a JavaScript identifier,
-// such as: . , : ( ) ' " ` [ ] -
-// so we replace these character instances with an underscore
-function replaceInvalidCharactersWithUnderscore(string: string) {
-  return string.replace(/[.,:\(\)\"\'\`\[\]\-]/g, "_");
+function escapeInvalidIdentifierCharacters(s: string) {
+  let res = "";
+  for (let c of s)
+    if ((c >= "0" && c <= "9") || (c >= "a" && c <= "z") || (c >= "A" && c <= "Z")) res += c;
+    else res += "_" + c.charCodeAt(0);
+  return res;
 }
 
 const base62characters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -703,7 +988,7 @@ export class NameGenerator {
       id = this.prefix + base62encode(this.uidCounter++);
       if (this.uniqueSuffix.length > 0) id += this.uniqueSuffix;
       if (this.debugNames) {
-        if (debugSuffix) id += "_" + replaceInvalidCharactersWithUnderscore(debugSuffix);
+        if (debugSuffix) id += "_" + escapeInvalidIdentifierCharacters(debugSuffix);
         else id += "_";
       }
     } while (this.forbiddenNames.has(id));

@@ -37,7 +37,6 @@ delete dims.screenPhysicalPixels;
 delete dims.windowPhysicalPixels;
 
 let dimensions = {};
-// Object.assign currently triggers introspection error. We need to support this.
 Object.assign(dimensions, dims);
 
 // We also need to allow reading of well-defined properties after Object.assign

@@ -36,7 +36,6 @@ export class SteppingManager {
   }
 
   _processStepIn(ast: BabelNode) {
-    invariant(this._stepInto === undefined);
     invariant(ast.loc && ast.loc.source);
     if (!this._keepOldSteppers) {
       this._steppers = [];

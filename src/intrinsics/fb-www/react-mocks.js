@@ -522,6 +522,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
             Create.CreateDataPropertyOrThrow(realm, array, "" + i, children[i]);
           }
           children = array;
+          children.makeFinal();
         }
       }
       invariant(children instanceof Value);
@@ -555,18 +556,13 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
       );
       invariant(consumer instanceof AbstractObjectValue);
       consumer.values = new ValuesDomain(new Set([consumerObject]));
-      
-      let provider = AbstractValue.createTemporalFromBuildFunction(
-        realm,
-        ObjectValue,
-        [consumer],
-        ([consumerNode]) => {
-          return t.memberExpression(consumerNode, t.identifier("Provider"));
-        }
-      );
+
+      let provider = AbstractValue.createTemporalFromBuildFunction(realm, ObjectValue, [consumer], ([consumerNode]) => {
+        return t.memberExpression(consumerNode, t.identifier("Provider"));
+      });
       invariant(provider instanceof AbstractObjectValue);
       provider.values = new ValuesDomain(new Set([providerObject]));
-      
+
       Properties.Set(realm, consumerObject, "$$typeof", getReactSymbol("react.context", realm), true);
       Properties.Set(realm, consumerObject, "currentValue", defaultValue, true);
       Properties.Set(realm, consumerObject, "defaultValue", defaultValue, true);

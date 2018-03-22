@@ -10,6 +10,7 @@
 /* @flow */
 
 import type { Realm, ExecutionContext } from "../realm.js";
+import { ValuesDomain } from "../domains/index.js";
 import { FatalError } from "../errors.js";
 import type {
   DataBlock,
@@ -38,6 +39,7 @@ import { isReactElement } from "../react/utils.js";
 import buildExpressionTemplate from "../utils/builder.js";
 import { ECMAScriptSourceFunctionValue, type NativeFunctionCallback } from "./index.js";
 import {
+  Get,
   IsDataDescriptor,
   OrdinaryOwnPropertyKeys,
   OrdinaryGet,
@@ -91,6 +93,7 @@ export default class ObjectValue extends ConcreteValue {
     "_isSimple",
     "_isFinal",
     "_simplicityIsTransitive",
+    "_temporalAlias",
     "$ArrayIteratorNextIndex",
     "$DateValue",
     "$Extensible",
@@ -267,6 +270,7 @@ export default class ObjectValue extends ConcreteValue {
   properties: Map<string, PropertyBinding>;
   symbols: Map<SymbolValue, PropertyBinding>;
   unknownProperty: void | PropertyBinding;
+  _temporalAlias: void | AbstractObjectValue;
 
   // An object value with an intrinsic name can either exist from the beginning of time,
   // or it can be associated with a particular point in time by being used as a template
@@ -280,6 +284,10 @@ export default class ObjectValue extends ConcreteValue {
   // ES2015 classes
   $IsClassPrototype: boolean;
 
+  // We track some internal state as properties on the global object, these should
+  // never be serialized.
+  refuseSerialization: boolean;
+
   equals(x: Value): boolean {
     return x instanceof ObjectValue && this.getHash() === x.getHash();
   }
@@ -291,9 +299,25 @@ export default class ObjectValue extends ConcreteValue {
     return this.hashValue;
   }
 
-  // We track some internal state as properties on the global object, these should
-  // never be serialized.
-  refuseSerialization: boolean;
+  get temporalAlias(): void | AbstractObjectValue {
+    return this._temporalAlias;
+  }
+
+  set temporalAlias(value: AbstractObjectValue) {
+    this._temporalAlias = value;
+  }
+
+  hasStringOrSymbolProperties(): boolean {
+    for (let prop of this.properties.values()) {
+      if (prop.descriptor === undefined) continue;
+      return true;
+    }
+    for (let prop of this.symbols.values()) {
+      if (prop.descriptor === undefined) continue;
+      return true;
+    }
+    return false;
+  }
 
   mightBeFalse(): boolean {
     return false;
@@ -480,6 +504,47 @@ export default class ObjectValue extends ConcreteValue {
     });
     this.$Realm.callReportObjectGetOwnProperties(this);
     return keyArray;
+  }
+
+  // Note that internal properties will not be copied to the snapshot, nor will they be removed.
+  getSnapshot(options?: { removeProperties: boolean }): AbstractObjectValue {
+    try {
+      if (this.temporalAlias !== undefined) return this.temporalAlias;
+      invariant(!this.isPartialObject());
+      let template = new ObjectValue(this.$Realm, this.$Realm.intrinsics.ObjectPrototype);
+      this.copyKeys(this.$OwnPropertyKeys(), this, template);
+      let result = AbstractValue.createTemporalFromBuildFunction(this.$Realm, ObjectValue, [template], ([x]) => x, {
+        skipInvariant: true,
+      });
+      invariant(result instanceof AbstractObjectValue);
+      result.values = new ValuesDomain(template);
+      return result;
+    } finally {
+      if (options && options.removeProperties) {
+        this.properties = new Map();
+        this.symbols = new Map();
+        this.unknownProperty = undefined;
+      }
+    }
+  }
+
+  copyKeys(keys: Array<PropertyKeyValue>, from: ObjectValue, to: ObjectValue) {
+    // c. Repeat for each element nextKey of keys in List order,
+    for (let nextKey of keys) {
+      // i. Let desc be ? from.[[GetOwnProperty]](nextKey).
+      let desc = from.$GetOwnProperty(nextKey);
+
+      // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
+      if (desc && desc.enumerable) {
+        Properties.ThrowIfMightHaveBeenDeleted(desc.value);
+
+        // 1. Let propValue be ? Get(from, nextKey).
+        let propValue = Get(this.$Realm, from, nextKey);
+
+        // 2. Perform ? Set(to, nextKey, propValue, true).
+        Properties.Set(this.$Realm, to, nextKey, propValue, true);
+      }
+    }
   }
 
   _serialize(set: Function, stack: Map<Value, any>): any {

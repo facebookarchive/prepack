@@ -24,7 +24,7 @@ import { Environment, Functions, Join } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import traverseFast from "../utils/traverse-fast.js";
-import type { BabelNodeProgram } from "babel-types";
+import type { BabelNodeProgram, BabelNodeVariableDeclaration } from "babel-types";
 
 // ECMA262 15.1.11
 export function GlobalDeclarationInstantiation(
@@ -49,7 +49,7 @@ export function GlobalDeclarationInstantiation(
 
   traverseFast(ast, node => {
     if (node.type === "VariableDeclaration") {
-      if (node.kind === "var") {
+      if (((node: any): BabelNodeVariableDeclaration).kind === "var") {
         varNames = varNames.concat(Environment.BoundNames(realm, node));
       } else {
         lexNames = lexNames.concat(Environment.BoundNames(realm, node));
