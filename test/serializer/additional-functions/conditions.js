@@ -35,7 +35,7 @@ function getURL(getProtocol, getIsGeneric, getDomain, getPort, getPath, serializ
   return str;
 }
 
-__optimize(getURL);
+global.__optimize && __optimize(getURL);
 
 inspect = function inspect() {
   var getProtocol = function() {

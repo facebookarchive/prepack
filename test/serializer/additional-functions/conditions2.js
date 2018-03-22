@@ -6,9 +6,9 @@
     };
   }
 
-  window.result = __evaluatePureFunction(() => {
+  global.result = __evaluatePureFunction(() => {
 
-    var something_E = __abstract();
+    var something_E = global.__abstract ? __abstract(undefined, "({link_react_default_hash: {}})") : {};
 
     var babelHelpers = {
       inherits(subClass, superClass) {
@@ -43,10 +43,9 @@
       throw new Error(message);
     }
 
-    var someModuleY = __abstract();
-    var someModuleZ = __abstract();
-    var ActorURIConfig = __abstract();
-    var URI = __abstract();
+    var someModuleY = global.__abstract ? __abstract(undefined, "({getURIBuilder() {return new URI();}})") : {};
+    var ActorURIConfig = global.__abstract ? __abstract(undefined, "({PARAMETER_ACTOR: 0})") : {PARAMETER_ACTOR: 0};
+    var URI = global.__abstract ? __abstract(undefined, "(function(){return {addQueryData() {}}})") : function(){return {addQueryData() {}}};
 
     var ActorURI = {
       create: function create(uri, actorID) {
@@ -64,7 +63,7 @@
         var feedbackTargetID = _ref.feedbackTargetID;
         var reactionKey = _ref.reactionKey;
         return ActorURI.create(
-          someModuleZ.getURIBuilder()
+          someModuleY.getURIBuilder()
             .setString("foobar", feedbackTargetID)
             .setEnum("foobar", reactionKey)
             .getURI(),
@@ -94,9 +93,9 @@
       }
     };
 
-    var reactionEdge = __abstract();
-    var actorID = __abstract();
-    var reactionIndex = __abstract();
+    var reactionEdge = global.__abstract ? __abstract(undefined, "({reaction_type: {}})") : {reaction_type: {}};
+    var actorID = global.__abstract ? __abstract(undefined, "(1)") : 1;
+    var reactionIndex = global.__abstract ? __abstract(undefined, "(0)") : 0;
 
     function Main(props, state) {
       var _ref2, _ref3, _ref4, _ref5;
@@ -143,8 +142,6 @@
       }
 
       return placeholder(function() {
-        var props = __abstract();
-
         return {
           bar: true,
           children: Second(props.children),
@@ -201,8 +198,7 @@
       }
 
       function callback(children) {
-        var props = __abstract();
-        return {x: "final", children: children(props)};
+        return {x: "final", children: children(props.children)};
       }
 
       if (props.href) {
@@ -304,7 +300,7 @@
       );
     }
 
-    var killswitch = __abstract();
+    var killswitch = global.__abstract ? __abstract(undefined, "(function killswitch(){})") : function killswitch(){};
 
     var dontUpgradeRegex = new RegExp("^(l|lm|h)\\..*$", "i");
     function upgradeUnshimmedLink(href) {
@@ -323,7 +319,7 @@
       return href.setProtocol("https");
     }
 
-    var LinkReactUnsafeHrefConfig = __abstract();
+    var LinkReactUnsafeHrefConfig = global.__abstract ? __abstract(undefined, "({LinkHrefChecker: null})") : {LinkHrefChecker: null};
     var LinkHrefChecker = LinkReactUnsafeHrefConfig.LinkHrefChecker;
 
     function Third(props) {
@@ -402,13 +398,12 @@
         href = upgraded_href.toString();
       }
 
-      var props = __abstract();
-      var children = Forth(props);
+      var children = Forth(props.children);
 
       return {x: "final4", children: children};
     }
 
-    var loadLogging = __abstract();
+    var loadLogging = global.__abstract ? __abstract(undefined, "(function loadLogging() {})") : function loadLogging() {};
 
     function logMetaReferrer(href, shimhash) {
       loadLogging(function(a, x) {
@@ -508,7 +503,7 @@
       };
     }
 
-    __optimize(Main);
+    global.__optimize && __optimize(Main);
 
     return Main;
   });

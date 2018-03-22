@@ -7,7 +7,9 @@ if (!global.__evaluatePureFunction) {
   global.__evaluatePureFunction = f => f();
 }
 
-window.result = __evaluatePureFunction(() => {
+var result;
+
+__evaluatePureFunction(() => {
   var x = global.__abstract 
     ? __abstract("object", "({foo: {foo2: {}}, bar: {bar2: {}}})") 
     : {foo: {foo2: {}}, bar: {bar2: {}}};
@@ -20,7 +22,7 @@ window.result = __evaluatePureFunction(() => {
   var bar = x.bar;
 
   var foo2 = foo.foo2 || invariant(0, "Should not error 1!");
-  var bar2 = foo.bar2 || invariant(0, "Should not error 2!");
+  var bar2 = bar.bar2 || invariant(0, "Should not error 2!");
 
   var a = {
     foo2: foo2 || invariant(0, "Should not error 3!"),
@@ -29,5 +31,9 @@ window.result = __evaluatePureFunction(() => {
     bar2: bar2 || invariant(0, "Should not error 4!"),
   };
 
-  return a || b;
+  result = a || b;
 });
+
+inspect = function() {
+  return result;
+}
