@@ -220,6 +220,7 @@ export class Realm {
     this.activeLexicalEnvironments = new Set();
     this._abstractValuesDefined = new Set(); // A set of nameStrings to ensure abstract values have unique names
     this.debugNames = opts.debugNames;
+    this.inSimplificationPath = false;
   }
 
   start: number;
@@ -236,6 +237,7 @@ export class Realm {
   omitInvariants: boolean;
   ignoreLeakLogic: boolean;
   emitConcreteModel: boolean;
+  inSimplificationPath: boolean;
 
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
