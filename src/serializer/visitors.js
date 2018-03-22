@@ -251,9 +251,11 @@ export let ClosureRefVisitor = {
     if (ignorePath(path)) return;
 
     let innerName = path.node.name;
-    // TODO #1621: doesn't check that `arguments` is in top function.
     if (innerName === "arguments") {
-      state.functionInfo.usesArguments = true;
+      if (state.functionInfo.depth === 1) {
+        state.functionInfo.usesArguments = true;
+      }
+      // "arguments" bound to local scope. therefore, there's no need to visit this identifier.
       return;
     }
     visitName(path, state, innerName, false);
