@@ -815,11 +815,19 @@ export class ResidualHeapSerializer {
     invariant(residualBinding, "any referenced residual binding should have been visited");
 
     if (!residualBinding.referentialized) {
-      let additionalFunction = residualBinding.referencedOnlyFromAdditionalFunctions;
-      invariant(additionalFunction, "residual bindings like this are only caused by leaked bindings in pure functions");
-      let instance = this.residualFunctionInstances.get(additionalFunction);
-      invariant(instance, "any serialized function must exist in the scope");
-      this.residualFunctions.referentializer.referentializeBinding(residualBinding, binding.name, instance);
+      invariant(
+        Array.from(residualBinding.potentialReferentializationScopes).find(
+          referentializationScope => referentializationScope instanceof FunctionValue
+        ) !== undefined,
+        "residual bindings like this are only caused by leaked bindings in pure functions"
+      );
+      for (let referentializationScope of residualBinding.potentialReferentializationScopes) {
+        if (referentializationScope instanceof FunctionValue) {
+          let instance = this.residualFunctionInstances.get(referentializationScope);
+          invariant(instance, "any serialized function must exist in the scope");
+          this.residualFunctions.referentializer.referentializeBinding(residualBinding, binding.name, instance);
+        }
+      }
     }
 
     invariant(residualBinding.serializedValue);
@@ -1262,11 +1270,6 @@ export class ResidualHeapSerializer {
         let bindingValue = residualBinding.value;
         invariant(bindingValue !== undefined);
         referencedValues.push(bindingValue);
-        if (inAdditionalFunction !== undefined) {
-          let bindingAdditionalFunction = this.isReferencedOnlyByAdditionalFunction(bindingValue);
-          if (bindingAdditionalFunction !== undefined)
-            residualBinding.referencedOnlyFromAdditionalFunctions = bindingAdditionalFunction;
-        }
       }
       delayed++;
       this.emitter.emitNowOrAfterWaitingForDependencies(referencedValues, () => {
