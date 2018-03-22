@@ -20,7 +20,7 @@ module.exports = this.__evaluatePureFunction(() => {
           ${query}
         `}
         variables={someVariables}
-        render={({error, props}) => {
+        render={data => {
           return <span>Hello world</span>
         }}
       />

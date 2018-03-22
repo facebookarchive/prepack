@@ -8,7 +8,7 @@ this['QueryRenderer'] = QueryRenderer;
 function App(props) {
   return (
     <QueryRenderer
-      render={({error, props}) => {
+      render={data => {
         return <span>Hello world</span>;
       }}
     />

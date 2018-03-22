@@ -20,7 +20,7 @@ class SomeClassThatShouldNotMakeRootAClass extends React.Component {
 function App(props) {
   return (
     <QueryRenderer
-      render={({error, _props}) => {
+      render={data => {
         return <SomeClassThatShouldNotMakeRootAClass />;
       }}
     />

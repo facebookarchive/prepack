@@ -236,6 +236,7 @@ readComponentsList()
     console.log(`${chalk.gray(`Optimized Nodes`)}: ${result.componentsEvaluated}`);
     console.log(`${chalk.gray(`Inlined Nodes`)}: ${result.inlinedComponents}`);
     console.log(`${chalk.gray(`Optimized Trees`)}: ${result.optimizedTrees}`);
+    console.log(`${chalk.gray(`Optimized Nested Closures`)}: ${result.optimizedNestedClosures}`);
 
     let timeTaken = Math.floor((Date.now() - startTime) / 1000);
     console.log(`${chalk.gray(`Compile time`)}: ${timeTaken}s\n`);

@@ -20,6 +20,7 @@ import {
   ArrayValue,
   BooleanValue,
   AbstractValue,
+  ECMAScriptSourceFunctionValue,
 } from "../values/index.js";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
@@ -98,6 +99,13 @@ export function canHoistFunction(
         if (!canHoistValue(realm, value, residualHeapVisitor, visitedValues)) {
           return false;
         }
+      }
+    }
+    if (func instanceof ECMAScriptSourceFunctionValue) {
+      let code = func.$ECMAScriptCode;
+      let functionInfos = residualHeapVisitor.functionInfos.get(code);
+      if (functionInfos && functionInfos.unbound.size > 0) {
+        return false;
       }
     }
     realm.react.hoistableFunctions.set(func, true);

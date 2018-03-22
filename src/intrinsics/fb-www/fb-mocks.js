@@ -89,9 +89,9 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
     `objectWithoutProperties`,
     2,
     (context, [obj, keys]) => {
-      invariant(obj instanceof ObjectValue || obj instanceof AbstractObjectValue);
+      invariant(obj instanceof ObjectValue || obj instanceof AbstractObjectValue || obj instanceof AbstractValue);
       invariant(keys instanceof ArrayValue);
-      if (obj.isPartialObject() || obj instanceof AbstractObjectValue) {
+      if (obj.isPartialObject() || obj instanceof AbstractObjectValue || obj instanceof AbstractValue) {
         let value = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,

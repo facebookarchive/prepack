@@ -20,12 +20,13 @@ import {
 } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
-import { valueIsClassComponent, deleteRefAndKeyFromProps, getProperty } from "./utils";
+import { valueIsClassComponent, deleteRefAndKeyFromProps, getProperty, getValueFromFunctionCall } from "./utils";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get, Construct } from "../methods/index.js";
 import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { ClassComponentMetadata } from "../types.js";
+import type { ReactEvaluatedNode } from "../serializer/types.js";
 
 const lifecycleMethods = new Set([
   "componentWillUnmount",
@@ -37,7 +38,7 @@ const lifecycleMethods = new Set([
   "componentWillReceiveProps",
 ]);
 
-const whitelistedProperties = new Set(["props", "context", "refs"]);
+const whitelistedProperties = new Set(["props", "context", "refs", "setState"]);
 
 export function getInitialProps(
   realm: Realm,
@@ -158,11 +159,11 @@ export function createClassInstanceForFirstRenderOnly(
   realm: Realm,
   componentType: ECMAScriptSourceFunctionValue,
   props: ObjectValue | AbstractValue,
-  context: ObjectValue | AbstractValue
+  context: ObjectValue | AbstractValue,
+  evaluatedNode: ReactEvaluatedNode
 ): ObjectValue {
-  let instance = Construct(realm, componentType, [props, context]);
+  let instance = getValueFromFunctionCall(realm, componentType, realm.intrinsics.undefined, [props, context], true);
   invariant(instance instanceof ObjectValue);
-  instance.intrinsicName = "this";
   instance.refuseSerialization = true;
   // assign props
   Properties.Set(realm, instance, "props", props, true);
@@ -171,6 +172,7 @@ export function createClassInstanceForFirstRenderOnly(
   // assign a mocked setState
   let setState = new NativeFunctionValue(realm, undefined, `setState`, 1, (_context, [state, callback]) => {
     let stateToUpdate = state;
+    invariant(instance instanceof ObjectValue);
     let currentState = Get(realm, instance, "state");
     invariant(currentState instanceof ObjectValue);
 
@@ -190,7 +192,7 @@ export function createClassInstanceForFirstRenderOnly(
     }
     return realm.intrinsics.undefined;
   });
-  setState.intrinsicName = "this.setState";
+  setState.intrinsicName = "(function() {})";
   Properties.Set(realm, instance, "setState", setState, true);
 
   instance.refuseSerialization = false;
