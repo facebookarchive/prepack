@@ -12,7 +12,7 @@ if (!this.__evaluatePureFunction) {
 module.exports = this.__evaluatePureFunction(() => {
 
   function timeAge(time) {
-    const now = new Date().getTime() / 1000;
+    const now = new Date(2042, 1, 1).getTime() / 1000;
     const minutes = (now - time) / 60;
 
     if (minutes < 60) {
