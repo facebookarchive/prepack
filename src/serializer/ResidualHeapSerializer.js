@@ -1783,6 +1783,7 @@ export class ResidualHeapSerializer {
         invariant(object instanceof ObjectValue);
         this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
       },
+      options: this._options,
     };
     return context;
   }

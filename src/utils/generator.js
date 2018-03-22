@@ -53,6 +53,7 @@ import type {
 } from "babel-types";
 import { nullExpression } from "./internalizer.js";
 import { Utils, concretize } from "../singletons.js";
+import type { SerializerOptions } from "../options.js";
 
 export type SerializationContext = {|
   serializeValue: Value => BabelNodeExpression,
@@ -63,6 +64,7 @@ export type SerializationContext = {|
   canOmit: AbstractValue => boolean,
   declare: AbstractValue => void,
   emitPropertyModification: PropertyBinding => void,
+  options: SerializerOptions,
 |};
 
 export type VisitEntryCallbacks = {|
@@ -139,6 +141,12 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
           if (statements.length === 1) {
             node = statements[0];
           }
+        }
+        let declared = this.declared;
+        if (declared !== undefined && context.options.debugScopes) {
+          let s = t.emptyStatement();
+          s.leadingComments = [({ type: "BlockComment", value: `declaring ${declared.intrinsicName || "?"}` }: any)];
+          context.emit(s);
         }
         context.emit(node);
       }
@@ -265,8 +273,8 @@ class PossiblyNormalReturnEntry extends GeneratorEntry {
     this.containingGenerator = generator;
 
     this.condition = completion.joinCondition;
-    this.consequentGenerator = Generator.fromEffects(completion.consequentEffects, realm);
-    this.alternateGenerator = Generator.fromEffects(completion.alternateEffects, realm);
+    this.consequentGenerator = Generator.fromEffects(completion.consequentEffects, realm, "ConsequentEffects");
+    this.alternateGenerator = Generator.fromEffects(completion.alternateEffects, realm, "AlternateEffects");
   }
 
   completion: PossiblyNormalCompletion;
@@ -321,11 +329,11 @@ export class Generator {
   id: number;
   _name: string;
 
-  static _generatorOfEffects(realm: Realm, environmentRecordIdAfterGlobalCode: number, effects: Effects) {
+  static _generatorOfEffects(realm: Realm, name: string, environmentRecordIdAfterGlobalCode: number, effects: Effects) {
     let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects;
 
-    let output = new Generator(realm, "AdditionalFunctionEffects", effects);
-    output.appendGenerator(generator, "Additional function generator");
+    let output = new Generator(realm, name, effects);
+    output.appendGenerator(generator, "");
 
     for (let [propertyBinding] of modifiedProperties) {
       let object = propertyBinding.object;
@@ -363,9 +371,14 @@ export class Generator {
 
   // Make sure to to fixup
   // how to apply things around sets of things
-  static fromEffects(effects: Effects, realm: Realm, environmentRecordIdAfterGlobalCode: number = 0): Generator {
+  static fromEffects(
+    effects: Effects,
+    realm: Realm,
+    name: string,
+    environmentRecordIdAfterGlobalCode: number = 0
+  ): Generator {
     return realm.withEffectsAppliedInGlobalEnv(
-      this._generatorOfEffects.bind(this, realm, environmentRecordIdAfterGlobalCode),
+      this._generatorOfEffects.bind(this, realm, name, environmentRecordIdAfterGlobalCode),
       effects
     );
   }
