@@ -122,7 +122,10 @@ function createPropsObject(
       }
     }
   }
-
+  if (props instanceof ObjectValue || props instanceof AbstractObjectValue) {
+    // ensure the props is marked as final
+    props.makeFinal();
+  }
   return { key, props, ref };
 }
 
@@ -141,5 +144,6 @@ export function createReactElement(
   Create.CreateDataPropertyOrThrow(realm, obj, "ref", ref);
   Create.CreateDataPropertyOrThrow(realm, obj, "props", props);
   Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
+  obj.makeFinal();
   return obj;
 }
