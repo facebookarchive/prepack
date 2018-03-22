@@ -92,9 +92,6 @@ function createPropsObject(
       }
       if (children !== realm.intrinsics.undefined) {
         setProp("children", children);
-        if (children instanceof ObjectValue || children instanceof AbstractObjectValue) {
-          children.makeFinal();
-        }
       }
     } else {
       // as the config is partial and simple, we don't know about its prototype or properties
@@ -113,9 +110,6 @@ function createPropsObject(
 
     if (children !== realm.intrinsics.undefined) {
       setProp("children", children);
-      if (children instanceof ObjectValue || children instanceof AbstractObjectValue) {
-        children.makeFinal();
-      }
     }
 
     if (defaultProps instanceof ObjectValue) {
