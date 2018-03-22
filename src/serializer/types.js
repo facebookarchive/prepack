@@ -86,7 +86,11 @@ export type LazilyHoistedNodes = {|
   nodes: Array<{ id: BabelNodeIdentifier, astNode: BabelNode }>,
 |};
 
-export type FactoryFunctionInfo = { factoryId: BabelNodeIdentifier, functionInfo: FunctionInfo };
+export type FactoryFunctionInfo = {
+  factoryId: BabelNodeIdentifier,
+  functionInfo: FunctionInfo,
+  anyContainingAdditionalFunction: boolean,
+};
 
 export type ResidualFunctionBinding = {
   value: void | Value,
