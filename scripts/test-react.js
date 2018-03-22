@@ -640,7 +640,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       // awaiting more work on nested optimized functions
-      it.skip("Function bind", async () => {
+      it("Function bind", async () => {
         await runTest(directory, "function-bind.js");
       });
     });
