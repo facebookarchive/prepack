@@ -526,6 +526,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
             Create.CreateDataPropertyOrThrow(realm, array, "" + i, children[i]);
           }
           children = array;
+          children.makeFinal();
         }
       }
       invariant(children instanceof Value);

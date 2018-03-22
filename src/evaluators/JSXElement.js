@@ -189,6 +189,7 @@ function evaluateJSXChildren(
   }
 
   Properties.Set(realm, array, "length", new NumberValue(realm, dynamicChildrenLength), false);
+  array.makeFinal();
   return array;
 }
 
