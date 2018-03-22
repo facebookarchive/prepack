@@ -276,6 +276,7 @@ export class Functions {
       let additionalFunctionEffects = this._createAdditionalEffects(
         closureEffects,
         true,
+        "ReactAdditionalFunctionEffects",
         environmentRecordIdAfterGlobalCode
       );
       invariant(additionalFunctionEffects);
