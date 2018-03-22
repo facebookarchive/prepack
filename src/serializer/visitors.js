@@ -97,6 +97,15 @@ function getLiteralTruthiness(node): { known: boolean, value?: boolean } {
 }
 
 function canShareFunctionBody(duplicateFunctionInfo: FactoryFunctionInfo): boolean {
+  if (duplicateFunctionInfo.anyContainingAdditionalFunction) {
+    // If the function is referenced by an optimized function,
+    // it may get emitted within that optimized function,
+    // and then the function name is not generally available in arbitrary other code
+    // where we'd like to replace the body with a reference to the extracted function body.
+    // TODO: Revisit interplay of factory function concept, scope concept, and optimized functions.
+    return false;
+  }
+
   // Only share function when:
   // 1. it does not access any free variables.
   // 2. it does not use "this".

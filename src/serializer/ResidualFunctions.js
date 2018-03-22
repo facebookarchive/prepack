@@ -158,12 +158,6 @@ export class ResidualFunctions {
     for (const [functionBody, instances] of this.functions) {
       invariant(instances.length > 0);
 
-      // Factory functions are later used by the ClosureRefReplacer to rewrite residual functions
-      // that references factory functions. However, this doesn't play nice with the value scoped
-      // computation done by the ResidualHeapVisitor and ResidualHeapSerializer.
-      // TODO: Revisit factory functions and scopes.
-      if (!instances.every(instance => instance.containingAdditionalFunction === undefined)) continue;
-
       let factoryId;
       const suffix = instances[0].functionValue.__originalName || this.realm.debugNames ? "factoryFunction" : "";
       if (this._shouldUseFactoryFunction(functionBody, instances)) {
@@ -180,7 +174,10 @@ export class ResidualFunctions {
 
       const functionInfo = this.residualFunctionInfos.get(functionBody);
       invariant(functionInfo);
-      factoryFunctionInfos.set(functionUniqueTag, { factoryId, functionInfo });
+      let anyContainingAdditionalFunction = !instances.every(
+        instance => instance.containingAdditionalFunction === undefined
+      );
+      factoryFunctionInfos.set(functionUniqueTag, { factoryId, functionInfo, anyContainingAdditionalFunction });
     }
     return factoryFunctionInfos;
   }
