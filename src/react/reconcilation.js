@@ -543,10 +543,9 @@ export class Reconciler {
                 return result;
               }
             }
-          } else {
-            this._queueOptimizedClosure(renderProp, evaluatedChildNode, componentType, context, branchState);
-            return;
           }
+          this._queueOptimizedClosure(renderProp, evaluatedChildNode, componentType, context, branchState);
+          return;
         } else {
           this._findReactComponentTrees(renderProp, evaluatedChildNode, "NESTED_CLOSURES");
         }
