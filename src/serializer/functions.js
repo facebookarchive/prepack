@@ -122,12 +122,13 @@ export class Functions {
   _createAdditionalEffects(
     effects: Effects,
     fatalOnAbrupt: boolean,
+    name: string,
     environmentRecordIdAfterGlobalCode: number
   ): AdditionalFunctionEffects | null {
     let retValue: AdditionalFunctionEffects = {
       effects,
       transforms: [],
-      generator: Generator.fromEffects(effects, this.realm, environmentRecordIdAfterGlobalCode),
+      generator: Generator.fromEffects(effects, this.realm, name, environmentRecordIdAfterGlobalCode),
     };
     return retValue;
   }
@@ -139,7 +140,12 @@ export class Functions {
     evaluatedNode: ReactEvaluatedNode,
     environmentRecordIdAfterGlobalCode: number
   ): void {
-    let additionalFunctionEffects = this._createAdditionalEffects(effects, false, environmentRecordIdAfterGlobalCode);
+    let additionalFunctionEffects = this._createAdditionalEffects(
+      effects,
+      false,
+      "ReactAdditionalFunctionEffects",
+      environmentRecordIdAfterGlobalCode
+    );
     if (additionalFunctionEffects === null) {
       // TODO we don't support this yet, but will do very soon
       // to unblock work, we'll just return at this point right now
@@ -337,7 +343,12 @@ export class Functions {
         this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
       );
       invariant(effects);
-      let additionalFunctionEffects = this._createAdditionalEffects(effects, true, environmentRecordIdAfterGlobalCode);
+      let additionalFunctionEffects = this._createAdditionalEffects(
+        effects,
+        true,
+        "AdditionalFunctionEffects",
+        environmentRecordIdAfterGlobalCode
+      );
       invariant(additionalFunctionEffects);
       this.writeEffects.set(funcValue, additionalFunctionEffects);
     }
