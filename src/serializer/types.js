@@ -62,6 +62,11 @@ export type ClassMethodInstance = {|
   classMethodComputed: boolean,
 |};
 
+// Each of these will correspond to a different preludeGenerator and thus will
+// have different values available for initialization. FunctionValues should
+// only be additional functions.
+export type ReferentializationScope = FunctionValue | "GLOBAL";
+
 export type FunctionInstance = {
   residualFunctionBindings: Map<string, ResidualFunctionBinding>,
   functionValue: ECMAScriptSourceFunctionValue,
@@ -101,10 +106,9 @@ export type ResidualFunctionBinding = {
   serializedValue?: void | BabelNodeExpression,
   referentialized?: boolean,
   scope?: ScopeBinding,
-  // If the binding is only accessed by an additional function or nested values
-  // this field contains that additional function. (Determines what initializer
+  // Which additional functions a binding is accessed by. (Determines what initializer
   // to put the binding in -- global or additional function)
-  referencedOnlyFromAdditionalFunctions?: FunctionValue,
+  potentialReferentializationScopes: Set<ReferentializationScope>,
   // If the binding is overwritten by an additional function, these contain the
   // new values
   // TODO #1087: make this a map and support arbitrary binding modifications
@@ -116,7 +120,7 @@ export type ScopeBinding = {
   id: number,
   initializationValues: Array<BabelNodeExpression>,
   capturedScope?: string,
-  containingAdditionalFunction: void | FunctionValue,
+  referentializationScope: ReferentializationScope,
 };
 
 export function AreSameResidualBinding(realm: Realm, x: ResidualFunctionBinding, y: ResidualFunctionBinding) {

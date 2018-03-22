@@ -265,6 +265,7 @@ export class ResidualFunctions {
     for (let [funcValue, funcInfo] of this.additionalFunctionValueInfos) {
       for (let [, residualBinding] of funcInfo.modifiedBindings) {
         let scope = residualBinding.scope;
+        if (scope === undefined) continue;
 
         // TODO #989: This should probably be an invariant once captures work properly
         // Currently we don't referentialize bindings in additional functions (but we
@@ -276,7 +277,7 @@ export class ResidualFunctions {
 
         // binding has been referentialized, so setup the scope to be able to
         // access bindings from other __captured_scopes initializers
-        if (scope && scope.containingAdditionalFunction !== funcValue) {
+        if (scope.referentializationScope !== funcValue) {
           let decl = t.variableDeclaration("var", [
             t.variableDeclarator(t.identifier(scope.name), t.numericLiteral(scope.id)),
           ]);
