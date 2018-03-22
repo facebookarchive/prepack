@@ -726,7 +726,7 @@ export function getComponentName(realm: Realm, componentType: Value): string {
       return boundText + name.value;
     }
   }
-  return boundText + "anonymous function";
+  return boundText + "anonymous";
 }
 
 export function convertConfigObjectToReactComponentTreeConfig(

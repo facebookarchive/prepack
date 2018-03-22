@@ -206,9 +206,6 @@ export class Functions {
         continue;
       }
       let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(this.realm, componentType));
-      if (this.realm.react.verbose) {
-        logger.logInformation(`- ${evaluatedRootNode.name} (root)...`);
-      }
       statistics.evaluatedRootNodes.push(evaluatedRootNode);
       if (reconciler.hasEvaluatedRootNode(componentType, evaluatedRootNode)) {
         continue;
@@ -216,9 +213,11 @@ export class Functions {
       let componentTreeEffects = reconciler.renderReactComponentTree(componentType, null, null, evaluatedRootNode);
       if (componentTreeEffects === null) {
         if (this.realm.react.verbose) {
-          logger.logInformation(`- ${evaluatedRootNode.name} failed (root)`);
+          logger.logInformation(`  ✖ ${evaluatedRootNode.name} (root)`);
         }
         continue;
+      } else if (this.realm.react.verbose) {
+        logger.logInformation(`  ✔ ${evaluatedRootNode.name} (root)`);
       }
       this._generateWriteEffectsForReactComponentTree(
         componentType,
@@ -236,7 +235,7 @@ export class Functions {
     let logger = this.moduleTracer.modules.logger;
 
     if (this.realm.react.verbose && reconciler.nestedOptimizedClosures.length > 0) {
-      logger.logInformation(`  # Nested optimized closures...`);
+      logger.logInformation(`    Evaluating nested closures...`);
     }
     for (let {
       func,
@@ -252,9 +251,6 @@ export class Functions {
       if (func instanceof ECMAScriptSourceFunctionValue && reconciler.hasEvaluatedRootNode(func, evaluatedNode)) {
         continue;
       }
-      if (this.realm.react.verbose) {
-        logger.logInformation(`    - ${getComponentName(this.realm, func)}...`);
-      }
       let closureEffects = reconciler.renderNestedOptimizedClosure(
         func,
         nestedEffects,
@@ -265,9 +261,11 @@ export class Functions {
       );
       if (closureEffects === null) {
         if (this.realm.react.verbose) {
-          logger.logInformation(`    - ${getComponentName(this.realm, func)} failed`);
+          logger.logInformation(`      ✖ function "${getComponentName(this.realm, func)}"`);
         }
         continue;
+      } else if (this.realm.react.verbose) {
+        logger.logInformation(`      ✔ function "${getComponentName(this.realm, func)}"`);
       }
       let additionalFunctionEffects = this._createAdditionalEffects(
         closureEffects,
@@ -300,15 +298,14 @@ export class Functions {
         continue;
       }
       reconciler.clearComponentTreeState();
-      if (this.realm.react.verbose) {
-        logger.logInformation(`  - ${evaluatedNode.name} (branch)...`);
-      }
       let branchEffects = reconciler.renderReactComponentTree(branchComponentType, null, null, evaluatedNode);
       if (branchEffects === null) {
         if (this.realm.react.verbose) {
-          logger.logInformation(`- ${evaluatedNode.name} failed (branch)`);
+          logger.logInformation(`    ✖ ${evaluatedNode.name} (branch)`);
         }
         continue;
+      } else if (this.realm.react.verbose) {
+        logger.logInformation(`    ✔ ${evaluatedNode.name} (branch)`);
       }
       let branchComponentTreeState = reconciler.componentTreeState;
       this._generateWriteEffectsForReactComponentTree(
