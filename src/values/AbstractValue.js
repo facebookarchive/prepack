@@ -17,7 +17,7 @@ import type {
   BabelNodeSourceLocation,
   BabelUnaryOperator,
 } from "babel-types";
-import { FatalError } from "../errors.js";
+import { FatalError, CompilerDiagnostic } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
 import { PreludeGenerator } from "../utils/generator.js";
@@ -66,6 +66,7 @@ export default class AbstractValue extends Value {
     this.args = args;
     this.hashValue = hashValue;
     this.kind = optionalArgs ? optionalArgs.kind : undefined;
+    this.impliesCounter = 0;
   }
 
   hashValue: number;
@@ -75,6 +76,7 @@ export default class AbstractValue extends Value {
   mightBeEmpty: boolean;
   args: Array<Value>;
   _buildNode: void | AbstractValueBuildNodeFunction | BabelNodeExpression;
+  impliesCounter: number;
 
   addSourceLocationsTo(locations: Array<BabelNodeSourceLocation>, seenValues?: Set<AbstractValue> = new Set()) {
     if (seenValues.has(this)) return;
@@ -174,13 +176,36 @@ export default class AbstractValue extends Value {
     return this._buildNode && this._buildNode.type === "Identifier";
   }
 
+  _checkAbstractValueImpliesCounter() {
+    let realm = this.$Realm;
+    let abstractValueImpliesMax = realm.abstractValueImpliesMax;
+    // if abstractValueImpliesMax is 0, then the counter is disabled
+    if (abstractValueImpliesMax !== 0 && this.impliesCounter++ > abstractValueImpliesMax) {
+      this.impliesCounter = 0;
+      let diagnostic = new CompilerDiagnostic(
+        `the implies counter has exceeded the maximum value when trying to simplify abstract values`,
+        realm.currentLocation,
+        "PP0029",
+        "FatalError"
+      );
+      realm.handleError(diagnostic);
+    }
+  }
+
   // this => val. A false value does not imply that !(this => val).
   implies(val: Value): boolean {
+    this._checkAbstractValueImpliesCounter();
     if (this.equals(val)) return true; // x => x regardless of its value
     if (!this.mightNotBeFalse()) return true; // false => val
     if (!val.mightNotBeTrue()) return true; // x => true regardless of the value of x
     if (val instanceof AbstractValue) {
       // Neither this (x) nor val (y) is a known value, so we need to do some reasoning based on the structure
+      // x => x || y
+      if (val.kind === "||") {
+        let [x, y] = val.args;
+        return this.implies(x) || this.implies(y);
+      }
+
       // x => !y if y => !x
       if (val.kind === "!") {
         let [y] = val.args;
@@ -203,6 +228,37 @@ export default class AbstractValue extends Value {
           return x.implies(val);
         }
       }
+      if (this.kind === "conditional") {
+        let [c, x, y] = this.args;
+        // (c ? x : y) => val if x is true and y is false and c = val
+        if (!x.mightNotBeTrue() && !y.mightNotBeFalse()) {
+          return c.equals(val);
+        }
+
+        // (c ? false : y) => y !== undefined && y !== null && y !== f
+        if (val.kind === "!==") {
+          let [vx, vy] = val.args;
+          if (!x.mightNotBeFalse()) {
+            if (y.implies(vx)) return vy instanceof NullValue || vy instanceof UndefinedValue;
+            if (y.implies(vy)) return vx instanceof NullValue || vx instanceof UndefinedValue;
+          } else if (!y.mightNotBeFalse()) {
+            if (x.implies(vx)) return vy instanceof NullValue || vy instanceof UndefinedValue;
+            if (x.implies(vy)) return vx instanceof NullValue || vx instanceof UndefinedValue;
+          }
+        }
+
+        // (c ? x : (c || false)) => c (if c were false this value could not be true)
+        if (y instanceof AbstractValue && y.kind === "||") {
+          let [yx, yy] = y.args;
+          return c.equals(yx) && !yy.mightNotBeFalse() && c.equals(val);
+        }
+      }
+      // (0 !== x) => x since undefined, null, false, 0, NaN and "" are excluded by the !== and all other values are thruthy
+      if (this.kind === "!==") {
+        let [x, y] = this.args;
+        if (x instanceof NumberValue && x.value === 0) return y.equals(val);
+        if (y instanceof NumberValue && y.value === 0) return x.equals(val);
+      }
     }
     return false;
   }
@@ -216,6 +272,7 @@ export default class AbstractValue extends Value {
       // !x => !y if y => x
       if (this.kind === "!") {
         let [x] = this.args;
+        invariant(x instanceof AbstractValue);
         if (x.kind === "!") {
           // !!x => !y if y => !x
           invariant(x instanceof AbstractValue);
@@ -486,7 +543,8 @@ export default class AbstractValue extends Value {
     op: BabelNodeLogicalOperator,
     left: Value,
     right: Value,
-    loc?: ?BabelNodeSourceLocation
+    loc?: ?BabelNodeSourceLocation,
+    isCondition?: boolean
   ): Value {
     let leftTypes, leftValues;
     if (left instanceof AbstractValue) {
@@ -519,7 +577,9 @@ export default class AbstractValue extends Value {
     );
     result.kind = op;
     result.expressionLocation = loc;
-    return realm.simplifyAndRefineAbstractValue(result);
+    return isCondition
+      ? realm.simplifyAndRefineAbstractCondition(result)
+      : realm.simplifyAndRefineAbstractValue(result);
   }
 
   static createFromConditionalOp(
@@ -527,7 +587,8 @@ export default class AbstractValue extends Value {
     condition: AbstractValue,
     left: void | Value,
     right: void | Value,
-    loc?: ?BabelNodeSourceLocation
+    loc?: ?BabelNodeSourceLocation,
+    isCondition?: boolean
   ): Value {
     let types = TypesDomain.joinValues(left, right);
     if (types.getType() === NullValue) return realm.intrinsics.null;
@@ -542,7 +603,9 @@ export default class AbstractValue extends Value {
     if (left) result.mightBeEmpty = left.mightHaveBeenDeleted();
     if (right && !result.mightBeEmpty) result.mightBeEmpty = right.mightHaveBeenDeleted();
     if (result.mightBeEmpty) return result;
-    return realm.simplifyAndRefineAbstractValue(result);
+    return isCondition
+      ? realm.simplifyAndRefineAbstractCondition(result)
+      : realm.simplifyAndRefineAbstractValue(result);
   }
 
   static createFromUnaryOp(
@@ -550,7 +613,8 @@ export default class AbstractValue extends Value {
     op: BabelUnaryOperator,
     operand: AbstractValue,
     prefix?: boolean,
-    loc?: ?BabelNodeSourceLocation
+    loc?: ?BabelNodeSourceLocation,
+    isCondition?: boolean
   ): Value {
     invariant(op !== "delete" && op !== "++" && op !== "--"); // The operation must be pure
     let resultTypes = TypesDomain.unaryOp(op, new TypesDomain(operand.getType()));
@@ -560,7 +624,9 @@ export default class AbstractValue extends Value {
     );
     result.kind = op;
     result.expressionLocation = loc;
-    return realm.simplifyAndRefineAbstractValue(result);
+    return isCondition
+      ? realm.simplifyAndRefineAbstractCondition(result)
+      : realm.simplifyAndRefineAbstractValue(result);
   }
 
   /* Note that the template is parameterized by the names A, B, C and so on.

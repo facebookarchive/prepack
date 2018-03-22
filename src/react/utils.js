@@ -95,8 +95,9 @@ export function getReactSymbol(symbolKey: ReactSymbolTypes, realm: Realm): Symbo
 
     if (SymbolForDescriptor !== undefined) {
       let SymbolForValue = SymbolForDescriptor.value;
-      if (SymbolForValue !== undefined && typeof SymbolForValue.$Call === "function") {
+      if (SymbolForValue instanceof ObjectValue && typeof SymbolForValue.$Call === "function") {
         reactSymbol = SymbolForValue.$Call(realm.intrinsics.Symbol, [new StringValue(realm, symbolKey)]);
+        invariant(reactSymbol instanceof SymbolValue);
         realm.react.symbols.set(symbolKey, reactSymbol);
       }
     }
@@ -559,6 +560,11 @@ export function evaluateComponentTreeBranch(
   }
 }
 
+// This function is mainly use to delete internal properties
+// on objects that we know are safe to access internally
+// such as ReactElements. Deleting here does not
+// emit change to modified bindings and is intended
+// for only internal usage – not for user-land code
 export function deleteProperty(object: ObjectValue | AbstractObjectValue, property: string | SymbolValue): void {
   if (object instanceof AbstractObjectValue) {
     let elements = object.values.getElements();
@@ -579,6 +585,11 @@ export function deleteProperty(object: ObjectValue | AbstractObjectValue, proper
   binding.descriptor = undefined;
 }
 
+// This function is mainly use to set internal properties
+// on objects that we know are safe to access internally
+// such as ReactElements. Setting properties here does not
+// emit change to modified bindings and is intended
+// for only internal usage – not for user-land code
 export function setProperty(
   object: ObjectValue | AbstractObjectValue,
   property: string | SymbolValue,
@@ -591,35 +602,27 @@ export function setProperty(
     }
     invariant(object instanceof ObjectValue);
   }
+  let defaultBinding = {
+    descriptor: {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      value,
+    },
+    key: property,
+    object,
+  };
   let binding;
   if (typeof property === "string") {
     binding = object.properties.get(property);
     if (!binding) {
-      binding = {
-        descriptor: {
-          configureable: true,
-          enumerable: true,
-          writable: true,
-          value,
-        },
-        key: property,
-        object,
-      };
+      binding = defaultBinding;
       object.properties.set(property, binding);
     }
   } else if (property instanceof SymbolValue) {
     binding = object.symbols.get(property);
     if (!binding) {
-      binding = {
-        descriptor: {
-          configureable: true,
-          enumerable: true,
-          writable: true,
-          value,
-        },
-        key: property,
-        object,
-      };
+      binding = defaultBinding;
       object.symbols.set(property, binding);
     }
   }
@@ -632,6 +635,11 @@ export function setProperty(
   descriptor.value = value;
 }
 
+// This function is mainly use to get internal properties
+// on objects that we know are safe to access internally
+// such as ReactElements. Getting properties here does
+// not emit change to modified bindings and is intended
+// for only internal usage – not for user-land code
 export function getProperty(
   realm: Realm,
   object: ObjectValue | AbstractObjectValue,
@@ -651,6 +659,7 @@ export function getProperty(
     binding = object.symbols.get(property);
   }
   if (!binding) {
+    invariant(!object.isPartialObject(), "getProperty used on a partial object with no binding");
     return realm.intrinsics.undefined;
   }
   let descriptor = binding.descriptor;

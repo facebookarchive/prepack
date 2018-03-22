@@ -1,7 +1,7 @@
-// add at runtime:global.obj1 = { a: 1 }; global.obj2 = { a: 2 };
+// add at runtime:global.__obj1 = { a: 1 }; global.__obj2 = { a: 2 };
 
-let obj1 = global.__abstract ? __abstract({}, 'obj1') : { a: 1 };
-let obj2 = global.__abstract ? __abstract({}, 'obj2') : { a: 2 };
+let obj1 = global.__abstract ? __abstract({}, '__obj1') : { a: 1 };
+let obj2 = global.__abstract ? __abstract({}, '__obj2') : { a: 2 };
 
 if (global.__makePartial) {
   __makePartial(obj1);

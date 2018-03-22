@@ -115,6 +115,7 @@ function canHoistAbstract(realm: Realm, abstract: AbstractValue, residualHeapVis
     for (let scope of scopes) {
       const currentAdditionalFunction = residualHeapVisitor.commonScope;
       invariant(currentAdditionalFunction instanceof FunctionValue);
+      // $FlowFixMe: there is no such property
       if (scope === currentAdditionalFunction.parent) {
         return true;
       }

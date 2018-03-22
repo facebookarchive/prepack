@@ -124,6 +124,10 @@ export class Logger {
     this._log(value, message, "Warning");
   }
 
+  logInformation(message: string) {
+    this._log(this.realm.intrinsics.undefined, message, "Information");
+  }
+
   _log(value: Value, message: string, severity: Severity) {
     let loc = value.expressionLocation;
     if (value.intrinsicName) {

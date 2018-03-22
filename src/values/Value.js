@@ -47,7 +47,7 @@ export default class Value {
   }
 
   static isTypeCompatibleWith(type: typeof Value, Constructor: typeof Value): boolean {
-    return type.prototype instanceof Constructor || type.prototype === Constructor.prototype;
+    return (type: any).prototype instanceof Constructor || (type: any).prototype === Constructor.prototype;
   }
 
   intrinsicName: void | string;

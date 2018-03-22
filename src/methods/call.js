@@ -327,7 +327,11 @@ export function OrdinaryCallEvaluateBody(
       // 4. Return Completion{[[Type]]: return, [[Value]]: G, [[Target]]: empty}.
       return new ReturnCompletion(G, realm.currentLocation);
     } else {
-      if (!realm.useAbstractInterpretation || realm.pathConditions.length === 0) return normalCall();
+      // TODO #1586: abstractRecursionSummarization is disabled for now, as it is likely too limiting
+      // (as observed in large internal tests).
+      const abstractRecursionSummarization = false;
+      if (!realm.useAbstractInterpretation || realm.pathConditions.length === 0 || !abstractRecursionSummarization)
+        return normalCall();
       let savedIsSelfRecursive = F.isSelfRecursive;
       try {
         F.isSelfRecursive = false;

@@ -105,16 +105,19 @@ export class Serializer {
       timingStats.totalTime = Date.now();
       timingStats.globalCodeTime = Date.now();
     }
+    if (this.realm.react.verbose) {
+      this.logger.logInformation(`Evaluating initialization path...`);
+    }
     let code = this._execute(sources);
     let environmentRecordIdAfterGlobalCode = EnvironmentRecord.nextId;
     if (timingStats !== undefined) timingStats.globalCodeTime = Date.now() - timingStats.globalCodeTime;
     if (this.logger.hasErrors()) return undefined;
     this.modules.resolveInitializedModules();
-    this.functions.checkThatFunctionsAreIndependent();
-    let reactStatistics = null;
+    this.functions.checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode);
+    let reactStatistics;
     if (this.realm.react.enabled) {
       reactStatistics = new ReactStatistics();
-      this.functions.checkRootReactComponentTrees(reactStatistics, this.react);
+      this.functions.checkRootReactComponentTrees(reactStatistics, this.react, environmentRecordIdAfterGlobalCode);
     }
 
     if (this.options.initializeMoreModules) {
@@ -138,18 +141,23 @@ export class Serializer {
       preludeGenerator.createNameGenerator("$"),
       this.statistics
     );
+    if (this.realm.react.verbose) {
+      this.logger.logInformation(`Visiting evaluated nodes...`);
+    }
     let residualHeapVisitor = new ResidualHeapVisitor(
       this.realm,
       this.logger,
       this.modules,
       additionalFunctionValuesAndEffects,
-      referentializer,
-      environmentRecordIdAfterGlobalCode
+      referentializer
     );
     residualHeapVisitor.visitRoots();
     if (this.logger.hasErrors()) return undefined;
     if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now() - timingStats.deepTraversalTime;
 
+    if (this.realm.react.verbose) {
+      this.logger.logInformation(`Serializing evaluated nodes...`);
+    }
     const realmPreludeGenerator = this.realm.preludeGenerator;
     invariant(realmPreludeGenerator);
     const residualHeapValueIdentifiers = new ResidualHeapValueIdentifiers(
@@ -253,7 +261,7 @@ export class Serializer {
     return {
       code: generated.code,
       map: generated.map,
-      reactStatistics,
+      reactStatistics: reactStatistics,
       statistics: residualHeapSerializer.statistics,
       timingStats: timingStats,
       heapGraph,

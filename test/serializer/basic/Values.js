@@ -1,7 +1,7 @@
 function g(i) {
   function f() {
     /* This comment is here so that the function gets too big to be considered for inlining by our serialiser. */
-    return i + arguments[0]; 
+    return i + arguments[0];
   }
   return f;
 }

@@ -55,7 +55,6 @@ function runTest(name: string, code: string): boolean {
 
   let recover = code.includes("// recover-from-errors");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
-  let abstractEffects = code.includes("// abstract effects");
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
 
   let expectedErrors = code.match(/\/\/\s*expected errors:\s*(.*)/);
@@ -74,7 +73,6 @@ function runTest(name: string, code: string): boolean {
       errorHandler: errorHandler.bind(null, recover ? "Recover" : "Fail", errors),
       serialize: true,
       initializeMoreModules: false,
-      abstractEffectsInAdditionalFunctions: abstractEffects,
       compatibility,
     };
     prepackFileSync([name], options);

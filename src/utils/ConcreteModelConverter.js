@@ -67,7 +67,7 @@ export function concretize(realm: Realm, val: Value): ConcreteValue {
   const type = val.types.getType();
   if (val.types.isTop()) {
     return new UndefinedValue(realm);
-  } else if (type.prototype instanceof PrimitiveValue) {
+  } else if ((type: any).prototype instanceof PrimitiveValue) {
     if (val.values.isTop()) {
       switch (type) {
         case StringValue:

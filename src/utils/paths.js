@@ -39,7 +39,7 @@ export class PathImplementation {
     realm.pathConditions = [];
     try {
       pushPathCondition(condition);
-      pushRefinedConditions(savedPath);
+      pushRefinedConditions(condition, savedPath);
       return evaluate();
     } finally {
       realm.pathConditions = savedPath;
@@ -52,7 +52,7 @@ export class PathImplementation {
     realm.pathConditions = [];
     try {
       pushInversePathCondition(condition);
-      pushRefinedConditions(savedPath);
+      pushRefinedConditions(condition, savedPath);
       return evaluate();
     } finally {
       realm.pathConditions = savedPath;
@@ -65,7 +65,7 @@ export class PathImplementation {
     realm.pathConditions = [];
 
     pushPathCondition(condition);
-    pushRefinedConditions(savedPath);
+    pushRefinedConditions(condition, savedPath);
   }
 
   pushInverseAndRefine(condition: AbstractValue) {
@@ -74,7 +74,7 @@ export class PathImplementation {
     realm.pathConditions = [];
 
     pushInversePathCondition(condition);
-    pushRefinedConditions(savedPath);
+    pushRefinedConditions(condition, savedPath);
   }
 }
 
@@ -149,8 +149,10 @@ function pushInversePathCondition(condition: Value) {
   }
 }
 
-function pushRefinedConditions(unrefinedConditions: Array<AbstractValue>) {
-  for (let unrefinedCond of unrefinedConditions) {
-    pushPathCondition(unrefinedCond.$Realm.simplifyAndRefineAbstractCondition(unrefinedCond));
-  }
+function pushRefinedConditions(condition: AbstractValue, unrefinedConditions: Array<AbstractValue>) {
+  let realm = condition.$Realm;
+  let refinedConditions = unrefinedConditions.map(c => realm.simplifyAndRefineAbstractCondition(c));
+  let pc = realm.pathConditions.pop();
+  for (let c of refinedConditions) pushPathCondition(c);
+  realm.pathConditions.push(pc);
 }

@@ -365,10 +365,7 @@ class ObjectValueHavocingVisitor {
         return;
       default:
         invariant(kind === "Object", `Object of kind ${kind} is not supported in calls to abstract functions.`);
-        invariant(
-          this.$ParameterMap === undefined,
-          `Arguments object is not supported in calls to abstract functions.`
-        );
+        invariant(val.$ParameterMap === undefined, `Arguments object is not supported in calls to abstract functions.`);
         return;
     }
   }

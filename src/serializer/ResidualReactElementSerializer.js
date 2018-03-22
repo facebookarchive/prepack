@@ -211,9 +211,9 @@ export class ResidualReactElementSerializer {
     }
   }
 
-  _serializeReactFragmentType(typeValue: Value): BabelNodeExpression {
+  _serializeReactFragmentType(typeValue: SymbolValue): BabelNodeExpression {
     let reactLibraryObject = this._getReactLibraryValue();
-    // we want to vist the Symbol type, but we don't want to serialize it
+    // we want to visit the Symbol type, but we don't want to serialize it
     // as this is a React internal
     this.residualHeapSerializer.serializedValues.add(typeValue);
     invariant(typeValue.$Description instanceof StringValue);

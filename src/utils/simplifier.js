@@ -31,6 +31,9 @@ export default function simplifyAndRefineAbstractValue(
     };
     return simplify(realm, value, isCondition);
   } catch (e) {
+    if (e instanceof FatalError) {
+      throw e;
+    }
     return value;
   } finally {
     realm.errorHandler = savedHandler;
@@ -50,14 +53,21 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
   switch (op) {
     case "!": {
       let [x0] = value.args;
+      invariant(x0 instanceof AbstractValue);
+      if (x0.kind === "!") {
+        invariant(x0 instanceof AbstractValue);
+        let [x00] = x0.args;
+        let xx = simplify(realm, x00, true);
+        if (xx.getType() === BooleanValue) return xx;
+      }
       let x = simplify(realm, x0, true);
       return negate(realm, x, loc, x0.equals(x) ? value : undefined);
     }
     case "||":
     case "&&": {
       let [x0, y0] = value.args;
-      let x = simplify(realm, x0);
-      let y = simplify(realm, y0);
+      let x = simplify(realm, x0, isCondition);
+      let y = simplify(realm, y0, isCondition);
       if (x instanceof AbstractValue && x.equals(y)) return x;
       // true && y <=> y
       // true || y <=> true
@@ -82,7 +92,7 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
       )
         return y;
       if (x.equals(x0) && y.equals(y0)) return value;
-      return AbstractValue.createFromLogicalOp(realm, (value.kind: any), x, y, loc);
+      return AbstractValue.createFromLogicalOp(realm, (value.kind: any), x, y, loc, isCondition);
     }
     case "==":
     case "!=":
@@ -92,14 +102,14 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
     case "conditional": {
       let [c0, x0, y0] = value.args;
       let c = simplify(realm, c0, true);
-      let cs = simplify(realm, c0);
-      let x = simplify(realm, x0);
-      let y = simplify(realm, y0);
+      let cs = simplify(realm, c0, isCondition);
+      let x = simplify(realm, x0, isCondition);
+      let y = simplify(realm, y0, isCondition);
       if (!c.mightNotBeTrue()) return x;
       if (!c.mightNotBeFalse()) return y;
       invariant(c instanceof AbstractValue);
       if (Path.implies(c)) return x;
-      let notc = AbstractValue.createFromUnaryOp(realm, "!", c);
+      let notc = AbstractValue.createFromUnaryOp(realm, "!", c, true, loc, isCondition);
       if (!notc.mightNotBeTrue()) return y;
       if (!notc.mightNotBeFalse()) return x;
       invariant(notc instanceof AbstractValue);
@@ -111,20 +121,22 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
       // c ? x : x <=> x
       if (x.equals(y)) return x;
       // x ? x : y <=> x || y
-      if (cs.equals(x)) return AbstractValue.createFromLogicalOp(realm, "||", x, y, loc);
+      if (cs.equals(x)) return AbstractValue.createFromLogicalOp(realm, "||", x, y, loc, isCondition);
       // y ? x : y <=> y && x
-      if (cs.equals(y)) return AbstractValue.createFromLogicalOp(realm, "&&", y, x, loc);
+      if (cs.equals(y)) return AbstractValue.createFromLogicalOp(realm, "&&", y, x, loc, isCondition);
       // c ? (c ? xx : xy) : y <=> c ? xx : y
       if (x instanceof AbstractValue && x.kind === "conditional") {
         let [xc, xx] = x.args;
-        if (c.equals(xc)) return AbstractValue.createFromConditionalOp(realm, c, xx, y);
+        if (c.equals(xc))
+          return AbstractValue.createFromConditionalOp(realm, c, xx, y, value.expressionLocation, isCondition);
       }
       // c ? x : (c ? y : z) : z <=> c ? x : z
       if (y instanceof AbstractValue && y.kind === "conditional") {
         let [yc, , z] = y.args;
-        if (c.equals(yc)) return AbstractValue.createFromConditionalOp(realm, c, x, z);
+        if (c.equals(yc))
+          return AbstractValue.createFromConditionalOp(realm, c, x, z, value.expressionLocation, isCondition);
       }
-      if (isCondition || (x.getType() === BooleanValue && y.getType() === BooleanValue)) {
+      if (x.getType() === BooleanValue && y.getType() === BooleanValue) {
         // c ? true : false <=> c
         if (!x.mightNotBeTrue() && !y.mightNotBeFalse()) return c;
         // c ? false : true <=> !c
@@ -132,7 +144,7 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
           return AbstractValue.createFromUnaryOp(realm, "!", c, true, loc);
       }
       if (c.equals(c0) && x.equals(x0) && y.equals(y0)) return value;
-      return AbstractValue.createFromConditionalOp(realm, c, x, y, value.expressionLocation);
+      return AbstractValue.createFromConditionalOp(realm, c, x, y, value.expressionLocation, isCondition);
     }
     case "abstractConcreteUnion": {
       // The union of an abstract value with one or more concrete values.

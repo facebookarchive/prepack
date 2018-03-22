@@ -33,17 +33,13 @@ function createPropsObject(
   let ref = realm.intrinsics.null;
 
   const setProp = (name: string, value: Value): void => {
-    if (name === "key" && value !== realm.intrinsics.null && value !== realm.intrinsics.undefined) {
+    if (name === "key" && value !== realm.intrinsics.null) {
       key = computeBinary(realm, "+", realm.intrinsics.emptyString, value);
-    } else if (name === "ref" && value !== realm.intrinsics.undefined) {
+    } else if (name === "ref") {
       ref = value;
     } else if (name !== "__self" && name !== "__source") {
       invariant(props instanceof ObjectValue);
       Properties.Set(realm, props, name, value, true);
-    }
-    if (key === "children" && (value instanceof ObjectValue || value instanceof AbstractObjectValue)) {
-      // ensure the child is marked as final
-      value.makeFinal();
     }
   };
 
@@ -82,10 +78,6 @@ function createPropsObject(
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           }
         );
-
-        if (children !== realm.intrinsics.undefined) {
-          setProp("children", children);
-        }
       } else {
         // if either are abstract, this will impact the reconcilation process
         // and ultimately prevent us from folding ReactElements properly
@@ -97,6 +89,12 @@ function createPropsObject(
         );
         realm.handleError(diagnostic);
         if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
+      }
+      if (children !== realm.intrinsics.undefined) {
+        setProp("children", children);
+        if (children instanceof ObjectValue || children instanceof AbstractObjectValue) {
+          children.makeFinal();
+        }
       }
     } else {
       // as the config is partial and simple, we don't know about its prototype or properties
@@ -115,6 +113,9 @@ function createPropsObject(
 
     if (children !== realm.intrinsics.undefined) {
       setProp("children", children);
+      if (children instanceof ObjectValue || children instanceof AbstractObjectValue) {
+        children.makeFinal();
+      }
     }
 
     if (defaultProps instanceof ObjectValue) {
@@ -127,7 +128,6 @@ function createPropsObject(
       }
     }
   }
-
   if (props instanceof ObjectValue || props instanceof AbstractObjectValue) {
     // ensure the props is marked as final
     props.makeFinal();
@@ -150,7 +150,6 @@ export function createReactElement(
   Create.CreateDataPropertyOrThrow(realm, obj, "ref", ref);
   Create.CreateDataPropertyOrThrow(realm, obj, "props", props);
   Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
-  // ensure the ReactElement is marked as final
   obj.makeFinal();
   return obj;
 }
