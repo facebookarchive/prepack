@@ -12,6 +12,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -42,6 +43,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -72,6 +74,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -149,6 +152,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -179,6 +183,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -202,6 +207,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -225,6 +231,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -241,6 +248,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -257,6 +265,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -280,6 +289,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -303,6 +313,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -319,6 +330,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -348,6 +360,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -378,6 +391,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -415,6 +429,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -452,13 +467,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, JSX output First render only React Context 3 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -482,7 +498,8 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -539,13 +556,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, JSX output First render only React Context 5 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 6,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -589,7 +607,32 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 4,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, JSX output First render only Replace this in callbacks 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -612,6 +655,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -649,6 +693,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -686,6 +731,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -702,6 +748,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -718,6 +765,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -748,6 +796,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -778,6 +827,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -808,6 +858,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -838,6 +889,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -868,6 +920,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -898,6 +951,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -928,6 +982,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -971,6 +1026,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -1000,6 +1056,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1023,6 +1080,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1058,6 +1116,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1081,6 +1140,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1104,6 +1164,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1120,6 +1181,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1149,6 +1211,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -1185,6 +1248,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -1228,6 +1292,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -1257,6 +1322,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1286,6 +1352,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1322,6 +1389,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -1352,6 +1420,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1375,6 +1444,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1398,6 +1468,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1427,6 +1498,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1456,6 +1528,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1491,6 +1564,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1514,6 +1588,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1537,6 +1612,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1560,6 +1636,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -1589,6 +1666,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 3,
 }
 `;
@@ -1605,6 +1683,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1621,6 +1700,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1651,6 +1731,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1693,6 +1774,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1716,6 +1798,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1739,6 +1822,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1755,6 +1839,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1771,6 +1856,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1787,6 +1873,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1810,6 +1897,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1840,6 +1928,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1870,6 +1959,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1893,6 +1983,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1909,6 +2000,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1925,6 +2017,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1941,6 +2034,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1971,6 +2065,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -1987,6 +2082,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -2010,13 +2106,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, JSX output Render props React Context 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -2047,13 +2144,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, JSX output Render props React Context 2 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -2084,13 +2182,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, JSX output Render props React Context 3 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -2114,13 +2213,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, JSX output Render props React Context 4 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 7,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -2171,13 +2271,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
-  "optimizedTrees": 3,
+  "optimizedNestedClosures": 2,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, JSX output Render props React Context 5 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 6,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -2221,13 +2322,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
-  "optimizedTrees": 3,
+  "optimizedNestedClosures": 2,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, JSX output Render props Relay QueryRenderer 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 2,
+  "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -2244,7 +2346,8 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -2267,13 +2370,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, JSX output Render props Relay QueryRenderer 3 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -2297,13 +2401,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, JSX output fb-www mocks Function bind 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -2313,19 +2418,14 @@ ReactStatistics {
           "name": "Middle",
           "status": "INLINED",
         },
-        Object {
-          "children": Array [],
-          "message": "completely unknown component render currently supported on first render",
-          "name": "Middle",
-          "status": "BAIL-OUT",
-        },
       ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -2369,13 +2469,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, JSX output fb-www mocks fb-www 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 2,
+  "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -2392,7 +2493,8 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -2408,6 +2510,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -2417,6 +2520,7 @@ ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
 }
 `;
@@ -2426,6 +2530,7 @@ ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
 }
 `;
@@ -2435,6 +2540,7 @@ ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
 }
 `;
@@ -2444,6 +2550,7 @@ ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
 }
 `;
@@ -2460,6 +2567,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -2483,6 +2591,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -2552,6 +2661,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -2595,6 +2705,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -2690,6 +2801,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 9,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -2746,6 +2858,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -2762,6 +2875,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -2792,6 +2906,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -2822,6 +2937,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -2899,6 +3015,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -2929,6 +3046,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -2952,6 +3070,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -2975,6 +3094,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -2991,6 +3111,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3007,6 +3128,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3030,6 +3152,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -3053,6 +3176,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3069,6 +3193,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3098,6 +3223,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -3128,6 +3254,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3165,6 +3292,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3202,13 +3330,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, create-element output First render only React Context 3 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -3232,7 +3361,8 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -3289,13 +3419,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, create-element output First render only React Context 5 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 6,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -3339,7 +3470,32 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 4,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output First render only Replace this in callbacks 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -3362,6 +3518,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3399,6 +3556,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3436,6 +3594,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3452,6 +3611,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3468,6 +3628,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3498,6 +3659,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3528,6 +3690,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3558,6 +3721,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3588,6 +3752,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3618,6 +3783,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3648,6 +3814,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3678,6 +3845,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3721,6 +3889,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -3750,6 +3919,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3773,6 +3943,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3808,6 +3979,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3831,6 +4003,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3854,6 +4027,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3870,6 +4044,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3899,6 +4074,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -3935,6 +4111,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -3978,6 +4155,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -4007,6 +4185,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4036,6 +4215,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4072,6 +4252,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -4102,6 +4283,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4125,6 +4307,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4148,6 +4331,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4177,6 +4361,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4206,6 +4391,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4241,6 +4427,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4264,6 +4451,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4287,6 +4475,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4310,6 +4499,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -4339,6 +4529,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 3,
 }
 `;
@@ -4355,6 +4546,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4371,6 +4563,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4401,6 +4594,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4443,6 +4637,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4466,6 +4661,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4489,6 +4685,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4505,6 +4702,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4521,6 +4719,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4537,6 +4736,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4560,6 +4760,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4590,6 +4791,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4620,6 +4822,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4643,6 +4846,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4659,6 +4863,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4675,6 +4880,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4691,6 +4897,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4721,6 +4928,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4737,6 +4945,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -4760,13 +4969,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, create-element output Render props React Context 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -4797,13 +5007,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, create-element output Render props React Context 2 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -4834,13 +5045,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, create-element output Render props React Context 3 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -4864,13 +5076,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, create-element output Render props React Context 4 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 7,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -4921,13 +5134,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
-  "optimizedTrees": 3,
+  "optimizedNestedClosures": 2,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, create-element output Render props React Context 5 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 6,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -4971,13 +5185,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
-  "optimizedTrees": 3,
+  "optimizedNestedClosures": 2,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, create-element output Render props Relay QueryRenderer 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 2,
+  "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -4994,7 +5209,8 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -5017,13 +5233,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, create-element output Render props Relay QueryRenderer 3 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -5047,13 +5264,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, create-element output fb-www mocks Function bind 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -5063,19 +5281,14 @@ ReactStatistics {
           "name": "Middle",
           "status": "INLINED",
         },
-        Object {
-          "children": Array [],
-          "message": "completely unknown component render currently supported on first render",
-          "name": "Middle",
-          "status": "BAIL-OUT",
-        },
       ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -5119,13 +5332,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, create-element output fb-www mocks fb-www 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 2,
+  "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -5142,7 +5356,8 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -5158,6 +5373,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -5167,6 +5383,7 @@ ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
 }
 `;
@@ -5176,6 +5393,7 @@ ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
 }
 `;
@@ -5185,6 +5403,7 @@ ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
 }
 `;
@@ -5194,6 +5413,7 @@ ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
 }
 `;
@@ -5210,6 +5430,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -5233,6 +5454,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -5302,6 +5524,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -5345,6 +5568,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -5440,6 +5664,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 9,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -5496,6 +5721,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -5512,6 +5738,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -5542,6 +5769,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -5572,6 +5800,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -5649,6 +5878,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -5679,6 +5909,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -5702,6 +5933,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -5725,6 +5957,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -5741,6 +5974,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -5757,6 +5991,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -5780,6 +6015,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -5803,6 +6039,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -5819,6 +6056,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -5848,6 +6086,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -5878,6 +6117,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -5915,6 +6155,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -5952,13 +6193,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, JSX output First render only React Context 3 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -5982,7 +6224,8 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -6039,13 +6282,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, JSX output First render only React Context 5 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 6,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -6089,7 +6333,32 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 4,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, JSX output First render only Replace this in callbacks 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -6112,6 +6381,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6149,6 +6419,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6186,6 +6457,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6202,6 +6474,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6218,6 +6491,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6248,6 +6522,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6278,6 +6553,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6308,6 +6584,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6338,6 +6615,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6368,6 +6646,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6398,6 +6677,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6428,6 +6708,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6471,6 +6752,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -6500,6 +6782,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6523,6 +6806,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6558,6 +6842,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6581,6 +6866,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6604,6 +6890,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6620,6 +6907,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6649,6 +6937,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -6685,6 +6974,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -6728,6 +7018,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -6757,6 +7048,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6786,6 +7078,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6822,6 +7115,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -6852,6 +7146,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6875,6 +7170,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6898,6 +7194,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6927,6 +7224,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6956,6 +7254,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -6991,6 +7290,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7014,6 +7314,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7037,6 +7338,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7060,6 +7362,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -7089,6 +7392,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 3,
 }
 `;
@@ -7105,6 +7409,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7121,6 +7426,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7151,6 +7457,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7193,6 +7500,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7216,6 +7524,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7239,6 +7548,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7255,6 +7565,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7271,6 +7582,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7287,6 +7599,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7310,6 +7623,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7340,6 +7654,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7356,6 +7671,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7372,6 +7688,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7388,6 +7705,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7404,6 +7722,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7420,6 +7739,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7436,6 +7756,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7452,6 +7773,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7475,13 +7797,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, JSX output Render props React Context 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -7512,13 +7835,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, JSX output Render props React Context 2 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -7549,13 +7873,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, JSX output Render props React Context 3 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -7579,13 +7904,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, JSX output Render props React Context 4 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 7,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -7636,13 +7962,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
-  "optimizedTrees": 3,
+  "optimizedNestedClosures": 2,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, JSX output Render props React Context 5 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 6,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -7686,13 +8013,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
-  "optimizedTrees": 3,
+  "optimizedNestedClosures": 2,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, JSX output Render props Relay QueryRenderer 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 2,
+  "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -7709,7 +8037,8 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -7732,13 +8061,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, JSX output Render props Relay QueryRenderer 3 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -7762,13 +8092,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, JSX output fb-www mocks Function bind 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -7778,19 +8109,14 @@ ReactStatistics {
           "name": "Middle",
           "status": "INLINED",
         },
-        Object {
-          "children": Array [],
-          "message": "completely unknown component render currently supported on first render",
-          "name": "Middle",
-          "status": "BAIL-OUT",
-        },
       ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7834,13 +8160,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, JSX output fb-www mocks fb-www 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 2,
+  "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -7857,7 +8184,8 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -7873,6 +8201,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7882,6 +8211,7 @@ ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
 }
 `;
@@ -7891,6 +8221,7 @@ ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
 }
 `;
@@ -7900,6 +8231,7 @@ ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
 }
 `;
@@ -7909,6 +8241,7 @@ ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
 }
 `;
@@ -7925,6 +8258,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7948,6 +8282,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -8017,6 +8352,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -8060,6 +8396,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -8155,6 +8492,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 9,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -8211,6 +8549,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -8227,6 +8566,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -8257,6 +8597,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -8287,6 +8628,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -8364,6 +8706,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -8394,6 +8737,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -8417,6 +8761,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -8440,6 +8785,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -8456,6 +8802,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -8472,6 +8819,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -8495,6 +8843,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -8518,6 +8867,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -8534,6 +8884,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -8563,6 +8914,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -8593,6 +8945,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -8630,6 +8983,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -8667,13 +9021,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, create-element output First render only React Context 3 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -8697,7 +9052,8 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -8754,13 +9110,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, create-element output First render only React Context 5 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 6,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -8804,7 +9161,32 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 4,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output First render only Replace this in callbacks 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -8827,6 +9209,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -8864,6 +9247,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -8901,6 +9285,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -8917,6 +9302,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -8933,6 +9319,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -8963,6 +9350,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -8993,6 +9381,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9023,6 +9412,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9053,6 +9443,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9083,6 +9474,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9113,6 +9505,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9143,6 +9536,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9186,6 +9580,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -9215,6 +9610,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9238,6 +9634,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9273,6 +9670,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9296,6 +9694,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9319,6 +9718,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9335,6 +9735,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9364,6 +9765,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -9400,6 +9802,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -9443,6 +9846,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -9472,6 +9876,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9501,6 +9906,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9537,6 +9943,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -9567,6 +9974,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9590,6 +9998,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9613,6 +10022,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9642,6 +10052,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9671,6 +10082,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9706,6 +10118,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9729,6 +10142,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9752,6 +10166,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9775,6 +10190,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -9804,6 +10220,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 3,
 }
 `;
@@ -9820,6 +10237,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9836,6 +10254,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9866,6 +10285,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9908,6 +10328,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9931,6 +10352,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9954,6 +10376,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9970,6 +10393,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -9986,6 +10410,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10002,6 +10427,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10025,6 +10451,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10055,6 +10482,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10071,6 +10499,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10087,6 +10516,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10103,6 +10533,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10119,6 +10550,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10135,6 +10567,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10151,6 +10584,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10167,6 +10601,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10190,13 +10625,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, create-element output Render props React Context 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -10227,13 +10663,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, create-element output Render props React Context 2 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -10264,13 +10701,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, create-element output Render props React Context 3 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -10294,13 +10732,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, create-element output Render props React Context 4 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 7,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -10351,13 +10790,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
-  "optimizedTrees": 3,
+  "optimizedNestedClosures": 2,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, create-element output Render props React Context 5 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 6,
+  "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -10401,13 +10841,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 2,
-  "optimizedTrees": 3,
+  "optimizedNestedClosures": 2,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, create-element output Render props Relay QueryRenderer 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 2,
+  "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -10424,7 +10865,8 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -10447,13 +10889,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, create-element output Render props Relay QueryRenderer 3 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -10477,13 +10920,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, create-element output fb-www mocks Function bind 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 3,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -10493,19 +10937,14 @@ ReactStatistics {
           "name": "Middle",
           "status": "INLINED",
         },
-        Object {
-          "children": Array [],
-          "message": "completely unknown component render currently supported on first render",
-          "name": "Middle",
-          "status": "BAIL-OUT",
-        },
       ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10549,13 +10988,14 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, create-element output fb-www mocks fb-www 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 2,
+  "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -10572,7 +11012,8 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
-  "optimizedTrees": 2,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -10588,6 +11029,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10597,6 +11039,7 @@ ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
 }
 `;
@@ -10606,6 +11049,7 @@ ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
 }
 `;
@@ -10615,6 +11059,7 @@ ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
 }
 `;
@@ -10624,6 +11069,7 @@ ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
 }
 `;
@@ -10640,6 +11086,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10663,6 +11110,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
 }
 `;
@@ -10732,6 +11180,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10775,6 +11224,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10870,6 +11320,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 9,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10926,6 +11377,7 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;

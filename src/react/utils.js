@@ -10,7 +10,7 @@
 /* @flow */
 
 import { Realm, type Effects } from "../realm.js";
-import { FunctionEnvironmentRecord, Reference } from "../environment.js";
+import { Reference } from "../environment.js";
 import { Completion, PossiblyNormalCompletion, AbruptCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
 import {
@@ -23,22 +23,21 @@ import {
   StringValue,
   ArrayValue,
   ECMAScriptSourceFunctionValue,
+  BoundFunctionValue,
   UndefinedValue,
   BooleanValue,
 } from "../values/index.js";
-import type { BabelTraversePath } from "babel-traverse";
 import { Generator } from "../utils/generator.js";
 import type { Descriptor, ReactHint, PropertyBinding, ReactComponentTreeConfig } from "../types";
 import { Get, cloneDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import type { ReactSerializerState, AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
 import invariant from "../invariant.js";
-import { Create, Properties, Environment } from "../singletons.js";
+import { Create, Properties } from "../singletons.js";
 import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { ExpectedBailOut } from "./errors.js";
 import { To } from "../singletons.js";
 import AbstractValue from "../values/AbstractValue";
 
@@ -444,6 +443,9 @@ export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFun
       return t.isIdentifier(param) ? param : t.identifier("context");
     }
   });
+  if (func.$FormalParameters.length === 1) {
+    func.$FormalParameters.push(t.identifier("context"));
+  }
 }
 
 export function createReactHintObject(object: ObjectValue, propertyName: string, args: Array<Value>): ReactHint {
@@ -528,12 +530,13 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   return flattenedChildren;
 }
 
-export function evaluateComponentTreeBranch(
+export function evaluateWithNestedEffects(
   realm: Realm,
-  effects: Effects,
-  nested: boolean,
-  f: (generator?: Generator, value?: Value | Reference | Completion) => void | Value
+  nestedEffects: Array<Effects>,
+  f: (generator?: Generator, value?: Value | Reference | Completion) => Value
 ) {
+  let nextEffects = nestedEffects.slice();
+  let effects = nextEffects.shift();
   let [
     value,
     generator,
@@ -541,22 +544,22 @@ export function evaluateComponentTreeBranch(
     modifiedProperties: Map<PropertyBinding, void | Descriptor>,
     createdObjects,
   ] = effects;
-  if (nested) {
-    realm.applyEffects([
-      value,
-      new Generator(realm, "evaluateComponentTreeBranch"),
-      modifiedBindings,
-      modifiedProperties,
-      createdObjects,
-    ]);
-  }
+  realm.applyEffects([
+    value,
+    new Generator(realm, "evaluateWithNestedEffects"),
+    modifiedBindings,
+    modifiedProperties,
+    createdObjects,
+  ]);
   try {
-    return f(generator, value);
-  } finally {
-    if (nested) {
-      realm.restoreBindings(modifiedBindings);
-      realm.restoreProperties(modifiedProperties);
+    if (nextEffects.length === 0) {
+      return f(generator, value);
+    } else {
+      return evaluateWithNestedEffects(realm, nextEffects, f);
     }
+  } finally {
+    realm.restoreBindings(modifiedBindings);
+    realm.restoreProperties(modifiedProperties);
   }
 }
 
@@ -678,92 +681,6 @@ export function getProperty(
   return value;
 }
 
-type FunctionBindingInfo = {
-  unboundReads: Set<string>,
-  unboundWrites: Set<string>,
-};
-
-function visitName(path, state, name, read, write) {
-  // Is the name bound to some local identifier? If so, we don't need to do anything
-  if (path.scope.hasBinding(name, /*noGlobals*/ true)) return;
-
-  // Otherwise, let's record that there's an unbound identifier
-  if (read) state.unboundReads.add(name);
-  if (write) state.unboundWrites.add(name);
-}
-
-function ignorePath(path: BabelTraversePath) {
-  let parent = path.parent;
-  return t.isLabeledStatement(parent) || t.isBreakStatement(parent) || t.isContinueStatement(parent);
-}
-
-let LeakedClosureRefVisitor = {
-  ReferencedIdentifier(path: BabelTraversePath, state: FunctionBindingInfo) {
-    if (ignorePath(path)) return;
-
-    let innerName = path.node.name;
-    if (innerName === "arguments") {
-      return;
-    }
-    visitName(path, state, innerName, true, false);
-  },
-
-  "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: FunctionBindingInfo) {
-    let doesRead = path.node.operator !== "=";
-    for (let name in path.getBindingIdentifiers()) {
-      visitName(path, state, name, doesRead, true);
-    }
-  },
-};
-
-function getFunctionBindingInfo(value: FunctionValue) {
-  invariant(value instanceof ECMAScriptSourceFunctionValue);
-  invariant(value.constructor === ECMAScriptSourceFunctionValue);
-  let functionInfo = {
-    unboundReads: new Set(),
-    unboundWrites: new Set(),
-  };
-  let formalParameters = value.$FormalParameters;
-  invariant(formalParameters != null);
-  let code = value.$ECMAScriptCode;
-  invariant(code != null);
-
-  traverse(
-    t.file(t.program([t.expressionStatement(t.functionExpression(null, formalParameters, code))])),
-    LeakedClosureRefVisitor,
-    null,
-    functionInfo
-  );
-  return functionInfo;
-}
-
-// if a render prop function (a nested additional function) makes
-// no accesses to bindings in the parent additional function scope
-// we can determine if the function is self contained
-export function isRenderPropFunctionSelfContained(
-  realm: Realm,
-  parentFunc: Value,
-  renderProp: FunctionValue,
-  logger: any // otherwise Flow cycles increases
-): boolean {
-  let { unboundReads, unboundWrites } = getFunctionBindingInfo(renderProp);
-  let bindings = Array.from(unboundReads).concat(Array.from(unboundWrites));
-
-  for (let name of bindings) {
-    let reference = logger.tryQuery(
-      () => Environment.ResolveBinding(realm, name, true, renderProp.$Environment),
-      undefined
-    );
-    if (!reference) {
-      return false;
-    }
-    if (reference.base instanceof FunctionEnvironmentRecord && reference.base.$FunctionObject === parentFunc) {
-      return false;
-    }
-  }
-  return true;
-}
-
 export function createReactEvaluatedNode(
   status:
     | "ROOT"
@@ -788,25 +705,28 @@ export function createReactEvaluatedNode(
 export function getComponentName(realm: Realm, componentType: Value): string {
   invariant(
     componentType instanceof ECMAScriptSourceFunctionValue ||
+      componentType instanceof BoundFunctionValue ||
       componentType instanceof AbstractObjectValue ||
       componentType instanceof AbstractValue
   );
+  let boundText = componentType instanceof BoundFunctionValue ? "bound " : "";
+
   if (componentType.__originalName) {
-    return componentType.__originalName;
+    return boundText + componentType.__originalName;
   }
   if (realm.fbLibraries.reactRelay !== undefined) {
     if (componentType === Get(realm, realm.fbLibraries.reactRelay, "QueryRenderer")) {
-      return "QueryRenderer";
+      return boundText + "QueryRenderer";
     }
   }
-  if (componentType instanceof ECMAScriptSourceFunctionValue) {
+  if (componentType instanceof ECMAScriptSourceFunctionValue && componentType.$Prototype !== undefined) {
     let name = Get(realm, componentType, "name");
 
     if (name instanceof StringValue) {
-      return name.value;
+      return boundText + name.value;
     }
   }
-  return "Unknown";
+  return boundText + "anonymous";
 }
 
 export function convertConfigObjectToReactComponentTreeConfig(
@@ -845,21 +765,35 @@ export function convertConfigObjectToReactComponentTreeConfig(
   };
 }
 
-export function getValueFromRenderCall(
+export function getValueFromFunctionCall(
   realm: Realm,
-  renderFunction: ECMAScriptSourceFunctionValue,
-  instance: ObjectValue | AbstractObjectValue | UndefinedValue,
+  func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
+  funcThis: ObjectValue | AbstractObjectValue | UndefinedValue,
   args: Array<Value>,
-  componentTreeConfig: ReactComponentTreeConfig
+  isConstructor?: boolean = false
 ): Value {
-  invariant(renderFunction.$Call, "Expected render function to be a FunctionValue with $Call method");
-  let funcCall = renderFunction.$Call;
+  invariant(func.$Call, "Expected function to be a FunctionValue with $Call method");
+  let funcCall = func.$Call;
+  let newCall = func.$Construct;
   let effects;
   try {
-    effects = realm.evaluateForEffects(() => funcCall(instance, args), null, "component render");
+    effects = realm.evaluateForEffects(
+      () => {
+        invariant(func);
+        if (isConstructor) {
+          invariant(newCall);
+          return newCall(args, func);
+        } else {
+          return funcCall(funcThis, args);
+        }
+      },
+      null,
+      "getValueFromFunctionCall"
+    );
   } catch (error) {
     throw error;
   }
+
   let completion = effects[0];
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
@@ -867,10 +801,6 @@ export function getValueFromRenderCall(
     // Consequently we have to continue tracking changes until the point where
     // all the branches come together into one.
     completion = realm.composeWithSavedCompletion(completion);
-  }
-  // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-  if (componentTreeConfig.firstRenderOnly && completion instanceof AbstractValue && completion.args.length === 0) {
-    throw new ExpectedBailOut("completely unknown component render currently supported on first render");
   }
   // Note that the effects of (non joining) abrupt branches are not included
   // in joinedEffects, but are tracked separately inside completion.
