@@ -166,8 +166,6 @@
         "labelIsHidden"
       ]);
 
-      // delete buttonProps.shade;
-
       var className =
         "xxx" +
         (disabled ? " " + "xxx2" : "") +
