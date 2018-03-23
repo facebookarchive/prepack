@@ -267,7 +267,6 @@ export class Reconciler {
             baseObject instanceof AbstractObjectValue ||
             baseObject instanceof UndefinedValue
         );
-        debugger;
         let value = getValueFromFunctionCall(this.realm, func, baseObject, args);
         invariant(componentType instanceof Value);
         invariant(context instanceof ObjectValue || context instanceof AbstractObjectValue);
@@ -310,7 +309,6 @@ export class Reconciler {
     context: ObjectValue | AbstractObjectValue | null,
     branchState: BranchState | null
   ): void {
-    debugger;
     this.nestedOptimizedClosures.push({
       evaluatedNode,
       func,
