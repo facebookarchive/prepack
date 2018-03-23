@@ -179,7 +179,7 @@ export class ResidualHeapSerializer {
     this.getGeneratorParent = generatorParents.get.bind(generatorParents);
     this.additionalFunctionGenerators = new Map();
     this.additionalFunctionGeneratorsInverse = new Map();
-    this.declaredGlobalLets = new Set();
+    this.declaredGlobalLets = new Map();
   }
 
   emitter: Emitter;
@@ -232,7 +232,7 @@ export class ResidualHeapSerializer {
 
   getGeneratorParent: Generator => void | Generator;
 
-  declaredGlobalLets: Set<string>;
+  declaredGlobalLets: Map<string, Value>;
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -582,8 +582,9 @@ export class ResidualHeapSerializer {
 
       // Set up binding identity before starting to serialize value. This is needed in case of recursive dependencies.
       residualFunctionBinding.serializedValue = this.serializeValue(value);
-      if (residualFunctionBinding.modified)
+      if (residualFunctionBinding.modified) {
         this.referentializer.referentializeBinding(residualFunctionBinding, name, instance);
+      }
       if (value.mightBeObject()) {
         // Increment ref count one more time to ensure that this object will be assigned a unique id.
         // This ensures that only once instance is created across all possible residual function invocations.
@@ -669,6 +670,9 @@ export class ResidualHeapSerializer {
     // All relevant values were visited in at least one scope.
     invariant(scopes.size >= 1);
     if (trace) this._logScopes(scopes);
+
+    // If a value is used in more than one scope, prevent inlining as it might be an additional root with a particular creation scope
+    if (scopes.size > 1) this.residualHeapValueIdentifiers.incrementReferenceCount(val);
 
     // First, let's figure out from which function and generator scopes this value is referenced.
     let functionValues = [];
@@ -815,22 +819,6 @@ export class ResidualHeapSerializer {
     );
     let residualBinding = residualFunctionBindings.get(binding.name);
     invariant(residualBinding, "any referenced residual binding should have been visited");
-
-    if (!residualBinding.referentialized) {
-      invariant(
-        Array.from(residualBinding.potentialReferentializationScopes).find(
-          referentializationScope => referentializationScope instanceof FunctionValue
-        ) !== undefined,
-        "residual bindings like this are only caused by leaked bindings in pure functions"
-      );
-      for (let referentializationScope of residualBinding.potentialReferentializationScopes) {
-        if (referentializationScope instanceof FunctionValue) {
-          let instance = this.residualFunctionInstances.get(referentializationScope);
-          invariant(instance, "any serialized function must exist in the scope");
-          this.residualFunctions.referentializer.referentializeBinding(residualBinding, binding.name, instance);
-        }
-      }
-    }
 
     invariant(residualBinding.serializedValue);
     return ((residualBinding.serializedValue: any): BabelNodeIdentifier | BabelNodeMemberExpression);
@@ -1259,6 +1247,7 @@ export class ResidualHeapSerializer {
         }
       }
     };
+
     for (let [boundName, residualBinding] of residualBindings) {
       let referencedValues = [];
       let serializeBindingFunc;
@@ -1718,24 +1707,16 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _serializeGlobalBinding(boundName: string, residualFunctionBinding: ResidualFunctionBinding) {
-    invariant(!residualFunctionBinding.declarativeEnvironmentRecord);
-    if (!residualFunctionBinding.serializedValue) {
-      residualFunctionBinding.referentialized = true;
+  _serializeGlobalBinding(boundName: string, binding: ResidualFunctionBinding) {
+    invariant(!binding.declarativeEnvironmentRecord);
+    if (!binding.serializedValue) {
+      binding.referentialized = true;
       if (boundName === "undefined") {
-        residualFunctionBinding.serializedValue = voidExpression;
-      } else {
-        let value = residualFunctionBinding.value;
-        // Check for let binding vs global property
-        if (value) {
-          let name = t.identifier(boundName);
-          residualFunctionBinding.serializedValue = name;
-          invariant(value.equals(value));
-          this.declaredGlobalLets.add(boundName);
-          this.emitter.emit(t.expressionStatement(t.assignmentExpression("=", name, this.serializeValue(value))));
-        } else {
-          residualFunctionBinding.serializedValue = this.preludeGenerator.globalReference(boundName);
-        }
+        binding.serializedValue = voidExpression;
+      } else if (binding.value !== undefined) {
+        binding.serializedValue = t.identifier(boundName);
+        invariant(binding.value !== undefined);
+        this.declaredGlobalLets.set(boundName, binding.value);
       }
     }
   }
@@ -1911,8 +1892,6 @@ export class ResidualHeapSerializer {
     this.generator.serialize(this._getContext());
     invariant(this.emitter.declaredCount() <= this.preludeGenerator.derivedIds.size);
 
-    this.postGeneratorSerialization();
-
     // TODO #20: add timers
 
     // TODO #21: add event listeners
@@ -1922,6 +1901,14 @@ export class ResidualHeapSerializer {
 
     // Make sure additional functions get serialized.
     let rewrittenAdditionalFunctions = this.processAdditionalFunctionValues();
+
+    for (let [name, value] of this.declaredGlobalLets) {
+      this.emitter.emit(
+        t.expressionStatement(t.assignmentExpression("=", t.identifier(name), this.serializeValue(value)))
+      );
+    }
+
+    this.postGeneratorSerialization();
 
     Array.prototype.push.apply(this.prelude, this.preludeGenerator.prelude);
 
@@ -1992,7 +1979,7 @@ export class ResidualHeapSerializer {
       ast_body.push(
         t.variableDeclaration(
           "let",
-          Array.from(this.declaredGlobalLets).map(key => t.variableDeclarator(t.identifier(key)))
+          Array.from(this.declaredGlobalLets.keys()).map(key => t.variableDeclarator(t.identifier(key)))
         )
       );
     if (body.length) {

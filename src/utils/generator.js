@@ -221,6 +221,7 @@ class ModifiedBindingEntry extends GeneratorEntry {
       invariant(this.modifiedBinding.value instanceof FunctionValue);
       return;
     }
+    invariant(residualFunctionBinding.referentialized);
     invariant(this.modifiedBinding.value === this.newValue);
     invariant(
       residualFunctionBinding.serializedValue,
@@ -894,6 +895,20 @@ export class Generator {
     }
 
     return res;
+  }
+
+  getModifiedBindings(): Set<{ modifiedBinding: Binding, oldValue: void | Value }> {
+    let result = new Set();
+    let visit = generator => {
+      for (let entry of generator._entries) {
+        if (entry instanceof ModifiedBindingEntry)
+          result.add({ modifiedBinding: entry.modifiedBinding, oldValue: entry.oldValue });
+        if (entry instanceof TemporalBuildNodeEntry && entry.dependencies)
+          for (let dependency of entry.dependencies) visit(dependency);
+      }
+    };
+    visit(this);
+    return result;
   }
 
   visit(callbacks: VisitEntryCallbacks) {
