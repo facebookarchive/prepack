@@ -42,7 +42,7 @@ export default function simplifyAndRefineAbstractValue(
     return value;
   } finally {
     if (isRootSimplification) {
-      AbstractValue.impliesCounter = 0;
+      realm.abstractValueImpliesCounter = 0;
       realm.inSimplificationPath = false;
     }
     realm.errorHandler = savedHandler;

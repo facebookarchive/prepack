@@ -68,8 +68,6 @@ export default class AbstractValue extends Value {
     this.kind = optionalArgs ? optionalArgs.kind : undefined;
   }
 
-  static impliesCounter = 0;
-
   hashValue: number;
   kind: ?string;
   types: TypesDomain;
@@ -180,8 +178,8 @@ export default class AbstractValue extends Value {
     let realm = this.$Realm;
     let abstractValueImpliesMax = realm.abstractValueImpliesMax;
     // if abstractValueImpliesMax is 0, then the counter is disabled
-    if (abstractValueImpliesMax !== 0 && AbstractValue.impliesCounter++ > abstractValueImpliesMax) {
-      AbstractValue.impliesCounter = 0;
+    if (abstractValueImpliesMax !== 0 && realm.abstractValueImpliesCounter++ > abstractValueImpliesMax) {
+      realm.abstractValueImpliesCounter = 0;
       let diagnostic = new CompilerDiagnostic(
         `the implies counter has exceeded the maximum value when trying to simplify abstract values`,
         realm.currentLocation,

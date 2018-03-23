@@ -161,6 +161,9 @@ export class Realm {
 
     // 0 = disabled
     this.abstractValueImpliesMax = opts.abstractValueImpliesMax || 0;
+    this.abstractValueImpliesCounter = 0;
+    this.inSimplificationPath = false;
+
     this.timeout = opts.timeout;
     if (this.timeout) {
       // We'll call Date.now for every this.timeoutCounterThreshold'th AST node.
@@ -220,7 +223,6 @@ export class Realm {
     this.activeLexicalEnvironments = new Set();
     this._abstractValuesDefined = new Set(); // A set of nameStrings to ensure abstract values have unique names
     this.debugNames = opts.debugNames;
-    this.inSimplificationPath = false;
   }
 
   start: number;
@@ -229,7 +231,6 @@ export class Realm {
   useAbstractInterpretation: boolean;
   debugNames: void | boolean;
   isInPureTryStatement: boolean; // TODO(1264): Remove this once we implement proper exception handling in abstract calls.
-  abstractValueImpliesMax: number;
   timeout: void | number;
   mathRandomGenerator: void | (() => number);
   strictlyMonotonicDateNow: boolean;
@@ -237,6 +238,9 @@ export class Realm {
   omitInvariants: boolean;
   ignoreLeakLogic: boolean;
   emitConcreteModel: boolean;
+
+  abstractValueImpliesMax: number;
+  abstractValueImpliesCounter: number;
   inSimplificationPath: boolean;
 
   modifiedBindings: void | Bindings;
