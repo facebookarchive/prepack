@@ -276,7 +276,7 @@ export class Functions {
       let additionalFunctionEffects = this._createAdditionalEffects(
         closureEffects,
         true,
-        "ReactAdditionalFunctionEffects",
+        "ReactNestedAdditionalFunctionEffects",
         environmentRecordIdAfterGlobalCode
       );
       invariant(additionalFunctionEffects);
