@@ -147,3 +147,21 @@ export function createReactElement(
   obj.makeFinal();
   return obj;
 }
+
+export function createInternalReactElement(
+  realm: Realm,
+  type: Value,
+  key: Value,
+  ref: Value,
+  props: ObjectValue | AbstractValue
+) {
+  let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactSymbol("react.element", realm));
+  Create.CreateDataPropertyOrThrow(realm, obj, "type", type);
+  Create.CreateDataPropertyOrThrow(realm, obj, "key", key);
+  Create.CreateDataPropertyOrThrow(realm, obj, "ref", ref);
+  Create.CreateDataPropertyOrThrow(realm, obj, "props", props);
+  Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
+  obj.makeFinal();
+  return obj;
+}
