@@ -232,8 +232,13 @@ export class Functions {
         evaluatedRootNode,
         environmentRecordIdAfterGlobalCode
       );
-      this._optimizeReactComponentTreeBranches(reconciler, environmentRecordIdAfterGlobalCode);
-      this._optimizeReactNestedClosures(reconciler, environmentRecordIdAfterGlobalCode);
+
+      let startingComponentTreeBranches = 0;
+      do {
+        startingComponentTreeBranches = reconciler.branchedComponentTrees.length;
+        this._optimizeReactComponentTreeBranches(reconciler, environmentRecordIdAfterGlobalCode);
+        this._optimizeReactNestedClosures(reconciler, environmentRecordIdAfterGlobalCode);
+      } while (startingComponentTreeBranches !== reconciler.branchedComponentTrees.length);
     }
   }
 
@@ -290,11 +295,10 @@ export class Functions {
   }
 
   _optimizeReactComponentTreeBranches(reconciler: Reconciler, environmentRecordIdAfterGlobalCode: number): void {
-    let componentTreeState = reconciler.componentTreeState;
     let logger = this.moduleTracer.modules.logger;
     // for now we just use abstract props/context, in the future we'll create a new branch with a new component
     // that used the props/context. It will extend the original component and only have a render method
-    for (let { rootValue: branchRootValue, evaluatedNode } of componentTreeState.branchedComponentTrees) {
+    for (let { rootValue: branchRootValue, evaluatedNode } of reconciler.branchedComponentTrees) {
       let branchComponentType = getComponentTypeFromRootValue(this.realm, branchRootValue);
       if (branchComponentType === null) {
         evaluatedNode.status = "UNKNOWN_TYPE";
