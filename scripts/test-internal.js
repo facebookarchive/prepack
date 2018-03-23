@@ -46,7 +46,7 @@ let errorList: Array<CompilerDiagnostic>;
 function errorHandler(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
   if (diagnostic.location) errors.set(diagnostic.location, diagnostic);
   else errorList.push(diagnostic);
-  return "Fail";
+  return "Recover";
 }
 
 function runTest(name: string, code: string): boolean {

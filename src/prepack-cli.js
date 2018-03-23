@@ -51,7 +51,7 @@ function run(
     --lazyObjectsRuntime     Enable lazy objects feature and specify the JS runtime that support this feature.
     --debugNames             Changes the output of Prepack so that for named functions and variables that get emitted into
                              Prepack's output, the original name is appended as a suffix to Prepack's generated identifier.
-    --speculate              Enable speculative initialization of modules (for the module system Prepack has builtin
+    --initializeMoreModules  Enable speculative initialization of modules (for the module system Prepack has builtin
                              knowledge about). Prepack will try to execute all factory functions it is able to.
     --trace                  Traces the order of module initialization.
     --serialize              Serializes the partially evaluated global environment as a program that recreates it.
