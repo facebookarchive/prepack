@@ -25,6 +25,11 @@ export default function simplifyAndRefineAbstractValue(
   let savedHandler = realm.errorHandler;
   let savedIsReadOnly = realm.isReadOnly;
   realm.isReadOnly = true;
+  let isRootSimplification = false;
+
+  if (!realm.inSimplificationPath) {
+    realm.inSimplificationPath = isRootSimplification = true;
+  }
   try {
     realm.errorHandler = () => {
       throw new FatalError();
@@ -36,6 +41,10 @@ export default function simplifyAndRefineAbstractValue(
     }
     return value;
   } finally {
+    if (isRootSimplification) {
+      realm.abstractValueImpliesCounter = 0;
+      realm.inSimplificationPath = false;
+    }
     realm.errorHandler = savedHandler;
     realm.isReadOnly = savedIsReadOnly;
   }
