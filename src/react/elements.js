@@ -136,7 +136,16 @@ export function createReactElement(
   children: Value
 ) {
   let { key, props, ref } = createPropsObject(realm, type, config, children);
+  return createInternalReactElement(realm, type, key, ref, props);
+}
 
+export function createInternalReactElement(
+  realm: Realm,
+  type: Value,
+  key: Value,
+  ref: Value,
+  props: ObjectValue | AbstractValue
+) {
   let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
   Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactSymbol("react.element", realm));
   Create.CreateDataPropertyOrThrow(realm, obj, "type", type);

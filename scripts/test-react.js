@@ -435,6 +435,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("Additional functions closure scope capturing", async () => {
         await runTest(directory, "additional-function-regression.js");
       });
+
+      it("Dynamic ReactElement type", async () => {
+        await runTest(directory, "dynamic-type.js");
+      });
+
+      it("Dynamic ReactElement type #2", async () => {
+        await runTest(directory, "dynamic-type2.js");
+      });
     });
 
     describe("Class component folding", () => {

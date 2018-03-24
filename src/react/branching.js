@@ -75,7 +75,7 @@ export class BranchState {
     }
   }
 
-  applyBranchedLogic(realm: Realm, reactSerializerState: ReactSerializerState): void {
+  applyBranchedLogic(realm: Realm, reactSerializerState: ReactSerializerState): boolean {
     let reactElementType;
     let applyBranchedLogic = false;
 
@@ -93,7 +93,20 @@ export class BranchState {
       for (let i = 0; i < this._branchesToValidate.length; i++) {
         this._applyBranchedLogicValue(realm, reactSerializerState, this._branchesToValidate[i].value);
       }
+      return true;
     }
+    return false;
+  }
+
+  mergeBranchedLogic(siblingBranchState: BranchState): void {
+    this._branchesToValidate.push(...siblingBranchState.getBranchesToValidate());
+  }
+
+  getBranchesToValidate(): Array<{
+    type: Value,
+    value: Value,
+  }> {
+    return this._branchesToValidate;
   }
 
   captureBranchedValue(type: Value, value: Value): Value {
