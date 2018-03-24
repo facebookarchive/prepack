@@ -136,16 +136,7 @@ export function createReactElement(
   children: Value
 ) {
   let { key, props, ref } = createPropsObject(realm, type, config, children);
-
-  let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactSymbol("react.element", realm));
-  Create.CreateDataPropertyOrThrow(realm, obj, "type", type);
-  Create.CreateDataPropertyOrThrow(realm, obj, "key", key);
-  Create.CreateDataPropertyOrThrow(realm, obj, "ref", ref);
-  Create.CreateDataPropertyOrThrow(realm, obj, "props", props);
-  Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
-  obj.makeFinal();
-  return obj;
+  return createInternalReactElement(realm, type, key, ref, props);
 }
 
 export function createInternalReactElement(

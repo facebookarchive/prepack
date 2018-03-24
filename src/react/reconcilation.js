@@ -770,7 +770,7 @@ export class Reconciler {
     if (value === getReactSymbol("react.fragment", this.realm)) {
       return "FRAGMENT";
     }
-    if (value instanceof ObjectValue || value instanceof AbstractObjectValue) {
+    if ((value instanceof ObjectValue || value instanceof AbstractObjectValue) && value.kind !== "conditional") {
       let $$typeof = Get(this.realm, value, "$$typeof");
 
       if ($$typeof === getReactSymbol("react.context", this.realm)) {
@@ -805,7 +805,10 @@ export class Reconciler {
           evaluatedNode
         );
       }
-      newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
+      let didBranch = newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
+      if (didBranch && branchState !== null) {
+        branchState.mergeBranchedLogic(newBranchState);
+      }
     } else {
       this.componentTreeState.deadEnds++;
     }
@@ -826,6 +829,7 @@ export class Reconciler {
     let refValue = getProperty(this.realm, reactElement, "ref");
 
     const resolveBranch = (abstract: AbstractValue): AbstractValue => {
+      invariant(abstract.kind === "conditional", "the reconciler tried to resolve a non conditional abstract");
       let condition = abstract.args[0];
       invariant(condition instanceof AbstractValue);
       let left = abstract.args[1];

@@ -11,9 +11,9 @@ function Bar(props) {
 }
 
 function App(props) {
-  let Type = props.switch ? Foo : Bar;
+  let Type = props.switch ? (props.switch ? Foo : Bar) : Bar;
 
-  return <Type name={"Dominic"} />
+  return <Type name={"Dan"} />
 }
 
 App.getTrials = function(renderer, Root) {
