@@ -244,17 +244,6 @@ export function convertSimpleClassComponentToFunctionalComponent(
   prototype.descriptor.configurable = true;
   Properties.DeletePropertyOrThrow(realm, complexComponentType, "prototype");
 
-  // fix the length as we've changed the arguments
-  let lengthProperty = GetDescriptorForProperty(complexComponentType, "length");
-  invariant(lengthProperty);
-  lengthProperty.writable = false;
-  lengthProperty.enumerable = false;
-  lengthProperty.configurable = true;
-  // ensure the length value is set to the new value
-  let lengthValue = Get(realm, complexComponentType, "length");
-  invariant(lengthValue instanceof NumberValue);
-  lengthValue.value = 2;
-
   // change the function kind
   complexComponentType.$FunctionKind = "normal";
   // set the prototype back to an object
@@ -436,6 +425,17 @@ export function convertFunctionalComponentToComplexClassComponent(
 }
 
 export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFunctionValue): void {
+  // fix the length as we may change the arguments
+  let lengthProperty = GetDescriptorForProperty(func, "length");
+  invariant(lengthProperty);
+  lengthProperty.writable = false;
+  lengthProperty.enumerable = false;
+  lengthProperty.configurable = true;
+  // ensure the length value is set to the new value
+  let lengthValue = Get(func.$Realm, func, "length");
+  invariant(lengthValue instanceof NumberValue);
+  lengthValue.value = 2;
+
   func.$FormalParameters = func.$FormalParameters.map((param, i) => {
     if (i === 0) {
       return t.isIdentifier(param) ? param : t.identifier("props");

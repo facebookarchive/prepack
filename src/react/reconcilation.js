@@ -61,6 +61,7 @@ import { AbruptCompletion, Completion } from "../completions.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig } from "../types.js";
 import { createAbstractArgument } from "../intrinsics/prepack/utils.js";
+import { createInternalReactElement } from "./elements.js";
 
 type ComponentResolutionStrategy =
   | "NORMAL"
@@ -322,7 +323,6 @@ export class Reconciler {
   _queueNewComponentTree(
     rootValue: Value,
     evaluatedNode: ReactEvaluatedNode,
-    nested?: boolean = false,
     props?: ObjectValue | AbstractObjectValue | null = null,
     context?: ObjectValue | AbstractObjectValue | null = null
   ) {
@@ -770,7 +770,7 @@ export class Reconciler {
     if (value === getReactSymbol("react.fragment", this.realm)) {
       return "FRAGMENT";
     }
-    if (value instanceof ObjectValue || value instanceof AbstractObjectValue) {
+    if ((value instanceof ObjectValue || value instanceof AbstractObjectValue) && value.kind !== "conditional") {
       let $$typeof = Get(this.realm, value, "$$typeof");
 
       if ($$typeof === getReactSymbol("react.context", this.realm)) {
@@ -805,11 +805,62 @@ export class Reconciler {
           evaluatedNode
         );
       }
-      newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
+      let didBranch = newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
+      if (didBranch && branchState !== null) {
+        branchState.mergeBranchedLogic(newBranchState);
+      }
     } else {
       this.componentTreeState.deadEnds++;
     }
     return value;
+  }
+
+  _resolveBranchedComponentType(
+    componentType: Value,
+    reactElement: ObjectValue,
+    context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null,
+    evaluatedNode: ReactEvaluatedNode
+  ) {
+    let typeValue = getProperty(this.realm, reactElement, "type");
+    let propsValue = getProperty(this.realm, reactElement, "props");
+    let keyValue = getProperty(this.realm, reactElement, "key");
+    let refValue = getProperty(this.realm, reactElement, "ref");
+
+    const resolveBranch = (abstract: AbstractValue): AbstractValue => {
+      invariant(abstract.kind === "conditional", "the reconciler tried to resolve a non conditional abstract");
+      let condition = abstract.args[0];
+      invariant(condition instanceof AbstractValue);
+      let left = abstract.args[1];
+      let right = abstract.args[2];
+
+      if (left instanceof AbstractValue && left.kind === "conditional") {
+        left = resolveBranch(left);
+      } else {
+        invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractValue);
+        left = createInternalReactElement(this.realm, left, keyValue, refValue, propsValue);
+      }
+      if (right instanceof AbstractValue && right.kind === "conditional") {
+        right = resolveBranch(right);
+      } else {
+        invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractValue);
+        right = createInternalReactElement(this.realm, right, keyValue, refValue, propsValue);
+      }
+      let val = AbstractValue.createFromConditionalOp(this.realm, condition, left, right);
+      invariant(val instanceof AbstractValue);
+      return val;
+    };
+    invariant(typeValue instanceof AbstractValue);
+
+    return this._resolveAbstractValue(
+      componentType,
+      resolveBranch(typeValue),
+      context,
+      branchStatus,
+      branchState,
+      evaluatedNode
+    );
   }
 
   _resolveUnknownComponentType(reactElement: ObjectValue, evaluatedNode: ReactEvaluatedNode) {
@@ -987,6 +1038,16 @@ export class Reconciler {
 
       switch (componentResolutionStrategy) {
         case "NORMAL": {
+          if (typeValue instanceof AbstractValue && typeValue.kind === "conditional") {
+            return this._resolveBranchedComponentType(
+              componentType,
+              reactElement,
+              context,
+              branchStatus,
+              branchState,
+              evaluatedNode
+            );
+          }
           if (
             !(typeValue instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(this.realm, typeValue))
           ) {
