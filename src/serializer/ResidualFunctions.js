@@ -245,7 +245,11 @@ export class ResidualFunctions {
         funcNodes.set(functionValue, ((funcOrClassNode: any): BabelNodeFunctionExpression));
         body = getPrelude(instance);
       } else {
-        invariant(t.isCallExpression(funcOrClassNode) || t.isClassExpression(funcOrClassNode)); // .bind call
+        invariant(
+          t.isCallExpression(funcOrClassNode) ||
+          t.isClassExpression(funcOrClassNode) ||
+          t.isArrowFunctionExpression(funcOrClassNode)
+        ); // .bind call
         body = getFunctionBody(instance);
       }
       body.push(t.variableDeclaration("var", [t.variableDeclarator(funcId, funcOrClassNode)]));
@@ -451,11 +455,18 @@ export class ResidualFunctions {
             }
           } else {
             let funcParams = params.slice();
-            funcOrClassNode = t.functionExpression(
-              null,
-              funcParams,
-              ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
-            );
+            if (instance.functionValue.$ThisMode === "lexical") {
+              funcOrClassNode = t.arrowFunctionExpression(
+                funcParams,
+                ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
+              );
+            } else {
+              funcOrClassNode = t.functionExpression(
+                null,
+                funcParams,
+                ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
+              );
+            }
             let scopeInitialization = [];
             for (let [scopeName, scope] of scopeInstances) {
               scopeInitialization.push(

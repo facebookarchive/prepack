@@ -79,6 +79,7 @@ export type FunctionInstance = {
 
 export type FunctionInfo = {
   depth: number,
+  lexicalDepth: number,
   unbound: Set<string>,
   modified: Set<string>,
   usesArguments: boolean,

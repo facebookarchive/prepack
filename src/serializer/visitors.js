@@ -156,7 +156,7 @@ export let ClosureRefReplacer = {
 
   // TODO: handle FunctionDeclaration.
   // Replace "function () {}" ==> "factory_id.bind(null)".
-  FunctionExpression(path: BabelTraversePath, state: ClosureRefReplacerState) {
+  "FunctionExpression|ArrowFunctionExpression"(path: BabelTraversePath, state: ClosureRefReplacerState) {
     if (t.isProgram(path.parentPath.parentPath.node)) {
       // Our goal is replacing duplicate nested function so skip root residual function itself.
       // This assumes the root function is wrapped with: t.file(t.program([t.expressionStatement(rootFunction).
@@ -256,6 +256,17 @@ export let ClosureRefVisitor = {
     },
   },
 
+  ArrowFunctionExpression: {
+    enter(path: BabelTraversePath, state: ClosureRefVisitorState) {
+      state.functionInfo.depth++;
+      state.functionInfo.lexicalDepth++;
+    },
+    exit(path: BabelTraversePath, state: ClosureRefVisitorState) {
+      state.functionInfo.depth--;
+      state.functionInfo.lexicalDepth--;
+    },
+  },
+
   ReferencedIdentifier(path: BabelTraversePath, state: ClosureRefVisitorState) {
     if (ignorePath(path)) return;
 
@@ -271,7 +282,7 @@ export let ClosureRefVisitor = {
   },
 
   ThisExpression(path: BabelTraversePath, state: ClosureRefVisitorState) {
-    if (state.functionInfo.depth === 1) {
+    if (state.functionInfo.depth - state.functionInfo.lexicalDepth === 1) {
       state.functionInfo.usesThis = true;
     }
   },
