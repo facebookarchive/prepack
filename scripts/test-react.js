@@ -583,6 +583,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it.skip("Replace this in callbacks", async () => {
         await runTest(directory, "replace-this-in-callbacks.js");
       });
+
+      it("Replace this in callbacks 2", async () => {
+        await runTest(directory, "replace-this-in-callbacks2.js");
+      });
+
+      it("Replace this in callbacks 3", async () => {
+        await runTest(directory, "replace-this-in-callbacks3.js");
+      });
     });
 
     describe("fb-www mocks", () => {
