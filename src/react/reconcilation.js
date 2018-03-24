@@ -87,7 +87,6 @@ export type BranchReactComponentTree = {
 };
 
 export type ComponentTreeState = {
-  branchedComponentTrees: Array<BranchReactComponentTree>,
   componentType: void | ECMAScriptSourceFunctionValue,
   deadEnds: number,
   status: "SIMPLE" | "COMPLEX",
@@ -111,6 +110,7 @@ export class Reconciler {
     this.alreadyEvaluatedNestedClosures = new Set();
     this.componentTreeConfig = componentTreeConfig;
     this.nestedOptimizedClosures = [];
+    this.branchedComponentTrees = [];
   }
 
   realm: Realm;
@@ -123,6 +123,7 @@ export class Reconciler {
   componentTreeConfig: ReactComponentTreeConfig;
   currentEffectsStack: Array<Effects>;
   nestedOptimizedClosures: Array<OptimizedClosure>;
+  branchedComponentTrees: Array<BranchReactComponentTree>;
 
   renderReactComponentTree(
     componentType: ECMAScriptSourceFunctionValue,
@@ -327,7 +328,7 @@ export class Reconciler {
   ) {
     invariant(rootValue instanceof ECMAScriptSourceFunctionValue || rootValue instanceof AbstractValue);
     this.componentTreeState.deadEnds++;
-    this.componentTreeState.branchedComponentTrees.push({
+    this.branchedComponentTrees.push({
       context,
       evaluatedNode,
       props,
@@ -751,7 +752,6 @@ export class Reconciler {
 
   _createComponentTreeState(): ComponentTreeState {
     return {
-      branchedComponentTrees: [],
       componentType: undefined,
       deadEnds: 0,
       status: "SIMPLE",
