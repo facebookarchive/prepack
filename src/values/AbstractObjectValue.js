@@ -482,9 +482,8 @@ export default class AbstractObjectValue extends AbstractValue {
 
   $GetPartial(P: AbstractValue | PropertyKeyValue, Receiver: Value): Value {
     if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
-    invariant(this === Receiver, "TODO #1021");
     if (this.values.isTop()) {
-      if (this.isSimpleObject() && this.isIntrinsic()) {
+      if ((this.isSimpleObject() && this.isIntrinsic()) || this.$Realm.isInPureScope()) {
         return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [this, P], ([o, p]) =>
           t.memberExpression(o, p, true)
         );
@@ -492,6 +491,7 @@ export default class AbstractObjectValue extends AbstractValue {
       AbstractValue.reportIntrospectionError(this);
       throw new FatalError();
     }
+    invariant(this === Receiver, "TODO #1021");
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
