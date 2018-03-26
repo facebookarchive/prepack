@@ -23,6 +23,7 @@ import type {
   BabelNodeSpreadElement,
   BabelNodeFunctionExpression,
   BabelNodeClassExpression,
+  BabelNodeArrowFunctionExpression,
 } from "babel-types";
 import type { FunctionBodyAstNode } from "../types.js";
 import type { NameGenerator } from "../utils/generator.js";
@@ -39,8 +40,12 @@ import { Referentializer } from "./Referentializer.js";
 import { getOrDefault } from "./utils.js";
 
 type ResidualFunctionsResult = {
-  unstrictFunctionBodies: Array<BabelNodeFunctionExpression | BabelNodeClassExpression>,
-  strictFunctionBodies: Array<BabelNodeFunctionExpression | BabelNodeClassExpression>,
+  unstrictFunctionBodies: Array<
+    BabelNodeFunctionExpression | BabelNodeClassExpression | BabelNodeArrowFunctionExpression
+  >,
+  strictFunctionBodies: Array<
+    BabelNodeFunctionExpression | BabelNodeClassExpression | BabelNodeArrowFunctionExpression
+  >,
   requireStatistics: { replaced: number, count: number },
 };
 
