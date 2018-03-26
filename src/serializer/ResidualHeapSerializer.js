@@ -1759,6 +1759,7 @@ export class ResidualHeapSerializer {
       statements.unshift(commentStatement("begin " + comment));
       statements.push(commentStatement("end " + comment));
     }
+    this.statistics.generators++;
     return statements;
   }
 
@@ -1903,6 +1904,7 @@ export class ResidualHeapSerializer {
     this.prepareAdditionalFunctionValues();
 
     this.generator.serialize(this._getContext());
+    this.statistics.generators++;
     invariant(this.emitter.declaredCount() <= this.preludeGenerator.derivedIds.size);
 
     this.postGeneratorSerialization();
