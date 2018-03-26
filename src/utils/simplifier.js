@@ -31,12 +31,15 @@ export default function simplifyAndRefineAbstractValue(
     realm.inSimplificationPath = isRootSimplification = true;
   }
   try {
-    realm.errorHandler = () => {
+    realm.errorHandler = diagnostic => {
+      if (diagnostic.errorCode === "PP0029") {
+        throw new FatalError(`${diagnostic.errorCode}: ${diagnostic.message}`);
+      }
       throw new FatalError();
     };
     return simplify(realm, value, isCondition);
   } catch (e) {
-    if (e instanceof FatalError) {
+    if (e instanceof FatalError && typeof e.message === "string" && e.message.includes("PP0029")) {
       if (isRootSimplification) {
         return value;
       }
