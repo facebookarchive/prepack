@@ -3,6 +3,8 @@
 .*/test262/.*
 .*/node_modules/.*\.json
 .*/lib/.*
+.*/fb-www/input*.js
+.*/fb-www/output*.js
 .*/test/serializer/.*
 .*/scripts/prettier.js
 .*/tmp_website_build/.*
