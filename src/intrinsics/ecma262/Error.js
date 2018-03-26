@@ -31,6 +31,13 @@ export function describeLocation(
   let displayName = "";
 
   if (callerFn) {
+    if (realm.alreadyDescribedLocations.has(callerFn)) {
+      return realm.alreadyDescribedLocations.get(callerFn);
+    }
+    realm.alreadyDescribedLocations.set(callerFn, undefined);
+  }
+
+  if (callerFn) {
     if (callerFn instanceof NativeFunctionValue) {
       locString = "native";
     }
@@ -52,11 +59,16 @@ export function describeLocation(
     }
   }
 
+  let location;
   if (displayName) {
-    return `at ${displayName} (${locString})`;
+    location = `at ${displayName} (${locString})`;
   } else {
-    return `at ${locString}`;
+    location = `at ${locString}`;
   }
+  if (callerFn) {
+    realm.alreadyDescribedLocations.set(callerFn, location);
+  }
+  return location;
 }
 
 function buildStack(realm: Realm, context: ObjectValue) {
