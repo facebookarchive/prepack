@@ -905,16 +905,25 @@ export class ResidualHeapVisitor {
     };
   }
 
+  _getObjectsCreatedByIncludingAdditionalFunction(generator: Generator) {
+    const s = new Set();
+    for (let g = generator; g !== undefined; g = this.generatorParents.get(g))
+      if (g.effectsToApply !== undefined) for (const createdObject of g.effectsToApply[4]) s.add(createdObject);
+    return s;
+  }
+
   visitGenerator(generator: Generator, additionalFunctionInfo?: AdditionalFunctionInfo): void {
-    let oldCreatedObjects;
-    if (generator.effectsToApply) {
-      oldCreatedObjects = this.createdObjects;
-      this.createdObjects = new Set([...oldCreatedObjects, ...generator.effectsToApply[4]]);
-    }
+    // When visiting a generator, we consider as the overall set of created objects
+    // all objects created by this generator and any other parent generator
+    // back up to the additional function root generator.
+    let oldCreatedObjects = this.createdObjects;
+    this.createdObjects = this._getObjectsCreatedByIncludingAdditionalFunction(generator);
+
     this._withScope(generator, () => {
       generator.visit(this.createGeneratorVisitCallbacks(this.commonScope, additionalFunctionInfo));
     });
-    if (oldCreatedObjects) this.createdObjects = oldCreatedObjects;
+
+    this.createdObjects = oldCreatedObjects;
   }
 
   // result -- serialized as a return statement
@@ -966,16 +975,8 @@ export class ResidualHeapVisitor {
     };
     this.additionalFunctionValueInfos.set(functionValue, additionalFunctionInfo);
 
-    this._withScope(functionValue, () => {
-      let effectsGenerator = additionalEffects.generator;
-      let oldCreatedObjects;
-      if (effectsGenerator.effectsToApply) {
-        oldCreatedObjects = this.createdObjects;
-        this.createdObjects = new Set([...oldCreatedObjects, ...effectsGenerator.effectsToApply[4]]);
-      }
-      this.visitGenerator(effectsGenerator, additionalFunctionInfo);
-      if (oldCreatedObjects) this.createdObjects = oldCreatedObjects;
-    });
+    let effectsGenerator = additionalEffects.generator;
+    this.visitGenerator(effectsGenerator, additionalFunctionInfo);
 
     // Cleanup
     this.commonScope = prevCommonScope;
