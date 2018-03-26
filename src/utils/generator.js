@@ -58,9 +58,10 @@ import type { SerializerOptions } from "../options.js";
 export type SerializationContext = {|
   serializeValue: Value => BabelNodeExpression,
   serializeBinding: Binding => BabelNodeIdentifier | BabelNodeMemberExpression,
-  serializeGenerator: Generator => Array<BabelNodeStatement>,
+  serializeGenerator: (Generator, Set<AbstractValue>) => Array<BabelNodeStatement>,
   emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
+  processValues: (Set<AbstractValue>) => void,
   canOmit: AbstractValue => boolean,
   declare: AbstractValue => void,
   emitPropertyModification: PropertyBinding => void,
@@ -79,10 +80,15 @@ export type VisitEntryCallbacks = {|
 
 export type DerivedExpressionBuildNodeFunction = (
   Array<BabelNodeExpression>,
-  SerializationContext
+  SerializationContext,
+  Set<AbstractValue>
 ) => BabelNodeExpression;
 
-export type GeneratorBuildNodeFunction = (Array<BabelNodeExpression>, SerializationContext) => BabelNodeStatement;
+export type GeneratorBuildNodeFunction = (
+  Array<BabelNodeExpression>,
+  SerializationContext,
+  Set<AbstractValue>
+) => BabelNodeStatement;
 
 type ArgsAndBuildNode = [Array<Value>, (Array<BabelNodeExpression>) => BabelNodeStatement];
 
@@ -133,7 +139,8 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
     if (!this.isPure || !this.declared || !context.canOmit(this.declared)) {
       let nodes = this.args.map((boundArg, i) => context.serializeValue(boundArg));
       if (this.buildNode) {
-        let node = this.buildNode(nodes, context);
+        let valuesToProcess = new Set();
+        let node = this.buildNode(nodes, context, valuesToProcess);
         if (node.type === "BlockStatement") {
           let block: BabelNodeBlockStatement = (node: any);
           let statements = block.body;
@@ -149,6 +156,7 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
           context.emit(s);
         }
         context.emit(node);
+        context.processValues(valuesToProcess);
       }
       if (this.declared !== undefined) context.declare(this.declared);
     }
@@ -296,14 +304,20 @@ class PossiblyNormalReturnEntry extends GeneratorEntry {
 
   serialize(context: SerializationContext) {
     let condition = context.serializeValue(this.condition);
-    let consequentBody = context.serializeGenerator(this.consequentGenerator);
-    let alternateBody = context.serializeGenerator(this.alternateGenerator);
+    let valuesToProcess = new Set();
+    let consequentBody = context.serializeGenerator(this.consequentGenerator, valuesToProcess);
+    let alternateBody = context.serializeGenerator(this.alternateGenerator, valuesToProcess);
     context.emit(t.ifStatement(condition, t.blockStatement(consequentBody), t.blockStatement(alternateBody)));
+    context.processValues(valuesToProcess);
   }
 }
 
-function serializeBody(generator: Generator, context: SerializationContext): BabelNodeBlockStatement {
-  let statements = context.serializeGenerator(generator);
+function serializeBody(
+  generator: Generator,
+  context: SerializationContext,
+  valuesToProcess: Set<AbstractValue>
+): BabelNodeBlockStatement {
+  let statements = context.serializeGenerator(generator, valuesToProcess);
   if (statements.length === 1 && statements[0].type === "BlockStatement") return (statements[0]: any);
   return t.blockStatement(statements);
 }
@@ -325,7 +339,6 @@ export class Generator {
   _entries: Array<GeneratorEntry>;
   preludeGenerator: PreludeGenerator;
   effectsToApply: void | Effects;
-
   id: number;
   _name: string;
 
@@ -384,6 +397,7 @@ export class Generator {
   }
 
   emitPropertyModification(propertyBinding: PropertyBinding) {
+    invariant(this.effectsToApply !== undefined);
     this._entries.push(
       new ModifiedPropertyEntry({
         propertyBinding,
@@ -394,6 +408,7 @@ export class Generator {
   }
 
   emitBindingModification(modifiedBinding: Binding, oldValue: Value) {
+    invariant(this.effectsToApply !== undefined);
     this._entries.push(
       new ModifiedBindingEntry({
         modifiedBinding,
@@ -547,10 +562,10 @@ export class Generator {
   emitDoWhileStatement(test: AbstractValue, body: Generator) {
     this._addEntry({
       args: [],
-      buildNode: function([], context: SerializationContext) {
+      buildNode: function([], context, valuesToProcess) {
         let testId = test.intrinsicName;
         invariant(testId !== undefined);
-        let statements = context.serializeGenerator(body);
+        let statements = context.serializeGenerator(body, valuesToProcess);
         let block = t.blockStatement(statements);
         return t.doWhileStatement(t.identifier(testId), block);
       },
@@ -828,12 +843,12 @@ export class Generator {
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: res,
       args,
-      buildNode: (nodes: Array<BabelNodeExpression>, context: SerializationContext) => {
+      buildNode: (nodes: Array<BabelNodeExpression>, context: SerializationContext, valuesToProcess) => {
         return t.variableDeclaration("var", [
           t.variableDeclarator(
             id,
             (buildNode_: any) instanceof Function
-              ? ((buildNode_: any): DerivedExpressionBuildNodeFunction)(nodes, context)
+              ? ((buildNode_: any): DerivedExpressionBuildNodeFunction)(nodes, context, valuesToProcess)
               : ((buildNode_: any): BabelNodeExpression)
           ),
         ]);
@@ -911,32 +926,40 @@ export class Generator {
 
   appendGenerator(other: Generator, leadingComment: string): void {
     invariant(other !== this);
+    invariant(other.realm === this.realm);
+    invariant(other.preludeGenerator === this.preludeGenerator);
+
     if (other.empty()) return;
-    this._addEntry({
-      args: [],
-      buildNode: function(args, context: SerializationContext) {
-        let statements = context.serializeGenerator(other);
-        if (statements.length === 1) {
-          let statement = statements[0];
+    if (other.effectsToApply === undefined) {
+      this._entries.push(...other._entries);
+    } else {
+      this._addEntry({
+        args: [],
+        buildNode: function(args, context, valuesToProcess) {
+          let statements = context.serializeGenerator(other, valuesToProcess);
+          if (statements.length === 1) {
+            let statement = statements[0];
+            if (leadingComment.length > 0)
+              statement.leadingComments = [({ type: "BlockComment", value: leadingComment }: any)];
+            return statement;
+          }
+          let block = t.blockStatement(statements);
           if (leadingComment.length > 0)
-            statement.leadingComments = [({ type: "BlockComment", value: leadingComment }: any)];
-          return statement;
-        }
-        let block = t.blockStatement(statements);
-        if (leadingComment.length > 0) block.leadingComments = [({ type: "BlockComment", value: leadingComment }: any)];
-        return block;
-      },
-      dependencies: [other],
-    });
+            block.leadingComments = [({ type: "BlockComment", value: leadingComment }: any)];
+          return block;
+        },
+        dependencies: [other],
+      });
+    }
   }
 
   composeGenerators(generator1: Generator, generator2: Generator): void {
     invariant(generator1 !== this && generator2 !== this && generator1 !== generator2);
     this._addEntry({
       args: [],
-      buildNode: function([], context) {
-        let statements1 = generator1.empty() ? [] : context.serializeGenerator(generator1);
-        let statements2 = generator2.empty() ? [] : context.serializeGenerator(generator2);
+      buildNode: function([], context, valuesToProcess) {
+        let statements1 = generator1.empty() ? [] : context.serializeGenerator(generator1, valuesToProcess);
+        let statements2 = generator2.empty() ? [] : context.serializeGenerator(generator2, valuesToProcess);
         let statements = statements1.concat(statements2);
         if (statements.length === 1) return statements[0];
         return t.blockStatement(statements);
@@ -949,9 +972,9 @@ export class Generator {
     invariant(generator1 !== this && generator2 !== this && generator1 !== generator2);
     this._addEntry({
       args: [joinCondition],
-      buildNode: function([cond], context) {
-        let block1 = generator1.empty() ? null : serializeBody(generator1, context);
-        let block2 = generator2.empty() ? null : serializeBody(generator2, context);
+      buildNode: function([cond], context, valuesToProcess) {
+        let block1 = generator1.empty() ? null : serializeBody(generator1, context, valuesToProcess);
+        let block2 = generator2.empty() ? null : serializeBody(generator2, context, valuesToProcess);
         if (block1) return t.ifStatement(cond, block1, block2);
         invariant(block2);
         return t.ifStatement(t.unaryExpression("!", cond), block2);

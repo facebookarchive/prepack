@@ -409,7 +409,8 @@ export class ResidualHeapSerializer {
         /*isChild*/ true
       );
       this._emitPropertiesWithComputedNames(obj, consequent);
-      let consequentBody = this.emitter.endEmitting("consequent", oldBody, /*isChild*/ true);
+      let valuesToProcess = new Set();
+      let consequentBody = this.emitter.endEmitting("consequent", oldBody, valuesToProcess, /*isChild*/ true);
       let consequentStatement = t.blockStatement(consequentBody.entries);
       oldBody = this.emitter.beginEmitting(
         "alternate",
@@ -422,9 +423,10 @@ export class ResidualHeapSerializer {
         /*isChild*/ true
       );
       this._emitPropertiesWithComputedNames(obj, alternate);
-      let alternateBody = this.emitter.endEmitting("alternate", oldBody, /*isChild*/ true);
+      let alternateBody = this.emitter.endEmitting("alternate", oldBody, valuesToProcess, /*isChild*/ true);
       let alternateStatement = t.blockStatement(alternateBody.entries);
       this.emitter.emit(t.ifStatement(serializedCond, consequentStatement, alternateStatement));
+      this.emitter.processValues(valuesToProcess);
     }
   }
 
@@ -1741,6 +1743,7 @@ export class ResidualHeapSerializer {
   _withGeneratorScope(
     type: "Generator" | "AdditionalFunction",
     generator: Generator,
+    valuesToProcess: void | Set<AbstractValue>,
     callback: SerializedBody => void
   ): Array<BabelNodeStatement> {
     let newBody = { type, parentBody: undefined, entries: [], done: false };
@@ -1749,7 +1752,7 @@ export class ResidualHeapSerializer {
     this.activeGeneratorBodies.set(generator, newBody);
     callback(newBody);
     this.activeGeneratorBodies.delete(generator);
-    const statements = this.emitter.endEmitting(generator, oldBody, /*isChild*/ isChild).entries;
+    const statements = this.emitter.endEmitting(generator, oldBody, valuesToProcess, /*isChild*/ isChild).entries;
     if (this._options.debugScopes) {
       let comment = `generator "${generator.getName()}"`;
       let parent = this.getGeneratorParent(generator);
@@ -1769,10 +1772,13 @@ export class ResidualHeapSerializer {
     let context = {
       serializeValue: this.serializeValue.bind(this),
       serializeBinding: this.serializeBinding.bind(this),
-      serializeGenerator: (generator: Generator): Array<BabelNodeStatement> =>
-        this._withGeneratorScope("Generator", generator, () => generator.serialize(context)),
+      serializeGenerator: (generator: Generator, valuesToProcess: Set<AbstractValue>): Array<BabelNodeStatement> =>
+        this._withGeneratorScope("Generator", generator, valuesToProcess, () => generator.serialize(context)),
       emit: (statement: BabelNodeStatement) => {
         this.emitter.emit(statement);
+      },
+      processValues: (valuesToProcess: Set<AbstractValue>) => {
+        this.emitter.processValues(valuesToProcess);
       },
       emitDefinePropertyBody: this.emitDefinePropertyBody.bind(this, false, undefined),
       canOmit: (value: AbstractValue) => {
@@ -1819,7 +1825,7 @@ export class ResidualHeapSerializer {
   }
 
   _serializeAdditionalFunctionGeneratorAndEffects(generator: Generator, additionalEffects: AdditionalFunctionEffects) {
-    return this._withGeneratorScope("AdditionalFunction", generator, newBody => {
+    return this._withGeneratorScope("AdditionalFunction", generator, /*valuesToProcess*/ undefined, newBody => {
       let oldSerialiedValueWithIdentifiers = this._serializedValueWithIdentifiers;
       this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
       try {

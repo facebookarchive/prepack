@@ -132,7 +132,15 @@ export class Emitter {
   }
   // End to emit something. The parameters dependency and isChild must match a previous call to beginEmitting.
   // oldBody should be the value returned by the previous matching beginEmitting call.
-  endEmitting(dependency: string | Generator | Value, oldBody: SerializedBody, isChild: boolean = false) {
+  // valuesToProcess is filled with values that have been newly declared since the last corresponding beginEmitting call;
+  // other values not yet have been emitted as they might be waiting for valuesToProcess;
+  // processValues(valuesToProcess) should be called once the returned body has been embedded in the outer context.
+  endEmitting(
+    dependency: string | Generator | Value,
+    oldBody: SerializedBody,
+    valuesToProcess: void | Set<AbstractValue>,
+    isChild: boolean = false
+  ) {
     invariant(!this._finalized);
     let lastDependency = this._activeStack.pop();
     invariant(dependency === lastDependency);
@@ -164,7 +172,7 @@ export class Emitter {
           for (let [key, value] of b.declaredAbstractValues) {
             if (!parentDeclaredAbstractValues.has(key)) {
               parentDeclaredAbstractValues.set(key, value);
-              this._processValue(key);
+              if (valuesToProcess !== undefined) valuesToProcess.add(key);
               anyPropagated = true;
             }
           }
@@ -173,6 +181,9 @@ export class Emitter {
     }
 
     return lastBody;
+  }
+  processValues(valuesToProcess: Set<AbstractValue>) {
+    for (let value of valuesToProcess) this._processValue(value);
   }
   finalize() {
     invariant(!this._finalized);
