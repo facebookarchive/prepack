@@ -991,7 +991,7 @@ export class ResidualHeapVisitor {
           prevReVisit.set(value, additionalParentGenerators);
           this.visitValue(value);
         }
-        for (let { modifiedBinding, oldValue } of additionalEffects.generator.getModifiedBindings()) {
+        for (let [modifiedBinding, oldValue] of additionalEffects.generator.getModifiedBindingOldValues()) {
           invariant(oldValue !== undefined);
           let residualBinding = this.getBinding(functionValue, modifiedBinding.environment, modifiedBinding.name);
           // Fixup the binding to have the correct value
