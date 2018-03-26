@@ -247,8 +247,8 @@ export class ResidualFunctions {
       } else {
         invariant(
           t.isCallExpression(funcOrClassNode) ||
-          t.isClassExpression(funcOrClassNode) ||
-          t.isArrowFunctionExpression(funcOrClassNode)
+            t.isClassExpression(funcOrClassNode) ||
+            t.isArrowFunctionExpression(funcOrClassNode)
         ); // .bind call
         body = getFunctionBody(instance);
       }
@@ -478,7 +478,9 @@ export class ResidualFunctions {
                 this.referentializer.getReferentializedScopeInitialization(scope)
               );
             }
-            funcOrClassNode.body.body = scopeInitialization.concat(funcOrClassNode.body.body);
+            let funcOrClassNodeBody = ((funcOrClassNode.body: any): BabelNodeBlockStatement);
+            invariant(t.isBlockStatement(funcOrClassNodeBody));
+            funcOrClassNodeBody.body = scopeInitialization.concat(funcOrClassNodeBody.body);
 
             traverse(t.file(t.program([t.expressionStatement(funcOrClassNode)])), ClosureRefReplacer, null, {
               residualFunctionBindings,
