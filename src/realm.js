@@ -209,6 +209,7 @@ export class Realm {
       verbose: opts.reactVerbose || false,
     };
 
+    this.alreadyDescribedLocations = new WeakMap();
     this.stripFlow = opts.stripFlow || false;
 
     this.fbLibraries = {
@@ -280,6 +281,7 @@ export class Realm {
     symbols: Map<ReactSymbolTypes, SymbolValue>,
     verbose: boolean,
   };
+  alreadyDescribedLocations: WeakMap<FunctionValue, string | void>;
   stripFlow: boolean;
 
   fbLibraries: {
