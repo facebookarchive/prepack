@@ -37,6 +37,9 @@ export default function simplifyAndRefineAbstractValue(
     return simplify(realm, value, isCondition);
   } catch (e) {
     if (e instanceof FatalError) {
+      if (isRootSimplification) {
+        return value;
+      }
       throw e;
     }
     return value;
