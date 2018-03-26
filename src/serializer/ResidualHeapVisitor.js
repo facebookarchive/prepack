@@ -905,7 +905,7 @@ export class ResidualHeapVisitor {
     };
   }
 
-  _getObjectsCreatedByIncludingAdditionalFunction(generator: Generator) {
+  _getObjectsCreatedByIncludingAdditionalFunction(generator: Generator): Set<ObjectValue> {
     const s = new Set();
     for (let g = generator; g !== undefined; g = this.generatorParents.get(g))
       if (g.effectsToApply !== undefined) for (const createdObject of g.effectsToApply[4]) s.add(createdObject);
