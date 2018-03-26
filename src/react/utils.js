@@ -432,7 +432,7 @@ export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFun
   lengthProperty.enumerable = false;
   lengthProperty.configurable = true;
   // ensure the length value is set to the new value
-  let lengthValue = Get(func.$Realm, func, "length");
+  let lengthValue = lengthProperty.value;
   invariant(lengthValue instanceof NumberValue);
   lengthValue.value = 2;
 
