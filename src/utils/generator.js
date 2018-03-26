@@ -221,6 +221,7 @@ class ModifiedBindingEntry extends GeneratorEntry {
       invariant(this.modifiedBinding.value instanceof FunctionValue);
       return;
     }
+    invariant(residualFunctionBinding.referentialized);
     invariant(this.modifiedBinding.value === this.newValue);
     invariant(
       residualFunctionBinding.serializedValue,
@@ -894,6 +895,33 @@ export class Generator {
     }
 
     return res;
+  }
+
+  // This function does a deep traversal of this and all dependent generators
+  // in order to find all ModifiedBindingEntry entries.
+  // Their modifiedBinding and oldValue properties are eventually returned.
+  // Note that the modifiedBindings set is different from effectsToApply[2],
+  // and the old values are meaningful without effectsToApply being applied.
+  getModifiedBindingOldValues(): Map<Binding, void | Value> {
+    let result = new Map();
+    let visit = generator => {
+      for (let entry of generator._entries) {
+        if (entry instanceof ModifiedBindingEntry) {
+          if (!result.has(entry.modifiedBinding)) result.set(entry.modifiedBinding, entry.oldValue);
+        } else if (entry instanceof TemporalBuildNodeEntry) {
+          if (entry.dependencies) for (let dependency of entry.dependencies) visit(dependency);
+        } else if (entry instanceof PossiblyNormalReturnEntry) {
+          for (let dependency of [entry.consequentGenerator, entry.alternateGenerator]) visit(dependency);
+        } else {
+          invariant(
+            entry instanceof ReturnValueEntry || entry instanceof ModifiedPropertyEntry,
+            entry.constructor.name
+          );
+        }
+      }
+    };
+    visit(this);
+    return result;
   }
 
   visit(callbacks: VisitEntryCallbacks) {
