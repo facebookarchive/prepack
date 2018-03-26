@@ -30,14 +30,16 @@ export function describeLocation(
   let locString = "";
   let displayName = "";
 
+  // check if we've already encountered the callFn and if so
+  // re-use that described location. plus we may get stuck trying
+  // to get the location by recursively checking the same fun
+  // so this also prevents a stack overflow
   if (callerFn) {
     if (realm.alreadyDescribedLocations.has(callerFn)) {
       return realm.alreadyDescribedLocations.get(callerFn);
     }
     realm.alreadyDescribedLocations.set(callerFn, undefined);
-  }
 
-  if (callerFn) {
     if (callerFn instanceof NativeFunctionValue) {
       locString = "native";
     }
