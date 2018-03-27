@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeCallExpression, BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "babel-types";
 import { Completion, PossiblyNormalCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
@@ -64,11 +64,45 @@ export class Functions {
   moduleTracer: ModuleTracer;
   writeEffects: Map<FunctionValue, AdditionalFunctionEffects>;
 
-  __generateAdditionalFunctionsMap(globalKey: string) {
-    let recordedAdditionalFunctions: Map<
-      ECMAScriptSourceFunctionValue | AbstractValue,
-      { funcId: string, config?: ReactComponentTreeConfig }
-    > = new Map();
+  __optimizedFunctionEntryOfValue(
+    value: Value
+  ): {
+    value: ECMAScriptSourceFunctionValue | AbstractValue,
+    config?: ReactComponentTreeConfig,
+  } | null {
+    let realm = this.realm;
+    if (value instanceof ECMAScriptSourceFunctionValue) {
+      // additional function logic
+      return { value };
+    } else if (value instanceof ObjectValue) {
+      // React component tree logic
+      let config = Get(realm, value, "config");
+      let rootComponent = Get(realm, value, "rootComponent");
+      let validConfig = config instanceof ObjectValue || config === realm.intrinsics.undefined;
+      let validRootComponent =
+        rootComponent instanceof ECMAScriptSourceFunctionValue ||
+        (rootComponent instanceof AbstractValue && valueIsKnownReactAbstraction(this.realm, rootComponent));
+
+      if (validConfig && validRootComponent) {
+        return {
+          value: ((rootComponent: any): AbstractValue | ECMAScriptSourceFunctionValue),
+          config: convertConfigObjectToReactComponentTreeConfig(realm, ((config: any): ObjectValue | UndefinedValue)),
+        };
+      }
+      return null;
+    }
+
+    realm.handleError(
+      new CompilerDiagnostic(`Additional Function Value ${0} is an invalid value`, undefined, "PP0001", "FatalError")
+    );
+    throw new FatalError("invalid Additional Function value");
+  }
+
+  __generateInitialAdditionalFunctions(globalKey: string) {
+    let recordedAdditionalFunctions: Array<{
+      value: ECMAScriptSourceFunctionValue | AbstractValue,
+      config?: ReactComponentTreeConfig,
+    }> = [];
     let realm = this.realm;
     let globalRecordedAdditionalFunctionsMap = this.moduleTracer.modules.logger.tryQuery(
       () => Get(realm, realm.$GlobalObject, globalKey),
@@ -79,40 +113,10 @@ export class Functions {
       let property = globalRecordedAdditionalFunctionsMap.properties.get(funcId);
       if (property) {
         let value = property.descriptor && property.descriptor.value;
-
-        if (value instanceof ECMAScriptSourceFunctionValue) {
-          // additional function logic
-          recordedAdditionalFunctions.set(value, { funcId });
-          continue;
-        } else if (value instanceof ObjectValue) {
-          // React component tree logic
-          let config = Get(realm, value, "config");
-          let rootComponent = Get(realm, value, "rootComponent");
-          let validConfig = config instanceof ObjectValue || config === realm.intrinsics.undefined;
-          let validRootComponent =
-            rootComponent instanceof ECMAScriptSourceFunctionValue ||
-            (rootComponent instanceof AbstractValue && valueIsKnownReactAbstraction(this.realm, rootComponent));
-
-          if (validConfig && validRootComponent) {
-            recordedAdditionalFunctions.set(((rootComponent: any): ECMAScriptSourceFunctionValue | AbstractValue), {
-              funcId,
-              config: convertConfigObjectToReactComponentTreeConfig(
-                realm,
-                ((config: any): ObjectValue | UndefinedValue)
-              ),
-            });
-          }
-          continue;
-        }
-        realm.handleError(
-          new CompilerDiagnostic(
-            `Additional Function Value ${funcId} is an invalid value`,
-            undefined,
-            "PP0001",
-            "FatalError"
-          )
-        );
-        throw new FatalError("invalid Additional Function value");
+        invariant(value !== undefined);
+        invariant(value instanceof Value);
+        let entry = this.__optimizedFunctionEntryOfValue(value);
+        if (entry) recordedAdditionalFunctions.push(entry);
       }
     }
     return recordedAdditionalFunctions;
@@ -199,12 +203,12 @@ export class Functions {
     environmentRecordIdAfterGlobalCode: number
   ): void {
     let logger = this.moduleTracer.modules.logger;
-    let recordedReactRootValues = this.__generateAdditionalFunctionsMap("__reactComponentTrees");
+    let recordedReactRootValues = this.__generateInitialAdditionalFunctions("__reactComponentTrees");
     // Get write effects of the components
     if (this.realm.react.verbose) {
-      logger.logInformation(`Evaluating ${recordedReactRootValues.size} React component tree roots...`);
+      logger.logInformation(`Evaluating ${recordedReactRootValues.length} React component tree roots...`);
     }
-    for (let [componentRoot, { config }] of recordedReactRootValues) {
+    for (let { value: componentRoot, config } of recordedReactRootValues) {
       invariant(config);
       let reconciler = new Reconciler(this.realm, this.moduleTracer.modules.logger, statistics, react, config);
       let componentType = getComponentTypeFromRootValue(this.realm, componentRoot);
@@ -329,29 +333,6 @@ export class Functions {
     }
   }
 
-  _generateAdditionalFunctionCallsFromDirective(): Array<[FunctionValue, BabelNodeCallExpression]> {
-    let recordedAdditionalFunctions = this.__generateAdditionalFunctionsMap("__optimizedFunctions");
-
-    // The additional functions we registered at runtime are recorded at:
-    // global.__optimizedFunctions.id
-    let calls = [];
-    for (let [funcValue, { funcId }] of recordedAdditionalFunctions) {
-      // TODO #987: Make Additional Functions work with arguments
-      invariant(funcValue instanceof FunctionValue);
-      calls.push([
-        funcValue,
-        t.callExpression(
-          t.memberExpression(
-            t.memberExpression(t.identifier("global"), t.identifier("__optimizedFunctions")),
-            t.identifier(funcId)
-          ),
-          []
-        ),
-      ]);
-    }
-    return calls;
-  }
-
   _callOfFunction(funcValue: FunctionValue): void => Value {
     const globalThis = this.realm.$GlobalEnv.environmentRecord.WithBaseObject();
     let call = funcValue.$Call;
@@ -388,14 +369,34 @@ export class Functions {
   }
 
   checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode: number) {
-    let additionalFunctions = this.__generateAdditionalFunctionsMap("__optimizedFunctions");
+    let additionalFunctionsToProcess = this.__generateInitialAdditionalFunctions("__optimizedFunctions");
+    let additionalFunctions = new Set(additionalFunctionsToProcess.map(entry => entry.value));
+    let optimizedFunctionsObject = this.moduleTracer.modules.logger.tryQuery(
+      () => Get(this.realm, this.realm.$GlobalObject, "__optimizedFunctions"),
+      this.realm.intrinsics.undefined
+    );
+    invariant(optimizedFunctionsObject instanceof ObjectValue);
 
-    for (let [funcValue] of additionalFunctions) {
+    while (additionalFunctionsToProcess.length > 0) {
+      let funcValue = additionalFunctionsToProcess.shift().value;
       invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
       let call = this._callOfFunction(funcValue);
       let effects = this.realm.evaluatePure(() =>
         this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
       );
+      // look for newly registered optimized functions
+      let modifiedProperties = effects[3];
+      for (let [propertyBinding, newDescriptor] of modifiedProperties) {
+        if (propertyBinding.object === optimizedFunctionsObject) {
+          let newValue = newDescriptor && newDescriptor.value;
+          invariant(newValue);
+          let newEntry = this.__optimizedFunctionEntryOfValue(newValue);
+          if (newEntry) {
+            additionalFunctions.add(newEntry.value);
+            additionalFunctionsToProcess.push(newEntry);
+          }
+        }
+      }
       invariant(effects);
       let additionalFunctionEffects = this._createAdditionalEffects(
         effects,
@@ -409,7 +410,7 @@ export class Functions {
 
     // check that functions are independent
     let conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
-    for (let [fun1] of additionalFunctions) {
+    for (let fun1 of additionalFunctions) {
       invariant(fun1 instanceof FunctionValue);
       let fun1Name = this.functionExpressions.get(fun1) || fun1.intrinsicName || "(unknown function)";
       // Also do argument validation here
@@ -427,7 +428,7 @@ export class Functions {
         this.realm.handleError(error);
         throw new FatalError();
       }
-      for (let [fun2] of additionalFunctions) {
+      for (let fun2 of additionalFunctions) {
         if (fun1 === fun2) continue;
         invariant(fun2 instanceof FunctionValue);
         this.reportWriteConflicts(fun1Name, conflicts, e1[3], this._callOfFunction(fun2));
