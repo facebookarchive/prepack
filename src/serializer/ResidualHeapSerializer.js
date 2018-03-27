@@ -1315,31 +1315,41 @@ export class ResidualHeapSerializer {
       }
     };
 
-    let serializeClassMethod = (propertyNameOrSymbol, methodFunc) => {
-      invariant(methodFunc instanceof ECMAScriptSourceFunctionValue);
-      if (methodFunc !== classFunc) {
-        // if the method does not have a $HomeObject, it's not a class method
-        if (methodFunc.$HomeObject !== undefined) {
-          this.serializedValues.add(methodFunc);
-          this._serializeClassMethod(propertyNameOrSymbol, methodFunc);
-        } else {
-          // if the method is not part of the class, we have to assign it to the prototype
-          // we can't serialize via emitting the properties as that will emit all
-          // the prototype and we only want to mutate the prototype here
-          serializeClassPrototypeId();
-          let methodId = this.serializeValue(methodFunc);
-          let name;
+    let serializeClassMethod = (propertyNameOrSymbol, methodFuncOrProperty) => {
+      let name;
+      let methodFuncOrPropertyId = this.serializeValue(methodFuncOrProperty);
 
-          if (typeof propertyNameOrSymbol === "string") {
-            name = t.identifier(propertyNameOrSymbol);
+      if (typeof propertyNameOrSymbol === "string") {
+        name = t.identifier(propertyNameOrSymbol);
+      } else {
+        name = this.serializeValue(propertyNameOrSymbol);
+      }
+      if (methodFuncOrProperty instanceof ECMAScriptSourceFunctionValue) {
+        if (methodFuncOrProperty !== classFunc) {
+          // if the method does not have a $HomeObject, it's not a class method
+          if (methodFuncOrProperty.$HomeObject !== undefined) {
+            this.serializedValues.add(methodFuncOrProperty);
+            this._serializeClassMethod(propertyNameOrSymbol, methodFuncOrProperty);
           } else {
-            name = this.serializeValue(propertyNameOrSymbol);
+            // if the method is not part of the class, we have to assign it to the prototype
+            // we can't serialize via emitting the properties as that will emit all
+            // the prototype and we only want to mutate the prototype here
+            serializeClassPrototypeId();
+            invariant(classProtoId !== undefined);
+            this.emitter.emit(
+              t.expressionStatement(
+                t.assignmentExpression("=", t.memberExpression(classProtoId, name), methodFuncOrPropertyId)
+              )
+            );
           }
-          invariant(classProtoId !== undefined);
-          this.emitter.emit(
-            t.expressionStatement(t.assignmentExpression("=", t.memberExpression(classProtoId, name), methodId))
-          );
         }
+      } else {
+        let prototypeId = t.memberExpression(this.getSerializeObjectIdentifier(classFunc), t.identifier("prototype"));
+        this.emitter.emit(
+          t.expressionStatement(
+            t.assignmentExpression("=", t.memberExpression(prototypeId, name), methodFuncOrPropertyId)
+          )
+        );
       }
     };
 
