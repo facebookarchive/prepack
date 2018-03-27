@@ -1317,13 +1317,18 @@ export class ResidualHeapSerializer {
 
     let serializeClassMethod = (propertyNameOrSymbol, methodFuncOrProperty) => {
       let name;
-      let methodFuncOrPropertyId = this.serializeValue(methodFuncOrProperty);
+      let methodFuncOrPropertyId;
 
-      if (typeof propertyNameOrSymbol === "string") {
-        name = t.identifier(propertyNameOrSymbol);
-      } else {
-        name = this.serializeValue(propertyNameOrSymbol);
-      }
+      const serializeNameAndId = () => {
+        methodFuncOrPropertyId = this.serializeValue(methodFuncOrProperty);
+
+        if (typeof propertyNameOrSymbol === "string") {
+          name = t.identifier(propertyNameOrSymbol);
+        } else {
+          name = this.serializeValue(propertyNameOrSymbol);
+        }
+      };
+
       if (methodFuncOrProperty instanceof ECMAScriptSourceFunctionValue) {
         if (methodFuncOrProperty !== classFunc) {
           // if the method does not have a $HomeObject, it's not a class method
@@ -1336,6 +1341,7 @@ export class ResidualHeapSerializer {
             // the prototype and we only want to mutate the prototype here
             serializeClassPrototypeId();
             invariant(classProtoId !== undefined);
+            serializeNameAndId();
             this.emitter.emit(
               t.expressionStatement(
                 t.assignmentExpression("=", t.memberExpression(classProtoId, name), methodFuncOrPropertyId)
@@ -1345,6 +1351,7 @@ export class ResidualHeapSerializer {
         }
       } else {
         let prototypeId = t.memberExpression(this.getSerializeObjectIdentifier(classFunc), t.identifier("prototype"));
+        serializeNameAndId();
         this.emitter.emit(
           t.expressionStatement(
             t.assignmentExpression("=", t.memberExpression(prototypeId, name), methodFuncOrPropertyId)
