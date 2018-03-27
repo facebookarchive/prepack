@@ -1306,31 +1306,47 @@ export class ResidualHeapSerializer {
       }
     };
 
-    let serializeClassMethod = (propertyNameOrSymbol, methodFunc) => {
-      invariant(methodFunc instanceof ECMAScriptSourceFunctionValue);
-      if (methodFunc !== classFunc) {
-        // if the method does not have a $HomeObject, it's not a class method
-        if (methodFunc.$HomeObject !== undefined) {
-          this.serializedValues.add(methodFunc);
-          this._serializeClassMethod(propertyNameOrSymbol, methodFunc);
-        } else {
-          // if the method is not part of the class, we have to assign it to the prototype
-          // we can't serialize via emitting the properties as that will emit all
-          // the prototype and we only want to mutate the prototype here
-          serializeClassPrototypeId();
-          let methodId = this.serializeValue(methodFunc);
-          let name;
+    let serializeClassMethodOrProperty = (propertyNameOrSymbol, methodFuncOrProperty) => {
+      const serializeNameAndId = () => {
+        let methodFuncOrPropertyId = this.serializeValue(methodFuncOrProperty);
+        let name;
 
-          if (typeof propertyNameOrSymbol === "string") {
-            name = t.identifier(propertyNameOrSymbol);
-          } else {
-            name = this.serializeValue(propertyNameOrSymbol);
-          }
-          invariant(classProtoId !== undefined);
-          this.emitter.emit(
-            t.expressionStatement(t.assignmentExpression("=", t.memberExpression(classProtoId, name), methodId))
-          );
+        if (typeof propertyNameOrSymbol === "string") {
+          name = t.identifier(propertyNameOrSymbol);
+        } else {
+          name = this.serializeValue(propertyNameOrSymbol);
         }
+        return { name, methodFuncOrPropertyId };
+      };
+
+      if (methodFuncOrProperty instanceof ECMAScriptSourceFunctionValue) {
+        if (methodFuncOrProperty !== classFunc) {
+          // if the method does not have a $HomeObject, it's not a class method
+          if (methodFuncOrProperty.$HomeObject !== undefined) {
+            this.serializedValues.add(methodFuncOrProperty);
+            this._serializeClassMethod(propertyNameOrSymbol, methodFuncOrProperty);
+          } else {
+            // if the method is not part of the class, we have to assign it to the prototype
+            // we can't serialize via emitting the properties as that will emit all
+            // the prototype and we only want to mutate the prototype here
+            serializeClassPrototypeId();
+            invariant(classProtoId !== undefined);
+            let { name, methodFuncOrPropertyId } = serializeNameAndId();
+            this.emitter.emit(
+              t.expressionStatement(
+                t.assignmentExpression("=", t.memberExpression(classProtoId, name), methodFuncOrPropertyId)
+              )
+            );
+          }
+        }
+      } else {
+        let prototypeId = t.memberExpression(this.getSerializeObjectIdentifier(classFunc), t.identifier("prototype"));
+        let { name, methodFuncOrPropertyId } = serializeNameAndId();
+        this.emitter.emit(
+          t.expressionStatement(
+            t.assignmentExpression("=", t.memberExpression(prototypeId, name), methodFuncOrPropertyId)
+          )
+        );
       }
     };
 
@@ -1339,7 +1355,7 @@ export class ResidualHeapSerializer {
       if (propertyNameOrSymbol === "prototype") {
         this.serializedValues.add(propertyValue);
       } else if (propertyValue instanceof ECMAScriptSourceFunctionValue && propertyValue.$HomeObject === classFunc) {
-        serializeClassMethod(propertyNameOrSymbol, propertyValue);
+        serializeClassMethodOrProperty(propertyNameOrSymbol, propertyValue);
       } else {
         let prop = classFunc.properties.get(propertyNameOrSymbol);
         invariant(prop);
@@ -1364,11 +1380,11 @@ export class ResidualHeapSerializer {
 
     // handle non-symbol properties
     for (let [propertyName, method] of classPrototype.properties) {
-      withDescriptorValue(propertyName, method.descriptor, serializeClassMethod);
+      withDescriptorValue(propertyName, method.descriptor, serializeClassMethodOrProperty);
     }
     // handle symbol properties
     for (let [symbol, method] of classPrototype.symbols) {
-      withDescriptorValue(symbol, method.descriptor, serializeClassMethod);
+      withDescriptorValue(symbol, method.descriptor, serializeClassMethodOrProperty);
     }
     // assign the AST method key node for the "constructor"
     classMethodInstance.classMethodKeyNode = t.identifier("constructor");
