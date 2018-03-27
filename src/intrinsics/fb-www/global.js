@@ -14,7 +14,7 @@ import { AbstractValue, NativeFunctionValue, StringValue, ObjectValue } from "..
 import { createMockReact } from "./react-mocks.js";
 import { createMockReactRelay } from "./relay-mocks.js";
 import { createAbstract } from "../prepack/utils.js";
-import { createFbMocks } from "./fb-mocks.js";
+import { createFbMocks, createMockTimeSlice, createVisibility } from "./fb-mocks.js";
 import { FatalError } from "../../errors";
 import { Get } from "../../methods/index.js";
 import invariant from "../../invariant";
@@ -68,6 +68,20 @@ export default function(realm: Realm): void {
         let propTypes = Get(realm, realm.fbLibraries.react, "PropTypes");
         invariant(propTypes instanceof ObjectValue);
         return propTypes;
+      } else if (requireNameValValue === "TimeSlice") {
+        if (realm.fbLibraries.timeSlice === undefined) {
+          let timeSlice = createMockTimeSlice(realm, requireNameValValue);
+          realm.fbLibraries.timeSlice = timeSlice;
+          return timeSlice;
+        }
+        return realm.fbLibraries.timeSlice;
+      } else if (requireNameValValue === "Visibility") {
+        if (realm.fbLibraries.visibility === undefined) {
+          let visibility = createVisibility(realm, requireNameValValue);
+          realm.fbLibraries.visibility = visibility;
+          return visibility;
+        }
+        return realm.fbLibraries.visibility;
       } else {
         let requireVal;
 

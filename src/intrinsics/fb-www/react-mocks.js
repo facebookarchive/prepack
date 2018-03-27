@@ -598,6 +598,24 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
   let reactPropTypesValue = Get(realm, reactValue, "PropTypes");
   reactPropTypesValue.intrinsicName = `require("${reactRequireName}").PropTypes`;
 
+  let createClassValue = new NativeFunctionValue(
+    realm,
+    undefined,
+    `createClass`,
+    0,
+    () => {
+      invariant(0, "React.createClass is not supported by the compiled, please upgrade to ES2015 classes!");
+      return realm.intrinsics.undefined;
+    }
+  );
+  reactValue.$DefineOwnProperty("createClass", {
+    value: createClassValue,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+  });
+  reactContextValue.intrinsicName = `require("${reactRequireName}").createClass`;
+
   reactValue.refuseSerialization = false;
   return reactValue;
 }

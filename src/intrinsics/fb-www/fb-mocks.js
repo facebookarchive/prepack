@@ -234,3 +234,108 @@ export function createFbMocks(realm: Realm, global: ObjectValue | AbstractObject
     createMagicGlobalObject(realm, global, objectName);
   }
 }
+
+export function createMockTimeSlice(realm: Realm, timeSliceRequireName: string): ObjectValue {
+  let timeSlice = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, `require("${timeSliceRequireName}")`, true);
+  timeSlice.makePartial();
+  timeSlice.makeSimple();
+
+  let registerExecutionContextObserverValue = new NativeFunctionValue(
+    realm,
+    undefined,
+    `registerExecutionContextObserver`,
+    1,
+    (context, [obj]) => {
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        FunctionValue,
+        [registerExecutionContextObserverValue, obj],
+        ([methodNode, objNode]) => {
+          return t.callExpression(methodNode, [objNode]);
+        }
+      );
+      return realm.intrinsics.undefined;
+    }
+  );
+  timeSlice.$DefineOwnProperty("registerExecutionContextObserver", {
+    value: registerExecutionContextObserverValue,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+  });
+  registerExecutionContextObserverValue.intrinsicName = `require("${timeSliceRequireName}").registerExecutionContextObserver`;
+
+  let catchUpOnDemandExecutionContextObserversValue = new NativeFunctionValue(
+    realm,
+    undefined,
+    `catchUpOnDemandExecutionContextObservers`,
+    1,
+    (context, [obj]) => {
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        FunctionValue,
+        [catchUpOnDemandExecutionContextObserversValue, obj],
+        ([methodNode, objNode]) => {
+          return t.callExpression(methodNode, [objNode]);
+        }
+      );
+      return realm.intrinsics.undefined;
+    }
+  );
+  timeSlice.$DefineOwnProperty("catchUpOnDemandExecutionContextObservers", {
+    value: catchUpOnDemandExecutionContextObserversValue,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+  });
+  catchUpOnDemandExecutionContextObserversValue.intrinsicName = `require("${timeSliceRequireName}").catchUpOnDemandExecutionContextObservers`;
+
+  let propagationTypeValue = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+  propagationTypeValue.makePartial();
+  propagationTypeValue.makeSimple();
+  propagationTypeValue.makeFinal();
+  timeSlice.$DefineOwnProperty("PropagationType", {
+    value: propagationTypeValue,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+  });
+  propagationTypeValue.intrinsicName = `require("${timeSliceRequireName}").PropagationType`;
+
+  timeSlice.refuseSerialization = false;
+  return timeSlice;
+}
+
+export function createVisibility(realm: Realm, visibilityName: string): ObjectValue {
+  let visibility = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, `require("${visibilityName}")`, true);
+  visibility.makePartial();
+  visibility.makeSimple();
+
+  let addListenerValue = new NativeFunctionValue(
+    realm,
+    undefined,
+    `addListener`,
+    2,
+    (context, [obj, obj2]) => {
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        FunctionValue,
+        [addListenerValue, obj, obj2],
+        ([methodNode, objNode, objNode2]) => {
+          return t.callExpression(methodNode, [objNode, objNode2]);
+        }
+      );
+      return realm.intrinsics.undefined;
+    }
+  );
+  visibility.$DefineOwnProperty("addListener", {
+    value: addListenerValue,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+  });
+  addListenerValue.intrinsicName = `require("${visibilityName}").addListener`;
+
+  visibility.refuseSerialization = false;
+  return visibility;
+}
