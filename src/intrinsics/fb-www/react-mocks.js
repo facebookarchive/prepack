@@ -589,15 +589,6 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
   });
   reactContextValue.intrinsicName = `require("${reactRequireName}").createContext`;
 
-  let reactIsValidElementValue = Get(realm, reactValue, "isValidElement");
-  reactIsValidElementValue.intrinsicName = `require("${reactRequireName}").isValidElement`;
-
-  let reactChildrenValue = Get(realm, reactValue, "Children");
-  reactChildrenValue.intrinsicName = `require("${reactRequireName}").Children`;
-
-  let reactPropTypesValue = Get(realm, reactValue, "PropTypes");
-  reactPropTypesValue.intrinsicName = `require("${reactRequireName}").PropTypes`;
-
   let createClassValue = new NativeFunctionValue(
     realm,
     undefined,
@@ -614,7 +605,16 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
     enumerable: false,
     configurable: true,
   });
-  reactContextValue.intrinsicName = `require("${reactRequireName}").createClass`;
+  createClassValue.intrinsicName = `require("${reactRequireName}").createClass`;
+
+  let reactIsValidElementValue = Get(realm, reactValue, "isValidElement");
+  reactIsValidElementValue.intrinsicName = `require("${reactRequireName}").isValidElement`;
+
+  let reactChildrenValue = Get(realm, reactValue, "Children");
+  reactChildrenValue.intrinsicName = `require("${reactRequireName}").Children`;
+
+  let reactPropTypesValue = Get(realm, reactValue, "PropTypes");
+  reactPropTypesValue.intrinsicName = `require("${reactRequireName}").PropTypes`;
 
   reactValue.refuseSerialization = false;
   return reactValue;
