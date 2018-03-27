@@ -817,6 +817,7 @@ export class ResidualHeapVisitor {
           invariant(val instanceof FunctionValue);
           if (this.preProcessValue(val)) this.visitValueFunction(val, parentScope);
         });
+      else this.preProcessValue(val);
     } else if (val instanceof SymbolValue) {
       if (this.preProcessValue(val)) this.visitValueSymbol(val);
     } else {
