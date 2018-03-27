@@ -92,8 +92,17 @@ export class Functions {
       return null;
     }
 
+    let location = value.expressionLocation
+      ? `${value.expressionLocation.start.line}:${value.expressionLocation.start.column} ` +
+        `${value.expressionLocation.end.line}:${value.expressionLocation.end.line}`
+      : "location unknown";
     realm.handleError(
-      new CompilerDiagnostic(`Additional Function Value ${0} is an invalid value`, undefined, "PP0001", "FatalError")
+      new CompilerDiagnostic(
+        `Additional Function Value ${location} is an invalid value`,
+        undefined,
+        "PP0001",
+        "FatalError"
+      )
     );
     throw new FatalError("invalid Additional Function value");
   }
