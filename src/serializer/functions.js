@@ -403,6 +403,8 @@ export class Functions {
           if (newEntry) {
             additionalFunctions.add(newEntry.value);
             additionalFunctionsToProcess.push(newEntry);
+            // TODO: process nested additional functions correctly by applying funcValue's effects
+            // and processing them right here
           }
         }
       }
