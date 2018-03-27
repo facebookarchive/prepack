@@ -1316,17 +1316,16 @@ export class ResidualHeapSerializer {
     };
 
     let serializeClassMethod = (propertyNameOrSymbol, methodFuncOrProperty) => {
-      let name;
-      let methodFuncOrPropertyId;
-
       const serializeNameAndId = () => {
-        methodFuncOrPropertyId = this.serializeValue(methodFuncOrProperty);
+        let methodFuncOrPropertyId = this.serializeValue(methodFuncOrProperty);
+        let name;
 
         if (typeof propertyNameOrSymbol === "string") {
           name = t.identifier(propertyNameOrSymbol);
         } else {
           name = this.serializeValue(propertyNameOrSymbol);
         }
+        return { name, methodFuncOrPropertyId };
       };
 
       if (methodFuncOrProperty instanceof ECMAScriptSourceFunctionValue) {
@@ -1342,6 +1341,7 @@ export class ResidualHeapSerializer {
             serializeClassPrototypeId();
             invariant(classProtoId !== undefined);
             serializeNameAndId();
+            let { name, methodFuncOrPropertyId } = serializeNameAndId();
             this.emitter.emit(
               t.expressionStatement(
                 t.assignmentExpression("=", t.memberExpression(classProtoId, name), methodFuncOrPropertyId)
@@ -1351,7 +1351,7 @@ export class ResidualHeapSerializer {
         }
       } else {
         let prototypeId = t.memberExpression(this.getSerializeObjectIdentifier(classFunc), t.identifier("prototype"));
-        serializeNameAndId();
+        let { name, methodFuncOrPropertyId } = serializeNameAndId();
         this.emitter.emit(
           t.expressionStatement(
             t.assignmentExpression("=", t.memberExpression(prototypeId, name), methodFuncOrPropertyId)
