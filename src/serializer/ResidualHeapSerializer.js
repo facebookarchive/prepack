@@ -1315,7 +1315,7 @@ export class ResidualHeapSerializer {
       }
     };
 
-    let serializeClassMethod = (propertyNameOrSymbol, methodFuncOrProperty) => {
+    let serializeClassMethodOrProperty = (propertyNameOrSymbol, methodFuncOrProperty) => {
       const serializeNameAndId = () => {
         let methodFuncOrPropertyId = this.serializeValue(methodFuncOrProperty);
         let name;
@@ -1340,7 +1340,6 @@ export class ResidualHeapSerializer {
             // the prototype and we only want to mutate the prototype here
             serializeClassPrototypeId();
             invariant(classProtoId !== undefined);
-            serializeNameAndId();
             let { name, methodFuncOrPropertyId } = serializeNameAndId();
             this.emitter.emit(
               t.expressionStatement(
@@ -1365,7 +1364,7 @@ export class ResidualHeapSerializer {
       if (propertyNameOrSymbol === "prototype") {
         this.serializedValues.add(propertyValue);
       } else if (propertyValue instanceof ECMAScriptSourceFunctionValue && propertyValue.$HomeObject === classFunc) {
-        serializeClassMethod(propertyNameOrSymbol, propertyValue);
+        serializeClassMethodOrProperty(propertyNameOrSymbol, propertyValue);
       } else {
         let prop = classFunc.properties.get(propertyNameOrSymbol);
         invariant(prop);
@@ -1390,11 +1389,11 @@ export class ResidualHeapSerializer {
 
     // handle non-symbol properties
     for (let [propertyName, method] of classPrototype.properties) {
-      withDescriptorValue(propertyName, method.descriptor, serializeClassMethod);
+      withDescriptorValue(propertyName, method.descriptor, serializeClassMethodOrProperty);
     }
     // handle symbol properties
     for (let [symbol, method] of classPrototype.symbols) {
-      withDescriptorValue(symbol, method.descriptor, serializeClassMethod);
+      withDescriptorValue(symbol, method.descriptor, serializeClassMethodOrProperty);
     }
     // assign the AST method key node for the "constructor"
     classMethodInstance.classMethodKeyNode = t.identifier("constructor");
