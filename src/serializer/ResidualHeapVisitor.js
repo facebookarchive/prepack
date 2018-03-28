@@ -817,7 +817,10 @@ export class ResidualHeapVisitor {
           invariant(val instanceof FunctionValue);
           if (this.preProcessValue(val)) this.visitValueFunction(val, parentScope);
         });
-      else this.preProcessValue(val);
+      else {
+        // We didn't call preProcessValue, so let's avoid calling postProcessValue.
+        return;
+      }
     } else if (val instanceof SymbolValue) {
       if (this.preProcessValue(val)) this.visitValueSymbol(val);
     } else {
