@@ -599,5 +599,6 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
   reactPropTypesValue.intrinsicName = `require("${reactRequireName}").PropTypes`;
 
   reactValue.refuseSerialization = false;
+  reactValue.makeFinal();
   return reactValue;
 }

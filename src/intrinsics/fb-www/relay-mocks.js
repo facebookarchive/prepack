@@ -73,5 +73,6 @@ export function createMockReactRelay(realm: Realm, relayRequireName: string): Ob
 
   // we set refuseSerialization back to false
   reactRelay.refuseSerialization = false;
+  reactRelay.makeFinal();
   return reactRelay;
 }
