@@ -589,6 +589,24 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
   });
   reactContextValue.intrinsicName = `require("${reactRequireName}").createContext`;
 
+  let createClassValue = new NativeFunctionValue(
+    realm,
+    undefined,
+    `createClass`,
+    0,
+    () => {
+      invariant(0, "React.createClass is not supported by the compiled, please upgrade to ES2015 classes!");
+      return realm.intrinsics.undefined;
+    }
+  );
+  reactValue.$DefineOwnProperty("createClass", {
+    value: createClassValue,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+  });
+  createClassValue.intrinsicName = `require("${reactRequireName}").createClass`;
+
   let reactIsValidElementValue = Get(realm, reactValue, "isValidElement");
   reactIsValidElementValue.intrinsicName = `require("${reactRequireName}").isValidElement`;
 
