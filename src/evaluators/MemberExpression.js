@@ -12,11 +12,14 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { Reference } from "../environment.js";
-import { StringValue } from "../values/index.js";
+import { StringValue, AbstractValue, Value } from "../values/index.js";
 import { RequireObjectCoercible } from "../methods/index.js";
-import { Environment, To } from "../singletons.js";
+import { Environment, To, Havoc } from "../singletons.js";
 import type { BabelNodeMemberExpression } from "babel-types";
 import SuperProperty from "./SuperProperty";
+import invariant from "../invariant.js";
+import { FatalError } from "../errors.js";
+import * as t from "babel-types";
 
 // ECMA262 12.3.2.1
 export default function(
@@ -24,7 +27,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Reference {
+): Reference | AbstractValue {
   if (ast.object.type === "Super") {
     return SuperProperty(ast, strictCode, env, realm);
   }
@@ -56,6 +59,25 @@ export default function(
   // 7. If the code matched by the syntactic production that is being evaluated is strict mode code, let strict be true, else let strict be false.
   let strict = strictCode;
 
-  // 8. Return a value of type Reference whose base value is bv, whose referenced name is propertyKey, and whose strict reference flag is strict.
-  return new Reference(bv, propertyKey, strict);
+  try {
+    // 8. Return a value of type Reference whose base value is bv, whose referenced name is propertyKey, and whose strict reference flag is strict.
+    return new Reference(bv, propertyKey, strict);
+  } catch (e) {
+    if (e instanceof FatalError && realm.isInPureScope() && bv instanceof Value && propertyKey instanceof Value) {
+      // havoc both values
+      Havoc.value(realm, bv);
+      Havoc.value(realm, propertyKey);
+      let val = AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        [bv, propertyKey],
+        ([objNode, propertyNode]) => {
+          return t.memberExpression(objNode, propertyNode, ast.computed);
+        }
+      );
+      invariant(val instanceof AbstractValue);
+      return val;
+    }
+    throw e;
+  }
 }

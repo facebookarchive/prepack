@@ -67,7 +67,8 @@ function deriveGetBinding(realm: Realm, binding: Binding) {
 
 export function havocBinding(binding: Binding) {
   let realm = binding.environment.realm;
-  if (!binding.hasLeaked) {
+  let value = binding.value;
+  if (!binding.hasLeaked && (value instanceof ObjectValue && !value.isFinalObject())) {
     realm.recordModifiedBinding(binding).hasLeaked = true;
   }
 }
@@ -1381,6 +1382,25 @@ export class Reference {
     );
     this.base = base;
     this.referencedName = refName;
+
+    if (
+      refName instanceof AbstractValue &&
+      (refName.mightNotBeString() &&
+        refName.mightNotBeNumber() &&
+        !refName.isSimpleObject() &&
+        // if the base is a simple abstract object but
+        // the refName is not simple, this is also okay
+        (base instanceof AbstractValue && !base.isSimpleObject()))
+    ) {
+      let error = new CompilerDiagnostic(
+        "cannot create an object property reference when the property is abstract",
+        base.$Realm.currentLocation,
+        "PP0030",
+        "FatalError"
+      );
+      base.$Realm.handleError(error);
+      throw new FatalError();
+    }
 
     this.strict = strict;
     this.thisValue = thisValue;
