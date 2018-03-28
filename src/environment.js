@@ -1382,26 +1382,17 @@ export class Reference {
     );
     this.base = base;
     this.referencedName = refName;
-
-    if (
-      refName instanceof AbstractValue &&
-      (refName.mightNotBeString() &&
-        refName.mightNotBeNumber() &&
-        !refName.isSimpleObject() &&
-        // if the base is a simple abstract object but
-        // the refName is not simple, this is also okay
-        (base instanceof AbstractValue && !base.isSimpleObject()))
-    ) {
-      let error = new CompilerDiagnostic(
-        "cannot create an object property reference when the property is abstract",
-        base.$Realm.currentLocation,
-        "PP0030",
-        "FatalError"
-      );
-      base.$Realm.handleError(error);
-      throw new FatalError();
-    }
-
+    invariant(
+      !(refName instanceof AbstractValue) ||
+        !(
+          refName.mightNotBeString() &&
+          refName.mightNotBeNumber() &&
+          !refName.isSimpleObject() &&
+          // if the base is a simple abstract object but
+          // the refName is not simple, this is also okay
+          (base instanceof AbstractValue && !base.isSimpleObject())
+        )
+    );
     this.strict = strict;
     this.thisValue = thisValue;
     invariant(thisValue === undefined || !(base instanceof EnvironmentRecord));

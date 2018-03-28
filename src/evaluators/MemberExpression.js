@@ -59,25 +59,30 @@ export default function(
   // 7. If the code matched by the syntactic production that is being evaluated is strict mode code, let strict be true, else let strict be false.
   let strict = strictCode;
 
-  try {
-    // 8. Return a value of type Reference whose base value is bv, whose referenced name is propertyKey, and whose strict reference flag is strict.
-    return new Reference(bv, propertyKey, strict);
-  } catch (e) {
-    if (e instanceof FatalError && realm.isInPureScope() && bv instanceof Value && propertyKey instanceof Value) {
-      // havoc both values
-      Havoc.value(realm, bv);
-      Havoc.value(realm, propertyKey);
-      let val = AbstractValue.createTemporalFromBuildFunction(
-        realm,
-        Value,
-        [bv, propertyKey],
-        ([objNode, propertyNode]) => {
-          return t.memberExpression(objNode, propertyNode, ast.computed);
-        }
-      );
-      invariant(val instanceof AbstractValue);
-      return val;
-    }
-    throw e;
+  // If the base is abstract and not an abstract simple object, plus the
+  // propertyKey is an abstract value, then we won't be able to create
+  // a reference as too much is unknown, so we can instead bail-out
+  // in pure mode and return an abstract temporal
+  if (
+    realm.isInPureScope() &&
+    bv instanceof AbstractValue &&
+    !bv.isSimpleObject() &&
+    propertyKey instanceof AbstractValue
+  ) {
+    // havoc both values
+    Havoc.value(realm, bv);
+    Havoc.value(realm, propertyKey);
+    let val = AbstractValue.createTemporalFromBuildFunction(
+      realm,
+      Value,
+      [bv, propertyKey],
+      ([objNode, propertyNode]) => {
+        return t.memberExpression(objNode, propertyNode, ast.computed);
+      }
+    );
+    invariant(val instanceof AbstractValue);
+    return val;
   }
+  // 8. Return a value of type Reference whose base value is bv, whose referenced name is propertyKey, and whose strict reference flag is strict.
+  return new Reference(bv, propertyKey, strict);
 }
