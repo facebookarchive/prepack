@@ -18,7 +18,6 @@ import { Environment, To, Havoc } from "../singletons.js";
 import type { BabelNodeMemberExpression } from "babel-types";
 import SuperProperty from "./SuperProperty";
 import invariant from "../invariant.js";
-import { FatalError } from "../errors.js";
 import * as t from "babel-types";
 
 // ECMA262 12.3.2.1
