@@ -87,7 +87,7 @@ export default class AbstractValue extends Value {
     }
   }
 
-  addSourceNamesTo(names: Array<string>) {
+  addSourceNamesTo(names: Array<string>, alreadyAddedArgs: Set<Array<Value>>): void {
     let gen = this.$Realm.preludeGenerator;
     function add_intrinsic(name: string) {
       if (name.startsWith("_$")) {
@@ -99,11 +99,13 @@ export default class AbstractValue extends Value {
     }
     function add_args(args: void | Array<Value>) {
       if (args === undefined) return;
+      if (alreadyAddedArgs.has(args)) return;
+      alreadyAddedArgs.add(args);
       for (let val of args) {
         if (val.intrinsicName) {
           add_intrinsic(val.intrinsicName);
         } else if (val instanceof AbstractValue) {
-          val.addSourceNamesTo(names);
+          val.addSourceNamesTo(names, alreadyAddedArgs);
         } else if (val instanceof StringValue) {
           if (val.value.startsWith("__")) {
             names.push(val.value.slice(2));
@@ -783,9 +785,10 @@ export default class AbstractValue extends Value {
 
   static generateErrorInformationForAbstractVal(val: AbstractValue): string {
     let names = [];
-    val.addSourceNamesTo(names);
+    let alreadyAddedArgs = new Set();
+    val.addSourceNamesTo(names, alreadyAddedArgs);
     if (names.length === 0) {
-      val.addSourceNamesTo(names);
+      val.addSourceNamesTo(names, alreadyAddedArgs);
     }
     return `abstract value${names.length > 1 ? "s" : ""} ${names.join(" and ")}`;
   }
