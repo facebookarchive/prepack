@@ -210,6 +210,7 @@ export default class AbstractObjectValue extends AbstractValue {
       AbstractValue.reportIntrospectionError(this);
       throw new FatalError();
     }
+    invariant(this.kind !== "widened", "widening currently always leads to top values");
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {
@@ -229,16 +230,6 @@ export default class AbstractObjectValue extends AbstractValue {
       let joinedObject = Join.joinValuesAsConditional(this.$Realm, cond, p1, p2);
       invariant(joinedObject instanceof AbstractObjectValue);
       return joinedObject;
-    } else if (this.kind === "widened") {
-      // This abstract object was created by repeated assignments of freshly allocated objects to the same binding inside a loop
-      let [ob1, ob2] = this.args; // ob1: summary of iterations 1...n, ob2: summary of iteration n+1
-      invariant(ob1 instanceof ObjectValue);
-      invariant(ob2 instanceof ObjectValue);
-      let p1 = ob1.$GetPrototypeOf();
-      let p2 = ob2.$GetPrototypeOf();
-      let widenedObject = Widen.widenValues(this.$Realm, p1, p2);
-      invariant(widenedObject instanceof AbstractObjectValue);
-      return widenedObject;
     } else {
       let joinedObject;
       for (let cv of elements) {
