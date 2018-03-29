@@ -661,9 +661,11 @@ export default class ObjectValue extends ConcreteValue {
       }
     }
     // If all else fails, use this expression
+    // TODO #1675: Check the prototype chain for known properties too.
     let result;
     if (this.isPartialObject()) {
       if (isWidenedValue(P)) {
+        // TODO #1678: Use a snapshot or havoc this object.
         return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [this, P], ([o, p]) =>
           t.memberExpression(o, p, true)
         );
