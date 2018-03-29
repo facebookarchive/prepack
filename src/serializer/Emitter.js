@@ -280,6 +280,13 @@ export class Emitter {
 
     let val = ((dependencies: any): Value);
     if (this._activeValues.has(val)) {
+
+      // If a value is active and it's a function, then we still shouldn't wait on it.
+      if (val instanceof FunctionValue && !(val instanceof BoundFunctionValue)) {
+        // We ran into a function value.
+        result = callbacks.onFunction ? callbacks.onFunction(val) : undefined;
+        return result;
+      }
       // We ran into a cyclic dependency, where the value we are dependending on is still in the process of being emitted.
       result = callbacks.onActive ? callbacks.onActive(val) : undefined;
       if (result !== undefined) return result;

@@ -1288,6 +1288,10 @@ export class ResidualHeapSerializer {
     }
     undelay();
     this._emitObjectProperties(val);
+    let additionalFVEffects = this.additionalFunctionValuesAndEffects;
+    let additionalEffects = additionalFVEffects && additionalFVEffects.get(val);
+    if (additionalEffects)
+      this._serializeAdditionalFunction(val, additionalEffects);
   }
 
   _serializeClass(classFunc: ECMAScriptSourceFunctionValue, classPrototype: ObjectValue, undelay: Function): void {
@@ -1852,10 +1856,13 @@ export class ResidualHeapSerializer {
   // CreatedObjects -- should take care of itself
   _serializeAdditionalFunction(additionalFunctionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects) {
     let { effects, transforms, generator } = additionalEffects;
-    if (!this.additionalFunctionValueInfos.has(additionalFunctionValue)) {
+    if (!this.additionalFunctionValueInfos.has(additionalFunctionValue) ||
+    // break self-reference cycle
+    this.rewrittenAdditionalFunctions.has(additionalFunctionValue)) {
       // the additionalFunction has no info, so it likely has been dead code eliminated
       return;
     }
+    this.rewrittenAdditionalFunctions.set(additionalFunctionValue, []);
     let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
     let createdObjects = effects[4];
     let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
@@ -1893,9 +1900,10 @@ export class ResidualHeapSerializer {
 
   processAdditionalFunctionValues(): Map<FunctionValue, Array<BabelNodeStatement>> {
     let additionalFVEffects = this.additionalFunctionValuesAndEffects;
+      //this._serializeAdditionalFunction(additionalFunctionValue, effects);
     if (!additionalFVEffects) return this.rewrittenAdditionalFunctions;
     for (let [additionalFunctionValue, effects] of additionalFVEffects.entries()) {
-      this._serializeAdditionalFunction(additionalFunctionValue, effects);
+      //this._serializeAdditionalFunction(additionalFunctionValue, effects);
     }
     return this.rewrittenAdditionalFunctions;
   }
