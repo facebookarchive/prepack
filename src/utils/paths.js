@@ -10,6 +10,7 @@
 /* @flow */
 
 import { AbstractValue, ConcreteValue, NullValue, UndefinedValue, Value } from "../values/index.js";
+import { InfeasiblePathError } from "../errors.js";
 import invariant from "../invariant.js";
 
 export class PathImplementation {
@@ -41,6 +42,14 @@ export class PathImplementation {
       pushPathCondition(condition);
       pushRefinedConditions(condition, savedPath);
       return evaluate();
+    } catch (e) {
+      if (e instanceof InfeasiblePathError) {
+        // if condition is true, one of the saved path conditions must be false
+        // since we have to assume that those conditions are true we now know that on this path, condition is false
+        realm.pathConditions = savedPath;
+        pushInversePathCondition(condition);
+      }
+      throw e;
     } finally {
       realm.pathConditions = savedPath;
     }
@@ -54,6 +63,14 @@ export class PathImplementation {
       pushInversePathCondition(condition);
       pushRefinedConditions(condition, savedPath);
       return evaluate();
+    } catch (e) {
+      if (e instanceof InfeasiblePathError) {
+        // if condition is false, one of the saved path conditions must be false
+        // since we have to assume that those conditions are true we now know that on this path, condition is true
+        realm.pathConditions = savedPath;
+        pushPathCondition(condition);
+      }
+      throw e;
     } finally {
       realm.pathConditions = savedPath;
     }
@@ -78,9 +95,9 @@ export class PathImplementation {
   }
 }
 
-// A path condition is an abstract value that is known to be true in a particular code path
+// A path condition is an abstract value that must be true in this particular code path, so we want to assume as much
 function pushPathCondition(condition: Value) {
-  invariant(condition.mightNotBeFalse(), "pushing false"); // it is mistake to assert that false is true
+  invariant(condition.mightNotBeFalse(), "pushing false"); // it is mistake to assume that false is true
   if (condition instanceof ConcreteValue) return;
   if (!condition.mightNotBeTrue()) return;
   invariant(condition instanceof AbstractValue);
@@ -111,9 +128,9 @@ function pushPathCondition(condition: Value) {
   }
 }
 
-// An inverse path condition is an abstract value that is known to be false in a particular code path
+// An inverse path condition is an abstract value that must be false in this particular code path, so we want to assume as much
 function pushInversePathCondition(condition: Value) {
-  // it is mistake to assert that true is false.
+  // it is mistake to assume that true is false.
   invariant(condition.mightNotBeTrue());
   if (condition instanceof ConcreteValue) return;
   invariant(condition instanceof AbstractValue);
@@ -152,7 +169,9 @@ function pushInversePathCondition(condition: Value) {
 function pushRefinedConditions(condition: AbstractValue, unrefinedConditions: Array<AbstractValue>) {
   let realm = condition.$Realm;
   let refinedConditions = unrefinedConditions.map(c => realm.simplifyAndRefineAbstractCondition(c));
-  let pc = realm.pathConditions.pop();
+  if (refinedConditions.some(c => !c.mightNotBeFalse())) throw new InfeasiblePathError();
+  let pc = realm.pathConditions;
+  realm.pathConditions = [];
   for (let c of refinedConditions) pushPathCondition(c);
-  realm.pathConditions.push(pc);
+  for (let c of pc) realm.pathConditions.push(c);
 }

@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { CompilerDiagnostic } from "../errors.js";
+import { CompilerDiagnostic, InfeasiblePathError } from "../errors.js";
 import { Reference } from "../environment.js";
 import { computeBinary } from "./BinaryExpression.js";
 import { AbruptCompletion, BreakCompletion, PossiblyNormalCompletion, Completion } from "../completions.js";
@@ -132,26 +132,46 @@ function AbstractCaseBlockEvaluation(
       // we can't be sure whether the case selector evaluates true or not
       // so we evaluate the case in the abstract as an if-else with the else
       // leading to the next case statement
-      let trueEffects = Path.withCondition(selectionResult, () => {
-        return realm.evaluateForEffects(
-          () => {
-            return DefiniteCaseEvaluation(caseIndex);
-          },
-          undefined,
-          "AbstractCaseEvaluation/1"
-        );
-      });
+      let trueEffects;
+      try {
+        trueEffects = Path.withCondition(selectionResult, () => {
+          return realm.evaluateForEffects(
+            () => {
+              return DefiniteCaseEvaluation(caseIndex);
+            },
+            undefined,
+            "AbstractCaseEvaluation/1"
+          );
+        });
+      } catch (e) {
+        if (e instanceof InfeasiblePathError) {
+          // selectionResult cannot be true in this path, after all.
+          return AbstractCaseEvaluation(caseIndex + 1);
+        }
+        throw e;
+      }
 
-      let falseEffects = Path.withInverseCondition(selectionResult, () => {
-        return realm.evaluateForEffects(
-          () => {
-            return AbstractCaseEvaluation(caseIndex + 1);
-          },
-          undefined,
-          "AbstractCaseEvaluation/2"
-        );
-      });
+      let falseEffects;
+      try {
+        falseEffects = Path.withInverseCondition(selectionResult, () => {
+          return realm.evaluateForEffects(
+            () => {
+              return AbstractCaseEvaluation(caseIndex + 1);
+            },
+            undefined,
+            "AbstractCaseEvaluation/2"
+          );
+        });
+      } catch (e) {
+        if (e instanceof InfeasiblePathError) {
+          // selectionResult cannot be false in this path, after all.
+          return DefiniteCaseEvaluation(caseIndex);
+        }
+        throw e;
+      }
 
+      invariant(trueEffects !== undefined);
+      invariant(falseEffects !== undefined);
       let joinedEffects = Join.joinEffects(realm, selectionResult, trueEffects, falseEffects);
       let completion = joinedEffects[0];
       if (completion instanceof PossiblyNormalCompletion) {

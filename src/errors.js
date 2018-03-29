@@ -41,4 +41,12 @@ export class FatalError extends Error {
   }
 }
 
+// This error is thrown when exploring a path whose entry conditon implies that an earlier path conditon must be false.
+// Such paths are infeasible (dead) and must be elided from the evaluation.
+export class InfeasiblePathError extends Error {
+  constructor() {
+    super("Infeasible path explored");
+  }
+}
+
 export type ErrorHandler = (error: CompilerDiagnostic) => ErrorHandlerResult;

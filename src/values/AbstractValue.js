@@ -245,10 +245,10 @@ export default class AbstractValue extends Value {
           }
         }
 
-        // (c ? x : (c || false)) => c (if c were false this value could not be true)
-        if (y instanceof AbstractValue && y.kind === "||") {
-          let [yx, yy] = y.args;
-          return c.equals(yx) && !yy.mightNotBeFalse() && c.equals(val);
+        // (c ? x : false) => c && x (if c or x were falsy, (c ? x : false) could not be true)
+        if (!y.mightNotBeFalse()) {
+          if (c.implies(val)) return true;
+          if (x.implies(val)) return true;
         }
       }
       // (0 !== x) => x since undefined, null, false, 0, NaN and "" are excluded by the !== and all other values are thruthy
@@ -256,6 +256,26 @@ export default class AbstractValue extends Value {
         let [x, y] = this.args;
         if (x instanceof NumberValue && x.value === 0) return y.equals(val);
         if (y instanceof NumberValue && y.value === 0) return x.equals(val);
+      }
+      if (this.kind === "===" && val.kind === "==") {
+        // x === undefined/null => y == undefined/null
+        let [x, y] = val.args;
+        if (
+          x instanceof NullValue ||
+          x instanceof UndefinedValue ||
+          y instanceof NullValue ||
+          y instanceof UndefinedValue
+        ) {
+          let [vx, vy] = val.args;
+          if (
+            vx instanceof NullValue ||
+            vx instanceof UndefinedValue ||
+            vy instanceof NullValue ||
+            vy instanceof UndefinedValue
+          ) {
+            return true;
+          }
+        }
       }
     }
     return false;
@@ -278,6 +298,7 @@ export default class AbstractValue extends Value {
           invariant(xx instanceof AbstractValue);
           return xx.impliesNot(val);
         }
+        if (x.kind === "abstractConcreteUnion") return false; // can't use two valued logic for this.
         return val.implies(x);
       }
       if (this.kind === "conditional") {
