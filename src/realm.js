@@ -597,9 +597,7 @@ export class Realm {
     let result: T;
     this.evaluateForEffectsInGlobalEnv(() => {
       try {
-        let nonTemporalEffects = [...effects];
-        nonTemporalEffects[1] = new Generator(this, "dummy");
-        this.applyEffects(nonTemporalEffects);
+        this.applyEffects(effects, "", false);
         result = func(effects);
         return this.intrinsics.undefined;
       } finally {
@@ -1078,11 +1076,11 @@ export class Realm {
   }
 
   // Apply the given effects to the global state
-  applyEffects(effects: Effects, leadingComment: string = "") {
+  applyEffects(effects: Effects, leadingComment: string = "", appendGenerator: boolean = true) {
     let [, generator, bindings, properties, createdObjects] = effects;
 
     // Add generated code for property modifications
-    this.appendGenerator(generator, leadingComment);
+    if (appendGenerator) this.appendGenerator(generator, leadingComment);
 
     // Restore bindings
     this.restoreBindings(bindings);
