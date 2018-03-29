@@ -106,7 +106,7 @@ export class ResidualHeapSerializer {
     statistics: SerializerStatistics,
     react: ReactSerializerState,
     referentializer: Referentializer,
-    generatorParents: Map<Generator, Generator>
+    generatorParents: Map<Generator, Generator | FunctionValue | "GLOBAL">
   ) {
     this.realm = realm;
     this.logger = logger;
@@ -176,9 +176,8 @@ export class ResidualHeapSerializer {
     this.additionalFunctionValueInfos = additionalFunctionValueInfos;
     this.rewrittenAdditionalFunctions = new Map();
     this.declarativeEnvironmentRecordsBindings = declarativeEnvironmentRecordsBindings;
-    this.getGeneratorParent = generatorParents.get.bind(generatorParents);
+    this.generatorParents = generatorParents;
     this.additionalFunctionGenerators = new Map();
-    this.additionalFunctionGeneratorsInverse = new Map();
     this.declaredGlobalLets = new Map();
   }
 
@@ -224,13 +223,12 @@ export class ResidualHeapSerializer {
   residualReactElementSerializer: ResidualReactElementSerializer;
   referentializer: Referentializer;
   additionalFunctionGenerators: Map<FunctionValue, Generator>;
-  additionalFunctionGeneratorsInverse: Map<Generator, FunctionValue>;
 
   // function values nested in additional functions can't delay initializations
   // TODO: revisit this and fix additional functions to be capable of delaying initializations
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
 
-  getGeneratorParent: Generator => void | Generator;
+  generatorParents: Map<Generator, Generator | FunctionValue | "GLOBAL">;
 
   declaredGlobalLets: Map<string, Value>;
 
@@ -632,26 +630,23 @@ export class ResidualHeapSerializer {
     let scopes = this.residualValues.get(val);
     invariant(scopes !== undefined);
     let additionalFunction;
-    for (let scope of scopes)
-      if (scope instanceof Generator) {
-        let f;
-        for (let g = scope; g !== undefined && f === undefined; g = this.getGeneratorParent(g))
-          f = this.additionalFunctionGeneratorsInverse.get(g);
+    for (let scope of scopes) {
+      let s = scope;
+      while (s instanceof Generator) {
+        s = this.generatorParents.get(s);
+      }
+      if (s === "GLOBAL") return undefined;
+      invariant(s instanceof FunctionValue);
+      if (this.additionalFunctionGenerators.has(s)) {
+        if (additionalFunction !== undefined && additionalFunction !== s) return undefined;
+        additionalFunction = s;
+      } else {
+        let f = this.isReferencedOnlyByAdditionalFunction(s);
         if (f === undefined) return undefined;
         if (additionalFunction !== undefined && additionalFunction !== f) return undefined;
         additionalFunction = f;
-      } else {
-        invariant(scope instanceof FunctionValue);
-        if (this.additionalFunctionGenerators.has(scope)) {
-          if (additionalFunction !== undefined && additionalFunction !== scope) return undefined;
-          additionalFunction = scope;
-        } else {
-          let f = this.isReferencedOnlyByAdditionalFunction(scope);
-          if (f === undefined) return undefined;
-          if (additionalFunction !== undefined && additionalFunction !== f) return undefined;
-          additionalFunction = f;
-        }
       }
+    }
     return additionalFunction;
   }
 
@@ -726,9 +721,11 @@ export class ResidualHeapSerializer {
       // since we know that there's at least one root that's not in an additional function
       // which requires the value to be emitted outside of the additional function.
       generators = generators.filter(generator => {
-        for (let g = generator; g !== undefined; g = this.getGeneratorParent(g))
-          if (this.additionalFunctionGeneratorsInverse.has(g)) return false;
-        return true;
+        let s = generator;
+        while (s instanceof Generator) {
+          s = this.generatorParents.get(s);
+        }
+        return s === "GLOBAL";
       });
       if (generators.length === 0) {
         // This means that the value was referenced by multiple additional functions, and thus it must have existed at the end of global code execution.
@@ -738,10 +735,14 @@ export class ResidualHeapSerializer {
       }
     }
 
+    const getGeneratorParent = g => {
+      let s = this.generatorParents.get(g);
+      return s instanceof Generator ? s : undefined;
+    };
     // This value is referenced from more than one generator.
     // Let's find the body associated with their common ancestor.
     let commonAncestor = Array.from(generators).reduce(
-      (x, y) => commonAncestorOf(x, y, this.getGeneratorParent),
+      (x, y) => commonAncestorOf(x, y, getGeneratorParent),
       generators[0]
     );
     invariant(commonAncestor !== undefined);
@@ -751,7 +752,7 @@ export class ResidualHeapSerializer {
     while (true) {
       body = getBody(commonAncestor);
       if (body !== undefined) break;
-      commonAncestor = this.getGeneratorParent(commonAncestor);
+      commonAncestor = getGeneratorParent(commonAncestor);
       invariant(commonAncestor !== undefined);
     }
 
@@ -781,7 +782,7 @@ export class ResidualHeapSerializer {
     });
     if (trace) console.log(`  got ${notYetDoneBodies.size} not yet done bodies`);
     for (let s of generators)
-      for (let g = s; g !== undefined; g = this.getGeneratorParent(g)) {
+      for (let g = s; g !== undefined; g = getGeneratorParent(g)) {
         let scopeBody = getBody(g);
         if (
           scopeBody !== undefined &&
@@ -886,11 +887,11 @@ export class ResidualHeapSerializer {
     }
     this._serializedValueWithIdentifiers.add(val);
 
+    let id = this.residualHeapValueIdentifiers.getIdentifier(val);
     let target = this._getTarget(val);
     let oldBody = this.emitter.beginEmitting(val, target.body);
     let init = this._serializeValue(val);
 
-    let id = this.residualHeapValueIdentifiers.getIdentifier(val);
     if (this._options.debugIdentifiers !== undefined && this._options.debugIdentifiers.includes(id.name)) {
       console.log(`Tracing value with identifier ${id.name} (${val.constructor.name}) targetting ${target.body.type}`);
       this._getTarget(val, true);
@@ -1753,9 +1754,14 @@ export class ResidualHeapSerializer {
     const statements = this.emitter.endEmitting(generator, oldBody, valuesToProcess, /*isChild*/ isChild).entries;
     if (this._options.debugScopes) {
       let comment = `generator "${generator.getName()}"`;
-      let parent = this.getGeneratorParent(generator);
-      if (parent !== undefined) {
+      let parent = this.generatorParents.get(generator);
+      if (parent instanceof Generator) {
         comment = `${comment} with parent "${parent.getName()}"`;
+      } else if (parent instanceof FunctionValue) {
+        comment = `${comment} with function parent`;
+      } else {
+        invariant(parent === "GLOBAL");
+        comment = `${comment} with global parent`;
       }
       statements.unshift(commentStatement("begin " + comment));
       statements.push(commentStatement("end " + comment));
@@ -1885,8 +1891,6 @@ export class ResidualHeapSerializer {
       for (let [additionalFunctionValue, { generator }] of additionalFVEffects.entries()) {
         invariant(!this.additionalFunctionGenerators.has(additionalFunctionValue));
         this.additionalFunctionGenerators.set(additionalFunctionValue, generator);
-        invariant(!this.additionalFunctionGeneratorsInverse.has(generator));
-        this.additionalFunctionGeneratorsInverse.set(generator, additionalFunctionValue);
       }
   }
 
@@ -2054,7 +2058,7 @@ export class ResidualHeapSerializer {
     for (let s of scopes)
       if (s instanceof Generator) {
         let text = "";
-        for (let g = s; g !== undefined; g = this.getGeneratorParent(g)) text += "=>" + g.getName();
+        for (; s instanceof Generator; s = this.generatorParents.get(s)) text += "=>" + s.getName();
         console.log(`      ${text}`);
       } else {
         invariant(s instanceof FunctionValue);
