@@ -597,7 +597,9 @@ export class Realm {
     let result: T;
     this.evaluateForEffectsInGlobalEnv(() => {
       try {
-        this.applyEffects(effects);
+        let nonTemporalEffects = [...effects];
+        nonTemporalEffects[1] = new Generator(this, "dummy");
+        this.applyEffects(nonTemporalEffects);
         result = func(effects);
         return this.intrinsics.undefined;
       } finally {

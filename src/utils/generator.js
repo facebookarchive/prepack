@@ -35,6 +35,7 @@ import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
 import {
+  AbruptCompletion,
   Completion,
   JoinedAbruptCompletions,
   ThrowCompletion,
@@ -54,6 +55,7 @@ import type {
 import { nullExpression } from "./internalizer.js";
 import { Utils, concretize } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";
+import { construct_empty_effects } from "../realm.js";
 
 export type SerializationContext = {|
   serializeValue: Value => BabelNodeExpression,
@@ -280,10 +282,17 @@ class PossiblyNormalReturnEntry extends GeneratorEntry {
     super();
     this.completion = completion;
     this.containingGenerator = generator;
-
     this.condition = completion.joinCondition;
-    this.consequentGenerator = Generator.fromEffects(completion.consequentEffects, realm, "ConsequentEffects");
-    this.alternateGenerator = Generator.fromEffects(completion.alternateEffects, realm, "AlternateEffects");
+
+    // The effects of the normal path have already been applied to generator
+    let empty_effects = construct_empty_effects(realm);
+    empty_effects[0] = completion.value;
+    let consequentEffects =
+      completion.consequent instanceof AbruptCompletion ? completion.consequentEffects : empty_effects;
+    this.consequentGenerator = Generator.fromEffects(consequentEffects, realm, "ConsequentEffects");
+    let alternateEffects =
+      completion.alternate instanceof AbruptCompletion ? completion.alternateEffects : empty_effects;
+    this.alternateGenerator = Generator.fromEffects(alternateEffects, realm, "AlternateEffects");
   }
 
   completion: PossiblyNormalCompletion;
