@@ -98,7 +98,7 @@ You can run individual test suites as follows:
 2. Have a JavaScript file handy that you want to prepack, for example:  
    `echo "function hello() { return 'hello'; } function world() { return 'world'; } s = hello() + ' ' + world();" >/tmp/sample.js`
 
-3. `cat /tmp/sample.js | yarn prepack`  
+3. `cat /tmp/sample.js | yarn prepack-cli`  
    Try `--help` for more options.
 
 ## How to validate changes
