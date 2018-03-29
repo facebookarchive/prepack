@@ -1,9 +1,9 @@
 // does not contain:1 + 2
 (function () {
-    function g() {
-        return 1 + 2;
-    }
     function f() {
+        function g() {
+            return 1 + 2;
+        }
         if (global.__optimize) __optimize(g);
         return g;
     }
