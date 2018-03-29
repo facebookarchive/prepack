@@ -662,11 +662,15 @@ export default class ObjectValue extends ConcreteValue {
 
     // We assume that simple objects have no getter/setter properties.
     if (!this.isSimpleObject()) {
-      if (this.$Realm.isInPureScope() && Receiver === this) {
+      if (this.$Realm.isInPureScope()) {
         // If we're in pure scope, we can havoc the object. Coercion
         // can only have effects on anything reachable from this object.
-        Havoc.value(this.$Realm, this);
-        return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [this, P], ([o, p]) =>
+        // We assume that if the receiver is different than this object,
+        // then we only got here because there were no other keys with
+        // this name on other parts of the prototype chain.
+        // TODO #1675: A fix to 1675 needs to take this into account.
+        Havoc.value(this.$Realm, Receiver);
+        return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [Receiver, P], ([o, p]) =>
           t.memberExpression(o, p, true)
         );
       } else {

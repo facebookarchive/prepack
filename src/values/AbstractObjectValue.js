@@ -531,13 +531,19 @@ export default class AbstractObjectValue extends AbstractValue {
           t.memberExpression(o, p, true)
         );
       }
-      if (this.$Realm.isInPureScope() && Receiver === this) {
+      if (this.$Realm.isInPureScope()) {
         // If we're in a pure scope, we can havoc the key and the instance,
-        // and leave a residual property access in place.
-        Havoc.value(this.$Realm, this);
+        // and leave the residual property access in place.
+        // We assume that if the receiver is different than this object,
+        // then we only got here because there can be no other keys with
+        // this name on earlier parts of the prototype chain.
+        // We have to havoc since the property may be a getter or setter,
+        // which can run unknown code that has access to Receiver and
+        // (even in pure mode) can modify it in unknown ways.
+        Havoc.value(this.$Realm, Receiver);
         // Coercion can only have effects on anything reachable from the key.
         Havoc.value(this.$Realm, P);
-        return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [this, P], ([o, p]) =>
+        return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [Receiver, P], ([o, p]) =>
           t.memberExpression(o, p, true)
         );
       }
