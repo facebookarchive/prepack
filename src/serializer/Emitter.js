@@ -280,7 +280,6 @@ export class Emitter {
 
     let val = ((dependencies: any): Value);
     if (this._activeValues.has(val)) {
-
       // If a value is active and it's a function, then we still shouldn't wait on it.
       if (val instanceof FunctionValue && !(val instanceof BoundFunctionValue)) {
         // We ran into a function value.

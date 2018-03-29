@@ -1290,8 +1290,7 @@ export class ResidualHeapSerializer {
     this._emitObjectProperties(val);
     let additionalFVEffects = this.additionalFunctionValuesAndEffects;
     let additionalEffects = additionalFVEffects && additionalFVEffects.get(val);
-    if (additionalEffects)
-      this._serializeAdditionalFunction(val, additionalEffects);
+    if (additionalEffects) this._serializeAdditionalFunction(val, additionalEffects);
   }
 
   _serializeClass(classFunc: ECMAScriptSourceFunctionValue, classPrototype: ObjectValue, undelay: Function): void {
@@ -1856,9 +1855,11 @@ export class ResidualHeapSerializer {
   // CreatedObjects -- should take care of itself
   _serializeAdditionalFunction(additionalFunctionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects) {
     let { effects, transforms, generator } = additionalEffects;
-    if (!this.additionalFunctionValueInfos.has(additionalFunctionValue) ||
-    // break self-reference cycle
-    this.rewrittenAdditionalFunctions.has(additionalFunctionValue)) {
+    if (
+      !this.additionalFunctionValueInfos.has(additionalFunctionValue) ||
+      // break self-reference cycle
+      this.rewrittenAdditionalFunctions.has(additionalFunctionValue)
+    ) {
       // the additionalFunction has no info, so it likely has been dead code eliminated
       return;
     }
@@ -1898,16 +1899,6 @@ export class ResidualHeapSerializer {
       }
   }
 
-  processAdditionalFunctionValues(): Map<FunctionValue, Array<BabelNodeStatement>> {
-    let additionalFVEffects = this.additionalFunctionValuesAndEffects;
-      //this._serializeAdditionalFunction(additionalFunctionValue, effects);
-    if (!additionalFVEffects) return this.rewrittenAdditionalFunctions;
-    for (let [additionalFunctionValue, effects] of additionalFVEffects.entries()) {
-      //this._serializeAdditionalFunction(additionalFunctionValue, effects);
-    }
-    return this.rewrittenAdditionalFunctions;
-  }
-
   // Hook point for any serialization needs to be done after generator serialization is complete.
   postGeneratorSerialization(): void {
     // For overriding only.
@@ -1928,9 +1919,6 @@ export class ResidualHeapSerializer {
     for (let [moduleId, moduleValue] of this.modules.initializedModules)
       this.requireReturns.set(moduleId, this.serializeValue(moduleValue));
 
-    // Make sure additional functions get serialized.
-    let rewrittenAdditionalFunctions = this.processAdditionalFunctionValues();
-
     Array.prototype.push.apply(this.prelude, this.preludeGenerator.prelude);
 
     this.modules.resolveInitializedModules();
@@ -1939,7 +1927,7 @@ export class ResidualHeapSerializer {
 
     this.residualFunctions.residualFunctionInitializers.factorifyInitializers(this.factoryNameGenerator);
     let { unstrictFunctionBodies, strictFunctionBodies, requireStatistics } = this.residualFunctions.spliceFunctions(
-      rewrittenAdditionalFunctions
+      this.rewrittenAdditionalFunctions
     );
     if (this.modules.moduleIds.size > 0 && !this.residualHeapValueIdentifiers.collectValToRefCountOnly) {
       console.log(
