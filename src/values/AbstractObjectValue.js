@@ -531,6 +531,16 @@ export default class AbstractObjectValue extends AbstractValue {
           t.memberExpression(o, p, true)
         );
       }
+      if (this.$Realm.isInPureScope() && Receiver === this) {
+        // If we're in a pure scope, we can havoc the key and the instance,
+        // and leave a residual property access in place.
+        Havoc.value(this.$Realm, this);
+        // Coercion can only have effects on anything reachable from the key.
+        Havoc.value(this.$Realm, P);
+        return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [this, P], ([o, p]) =>
+          t.memberExpression(o, p, true)
+        );
+      }
       AbstractValue.reportIntrospectionError(this);
       throw new FatalError();
     }
