@@ -525,7 +525,6 @@ export default class AbstractObjectValue extends AbstractValue {
 
   $GetPartial(P: AbstractValue | PropertyKeyValue, Receiver: Value): Value {
     if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
-    invariant(this === Receiver, "TODO #1021");
     if (this.values.isTop()) {
       if (this.isSimpleObject() && this.isIntrinsic()) {
         return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [this, P], ([o, p]) =>
@@ -539,13 +538,13 @@ export default class AbstractObjectValue extends AbstractValue {
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {
-        return cv.$GetPartial(P, cv);
+        return cv.$GetPartial(P, Receiver === this ? cv : Receiver);
       }
       invariant(false);
     } else {
       let result;
       for (let cv of elements) {
-        let cvVal = cv.$GetPartial(P, cv);
+        let cvVal = cv.$GetPartial(P, Receiver === this ? cv : Receiver);
         if (result === undefined) result = cvVal;
         else {
           let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
