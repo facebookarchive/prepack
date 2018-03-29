@@ -109,7 +109,6 @@ export class ResidualHeapVisitor {
     this.additionalFunctionValueInfos = new Map();
     this.containingAdditionalFunction = undefined;
     this.additionalRoots = new Map();
-    this.inClass = false;
     this.functionToCapturedScopes = new Map();
     this.generatorParents = new Map();
     let environment = realm.$GlobalEnv.environmentRecord;
@@ -155,13 +154,12 @@ export class ResidualHeapVisitor {
   // declared outside the additional function need to be serialized in the additional function's parent scope for
   // identity to work).
   additionalRoots: Map<ObjectValue, Set<FunctionValue>>;
-  inClass: boolean;
 
   globalEnvironmentRecord: GlobalEnvironmentRecord;
 
   _registerAdditionalRoot(value: ObjectValue) {
     let additionalFunction = this.containingAdditionalFunction;
-    if (additionalFunction !== undefined && !this.inClass) {
+    if (additionalFunction !== undefined) {
       // If the value is a member of CreatedObjects, it isn't an additional root
       invariant(this.createdObjects);
       if (this.createdObjects.has(value)) return;
@@ -383,13 +381,9 @@ export class ResidualHeapVisitor {
       let homeObject = val.$HomeObject;
       if (homeObject instanceof ObjectValue && homeObject.$IsClassPrototype) {
         isClass = true;
-        this.inClass = true;
       }
     }
     this.visitObjectProperties(val);
-    if (isClass && this.inClass) {
-      this.inClass = false;
-    }
 
     if (val instanceof BoundFunctionValue) {
       this.visitValue(val.$BoundTargetFunction);

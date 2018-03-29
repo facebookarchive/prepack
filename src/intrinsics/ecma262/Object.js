@@ -304,7 +304,7 @@ export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.1.2.10
   func.defineNativeMethod("getPrototypeOf", 1, (context, [O]) => {
     // 1. Let obj be ? ToObject(O).
-    let obj = To.ToObject(realm, O.throwIfNotConcrete());
+    let obj = To.ToObjectPartial(realm, O);
 
     // 2. Return ? obj.[[GetPrototypeOf]]().
     return obj.$GetPrototypeOf();
