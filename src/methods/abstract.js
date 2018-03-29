@@ -512,7 +512,7 @@ export function OrdinaryHasInstance(realm: Realm, C: Value, O: Value): boolean {
     if (O instanceof NullValue) return false;
 
     // c. If SameValue(P, O) is true, return true.
-    if (SameValue(realm, P, O) === true) return true;
+    if (SameValuePartial(realm, P, O) === true) return true;
   }
 
   return false;
