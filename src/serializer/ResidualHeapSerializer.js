@@ -298,21 +298,22 @@ export class ResidualHeapSerializer {
     let kind = obj.getKind();
     let proto = obj.$Prototype;
     if (objectPrototypeAlreadyEstablished) {
-      // Emitting an assertion. This can be removed in the future, or put under a DEBUG flag.
-      this.emitter.emitNowOrAfterWaitingForDependencies([proto, obj], () => {
-        invariant(proto);
-        let serializedProto = this.serializeValue(proto);
-        let uid = this.getSerializeObjectIdentifier(obj);
-        const fetchedPrototype =
-          this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION) || this.realm.isCompatibleWith("mobile")
-            ? t.memberExpression(uid, protoExpression)
-            : t.callExpression(this.preludeGenerator.memoizeReference("Object.getPrototypeOf"), [uid]);
-        let condition = t.binaryExpression("!==", fetchedPrototype, serializedProto);
-        let throwblock = t.blockStatement([
-          t.throwStatement(t.newExpression(t.identifier("Error"), [t.stringLiteral("unexpected prototype")])),
-        ]);
-        this.emitter.emit(t.ifStatement(condition, throwblock));
-      });
+      if (!this.realm.omitInvariants) {
+        this.emitter.emitNowOrAfterWaitingForDependencies([proto, obj], () => {
+          invariant(proto);
+          let serializedProto = this.serializeValue(proto);
+          let uid = this.getSerializeObjectIdentifier(obj);
+          const fetchedPrototype =
+            this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION) || this.realm.isCompatibleWith("mobile")
+              ? t.memberExpression(uid, protoExpression)
+              : t.callExpression(this.preludeGenerator.memoizeReference("Object.getPrototypeOf"), [uid]);
+          let condition = t.binaryExpression("!==", fetchedPrototype, serializedProto);
+          let throwblock = t.blockStatement([
+            t.throwStatement(t.newExpression(t.identifier("Error"), [t.stringLiteral("unexpected prototype")])),
+          ]);
+          this.emitter.emit(t.ifStatement(condition, throwblock));
+        });
+      }
       return;
     }
     if (proto === this.realm.intrinsics[kind + "Prototype"]) return;

@@ -266,7 +266,7 @@ function runTest(name, code, options: PrepackOptions, args) {
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   if (code.includes("// inline expressions")) options.inlineExpressions = true;
   if (code.includes("// do not inline expressions")) options.inlineExpressions = false;
-  if (code.includes("// omit invariants")) options.omitInvariants = true;
+  if (code.includes("// omit invariants") || args.verbose) options.omitInvariants = true;
   if (code.includes("// emit concrete model")) options.emitConcreteModel = true;
   if (code.includes("// exceeds stack limit")) options.maxStackDepth = 10;
   if (code.includes("// react")) {
@@ -278,6 +278,7 @@ function runTest(name, code, options: PrepackOptions, args) {
   options = ((Object.assign({}, options, {
     compatibility,
     debugNames: args.debugNames,
+    debugScopes: args.debugScopes,
     initializeMoreModules,
     delayUnsupportedRequires,
     errorHandler: diag => "Fail",
@@ -602,6 +603,7 @@ function run(args) {
 // Object to store all command line arguments
 class ProgramArgs {
   debugNames: boolean;
+  debugScopes: boolean;
   verbose: boolean;
   filter: string;
   outOfProcessRuntime: string;
@@ -612,6 +614,7 @@ class ProgramArgs {
   residual: boolean;
   constructor(
     debugNames: boolean,
+    debugScopes: boolean,
     verbose: boolean,
     filter: string,
     outOfProcessRuntime: string,
@@ -622,6 +625,7 @@ class ProgramArgs {
     residual: boolean
   ) {
     this.debugNames = debugNames;
+    this.debugScopes = debugScopes;
     this.verbose = verbose;
     this.filter = filter; //lets user choose specific test files, runs all tests if omitted
     this.outOfProcessRuntime = outOfProcessRuntime;
@@ -658,7 +662,7 @@ function usage(): string {
   return (
     `Usage: ${process.argv[0]} ${process.argv[1]} ` +
     EOL +
-    `[--verbose] [--filter <string>] [--outOfProcessRuntime <path>] [--es5] [--noLazySupport]`
+    `[--debugNames] [--debugScopes] [--es5] [--fast] [--noLazySupport] [--verbose] [--filter <string>] [--outOfProcessRuntime <path>] `
   );
 }
 
@@ -675,9 +679,10 @@ class ArgsParseError {
 function argsParse(): ProgramArgs {
   let parsedArgs = minimist(process.argv.slice(2), {
     string: ["filter", "outOfProcessRuntime"],
-    boolean: ["debugNames", "verbose", "es5", "fast"],
+    boolean: ["debugNames", "debugScopes", "verbose", "es5", "fast"],
     default: {
       debugNames: false,
+      debugScopes: false,
       verbose: false,
       es5: false, // if true test marked as es6 only are not run
       filter: "",
@@ -691,6 +696,9 @@ function argsParse(): ProgramArgs {
   });
   if (typeof parsedArgs.debugNames !== "boolean") {
     throw new ArgsParseError("debugNames must be a boolean (either --debugNames or not)");
+  }
+  if (typeof parsedArgs.debugScopes !== "boolean") {
+    throw new ArgsParseError("debugScopes must be a boolean (either --debugScopes or not)");
   }
   if (typeof parsedArgs.verbose !== "boolean") {
     throw new ArgsParseError("verbose must be a boolean (either --verbose or not)");
@@ -720,6 +728,7 @@ function argsParse(): ProgramArgs {
   }
   let programArgs = new ProgramArgs(
     parsedArgs.debugNames,
+    parsedArgs.debugScopes,
     parsedArgs.verbose,
     parsedArgs.filter,
     parsedArgs.outOfProcessRuntime,

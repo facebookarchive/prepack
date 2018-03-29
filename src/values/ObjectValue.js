@@ -145,7 +145,7 @@ export default class ObjectValue extends ConcreteValue {
     }
   }
 
-  $Prototype: ObjectValue | NullValue;
+  $Prototype: ObjectValue | AbstractObjectValue | NullValue;
   $Extensible: BooleanValue | AbstractValue;
 
   $ParameterMap: void | ObjectValue; // undefined when the property is "missing"
@@ -571,7 +571,7 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   // ECMA262 9.1.1
-  $GetPrototypeOf(): ObjectValue | NullValue {
+  $GetPrototypeOf(): ObjectValue | AbstractObjectValue | NullValue {
     return this.$Prototype;
   }
 
