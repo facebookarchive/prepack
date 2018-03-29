@@ -41,7 +41,7 @@ import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeFunctionDeclaration }
 
 export class CreateImplementation {
   // ECMA262 9.4.3.3
-  StringCreate(realm: Realm, value: StringValue, prototype: ObjectValue): ObjectValue {
+  StringCreate(realm: Realm, value: StringValue, prototype: ObjectValue | AbstractObjectValue): ObjectValue {
     // 1. Assert: Type(value) is String.
     invariant(value instanceof StringValue, "expected string value");
 
@@ -277,7 +277,7 @@ export class CreateImplementation {
   }
 
   // ECMA262 9.4.2.2
-  ArrayCreate(realm: Realm, length: number, proto?: ObjectValue): ArrayValue {
+  ArrayCreate(realm: Realm, length: number, proto?: ObjectValue | AbstractObjectValue): ArrayValue {
     // 1. Assert: length is an integer Number ≥ 0.
     invariant(length >= 0);
 
@@ -600,7 +600,11 @@ export class CreateImplementation {
   }
 
   // ECMA262 9.1.12
-  ObjectCreate(realm: Realm, proto: ObjectValue | NullValue, internalSlotsList?: { [key: string]: void }): ObjectValue {
+  ObjectCreate(
+    realm: Realm,
+    proto: ObjectValue | AbstractObjectValue | NullValue,
+    internalSlotsList?: { [key: string]: void }
+  ): ObjectValue {
     // 1. If internalSlotsList was not provided, let internalSlotsList be an empty List.
     internalSlotsList = internalSlotsList || {};
 

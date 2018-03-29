@@ -585,7 +585,7 @@ export class FunctionEnvironmentRecord extends DeclarativeEnvironmentRecord {
   }
 
   // ECMA262 8.1.1.3.5
-  GetSuperBase(): ObjectValue | NullValue | UndefinedValue {
+  GetSuperBase(): ObjectValue | AbstractObjectValue | NullValue | UndefinedValue {
     // 1. Let envRec be the function Environment Record for which the method was invoked.
     let envRec = this;
 

@@ -163,7 +163,7 @@ export function OrdinaryGet(
       // c. Return ? parent.[[Get]](P, Receiver).
       if (descValue.mightHaveBeenDeleted() && descValue instanceof AbstractValue) {
         // We don't know for sure that O.P does not exist.
-        let parentVal = OrdinaryGet(realm, parent, P, descValue, true);
+        let parentVal = OrdinaryGet(realm, parent.throwIfNotConcreteObject(), P, descValue, true);
         if (parentVal instanceof UndefinedValue)
           // even O.P returns undefined it is still the right value.
           return descValue;
@@ -325,7 +325,7 @@ export function GetPrototypeFromConstructor(
   realm: Realm,
   constructor: ObjectValue,
   intrinsicDefaultProto: string
-): ObjectValue {
+): ObjectValue | AbstractObjectValue {
   // 1. Assert: intrinsicDefaultProto is a String value that is this specification's name of an intrinsic
   //   object. The corresponding object must be an intrinsic that is intended to be used as the [[Prototype]]
   //   value of an object.
@@ -338,7 +338,7 @@ export function GetPrototypeFromConstructor(
   let proto = Get(realm, constructor, new StringValue(realm, "prototype"));
 
   // 4. If Type(proto) is not Object, then
-  if (!(proto instanceof ObjectValue)) {
+  if (!(proto instanceof ObjectValue) && !(proto instanceof AbstractObjectValue)) {
     // a. Let realm be ? GetFunctionRealm(constructor).
     realm = GetFunctionRealm(realm, constructor);
 

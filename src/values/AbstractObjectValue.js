@@ -12,7 +12,7 @@
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { Descriptor, PropertyKeyValue } from "../types.js";
-import { AbstractValue, ArrayValue, ObjectValue, StringValue, Value, NumberValue } from "./index.js";
+import { AbstractValue, ArrayValue, ObjectValue, StringValue, Value, NumberValue, NullValue } from "./index.js";
 import type { AbstractValueBuildNodeFunction } from "./AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { IsDataDescriptor, cloneDescriptor, equalDescriptors } from "../methods/index.js";
@@ -202,6 +202,49 @@ export default class AbstractObjectValue extends AbstractValue {
 
   throwIfNotObject(): AbstractObjectValue {
     return this;
+  }
+
+  // ECMA262 9.1.1
+  $GetPrototypeOf(): ObjectValue | AbstractObjectValue | NullValue {
+    if (this.values.isTop()) {
+      AbstractValue.reportIntrospectionError(this);
+      throw new FatalError();
+    }
+    invariant(this.kind !== "widened", "widening currently always leads to top values");
+    let elements = this.values.getElements();
+    if (elements.size === 1) {
+      for (let cv of elements) {
+        invariant(cv instanceof ObjectValue);
+        return cv.$GetPrototypeOf();
+      }
+      invariant(false);
+    } else if (this.kind === "conditional") {
+      // this is the join of two concrete objects
+      // use this join condition for the join of the two property values
+      let [cond, ob1, ob2] = this.args;
+      invariant(cond instanceof AbstractValue);
+      invariant(ob1 instanceof ObjectValue);
+      invariant(ob2 instanceof ObjectValue);
+      let p1 = ob1.$GetPrototypeOf();
+      let p2 = ob2.$GetPrototypeOf();
+      let joinedObject = Join.joinValuesAsConditional(this.$Realm, cond, p1, p2);
+      invariant(joinedObject instanceof AbstractObjectValue);
+      return joinedObject;
+    } else {
+      let joinedObject;
+      for (let cv of elements) {
+        invariant(cv instanceof ObjectValue);
+        let p = cv.$GetPrototypeOf();
+        if (joinedObject === undefined) {
+          joinedObject = p;
+        } else {
+          let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
+          joinedObject = Join.joinValuesAsConditional(this.$Realm, cond, p, joinedObject);
+        }
+      }
+      invariant(joinedObject instanceof AbstractObjectValue);
+      return joinedObject;
+    }
   }
 
   // ECMA262 9.1.3
