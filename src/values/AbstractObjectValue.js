@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { Descriptor, PropertyKeyValue } from "../types.js";
 import { AbstractValue, ArrayValue, ObjectValue, StringValue, Value, NumberValue, NullValue } from "./index.js";
@@ -207,7 +207,13 @@ export default class AbstractObjectValue extends AbstractValue {
   // ECMA262 9.1.1
   $GetPrototypeOf(): ObjectValue | AbstractObjectValue | NullValue {
     if (this.values.isTop()) {
-      AbstractValue.reportIntrospectionError(this);
+      let error = new CompilerDiagnostic(
+        "prototype access on unknown object",
+        this.$Realm.currentLocation,
+        "PP0031",
+        "FatalError"
+      );
+      this.$Realm.handleError(error);
       throw new FatalError();
     }
     invariant(this.kind !== "widened", "widening currently always leads to top values");
@@ -257,7 +263,13 @@ export default class AbstractObjectValue extends AbstractValue {
     if (P instanceof StringValue) P = P.value;
 
     if (this.values.isTop()) {
-      AbstractValue.reportIntrospectionError(this, P);
+      let error = new CompilerDiagnostic(
+        "property access on unknown object",
+        this.$Realm.currentLocation,
+        "PP0031",
+        "FatalError"
+      );
+      this.$Realm.handleError(error);
       throw new FatalError();
     }
 
@@ -408,7 +420,13 @@ export default class AbstractObjectValue extends AbstractValue {
   $HasProperty(P: PropertyKeyValue): boolean {
     if (P instanceof StringValue) P = P.value;
     if (this.values.isTop()) {
-      AbstractValue.reportIntrospectionError(this, P);
+      let error = new CompilerDiagnostic(
+        "property access on unknown object",
+        this.$Realm.currentLocation,
+        "PP0031",
+        "FatalError"
+      );
+      this.$Realm.handleError(error);
       throw new FatalError();
     }
 
@@ -470,7 +488,13 @@ export default class AbstractObjectValue extends AbstractValue {
           ValuesDomain.topVal
         );
       }
-      AbstractValue.reportIntrospectionError(this, P);
+      let error = new CompilerDiagnostic(
+        "property access on unknown object",
+        this.$Realm.currentLocation,
+        "PP0031",
+        "FatalError"
+      );
+      this.$Realm.handleError(error);
       throw new FatalError();
     }
 
@@ -547,7 +571,13 @@ export default class AbstractObjectValue extends AbstractValue {
           t.memberExpression(o, p, true)
         );
       }
-      AbstractValue.reportIntrospectionError(this);
+      let error = new CompilerDiagnostic(
+        "property access on unknown object",
+        this.$Realm.currentLocation,
+        "PP0031",
+        "FatalError"
+      );
+      this.$Realm.handleError(error);
       throw new FatalError();
     }
 

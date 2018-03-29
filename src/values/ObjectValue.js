@@ -11,7 +11,7 @@
 
 import type { Realm, ExecutionContext } from "../realm.js";
 import { ValuesDomain } from "../domains/index.js";
-import { FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type {
   DataBlock,
   Descriptor,
@@ -655,8 +655,15 @@ export default class ObjectValue extends ConcreteValue {
         // Coercion can only have effects on anything reachable from the key.
         Havoc.value(this.$Realm, P);
       } else {
-        AbstractValue.reportIntrospectionError(P, "property key might not have a well behaved toString");
-        throw new FatalError();
+        let error = new CompilerDiagnostic(
+          "property key might not have a well behaved toString or be a symbol",
+          this.$Realm.currentLocation,
+          "PP0002",
+          "RecoverableError"
+        );
+        if (this.$Realm.handleError(error) !== "Recover") {
+          throw new FatalError();
+        }
       }
     }
 
@@ -674,8 +681,15 @@ export default class ObjectValue extends ConcreteValue {
           t.memberExpression(o, p, true)
         );
       } else {
-        AbstractValue.reportIntrospectionError(P, "unknown property access might need to invoke a getter");
-        throw new FatalError();
+        let error = new CompilerDiagnostic(
+          "unknown property access might need to invoke a getter",
+          this.$Realm.currentLocation,
+          "PP0030",
+          "RecoverableError"
+        );
+        if (this.$Realm.handleError(error) !== "Recover") {
+          throw new FatalError();
+        }
       }
     }
 
