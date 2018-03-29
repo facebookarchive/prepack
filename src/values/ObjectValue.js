@@ -47,7 +47,7 @@ import {
   OrdinaryIsExtensible,
   OrdinaryPreventExtensions,
 } from "../methods/index.js";
-import { Join, Properties } from "../singletons.js";
+import { Havoc, Join, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { typeAnnotation } from "babel-types";
 import * as t from "babel-types";
@@ -645,14 +645,36 @@ export default class ObjectValue extends ConcreteValue {
     }
 
     if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
-    // We assume that simple objects have no getter/setter properties.
-    if (
-      !this.isSimpleObject() ||
-      (P.mightNotBeString() && P.mightNotBeNumber() && !P.isSimpleObject())
-    ) {
-      AbstractValue.reportIntrospectionError(P, "TODO: #1021");
-      throw new FatalError();
+
+    // A string coercion might have side-effects.
+    // TODO #1682: We assume that simple objects mean that they don't have a
+    // side-effectful valueOf and toString but that's not enforced.
+    if (P.mightNotBeString() && P.mightNotBeNumber() && !P.isSimpleObject()) {
+      if (this.$Realm.isInPureScope()) {
+        // If we're in pure scope, we can havoc the key and keep going.
+        // Coercion can only have effects on anything reachable from the key.
+        Havoc.value(this.$Realm, P);
+      } else {
+        AbstractValue.reportIntrospectionError(P, "property key might not have a well behaved toString");
+        throw new FatalError();
+      }
     }
+
+    // We assume that simple objects have no getter/setter properties.
+    if (!this.isSimpleObject()) {
+      if (this.$Realm.isInPureScope() && Receiver === this) {
+        // If we're in pure scope, we can havoc the object. Coercion
+        // can only have effects on anything reachable from this object.
+        Havoc.value(this.$Realm, this);
+        return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [this, P], ([o, p]) =>
+          t.memberExpression(o, p, true)
+        );
+      } else {
+        AbstractValue.reportIntrospectionError(P, "unknown property access might need to invoke a getter");
+        throw new FatalError();
+      }
+    }
+
     // If all else fails, use this expression
     // TODO #1675: Check the prototype chain for known properties too.
     let result;
