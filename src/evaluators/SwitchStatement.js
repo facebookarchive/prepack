@@ -119,16 +119,16 @@ function AbstractCaseBlockEvaluation(
 
     let selector = CaseSelectorEvaluation(test, strictCode, env, realm);
     let selectionResult = computeBinary(realm, "===", input, selector);
+    invariant(selectionResult instanceof AbstractValue);
 
-    if (!selectionResult.mightNotBeTrue()) {
+    if (Path.implies(selectionResult)) {
       //  we have a winning result for the switch case, bubble it back up!
       return DefiniteCaseEvaluation(caseIndex);
-    } else if (!selectionResult.mightNotBeFalse()) {
+    } else if (Path.impliesNot(selectionResult)) {
       // we have a case that is definitely *not* taken
       // so we go and look at the next one in the hope of finding a match
       return AbstractCaseEvaluation(caseIndex + 1);
     } else {
-      invariant(selectionResult instanceof AbstractValue);
       // we can't be sure whether the case selector evaluates true or not
       // so we evaluate the case in the abstract as an if-else with the else
       // leading to the next case statement
