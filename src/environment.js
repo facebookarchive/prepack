@@ -1384,14 +1384,8 @@ export class Reference {
     this.referencedName = refName;
     invariant(
       !(refName instanceof AbstractValue) ||
-        !(
-          refName.mightNotBeString() &&
-          refName.mightNotBeNumber() &&
-          !refName.isSimpleObject() &&
-          // if the base is a simple abstract object but
-          // the refName is not simple, this is also okay
-          (base instanceof AbstractValue && !base.isSimpleObject())
-        )
+        !(refName.mightNotBeString() && refName.mightNotBeNumber() && !refName.isSimpleObject()) ||
+        refName.$Realm.isInPureScope()
     );
     this.strict = strict;
     this.thisValue = thisValue;

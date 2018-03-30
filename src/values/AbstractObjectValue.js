@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { Descriptor, PropertyKeyValue } from "../types.js";
 import { AbstractValue, ArrayValue, ObjectValue, StringValue, Value, NumberValue, NullValue } from "./index.js";
@@ -207,7 +207,13 @@ export default class AbstractObjectValue extends AbstractValue {
   // ECMA262 9.1.1
   $GetPrototypeOf(): ObjectValue | AbstractObjectValue | NullValue {
     if (this.values.isTop()) {
-      AbstractValue.reportIntrospectionError(this);
+      let error = new CompilerDiagnostic(
+        "prototype access on unknown object",
+        this.$Realm.currentLocation,
+        "PP0032",
+        "FatalError"
+      );
+      this.$Realm.handleError(error);
       throw new FatalError();
     }
     invariant(this.kind !== "widened", "widening currently always leads to top values");
@@ -257,7 +263,13 @@ export default class AbstractObjectValue extends AbstractValue {
     if (P instanceof StringValue) P = P.value;
 
     if (this.values.isTop()) {
-      AbstractValue.reportIntrospectionError(this, P);
+      let error = new CompilerDiagnostic(
+        "property access on unknown object",
+        this.$Realm.currentLocation,
+        "PP0031",
+        "FatalError"
+      );
+      this.$Realm.handleError(error);
       throw new FatalError();
     }
 
@@ -408,7 +420,13 @@ export default class AbstractObjectValue extends AbstractValue {
   $HasProperty(P: PropertyKeyValue): boolean {
     if (P instanceof StringValue) P = P.value;
     if (this.values.isTop()) {
-      AbstractValue.reportIntrospectionError(this, P);
+      let error = new CompilerDiagnostic(
+        "property access on unknown object",
+        this.$Realm.currentLocation,
+        "PP0031",
+        "FatalError"
+      );
+      this.$Realm.handleError(error);
       throw new FatalError();
     }
 
@@ -470,7 +488,13 @@ export default class AbstractObjectValue extends AbstractValue {
           ValuesDomain.topVal
         );
       }
-      AbstractValue.reportIntrospectionError(this, P);
+      let error = new CompilerDiagnostic(
+        "property access on unknown object",
+        this.$Realm.currentLocation,
+        "PP0031",
+        "FatalError"
+      );
+      this.$Realm.handleError(error);
       throw new FatalError();
     }
 
@@ -525,27 +549,48 @@ export default class AbstractObjectValue extends AbstractValue {
 
   $GetPartial(P: AbstractValue | PropertyKeyValue, Receiver: Value): Value {
     if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
-    invariant(this === Receiver, "TODO #1021");
     if (this.values.isTop()) {
       if (this.isSimpleObject() && this.isIntrinsic()) {
         return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [this, P], ([o, p]) =>
           t.memberExpression(o, p, true)
         );
       }
-      AbstractValue.reportIntrospectionError(this);
+      if (this.$Realm.isInPureScope()) {
+        // If we're in a pure scope, we can havoc the key and the instance,
+        // and leave the residual property access in place.
+        // We assume that if the receiver is different than this object,
+        // then we only got here because there can be no other keys with
+        // this name on earlier parts of the prototype chain.
+        // We have to havoc since the property may be a getter or setter,
+        // which can run unknown code that has access to Receiver and
+        // (even in pure mode) can modify it in unknown ways.
+        Havoc.value(this.$Realm, Receiver);
+        // Coercion can only have effects on anything reachable from the key.
+        Havoc.value(this.$Realm, P);
+        return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [Receiver, P], ([o, p]) =>
+          t.memberExpression(o, p, true)
+        );
+      }
+      let error = new CompilerDiagnostic(
+        "property access on unknown object",
+        this.$Realm.currentLocation,
+        "PP0031",
+        "FatalError"
+      );
+      this.$Realm.handleError(error);
       throw new FatalError();
     }
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {
-        return cv.$GetPartial(P, cv);
+        return cv.$GetPartial(P, Receiver === this ? cv : Receiver);
       }
       invariant(false);
     } else {
       let result;
       for (let cv of elements) {
-        let cvVal = cv.$GetPartial(P, cv);
+        let cvVal = cv.$GetPartial(P, Receiver === this ? cv : Receiver);
         if (result === undefined) result = cvVal;
         else {
           let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
