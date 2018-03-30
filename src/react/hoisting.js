@@ -116,19 +116,8 @@ export function canHoistFunction(
 }
 
 function canHoistAbstract(realm: Realm, abstract: AbstractValue, residualHeapVisitor: ResidualHeapVisitor): boolean {
-  // get the scopes for this abstract value
-  let scopes = residualHeapVisitor.values.get(abstract);
-  // we can safely hoist abstracts that are created in the common scope
-  if (scopes !== undefined) {
-    for (let scope of scopes) {
-      const currentAdditionalFunction = residualHeapVisitor.commonScope;
-      invariant(currentAdditionalFunction instanceof FunctionValue);
-      // $FlowFixMe: there is no such property
-      if (scope === currentAdditionalFunction.parent) {
-        return true;
-      }
-    }
-  }
+  // for now we can't hoist abstracts
+  // TODO: hoist abstracts
   return false;
 }
 
