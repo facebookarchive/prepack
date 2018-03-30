@@ -112,7 +112,7 @@ export type ResidualFunctionBinding = {
   // If the binding is overwritten by an additional function, these contain the
   // new values
   // TODO #1087: make this a map and support arbitrary binding modifications
-  additionalFunctionOverridesValue?: true,
+  additionalFunctionOverridesValue?: FunctionValue,
 };
 
 export type ScopeBinding = {

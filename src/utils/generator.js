@@ -95,7 +95,7 @@ export type GeneratorBuildNodeFunction = (
 type ArgsAndBuildNode = [Array<Value>, (Array<BabelNodeExpression>) => BabelNodeStatement];
 
 export class GeneratorEntry {
-  visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator) {
+  visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     invariant(false, "GeneratorEntry is an abstract base class");
   }
 
@@ -126,14 +126,16 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
   dependencies: void | Array<Generator>;
   isPure: void | boolean;
 
-  visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator) {
+  visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     if (this.isPure && this.declared && callbacks.canSkip(this.declared)) {
       callbacks.recordDelayedEntry(containingGenerator, this);
+      return false;
     } else {
       if (this.declared) callbacks.recordDeclaration(this.declared);
       callbacks.visitValues(this.args);
       if (this.dependencies)
         for (let dependency of this.dependencies) callbacks.visitGenerator(dependency, containingGenerator);
+      return true;
     }
   }
 
@@ -187,7 +189,7 @@ class ModifiedPropertyEntry extends GeneratorEntry {
     context.emitPropertyModification(this.propertyBinding);
   }
 
-  visit(context: VisitEntryCallbacks, containingGenerator: Generator) {
+  visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     invariant(
       containingGenerator === this.containingGenerator,
       "This entry requires effects to be applied and may not be moved"
@@ -195,6 +197,7 @@ class ModifiedPropertyEntry extends GeneratorEntry {
     let desc = this.propertyBinding.descriptor;
     invariant(desc === this.newDescriptor);
     context.visitObjectProperty(this.propertyBinding);
+    return true;
   }
 }
 
@@ -241,7 +244,7 @@ class ModifiedBindingEntry extends GeneratorEntry {
     }
   }
 
-  visit(context: VisitEntryCallbacks, containingGenerator: Generator) {
+  visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     invariant(
       containingGenerator === this.containingGenerator,
       "This entry requires effects to be applied and may not be moved"
@@ -250,6 +253,7 @@ class ModifiedBindingEntry extends GeneratorEntry {
     let residualBinding = context.visitModifiedBinding(this.modifiedBinding, this.oldValue);
     invariant(this.residualFunctionBinding === undefined || this.residualFunctionBinding === residualBinding);
     this.residualFunctionBinding = residualBinding;
+    return true;
   }
 }
 
@@ -263,12 +267,13 @@ class ReturnValueEntry extends GeneratorEntry {
   returnValue: Value;
   containingGenerator: Generator;
 
-  visit(context: VisitEntryCallbacks, containingGenerator: Generator) {
+  visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     invariant(
       containingGenerator === this.containingGenerator,
       "This entry requires effects to be applied and may not be moved"
     );
     context.visitValues([this.returnValue]);
+    return true;
   }
 
   serialize(context: SerializationContext) {
@@ -302,7 +307,7 @@ class PossiblyNormalReturnEntry extends GeneratorEntry {
   consequentGenerator: Generator;
   alternateGenerator: Generator;
 
-  visit(context: VisitEntryCallbacks, containingGenerator: Generator) {
+  visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     invariant(
       containingGenerator === this.containingGenerator,
       "This entry requires effects to be applied and may not be moved"
@@ -310,6 +315,7 @@ class PossiblyNormalReturnEntry extends GeneratorEntry {
     context.visitValues([this.condition]);
     context.visitGenerator(this.consequentGenerator, containingGenerator);
     context.visitGenerator(this.alternateGenerator, containingGenerator);
+    return true;
   }
 
   serialize(context: SerializationContext) {
