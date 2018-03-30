@@ -107,14 +107,12 @@ export class ResidualHeapVisitor {
     this.equivalenceSet = new HashSet();
     this.reactElementEquivalenceSet = new ReactElementSet(realm, this.equivalenceSet);
     this.additionalFunctionValueInfos = new Map();
-    this.containingAdditionalFunction = undefined;
-    this.additionalRoots = new Map();
     this.functionToCapturedScopes = new Map();
     this.generatorParents = new Map();
     let environment = realm.$GlobalEnv.environmentRecord;
     invariant(environment instanceof GlobalEnvironmentRecord);
     this.globalEnvironmentRecord = environment;
-    this.createdObjects = new Set();
+    this.createdObjects = new Map();
   }
 
   realm: Realm;
@@ -133,7 +131,7 @@ export class ResidualHeapVisitor {
   values: Map<Value, Set<Scope>>;
   inspector: ResidualHeapInspector;
   referencedDeclaredValues: Map<AbstractValue, void | FunctionValue>;
-  delayedVisitGeneratorEntries: Array<{| generator: Generator, entry: GeneratorEntry |}>;
+  delayedVisitGeneratorEntries: Array<{| generator: Generator, action: () => void | boolean |}>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>;
   functionInstances: Map<FunctionValue, FunctionInstance>;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
@@ -142,51 +140,56 @@ export class ResidualHeapVisitor {
   someReactElement: void | ObjectValue;
   reactElementEquivalenceSet: ReactElementSet;
   generatorParents: Map<Generator, Generator | FunctionValue | "GLOBAL">;
-
-  // We only want to add to additionalRoots when we're in an additional function
-  containingAdditionalFunction: void | FunctionValue;
-  // CreatedObjects corresponding to the union of the createdObjects for all the effects that are
-  // currently applied
-  createdObjects: Set<ObjectValue>;
-  // Tracks objects + functions that were visited from inside additional functions that need to be serialized in a
-  // parent scope of the additional function (e.g. functions/objects only used from additional functions that were
-  // declared outside the additional function need to be serialized in the additional function's parent scope for
-  // identity to work).
-  additionalRoots: Map<ObjectValue, Set<FunctionValue>>;
+  createdObjects: Map<ObjectValue, void | Generator>;
 
   globalEnvironmentRecord: GlobalEnvironmentRecord;
 
-  // Either the realm's generator or the FunctionValue of an additional function to serialize
   _getCommonScope(): FunctionValue | Generator {
     let s = this.scope;
-    if (s instanceof FunctionValue) {
-      s = this.additionalFunctionValuesAndEffects.has(s) ? s : "GLOBAL";
-    } else {
-      while (s instanceof Generator) {
-        s = this.generatorParents.get(s);
+    while (true) {
+      if (s instanceof Generator) s = this.generatorParents.get(s);
+      else if (s instanceof FunctionValue) {
+        // Did we find an additional function?
+        if (this.additionalFunctionValuesAndEffects.has(s)) return s;
+
+        // Did the function itself get created by a generator we can chase?
+        s = this.createdObjects.get(s) || "GLOBAL";
+      } else {
+        invariant(s === "GLOBAL");
+        let generator = this.globalGenerator;
+        invariant(generator);
+        return generator;
       }
     }
-    if (s === "GLOBAL") {
-      let generator = this.globalGenerator;
-      invariant(generator);
-      return generator;
-    }
-    invariant(s instanceof FunctionValue);
-    return s;
+    invariant(false);
+  }
+
+  _getAdditionalFunctionOfScope(): FunctionValue | void {
+    let s = this._getCommonScope();
+    return s instanceof FunctionValue ? s : undefined;
   }
 
   _registerAdditionalRoot(value: ObjectValue) {
-    let additionalFunction = this.containingAdditionalFunction;
-    if (additionalFunction !== undefined) {
-      // If the value is a member of CreatedObjects, it isn't an additional root
-      invariant(this.createdObjects);
-      if (this.createdObjects.has(value)) return;
-      let s = this.additionalRoots.get(value);
-      if (s === undefined) this.additionalRoots.set(value, (s = new Set()));
-      s.add(additionalFunction);
+    let generator = this.createdObjects.get(value);
+    if (generator !== undefined) {
+      let s = generator;
+      while (s instanceof Generator) {
+        s = this.generatorParents.get(s);
+      }
+      invariant(s === "GLOBAL" || s instanceof FunctionValue);
+      let additionalFunction = this._getAdditionalFunctionOfScope();
+      if (additionalFunction === s) return;
+    } else {
+      let additionalFunction = this._getAdditionalFunctionOfScope();
+      if (additionalFunction === undefined) return;
+      generator = this.globalGenerator;
     }
+
+    this._visitInUnrelatedScope(generator, value);
   }
 
+  // Careful!
+  // Only use _withScope when you know that the currently applied effects makes sense for the given (nested) scope!
   _withScope(scope: Scope, f: () => void) {
     let oldScope = this.scope;
     this.scope = scope;
@@ -195,6 +198,23 @@ export class ResidualHeapVisitor {
     } finally {
       this.scope = oldScope;
     }
+  }
+
+  _withUnrelatedScope(scope: Scope, action: () => void | boolean) {
+    let generator;
+    if (scope instanceof FunctionValue) generator = this.createdObjects.get(scope) || this.globalGenerator;
+    else if (scope === "GLOBAL") generator = this.globalGenerator;
+    else {
+      invariant(scope instanceof Generator);
+      generator = scope;
+    }
+    this.delayedVisitGeneratorEntries.push({ generator, action });
+  }
+
+  _visitInUnrelatedScope(scope: Scope, val: Value) {
+    let scopes = this.values.get(val);
+    if (scopes !== undefined && scopes.has(scope)) return;
+    this._withUnrelatedScope(scope, () => this.visitValue(val));
   }
 
   visitObjectProperty(binding: PropertyBinding) {
@@ -494,7 +514,7 @@ export class ResidualHeapVisitor {
   // Here we need to make sure that a and b both initialize x and y because x and y will be in the same
   // captured scope because c captures both x and y.
   _recordBindingVisitedAndRevisit(val: FunctionValue, residualFunctionBinding: ResidualFunctionBinding) {
-    let refScope = this.containingAdditionalFunction ? this.containingAdditionalFunction : "GLOBAL";
+    let refScope = this._getAdditionalFunctionOfScope() || "GLOBAL";
     invariant(!(refScope instanceof Generator));
     let funcToScopes = getOrDefault(this.functionToCapturedScopes, refScope, () => new Map());
     let envRec = residualFunctionBinding.declarativeEnvironmentRecord;
@@ -505,12 +525,10 @@ export class ResidualHeapVisitor {
     }));
     // If the binding is new for this bindingState, have all functions capturing bindings from that scope visit it
     if (!bindingState.capturedBindings.has(residualFunctionBinding)) {
-      if (residualFunctionBinding.value) {
-        invariant(this);
+      let value = residualFunctionBinding.value;
+      if (value) {
         for (let functionValue of bindingState.capturingFunctions) {
-          invariant(this);
-          let value = residualFunctionBinding.value;
-          this._withScope(functionValue, () => this.visitValue(value));
+          this._visitInUnrelatedScope(functionValue, value);
         }
       }
       bindingState.capturedBindings.add(residualFunctionBinding);
@@ -590,7 +608,8 @@ export class ResidualHeapVisitor {
   // Visits a binding, returns a ResidualFunctionBinding
   visitBinding(val: FunctionValue, residualFunctionBinding: ResidualFunctionBinding): ResidualFunctionBinding {
     if (residualFunctionBinding.declarativeEnvironmentRecord !== null) {
-      residualFunctionBinding.potentialReferentializationScopes.add(this.containingAdditionalFunction || "GLOBAL");
+      let refScope = this._getAdditionalFunctionOfScope() || "GLOBAL";
+      residualFunctionBinding.potentialReferentializationScopes.add(refScope);
       this._recordBindingVisitedAndRevisit(val, residualFunctionBinding);
     }
     if (residualFunctionBinding.value) {
@@ -801,10 +820,13 @@ export class ResidualHeapVisitor {
       // All intrinsic values exist from the beginning of time...
       // ...except for a few that come into existence as templates for abstract objects via executable code.
       if (val instanceof ObjectValue && val._isScopedTemplate) this.preProcessValue(val);
-      else
+      else {
         this._withScope(this._getCommonScope(), () => {
           this.preProcessValue(val);
+          this.postProcessValue(val);
         });
+        return;
+      }
     } else if (val instanceof EmptyValue) {
       this.preProcessValue(val);
     } else if (ResidualHeapInspector.isLeaf(val)) {
@@ -819,12 +841,13 @@ export class ResidualHeapVisitor {
       let parentScope = this.scope;
       // Every function references itself through arguments, prevent the recursive double-visit
       let commonScope = this._getCommonScope();
-      if (this.scope !== val && commonScope !== val)
+      if (this.scope !== val && commonScope !== val) {
         this._withScope(commonScope, () => {
           invariant(val instanceof FunctionValue);
           if (this.preProcessValue(val)) this.visitValueFunction(val, parentScope);
+          this.postProcessValue(val);
         });
-      else {
+      } else {
         // We didn't call preProcessValue, so let's avoid calling postProcessValue.
         return;
       }
@@ -839,7 +862,9 @@ export class ResidualHeapVisitor {
         this._withScope(this._getCommonScope(), () => {
           invariant(val instanceof ObjectValue);
           if (this.preProcessValue(val)) this.visitValueObject(val);
+          this.postProcessValue(val);
         });
+        return;
       } else {
         if (this.preProcessValue(val)) this.visitValueObject(val);
       }
@@ -848,7 +873,7 @@ export class ResidualHeapVisitor {
   }
 
   createGeneratorVisitCallbacks(additionalFunctionInfo?: AdditionalFunctionInfo): VisitEntryCallbacks {
-    return {
+    let callbacks = {
       visitValues: (values: Array<Value>) => {
         for (let i = 0, n = values.length; i < n; i++) values[i] = this.visitEquivalentValue(values[i]);
       },
@@ -861,10 +886,13 @@ export class ResidualHeapVisitor {
         return !this.referencedDeclaredValues.has(value) && !this.values.has(value);
       },
       recordDeclaration: (value: AbstractValue) => {
-        this.referencedDeclaredValues.set(value, this.containingAdditionalFunction);
+        this.referencedDeclaredValues.set(value, this._getAdditionalFunctionOfScope());
       },
       recordDelayedEntry: (generator, entry: GeneratorEntry) => {
-        this.delayedVisitGeneratorEntries.push({ generator, entry });
+        this.delayedVisitGeneratorEntries.push({
+          generator,
+          action: () => entry.visit(callbacks, generator),
+        });
       },
       visitObjectProperty: (binding: PropertyBinding) => {
         this.visitObjectProperty(binding);
@@ -874,22 +902,17 @@ export class ResidualHeapVisitor {
         let { functionValue } = additionalFunctionInfo;
         invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
         let residualBinding;
-        this._withScope(functionValue, () => {
-          residualBinding = this.getBinding(functionValue, modifiedBinding.environment, modifiedBinding.name);
-          this.visitBinding(functionValue, residualBinding);
-          invariant(residualBinding !== undefined);
-          // named functions inside an additional function that have a global binding
-          // can be skipped, as we don't want them to bind to the global
-          if (
-            residualBinding.declarativeEnvironmentRecord === null &&
-            modifiedBinding.value instanceof ECMAScriptSourceFunctionValue
-          ) {
-            residualBinding = null;
-            return;
-          }
-        });
-        if (residualBinding === null) return;
-        invariant(residualBinding);
+        residualBinding = this.getBinding(functionValue, modifiedBinding.environment, modifiedBinding.name);
+        this.visitBinding(functionValue, residualBinding);
+        invariant(residualBinding !== undefined);
+        // named functions inside an additional function that have a global binding
+        // can be skipped, as we don't want them to bind to the global
+        if (
+          residualBinding.declarativeEnvironmentRecord === null &&
+          modifiedBinding.value instanceof ECMAScriptSourceFunctionValue
+        ) {
+          return;
+        }
         let funcInstance = additionalFunctionInfo.instance;
         invariant(funcInstance !== undefined);
         funcInstance.residualFunctionBindings.set(modifiedBinding.name, residualBinding);
@@ -908,13 +931,7 @@ export class ResidualHeapVisitor {
         return residualBinding;
       },
     };
-  }
-
-  _getObjectsCreatedByIncludingAdditionalFunction(generator: Generator): Set<ObjectValue> {
-    const s = new Set();
-    for (let g = generator; g instanceof Generator; g = this.generatorParents.get(g))
-      if (g.effectsToApply !== undefined) for (const createdObject of g.effectsToApply[4]) s.add(createdObject);
-    return s;
+    return callbacks;
   }
 
   visitGenerator(
@@ -923,18 +940,17 @@ export class ResidualHeapVisitor {
     additionalFunctionInfo?: AdditionalFunctionInfo
   ): void {
     this.generatorParents.set(generator, parent);
-
-    // When visiting a generator, we consider as the overall set of created objects
-    // all objects created by this generator and any other parent generator
-    // back up to the additional function root generator.
-    let oldCreatedObjects = this.createdObjects;
-    this.createdObjects = this._getObjectsCreatedByIncludingAdditionalFunction(generator);
+    if (generator.effectsToApply)
+      for (const createdObject of generator.effectsToApply[4]) {
+        // TODO: Really bad things happen without the `if`. Why???
+        if (!this.createdObjects.has(createdObject)) this.createdObjects.set(createdObject, generator);
+      }
 
     this._withScope(generator, () => {
       generator.visit(this.createGeneratorVisitCallbacks(additionalFunctionInfo));
     });
 
-    this.createdObjects = oldCreatedObjects;
+    // We don't bother purging created objects
   }
 
   // result -- serialized as a return statement
@@ -965,10 +981,6 @@ export class ResidualHeapVisitor {
     this.equivalenceSet = new HashSet();
     let oldReactElementEquivalenceSet = this.reactElementEquivalenceSet;
     this.reactElementEquivalenceSet = new ReactElementSet(this.realm, this.equivalenceSet);
-    let oldcontainingAdditionalFunction = this.containingAdditionalFunction;
-    this.containingAdditionalFunction = functionValue;
-    let prevReVisit = this.additionalRoots;
-    this.additionalRoots = new Map();
 
     let modifiedBindingInfo = new Map();
     let [result] = additionalEffects.effects;
@@ -997,11 +1009,6 @@ export class ResidualHeapVisitor {
       () => {
         invariant(functionInfo !== undefined);
         invariant(funcInstance !== undefined);
-        for (let [value, additionalParentGenerators] of this.additionalRoots) {
-          // Populate old additionalRoots because we switched them out
-          prevReVisit.set(value, additionalParentGenerators);
-          this.visitValue(value);
-        }
         for (let [modifiedBinding, oldValue] of additionalEffects.generator.getModifiedBindingOldValues()) {
           invariant(oldValue !== undefined);
           let residualBinding = this.getBinding(functionValue, modifiedBinding.environment, modifiedBinding.name);
@@ -1014,10 +1021,8 @@ export class ResidualHeapVisitor {
           // TODO nested optimized functions: revisit adding GLOBAL as outer optimized function
           residualBinding.potentialReferentializationScopes.add("GLOBAL");
         }
-        this.additionalRoots = prevReVisit;
       }
     );
-    this.containingAdditionalFunction = oldcontainingAdditionalFunction;
   }
 
   visitRoots(): void {
@@ -1029,14 +1034,43 @@ export class ResidualHeapVisitor {
 
     // Do a fixpoint over all pure generator entries to make sure that we visit
     // arguments of only BodyEntries that are required by some other residual value
-    let oldDelayedEntries = [];
-    while (oldDelayedEntries.length !== this.delayedVisitGeneratorEntries.length) {
-      oldDelayedEntries = this.delayedVisitGeneratorEntries;
+    let progress = true;
+    while (progress) {
+      let oldDelayedEntries = this.delayedVisitGeneratorEntries.reverse();
       this.delayedVisitGeneratorEntries = [];
-      for (let { generator: entryGenerator, entry } of oldDelayedEntries) {
-        this._withScope(entryGenerator, () => {
-          entry.visit(this.createGeneratorVisitCallbacks(), entryGenerator);
-        });
+      progress = false;
+      for (let { generator, action } of oldDelayedEntries) {
+        let withEffectsAppliedInGlobalEnv: (() => void) => void = f => f();
+        let s = generator;
+        let visited = new Set();
+        while (s !== "GLOBAL") {
+          invariant(!visited.has(s));
+          visited.add(s);
+          if (s instanceof Generator) {
+            let effectsToApply = s.effectsToApply;
+            if (effectsToApply) {
+              let outer = withEffectsAppliedInGlobalEnv;
+              withEffectsAppliedInGlobalEnv = f =>
+                outer(() => {
+                  this.realm.withEffectsAppliedInGlobalEnv(() => {
+                    f();
+                    return null;
+                  }, effectsToApply);
+                });
+            }
+            s = this.generatorParents.get(s);
+          } else if (s instanceof FunctionValue) {
+            invariant(this.additionalFunctionValuesAndEffects.has(s));
+            s = this.createdObjects.get(s) || "GLOBAL";
+          }
+          invariant(s instanceof Generator || s instanceof FunctionValue || s === "GLOBAL");
+        }
+
+        this._withScope(generator, () =>
+          withEffectsAppliedInGlobalEnv(() => {
+            if (action() !== false) progress = true;
+          })
+        );
       }
     }
 
