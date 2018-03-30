@@ -39,6 +39,7 @@ export default function simplifyAndRefineAbstractValue(
     };
     return simplify(realm, value, isCondition);
   } catch (e) {
+    if (e.name === "Invariant Violation") throw e;
     if (e instanceof FatalError && typeof e.message === "string" && e.message.includes("PP0029")) {
       if (isRootSimplification) {
         return value;
@@ -73,7 +74,7 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
         invariant(x0 instanceof AbstractValue);
         let [x00] = x0.args;
         let xx = simplify(realm, x00, true);
-        if (xx.getType() === BooleanValue) return xx;
+        if (isCondition || xx.getType() === BooleanValue) return xx;
       }
       let x = simplify(realm, x0, true);
       return negate(realm, x, loc, x0.equals(x) ? value : undefined);

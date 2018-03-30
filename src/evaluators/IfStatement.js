@@ -10,6 +10,7 @@
 /* @flow */
 
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { InfeasiblePathError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import { construct_empty_effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
@@ -86,13 +87,49 @@ export function evaluateWithAbstractConditional(
   realm: Realm
 ): Value {
   // Evaluate consequent and alternate in sandboxes and get their effects.
-  let [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(condValue, () => {
-    return realm.evaluateNodeForEffects(consequent, strictCode, env);
-  });
+  let compl1, gen1, bindings1, properties1, createdObj1;
+  try {
+    [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(condValue, () => {
+      return realm.evaluateNodeForEffects(consequent, strictCode, env);
+    });
+  } catch (e) {
+    if (e instanceof InfeasiblePathError) {
+      let stmtCompletion;
+      if (alternate)
+        // 4.a. Let stmtCompletion be the result of evaluating the second Statement
+        stmtCompletion = env.evaluateCompletion(alternate, strictCode);
+      else
+        // 3 (of the if only statement). Return NormalCompletion(undefined)
+        stmtCompletion = realm.intrinsics.undefined;
+      invariant(!(stmtCompletion instanceof Reference));
+      stmtCompletion = UpdateEmpty(realm, stmtCompletion, realm.intrinsics.undefined);
+      if (stmtCompletion instanceof AbruptCompletion) {
+        throw stmtCompletion;
+      }
+      invariant(stmtCompletion instanceof Value);
+      return stmtCompletion;
+    }
+    throw e;
+  }
 
-  let [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(condValue, () => {
-    return alternate ? realm.evaluateNodeForEffects(alternate, strictCode, env) : construct_empty_effects(realm);
-  });
+  let compl2, gen2, bindings2, properties2, createdObj2;
+  try {
+    [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(condValue, () => {
+      return alternate ? realm.evaluateNodeForEffects(alternate, strictCode, env) : construct_empty_effects(realm);
+    });
+  } catch (e) {
+    if (e instanceof InfeasiblePathError) {
+      let stmtCompletion = env.evaluate(consequent, strictCode);
+      invariant(!(stmtCompletion instanceof Reference));
+      stmtCompletion = UpdateEmpty(realm, stmtCompletion, realm.intrinsics.undefined);
+      if (stmtCompletion instanceof AbruptCompletion) {
+        throw stmtCompletion;
+      }
+      invariant(stmtCompletion instanceof Value);
+      return stmtCompletion;
+    }
+    throw e;
+  }
 
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of condValue.

@@ -10,6 +10,7 @@
 /* @flow */
 
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { InfeasiblePathError } from "../errors.js";
 import { construct_empty_effects, type Realm } from "../realm.js";
 import type { PropertyKeyValue, CallableObjectValue } from "../types.js";
 import {
@@ -95,52 +96,80 @@ export function OrdinaryGet(
 
   // 2. Let desc be ? O.[[GetOwnProperty]](P).
   let desc = O.$GetOwnProperty(P);
-  if (desc !== undefined && desc.joinCondition !== undefined) {
-    // joined descriptors need special treatment
-    let joinCondition = desc.joinCondition;
-    if (joinCondition !== undefined) {
-      let descriptor2 = desc.descriptor2;
-      desc = desc.descriptor1;
-      let [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(joinCondition, () => {
-        return desc !== undefined
-          ? realm.evaluateForEffects(() => OrdinaryGetHelper(), undefined, "OrdinaryGet/1")
-          : construct_empty_effects(realm);
-      });
+  if (desc === undefined || desc.joinCondition === undefined) return OrdinaryGetHelper();
+
+  // joined descriptors need special treatment
+  let joinCondition = desc.joinCondition;
+  let descriptor1 = desc.descriptor1;
+  let descriptor2 = desc.descriptor2;
+  joinCondition = realm.simplifyAndRefineAbstractCondition(joinCondition);
+  if (!joinCondition.mightNotBeTrue()) {
+    desc = descriptor1;
+    return OrdinaryGetHelper();
+  }
+  if (!joinCondition.mightNotBeFalse()) {
+    desc = desc.descriptor2;
+    return OrdinaryGetHelper();
+  }
+  invariant(joinCondition instanceof AbstractValue);
+  let compl1, gen1, bindings1, properties1, createdObj1;
+  try {
+    desc = descriptor1;
+    [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(joinCondition, () => {
+      return desc !== undefined
+        ? realm.evaluateForEffects(() => OrdinaryGetHelper(), undefined, "OrdinaryGet/1")
+        : construct_empty_effects(realm);
+    });
+  } catch (e) {
+    if (e instanceof InfeasiblePathError) {
+      // The joinCondition cannot be true in the current path, after all
       desc = descriptor2;
-      let [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(joinCondition, () => {
-        return desc !== undefined
-          ? realm.evaluateForEffects(() => OrdinaryGetHelper(), undefined, "OrdinaryGet/2")
-          : construct_empty_effects(realm);
-      });
-
-      // Join the effects, creating an abstract view of what happened, regardless
-      // of the actual value of ownDesc.joinCondition.
-      let joinedEffects = Join.joinEffects(
-        realm,
-        joinCondition,
-        [compl1, gen1, bindings1, properties1, createdObj1],
-        [compl2, gen2, bindings2, properties2, createdObj2]
-      );
-      let completion = joinedEffects[0];
-      if (completion instanceof PossiblyNormalCompletion) {
-        // in this case one of the branches may complete abruptly, which means that
-        // not all control flow branches join into one flow at this point.
-        // Consequently we have to continue tracking changes until the point where
-        // all the branches come together into one.
-        completion = realm.composeWithSavedCompletion(completion);
-      }
-      // Note that the effects of (non joining) abrupt branches are not included
-      // in joinedEffects, but are tracked separately inside completion.
-      realm.applyEffects(joinedEffects);
-
-      // return or throw completion
-      if (completion instanceof AbruptCompletion) throw completion;
-      invariant(completion instanceof Value);
-      return completion;
+      return OrdinaryGetHelper();
+    } else {
+      throw e;
     }
   }
+  let compl2, gen2, bindings2, properties2, createdObj2;
+  try {
+    desc = descriptor2;
+    [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(joinCondition, () => {
+      return desc !== undefined
+        ? realm.evaluateForEffects(() => OrdinaryGetHelper(), undefined, "OrdinaryGet/2")
+        : construct_empty_effects(realm);
+    });
+  } catch (e) {
+    if (e instanceof InfeasiblePathError) {
+      // The joinCondition cannot be false in the current path, after all
+      desc = descriptor1;
+      return OrdinaryGetHelper();
+    } else {
+      throw e;
+    }
+  }
+  // Join the effects, creating an abstract view of what happened, regardless
+  // of the actual value of ownDesc.joinCondition.
+  let joinedEffects = Join.joinEffects(
+    realm,
+    joinCondition,
+    [compl1, gen1, bindings1, properties1, createdObj1],
+    [compl2, gen2, bindings2, properties2, createdObj2]
+  );
+  let completion = joinedEffects[0];
+  if (completion instanceof PossiblyNormalCompletion) {
+    // in this case one of the branches may complete abruptly, which means that
+    // not all control flow branches join into one flow at this point.
+    // Consequently we have to continue tracking changes until the point where
+    // all the branches come together into one.
+    completion = realm.composeWithSavedCompletion(completion);
+  }
+  // Note that the effects of (non joining) abrupt branches are not included
+  // in joinedEffects, but are tracked separately inside completion.
+  realm.applyEffects(joinedEffects);
 
-  return OrdinaryGetHelper();
+  // return or throw completion
+  if (completion instanceof AbruptCompletion) throw completion;
+  invariant(completion instanceof Value);
+  return completion;
 
   function OrdinaryGetHelper() {
     let descValue = !desc
