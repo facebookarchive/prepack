@@ -632,7 +632,13 @@ export default class AbstractObjectValue extends AbstractValue {
     if (P instanceof StringValue) P = P.value;
     invariant(this === Receiver, "TODO #1021");
     if (this.values.isTop()) {
-      AbstractValue.reportIntrospectionError(this, P);
+      let error = new CompilerDiagnostic(
+        "property access on unknown object",
+        this.$Realm.currentLocation,
+        "PP0031",
+        "FatalError"
+      );
+      this.$Realm.handleError(error);
       throw new FatalError();
     }
 
@@ -671,7 +677,13 @@ export default class AbstractObjectValue extends AbstractValue {
     if (!(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
     invariant(this === Receiver, "TODO #1021");
     if (this.values.isTop()) {
-      AbstractValue.reportIntrospectionError(this);
+      let error = new CompilerDiagnostic(
+        "property access on unknown object",
+        this.$Realm.currentLocation,
+        "PP0031",
+        "FatalError"
+      );
+      this.$Realm.handleError(error);
       throw new FatalError();
     }
 
