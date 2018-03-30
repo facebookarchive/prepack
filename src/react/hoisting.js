@@ -116,8 +116,7 @@ export function canHoistFunction(
 }
 
 function canHoistAbstract(realm: Realm, abstract: AbstractValue, residualHeapVisitor: ResidualHeapVisitor): boolean {
-  // for now we can't hoist abstracts
-  // TODO: hoist abstracts
+  // TODO #1687: add abstract value hoisting
   return false;
 }
 
