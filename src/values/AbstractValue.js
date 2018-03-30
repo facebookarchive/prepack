@@ -563,7 +563,8 @@ export default class AbstractValue extends Value {
     left: Value,
     right: Value,
     loc?: ?BabelNodeSourceLocation,
-    isCondition?: boolean
+    isCondition?: boolean,
+    doNotSimplify?: boolean
   ): Value {
     let leftTypes, leftValues;
     if (left instanceof AbstractValue) {
@@ -596,6 +597,7 @@ export default class AbstractValue extends Value {
     );
     result.kind = op;
     result.expressionLocation = loc;
+    if (doNotSimplify) return result;
     return isCondition
       ? realm.simplifyAndRefineAbstractCondition(result)
       : realm.simplifyAndRefineAbstractValue(result);
@@ -607,7 +609,8 @@ export default class AbstractValue extends Value {
     left: void | Value,
     right: void | Value,
     loc?: ?BabelNodeSourceLocation,
-    isCondition?: boolean
+    isCondition?: boolean,
+    doNotSimplify?: boolean
   ): Value {
     let types = TypesDomain.joinValues(left, right);
     if (types.getType() === NullValue) return realm.intrinsics.null;
@@ -621,7 +624,7 @@ export default class AbstractValue extends Value {
     result.expressionLocation = loc;
     if (left) result.mightBeEmpty = left.mightHaveBeenDeleted();
     if (right && !result.mightBeEmpty) result.mightBeEmpty = right.mightHaveBeenDeleted();
-    if (result.mightBeEmpty) return result;
+    if (doNotSimplify || result.mightBeEmpty) return result;
     return isCondition
       ? realm.simplifyAndRefineAbstractCondition(result)
       : realm.simplifyAndRefineAbstractValue(result);
@@ -633,7 +636,8 @@ export default class AbstractValue extends Value {
     operand: AbstractValue,
     prefix?: boolean,
     loc?: ?BabelNodeSourceLocation,
-    isCondition?: boolean
+    isCondition?: boolean,
+    doNotSimplify?: boolean
   ): Value {
     invariant(op !== "delete" && op !== "++" && op !== "--"); // The operation must be pure
     let resultTypes = TypesDomain.unaryOp(op, new TypesDomain(operand.getType()));
@@ -643,6 +647,7 @@ export default class AbstractValue extends Value {
     );
     result.kind = op;
     result.expressionLocation = loc;
+    if (doNotSimplify) return result;
     return isCondition
       ? realm.simplifyAndRefineAbstractCondition(result)
       : realm.simplifyAndRefineAbstractValue(result);
