@@ -873,7 +873,7 @@ export class PropertiesImplementation {
     invariant(O instanceof ObjectValue || O instanceof AbstractObjectValue);
 
     // 2. Let props be ? ToObject(Properties).
-    let props = To.ToObject(realm, Properties.throwIfNotConcrete());
+    let props = To.ToObject(realm, Properties);
 
     // 3. Let keys be ? props.[[OwnPropertyKeys]]().
     let keys = props.$OwnPropertyKeys();
@@ -1001,7 +1001,7 @@ export class PropertiesImplementation {
         invariant(base instanceof Value && !HasSomeCompatibleType(base, UndefinedValue, NullValue));
 
         // ii. Set base to ToObject(base).
-        base = To.ToObjectPartial(realm, base);
+        base = To.ToObject(realm, base);
       }
       if (!(base instanceof AbstractObjectValue) && base instanceof AbstractValue) {
         let diagnostic = new CompilerDiagnostic(

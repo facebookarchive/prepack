@@ -37,7 +37,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // The pure parts are wrapped with a recovery mode.
     try {
       // 2. Let O be ? ToObject(this value).
-      let O = To.ToObjectPartial(realm, context);
+      let O = To.ToObject(realm, context);
 
       // 3. Return ? HasOwnProperty(O, P).
       return new BooleanValue(realm, HasOwnProperty(realm, O, P));
@@ -73,7 +73,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     V = V.throwIfNotConcreteObject();
 
     // 2. Let O be ? ToObject(this value).
-    let O = To.ToObjectPartial(realm, context);
+    let O = To.ToObject(realm, context);
 
     // 3. Repeat
     while (true) {
@@ -96,7 +96,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let P = To.ToPropertyKey(realm, V.throwIfNotConcrete());
 
     // 2. Let O be ? ToObject(this value).
-    let O = To.ToObjectPartial(realm, context);
+    let O = To.ToObject(realm, context);
 
     // 3. Let desc be ? O.[[GetOwnProperty]](P).
     let desc = O.$GetOwnProperty(P);
@@ -124,14 +124,14 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.1.3.7
   obj.defineNativeMethod("valueOf", 0, context => {
     // 1. Return ? ToObject(this value).
-    return To.ToObjectPartial(realm, context);
+    return To.ToObject(realm, context);
   });
 
   obj.$DefineOwnProperty("__proto__", {
     // B.2.2.1.1
     get: new NativeFunctionValue(realm, undefined, "get __proto__", 0, context => {
       // 1. Let O be ? ToObject(this value).
-      let O = To.ToObject(realm, context.throwIfNotConcrete());
+      let O = To.ToObject(realm, context);
 
       // 2. Return ? O.[[GetPrototypeOf]]().
       return O.$GetPrototypeOf();

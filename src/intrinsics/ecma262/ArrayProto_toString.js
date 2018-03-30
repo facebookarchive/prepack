@@ -25,7 +25,7 @@ export default function(realm: Realm): NativeFunctionValue {
     0,
     context => {
       // 1. Let array be ? ToObject(this value).
-      let array = To.ToObjectPartial(realm, context);
+      let array = To.ToObject(realm, context);
 
       // 2. Let func be ? Get(array, "join").
       let func = Get(realm, array, "join");

@@ -20,7 +20,7 @@ import invariant from "../invariant.js";
 // ECMA262 19.1.2.8.1
 export function GetOwnPropertyKeys(realm: Realm, O: Value, Type: Function): ArrayValue {
   // 1. Let obj be ? ToObject(O).
-  let obj = To.ToObject(realm, O.throwIfNotConcrete());
+  let obj = To.ToObject(realm, O);
 
   // 2. Let keys be ? obj.[[OwnPropertyKeys]]().
   let keys = obj.$OwnPropertyKeys();

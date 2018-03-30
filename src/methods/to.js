@@ -377,7 +377,11 @@ export class ToImplementation {
   }
 
   // ECMA262 7.1.13
-  ToObject(realm: Realm, arg: ConcreteValue): ObjectValue {
+  ToObject(realm: Realm, arg: Value): ObjectValue | AbstractObjectValue {
+    if (arg instanceof AbstractObjectValue) return arg;
+    if (arg instanceof AbstractValue) {
+      return this._WrapAbstractInObject(realm, arg);
+    }
     if (arg instanceof UndefinedValue) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
     } else if (arg instanceof NullValue) {
@@ -433,10 +437,8 @@ export class ToImplementation {
 
       default:
         if (realm.isInPureScope()) {
-          // Create a placeholder value to represent the ObjectValue that we would've
-          // received, but this object should never leak so as an optimization we will
-          // let operations on top of this object force the ToObject operations instead.
-          obj = AbstractValue.createFromType(realm, ObjectValue, "implicit conversion to object");
+          // will be serialized as Object(serialized_arg)
+          obj = AbstractValue.createFromType(realm, ObjectValue, "explicit conversion to object");
           invariant(obj instanceof AbstractObjectValue);
           obj.args = [arg];
         } else {
@@ -445,15 +447,6 @@ export class ToImplementation {
         break;
     }
     return obj;
-  }
-
-  ToObjectPartial(realm: Realm, arg: Value): ObjectValue | AbstractObjectValue {
-    if (arg instanceof AbstractObjectValue) return arg;
-    if (arg instanceof AbstractValue) {
-      return this._WrapAbstractInObject(realm, arg);
-    }
-    arg = arg.throwIfNotConcrete();
-    return this.ToObject(realm, arg);
   }
 
   // ECMA262 7.1.15

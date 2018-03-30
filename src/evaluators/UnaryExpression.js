@@ -69,7 +69,7 @@ function evaluateDeleteOperation(expr: Value | Reference, realm: Realm) {
     let base = Environment.GetBase(realm, ref);
     // Constructing the reference checks that base is coercible to an object hence
     invariant(base instanceof ConcreteValue || base instanceof AbstractObjectValue);
-    let baseObj = base instanceof ConcreteValue ? To.ToObject(realm, base) : base;
+    let baseObj = To.ToObject(realm, base);
 
     // c. Let deleteStatus be ? baseObj.[[Delete]](GetReferencedName(ref)).
     let deleteStatus = baseObj.$Delete(Environment.GetReferencedName(realm, ref));
