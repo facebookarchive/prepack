@@ -210,7 +210,7 @@ export default class AbstractObjectValue extends AbstractValue {
       let error = new CompilerDiagnostic(
         "prototype access on unknown object",
         this.$Realm.currentLocation,
-        "PP0031",
+        "PP0032",
         "FatalError"
       );
       this.$Realm.handleError(error);
