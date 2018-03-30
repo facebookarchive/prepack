@@ -34,5 +34,9 @@ let _1FU_ = !_1FV_rendered;
 if (!_1FU_) {
   var x = 123;
 }
+if (_1FU_) {
+  var x = 456;
+}
+
 
 inspect = function() { return x; }
