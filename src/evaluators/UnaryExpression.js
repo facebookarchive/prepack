@@ -224,7 +224,7 @@ function evaluateOperation(
     expr;
 
     // 2. Let oldValue be ToBoolean(? GetValue(expr)).
-    let value = Environment.GetValue(realm, expr);
+    let value = Environment.GetConditionValue(realm, expr);
     if (value instanceof AbstractValue) return AbstractValue.createFromUnaryOp(realm, "!", value);
     invariant(value instanceof ConcreteValue);
     let oldValue = To.ToBoolean(realm, value);
