@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm, ExecutionContext } from "../realm.js";
-import { TypesDomain, ValuesDomain } from "../domains/index.js";
+import { ValuesDomain } from "../domains/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type {
   DataBlock,
@@ -47,7 +47,7 @@ import {
   OrdinaryIsExtensible,
   OrdinaryPreventExtensions,
 } from "../methods/index.js";
-import { Havoc, Join, Properties } from "../singletons.js";
+import { Havoc, Join, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { typeAnnotation } from "babel-types";
 import * as t from "babel-types";
@@ -59,32 +59,6 @@ function isWidenedValue(v: void | Value) {
     if (isWidenedValue(a)) return true;
   }
   return false;
-}
-
-function ToStringPartial(realm: Realm, value: AbstractValue): AbstractValue {
-  if (value.mightNotBeString()) {
-    // If the property is not a string we need to coerce it.
-    let coerceToString = ([p]) => t.binaryExpression("+", t.stringLiteral(""), p);
-    let result;
-    if (value.mightNotBeNumber() && !value.isSimpleObject()) {
-      // If this might be a non-simple object, we need to coerce this at a
-      // temporal point since it can have side-effects.
-      // We can't rely on comparison to do it later, even if
-      // it is non-strict comparison since we'll do multiple
-      // comparisons. So we have to be explicit about when this
-      // happens.
-      result = realm.evaluateWithPossibleThrowCompletion(
-        () => AbstractValue.createTemporalFromBuildFunction(realm, StringValue, [value], coerceToString),
-        TypesDomain.topVal,
-        ValuesDomain.topVal
-      );
-    } else {
-      result = AbstractValue.createFromBuildFunction(realm, StringValue, [value], coerceToString);
-    }
-    invariant(result instanceof AbstractValue);
-    return result;
-  }
-  return value;
 }
 
 const lengthTemplateSrc = "(A).length";
@@ -719,7 +693,7 @@ export default class ObjectValue extends ConcreteValue {
       }
     }
 
-    P = ToStringPartial(this.$Realm, P);
+    P = To.ToStringAbstract(this.$Realm, P);
 
     // If all else fails, use this expression
     // TODO #1675: Check the prototype chain for known properties too.
@@ -830,7 +804,7 @@ export default class ObjectValue extends ConcreteValue {
       throw new FatalError();
     }
 
-    P = ToStringPartial(this.$Realm, P);
+    P = To.ToStringAbstract(this.$Realm, P);
 
     let prop;
     if (this.unknownProperty === undefined) {

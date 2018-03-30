@@ -996,6 +996,8 @@ export type ToType = {
 
   ToStringValue(realm: Realm, val: Value): Value,
 
+  ToStringAbstract(realm: Realm, val: AbstractValue): AbstractValue,
+
   // ECMA262 7.1.2
   ToBoolean(realm: Realm, val: ConcreteValue): boolean,
 
