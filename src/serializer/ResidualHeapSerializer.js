@@ -887,11 +887,11 @@ export class ResidualHeapSerializer {
     }
     this._serializedValueWithIdentifiers.add(val);
 
-    let id = this.residualHeapValueIdentifiers.getIdentifier(val);
     let target = this._getTarget(val);
     let oldBody = this.emitter.beginEmitting(val, target.body);
     let init = this._serializeValue(val);
 
+    let id = this.residualHeapValueIdentifiers.getIdentifier(val);
     if (this._options.debugIdentifiers !== undefined && this._options.debugIdentifiers.includes(id.name)) {
       console.log(`Tracing value with identifier ${id.name} (${val.constructor.name}) targetting ${target.body.type}`);
       this._getTarget(val, true);

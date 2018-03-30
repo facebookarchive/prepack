@@ -144,6 +144,8 @@ export class ResidualHeapVisitor {
 
   globalEnvironmentRecord: GlobalEnvironmentRecord;
 
+  // Going backwards from the current scope, find either the containing
+  // additional function, or if there isn't one, return the global generator.
   _getCommonScope(): FunctionValue | Generator {
     let s = this.scope;
     while (true) {
@@ -164,11 +166,16 @@ export class ResidualHeapVisitor {
     invariant(false);
   }
 
+  // If the current scope has a containing additional function, retrieve it.
   _getAdditionalFunctionOfScope(): FunctionValue | void {
     let s = this._getCommonScope();
     return s instanceof FunctionValue ? s : undefined;
   }
 
+  // When a value has been created by some generator that is unrelated
+  // to the current common scope, visit the value in the scope it was
+  // created --- this causes the value later to be serialized in its
+  // creation scope, ensuring that the value has the right creation / life time.
   _registerAdditionalRoot(value: ObjectValue) {
     let generator = this.createdObjects.get(value);
     if (generator !== undefined) {
@@ -200,6 +207,7 @@ export class ResidualHeapVisitor {
     }
   }
 
+  // Queues up an action to be later processed in some arbitrary scope.
   _withUnrelatedScope(scope: Scope, action: () => void | boolean) {
     let generator;
     if (scope instanceof FunctionValue) generator = this.createdObjects.get(scope) || this.globalGenerator;
@@ -211,6 +219,7 @@ export class ResidualHeapVisitor {
     this.delayedVisitGeneratorEntries.push({ generator, action });
   }
 
+  // Queues up visiting a value in some arbitrary scope.
   _visitInUnrelatedScope(scope: Scope, val: Value) {
     let scopes = this.values.get(val);
     if (scopes !== undefined && scopes.has(scope)) return;
@@ -820,13 +829,10 @@ export class ResidualHeapVisitor {
       // All intrinsic values exist from the beginning of time...
       // ...except for a few that come into existence as templates for abstract objects via executable code.
       if (val instanceof ObjectValue && val._isScopedTemplate) this.preProcessValue(val);
-      else {
+      else
         this._withScope(this._getCommonScope(), () => {
           this.preProcessValue(val);
-          this.postProcessValue(val);
         });
-        return;
-      }
     } else if (val instanceof EmptyValue) {
       this.preProcessValue(val);
     } else if (ResidualHeapInspector.isLeaf(val)) {
@@ -845,7 +851,6 @@ export class ResidualHeapVisitor {
         this._withScope(commonScope, () => {
           invariant(val instanceof FunctionValue);
           if (this.preProcessValue(val)) this.visitValueFunction(val, parentScope);
-          this.postProcessValue(val);
         });
       } else {
         // We didn't call preProcessValue, so let's avoid calling postProcessValue.
@@ -862,9 +867,7 @@ export class ResidualHeapVisitor {
         this._withScope(this._getCommonScope(), () => {
           invariant(val instanceof ObjectValue);
           if (this.preProcessValue(val)) this.visitValueObject(val);
-          this.postProcessValue(val);
         });
-        return;
       } else {
         if (this.preProcessValue(val)) this.visitValueObject(val);
       }
@@ -942,7 +945,8 @@ export class ResidualHeapVisitor {
     this.generatorParents.set(generator, parent);
     if (generator.effectsToApply)
       for (const createdObject of generator.effectsToApply[4]) {
-        // TODO: Really bad things happen without the `if`. Why???
+        // TODO: Unfortunately, the following invariant doesn't hold. This is concerning.
+        // invariant(!this.createdObjects.has(createdObject) || this.createdObjects.get(createdObject) === generator);
         if (!this.createdObjects.has(createdObject)) this.createdObjects.set(createdObject, generator);
       }
 
