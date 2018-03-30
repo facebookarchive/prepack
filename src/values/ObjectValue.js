@@ -11,7 +11,7 @@
 
 import type { Realm, ExecutionContext } from "../realm.js";
 import { ValuesDomain } from "../domains/index.js";
-import { FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type {
   DataBlock,
   Descriptor,
@@ -47,7 +47,7 @@ import {
   OrdinaryIsExtensible,
   OrdinaryPreventExtensions,
 } from "../methods/index.js";
-import { Join, Properties } from "../singletons.js";
+import { Havoc, Join, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { typeAnnotation } from "babel-types";
 import * as t from "babel-types";
@@ -645,25 +645,62 @@ export default class ObjectValue extends ConcreteValue {
     }
 
     if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
-    // We assume that simple objects have no getter/setter properties.
-    if (
-      this !== Receiver ||
-      !this.isSimpleObject() ||
-      (P.mightNotBeString() && P.mightNotBeNumber() && !P.isSimpleObject())
-    ) {
-      // if P is an abstract value that we don't know about, but we're in pure scope
-      // then if the object is simple, then we can safely continue without throwing
-      // the introspection error below, since converting P to a string is assumed to
-      // be well behaved in a pure scope
-      if (!(this.$Realm.isInPureScope() && this.isSimpleObject() && this === Receiver)) {
-        AbstractValue.reportIntrospectionError(P, "TODO: #1021");
-        throw new FatalError();
+
+    // A string coercion might have side-effects.
+    // TODO #1682: We assume that simple objects mean that they don't have a
+    // side-effectful valueOf and toString but that's not enforced.
+    if (P.mightNotBeString() && P.mightNotBeNumber() && !P.isSimpleObject()) {
+      if (this.$Realm.isInPureScope()) {
+        // If we're in pure scope, we can havoc the key and keep going.
+        // Coercion can only have effects on anything reachable from the key.
+        Havoc.value(this.$Realm, P);
+      } else {
+        let error = new CompilerDiagnostic(
+          "property key might not have a well behaved toString or be a symbol",
+          this.$Realm.currentLocation,
+          "PP0002",
+          "RecoverableError"
+        );
+        if (this.$Realm.handleError(error) !== "Recover") {
+          throw new FatalError();
+        }
       }
     }
+
+    // We assume that simple objects have no getter/setter properties.
+    if (!this.isSimpleObject()) {
+      if (this.$Realm.isInPureScope()) {
+        // If we're in pure scope, we can havoc the object. Coercion
+        // can only have effects on anything reachable from this object.
+        // We assume that if the receiver is different than this object,
+        // then we only got here because there were no other keys with
+        // this name on other parts of the prototype chain.
+        // TODO #1675: A fix to 1675 needs to take this into account.
+        Havoc.value(this.$Realm, Receiver);
+        return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [Receiver, P], ([o, p]) =>
+          t.memberExpression(o, p, true)
+        );
+      } else {
+        let error = new CompilerDiagnostic(
+          "unknown property access might need to invoke a getter",
+          this.$Realm.currentLocation,
+          "PP0030",
+          "RecoverableError"
+        );
+        if (this.$Realm.handleError(error) !== "Recover") {
+          throw new FatalError();
+        }
+      }
+    }
+
+    P = To.ToStringAbstract(this.$Realm, P);
+
     // If all else fails, use this expression
+    // TODO #1675: Check the prototype chain for known properties too.
     let result;
     if (this.isPartialObject()) {
       if (isWidenedValue(P)) {
+        // TODO #1678: Use a snapshot or havoc this object.
         return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [this, P], ([o, p]) =>
           t.memberExpression(o, p, true)
         );
@@ -766,6 +803,8 @@ export default class ObjectValue extends ConcreteValue {
       AbstractValue.reportIntrospectionError(P, "TODO #1021");
       throw new FatalError();
     }
+
+    P = To.ToStringAbstract(this.$Realm, P);
 
     let prop;
     if (this.unknownProperty === undefined) {
