@@ -12,7 +12,7 @@
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import type { SerializerOptions } from "../options.js";
 import * as t from "babel-types";
-import type { BabelNodeStatement, BabelNodeIdentifier } from "babel-types";
+import type { BabelNodeStatement, BabelNodeExpression, BabelNodeIdentifier } from "babel-types";
 import { NameGenerator } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import type { ResidualFunctionBinding, ScopeBinding, FunctionInstance } from "./types.js";
@@ -149,13 +149,15 @@ export class Referentializer {
     return scope;
   }
 
-  getReferentializedScopeInitialization(scope: ScopeBinding): Array<BabelNodeStatement> {
+  getReferentializedScopeInitialization(
+    scope: ScopeBinding,
+    scopeName: BabelNodeExpression
+  ): Array<BabelNodeStatement> {
     const capturedScope = scope.capturedScope;
     invariant(capturedScope);
     const state = this._getReferentializationState(scope.referentializationScope);
     const funcName = state.capturedScopeAccessFunctionId;
     const scopeArray = state.capturedScopesArray;
-    const scopeName = t.identifier(scope.name);
     // First get scope array entry and check if it's already initialized.
     // Only if not yet, then call the initialization function.
     const init = t.logicalExpression(

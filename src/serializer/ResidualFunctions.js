@@ -278,11 +278,7 @@ export class ResidualFunctions {
         // binding has been referentialized, so setup the scope to be able to
         // access bindings from other __captured_scopes initializers
         if (scope.referentializationScope !== funcValue) {
-          let decl = t.variableDeclaration("var", [
-            t.variableDeclarator(t.identifier(scope.name), t.numericLiteral(scope.id)),
-          ]);
-          let init = this.referentializer.getReferentializedScopeInitialization(scope);
-          bodySegment.push(decl);
+          let init = this.referentializer.getReferentializedScopeInitialization(scope, t.numericLiteral(scope.id));
           // flow forces me to do this
           Array.prototype.push.apply(bodySegment, init);
         }
@@ -457,14 +453,9 @@ export class ResidualFunctions {
               ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
             );
             let scopeInitialization = [];
-            for (let [scopeName, scope] of scopeInstances) {
-              scopeInitialization.push(
-                t.variableDeclaration("var", [
-                  t.variableDeclarator(t.identifier(scopeName), t.numericLiteral(scope.id)),
-                ])
-              );
+            for (let scope of scopeInstances.values()) {
               scopeInitialization = scopeInitialization.concat(
-                this.referentializer.getReferentializedScopeInitialization(scope)
+                this.referentializer.getReferentializedScopeInitialization(scope, t.numericLiteral(scope.id))
               );
             }
             funcOrClassNode.body.body = scopeInitialization.concat(funcOrClassNode.body.body);
@@ -547,9 +538,10 @@ export class ResidualFunctions {
 
         let scopeInitialization = [];
         for (let [scopeName, scope] of normalInstances[0].scopeInstances) {
-          factoryParams.push(t.identifier(scopeName));
+          let scopeNameId = t.identifier(scopeName);
+          factoryParams.push(scopeNameId);
           scopeInitialization = scopeInitialization.concat(
-            this.referentializer.getReferentializedScopeInitialization(scope)
+            this.referentializer.getReferentializedScopeInitialization(scope, scopeNameId)
           );
         }
 
