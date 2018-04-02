@@ -224,6 +224,7 @@ export class Serializer {
     // Serialize for a second time, using reference counts to minimize number of generated identifiers
     if (timingStats !== undefined) timingStats.serializePassTime = Date.now();
     const TargetSerializer = this.options.lazyObjectsRuntime != null ? LazyObjectsSerializer : ResidualHeapSerializer;
+    this.statistics.resetBeforePass();
     let residualHeapSerializer = new TargetSerializer(
       this.realm,
       this.logger,

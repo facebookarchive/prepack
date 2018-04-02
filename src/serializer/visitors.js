@@ -16,7 +16,13 @@ import { convertExpressionToJSXIdentifier } from "../react/jsx";
 import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeFunctionExpression } from "babel-types";
 import type { BabelTraversePath, BabelTraverseScope } from "babel-traverse";
 import type { FunctionBodyAstNode } from "../types.js";
-import type { TryQuery, FunctionInfo, FactoryFunctionInfo, ResidualFunctionBinding } from "./types.js";
+import type {
+  TryQuery,
+  FunctionInfo,
+  FactoryFunctionInfo,
+  ResidualFunctionBinding,
+  SerializerStatistics,
+} from "./types.js";
 import { nullExpression } from "../utils/internalizer.js";
 
 export type ClosureRefVisitorState = {
@@ -30,7 +36,7 @@ export type ClosureRefReplacerState = {
   residualFunctionBindings: Map<string, ResidualFunctionBinding>,
   modified: Set<string>,
   requireReturns: Map<number | string, BabelNodeExpression>,
-  requireStatistics: { replaced: 0, count: 0 },
+  statistics: SerializerStatistics,
   getModuleIdIfNodeIsRequireFunction:
     | void
     | ((scope: BabelTraverseScope, node: BabelNodeCallExpression) => void | number | string),
@@ -131,14 +137,14 @@ export let ClosureRefReplacer = {
     let moduleId = state.getModuleIdIfNodeIsRequireFunction(path.scope, path.node);
     if (moduleId === undefined) return;
 
-    state.requireStatistics.count++;
+    state.statistics.requireCalls++;
     if (state.modified.has(path.node.callee.name)) return;
 
     let new_node = requireReturns.get("" + moduleId);
     if (new_node !== undefined) {
       markVisited(new_node, state.residualFunctionBindings);
       path.replaceWith(new_node);
-      state.requireStatistics.replaced++;
+      state.statistics.requireCallsReplaced++;
     }
   },
 
