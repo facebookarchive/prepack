@@ -14,6 +14,7 @@ import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import {
   ArrayValue,
   AbstractValue,
+  type AbstractValueKind,
   FunctionValue,
   AbstractObjectValue,
   NativeFunctionValue,
