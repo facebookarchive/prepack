@@ -476,7 +476,7 @@ export type FunctionType = {
   // ECMA262 9.2.3
   FunctionAllocate(
     realm: Realm,
-    functionPrototype: ObjectValue,
+    functionPrototype: ObjectValue | AbstractObjectValue,
     strict: boolean,
     functionKind: "normal" | "non-constructor" | "generator"
   ): ECMAScriptSourceFunctionValue,
@@ -798,7 +798,7 @@ export type JoinType = {
 
 export type CreateType = {
   // ECMA262 9.4.3.3
-  StringCreate(realm: Realm, value: StringValue, prototype: ObjectValue): ObjectValue,
+  StringCreate(realm: Realm, value: StringValue, prototype: ObjectValue | AbstractObjectValue): ObjectValue,
 
   // B.2.3.2.1
   CreateHTML(realm: Realm, string: Value, tag: string, attribute: string, value: string | Value): StringValue,
@@ -822,7 +822,7 @@ export type CreateType = {
   CreateArrayIterator(realm: Realm, array: ObjectValue, kind: IterationKind): ObjectValue,
 
   // ECMA262 9.4.2.2
-  ArrayCreate(realm: Realm, length: number, proto?: ObjectValue): ArrayValue,
+  ArrayCreate(realm: Realm, length: number, proto?: ObjectValue | AbstractObjectValue): ArrayValue,
 
   // ECMA262 7.3.16
   CreateArrayFromList(realm: Realm, elems: Array<Value>): ArrayValue,
@@ -849,7 +849,11 @@ export type CreateType = {
   CreateDataPropertyOrThrow(realm: Realm, O: Value, P: PropertyKeyValue, V: Value): boolean,
 
   // ECMA262 9.1.12
-  ObjectCreate(realm: Realm, proto: ObjectValue | NullValue, internalSlotsList?: { [key: string]: void }): ObjectValue,
+  ObjectCreate(
+    realm: Realm,
+    proto: ObjectValue | AbstractObjectValue | NullValue,
+    internalSlotsList?: { [key: string]: void }
+  ): ObjectValue,
 
   // ECMA262 9.1.13
   OrdinaryCreateFromConstructor(
@@ -991,6 +995,8 @@ export type ToType = {
   ToStringPartial(realm: Realm, val: string | Value): string,
 
   ToStringValue(realm: Realm, val: Value): Value,
+
+  ToStringAbstract(realm: Realm, val: AbstractValue): AbstractValue,
 
   // ECMA262 7.1.2
   ToBoolean(realm: Realm, val: ConcreteValue): boolean,

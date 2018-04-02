@@ -131,17 +131,16 @@ export class Referentializer {
     let referentializationScope = this._getReferentializationScope(residualBinding);
 
     // figure out if this is accessed only from additional functions
-    let serializedScopes = this._getReferentializationState(referentializationScope).serializedScopes;
-    let scope = serializedScopes.get(declarativeEnvironmentRecord);
+    let refState: ReferentializationState = this._getReferentializationState(referentializationScope);
+    let scope = refState.serializedScopes.get(declarativeEnvironmentRecord);
     if (!scope) {
-      let refState: ReferentializationState = this._getReferentializationState(referentializationScope);
       scope = {
         name: this.scopeNameGenerator.generate(),
         id: refState.capturedScopeInstanceIdx++,
         initializationValues: [],
         referentializationScope,
       };
-      serializedScopes.set(declarativeEnvironmentRecord, scope);
+      refState.serializedScopes.set(declarativeEnvironmentRecord, scope);
     }
 
     invariant(scope.referentializationScope === referentializationScope);
@@ -224,25 +223,22 @@ export class Referentializer {
     }
   }
 
-  referentialize(unbound: Set<string>, instances: Array<FunctionInstance>): void {
-    for (let instance of instances) {
-      let residualBindings = instance.residualFunctionBindings;
+  referentialize(instance: FunctionInstance): void {
+    let residualBindings = instance.residualFunctionBindings;
 
-      for (let name of unbound) {
-        let residualBinding = residualBindings.get(name);
-        if (residualBinding === undefined) continue;
-        if (residualBinding.modified) {
-          // Initialize captured scope at function call instead of globally
-          if (!residualBinding.declarativeEnvironmentRecord) residualBinding.referentialized = true;
-          if (!residualBinding.referentialized) {
-            if (!this._options.simpleClosures) this._getSerializedBindingScopeInstance(residualBinding);
-            residualBinding.referentialized = true;
-          }
+    for (let residualBinding of residualBindings.values()) {
+      if (residualBinding === undefined) continue;
+      if (residualBinding.modified) {
+        // Initialize captured scope at function call instead of globally
+        if (!residualBinding.declarativeEnvironmentRecord) residualBinding.referentialized = true;
+        if (!residualBinding.referentialized) {
+          if (!this._options.simpleClosures) this._getSerializedBindingScopeInstance(residualBinding);
+          residualBinding.referentialized = true;
+        }
 
-          invariant(residualBinding.referentialized);
-          if (residualBinding.declarativeEnvironmentRecord && residualBinding.scope) {
-            instance.scopeInstances.set(residualBinding.scope.name, residualBinding.scope);
-          }
+        invariant(residualBinding.referentialized);
+        if (residualBinding.declarativeEnvironmentRecord && residualBinding.scope) {
+          instance.scopeInstances.set(residualBinding.scope.name, residualBinding.scope);
         }
       }
     }

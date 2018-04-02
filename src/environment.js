@@ -585,7 +585,7 @@ export class FunctionEnvironmentRecord extends DeclarativeEnvironmentRecord {
   }
 
   // ECMA262 8.1.1.3.5
-  GetSuperBase(): ObjectValue | NullValue | UndefinedValue {
+  GetSuperBase(): ObjectValue | AbstractObjectValue | NullValue | UndefinedValue {
     // 1. Let envRec be the function Environment Record for which the method was invoked.
     let envRec = this;
 
@@ -1384,14 +1384,8 @@ export class Reference {
     this.referencedName = refName;
     invariant(
       !(refName instanceof AbstractValue) ||
-        !(
-          refName.mightNotBeString() &&
-          refName.mightNotBeNumber() &&
-          !refName.isSimpleObject() &&
-          // if the base is a simple abstract object but
-          // the refName is not simple, this is also okay
-          (base instanceof AbstractValue && !base.isSimpleObject())
-        )
+        !(refName.mightNotBeString() && refName.mightNotBeNumber() && !refName.isSimpleObject()) ||
+        refName.$Realm.isInPureScope()
     );
     this.strict = strict;
     this.thisValue = thisValue;

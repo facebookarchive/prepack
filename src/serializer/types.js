@@ -115,7 +115,7 @@ export type ResidualFunctionBinding = {
   // If the binding is overwritten by an additional function, these contain the
   // new values
   // TODO #1087: make this a map and support arbitrary binding modifications
-  additionalFunctionOverridesValue?: true,
+  additionalFunctionOverridesValue?: FunctionValue,
 };
 
 export type ScopeBinding = {
@@ -208,6 +208,7 @@ export class SerializerStatistics {
     this.delayedValues = 0;
     this.acceleratedModules = 0;
     this.delayedModules = 0;
+    this.generators = 0;
   }
   objects: number;
   objectProperties: number;
@@ -219,6 +220,7 @@ export class SerializerStatistics {
   delayedValues: number;
   acceleratedModules: number;
   delayedModules: number;
+  generators: number;
 
   log() {
     console.log(`=== serialization statistics`);
@@ -232,6 +234,7 @@ export class SerializerStatistics {
         .valuesInlined} values inlined`
     );
     console.log(`${this.acceleratedModules} accelerated and ${this.delayedModules} delayed modules.`);
+    console.log(`${this.generators} generators`);
   }
 }
 

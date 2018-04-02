@@ -106,7 +106,7 @@ export class ResidualHeapSerializer {
     statistics: SerializerStatistics,
     react: ReactSerializerState,
     referentializer: Referentializer,
-    generatorParents: Map<Generator, Generator>
+    generatorParents: Map<Generator, Generator | FunctionValue | "GLOBAL">
   ) {
     this.realm = realm;
     this.logger = logger;
@@ -176,10 +176,9 @@ export class ResidualHeapSerializer {
     this.additionalFunctionValueInfos = additionalFunctionValueInfos;
     this.rewrittenAdditionalFunctions = new Map();
     this.declarativeEnvironmentRecordsBindings = declarativeEnvironmentRecordsBindings;
-    this.getGeneratorParent = generatorParents.get.bind(generatorParents);
+    this.generatorParents = generatorParents;
     this.additionalFunctionGenerators = new Map();
-    this.additionalFunctionGeneratorsInverse = new Map();
-    this.declaredGlobalLets = new Set();
+    this.declaredGlobalLets = new Map();
   }
 
   emitter: Emitter;
@@ -224,15 +223,14 @@ export class ResidualHeapSerializer {
   residualReactElementSerializer: ResidualReactElementSerializer;
   referentializer: Referentializer;
   additionalFunctionGenerators: Map<FunctionValue, Generator>;
-  additionalFunctionGeneratorsInverse: Map<Generator, FunctionValue>;
 
   // function values nested in additional functions can't delay initializations
   // TODO: revisit this and fix additional functions to be capable of delaying initializations
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
 
-  getGeneratorParent: Generator => void | Generator;
+  generatorParents: Map<Generator, Generator | FunctionValue | "GLOBAL">;
 
-  declaredGlobalLets: Set<string>;
+  declaredGlobalLets: Map<string, Value>;
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -298,21 +296,22 @@ export class ResidualHeapSerializer {
     let kind = obj.getKind();
     let proto = obj.$Prototype;
     if (objectPrototypeAlreadyEstablished) {
-      // Emitting an assertion. This can be removed in the future, or put under a DEBUG flag.
-      this.emitter.emitNowOrAfterWaitingForDependencies([proto, obj], () => {
-        invariant(proto);
-        let serializedProto = this.serializeValue(proto);
-        let uid = this.getSerializeObjectIdentifier(obj);
-        const fetchedPrototype =
-          this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION) || this.realm.isCompatibleWith("mobile")
-            ? t.memberExpression(uid, protoExpression)
-            : t.callExpression(this.preludeGenerator.memoizeReference("Object.getPrototypeOf"), [uid]);
-        let condition = t.binaryExpression("!==", fetchedPrototype, serializedProto);
-        let throwblock = t.blockStatement([
-          t.throwStatement(t.newExpression(t.identifier("Error"), [t.stringLiteral("unexpected prototype")])),
-        ]);
-        this.emitter.emit(t.ifStatement(condition, throwblock));
-      });
+      if (!this.realm.omitInvariants) {
+        this.emitter.emitNowOrAfterWaitingForDependencies([proto, obj], () => {
+          invariant(proto);
+          let serializedProto = this.serializeValue(proto);
+          let uid = this.getSerializeObjectIdentifier(obj);
+          const fetchedPrototype =
+            this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION) || this.realm.isCompatibleWith("mobile")
+              ? t.memberExpression(uid, protoExpression)
+              : t.callExpression(this.preludeGenerator.memoizeReference("Object.getPrototypeOf"), [uid]);
+          let condition = t.binaryExpression("!==", fetchedPrototype, serializedProto);
+          let throwblock = t.blockStatement([
+            t.throwStatement(t.newExpression(t.identifier("Error"), [t.stringLiteral("unexpected prototype")])),
+          ]);
+          this.emitter.emit(t.ifStatement(condition, throwblock));
+        });
+      }
       return;
     }
     if (proto === this.realm.intrinsics[kind + "Prototype"]) return;
@@ -582,8 +581,9 @@ export class ResidualHeapSerializer {
 
       // Set up binding identity before starting to serialize value. This is needed in case of recursive dependencies.
       residualFunctionBinding.serializedValue = this.serializeValue(value);
-      if (residualFunctionBinding.modified)
+      if (residualFunctionBinding.modified) {
         this.referentializer.referentializeBinding(residualFunctionBinding, name, instance);
+      }
       if (value.mightBeObject()) {
         // Increment ref count one more time to ensure that this object will be assigned a unique id.
         // This ensures that only once instance is created across all possible residual function invocations.
@@ -630,26 +630,23 @@ export class ResidualHeapSerializer {
     let scopes = this.residualValues.get(val);
     invariant(scopes !== undefined);
     let additionalFunction;
-    for (let scope of scopes)
-      if (scope instanceof Generator) {
-        let f;
-        for (let g = scope; g !== undefined && f === undefined; g = this.getGeneratorParent(g))
-          f = this.additionalFunctionGeneratorsInverse.get(g);
+    for (let scope of scopes) {
+      let s = scope;
+      while (s instanceof Generator) {
+        s = this.generatorParents.get(s);
+      }
+      if (s === "GLOBAL") return undefined;
+      invariant(s instanceof FunctionValue);
+      if (this.additionalFunctionGenerators.has(s)) {
+        if (additionalFunction !== undefined && additionalFunction !== s) return undefined;
+        additionalFunction = s;
+      } else {
+        let f = this.isReferencedOnlyByAdditionalFunction(s);
         if (f === undefined) return undefined;
         if (additionalFunction !== undefined && additionalFunction !== f) return undefined;
         additionalFunction = f;
-      } else {
-        invariant(scope instanceof FunctionValue);
-        if (this.additionalFunctionGenerators.has(scope)) {
-          if (additionalFunction !== undefined && additionalFunction !== scope) return undefined;
-          additionalFunction = scope;
-        } else {
-          let f = this.isReferencedOnlyByAdditionalFunction(scope);
-          if (f === undefined) return undefined;
-          if (additionalFunction !== undefined && additionalFunction !== f) return undefined;
-          additionalFunction = f;
-        }
       }
+    }
     return additionalFunction;
   }
 
@@ -669,6 +666,9 @@ export class ResidualHeapSerializer {
     // All relevant values were visited in at least one scope.
     invariant(scopes.size >= 1);
     if (trace) this._logScopes(scopes);
+
+    // If a value is used in more than one scope, prevent inlining as it might be an additional root with a particular creation scope
+    if (scopes.size > 1) this.residualHeapValueIdentifiers.incrementReferenceCount(val);
 
     // First, let's figure out from which function and generator scopes this value is referenced.
     let functionValues = [];
@@ -721,9 +721,11 @@ export class ResidualHeapSerializer {
       // since we know that there's at least one root that's not in an additional function
       // which requires the value to be emitted outside of the additional function.
       generators = generators.filter(generator => {
-        for (let g = generator; g !== undefined; g = this.getGeneratorParent(g))
-          if (this.additionalFunctionGeneratorsInverse.has(g)) return false;
-        return true;
+        let s = generator;
+        while (s instanceof Generator) {
+          s = this.generatorParents.get(s);
+        }
+        return s === "GLOBAL";
       });
       if (generators.length === 0) {
         // This means that the value was referenced by multiple additional functions, and thus it must have existed at the end of global code execution.
@@ -733,10 +735,14 @@ export class ResidualHeapSerializer {
       }
     }
 
+    const getGeneratorParent = g => {
+      let s = this.generatorParents.get(g);
+      return s instanceof Generator ? s : undefined;
+    };
     // This value is referenced from more than one generator.
     // Let's find the body associated with their common ancestor.
     let commonAncestor = Array.from(generators).reduce(
-      (x, y) => commonAncestorOf(x, y, this.getGeneratorParent),
+      (x, y) => commonAncestorOf(x, y, getGeneratorParent),
       generators[0]
     );
     invariant(commonAncestor !== undefined);
@@ -746,7 +752,7 @@ export class ResidualHeapSerializer {
     while (true) {
       body = getBody(commonAncestor);
       if (body !== undefined) break;
-      commonAncestor = this.getGeneratorParent(commonAncestor);
+      commonAncestor = getGeneratorParent(commonAncestor);
       invariant(commonAncestor !== undefined);
     }
 
@@ -776,7 +782,7 @@ export class ResidualHeapSerializer {
     });
     if (trace) console.log(`  got ${notYetDoneBodies.size} not yet done bodies`);
     for (let s of generators)
-      for (let g = s; g !== undefined; g = this.getGeneratorParent(g)) {
+      for (let g = s; g !== undefined; g = getGeneratorParent(g)) {
         let scopeBody = getBody(g);
         if (
           scopeBody !== undefined &&
@@ -815,22 +821,6 @@ export class ResidualHeapSerializer {
     );
     let residualBinding = residualFunctionBindings.get(binding.name);
     invariant(residualBinding, "any referenced residual binding should have been visited");
-
-    if (!residualBinding.referentialized) {
-      invariant(
-        Array.from(residualBinding.potentialReferentializationScopes).find(
-          referentializationScope => referentializationScope instanceof FunctionValue
-        ) !== undefined,
-        "residual bindings like this are only caused by leaked bindings in pure functions"
-      );
-      for (let referentializationScope of residualBinding.potentialReferentializationScopes) {
-        if (referentializationScope instanceof FunctionValue) {
-          let instance = this.residualFunctionInstances.get(referentializationScope);
-          invariant(instance, "any serialized function must exist in the scope");
-          this.residualFunctions.referentializer.referentializeBinding(residualBinding, binding.name, instance);
-        }
-      }
-    }
 
     invariant(residualBinding.serializedValue);
     return ((residualBinding.serializedValue: any): BabelNodeIdentifier | BabelNodeMemberExpression);
@@ -1259,6 +1249,7 @@ export class ResidualHeapSerializer {
         }
       }
     };
+
     for (let [boundName, residualBinding] of residualBindings) {
       let referencedValues = [];
       let serializeBindingFunc;
@@ -1320,31 +1311,47 @@ export class ResidualHeapSerializer {
       }
     };
 
-    let serializeClassMethod = (propertyNameOrSymbol, methodFunc) => {
-      invariant(methodFunc instanceof ECMAScriptSourceFunctionValue);
-      if (methodFunc !== classFunc) {
-        // if the method does not have a $HomeObject, it's not a class method
-        if (methodFunc.$HomeObject !== undefined) {
-          this.serializedValues.add(methodFunc);
-          this._serializeClassMethod(propertyNameOrSymbol, methodFunc);
-        } else {
-          // if the method is not part of the class, we have to assign it to the prototype
-          // we can't serialize via emitting the properties as that will emit all
-          // the prototype and we only want to mutate the prototype here
-          serializeClassPrototypeId();
-          let methodId = this.serializeValue(methodFunc);
-          let name;
+    let serializeClassMethodOrProperty = (propertyNameOrSymbol, methodFuncOrProperty) => {
+      const serializeNameAndId = () => {
+        let methodFuncOrPropertyId = this.serializeValue(methodFuncOrProperty);
+        let name;
 
-          if (typeof propertyNameOrSymbol === "string") {
-            name = t.identifier(propertyNameOrSymbol);
-          } else {
-            name = this.serializeValue(propertyNameOrSymbol);
-          }
-          invariant(classProtoId !== undefined);
-          this.emitter.emit(
-            t.expressionStatement(t.assignmentExpression("=", t.memberExpression(classProtoId, name), methodId))
-          );
+        if (typeof propertyNameOrSymbol === "string") {
+          name = t.identifier(propertyNameOrSymbol);
+        } else {
+          name = this.serializeValue(propertyNameOrSymbol);
         }
+        return { name, methodFuncOrPropertyId };
+      };
+
+      if (methodFuncOrProperty instanceof ECMAScriptSourceFunctionValue) {
+        if (methodFuncOrProperty !== classFunc) {
+          // if the method does not have a $HomeObject, it's not a class method
+          if (methodFuncOrProperty.$HomeObject !== undefined) {
+            this.serializedValues.add(methodFuncOrProperty);
+            this._serializeClassMethod(propertyNameOrSymbol, methodFuncOrProperty);
+          } else {
+            // if the method is not part of the class, we have to assign it to the prototype
+            // we can't serialize via emitting the properties as that will emit all
+            // the prototype and we only want to mutate the prototype here
+            serializeClassPrototypeId();
+            invariant(classProtoId !== undefined);
+            let { name, methodFuncOrPropertyId } = serializeNameAndId();
+            this.emitter.emit(
+              t.expressionStatement(
+                t.assignmentExpression("=", t.memberExpression(classProtoId, name), methodFuncOrPropertyId)
+              )
+            );
+          }
+        }
+      } else {
+        let prototypeId = t.memberExpression(this.getSerializeObjectIdentifier(classFunc), t.identifier("prototype"));
+        let { name, methodFuncOrPropertyId } = serializeNameAndId();
+        this.emitter.emit(
+          t.expressionStatement(
+            t.assignmentExpression("=", t.memberExpression(prototypeId, name), methodFuncOrPropertyId)
+          )
+        );
       }
     };
 
@@ -1353,7 +1360,7 @@ export class ResidualHeapSerializer {
       if (propertyNameOrSymbol === "prototype") {
         this.serializedValues.add(propertyValue);
       } else if (propertyValue instanceof ECMAScriptSourceFunctionValue && propertyValue.$HomeObject === classFunc) {
-        serializeClassMethod(propertyNameOrSymbol, propertyValue);
+        serializeClassMethodOrProperty(propertyNameOrSymbol, propertyValue);
       } else {
         let prop = classFunc.properties.get(propertyNameOrSymbol);
         invariant(prop);
@@ -1378,11 +1385,11 @@ export class ResidualHeapSerializer {
 
     // handle non-symbol properties
     for (let [propertyName, method] of classPrototype.properties) {
-      withDescriptorValue(propertyName, method.descriptor, serializeClassMethod);
+      withDescriptorValue(propertyName, method.descriptor, serializeClassMethodOrProperty);
     }
     // handle symbol properties
     for (let [symbol, method] of classPrototype.symbols) {
-      withDescriptorValue(symbol, method.descriptor, serializeClassMethod);
+      withDescriptorValue(symbol, method.descriptor, serializeClassMethodOrProperty);
     }
     // assign the AST method key node for the "constructor"
     classMethodInstance.classMethodKeyNode = t.identifier("constructor");
@@ -1721,24 +1728,16 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _serializeGlobalBinding(boundName: string, residualFunctionBinding: ResidualFunctionBinding) {
-    invariant(!residualFunctionBinding.declarativeEnvironmentRecord);
-    if (!residualFunctionBinding.serializedValue) {
-      residualFunctionBinding.referentialized = true;
+  _serializeGlobalBinding(boundName: string, binding: ResidualFunctionBinding) {
+    invariant(!binding.declarativeEnvironmentRecord);
+    if (!binding.serializedValue) {
+      binding.referentialized = true;
       if (boundName === "undefined") {
-        residualFunctionBinding.serializedValue = voidExpression;
-      } else {
-        let value = residualFunctionBinding.value;
-        // Check for let binding vs global property
-        if (value) {
-          let name = t.identifier(boundName);
-          residualFunctionBinding.serializedValue = name;
-          invariant(value.equals(value));
-          this.declaredGlobalLets.add(boundName);
-          this.emitter.emit(t.expressionStatement(t.assignmentExpression("=", name, this.serializeValue(value))));
-        } else {
-          residualFunctionBinding.serializedValue = this.preludeGenerator.globalReference(boundName);
-        }
+        binding.serializedValue = voidExpression;
+      } else if (binding.value !== undefined) {
+        binding.serializedValue = t.identifier(boundName);
+        invariant(binding.value !== undefined);
+        this.declaredGlobalLets.set(boundName, binding.value);
       }
     }
   }
@@ -1758,13 +1757,19 @@ export class ResidualHeapSerializer {
     const statements = this.emitter.endEmitting(generator, oldBody, valuesToProcess, /*isChild*/ isChild).entries;
     if (this._options.debugScopes) {
       let comment = `generator "${generator.getName()}"`;
-      let parent = this.getGeneratorParent(generator);
-      if (parent !== undefined) {
+      let parent = this.generatorParents.get(generator);
+      if (parent instanceof Generator) {
         comment = `${comment} with parent "${parent.getName()}"`;
+      } else if (parent instanceof FunctionValue) {
+        comment = `${comment} with function parent`;
+      } else {
+        invariant(parent === "GLOBAL");
+        comment = `${comment} with global parent`;
       }
       statements.unshift(commentStatement("begin " + comment));
       statements.push(commentStatement("end " + comment));
     }
+    this.statistics.generators++;
     return statements;
   }
 
@@ -1894,8 +1899,6 @@ export class ResidualHeapSerializer {
       for (let [additionalFunctionValue, { generator }] of additionalFVEffects.entries()) {
         invariant(!this.additionalFunctionGenerators.has(additionalFunctionValue));
         this.additionalFunctionGenerators.set(additionalFunctionValue, generator);
-        invariant(!this.additionalFunctionGeneratorsInverse.has(generator));
-        this.additionalFunctionGeneratorsInverse.set(generator, additionalFunctionValue);
       }
   }
 
@@ -1908,9 +1911,8 @@ export class ResidualHeapSerializer {
     this.prepareAdditionalFunctionValues();
 
     this.generator.serialize(this._getContext());
+    this.statistics.generators++;
     invariant(this.emitter.declaredCount() <= this.preludeGenerator.derivedIds.size);
-
-    this.postGeneratorSerialization();
 
     // TODO #20: add timers
 
@@ -1918,6 +1920,14 @@ export class ResidualHeapSerializer {
 
     for (let [moduleId, moduleValue] of this.modules.initializedModules)
       this.requireReturns.set(moduleId, this.serializeValue(moduleValue));
+
+    for (let [name, value] of this.declaredGlobalLets) {
+      this.emitter.emit(
+        t.expressionStatement(t.assignmentExpression("=", t.identifier(name), this.serializeValue(value)))
+      );
+    }
+
+    this.postGeneratorSerialization();
 
     Array.prototype.push.apply(this.prelude, this.preludeGenerator.prelude);
 
@@ -1988,7 +1998,7 @@ export class ResidualHeapSerializer {
       ast_body.push(
         t.variableDeclaration(
           "let",
-          Array.from(this.declaredGlobalLets).map(key => t.variableDeclarator(t.identifier(key)))
+          Array.from(this.declaredGlobalLets.keys()).map(key => t.variableDeclarator(t.identifier(key)))
         )
       );
     if (body.length) {
@@ -2044,7 +2054,7 @@ export class ResidualHeapSerializer {
     for (let s of scopes)
       if (s instanceof Generator) {
         let text = "";
-        for (let g = s; g !== undefined; g = this.getGeneratorParent(g)) text += "=>" + g.getName();
+        for (; s instanceof Generator; s = this.generatorParents.get(s)) text += "=>" + s.getName();
         console.log(`      ${text}`);
       } else {
         invariant(s instanceof FunctionValue);

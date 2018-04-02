@@ -74,7 +74,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     statistics: SerializerStatistics,
     react: ReactSerializerState,
     referentializer: Referentializer,
-    generatorParents: Map<Generator, Generator>
+    generatorParents: Map<Generator, Generator | FunctionValue | "GLOBAL">
   ) {
     super(
       realm,

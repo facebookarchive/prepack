@@ -19,6 +19,7 @@ import { ExecutionContext } from "../realm.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord } from "../environment.js";
 import {
   AbstractValue,
+  AbstractObjectValue,
   BoundFunctionValue,
   ECMAScriptSourceFunctionValue,
   EmptyValue,
@@ -863,7 +864,7 @@ export class FunctionImplementation {
   // ECMA262 9.2.3
   FunctionAllocate(
     realm: Realm,
-    functionPrototype: ObjectValue,
+    functionPrototype: ObjectValue | AbstractObjectValue,
     strict: boolean,
     functionKind: "normal" | "non-constructor" | "generator"
   ): ECMAScriptSourceFunctionValue {

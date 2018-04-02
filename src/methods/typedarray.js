@@ -14,6 +14,7 @@ import type { TypedArrayKind } from "../types.js";
 import { FatalError } from "../errors.js";
 import {
   AbstractValue,
+  AbstractObjectValue,
   IntegerIndexedExotic,
   ObjectValue,
   Value,
@@ -55,7 +56,7 @@ export const ArrayElementType = {
 // ECMA262 9.4.5.7
 export function IntegerIndexedObjectCreate(
   realm: Realm,
-  prototype: ObjectValue,
+  prototype: ObjectValue | AbstractObjectValue,
   internalSlotsList: { [key: string]: void }
 ): ObjectValue {
   // 1. Assert: internalSlotsList contains the names [[ViewedArrayBuffer]], [[ArrayLength]], [[ByteOffset]], and [[TypedArrayName]].
