@@ -409,7 +409,7 @@ export class ToImplementation {
 
   _WrapAbstractInObject(realm: Realm, arg: AbstractValue): ObjectValue | AbstractObjectValue {
     let obj;
-    switch (arg.types.getType()) {
+    switch (arg.getType()) {
       case IntegralValue:
       case NumberValue:
         obj = new ObjectValue(realm, realm.intrinsics.NumberPrototype);
@@ -437,7 +437,8 @@ export class ToImplementation {
 
       default:
         if (realm.isInPureScope()) {
-          // will be serialized as Object(serialized_arg)
+          invariant(arg.getType() === Value); // Can't be primitive or object for sure, which leaves just Value.
+          // will be serialized as Object.assign(serialized_arg)
           obj = AbstractValue.createFromType(realm, ObjectValue, "explicit conversion to object");
           invariant(obj instanceof AbstractObjectValue);
           obj.args = [arg];

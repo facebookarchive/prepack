@@ -16,15 +16,14 @@ import {
   AbstractValue,
   type AbstractValueKind,
   ArrayValue,
-  BooleanValue,
-  IntegralValue,
   NullValue,
   NumberValue,
   ObjectValue,
+  PrimitiveValue,
   StringValue,
-  SymbolValue,
   Value,
 } from "./index.js";
+import { protoExpression } from "../utils/internalizer.js";
 import type { AbstractValueBuildNodeFunction } from "./AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { IsDataDescriptor, cloneDescriptor, equalDescriptors } from "../methods/index.js";
@@ -251,24 +250,16 @@ export default class AbstractObjectValue extends AbstractValue {
       return joinedObject;
     } else if (this.kind === "explicit conversion to object") {
       let primitiveValue = this.args[0];
-      switch (primitiveValue.getType()) {
-        case BooleanValue:
-          return realm.intrinsics.BooleanPrototype;
-        case IntegralValue:
-        case NumberValue:
-          return realm.intrinsics.NumberPrototype;
-        case StringValue:
-          return realm.intrinsics.StringPrototype;
-        case SymbolValue:
-          return realm.intrinsics.SymbolPrototype;
-        default:
-          let result = AbstractValue.createFromBuildFunction(realm, ObjectValue, [primitiveValue], ([p]) => {
-            invariant(realm.preludeGenerator !== undefined);
-            return t.callExpression(realm.preludeGenerator.memoizeReference("Object.getPrototypeOf"), [p]);
-          });
-          invariant(result instanceof AbstractObjectValue);
-          return result;
-      }
+      invariant(!Value.isTypeCompatibleWith(primitiveValue.getType(), PrimitiveValue));
+      let result = AbstractValue.createFromBuildFunction(realm, ObjectValue, [primitiveValue], ([p]) => {
+        invariant(realm.preludeGenerator !== undefined);
+        let getPrototypeOf = realm.preludeGenerator.memoizeReference("Object.getPrototypeOf");
+        return realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) || realm.isCompatibleWith("mobile")
+          ? t.memberExpression(p, protoExpression)
+          : t.callExpression(getPrototypeOf, [p]);
+      });
+      invariant(result instanceof AbstractObjectValue);
+      return result;
     } else {
       let joinedObject;
       for (let cv of elements) {

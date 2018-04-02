@@ -59,7 +59,7 @@ export type AbstractValueKind =
   | "conditional"
   | "resolved"
   | "dummy parameter"
-  | "implicit conversion to object"
+  | "explicit conversion to object"
   | "check for known property"
   | "sentinel member expression"
   | "template for property name condition"

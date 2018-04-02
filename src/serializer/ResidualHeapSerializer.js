@@ -1653,7 +1653,7 @@ export class ResidualHeapSerializer {
     if (val.kind === "explicit conversion to object") {
       let ob = serializedArgs[0];
       invariant(ob !== undefined);
-      return t.callExpression(this.preludeGenerator.memoizeReference("Object"), [ob]);
+      return t.callExpression(this.preludeGenerator.memoizeReference("Object.assign"), [ob]);
     }
     let serializedValue = val.buildNode(serializedArgs);
     if (serializedValue.type === "Identifier") {

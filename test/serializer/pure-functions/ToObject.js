@@ -1,5 +1,3 @@
-// abstract effects
-
 var obj = global.__abstract && global.__makePartial && global.__makeSimple ? __makePartial(__makeSimple(__abstract({}, "({foo:1})"))) : {foo:1};
 var num = global.__abstract ? __abstract("number", "(1)") : 1;
 var val = global.__abstract ? __abstract(undefined, "(true)") : true;
