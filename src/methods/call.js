@@ -271,7 +271,7 @@ export function OrdinaryCallBindThis(
     } else {
       //  b. Else,
       // i. Let thisValue be ! ToObject(thisArgument).
-      thisValue = To.ToObjectPartial(calleeRealm, thisArgument);
+      thisValue = To.ToObject(calleeRealm, thisArgument);
 
       // ii. NOTE ToObject produces wrapper objects using calleeRealm.
     }

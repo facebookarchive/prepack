@@ -137,7 +137,7 @@ export class EnvironmentImplementation {
       if (base instanceof AbstractValue) {
         // Ensure that abstract values are coerced to objects. This might yield
         // an operation that might throw.
-        base = To.ToObjectPartial(realm, base);
+        base = To.ToObject(realm, base);
       }
       // a. If HasPrimitiveBase(V) is true, then
       if (this.HasPrimitiveBase(realm, V)) {
@@ -145,7 +145,7 @@ export class EnvironmentImplementation {
         invariant(base instanceof Value && !HasSomeCompatibleType(base, UndefinedValue, NullValue));
 
         // ii. Let base be To.ToObject(base).
-        base = To.ToObjectPartial(realm, base);
+        base = To.ToObject(realm, base);
       }
       invariant(base instanceof ObjectValue || base instanceof AbstractObjectValue);
 

@@ -122,7 +122,7 @@ export default function(realm: Realm): NativeFunctionValue {
     // 8. NOTE: source is not an Iterable so assume it is already an array-like object.
 
     // 9. Let arrayLike be ! ToObject(source).
-    let arrayLike = To.ToObjectPartial(realm, source);
+    let arrayLike = To.ToObject(realm, source);
 
     // 10. Let len be ? ToLength(? Get(arrayLike, "length")).
     let len = To.ToLength(realm, Get(realm, arrayLike, "length"));

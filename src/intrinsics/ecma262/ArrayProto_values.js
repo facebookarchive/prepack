@@ -17,9 +17,9 @@ export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 22.1.3.30
   return new NativeFunctionValue(realm, "Array.prototype.values", "values", 0, context => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Return CreateArrayIterator(O, "value").
-    return Create.CreateArrayIterator(realm, O, "value");
+    return Create.CreateArrayIterator(realm, O.throwIfNotConcreteObject(), "value");
   });
 }

@@ -690,10 +690,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 20.3.4.37
   obj.defineNativeMethod("toJSON", 1, (context, [key]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let tv be ? ToPrimitive(O, hint Number).
-    let tv = To.ToPrimitive(realm, O, "number");
+    let tv = To.ToPrimitive(realm, O.throwIfNotConcreteObject(), "number");
 
     // 3. If Type(tv) is Number and tv is not finite, return null.
     if (tv instanceof NumberValue && !isFinite(tv.value)) {

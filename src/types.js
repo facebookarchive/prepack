@@ -944,9 +944,7 @@ export type ToType = {
   ToPropertyDescriptor(realm: Realm, Obj: Value): Descriptor,
 
   // ECMA262 7.1.13
-  ToObject(realm: Realm, arg: ConcreteValue): ObjectValue,
-
-  ToObjectPartial(realm: Realm, arg: Value): ObjectValue | AbstractObjectValue,
+  ToObject(realm: Realm, arg: Value): ObjectValue | AbstractObjectValue,
 
   // ECMA262 7.1.15
   ToLength(realm: Realm, argument: numberOrValue): number,

@@ -30,7 +30,7 @@ export default function(realm: Realm): NativeFunctionValue {
       if (context instanceof NullValue) return new StringValue(realm, "[object Null]");
 
       // 3. Let O be ToObject(this value).
-      let O = To.ToObjectPartial(realm, context);
+      let O = To.ToObject(realm, context);
 
       let builtinTag;
 

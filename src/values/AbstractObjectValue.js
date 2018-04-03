@@ -16,12 +16,14 @@ import {
   AbstractValue,
   type AbstractValueKind,
   ArrayValue,
+  NullValue,
+  NumberValue,
   ObjectValue,
+  PrimitiveValue,
   StringValue,
   Value,
-  NumberValue,
-  NullValue,
 } from "./index.js";
+import { protoExpression } from "../utils/internalizer.js";
 import type { AbstractValueBuildNodeFunction } from "./AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { IsDataDescriptor, cloneDescriptor, equalDescriptors } from "../methods/index.js";
@@ -215,6 +217,7 @@ export default class AbstractObjectValue extends AbstractValue {
 
   // ECMA262 9.1.1
   $GetPrototypeOf(): ObjectValue | AbstractObjectValue | NullValue {
+    let realm = this.$Realm;
     if (this.values.isTop()) {
       let error = new CompilerDiagnostic(
         "prototype access on unknown object",
@@ -242,9 +245,21 @@ export default class AbstractObjectValue extends AbstractValue {
       invariant(ob2 instanceof ObjectValue);
       let p1 = ob1.$GetPrototypeOf();
       let p2 = ob2.$GetPrototypeOf();
-      let joinedObject = Join.joinValuesAsConditional(this.$Realm, cond, p1, p2);
+      let joinedObject = Join.joinValuesAsConditional(realm, cond, p1, p2);
       invariant(joinedObject instanceof AbstractObjectValue);
       return joinedObject;
+    } else if (this.kind === "explicit conversion to object") {
+      let primitiveValue = this.args[0];
+      invariant(!Value.isTypeCompatibleWith(primitiveValue.getType(), PrimitiveValue));
+      let result = AbstractValue.createFromBuildFunction(realm, ObjectValue, [primitiveValue], ([p]) => {
+        invariant(realm.preludeGenerator !== undefined);
+        let getPrototypeOf = realm.preludeGenerator.memoizeReference("Object.getPrototypeOf");
+        return realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) || realm.isCompatibleWith("mobile")
+          ? t.memberExpression(p, protoExpression)
+          : t.callExpression(getPrototypeOf, [p]);
+      });
+      invariant(result instanceof AbstractObjectValue);
+      return result;
     } else {
       let joinedObject;
       for (let cv of elements) {
@@ -253,8 +268,8 @@ export default class AbstractObjectValue extends AbstractValue {
         if (joinedObject === undefined) {
           joinedObject = p;
         } else {
-          let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
-          joinedObject = Join.joinValuesAsConditional(this.$Realm, cond, p, joinedObject);
+          let cond = AbstractValue.createFromBinaryOp(realm, "===", this, cv, this.expressionLocation);
+          joinedObject = Join.joinValuesAsConditional(realm, cond, p, joinedObject);
         }
       }
       invariant(joinedObject instanceof AbstractObjectValue);

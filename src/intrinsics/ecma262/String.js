@@ -135,10 +135,10 @@ export default function(realm: Realm): NativeFunctionValue {
       let numberOfSubstitutions = substitutions.length;
 
       // 3. Let cooked be ? ToObject(template).
-      let cooked = To.ToObjectPartial(realm, template);
+      let cooked = To.ToObject(realm, template);
 
       // 4. Let raw be ? ToObject(? Get(cooked, "raw")).
-      let raw = To.ToObjectPartial(realm, Get(realm, cooked, "raw"));
+      let raw = To.ToObject(realm, Get(realm, cooked, "raw"));
 
       // 5. Let literalSegments be ? ToLength(? Get(raw, "length")).
       let literalSegments = To.ToLength(realm, Get(realm, raw, "length"));
