@@ -39,6 +39,9 @@ export type SerializedBody = {
 };
 
 export type AdditionalFunctionEffects = {
+  // All of these effects must be applied for this additional function
+  // to be properly setup
+  parentAdditionalFunction: FunctionValue | void,
   effects: Effects,
   generator: Generator,
   transforms: Array<Function>,

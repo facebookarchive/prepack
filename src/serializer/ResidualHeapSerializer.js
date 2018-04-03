@@ -1279,6 +1279,9 @@ export class ResidualHeapSerializer {
     }
     undelay();
     this._emitObjectProperties(val);
+    let additionalFVEffects = this.additionalFunctionValuesAndEffects;
+    let additionalEffects = additionalFVEffects && additionalFVEffects.get(val);
+    if (additionalEffects) this._serializeAdditionalFunction(val, additionalEffects);
   }
 
   _serializeClass(classFunc: ECMAScriptSourceFunctionValue, classPrototype: ObjectValue, undelay: Function): void {
@@ -1743,10 +1746,11 @@ export class ResidualHeapSerializer {
     type: "Generator" | "AdditionalFunction",
     generator: Generator,
     valuesToProcess: void | Set<AbstractValue>,
-    callback: SerializedBody => void
+    callback: SerializedBody => void,
+    isChildOverride?: boolean
   ): Array<BabelNodeStatement> {
     let newBody = { type, parentBody: undefined, entries: [], done: false };
-    let isChild = type === "Generator";
+    let isChild = isChildOverride || type === "Generator";
     let oldBody = this.emitter.beginEmitting(generator, newBody, /*isChild*/ isChild);
     this.activeGeneratorBodies.set(generator, newBody);
     callback(newBody);
@@ -1829,11 +1833,17 @@ export class ResidualHeapSerializer {
     return false;
   }
 
-  _serializeAdditionalFunctionGeneratorAndEffects(generator: Generator, additionalEffects: AdditionalFunctionEffects) {
-    return this._withGeneratorScope("AdditionalFunction", generator, /*valuesToProcess*/ undefined, newBody => {
-      let oldSerialiedValueWithIdentifiers = this._serializedValueWithIdentifiers;
-      this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
-      try {
+  _serializeAdditionalFunctionGeneratorAndEffects(
+    generator: Generator,
+    functionValue: FunctionValue,
+    additionalEffects: AdditionalFunctionEffects
+  ) {
+    let inAdditionalFunction = this.isReferencedOnlyByAdditionalFunction(functionValue);
+    return this._withGeneratorScope(
+      "AdditionalFunction",
+      generator,
+      /*valuesToProcess*/ undefined,
+      newBody => {
         let effectsGenerator = additionalEffects.generator;
         effectsGenerator.serialize(this._getContext());
 
@@ -1842,10 +1852,9 @@ export class ResidualHeapSerializer {
           this.mainBody.entries.push(...lazyHoistedReactNodes);
           return null;
         }, additionalEffects.effects);
-      } finally {
-        this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
-      }
-    });
+      },
+      !!inAdditionalFunction
+    );
   }
 
   // result -- serialize it, a return statement will be generated later, must be a Value
@@ -1857,18 +1866,26 @@ export class ResidualHeapSerializer {
   // CreatedObjects -- should take care of itself
   _serializeAdditionalFunction(additionalFunctionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects) {
     let { effects, transforms, generator } = additionalEffects;
-    if (!this.additionalFunctionValueInfos.has(additionalFunctionValue)) {
-      // the additionalFunction has no info, so it likely has been dead code eliminated
+    // No function info means the function is dead code, also break recursive cycles where we've already started
+    // serializing this value
+    if (
+      !this.additionalFunctionValueInfos.has(additionalFunctionValue) ||
+      this.rewrittenAdditionalFunctions.has(additionalFunctionValue)
+    ) {
       return;
     }
-
+    this.rewrittenAdditionalFunctions.set(additionalFunctionValue, []);
     let createdObjects = effects[4];
     let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
     // Allows us to emit function declarations etc. inside of this additional
     // function instead of adding them at global scope
     // TODO: make sure this generator isn't getting mutated oddly
     ((nestedFunctions: any): Set<FunctionValue>).forEach(val => this.additionalFunctionValueNestedFunctions.add(val));
-    let body = this._serializeAdditionalFunctionGeneratorAndEffects(generator, additionalEffects);
+    let body = this._serializeAdditionalFunctionGeneratorAndEffects(
+      generator,
+      additionalFunctionValue,
+      additionalEffects
+    );
     invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
     for (let transform of transforms) {
       transform(body);
@@ -1883,15 +1900,6 @@ export class ResidualHeapSerializer {
         invariant(!this.additionalFunctionGenerators.has(additionalFunctionValue));
         this.additionalFunctionGenerators.set(additionalFunctionValue, generator);
       }
-  }
-
-  processAdditionalFunctionValues(): Map<FunctionValue, Array<BabelNodeStatement>> {
-    let additionalFVEffects = this.additionalFunctionValuesAndEffects;
-    if (!additionalFVEffects) return this.rewrittenAdditionalFunctions;
-    for (let [additionalFunctionValue, effects] of additionalFVEffects.entries()) {
-      this._serializeAdditionalFunction(additionalFunctionValue, effects);
-    }
-    return this.rewrittenAdditionalFunctions;
   }
 
   // Hook point for any serialization needs to be done after generator serialization is complete.
@@ -1913,9 +1921,6 @@ export class ResidualHeapSerializer {
     for (let [moduleId, moduleValue] of this.modules.initializedModules)
       this.requireReturns.set(moduleId, this.serializeValue(moduleValue));
 
-    // Make sure additional functions get serialized.
-    let rewrittenAdditionalFunctions = this.processAdditionalFunctionValues();
-
     for (let [name, value] of this.declaredGlobalLets) {
       this.emitter.emit(
         t.expressionStatement(t.assignmentExpression("=", t.identifier(name), this.serializeValue(value)))
@@ -1932,7 +1937,7 @@ export class ResidualHeapSerializer {
 
     this.residualFunctions.residualFunctionInitializers.factorifyInitializers(this.factoryNameGenerator);
     let { unstrictFunctionBodies, strictFunctionBodies } = this.residualFunctions.spliceFunctions(
-      rewrittenAdditionalFunctions
+      this.rewrittenAdditionalFunctions
     );
 
     // add strict modes
