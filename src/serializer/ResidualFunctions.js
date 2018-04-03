@@ -41,7 +41,6 @@ import { getOrDefault } from "./utils.js";
 type ResidualFunctionsResult = {
   unstrictFunctionBodies: Array<BabelNodeFunctionExpression | BabelNodeClassExpression>,
   strictFunctionBodies: Array<BabelNodeFunctionExpression | BabelNodeClassExpression>,
-  requireStatistics: { replaced: number, count: number },
 };
 
 export class ResidualFunctions {
@@ -220,8 +219,6 @@ export class ResidualFunctions {
       return b;
     }
 
-    let requireStatistics = { replaced: 0, count: 0 };
-
     let functionEntries: Array<[BabelNodeBlockStatement, Array<FunctionInstance>]> = Array.from(
       this.functions.entries()
     );
@@ -373,7 +370,7 @@ export class ResidualFunctions {
       }
 
       let naiveProcessInstances = instancesToSplice => {
-        this.statistics.functionClones += instancesToSplice.length - 1;
+        this.statistics.functionClones += instancesToSplice.length;
 
         for (let instance of instancesToSplice) {
           let { functionValue, residualFunctionBindings, scopeInstances } = instance;
@@ -423,7 +420,7 @@ export class ResidualFunctions {
                   residualFunctionBindings,
                   modified,
                   requireReturns: this.requireReturns,
-                  requireStatistics,
+                  statistics: this.statistics,
                   getModuleIdIfNodeIsRequireFunction: this.modules.getGetModuleIdIfNodeIsRequireFunction(methodParams, [
                     functionValue,
                   ]),
@@ -464,7 +461,7 @@ export class ResidualFunctions {
               residualFunctionBindings,
               modified,
               requireReturns: this.requireReturns,
-              requireStatistics,
+              statistics: this.statistics,
               getModuleIdIfNodeIsRequireFunction: this.modules.getGetModuleIdIfNodeIsRequireFunction(funcParams, [
                 functionValue,
               ]),
@@ -488,6 +485,7 @@ export class ResidualFunctions {
       if (additionalFunctionNestedInstances.length > 0) naiveProcessInstances(additionalFunctionNestedInstances);
       if (!this._shouldUseFactoryFunction(funcBody, normalInstances)) {
         naiveProcessInstances(normalInstances);
+        this.statistics.functionClones--;
       } else if (normalInstances.length > 0) {
         const functionUniqueTag = ((funcBody: any): FunctionBodyAstNode).uniqueOrderedTag;
         invariant(functionUniqueTag);
@@ -571,7 +569,7 @@ export class ResidualFunctions {
           residualFunctionBindings: sameResidualBindings,
           modified,
           requireReturns: this.requireReturns,
-          requireStatistics,
+          statistics: this.statistics,
           getModuleIdIfNodeIsRequireFunction: this.modules.getGetModuleIdIfNodeIsRequireFunction(
             factoryParams,
             normalInstances.map(instance => instance.functionValue)
@@ -688,7 +686,7 @@ export class ResidualFunctions {
       }
     }
 
-    return { unstrictFunctionBodies, strictFunctionBodies, requireStatistics };
+    return { unstrictFunctionBodies, strictFunctionBodies };
   }
   _getOrCreateClassNode(classPrototype: ObjectValue): BabelNodeClassExpression {
     if (!this.classes.has(classPrototype)) {
