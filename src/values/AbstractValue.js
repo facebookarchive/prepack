@@ -19,6 +19,7 @@ import type {
 } from "babel-types";
 import { FatalError, CompilerDiagnostic } from "../errors.js";
 import type { Realm } from "../realm.js";
+import { Path } from "../singletons.js";
 import type { PropertyKeyValue } from "../types.js";
 import { PreludeGenerator } from "../utils/generator.js";
 import buildExpressionTemplate from "../utils/builder.js";
@@ -339,6 +340,8 @@ export default class AbstractValue extends Value {
       if (this.kind === "!") {
         let [x] = this.args;
         invariant(x instanceof AbstractValue);
+        // !x => !x
+        if (x.equals(val)) return true;
         if (x.kind === "!") {
           // !!x => !y if y => !x
           invariant(x instanceof AbstractValue);
@@ -666,9 +669,21 @@ export default class AbstractValue extends Value {
     let values = ValuesDomain.joinValues(realm, left, right);
     let [hash, args] = hashTernary(condition, left || realm.intrinsics.undefined, right || realm.intrinsics.undefined);
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let result = new Constructor(realm, types, values, hash, args, ([c, x, y]) => t.conditionalExpression(c, x, y), {
-      kind: "conditional",
-    });
+    let result = new Constructor(
+      realm,
+      types,
+      values,
+      hash,
+      args,
+      ([c, x, y]) => {
+        if (Path.implies(condition)) return x;
+        else if (Path.impliesNot(condition)) return y;
+        else return t.conditionalExpression(c, x, y);
+      },
+      {
+        kind: "conditional",
+      }
+    );
     result.expressionLocation = loc;
     if (left) result.mightBeEmpty = left.mightHaveBeenDeleted();
     if (right && !result.mightBeEmpty) result.mightBeEmpty = right.mightHaveBeenDeleted();
