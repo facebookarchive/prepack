@@ -149,10 +149,12 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
       if (!notc.mightNotBeFalse()) return x;
       invariant(notc instanceof AbstractValue);
       if (Path.implies(notc)) return y;
-      if (Path.implies(AbstractValue.createFromBinaryOp(realm, "===", value, x))) return x;
-      if (Path.implies(AbstractValue.createFromBinaryOp(realm, "!==", value, x))) return y;
-      if (Path.implies(AbstractValue.createFromBinaryOp(realm, "!==", value, y))) return x;
-      if (Path.implies(AbstractValue.createFromBinaryOp(realm, "===", value, y))) return y;
+      if (!isCondition) {
+        if (Path.implies(AbstractValue.createFromBinaryOp(realm, "===", value, x))) return x;
+        if (Path.implies(AbstractValue.createFromBinaryOp(realm, "!==", value, x))) return y;
+        if (Path.implies(AbstractValue.createFromBinaryOp(realm, "!==", value, y))) return x;
+        if (Path.implies(AbstractValue.createFromBinaryOp(realm, "===", value, y))) return y;
+      }
       // c ? x : x <=> x
       if (x.equals(y)) return x;
       // x ? x : y <=> x || y
