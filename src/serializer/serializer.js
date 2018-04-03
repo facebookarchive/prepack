@@ -257,10 +257,14 @@ export class Serializer {
       timingStats.totalTime = Date.now() - timingStats.totalTime;
     }
     invariant(!this.logger.hasErrors());
-    if (this.options.logStatistics) residualHeapSerializer.statistics.log();
+    if (this.options.logStatistics) {
+      this.realm.statistics.log();
+      residualHeapSerializer.statistics.log();
+    }
     return {
       code: generated.code,
       map: generated.map,
+      realmStatistics: this.realm.statistics,
       reactStatistics: reactStatistics,
       statistics: residualHeapSerializer.statistics,
       timingStats: timingStats,

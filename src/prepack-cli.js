@@ -415,10 +415,15 @@ fi
       console.log(serialized.code);
     }
     if (statsFileName) {
-      if (serialized.statistics === undefined || serialized.timingStats === undefined) {
+      if (
+        serialized.statistics === undefined ||
+        serialized.timingStats === undefined ||
+        serialized.realmStatistics === undefined
+      ) {
         return;
       }
       let stats = {
+        RealmStatistics: serialized.realmStatistics,
         SerializerStatistics: serialized.statistics,
         TimingStatistics: serialized.timingStats,
         MemoryStatistics: v8.getHeapStatistics(),
