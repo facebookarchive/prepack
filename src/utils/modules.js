@@ -383,6 +383,7 @@ export class Modules {
   ) {
     this.realm = realm;
     this.logger = logger;
+    this.statistics = statistics;
     this._require = realm.intrinsics.undefined;
     this._define = realm.intrinsics.undefined;
     this.factoryFunctionDependencies = new Map();
@@ -396,6 +397,7 @@ export class Modules {
 
   realm: Realm;
   logger: Logger;
+  statistics: SerializerStatistics;
   _require: Value;
   _define: Value;
   factoryFunctionDependencies: Map<FunctionValue, Array<Value>>;
@@ -417,6 +419,8 @@ export class Modules {
       let moduleValue = property.descriptor && property.descriptor.value;
       if (moduleValue instanceof Value) this.initializedModules.set(moduleId, moduleValue);
     }
+    this.statistics.initializedModules = this.initializedModules.size;
+    this.statistics.totalModules = this.moduleIds.size;
   }
 
   _getGlobalProperty(name: string): Value {
