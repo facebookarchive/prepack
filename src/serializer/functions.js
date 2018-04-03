@@ -337,7 +337,6 @@ export class Functions {
   }
 
   _callOfFunction(funcValue: FunctionValue): void => Value {
-    const globalThis = this.realm.$GlobalEnv.environmentRecord.WithBaseObject();
     let call = funcValue.$Call;
     invariant(call);
     let numArgs = funcValue.getLength();
@@ -368,7 +367,9 @@ export class Functions {
         }
       }
     }
-    return call.bind(this, globalThis, args);
+
+    let thisArg = createAbstractArgument(this.realm, "this", funcValue.expressionLocation, ObjectValue);
+    return call.bind(this, thisArg, args);
   }
 
   checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode: number) {

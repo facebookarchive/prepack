@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict */
 
 import type { BabelNodeSourceLocation } from "babel-types";
 
@@ -37,7 +37,7 @@ export class CompilerDiagnostic extends Error {
 // built-in super classes.
 export class FatalError extends Error {
   constructor(message?: string) {
-    super(message || "A fatal error occurred while prepacking.");
+    super(message === undefined ? "A fatal error occurred while prepacking." : message);
   }
 }
 

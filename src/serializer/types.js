@@ -198,29 +198,42 @@ export class ReactStatistics {
 
 export class SerializerStatistics {
   constructor() {
+    this.functions = 0;
+    this.delayedValues = 0;
+    this.initializedModules = 0;
+    this.acceleratedModules = 0;
+    this.delayedModules = 0;
+    this.totalModules = 0;
+    this.resetBeforePass();
+  }
+  resetBeforePass() {
     this.objects = 0;
     this.objectProperties = 0;
-    this.functions = 0;
     this.functionClones = 0;
+    this.lazyObjects = 0;
     this.referentialized = 0;
     this.valueIds = 0;
     this.valuesInlined = 0;
-    this.delayedValues = 0;
-    this.acceleratedModules = 0;
-    this.delayedModules = 0;
     this.generators = 0;
+    this.requireCalls = 0;
+    this.requireCallsReplaced = 0;
   }
   objects: number;
   objectProperties: number;
   functions: number;
   functionClones: number;
+  lazyObjects: number;
   referentialized: number;
   valueIds: number;
   valuesInlined: number;
   delayedValues: number;
+  initializedModules: number;
   acceleratedModules: number;
   delayedModules: number;
+  totalModules: number;
   generators: number;
+  requireCalls: number;
+  requireCallsReplaced: number;
 
   log() {
     console.log(`=== serialization statistics`);
@@ -229,11 +242,16 @@ export class SerializerStatistics {
       `${this.functions} functions plus ${this.functionClones} clones due to captured variables; ${this
         .referentialized} captured mutable variables`
     );
+    console.log(`${this.lazyObjects} objects are lazy.`);
     console.log(
       `${this.valueIds} eager and ${this.delayedValues} delayed value ids generated, and ${this
-        .valuesInlined} values inlined`
+        .valuesInlined} values inlined.`
     );
-    console.log(`${this.acceleratedModules} accelerated and ${this.delayedModules} delayed modules.`);
+    console.log(
+      `${this.initializedModules} out of ${this.totalModules} modules initialized, with ${this
+        .acceleratedModules} accelerated and ${this.delayedModules} delayed.`
+    );
+    console.log(`${this.requireCallsReplaced} of ${this.requireCalls} require calls inlined.`);
     console.log(`${this.generators} generators`);
   }
 }

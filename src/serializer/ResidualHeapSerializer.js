@@ -1875,7 +1875,6 @@ export class ResidualHeapSerializer {
       return;
     }
     this.rewrittenAdditionalFunctions.set(additionalFunctionValue, []);
-    let shouldEmitLog = !this.residualHeapValueIdentifiers.collectValToRefCountOnly;
     let createdObjects = effects[4];
     let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
     // Allows us to emit function declarations etc. inside of this additional
@@ -1892,15 +1891,6 @@ export class ResidualHeapSerializer {
       transform(body);
     }
     this.rewrittenAdditionalFunctions.set(additionalFunctionValue, body);
-    // re-resolve initialized modules to include things from additional functions
-    this.modules.resolveInitializedModules();
-    if (shouldEmitLog && this.modules.moduleIds.size > 0)
-      console.log(
-        `=== ${this.modules.initializedModules.size} of ${this.modules.moduleIds
-          .size} modules initialized after additional function ${additionalFunctionValue.intrinsicName
-          ? additionalFunctionValue.intrinsicName
-          : ""}`
-      );
   }
 
   prepareAdditionalFunctionValues() {
@@ -1946,15 +1936,9 @@ export class ResidualHeapSerializer {
     this.emitter.finalize();
 
     this.residualFunctions.residualFunctionInitializers.factorifyInitializers(this.factoryNameGenerator);
-    let { unstrictFunctionBodies, strictFunctionBodies, requireStatistics } = this.residualFunctions.spliceFunctions(
+    let { unstrictFunctionBodies, strictFunctionBodies } = this.residualFunctions.spliceFunctions(
       this.rewrittenAdditionalFunctions
     );
-    if (this.modules.moduleIds.size > 0 && !this.residualHeapValueIdentifiers.collectValToRefCountOnly) {
-      console.log(
-        `=== ${this.modules.initializedModules.size} of ${this.modules.moduleIds
-          .size} modules initialized, ${requireStatistics.replaced} of ${requireStatistics.count} require calls inlined.`
-      );
-    }
 
     // add strict modes
     let strictDirective = t.directive(t.directiveLiteral("use strict"));

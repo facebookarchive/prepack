@@ -16,6 +16,7 @@ import type { Binding } from "../environment.js";
 import {
   AbstractObjectValue,
   AbstractValue,
+  type AbstractValueKind,
   BooleanValue,
   ConcreteValue,
   FunctionValue,
@@ -783,9 +784,9 @@ export class Generator {
     values: ValuesDomain,
     createCallee: () => BabelNodeExpression,
     args: Array<Value>,
-    kind?: string
+    kind?: AbstractValueKind
   ): AbstractValue {
-    return this.derive(types, values, args, (nodes: any) => t.callExpression(createCallee(), nodes));
+    return this.derive(types, values, args, (nodes: any) => t.callExpression(createCallee(), nodes), { kind });
   }
 
   emitStatement(args: Array<Value>, buildNode_: (Array<BabelNodeExpression>) => BabelNodeStatement) {
@@ -846,7 +847,7 @@ export class Generator {
     values: ValuesDomain,
     args: Array<Value>,
     buildNode_: DerivedExpressionBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {| kind?: AbstractValueKind, isPure?: boolean, skipInvariant?: boolean |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));

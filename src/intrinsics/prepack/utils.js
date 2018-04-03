@@ -64,7 +64,12 @@ export function parseTypeNameOrTemplate(
   }
 }
 
-export function createAbstractArgument(realm: Realm, name: string, location: ?BabelNodeSourceLocation) {
+export function createAbstractArgument(
+  realm: Realm,
+  name: string,
+  location: ?BabelNodeSourceLocation,
+  type: typeof Value = Value
+) {
   if (!realm.useAbstractInterpretation) {
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
   }
@@ -72,8 +77,8 @@ export function createAbstractArgument(realm: Realm, name: string, location: ?Ba
   let locString;
   if (location) locString = describeLocation(realm, undefined, undefined, location);
   let locVal = new StringValue(realm, locString || "(unknown location)");
-  let kind = "__abstract_" + realm.objectCount++; // need not be an object, but must be unique
-  let result = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), Value, [locVal], kind);
+  let kind = AbstractValue.makeKind("abstractCounted", (realm.objectCount++).toString()); // need not be an object, but must be unique
+  let result = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), type, [locVal], kind);
   result.intrinsicName = name;
 
   return result;
@@ -107,10 +112,10 @@ export function createAbstract(
   }
   if (!name) {
     let locVal = new StringValue(realm, locString || "(unknown location)");
-    let kind = "__abstract_" + realm.objectCount++; // need not be an object, but must be unique
+    let kind = AbstractValue.makeKind("abstractCounted", (realm.objectCount++).toString()); // need not be an object, but must be unique
     result = AbstractValue.createFromTemplate(realm, throwTemplate, type, [locVal], kind);
   } else {
-    let kind = "__abstract_" + name;
+    let kind = AbstractValue.makeKind("abstract", name);
     if (!realm.isNameStringUnique(name)) {
       let error = new CompilerDiagnostic("An abstract value with the same name exists", loc, "PP0019", "FatalError");
       realm.handleError(error);
