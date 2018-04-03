@@ -13,7 +13,7 @@
         __optimize(g0);
         __optimize(g1);
     }
-    global.inspect = function() { 
+    global.inspect = function() {
         return g0() === g1();
     }
 })();

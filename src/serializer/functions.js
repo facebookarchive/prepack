@@ -65,12 +65,7 @@ export class Functions {
   moduleTracer: ModuleTracer;
   writeEffects: Map<FunctionValue, AdditionalFunctionEffects>;
 
-  __optimizedFunctionEntryOfValue(
-    value: Value
-  ): {
-    value: ECMAScriptSourceFunctionValue | AbstractValue,
-    config?: ReactComponentTreeConfig,
-  } | void {
+  __optimizedFunctionEntryOfValue(value: Value): AdditionalFunctionEntry | void {
     let realm = this.realm;
     if (value instanceof ECMAScriptSourceFunctionValue) {
       // additional function logic
@@ -98,13 +93,13 @@ export class Functions {
       : "location unknown";
     realm.handleError(
       new CompilerDiagnostic(
-        `Additional Function Value ${location} is an invalid value`,
+        `Optimized Function Value ${location} is an not a function or react element`,
         undefined,
-        "PP0001",
+        "PP0033",
         "FatalError"
       )
     );
-    throw new FatalError("invalid Additional Function value");
+    throw new FatalError("Optimized Function Values must be functions or react elements");
   }
 
   __generateInitialAdditionalFunctions(globalKey: string) {

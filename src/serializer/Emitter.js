@@ -117,7 +117,6 @@ export class Emitter {
       this._activeGeneratorStack.push(targetBody);
     }
     if (isChild) {
-      invariant(targetBody.type === "Generator" || targetBody.type === "ConditionalAssignmentBranch");
       targetBody.parentBody = this._body;
       targetBody.nestingLevel = (this._body.nestingLevel || 0) + 1;
     }

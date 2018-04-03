@@ -1746,10 +1746,11 @@ export class ResidualHeapSerializer {
     type: "Generator" | "AdditionalFunction",
     generator: Generator,
     valuesToProcess: void | Set<AbstractValue>,
-    callback: SerializedBody => void
+    callback: SerializedBody => void,
+    isChildOverride?: boolean
   ): Array<BabelNodeStatement> {
     let newBody = { type, parentBody: undefined, entries: [], done: false };
-    let isChild = type === "Generator";
+    let isChild = isChildOverride || type === "Generator";
     let oldBody = this.emitter.beginEmitting(generator, newBody, /*isChild*/ isChild);
     this.activeGeneratorBodies.set(generator, newBody);
     callback(newBody);
@@ -1832,11 +1833,17 @@ export class ResidualHeapSerializer {
     return false;
   }
 
-  _serializeAdditionalFunctionGeneratorAndEffects(generator: Generator, additionalEffects: AdditionalFunctionEffects) {
-    return this._withGeneratorScope("AdditionalFunction", generator, /*valuesToProcess*/ undefined, newBody => {
-      let oldSerialiedValueWithIdentifiers = this._serializedValueWithIdentifiers;
-      this._serializedValueWithIdentifiers = new Set(Array.from(this._serializedValueWithIdentifiers));
-      try {
+  _serializeAdditionalFunctionGeneratorAndEffects(
+    generator: Generator,
+    functionValue: FunctionValue,
+    additionalEffects: AdditionalFunctionEffects
+  ) {
+    let inAdditionalFunction = this.isReferencedOnlyByAdditionalFunction(functionValue);
+    return this._withGeneratorScope(
+      "AdditionalFunction",
+      generator,
+      /*valuesToProcess*/ undefined,
+      newBody => {
         let effectsGenerator = additionalEffects.generator;
         effectsGenerator.serialize(this._getContext());
 
@@ -1845,10 +1852,9 @@ export class ResidualHeapSerializer {
           this.mainBody.entries.push(...lazyHoistedReactNodes);
           return null;
         }, additionalEffects.effects);
-      } finally {
-        this._serializedValueWithIdentifiers = oldSerialiedValueWithIdentifiers;
-      }
-    });
+      },
+      inAdditionalFunction
+    );
   }
 
   // result -- serialize it, a return statement will be generated later, must be a Value
@@ -1860,12 +1866,12 @@ export class ResidualHeapSerializer {
   // CreatedObjects -- should take care of itself
   _serializeAdditionalFunction(additionalFunctionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects) {
     let { effects, transforms, generator } = additionalEffects;
+    // No function info means the function is dead code, also break recursive cycles where we've already started
+    // serializing this value
     if (
       !this.additionalFunctionValueInfos.has(additionalFunctionValue) ||
-      // break self-reference cycle
       this.rewrittenAdditionalFunctions.has(additionalFunctionValue)
     ) {
-      // the additionalFunction has no info, so it likely has been dead code eliminated
       return;
     }
     this.rewrittenAdditionalFunctions.set(additionalFunctionValue, []);
@@ -1876,7 +1882,11 @@ export class ResidualHeapSerializer {
     // function instead of adding them at global scope
     // TODO: make sure this generator isn't getting mutated oddly
     ((nestedFunctions: any): Set<FunctionValue>).forEach(val => this.additionalFunctionValueNestedFunctions.add(val));
-    let body = this._serializeAdditionalFunctionGeneratorAndEffects(generator, additionalEffects);
+    let body = this._serializeAdditionalFunctionGeneratorAndEffects(
+      generator,
+      additionalFunctionValue,
+      additionalEffects
+    );
     invariant(additionalFunctionValue instanceof ECMAScriptSourceFunctionValue);
     for (let transform of transforms) {
       transform(body);
