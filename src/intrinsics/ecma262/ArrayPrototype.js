@@ -37,10 +37,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.1
   obj.defineNativeMethod("concat", 1, (context, args, argCount) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let A be ? ArraySpeciesCreate(O, 0).
-    let A = Create.ArraySpeciesCreate(realm, O, 0);
+    let A = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), 0);
 
     // 3. Let n be 0.
     let n = 0;
@@ -121,7 +121,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("copyWithin", 2, (context, [target, start, end]) => {
       // 1. Let O be ? ToObject(this value).
-      let O = To.ToObject(realm, context.throwIfNotConcrete());
+      let O = To.ToObject(realm, context);
 
       // 2. Let len be ? ToLength(? Get(O, "length")).
       let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -184,7 +184,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         } else {
           // e. Else fromPresent is false,
           // i. Perform ? DeletePropertyOrThrow(O, toKey).
-          Properties.DeletePropertyOrThrow(realm, O, toKey);
+          Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), toKey);
         }
 
         // f. Let from be from + direction.
@@ -204,16 +204,16 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.4
   obj.defineNativeMethod("entries", 0, context => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Return CreateArrayIterator(O, "key+value").
-    return Create.CreateArrayIterator(realm, O, "key+value");
+    return Create.CreateArrayIterator(realm, O.throwIfNotConcreteObject(), "key+value");
   });
 
   // ECMA262 22.1.3.5
   obj.defineNativeMethod("every", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -260,7 +260,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.6
   obj.defineNativeMethod("fill", 1, (context, [value, start, end]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -296,7 +296,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.7
   obj.defineNativeMethod("filter", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -310,7 +310,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let T = thisArg || realm.intrinsics.undefined;
 
     // 5. Let A be ? ArraySpeciesCreate(O, 0).
-    let A = Create.ArraySpeciesCreate(realm, O, 0);
+    let A = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), 0);
 
     // 6. Let k be 0.
     let k = 0;
@@ -355,7 +355,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.8
   obj.defineNativeMethod("find", 1, (context, [predicate, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -396,7 +396,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.9
   obj.defineNativeMethod("findIndex", 1, (context, [predicate, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -437,7 +437,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.10
   obj.defineNativeMethod("forEach", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -482,7 +482,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("includes", 1, (context, [searchElement, fromIndex]) => {
       // 1. Let O be ? ToObject(this value).
-      let O = To.ToObject(realm, context.throwIfNotConcrete());
+      let O = To.ToObject(realm, context);
 
       // 2. Let len be ? ToLength(? Get(O, "length")).
       let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -525,7 +525,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.12
   obj.defineNativeMethod("indexOf", 1, (context, [searchElement, fromIndex]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -581,7 +581,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.13
   obj.defineNativeMethod("join", 1, (context, [separator]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -639,16 +639,16 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.14
   obj.defineNativeMethod("keys", 0, context => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Return CreateArrayIterator(O, "key").
-    return Create.CreateArrayIterator(realm, O, "key");
+    return Create.CreateArrayIterator(realm, O.throwIfNotConcreteObject(), "key");
   });
 
   // ECMA262 22.1.3.15
   obj.defineNativeMethod("lastIndexOf", 1, (context, [searchElement, fromIndex]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -698,7 +698,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.16
   obj.defineNativeMethod("map", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -712,7 +712,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let T = thisArg || realm.intrinsics.undefined;
 
     // 5. Let A be ? ArraySpeciesCreate(O, len).
-    let A = Create.ArraySpeciesCreate(realm, O, len);
+    let A = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), len);
 
     // 6. Let k be 0.
     let k = 0;
@@ -748,7 +748,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.17
   obj.defineNativeMethod("pop", 0, context => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -772,7 +772,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let element = Get(realm, O, indx);
 
       // d. Perform ? DeletePropertyOrThrow(O, indx).
-      Properties.DeletePropertyOrThrow(realm, O, indx);
+      Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), indx);
 
       // e. Perform ? Set(O, "length", newLen, true).
       Properties.Set(realm, O, "length", new NumberValue(realm, newLen), true);
@@ -785,7 +785,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.18
   obj.defineNativeMethod("push", 1, (context, args, argCount) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, new StringValue(realm, "length")));
@@ -823,7 +823,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.19
   obj.defineNativeMethod("reduce", 1, (context, [callbackfn, initialValue]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -910,7 +910,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.20
   obj.defineNativeMethod("reduceRight", 1, (context, [callbackfn, initialValue]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -995,7 +995,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.21
   obj.defineNativeMethod("reverse", 0, context => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -1055,13 +1055,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
         Properties.Set(realm, O, lowerP, upperValue, true);
 
         // ii. Perform ? DeletePropertyOrThrow(O, upperP).
-        Properties.DeletePropertyOrThrow(realm, O, upperP);
+        Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), upperP);
       } else if (lowerExists && !upperExists) {
         // j. Else if lowerExists is true and upperExists is false, then
         invariant(lowerValue, "expected lower value to exist");
 
         // i. Perform ? DeletePropertyOrThrow(O, lowerP).
-        Properties.DeletePropertyOrThrow(realm, O, lowerP);
+        Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), lowerP);
 
         // ii. Perform ? Set(O, upperP, lowerValue, true).
         Properties.Set(realm, O, upperP, lowerValue, true);
@@ -1081,7 +1081,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.22
   obj.defineNativeMethod("shift", 0, context => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -1122,7 +1122,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       } else {
         // d. Else fromPresent is false,
         // i. Perform ? DeletePropertyOrThrow(O, to).
-        Properties.DeletePropertyOrThrow(realm, O, to);
+        Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), to);
       }
 
       // e. Increase k by 1.
@@ -1130,7 +1130,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 7. Perform ? DeletePropertyOrThrow(O, ! ToString(len-1)).
-    Properties.DeletePropertyOrThrow(realm, O, new StringValue(realm, len - 1 + ""));
+    Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), new StringValue(realm, len - 1 + ""));
 
     // 8. Perform ? Set(O, "length", len-1, true).
     Properties.Set(realm, O, "length", new NumberValue(realm, len - 1), true);
@@ -1142,7 +1142,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.23
   obj.defineNativeMethod("slice", 2, (context, [start, end]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -1163,7 +1163,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let count = Math.max(final - k, 0);
 
     // 8. Let A be ? ArraySpeciesCreate(O, count).
-    let A = Create.ArraySpeciesCreate(realm, O, count);
+    let A = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), count);
 
     // 9. Let n be 0.
     let n = 0;
@@ -1202,7 +1202,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.24
   obj.defineNativeMethod("some", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -1252,7 +1252,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.25
   obj.defineNativeMethod("sort", 1, (context, [comparefn]) => {
     // 1. Let obj be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(obj, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -1406,7 +1406,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       } else {
         // If obj is not sparse then DeletePropertyOrThrow must not be called.
         invariant(sparse);
-        Properties.DeletePropertyOrThrow(realm, O, j.toString());
+        Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), j.toString());
       }
     }
     // If an abrupt completion is returned from any of these operations, it is immediately returned as the value of this function.
@@ -1418,7 +1418,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.26
   obj.defineNativeMethod("splice", 2, (context, [start, deleteCount, ...items], argLength) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -1464,7 +1464,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 9. Let A be ? ArraySpeciesCreate(O, actualDeleteCount).
-    let A = Create.ArraySpeciesCreate(realm, O, actualDeleteCount);
+    let A = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), actualDeleteCount);
 
     // 10. Let k be 0.
     let k = 0;
@@ -1526,7 +1526,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         } else {
           // v. Else fromPresent is false,
           // 1. Perform ? DeletePropertyOrThrow(O, to).
-          Properties.DeletePropertyOrThrow(realm, O, to);
+          Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), to);
         }
 
         // vi. Increase k by 1.
@@ -1539,7 +1539,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       // d. Repeat, while k > (len - actualDeleteCount + itemCount)
       while (k > len - actualDeleteCount + itemCount) {
         // i. Perform ? DeletePropertyOrThrow(O, ! ToString(k-1)).
-        Properties.DeletePropertyOrThrow(realm, O, new StringValue(realm, k - 1 + ""));
+        Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), new StringValue(realm, k - 1 + ""));
 
         // ii. Decrease k by 1.
         k--;
@@ -1570,7 +1570,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         } else {
           // v. Else fromPresent is false,
           // 1. Perform ? DeletePropertyOrThrow(O, to).
-          Properties.DeletePropertyOrThrow(realm, O, to);
+          Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), to);
         }
 
         // vi. Decrease k by 1.
@@ -1603,7 +1603,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.27
   obj.defineNativeMethod("toLocaleString", 0, context => {
     // 1. Let array be ? ToObject(this value).
-    let array = To.ToObject(realm, context.throwIfNotConcrete());
+    let array = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(array, "length")).
     let len = To.ToLength(realm, Get(realm, array, "length"));
@@ -1667,7 +1667,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.29
   obj.defineNativeMethod("unshift", 1, (context, items, argCount) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -1706,7 +1706,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         } else {
           // vi. Else fromPresent is false,
           // 1. Perform ? DeletePropertyOrThrow(O, to).
-          Properties.DeletePropertyOrThrow(realm, O, to);
+          Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), to);
         }
 
         // vii. Decrease k by 1.

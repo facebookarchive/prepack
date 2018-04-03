@@ -397,7 +397,7 @@ export function GetV(realm: Realm, V: Value, P: PropertyKeyValue): Value {
   invariant(IsPropertyKey(realm, P), "Not a valid property key");
 
   // 2. Let O be ? ToObject(V).
-  let O = To.ToObjectPartial(realm, V);
+  let O = To.ToObject(realm, V);
 
   // 3. Return ? O.[[Get]](P, V).
   return O.$Get(P, V);

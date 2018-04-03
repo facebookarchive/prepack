@@ -153,7 +153,7 @@ export function ForInOfHeadEvaluation(
     }
 
     // b. Let obj be ToObject(exprValue).
-    let obj = To.ToObjectPartial(realm, exprValue);
+    let obj = To.ToObject(realm, exprValue);
 
     // c. Return ? EnumerateObjectProperties(obj).
     if (obj.isPartialObject() || obj instanceof AbstractObjectValue) {

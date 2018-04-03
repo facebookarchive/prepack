@@ -54,13 +54,13 @@ export default function(realm: Realm): NativeFunctionValue {
     }
 
     // 3. Return ToObject(value).
-    return To.ToObjectPartial(realm, value);
+    return To.ToObject(realm, value);
   });
 
   // ECMA262 19.1.2.1
   let ObjectAssign = func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
     // 1. Let to be ? ToObject(target).
-    let to = To.ToObjectPartial(realm, target);
+    let to = To.ToObject(realm, target);
     let to_must_be_partial = false;
 
     // 2. If only one argument was passed, return to.
@@ -79,7 +79,7 @@ export default function(realm: Realm): NativeFunctionValue {
 
       // b. Else,
       // i. Let from be ToObject(nextSource).
-      frm = To.ToObjectPartial(realm, nextSource);
+      frm = To.ToObject(realm, nextSource);
 
       // ii. Let keys be ? from.[[OwnPropertyKeys]]().
       let frm_was_partial = frm.isPartialObject();
@@ -111,10 +111,15 @@ export default function(realm: Realm): NativeFunctionValue {
           }
 
           if (frm_was_partial) {
-            frmSnapshot = frm.getSnapshot();
-            frm.temporalAlias = frmSnapshot;
-            frm.makePartial();
-            delayedSources.push(frmSnapshot);
+            if (frm instanceof AbstractObjectValue && frm.kind === "explicit conversion to object") {
+              // Make it implicit again since it is getting delayed into an Object.assign call.
+              delayedSources.push(frm.args[0]);
+            } else {
+              frmSnapshot = frm.getSnapshot();
+              frm.temporalAlias = frmSnapshot;
+              frm.makePartial();
+              delayedSources.push(frmSnapshot);
+            }
           }
         }
       }
@@ -249,7 +254,7 @@ export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.1.2.6
   func.defineNativeMethod("getOwnPropertyDescriptor", 2, (context, [O, P]) => {
     // 1. Let obj be ? ToObject(O).
-    let obj = To.ToObjectPartial(realm, O);
+    let obj = To.ToObject(realm, O);
 
     // 2. Let key be ? ToPropertyKey(P).
     let key = To.ToPropertyKey(realm, P.throwIfNotConcrete());
@@ -270,7 +275,7 @@ export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.1.2.8
   func.defineNativeMethod("getOwnPropertyDescriptors", 1, (context, [O]) => {
     // 1. Let obj be ? ToObject(O).
-    let obj = To.ToObject(realm, O.throwIfNotConcrete());
+    let obj = To.ToObject(realm, O);
 
     // 2. Let ownKeys be ? obj.[[OwnPropertyKeys]]().
     let ownKeys = obj.$OwnPropertyKeys();
@@ -304,7 +309,7 @@ export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.1.2.10
   func.defineNativeMethod("getPrototypeOf", 1, (context, [O]) => {
     // 1. Let obj be ? ToObject(O).
-    let obj = To.ToObjectPartial(realm, O);
+    let obj = To.ToObject(realm, O);
 
     // 2. Return ? obj.[[GetPrototypeOf]]().
     return obj.$GetPrototypeOf();
@@ -349,10 +354,10 @@ export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.1.2.15
   func.defineNativeMethod("keys", 1, (context, [O]) => {
     // 1. Let obj be ? ToObject(O).
-    let obj = To.ToObject(realm, O.throwIfNotConcrete());
+    let obj = To.ToObject(realm, O);
 
     // 2. Let nameList be ? EnumerableOwnProperties(obj, "key").
-    let nameList = EnumerableOwnProperties(realm, obj, "key");
+    let nameList = EnumerableOwnProperties(realm, obj.throwIfNotConcreteObject(), "key");
 
     // 3. Return CreateArrayFromList(nameList).
     return Create.CreateArrayFromList(realm, nameList);
@@ -362,10 +367,10 @@ export default function(realm: Realm): NativeFunctionValue {
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     func.defineNativeMethod("values", 1, (context, [O]) => {
       // 1. Let obj be ? ToObject(O).
-      let obj = To.ToObject(realm, O.throwIfNotConcrete());
+      let obj = To.ToObject(realm, O);
 
       // 2. Let nameList be ? EnumerableOwnProperties(obj, "value").
-      let nameList = EnumerableOwnProperties(realm, obj, "value");
+      let nameList = EnumerableOwnProperties(realm, obj.throwIfNotConcreteObject(), "value");
 
       // 3. Return CreateArrayFromList(nameList).
       return Create.CreateArrayFromList(realm, nameList);
@@ -374,10 +379,10 @@ export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.1.2.17
   func.defineNativeMethod("entries", 1, (context, [O]) => {
     // 1. Let obj be ? ToObject(O).
-    let obj = To.ToObject(realm, O.throwIfNotConcrete());
+    let obj = To.ToObject(realm, O);
 
     // 2. Let nameList be ? EnumerableOwnProperties(obj, "key+value").
-    let nameList = EnumerableOwnProperties(realm, obj, "key+value");
+    let nameList = EnumerableOwnProperties(realm, obj.throwIfNotConcreteObject(), "key+value");
 
     // 3. Return CreateArrayFromList(nameList).
     return Create.CreateArrayFromList(realm, nameList);
