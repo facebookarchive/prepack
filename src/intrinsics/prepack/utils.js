@@ -64,7 +64,12 @@ export function parseTypeNameOrTemplate(
   }
 }
 
-export function createAbstractArgument(realm: Realm, name: string, location: ?BabelNodeSourceLocation) {
+export function createAbstractArgument(
+  realm: Realm,
+  name: string,
+  location: ?BabelNodeSourceLocation,
+  type: typeof Value = Value
+) {
   if (!realm.useAbstractInterpretation) {
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
   }
@@ -73,7 +78,7 @@ export function createAbstractArgument(realm: Realm, name: string, location: ?Ba
   if (location) locString = describeLocation(realm, undefined, undefined, location);
   let locVal = new StringValue(realm, locString || "(unknown location)");
   let kind = AbstractValue.makeKind("abstractCounted", (realm.objectCount++).toString()); // need not be an object, but must be unique
-  let result = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), Value, [locVal], kind);
+  let result = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), type, [locVal], kind);
   result.intrinsicName = name;
 
   return result;
