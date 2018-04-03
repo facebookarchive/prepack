@@ -1194,7 +1194,7 @@ export class PropertiesImplementation {
                   ([node]) => {
                     return t.memberExpression(node, pname, !t.isIdentifier(pname));
                   },
-                  { kind: P }
+                  { kind: AbstractValue.makeKind("property", P) }
                 );
               } else {
                 return AbstractValue.createTemporalFromBuildFunction(

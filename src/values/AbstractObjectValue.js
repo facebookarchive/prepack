@@ -12,7 +12,16 @@
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { Descriptor, PropertyKeyValue } from "../types.js";
-import { AbstractValue, ArrayValue, ObjectValue, StringValue, Value, NumberValue, NullValue } from "./index.js";
+import {
+  AbstractValue,
+  type AbstractValueKind,
+  ArrayValue,
+  ObjectValue,
+  StringValue,
+  Value,
+  NumberValue,
+  NullValue,
+} from "./index.js";
 import type { AbstractValueBuildNodeFunction } from "./AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { IsDataDescriptor, cloneDescriptor, equalDescriptors } from "../methods/index.js";
@@ -29,7 +38,7 @@ export default class AbstractObjectValue extends AbstractValue {
     hashValue: number,
     args: Array<Value>,
     buildNode?: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: string, intrinsicName?: string |}
+    optionalArgs?: {| kind?: AbstractValueKind, intrinsicName?: string |}
   ) {
     super(realm, types, values, hashValue, args, buildNode, optionalArgs);
     if (!values.isTop()) {
