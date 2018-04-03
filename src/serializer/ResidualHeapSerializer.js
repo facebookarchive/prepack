@@ -1853,7 +1853,7 @@ export class ResidualHeapSerializer {
           return null;
         }, additionalEffects.effects);
       },
-      inAdditionalFunction
+      !!inAdditionalFunction
     );
   }
 
