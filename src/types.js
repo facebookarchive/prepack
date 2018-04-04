@@ -1016,3 +1016,20 @@ export type UtilsType = {|
   typeToString: (typeof Value) => void | string,
   getTypeFromName: string => void | typeof Value,
 |};
+
+export class RealmStatistics {
+  constructor() {
+    this.simplifications = 0;
+    this.simplificationAttempts = 0;
+    this.evaluatedNodes = 0;
+  }
+  simplifications: number;
+  simplificationAttempts: number;
+  evaluatedNodes: number;
+
+  log() {
+    console.log(`=== realm statistics`);
+    console.log(`${this.evaluatedNodes} AST nodes evaluated.`);
+    console.log(`${this.simplifications} abstract values simplified after ${this.simplificationAttempts} attempts.`);
+  }
+}
