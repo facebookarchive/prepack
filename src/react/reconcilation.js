@@ -794,9 +794,11 @@ export class Reconciler {
     let length = value.args.length;
     if (length > 0) {
       let newBranchState = new BranchState();
+      let args = [];
+      let shouldCreateNewAbstract = false;
       // TODO investigate what other kinds than "conditional" might be safe to deeply resolve
       for (let i = 0; i < length; i++) {
-        value.args[i] = this._resolveDeeply(
+        let arg = this._resolveDeeply(
           componentType,
           value.args[i],
           context,
@@ -804,10 +806,22 @@ export class Reconciler {
           newBranchState,
           evaluatedNode
         );
+        args.push(arg);
+        if (value.args[i] !== arg) {
+          shouldCreateNewAbstract = true;
+        }
       }
       let didBranch = newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
       if (didBranch && branchState !== null) {
         branchState.mergeBranchedLogic(newBranchState);
+      }
+      if (shouldCreateNewAbstract) {
+        invariant(
+          value.kind === "conditional",
+          "expected conditional abstract value when resolving value in React reconcilation"
+        );
+        let [condition, left, right] = args;
+        return AbstractValue.createFromConditionalOp(this.realm, condition, left, right);
       }
     } else {
       this.componentTreeState.deadEnds++;
