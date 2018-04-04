@@ -63,6 +63,7 @@ export type AbstractValueKind =
   | "check for known property"
   | "sentinel member expression"
   | "template for property name condition"
+  | "template for prototype member expression"
   | "this"
   | "this.refs"
   | "module"
