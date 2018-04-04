@@ -793,7 +793,7 @@ export class Reconciler {
   ): AbstractValue {
     let length = value.args.length;
     // TODO investigate what other kinds than "conditional" might be safe to deeply resolve
-    if (length > 0 && value.kind === "conditional") {
+    if (length === 3 && value.kind === "conditional") {
       let newBranchState = new BranchState();
       let args = [];
       let shouldCreateNewAbstract = false;
