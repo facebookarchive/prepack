@@ -128,7 +128,9 @@ export class ResidualFunctions {
   }
 
   _shouldUseFactoryFunction(funcBody: BabelNodeBlockStatement, instances: Array<FunctionInstance>) {
+    invariant(instances.length > 0);
     function shouldInlineFunction(): boolean {
+      if (instances[0].scopeInstances.size > 0) return false;
       let shouldInline = true;
       if (funcBody.start && funcBody.end) {
         let bodySize = funcBody.end - funcBody.start;
@@ -483,7 +485,7 @@ export class ResidualFunctions {
       };
 
       if (additionalFunctionNestedInstances.length > 0) naiveProcessInstances(additionalFunctionNestedInstances);
-      if (!this._shouldUseFactoryFunction(funcBody, normalInstances)) {
+      if (normalInstances.length > 0 && !this._shouldUseFactoryFunction(funcBody, normalInstances)) {
         naiveProcessInstances(normalInstances);
         this.statistics.functionClones--;
       } else if (normalInstances.length > 0) {
