@@ -17,15 +17,7 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { ForInOfHeadEvaluation, ForInOfBodyEvaluation } from "./ForOfStatement.js";
 import { EnumerableOwnProperties, UpdateEmpty } from "../methods/index.js";
 import { Environment } from "../singletons.js";
-import {
-  AbstractValue,
-  AbstractObjectValue,
-  ArrayValue,
-  ObjectValue,
-  StringValue,
-  UndefinedValue,
-  Value,
-} from "../values/index.js";
+import { AbstractValue, AbstractObjectValue, ArrayValue, ObjectValue, StringValue, Value } from "../values/index.js";
 import type {
   BabelNodeExpression,
   BabelNodeForInStatement,
@@ -160,7 +152,8 @@ function emitResidualLoopIfSafe(
             let cond = sourceValue.args[0];
             // and because the write always creates a value of this shape
             invariant(cond instanceof AbstractValue && cond.kind === "template for property name condition");
-            if (sourceValue.args[2] instanceof UndefinedValue) {
+            let falseVal = sourceValue.args[2];
+            if (falseVal instanceof AbstractValue && falseVal.kind === "template for prototype member expression") {
               // check that the value that was assigned itself came from
               // an expression of the form sourceObject[absStr].
               let mem = sourceValue.args[1];

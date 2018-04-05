@@ -12,7 +12,7 @@ b = {};
 if (global.__makeSimple) global.__makeSimple(b);
 z2 = b[m];
 
-b[m] = 789;
+//b[m] = 789;
 z3 = b[m];
 
 inspect = function() { return "" + a.x + a.y + a[n] + z + z1 + z2 + z3; }
