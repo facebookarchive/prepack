@@ -1106,15 +1106,27 @@ export class LexicalEnvironment {
     sources: Array<SourceFile>,
     sourceType: SourceType = "script"
   ): [BabelNodeFile, { [string]: string }] {
+    let timingStatistics = this.realm.timingStatistics;
     let asts = [];
     let code = {};
     let directives = [];
     for (let source of sources) {
       try {
+        let start = Date.now();
         let node = parse(this.realm, source.fileContents, source.filePath, sourceType);
-        if (source.sourceMapContents && source.sourceMapContents.length > 0)
-          this.fixup_source_locations(node, source.sourceMapContents);
+        if (timingStatistics !== undefined) timingStatistics.parsingTime += Date.now() - start;
+
+        let sourceMapContents = source.sourceMapContents;
+        if (sourceMapContents && sourceMapContents.length > 0) {
+          start = Date.now();
+          this.fixup_source_locations(node, sourceMapContents);
+          if (timingStatistics !== undefined) timingStatistics.fixupSourceLocationsTime += Date.now() - start;
+        }
+
+        start = Date.now();
         this.fixup_filenames(node);
+        if (timingStatistics !== undefined) timingStatistics.fixupFilenamesTime += Date.now() - start;
+
         asts = asts.concat(node.program.body);
         code[source.filePath] = source.fileContents;
         directives = directives.concat(node.program.directives);
@@ -1150,12 +1162,16 @@ export class LexicalEnvironment {
     context.variableEnvironment = this;
     context.realm = this.realm;
     this.realm.pushContext(context);
+    let timingStatistics = this.realm.timingStatistics;
     let res, code;
     try {
       let ast;
       [ast, code] = this.concatenateAndParse(sources, sourceType);
       if (onParse) onParse(ast);
+      if (timingStatistics !== undefined) timingStatistics.evaluationTime = Date.now();
       res = this.evaluateCompletion(ast, false);
+      if (timingStatistics !== undefined)
+        timingStatistics.evaluationTime = Date.now() - timingStatistics.evaluationTime;
     } finally {
       this.realm.popContext(context);
       this.realm.onDestroyScope(context.lexicalEnvironment);

@@ -417,7 +417,7 @@ fi
     if (statsFileName) {
       if (
         serialized.statistics === undefined ||
-        serialized.timingStats === undefined ||
+        serialized.timingStatistics === undefined ||
         serialized.realmStatistics === undefined
       ) {
         return;
@@ -425,7 +425,7 @@ fi
       let stats = {
         RealmStatistics: serialized.realmStatistics,
         SerializerStatistics: serialized.statistics,
-        TimingStatistics: serialized.timingStats,
+        TimingStatistics: serialized.timingStatistics,
         MemoryStatistics: v8.getHeapStatistics(),
       };
       fs.writeFileSync(statsFileName, JSON.stringify(stats));
