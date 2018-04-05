@@ -34,43 +34,57 @@ import * as t from "babel-types";
 export class WidenImplementation {
   _widenArrays(
     realm: Realm,
-    v1: void | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
-    v2: void | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
+    v1: Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
+    v2: Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
   ): Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }> {
-    let e = (v1 && v1[0]) || (v2 && v2[0]);
-    if (e instanceof Value) return this._widenArraysOfValues(realm, (v1: any), (v2: any));
-    else return this._widenArrayOfsMapEntries(realm, (v1: any), (v2: any));
+    if (v1[0] instanceof Value) {
+      invariant(v2[0] instanceof Value);
+      return this._widenArraysOfValues(realm, (v1: any), (v2: any));
+    }
+    invariant(!(v2[0] instanceof Value));
+    return this._widenArrayOfsMapEntries(realm, (v1: any), (v2: any));
   }
 
   _widenArrayOfsMapEntries(
     realm: Realm,
-    a1: void | Array<{ $Key: void | Value, $Value: void | Value }>,
-    a2: void | Array<{ $Key: void | Value, $Value: void | Value }>
+    a1: Array<{ $Key: void | Value, $Value: void | Value }>,
+    a2: Array<{ $Key: void | Value, $Value: void | Value }>
   ): Array<{ $Key: void | Value, $Value: void | Value }> {
-    let empty = realm.intrinsics.empty;
     let n = Math.max((a1 && a1.length) || 0, (a2 && a2.length) || 0);
     let result: Array<{ $Key: void | Value, $Value: void | Value }> = [];
     for (let i = 0; i < n; i++) {
-      let { $Key: key1, $Value: val1 } = (a1 && a1[i]) || { $Key: empty, $Value: empty };
-      let { $Key: key2, $Value: val2 } = (a2 && a2[i]) || { $Key: empty, $Value: empty };
+      let { $Key: key1, $Value: val1 } = a1[i] || { $Key: undefined, $Value: undefined };
+      let { $Key: key2, $Value: val2 } = a2[i] || { $Key: undefined, $Value: undefined };
       if (key1 === undefined && key2 === undefined) {
         result[i] = { $Key: undefined, $Value: undefined };
       } else {
+        if (key1 === undefined) key1 = key2;
+        else if (key2 === undefined) key2 = key1;
+        invariant(key1 !== undefined);
+        invariant(key2 !== undefined);
         let key3 = this.widenValues(realm, key1, key2);
         invariant(key3 instanceof Value);
-        let val3 = this.widenValues(realm, val1, val2);
-        invariant(val3 === undefined || val3 instanceof Value);
-        result[i] = { $Key: key3, $Value: val3 };
+        if (val1 === undefined && val2 === undefined) {
+          result[i] = { $Key: key3, $Value: undefined };
+        } else {
+          if (val1 === undefined) val1 = val2;
+          else if (val2 === undefined) val2 = val1;
+          invariant(val1 !== undefined);
+          invariant(val2 !== undefined);
+          let val3 = this.widenValues(realm, val1, val2);
+          invariant(val3 === undefined || val3 instanceof Value);
+          result[i] = { $Key: key3, $Value: val3 };
+        }
       }
     }
     return result;
   }
 
-  _widenArraysOfValues(realm: Realm, a1: void | Array<Value>, a2: void | Array<Value>): Array<Value> {
+  _widenArraysOfValues(realm: Realm, a1: Array<Value>, a2: Array<Value>): Array<Value> {
     let n = Math.max((a1 && a1.length) || 0, (a2 && a2.length) || 0);
     let result = [];
     for (let i = 0; i < n; i++) {
-      let wv = this.widenValues(realm, (a1 && a1[i]) || undefined, (a2 && a2[i]) || undefined);
+      let wv = this.widenValues(realm, a1[i], a2[i]);
       invariant(wv === undefined || wv instanceof Value);
       result[i] = wv;
     }
@@ -135,7 +149,7 @@ export class WidenImplementation {
       invariant(b2 !== undefined); // Local variables are not going to get deleted as a result of widening
       let v2 = b2.value;
       invariant(v2 !== undefined);
-      let result = this.widenValues(realm, v1, v2);
+      let result = this.widenValues(realm, v1 || realm.intrinsics.undefined, v2);
       if (result instanceof AbstractValue && result.kind === "widened") {
         let phiNode = b.phiNode;
         if (phiNode === undefined) {
@@ -162,26 +176,25 @@ export class WidenImplementation {
   // Returns an abstract value that includes both v1 and v2 as potential values.
   widenValues(
     realm: Realm,
-    v1: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
-    v2: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
+    v1: Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
+    v2: Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
   ): Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }> {
     if (Array.isArray(v1) || Array.isArray(v2)) {
-      invariant(v1 === undefined || Array.isArray(v1));
-      invariant(v2 === undefined || Array.isArray(v2));
-      return this._widenArrays(realm, ((v1: any): void | Array<Value>), ((v2: any): void | Array<Value>));
+      invariant(Array.isArray(v1));
+      invariant(Array.isArray(v2));
+      return this._widenArrays(realm, ((v1: any): Array<Value>), ((v2: any): Array<Value>));
     }
-    invariant(v1 === undefined || v1 instanceof Value);
-    invariant(v2 === undefined || v2 instanceof Value);
+    invariant(v1 instanceof Value);
+    invariant(v2 instanceof Value);
     if (
-      v1 !== undefined &&
-      v2 !== undefined &&
       !(v1 instanceof AbstractValue) &&
       !(v2 instanceof AbstractValue) &&
       StrictEqualityComparison(realm, v1.throwIfNotConcrete(), v2.throwIfNotConcrete())
     ) {
       return v1; // no need to widen a loop invariant value
     } else {
-      return AbstractValue.createFromWidening(realm, v1 || realm.intrinsics.empty, v2 || realm.intrinsics.undefined);
+      invariant(v1 && v2);
+      return AbstractValue.createFromWidening(realm, v1, v2);
     }
   }
 
@@ -284,14 +297,21 @@ export class WidenImplementation {
       if (!IsDataDescriptor(realm, d2)) return d2; // accessor properties need not be widened.
       let dc = cloneDescriptor(d2);
       invariant(dc !== undefined);
-      dc.value = this.widenValues(realm, d2.value, d2.value);
+      let d2value = dc.value;
+      invariant(d2value !== undefined); // because IsDataDescriptor is true for d2/dc
+      dc.value = this.widenValues(realm, d2value, d2value);
       return dc;
     } else {
       if (equalDescriptors(d1, d2)) {
         if (!IsDataDescriptor(realm, d1)) return d1; // identical accessor properties need not be widened.
+        // equalDescriptors plus IsDataDescriptor guarantee that both have value props and if you have a value prop is value is defined.
         let dc = cloneDescriptor(d1);
         invariant(dc !== undefined);
-        dc.value = this.widenValues(realm, d1.value, d2.value);
+        let d1value = d1.value;
+        invariant(d1value !== undefined);
+        let d2value = d2.value;
+        invariant(d2value !== undefined);
+        dc.value = this.widenValues(realm, d1value, d2value);
         return dc;
       }
       //todo: #1174 if we get here, the loop body contains a call to create a property and different iterations
