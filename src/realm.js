@@ -17,6 +17,7 @@ import type {
   ClassComponentMetadata,
   ReactHint,
 } from "./types.js";
+import { RealmStatistics } from "./types.js";
 import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler, FatalError } from "./errors.js";
 import {
   AbstractObjectValue,
@@ -150,6 +151,7 @@ export function construct_empty_effects(realm: Realm): Effects {
 
 export class Realm {
   constructor(opts: RealmOptions) {
+    this.statistics = new RealmStatistics();
     this.isReadOnly = false;
     this.useAbstractInterpretation = !!opts.serialize || !!opts.residual || !!opts.check;
     this.ignoreLeakLogic = false;
@@ -226,6 +228,7 @@ export class Realm {
     this.debugNames = opts.debugNames;
   }
 
+  statistics: RealmStatistics;
   start: number;
   isReadOnly: boolean;
   isStrict: boolean;

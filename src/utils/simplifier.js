@@ -26,6 +26,7 @@ export default function simplifyAndRefineAbstractValue(
   let savedIsReadOnly = realm.isReadOnly;
   realm.isReadOnly = true;
   let isRootSimplification = false;
+  realm.statistics.simplificationAttempts++;
 
   if (!realm.inSimplificationPath) {
     realm.inSimplificationPath = isRootSimplification = true;
@@ -37,7 +38,9 @@ export default function simplifyAndRefineAbstractValue(
       }
       throw new FatalError();
     };
-    return simplify(realm, value, isCondition);
+    let result = simplify(realm, value, isCondition);
+    if (result !== value) realm.statistics.simplifications++;
+    return result;
   } catch (e) {
     if (e.name === "Invariant Violation") throw e;
     if (e instanceof FatalError && typeof e.message === "string" && e.message.includes("PP0029")) {

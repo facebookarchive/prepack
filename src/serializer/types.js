@@ -17,6 +17,7 @@ import { SameValue } from "../methods/abstract.js";
 import { Realm, type Effects } from "../realm.js";
 import invariant from "../invariant.js";
 import type { Generator } from "../utils/generator.js";
+import type { RealmStatistics } from "../types.js";
 
 export type TryQuery<T> = (f: () => T, defaultValue: T) => T;
 
@@ -273,6 +274,7 @@ export type ObjectRefCount = {
 export type SerializedResult = {
   code: string,
   map: void | SourceMap,
+  realmStatistics?: RealmStatistics,
   reactStatistics?: ReactStatistics,
   statistics?: SerializerStatistics,
   timingStats?: TimingStatistics,

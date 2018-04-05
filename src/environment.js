@@ -1308,6 +1308,7 @@ export class LexicalEnvironment {
 
     let evaluator = this.realm.evaluators[(ast.type: string)];
     if (evaluator) {
+      this.realm.statistics.evaluatedNodes++;
       let result = evaluator(ast, strictCode, this, this.realm, metadata);
       return result;
     }
