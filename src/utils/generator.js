@@ -695,7 +695,7 @@ export class Generator {
   // e.g: (obj.property !== undefined && typeof obj.property !== "object")
   // NB: if the type of the AbstractValue is top, skips the invariant
   emitFullInvariant(object: ObjectValue | AbstractObjectValue, key: string, value: Value) {
-    if (this.realm.omitInvariants) return;
+    if (this.realm.omitInvariants || object.refuseSerialization || value.refuseSerialization) return;
     let propertyIdentifier = this.getAsPropertyNameExpression(key);
     let computed = !t.isIdentifier(propertyIdentifier);
     let accessedPropertyOf = objectNode => t.memberExpression(objectNode, propertyIdentifier, computed);
