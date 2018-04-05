@@ -100,38 +100,51 @@ export class Serializer {
 
   init(sources: Array<SourceFile>, sourceMaps?: boolean = false): void | SerializedResult {
     // Phase 1: Let's interpret.
-    let timingStats = this.options.profile ? new TimingStatistics() : undefined;
-    if (timingStats !== undefined) {
-      timingStats.totalTime = Date.now();
-      timingStats.globalCodeTime = Date.now();
-    }
+    let timingStatistics = this.options.profile ? new TimingStatistics() : undefined;
+    if (timingStatistics !== undefined) timingStatistics.totalTime = Date.now();
+
     if (this.realm.react.verbose) {
       this.logger.logInformation(`Evaluating initialization path...`);
     }
+    if (timingStatistics !== undefined) this.realm.timingStatistics = timingStatistics;
     let code = this._execute(sources);
     let environmentRecordIdAfterGlobalCode = EnvironmentRecord.nextId;
-    if (timingStats !== undefined) timingStats.globalCodeTime = Date.now() - timingStats.globalCodeTime;
+
     if (this.logger.hasErrors()) return undefined;
+
+    if (timingStatistics !== undefined) timingStatistics.resolveInitializedModulesTime = Date.now();
     this.modules.resolveInitializedModules();
+    if (timingStatistics !== undefined)
+      timingStatistics.resolveInitializedModulesTime = Date.now() - timingStatistics.resolveInitializedModulesTime;
+
+    if (timingStatistics !== undefined) timingStatistics.checkThatFunctionsAreIndependentTime = Date.now();
     this.functions.checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode);
+    if (timingStatistics !== undefined)
+      timingStatistics.checkThatFunctionsAreIndependentTime =
+        Date.now() - timingStatistics.checkThatFunctionsAreIndependentTime;
+
     let reactStatistics;
     if (this.realm.react.enabled) {
+      if (timingStatistics !== undefined) timingStatistics.optimizeReactComponentTreeRootsTime = Date.now();
       reactStatistics = new ReactStatistics();
       this.functions.optimizeReactComponentTreeRoots(reactStatistics, this.react, environmentRecordIdAfterGlobalCode);
+      if (timingStatistics !== undefined)
+        timingStatistics.optimizeReactComponentTreeRootsTime =
+          Date.now() - timingStatistics.optimizeReactComponentTreeRootsTime;
     }
 
     if (this.options.initializeMoreModules) {
-      if (timingStats !== undefined) timingStats.initializeMoreModulesTime = Date.now();
+      if (timingStatistics !== undefined) timingStatistics.initializeMoreModulesTime = Date.now();
       this.modules.initializeMoreModules();
       if (this.logger.hasErrors()) return undefined;
-      if (timingStats !== undefined)
-        timingStats.initializeMoreModulesTime = Date.now() - timingStats.initializeMoreModulesTime;
+      if (timingStatistics !== undefined)
+        timingStatistics.initializeMoreModulesTime = Date.now() - timingStatistics.initializeMoreModulesTime;
     }
 
     let additionalFunctionValuesAndEffects = this.functions.getAdditionalFunctionValuesToEffects();
 
     // Deep traversal of the heap to identify the necessary scope of residual functions
-    if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now();
+    if (timingStatistics !== undefined) timingStatistics.deepTraversalTime = Date.now();
     let preludeGenerator = this.realm.preludeGenerator;
     invariant(preludeGenerator !== undefined);
     let referentializer = new Referentializer(
@@ -152,8 +165,9 @@ export class Serializer {
       referentializer
     );
     residualHeapVisitor.visitRoots();
+    if (timingStatistics !== undefined)
+      timingStatistics.deepTraversalTime = Date.now() - timingStatistics.deepTraversalTime;
     if (this.logger.hasErrors()) return undefined;
-    if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now() - timingStats.deepTraversalTime;
 
     if (this.realm.react.verbose) {
       this.logger.logInformation(`Serializing evaluated nodes...`);
@@ -194,7 +208,7 @@ export class Serializer {
     // Serialize for the first time in order to gather reference counts
 
     if (this.options.inlineExpressions) {
-      if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now();
+      if (timingStatistics !== undefined) timingStatistics.referenceCountsTime = Date.now();
       residualHeapValueIdentifiers.initPass1();
       new ResidualHeapSerializer(
         this.realm,
@@ -216,13 +230,14 @@ export class Serializer {
         referentializer,
         residualHeapVisitor.generatorParents
       ).serialize();
+      if (timingStatistics !== undefined)
+        timingStatistics.referenceCountsTime = Date.now() - timingStatistics.referenceCountsTime;
       if (this.logger.hasErrors()) return undefined;
-      if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now() - timingStats.referenceCountsTime;
       residualHeapValueIdentifiers.initPass2();
     }
 
     // Serialize for a second time, using reference counts to minimize number of generated identifiers
-    if (timingStats !== undefined) timingStats.serializePassTime = Date.now();
+    if (timingStatistics !== undefined) timingStatistics.serializePassTime = Date.now();
     const TargetSerializer = this.options.lazyObjectsRuntime != null ? LazyObjectsSerializer : ResidualHeapSerializer;
     this.statistics.resetBeforePass();
     let residualHeapSerializer = new TargetSerializer(
@@ -247,18 +262,23 @@ export class Serializer {
     );
 
     let ast = residualHeapSerializer.serialize();
+    if (timingStatistics !== undefined)
+      timingStatistics.serializePassTime = Date.now() - timingStatistics.serializePassTime;
+
     if (this.realm.stripFlow) {
       stripFlowTypeAnnotations(ast);
     }
 
+    if (timingStatistics !== undefined) timingStatistics.babelGenerateTime = Date.now();
     // the signature for generate is not complete, hence the any
     let generated = generate(ast, { sourceMaps: sourceMaps }, (code: any));
-    if (timingStats !== undefined) {
-      timingStats.serializePassTime = Date.now() - timingStats.serializePassTime;
-      timingStats.totalTime = Date.now() - timingStats.totalTime;
-    }
+    if (timingStatistics !== undefined)
+      timingStatistics.babelGenerateTime = Date.now() - timingStatistics.babelGenerateTime;
+
+    if (timingStatistics !== undefined) timingStatistics.totalTime = Date.now() - timingStatistics.totalTime;
     invariant(!this.logger.hasErrors());
     if (this.options.logStatistics) {
+      if (timingStatistics !== undefined) timingStatistics.log();
       this.realm.statistics.log();
       residualHeapSerializer.statistics.log();
     }
@@ -268,7 +288,7 @@ export class Serializer {
       realmStatistics: this.realm.statistics,
       reactStatistics: reactStatistics,
       statistics: residualHeapSerializer.statistics,
-      timingStats: timingStats,
+      timingStatistics: timingStatistics,
       heapGraph,
     };
   }

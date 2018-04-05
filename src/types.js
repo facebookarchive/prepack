@@ -1033,3 +1033,24 @@ export class RealmStatistics {
     console.log(`${this.simplifications} abstract values simplified after ${this.simplificationAttempts} attempts.`);
   }
 }
+
+export class RealmTimingStatistics {
+  constructor() {
+    this.parsingTime = 0;
+    this.fixupSourceLocationsTime = 0;
+    this.fixupFilenamesTime = 0;
+    this.evaluationTime = 0;
+  }
+  parsingTime: number;
+  fixupSourceLocationsTime: number;
+  fixupFilenamesTime: number;
+  evaluationTime: number;
+
+  log(totalTime: number): void {
+    console.log(`=== timing statistics: ${totalTime}ms total time`);
+    console.log(
+      `${this.parsingTime}ms parsing, ${this.fixupSourceLocationsTime}ms fixing source locations, ${this
+        .fixupSourceLocationsTime}ms fixing source locations, ${this.evaluationTime}ms evaluating global code`
+    );
+  }
+}

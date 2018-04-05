@@ -55,7 +55,7 @@ import type {
   AdditionalFunctionEffects,
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
-import { TimingStatistics, SerializerStatistics, BodyReference } from "./types.js";
+import { SerializerStatistics, BodyReference } from "./types.js";
 import { Logger } from "../utils/logger.js";
 import { Modules } from "../utils/modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
@@ -203,7 +203,6 @@ export class ResidualHeapSerializer {
   residualHeapValueIdentifiers: ResidualHeapValueIdentifiers;
   requireReturns: Map<number | string, BabelNodeExpression>;
   statistics: SerializerStatistics;
-  timingStats: TimingStatistics;
   residualHeapInspector: ResidualHeapInspector;
   residualValues: Map<Value, Set<Scope>>;
   residualFunctionInstances: Map<FunctionValue, FunctionInstance>;
