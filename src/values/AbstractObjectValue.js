@@ -640,6 +640,8 @@ export default class AbstractObjectValue extends AbstractValue {
         // which can run unknown code that has access to Receiver and
         // (even in pure mode) can modify it in unknown ways.
         Havoc.value(this.$Realm, Receiver);
+        // We also need to havoc the value since it might leak to a setter.
+        Havoc.value(this.$Realm, V);
         this.$Realm.evaluateWithPossibleThrowCompletion(
           () => {
             let generator = this.$Realm.generator;
@@ -732,6 +734,8 @@ export default class AbstractObjectValue extends AbstractValue {
         Havoc.value(this.$Realm, Receiver);
         // Coercion can only have effects on anything reachable from the key.
         Havoc.value(this.$Realm, P);
+        // We also need to havoc the value since it might leak to a setter.
+        Havoc.value(this.$Realm, V);
         this.$Realm.evaluateWithPossibleThrowCompletion(
           () => {
             let generator = this.$Realm.generator;

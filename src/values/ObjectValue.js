@@ -824,6 +824,8 @@ export default class ObjectValue extends ConcreteValue {
         // If we're in pure scope, we can havoc the object and leave an
         // assignment in place.
         Havoc.value(this.$Realm, Receiver);
+        // We also need to havoc the value since it might leak to a setter.
+        Havoc.value(this.$Realm, V);
         this.$Realm.evaluateWithPossibleThrowCompletion(
           () => {
             let generator = this.$Realm.generator;

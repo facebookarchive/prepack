@@ -2,13 +2,15 @@ if (!global.__evaluatePureFunction) {
   global.__evaluatePureFunction = f => f();
 }
 
-__evaluatePureFunction(() => {
+result = __evaluatePureFunction(() => {
   let c = global.__abstract ? __abstract("boolean", '(true)') : true;
   let unknown = global.__abstract ? __abstract("string", '("x")') : "x";
+  var knownObject = {a:0};
   let objWithSetter = {
     y: 1,
     set x(v) {
       this.y = 2;
+      v.a++;
     }
   };
   let objWithDifferentSetter = {
@@ -22,9 +24,13 @@ __evaluatePureFunction(() => {
   }
   Foo.prototype = abstractObj;
   let objWithProto = new Foo();
-  objWithProto[unknown] = 123;
-  y1 = abstractObj.y;
-  y2 = objWithProto.y;
-
-  inspect = function() { return JSON.stringify({x,y1,y2}); }
+  objWithProto[unknown] = knownObject;
+  let y1 = abstractObj.y;
+  let y2 = objWithProto.y;
+  let a = knownObject.a;
+  return {a,y1,y2};
 });
+
+inspect = function() {
+  return JSON.stringify(result);
+};
