@@ -330,6 +330,7 @@ export class Realm {
   MOBILE_JSC_VERSION = "jsc-600-1-4-17";
 
   errorHandler: ?ErrorHandler;
+  suppressDiagnostics = false;
   objectCount = 0;
   symbolCount = 867501803871088;
   // Unique tag for identifying function body ast node. It is neeeded

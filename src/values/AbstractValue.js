@@ -134,7 +134,9 @@ export default class AbstractValue extends Value {
     }
   }
 
-  addSourceNamesTo(names: Array<string>) {
+  addSourceNamesTo(names: Array<string>, visited: Set<AbstractValue> = new Set()) {
+    if (visited.has(this)) return;
+    visited.add(this);
     let gen = this.$Realm.preludeGenerator;
     function add_intrinsic(name: string) {
       if (name.startsWith("_$")) {
@@ -150,7 +152,7 @@ export default class AbstractValue extends Value {
         if (val.intrinsicName) {
           add_intrinsic(val.intrinsicName);
         } else if (val instanceof AbstractValue) {
-          val.addSourceNamesTo(names);
+          val.addSourceNamesTo(names, visited);
         } else if (val instanceof StringValue) {
           if (val.value.startsWith("__")) {
             names.push(val.value.slice(2));
@@ -858,9 +860,6 @@ export default class AbstractValue extends Value {
   static generateErrorInformationForAbstractVal(val: AbstractValue): string {
     let names = [];
     val.addSourceNamesTo(names);
-    if (names.length === 0) {
-      val.addSourceNamesTo(names);
-    }
     return `abstract value${names.length > 1 ? "s" : ""} ${names.join(" and ")}`;
   }
 
@@ -892,7 +891,9 @@ export default class AbstractValue extends Value {
   }
 
   static reportIntrospectionError(val: Value, propertyName: void | PropertyKeyValue) {
-    let message = `This operation is not yet supported on ${AbstractValue.describe(val, propertyName)}`;
+    let message = "";
+    if (!val.$Realm.suppressDiagnostics)
+      message = `This operation is not yet supported on ${AbstractValue.describe(val, propertyName)}`;
 
     let realm = val.$Realm;
     return realm.reportIntrospectionError(message);
