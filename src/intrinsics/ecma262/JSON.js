@@ -325,11 +325,7 @@ function InternalJSONClone(realm: Realm, val: Value): Value {
     // TODO #1010: NaN and Infinity must be mapped to null.
     return val;
   }
-  if (
-    (val instanceof NumberValue && !isFinite(val.value)) ||
-    val instanceof UndefinedValue ||
-    val instanceof NullValue
-  ) {
+  if (val instanceof NumberValue && !isFinite(val.value)) {
     return realm.intrinsics.null;
   }
   if (val instanceof PrimitiveValue) {
