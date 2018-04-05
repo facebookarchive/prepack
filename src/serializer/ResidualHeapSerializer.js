@@ -348,6 +348,7 @@ export class ResidualHeapSerializer {
 
   _getNestedAbstractValues(absVal: AbstractValue, values: Array<Value>): Array<Value> {
     if (absVal.kind === "widened property") return values;
+    if (absVal.kind === "template for prototype member expression") return values;
     invariant(absVal.args.length === 3);
     let cond = absVal.args[0];
     invariant(cond instanceof AbstractValue);
@@ -374,6 +375,7 @@ export class ResidualHeapSerializer {
 
   _emitPropertiesWithComputedNames(obj: ObjectValue, absVal: AbstractValue) {
     if (absVal.kind === "widened property") return;
+    if (absVal.kind === "template for prototype member expression") return;
     invariant(absVal.args.length === 3);
     let cond = absVal.args[0];
     invariant(cond instanceof AbstractValue);

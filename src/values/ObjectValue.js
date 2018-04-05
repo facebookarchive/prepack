@@ -708,8 +708,11 @@ export default class ObjectValue extends ConcreteValue {
       result = AbstractValue.createFromType(this.$Realm, Value, "sentinel member expression");
       result.args = [this, P];
     } else {
-      result = this.$Realm.intrinsics.undefined;
+      result = AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [this, P], ([o, p]) =>
+        t.memberExpression(o, p, true)
+      );
     }
+
     // Get a specialization of the join of all values written to the object
     // with abstract property names.
     let prop = this.unknownProperty;
@@ -761,7 +764,16 @@ export default class ObjectValue extends ConcreteValue {
     let arg1 = absVal.args[1];
     if (arg1 instanceof AbstractValue && arg1.args.length === 3) arg1 = this.specializeJoin(arg1, propName);
     let arg2 = absVal.args[2];
-    if (arg2 instanceof AbstractValue && arg2.args.length === 3) arg2 = this.specializeJoin(arg2, propName);
+    if (arg2 instanceof AbstractValue) {
+      if (arg2.kind === "template for prototype member expression") {
+        let ob = arg2.args[0];
+        arg2 = AbstractValue.createTemporalFromBuildFunction(this.$Realm, absVal.getType(), [ob, propName], ([o, p]) =>
+          t.memberExpression(o, p, true)
+        );
+      } else if (arg2.args.length === 3) {
+        arg2 = this.specializeJoin(arg2, propName);
+      }
+    }
     return AbstractValue.createFromConditionalOp(this.$Realm, cond, arg1, arg2, absVal.expressionLocation);
   }
 
@@ -822,9 +834,11 @@ export default class ObjectValue extends ConcreteValue {
     if (desc === undefined) {
       let newVal = V;
       if (!(V instanceof UndefinedValue) && !isWidenedValue(P)) {
-        // join V with undefined, using a property name test as the condition
+        // join V with sentinel, using a property name test as the condition
         let cond = createTemplate(this.$Realm, P);
-        newVal = Join.joinValuesAsConditional(this.$Realm, cond, V, this.$Realm.intrinsics.undefined);
+        let sentinel = AbstractValue.createFromType(this.$Realm, Value, "template for prototype member expression");
+        sentinel.args = [Receiver];
+        newVal = Join.joinValuesAsConditional(this.$Realm, cond, V, sentinel);
       }
       prop.descriptor = {
         writable: true,
