@@ -1282,6 +1282,10 @@ export class PropertiesImplementation {
           enumerable: "enumerable" in X ? X.enumerable : false,
           configurable: "configurable" in X ? X.configurable : false,
         });
+      } else if (O.isPartialObject() && value instanceof Value && !(value instanceof AbstractValue)) {
+        let realmGenerator = realm.generator;
+        invariant(realmGenerator);
+        if (typeof P === "string") realmGenerator.emitFullInvariant(O, P, value);
       }
 
       // a. Set D.[[Value]] to the value of X's [[Value]] attribute.
