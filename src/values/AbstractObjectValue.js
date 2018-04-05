@@ -629,9 +629,53 @@ export default class AbstractObjectValue extends AbstractValue {
 
   // ECMA262 9.1.9
   $Set(P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
-    if (P instanceof StringValue) P = P.value;
-    invariant(this === Receiver, "TODO #1021");
     if (this.values.isTop()) {
+      if (this.$Realm.isInPureScope()) {
+        // If we're in a pure scope, we can havoc the the instance,
+        // and leave the residual property assignment in place.
+        // We assume that if the receiver is different than this object,
+        // then we only got here because there can be no other keys with
+        // this name on earlier parts of the prototype chain.
+        // We have to havoc since the property may be a getter or setter,
+        // which can run unknown code that has access to Receiver and
+        // (even in pure mode) can modify it in unknown ways.
+        Havoc.value(this.$Realm, Receiver);
+        this.$Realm.evaluateWithPossibleThrowCompletion(
+          () => {
+            let generator = this.$Realm.generator;
+            invariant(generator);
+            if (P instanceof StringValue) {
+              P = P.value;
+            }
+            if (typeof P === "string") {
+              let propName = generator.getAsPropertyNameExpression(P);
+              generator.emitStatement([Receiver, V], ([objectNode, valueNode]) =>
+                t.expressionStatement(
+                  t.assignmentExpression(
+                    "=",
+                    t.memberExpression(objectNode, propName, !t.isIdentifier(propName)),
+                    valueNode
+                  )
+                )
+              );
+            } else {
+              generator.emitStatement([Receiver, P, V], ([objectNode, keyNode, valueNode]) =>
+                t.expressionStatement(
+                  t.assignmentExpression("=", t.memberExpression(objectNode, keyNode, true), valueNode)
+                )
+              );
+            }
+            return this.$Realm.intrinsics.undefined;
+          },
+          TypesDomain.topVal,
+          ValuesDomain.topVal
+        );
+        // The emitted assignment might throw at runtime but if it does, that
+        // is handled by evaluateWithPossibleThrowCompletion. Anything that
+        // happens after this, can assume we didn't throw and therefore,
+        // we return true here.
+        return true;
+      }
       let error = new CompilerDiagnostic(
         "property access on unknown object",
         this.$Realm.currentLocation,
@@ -646,7 +690,7 @@ export default class AbstractObjectValue extends AbstractValue {
     if (elements.size === 1) {
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
-        return cv.$Set(P, V, cv);
+        return cv.$Set(P, V, Receiver === this ? cv : Receiver);
       }
       invariant(false);
     } else {
