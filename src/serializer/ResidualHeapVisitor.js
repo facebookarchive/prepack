@@ -101,7 +101,7 @@ export class ResidualHeapVisitor {
     this.scope = this.globalGenerator = generator;
     this.inspector = new ResidualHeapInspector(realm, logger);
     this.referencedDeclaredValues = new Map();
-    this.delayedVisitGeneratorEntries = [];
+    this.delayedActions = [];
     this.someReactElement = undefined;
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
     this.equivalenceSet = new HashSet();
@@ -131,7 +131,7 @@ export class ResidualHeapVisitor {
   values: Map<Value, Set<Scope>>;
   inspector: ResidualHeapInspector;
   referencedDeclaredValues: Map<AbstractValue, void | FunctionValue>;
-  delayedVisitGeneratorEntries: Array<{| generator: Generator, action: () => void | boolean |}>;
+  delayedActions: Array<{| generator: Generator, action: () => void | boolean |}>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>;
   functionInstances: Map<FunctionValue, FunctionInstance>;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
@@ -216,7 +216,7 @@ export class ResidualHeapVisitor {
       invariant(scope instanceof Generator);
       generator = scope;
     }
-    this.delayedVisitGeneratorEntries.push({ generator, action });
+    this.delayedActions.push({ generator, action });
   }
 
   // Queues up visiting a value in some arbitrary scope.
@@ -892,7 +892,7 @@ export class ResidualHeapVisitor {
         this.referencedDeclaredValues.set(value, this._getAdditionalFunctionOfScope());
       },
       recordDelayedEntry: (generator, entry: GeneratorEntry) => {
-        this.delayedVisitGeneratorEntries.push({
+        this.delayedActions.push({
           generator,
           action: () => entry.visit(callbacks, generator),
         });
@@ -1040,10 +1040,18 @@ export class ResidualHeapVisitor {
     // arguments of only BodyEntries that are required by some other residual value
     let progress = true;
     while (progress) {
-      let oldDelayedEntries = this.delayedVisitGeneratorEntries.reverse();
-      this.delayedVisitGeneratorEntries = [];
+      // Let's partition the actions by their generators,
+      // as applying effects is expensive, and so we don't want to do it
+      // more often than necessary.
+      let actionsByGenerator = new Map();
+      for (let { generator, action } of this.delayedActions.reverse()) {
+        let a = actionsByGenerator.get(generator);
+        if (a === undefined) actionsByGenerator.set(generator, (a = []));
+        a.push(action);
+      }
+      this.delayedActions = [];
       progress = false;
-      for (let { generator, action } of oldDelayedEntries) {
+      for (let [generator, actions] of actionsByGenerator) {
         let withEffectsAppliedInGlobalEnv: (() => void) => void = f => f();
         let s = generator;
         let visited = new Set();
@@ -1072,7 +1080,7 @@ export class ResidualHeapVisitor {
 
         this._withScope(generator, () =>
           withEffectsAppliedInGlobalEnv(() => {
-            if (action() !== false) progress = true;
+            for (let action of actions) if (action() !== false) progress = true;
           })
         );
       }
