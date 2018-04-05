@@ -10,6 +10,7 @@
 /* @flow */
 
 import type {
+  RealmTimingStatistics,
   Intrinsics,
   PropertyBinding,
   Descriptor,
@@ -229,6 +230,7 @@ export class Realm {
   }
 
   statistics: RealmStatistics;
+  timingStatistics: void | RealmTimingStatistics;
   start: number;
   isReadOnly: boolean;
   isStrict: boolean;
