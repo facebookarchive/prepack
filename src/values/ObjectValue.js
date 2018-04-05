@@ -34,6 +34,7 @@ import {
   SymbolValue,
   UndefinedValue,
   Value,
+  PrimitiveValue,
 } from "./index.js";
 import { isReactElement } from "../react/utils.js";
 import buildExpressionTemplate from "../utils/builder.js";
@@ -46,6 +47,7 @@ import {
   OrdinaryHasProperty,
   OrdinaryIsExtensible,
   OrdinaryPreventExtensions,
+  HasCompatibleType,
 } from "../methods/index.js";
 import { Havoc, Join, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
@@ -855,8 +857,11 @@ export default class ObjectValue extends ConcreteValue {
       }
     }
 
-    // TODO: Handle ToObject coercions.
-    invariant(this === Receiver);
+    // We should never consult the prototype chain for unknown properties.
+    // If it was simple, it would've been an assignment to the receiver.
+    // The only case the Receiver isn't this, if this was a ToObject
+    // coercion from a PrimitiveValue.
+    invariant(this === Receiver || HasCompatibleType(Receiver, PrimitiveValue));
 
     P = To.ToStringAbstract(this.$Realm, P);
 
