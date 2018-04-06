@@ -883,8 +883,8 @@ export type WidenType = {
   // Returns an abstract value that includes both v1 and v2 as potential values.
   widenValues(
     realm: Realm,
-    v1: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
-    v2: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
+    v1: Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
+    v2: Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
   ): Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
 
   containsArraysOfValue(realm: Realm, a1: void | Array<Value>, a2: void | Array<Value>): boolean,

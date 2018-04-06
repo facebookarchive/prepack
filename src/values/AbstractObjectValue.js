@@ -343,10 +343,11 @@ export default class AbstractObjectValue extends AbstractValue {
       invariant(desc !== undefined);
       if (IsDataDescriptor(this.$Realm, desc)) {
         // Values may be different, i.e. values may be loop variant, so the widened value summarizes the entire loop
+        // equalDescriptors guarantees that both have value props and if you have a value prop is value is defined.
         let d1Value = d1.value;
-        invariant(d1Value === undefined || d1Value instanceof Value);
+        invariant(d1Value instanceof Value);
         let d2Value = d2.value;
-        invariant(d2Value === undefined || d2Value instanceof Value);
+        invariant(d2Value instanceof Value);
         desc.value = Widen.widenValues(this.$Realm, d1Value, d2Value);
       } else {
         // In this case equalDescriptors guarantees exact equality betwee d1 and d2.
