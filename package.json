@@ -13,8 +13,8 @@
   "files": [
     "LICENSE",
     "PATENTS",
-    "bin/",
-    "lib/"
+    "/bin/",
+    "/lib/"
   ],
   "bin": {
     "prepack": "bin/prepack.js",
