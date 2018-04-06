@@ -22,6 +22,7 @@ import { version } from "../package.json";
 import invariant from "./invariant";
 import zipFactory from "node-zip";
 import path from "path";
+import JSONTokenizer from "./utils/JSONTokenizer.js";
 
 // Prepack helper
 declare var __residual: any;
@@ -398,8 +399,22 @@ fi
   } finally {
     if (profiler !== undefined) {
       let data = profiler.stopProfiling("");
+      let start = Date.now();
       invariant(cpuprofilePath !== undefined);
-      fs.writeFileSync(cpuprofilePath, JSON.stringify(data));
+      let stream = fs.createWriteStream(cpuprofilePath);
+      let getNextToken = JSONTokenizer(data);
+      let write = () => {
+        for (let token = getNextToken(); token !== undefined; token = getNextToken()) {
+          if (!stream.write(token)) {
+            stream.once("drain", write);
+            return;
+          }
+        }
+        stream.end();
+        invariant(cpuprofilePath !== undefined);
+        console.log(`Wrote ${cpuprofilePath} in ${Date.now() - start}ms`);
+      };
+      write();
     }
   }
 
