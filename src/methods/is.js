@@ -186,7 +186,7 @@ export function IsArray(realm: Realm, argument: Value): boolean {
   }
 
   // 4. Return false.
-  if (!argument.isSimpleObject()) argument.throwIfNotConcrete();
+  if (argument instanceof AbstractValue && !argument.isSimpleObject()) argument.throwIfNotConcrete();
   return false;
 }
 
