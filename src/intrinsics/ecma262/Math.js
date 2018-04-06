@@ -14,6 +14,7 @@ import { StringValue, ObjectValue, NumberValue, AbstractValue } from "../../valu
 import { To } from "../../singletons.js";
 import invariant from "../../invariant.js";
 import buildExpressionTemplate from "../../utils/builder.js";
+import { CompilerDiagnostic } from "../../errors.js";
 
 let buildMathTemplates: Map<string, { template: Function, templateSource: string }> = new Map();
 
@@ -200,8 +201,18 @@ export default function(realm: Realm): ObjectValue {
 
   // ECMA262 20.2.2.27
   obj.defineNativeMethod("random", 0, context => {
-    if (realm.mathRandomGenerator !== undefined) {
-      return new NumberValue(realm, realm.mathRandomGenerator());
+    let mathRandomGenerator = realm.mathRandomGenerator;
+    if (mathRandomGenerator !== undefined) {
+      let loc = realm.currentLocation;
+      let error = new CompilerDiagnostic(
+        "Result of Math.random() is made deterministic via a fixed mathRandomSeed",
+        loc,
+        "PP8000",
+        "Information"
+      );
+      realm.handleError(error);
+
+      return new NumberValue(realm, mathRandomGenerator());
     } else if (realm.useAbstractInterpretation) {
       return AbstractValue.createTemporalFromTemplate(realm, mathRandomTemplate, NumberValue, [], {
         isPure: true,
