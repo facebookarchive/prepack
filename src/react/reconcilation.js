@@ -42,6 +42,7 @@ import {
   sanitizeReactElementForFirstRenderOnly,
   getValueFromFunctionCall,
   evaluateWithNestedEffects,
+  getComponentTypeFromRootValue,
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
@@ -142,6 +143,7 @@ export class Reconciler {
       try {
         let initialProps = props || getInitialProps(this.realm, componentType);
         let initialContext = context || getInitialContext(this.realm, componentType);
+        this.alreadyEvaluatedRootNodes.set(componentType, evaluatedRootNode);
         let { result } = this._renderComponent(
           componentType,
           initialProps,
@@ -151,7 +153,6 @@ export class Reconciler {
           evaluatedRootNode
         );
         this.statistics.optimizedTrees++;
-        this.alreadyEvaluatedRootNodes.set(componentType, evaluatedRootNode);
         return result;
       } catch (error) {
         if (error.name === "Invariant Violation") {
@@ -328,12 +329,15 @@ export class Reconciler {
   ) {
     invariant(rootValue instanceof ECMAScriptSourceFunctionValue || rootValue instanceof AbstractValue);
     this.componentTreeState.deadEnds++;
-    this.branchedComponentTrees.push({
-      context,
-      evaluatedNode,
-      props,
-      rootValue,
-    });
+    let componentType = getComponentTypeFromRootValue(this.realm, rootValue);
+    if (componentType !== null && !this.hasEvaluatedRootNode(componentType, evaluatedNode)) {
+      this.branchedComponentTrees.push({
+        context,
+        evaluatedNode,
+        props,
+        rootValue,
+      });
+    }
   }
 
   _renderComplexClassComponent(
