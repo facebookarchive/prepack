@@ -207,7 +207,7 @@ export default function(realm: Realm): ObjectValue {
       let error = new CompilerDiagnostic(
         "Result of Math.random() is made deterministic via a fixed mathRandomSeed",
         loc,
-        "PP0001",
+        "PP8000",
         "Information"
       );
       realm.handleError(error);
