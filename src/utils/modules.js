@@ -417,7 +417,9 @@ export class Modules {
       let property = globalInitializedModulesMap.properties.get(moduleId);
       invariant(property);
       let moduleValue = property.descriptor && property.descriptor.value;
-      if (moduleValue instanceof Value) this.initializedModules.set(moduleId, moduleValue);
+      if (moduleValue instanceof Value && !moduleValue.mightHaveBeenDeleted()) {
+        this.initializedModules.set(moduleId, moduleValue);
+      }
     }
     this.statistics.initializedModules = this.initializedModules.size;
     this.statistics.totalModules = this.moduleIds.size;
