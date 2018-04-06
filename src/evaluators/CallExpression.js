@@ -157,7 +157,9 @@ function tryToEvaluateCallOrLeaveAsAbstract(
   tailCall: boolean
 ): Value {
   let effects;
+  let savedSuppressDiagnostics = realm.suppressDiagnostics;
   try {
+    realm.suppressDiagnostics = true;
     effects = realm.evaluateForEffects(
       () => EvaluateDirectCall(realm, strictCode, env, ref, func, thisValue, ast.arguments, tailCall),
       undefined,
@@ -165,6 +167,7 @@ function tryToEvaluateCallOrLeaveAsAbstract(
     );
   } catch (error) {
     if (error instanceof FatalError) {
+      realm.suppressDiagnostics = savedSuppressDiagnostics;
       return realm.evaluateWithPossibleThrowCompletion(
         () => generateRuntimeCall(ref, func, ast, strictCode, env, realm),
         TypesDomain.topVal,
@@ -173,6 +176,8 @@ function tryToEvaluateCallOrLeaveAsAbstract(
     } else {
       throw error;
     }
+  } finally {
+    realm.suppressDiagnostics = savedSuppressDiagnostics;
   }
   let completion = effects[0];
   if (completion instanceof PossiblyNormalCompletion) {
