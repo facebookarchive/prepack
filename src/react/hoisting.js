@@ -24,7 +24,7 @@ import {
 } from "../values/index.js";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
-import { isReactElement } from "./utils.js";
+import { isReactElement, getProperty } from "./utils.js";
 import { ResidualHeapVisitor } from "../serializer/ResidualHeapVisitor.js";
 
 // a nested object of a React Element should be hoisted where all its properties are known
@@ -167,10 +167,10 @@ export function canHoistReactElement(
   if (residualHeapVisitor === undefined) {
     return false;
   }
-  let type = Get(realm, reactElement, "type");
-  let ref = Get(realm, reactElement, "ref");
-  let key = Get(realm, reactElement, "key");
-  let props = Get(realm, reactElement, "props");
+  let type = getProperty(realm, reactElement, "type");
+  let ref = getProperty(realm, reactElement, "ref");
+  let key = getProperty(realm, reactElement, "key");
+  let props = getProperty(realm, reactElement, "props");
 
   if (visitedValues === undefined) {
     visitedValues = new Set();
