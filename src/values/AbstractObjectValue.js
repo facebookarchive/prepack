@@ -630,62 +630,7 @@ export default class AbstractObjectValue extends AbstractValue {
   // ECMA262 9.1.9
   $Set(P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
     if (this.values.isTop()) {
-      if (this.$Realm.isInPureScope()) {
-        // If we're in a pure scope, we can havoc the the instance,
-        // and leave the residual property assignment in place.
-        // We assume that if the receiver is different than this object,
-        // then we only got here because there can be no other keys with
-        // this name on earlier parts of the prototype chain.
-        // We have to havoc since the property may be a getter or setter,
-        // which can run unknown code that has access to Receiver and
-        // (even in pure mode) can modify it in unknown ways.
-        Havoc.value(this.$Realm, Receiver);
-        // We also need to havoc the value since it might leak to a setter.
-        Havoc.value(this.$Realm, V);
-        this.$Realm.evaluateWithPossibleThrowCompletion(
-          () => {
-            let generator = this.$Realm.generator;
-            invariant(generator);
-            if (P instanceof StringValue) {
-              P = P.value;
-            }
-            if (typeof P === "string") {
-              let propName = generator.getAsPropertyNameExpression(P);
-              generator.emitStatement([Receiver, V], ([objectNode, valueNode]) =>
-                t.expressionStatement(
-                  t.assignmentExpression(
-                    "=",
-                    t.memberExpression(objectNode, propName, !t.isIdentifier(propName)),
-                    valueNode
-                  )
-                )
-              );
-            } else {
-              generator.emitStatement([Receiver, P, V], ([objectNode, keyNode, valueNode]) =>
-                t.expressionStatement(
-                  t.assignmentExpression("=", t.memberExpression(objectNode, keyNode, true), valueNode)
-                )
-              );
-            }
-            return this.$Realm.intrinsics.undefined;
-          },
-          TypesDomain.topVal,
-          ValuesDomain.topVal
-        );
-        // The emitted assignment might throw at runtime but if it does, that
-        // is handled by evaluateWithPossibleThrowCompletion. Anything that
-        // happens after this, can assume we didn't throw and therefore,
-        // we return true here.
-        return true;
-      }
-      let error = new CompilerDiagnostic(
-        "property access on unknown object",
-        this.$Realm.currentLocation,
-        "PP0031",
-        "FatalError"
-      );
-      this.$Realm.handleError(error);
-      throw new FatalError();
+      return this.$SetPartial(P, V, Receiver);
     }
 
     let elements = this.values.getElements();
@@ -720,7 +665,6 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   $SetPartial(P: AbstractValue | PropertyKeyValue, V: Value, Receiver: Value): boolean {
-    if (!(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
     if (this.values.isTop()) {
       if (this.$Realm.isInPureScope()) {
         // If we're in a pure scope, we can havoc the key and the instance,
@@ -732,20 +676,36 @@ export default class AbstractObjectValue extends AbstractValue {
         // which can run unknown code that has access to Receiver and
         // (even in pure mode) can modify it in unknown ways.
         Havoc.value(this.$Realm, Receiver);
-        // Coercion can only have effects on anything reachable from the key.
-        Havoc.value(this.$Realm, P);
         // We also need to havoc the value since it might leak to a setter.
         Havoc.value(this.$Realm, V);
         this.$Realm.evaluateWithPossibleThrowCompletion(
           () => {
             let generator = this.$Realm.generator;
             invariant(generator);
-            invariant(P instanceof AbstractValue);
-            generator.emitStatement([Receiver, P, V], ([objectNode, keyNode, valueNode]) =>
-              t.expressionStatement(
-                t.assignmentExpression("=", t.memberExpression(objectNode, keyNode, true), valueNode)
-              )
-            );
+
+            if (P instanceof StringValue) {
+              P = P.value;
+            }
+            if (typeof P === "string") {
+              let propName = generator.getAsPropertyNameExpression(P);
+              generator.emitStatement([Receiver, V], ([objectNode, valueNode]) =>
+                t.expressionStatement(
+                  t.assignmentExpression(
+                    "=",
+                    t.memberExpression(objectNode, propName, !t.isIdentifier(propName)),
+                    valueNode
+                  )
+                )
+              );
+            } else {
+              // Coercion can only have effects on anything reachable from the key.
+              Havoc.value(this.$Realm, P);
+              generator.emitStatement([Receiver, P, V], ([objectNode, keyNode, valueNode]) =>
+                t.expressionStatement(
+                  t.assignmentExpression("=", t.memberExpression(objectNode, keyNode, true), valueNode)
+                )
+              );
+            }
             return this.$Realm.intrinsics.undefined;
           },
           TypesDomain.topVal,
@@ -766,6 +726,8 @@ export default class AbstractObjectValue extends AbstractValue {
       this.$Realm.handleError(error);
       throw new FatalError();
     }
+
+    if (!(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
