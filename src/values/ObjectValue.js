@@ -113,6 +113,7 @@ export default class ObjectValue extends ConcreteValue {
     "$WeakMapData",
     "$WeakSetData",
   ];
+  static trackedPropertyBindingNames = new Map();
 
   getTrackedPropertyNames(): Array<string> {
     return ObjectValue.trackedPropertyNames;
@@ -120,26 +121,35 @@ export default class ObjectValue extends ConcreteValue {
 
   setupBindings(propertyNames: Array<string>) {
     for (let propName of propertyNames) {
-      let desc = { writeable: true, value: undefined };
-      (this: any)[propName + "_binding"] = {
-        descriptor: desc,
-        object: this,
-        key: propName,
-      };
+      let propBindingName = ObjectValue.trackedPropertyBindingNames.get(propName);
+      invariant(propBindingName !== undefined);
+      (this: any)[propBindingName] = undefined;
     }
   }
 
   static setupTrackedPropertyAccessors(propertyNames: Array<string>) {
     for (let propName of propertyNames) {
+      let propBindingName = ObjectValue.trackedPropertyBindingNames.get(propName);
+      if (propBindingName === undefined)
+        ObjectValue.trackedPropertyBindingNames.set(propName, (propBindingName = propName + "_binding"));
       Object.defineProperty(ObjectValue.prototype, propName, {
         configurable: true,
         get: function() {
-          let binding = this[propName + "_binding"];
-          return binding.descriptor.value;
+          let binding = this[propBindingName];
+          return binding === undefined ? undefined : binding.descriptor.value;
         },
         set: function(v) {
-          invariant(!this.isHavocedObject(), "cannot mutate a havoced object");
-          let binding = this[propName + "_binding"];
+          // this.$IsClassPrototype === undefined is true while the object is being initialized
+          invariant(this.$IsClassPrototype === undefined || !this.isHavocedObject(), "cannot mutate a havoced object");
+          let binding = this[propBindingName];
+          if (binding === undefined) {
+            let desc = { writeable: true, value: undefined };
+            this[propBindingName] = binding = {
+              descriptor: desc,
+              object: this,
+              key: propName,
+            };
+          }
           this.$Realm.recordModifiedProperty(binding);
           binding.descriptor.value = v;
         },
@@ -245,25 +255,25 @@ export default class ObjectValue extends ConcreteValue {
   originalConstructor: void | ECMAScriptSourceFunctionValue;
 
   // partial objects
-  _isPartial: void | AbstractValue | BooleanValue;
+  _isPartial: AbstractValue | BooleanValue;
 
   // tainted objects
-  _isHavoced: void | AbstractValue | BooleanValue;
+  _isHavoced: AbstractValue | BooleanValue;
 
   // If true, the object has no property getters or setters and it is safe
   // to return AbstractValue for unknown properties.
-  _isSimple: void | AbstractValue | BooleanValue;
+  _isSimple: AbstractValue | BooleanValue;
 
   // If true, it is not safe to perform any more mutations that would change
   // the object's serialized form.
-  _isFinal: void | AbstractValue | BooleanValue;
+  _isFinal: AbstractValue | BooleanValue;
 
   // Specifies whether the object is a template that needs to be created in a scope
   // If set, this happened during object initialization and the value is never changed again, so not tracked.
   _isScopedTemplate: void | true;
 
   // If true, then unknown properties should return transitively simple abstract object values
-  _simplicityIsTransitive: void | AbstractValue | BooleanValue;
+  _simplicityIsTransitive: AbstractValue | BooleanValue;
 
   // The abstract object for which this object is the template.
   // Use this instead of the object itself when deriving temporal values for object properties.
@@ -354,11 +364,11 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   isPartialObject(): boolean {
-    return !!this._isPartial && this._isPartial.mightBeTrue();
+    return this._isPartial.mightBeTrue();
   }
 
   isFinalObject(): boolean {
-    return !!this._isFinal && this._isFinal.mightBeTrue();
+    return this._isFinal.mightBeTrue();
   }
 
   havoc(): void {
@@ -366,11 +376,11 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   isHavocedObject(): boolean {
-    return !!this._isHavoced && this._isHavoced.mightBeTrue();
+    return this._isHavoced.mightBeTrue();
   }
 
   isSimpleObject(): boolean {
-    if (this._isSimple && !this._isSimple.mightNotBeTrue()) return true;
+    if (!this._isSimple.mightNotBeTrue()) return true;
     if (this.isPartialObject()) return false;
     if (this.symbols.size > 0) return false;
     for (let propertyBinding of this.properties.values()) {
@@ -386,7 +396,7 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   isTransitivelySimple(): boolean {
-    return !!this._simplicityIsTransitive && !this._simplicityIsTransitive.mightNotBeTrue();
+    return !this._simplicityIsTransitive.mightNotBeTrue();
   }
 
   getExtensible(): boolean {
