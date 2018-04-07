@@ -705,8 +705,7 @@ export default class ObjectValue extends ConcreteValue {
           t.memberExpression(o, p, true)
         );
       }
-      result = AbstractValue.createFromType(this.$Realm, Value, "sentinel member expression");
-      result.args = [this, P];
+      result = AbstractValue.createFromType(this.$Realm, Value, "sentinel member expression", [this, P]);
     } else {
       result = AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [this, P], ([o, p]) =>
         t.memberExpression(o, p, true)
@@ -836,8 +835,9 @@ export default class ObjectValue extends ConcreteValue {
       if (!(V instanceof UndefinedValue) && !isWidenedValue(P)) {
         // join V with sentinel, using a property name test as the condition
         let cond = createTemplate(this.$Realm, P);
-        let sentinel = AbstractValue.createFromType(this.$Realm, Value, "template for prototype member expression");
-        sentinel.args = [Receiver];
+        let sentinel = AbstractValue.createFromType(this.$Realm, Value, "template for prototype member expression", [
+          Receiver,
+        ]);
         newVal = Join.joinValuesAsConditional(this.$Realm, cond, V, sentinel);
       }
       prop.descriptor = {
