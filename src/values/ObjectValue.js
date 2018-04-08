@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm, ExecutionContext } from "../realm.js";
-import { ValuesDomain } from "../domains/index.js";
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type {
   DataBlock,
@@ -34,6 +34,7 @@ import {
   SymbolValue,
   UndefinedValue,
   Value,
+  PrimitiveValue,
 } from "./index.js";
 import { isReactElement } from "../react/utils.js";
 import buildExpressionTemplate from "../utils/builder.js";
@@ -46,6 +47,7 @@ import {
   OrdinaryHasProperty,
   OrdinaryIsExtensible,
   OrdinaryPreventExtensions,
+  HasCompatibleType,
 } from "../methods/index.js";
 import { Havoc, Join, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
@@ -794,6 +796,77 @@ export default class ObjectValue extends ConcreteValue {
     let pIsLoopVar = isWidenedValue(P);
     let pIsNumeric = Value.isTypeCompatibleWith(P.getType(), NumberValue);
 
+    // A string coercion might have side-effects.
+    // TODO #1682: We assume that simple objects mean that they don't have a
+    // side-effectful valueOf and toString but that's not enforced.
+    if (P.mightNotBeString() && P.mightNotBeNumber() && !P.isSimpleObject()) {
+      if (this.$Realm.isInPureScope()) {
+        // If we're in pure scope, we can havoc the key and keep going.
+        // Coercion can only have effects on anything reachable from the key.
+        Havoc.value(this.$Realm, P);
+      } else {
+        let error = new CompilerDiagnostic(
+          "property key might not have a well behaved toString or be a symbol",
+          this.$Realm.currentLocation,
+          "PP0002",
+          "RecoverableError"
+        );
+        if (this.$Realm.handleError(error) !== "Recover") {
+          throw new FatalError();
+        }
+      }
+    }
+
+    // We assume that simple objects have no getter/setter properties and
+    // that all properties are writable.
+    if (!this.isSimpleObject()) {
+      if (this.$Realm.isInPureScope()) {
+        // If we're in pure scope, we can havoc the object and leave an
+        // assignment in place.
+        Havoc.value(this.$Realm, Receiver);
+        // We also need to havoc the value since it might leak to a setter.
+        Havoc.value(this.$Realm, V);
+        this.$Realm.evaluateWithPossibleThrowCompletion(
+          () => {
+            let generator = this.$Realm.generator;
+            invariant(generator);
+            invariant(P instanceof AbstractValue);
+            generator.emitStatement([Receiver, P, V], ([objectNode, keyNode, valueNode]) =>
+              t.expressionStatement(
+                t.assignmentExpression("=", t.memberExpression(objectNode, keyNode, true), valueNode)
+              )
+            );
+            return this.$Realm.intrinsics.undefined;
+          },
+          TypesDomain.topVal,
+          ValuesDomain.topVal
+        );
+        // The emitted assignment might throw at runtime but if it does, that
+        // is handled by evaluateWithPossibleThrowCompletion. Anything that
+        // happens after this, can assume we didn't throw and therefore,
+        // we return true here.
+        return true;
+      } else {
+        let error = new CompilerDiagnostic(
+          "unknown property access might need to invoke a setter",
+          this.$Realm.currentLocation,
+          "PP0030",
+          "RecoverableError"
+        );
+        if (this.$Realm.handleError(error) !== "Recover") {
+          throw new FatalError();
+        }
+      }
+    }
+
+    // We should never consult the prototype chain for unknown properties.
+    // If it was simple, it would've been an assignment to the receiver.
+    // The only case the Receiver isn't this, if this was a ToObject
+    // coercion from a PrimitiveValue.
+    invariant(this === Receiver || HasCompatibleType(Receiver, PrimitiveValue));
+
+    P = To.ToStringAbstract(this.$Realm, P);
+
     function createTemplate(realm: Realm, propName: AbstractValue) {
       return AbstractValue.createFromBinaryOp(
         realm,
@@ -804,19 +877,6 @@ export default class ObjectValue extends ConcreteValue {
         "template for property name condition"
       );
     }
-
-    // We assume that simple objects have no getter/setter properties and
-    // that all properties are writable.
-    if (
-      this !== Receiver ||
-      !this.isSimpleObject() ||
-      (P.mightNotBeString() && P.mightNotBeNumber() && !P.isSimpleObject())
-    ) {
-      AbstractValue.reportIntrospectionError(P, "TODO #1021");
-      throw new FatalError();
-    }
-
-    P = To.ToStringAbstract(this.$Realm, P);
 
     let prop;
     if (this.unknownProperty === undefined) {

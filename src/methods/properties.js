@@ -995,6 +995,11 @@ export class PropertiesImplementation {
 
     // 6. Else if IsPropertyReference(V) is true, then
     if (Environment.IsPropertyReference(realm, V)) {
+      if (base instanceof AbstractValue) {
+        // Ensure that abstract values are coerced to objects. This might yield
+        // an operation that might throw.
+        base = To.ToObject(realm, base);
+      }
       // a. If HasPrimitiveBase(V) is true, then
       if (Environment.HasPrimitiveBase(realm, V)) {
         // i. Assert: In realm case, base will never be null or undefined.
@@ -1002,16 +1007,6 @@ export class PropertiesImplementation {
 
         // ii. Set base to ToObject(base).
         base = To.ToObject(realm, base);
-      }
-      if (!(base instanceof AbstractObjectValue) && base instanceof AbstractValue) {
-        let diagnostic = new CompilerDiagnostic(
-          `member expression object ${AbstractValue.describe(base)} is unknown`,
-          realm.currentLocation,
-          "PP0012",
-          "FatalError"
-        );
-        realm.handleError(diagnostic);
-        throw new FatalError();
       }
       invariant(base instanceof ObjectValue || base instanceof AbstractObjectValue);
 
