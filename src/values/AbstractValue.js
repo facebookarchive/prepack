@@ -36,7 +36,7 @@ import {
   UndefinedValue,
   Value,
 } from "./index.js";
-import { hashBinary, hashCall, hashString, hashTernary, hashUnary } from "../methods/index.js";
+import { hashBinary, hashCall, hashTernary, hashUnary } from "../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 
@@ -103,7 +103,6 @@ export default class AbstractValue extends Value {
   ) {
     invariant(realm.useAbstractInterpretation);
     super(realm, optionalArgs ? optionalArgs.intrinsicName : undefined);
-    invariant(buildNode instanceof Function || args.length === 0);
     invariant(!Value.isTypeCompatibleWith(types.getType(), ObjectValue) || this instanceof AbstractObjectValue);
     invariant(types.getType() !== NullValue && types.getType() !== UndefinedValue);
     this.types = types;
@@ -734,11 +733,16 @@ export default class AbstractValue extends Value {
     return result;
   }
 
-  static createFromType(realm: Realm, resultType: typeof Value, kind?: AbstractValueKind): AbstractValue {
+  static createFromType(
+    realm: Realm,
+    resultType: typeof Value,
+    kind?: AbstractValueKind,
+    operands?: Array<Value>
+  ): AbstractValue {
     let types = new TypesDomain(resultType);
     let Constructor = Value.isTypeCompatibleWith(resultType, ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let hash = hashString(resultType.name + (kind || ""));
-    let result = new Constructor(realm, types, ValuesDomain.topVal, hash, []);
+    let [hash, args] = hashCall(resultType.name + (kind || ""), ...(operands || []));
+    let result = new Constructor(realm, types, ValuesDomain.topVal, hash, args);
     if (kind) result.kind = kind;
     result.expressionLocation = realm.currentLocation;
     return result;
