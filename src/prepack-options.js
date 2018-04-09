@@ -10,7 +10,14 @@
 /* @flow */
 
 import type { ErrorHandler } from "./errors.js";
-import type { SerializerOptions, RealmOptions, Compatibility, DebuggerOptions, ReactOutputTypes } from "./options";
+import type {
+  SerializerOptions,
+  RealmOptions,
+  Compatibility,
+  DebuggerOptions,
+  ReactOutputTypes,
+  InvariantModeTypes,
+} from "./options";
 import { Realm } from "./realm.js";
 import invariant from "./invariant.js";
 
@@ -32,6 +39,7 @@ export type PrepackOptions = {|
   mathRandomSeed?: string,
   errorHandler?: ErrorHandler,
   omitInvariants?: boolean,
+  invariantMode?: InvariantModeTypes,
   emitConcreteModel?: boolean,
   outputFilename?: string,
   profile?: boolean,
@@ -63,6 +71,7 @@ export function getRealmOptions({
   errorHandler,
   mathRandomSeed,
   omitInvariants = false,
+  invariantMode = "throw",
   emitConcreteModel = false,
   uniqueSuffix,
   reactEnabled,
@@ -83,6 +92,7 @@ export function getRealmOptions({
     errorHandler,
     mathRandomSeed,
     omitInvariants,
+    invariantMode,
     emitConcreteModel,
     uniqueSuffix,
     reactEnabled,

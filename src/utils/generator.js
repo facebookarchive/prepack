@@ -754,6 +754,18 @@ export class Generator {
     }
   }
 
+  getErrorStatement(message: BabelNodeExpression): BabelNodeStatement {
+    if (this.realm.invariantMode === "throw")
+      return t.throwStatement(t.newExpression(this.preludeGenerator.memoizeReference("Error"), [message]));
+    else
+      return t.expressionStatement(
+        t.callExpression(
+          t.memberExpression(this.preludeGenerator.memoizeReference("console"), t.identifier(this.realm.invariantMode)),
+          [message]
+        )
+      );
+  }
+
   emitInvariant(
     args: Array<Value>,
     violationConditionFn: (Array<BabelNodeExpression>) => BabelNodeExpression,
@@ -773,8 +785,8 @@ export class Generator {
           );
         }
         let condition = violationConditionFn(nodes);
-        let throwblock = t.blockStatement([t.throwStatement(t.newExpression(t.identifier("Error"), [throwString]))]);
-        return t.ifStatement(condition, throwblock);
+        let consequent = this.getErrorStatement(throwString);
+        return t.ifStatement(condition, consequent);
       },
     });
   }

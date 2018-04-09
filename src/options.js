@@ -29,6 +29,8 @@ export const CompatibilityValues = [
   "node-react",
 ];
 
+export type InvariantModeTypes = "throw" | "info" | "warn" | "error";
+export const InvariantModeValues = ["throw", "info", "warn", "error"];
 export type ReactOutputTypes = "create-element" | "jsx" | "bytecode";
 export const ReactOutputValues = ["create-element", "jsx", "bytecode"];
 
@@ -39,6 +41,7 @@ export type RealmOptions = {
   errorHandler?: ErrorHandler,
   mathRandomSeed?: string,
   omitInvariants?: boolean,
+  invariantMode?: InvariantModeTypes,
   emitConcreteModel?: boolean,
   uniqueSuffix?: string,
   residual?: boolean,
