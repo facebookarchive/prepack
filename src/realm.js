@@ -177,7 +177,7 @@ export class Realm {
     this.start = Date.now();
     this.compatibility = opts.compatibility || "browser";
     this.maxStackDepth = opts.maxStackDepth || 225;
-    this.omitInvariants = !!opts.omitInvariants;
+    this.invariantLevel = opts.invariantLevel || 0;
     this.invariantMode = opts.invariantMode || "throw";
     this.emitConcreteModel = !!opts.emitConcreteModel;
 
@@ -242,7 +242,7 @@ export class Realm {
   mathRandomGenerator: void | (() => number);
   strictlyMonotonicDateNow: boolean;
   maxStackDepth: number;
-  omitInvariants: boolean;
+  invariantLevel: number;
   invariantMode: InvariantModeTypes;
   ignoreLeakLogic: boolean;
   emitConcreteModel: boolean;

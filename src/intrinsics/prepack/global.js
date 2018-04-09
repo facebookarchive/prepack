@@ -326,29 +326,17 @@ export default function(realm: Realm): void {
           invariant(generator);
 
           let key = To.ToStringPartial(realm, propertyName);
-          let propertyIdentifier = generator.getAsPropertyNameExpression(key);
-          let computed = !t.isIdentifier(propertyIdentifier);
 
           if (realm.emitConcreteModel) {
             generator.emitConcreteModel(key, value);
-          } else {
-            let accessedPropertyOf = objectNode => t.memberExpression(objectNode, propertyIdentifier, computed);
-            let inExpressionOf = objectNode =>
-              t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(key), objectNode), true);
-
+          } else if (realm.invariantLevel >= 1) {
             let invariantOptionString = invariantOptions
               ? To.ToStringPartial(realm, invariantOptions)
               : "FULL_INVARIANT";
             switch (invariantOptionString) {
               // checks (!property in object || object.property === undefined)
               case "VALUE_DEFINED_INVARIANT":
-                let condition = ([objectNode, valueNode]) =>
-                  t.logicalExpression(
-                    "||",
-                    inExpressionOf(objectNode),
-                    t.binaryExpression("===", accessedPropertyOf(objectNode), t.valueToNode(undefined))
-                  );
-                generator.emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
+                generator.emitPropertyInvariant(object, key, value.mightBeUndefined() ? "PRESENT" : "DEFINED");
                 break;
               case "SKIP_INVARIANT":
                 break;

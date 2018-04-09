@@ -40,7 +40,7 @@ export type RealmOptions = {
   debugNames?: boolean,
   errorHandler?: ErrorHandler,
   mathRandomSeed?: string,
-  omitInvariants?: boolean,
+  invariantLevel?: number,
   invariantMode?: InvariantModeTypes,
   emitConcreteModel?: boolean,
   uniqueSuffix?: string,

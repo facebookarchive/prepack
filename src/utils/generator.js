@@ -746,11 +746,11 @@ export class Generator {
           );
           return checks.reduce((expr, newCondition) => t.logicalExpression("&&", expr, newCondition));
         };
-        this.emitInvariant([value, value], condition, valueNode => valueNode);
+        this._emitInvariant([value, value], condition, valueNode => valueNode);
       }
     } else {
       condition = ([objectNode, valueNode]) => t.binaryExpression("!==", accessedPropertyOf(objectNode), valueNode);
-      this.emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
+      this._emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
     }
   }
 
@@ -766,12 +766,38 @@ export class Generator {
       );
   }
 
-  emitInvariant(
+  emitPropertyInvariant(
+    object: ObjectValue | AbstractObjectValue,
+    key: string,
+    state: "MISSING" | "PRESENT" | "DEFINED"
+  ) {
+    let propertyIdentifier = this.getAsPropertyNameExpression(key);
+    let computed = !t.isIdentifier(propertyIdentifier);
+    let accessedPropertyOf = (objectNode: BabelNodeExpression) =>
+      t.memberExpression(objectNode, propertyIdentifier, computed);
+    let condition = ([objectNode: BabelNodeExpression]) => {
+      let n = t.binaryExpression("in", t.stringLiteral(key), objectNode);
+      if (state !== "MISSING") {
+        n = t.unaryExpression("!", n, true);
+        if (state === "DEFINED")
+          n = t.logicalExpression(
+            "||",
+            n,
+            t.binaryExpression("===", accessedPropertyOf(objectNode), t.valueToNode(undefined))
+          );
+      }
+      return n;
+    };
+
+    this._emitInvariant([object, object], condition, objnode => accessedPropertyOf(objnode));
+  }
+
+  _emitInvariant(
     args: Array<Value>,
     violationConditionFn: (Array<BabelNodeExpression>) => BabelNodeExpression,
     appendLastToInvariantFn?: BabelNodeExpression => BabelNodeExpression
   ): void {
-    if (this.realm.omitInvariants) return;
+    invariant(this.realm.invariantLevel > 0);
     this._addEntry({
       args,
       buildNode: (nodes: Array<BabelNodeExpression>) => {
@@ -896,10 +922,10 @@ export class Generator {
     else if (type === IntegralValue) typeofString = "number";
     else if (type === SymbolValue) typeofString = "symbol";
     else if (type === ObjectValue) typeofString = "object";
-    if (typeofString !== undefined) {
+    if (typeofString !== undefined && this.realm.invariantLevel >= 3) {
       // Verify that the types are as expected, a failure of this invariant
       // should mean the model is wrong.
-      this.emitInvariant(
+      this._emitInvariant(
         [res, res],
         nodes => {
           invariant(typeofString !== undefined);
