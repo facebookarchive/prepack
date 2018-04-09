@@ -51,7 +51,7 @@ import {
   PossiblyNormalCompletion,
   ThrowCompletion,
 } from "./completions.js";
-import type { Compatibility, RealmOptions, ReactOutputTypes } from "./options.js";
+import type { Compatibility, RealmOptions, ReactOutputTypes, InvariantModeTypes } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
@@ -178,6 +178,7 @@ export class Realm {
     this.compatibility = opts.compatibility || "browser";
     this.maxStackDepth = opts.maxStackDepth || 225;
     this.omitInvariants = !!opts.omitInvariants;
+    this.invariantMode = opts.invariantMode || "throw";
     this.emitConcreteModel = !!opts.emitConcreteModel;
 
     this.$TemplateMap = [];
@@ -242,6 +243,7 @@ export class Realm {
   strictlyMonotonicDateNow: boolean;
   maxStackDepth: number;
   omitInvariants: boolean;
+  invariantMode: InvariantModeTypes;
   ignoreLeakLogic: boolean;
   emitConcreteModel: boolean;
 

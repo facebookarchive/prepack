@@ -305,10 +305,8 @@ export class ResidualHeapSerializer {
               ? t.memberExpression(uid, protoExpression)
               : t.callExpression(this.preludeGenerator.memoizeReference("Object.getPrototypeOf"), [uid]);
           let condition = t.binaryExpression("!==", fetchedPrototype, serializedProto);
-          let throwblock = t.blockStatement([
-            t.throwStatement(t.newExpression(t.identifier("Error"), [t.stringLiteral("unexpected prototype")])),
-          ]);
-          this.emitter.emit(t.ifStatement(condition, throwblock));
+          let consequent = this.generator.getErrorStatement(t.stringLiteral("unexpected prototype"));
+          this.emitter.emit(t.ifStatement(condition, consequent));
         });
       }
       return;
