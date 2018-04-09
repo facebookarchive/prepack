@@ -439,9 +439,8 @@ export class ToImplementation {
         if (realm.isInPureScope()) {
           invariant(arg.getType() === Value); // Can't be primitive or object for sure, which leaves just Value.
           // will be serialized as Object.assign(serialized_arg)
-          obj = AbstractValue.createFromType(realm, ObjectValue, "explicit conversion to object");
+          obj = AbstractValue.createFromType(realm, ObjectValue, "explicit conversion to object", [arg]);
           invariant(obj instanceof AbstractObjectValue);
-          obj.args = [arg];
         } else {
           obj = arg.throwIfNotConcreteObject();
         }
