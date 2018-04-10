@@ -1,25 +1,18 @@
 
-if (!this.__evaluatePureFunction) {
-  this.__evaluatePureFunction = function(f) {
-    return f();
-  };
-}
-
-if (typeof Bootloader === "undefined") {
-  var Bootloader = {
-    loadModules() {}
-  }
-}
-
-__evaluatePureFunction(() => {
-  var x = window.__abstract ? __abstract("boolean", "(true)") : true;
-  var y;
-
+function func(x) {
   if (x) {
     Bootloader.loadModules(['Foo'], function() {}, "Bar");
   }
-  
-  window.foo = [x, y];
-})
+}
 
+if (window.__optimize) {
+  __optimize(func);
+}
 
+if (!window.__abstract) {
+  if (!func.toString().includes(`Bootloader.loadModules(['Foo'], function () {}, "Bar");`)) {
+    throw new Error("Test failed!");
+  }
+}
+
+window.result = func;
