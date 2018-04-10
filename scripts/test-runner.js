@@ -370,7 +370,7 @@ function runTest(name, code, options: PrepackOptions, args) {
         let value = code.substring(searchStart + copyMarker.length, searchEnd);
         let newline = code.indexOf("\n", searchStart);
         let count = parseInt(code.substring(searchEnd + 1, newline), 10);
-        copiesToFind.set(new RegExp(value, "gi"), count);
+        copiesToFind.set(new RegExp(value.replace(/[[\]]/g, "\\$&"), "gi"), count);
         searchStart = code.indexOf(copyMarker, newline);
       }
     }
