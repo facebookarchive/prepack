@@ -761,6 +761,11 @@ export class ResidualHeapVisitor {
       case "WeakSet":
         this.visitValueSet(val);
         return;
+      case "Promise":
+        let promiseValue = val.$PromiseValue;
+        invariant(promiseValue !== undefined);
+        this.visitValue(promiseValue);
+        return;
       default:
         if (kind !== "Object") this.logger.logError(val, `Object of kind ${kind} is not supported in residual heap.`);
         if (this.realm.react.enabled && valueIsReactLibraryObject(this.realm, val, this.logger)) {
