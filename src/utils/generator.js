@@ -769,13 +769,18 @@ export class Generator {
   getErrorStatement(message: BabelNodeExpression): BabelNodeStatement {
     if (this.realm.invariantMode === "throw")
       return t.throwStatement(t.newExpression(this.preludeGenerator.memoizeReference("Error"), [message]));
-    else
-      return t.expressionStatement(
-        t.callExpression(
-          t.memberExpression(this.preludeGenerator.memoizeReference("console"), t.identifier(this.realm.invariantMode)),
-          [message]
-        )
-      );
+    else {
+      let targetReference = this.realm.invariantMode;
+      let args = [message];
+      let i = targetReference.indexOf("+");
+      if (i !== -1) {
+        let s = targetReference.substr(i + 1);
+        let x = Number.parseInt(s, 10);
+        args.push(isNaN(x) ? t.stringLiteral(s) : t.numericLiteral(x));
+        targetReference = targetReference.substr(0, i);
+      }
+      return t.expressionStatement(t.callExpression(this.preludeGenerator.memoizeReference(targetReference), args));
+    }
   }
 
   emitPropertyInvariant(

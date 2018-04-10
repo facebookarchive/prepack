@@ -29,8 +29,26 @@ export const CompatibilityValues = [
   "node-react",
 ];
 
-export type InvariantModeTypes = "throw" | "info" | "warn" | "error";
-export const InvariantModeValues = ["throw", "info", "warn", "error"];
+export type InvariantModeTypes =
+  | "throw"
+  | "console.info"
+  | "console.warn"
+  | "console.error"
+  | "nativeLoggingHook+0"
+  | "nativeLoggingHook+1"
+  | "nativeLoggingHook+3"
+  | "nativeLoggingHook+2";
+export const InvariantModeValues = [
+  "throw",
+  "console.info",
+  "console.warn",
+  "console.error",
+  "nativeLoggingHook+0",
+  "nativeLoggingHook+1",
+  "nativeLoggingHook+2",
+  "nativeLoggingHook+3",
+];
+
 export type ReactOutputTypes = "create-element" | "jsx" | "bytecode";
 export const ReactOutputValues = ["create-element", "jsx", "bytecode"];
 

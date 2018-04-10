@@ -355,7 +355,7 @@ export default function(realm: Realm): void {
               default:
                 invariant(false, "Invalid invariantOption " + invariantOptionString);
             }
-            realm.markPropertyAsChecked(object, key);
+            if (!realm.neverCheckProperty(object, key)) realm.markPropertyAsChecked(object, key);
           }
           realm.generator = undefined; // don't emit code during the following $Set call
           // casting to due to Flow workaround above

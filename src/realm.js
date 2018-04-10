@@ -519,7 +519,7 @@ export class Realm {
     this.$GlobalEnv.environmentRecord.DeleteBinding(name);
   }
 
-  _neverCheckProperty(object: ObjectValue | AbstractObjectValue, P: string) {
+  neverCheckProperty(object: ObjectValue | AbstractObjectValue, P: string) {
     return (
       P.startsWith("__") ||
       (object === this.$GlobalObject && P === "global") ||
@@ -538,7 +538,7 @@ export class Realm {
   }
 
   markPropertyAsChecked(object: ObjectValue | AbstractObjectValue, P: string) {
-    invariant(!this._neverCheckProperty(object, P));
+    invariant(!this.neverCheckProperty(object, P));
     let objectId = this._checkedObjectIds.get(object);
     if (objectId === undefined) this._checkedObjectIds.set(object, (objectId = this._checkedObjectIds.size));
     let id = `__${objectId}:${P}`;
@@ -547,7 +547,7 @@ export class Realm {
   }
 
   hasBindingBeenChecked(object: ObjectValue | AbstractObjectValue, P: string): void | boolean {
-    if (this._neverCheckProperty(object, P)) return true;
+    if (this.neverCheckProperty(object, P)) return true;
     let objectId = this._checkedObjectIds.get(object);
     if (objectId === undefined) return false;
     let id = `__${objectId}:${P}`;
