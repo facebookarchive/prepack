@@ -823,6 +823,7 @@ export class ResidualHeapVisitor {
   }
 
   visitValue(val: Value): void {
+    invariant(val !== undefined);
     invariant(!(val instanceof ObjectValue && val.refuseSerialization));
     if (val instanceof AbstractValue) {
       if (this.preProcessValue(val)) this.visitAbstractValue(val);
