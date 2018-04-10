@@ -45,7 +45,7 @@ const fbMagicGlobalFunctions = [
   "xuiglyph",
 ];
 
-const fbMagicGlobalObjects = ["JSResource"];
+const fbMagicGlobalObjects = ["JSResource", "fbt"];
 
 function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectValue) {
   let babelHelpersValue = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, `babelHelpers`, true);

@@ -144,6 +144,7 @@ function lintCompiledSource(source) {
       ifRequired: true,
       ix: true,
       fbglyph: true,
+      fbt: true,
       requireWeak: true,
       xuiglyph: true,
       // ES 6
