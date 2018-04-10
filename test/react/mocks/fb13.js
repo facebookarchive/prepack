@@ -1,4 +1,3 @@
-
 function func(x) {
   if (x) {
     Bootloader.loadModules(['Foo'], function() {}, "Bar");
