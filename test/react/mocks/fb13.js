@@ -8,8 +8,10 @@ if (window.__optimize) {
   __optimize(func);
 }
 
-func.getTrials = function() {
-  return func.toString().includes(`Bootloader.loadModules(['Foo'], function () {}, "Bar");`);
+func.getTrials = function(_, fn) {
+  if (!fn.toString().includes('Bootloader.loadModules(')) {
+    throw new Error('Expected to find Bootloader.loadModules() call.');
+  }
 };
 
 module.exports = func;
