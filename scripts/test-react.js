@@ -646,6 +646,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "fb11.js");
       });
 
+      it("fb-www 13", async () => {
+        await runTest(directory, "fb13.js");
+      });
+
       it("repl example", async () => {
         await runTest(directory, "repl-example.js");
       });

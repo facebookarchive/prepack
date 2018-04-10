@@ -2920,6 +2920,16 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output fb-www mocks fb-www 13 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
 exports[`Test React with JSX input, JSX output fb-www mocks repl example 1`] = `
 ReactStatistics {
   "componentsEvaluated": 7,
@@ -5897,6 +5907,16 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, create-element output fb-www mocks fb-www 13 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
 exports[`Test React with JSX input, create-element output fb-www mocks repl example 1`] = `
 ReactStatistics {
   "componentsEvaluated": 7,
@@ -8839,6 +8859,16 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output fb-www mocks fb-www 13 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
 exports[`Test React with create-element input, JSX output fb-www mocks repl example 1`] = `
 ReactStatistics {
   "componentsEvaluated": 7,
@@ -11778,6 +11808,16 @@ ReactStatistics {
   "inlinedComponents": 9,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output fb-www mocks fb-www 13 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
 }
 `;
 
