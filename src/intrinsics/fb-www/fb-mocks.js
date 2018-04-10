@@ -256,6 +256,5 @@ export function createFbMocks(realm: Realm, global: ObjectValue | AbstractObject
   for (let objectName of fbMagicGlobalObjects) {
     createMagicGlobalObject(realm, global, objectName);
   }
-
   createBootloader(realm, global);
 }
