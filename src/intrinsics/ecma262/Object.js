@@ -58,7 +58,7 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.1
-  if (!realm.isCompatibleWith("mobile")) {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
     let ObjectAssign = func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
       // 1. Let to be ? ToObject(target).
       let to = To.ToObject(realm, target);
@@ -303,7 +303,7 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.9
-  if (!realm.isCompatibleWith("mobile"))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     func.defineNativeMethod("getOwnPropertySymbols", 1, (context, [O]) => {
       // Return ? GetOwnPropertyKeys(O, Symbol).
       return GetOwnPropertyKeys(realm, O, SymbolValue);
@@ -380,7 +380,7 @@ export default function(realm: Realm): NativeFunctionValue {
     });
 
   // ECMA262 19.1.2.17
-  if (!realm.isCompatibleWith("mobile"))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     func.defineNativeMethod("entries", 1, (context, [O]) => {
       // 1. Let obj be ? ToObject(O).
       let obj = To.ToObject(realm, O);
