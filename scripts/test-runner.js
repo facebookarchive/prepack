@@ -266,7 +266,7 @@ function runTest(name, code, options: PrepackOptions, args) {
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   if (code.includes("// inline expressions")) options.inlineExpressions = true;
   if (code.includes("// do not inline expressions")) options.inlineExpressions = false;
-  options.invariantLevel = code.includes("// omit invariants") || args.verbose ? 0 : 4;
+  options.invariantLevel = code.includes("// omit invariants") || args.verbose ? 0 : 99;
   if (code.includes("// emit concrete model")) options.emitConcreteModel = true;
   if (code.includes("// exceeds stack limit")) options.maxStackDepth = 10;
   if (code.includes("// react")) {

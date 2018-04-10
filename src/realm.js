@@ -520,35 +520,38 @@ export class Realm {
   }
 
   _neverCheckProperty(object: ObjectValue | AbstractObjectValue, P: string) {
-    return object === this.$GlobalObject && (P.startsWith("__") || P === "global");
+    return (
+      P.startsWith("__") ||
+      (object === this.$GlobalObject && P === "global") ||
+      (object.intrinsicName !== undefined && object.intrinsicName.startsWith("__"))
+    );
+  }
+
+  _getCheckedBindings(): ObjectValue {
+    let globalObject = this.$GlobalObject;
+    invariant(globalObject instanceof ObjectValue);
+    let binding = globalObject.properties.get("__checkedBindings");
+    invariant(binding !== undefined);
+    let checkedBindingsObject = binding.descriptor && binding.descriptor.value;
+    invariant(checkedBindingsObject instanceof ObjectValue);
+    return checkedBindingsObject;
   }
 
   markPropertyAsChecked(object: ObjectValue | AbstractObjectValue, P: string) {
     invariant(!this._neverCheckProperty(object, P));
     let objectId = this._checkedObjectIds.get(object);
     if (objectId === undefined) this._checkedObjectIds.set(object, (objectId = this._checkedObjectIds.size));
-    let id = `${objectId}:${P}`;
-    this.assignToGlobal(
-      t.memberExpression(
-        t.memberExpression(t.identifier("global"), t.identifier("__checkedBindings")),
-        t.identifier(id)
-      ),
-      this.intrinsics.true
-    );
+    let id = `__${objectId}:${P}`;
+    let checkedBindings = this._getCheckedBindings();
+    checkedBindings.$Set(id, this.intrinsics.true, checkedBindings);
   }
 
   hasBindingBeenChecked(object: ObjectValue | AbstractObjectValue, P: string): void | boolean {
     if (this._neverCheckProperty(object, P)) return true;
     let objectId = this._checkedObjectIds.get(object);
     if (objectId === undefined) return false;
-    let id = `${objectId}:${P}`;
-    let globalObject = this.$GlobalObject;
-    if (!(globalObject instanceof ObjectValue)) return false;
-    let binding = globalObject.properties.get("__checkedBindings");
-    invariant(binding !== undefined);
-    let checkedBindingsObject = binding.descriptor && binding.descriptor.value;
-    invariant(checkedBindingsObject instanceof ObjectValue);
-    binding = checkedBindingsObject.properties.get(id);
+    let id = `__${objectId}:${P}`;
+    let binding = this._getCheckedBindings().properties.get(id);
     if (binding === undefined) return false;
     let value = binding.descriptor && binding.descriptor.value;
     return value instanceof Value && !value.mightNotBeTrue();
@@ -913,7 +916,10 @@ export class Realm {
 
     let tvalFor: Map<any, AbstractValue> = new Map();
     pbindings.forEach((val, key, map) => {
-      if (key.object instanceof ObjectValue && newlyCreatedObjects.has(key.object)) {
+      if (
+        key.object instanceof ObjectValue &&
+        (newlyCreatedObjects.has(key.object) || key.object.refuseSerialization)
+      ) {
         return;
       }
       let value = val && val.value;
@@ -940,7 +946,10 @@ export class Realm {
       }
     });
     pbindings.forEach((val, key, map) => {
-      if (key.object instanceof ObjectValue && newlyCreatedObjects.has(key.object)) {
+      if (
+        key.object instanceof ObjectValue &&
+        (newlyCreatedObjects.has(key.object) || key.object.refuseSerialization)
+      ) {
         return;
       }
       let path = key.pathNode;

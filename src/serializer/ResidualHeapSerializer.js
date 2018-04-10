@@ -2067,7 +2067,7 @@ export class ResidualHeapSerializer {
     };
     console.log("=== serialized but not visited values");
     for (let value of this.serializedValues) if (!this.residualValues.has(value)) logValue(value);
-    console.log("=== visited but serialized values");
+    console.log("=== visited but not serialized values");
     for (let value of this.residualValues.keys()) if (!this.serializedValues.has(value)) logValue(value);
   }
 }

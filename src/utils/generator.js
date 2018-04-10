@@ -695,6 +695,7 @@ export class Generator {
   // e.g: (obj.property !== undefined && typeof obj.property !== "object")
   // NB: if the type of the AbstractValue is top, skips the invariant
   emitFullInvariant(object: ObjectValue | AbstractObjectValue, key: string, value: Value) {
+    if (object.refuseSerialization) return;
     let propertyIdentifier = this.getAsPropertyNameExpression(key);
     let computed = !t.isIdentifier(propertyIdentifier);
     let accessedPropertyOf = objectNode => t.memberExpression(objectNode, propertyIdentifier, computed);
@@ -771,12 +772,19 @@ export class Generator {
     key: string,
     state: "MISSING" | "PRESENT" | "DEFINED"
   ) {
+    if (object.refuseSerialization) return;
     let propertyIdentifier = this.getAsPropertyNameExpression(key);
     let computed = !t.isIdentifier(propertyIdentifier);
     let accessedPropertyOf = (objectNode: BabelNodeExpression) =>
       t.memberExpression(objectNode, propertyIdentifier, computed);
     let condition = ([objectNode: BabelNodeExpression]) => {
-      let n = t.binaryExpression("in", t.stringLiteral(key), objectNode);
+      let n = t.callExpression(
+        t.memberExpression(
+          this.preludeGenerator.memoizeReference("Object.prototype.hasOwnProperty"),
+          t.identifier("call")
+        ),
+        [objectNode, t.stringLiteral(key)]
+      );
       if (state !== "MISSING") {
         n = t.unaryExpression("!", n, true);
         if (state === "DEFINED")
@@ -801,15 +809,18 @@ export class Generator {
     this._addEntry({
       args,
       buildNode: (nodes: Array<BabelNodeExpression>) => {
-        let throwString = t.stringLiteral("Prepack model invariant violation");
+        let messageComponents = [
+          t.stringLiteral("Prepack model invariant violation ("),
+          t.numericLiteral(this.preludeGenerator.nextInvariantId++),
+        ];
         if (appendLastToInvariantFn) {
           let last = nodes.pop();
-          throwString = t.binaryExpression(
-            "+",
-            t.stringLiteral("Prepack model invariant violation: "),
-            appendLastToInvariantFn(last)
-          );
-        }
+          messageComponents.push(t.stringLiteral("): "));
+          messageComponents.push(appendLastToInvariantFn(last));
+        } else messageComponents.push(t.stringLiteral(")"));
+        let throwString = messageComponents[0];
+        for (let i = 1; i < messageComponents.length; i++)
+          throwString = t.binaryExpression("+", throwString, messageComponents[i]);
         let condition = violationConditionFn(nodes);
         let consequent = this.getErrorStatement(throwString);
         return t.ifStatement(condition, consequent);
@@ -1122,6 +1133,7 @@ export class PreludeGenerator {
     this.nameGenerator = new NameGenerator(new Set(), !!debugNames, uniqueSuffix || "", "_$");
     this.usesThis = false;
     this.declaredGlobals = new Set();
+    this.nextInvariantId = 0;
   }
 
   prelude: Array<BabelNodeStatement>;
@@ -1130,6 +1142,7 @@ export class PreludeGenerator {
   nameGenerator: NameGenerator;
   usesThis: boolean;
   declaredGlobals: Set<string>;
+  nextInvariantId: number;
 
   createNameGenerator(prefix: string): NameGenerator {
     return new NameGenerator(

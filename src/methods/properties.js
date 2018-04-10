@@ -1227,7 +1227,13 @@ export class PropertiesImplementation {
         throw new FatalError();
       } else if (realm.invariantLevel >= 6 && O.isIntrinsic()) {
         let realmGenerator = realm.generator;
-        if (realmGenerator && typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
+        // TODO: Because global variables are special, checking for missing global object properties doesn't quite work yet.
+        if (
+          realmGenerator &&
+          typeof P === "string" &&
+          O !== realm.$GlobalObject &&
+          !realm.hasBindingBeenChecked(O, P)
+        ) {
           realm.markPropertyAsChecked(O, P);
           realmGenerator.emitPropertyInvariant(O, P, "MISSING");
         }
@@ -1238,7 +1244,13 @@ export class PropertiesImplementation {
     if (!existingBinding.descriptor) {
       if (realm.invariantLevel >= 6 && O.isIntrinsic()) {
         let realmGenerator = realm.generator;
-        if (realmGenerator && typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
+        // TODO: Because global variables are special, checking for missing global object properties doesn't quite work yet.
+        if (
+          realmGenerator &&
+          typeof P === "string" &&
+          O !== realm.$GlobalObject &&
+          !realm.hasBindingBeenChecked(O, P)
+        ) {
           realm.markPropertyAsChecked(O, P);
           realmGenerator.emitPropertyInvariant(O, P, "MISSING");
         }
@@ -1306,11 +1318,14 @@ export class PropertiesImplementation {
             realmGenerator.emitFullInvariant(O, P, value);
           }
         }
-      } else if (O.isIntrinsic() && realm.invariantLevel >= 5 && value instanceof Value) {
-        let realmGenerator = realm.generator;
-        if (realmGenerator && typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
-          realm.markPropertyAsChecked(O, P);
-          realmGenerator.emitFullInvariant(O, P, value);
+      } else {
+        // TODO: Because global variables are special, checking for global object properties doesn't quite work yet.
+        if (O !== realm.$GlobalObject && O.isIntrinsic() && realm.invariantLevel >= 5 && value instanceof Value) {
+          let realmGenerator = realm.generator;
+          if (realmGenerator && typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
+            realm.markPropertyAsChecked(O, P);
+            realmGenerator.emitFullInvariant(O, P, value);
+          }
         }
       }
 
