@@ -749,6 +749,17 @@ export class Generator {
         };
         this._emitInvariant([value, value], condition, valueNode => valueNode);
       }
+    } else if (value instanceof FunctionValue) {
+      // We do a special case for functions,
+      // as we like to use concrete functions in the model to model abstract behaviors.
+      // These concrete functions do not have the right identity.
+      condition = ([objectNode]) =>
+        t.binaryExpression(
+          "!==",
+          t.unaryExpression("typeof", accessedPropertyOf(objectNode), true),
+          t.stringLiteral("function")
+        );
+      this._emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
     } else {
       condition = ([objectNode, valueNode]) => t.binaryExpression("!==", accessedPropertyOf(objectNode), valueNode);
       this._emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
