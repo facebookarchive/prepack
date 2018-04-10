@@ -117,13 +117,15 @@ export default function(realm: Realm): NativeFunctionValue {
     });
 
   // ECMA262 20.1.2.6
-  func.defineNativeConstant("MAX_SAFE_INTEGER", new NumberValue(realm, 9007199254740991));
+  if (!realm.isCompatibleWith("mobile"))
+    func.defineNativeConstant("MAX_SAFE_INTEGER", new NumberValue(realm, 9007199254740991));
 
   // ECMA262 20.1.2.7
   func.defineNativeConstant("MAX_VALUE", new NumberValue(realm, 1.7976931348623157e308));
 
   // ECMA262 20.1.2.8
-  func.defineNativeConstant("MIN_SAFE_INTEGER", new NumberValue(realm, -9007199254740991));
+  if (!realm.isCompatibleWith("mobile"))
+    func.defineNativeConstant("MIN_SAFE_INTEGER", new NumberValue(realm, -9007199254740991));
 
   // ECMA262 20.1.2.9
   func.defineNativeConstant("MIN_VALUE", new NumberValue(realm, 5e-324));
