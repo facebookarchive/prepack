@@ -72,7 +72,7 @@ function run(
     --inlineExpressions      When generating code, tells prepack to avoid naming expressions when they are only used once,
                              and instead inline them where they are used.
     --simpleClosures         When generating code, tells prepack to not defer initializing closures
-    --invariantLevel         0: no invariants (default); 1-7: more invariants for accesses to abstract and intrinsic properties
+    --invariantLevel         0: no invariants (default); 1: checks for abstract values; 2: checks for accessed built-ins; 3: internal consistency
     --invariantMode          Whether to throw an exception or call a console function to log an invariant violation; default = throw.
     --emitConcreteModel      Synthesize concrete model values for abstract models(defined by __assumeDataProperty).
     --version                Output the version number.

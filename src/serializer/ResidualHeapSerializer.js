@@ -295,7 +295,7 @@ export class ResidualHeapSerializer {
     let kind = obj.getKind();
     let proto = obj.$Prototype;
     if (objectPrototypeAlreadyEstablished) {
-      if (this.realm.invariantLevel >= 7) {
+      if (this.realm.invariantLevel >= 3) {
         this.emitter.emitNowOrAfterWaitingForDependencies([proto, obj], () => {
           invariant(proto);
           let serializedProto = this.serializeValue(proto);

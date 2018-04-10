@@ -1225,7 +1225,7 @@ export class PropertiesImplementation {
         }
         AbstractValue.reportIntrospectionError(O, P);
         throw new FatalError();
-      } else if (realm.invariantLevel >= 6 && O.isIntrinsic()) {
+      } else if (realm.invariantLevel >= 2 && O.isIntrinsic()) {
         let realmGenerator = realm.generator;
         // TODO: Because global variables are special, checking for missing global object properties doesn't quite work yet.
         if (
@@ -1242,7 +1242,7 @@ export class PropertiesImplementation {
     }
     realm.callReportPropertyAccess(existingBinding);
     if (!existingBinding.descriptor) {
-      if (realm.invariantLevel >= 6 && O.isIntrinsic()) {
+      if (realm.invariantLevel >= 2 && O.isIntrinsic()) {
         let realmGenerator = realm.generator;
         // TODO: Because global variables are special, checking for missing global object properties doesn't quite work yet.
         if (
@@ -1275,7 +1275,7 @@ export class PropertiesImplementation {
     if (IsDataDescriptor(realm, X)) {
       let value = X.value;
       if (O.isIntrinsic() && O.isPartialObject()) {
-        if (realm.invariantLevel >= 2 && value instanceof AbstractValue) {
+        if (realm.invariantLevel >= 1 && value instanceof AbstractValue) {
           let savedUnion;
           let savedIndex;
           if (value.kind === "abstractConcreteUnion") {
@@ -1310,7 +1310,7 @@ export class PropertiesImplementation {
               configurable: "configurable" in X ? X.configurable : false,
             });
           }
-        } else if (realm.invariantLevel >= 4 && value instanceof Value && !(value instanceof AbstractValue)) {
+        } else if (realm.invariantLevel >= 1 && value instanceof Value && !(value instanceof AbstractValue)) {
           let realmGenerator = realm.generator;
           invariant(realmGenerator);
           if (typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
@@ -1320,7 +1320,7 @@ export class PropertiesImplementation {
         }
       } else {
         // TODO: Because global variables are special, checking for global object properties doesn't quite work yet.
-        if (O !== realm.$GlobalObject && O.isIntrinsic() && realm.invariantLevel >= 5 && value instanceof Value) {
+        if (O !== realm.$GlobalObject && O.isIntrinsic() && realm.invariantLevel >= 2 && value instanceof Value) {
           let realmGenerator = realm.generator;
           if (realmGenerator && typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
             realm.markPropertyAsChecked(O, P);

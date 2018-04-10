@@ -949,7 +949,7 @@ export class Generator {
     else if (type === IntegralValue) typeofString = "number";
     else if (type === SymbolValue) typeofString = "symbol";
     else if (type === ObjectValue) typeofString = "object";
-    if (typeofString !== undefined && this.realm.invariantLevel >= 3) {
+    if (typeofString !== undefined && this.realm.invariantLevel >= 1) {
       // Verify that the types are as expected, a failure of this invariant
       // should mean the model is wrong.
       this._emitInvariant(
