@@ -329,6 +329,45 @@ class PossiblyNormalReturnEntry extends GeneratorEntry {
   }
 }
 
+class JoinedAbruptCompletionsEntry extends GeneratorEntry {
+  constructor(generator: Generator, completion: JoinedAbruptCompletions, realm: Realm) {
+    super();
+    this.completion = completion;
+    this.containingGenerator = generator;
+    this.condition = completion.joinCondition;
+
+    this.consequentGenerator = Generator.fromEffects(completion.consequentEffects, realm, "ConsequentEffects");
+    this.alternateGenerator = Generator.fromEffects(completion.alternateEffects, realm, "AlternateEffects");
+  }
+
+  completion: JoinedAbruptCompletions;
+  containingGenerator: Generator;
+
+  condition: AbstractValue;
+  consequentGenerator: Generator;
+  alternateGenerator: Generator;
+
+  visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
+    invariant(
+      containingGenerator === this.containingGenerator,
+      "This entry requires effects to be applied and may not be moved"
+    );
+    context.visitValues([this.condition]);
+    context.visitGenerator(this.consequentGenerator, containingGenerator);
+    context.visitGenerator(this.alternateGenerator, containingGenerator);
+    return true;
+  }
+
+  serialize(context: SerializationContext) {
+    let condition = context.serializeValue(this.condition);
+    let valuesToProcess = new Set();
+    let consequentBody = context.serializeGenerator(this.consequentGenerator, valuesToProcess);
+    let alternateBody = context.serializeGenerator(this.alternateGenerator, valuesToProcess);
+    context.emit(t.ifStatement(condition, t.blockStatement(consequentBody), t.blockStatement(alternateBody)));
+    context.processValues(valuesToProcess);
+  }
+}
+
 function serializeBody(
   generator: Generator,
   context: SerializationContext,
@@ -387,14 +426,16 @@ export class Generator {
     if (result instanceof UndefinedValue) return output;
     if (result instanceof Value) {
       output.emitReturnValue(result);
+    } else if (result instanceof ReturnCompletion) {
+      output.emitReturnValue(result.value);
     } else if (result instanceof PossiblyNormalCompletion) {
       output.emitPossiblyNormalReturn(result, realm);
     } else if (result instanceof ThrowCompletion) {
       output.emitThrow(result.value);
+    } else if (result instanceof JoinedAbruptCompletions) {
+      output.emitJoinedAbruptCompletions(result, realm);
     } else {
-      /*else if (result instanceof JoinedAbruptCompletions) {
-
-    } */ invariant(false);
+      invariant(false);
     }
     return output;
   }
@@ -442,6 +483,10 @@ export class Generator {
 
   emitPossiblyNormalReturn(result: PossiblyNormalCompletion, realm: Realm) {
     this._entries.push(new PossiblyNormalReturnEntry(this, result, realm));
+  }
+
+  emitJoinedAbruptCompletions(result: JoinedAbruptCompletions, realm: Realm) {
+    this._entries.push(new JoinedAbruptCompletionsEntry(this, result, realm));
   }
 
   getName(): string {
@@ -939,6 +984,8 @@ export class Generator {
         } else if (entry instanceof TemporalBuildNodeEntry) {
           if (entry.dependencies) for (let dependency of entry.dependencies) visit(dependency);
         } else if (entry instanceof PossiblyNormalReturnEntry) {
+          for (let dependency of [entry.consequentGenerator, entry.alternateGenerator]) visit(dependency);
+        } else if (entry instanceof JoinedAbruptCompletionsEntry) {
           for (let dependency of [entry.consequentGenerator, entry.alternateGenerator]) visit(dependency);
         } else {
           invariant(

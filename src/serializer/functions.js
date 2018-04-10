@@ -10,10 +10,10 @@
 /* @flow */
 
 import type { BabelNodeSourceLocation } from "babel-types";
-import { Completion, PossiblyNormalCompletion } from "../completions.js";
+import { Completion, JoinedAbruptCompletions, PossiblyNormalCompletion, ReturnCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
-import { type Effects, type PropertyBindings, Realm } from "../realm.js";
+import { construct_empty_effects, type Effects, type PropertyBindings, Realm } from "../realm.js";
 import type { PropertyBinding, ReactComponentTreeConfig } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
 import {
@@ -29,6 +29,7 @@ import {
 import { Generator } from "../utils/generator.js";
 import { Get } from "../methods/index.js";
 import { ModuleTracer } from "../utils/modules.js";
+import { Join } from "../singletons.js";
 import { ReactStatistics } from "./types";
 import type { ReactSerializerState, AdditionalFunctionEffects, ReactEvaluatedNode } from "./types";
 import { Reconciler, type ComponentTreeState } from "../react/reconcilation.js";
@@ -131,6 +132,42 @@ export class Functions {
     environmentRecordIdAfterGlobalCode: number,
     parentAdditionalFunction: FunctionValue | void = undefined
   ): AdditionalFunctionEffects | null {
+    let [pncResult] = effects;
+    if (pncResult instanceof PossiblyNormalCompletion) {
+      // This is a join point for all the forked paths in pncResult
+      effects = Join.joinEffectsAndPromoteNestedReturnCompletions(
+        this.realm,
+        pncResult,
+        construct_empty_effects(this.realm)
+      );
+      let [result] = effects;
+      if (result instanceof JoinedAbruptCompletions) {
+        if (result.alternate instanceof ReturnCompletion) {
+          result.alternateEffects[0] = pncResult.value;
+          result = new PossiblyNormalCompletion(
+            pncResult.value,
+            result.joinCondition,
+            result.consequent,
+            result.consequentEffects,
+            pncResult.value,
+            result.alternateEffects,
+            []
+          );
+        } else if (result.consequent instanceof ReturnCompletion) {
+          result.consequentEffects[0] = pncResult.value;
+          result = new PossiblyNormalCompletion(
+            pncResult.value,
+            result.joinCondition,
+            pncResult.value,
+            result.consequentEffects,
+            result.alternate,
+            result.alternateEffects,
+            []
+          );
+        }
+        effects[0] = result;
+      }
+    }
     let retValue: AdditionalFunctionEffects = {
       parentAdditionalFunction,
       effects,
