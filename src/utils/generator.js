@@ -695,6 +695,12 @@ export class Generator {
   // e.g: (obj.property !== undefined && typeof obj.property !== "object")
   // NB: if the type of the AbstractValue is top, skips the invariant
   emitFullInvariant(object: ObjectValue | AbstractObjectValue, key: string, value: Value) {
+    if (
+      this.realm.omitInvariants ||
+      object.refuseSerialization ||
+      (value instanceof ObjectValue && value.refuseSerialization)
+    )
+      return;
     let propertyIdentifier = this.getAsPropertyNameExpression(key);
     let computed = !t.isIdentifier(propertyIdentifier);
     let accessedPropertyOf = objectNode => t.memberExpression(objectNode, propertyIdentifier, computed);
@@ -748,6 +754,17 @@ export class Generator {
         };
         this.emitInvariant([value, value], condition, valueNode => valueNode);
       }
+    } else if (value instanceof FunctionValue) {
+      // We do a special case for functions,
+      // as we like to use concrete functions in the model to model abstract behaviors.
+      // These concrete functions do not have the right identity.
+      condition = ([objectNode]) =>
+        t.binaryExpression(
+          "!==",
+          t.unaryExpression("typeof", accessedPropertyOf(objectNode), true),
+          t.stringLiteral("function")
+        );
+      this.emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
     } else {
       condition = ([objectNode, valueNode]) => t.binaryExpression("!==", accessedPropertyOf(objectNode), valueNode);
       this.emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
