@@ -1227,12 +1227,24 @@ export class PropertiesImplementation {
         throw new FatalError();
       } else if (realm.invariantLevel >= 6 && O.isIntrinsic()) {
         let realmGenerator = realm.generator;
-        if (realmGenerator && typeof P === "string") realmGenerator.emitPropertyInvariant(O, P, "MISSING");
+        if (realmGenerator && typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
+          realm.markPropertyAsChecked(O, P);
+          realmGenerator.emitPropertyInvariant(O, P, "MISSING");
+        }
       }
       return undefined;
     }
     realm.callReportPropertyAccess(existingBinding);
-    if (!existingBinding.descriptor) return undefined;
+    if (!existingBinding.descriptor) {
+      if (realm.invariantLevel >= 6 && O.isIntrinsic()) {
+        let realmGenerator = realm.generator;
+        if (realmGenerator && typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
+          realm.markPropertyAsChecked(O, P);
+          realmGenerator.emitPropertyInvariant(O, P, "MISSING");
+        }
+      }
+      return undefined;
+    }
 
     // 3. Let D be a newly created Property Descriptor with no fields.
     let D = {};
@@ -1275,7 +1287,10 @@ export class PropertiesImplementation {
               args[savedIndex] = value;
               value = AbstractValue.createAbstractConcreteUnion(realm, ...args);
             }
-            if (typeof P === "string") realmGenerator.emitFullInvariant(O, P, value);
+            if (typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
+              realm.markPropertyAsChecked(O, P);
+              realmGenerator.emitFullInvariant(O, P, value);
+            }
             InternalSetProperty(realm, O, P, {
               value: value,
               writable: "writable" in X ? X.writable : false,
@@ -1286,11 +1301,17 @@ export class PropertiesImplementation {
         } else if (realm.invariantLevel >= 4 && value instanceof Value && !(value instanceof AbstractValue)) {
           let realmGenerator = realm.generator;
           invariant(realmGenerator);
-          if (typeof P === "string") realmGenerator.emitFullInvariant(O, P, value);
+          if (typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
+            realm.markPropertyAsChecked(O, P);
+            realmGenerator.emitFullInvariant(O, P, value);
+          }
         }
       } else if (O.isIntrinsic() && realm.invariantLevel >= 5 && value instanceof Value) {
         let realmGenerator = realm.generator;
-        if (realmGenerator && typeof P === "string") realmGenerator.emitFullInvariant(O, P, value);
+        if (realmGenerator && typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
+          realm.markPropertyAsChecked(O, P);
+          realmGenerator.emitFullInvariant(O, P, value);
+        }
       }
 
       // a. Set D.[[Value]] to the value of X's [[Value]] attribute.

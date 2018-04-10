@@ -45,8 +45,8 @@ export function createAbstractFunction(realm: Realm, ...additionalValues: Array<
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
 
-  global.$DefineOwnProperty("dump", {
-    value: new NativeFunctionValue(realm, "global.dump", "dump", 0, (context, args) => {
+  global.$DefineOwnProperty("__dump", {
+    value: new NativeFunctionValue(realm, "global.__dump", "__dump", 0, (context, args) => {
       console.log("dump", args.map(arg => arg.serialize()));
       return context;
     }),
@@ -202,6 +202,15 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
+  // Set of property bindings whose invariant got checked
+  // NB: Changes to this shouldn't ever be serialized
+  global.$DefineOwnProperty("__checkedBindings", {
+    value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__checkedBindings", true),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
   // Helper function used to instatiate a residual function
   function deriveNativeFunctionValue(unsafe: boolean): NativeFunctionValue {
     return new NativeFunctionValue(
@@ -346,6 +355,7 @@ export default function(realm: Realm): void {
               default:
                 invariant(false, "Invalid invariantOption " + invariantOptionString);
             }
+            realm.markPropertyAsChecked(object, key);
           }
           realm.generator = undefined; // don't emit code during the following $Set call
           // casting to due to Flow workaround above

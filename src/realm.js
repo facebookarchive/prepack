@@ -228,6 +228,7 @@ export class Realm {
     this.activeLexicalEnvironments = new Set();
     this._abstractValuesDefined = new Set(); // A set of nameStrings to ensure abstract values have unique names
     this.debugNames = opts.debugNames;
+    this._checkedObjectIds = new Map();
   }
 
   statistics: RealmStatistics;
@@ -346,6 +347,7 @@ export class Realm {
 
   nextGeneratorId: number = 0;
   _abstractValuesDefined: Set<string>;
+  _checkedObjectIds: Map<ObjectValue | AbstractObjectValue, number>;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
@@ -515,6 +517,41 @@ export class Realm {
 
   deleteGlobalBinding(name: string) {
     this.$GlobalEnv.environmentRecord.DeleteBinding(name);
+  }
+
+  _neverCheckProperty(object: ObjectValue | AbstractObjectValue, P: string) {
+    return object === this.$GlobalObject && (P.startsWith("__") || P === "global");
+  }
+
+  markPropertyAsChecked(object: ObjectValue | AbstractObjectValue, P: string) {
+    invariant(!this._neverCheckProperty(object, P));
+    let objectId = this._checkedObjectIds.get(object);
+    if (objectId === undefined) this._checkedObjectIds.set(object, (objectId = this._checkedObjectIds.size));
+    let id = `${objectId}:${P}`;
+    this.assignToGlobal(
+      t.memberExpression(
+        t.memberExpression(t.identifier("global"), t.identifier("__checkedBindings")),
+        t.identifier(id)
+      ),
+      this.intrinsics.true
+    );
+  }
+
+  hasBindingBeenChecked(object: ObjectValue | AbstractObjectValue, P: string): void | boolean {
+    if (this._neverCheckProperty(object, P)) return true;
+    let objectId = this._checkedObjectIds.get(object);
+    if (objectId === undefined) return false;
+    let id = `${objectId}:${P}`;
+    let globalObject = this.$GlobalObject;
+    if (!(globalObject instanceof ObjectValue)) return false;
+    let binding = globalObject.properties.get("__checkedBindings");
+    invariant(binding !== undefined);
+    let checkedBindingsObject = binding.descriptor && binding.descriptor.value;
+    invariant(checkedBindingsObject instanceof ObjectValue);
+    binding = checkedBindingsObject.properties.get(id);
+    if (binding === undefined) return false;
+    let value = binding.descriptor && binding.descriptor.value;
+    return value instanceof Value && !value.mightNotBeTrue();
   }
 
   // Evaluate a context as if it won't have any side-effects outside of any objects
