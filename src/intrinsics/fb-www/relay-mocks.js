@@ -10,11 +10,10 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ObjectValue, NativeFunctionValue, FunctionValue } from "../../values/index.js";
+import { ObjectValue, NativeFunctionValue, FunctionValue, AbstractValue } from "../../values/index.js";
 import { Create } from "../../singletons.js";
 import { createAbstract } from "../prepack/utils.js";
 import * as t from "babel-types";
-import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import invariant from "../../invariant";
 import { createReactHintObject } from "../../react/utils.js";
 
@@ -24,10 +23,7 @@ function createReactRelayContainer(realm: Realm, reactRelay: ObjectValue, contai
   // we also pass a reactHint so the reconciler can properly deal with this
   reactRelay.$DefineOwnProperty(containerName, {
     value: new NativeFunctionValue(realm, undefined, containerName, 0, (context, args) => {
-      let types = new TypesDomain(FunctionValue);
-      let values = new ValuesDomain();
-      invariant(context.$Realm.generator);
-      let value = context.$Realm.generator.derive(types, values, [reactRelay, ...args], _args => {
+      let value = AbstractValue.createTemporalFromBuildFunction(realm, FunctionValue, [reactRelay, ...args], _args => {
         let [reactRelayIdent, ...otherArgs] = _args;
 
         return t.callExpression(
@@ -35,6 +31,7 @@ function createReactRelayContainer(realm: Realm, reactRelay: ObjectValue, contai
           ((otherArgs: any): Array<any>)
         );
       });
+      invariant(value instanceof AbstractValue);
       realm.react.abstractHints.set(value, createReactHintObject(reactRelay, containerName, args));
       return value;
     }),

@@ -10,7 +10,6 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import {
   ArrayValue,
   AbstractValue,
@@ -46,7 +45,7 @@ const fbMagicGlobalFunctions = [
   "xuiglyph",
 ];
 
-const fbMagicGlobalObjects = ["JSResource", "Bootloader"];
+const fbMagicGlobalObjects = ["JSResource"];
 
 function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectValue) {
   let babelHelpersValue = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, `babelHelpers`, true);
@@ -191,12 +190,11 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
 function createMagicGlobalFunction(realm: Realm, global: ObjectValue | AbstractObjectValue, functionName: string) {
   global.$DefineOwnProperty(functionName, {
     value: new NativeFunctionValue(realm, functionName, functionName, 0, (context, args) => {
-      let types = new TypesDomain(FunctionValue);
-      let values = new ValuesDomain();
-      invariant(context.$Realm.generator);
-      return context.$Realm.generator.derive(types, values, args, _args =>
+      let val = AbstractValue.createTemporalFromBuildFunction(realm, FunctionValue, args, _args =>
         t.callExpression(t.identifier(functionName), ((_args: any): Array<any>))
       );
+      invariant(val instanceof AbstractValue);
+      return val;
     }),
     writable: true,
     enumerable: false,
@@ -214,6 +212,30 @@ function createMagicGlobalObject(realm: Realm, global: ObjectValue | AbstractObj
     enumerable: false,
     configurable: true,
   });
+}
+
+function createBootloader(realm: Realm, global: ObjectValue | AbstractObjectValue) {
+  let bootloader = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+
+  let loadModules = new NativeFunctionValue(realm, "loadModules", "loadModules", 1, (context, args) => {
+    invariant(context.$Realm.generator);
+    let val = AbstractValue.createTemporalFromBuildFunction(realm, FunctionValue, args, _args =>
+      t.callExpression(t.memberExpression(t.identifier("Bootloader"), t.identifier("loadModules")), ((_args: any): Array<any>))
+    );
+    invariant(val instanceof AbstractValue);
+    return val;
+  });
+
+  Properties.Set(realm, bootloader, "loadModules", loadModules, false);
+
+  global.$DefineOwnProperty("Bootloader", {
+    value: bootloader,
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  return AbstractValue.createAbstractObject(realm, "Bootloader", bootloader);
 }
 
 export function createFbMocks(realm: Realm, global: ObjectValue | AbstractObjectValue) {
@@ -234,4 +256,6 @@ export function createFbMocks(realm: Realm, global: ObjectValue | AbstractObject
   for (let objectName of fbMagicGlobalObjects) {
     createMagicGlobalObject(realm, global, objectName);
   }
+
+  createBootloader(realm, global);
 }
