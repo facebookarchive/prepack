@@ -560,6 +560,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "will-mount.js", true);
       });
 
+      it("getDerivedStateFromProps", async () => {
+        await runTest(directory, "get-derived-state-from-props.js", true);
+      });
+
       it("React Context", async () => {
         await runTest(directory, "react-context.js");
       });

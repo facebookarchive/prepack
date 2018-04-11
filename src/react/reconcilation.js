@@ -56,6 +56,7 @@ import {
   createSimpleClassInstance,
   evaluateClassConstructor,
   createClassInstanceForFirstRenderOnly,
+  applyGetDerivedStateFromProps,
 } from "./components.js";
 import { ExpectedBailOut, SimpleClassBailOut, NewComponentTreeBranch } from "./errors.js";
 import { AbruptCompletion, Completion } from "../completions.js";
@@ -678,6 +679,11 @@ export class Reconciler {
   ): Value {
     // create a new simple instance of this React class component
     let instance = createClassInstanceForFirstRenderOnly(this.realm, componentType, props, context, evaluatedNode);
+    let getDerivedStateFromProps = Get(this.realm, componentType, "getDerivedStateFromProps");
+
+    if (getDerivedStateFromProps instanceof ECMAScriptSourceFunctionValue && getDerivedStateFromProps.$Call) {
+      applyGetDerivedStateFromProps(this.realm, getDerivedStateFromProps, instance, props);
+    }
     // get the "componentWillMount" and "render" methods off the instance
     let componentWillMount = Get(this.realm, instance, "componentWillMount");
     let renderMethod = Get(this.realm, instance, "render");

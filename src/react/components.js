@@ -260,3 +260,23 @@ export function evaluateClassConstructor(
     instanceSymbols,
   };
 }
+
+export function applyGetDerivedStateFromProps(
+  realm: Realm,
+  getDerivedStateFromProps: ECMAScriptSourceFunctionValue,
+  instance: ObjectValue,
+  props: ObjectValue | AbstractValue | AbstractObjectValue
+): void {
+  let prevState = Get(realm, instance, "state");
+  let partialState = getDerivedStateFromProps.$Call(realm.intrinsics.null, [props, prevState]);
+
+  if (partialState !== realm.intrinsics.null && partialState !== realm.intrinsics.undefined) {
+    let objectAssign = Get(realm, realm.intrinsics.Object, "assign");
+    let objectAssignCall = objectAssign.$Call;
+    let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+    invariant(objectAssignCall !== undefined);
+    objectAssignCall(realm.intrinsics.undefined, [newState, prevState, partialState]);
+
+    Properties.Set(realm, instance, "state", newState, true);
+  }
+}
