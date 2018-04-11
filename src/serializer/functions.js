@@ -537,7 +537,7 @@ export class Functions {
   ) {
     let reportConflict = (location: BabelNodeSourceLocation) => {
       let error = new CompilerDiagnostic(
-        `Property access conflicts with write in additional function ${fname}`,
+        `Property access conflicts with write in optimized function ${fname}`,
         location,
         "PP1003",
         "FatalError"

@@ -10,6 +10,7 @@
 /* @flow */
 
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord, EnvironmentRecord } from "../environment.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
 import type { Binding } from "../environment.js";
@@ -25,6 +26,7 @@ import {
   NativeFunctionValue,
   ObjectValue,
   ProxyValue,
+  StringValue,
   SymbolValue,
   UndefinedValue,
   Value,
@@ -973,12 +975,20 @@ export class ResidualHeapVisitor {
         invariant(newValue);
         this.visitValue(newValue);
         residualBinding.modified = true;
-        // This should be enforced by checkThatFunctionsAreIndependent
-        invariant(
-          !residualBinding.additionalFunctionOverridesValue ||
-            residualBinding.additionalFunctionOverridesValue === functionValue,
-          "We should only have one additional function value modifying any given residual binding"
-        );
+        let otherFunc = residualBinding.additionalFunctionOverridesValue;
+        if (otherFunc !== undefined && otherFunc !== functionValue) {
+          let otherNameVal = otherFunc.$Get("name", otherFunc);
+          let otherNameStr = otherNameVal instanceof StringValue ? otherNameVal.value : "unknown function";
+          let funcNameVal = functionValue.$Get("name", functionValue);
+          let funNameStr = funcNameVal instanceof StringValue ? funcNameVal.value : "unknown function";
+          let error = new CompilerDiagnostic(
+            `Variable ${modifiedBinding.name} written to in optimized function ${funNameStr} conflicts with write in another optimized function ${otherNameStr}`,
+            funcNameVal.expressionLocation,
+            "PP1001",
+            "RecoverableError"
+          );
+          if (functionValue.$Realm.handleError(error) === "Fail") throw new FatalError();
+        }
         if (previousValue) residualBinding.additionalFunctionOverridesValue = functionValue;
         additionalFunctionInfo.modifiedBindings.set(modifiedBinding, residualBinding);
         return residualBinding;
