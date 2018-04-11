@@ -26,7 +26,7 @@ import {
 } from "../../values/index.js";
 import { Get } from "../../methods/index.js";
 import { Environment } from "../../singletons.js";
-import { getReactSymbol } from "../../react/utils.js";
+import { getReactSymbol, createReactHintObject } from "../../react/utils.js";
 import { createReactElement } from "../../react/elements.js";
 import { Properties, Create } from "../../singletons.js";
 import * as t from "babel-types";
@@ -588,6 +588,49 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
     configurable: true,
   });
   reactContextValue.intrinsicName = `require("${reactRequireName}").createContext`;
+
+  let createRefValue = new NativeFunctionValue(
+    realm,
+    undefined,
+    `createRef`,
+    0,
+    (_, []) => {
+      let createRef = AbstractValue.createTemporalFromBuildFunction(realm, FunctionValue, [reactValue], ([reactValueNode]) => {
+        return t.callExpression(t.memberExpression(reactValueNode, t.identifier("createRef")), []);
+      });
+      invariant(createRef instanceof AbstractObjectValue);
+      return createRef;
+    }
+  );
+  reactValue.$DefineOwnProperty("createRef", {
+    value: createRefValue,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+  });
+  createRefValue.intrinsicName = `require("${reactRequireName}").createRef`;
+
+  let forwardRefValue = new NativeFunctionValue(
+    realm,
+    undefined,
+    `forwardRef`,
+    0,
+    (_, [func]) => {
+      let forwardedRef = AbstractValue.createTemporalFromBuildFunction(realm, FunctionValue, [reactValue, func], ([reactValueNode, funcNode]) => {
+        return t.callExpression(t.memberExpression(reactValueNode, t.identifier("forwardRef")), [funcNode]);
+      });
+      invariant(forwardedRef instanceof AbstractObjectValue);
+      realm.react.abstractHints.set(forwardedRef, createReactHintObject(reactValue, "forwardRef", [func]));
+      return forwardedRef;
+    }
+  );
+  reactValue.$DefineOwnProperty("forwardRef", {
+    value: forwardRefValue,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+  });
+  forwardRefValue.intrinsicName = `require("${reactRequireName}").forwardRef`;
 
   let reactIsValidElementValue = Get(realm, reactValue, "isValidElement");
   reactIsValidElementValue.intrinsicName = `require("${reactRequireName}").isValidElement`;

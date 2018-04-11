@@ -43,6 +43,16 @@ function createPropsObject(
     }
   };
 
+  const applyProperties = () => {
+    if (config instanceof ObjectValue) {
+      for (let [propKey, binding] of config.properties) {
+        if (binding && binding.descriptor && binding.descriptor.enumerable) {
+          setProp(propKey, Get(realm, config, propKey));
+        }
+      }
+    }
+  };
+
   if (
     (config instanceof AbstractObjectValue && config.isPartialObject()) ||
     config instanceof AbstractValue ||
@@ -98,15 +108,13 @@ function createPropsObject(
       // we don't have to worry about non-enumerable properties as its properties will never
       // be serialized, rather this object will be serialized as a spread.
       props = config;
+      // if there are any properties that do exist, it's because we know for sure they exist
+      // i.e. they were added on as part of snapshotting or at the end of a spread, like
+      // {...foo, ...bar, x: 5}
+      applyProperties();
     }
   } else {
-    if (config instanceof ObjectValue) {
-      for (let [propKey, binding] of config.properties) {
-        if (binding && binding.descriptor && binding.descriptor.enumerable) {
-          setProp(propKey, Get(realm, config, propKey));
-        }
-      }
-    }
+    applyProperties();
 
     if (children !== realm.intrinsics.undefined) {
       setProp("children", children);
