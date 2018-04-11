@@ -12,6 +12,7 @@
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import type { SerializerOptions } from "../options.js";
 import * as t from "babel-types";
+import generate from "babel-generator";
 import type { BabelNodeStatement, BabelNodeExpression, BabelNodeIdentifier } from "babel-types";
 import { NameGenerator } from "../utils/generator.js";
 import invariant from "../invariant.js";
@@ -89,14 +90,33 @@ export class Referentializer {
     // One switch case for one scope.
     const cases = [];
     const serializedScopes = this._getReferentializationState(referentializationScope).serializedScopes;
+    type InitializationCase = {|
+      scopeIDs: Array<number>,
+      value: BabelNodeExpression,
+    |};
+    const initializationCases: Map<string, InitializationCase> = new Map();
     for (const scopeBinding of serializedScopes.values()) {
-      const scopeObjectExpression = t.arrayExpression((scopeBinding.initializationValues: any));
-      cases.push(
-        t.switchCase(t.numericLiteral(scopeBinding.id), [
-          t.expressionStatement(t.assignmentExpression("=", captured, scopeObjectExpression)),
-          t.breakStatement(),
-        ])
-      );
+      const expr = t.arrayExpression((scopeBinding.initializationValues: any));
+      const key = generate(expr, {}, "").code;
+      if (!initializationCases.has(key)) {
+        initializationCases.set(key, {
+          scopeIDs: [scopeBinding.id],
+          value: expr,
+        });
+      } else {
+        const ic = initializationCases.get(key);
+        invariant(ic);
+        ic.scopeIDs.push(scopeBinding.id);
+      }
+    }
+    for (const ic of initializationCases.values()) {
+      ic.scopeIDs.forEach((id, i) => {
+        let consequent: Array<BabelNodeStatement> = [];
+        if (i === ic.scopeIDs.length - 1) {
+          consequent = [t.expressionStatement(t.assignmentExpression("=", captured, ic.value)), t.breakStatement()];
+        }
+        cases.push(t.switchCase(t.numericLiteral(id), consequent));
+      });
     }
     // Default case.
     cases.push(
