@@ -78,7 +78,7 @@ export type VisitEntryCallbacks = {|
   recordDeclaration: AbstractValue => void,
   recordDelayedEntry: (Generator, GeneratorEntry) => void,
   visitObjectProperty: PropertyBinding => void,
-  visitModifiedBinding: (Binding, Value | void) => void | ResidualFunctionBinding,
+  visitModifiedBinding: Binding => ResidualFunctionBinding,
 |};
 
 export type DerivedExpressionBuildNodeFunction = (
@@ -205,7 +205,6 @@ class ModifiedPropertyEntry extends GeneratorEntry {
 type ModifiedBindingEntryArgs = {|
   modifiedBinding: Binding,
   newValue: void | Value,
-  oldValue: void | Value,
   containingGenerator: Generator,
 |};
 
@@ -218,15 +217,11 @@ class ModifiedBindingEntry extends GeneratorEntry {
   containingGenerator: Generator;
   modifiedBinding: Binding;
   newValue: void | Value;
-  oldValue: void | Value;
   residualFunctionBinding: void | ResidualFunctionBinding;
 
   serialize(context: SerializationContext) {
     let residualFunctionBinding = this.residualFunctionBinding;
-    if (!residualFunctionBinding) {
-      invariant(this.modifiedBinding.value instanceof FunctionValue);
-      return;
-    }
+    invariant(residualFunctionBinding !== undefined);
     invariant(residualFunctionBinding.referentialized);
     invariant(this.modifiedBinding.value === this.newValue);
     invariant(
@@ -251,7 +246,7 @@ class ModifiedBindingEntry extends GeneratorEntry {
       "This entry requires effects to be applied and may not be moved"
     );
     invariant(this.modifiedBinding.value === this.newValue);
-    let residualBinding = context.visitModifiedBinding(this.modifiedBinding, this.oldValue);
+    let residualBinding = context.visitModifiedBinding(this.modifiedBinding);
     invariant(this.residualFunctionBinding === undefined || this.residualFunctionBinding === residualBinding);
     this.residualFunctionBinding = residualBinding;
     return true;
@@ -414,13 +409,13 @@ export class Generator {
       output.emitPropertyModification(propertyBinding, newValue);
     }
 
-    for (let [modifiedBinding, oldBinding] of modifiedBindings) {
+    for (let modifiedBinding of modifiedBindings.keys()) {
       // TODO: Instead of looking at the environment ids, keep instead track of a createdEnvironmentRecords set,
       // and only consider bindings here from environment records that already existed, or even better,
       // ensure upstream that only such bindings are ever added to the modified-bindings set.
       if (modifiedBinding.environment.id >= environmentRecordIdAfterGlobalCode) continue;
 
-      output.emitBindingModification(modifiedBinding, oldBinding.value);
+      output.emitBindingModification(modifiedBinding);
     }
 
     if (result instanceof UndefinedValue) return output;
@@ -465,13 +460,12 @@ export class Generator {
     );
   }
 
-  emitBindingModification(modifiedBinding: Binding, oldValue: Value) {
+  emitBindingModification(modifiedBinding: Binding) {
     invariant(this.effectsToApply !== undefined);
     this._entries.push(
       new ModifiedBindingEntry({
         modifiedBinding,
         newValue: modifiedBinding.value,
-        oldValue,
         containingGenerator: this,
       })
     );
@@ -968,35 +962,6 @@ export class Generator {
     }
 
     return res;
-  }
-
-  // This function does a deep traversal of this and all dependent generators
-  // in order to find all ModifiedBindingEntry entries.
-  // Their modifiedBinding and oldValue properties are eventually returned.
-  // Note that the modifiedBindings set is different from effectsToApply[2],
-  // and the old values are meaningful without effectsToApply being applied.
-  getModifiedBindingOldValues(): Map<Binding, void | Value> {
-    let result = new Map();
-    let visit = generator => {
-      for (let entry of generator._entries) {
-        if (entry instanceof ModifiedBindingEntry) {
-          if (!result.has(entry.modifiedBinding)) result.set(entry.modifiedBinding, entry.oldValue);
-        } else if (entry instanceof TemporalBuildNodeEntry) {
-          if (entry.dependencies) for (let dependency of entry.dependencies) visit(dependency);
-        } else if (entry instanceof PossiblyNormalReturnEntry) {
-          for (let dependency of [entry.consequentGenerator, entry.alternateGenerator]) visit(dependency);
-        } else if (entry instanceof JoinedAbruptCompletionsEntry) {
-          for (let dependency of [entry.consequentGenerator, entry.alternateGenerator]) visit(dependency);
-        } else {
-          invariant(
-            entry instanceof ReturnValueEntry || entry instanceof ModifiedPropertyEntry,
-            entry.constructor.name
-          );
-        }
-      }
-    };
-    visit(this);
-    return result;
   }
 
   visit(callbacks: VisitEntryCallbacks) {

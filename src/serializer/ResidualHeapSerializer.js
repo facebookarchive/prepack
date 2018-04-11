@@ -575,15 +575,13 @@ export class ResidualHeapSerializer {
   ) {
     if (!residualFunctionBinding.serializedValue) {
       let value = residualFunctionBinding.value;
-      invariant(value);
       invariant(residualFunctionBinding.declarativeEnvironmentRecord);
 
-      // Set up binding identity before starting to serialize value. This is needed in case of recursive dependencies.
-      residualFunctionBinding.serializedValue = this.serializeValue(value);
+      residualFunctionBinding.serializedValue = value !== undefined ? this.serializeValue(value) : voidExpression;
       if (residualFunctionBinding.modified) {
         this.referentializer.referentializeBinding(residualFunctionBinding, name, instance);
       }
-      if (value.mightBeObject()) {
+      if (value !== undefined && value.mightBeObject()) {
         // Increment ref count one more time to ensure that this object will be assigned a unique id.
         // This ensures that only once instance is created across all possible residual function invocations.
         this.residualHeapValueIdentifiers.incrementReferenceCount(value);
@@ -1268,9 +1266,7 @@ export class ResidualHeapSerializer {
           invariant(instance !== undefined);
           return this._serializeDeclarativeEnvironmentRecordBinding(residualBinding, boundName, instance);
         };
-        let bindingValue = residualBinding.value;
-        invariant(bindingValue !== undefined);
-        referencedValues.push(bindingValue);
+        if (residualBinding.value !== undefined) referencedValues.push(residualBinding.value);
       }
       delayed++;
       this.emitter.emitNowOrAfterWaitingForDependencies(referencedValues, () => {
