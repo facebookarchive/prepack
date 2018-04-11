@@ -17,6 +17,7 @@ import {
   AbstractObjectValue,
   SymbolValue,
   NativeFunctionValue,
+  ECMAScriptFunctionValue,
 } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
@@ -274,7 +275,7 @@ export function applyGetDerivedStateFromProps(
 
   if (partialState !== realm.intrinsics.null && partialState !== realm.intrinsics.undefined) {
     let objectAssign = Get(realm, realm.intrinsics.Object, "assign");
-    invariant(objectAssign instanceof ECMAScriptSourceFunctionValue);
+    invariant(objectAssign instanceof ECMAScriptFunctionValue);
     let objectAssignCall = objectAssign.$Call;
     invariant(objectAssignCall !== undefined);
     let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
