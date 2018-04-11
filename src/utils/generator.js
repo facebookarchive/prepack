@@ -72,13 +72,13 @@ export type SerializationContext = {|
 |};
 
 export type VisitEntryCallbacks = {|
-  visitValues: (Array<Value>) => void,
+  visitEquivalentValue: Value => Value,
   visitGenerator: (Generator, Generator) => void,
   canSkip: AbstractValue => boolean,
   recordDeclaration: AbstractValue => void,
   recordDelayedEntry: (Generator, GeneratorEntry) => void,
   visitObjectProperty: PropertyBinding => void,
-  visitModifiedBinding: Binding => ResidualFunctionBinding,
+  visitModifiedBinding: Binding => [ResidualFunctionBinding, Value],
 |};
 
 export type DerivedExpressionBuildNodeFunction = (
@@ -133,7 +133,7 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
       return false;
     } else {
       if (this.declared) callbacks.recordDeclaration(this.declared);
-      callbacks.visitValues(this.args);
+      for (let i = 0, n = this.args.length; i < n; i++) this.args[i] = callbacks.visitEquivalentValue(this.args[i]);
       if (this.dependencies)
         for (let dependency of this.dependencies) callbacks.visitGenerator(dependency, containingGenerator);
       return true;
@@ -223,21 +223,19 @@ class ModifiedBindingEntry extends GeneratorEntry {
     let residualFunctionBinding = this.residualFunctionBinding;
     invariant(residualFunctionBinding !== undefined);
     invariant(residualFunctionBinding.referentialized);
-    invariant(this.modifiedBinding.value === this.newValue);
     invariant(
       residualFunctionBinding.serializedValue,
       "ResidualFunctionBinding must be referentialized before serializing a mutation to it."
     );
     let newValue = this.newValue;
-    if (newValue) {
-      let bindingReference = ((residualFunctionBinding.serializedValue: any): BabelNodeLVal);
-      invariant(
-        t.isLVal(bindingReference),
-        "Referentialized values must be LVals even though serializedValues may be any Expression"
-      );
-      let serializedNewValue = context.serializeValue(newValue);
-      context.emit(t.expressionStatement(t.assignmentExpression("=", bindingReference, serializedNewValue)));
-    }
+    invariant(newValue);
+    let bindingReference = ((residualFunctionBinding.serializedValue: any): BabelNodeLVal);
+    invariant(
+      t.isLVal(bindingReference),
+      "Referentialized values must be LVals even though serializedValues may be any Expression"
+    );
+    let serializedNewValue = context.serializeValue(newValue);
+    context.emit(t.expressionStatement(t.assignmentExpression("=", bindingReference, serializedNewValue)));
   }
 
   visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
@@ -246,9 +244,10 @@ class ModifiedBindingEntry extends GeneratorEntry {
       "This entry requires effects to be applied and may not be moved"
     );
     invariant(this.modifiedBinding.value === this.newValue);
-    let residualBinding = context.visitModifiedBinding(this.modifiedBinding);
+    let [residualBinding, newValue] = context.visitModifiedBinding(this.modifiedBinding);
     invariant(this.residualFunctionBinding === undefined || this.residualFunctionBinding === residualBinding);
     this.residualFunctionBinding = residualBinding;
+    this.newValue = newValue;
     return true;
   }
 }
@@ -268,7 +267,7 @@ class ReturnValueEntry extends GeneratorEntry {
       containingGenerator === this.containingGenerator,
       "This entry requires effects to be applied and may not be moved"
     );
-    context.visitValues([this.returnValue]);
+    this.returnValue = context.visitEquivalentValue(this.returnValue);
     return true;
   }
 
@@ -299,7 +298,7 @@ class PossiblyNormalReturnEntry extends GeneratorEntry {
   completion: PossiblyNormalCompletion;
   containingGenerator: Generator;
 
-  condition: AbstractValue;
+  condition: Value;
   consequentGenerator: Generator;
   alternateGenerator: Generator;
 
@@ -308,7 +307,7 @@ class PossiblyNormalReturnEntry extends GeneratorEntry {
       containingGenerator === this.containingGenerator,
       "This entry requires effects to be applied and may not be moved"
     );
-    context.visitValues([this.condition]);
+    this.condition = context.visitEquivalentValue(this.condition);
     context.visitGenerator(this.consequentGenerator, containingGenerator);
     context.visitGenerator(this.alternateGenerator, containingGenerator);
     return true;
@@ -338,7 +337,7 @@ class JoinedAbruptCompletionsEntry extends GeneratorEntry {
   completion: JoinedAbruptCompletions;
   containingGenerator: Generator;
 
-  condition: AbstractValue;
+  condition: Value;
   consequentGenerator: Generator;
   alternateGenerator: Generator;
 
@@ -347,7 +346,7 @@ class JoinedAbruptCompletionsEntry extends GeneratorEntry {
       containingGenerator === this.containingGenerator,
       "This entry requires effects to be applied and may not be moved"
     );
-    context.visitValues([this.condition]);
+    this.condition = context.visitEquivalentValue(this.condition);
     context.visitGenerator(this.consequentGenerator, containingGenerator);
     context.visitGenerator(this.alternateGenerator, containingGenerator);
     return true;
@@ -399,14 +398,13 @@ export class Generator {
     let output = new Generator(realm, name, effects);
     output.appendGenerator(generator, "");
 
-    for (let [propertyBinding] of modifiedProperties) {
+    for (let propertyBinding of modifiedProperties.keys()) {
       let object = propertyBinding.object;
       if (object instanceof ObjectValue && createdObjects.has(object)) continue; // Created Object's binding
       if (object.refuseSerialization) continue; // modification to internal state
       // modifications to intrinsic objects are tracked in the generator
       if (object.isIntrinsic()) continue;
-      let newValue = propertyBinding.descriptor;
-      output.emitPropertyModification(propertyBinding, newValue);
+      output.emitPropertyModification(propertyBinding);
     }
 
     for (let modifiedBinding of modifiedBindings.keys()) {

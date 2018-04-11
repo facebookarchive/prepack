@@ -929,9 +929,7 @@ export class ResidualHeapVisitor {
 
   createGeneratorVisitCallbacks(additionalFunctionInfo?: AdditionalFunctionInfo): VisitEntryCallbacks {
     let callbacks = {
-      visitValues: (values: Array<Value>) => {
-        for (let i = 0, n = values.length; i < n; i++) values[i] = this.visitEquivalentValue(values[i]);
-      },
+      visitEquivalentValue: this.visitEquivalentValue.bind(this),
       visitGenerator: (generator, parent) => {
         // TODO: The serializer assumes that each generator has a unique parent; however, in the presence of conditional exceptions that is not actually true.
         // invariant(!this.generatorParents.has(generator));
@@ -963,7 +961,7 @@ export class ResidualHeapVisitor {
         funcInstance.residualFunctionBindings.set(modifiedBinding.name, residualBinding);
         let newValue = modifiedBinding.value;
         invariant(newValue);
-        this.visitValue(newValue);
+        newValue = this.visitEquivalentValue(newValue);
         residualBinding.modified = true;
         let otherFunc = residualBinding.additionalFunctionOverridesValue;
         if (otherFunc !== undefined && otherFunc !== functionValue) {
@@ -983,7 +981,7 @@ export class ResidualHeapVisitor {
         additionalFunctionInfo.modifiedBindings.set(modifiedBinding, residualBinding);
         // TODO nested optimized functions: revisit adding GLOBAL as outer optimized function
         residualBinding.potentialReferentializationScopes.add("GLOBAL");
-        return residualBinding;
+        return [residualBinding, newValue];
       },
     };
     return callbacks;
