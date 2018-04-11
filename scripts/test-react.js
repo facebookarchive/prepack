@@ -276,6 +276,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-refs.js");
       });
 
+      it("16.3 refs", async () => {
+        await runTest(directory, "refs.js");
+      });
+
       it("Simple with abstract props", async () => {
         await runTest(directory, "simple-with-abstract-props.js");
       });

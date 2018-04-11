@@ -198,6 +198,7 @@ export type ReactEvaluatedNode = {
     | "BAIL-OUT"
     | "UNKNOWN_TYPE"
     | "RENDER_PROPS"
+    | "FORWARD_REF"
     | "UNSUPPORTED_COMPLETION"
     | "ABRUPT_COMPLETION"
     | "NORMAL",

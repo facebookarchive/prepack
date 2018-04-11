@@ -483,6 +483,9 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
           );
       }
     }
+    if (reactHint.object === realm.fbLibraries.react && reactHint.propertyName === "forwardRef") {
+      return null;
+    }
     invariant(false, "unsupported known React abstraction");
   } else {
     invariant(value instanceof ECMAScriptSourceFunctionValue);
@@ -689,6 +692,7 @@ export function createReactEvaluatedNode(
     | "BAIL-OUT"
     | "UNKNOWN_TYPE"
     | "RENDER_PROPS"
+    | "FORWARD_REF"
     | "UNSUPPORTED_COMPLETION"
     | "ABRUPT_COMPLETION"
     | "NORMAL",
@@ -724,6 +728,14 @@ export function getComponentName(realm: Realm, componentType: Value): string {
 
     if (name instanceof StringValue) {
       return boundText + name.value;
+    }
+  }
+  if (realm.react.abstractHints.has(componentType)) {
+    let reactHint = realm.react.abstractHints.get(componentType);
+
+    invariant(reactHint !== undefined);
+    if (reactHint.object === realm.fbLibraries.react && reactHint.propertyName === "forwardRef") {
+      return "forwarded ref";
     }
   }
   return boundText + "anonymous";
