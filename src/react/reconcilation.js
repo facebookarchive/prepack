@@ -56,6 +56,7 @@ import {
   createSimpleClassInstance,
   evaluateClassConstructor,
   createClassInstanceForFirstRenderOnly,
+  applyGetDerivedStateFromProps,
 } from "./components.js";
 import { ExpectedBailOut, SimpleClassBailOut, NewComponentTreeBranch } from "./errors.js";
 import { AbruptCompletion, Completion } from "../completions.js";
@@ -678,13 +679,33 @@ export class Reconciler {
   ): Value {
     // create a new simple instance of this React class component
     let instance = createClassInstanceForFirstRenderOnly(this.realm, componentType, props, context, evaluatedNode);
-    // get the "componentWillMount" and "render" methods off the instance
-    let componentWillMount = Get(this.realm, instance, "componentWillMount");
+    let getDerivedStateFromProps = Get(this.realm, componentType, "getDerivedStateFromProps");
+    let getSnapshotBeforeUpdate = Get(this.realm, instance, "getSnapshotBeforeUpdate");
+
+    // if either getDerivedStateFromProps or getSnapshotBeforeUpdate exist, then
+    // we don't try and execute componentWillMount and UNSAFE_componentWillMount
+    if (
+      getDerivedStateFromProps !== this.realm.intrinsics.undefined ||
+      getSnapshotBeforeUpdate !== this.realm.intrinsics.undefined
+    ) {
+      if (getDerivedStateFromProps instanceof ECMAScriptSourceFunctionValue && getDerivedStateFromProps.$Call) {
+        applyGetDerivedStateFromProps(this.realm, getDerivedStateFromProps, instance, props);
+      }
+    } else {
+      // get the "componentWillMount" and "render" methods off the instance
+      let componentWillMount = Get(this.realm, instance, "componentWillMount");
+
+      if (componentWillMount instanceof ECMAScriptSourceFunctionValue && componentWillMount.$Call) {
+        componentWillMount.$Call(instance, []);
+      }
+      let unsafeComponentWillMount = Get(this.realm, instance, "UNSAFE_componentWillMount");
+
+      if (unsafeComponentWillMount instanceof ECMAScriptSourceFunctionValue && unsafeComponentWillMount.$Call) {
+        unsafeComponentWillMount.$Call(instance, []);
+      }
+    }
     let renderMethod = Get(this.realm, instance, "render");
 
-    if (componentWillMount instanceof ECMAScriptSourceFunctionValue && componentWillMount.$Call) {
-      componentWillMount.$Call(instance, []);
-    }
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
     return getValueFromFunctionCall(this.realm, renderMethod, instance, []);
   }
