@@ -686,6 +686,13 @@ export class Reconciler {
     }
     // get the "componentWillMount" and "render" methods off the instance
     let componentWillMount = Get(this.realm, instance, "componentWillMount");
+
+    if (componentWillMount === this.realm.intrinsics.undefined) {
+      // try the unsafe version, added in React 16.3
+      // at some point we only want to remove all support for these unsafe
+      // lifecycle events
+      componentWillMount = Get(this.realm, instance, "UNSAFE_componentWillMount");
+    }
     let renderMethod = Get(this.realm, instance, "render");
 
     if (componentWillMount instanceof ECMAScriptSourceFunctionValue && componentWillMount.$Call) {
