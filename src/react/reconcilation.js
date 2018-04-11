@@ -680,24 +680,32 @@ export class Reconciler {
     // create a new simple instance of this React class component
     let instance = createClassInstanceForFirstRenderOnly(this.realm, componentType, props, context, evaluatedNode);
     let getDerivedStateFromProps = Get(this.realm, componentType, "getDerivedStateFromProps");
+    let getSnapshotBeforeUpdate = Get(this.realm, instance, "getSnapshotBeforeUpdate");
 
-    if (getDerivedStateFromProps instanceof ECMAScriptSourceFunctionValue && getDerivedStateFromProps.$Call) {
-      applyGetDerivedStateFromProps(this.realm, getDerivedStateFromProps, instance, props);
-    }
-    // get the "componentWillMount" and "render" methods off the instance
-    let componentWillMount = Get(this.realm, instance, "componentWillMount");
+    // if either getDerivedStateFromProps or getSnapshotBeforeUpdate exist, then
+    // we don't try and execute componentWillMount and UNSAFE_componentWillMount
+    if (
+      getDerivedStateFromProps !== this.realm.intrinsics.undefined ||
+      getSnapshotBeforeUpdate !== this.realm.intrinsics.undefined
+    ) {
+      if (getDerivedStateFromProps instanceof ECMAScriptSourceFunctionValue && getDerivedStateFromProps.$Call) {
+        applyGetDerivedStateFromProps(this.realm, getDerivedStateFromProps, instance, props);
+      }
+    } else {
+      // get the "componentWillMount" and "render" methods off the instance
+      let componentWillMount = Get(this.realm, instance, "componentWillMount");
 
-    if (componentWillMount === this.realm.intrinsics.undefined) {
-      // try the unsafe version, added in React 16.3
-      // at some point we only want to remove all support for these unsafe
-      // lifecycle events
-      componentWillMount = Get(this.realm, instance, "UNSAFE_componentWillMount");
+      if (componentWillMount instanceof ECMAScriptSourceFunctionValue && componentWillMount.$Call) {
+        componentWillMount.$Call(instance, []);
+      }
+      let unsafeComponentWillMount = Get(this.realm, instance, "UNSAFE_componentWillMount");
+
+      if (unsafeComponentWillMount instanceof ECMAScriptSourceFunctionValue && unsafeComponentWillMount.$Call) {
+        unsafeComponentWillMount.$Call(instance, []);
+      }
     }
     let renderMethod = Get(this.realm, instance, "render");
 
-    if (componentWillMount instanceof ECMAScriptSourceFunctionValue && componentWillMount.$Call) {
-      componentWillMount.$Call(instance, []);
-    }
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
     return getValueFromFunctionCall(this.realm, renderMethod, instance, []);
   }
