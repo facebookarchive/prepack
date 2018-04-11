@@ -94,7 +94,7 @@ export default function(realm: Realm): void {
   });
 
   global.$DefineOwnProperty("__optimizedFunctions", {
-    value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__optimizedFunctions", true),
+    value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__optimizedFunctions", /* refuseSerialization */ true),
     writable: true,
     enumerable: false,
     configurable: true,
@@ -127,7 +127,7 @@ export default function(realm: Realm): void {
 
   if (realm.react.enabled) {
     global.$DefineOwnProperty("__reactComponentTrees", {
-      value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__reactComponentTrees", true),
+      value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__reactComponentTrees", /* refuseSerialization */ true),
       writable: true,
       enumerable: false,
       configurable: true,
@@ -196,7 +196,7 @@ export default function(realm: Realm): void {
   // Maps from initialized moduleId to exports object
   // NB: Changes to this shouldn't ever be serialized
   global.$DefineOwnProperty("__initializedModules", {
-    value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__initializedModules", true),
+    value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__initializedModules", /* refuseSerialization */ true),
     writable: true,
     enumerable: false,
     configurable: true,
@@ -205,7 +205,7 @@ export default function(realm: Realm): void {
   // Set of property bindings whose invariant got checked
   // NB: Changes to this shouldn't ever be serialized
   global.$DefineOwnProperty("__checkedBindings", {
-    value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__checkedBindings", true),
+    value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__checkedBindings", /* refuseSerialization */ true),
     writable: true,
     enumerable: false,
     configurable: true,
