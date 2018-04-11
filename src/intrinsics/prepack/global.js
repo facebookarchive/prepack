@@ -262,14 +262,6 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  // TODO #1023: Remove this property. It's just here as some existing internal test cases assume that the __annotate property is exists and is readable.
-  global.$DefineOwnProperty("__annotate", {
-    value: realm.intrinsics.undefined,
-    writable: true,
-    enumerable: false,
-    configurable: true,
-  });
-
   // Internal helper function for tests.
   // __isAbstract(value) checks if a given value is abstract.
   global.$DefineOwnProperty("__isAbstract", {
