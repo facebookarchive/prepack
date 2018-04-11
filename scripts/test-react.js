@@ -289,6 +289,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "refs2.js");
       });
 
+      it("16.3 refs 3", async () => {
+        await runTest(directory, "refs3.js");
+      });
+
       it("Simple with abstract props", async () => {
         await runTest(directory, "simple-with-abstract-props.js");
       });
@@ -571,6 +575,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("componentWillMount", async () => {
         await runTest(directory, "will-mount.js", true);
+      });
+
+      it("getDerivedStateFromProps", async () => {
+        await runTest(directory, "get-derived-state-from-props.js", true);
       });
 
       it("React Context", async () => {
