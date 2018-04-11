@@ -653,7 +653,8 @@ export function getProperty(
 ): Value {
   if (object instanceof AbstractObjectValue) {
     if (object.values.isTop()) {
-      return realm.intrinsics.undefined;
+      // fallback to the original Get implementation
+      return Get(realm, object, property);
     }
     let elements = object.values.getElements();
     if (elements && elements.size > 0) {
