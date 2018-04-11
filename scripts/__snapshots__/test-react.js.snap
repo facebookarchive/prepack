@@ -815,6 +815,37 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output Functional component folding 16.3 refs 2 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output Functional component folding Additional functions closure scope capturing 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -3803,6 +3834,37 @@ ReactStatistics {
 `;
 
 exports[`Test React with JSX input, create-element output Functional component folding 16.3 refs 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Functional component folding 16.3 refs 2 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -6851,6 +6913,37 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output Functional component folding 16.3 refs 2 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output Functional component folding Additional functions closure scope capturing 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -9804,6 +9897,37 @@ ReactStatistics {
 `;
 
 exports[`Test React with create-element input, create-element output Functional component folding 16.3 refs 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Functional component folding 16.3 refs 2 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [

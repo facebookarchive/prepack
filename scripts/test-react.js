@@ -163,8 +163,13 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       return;
     }
 
-    let rendererA = ReactTestRenderer.create(null);
-    let rendererB = ReactTestRenderer.create(null);
+    let config = {
+      createNodeMock(x) {
+        return x;
+      },
+    };
+    let rendererA = ReactTestRenderer.create(null, config);
+    let rendererB = ReactTestRenderer.create(null, config);
     if (A == null || B == null) {
       throw new Error("React test runner issue");
     }
@@ -278,6 +283,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("16.3 refs", async () => {
         await runTest(directory, "refs.js");
+      });
+
+      it("16.3 refs 2", async () => {
+        await runTest(directory, "refs2.js");
       });
 
       it("Simple with abstract props", async () => {

@@ -652,11 +652,13 @@ export function getProperty(
   property: string | SymbolValue
 ): Value {
   if (object instanceof AbstractObjectValue) {
-    let elements = object.values.getElements();
+    let elements = object.values._elements;
     if (elements && elements.size > 0) {
       object = Array.from(elements)[0];
     }
-    invariant(object instanceof ObjectValue);
+    if (!(object instanceof ObjectValue)) {
+      return realm.intrinsics.undefined;
+    }
   }
   let binding;
   if (typeof property === "string") {
