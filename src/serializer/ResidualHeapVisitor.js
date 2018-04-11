@@ -378,15 +378,9 @@ export class ResidualHeapVisitor {
   }
 
   visitValueMap(val: ObjectValue): void {
-    let kind = val.getKind();
+    invariant(val.getKind() === "Map");
+    let entries = val.$MapData;
 
-    let entries;
-    if (kind === "Map") {
-      entries = val.$MapData;
-    } else {
-      invariant(kind === "WeakMap");
-      entries = val.$WeakMapData;
-    }
     invariant(entries !== undefined);
     let len = entries.length;
 
@@ -400,23 +394,73 @@ export class ResidualHeapVisitor {
     }
   }
 
-  visitValueSet(val: ObjectValue): void {
-    let kind = val.getKind();
+  visitValueWeakMap(val: ObjectValue): void {
+    invariant(val.getKind() === "WeakMap");
+    let entries = val.$WeakMapData;
 
-    let entries;
-    if (kind === "Set") {
-      entries = val.$SetData;
-    } else {
-      invariant(kind === "WeakSet");
-      entries = val.$WeakSetData;
-    }
     invariant(entries !== undefined);
     let len = entries.length;
 
     for (let i = 0; i < len; i++) {
       let entry = entries[i];
+      let key = entry.$Key;
+      let value = entry.$Value;
+
+      if (key !== undefined && value !== undefined) {
+        let fixpoint_rerun = () => {
+          let progress;
+          if (this.values.has(key)) {
+            progress = true;
+            this.visitValue(key);
+            this.visitValue(value);
+          } else {
+            progress = false;
+            this._withUnrelatedScope(this.scope, fixpoint_rerun);
+          }
+          return progress;
+        };
+        fixpoint_rerun();
+      }
+    }
+  }
+
+  visitValueSet(val: ObjectValue): void {
+    invariant(val.getKind() === "Set");
+
+    let entries = val.$SetData;
+    invariant(entries !== undefined);
+
+    let len = entries.length;
+    for (let i = 0; i < len; i++) {
+      let entry = entries[i];
       if (entry === undefined) continue;
       this.visitValue(entry);
+    }
+  }
+
+  visitValueWeakSet(val: ObjectValue): void {
+    invariant(val.getKind() === "WeakSet");
+
+    let entries = val.$WeakSetData;
+    invariant(entries !== undefined);
+
+    let len = entries.length;
+    for (let i = 0; i < len; i++) {
+      let entry = entries[i];
+      if (entry !== undefined) {
+        let fixpoint_rerun = () => {
+          let progress;
+          if (this.values.has(entry)) {
+            progress = true;
+            this.visitValue(entry);
+          } else {
+            progress = false;
+            this._withUnrelatedScope(this.scope, fixpoint_rerun);
+          }
+          return progress;
+        };
+        fixpoint_rerun();
+      }
     }
   }
 
@@ -754,12 +798,16 @@ export class ResidualHeapVisitor {
         this.visitValue(buf);
         return;
       case "Map":
-      case "WeakMap":
         this.visitValueMap(val);
         return;
+      case "WeakMap":
+        this.visitValueWeakMap(val);
+        return;
       case "Set":
-      case "WeakSet":
         this.visitValueSet(val);
+        return;
+      case "WeakSet":
+        this.visitValueWeakSet(val);
         return;
       default:
         if (kind !== "Object") this.logger.logError(val, `Object of kind ${kind} is not supported in residual heap.`);
