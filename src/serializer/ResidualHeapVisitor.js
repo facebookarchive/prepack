@@ -1054,8 +1054,20 @@ export class ResidualHeapVisitor {
   visitRoots(): void {
     this.visitGenerator(this.globalGenerator, "GLOBAL");
     for (let moduleValue of this.modules.initializedModules.values()) this.visitValue(moduleValue);
-    if (this.realm.react.enabled && this.someReactElement !== undefined) {
-      this._visitReactLibrary(this.someReactElement);
+
+    if (this.realm.react.enabled) {
+      let fixpoint_rerun = () => {
+        let progress;
+        if (this.someReactElement !== undefined) {
+          this._visitReactLibrary(this.someReactElement);
+          progress = true;
+        } else {
+          this._withUnrelatedScope(this.globalGenerator, fixpoint_rerun);
+          progress = false;
+        }
+        return progress;
+      };
+      fixpoint_rerun();
     }
 
     // Do a fixpoint over all pure generator entries to make sure that we visit
