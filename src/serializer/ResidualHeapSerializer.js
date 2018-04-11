@@ -1080,11 +1080,15 @@ export class ResidualHeapSerializer {
     let elems = [];
 
     let entries;
+    let omitDeadEntries;
+
     if (kind === "Map") {
       entries = val.$MapData;
+      omitDeadEntries = false;
     } else {
       invariant(kind === "WeakMap");
       entries = val.$WeakMapData;
+      omitDeadEntries = true;
     }
     invariant(entries !== undefined);
     let len = entries.length;
@@ -1094,7 +1098,7 @@ export class ResidualHeapSerializer {
       let entry = entries[i];
       let key = entry.$Key;
       let value = entry.$Value;
-      if (key === undefined || value === undefined) continue;
+      if (key === undefined || value === undefined || (omitDeadEntries && !this.residualValues.has(key))) continue;
       let mightHaveBeenDeleted = key.mightHaveBeenDeleted();
       let delayReason =
         this.emitter.getReasonToWaitForDependencies(key) ||
@@ -1134,19 +1138,24 @@ export class ResidualHeapSerializer {
     let elems = [];
 
     let entries;
+    let omitDeadEntries;
+
     if (kind === "Set") {
       entries = val.$SetData;
+      omitDeadEntries = false;
     } else {
       invariant(kind === "WeakSet");
       entries = val.$WeakSetData;
+      omitDeadEntries = true;
     }
+
     invariant(entries !== undefined);
     let len = entries.length;
     let setConstructorDoesntTakeArguments = this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION);
 
     for (let i = 0; i < len; i++) {
       let entry = entries[i];
-      if (entry === undefined) continue;
+      if (entry === undefined || (omitDeadEntries && !this.residualValues.has(entry))) continue;
       let mightHaveBeenDeleted = entry.mightHaveBeenDeleted();
       let delayReason =
         this.emitter.getReasonToWaitForDependencies(entry) ||
