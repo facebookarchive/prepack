@@ -217,10 +217,16 @@ function evaluateJSXAttributes(
   let mayContainRefOrKey = false;
   let attributesAssigned = 0;
   let spreadValue;
+  let keyValue;
+  let refValue;
 
   const setConfigProperty = (name: string, value: Value): void => {
     invariant(config instanceof ObjectValue);
-    if (name === "key" || name === "ref") {
+    if (name === "key") {
+      keyValue = value;
+      mayContainRefOrKey = true;
+    } else if (name === "ref") {
+      refValue = value;
       mayContainRefOrKey = true;
     }
     Properties.Set(realm, config, name, value, true);
@@ -245,6 +251,8 @@ function evaluateJSXAttributes(
             }
           }
         } else {
+          keyValue = undefined;
+          refValue = undefined;
           containsAbstractSpreadAttribute = true;
           invariant(spreadValue instanceof AbstractValue || spreadValue instanceof ObjectValue);
 
@@ -308,6 +316,13 @@ function evaluateJSXAttributes(
       );
       if (!mayContainRefOrKey) {
         deleteRefAndKeyFromProps(realm, config);
+      } else {
+        if (keyValue !== undefined) {
+          setConfigProperty("key", keyValue);
+        }
+        if (refValue !== undefined) {
+          setConfigProperty("ref", refValue);
+        }
       }
     }
   }

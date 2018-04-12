@@ -70,7 +70,8 @@ type ComponentResolutionStrategy =
   | "FRAGMENT"
   | "RELAY_QUERY_RENDERER"
   | "CONTEXT_PROVIDER"
-  | "CONTEXT_CONSUMER";
+  | "CONTEXT_CONSUMER"
+  | "FORWARD_REF";
 
 export type OptimizedClosure = {
   evaluatedNode: ReactEvaluatedNode,
@@ -193,7 +194,7 @@ export class Reconciler {
         this.realm.evaluateForEffects(
           renderComponentTree,
           /*state*/ null,
-          `react component: ${componentType.getName()}`
+          `react component: ${getComponentName(this.realm, componentType)}`
         )
       )
     );
@@ -561,6 +562,35 @@ export class Reconciler {
     return;
   }
 
+  _resolveForwardRefComponent(
+    componentType: Value,
+    reactElement: ObjectValue,
+    context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null,
+    evaluatedNode: ReactEvaluatedNode
+  ): Value | void {
+    let typeValue = getProperty(this.realm, reactElement, "type");
+    let propsValue = getProperty(this.realm, reactElement, "props");
+    let refValue = getProperty(this.realm, reactElement, "ref");
+    invariant(typeValue instanceof AbstractValue || typeValue instanceof ObjectValue);
+    let reactHint = this.realm.react.abstractHints.get(typeValue);
+
+    invariant(reactHint !== undefined);
+    let [forwardedComponent] = reactHint.args;
+    let evaluatedChildNode = createReactEvaluatedNode("FORWARD_REF", getComponentName(this.realm, forwardedComponent));
+    evaluatedNode.children.push(evaluatedChildNode);
+    invariant(
+      forwardedComponent instanceof ECMAScriptSourceFunctionValue,
+      "expect React.forwardRef() to be passed function value"
+    );
+    let value = getValueFromFunctionCall(this.realm, forwardedComponent, this.realm.intrinsics.undefined, [
+      propsValue,
+      refValue,
+    ]);
+    return this._resolveDeeply(componentType, value, context, branchStatus, branchState, evaluatedChildNode);
+  }
+
   _resolveRelayQueryRendererComponent(
     componentType: Value,
     reactElement: ObjectValue,
@@ -599,7 +629,6 @@ export class Reconciler {
     // and won't be able to find any further components to evaluate as trees
     // because of that
     this.componentTreeState.deadEnds++;
-    return;
   }
 
   _renderClassComponent(
@@ -795,8 +824,16 @@ export class Reconciler {
     if (value === getReactSymbol("react.fragment", this.realm)) {
       return "FRAGMENT";
     }
+    if (value instanceof AbstractValue && this.realm.react.abstractHints.has(value)) {
+      let reactHint = this.realm.react.abstractHints.get(value);
+
+      invariant(reactHint !== undefined);
+      if (reactHint.object === this.realm.fbLibraries.react && reactHint.propertyName === "forwardRef") {
+        return "FORWARD_REF";
+      }
+    }
     if ((value instanceof ObjectValue || value instanceof AbstractObjectValue) && value.kind !== "conditional") {
-      let $$typeof = Get(this.realm, value, "$$typeof");
+      let $$typeof = getProperty(this.realm, value, "$$typeof");
 
       if ($$typeof === getReactSymbol("react.context", this.realm)) {
         return "CONTEXT_CONSUMER";
@@ -1057,10 +1094,6 @@ export class Reconciler {
         evaluatedNode
       );
     }
-    // we do not support "ref" on <Component /> ReactElements
-    if (!(refValue instanceof NullValue)) {
-      this._resolveReactElementBadRef(reactElement, evaluatedNode);
-    }
     if (
       !(
         propsValue instanceof ObjectValue ||
@@ -1073,6 +1106,10 @@ export class Reconciler {
     }
     let componentResolutionStrategy = this._getComponentResolutionStrategy(typeValue);
 
+    // we do not support "ref" on <Component /> ReactElements, unless it's a forwarded ref
+    if (!(refValue instanceof NullValue) && componentResolutionStrategy !== "FORWARD_REF") {
+      this._resolveReactElementBadRef(reactElement, evaluatedNode);
+    }
     try {
       let result;
 
@@ -1143,6 +1180,17 @@ export class Reconciler {
             componentType,
             reactElement,
             context,
+            branchState,
+            evaluatedNode
+          );
+          break;
+        }
+        case "FORWARD_REF": {
+          result = this._resolveForwardRefComponent(
+            componentType,
+            reactElement,
+            context,
+            branchStatus,
             branchState,
             evaluatedNode
           );
