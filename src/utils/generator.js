@@ -383,6 +383,7 @@ export class Generator {
     this.id = realm.nextGeneratorId++;
     this._name = name;
     this.effectsToApply = effects;
+    this.pathConditions = [].concat(realm.pathConditions);
   }
 
   realm: Realm;
@@ -391,6 +392,7 @@ export class Generator {
   effectsToApply: void | Effects;
   id: number;
   _name: string;
+  pathConditions: Array<AbstractValue>;
 
   static _generatorOfEffects(realm: Realm, name: string, environmentRecordIdAfterGlobalCode: number, effects: Effects) {
     let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects;

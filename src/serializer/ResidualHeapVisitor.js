@@ -12,6 +12,7 @@
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord, EnvironmentRecord } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
+import { Path } from "../singletons.js";
 import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
 import type { Binding } from "../environment.js";
 import { HashSet, IsArray, Get } from "../methods/index.js";
@@ -98,6 +99,7 @@ export class ResidualHeapVisitor {
     this.classMethodInstances = new Map();
     this.functionInstances = new Map();
     this.values = new Map();
+    this.conditionalFeasibility = new Map();
     let generator = this.realm.generator;
     invariant(generator);
     this.scope = this.globalGenerator = generator;
@@ -131,6 +133,7 @@ export class ResidualHeapVisitor {
   functionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   scope: Scope;
   values: Map<Value, Set<Scope>>;
+  conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>;
   inspector: ResidualHeapInspector;
   referencedDeclaredValues: Map<AbstractValue, void | FunctionValue>;
   delayedActions: Array<{| generator: Generator, action: () => void | boolean |}>;
@@ -837,9 +840,86 @@ export class ResidualHeapVisitor {
     this.visitValue(val.$ProxyHandler);
   }
 
+  _visitAbstractValueConditional(val: AbstractValue): void {
+    let condition = val.args[0];
+    invariant(condition instanceof AbstractValue);
+
+    let cf = this.conditionalFeasibility.get(val);
+    if (cf === undefined) this.conditionalFeasibility.set(val, (cf = { t: false, f: false }));
+
+    let feasibleT, feasibleF;
+    let savedPath = this.realm.pathConditions;
+    try {
+      this.realm.pathConditions = this.scope instanceof Generator ? this.scope.pathConditions : [];
+
+      let impliesT = Path.implies(condition);
+      let impliesF = Path.impliesNot(condition);
+      invariant(!(impliesT && impliesF));
+
+      if (!impliesT && !impliesF) {
+        feasibleT = feasibleF = true;
+      } else {
+        feasibleT = impliesT;
+        feasibleF = impliesF;
+      }
+    } finally {
+      this.realm.pathConditions = savedPath;
+    }
+
+    let visitedT = false,
+      visitedF = false;
+
+    if (!cf.t && feasibleT) {
+      val.args[1] = this.visitEquivalentValue(val.args[1]);
+      cf.t = true;
+      if (cf.f) val.args[0] = this.visitEquivalentValue(val.args[0]);
+      visitedT = true;
+    }
+
+    if (!cf.f && feasibleF) {
+      val.args[2] = this.visitEquivalentValue(val.args[2]);
+      cf.f = true;
+      if (cf.t) val.args[0] = this.visitEquivalentValue(val.args[0]);
+      visitedF = true;
+    }
+
+    if (!visitedT || !visitedF) {
+      let fixpoint_rerun = () => {
+        let progress = false;
+        invariant(cf !== undefined);
+        if (cf.f && cf.t) {
+          invariant(!visitedT || !visitedF);
+          this.visitValue(val.args[0]);
+        }
+
+        if (cf.t && !visitedT) {
+          this.visitValue(val.args[1]);
+          progress = visitedT = true;
+        }
+        invariant(cf.t === visitedT);
+
+        if (cf.f && !visitedF) {
+          this.visitValue(val.args[2]);
+          progress = visitedF = true;
+        }
+        invariant(cf.f === visitedF);
+
+        if (!visitedT || !visitedF) this._withUnrelatedScope(this.scope, fixpoint_rerun);
+
+        return progress;
+      };
+
+      fixpoint_rerun();
+    }
+  }
+
   visitAbstractValue(val: AbstractValue): void {
-    if (val.kind === "sentinel member expression")
+    if (val.kind === "sentinel member expression") {
       this.logger.logError(val, "expressions of type o[p] are not yet supported for partially known o and unknown p");
+    } else if (val.kind === "conditional") {
+      this._visitAbstractValueConditional(val);
+      return;
+    }
     for (let i = 0, n = val.args.length; i < n; i++) {
       val.args[i] = this.visitEquivalentValue(val.args[i]);
     }
@@ -934,10 +1014,10 @@ export class ResidualHeapVisitor {
   createGeneratorVisitCallbacks(additionalFunctionInfo?: AdditionalFunctionInfo): VisitEntryCallbacks {
     let callbacks = {
       visitEquivalentValue: this.visitEquivalentValue.bind(this),
-      visitGenerator: (generator, parent) => {
+      visitGenerator: (generator, parent, conditional) => {
         // TODO: The serializer assumes that each generator has a unique parent; however, in the presence of conditional exceptions that is not actually true.
         // invariant(!this.generatorParents.has(generator));
-        this.visitGenerator(generator, parent, additionalFunctionInfo);
+        this.visitGenerator(generator, parent, additionalFunctionInfo, conditional);
       },
       canSkip: (value: AbstractValue): boolean => {
         return !this.referencedDeclaredValues.has(value) && !this.values.has(value);
@@ -993,7 +1073,8 @@ export class ResidualHeapVisitor {
   visitGenerator(
     generator: Generator,
     parent: Generator | FunctionValue | "GLOBAL",
-    additionalFunctionInfo?: AdditionalFunctionInfo
+    additionalFunctionInfo?: AdditionalFunctionInfo,
+    conditional?: { condition: AbstractValue, inverse: boolean }
   ): void {
     this.generatorParents.set(generator, parent);
     if (generator.effectsToApply)
