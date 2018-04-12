@@ -650,6 +650,7 @@ export class ResidualHeapVisitor {
           declarativeEnvironmentRecord: null,
           potentialReferentializationScopes: new Set(),
         };
+        // Queue up visiting of global binding exactly once in the globalGenerator scope.
         this._withUnrelatedScope(this.globalGenerator, () => {
           let value = this.realm.getGlobalLetBinding(name);
           if (value !== undefined) residualFunctionBinding.value = this.visitEquivalentValue(value);
@@ -674,6 +675,9 @@ export class ResidualHeapVisitor {
           potentialReferentializationScopes: new Set(),
         };
       });
+      // Note that we don't yet visit the binding (and its value) here,
+      // as that should be done by a call to visitBinding, in the right scope,
+      // if the binding's incoming value is relevant.
     }
   }
 
@@ -954,8 +958,7 @@ export class ResidualHeapVisitor {
         invariant(additionalFunctionInfo);
         let { functionValue } = additionalFunctionInfo;
         invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
-        let residualBinding;
-        residualBinding = this.getBinding(functionValue, modifiedBinding.environment, modifiedBinding.name);
+        let residualBinding = this.getBinding(functionValue, modifiedBinding.environment, modifiedBinding.name);
         let funcInstance = additionalFunctionInfo.instance;
         invariant(funcInstance !== undefined);
         funcInstance.residualFunctionBindings.set(modifiedBinding.name, residualBinding);
