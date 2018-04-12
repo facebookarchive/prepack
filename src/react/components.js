@@ -289,6 +289,10 @@ export function applyGetDerivedStateFromProps(
         } else if (b === null) {
           invariant(a instanceof Value);
           return AbstractValue.createFromConditionalOp(realm, condition, a, prevState);
+        } else {
+          invariant(a instanceof Value);
+          invariant(b instanceof Value);
+          return AbstractValue.createFromConditionalOp(realm, condition, a, b);
         }
       } else {
         invariant(false, "TODO: unknown abstract value passed to deriveState");
