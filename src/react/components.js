@@ -19,13 +19,14 @@ import {
   NativeFunctionValue,
   ECMAScriptFunctionValue,
   Value,
+  FunctionValue,
 } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
 import { valueIsClassComponent, deleteRefAndKeyFromProps, getProperty, getValueFromFunctionCall } from "./utils";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get, Construct } from "../methods/index.js";
-import { Properties } from "../singletons.js";
+import { Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { ClassComponentMetadata } from "../types.js";
 import type { ReactEvaluatedNode } from "../serializer/types.js";
@@ -275,8 +276,15 @@ export function applyGetDerivedStateFromProps(
   let partialState = getDerivedStateFromPropsCall(realm.intrinsics.null, [props, prevState]);
 
   const deriveState = state => {
+    let objectAssign = Get(realm, realm.intrinsics.Object, "assign");
+    invariant(objectAssign instanceof ECMAScriptFunctionValue);
+    let objectAssignCall = objectAssign.$Call;
+    invariant(objectAssignCall !== undefined);
+
     if (state instanceof AbstractValue && !(state instanceof AbstractObjectValue)) {
-      if (state.kind === "conditional") {
+      const kind = state.kind;
+
+      if (kind === "conditional") {
         let condition = state.args[0];
         let a = deriveState(state.args[1]);
         let b = deriveState(state.args[2]);
@@ -294,16 +302,45 @@ export function applyGetDerivedStateFromProps(
           invariant(b instanceof Value);
           return AbstractValue.createFromConditionalOp(realm, condition, a, b);
         }
+      } else if (kind === "||" || kind === "&&") {
+        let a = deriveState(state.args[0]);
+        let b = deriveState(state.args[1]);
+        if (b === null) {
+          invariant(a instanceof Value);
+          return AbstractValue.createFromLogicalOp(realm, kind, a, prevState);
+        } else {
+          invariant(a instanceof Value);
+          invariant(b instanceof Value);
+          return AbstractValue.createFromLogicalOp(realm, kind, a, b);
+        }
       } else {
-        invariant(false, "TODO: unknown abstract value passed to deriveState");
+        invariant(state.args !== undefined, "TODO: unknown abstract value passed to deriveState");
+        // as the value is completely abstract, we need to add a bunch of
+        // operations to be emitted to ensure we do the right thing at runtime
+        let a = AbstractValue.createFromBinaryOp(realm, "!==", state, realm.intrinsics.null);
+        let b = AbstractValue.createFromBinaryOp(realm, "!==", state, realm.intrinsics.undefined);
+        let c = AbstractValue.createFromLogicalOp(realm, "&&", a, b);
+        invariant(c instanceof AbstractValue);
+        let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+        // we cannot use the standard Object.assign as partial state
+        // is not simple. however, given getDerivedStateFromProps is
+        // meant to be pure, we can assume that there are no getters on
+        // the partial abstract state
+        AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          FunctionValue,
+          [objectAssign, newState, prevState, state],
+          ([methodNode, ..._args]) => {
+            return t.callExpression(methodNode, ((_args: any): Array<any>));
+          }
+        );
+        newState.makeSimple();
+        newState.makePartial();
+        let conditional = AbstractValue.createFromLogicalOp(realm, "&&", c, newState);
+        return conditional;
       }
     } else if (state !== realm.intrinsics.null && state !== realm.intrinsics.undefined) {
-      let objectAssign = Get(realm, realm.intrinsics.Object, "assign");
-      invariant(objectAssign instanceof ECMAScriptFunctionValue);
-      let objectAssignCall = objectAssign.$Call;
-      invariant(objectAssignCall !== undefined);
       let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
-      invariant(objectAssignCall !== undefined);
       objectAssignCall(realm.intrinsics.undefined, [newState, prevState, state]);
       return newState;
     } else {
