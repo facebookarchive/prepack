@@ -262,7 +262,7 @@ export class Functions {
     if (failed) {
       evaluatedNode.status = "WRITE-CONFLICTS";
     }
-    return false;
+    return failed;
   }
 
   optimizeReactComponentTreeRoots(
