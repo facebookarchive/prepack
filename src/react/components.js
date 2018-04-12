@@ -18,13 +18,14 @@ import {
   SymbolValue,
   NativeFunctionValue,
   ECMAScriptFunctionValue,
+  FunctionValue,
 } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
 import { valueIsClassComponent, deleteRefAndKeyFromProps, getProperty, getValueFromFunctionCall } from "./utils";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get, Construct } from "../methods/index.js";
-import { Properties } from "../singletons.js";
+import { Properties, Havoc } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { ClassComponentMetadata } from "../types.js";
 import type { ReactEvaluatedNode } from "../serializer/types.js";
@@ -280,7 +281,29 @@ export function applyGetDerivedStateFromProps(
     invariant(objectAssignCall !== undefined);
     let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
     invariant(objectAssignCall !== undefined);
-    objectAssignCall(realm.intrinsics.undefined, [newState, prevState, partialState]);
+    if (partialState instanceof ObjectValue || partialState instanceof AbstractObjectValue) {
+      objectAssignCall(realm.intrinsics.undefined, [newState, prevState, partialState]);
+    } else {
+      // get the global Object.assign
+      let globalObj = Get(realm, realm.$GlobalObject, "Object");
+      invariant(globalObj instanceof ObjectValue);
+      let objAssign = Get(realm, globalObj, "assign");
+
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        FunctionValue,
+        [objAssign, newState, prevState, partialState],
+        ([methodNode, ..._args]) => {
+          return t.callExpression(methodNode, ((_args: any): Array<any>));
+        }
+      );
+      // we need to havoc the partial state as we may have called
+      // but we control newState prevState so we don't havoc them
+      // furthermore, we can guarantee that the state remains simple
+      newState.makePartial();
+      newState.makeSimple();
+      Havoc.value(realm, partialState);
+    }
 
     Properties.Set(realm, instance, "state", newState, true);
   }
