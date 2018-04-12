@@ -13,7 +13,7 @@ import type { BabelNodeSourceLocation } from "babel-types";
 import { Completion, JoinedAbruptCompletions, PossiblyNormalCompletion, ReturnCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
-import { construct_empty_effects, type Effects, type PropertyBindings, Realm, type Bindings } from "../realm.js";
+import { construct_empty_effects, type Effects, type PropertyBindings, Realm, type Binding } from "../realm.js";
 import type { PropertyBinding, ReactComponentTreeConfig } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
 import {
@@ -237,20 +237,32 @@ export class Functions {
     }
   }
 
-  _hasWriteConflictsFromReactRenders(bindings: Bindings, effects: Effects, evaluatedNode: ReactEvaluatedNode): boolean {
+  _hasWriteConflictsFromReactRenders(
+    bindings: Set<Binding>,
+    effects: Effects,
+    nestedEffects: Array<Effects>,
+    evaluatedNode: ReactEvaluatedNode
+  ): boolean {
     let recentBindings = effects[2];
+    let ignoreBindings = new Set();
     let failed = false;
 
-    for (let [binding, val] of recentBindings) {
-      if (bindings.has(binding)) {
+    for (let [, , nestedBindingsToIgnore] of nestedEffects) {
+      for (let [binding] of nestedBindingsToIgnore) {
+        ignoreBindings.add(binding);
+      }
+    }
+
+    for (let [binding] of recentBindings) {
+      if (bindings.has(binding) && !ignoreBindings.has(binding)) {
         failed = true;
       }
-      bindings.set(binding, val);
+      bindings.add(binding);
     }
     if (failed) {
       evaluatedNode.status = "WRITE-CONFLICTS";
     }
-    return failed;
+    return false;
   }
 
   optimizeReactComponentTreeRoots(
@@ -259,7 +271,7 @@ export class Functions {
     environmentRecordIdAfterGlobalCode: number
   ): void {
     let logger = this.moduleTracer.modules.logger;
-    let bindings = new Map();
+    let bindings = new Set();
     let recordedReactRootValues = this.__generateInitialAdditionalFunctions("__reactComponentTrees");
     // Get write effects of the components
     if (this.realm.react.verbose) {
@@ -284,7 +296,7 @@ export class Functions {
         }
         continue;
       }
-      if (this._hasWriteConflictsFromReactRenders(bindings, componentTreeEffects, evaluatedRootNode)) {
+      if (this._hasWriteConflictsFromReactRenders(bindings, componentTreeEffects, [], evaluatedRootNode)) {
         if (this.realm.react.verbose) {
           logger.logInformation(`  ✖ ${evaluatedRootNode.name} (root - write conflicts)`);
         }
@@ -313,7 +325,7 @@ export class Functions {
 
   _optimizeReactNestedClosures(
     reconciler: Reconciler,
-    bindings: Bindings,
+    bindings: Set<Binding>,
     environmentRecordIdAfterGlobalCode: number
   ): void {
     let logger = this.moduleTracer.modules.logger;
@@ -349,7 +361,7 @@ export class Functions {
         }
         continue;
       }
-      if (this._hasWriteConflictsFromReactRenders(bindings, closureEffects, evaluatedNode)) {
+      if (this._hasWriteConflictsFromReactRenders(bindings, closureEffects, nestedEffects, evaluatedNode)) {
         if (this.realm.react.verbose) {
           logger.logInformation(`    ✖ function "${getComponentName(this.realm, func)}" (write conflicts)`);
         }
@@ -376,7 +388,7 @@ export class Functions {
 
   _optimizeReactComponentTreeBranches(
     reconciler: Reconciler,
-    bindings: Bindings,
+    bindings: Set<Binding>,
     environmentRecordIdAfterGlobalCode: number
   ): void {
     let logger = this.moduleTracer.modules.logger;
@@ -404,7 +416,7 @@ export class Functions {
         }
         continue;
       }
-      if (this._hasWriteConflictsFromReactRenders(bindings, branchEffects, evaluatedNode)) {
+      if (this._hasWriteConflictsFromReactRenders(bindings, branchEffects, [], evaluatedNode)) {
         if (this.realm.react.verbose) {
           logger.logInformation(`    ✖ ${evaluatedNode.name} (branch - write conflicts)`);
         }
