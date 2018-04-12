@@ -300,7 +300,12 @@ export function applyGetDerivedStateFromProps(
         } else {
           invariant(a instanceof Value);
           invariant(b instanceof Value);
-          return AbstractValue.createFromConditionalOp(realm, condition, a, b);
+          return AbstractValue.createFromLogicalOp(
+            realm,
+            "||",
+            AbstractValue.createFromConditionalOp(realm, condition, a, b),
+            prevState
+          );
         }
       } else if (kind === "||" || kind === "&&") {
         let a = deriveState(state.args[0]);
@@ -311,7 +316,12 @@ export function applyGetDerivedStateFromProps(
         } else {
           invariant(a instanceof Value);
           invariant(b instanceof Value);
-          return AbstractValue.createFromLogicalOp(realm, kind, a, b);
+          return AbstractValue.createFromLogicalOp(
+            realm,
+            "||",
+            AbstractValue.createFromLogicalOp(realm, kind, a, b),
+            prevState
+          );
         }
       } else {
         invariant(state.args !== undefined, "TODO: unknown abstract value passed to deriveState");
