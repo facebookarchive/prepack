@@ -133,6 +133,8 @@ export class ResidualHeapVisitor {
   functionInfos: Map<BabelNodeBlockStatement, FunctionInfo>;
   scope: Scope;
   values: Map<Value, Set<Scope>>;
+
+  // For every abstract value of kind "conditional", this map keeps track of whether the consequent and/or alternate is feasible in any scope
   conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>;
   inspector: ResidualHeapInspector;
   referencedDeclaredValues: Map<AbstractValue, void | FunctionValue>;
@@ -213,7 +215,7 @@ export class ResidualHeapVisitor {
   }
 
   // Queues up an action to be later processed in some arbitrary scope.
-  _withUnrelatedScope(scope: Scope, action: () => void | boolean) {
+  _enqueueWithUnrelatedScope(scope: Scope, action: () => void | boolean) {
     let generator;
     if (scope instanceof FunctionValue) generator = this.createdObjects.get(scope) || this.globalGenerator;
     else if (scope === "GLOBAL") generator = this.globalGenerator;
@@ -228,7 +230,7 @@ export class ResidualHeapVisitor {
   _visitInUnrelatedScope(scope: Scope, val: Value) {
     let scopes = this.values.get(val);
     if (scopes !== undefined && scopes.has(scope)) return;
-    this._withUnrelatedScope(scope, () => this.visitValue(val));
+    this._enqueueWithUnrelatedScope(scope, () => this.visitValue(val));
   }
 
   visitObjectProperty(binding: PropertyBinding) {
@@ -904,7 +906,12 @@ export class ResidualHeapVisitor {
         }
         invariant(cf.f === visitedF);
 
-        if (!visitedT || !visitedF) this._withUnrelatedScope(this.scope, fixpoint_rerun);
+        // When not all possible outcomes are assumed to be feasible yet after visiting some scopes,
+        // it might be that they do become assumed to be feasible when later visiting some other scopes.
+        // In that case, we should also re-visit the corresponding cases in this scope.
+        // To this end, calling _enqueueWithUnrelatedScope enqueues this function for later re-execution if
+        // any other visiting progress was made.
+        if (!visitedT || !visitedF) this._enqueueWithUnrelatedScope(this.scope, fixpoint_rerun);
 
         return progress;
       };
@@ -1014,10 +1021,10 @@ export class ResidualHeapVisitor {
   createGeneratorVisitCallbacks(additionalFunctionInfo?: AdditionalFunctionInfo): VisitEntryCallbacks {
     let callbacks = {
       visitEquivalentValue: this.visitEquivalentValue.bind(this),
-      visitGenerator: (generator, parent, conditional) => {
+      visitGenerator: (generator, parent) => {
         // TODO: The serializer assumes that each generator has a unique parent; however, in the presence of conditional exceptions that is not actually true.
         // invariant(!this.generatorParents.has(generator));
-        this.visitGenerator(generator, parent, additionalFunctionInfo, conditional);
+        this.visitGenerator(generator, parent, additionalFunctionInfo);
       },
       canSkip: (value: AbstractValue): boolean => {
         return !this.referencedDeclaredValues.has(value) && !this.values.has(value);
@@ -1073,8 +1080,7 @@ export class ResidualHeapVisitor {
   visitGenerator(
     generator: Generator,
     parent: Generator | FunctionValue | "GLOBAL",
-    additionalFunctionInfo?: AdditionalFunctionInfo,
-    conditional?: { condition: AbstractValue, inverse: boolean }
+    additionalFunctionInfo?: AdditionalFunctionInfo
   ): void {
     this.generatorParents.set(generator, parent);
     if (generator.effectsToApply)
