@@ -816,24 +816,21 @@ export class Realm {
     }
   }
 
-  evaluateForFixpointEffects(
-    loopContinueTest: () => Value,
-    loopBody: () => EvaluationResult
-  ): void | [Effects, Effects] {
+  evaluateForFixpointEffects(iteration: () => [Value, EvaluationResult]): void | [Effects, Effects, AbstractValue] {
     try {
-      let effects1 = this.evaluateForEffects((loopBody: any), undefined, "evaluateForFixpointEffects/1");
+      let test;
+      let f = () => {
+        let result;
+        [test, result] = iteration();
+        if (!(test instanceof AbstractValue)) throw new FatalError("loop terminates before fixed point");
+        invariant(result instanceof Completion || result instanceof Value);
+        return result;
+      };
+      let effects1 = this.evaluateForEffects(f, undefined, "evaluateForFixpointEffects/1");
       while (true) {
         this.restoreBindings(effects1[2]);
         this.restoreProperties(effects1[3]);
-        let effects2 = this.evaluateForEffects(
-          () => {
-            let test = loopContinueTest();
-            if (!(test instanceof AbstractValue)) throw new FatalError("loop terminates before fixed point");
-            return (loopBody(): any);
-          },
-          undefined,
-          "evaluateForFixpointEffects/2"
-        );
+        let effects2 = this.evaluateForEffects(f, undefined, "evaluateForFixpointEffects/2");
         this.restoreBindings(effects1[2]);
         this.restoreProperties(effects1[3]);
         if (Widen.containsEffects(effects1, effects2)) {
@@ -844,7 +841,11 @@ export class Realm {
           this._applyPropertiesToNewlyCreatedObjects(pbindings2, createdObjects2);
           this._emitPropertAssignments(gen, pbindings2, createdObjects2);
           this._emitLocalAssignments(gen, bindings2, createdObjects2);
-          return [effects1, effects2];
+          invariant(test instanceof AbstractValue);
+          let cond = gen.derive(test.types, test.values, [test], ([n]) => n, {
+            skipInvariant: true,
+          });
+          return [effects1, effects2, cond];
         }
         effects1 = Widen.widenEffects(this, effects1, effects2);
       }
