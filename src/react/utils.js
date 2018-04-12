@@ -431,11 +431,6 @@ export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFun
   lengthProperty.writable = false;
   lengthProperty.enumerable = false;
   lengthProperty.configurable = true;
-  // ensure the length value is set to the new value
-  let lengthValue = lengthProperty.value;
-  invariant(lengthValue instanceof NumberValue);
-  lengthValue.value = 2;
-
   func.$FormalParameters = func.$FormalParameters.map((param, i) => {
     if (i === 0) {
       return t.isIdentifier(param) ? param : t.identifier("props");
@@ -446,6 +441,11 @@ export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFun
   if (func.$FormalParameters.length === 1) {
     func.$FormalParameters.push(t.identifier("context"));
   }
+  // ensure the length value is set to the correct value after
+  // we've made mutations to the arguments of this function
+  let lengthValue = lengthProperty.value;
+  invariant(lengthValue instanceof NumberValue);
+  lengthValue.value = func.$FormalParameters.length;
 }
 
 export function createReactHintObject(object: ObjectValue, propertyName: string, args: Array<Value>): ReactHint {
