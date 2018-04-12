@@ -69,10 +69,12 @@ App.getTrials = function(renderer, Root) {
     {id: 2, text: "Item 3"},
   ];
   let results = [];
+
   renderer.update(<Root items={items} a={true} b={true} />);
   results.push(['render simple first render only tree (true true)', renderer.toJSON()]);
   renderer.update(<Root items={items} a={true} b={false} />);
   results.push(['render simple first render only tree (true false)', renderer.toJSON()]);
+
   return results;
 };
 
