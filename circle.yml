@@ -1,6 +1,6 @@
 machine:
   node:
-    version: 9.7.1
+    version: 8.9.4
   environment:
     PATH: "${PATH}:${HOME}/${CIRCLE_PROJECT_REPONAME}/node_modules/.bin"
 
@@ -11,7 +11,7 @@ compile:
 
 dependencies:
   override:
-    - yarn
+    - yarn install --frozen-lockfile # make sure that lockfile is up-to-date
   cache_directories:
     - ~/.cache/yarn
 
