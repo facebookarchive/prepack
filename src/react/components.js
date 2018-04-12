@@ -18,14 +18,14 @@ import {
   SymbolValue,
   NativeFunctionValue,
   ECMAScriptFunctionValue,
-  FunctionValue,
+  Value,
 } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
 import { valueIsClassComponent, deleteRefAndKeyFromProps, getProperty, getValueFromFunctionCall } from "./utils";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get, Construct } from "../methods/index.js";
-import { Properties, Havoc } from "../singletons.js";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { ClassComponentMetadata } from "../types.js";
 import type { ReactEvaluatedNode } from "../serializer/types.js";
@@ -274,37 +274,42 @@ export function applyGetDerivedStateFromProps(
   invariant(getDerivedStateFromPropsCall !== undefined);
   let partialState = getDerivedStateFromPropsCall(realm.intrinsics.null, [props, prevState]);
 
-  if (partialState !== realm.intrinsics.null && partialState !== realm.intrinsics.undefined) {
-    let objectAssign = Get(realm, realm.intrinsics.Object, "assign");
-    invariant(objectAssign instanceof ECMAScriptFunctionValue);
-    let objectAssignCall = objectAssign.$Call;
-    invariant(objectAssignCall !== undefined);
-    let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
-    invariant(objectAssignCall !== undefined);
-    if (partialState instanceof ObjectValue || partialState instanceof AbstractObjectValue) {
-      objectAssignCall(realm.intrinsics.undefined, [newState, prevState, partialState]);
-    } else {
-      // get the global Object.assign
-      let globalObj = Get(realm, realm.$GlobalObject, "Object");
-      invariant(globalObj instanceof ObjectValue);
-      let objAssign = Get(realm, globalObj, "assign");
-
-      AbstractValue.createTemporalFromBuildFunction(
-        realm,
-        FunctionValue,
-        [objAssign, newState, prevState, partialState],
-        ([methodNode, ..._args]) => {
-          return t.callExpression(methodNode, ((_args: any): Array<any>));
+  const deriveState = state => {
+    if (state instanceof AbstractValue && !(state instanceof AbstractObjectValue)) {
+      if (state.kind === "conditional") {
+        let condition = state.args[0];
+        let a = deriveState(state.args[1]);
+        let b = deriveState(state.args[2]);
+        invariant(condition instanceof AbstractValue);
+        if (a === null && b === null) {
+          return null;
+        } else if (a === null) {
+          invariant(b instanceof Value);
+          return AbstractValue.createFromConditionalOp(realm, condition, prevState, b);
+        } else if (b === null) {
+          invariant(a instanceof Value);
+          return AbstractValue.createFromConditionalOp(realm, condition, a, prevState);
         }
-      );
-      // we need to havoc the partial state as we may have called
-      // but we control newState prevState so we don't havoc them
-      // furthermore, we can guarantee that the state remains simple
-      newState.makePartial();
-      newState.makeSimple();
-      Havoc.value(realm, partialState);
+      } else {
+        invariant(false, "TODO: unknown abstract value passed to deriveState");
+      }
+    } else if (state !== realm.intrinsics.null && state !== realm.intrinsics.undefined) {
+      let objectAssign = Get(realm, realm.intrinsics.Object, "assign");
+      invariant(objectAssign instanceof ECMAScriptFunctionValue);
+      let objectAssignCall = objectAssign.$Call;
+      invariant(objectAssignCall !== undefined);
+      let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+      invariant(objectAssignCall !== undefined);
+      objectAssignCall(realm.intrinsics.undefined, [newState, prevState, state]);
+      return newState;
+    } else {
+      return null;
     }
+  };
 
+  let newState = deriveState(partialState);
+  if (newState !== null) {
+    invariant(newState instanceof Value);
     Properties.Set(realm, instance, "state", newState, true);
   }
 }
