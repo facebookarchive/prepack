@@ -79,7 +79,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     reactEnabled: true,
     reactOutput: outputJsx ? "jsx" : "create-element",
     inlineExpressions: true,
-    omitInvariants: true,
+    invariantLevel: 0,
     stripFlow: true,
   };
 

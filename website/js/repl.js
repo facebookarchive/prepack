@@ -51,10 +51,11 @@ var optionsConfig = [
     description: "Enable lazy objects feature and specify the JS runtime that supports this feature."
   },
   {
-    type: "boolean",
-    name: "omitInvariants",
-    defaultVal: true,
-    description: "Do not add invariant conditionals that throw on possible runtime errors."
+    type: "choice",
+    name: "invariantLevel",
+    choices: [0, 1, 2, 3],
+    defaultVal: 0,
+    description: "Whether and how many checks to generate that validate Prepack's assumptions about the environment."
   },
   {
     type: "boolean",
