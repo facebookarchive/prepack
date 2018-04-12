@@ -265,6 +265,18 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-7.js");
       });
 
+      it("Simple 8", async () => {
+        await runTest(directory, "simple-8.js");
+      });
+
+      it("Simple 9", async () => {
+        await runTest(directory, "simple-9.js");
+      });
+
+      it("Simple 10", async () => {
+        await runTest(directory, "simple-10.js");
+      });
+
       it("Simple fragments", async () => {
         await runTest(directory, "simple-fragments.js");
       });

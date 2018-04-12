@@ -196,6 +196,7 @@ export type ReactEvaluatedNode = {
     | "NEW_TREE"
     | "INLINED"
     | "BAIL-OUT"
+    | "WRITE-CONFLICTS"
     | "UNKNOWN_TYPE"
     | "RENDER_PROPS"
     | "FORWARD_REF"
