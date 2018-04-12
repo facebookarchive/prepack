@@ -13,7 +13,8 @@ import type { BabelNodeSourceLocation } from "babel-types";
 import { Completion, JoinedAbruptCompletions, PossiblyNormalCompletion, ReturnCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
-import { construct_empty_effects, type Effects, type PropertyBindings, Realm, type Binding } from "../realm.js";
+import { construct_empty_effects, type Effects, type PropertyBindings, Realm } from "../realm.js";
+import type { Binding } from "../environment.js";
 import type { PropertyBinding, ReactComponentTreeConfig } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
 import {
