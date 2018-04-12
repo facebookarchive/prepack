@@ -27,10 +27,11 @@ function App2() {
   );
 }
 
+// keep a reference to the other root that also
+// writes to the same variable
+App.App2 = App2;
+
 App.getTrials = function(renderer, Root) {
-  // keep a reference to the other root that also
-  // writes to the same variable
-  let x = App2;
   renderer.update(<Root />);
   return [['simple render', renderer.toJSON()]];
 };
