@@ -445,7 +445,7 @@ export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFun
   // we've made mutations to the arguments of this function
   let lengthValue = lengthProperty.value;
   invariant(lengthValue instanceof NumberValue);
-  lengthValue.length = func.$FormalParameters.length;
+  lengthValue.value = func.$FormalParameters.length;
 }
 
 export function createReactHintObject(object: ObjectValue, propertyName: string, args: Array<Value>): ReactHint {
