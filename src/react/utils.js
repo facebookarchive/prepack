@@ -434,7 +434,9 @@ export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFun
   // ensure the length value is set to the new value
   let lengthValue = lengthProperty.value;
   invariant(lengthValue instanceof NumberValue);
-  lengthValue.value = 2;
+  if (func.$FormalParameters.length !== 0) {
+    lengthValue.value = 2;
+  }
 
   func.$FormalParameters = func.$FormalParameters.map((param, i) => {
     if (i === 0) {
