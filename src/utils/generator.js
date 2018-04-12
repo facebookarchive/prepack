@@ -740,6 +740,7 @@ export class Generator {
   // e.g: (obj.property !== undefined && typeof obj.property !== "object")
   // NB: if the type of the AbstractValue is top, skips the invariant
   emitFullInvariant(object: ObjectValue | AbstractObjectValue, key: string, value: Value) {
+    if (object.refuseSerialization) return;
     let propertyIdentifier = this.getAsPropertyNameExpression(key);
     let computed = !t.isIdentifier(propertyIdentifier);
     let accessedPropertyOf = objectNode => t.memberExpression(objectNode, propertyIdentifier, computed);
@@ -791,44 +792,96 @@ export class Generator {
           );
           return checks.reduce((expr, newCondition) => t.logicalExpression("&&", expr, newCondition));
         };
-        this.emitInvariant([value, value], condition, valueNode => valueNode);
+        this._emitInvariant([value, value], condition, valueNode => valueNode);
       }
+    } else if (value instanceof FunctionValue) {
+      // We do a special case for functions,
+      // as we like to use concrete functions in the model to model abstract behaviors.
+      // These concrete functions do not have the right identity.
+      condition = ([objectNode]) =>
+        t.binaryExpression(
+          "!==",
+          t.unaryExpression("typeof", accessedPropertyOf(objectNode), true),
+          t.stringLiteral("function")
+        );
+      this._emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
     } else {
       condition = ([objectNode, valueNode]) => t.binaryExpression("!==", accessedPropertyOf(objectNode), valueNode);
-      this.emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
+      this._emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
     }
   }
 
   getErrorStatement(message: BabelNodeExpression): BabelNodeStatement {
     if (this.realm.invariantMode === "throw")
       return t.throwStatement(t.newExpression(this.preludeGenerator.memoizeReference("Error"), [message]));
-    else
-      return t.expressionStatement(
-        t.callExpression(
-          t.memberExpression(this.preludeGenerator.memoizeReference("console"), t.identifier(this.realm.invariantMode)),
-          [message]
-        )
-      );
+    else {
+      let targetReference = this.realm.invariantMode;
+      let args = [message];
+      let i = targetReference.indexOf("+");
+      if (i !== -1) {
+        let s = targetReference.substr(i + 1);
+        let x = Number.parseInt(s, 10);
+        args.push(isNaN(x) ? t.stringLiteral(s) : t.numericLiteral(x));
+        targetReference = targetReference.substr(0, i);
+      }
+      return t.expressionStatement(t.callExpression(this.preludeGenerator.memoizeReference(targetReference), args));
+    }
   }
 
-  emitInvariant(
+  emitPropertyInvariant(
+    object: ObjectValue | AbstractObjectValue,
+    key: string,
+    state: "MISSING" | "PRESENT" | "DEFINED"
+  ) {
+    if (object.refuseSerialization) return;
+    let propertyIdentifier = this.getAsPropertyNameExpression(key);
+    let computed = !t.isIdentifier(propertyIdentifier);
+    let accessedPropertyOf = (objectNode: BabelNodeExpression) =>
+      t.memberExpression(objectNode, propertyIdentifier, computed);
+    let condition = ([objectNode: BabelNodeExpression]) => {
+      let n = t.callExpression(
+        t.memberExpression(
+          this.preludeGenerator.memoizeReference("Object.prototype.hasOwnProperty"),
+          t.identifier("call")
+        ),
+        [objectNode, t.stringLiteral(key)]
+      );
+      if (state !== "MISSING") {
+        n = t.unaryExpression("!", n, true);
+        if (state === "DEFINED")
+          n = t.logicalExpression(
+            "||",
+            n,
+            t.binaryExpression("===", accessedPropertyOf(objectNode), t.valueToNode(undefined))
+          );
+      }
+      return n;
+    };
+
+    this._emitInvariant([object, object], condition, objnode => accessedPropertyOf(objnode));
+  }
+
+  _emitInvariant(
     args: Array<Value>,
     violationConditionFn: (Array<BabelNodeExpression>) => BabelNodeExpression,
     appendLastToInvariantFn?: BabelNodeExpression => BabelNodeExpression
   ): void {
-    if (this.realm.omitInvariants) return;
+    invariant(this.realm.invariantLevel > 0);
     this._addEntry({
       args,
       buildNode: (nodes: Array<BabelNodeExpression>) => {
-        let throwString = t.stringLiteral("Prepack model invariant violation");
+        let messageComponents = [
+          t.stringLiteral("Prepack model invariant violation ("),
+          t.numericLiteral(this.preludeGenerator.nextInvariantId++),
+        ];
         if (appendLastToInvariantFn) {
           let last = nodes.pop();
-          throwString = t.binaryExpression(
-            "+",
-            t.stringLiteral("Prepack model invariant violation: "),
-            appendLastToInvariantFn(last)
-          );
-        }
+          messageComponents.push(t.stringLiteral("): "));
+          messageComponents.push(appendLastToInvariantFn(last));
+        } else messageComponents.push(t.stringLiteral(")"));
+        let throwString = messageComponents[0];
+        for (let i = 1; i < messageComponents.length; i++)
+          throwString = t.binaryExpression("+", throwString, messageComponents[i]);
         let condition = violationConditionFn(nodes);
         let consequent = this.getErrorStatement(throwString);
         return t.ifStatement(condition, consequent);
@@ -941,10 +994,10 @@ export class Generator {
     else if (type === IntegralValue) typeofString = "number";
     else if (type === SymbolValue) typeofString = "symbol";
     else if (type === ObjectValue) typeofString = "object";
-    if (typeofString !== undefined) {
+    if (typeofString !== undefined && this.realm.invariantLevel >= 1) {
       // Verify that the types are as expected, a failure of this invariant
       // should mean the model is wrong.
-      this.emitInvariant(
+      this._emitInvariant(
         [res, res],
         nodes => {
           invariant(typeofString !== undefined);
@@ -1143,6 +1196,7 @@ export class PreludeGenerator {
     this.nameGenerator = new NameGenerator(new Set(), !!debugNames, uniqueSuffix || "", "_$");
     this.usesThis = false;
     this.declaredGlobals = new Set();
+    this.nextInvariantId = 0;
   }
 
   prelude: Array<BabelNodeStatement>;
@@ -1151,6 +1205,7 @@ export class PreludeGenerator {
   nameGenerator: NameGenerator;
   usesThis: boolean;
   declaredGlobals: Set<string>;
+  nextInvariantId: number;
 
   createNameGenerator(prefix: string): NameGenerator {
     return new NameGenerator(

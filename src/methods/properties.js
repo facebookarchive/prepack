@@ -1225,11 +1225,38 @@ export class PropertiesImplementation {
         }
         AbstractValue.reportIntrospectionError(O, P);
         throw new FatalError();
+      } else if (realm.invariantLevel >= 2 && O.isIntrinsic()) {
+        let realmGenerator = realm.generator;
+        // TODO: Because global variables are special, checking for missing global object properties doesn't quite work yet.
+        if (
+          realmGenerator &&
+          typeof P === "string" &&
+          O !== realm.$GlobalObject &&
+          !realm.hasBindingBeenChecked(O, P)
+        ) {
+          realm.markPropertyAsChecked(O, P);
+          realmGenerator.emitPropertyInvariant(O, P, "MISSING");
+        }
       }
       return undefined;
     }
     realm.callReportPropertyAccess(existingBinding);
-    if (!existingBinding.descriptor) return undefined;
+    if (!existingBinding.descriptor) {
+      if (realm.invariantLevel >= 2 && O.isIntrinsic()) {
+        let realmGenerator = realm.generator;
+        // TODO: Because global variables are special, checking for missing global object properties doesn't quite work yet.
+        if (
+          realmGenerator &&
+          typeof P === "string" &&
+          O !== realm.$GlobalObject &&
+          !realm.hasBindingBeenChecked(O, P)
+        ) {
+          realm.markPropertyAsChecked(O, P);
+          realmGenerator.emitPropertyInvariant(O, P, "MISSING");
+        }
+      }
+      return undefined;
+    }
 
     // 3. Let D be a newly created Property Descriptor with no fields.
     let D = {};
@@ -1247,36 +1274,59 @@ export class PropertiesImplementation {
     // 5. If X is a data property, then
     if (IsDataDescriptor(realm, X)) {
       let value = X.value;
-      if (O.isPartialObject() && value instanceof AbstractValue && value.kind !== "resolved") {
-        let savedUnion;
-        let savedIndex;
-        if (value.kind === "abstractConcreteUnion") {
-          savedUnion = value;
-          savedIndex = savedUnion.args.findIndex(e => e instanceof AbstractValue);
-          invariant(savedIndex >= 0);
-          value = savedUnion.args[savedIndex];
-          invariant(value instanceof AbstractValue);
+      if (O.isIntrinsic() && O.isPartialObject()) {
+        if (realm.invariantLevel >= 1 && value instanceof AbstractValue) {
+          let savedUnion;
+          let savedIndex;
+          if (value.kind === "abstractConcreteUnion") {
+            savedUnion = value;
+            savedIndex = savedUnion.args.findIndex(e => e instanceof AbstractValue);
+            invariant(savedIndex >= 0);
+            value = savedUnion.args[savedIndex];
+            invariant(value instanceof AbstractValue);
+          }
+          if (value.kind !== "resolved") {
+            let realmGenerator = realm.generator;
+            invariant(realmGenerator);
+            value = realmGenerator.derive(value.types, value.values, value.args, value.getBuildNode(), {
+              kind: "resolved",
+              // We can't emit the invariant here otherwise it'll assume the AbstractValue's type not the union type
+              skipInvariant: true,
+            });
+            if (savedUnion !== undefined) {
+              invariant(savedIndex !== undefined);
+              let args = savedUnion.args.slice(0);
+              args[savedIndex] = value;
+              value = AbstractValue.createAbstractConcreteUnion(realm, ...args);
+            }
+            if (typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
+              realm.markPropertyAsChecked(O, P);
+              realmGenerator.emitFullInvariant(O, P, value);
+            }
+            InternalSetProperty(realm, O, P, {
+              value: value,
+              writable: "writable" in X ? X.writable : false,
+              enumerable: "enumerable" in X ? X.enumerable : false,
+              configurable: "configurable" in X ? X.configurable : false,
+            });
+          }
+        } else if (realm.invariantLevel >= 1 && value instanceof Value && !(value instanceof AbstractValue)) {
+          let realmGenerator = realm.generator;
+          invariant(realmGenerator);
+          if (typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
+            realm.markPropertyAsChecked(O, P);
+            realmGenerator.emitFullInvariant(O, P, value);
+          }
         }
-        let realmGenerator = realm.generator;
-        invariant(realmGenerator);
-        value = realmGenerator.derive(value.types, value.values, value.args, value.getBuildNode(), {
-          kind: "resolved",
-          // We can't emit the invariant here otherwise it'll assume the AbstractValue's type not the union type
-          skipInvariant: true,
-        });
-        if (savedUnion !== undefined) {
-          invariant(savedIndex !== undefined);
-          let args = savedUnion.args.slice(0);
-          args[savedIndex] = value;
-          value = AbstractValue.createAbstractConcreteUnion(realm, ...args);
+      } else {
+        // TODO: Because global variables are special, checking for global object properties doesn't quite work yet.
+        if (O !== realm.$GlobalObject && O.isIntrinsic() && realm.invariantLevel >= 2 && value instanceof Value) {
+          let realmGenerator = realm.generator;
+          if (realmGenerator && typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
+            realm.markPropertyAsChecked(O, P);
+            realmGenerator.emitFullInvariant(O, P, value);
+          }
         }
-        if (typeof P === "string") realmGenerator.emitFullInvariant(O, P, value);
-        InternalSetProperty(realm, O, P, {
-          value: value,
-          writable: "writable" in X ? X.writable : false,
-          enumerable: "enumerable" in X ? X.enumerable : false,
-          configurable: "configurable" in X ? X.configurable : false,
-        });
       }
 
       // a. Set D.[[Value]] to the value of X's [[Value]] attribute.

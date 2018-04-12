@@ -295,7 +295,7 @@ export class ResidualHeapSerializer {
     let kind = obj.getKind();
     let proto = obj.$Prototype;
     if (objectPrototypeAlreadyEstablished) {
-      if (!this.realm.omitInvariants) {
+      if (this.realm.invariantLevel >= 3) {
         this.emitter.emitNowOrAfterWaitingForDependencies([proto, obj], () => {
           invariant(proto);
           let serializedProto = this.serializeValue(proto);
@@ -2076,7 +2076,7 @@ export class ResidualHeapSerializer {
     };
     console.log("=== serialized but not visited values");
     for (let value of this.serializedValues) if (!this.residualValues.has(value)) logValue(value);
-    console.log("=== visited but serialized values");
+    console.log("=== visited but not serialized values");
     for (let value of this.residualValues.keys()) if (!this.serializedValues.has(value)) logValue(value);
   }
 }
