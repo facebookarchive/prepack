@@ -687,6 +687,7 @@ export function createReactEvaluatedNode(
     | "NEW_TREE"
     | "INLINED"
     | "BAIL-OUT"
+    | "WRITE-CONFLICTS"
     | "UNKNOWN_TYPE"
     | "RENDER_PROPS"
     | "UNSUPPORTED_COMPLETION"

@@ -13,7 +13,7 @@ import type { BabelNodeSourceLocation } from "babel-types";
 import { Completion, JoinedAbruptCompletions, PossiblyNormalCompletion, ReturnCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
-import { construct_empty_effects, type Effects, type PropertyBindings, Realm } from "../realm.js";
+import { construct_empty_effects, type Effects, type PropertyBindings, Realm, type Bindings } from "../realm.js";
 import type { PropertyBinding, ReactComponentTreeConfig } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
 import {
@@ -237,12 +237,29 @@ export class Functions {
     }
   }
 
+  _hasWriteConflictsFromReactRenders(bindings: Bindings, effects: Effects, evaluatedNode: ReactEvaluatedNode): boolean {
+    let recentBindings = effects[2];
+    let failed = false;
+
+    for (let [binding, val] of recentBindings) {
+      if (bindings.has(binding)) {
+        failed = true;
+      }
+      bindings.set(binding, val);
+    }
+    if (failed) {
+      evaluatedNode.status = "WRITE-CONFLICTS";
+    }
+    return failed;
+  }
+
   optimizeReactComponentTreeRoots(
     statistics: ReactStatistics,
     react: ReactSerializerState,
     environmentRecordIdAfterGlobalCode: number
   ): void {
     let logger = this.moduleTracer.modules.logger;
+    let bindings = new Map();
     let recordedReactRootValues = this.__generateInitialAdditionalFunctions("__reactComponentTrees");
     // Get write effects of the components
     if (this.realm.react.verbose) {
@@ -266,9 +283,17 @@ export class Functions {
           logger.logInformation(`  ✖ ${evaluatedRootNode.name} (root)`);
         }
         continue;
-      } else if (this.realm.react.verbose) {
+      }
+      if (this._hasWriteConflictsFromReactRenders(bindings, componentTreeEffects, evaluatedRootNode)) {
+        if (this.realm.react.verbose) {
+          logger.logInformation(`  ✖ ${evaluatedRootNode.name} (root - write conflicts)`);
+        }
+        continue;
+      }
+      if (this.realm.react.verbose) {
         logger.logInformation(`  ✔ ${evaluatedRootNode.name} (root)`);
       }
+
       this._generateWriteEffectsForReactComponentTree(
         componentType,
         componentTreeEffects,
@@ -280,17 +305,21 @@ export class Functions {
       let startingComponentTreeBranches = 0;
       do {
         startingComponentTreeBranches = reconciler.branchedComponentTrees.length;
-        this._optimizeReactComponentTreeBranches(reconciler, environmentRecordIdAfterGlobalCode);
-        this._optimizeReactNestedClosures(reconciler, environmentRecordIdAfterGlobalCode);
+        this._optimizeReactComponentTreeBranches(reconciler, bindings, environmentRecordIdAfterGlobalCode);
+        this._optimizeReactNestedClosures(reconciler, bindings, environmentRecordIdAfterGlobalCode);
       } while (startingComponentTreeBranches !== reconciler.branchedComponentTrees.length);
     }
   }
 
-  _optimizeReactNestedClosures(reconciler: Reconciler, environmentRecordIdAfterGlobalCode: number): void {
+  _optimizeReactNestedClosures(
+    reconciler: Reconciler,
+    bindings: Bindings,
+    environmentRecordIdAfterGlobalCode: number
+  ): void {
     let logger = this.moduleTracer.modules.logger;
 
     if (this.realm.react.verbose && reconciler.nestedOptimizedClosures.length > 0) {
-      logger.logInformation(`    Evaluating nested closures...`);
+      logger.logInformation(`  Evaluating nested closures...`);
     }
     for (let {
       func,
@@ -316,11 +345,18 @@ export class Functions {
       );
       if (closureEffects === null) {
         if (this.realm.react.verbose) {
-          logger.logInformation(`      ✖ function "${getComponentName(this.realm, func)}"`);
+          logger.logInformation(`    ✖ function "${getComponentName(this.realm, func)}"`);
         }
         continue;
-      } else if (this.realm.react.verbose) {
-        logger.logInformation(`      ✔ function "${getComponentName(this.realm, func)}"`);
+      }
+      if (this._hasWriteConflictsFromReactRenders(bindings, closureEffects, evaluatedNode)) {
+        if (this.realm.react.verbose) {
+          logger.logInformation(`    ✖ function "${getComponentName(this.realm, func)}" (write conflicts)`);
+        }
+        continue;
+      }
+      if (this.realm.react.verbose) {
+        logger.logInformation(`    ✔ function "${getComponentName(this.realm, func)}"`);
       }
       let additionalFunctionEffects = this._createAdditionalEffects(
         closureEffects,
@@ -338,8 +374,16 @@ export class Functions {
     }
   }
 
-  _optimizeReactComponentTreeBranches(reconciler: Reconciler, environmentRecordIdAfterGlobalCode: number): void {
+  _optimizeReactComponentTreeBranches(
+    reconciler: Reconciler,
+    bindings: Bindings,
+    environmentRecordIdAfterGlobalCode: number
+  ): void {
     let logger = this.moduleTracer.modules.logger;
+
+    if (this.realm.react.verbose && reconciler.branchedComponentTrees.length > 0) {
+      logger.logInformation(`  Evaluating React component tree branches...`);
+    }
     // for now we just use abstract props/context, in the future we'll create a new branch with a new component
     // that used the props/context. It will extend the original component and only have a render method
     for (let { rootValue: branchRootValue, evaluatedNode } of reconciler.branchedComponentTrees) {
@@ -359,7 +403,14 @@ export class Functions {
           logger.logInformation(`    ✖ ${evaluatedNode.name} (branch)`);
         }
         continue;
-      } else if (this.realm.react.verbose) {
+      }
+      if (this._hasWriteConflictsFromReactRenders(bindings, branchEffects, evaluatedNode)) {
+        if (this.realm.react.verbose) {
+          logger.logInformation(`    ✖ ${evaluatedNode.name} (branch - write conflicts)`);
+        }
+        continue;
+      }
+      if (this.realm.react.verbose) {
         logger.logInformation(`    ✔ ${evaluatedNode.name} (branch)`);
       }
       let branchComponentTreeState = reconciler.componentTreeState;
