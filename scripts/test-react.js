@@ -163,8 +163,13 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       return;
     }
 
-    let rendererA = ReactTestRenderer.create(null);
-    let rendererB = ReactTestRenderer.create(null);
+    let config = {
+      createNodeMock(x) {
+        return x;
+      },
+    };
+    let rendererA = ReactTestRenderer.create(null, config);
+    let rendererB = ReactTestRenderer.create(null, config);
     if (A == null || B == null) {
       throw new Error("React test runner issue");
     }
@@ -260,6 +265,18 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-7.js");
       });
 
+      it("Simple 8", async () => {
+        await runTest(directory, "simple-8.js");
+      });
+
+      it("Simple 9", async () => {
+        await runTest(directory, "simple-9.js");
+      });
+
+      it("Simple 10", async () => {
+        await runTest(directory, "simple-10.js");
+      });
+
       it("Simple fragments", async () => {
         await runTest(directory, "simple-fragments.js");
       });
@@ -274,6 +291,18 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Simple refs", async () => {
         await runTest(directory, "simple-refs.js");
+      });
+
+      it("16.3 refs", async () => {
+        await runTest(directory, "refs.js");
+      });
+
+      it("16.3 refs 2", async () => {
+        await runTest(directory, "refs2.js");
+      });
+
+      it("16.3 refs 3", async () => {
+        await runTest(directory, "refs3.js");
       });
 
       it("Simple with abstract props", async () => {

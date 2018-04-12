@@ -26,7 +26,7 @@ import type { BabelNodeIdentifier } from "babel-types";
 import { valueIsClassComponent, deleteRefAndKeyFromProps, getProperty, getValueFromFunctionCall } from "./utils";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get, Construct } from "../methods/index.js";
-import { Properties, To } from "../singletons.js";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { ClassComponentMetadata } from "../types.js";
 import type { ReactEvaluatedNode } from "../serializer/types.js";
@@ -293,35 +293,25 @@ export function applyGetDerivedStateFromProps(
           return null;
         } else if (a === null) {
           invariant(b instanceof Value);
-          return AbstractValue.createFromConditionalOp(realm, condition, prevState, b);
+          return AbstractValue.createFromConditionalOp(realm, condition, realm.intrinsics.false, b);
         } else if (b === null) {
           invariant(a instanceof Value);
-          return AbstractValue.createFromConditionalOp(realm, condition, a, prevState);
+          return AbstractValue.createFromConditionalOp(realm, condition, a, realm.intrinsics.false);
         } else {
           invariant(a instanceof Value);
           invariant(b instanceof Value);
-          return AbstractValue.createFromLogicalOp(
-            realm,
-            "||",
-            AbstractValue.createFromConditionalOp(realm, condition, a, b),
-            prevState
-          );
+          return AbstractValue.createFromConditionalOp(realm, condition, a, b);
         }
       } else if (kind === "||" || kind === "&&") {
         let a = deriveState(state.args[0]);
         let b = deriveState(state.args[1]);
         if (b === null) {
           invariant(a instanceof Value);
-          return AbstractValue.createFromLogicalOp(realm, kind, a, prevState);
+          return AbstractValue.createFromLogicalOp(realm, kind, a, realm.intrinsics.false);
         } else {
           invariant(a instanceof Value);
           invariant(b instanceof Value);
-          return AbstractValue.createFromLogicalOp(
-            realm,
-            "||",
-            AbstractValue.createFromLogicalOp(realm, kind, a, b),
-            prevState
-          );
+          return AbstractValue.createFromLogicalOp(realm, kind, a, b);
         }
       } else {
         invariant(state.args !== undefined, "TODO: unknown abstract value passed to deriveState");
@@ -360,6 +350,9 @@ export function applyGetDerivedStateFromProps(
 
   let newState = deriveState(partialState);
   if (newState !== null) {
+    if (newState instanceof AbstractValue) {
+      newState = AbstractValue.createFromLogicalOp(realm, "||", newState, prevState);
+    }
     invariant(newState instanceof Value);
     Properties.Set(realm, instance, "state", newState, true);
   }

@@ -431,11 +431,6 @@ export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFun
   lengthProperty.writable = false;
   lengthProperty.enumerable = false;
   lengthProperty.configurable = true;
-  // ensure the length value is set to the new value
-  let lengthValue = lengthProperty.value;
-  invariant(lengthValue instanceof NumberValue);
-  lengthValue.value = 2;
-
   func.$FormalParameters = func.$FormalParameters.map((param, i) => {
     if (i === 0) {
       return t.isIdentifier(param) ? param : t.identifier("props");
@@ -446,6 +441,11 @@ export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFun
   if (func.$FormalParameters.length === 1) {
     func.$FormalParameters.push(t.identifier("context"));
   }
+  // ensure the length value is set to the correct value after
+  // we've made mutations to the arguments of this function
+  let lengthValue = lengthProperty.value;
+  invariant(lengthValue instanceof NumberValue);
+  lengthValue.value = func.$FormalParameters.length;
 }
 
 export function createReactHintObject(object: ObjectValue, propertyName: string, args: Array<Value>): ReactHint {
@@ -482,6 +482,9 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
             `unsupported known React abstraction - ReactRelay property "${reactHint.propertyName}" not supported`
           );
       }
+    }
+    if (reactHint.object === realm.fbLibraries.react && reactHint.propertyName === "forwardRef") {
+      return null;
     }
     invariant(false, "unsupported known React abstraction");
   } else {
@@ -649,6 +652,10 @@ export function getProperty(
   property: string | SymbolValue
 ): Value {
   if (object instanceof AbstractObjectValue) {
+    if (object.values.isTop()) {
+      // fallback to the original Get implementation
+      return Get(realm, object, property);
+    }
     let elements = object.values.getElements();
     if (elements && elements.size > 0) {
       object = Array.from(elements)[0];
@@ -687,8 +694,10 @@ export function createReactEvaluatedNode(
     | "NEW_TREE"
     | "INLINED"
     | "BAIL-OUT"
+    | "WRITE-CONFLICTS"
     | "UNKNOWN_TYPE"
     | "RENDER_PROPS"
+    | "FORWARD_REF"
     | "UNSUPPORTED_COMPLETION"
     | "ABRUPT_COMPLETION"
     | "NORMAL",
@@ -724,6 +733,14 @@ export function getComponentName(realm: Realm, componentType: Value): string {
 
     if (name instanceof StringValue) {
       return boundText + name.value;
+    }
+  }
+  if (realm.react.abstractHints.has(componentType)) {
+    let reactHint = realm.react.abstractHints.get(componentType);
+
+    invariant(reactHint !== undefined);
+    if (reactHint.object === realm.fbLibraries.react && reactHint.propertyName === "forwardRef") {
+      return "forwarded ref";
     }
   }
   return boundText + "anonymous";
