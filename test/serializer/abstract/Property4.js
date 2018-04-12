@@ -1,4 +1,4 @@
-// does not contain:now
+// does not contain:Date
 let x = global.__abstract ? __abstract("boolean", "true") : true;
 
 let ob = { };
