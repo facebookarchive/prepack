@@ -79,7 +79,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     reactEnabled: true,
     reactOutput: outputJsx ? "jsx" : "create-element",
     inlineExpressions: true,
-    omitInvariants: true,
+    invariantLevel: 0,
     stripFlow: true,
   };
 
@@ -591,6 +591,18 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("getDerivedStateFromProps", async () => {
         await runTest(directory, "get-derived-state-from-props.js", true);
+      });
+
+      it("getDerivedStateFromProps 2", async () => {
+        await runTest(directory, "get-derived-state-from-props2.js", true);
+      });
+
+      it("getDerivedStateFromProps 3", async () => {
+        await runTest(directory, "get-derived-state-from-props3.js", true);
+      });
+
+      it("getDerivedStateFromProps 4", async () => {
+        await runTest(directory, "get-derived-state-from-props4.js", true);
       });
 
       it("React Context", async () => {

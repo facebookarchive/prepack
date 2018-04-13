@@ -45,8 +45,8 @@ export function createAbstractFunction(realm: Realm, ...additionalValues: Array<
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
 
-  global.$DefineOwnProperty("dump", {
-    value: new NativeFunctionValue(realm, "global.dump", "dump", 0, (context, args) => {
+  global.$DefineOwnProperty("__dump", {
+    value: new NativeFunctionValue(realm, "global.__dump", "__dump", 0, (context, args) => {
       console.log("dump", args.map(arg => arg.serialize()));
       return context;
     }),
@@ -94,7 +94,12 @@ export default function(realm: Realm): void {
   });
 
   global.$DefineOwnProperty("__optimizedFunctions", {
-    value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__optimizedFunctions", true),
+    value: new ObjectValue(
+      realm,
+      realm.intrinsics.ObjectPrototype,
+      "__optimizedFunctions",
+      /* refuseSerialization */ true
+    ),
     writable: true,
     enumerable: false,
     configurable: true,
@@ -127,7 +132,12 @@ export default function(realm: Realm): void {
 
   if (realm.react.enabled) {
     global.$DefineOwnProperty("__reactComponentTrees", {
-      value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__reactComponentTrees", true),
+      value: new ObjectValue(
+        realm,
+        realm.intrinsics.ObjectPrototype,
+        "__reactComponentTrees",
+        /* refuseSerialization */ true
+      ),
       writable: true,
       enumerable: false,
       configurable: true,
@@ -196,7 +206,26 @@ export default function(realm: Realm): void {
   // Maps from initialized moduleId to exports object
   // NB: Changes to this shouldn't ever be serialized
   global.$DefineOwnProperty("__initializedModules", {
-    value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__initializedModules", true),
+    value: new ObjectValue(
+      realm,
+      realm.intrinsics.ObjectPrototype,
+      "__initializedModules",
+      /* refuseSerialization */ true
+    ),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  // Set of property bindings whose invariant got checked
+  // NB: Changes to this shouldn't ever be serialized
+  global.$DefineOwnProperty("__checkedBindings", {
+    value: new ObjectValue(
+      realm,
+      realm.intrinsics.ObjectPrototype,
+      "__checkedBindings",
+      /* refuseSerialization */ true
+    ),
     writable: true,
     enumerable: false,
     configurable: true,
@@ -318,29 +347,17 @@ export default function(realm: Realm): void {
           invariant(generator);
 
           let key = To.ToStringPartial(realm, propertyName);
-          let propertyIdentifier = generator.getAsPropertyNameExpression(key);
-          let computed = !t.isIdentifier(propertyIdentifier);
 
           if (realm.emitConcreteModel) {
             generator.emitConcreteModel(key, value);
-          } else {
-            let accessedPropertyOf = objectNode => t.memberExpression(objectNode, propertyIdentifier, computed);
-            let inExpressionOf = objectNode =>
-              t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(key), objectNode), true);
-
+          } else if (realm.invariantLevel >= 1) {
             let invariantOptionString = invariantOptions
               ? To.ToStringPartial(realm, invariantOptions)
               : "FULL_INVARIANT";
             switch (invariantOptionString) {
               // checks (!property in object || object.property === undefined)
               case "VALUE_DEFINED_INVARIANT":
-                let condition = ([objectNode, valueNode]) =>
-                  t.logicalExpression(
-                    "||",
-                    inExpressionOf(objectNode),
-                    t.binaryExpression("===", accessedPropertyOf(objectNode), t.valueToNode(undefined))
-                  );
-                generator.emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
+                generator.emitPropertyInvariant(object, key, value.mightBeUndefined() ? "PRESENT" : "DEFINED");
                 break;
               case "SKIP_INVARIANT":
                 break;
@@ -350,6 +367,7 @@ export default function(realm: Realm): void {
               default:
                 invariant(false, "Invalid invariantOption " + invariantOptionString);
             }
+            if (!realm.neverCheckProperty(object, key)) realm.markPropertyAsChecked(object, key);
           }
           realm.generator = undefined; // don't emit code during the following $Set call
           // casting to due to Flow workaround above

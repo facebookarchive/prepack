@@ -12,7 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { FatalError } from "../errors.js";
-import { AbstractValue, Value } from "../values/index.js";
+import { Value } from "../values/index.js";
 import { EmptyValue } from "../values/index.js";
 import { UpdateEmpty } from "../methods/index.js";
 import { LoopContinues, InternalGetResultValue } from "./ForOfStatement.js";
@@ -70,23 +70,18 @@ export default function(
 
   // If we get here then unrolling the loop did not work, possibly because the value of the loop condition is not known,
   // so instead try to compute a fixpoint for it
-  let ftest = () => {
+  let iteration = () => {
+    let bodyResult = env.evaluateCompletion(body, strictCode);
     let exprRef = env.evaluate(test, strictCode);
-    return Environment.GetConditionValue(realm, exprRef);
+    let testResult = Environment.GetConditionValue(realm, exprRef);
+    return [testResult, bodyResult];
   };
-  let fbody = () => env.evaluateCompletion(body, strictCode);
-  let effects = realm.evaluateForFixpointEffects(ftest, fbody);
-  if (effects !== undefined) {
-    let [outsideEffects, insideEffects] = effects;
+  let result = realm.evaluateForFixpointEffects(iteration);
+  if (result !== undefined) {
+    let [outsideEffects, insideEffects, cond] = result;
     let [rval] = outsideEffects;
     let [, bodyGenerator] = insideEffects;
     realm.applyEffects(outsideEffects);
-    let exprRef = env.evaluate(test, strictCode);
-    let exprValue = Environment.GetValue(realm, exprRef);
-    invariant(exprValue instanceof AbstractValue);
-    let cond = bodyGenerator.derive(exprValue.types, exprValue.values, [exprValue], ([n]) => n, {
-      skipInvariant: true,
-    });
     let generator = realm.generator;
     invariant(generator !== undefined);
     generator.emitDoWhileStatement(cond, bodyGenerator);

@@ -177,7 +177,7 @@ export class Realm {
     this.start = Date.now();
     this.compatibility = opts.compatibility || "browser";
     this.maxStackDepth = opts.maxStackDepth || 225;
-    this.omitInvariants = !!opts.omitInvariants;
+    this.invariantLevel = opts.invariantLevel || 0;
     this.invariantMode = opts.invariantMode || "throw";
     this.emitConcreteModel = !!opts.emitConcreteModel;
 
@@ -228,6 +228,7 @@ export class Realm {
     this.activeLexicalEnvironments = new Set();
     this._abstractValuesDefined = new Set(); // A set of nameStrings to ensure abstract values have unique names
     this.debugNames = opts.debugNames;
+    this._checkedObjectIds = new Map();
   }
 
   statistics: RealmStatistics;
@@ -242,7 +243,7 @@ export class Realm {
   mathRandomGenerator: void | (() => number);
   strictlyMonotonicDateNow: boolean;
   maxStackDepth: number;
-  omitInvariants: boolean;
+  invariantLevel: number;
   invariantMode: InvariantModeTypes;
   ignoreLeakLogic: boolean;
   emitConcreteModel: boolean;
@@ -346,6 +347,7 @@ export class Realm {
 
   nextGeneratorId: number = 0;
   _abstractValuesDefined: Set<string>;
+  _checkedObjectIds: Map<ObjectValue | AbstractObjectValue, number>;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
@@ -515,6 +517,44 @@ export class Realm {
 
   deleteGlobalBinding(name: string) {
     this.$GlobalEnv.environmentRecord.DeleteBinding(name);
+  }
+
+  neverCheckProperty(object: ObjectValue | AbstractObjectValue, P: string) {
+    return (
+      P.startsWith("__") ||
+      (object === this.$GlobalObject && P === "global") ||
+      (object.intrinsicName !== undefined && object.intrinsicName.startsWith("__"))
+    );
+  }
+
+  _getCheckedBindings(): ObjectValue {
+    let globalObject = this.$GlobalObject;
+    invariant(globalObject instanceof ObjectValue);
+    let binding = globalObject.properties.get("__checkedBindings");
+    invariant(binding !== undefined);
+    let checkedBindingsObject = binding.descriptor && binding.descriptor.value;
+    invariant(checkedBindingsObject instanceof ObjectValue);
+    return checkedBindingsObject;
+  }
+
+  markPropertyAsChecked(object: ObjectValue | AbstractObjectValue, P: string) {
+    invariant(!this.neverCheckProperty(object, P));
+    let objectId = this._checkedObjectIds.get(object);
+    if (objectId === undefined) this._checkedObjectIds.set(object, (objectId = this._checkedObjectIds.size));
+    let id = `__${objectId}:${P}`;
+    let checkedBindings = this._getCheckedBindings();
+    checkedBindings.$Set(id, this.intrinsics.true, checkedBindings);
+  }
+
+  hasBindingBeenChecked(object: ObjectValue | AbstractObjectValue, P: string): void | boolean {
+    if (this.neverCheckProperty(object, P)) return true;
+    let objectId = this._checkedObjectIds.get(object);
+    if (objectId === undefined) return false;
+    let id = `__${objectId}:${P}`;
+    let binding = this._getCheckedBindings().properties.get(id);
+    if (binding === undefined) return false;
+    let value = binding.descriptor && binding.descriptor.value;
+    return value instanceof Value && !value.mightNotBeTrue();
   }
 
   // Evaluate a context as if it won't have any side-effects outside of any objects
@@ -776,24 +816,21 @@ export class Realm {
     }
   }
 
-  evaluateForFixpointEffects(
-    loopContinueTest: () => Value,
-    loopBody: () => EvaluationResult
-  ): void | [Effects, Effects] {
+  evaluateForFixpointEffects(iteration: () => [Value, EvaluationResult]): void | [Effects, Effects, AbstractValue] {
     try {
-      let effects1 = this.evaluateForEffects((loopBody: any), undefined, "evaluateForFixpointEffects/1");
+      let test;
+      let f = () => {
+        let result;
+        [test, result] = iteration();
+        if (!(test instanceof AbstractValue)) throw new FatalError("loop terminates before fixed point");
+        invariant(result instanceof Completion || result instanceof Value);
+        return result;
+      };
+      let effects1 = this.evaluateForEffects(f, undefined, "evaluateForFixpointEffects/1");
       while (true) {
         this.restoreBindings(effects1[2]);
         this.restoreProperties(effects1[3]);
-        let effects2 = this.evaluateForEffects(
-          () => {
-            let test = loopContinueTest();
-            if (!(test instanceof AbstractValue)) throw new FatalError("loop terminates before fixed point");
-            return (loopBody(): any);
-          },
-          undefined,
-          "evaluateForFixpointEffects/2"
-        );
+        let effects2 = this.evaluateForEffects(f, undefined, "evaluateForFixpointEffects/2");
         this.restoreBindings(effects1[2]);
         this.restoreProperties(effects1[3]);
         if (Widen.containsEffects(effects1, effects2)) {
@@ -804,7 +841,11 @@ export class Realm {
           this._applyPropertiesToNewlyCreatedObjects(pbindings2, createdObjects2);
           this._emitPropertAssignments(gen, pbindings2, createdObjects2);
           this._emitLocalAssignments(gen, bindings2, createdObjects2);
-          return [effects1, effects2];
+          invariant(test instanceof AbstractValue);
+          let cond = gen.derive(test.types, test.values, [test], ([n]) => n, {
+            skipInvariant: true,
+          });
+          return [effects1, effects2, cond];
         }
         effects1 = Widen.widenEffects(this, effects1, effects2);
       }
@@ -876,7 +917,10 @@ export class Realm {
 
     let tvalFor: Map<any, AbstractValue> = new Map();
     pbindings.forEach((val, key, map) => {
-      if (key.object instanceof ObjectValue && newlyCreatedObjects.has(key.object)) {
+      if (
+        key.object instanceof ObjectValue &&
+        (newlyCreatedObjects.has(key.object) || key.object.refuseSerialization)
+      ) {
         return;
       }
       let value = val && val.value;
@@ -903,7 +947,10 @@ export class Realm {
       }
     });
     pbindings.forEach((val, key, map) => {
-      if (key.object instanceof ObjectValue && newlyCreatedObjects.has(key.object)) {
+      if (
+        key.object instanceof ObjectValue &&
+        (newlyCreatedObjects.has(key.object) || key.object.refuseSerialization)
+      ) {
         return;
       }
       let path = key.pathNode;

@@ -102,6 +102,7 @@ export type FactoryFunctionInfo = {
 };
 
 export type ResidualFunctionBinding = {
+  name: string,
   value: void | Value,
   modified: boolean,
   // null means a global binding

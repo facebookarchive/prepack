@@ -262,14 +262,13 @@ export class ResidualFunctions {
 
     // Emit code for ModifiedBindings for additional functions
     for (let [funcValue, funcInfo] of this.additionalFunctionValueInfos) {
+      let scopes = new Set();
       for (let [, residualBinding] of funcInfo.modifiedBindings) {
         let scope = residualBinding.scope;
-        if (scope === undefined) continue;
+        if (scope === undefined || scopes.has(scope)) continue;
+        scopes.add(scope);
 
-        // TODO #989: This should probably be an invariant once captures work properly
-        // Currently we don't referentialize bindings in additional functions (but we
-        // do for bindings nested in additional functions)
-        if (!residualBinding.referentialized) continue;
+        invariant(residualBinding.referentialized);
 
         // Find the proper prelude to emit to (global vs additional function's prelude)
         let bodySegment = getModifiedBindingsSegment(funcValue);

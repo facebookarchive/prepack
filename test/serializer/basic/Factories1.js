@@ -1,5 +1,6 @@
 // skip lazy objects
 // Copies of property: 2
+// omit invariants
 (function() {
   var a = {"property": 1};
   var b = {"property": 2};
