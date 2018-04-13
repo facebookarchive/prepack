@@ -1,4 +1,5 @@
 // does not contain:Date
+// omit invariants
 let x = global.__abstract ? __abstract("boolean", "true") : true;
 
 let ob = { };
