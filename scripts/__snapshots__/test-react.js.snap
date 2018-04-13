@@ -798,6 +798,120 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output First render only getDerivedStateFromProps 2 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "React.Fragment",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, JSX output First render only getDerivedStateFromProps 3 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "React.Fragment",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, JSX output First render only getDerivedStateFromProps 4 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "React.Fragment",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output Functional component folding 16.3 refs 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
@@ -3977,6 +4091,120 @@ ReactStatistics {
 `;
 
 exports[`Test React with JSX input, create-element output First render only getDerivedStateFromProps 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "React.Fragment",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output First render only getDerivedStateFromProps 2 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "React.Fragment",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output First render only getDerivedStateFromProps 3 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "React.Fragment",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output First render only getDerivedStateFromProps 4 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -7230,6 +7458,120 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output First render only getDerivedStateFromProps 2 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "React.Fragment",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, JSX output First render only getDerivedStateFromProps 3 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "React.Fragment",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, JSX output First render only getDerivedStateFromProps 4 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "React.Fragment",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output Functional component folding 16.3 refs 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
@@ -10374,6 +10716,120 @@ ReactStatistics {
 `;
 
 exports[`Test React with create-element input, create-element output First render only getDerivedStateFromProps 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "React.Fragment",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output First render only getDerivedStateFromProps 2 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "React.Fragment",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output First render only getDerivedStateFromProps 3 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "React.Fragment",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child2",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child1",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output First render only getDerivedStateFromProps 4 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
