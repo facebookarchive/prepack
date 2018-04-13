@@ -422,7 +422,7 @@ export class ResidualHeapVisitor {
             this.visitValue(value);
           } else {
             progress = false;
-            this._withUnrelatedScope(this.scope, fixpoint_rerun);
+            this._enqueueWithUnrelatedScope(this.scope, fixpoint_rerun);
           }
           return progress;
         };
@@ -462,7 +462,7 @@ export class ResidualHeapVisitor {
             this.visitValue(entry);
           } else {
             progress = false;
-            this._withUnrelatedScope(this.scope, fixpoint_rerun);
+            this._enqueueWithUnrelatedScope(this.scope, fixpoint_rerun);
           }
           return progress;
         };
@@ -606,7 +606,7 @@ export class ResidualHeapVisitor {
     // If the binding is new for this bindingState, have all functions capturing bindings from that scope visit it
     if (!bindingState.capturedBindings.has(residualFunctionBinding)) {
       for (let functionValue of bindingState.capturingFunctions) {
-        this._withUnrelatedScope(functionValue, () => this._visitBindingHelper(residualFunctionBinding));
+        this._enqueueWithUnrelatedScope(functionValue, () => this._visitBindingHelper(residualFunctionBinding));
       }
       bindingState.capturedBindings.add(residualFunctionBinding);
     }
@@ -656,7 +656,7 @@ export class ResidualHeapVisitor {
           potentialReferentializationScopes: new Set(),
         };
         // Queue up visiting of global binding exactly once in the globalGenerator scope.
-        this._withUnrelatedScope(this.globalGenerator, () => {
+        this._enqueueWithUnrelatedScope(this.globalGenerator, () => {
           let value = this.realm.getGlobalLetBinding(name);
           if (value !== undefined) residualFunctionBinding.value = this.visitEquivalentValue(value);
         });
@@ -1152,7 +1152,7 @@ export class ResidualHeapVisitor {
           this._visitReactLibrary(this.someReactElement);
           progress = true;
         } else {
-          this._withUnrelatedScope(this.globalGenerator, fixpoint_rerun);
+          this._enqueueWithUnrelatedScope(this.globalGenerator, fixpoint_rerun);
           progress = false;
         }
         return progress;
