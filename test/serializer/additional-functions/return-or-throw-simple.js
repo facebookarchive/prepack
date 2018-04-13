@@ -7,7 +7,11 @@ else x = 3;
 function func1() {
   let z = 5;
   if (x > 10) {
+    x = 15;
     throw new Error("X greater than 10 " + x);
+  } else if (x > 20) {
+    x = 25;
+    throw new Error("X greater than 20 " + x);
   }
   return x;
 }
