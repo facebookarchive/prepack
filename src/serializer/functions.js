@@ -238,28 +238,39 @@ export class Functions {
     }
   }
 
+  _forEachBindingOfEffects(effects: Effects, func: (binding: Binding) => void): void {
+    let [result, , nestedBindingsToIgnore] = effects;
+    for (let [binding] of nestedBindingsToIgnore) {
+      func(binding);
+    }
+    if (result instanceof PossiblyNormalCompletion) {
+      this._forEachBindingOfEffects(result.alternateEffects, func);
+      this._forEachBindingOfEffects(result.consequentEffects, func);
+    }
+  }
+
   _hasWriteConflictsFromReactRenders(
     bindings: Set<Binding>,
     effects: Effects,
-    nestedEffects: Array<Effects>,
+    nestedEffectsList: Array<Effects>,
     evaluatedNode: ReactEvaluatedNode
   ): boolean {
-    let recentBindings = effects[2];
     let ignoreBindings = new Set();
     let failed = false;
 
-    for (let [, , nestedBindingsToIgnore] of nestedEffects) {
-      for (let [binding] of nestedBindingsToIgnore) {
+    for (let nestedEffects of nestedEffectsList) {
+      this._forEachBindingOfEffects(nestedEffects, binding => {
         ignoreBindings.add(binding);
-      }
+      });
     }
 
-    for (let [binding] of recentBindings) {
+    this._forEachBindingOfEffects(effects, binding => {
       if (bindings.has(binding) && !ignoreBindings.has(binding)) {
         failed = true;
       }
       bindings.add(binding);
-    }
+    });
+
     if (failed) {
       evaluatedNode.status = "WRITE-CONFLICTS";
     }
