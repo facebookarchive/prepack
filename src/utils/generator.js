@@ -643,19 +643,6 @@ export class Generator {
     this.emitStatement(args, buildfunc);
   }
 
-  getThrowOrReturn(condition: AbstractValue, trueBranch: Completion | Value, falseBranch: Completion | Value) {
-    let [args, buildfunc] = this._deconstruct(
-      condition,
-      trueBranch,
-      falseBranch,
-      completion => {
-        return [[completion.value], ([arg]) => t.throwStatement(arg)];
-      },
-      value => [[value], ([returnValue]) => t.returnStatement(returnValue)]
-    );
-    return [args, buildfunc];
-  }
-
   _deconstruct(
     condition: AbstractValue,
     trueBranch: Completion | Value,
@@ -667,7 +654,7 @@ export class Generator {
     let tfunc;
     let fargs;
     let ffunc;
-    if (trueBranch instanceof JoinedAbruptCompletions) {
+    if (trueBranch instanceof JoinedAbruptCompletions || trueBranch instanceof PossiblyNormalCompletion) {
       [targs, tfunc] = this._deconstruct(
         trueBranch.joinCondition,
         trueBranch.consequent,
@@ -682,7 +669,7 @@ export class Generator {
       invariant(value instanceof Value);
       [targs, tfunc] = onNormalValue(value);
     }
-    if (falseBranch instanceof JoinedAbruptCompletions) {
+    if (falseBranch instanceof JoinedAbruptCompletions || falseBranch instanceof PossiblyNormalCompletion) {
       [fargs, ffunc] = this._deconstruct(
         falseBranch.joinCondition,
         falseBranch.consequent,
@@ -693,8 +680,9 @@ export class Generator {
     } else if (falseBranch instanceof ThrowCompletion) {
       [fargs, ffunc] = onThrowCompletion(falseBranch);
     } else {
-      invariant(falseBranch instanceof Value);
-      [fargs, ffunc] = onNormalValue(falseBranch);
+      let value = falseBranch instanceof ReturnCompletion ? falseBranch.value : falseBranch;
+      invariant(value instanceof Value);
+      [fargs, ffunc] = onNormalValue(value);
     }
     let args = [condition].concat(targs).concat(fargs);
     let func = nodes => {
