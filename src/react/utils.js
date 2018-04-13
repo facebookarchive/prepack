@@ -566,6 +566,15 @@ export function evaluateWithNestedEffects(
   }
 }
 
+export function mergeNestedEffects(realm: Realm, target: Effects, nestedEffects: Array<Effects>): Effects {
+  let newEffects;
+  for (let e of nestedEffects) {
+    newEffects = realm.composeEffects(target, e);
+  }
+  invariant(newEffects);
+  return newEffects;
+}
+
 // This function is mainly use to delete internal properties
 // on objects that we know are safe to access internally
 // such as ReactElements. Deleting here does not

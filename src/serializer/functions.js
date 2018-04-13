@@ -44,6 +44,7 @@ import {
   createReactEvaluatedNode,
   getComponentName,
   convertConfigObjectToReactComponentTreeConfig,
+  mergeNestedEffects,
 } from "../react/utils.js";
 import * as t from "babel-types";
 import { createAbstractArgument } from "../intrinsics/prepack/utils.js";
@@ -371,8 +372,9 @@ export class Functions {
       if (this.realm.react.verbose) {
         logger.logInformation(`    ✔ function "${getComponentName(this.realm, func)}"`);
       }
+      let mergedEffects = mergeNestedEffects(this.realm, closureEffects, nestedEffects);
       let additionalFunctionEffects = this._createAdditionalEffects(
-        closureEffects,
+        mergedEffects,
         true,
         "ReactNestedAdditionalFunctionEffects",
         environmentRecordIdAfterGlobalCode
