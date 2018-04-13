@@ -53,7 +53,7 @@ export function mergeAdacentJSONTextNodes(node: JSON, includeFunctionBodies: boo
       let value = node[key];
       if (typeof value === "function") {
         if (!includeFunctionBodies) {
-          node[key] = value.toString();
+          node[key] = "function";
         } else {
           delete node[key];
         }

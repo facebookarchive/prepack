@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { Realm, type Effects } from "../realm.js";
+import { Realm, type Effects, construct_empty_effects } from "../realm.js";
 import { Reference } from "../environment.js";
 import { Completion, PossiblyNormalCompletion, AbruptCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
@@ -567,9 +567,36 @@ export function evaluateWithNestedEffects(
 }
 
 export function mergeNestedEffects(realm: Realm, target: Effects, nestedEffects: Array<Effects>): Effects {
+  let mergeEffects = (_target, _source) => {
+    let [sc, pg, pb, pp, po] = _target;
+    let [, , sb, sp, so] = _source;
+    let result = construct_empty_effects(realm);
+    let [, , rb, rp, ro] = result;
+
+    result[0] = sc;
+    result[1] = pg;
+
+    if (pb) {
+      pb.forEach((val, key, m) => rb.set(key, val));
+    }
+    sb.forEach((val, key, m) => rb.set(key, val));
+
+    if (pp) {
+      pp.forEach((desc, propertyBinding, m) => rp.set(propertyBinding, desc));
+    }
+    sp.forEach((val, key, m) => rp.set(key, val));
+
+    if (po) {
+      po.forEach((ob, a) => ro.add(ob));
+    }
+    so.forEach((ob, a) => ro.add(ob));
+
+    return result;
+  };
+
   let newEffects;
   for (let e of nestedEffects) {
-    newEffects = realm.composeEffects(target, e);
+    newEffects = mergeEffects(target, e);
   }
   invariant(newEffects);
   return newEffects;

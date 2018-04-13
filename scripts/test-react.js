@@ -568,6 +568,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("React Context 5", async () => {
         await runTest(directory, "react-context5.js");
       });
+
+      it("React Context 6", async () => {
+        await runTest(directory, "react-context6.js");
+      });
     });
 
     describe("First render only", () => {

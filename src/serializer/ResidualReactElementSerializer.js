@@ -128,6 +128,11 @@ export class ResidualReactElementSerializer {
 
   _emitReactElement(reactElement: ReactElement): BabelNodeExpression {
     let { value } = reactElement;
+    let typeValue = getProperty(this.realm, value, "type");
+    let keyValue = getProperty(this.realm, value, "key");
+    let refValue = getProperty(this.realm, value, "ref");
+    let propsValue = getProperty(this.realm, value, "props");
+
     let shouldHoist =
       this.residualHeapSerializer.isReferencedOnlyByAdditionalFunction(value) !== undefined &&
       canHoistReactElement(this.realm, value);
@@ -139,53 +144,60 @@ export class ResidualReactElementSerializer {
     let hoistedCreateElementIdentifier = null;
     let reactElementAstNode;
 
-    this.residualHeapSerializer.emitter.emitNowOrAfterWaitingForDependencies([value], () => {
-      if (this.reactOutput === "jsx") {
-        reactElementAstNode = this._serializeReactElementToJSXElement(value, reactElement);
-      } else if (this.reactOutput === "create-element") {
-        let createElement = this._getReactCreateElementValue();
-        originalCreateElementIdentifier = this.residualHeapSerializer.serializeValue(createElement);
+    this.residualHeapSerializer.emitter.emitNowOrAfterWaitingForDependencies(
+      [typeValue, keyValue, refValue, propsValue, value],
+      () => {
+        if (this.reactOutput === "jsx") {
+          reactElementAstNode = this._serializeReactElementToJSXElement(value, reactElement);
+        } else if (this.reactOutput === "create-element") {
+          let createElement = this._getReactCreateElementValue();
+          originalCreateElementIdentifier = this.residualHeapSerializer.serializeValue(createElement);
 
-        if (shouldHoist) {
-          // if we haven't created a _lazilyHoistedNodes before, then this is the first time
-          // so we only create the hoisted identifier once
-          if (this._lazilyHoistedNodes === undefined) {
-            // create a new unique instance
-            hoistedCreateElementIdentifier = t.identifier(
-              this.residualHeapSerializer.intrinsicNameGenerator.generate()
-            );
-          } else {
-            hoistedCreateElementIdentifier = this._lazilyHoistedNodes.createElementIdentifier;
+          if (shouldHoist) {
+            // if we haven't created a _lazilyHoistedNodes before, then this is the first time
+            // so we only create the hoisted identifier once
+            if (this._lazilyHoistedNodes === undefined) {
+              // create a new unique instance
+              hoistedCreateElementIdentifier = t.identifier(
+                this.residualHeapSerializer.intrinsicNameGenerator.generate()
+              );
+            } else {
+              hoistedCreateElementIdentifier = this._lazilyHoistedNodes.createElementIdentifier;
+            }
           }
-        }
 
-        let createElementIdentifier = shouldHoist ? hoistedCreateElementIdentifier : originalCreateElementIdentifier;
-        reactElementAstNode = this._serializeReactElementToCreateElement(value, reactElement, createElementIdentifier);
-      } else {
-        invariant(false, "Unknown reactOutput specified");
-      }
-      // if we are hoisting this React element, put the assignment in the body
-      // also ensure we are in an additional function
-      if (shouldHoist) {
-        this._emitHoistedReactElement(
-          id,
-          reactElementAstNode,
-          hoistedCreateElementIdentifier,
-          originalCreateElementIdentifier
-        );
-      } else {
-        if (reactElement.declared) {
-          this.residualHeapSerializer.emitter.emit(
-            t.expressionStatement(t.assignmentExpression("=", id, reactElementAstNode))
+          let createElementIdentifier = shouldHoist ? hoistedCreateElementIdentifier : originalCreateElementIdentifier;
+          reactElementAstNode = this._serializeReactElementToCreateElement(
+            value,
+            reactElement,
+            createElementIdentifier
           );
         } else {
-          reactElement.declared = true;
-          this.residualHeapSerializer.emitter.emit(
-            t.variableDeclaration("var", [t.variableDeclarator(id, reactElementAstNode)])
+          invariant(false, "Unknown reactOutput specified");
+        }
+        // if we are hoisting this React element, put the assignment in the body
+        // also ensure we are in an additional function
+        if (shouldHoist) {
+          this._emitHoistedReactElement(
+            id,
+            reactElementAstNode,
+            hoistedCreateElementIdentifier,
+            originalCreateElementIdentifier
           );
+        } else {
+          if (reactElement.declared) {
+            this.residualHeapSerializer.emitter.emit(
+              t.expressionStatement(t.assignmentExpression("=", id, reactElementAstNode))
+            );
+          } else {
+            reactElement.declared = true;
+            this.residualHeapSerializer.emitter.emit(
+              t.variableDeclaration("var", [t.variableDeclarator(id, reactElementAstNode)])
+            );
+          }
         }
       }
-    });
+    );
     return id;
   }
 
