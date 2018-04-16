@@ -228,7 +228,8 @@ export class Serializer {
         this.statistics,
         this.react,
         referentializer,
-        residualHeapVisitor.generatorParents
+        residualHeapVisitor.generatorParents,
+        residualHeapVisitor.conditionalFeasibility
       ).serialize();
       if (timingStatistics !== undefined)
         timingStatistics.referenceCountsTime = Date.now() - timingStatistics.referenceCountsTime;
@@ -258,7 +259,8 @@ export class Serializer {
       this.statistics,
       this.react,
       referentializer,
-      residualHeapVisitor.generatorParents
+      residualHeapVisitor.generatorParents,
+      residualHeapVisitor.conditionalFeasibility
     );
 
     let ast = residualHeapSerializer.serialize();
