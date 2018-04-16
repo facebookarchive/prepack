@@ -12,6 +12,7 @@ App.otherArray = [];
 App.otherArray.length = 10;
 
 this.WrappedApp = this.__evaluatePureFunction(() => {
+  require('React');
 	return require("RelayModern").createFragmentContainer(App);
 });
 

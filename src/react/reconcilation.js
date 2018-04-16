@@ -61,7 +61,7 @@ import {
 import { ExpectedBailOut, SimpleClassBailOut, NewComponentTreeBranch } from "./errors.js";
 import { AbruptCompletion, Completion } from "../completions.js";
 import { Logger } from "../utils/logger.js";
-import type { ClassComponentMetadata, ReactComponentTreeConfig } from "../types.js";
+import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
 import { createAbstractArgument } from "../intrinsics/prepack/utils.js";
 import { createInternalReactElement } from "./elements.js";
 
@@ -91,6 +91,7 @@ export type BranchReactComponentTree = {
 
 export type ComponentTreeState = {
   componentType: void | ECMAScriptSourceFunctionValue,
+  contextTypes: Set<string>,
   deadEnds: number,
   status: "SIMPLE" | "COMPLEX",
   contextNodeReferences: Map<ObjectValue | AbstractObjectValue, number>,
@@ -739,6 +740,34 @@ export class Reconciler {
     return getValueFromFunctionCall(this.realm, renderMethod, instance, []);
   }
 
+  _resolveRelayContainer(
+    reactHint: ReactHint,
+    props: ObjectValue | AbstractValue | AbstractObjectValue,
+    context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null,
+    evaluatedNode: ReactEvaluatedNode
+  ) {
+    evaluatedNode.status = "INLINED";
+    evaluatedNode.message = "RelayContainer";
+    invariant(reactHint.firstRenderValue instanceof Value);
+    // for better serialization, ensure context has the right abstract properties defined
+    if (getProperty(this.realm, context, "relay") === this.realm.intrinsics.undefined) {
+      let abstractRelayContext = AbstractValue.createAbstractObject(this.realm, "context.relay");
+      let abstractRelayEnvironment = AbstractValue.createAbstractObject(this.realm, "context.relay.environment");
+      let abstractRelayInternal = AbstractValue.createAbstractObject(
+        this.realm,
+        "context.relay.environment.unstable_internal"
+      );
+      setProperty(context, "relay", abstractRelayContext);
+      setProperty(abstractRelayContext, "environment", abstractRelayEnvironment);
+      setProperty(abstractRelayEnvironment, "unstable_internal", abstractRelayInternal);
+    }
+    // add contextType to this component
+    this.componentTreeState.contextTypes.add("relay");
+    return this._renderComponent(reactHint.firstRenderValue, props, context, branchStatus, branchState, evaluatedNode);
+  }
+
   _renderComponent(
     componentType: Value,
     props: ObjectValue | AbstractValue | AbstractObjectValue,
@@ -750,6 +779,16 @@ export class Reconciler {
     this.statistics.componentsEvaluated++;
     if (valueIsKnownReactAbstraction(this.realm, componentType)) {
       invariant(componentType instanceof AbstractValue);
+      let reactHint = this.realm.react.abstractHints.get(componentType);
+
+      invariant(reactHint);
+      if (
+        typeof reactHint !== "string" &&
+        reactHint.object === this.realm.fbLibraries.reactRelay &&
+        this.componentTreeConfig.firstRenderOnly
+      ) {
+        return this._resolveRelayContainer(reactHint, props, context, branchStatus, branchState, evaluatedNode);
+      }
       this._queueNewComponentTree(componentType, evaluatedNode);
       evaluatedNode.status = "NEW_TREE";
       evaluatedNode.message = "RelayContainer";
@@ -807,6 +846,7 @@ export class Reconciler {
   _createComponentTreeState(): ComponentTreeState {
     return {
       componentType: undefined,
+      contextTypes: new Set(),
       deadEnds: 0,
       status: "SIMPLE",
       contextNodeReferences: new Map(),
