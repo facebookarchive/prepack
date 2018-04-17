@@ -60,7 +60,8 @@ type EmitterDependenciesVisitorCallbacks<T> = {
 export class Emitter {
   constructor(
     residualFunctions: ResidualFunctions,
-    referencedDeclaredValues: Map<AbstractValue, void | FunctionValue>
+    referencedDeclaredValues: Map<AbstractValue, void | FunctionValue>,
+    conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>
   ) {
     this._mainBody = { type: "MainGenerator", parentBody: undefined, entries: [], done: false };
     this._waitingForValues = new Map();
@@ -89,6 +90,7 @@ export class Emitter {
         else return undefined;
       },
     };
+    this._conditionalFeasibility = conditionalFeasibility;
   }
 
   _finalized: boolean;
@@ -101,6 +103,7 @@ export class Emitter {
   _body: SerializedBody;
   _mainBody: SerializedBody;
   _getReasonToWaitForDependenciesCallbacks: EmitterDependenciesVisitorCallbacks<Value>;
+  _conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>;
 
   // Begin to emit something. Such sessions can be nested.
   // The dependency indicates what is being emitted; until this emission ends, other parties might have to wait for the dependency.
@@ -307,7 +310,16 @@ export class Emitter {
         result = callbacks.onAbstractValueWithIdentifier ? callbacks.onAbstractValueWithIdentifier(val) : undefined;
         if (result !== undefined) return result;
       }
-      result = recurse(val.args);
+      let argsToRecurse;
+      if (val.kind === "conditional") {
+        let cf = this._conditionalFeasibility.get(val);
+        invariant(cf !== undefined);
+        argsToRecurse = [];
+        if (cf.t && cf.f) argsToRecurse.push(val.args[0]);
+        if (cf.t) argsToRecurse.push(val.args[1]);
+        if (cf.f) argsToRecurse.push(val.args[2]);
+      } else argsToRecurse = val.args;
+      result = recurse(argsToRecurse);
       if (result !== undefined) return result;
     } else if (val instanceof ProxyValue) {
       result = recurse(val.$ProxyTarget);

@@ -106,7 +106,8 @@ export class ResidualHeapSerializer {
     statistics: SerializerStatistics,
     react: ReactSerializerState,
     referentializer: Referentializer,
-    generatorParents: Map<Generator, Generator | FunctionValue | "GLOBAL">
+    generatorParents: Map<Generator, Generator | FunctionValue | "GLOBAL">,
+    conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>
   ) {
     this.realm = realm;
     this.logger = logger;
@@ -162,7 +163,7 @@ export class ResidualHeapSerializer {
       this.additionalFunctionValueNestedFunctions,
       referentializer
     );
-    this.emitter = new Emitter(this.residualFunctions, referencedDeclaredValues);
+    this.emitter = new Emitter(this.residualFunctions, referencedDeclaredValues, conditionalFeasibility);
     this.mainBody = this.emitter.getBody();
     this.residualHeapInspector = residualHeapInspector;
     this.residualValues = residualValues;
@@ -177,6 +178,7 @@ export class ResidualHeapSerializer {
     this.rewrittenAdditionalFunctions = new Map();
     this.declarativeEnvironmentRecordsBindings = declarativeEnvironmentRecordsBindings;
     this.generatorParents = generatorParents;
+    this.conditionalFeasibility = conditionalFeasibility;
     this.additionalFunctionGenerators = new Map();
     this.declaredGlobalLets = new Map();
   }
@@ -228,6 +230,7 @@ export class ResidualHeapSerializer {
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
 
   generatorParents: Map<Generator, Generator | FunctionValue | "GLOBAL">;
+  conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>;
 
   declaredGlobalLets: Map<string, Value>;
 
@@ -1678,6 +1681,14 @@ export class ResidualHeapSerializer {
 
   _serializeAbstractValue(val: AbstractValue): void | BabelNodeExpression {
     invariant(val.kind !== "sentinel member expression", "invariant established by visitor");
+    if (val.kind === "conditional") {
+      let cf = this.conditionalFeasibility.get(val);
+      invariant(cf !== undefined);
+      if (cf.t && !cf.f) return this.serializeValue(val.args[1]);
+      else if (!cf.t && cf.f) return this.serializeValue(val.args[2]);
+      else invariant(cf.t && cf.f);
+    }
+
     if (val.hasIdentifier()) {
       return this._serializeAbstractValueHelper(val);
     } else {
