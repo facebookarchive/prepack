@@ -566,37 +566,41 @@ export function evaluateWithNestedEffects(
   }
 }
 
+// create a new effects object with the bindings, property bindings
+// and created objects of both effects combined into a single effects
+// also ensure use the value and generator from the target effect are
+// used in this new effects object
+function createMergedEffects(realm: Realm, target: Effects, source: Effects) {
+  let [sc, pg, pb, pp, po] = target;
+  let [, , sb, sp, so] = source;
+  let result = construct_empty_effects(realm);
+  let [, , rb, rp, ro] = result;
+
+  result[0] = sc;
+  result[1] = pg;
+
+  if (pb) {
+    pb.forEach((val, key, m) => rb.set(key, val));
+  }
+  sb.forEach((val, key, m) => rb.set(key, val));
+
+  if (pp) {
+    pp.forEach((desc, propertyBinding, m) => rp.set(propertyBinding, desc));
+  }
+  sp.forEach((val, key, m) => rp.set(key, val));
+
+  if (po) {
+    po.forEach((ob, a) => ro.add(ob));
+  }
+  so.forEach((ob, a) => ro.add(ob));
+
+  return result;
+}
+
 export function mergeNestedEffects(realm: Realm, target: Effects, nestedEffects: Array<Effects>): Effects {
-  let mergeEffects = (_target, _source) => {
-    let [sc, pg, pb, pp, po] = _target;
-    let [, , sb, sp, so] = _source;
-    let result = construct_empty_effects(realm);
-    let [, , rb, rp, ro] = result;
-
-    result[0] = sc;
-    result[1] = pg;
-
-    if (pb) {
-      pb.forEach((val, key, m) => rb.set(key, val));
-    }
-    sb.forEach((val, key, m) => rb.set(key, val));
-
-    if (pp) {
-      pp.forEach((desc, propertyBinding, m) => rp.set(propertyBinding, desc));
-    }
-    sp.forEach((val, key, m) => rp.set(key, val));
-
-    if (po) {
-      po.forEach((ob, a) => ro.add(ob));
-    }
-    so.forEach((ob, a) => ro.add(ob));
-
-    return result;
-  };
-
   let newEffects;
   for (let e of nestedEffects) {
-    newEffects = mergeEffects(target, e);
+    newEffects = createMergedEffects(realm, target, e);
   }
   invariant(newEffects);
   return newEffects;
