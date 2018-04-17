@@ -569,8 +569,8 @@ export function evaluateWithNestedEffects(
 // create a new effects object with the bindings, property bindings
 // and created objects of both effects combined into a single effects
 // also ensure use the value and generator from the target effect are
-// used in this new effects object
-function createMergedEffects(realm: Realm, target: Effects, source: Effects) {
+// used in the new effects object
+function createMergedEffects(realm: Realm, target: Effects, source: Effects): Effects {
   let [sc, pg, pb, pp, po] = target;
   let [, , sb, sp, so] = source;
   let result = construct_empty_effects(realm);
