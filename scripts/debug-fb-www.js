@@ -132,6 +132,7 @@ function lintCompiledSource(source) {
       Bootloader: true,
       JSResource: true,
       babelHelpers: true,
+      regeneratorRuntime: true,
       asset: true,
       cx: true,
       cssVar: true,
@@ -156,6 +157,7 @@ function lintCompiledSource(source) {
       WeakMap: true,
       // Vendor specific
       MSApp: true,
+      ActiveXObject: true,
       __REACT_DEVTOOLS_GLOBAL_HOOK__: true,
       // CommonJS / Node
       process: true,
