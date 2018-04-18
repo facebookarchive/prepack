@@ -1055,9 +1055,9 @@ export class ResidualHeapVisitor {
         residualBinding.modified = true;
         let otherFunc = residualBinding.additionalFunctionOverridesValue;
         if (otherFunc !== undefined && otherFunc !== functionValue) {
-          let otherNameVal = otherFunc.$Get("name", otherFunc);
+          let otherNameVal = otherFunc._SafeGetDataPropertyValue("name");
           let otherNameStr = otherNameVal instanceof StringValue ? otherNameVal.value : "unknown function";
-          let funcNameVal = functionValue.$Get("name", functionValue);
+          let funcNameVal = functionValue._SafeGetDataPropertyValue("name");
           let funNameStr = funcNameVal instanceof StringValue ? funcNameVal.value : "unknown function";
           let error = new CompilerDiagnostic(
             `Variable ${modifiedBinding.name} written to in optimized function ${funNameStr} conflicts with write in another optimized function ${otherNameStr}`,

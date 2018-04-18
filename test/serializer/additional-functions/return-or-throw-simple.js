@@ -1,4 +1,5 @@
 // does not contain:z = 5;
+// does contain:15:11
 // add at runtime: x = 3;
 var x;
 if (global.__abstract) x = __abstract("number", "(3)");

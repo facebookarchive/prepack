@@ -701,9 +701,9 @@ export class Generator {
     let message = "Program may terminate with exception";
     if (value instanceof ObjectValue) {
       let object = ((value: any): ObjectValue);
-      let objectMessage = this.realm.evaluateWithUndo(() => object.$Get("message", value));
+      let objectMessage = this.realm.evaluateWithUndo(() => object._SafeGetDataPropertyValue("message"));
       if (objectMessage instanceof StringValue) message += `: ${objectMessage.value}`;
-      const objectStack = this.realm.evaluateWithUndo(() => object.$Get("stack", value));
+      const objectStack = this.realm.evaluateWithUndo(() => object._SafeGetDataPropertyValue("stack"));
       if (objectStack instanceof StringValue)
         message += `
   ${objectStack.value}`;
