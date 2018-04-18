@@ -1084,7 +1084,7 @@ export class ResidualHeapVisitor {
   ): void {
     this.generatorParents.set(generator, parent);
     if (generator.effectsToApply)
-      for (const createdObject of generator.effectsToApply.data[4]) {
+      for (const createdObject of generator.effectsToApply.createdObjects) {
         // TODO: Unfortunately, the following invariant doesn't hold. This is concerning.
         // invariant(!this.createdObjects.has(createdObject) || this.createdObjects.get(createdObject) === generator);
         if (!this.createdObjects.has(createdObject)) this.createdObjects.set(createdObject, generator);

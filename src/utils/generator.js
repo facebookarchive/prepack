@@ -286,7 +286,7 @@ class PossiblyNormalReturnEntry extends GeneratorEntry {
 
     // The effects of the normal path have already been applied to generator
     let empty_effects = construct_empty_effects(realm);
-    empty_effects.data[0] = completion.value;
+    empty_effects.result = completion.value;
     let consequentEffects =
       completion.consequent instanceof AbruptCompletion ? completion.consequentEffects : empty_effects;
     this.consequentGenerator = Generator.fromEffects(consequentEffects, realm, "ConsequentEffects");
