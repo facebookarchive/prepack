@@ -67,7 +67,19 @@ export type EvaluationResult = Completion | Reference | Value;
 export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 
 export type CreatedObjects = Set<ObjectValue>;
-export type Effects = [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects];
+export class Effects {
+  constructor(
+    result: EvaluationResult,
+    generator: Generator,
+    bindings: Bindings,
+    propertyBindings: PropertyBindings,
+    createdObjects: CreatedObjects
+  ) {
+    this.data = arguments;
+  }
+
+  data: [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects];
+}
 
 export class Tracer {
   beginEvaluateForEffects(state: any) {}
@@ -147,7 +159,13 @@ export class ExecutionContext {
 }
 
 export function construct_empty_effects(realm: Realm): Effects {
-  return [realm.intrinsics.empty, new Generator(realm, "construct_empty_effects"), new Map(), new Map(), new Set()];
+  return new Effects(
+    realm.intrinsics.empty,
+    new Generator(realm, "construct_empty_effects"),
+    new Map(),
+    new Map(),
+    new Set()
+  );
 }
 
 export class Realm {
@@ -415,16 +433,17 @@ export class Realm {
 
   clearBlockBindingsFromCompletion(completion: Completion, environmentRecord: DeclarativeEnvironmentRecord) {
     if (completion instanceof PossiblyNormalCompletion) {
-      this.clearBlockBindings(completion.alternateEffects[2], environmentRecord);
-      this.clearBlockBindings(completion.consequentEffects[2], environmentRecord);
-      if (completion.savedEffects !== undefined) this.clearBlockBindings(completion.savedEffects[2], environmentRecord);
+      this.clearBlockBindings(completion.alternateEffects.data[2], environmentRecord);
+      this.clearBlockBindings(completion.consequentEffects.data[2], environmentRecord);
+      if (completion.savedEffects !== undefined)
+        this.clearBlockBindings(completion.savedEffects.data[2], environmentRecord);
       if (completion.alternate instanceof Completion)
         this.clearBlockBindingsFromCompletion(completion.alternate, environmentRecord);
       if (completion.consequent instanceof Completion)
         this.clearBlockBindingsFromCompletion(completion.consequent, environmentRecord);
     } else if (completion instanceof JoinedAbruptCompletions) {
-      this.clearBlockBindings(completion.alternateEffects[2], environmentRecord);
-      this.clearBlockBindings(completion.consequentEffects[2], environmentRecord);
+      this.clearBlockBindings(completion.alternateEffects.data[2], environmentRecord);
+      this.clearBlockBindings(completion.consequentEffects.data[2], environmentRecord);
       if (completion.alternate instanceof Completion)
         this.clearBlockBindingsFromCompletion(completion.alternate, environmentRecord);
       if (completion.consequent instanceof Completion)
@@ -469,16 +488,16 @@ export class Realm {
 
   clearFunctionBindingsFromCompletion(completion: Completion, funcVal: FunctionValue) {
     if (completion instanceof PossiblyNormalCompletion) {
-      this.clearFunctionBindings(completion.alternateEffects[2], funcVal);
-      this.clearFunctionBindings(completion.consequentEffects[2], funcVal);
-      if (completion.savedEffects !== undefined) this.clearFunctionBindings(completion.savedEffects[2], funcVal);
+      this.clearFunctionBindings(completion.alternateEffects.data[2], funcVal);
+      this.clearFunctionBindings(completion.consequentEffects.data[2], funcVal);
+      if (completion.savedEffects !== undefined) this.clearFunctionBindings(completion.savedEffects.data[2], funcVal);
       if (completion.alternate instanceof Completion)
         this.clearFunctionBindingsFromCompletion(completion.alternate, funcVal);
       if (completion.consequent instanceof Completion)
         this.clearFunctionBindingsFromCompletion(completion.consequent, funcVal);
     } else if (completion instanceof JoinedAbruptCompletions) {
-      this.clearFunctionBindings(completion.alternateEffects[2], funcVal);
-      this.clearFunctionBindings(completion.consequentEffects[2], funcVal);
+      this.clearFunctionBindings(completion.alternateEffects.data[2], funcVal);
+      this.clearFunctionBindings(completion.consequentEffects.data[2], funcVal);
       if (completion.alternate instanceof Completion)
         this.clearFunctionBindingsFromCompletion(completion.alternate, funcVal);
       if (completion.consequent instanceof Completion)
@@ -649,8 +668,8 @@ export class Realm {
         result = func(effects);
         return this.intrinsics.undefined;
       } finally {
-        this.restoreBindings(effects[2]);
-        this.restoreProperties(effects[3]);
+        this.restoreBindings(effects.data[2]);
+        this.restoreProperties(effects.data[3]);
       }
     });
     invariant(result !== undefined, "If we get here, func must have returned undefined.");
@@ -732,14 +751,14 @@ export class Realm {
         */
 
         // Return the captured state changes and evaluation result
-        result = [c, astGenerator, astBindings, astProperties, astCreatedObjects];
+        result = new Effects(c, astGenerator, astBindings, astProperties, astCreatedObjects);
         return result;
       } finally {
         // Roll back the state changes
         if (this.savedCompletion !== undefined) this.stopEffectCaptureAndUndoEffects(this.savedCompletion);
         if (result !== undefined) {
-          this.restoreBindings(result[2]);
-          this.restoreProperties(result[3]);
+          this.restoreBindings(result.data[2]);
+          this.restoreProperties(result.data[3]);
         } else {
           this.restoreBindings(this.modifiedBindings);
           this.restoreProperties(this.modifiedProperties);
@@ -780,7 +799,7 @@ export class Realm {
         undefined,
         "evaluateWithUndo"
       );
-      return effects[0] instanceof Value ? effects[0] : defaultValue;
+      return effects.data[0] instanceof Value ? effects.data[0] : defaultValue;
     } finally {
       this.errorHandler = oldErrorHandler;
     }
@@ -797,7 +816,7 @@ export class Realm {
       };
       let effects = this.evaluateForEffects(f, undefined, "evaluateWithUndoForDiagnostic");
       this.applyEffects(effects);
-      let resultVal = effects[0];
+      let resultVal = effects.data[0];
       if (resultVal instanceof AbruptCompletion) throw resultVal;
       if (resultVal instanceof PossiblyNormalCompletion) {
         // in this case one of the branches may complete abruptly, which means that
@@ -828,16 +847,16 @@ export class Realm {
       };
       let effects1 = this.evaluateForEffects(f, undefined, "evaluateForFixpointEffects/1");
       while (true) {
-        this.restoreBindings(effects1[2]);
-        this.restoreProperties(effects1[3]);
+        this.restoreBindings(effects1.data[2]);
+        this.restoreProperties(effects1.data[3]);
         let effects2 = this.evaluateForEffects(f, undefined, "evaluateForFixpointEffects/2");
-        this.restoreBindings(effects1[2]);
-        this.restoreProperties(effects1[3]);
+        this.restoreBindings(effects1.data[2]);
+        this.restoreProperties(effects1.data[3]);
         if (Widen.containsEffects(effects1, effects2)) {
           // effects1 includes every value present in effects2, so doing another iteration using effects2 will not
           // result in any more values being added to abstract domains and hence a fixpoint has been reached.
           // Generate code using effects2 because its expressions have not been widened away.
-          let [, gen, bindings2, pbindings2, createdObjects2] = effects2;
+          let [, gen, bindings2, pbindings2, createdObjects2] = effects2.data;
           this._applyPropertiesToNewlyCreatedObjects(pbindings2, createdObjects2);
           this._emitPropertAssignments(gen, pbindings2, createdObjects2);
           this._emitLocalAssignments(gen, bindings2, createdObjects2);
@@ -987,14 +1006,14 @@ export class Realm {
   }
 
   composeEffects(priorEffects: Effects, subsequentEffects: Effects): Effects {
-    let [, pg, pb, pp, po] = priorEffects;
-    let [sc, sg, sb, sp, so] = subsequentEffects;
+    let [, pg, pb, pp, po] = priorEffects.data;
+    let [sc, sg, sb, sp, so] = subsequentEffects.data;
     let result = construct_empty_effects(this);
-    let [, , rb, rp, ro] = result;
+    let [, , rb, rp, ro] = result.data;
 
-    result[0] = sc;
+    result.data[0] = sc;
 
-    result[1] = Join.composeGenerators(this, pg || result[1], sg);
+    result.data[1] = Join.composeGenerators(this, pg || result.data[1], sg);
 
     if (pb) {
       pb.forEach((val, key, m) => rb.set(key, val));
@@ -1050,7 +1069,7 @@ export class Realm {
     } else {
       invariant(this.savedCompletion.savedEffects !== undefined);
       invariant(this.generator !== undefined);
-      this.savedCompletion.savedEffects[1].appendGenerator(this.generator, "composeWithSavedCompletion");
+      this.savedCompletion.savedEffects.data[1].appendGenerator(this.generator, "composeWithSavedCompletion");
       this.generator = new Generator(this, "composeWithSavedCompletion");
       invariant(this.savedCompletion !== undefined);
       this.savedCompletion = Join.composePossiblyNormalCompletions(this, this.savedCompletion, completion);
@@ -1078,11 +1097,11 @@ export class Realm {
       invariant(priorCompletion.savedEffects !== undefined);
       let savedEffects = this.savedCompletion.savedEffects;
       invariant(savedEffects !== undefined);
-      this.restoreBindings(savedEffects[2]);
-      this.restoreProperties(savedEffects[3]);
+      this.restoreBindings(savedEffects.data[2]);
+      this.restoreProperties(savedEffects.data[3]);
       Join.updatePossiblyNormalCompletionWithSubsequentEffects(this, priorCompletion, savedEffects);
-      this.restoreBindings(savedEffects[2]);
-      this.restoreProperties(savedEffects[3]);
+      this.restoreBindings(savedEffects.data[2]);
+      this.restoreProperties(savedEffects.data[3]);
       invariant(this.savedCompletion !== undefined);
       this.savedCompletion.savedEffects = undefined;
       this.savedCompletion = Join.composePossiblyNormalCompletions(this, priorCompletion, this.savedCompletion);
@@ -1094,13 +1113,13 @@ export class Realm {
       // Already called captureEffects, just carry on
       return;
     }
-    completion.savedEffects = [
+    completion.savedEffects = new Effects(
       this.intrinsics.undefined,
       (this.generator: any),
       (this.modifiedBindings: any),
       (this.modifiedProperties: any),
-      (this.createdObjects: any),
-    ];
+      (this.createdObjects: any)
+    );
     this.generator = new Generator(this, "captured");
     this.modifiedBindings = new Map();
     this.modifiedProperties = new Map();
@@ -1114,7 +1133,7 @@ export class Realm {
     invariant(this.modifiedBindings !== undefined);
     invariant(this.modifiedProperties !== undefined);
     invariant(this.createdObjects !== undefined);
-    return [v, this.generator, this.modifiedBindings, this.modifiedProperties, this.createdObjects];
+    return new Effects(v, this.generator, this.modifiedBindings, this.modifiedProperties, this.createdObjects);
   }
 
   stopEffectCapture(completion: PossiblyNormalCompletion) {
@@ -1132,7 +1151,7 @@ export class Realm {
 
     // Restore saved state
     if (completion.savedEffects !== undefined) {
-      let [c, g, b, p, o] = completion.savedEffects;
+      let [c, g, b, p, o] = completion.savedEffects.data;
       c;
       completion.savedEffects = undefined;
       this.generator = g;
@@ -1146,7 +1165,7 @@ export class Realm {
 
   // Apply the given effects to the global state
   applyEffects(effects: Effects, leadingComment: string = "", appendGenerator: boolean = true) {
-    let [, generator, bindings, properties, createdObjects] = effects;
+    let [, generator, bindings, properties, createdObjects] = effects.data;
 
     // Add generated code for property modifications
     if (appendGenerator) this.appendGenerator(generator, leadingComment);
