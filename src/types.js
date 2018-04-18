@@ -744,6 +744,8 @@ export type JoinType = {
 
   joinEffects(realm: Realm, joinCondition: AbstractValue, e1: Effects, e2: Effects): Effects,
 
+  joinNestedEffects(realm: Realm, c: Completion, precedingEffects?: Effects): Effects,
+
   joinResults(
     realm: Realm,
     joinCondition: AbstractValue,

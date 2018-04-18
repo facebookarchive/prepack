@@ -126,7 +126,6 @@ export class Functions {
     return recordedAdditionalFunctions;
   }
 
-  // This will also handle postprocessing for PossiblyNormalCompletion
   _createAdditionalEffects(
     effects: Effects,
     fatalOnAbrupt: boolean,
@@ -134,41 +133,31 @@ export class Functions {
     environmentRecordIdAfterGlobalCode: number,
     parentAdditionalFunction: FunctionValue | void = undefined
   ): AdditionalFunctionEffects | null {
+    let realm = this.realm;
     let [pncResult] = effects;
-    if (pncResult instanceof PossiblyNormalCompletion) {
-      // This is a join point for all the forked paths in pncResult
-      effects = Join.joinEffectsAndPromoteNestedReturnCompletions(
-        this.realm,
-        pncResult,
-        construct_empty_effects(this.realm)
+    if (pncResult instanceof PossiblyNormalCompletion || pncResult instanceof JoinedAbruptCompletions) {
+      // The completion is not the end of function execution, but a fork point for separate threads of control.
+      // The effects of all of these threads need to get joined up and rolled into the top level effects,
+      // so that applying the effects before serializing the body will fully initialize all variables and objects.
+      effects = realm.evaluateForEffects(
+        () => {
+          realm.applyEffects(effects, "_createAdditionalEffects/1", false);
+          if (pncResult instanceof PossiblyNormalCompletion) {
+            [pncResult] = Join.joinPossiblyNormalCompletionWithAbruptCompletion(
+              realm,
+              pncResult,
+              new ReturnCompletion(pncResult.value),
+              construct_empty_effects(realm)
+            );
+          }
+          invariant(pncResult instanceof JoinedAbruptCompletions);
+          let completionEffects = Join.joinNestedEffects(realm, pncResult);
+          realm.applyEffects(completionEffects, "_createAdditionalEffects/2", false);
+          return pncResult;
+        },
+        undefined,
+        "_createAdditionalEffects"
       );
-      let [result] = effects;
-      if (result instanceof JoinedAbruptCompletions) {
-        if (result.alternate instanceof ReturnCompletion) {
-          result.alternateEffects[0] = pncResult.value;
-          result = new PossiblyNormalCompletion(
-            pncResult.value,
-            result.joinCondition,
-            result.consequent,
-            result.consequentEffects,
-            pncResult.value,
-            result.alternateEffects,
-            []
-          );
-        } else if (result.consequent instanceof ReturnCompletion) {
-          result.consequentEffects[0] = pncResult.value;
-          result = new PossiblyNormalCompletion(
-            pncResult.value,
-            result.joinCondition,
-            pncResult.value,
-            result.consequentEffects,
-            result.alternate,
-            result.alternateEffects,
-            []
-          );
-        }
-        effects[0] = result;
-      }
     }
     let retValue: AdditionalFunctionEffects = {
       parentAdditionalFunction,

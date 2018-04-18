@@ -420,20 +420,20 @@ export class JoinImplementation {
     realm: Realm,
     c: Completion | Value,
     e: Effects,
-    nested_effects?: Effects
+    precedingEffects?: Effects
   ): Effects {
     if (c instanceof Value) {
-      // If not undefined, the nested effects were captured when evaluating a conditional code block that ended normally.
+      // If not undefined, precedingEffects were captured when evaluating a conditional code block that ended normally.
       // e represent effects that were captured since reaching the join point where the normal and abrupt
       // completions came together into the completion supplied to the outermost call to this recursive function.
-      if (nested_effects !== undefined) e = realm.composeEffects(nested_effects, e);
+      if (precedingEffects !== undefined) e = realm.composeEffects(precedingEffects, e);
       return e;
     }
     if (c instanceof AbruptCompletion && !(c instanceof JoinedAbruptCompletions)) {
       // The nested effects were captured when evaluating a conditional code block that ended abruptly.
       // An abrupt completion does not care about the effects that were collected since the join point.
-      invariant(nested_effects !== undefined);
-      return nested_effects;
+      invariant(precedingEffects !== undefined);
+      return precedingEffects;
     }
     if (c instanceof PossiblyNormalCompletion) {
       let e1 = this.joinEffectsAndPromoteNestedReturnCompletions(realm, c.consequent, e, c.consequentEffects);
@@ -586,6 +586,18 @@ export class JoinImplementation {
     let generator = joinGenerators(realm, joinCondition, gen1, gen2);
 
     return [result, generator, bindings, properties, createdObjects];
+  }
+
+  joinNestedEffects(realm: Realm, c: Completion | Value, precedingEffects?: Effects): Effects {
+    if (c instanceof PossiblyNormalCompletion || c instanceof JoinedAbruptCompletions) {
+      let e1 = this.joinNestedEffects(realm, c.consequent, c.consequentEffects);
+      let e2 = this.joinNestedEffects(realm, c.alternate, c.alternateEffects);
+      return this.joinEffects(realm, c.joinCondition, e1, e2);
+    }
+    if (precedingEffects !== undefined) return precedingEffects;
+    let result = construct_empty_effects(realm);
+    result[0] = c;
+    return result;
   }
 
   joinResults(
