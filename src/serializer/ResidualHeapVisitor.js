@@ -1085,8 +1085,27 @@ export class ResidualHeapVisitor {
     this.generatorParents.set(generator, parent);
     if (generator.effectsToApply)
       for (const createdObject of generator.effectsToApply[4]) {
-        // TODO: Unfortunately, the following invariant doesn't hold. This is concerning.
-        // invariant(!this.createdObjects.has(createdObject) || this.createdObjects.get(createdObject) === generator);
+        let creatingGenerator = this.createdObjects.get(createdObject);
+        // If there is already an entry in createdObjects, it must be for a generator that is a parent of this generator
+        // This is because createdObjects of nested effects of optimized functions are strict subsets of the
+        // optimized function's createdObjects set.
+        if (creatingGenerator && creatingGenerator !== generator) {
+          let currentScope = generator;
+          // Walk up generator parent chain to make sure that creatingGenerator is a parent of generator.
+          while (currentScope !== creatingGenerator) {
+            if (currentScope instanceof Generator) {
+              currentScope = this.generatorParents.get(currentScope);
+            } else if (currentScope instanceof FunctionValue) {
+              invariant(this.additionalFunctionValuesAndEffects.has(currentScope));
+              currentScope = this.createdObjects.get(currentScope) || "GLOBAL";
+            }
+            invariant(currentScope !== undefined, "Should have already encountered all parents of this generator.");
+            invariant(
+              currentScope !== "GLOBAL",
+              "If an object is in two generators' effects' createdObjects, the second must be a child of the first."
+            );
+          }
+        }
         if (!this.createdObjects.has(createdObject)) this.createdObjects.set(createdObject, generator);
       }
 
