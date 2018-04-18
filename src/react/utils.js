@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { Realm, type Effects, construct_empty_effects } from "../realm.js";
+import { Realm, type Effects } from "../realm.js";
 import { Reference } from "../environment.js";
 import { Completion, PossiblyNormalCompletion, AbruptCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
@@ -566,41 +566,20 @@ export function evaluateWithNestedEffects(
   }
 }
 
-// create a new effects object with the bindings, property bindings
-// and created objects of both effects combined into a single effects
-// also ensure use the value and generator from the target effect are
-// used in the new effects object
-function createMergedEffects(realm: Realm, target: Effects, source: Effects): Effects {
-  let [sc, pg, pb, pp, po] = target;
-  let [, , sb, sp, so] = source;
-  let result = construct_empty_effects(realm);
-  let [, , rb, rp, ro] = result;
-
-  result[0] = sc;
-  result[1] = pg;
-
-  if (pb) {
-    pb.forEach((val, key, m) => rb.set(key, val));
-  }
-  sb.forEach((val, key, m) => rb.set(key, val));
-
-  if (pp) {
-    pp.forEach((desc, propertyBinding, m) => rp.set(propertyBinding, desc));
-  }
-  sp.forEach((val, key, m) => rp.set(key, val));
-
-  if (po) {
-    po.forEach((ob, a) => ro.add(ob));
-  }
-  so.forEach((ob, a) => ro.add(ob));
-
-  return result;
-}
-
-export function mergeNestedEffects(realm: Realm, target: Effects, nestedEffects: Array<Effects>): Effects {
+// Given a possible list of nested effects that were needed
+// to generate the primary effects, ensure we merge all those
+// effects bindings into the primary effects.
+// The primary bindings take precedence of those of the nested
+// effects. We need to do this for nested optimized closures
+// whose effects are created and reverted by the React reconciler
+// inside the parent React component trees effects (that are also
+// created and reverted). If we don't merge the nested effects
+// then the nested closures won't be able to access some of the
+// bindings in its parent closure (see PR #1743)
+export function mergeNestedEffects(realm: Realm, primary: Effects, nestedEffects: Array<Effects>): Effects {
   let newEffects;
   for (let e of nestedEffects) {
-    newEffects = createMergedEffects(realm, target, e);
+    newEffects = realm.shallowCloneEffectBindings(primary, e);
   }
   invariant(newEffects);
   return newEffects;
