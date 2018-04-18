@@ -497,7 +497,7 @@ export class JoinImplementation {
     let [r3] = e3;
     if (r3 instanceof JoinedAbruptCompletions) {
       let [joinedEffects, possiblyNormalCompletion] = this.unbundleReturnCompletion(realm, r3);
-      realm.composeWithSavedCompletion(possiblyNormalCompletion);
+      realm.wrapSavedCompletion(possiblyNormalCompletion);
       return joinedEffects;
     }
     return e3;
