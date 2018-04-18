@@ -342,7 +342,7 @@ export function OrdinaryCallEvaluateBody(
           //todo: need to emit a specialized function that temporally captures the heap state at this point
         } else {
           realm.applyEffects(effects);
-          let c = effects[0];
+          let c = effects.data[0];
           return processResult(() => {
             invariant(c instanceof Value || c instanceof AbruptCompletion);
             return c;
@@ -414,7 +414,7 @@ export function OrdinaryCallEvaluateBody(
             joinedEffects = Join.joinEffectsAndPromoteNestedReturnCompletions(realm, c, construct_empty_effects(realm));
           }
           if (joinedEffects !== undefined) {
-            let result = joinedEffects[0];
+            let result = joinedEffects.data[0];
             if (result instanceof ReturnCompletion) {
               realm.applyEffects(joinedEffects);
               return result;
@@ -428,7 +428,7 @@ export function OrdinaryCallEvaluateBody(
             // The throw completions must be extracted into a saved possibly normal completion
             // so that the caller can pick them up in its next completion.
             joinedEffects = extractAndSavePossiblyNormalCompletion(result);
-            result = joinedEffects[0];
+            result = joinedEffects.data[0];
             invariant(result instanceof ReturnCompletion);
             realm.applyEffects(joinedEffects);
             return result;

@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { Realm, type Effects } from "../realm.js";
+import { Realm, Effects } from "../realm.js";
 import { Reference } from "../environment.js";
 import { Completion, PossiblyNormalCompletion, AbruptCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
@@ -546,14 +546,16 @@ export function evaluateWithNestedEffects(
     modifiedBindings,
     modifiedProperties: Map<PropertyBinding, void | Descriptor>,
     createdObjects,
-  ] = effects;
-  realm.applyEffects([
-    value,
-    new Generator(realm, "evaluateWithNestedEffects"),
-    modifiedBindings,
-    modifiedProperties,
-    createdObjects,
-  ]);
+  ] = effects.data;
+  realm.applyEffects(
+    new Effects(
+      value,
+      new Generator(realm, "evaluateWithNestedEffects"),
+      modifiedBindings,
+      modifiedProperties,
+      createdObjects
+    )
+  );
   try {
     if (nextEffects.length === 0) {
       return f(generator, value);
@@ -811,7 +813,7 @@ export function getValueFromFunctionCall(
     throw error;
   }
 
-  let completion = effects[0];
+  let completion = effects.data[0];
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.
