@@ -1027,6 +1027,20 @@ export class Realm {
     }
   }
 
+  wrapSavedCompletion(completion: PossiblyNormalCompletion) {
+    if (this.savedCompletion !== undefined) {
+      if (completion.consequent instanceof AbruptCompletion) {
+        completion.alternate = this.savedCompletion;
+      } else {
+        completion.consequent = this.savedCompletion;
+      }
+      completion.savedEffects = this.savedCompletion.savedEffects;
+    } else {
+      this.captureEffects(completion);
+    }
+    this.savedCompletion = completion;
+  }
+
   composeWithSavedCompletion(completion: PossiblyNormalCompletion): Value {
     if (this.savedCompletion === undefined) {
       this.savedCompletion = completion;
