@@ -41,7 +41,7 @@ import {
   getComponentName,
   sanitizeReactElementForFirstRenderOnly,
   getValueFromFunctionCall,
-  evaluateWithNestedEffects,
+  applyNestedParentEffects,
   getComponentTypeFromRootValue,
 } from "./utils";
 import { Get } from "../methods/index.js";
@@ -289,7 +289,7 @@ export class Reconciler {
     let effects = this.realm.wrapInGlobalEnv(() =>
       this.realm.evaluatePure(() =>
         this.realm.evaluateForEffects(
-          () => evaluateWithNestedEffects(this.realm, nestedEffects, renderOptimizedClosure),
+          () => applyNestedParentEffects(this.realm, nestedEffects, renderOptimizedClosure),
           /*state*/ null,
           `react nested optimized closure`
         )

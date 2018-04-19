@@ -533,56 +533,20 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   return flattenedChildren;
 }
 
-export function evaluateWithNestedEffects(
+export function applyNestedParentEffects(
   realm: Realm,
   nestedEffects: Array<Effects>,
   f: (generator?: Generator, value?: Value | Reference | Completion) => Value
 ) {
   let nextEffects = nestedEffects.slice();
   let effects = nextEffects.shift();
-  let [
-    value,
-    generator,
-    modifiedBindings,
-    modifiedProperties: Map<PropertyBinding, void | Descriptor>,
-    createdObjects,
-  ] = effects;
-  realm.applyEffects([
-    value,
-    new Generator(realm, "evaluateWithNestedEffects"),
-    modifiedBindings,
-    modifiedProperties,
-    createdObjects,
-  ]);
-  try {
-    if (nextEffects.length === 0) {
-      return f(generator, value);
-    } else {
-      return evaluateWithNestedEffects(realm, nextEffects, f);
-    }
-  } finally {
-    realm.restoreBindings(modifiedBindings);
-    realm.restoreProperties(modifiedProperties);
+  let [value, generator] = effects;
+  realm.applyEffects(effects, "", false);
+  if (nextEffects.length === 0) {
+    return f(generator, value);
+  } else {
+    return applyNestedParentEffects(realm, nextEffects, f);
   }
-}
-
-// Given a possible list of nested effects that were needed
-// to generate the primary effects, ensure we merge all those
-// effects bindings into the primary effects.
-// The primary bindings take precedence of those of the nested
-// effects. We need to do this for nested optimized closures
-// whose effects are created and reverted by the React reconciler
-// inside the parent React component trees effects (that are also
-// created and reverted). If we don't merge the nested effects
-// then the nested closures won't be able to access some of the
-// bindings in its parent closure (see PR #1743)
-export function mergeNestedEffects(realm: Realm, primary: Effects, nestedEffects: Array<Effects>): Effects {
-  let newEffects;
-  for (let e of nestedEffects) {
-    newEffects = realm.shallowCloneEffectBindings(primary, e);
-  }
-  invariant(newEffects);
-  return newEffects;
 }
 
 // This function is mainly use to delete internal properties

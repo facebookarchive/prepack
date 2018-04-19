@@ -986,34 +986,6 @@ export class Realm {
     });
   }
 
-  // create a new effects object with the bindings, property bindings
-  // and created objects of both effects combined into a single effects
-  // also ensure use the value and generator from the target effect are
-  // used in the new effects object
-  // you might imagine this as Object.assign({}, secondary, primary)
-  shallowCloneEffectBindings(primary: Effects, secondary: Effects): Effects {
-    let [sc, pg, pb, pp, po] = primary;
-    let [, , sb, sp, so] = secondary;
-    let result = construct_empty_effects(this);
-    let [, , rb, rp, ro] = result;
-
-    result[0] = sc;
-    result[1] = pg;
-
-    // we deal with the secondary effects first, if there are overlaps
-    // the primary effects should always take priority
-    sb.forEach((val, key, m) => rb.set(key, val));
-    pb.forEach((val, key, m) => rb.set(key, val));
-
-    sp.forEach((val, key, m) => rp.set(key, val));
-    pp.forEach((desc, propertyBinding, m) => rp.set(propertyBinding, desc));
-
-    so.forEach((ob, a) => ro.add(ob));
-    po.forEach((ob, a) => ro.add(ob));
-
-    return result;
-  }
-
   composeEffects(priorEffects: Effects, subsequentEffects: Effects): Effects {
     let [, pg, pb, pp, po] = priorEffects;
     let [sc, sg, sb, sp, so] = subsequentEffects;
