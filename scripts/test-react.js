@@ -429,6 +429,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "return-undefined.js");
       });
 
+      it("Null or undefined props", async () => {
+        await runTest(directory, "null-or-undefined-props.js");
+      });
+
       it("Event handlers", async () => {
         await runTest(directory, "event-handlers.js");
       });
