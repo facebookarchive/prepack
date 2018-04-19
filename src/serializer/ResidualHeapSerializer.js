@@ -985,7 +985,7 @@ export class ResidualHeapSerializer {
     let value = valueFn();
     let assignment = t.expressionStatement(t.assignmentExpression("=", location, value));
     if (mightHaveBeenDeleted) {
-      let condition = t.binaryExpression("!==", value, this.serializeValue(this.realm.intrinsics.empty));
+      let condition = t.binaryExpression("!==", value, this._serializeEmptyValue());
       let deletion = null;
       if (deleteIfMightHaveBeenDeleted) {
         invariant(location.type === "MemberExpression");
@@ -1704,14 +1704,18 @@ export class ResidualHeapSerializer {
     }
   }
 
+  _serializeEmptyValue(): BabelNodeExpression {
+    this.needsEmptyVar = true;
+    return emptyExpression;
+  }
+
   _serializeValue(val: Value): void | BabelNodeExpression {
     if (val instanceof AbstractValue) {
       return this._serializeAbstractValue(val);
     } else if (val.isIntrinsic()) {
       return this._serializeValueIntrinsic(val);
     } else if (val instanceof EmptyValue) {
-      this.needsEmptyVar = true;
-      return emptyExpression;
+      return this._serializeEmptyValue();
     } else if (val instanceof UndefinedValue) {
       return voidExpression;
     } else if (ResidualHeapInspector.isLeaf(val)) {
