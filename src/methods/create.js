@@ -770,7 +770,11 @@ export class CreateImplementation {
     } catch (e) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, "parse failed");
     }
-    let { program: { body: [functionDeclaration] } } = ast;
+    let {
+      program: {
+        body: [functionDeclaration],
+      },
+    } = ast;
     if (!functionDeclaration) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, "parse failed");
     }

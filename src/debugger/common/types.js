@@ -154,10 +154,10 @@ export type EvaluateResult = {
 };
 
 export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
-  noDebug?: boolean,
-  sourceFile: string,
-  prepackRuntime: string,
-  prepackArguments: Array<string>,
+  noDebug?: boolean;
+  sourceFile: string;
+  prepackRuntime: string;
+  prepackArguments: Array<string>;
 }
 
 export type SteppingType = "Step Into" | "Step Over";

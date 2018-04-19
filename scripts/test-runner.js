@@ -436,9 +436,9 @@ function runTest(name, code, options: PrepackOptions, args) {
             matchesIssue = true;
             console.error(
               chalk.red(
-                `Wrong number of occurrances of ${pattern.toString()} got ${matches
-                  ? matches.length
-                  : 0} instead of ${count}`
+                `Wrong number of occurrances of ${pattern.toString()} got ${
+                  matches ? matches.length : 0
+                } instead of ${count}`
               )
             );
             console.error(newCode);
@@ -478,8 +478,9 @@ function runTest(name, code, options: PrepackOptions, args) {
           if (serialized.statistics && functionCount !== serialized.statistics.functionClones) {
             console.error(
               chalk.red(
-                `Code generation serialized an unexpected number of clone functions. Expected: ${functionCount}, Got: ${serialized
-                  .statistics.functionClones}`
+                `Code generation serialized an unexpected number of clone functions. Expected: ${functionCount}, Got: ${
+                  serialized.statistics.functionClones
+                }`
               )
             );
             break;

@@ -280,7 +280,11 @@ function processResults(verbose: boolean, statusFile: string, results: TestResul
     // Limits the report result in a max depth of 5 folders.
     // This fits most cases for built-ins prototype methods as e.g.
     // test/built-ins/Array/prototype/sort
-    const folder = path.dirname(file).split(path.sep).slice(1, 5).join(path.sep);
+    const folder = path
+      .dirname(file)
+      .split(path.sep)
+      .slice(1, 5)
+      .join(path.sep);
     let folderResults: ReportResults;
 
     if (!foldersMap.has(folder)) {
