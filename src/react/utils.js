@@ -450,8 +450,14 @@ export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFun
   lengthValue.value = func.$FormalParameters.length;
 }
 
-export function createReactHintObject(object: ObjectValue, propertyName: string, args: Array<Value>): ReactHint {
+export function createReactHintObject(
+  object: ObjectValue,
+  propertyName: string,
+  args: Array<Value>,
+  firstRenderValue: Value
+): ReactHint {
   return {
+    firstRenderValue,
     object,
     propertyName,
     args,
@@ -653,8 +659,7 @@ export function getProperty(
 ): Value {
   if (object instanceof AbstractObjectValue) {
     if (object.values.isTop()) {
-      // fallback to the original Get implementation
-      return Get(realm, object, property);
+      return realm.intrinsics.undefined;
     }
     let elements = object.values.getElements();
     if (elements && elements.size > 0) {
@@ -669,7 +674,6 @@ export function getProperty(
     binding = object.symbols.get(property);
   }
   if (!binding) {
-    invariant(!object.isPartialObject(), "getProperty used on a partial object with no binding");
     return realm.intrinsics.undefined;
   }
   let descriptor = binding.descriptor;
