@@ -127,6 +127,8 @@ export class Functions {
     return recordedAdditionalFunctions;
   }
 
+  // NB: effects that are returned may be different than the effects passed in, so after this call, you may no longer
+  // use the effects object you passed into this function.
   _createAdditionalEffects(
     effects: Effects,
     fatalOnAbrupt: boolean,
@@ -188,7 +190,8 @@ export class Functions {
       evaluatedNode.status = "UNSUPPORTED_COMPLETION";
       return;
     }
-    let value = additionalFunctionEffects.effects.result;
+    effects = additionalFunctionEffects.effects;
+    let value = effects.result;
 
     if (value === this.realm.intrinsics.undefined) {
       // if we get undefined, then this component tree failed and a message was already logged
@@ -527,6 +530,7 @@ export class Functions {
         getDeclaringAdditionalFunction(functionValue)
       );
       invariant(additionalFunctionEffects);
+      effects = additionalFunctionEffects.effects;
       this.writeEffects.set(functionValue, additionalFunctionEffects);
 
       // look for newly registered optimized functions
