@@ -30,7 +30,7 @@ import {
 import { Generator } from "../utils/generator.js";
 import { Get } from "../methods/index.js";
 import { ModuleTracer } from "../utils/modules.js";
-import { Join } from "../singletons.js";
+import { Join, Properties } from "../singletons.js";
 import { ReactStatistics } from "./types";
 import type { ReactSerializerState, AdditionalFunctionEffects, ReactEvaluatedNode } from "./types";
 import { Reconciler, type ComponentTreeState } from "../react/reconcilation.js";
@@ -47,7 +47,6 @@ import {
 } from "../react/utils.js";
 import * as t from "babel-types";
 import { createAbstractArgument } from "../intrinsics/prepack/utils.js";
-import { Properties } from "../../lib/singletons.js";
 
 type AdditionalFunctionEntry = {
   value: ECMAScriptSourceFunctionValue | AbstractValue,
