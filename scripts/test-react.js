@@ -231,9 +231,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     originalConsoleError.apply(this, args);
   };
 
-  describe(`Test React with ${shouldTranspileSource ? "create-element input" : "JSX input"}, ${outputJsx
-    ? "JSX output"
-    : "create-element output"}`, () => {
+  describe(`Test React with ${shouldTranspileSource ? "create-element input" : "JSX input"}, ${
+    outputJsx ? "JSX output" : "create-element output"
+  }`, () => {
     describe("Functional component folding", () => {
       let directory = "functional-components";
 

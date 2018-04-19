@@ -904,7 +904,9 @@ export class ResidualHeapSerializer {
         if (this._options.debugScopes) {
           let scopes = this.residualValues.get(val);
           invariant(scopes !== undefined);
-          const scopeList = Array.from(scopes).map(s => `"${s.getName()}"`).join(",");
+          const scopeList = Array.from(scopes)
+            .map(s => `"${s.getName()}"`)
+            .join(",");
           let comment = `${this._getValueDebugName(val)} referenced from scopes [${scopeList}]`;
           if (target.commonAncestor !== undefined)
             comment = `${comment} with common ancestor: ${target.commonAncestor.getName()}`;
@@ -2074,9 +2076,9 @@ export class ResidualHeapSerializer {
   _logSerializedResidualMismatches() {
     let logValue = value => {
       console.log(
-        `${value.constructor.name} ${value.intrinsicName || "(no intrinsic name)"} ${value instanceof PrimitiveValue
-          ? value.toDisplayString()
-          : "(cannot print value)"}`
+        `${value.constructor.name} ${value.intrinsicName || "(no intrinsic name)"} ${
+          value instanceof PrimitiveValue ? value.toDisplayString() : "(cannot print value)"
+        }`
       );
       let scopes = this.residualValues.get(value);
       if (scopes !== undefined) this._logScopes(scopes);

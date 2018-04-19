@@ -172,10 +172,10 @@ export default function(realm: Realm): NativeFunctionValue {
         let next;
         // e. If nextIndex < numberOfSubstitutions, let next be substitutions[nextIndex].
         if (nextIndex < numberOfSubstitutions) next = substitutions[nextIndex];
-        else
+        else {
           // f. Else, let next be the empty String.
           next = realm.intrinsics.emptyString;
-
+        }
         // g. Let nextSub be ? ToString(next).
         let nextSub = To.ToStringPartial(realm, next);
 

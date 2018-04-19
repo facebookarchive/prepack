@@ -131,7 +131,9 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     let loc =
       consequent instanceof AbruptCompletion
         ? consequent.location
-        : alternate instanceof Completion ? alternate.location : alternate.expressionLocation;
+        : alternate instanceof Completion
+          ? alternate.location
+          : alternate.expressionLocation;
     super(value, loc);
     this.joinCondition = joinCondition;
     this.consequent = consequent;
