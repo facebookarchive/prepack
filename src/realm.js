@@ -81,31 +81,31 @@ export class Effects {
   // TODO: Make these into properties
   data: [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects];
 
-  get result() {
+  get result(): EvaluationResult {
     return this.data[0];
   }
   set result(newVal: EvaluationResult) {
     this.data[0] = newVal;
   }
-  get generator() {
+  get generator(): Generator {
     return this.data[1];
   }
   set generator(newVal: Generator) {
     this.data[1] = newVal;
   }
-  get modifiedBindings() {
+  get modifiedBindings(): Bindings {
     return this.data[2];
   }
   set modifiedBindings(newVal: Bindings) {
     this.data[2] = newVal;
   }
-  get modifiedProperties() {
+  get modifiedProperties(): PropertyBindings {
     return this.data[3];
   }
   set modifiedProperties(newVal: PropertyBindings) {
     this.data[3] = newVal;
   }
-  get createdObjects() {
+  get createdObjects(): CreatedObjects {
     return this.data[4];
   }
   set createdObjects(newVal: CreatedObjects) {
