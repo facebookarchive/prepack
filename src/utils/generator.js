@@ -398,7 +398,9 @@ export class Generator {
     let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects.data;
 
     let output = new Generator(realm, name, effects);
-    output.appendGenerator(generator, "");
+    // joined generators have no entries of their own, so the generators of the components of result can do the job
+    if (!(result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions))
+      output.appendGenerator(generator, "");
 
     for (let propertyBinding of modifiedProperties.keys()) {
       let object = propertyBinding.object;
