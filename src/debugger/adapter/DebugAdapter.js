@@ -133,7 +133,7 @@ class PrepackDebugSession extends DebugSession {
 
   /**
    * Request Prepack to continue running when it is stopped
-  */
+   */
   // Override
   continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
     // send a Run request to Prepack and try to send the next request

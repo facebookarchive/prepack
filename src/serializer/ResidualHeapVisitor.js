@@ -1060,7 +1060,9 @@ export class ResidualHeapVisitor {
           let funcNameVal = functionValue._SafeGetDataPropertyValue("name");
           let funNameStr = funcNameVal instanceof StringValue ? funcNameVal.value : "unknown function";
           let error = new CompilerDiagnostic(
-            `Variable ${modifiedBinding.name} written to in optimized function ${funNameStr} conflicts with write in another optimized function ${otherNameStr}`,
+            `Variable ${
+              modifiedBinding.name
+            } written to in optimized function ${funNameStr} conflicts with write in another optimized function ${otherNameStr}`,
             funcNameVal.expressionLocation,
             "PP1001",
             "RecoverableError"

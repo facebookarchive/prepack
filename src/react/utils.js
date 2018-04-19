@@ -201,7 +201,10 @@ export function addKeyToReactElement(
 export function getUniqueReactElementKey(index?: string, usedReactElementKeys: Set<string>) {
   let key;
   do {
-    key = Math.random().toString(36).replace(/[^a-z]+/g, "").substring(0, 2);
+    key = Math.random()
+      .toString(36)
+      .replace(/[^a-z]+/g, "")
+      .substring(0, 2);
   } while (usedReactElementKeys.has(key));
   usedReactElementKeys.add(key);
   if (index !== undefined) {
