@@ -146,6 +146,7 @@ export class ResidualHeapVisitor {
   classMethodInstances: Map<FunctionValue, ClassMethodInstance>;
   someReactElement: void | ObjectValue;
   reactElementEquivalenceSet: ReactElementSet;
+  // Parents will always be a generator, optimized function value or "GLOBAL"
   generatorParents: Map<Generator, Generator | FunctionValue | "GLOBAL">;
   createdObjects: Map<ObjectValue, void | Generator>;
 
@@ -1082,6 +1083,11 @@ export class ResidualHeapVisitor {
     parent: Generator | FunctionValue | "GLOBAL",
     additionalFunctionInfo?: AdditionalFunctionInfo
   ): void {
+    if (parent instanceof FunctionValue)
+      invariant(
+        this.additionalFunctionValuesAndEffects.has(parent),
+        "Generator parents may only be generators, additional function values or 'GLOBAL'"
+      );
     this.generatorParents.set(generator, parent);
     if (generator.effectsToApply)
       for (const createdObject of generator.effectsToApply[4]) {
@@ -1096,6 +1102,9 @@ export class ResidualHeapVisitor {
             if (currentScope instanceof Generator) {
               currentScope = this.generatorParents.get(currentScope);
             } else if (currentScope instanceof FunctionValue) {
+              // We're trying to walk up generatorParents and should only be falling into this case if we hit an
+              // optimized function value as a generator parent. Optimized function values must always have generator
+              // or "GLOBAL" parents
               invariant(this.additionalFunctionValuesAndEffects.has(currentScope));
               currentScope = this.createdObjects.get(currentScope) || "GLOBAL";
             }
