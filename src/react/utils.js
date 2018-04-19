@@ -10,8 +10,7 @@
 /* @flow */
 
 import { Realm, Effects } from "../realm.js";
-import { Reference } from "../environment.js";
-import { Completion, PossiblyNormalCompletion, AbruptCompletion } from "../completions.js";
+import { PossiblyNormalCompletion, AbruptCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
 import {
   AbstractObjectValue,
