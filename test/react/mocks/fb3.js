@@ -7,6 +7,7 @@ if (!window.__evaluatePureFunction) {
 (function() {
   function App() {}
   require('React');
+
   var ReactRelay = require('RelayModern');
 
   window.__evaluatePureFunction(() => {
