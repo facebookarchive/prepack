@@ -324,7 +324,7 @@ export type ClassComponentMetadata = {
   instanceSymbols: Set<SymbolValue>,
 };
 
-export type ReactHint = {| object: ObjectValue, propertyName: string, args: Array<Value> |};
+export type ReactHint = {| firstRenderValue: Value, object: ObjectValue, propertyName: string, args: Array<Value> |};
 
 export type ReactComponentTreeConfig = {
   firstRenderOnly: boolean,
