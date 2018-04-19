@@ -12,7 +12,7 @@ type JSONValue = Array<JSONValue> | string | number | JSON;
 type JSON = { [key: string]: JSONValue };
 
 // this will mutate the original JSON object
-export function mergeAdacentJSONTextNodes(node: JSON, includeFunctionBodies: boolean, visitedNodes?: Set<JSON>) {
+export function mergeAdacentJSONTextNodes(node: JSON, visitedNodes?: Set<JSON>) {
   if (visitedNodes === undefined) {
     visitedNodes = new Set();
   }
@@ -41,7 +41,7 @@ export function mergeAdacentJSONTextNodes(node: JSON, includeFunctionBodies: boo
           arr.push(concatString);
           concatString = null;
         }
-        arr.push(mergeAdacentJSONTextNodes(child, includeFunctionBodies, visitedNodes));
+        arr.push(mergeAdacentJSONTextNodes(child, visitedNodes));
       }
     }
     if (concatString !== null) {
@@ -52,13 +52,9 @@ export function mergeAdacentJSONTextNodes(node: JSON, includeFunctionBodies: boo
     for (let key in node) {
       let value = node[key];
       if (typeof value === "function") {
-        if (!includeFunctionBodies) {
-          node[key] = value.toString();
-        } else {
-          delete node[key];
-        }
+        node[key] = "function";
       } else if (typeof value === "object" && value !== null) {
-        node[key] = mergeAdacentJSONTextNodes(((value: any): JSON), includeFunctionBodies, visitedNodes);
+        node[key] = mergeAdacentJSONTextNodes(((value: any): JSON), visitedNodes);
       }
     }
   }

@@ -286,7 +286,7 @@ class PossiblyNormalReturnEntry extends GeneratorEntry {
 
     // The effects of the normal path have already been applied to generator
     let empty_effects = construct_empty_effects(realm);
-    empty_effects[0] = completion.value;
+    empty_effects.data[0] = completion.value;
     let consequentEffects =
       completion.consequent instanceof AbruptCompletion ? completion.consequentEffects : empty_effects;
     this.consequentGenerator = Generator.fromEffects(consequentEffects, realm, "ConsequentEffects");
@@ -395,10 +395,12 @@ export class Generator {
   pathConditions: Array<AbstractValue>;
 
   static _generatorOfEffects(realm: Realm, name: string, environmentRecordIdAfterGlobalCode: number, effects: Effects) {
-    let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects;
+    let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects.data;
 
     let output = new Generator(realm, name, effects);
-    output.appendGenerator(generator, "");
+    // joined generators have no entries of their own, so the generators of the components of result can do the job
+    if (!(result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions))
+      output.appendGenerator(generator, "");
 
     for (let propertyBinding of modifiedProperties.keys()) {
       let object = propertyBinding.object;
@@ -701,9 +703,9 @@ export class Generator {
     let message = "Program may terminate with exception";
     if (value instanceof ObjectValue) {
       let object = ((value: any): ObjectValue);
-      let objectMessage = this.realm.evaluateWithUndo(() => object.$Get("message", value));
+      let objectMessage = this.realm.evaluateWithUndo(() => object._SafeGetDataPropertyValue("message"));
       if (objectMessage instanceof StringValue) message += `: ${objectMessage.value}`;
-      const objectStack = this.realm.evaluateWithUndo(() => object.$Get("stack", value));
+      const objectStack = this.realm.evaluateWithUndo(() => object._SafeGetDataPropertyValue("stack"));
       if (objectStack instanceof StringValue)
         message += `
   ${objectStack.value}`;

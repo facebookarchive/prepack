@@ -11,6 +11,7 @@
 
 import type { BabelNodeCallExpression, BabelNodeExpression, BabelNodeStatement } from "babel-types";
 import type { Realm } from "../realm.js";
+import { Effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 
 import { AbruptCompletion, Completion, PossiblyNormalCompletion } from "../completions.js";
@@ -105,21 +106,21 @@ function callBothFunctionsAndJoinTheirEffects(
     () => EvaluateCall(func1, func1, ast, argVals, strictCode, env, realm),
     undefined,
     "callBothFunctionsAndJoinTheirEffects/1"
-  );
+  ).data;
 
   let [compl2, gen2, bindings2, properties2, createdObj2] = realm.evaluateForEffects(
     () => EvaluateCall(func2, func2, ast, argVals, strictCode, env, realm),
     undefined,
     "callBothFunctionsAndJoinTheirEffects/2"
-  );
+  ).data;
 
   let joinedEffects = Join.joinEffects(
     realm,
     cond,
-    [compl1, gen1, bindings1, properties1, createdObj1],
-    [compl2, gen2, bindings2, properties2, createdObj2]
+    new Effects(compl1, gen1, bindings1, properties1, createdObj1),
+    new Effects(compl2, gen2, bindings2, properties2, createdObj2)
   );
-  let joinedCompletion = joinedEffects[0];
+  let joinedCompletion = joinedEffects.data[0];
   if (joinedCompletion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.
