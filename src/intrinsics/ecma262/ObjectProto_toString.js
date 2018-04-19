@@ -63,10 +63,10 @@ export default function(realm: Realm): NativeFunctionValue {
       else if (O.$RegExpMatcher)
         // 13. Else, if O has a [[RegExpMatcher]] internal slot, let builtinTag be "RegExp".
         builtinTag = "RegExp";
-      else
+      else {
         // 14. Else, let builtinTag be "Object".
         builtinTag = "Object";
-
+      }
       // 15. Let tag be ? Get(O, @@toStringTag).
       let tag = Get(realm, O, realm.intrinsics.SymbolToStringTag);
 

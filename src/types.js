@@ -95,7 +95,7 @@ export type ElementType =
 //
 
 declare class _CallableObjectValue extends ObjectValue {
-  $Call: void | ((thisArgument: Value, argsList: Array<Value>) => Value),
+  $Call: void | ((thisArgument: Value, argsList: Array<Value>) => Value);
 }
 export type CallableObjectValue = _CallableObjectValue | FunctionValue | NativeFunctionValue;
 
@@ -744,6 +744,8 @@ export type JoinType = {
 
   joinEffects(realm: Realm, joinCondition: AbstractValue, e1: Effects, e2: Effects): Effects,
 
+  joinNestedEffects(realm: Realm, c: Completion, precedingEffects?: Effects): Effects,
+
   joinResults(
     realm: Realm,
     joinCondition: AbstractValue,
@@ -1049,8 +1051,9 @@ export class RealmTimingStatistics {
   log(totalTime: number): void {
     console.log(`=== timing statistics: ${totalTime}ms total time`);
     console.log(
-      `${this.parsingTime}ms parsing, ${this.fixupSourceLocationsTime}ms fixing source locations, ${this
-        .fixupSourceLocationsTime}ms fixing source locations, ${this.evaluationTime}ms evaluating global code`
+      `${this.parsingTime}ms parsing, ${this.fixupSourceLocationsTime}ms fixing source locations, ${
+        this.fixupSourceLocationsTime
+      }ms fixing source locations, ${this.evaluationTime}ms evaluating global code`
     );
   }
 }

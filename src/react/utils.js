@@ -9,9 +9,8 @@
 
 /* @flow */
 
-import { Realm, type Effects } from "../realm.js";
-import { Reference } from "../environment.js";
-import { Completion, PossiblyNormalCompletion, AbruptCompletion } from "../completions.js";
+import { Realm, Effects } from "../realm.js";
+import { PossiblyNormalCompletion, AbruptCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
 import {
   AbstractObjectValue,
@@ -202,7 +201,10 @@ export function addKeyToReactElement(
 export function getUniqueReactElementKey(index?: string, usedReactElementKeys: Set<string>) {
   let key;
   do {
-    key = Math.random().toString(36).replace(/[^a-z]+/g, "").substring(0, 2);
+    key = Math.random()
+      .toString(36)
+      .replace(/[^a-z]+/g, "")
+      .substring(0, 2);
   } while (usedReactElementKeys.has(key));
   usedReactElementKeys.add(key);
   if (index !== undefined) {
@@ -539,32 +541,30 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   return flattenedChildren;
 }
 
-export function evaluateWithNestedEffects(
-  realm: Realm,
-  nestedEffects: Array<Effects>,
-  f: (generator?: Generator, value?: Value | Reference | Completion) => Value
-) {
+export function evaluateWithNestedParentEffects(realm: Realm, nestedEffects: Array<Effects>, f: () => Effects) {
   let nextEffects = nestedEffects.slice();
   let effects = nextEffects.shift();
   let [
     value,
-    generator,
+    ,
     modifiedBindings,
     modifiedProperties: Map<PropertyBinding, void | Descriptor>,
     createdObjects,
-  ] = effects;
-  realm.applyEffects([
-    value,
-    new Generator(realm, "evaluateWithNestedEffects"),
-    modifiedBindings,
-    modifiedProperties,
-    createdObjects,
-  ]);
+  ] = effects.data;
+  realm.applyEffects(
+    new Effects(
+      value,
+      new Generator(realm, "evaluateWithNestedEffects"),
+      modifiedBindings,
+      modifiedProperties,
+      createdObjects
+    )
+  );
   try {
     if (nextEffects.length === 0) {
-      return f(generator, value);
+      return f();
     } else {
-      return evaluateWithNestedEffects(realm, nextEffects, f);
+      return evaluateWithNestedParentEffects(realm, nextEffects, f);
     }
   } finally {
     realm.restoreBindings(modifiedBindings);
@@ -815,7 +815,7 @@ export function getValueFromFunctionCall(
     throw error;
   }
 
-  let completion = effects[0];
+  let completion = effects.data[0];
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.

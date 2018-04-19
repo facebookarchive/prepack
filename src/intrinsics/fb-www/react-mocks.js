@@ -506,6 +506,10 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
     0,
     (context, [type, config, ...children]) => {
       invariant(type instanceof Value);
+      // if config is undefined/null, use an empy object
+      if (config === realm.intrinsics.undefined || config === realm.intrinsics.null || config === undefined) {
+        config = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+      }
       invariant(
         config instanceof ObjectValue ||
           config instanceof AbstractObjectValue ||

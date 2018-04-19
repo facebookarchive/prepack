@@ -91,8 +91,9 @@ function runTest(name: string, code: string): boolean {
   } finally {
     for (let [loc, error] of errors) {
       console.error(
-        `${error.severity}: ${loc.source || ""} ${loc.start.line}:${loc.start.column +
-          1} ${error.errorCode} ${error.message}`
+        `${error.severity}: ${loc.source || ""} ${loc.start.line}:${loc.start.column + 1} ${error.errorCode} ${
+          error.message
+        }`
       );
     }
     for (let error of errorList) {

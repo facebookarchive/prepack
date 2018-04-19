@@ -1,16 +1,11 @@
-// does not contain:z = 5;
-// does contain:15:11
-// add at runtime: x = 3;
-var x;
-if (global.__abstract) x = __abstract("number", "(3)");
-else x = 3;
+var x = global.__abstract ? x = __abstract("number", "(23)") : 23;
 
 function func1() {
   let z = 5;
-  if (x > 10) {
+  if (x > 20) {
     x = 15;
     throw new Error("X greater than 10 " + x);
-  } else if (x > 20) {
+  } else if (x > 10) {
     x = 25;
     throw new Error("X greater than 20 " + x);
   }

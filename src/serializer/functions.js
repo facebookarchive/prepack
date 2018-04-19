@@ -128,7 +128,6 @@ export class Functions {
     return recordedAdditionalFunctions;
   }
 
-  // This will also handle postprocessing for PossiblyNormalCompletion
   _createAdditionalEffects(
     effects: Effects,
     fatalOnAbrupt: boolean,
@@ -136,41 +135,31 @@ export class Functions {
     environmentRecordIdAfterGlobalCode: number,
     parentAdditionalFunction: FunctionValue | void = undefined
   ): AdditionalFunctionEffects | null {
-    let [pncResult] = effects;
-    if (pncResult instanceof PossiblyNormalCompletion) {
-      // This is a join point for all the forked paths in pncResult
-      effects = Join.joinEffectsAndPromoteNestedReturnCompletions(
-        this.realm,
-        pncResult,
-        construct_empty_effects(this.realm)
+    let realm = this.realm;
+    let [pncResult] = effects.data;
+    if (pncResult instanceof PossiblyNormalCompletion || pncResult instanceof JoinedAbruptCompletions) {
+      // The completion is not the end of function execution, but a fork point for separate threads of control.
+      // The effects of all of these threads need to get joined up and rolled into the top level effects,
+      // so that applying the effects before serializing the body will fully initialize all variables and objects.
+      effects = realm.evaluateForEffects(
+        () => {
+          realm.applyEffects(effects, "_createAdditionalEffects/1", false);
+          if (pncResult instanceof PossiblyNormalCompletion) {
+            [pncResult] = Join.joinPossiblyNormalCompletionWithAbruptCompletion(
+              realm,
+              pncResult,
+              new ReturnCompletion(pncResult.value),
+              construct_empty_effects(realm)
+            ).data;
+          }
+          invariant(pncResult instanceof JoinedAbruptCompletions);
+          let completionEffects = Join.joinNestedEffects(realm, pncResult);
+          realm.applyEffects(completionEffects, "_createAdditionalEffects/2", false);
+          return pncResult;
+        },
+        undefined,
+        "_createAdditionalEffects"
       );
-      let [result] = effects;
-      if (result instanceof JoinedAbruptCompletions) {
-        if (result.alternate instanceof ReturnCompletion) {
-          result.alternateEffects[0] = pncResult.value;
-          result = new PossiblyNormalCompletion(
-            pncResult.value,
-            result.joinCondition,
-            result.consequent,
-            result.consequentEffects,
-            pncResult.value,
-            result.alternateEffects,
-            []
-          );
-        } else if (result.consequent instanceof ReturnCompletion) {
-          result.consequentEffects[0] = pncResult.value;
-          result = new PossiblyNormalCompletion(
-            pncResult.value,
-            result.joinCondition,
-            pncResult.value,
-            result.consequentEffects,
-            result.alternate,
-            result.alternateEffects,
-            []
-          );
-        }
-        effects[0] = result;
-      }
     }
     let retValue: AdditionalFunctionEffects = {
       parentAdditionalFunction,
@@ -200,7 +189,7 @@ export class Functions {
       evaluatedNode.status = "UNSUPPORTED_COMPLETION";
       return;
     }
-    let value = effects[0];
+    let value = effects.data[0];
 
     if (value === this.realm.intrinsics.undefined) {
       // if we get undefined, then this component tree failed and a message was already logged
@@ -269,11 +258,12 @@ export class Functions {
     nestedEffects: Array<Effects>,
     evaluatedNode: ReactEvaluatedNode
   ): boolean {
-    let recentBindings = effects[2];
+    let recentBindings = effects.data[2];
     let ignoreBindings = new Set();
     let failed = false;
 
-    for (let [, , nestedBindingsToIgnore] of nestedEffects) {
+    for (let nestedEffect of nestedEffects) {
+      let nestedBindingsToIgnore = nestedEffect.data[2];
       for (let [binding] of nestedBindingsToIgnore) {
         ignoreBindings.add(binding);
       }
@@ -517,7 +507,7 @@ export class Functions {
       for (let [additionalFunctionValue, additionalEffects] of this.writeEffects) {
         // CreatedObjects is all objects created by this additional function but not
         // nested additional functions.
-        let createdObjects = additionalEffects.effects[4];
+        let createdObjects = additionalEffects.effects.data[4];
         if (createdObjects.has(functionValue)) return additionalFunctionValue;
       }
     };
@@ -526,7 +516,7 @@ export class Functions {
       additionalFunctionStack.push(functionValue);
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
       let call = this._callOfFunction(functionValue);
-      let effects = this.realm.evaluatePure(() =>
+      let effects: Effects = this.realm.evaluatePure(() =>
         this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
       );
       invariant(effects);
@@ -541,7 +531,7 @@ export class Functions {
       this.writeEffects.set(functionValue, additionalFunctionEffects);
 
       // look for newly registered optimized functions
-      let modifiedProperties = effects[3];
+      let modifiedProperties = effects.data[3];
       // Conceptually this will ensure that the nested additional function is defined
       // although for later cases, we'll apply the effects of the parents only.
       this.realm.withEffectsAppliedInGlobalEnv(() => {
@@ -549,7 +539,7 @@ export class Functions {
           let descriptor = propertyBinding.descriptor;
           if (descriptor && propertyBinding.object === optimizedFunctionsObject) {
             let newValue = descriptor.value;
-            invariant(newValue);
+            invariant(newValue instanceof Value);
             let newEntry = this.__optimizedFunctionEntryOfValue(newValue);
             if (newEntry) {
               additionalFunctions.add(newEntry.value);
@@ -580,10 +570,10 @@ export class Functions {
       invariant(additionalFunctionEffects !== undefined);
       let e1 = additionalFunctionEffects.effects;
       invariant(e1 !== undefined);
-      if (e1[0] instanceof Completion && !e1[0] instanceof PossiblyNormalCompletion) {
+      if (e1.data[0] instanceof Completion && !e1.data[0] instanceof PossiblyNormalCompletion) {
         let error = new CompilerDiagnostic(
           `Additional function ${fun1Name} may terminate abruptly`,
-          e1[0].location,
+          e1.data[0].location,
           "PP1002",
           "FatalError"
         );
@@ -594,7 +584,7 @@ export class Functions {
         if (fun1 === fun2) continue;
         invariant(fun2 instanceof FunctionValue);
         let reportFn = () => {
-          this.reportWriteConflicts(fun1Name, conflicts, e1[3], this._callOfFunction(fun2));
+          this.reportWriteConflicts(fun1Name, conflicts, e1.data[3], this._callOfFunction(fun2));
           return null;
         };
         let fun2Effects = this.writeEffects.get(fun2);
