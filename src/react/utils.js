@@ -533,15 +533,38 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   return flattenedChildren;
 }
 
-export function applyNestedParentEffects(realm: Realm, nestedEffects: Array<Effects>, f: () => Value): Value {
+export function evaluateWithNestedEffects(
+  realm: Realm,
+  nestedEffects: Array<Effects>,
+  f: (generator?: Generator, value?: Value | Reference | Completion) => Value
+) {
   let nextEffects = nestedEffects.slice();
   let effects = nextEffects.shift();
-  let clonedEffects = realm.cloneEffects(effects);
-  realm.applyEffects(clonedEffects);
-  if (nextEffects.length === 0) {
-    return f();
-  } else {
-    return applyNestedParentEffects(realm, nextEffects, f);
+  let [
+    value,
+    generator,
+    modifiedBindings,
+    modifiedProperties: Map<PropertyBinding, void | Descriptor>,
+    createdObjects,
+  ] = effects.data;
+  realm.applyEffects(
+    new Effects(
+      value,
+      new Generator(realm, "evaluateWithNestedEffects"),
+      modifiedBindings,
+      modifiedProperties,
+      createdObjects
+    )
+  );
+  try {
+    if (nextEffects.length === 0) {
+      return f(generator, value);
+    } else {
+      return evaluateWithNestedEffects(realm, nextEffects, f);
+    }
+  } finally {
+    realm.restoreBindings(modifiedBindings);
+    realm.restoreProperties(modifiedProperties);
   }
 }
 

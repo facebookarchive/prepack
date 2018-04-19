@@ -1163,20 +1163,6 @@ export class Realm {
     }
   }
 
-  cloneEffects(effects: Effects): Effects {
-    let result = construct_empty_effects(this);
-    let [value, gen, sb, sp, so] = effects.data;
-    let [, , rb, rp, ro] = result.data;
-
-    result.data[0] = value;
-    result.data[1] = gen;
-
-    sb.forEach((val, key, m) => rb.set(key, Object.assign({}, val)));
-    sp.forEach((val, key, m) => rp.set(key, Object.assign({}, val)));
-    so.forEach((ob, a) => ro.add(ob));
-    return result;
-  }
-
   // Apply the given effects to the global state
   applyEffects(effects: Effects, leadingComment: string = "", appendGenerator: boolean = true) {
     let [, generator, bindings, properties, createdObjects] = effects.data;
