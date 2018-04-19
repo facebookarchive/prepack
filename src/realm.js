@@ -307,7 +307,7 @@ export class Realm {
     symbols: Map<ReactSymbolTypes, SymbolValue>,
     verbose: boolean,
   };
-  alreadyDescribedLocations: WeakMap<FunctionValue, string | void>;
+  alreadyDescribedLocations: WeakMap<FunctionValue | BabelNodeSourceLocation, string | void>;
   stripFlow: boolean;
 
   fbLibraries: {
@@ -1423,7 +1423,7 @@ export class Realm {
   handleError(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
     if (!diagnostic.callStack && this.contextStack.length > 0) {
       let error = Construct(this, this.intrinsics.Error);
-      let stack = error.$Get("stack", error);
+      let stack = error._SafeGetDataPropertyValue("stack");
       if (stack instanceof StringValue) diagnostic.callStack = stack.value;
     }
     // Default behaviour is to bail on the first error
