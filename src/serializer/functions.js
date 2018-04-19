@@ -186,7 +186,7 @@ export class Functions {
       evaluatedNode.status = "UNSUPPORTED_COMPLETION";
       return;
     }
-    let value = effects.data[0];
+    let value = additionalFunctionEffects.effects.data[0];
 
     if (value === this.realm.intrinsics.undefined) {
       // if we get undefined, then this component tree failed and a message was already logged
@@ -506,7 +506,7 @@ export class Functions {
       this.writeEffects.set(functionValue, additionalFunctionEffects);
 
       // look for newly registered optimized functions
-      let modifiedProperties = effects.data[3];
+      let modifiedProperties = additionalFunctionEffects.effects.data[3];
       // Conceptually this will ensure that the nested additional function is defined
       // although for later cases, we'll apply the effects of the parents only.
       this.realm.withEffectsAppliedInGlobalEnv(() => {
@@ -514,7 +514,7 @@ export class Functions {
           let descriptor = propertyBinding.descriptor;
           if (descriptor && propertyBinding.object === optimizedFunctionsObject) {
             let newValue = descriptor.value;
-            invariant(newValue instanceof Value);
+            invariant(newValue instanceof Value); //todo: this does not seem invariantly true
             let newEntry = this.__optimizedFunctionEntryOfValue(newValue);
             if (newEntry) {
               additionalFunctions.add(newEntry.value);
@@ -525,7 +525,7 @@ export class Functions {
           }
         }
         return null;
-      }, effects);
+      }, additionalFunctionEffects.effects);
       invariant(additionalFunctionStack.pop() === functionValue);
     };
 
