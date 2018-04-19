@@ -641,6 +641,17 @@ export default class ObjectValue extends ConcreteValue {
     return OrdinaryGet(this.$Realm, this, P, Receiver);
   }
 
+  _SafeGetDataPropertyValue(P: PropertyKeyValue): Value {
+    let savedInvariantLevel = this.$Realm.invariantLevel;
+    try {
+      this.$Realm.invariantLevel = 0;
+      let desc = this.$GetOwnProperty(P);
+      return desc !== undefined && desc.value instanceof Value ? desc.value : this.$Realm.intrinsics.undefined;
+    } finally {
+      this.$Realm.invariantLevel = savedInvariantLevel;
+    }
+  }
+
   $GetPartial(P: AbstractValue | PropertyKeyValue, Receiver: Value): Value {
     if (Receiver instanceof AbstractValue && Receiver.getType() === StringValue && P === "length") {
       return AbstractValue.createFromTemplate(this.$Realm, lengthTemplate, NumberValue, [Receiver], lengthTemplateSrc);

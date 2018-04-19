@@ -1,6 +1,6 @@
 {
   "name": "prepack",
-  "version": "0.2.32.alpha.0",
+  "version": "0.2.33-alpha.0",
   "description": "Execute a JS bundle, serialize global state and side effects to a snapshot that can be quickly restored.",
   "homepage": "https://github.com/facebook/prepack",
   "repository": {
@@ -70,7 +70,6 @@
     "queue-fifo": "^0.2.3",
     "seedrandom": "^2.4.2",
     "source-map": "^0.5.6",
-    "v8-profiler": "^5.7.0",
     "vscode-debugadapter": "^1.24.0",
     "vscode-debugprotocol": "^1.24.0"
   },
@@ -113,6 +112,9 @@
     "test262-integrator": "^1.2.0",
     "webpack": "^4.1.0",
     "webpack-cli": "^2.0.10"
+  },
+  "optionalDependencies": {
+    "v8-profiler": "^5.7.0"
   },
   "engines": {
     "node": ">=6.1.0"

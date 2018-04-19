@@ -56,6 +56,7 @@ export class ResidualHeapInspector {
       } else {
         let extensible = val.$Extensible;
         if (!(extensible instanceof BooleanValue)) {
+          debugger;
           this.logger.logError(
             val,
             "Object that might or might not be sealed or frozen are not supported in residual heap."

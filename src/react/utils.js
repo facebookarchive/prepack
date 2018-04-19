@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { Realm, type Effects } from "../realm.js";
+import { Realm, Effects } from "../realm.js";
 import { Reference } from "../environment.js";
 import { Completion, PossiblyNormalCompletion, AbruptCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
@@ -533,17 +533,13 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   return flattenedChildren;
 }
 
-export function applyNestedParentEffects(
-  realm: Realm,
-  nestedEffects: Array<Effects>,
-  f: (generator?: Generator, value?: Value | Reference | Completion) => Value
-) {
+export function applyNestedParentEffects(realm: Realm, nestedEffects: Array<Effects>, f: () => Value): Value {
   let nextEffects = nestedEffects.slice();
   let effects = nextEffects.shift();
-  let [value, generator] = effects;
-  realm.applyEffects(effects, "", false);
+  let clonedEffects = realm.cloneEffects(effects);
+  realm.applyEffects(clonedEffects);
   if (nextEffects.length === 0) {
-    return f(generator, value);
+    return f();
   } else {
     return applyNestedParentEffects(realm, nextEffects, f);
   }
@@ -794,7 +790,7 @@ export function getValueFromFunctionCall(
     throw error;
   }
 
-  let completion = effects[0];
+  let completion = effects.data[0];
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.

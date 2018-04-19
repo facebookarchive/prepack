@@ -1890,7 +1890,7 @@ export class ResidualHeapSerializer {
       return;
     }
     this.rewrittenAdditionalFunctions.set(additionalFunctionValue, []);
-    let createdObjects = effects[4];
+    let createdObjects = effects.data[4];
     let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
     // Allows us to emit function declarations etc. inside of this additional
     // function instead of adding them at global scope

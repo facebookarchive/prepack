@@ -1055,9 +1055,9 @@ export class ResidualHeapVisitor {
         residualBinding.modified = true;
         let otherFunc = residualBinding.additionalFunctionOverridesValue;
         if (otherFunc !== undefined && otherFunc !== functionValue) {
-          let otherNameVal = otherFunc.$Get("name", otherFunc);
+          let otherNameVal = otherFunc._SafeGetDataPropertyValue("name");
           let otherNameStr = otherNameVal instanceof StringValue ? otherNameVal.value : "unknown function";
-          let funcNameVal = functionValue.$Get("name", functionValue);
+          let funcNameVal = functionValue._SafeGetDataPropertyValue("name");
           let funNameStr = funcNameVal instanceof StringValue ? funcNameVal.value : "unknown function";
           let error = new CompilerDiagnostic(
             `Variable ${modifiedBinding.name} written to in optimized function ${funNameStr} conflicts with write in another optimized function ${otherNameStr}`,
@@ -1084,7 +1084,7 @@ export class ResidualHeapVisitor {
   ): void {
     this.generatorParents.set(generator, parent);
     if (generator.effectsToApply)
-      for (const createdObject of generator.effectsToApply[4]) {
+      for (const createdObject of generator.effectsToApply.data[4]) {
         // TODO: Unfortunately, the following invariant doesn't hold. This is concerning.
         // invariant(!this.createdObjects.has(createdObject) || this.createdObjects.get(createdObject) === generator);
         if (!this.createdObjects.has(createdObject)) this.createdObjects.set(createdObject, generator);
@@ -1121,7 +1121,7 @@ export class ResidualHeapVisitor {
     this.reactElementEquivalenceSet = new ReactElementSet(this.realm, this.equivalenceSet);
 
     let modifiedBindingInfo = new Map();
-    let [result] = additionalEffects.effects;
+    let [result] = additionalEffects.effects.data;
 
     invariant(funcInstance !== undefined);
     invariant(functionInfo !== undefined);

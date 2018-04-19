@@ -10,6 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
+import { Effects } from "../realm.js";
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { InfeasiblePathError } from "../errors.js";
 import { construct_empty_effects } from "../realm.js";
@@ -53,7 +54,7 @@ export default function(
   invariant(lcond instanceof AbstractValue);
 
   // Create empty effects for the case where ast.right is not evaluated
-  let [compl1, gen1, bindings1, properties1, createdObj1] = construct_empty_effects(realm);
+  let [compl1, gen1, bindings1, properties1, createdObj1] = construct_empty_effects(realm).data;
   compl1; // ignore
 
   // Evaluate ast.right in a sandbox to get its effects
@@ -62,7 +63,7 @@ export default function(
     let wrapper = ast.operator === "&&" ? Path.withCondition : Path.withInverseCondition;
     [compl2, gen2, bindings2, properties2, createdObj2] = wrapper(lcond, () =>
       realm.evaluateNodeForEffects(ast.right, strictCode, env)
-    );
+    ).data;
   } catch (e) {
     if (e instanceof InfeasiblePathError) {
       // if && then lcond cannot be true on this path else lcond cannot be false on this path.
@@ -81,18 +82,18 @@ export default function(
     joinedEffects = Join.joinEffects(
       realm,
       lval,
-      [compl2, gen2, bindings2, properties2, createdObj2],
-      [lval, gen1, bindings1, properties1, createdObj1]
+      new Effects(compl2, gen2, bindings2, properties2, createdObj2),
+      new Effects(lval, gen1, bindings1, properties1, createdObj1)
     );
   } else {
     joinedEffects = Join.joinEffects(
       realm,
       lval,
-      [lval, gen1, bindings1, properties1, createdObj1],
-      [compl2, gen2, bindings2, properties2, createdObj2]
+      new Effects(lval, gen1, bindings1, properties1, createdObj1),
+      new Effects(compl2, gen2, bindings2, properties2, createdObj2)
     );
   }
-  let completion = joinedEffects[0];
+  let completion = joinedEffects.data[0];
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case the evaluation of ast.right may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.
