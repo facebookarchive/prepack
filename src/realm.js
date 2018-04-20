@@ -710,6 +710,7 @@ export class Realm {
       } finally {
         this.restoreBindings(effects.modifiedBindings);
         this.restoreProperties(effects.modifiedProperties);
+        invariant(!effects.canBeApplied);
         effects.canBeApplied = true;
       }
     });
