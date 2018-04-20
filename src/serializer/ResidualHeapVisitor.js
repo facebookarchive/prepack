@@ -146,6 +146,7 @@ export class ResidualHeapVisitor {
   classMethodInstances: Map<FunctionValue, ClassMethodInstance>;
   someReactElement: void | ObjectValue;
   reactElementEquivalenceSet: ReactElementSet;
+  // Parents will always be a generator, optimized function value or "GLOBAL"
   generatorParents: Map<Generator, Generator | FunctionValue | "GLOBAL">;
   createdObjects: Map<ObjectValue, void | Generator>;
 
@@ -1079,16 +1080,47 @@ export class ResidualHeapVisitor {
     return callbacks;
   }
 
+  _validateCreatedObjectsAddition(createdObject: ObjectValue, generator: Generator) {
+    let creatingGenerator = this.createdObjects.get(createdObject);
+    // If there is already an entry in createdObjects, it must be for a generator that is a parent of this generator
+    // This is because createdObjects of nested effects of optimized functions are strict subsets of the
+    // optimized function's createdObjects set.
+    if (creatingGenerator && creatingGenerator !== generator) {
+      let currentScope = generator;
+      // Walk up generator parent chain to make sure that creatingGenerator is a parent of generator.
+      while (currentScope !== creatingGenerator) {
+        if (currentScope instanceof Generator) {
+          currentScope = this.generatorParents.get(currentScope);
+        } else if (currentScope instanceof FunctionValue) {
+          // We're trying to walk up generatorParents and should only be falling into this case if we hit an
+          // optimized function value as a generator parent. Optimized function values must always have generator
+          // or "GLOBAL" parents
+          invariant(this.additionalFunctionValuesAndEffects.has(currentScope));
+          currentScope = this.createdObjects.get(currentScope) || "GLOBAL";
+        }
+        invariant(currentScope !== undefined, "Should have already encountered all parents of this generator.");
+        invariant(
+          currentScope !== "GLOBAL",
+          "If an object is in two generators' effects' createdObjects, the second must be a child of the first."
+        );
+      }
+    }
+  }
+
   visitGenerator(
     generator: Generator,
     parent: Generator | FunctionValue | "GLOBAL",
     additionalFunctionInfo?: AdditionalFunctionInfo
   ): void {
+    if (parent instanceof FunctionValue)
+      invariant(
+        this.additionalFunctionValuesAndEffects.has(parent),
+        "Generator parents may only be generators, additional function values or 'GLOBAL'"
+      );
     this.generatorParents.set(generator, parent);
     if (generator.effectsToApply)
       for (const createdObject of generator.effectsToApply.data[4]) {
-        // TODO: Unfortunately, the following invariant doesn't hold. This is concerning.
-        // invariant(!this.createdObjects.has(createdObject) || this.createdObjects.get(createdObject) === generator);
+        this._validateCreatedObjectsAddition(createdObject, generator);
         if (!this.createdObjects.has(createdObject)) this.createdObjects.set(createdObject, generator);
       }
 
