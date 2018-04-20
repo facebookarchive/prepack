@@ -67,6 +67,9 @@ export type EvaluationResult = Completion | Reference | Value;
 export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 
 export type CreatedObjects = Set<ObjectValue>;
+
+let effects_uid = 0;
+
 export class Effects {
   constructor(
     result: EvaluationResult,
@@ -76,10 +79,14 @@ export class Effects {
     createdObjects: CreatedObjects
   ) {
     this.data = arguments;
+    this.canBeApplied = true;
+    this._id = effects_uid++;
   }
 
   // TODO: Make these into properties
   data: [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects];
+  canBeApplied: boolean;
+  _id: number;
 
   get result(): EvaluationResult {
     return this.data[0];
@@ -703,6 +710,8 @@ export class Realm {
       } finally {
         this.restoreBindings(effects.modifiedBindings);
         this.restoreProperties(effects.modifiedProperties);
+        invariant(!effects.canBeApplied);
+        effects.canBeApplied = true;
       }
     });
     invariant(result !== undefined, "If we get here, func must have returned undefined.");
@@ -1198,19 +1207,24 @@ export class Realm {
 
   // Apply the given effects to the global state
   applyEffects(effects: Effects, leadingComment: string = "", appendGenerator: boolean = true) {
-    let [, generator, bindings, properties, createdObjects] = effects.data;
+    invariant(
+      effects.canBeApplied,
+      "Effects have been applied and not properly reverted. It is not safe to apply them a second time."
+    );
+    effects.canBeApplied = false;
+    let { generator, modifiedBindings, modifiedProperties, createdObjects } = effects;
 
     // Add generated code for property modifications
     if (appendGenerator) this.appendGenerator(generator, leadingComment);
 
-    // Restore bindings
-    this.restoreBindings(bindings);
-    this.restoreProperties(properties);
+    // Restore modifiedBindings
+    this.restoreBindings(modifiedBindings);
+    this.restoreProperties(modifiedProperties);
 
-    // track bindings
+    // track modifiedBindings
     let realmModifiedBindings = this.modifiedBindings;
     if (realmModifiedBindings !== undefined) {
-      bindings.forEach((val, key, m) => {
+      modifiedBindings.forEach((val, key, m) => {
         invariant(realmModifiedBindings !== undefined);
         if (!realmModifiedBindings.has(key)) {
           realmModifiedBindings.set(key, val);
@@ -1219,7 +1233,7 @@ export class Realm {
     }
     let realmModifiedProperties = this.modifiedProperties;
     if (realmModifiedProperties !== undefined) {
-      properties.forEach((desc, propertyBinding, m) => {
+      modifiedProperties.forEach((desc, propertyBinding, m) => {
         invariant(realmModifiedProperties !== undefined);
         if (!realmModifiedProperties.has(propertyBinding)) {
           realmModifiedProperties.set(propertyBinding, desc);
