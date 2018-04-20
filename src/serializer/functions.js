@@ -15,7 +15,7 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import { construct_empty_effects, type Effects, type PropertyBindings, Realm } from "../realm.js";
 import type { Binding } from "../environment.js";
-import type { PropertyBinding, ReactComponentTreeConfig } from "../types.js";
+import type { PropertyBinding, ReactComponentTreeConfig, FunctionBodyAstNode } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
 import {
   Value,
@@ -30,7 +30,7 @@ import {
 import { Generator } from "../utils/generator.js";
 import { Get } from "../methods/index.js";
 import { ModuleTracer } from "../utils/modules.js";
-import { Join } from "../singletons.js";
+import { Join, Properties } from "../singletons.js";
 import { ReactStatistics } from "./types";
 import type { ReactSerializerState, AdditionalFunctionEffects, ReactEvaluatedNode } from "./types";
 import { Reconciler, type ComponentTreeState } from "../react/reconcilation.js";
@@ -59,6 +59,7 @@ export class Functions {
     this.moduleTracer = moduleTracer;
     this.writeEffects = new Map();
     this.functionExpressions = new Map();
+    this._noOpFunction = undefined;
   }
 
   realm: Realm;
@@ -66,6 +67,7 @@ export class Functions {
   functionExpressions: Map<FunctionValue, string>;
   moduleTracer: ModuleTracer;
   writeEffects: Map<FunctionValue, AdditionalFunctionEffects>;
+  _noOpFunction: void | ECMAScriptSourceFunctionValue;
 
   __optimizedFunctionEntryOfValue(value: Value): AdditionalFunctionEntry | void {
     let realm = this.realm;
@@ -225,6 +227,28 @@ export class Functions {
         this.writeEffects.set(componentType, additionalFunctionEffects);
       }
     }
+    // apply contextTypes for legacy context
+    if (componentTreeState.contextTypes.size > 0) {
+      let contextTypes = new ObjectValue(this.realm, this.realm.intrinsics.ObjectPrototype);
+      let noOpFunc = this._getNoOpFunction();
+      for (let key of componentTreeState.contextTypes) {
+        Properties.Set(this.realm, contextTypes, key, noOpFunc, true);
+      }
+      Properties.Set(this.realm, componentType, "contextTypes", contextTypes, true);
+    }
+  }
+
+  _getNoOpFunction(): ECMAScriptSourceFunctionValue {
+    if (this._noOpFunction) {
+      return this._noOpFunction;
+    }
+    let noOpFunc = new ECMAScriptSourceFunctionValue(this.realm);
+    let body = t.blockStatement([]);
+    ((body: any): FunctionBodyAstNode).uniqueOrderedTag = this.realm.functionBodyUniqueTagSeed++;
+    noOpFunc.$FormalParameters = [];
+    noOpFunc.$ECMAScriptCode = body;
+    this._noOpFunction = noOpFunc;
+    return noOpFunc;
   }
 
   _forEachBindingOfEffects(effects: Effects, func: (binding: Binding) => void): void {

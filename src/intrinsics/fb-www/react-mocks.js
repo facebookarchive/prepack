@@ -624,7 +624,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
         return t.callExpression(t.memberExpression(reactValueNode, t.identifier("forwardRef")), [funcNode]);
       });
       invariant(forwardedRef instanceof AbstractObjectValue);
-      realm.react.abstractHints.set(forwardedRef, createReactHintObject(reactValue, "forwardRef", [func]));
+      realm.react.abstractHints.set(forwardedRef, createReactHintObject(reactValue, "forwardRef", [func], realm.intrinsics.undefined));
       return forwardedRef;
     }
   );
