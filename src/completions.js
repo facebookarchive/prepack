@@ -109,8 +109,8 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     savedPathConditions: Array<AbstractValue>,
     savedEffects: void | Effects = undefined
   ) {
-    invariant(consequent === consequentEffects.data[0]);
-    invariant(alternate === alternateEffects.data[0]);
+    invariant(consequent === consequentEffects.result);
+    invariant(alternate === alternateEffects.result);
     invariant(
       consequent instanceof NormalCompletion ||
         consequent instanceof Value ||

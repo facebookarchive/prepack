@@ -93,7 +93,7 @@ export default function(
       new Effects(compl2, gen2, bindings2, properties2, createdObj2)
     );
   }
-  let completion = joinedEffects.data[0];
+  let completion = joinedEffects.result;
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case the evaluation of ast.right may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.

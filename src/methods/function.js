@@ -1141,7 +1141,7 @@ export class FunctionImplementation {
         realm.stopEffectCaptureAndUndoEffects(savedCompletion);
         let joined_effects = Join.joinPossiblyNormalCompletionWithAbruptCompletion(realm, savedCompletion, c, e);
         realm.applyEffects(joined_effects);
-        let jc = joined_effects.data[0];
+        let jc = joined_effects.result;
         invariant(jc instanceof AbruptCompletion);
         return jc;
       }

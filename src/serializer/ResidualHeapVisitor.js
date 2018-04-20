@@ -1119,7 +1119,7 @@ export class ResidualHeapVisitor {
       );
     this.generatorParents.set(generator, parent);
     if (generator.effectsToApply)
-      for (const createdObject of generator.effectsToApply.data[4]) {
+      for (const createdObject of generator.effectsToApply.createdObjects) {
         this._validateCreatedObjectsAddition(createdObject, generator);
         if (!this.createdObjects.has(createdObject)) this.createdObjects.set(createdObject, generator);
       }
