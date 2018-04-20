@@ -129,7 +129,7 @@ function tryToEvaluateOperationOrLeaveAsAbstract(
       throw error;
     }
   }
-  let completion = effects.data[0];
+  let completion = effects.result;
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.

@@ -84,7 +84,7 @@ export default function(
     new Effects(conCompl, gen1, bindings1, properties1, createdObj1),
     new Effects(altCompl, gen2, bindings2, properties2, createdObj2)
   );
-  completion = joinedEffects.data[0];
+  completion = joinedEffects.result;
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.
