@@ -11,15 +11,8 @@
 
 import type { Binding } from "../environment.js";
 import { FatalError } from "../errors.js";
-import type {
-  Bindings,
-  BindingEntry,
-  Effects,
-  EvaluationResult,
-  PropertyBindings,
-  CreatedObjects,
-  Realm,
-} from "../realm.js";
+import type { Bindings, BindingEntry, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
+import { Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
@@ -93,15 +86,15 @@ export class WidenImplementation {
 
   // Returns a new effects summary that includes both e1 and e2.
   widenEffects(realm: Realm, e1: Effects, e2: Effects): Effects {
-    let [result1, , bindings1, properties1, createdObj1] = e1;
-    let [result2, , bindings2, properties2, createdObj2] = e2;
+    let [result1, , bindings1, properties1, createdObj1] = e1.data;
+    let [result2, , bindings2, properties2, createdObj2] = e2.data;
 
     let result = this.widenResults(realm, result1, result2);
     let bindings = this.widenBindings(realm, bindings1, bindings2);
     let properties = this.widenPropertyBindings(realm, properties1, properties2, createdObj1, createdObj2);
     let createdObjects = new Set(); // Top, since the empty set knows nothing. There is no other choice for widen.
     let generator = new Generator(realm, "widen"); // code subject to widening will be generated somewhere else
-    return [result, generator, bindings, properties, createdObjects];
+    return new Effects(result, generator, bindings, properties, createdObjects);
   }
 
   widenResults(realm: Realm, result1: EvaluationResult, result2: EvaluationResult): PossiblyNormalCompletion | Value {
@@ -325,8 +318,8 @@ export class WidenImplementation {
   // then we have reached a fixed point and no further calls to widen are needed. e1/e2 represent a general
   // summary of the loop, regardless of how many iterations will be performed at runtime.
   containsEffects(e1: Effects, e2: Effects): boolean {
-    let [result1, , bindings1, properties1, createdObj1] = e1;
-    let [result2, , bindings2, properties2, createdObj2] = e2;
+    let [result1, , bindings1, properties1, createdObj1] = e1.data;
+    let [result2, , bindings2, properties2, createdObj2] = e2.data;
 
     if (!this.containsResults(result1, result2)) return false;
     if (!this.containsBindings(bindings1, bindings2)) return false;

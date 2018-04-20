@@ -183,9 +183,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     for (let i = 0; i < resultA.length; i++) {
       let [nameA, valueA] = resultA[i];
       let [nameB, valueB] = resultB[i];
-      expect(mergeAdacentJSONTextNodes(valueB, firstRenderOnly)).toEqual(
-        mergeAdacentJSONTextNodes(valueA, firstRenderOnly)
-      );
+      expect(mergeAdacentJSONTextNodes(valueB)).toEqual(mergeAdacentJSONTextNodes(valueA));
       expect(nameB).toEqual(nameA);
     }
   }
@@ -231,9 +229,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     originalConsoleError.apply(this, args);
   };
 
-  describe(`Test React with ${shouldTranspileSource ? "create-element input" : "JSX input"}, ${outputJsx
-    ? "JSX output"
-    : "create-element output"}`, () => {
+  describe(`Test React with ${shouldTranspileSource ? "create-element input" : "JSX input"}, ${
+    outputJsx ? "JSX output" : "create-element output"
+  }`, () => {
     describe("Functional component folding", () => {
       let directory = "functional-components";
 
@@ -429,6 +427,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "return-undefined.js");
       });
 
+      it("Null or undefined props", async () => {
+        await runTest(directory, "null-or-undefined-props.js");
+      });
+
       it("Event handlers", async () => {
         await runTest(directory, "event-handlers.js");
       });
@@ -568,6 +570,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("React Context 5", async () => {
         await runTest(directory, "react-context5.js");
       });
+
+      it("React Context 6", async () => {
+        await runTest(directory, "react-context6.js");
+      });
     });
 
     describe("First render only", () => {
@@ -693,6 +699,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("fb-www 13", async () => {
         await runTest(directory, "fb13.js");
+      });
+
+      it("fb-www 14", async () => {
+        await runTest(directory, "fb14.js");
       });
 
       it("repl example", async () => {

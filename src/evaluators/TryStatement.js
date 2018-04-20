@@ -58,7 +58,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
       }
       // All of the forked threads of control are now joined together and the global state reflects their joint effects
       let handlerEffects = composeNestedThrowEffectsWithHandler(blockRes);
-      handlerRes = handlerEffects[0];
+      handlerRes = handlerEffects.data[0];
       if (handlerRes instanceof Value) {
         // This can happen if all of the abrupt completions in blockRes were throw completions
         // and if the handler does not introduce any abrupt completions of its own.
@@ -81,7 +81,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
       // The current global state is a the point of the fork that led to blockRes
       // All subsequent effects are kept inside the branches of blockRes.
       let finalizerEffects = composeNestedEffectsWithFinalizer(blockRes);
-      finalizerRes = finalizerEffects[0];
+      finalizerRes = finalizerEffects.data[0];
       // The result may become abrupt because of the finalizer, but it cannot become normal.
       invariant(!(finalizerRes instanceof Value));
     } else {
@@ -165,7 +165,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
         undefined,
         "composeNestedEffectsWithFinalizer/1"
       );
-      if (!(consequentEffects[0] instanceof AbruptCompletion)) consequentEffects[0] = consequent;
+      if (!(consequentEffects.data[0] instanceof AbruptCompletion)) consequentEffects.data[0] = consequent;
     }
     priorEffects.pop();
     let alternate = c.alternate;
@@ -183,7 +183,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
         undefined,
         "composeNestedThrowEffectsWithHandler"
       );
-      if (!(alternateEffects[0] instanceof AbruptCompletion)) alternateEffects[0] = alternate;
+      if (!(alternateEffects.data[0] instanceof AbruptCompletion)) alternateEffects.data[0] = alternate;
     }
     priorEffects.pop();
     return Join.joinEffects(realm, c.joinCondition, consequentEffects, alternateEffects);

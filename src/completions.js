@@ -109,8 +109,8 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     savedPathConditions: Array<AbstractValue>,
     savedEffects: void | Effects = undefined
   ) {
-    invariant(consequent === consequentEffects[0]);
-    invariant(alternate === alternateEffects[0]);
+    invariant(consequent === consequentEffects.data[0]);
+    invariant(alternate === alternateEffects.data[0]);
     invariant(
       consequent instanceof NormalCompletion ||
         consequent instanceof Value ||
@@ -131,7 +131,9 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     let loc =
       consequent instanceof AbruptCompletion
         ? consequent.location
-        : alternate instanceof Completion ? alternate.location : alternate.expressionLocation;
+        : alternate instanceof Completion
+          ? alternate.location
+          : alternate.expressionLocation;
     super(value, loc);
     this.joinCondition = joinCondition;
     this.consequent = consequent;

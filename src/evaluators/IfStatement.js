@@ -12,6 +12,7 @@
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { InfeasiblePathError } from "../errors.js";
 import type { Realm } from "../realm.js";
+import { Effects } from "../realm.js";
 import { construct_empty_effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
@@ -33,12 +34,13 @@ export function evaluate(ast: BabelNodeIfStatement, strictCode: boolean, env: Le
       // 3.a. Let stmtCompletion be the result of evaluating the first Statement
       stmtCompletion = env.evaluateCompletion(ast.consequent, strictCode);
     } else {
-      if (ast.alternate)
+      if (ast.alternate) {
         // 4.a. Let stmtCompletion be the result of evaluating the second Statement
         stmtCompletion = env.evaluateCompletion(ast.alternate, strictCode);
-      else
+      } else {
         // 3 (of the if only statement). Return NormalCompletion(undefined)
         stmtCompletion = realm.intrinsics.undefined;
+      }
     }
     // 5. Return Completion(UpdateEmpty(stmtCompletion, undefined)
     //if (stmtCompletion instanceof Reference) return stmtCompletion;
@@ -91,16 +93,17 @@ export function evaluateWithAbstractConditional(
   try {
     [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(condValue, () => {
       return realm.evaluateNodeForEffects(consequent, strictCode, env);
-    });
+    }).data;
   } catch (e) {
     if (e instanceof InfeasiblePathError) {
       let stmtCompletion;
-      if (alternate)
+      if (alternate) {
         // 4.a. Let stmtCompletion be the result of evaluating the second Statement
         stmtCompletion = env.evaluateCompletion(alternate, strictCode);
-      else
+      } else {
         // 3 (of the if only statement). Return NormalCompletion(undefined)
         stmtCompletion = realm.intrinsics.undefined;
+      }
       invariant(!(stmtCompletion instanceof Reference));
       stmtCompletion = UpdateEmpty(realm, stmtCompletion, realm.intrinsics.undefined);
       if (stmtCompletion instanceof AbruptCompletion) {
@@ -116,7 +119,7 @@ export function evaluateWithAbstractConditional(
   try {
     [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(condValue, () => {
       return alternate ? realm.evaluateNodeForEffects(alternate, strictCode, env) : construct_empty_effects(realm);
-    });
+    }).data;
   } catch (e) {
     if (e instanceof InfeasiblePathError) {
       let stmtCompletion = env.evaluate(consequent, strictCode);
@@ -136,10 +139,10 @@ export function evaluateWithAbstractConditional(
   let joinedEffects = Join.joinEffects(
     realm,
     condValue,
-    [compl1, gen1, bindings1, properties1, createdObj1],
-    [compl2, gen2, bindings2, properties2, createdObj2]
+    new Effects(compl1, gen1, bindings1, properties1, createdObj1),
+    new Effects(compl2, gen2, bindings2, properties2, createdObj2)
   );
-  let completion = joinedEffects[0];
+  let completion = joinedEffects.data[0];
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.

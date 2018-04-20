@@ -15,7 +15,7 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import { construct_empty_effects, type Effects, type PropertyBindings, Realm } from "../realm.js";
 import type { Binding } from "../environment.js";
-import type { PropertyBinding, ReactComponentTreeConfig } from "../types.js";
+import type { PropertyBinding, ReactComponentTreeConfig, FunctionBodyAstNode } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
 import {
   Value,
@@ -30,7 +30,7 @@ import {
 import { Generator } from "../utils/generator.js";
 import { Get } from "../methods/index.js";
 import { ModuleTracer } from "../utils/modules.js";
-import { Join } from "../singletons.js";
+import { Join, Properties } from "../singletons.js";
 import { ReactStatistics } from "./types";
 import type { ReactSerializerState, AdditionalFunctionEffects, ReactEvaluatedNode } from "./types";
 import { Reconciler, type ComponentTreeState } from "../react/reconcilation.js";
@@ -59,6 +59,7 @@ export class Functions {
     this.moduleTracer = moduleTracer;
     this.writeEffects = new Map();
     this.functionExpressions = new Map();
+    this._noOpFunction = undefined;
   }
 
   realm: Realm;
@@ -66,6 +67,7 @@ export class Functions {
   functionExpressions: Map<FunctionValue, string>;
   moduleTracer: ModuleTracer;
   writeEffects: Map<FunctionValue, AdditionalFunctionEffects>;
+  _noOpFunction: void | ECMAScriptSourceFunctionValue;
 
   __optimizedFunctionEntryOfValue(value: Value): AdditionalFunctionEntry | void {
     let realm = this.realm;
@@ -133,7 +135,7 @@ export class Functions {
     parentAdditionalFunction: FunctionValue | void = undefined
   ): AdditionalFunctionEffects | null {
     let realm = this.realm;
-    let [pncResult] = effects;
+    let [pncResult] = effects.data;
     if (pncResult instanceof PossiblyNormalCompletion || pncResult instanceof JoinedAbruptCompletions) {
       // The completion is not the end of function execution, but a fork point for separate threads of control.
       // The effects of all of these threads need to get joined up and rolled into the top level effects,
@@ -147,7 +149,7 @@ export class Functions {
               pncResult,
               new ReturnCompletion(pncResult.value),
               construct_empty_effects(realm)
-            );
+            ).data;
           }
           invariant(pncResult instanceof JoinedAbruptCompletions);
           let completionEffects = Join.joinNestedEffects(realm, pncResult);
@@ -186,7 +188,7 @@ export class Functions {
       evaluatedNode.status = "UNSUPPORTED_COMPLETION";
       return;
     }
-    let value = effects[0];
+    let value = additionalFunctionEffects.effects.data[0];
 
     if (value === this.realm.intrinsics.undefined) {
       // if we get undefined, then this component tree failed and a message was already logged
@@ -225,6 +227,28 @@ export class Functions {
         this.writeEffects.set(componentType, additionalFunctionEffects);
       }
     }
+    // apply contextTypes for legacy context
+    if (componentTreeState.contextTypes.size > 0) {
+      let contextTypes = new ObjectValue(this.realm, this.realm.intrinsics.ObjectPrototype);
+      let noOpFunc = this._getNoOpFunction();
+      for (let key of componentTreeState.contextTypes) {
+        Properties.Set(this.realm, contextTypes, key, noOpFunc, true);
+      }
+      Properties.Set(this.realm, componentType, "contextTypes", contextTypes, true);
+    }
+  }
+
+  _getNoOpFunction(): ECMAScriptSourceFunctionValue {
+    if (this._noOpFunction) {
+      return this._noOpFunction;
+    }
+    let noOpFunc = new ECMAScriptSourceFunctionValue(this.realm);
+    let body = t.blockStatement([]);
+    ((body: any): FunctionBodyAstNode).uniqueOrderedTag = this.realm.functionBodyUniqueTagSeed++;
+    noOpFunc.$FormalParameters = [];
+    noOpFunc.$ECMAScriptCode = body;
+    this._noOpFunction = noOpFunc;
+    return noOpFunc;
   }
 
   _hasWriteConflictsFromReactRenders(
@@ -233,11 +257,12 @@ export class Functions {
     nestedEffects: Array<Effects>,
     evaluatedNode: ReactEvaluatedNode
   ): boolean {
-    let recentBindings = effects[2];
+    let recentBindings = effects.data[2];
     let ignoreBindings = new Set();
     let failed = false;
 
-    for (let [, , nestedBindingsToIgnore] of nestedEffects) {
+    for (let nestedEffect of nestedEffects) {
+      let nestedBindingsToIgnore = nestedEffect.data[2];
       for (let [binding] of nestedBindingsToIgnore) {
         ignoreBindings.add(binding);
       }
@@ -481,7 +506,7 @@ export class Functions {
       for (let [additionalFunctionValue, additionalEffects] of this.writeEffects) {
         // CreatedObjects is all objects created by this additional function but not
         // nested additional functions.
-        let createdObjects = additionalEffects.effects[4];
+        let createdObjects = additionalEffects.effects.data[4];
         if (createdObjects.has(functionValue)) return additionalFunctionValue;
       }
     };
@@ -490,7 +515,7 @@ export class Functions {
       additionalFunctionStack.push(functionValue);
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
       let call = this._callOfFunction(functionValue);
-      let effects = this.realm.evaluatePure(() =>
+      let effects: Effects = this.realm.evaluatePure(() =>
         this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
       );
       invariant(effects);
@@ -505,7 +530,7 @@ export class Functions {
       this.writeEffects.set(functionValue, additionalFunctionEffects);
 
       // look for newly registered optimized functions
-      let modifiedProperties = effects[3];
+      let modifiedProperties = additionalFunctionEffects.effects.data[3];
       // Conceptually this will ensure that the nested additional function is defined
       // although for later cases, we'll apply the effects of the parents only.
       this.realm.withEffectsAppliedInGlobalEnv(() => {
@@ -513,7 +538,7 @@ export class Functions {
           let descriptor = propertyBinding.descriptor;
           if (descriptor && propertyBinding.object === optimizedFunctionsObject) {
             let newValue = descriptor.value;
-            invariant(newValue);
+            invariant(newValue instanceof Value); //todo: this does not seem invariantly true
             let newEntry = this.__optimizedFunctionEntryOfValue(newValue);
             if (newEntry) {
               additionalFunctions.add(newEntry.value);
@@ -524,7 +549,7 @@ export class Functions {
           }
         }
         return null;
-      }, effects);
+      }, additionalFunctionEffects.effects);
       invariant(additionalFunctionStack.pop() === functionValue);
     };
 
@@ -544,10 +569,10 @@ export class Functions {
       invariant(additionalFunctionEffects !== undefined);
       let e1 = additionalFunctionEffects.effects;
       invariant(e1 !== undefined);
-      if (e1[0] instanceof Completion && !e1[0] instanceof PossiblyNormalCompletion) {
+      if (e1.data[0] instanceof Completion && !e1.data[0] instanceof PossiblyNormalCompletion) {
         let error = new CompilerDiagnostic(
           `Additional function ${fun1Name} may terminate abruptly`,
-          e1[0].location,
+          e1.data[0].location,
           "PP1002",
           "FatalError"
         );
@@ -558,7 +583,7 @@ export class Functions {
         if (fun1 === fun2) continue;
         invariant(fun2 instanceof FunctionValue);
         let reportFn = () => {
-          this.reportWriteConflicts(fun1Name, conflicts, e1[3], this._callOfFunction(fun2));
+          this.reportWriteConflicts(fun1Name, conflicts, e1.data[3], this._callOfFunction(fun2));
           return null;
         };
         let fun2Effects = this.writeEffects.get(fun2);

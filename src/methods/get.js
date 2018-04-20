@@ -11,7 +11,7 @@
 
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { InfeasiblePathError } from "../errors.js";
-import { construct_empty_effects, type Realm } from "../realm.js";
+import { construct_empty_effects, type Realm, Effects } from "../realm.js";
 import type { PropertyKeyValue, CallableObjectValue } from "../types.js";
 import {
   AbstractObjectValue,
@@ -119,7 +119,7 @@ export function OrdinaryGet(
       return desc !== undefined
         ? realm.evaluateForEffects(() => OrdinaryGetHelper(), undefined, "OrdinaryGet/1")
         : construct_empty_effects(realm);
-    });
+    }).data;
   } catch (e) {
     if (e instanceof InfeasiblePathError) {
       // The joinCondition cannot be true in the current path, after all
@@ -136,7 +136,7 @@ export function OrdinaryGet(
       return desc !== undefined
         ? realm.evaluateForEffects(() => OrdinaryGetHelper(), undefined, "OrdinaryGet/2")
         : construct_empty_effects(realm);
-    });
+    }).data;
   } catch (e) {
     if (e instanceof InfeasiblePathError) {
       // The joinCondition cannot be false in the current path, after all
@@ -151,10 +151,10 @@ export function OrdinaryGet(
   let joinedEffects = Join.joinEffects(
     realm,
     joinCondition,
-    [compl1, gen1, bindings1, properties1, createdObj1],
-    [compl2, gen2, bindings2, properties2, createdObj2]
+    new Effects(compl1, gen1, bindings1, properties1, createdObj1),
+    new Effects(compl2, gen2, bindings2, properties2, createdObj2)
   );
-  let completion = joinedEffects[0];
+  let completion = joinedEffects.data[0];
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.
@@ -174,7 +174,9 @@ export function OrdinaryGet(
   function OrdinaryGetHelper() {
     let descValue = !desc
       ? realm.intrinsics.undefined
-      : desc.value === undefined ? realm.intrinsics.undefined : desc.value;
+      : desc.value === undefined
+        ? realm.intrinsics.undefined
+        : desc.value;
     invariant(descValue instanceof Value);
 
     // 3. If desc is undefined, then

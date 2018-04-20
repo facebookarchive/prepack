@@ -128,6 +128,11 @@ export class ResidualReactElementSerializer {
 
   _emitReactElement(reactElement: ReactElement): BabelNodeExpression {
     let { value } = reactElement;
+    let typeValue = getProperty(this.realm, value, "type");
+    let keyValue = getProperty(this.realm, value, "key");
+    let refValue = getProperty(this.realm, value, "ref");
+    let propsValue = getProperty(this.realm, value, "props");
+
     let shouldHoist =
       this.residualHeapSerializer.isReferencedOnlyByAdditionalFunction(value) !== undefined &&
       canHoistReactElement(this.realm, value);
@@ -138,12 +143,18 @@ export class ResidualReactElementSerializer {
     // this name is used when hoisting, and is passed into the factory function, rather than the original
     let hoistedCreateElementIdentifier = null;
     let reactElementAstNode;
+    let depedencies = [typeValue, keyValue, refValue, propsValue, value];
+    let createElement;
 
-    this.residualHeapSerializer.emitter.emitNowOrAfterWaitingForDependencies([value], () => {
+    if (this.reactOutput === "create-element") {
+      createElement = this._getReactCreateElementValue();
+      depedencies.push(createElement);
+    }
+
+    this.residualHeapSerializer.emitter.emitNowOrAfterWaitingForDependencies(depedencies, () => {
       if (this.reactOutput === "jsx") {
         reactElementAstNode = this._serializeReactElementToJSXElement(value, reactElement);
       } else if (this.reactOutput === "create-element") {
-        let createElement = this._getReactCreateElementValue();
         originalCreateElementIdentifier = this.residualHeapSerializer.serializeValue(createElement);
 
         if (shouldHoist) {
