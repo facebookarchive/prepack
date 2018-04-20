@@ -176,14 +176,18 @@ export class TimingStatistics extends RealmTimingStatistics {
   log() {
     super.log(this.totalTime);
     console.log(
-      `${this.resolveInitializedModulesTime}ms resolving initialized modules, ${this
-        .initializeMoreModulesTime}ms initializing more modules, ${this
-        .optimizeReactComponentTreeRootsTime}ms optimizing react component tree roots, ${this
-        .checkThatFunctionsAreIndependentTime}ms evaluating functions to optimize`
+      `${this.resolveInitializedModulesTime}ms resolving initialized modules, ${
+        this.initializeMoreModulesTime
+      }ms initializing more modules, ${
+        this.optimizeReactComponentTreeRootsTime
+      }ms optimizing react component tree roots, ${
+        this.checkThatFunctionsAreIndependentTime
+      }ms evaluating functions to optimize`
     );
     console.log(
-      `${this.deepTraversalTime}ms visiting residual heap, ${this.referenceCountsTime}ms reference counting, ${this
-        .serializePassTime}ms generating AST, ${this.babelGenerateTime}ms generating source code`
+      `${this.deepTraversalTime}ms visiting residual heap, ${this.referenceCountsTime}ms reference counting, ${
+        this.serializePassTime
+      }ms generating AST, ${this.babelGenerateTime}ms generating source code`
     );
   }
 }
@@ -264,17 +268,20 @@ export class SerializerStatistics {
     console.log(`=== serialization statistics`);
     console.log(`${this.objects} objects with ${this.objectProperties} properties`);
     console.log(
-      `${this.functions} functions plus ${this.functionClones} clones due to captured variables; ${this
-        .referentialized} captured mutable variables`
+      `${this.functions} functions plus ${this.functionClones} clones due to captured variables; ${
+        this.referentialized
+      } captured mutable variables`
     );
     console.log(`${this.lazyObjects} objects are lazy.`);
     console.log(
-      `${this.valueIds} eager and ${this.delayedValues} delayed value ids generated, and ${this
-        .valuesInlined} values inlined.`
+      `${this.valueIds} eager and ${this.delayedValues} delayed value ids generated, and ${
+        this.valuesInlined
+      } values inlined.`
     );
     console.log(
-      `${this.initializedModules} out of ${this.totalModules} modules initialized, with ${this
-        .acceleratedModules} accelerated and ${this.delayedModules} delayed.`
+      `${this.initializedModules} out of ${this.totalModules} modules initialized, with ${
+        this.acceleratedModules
+      } accelerated and ${this.delayedModules} delayed.`
     );
     console.log(`${this.requireCallsReplaced} of ${this.requireCalls} require calls inlined.`);
     console.log(`${this.generators} generators`);

@@ -95,7 +95,7 @@ export type ElementType =
 //
 
 declare class _CallableObjectValue extends ObjectValue {
-  $Call: void | ((thisArgument: Value, argsList: Array<Value>) => Value),
+  $Call: void | ((thisArgument: Value, argsList: Array<Value>) => Value);
 }
 export type CallableObjectValue = _CallableObjectValue | FunctionValue | NativeFunctionValue;
 
@@ -324,7 +324,7 @@ export type ClassComponentMetadata = {
   instanceSymbols: Set<SymbolValue>,
 };
 
-export type ReactHint = {| object: ObjectValue, propertyName: string, args: Array<Value> |};
+export type ReactHint = {| firstRenderValue: Value, object: ObjectValue, propertyName: string, args: Array<Value> |};
 
 export type ReactComponentTreeConfig = {
   firstRenderOnly: boolean,
@@ -1051,8 +1051,9 @@ export class RealmTimingStatistics {
   log(totalTime: number): void {
     console.log(`=== timing statistics: ${totalTime}ms total time`);
     console.log(
-      `${this.parsingTime}ms parsing, ${this.fixupSourceLocationsTime}ms fixing source locations, ${this
-        .fixupSourceLocationsTime}ms fixing source locations, ${this.evaluationTime}ms evaluating global code`
+      `${this.parsingTime}ms parsing, ${this.fixupSourceLocationsTime}ms fixing source locations, ${
+        this.fixupSourceLocationsTime
+      }ms fixing source locations, ${this.evaluationTime}ms evaluating global code`
     );
   }
 }

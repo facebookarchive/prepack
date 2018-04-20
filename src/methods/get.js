@@ -174,7 +174,9 @@ export function OrdinaryGet(
   function OrdinaryGetHelper() {
     let descValue = !desc
       ? realm.intrinsics.undefined
-      : desc.value === undefined ? realm.intrinsics.undefined : desc.value;
+      : desc.value === undefined
+        ? realm.intrinsics.undefined
+        : desc.value;
     invariant(descValue instanceof Value);
 
     // 3. If desc is undefined, then

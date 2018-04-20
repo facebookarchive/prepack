@@ -180,7 +180,9 @@ function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: Pro
   let ownDesc = O.$GetOwnProperty(P);
   let ownDescValue = !ownDesc
     ? realm.intrinsics.undefined
-    : ownDesc.value === undefined ? realm.intrinsics.undefined : ownDesc.value;
+    : ownDesc.value === undefined
+      ? realm.intrinsics.undefined
+      : ownDesc.value;
   invariant(ownDescValue instanceof Value);
 
   if (!ownDesc || ownDescValue.mightHaveBeenDeleted()) {
@@ -258,7 +260,9 @@ export class PropertiesImplementation {
     if (existingBinding !== undefined || !(O.isPartialObject() && O.isSimpleObject())) ownDesc = O.$GetOwnProperty(P);
     let ownDescValue = !ownDesc
       ? realm.intrinsics.undefined
-      : ownDesc.value === undefined ? realm.intrinsics.undefined : ownDesc.value;
+      : ownDesc.value === undefined
+        ? realm.intrinsics.undefined
+        : ownDesc.value;
     invariant(ownDescValue instanceof Value);
 
     // 3. If ownDesc is undefined (or might be), then
@@ -372,7 +376,9 @@ export class PropertiesImplementation {
         }
         let existingDescValue = !existingDescriptor
           ? realm.intrinsics.undefined
-          : existingDescriptor.value === undefined ? realm.intrinsics.undefined : existingDescriptor.value;
+          : existingDescriptor.value === undefined
+            ? realm.intrinsics.undefined
+            : existingDescriptor.value;
         invariant(existingDescValue instanceof Value);
 
         // d. If existingDescriptor is not undefined, then

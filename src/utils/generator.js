@@ -398,7 +398,9 @@ export class Generator {
     let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects.data;
 
     let output = new Generator(realm, name, effects);
-    output.appendGenerator(generator, "");
+    // joined generators have no entries of their own, so the generators of the components of result can do the job
+    if (!(result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions))
+      output.appendGenerator(generator, "");
 
     for (let propertyBinding of modifiedProperties.keys()) {
       let object = propertyBinding.object;
@@ -701,9 +703,9 @@ export class Generator {
     let message = "Program may terminate with exception";
     if (value instanceof ObjectValue) {
       let object = ((value: any): ObjectValue);
-      let objectMessage = this.realm.evaluateWithUndo(() => object.$Get("message", value));
+      let objectMessage = this.realm.evaluateWithUndo(() => object._SafeGetDataPropertyValue("message"));
       if (objectMessage instanceof StringValue) message += `: ${objectMessage.value}`;
-      const objectStack = this.realm.evaluateWithUndo(() => object.$Get("stack", value));
+      const objectStack = this.realm.evaluateWithUndo(() => object._SafeGetDataPropertyValue("stack"));
       if (objectStack instanceof StringValue)
         message += `
   ${objectStack.value}`;
