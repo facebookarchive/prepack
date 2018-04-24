@@ -282,6 +282,7 @@ export function convertSimpleClassComponentToFunctionalComponent(
       (undefined: any),
       undefined
     );
+    traverse.clearCache();
   });
 }
 

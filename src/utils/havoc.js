@@ -97,6 +97,7 @@ function getHavocedFunctionInfo(value: FunctionValue) {
     null,
     functionInfo
   );
+  traverse.clearCache();
   return functionInfo;
 }
 
