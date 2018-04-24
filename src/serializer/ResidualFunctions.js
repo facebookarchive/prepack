@@ -428,6 +428,7 @@ export class ResidualFunctions {
                   factoryFunctionInfos,
                 }
               );
+              traverse.clearCache();
               // add the class method to the class expression node body
               if (isConstructor) {
                 funcOrClassNode.body.body.unshift(classMethod);
@@ -468,6 +469,7 @@ export class ResidualFunctions {
               ]),
               factoryFunctionInfos,
             });
+            traverse.clearCache();
           }
           let id = this.locationService.getLocation(functionValue);
           invariant(id !== undefined);
@@ -577,6 +579,7 @@ export class ResidualFunctions {
           ),
           factoryFunctionInfos,
         });
+        traverse.clearCache();
 
         for (let instance of normalInstances) {
           let { functionValue, residualFunctionBindings, insertionPoint } = instance;
