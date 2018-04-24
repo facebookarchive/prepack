@@ -21,6 +21,7 @@ import {
   AbstractObjectValue,
   ArrayValue,
   ECMAScriptSourceFunctionValue,
+  BoundFunctionValue,
 } from "../../values/index.js";
 import invariant from "../../invariant.js";
 import * as t from "babel-types";
@@ -723,7 +724,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
       // if mapfn or thisArg exist and are not safe in this context to create,
       // we cannot guarantee that something will be havoced
-      if (!(callbackfn instanceof ECMAScriptSourceFunctionValue)) {
+      if (!(callbackfn instanceof ECMAScriptSourceFunctionValue || callbackfn instanceof BoundFunctionValue)) {
         safeToCreateTemporal = false;
         if (thisArg) {
           if (!(thisArg instanceof AbstractValue)) {

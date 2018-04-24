@@ -21,6 +21,8 @@ import {
   ArrayValue,
   ECMAScriptSourceFunctionValue,
   NativeFunctionValue,
+  BoundFunctionValue,
+  AbstractObjectValue,
 } from "../../values/index.js";
 import {
   Construct,
@@ -36,7 +38,6 @@ import * as t from "babel-types";
 import { GetIterator, IteratorClose, IteratorStep, IteratorValue } from "../../methods/iterator.js";
 import { Create, Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
-import AbstractObjectValue from "../../../lib/values/AbstractObjectValue.js";
 import { ValuesDomain } from "../../domains/index.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -245,7 +246,7 @@ export default function(realm: Realm): NativeFunctionValue {
         // if mapfn or thisArg exist and are not safe in this context to create,
         // we cannot guarantee that something will be havoced
         if (mapfn) {
-          if (!(mapfn instanceof ECMAScriptSourceFunctionValue)) {
+          if (!(mapfn instanceof ECMAScriptSourceFunctionValue || mapfn instanceof BoundFunctionValue)) {
             safeToCreateTemporal = false;
           }
           args.push(mapfn);

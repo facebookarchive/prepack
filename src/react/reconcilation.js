@@ -891,24 +891,24 @@ export class Reconciler {
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
   ): AbstractValue {
-    let callbackVal;
+    let closureVal;
     let thisVal;
 
     invariant(this.realm.generator);
     if (value.kind === "(A).map(B,C)") {
       let args = this.realm.generator.getArgsForDeclaredValue(value);
       invariant(args);
-      [, callbackVal, thisVal] = args;
+      [, closureVal, thisVal] = args;
     } else if (value.kind === "Array.from(A,B,C)") {
       let args = this.realm.generator.getArgsForDeclaredValue(value);
       invariant(args);
-      [, , callbackVal, thisVal] = args;
+      [, , closureVal, thisVal] = args;
     }
-    if (callbackVal instanceof ECMAScriptSourceFunctionValue) {
+    if (closureVal instanceof ECMAScriptSourceFunctionValue || closureVal instanceof BoundFunctionValue) {
       if (thisVal && thisVal !== this.realm.intrinsics.undefined) {
         throw new ExpectedBailOut(`abstract mapped arrays with "this" argument are not yet supported`);
       }
-      this._queueOptimizedClosure(callbackVal, evaluatedNode, componentType, context, branchState);
+      this._queueOptimizedClosure(closureVal, evaluatedNode, componentType, context, branchState);
       return value;
     }
     let length = value.args.length;
