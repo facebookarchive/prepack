@@ -11,17 +11,17 @@
 
 import type { Realm } from "../../realm.js";
 import {
-  NumberValue,
-  StringValue,
-  ObjectValue,
-  UndefinedValue,
-  NullValue,
-  Value,
-  AbstractValue,
   AbstractObjectValue,
+  AbstractValue,
   ArrayValue,
-  ECMAScriptSourceFunctionValue,
   BoundFunctionValue,
+  ECMAScriptSourceFunctionValue,
+  NullValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
+  UndefinedValue,
+  Value,
 } from "../../values/index.js";
 import invariant from "../../invariant.js";
 import * as t from "babel-types";
@@ -735,11 +735,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
       }
 
       if (safeToCreateTemporal) {
-        let array = AbstractValue.createTemporalFromBuildFunction(realm, ArrayValue, args, ([objNode, ..._args]) => {
-          return t.callExpression(t.memberExpression(objNode, t.identifier("map")), ((_args: any): Array<any>));
-        });
+        let array = AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          ArrayValue,
+          args,
+          ([objNode, ..._args]) =>
+            t.callExpression(t.memberExpression(objNode, t.identifier("map")), ((_args: any): Array<any>)),
+          { kind: "(A).map(B,C)" }
+        );
         invariant(array instanceof AbstractObjectValue);
-        array.kind = "(A).map(B,C)";
         let template = new ArrayValue(realm);
         template.makePartial();
         array.values = new ValuesDomain(new Set([template]));

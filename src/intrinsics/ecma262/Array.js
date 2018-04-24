@@ -262,12 +262,12 @@ export default function(realm: Realm): NativeFunctionValue {
             realm,
             ArrayValue,
             args,
-            ([methodNode, ..._args]) => {
-              return t.callExpression(methodNode, ((_args: any): Array<any>));
+            ([methodNode, ..._args]) => t.callExpression(methodNode, ((_args: any): Array<any>)),
+            {
+              kind: "Array.from(A,B,C)",
             }
           );
           invariant(array instanceof AbstractObjectValue);
-          array.kind = "Array.from(A,B,C)";
           let template = new ArrayValue(realm);
           template.makePartial();
           array.values = new ValuesDomain(new Set([template]));

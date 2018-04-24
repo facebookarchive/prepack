@@ -84,11 +84,11 @@ export function GetFunctionRealm(realm: Realm, obj: ObjectValue): Realm {
 }
 
 // Check if string is a positive JavaScript integer
-// with a maximum value of 4294967295
+// that is not larger than the max safe integer
 function isValidPositiveInteger(P: PropertyKeyValue): boolean {
   if (typeof P === "string") {
     let n = parseFloat(P);
-    return n >>> 0 === n;
+    return Number.isInteger(n) && n >= 0 && n <= Number.MAX_SAFE_INTEGER;
   }
   return false;
 }
