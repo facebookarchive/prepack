@@ -497,6 +497,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-classes-3.js");
       });
 
+      it("Simple classes with Array.from", async () => {
+        await runTest(directory, "array-from.js");
+      });
+
+      it("Simple classes with Array.from 2", async () => {
+        await runTest(directory, "array-from2.js");
+      });
+
       it("Inheritance chaining", async () => {
         await runTest(directory, "inheritance-chain.js");
       });
