@@ -20,6 +20,7 @@ import {
   AbstractValue,
   AbstractObjectValue,
   ArrayValue,
+  ECMAScriptSourceFunctionValue,
 } from "../../values/index.js";
 import invariant from "../../invariant.js";
 import * as t from "babel-types";
@@ -715,21 +716,34 @@ export default function(realm: Realm, obj: ObjectValue): void {
     if (
       realm.isInPureScope() &&
       O instanceof AbstractObjectValue &&
-      (O.kind === "Array.from(A, B, C)" || O.kind === "(A).map(B,C)")
+      (O.kind === "Array.from(A,B,C)" || O.kind === "(A).map(B,C)")
     ) {
       let args = [context, callbackfn];
-      if (thisArg) {
-        args.push(thisArg);
+      let safeToCreateTemporal = true;
+
+      // if mapfn or thisArg exist and are not safe in this context to create,
+      // we cannot guarantee that something will be havoced
+      if (!(callbackfn instanceof ECMAScriptSourceFunctionValue)) {
+        safeToCreateTemporal = false;
+        if (thisArg) {
+          if (!(thisArg instanceof AbstractValue)) {
+            safeToCreateTemporal = false;
+          }
+          args.push(thisArg);
+        }
       }
-      let array = AbstractValue.createTemporalFromBuildFunction(realm, ArrayValue, args, ([objNode, ..._args]) => {
-        return t.callExpression(t.memberExpression(objNode, t.identifier("map")), ((_args: any): Array<any>));
-      });
-      invariant(array instanceof AbstractObjectValue);
-      array.kind = "(A).map(B,C)";
-      let template = new ArrayValue(realm);
-      template.makePartial();
-      array.values = new ValuesDomain(new Set([template]));
-      return array;
+
+      if (safeToCreateTemporal) {
+        let array = AbstractValue.createTemporalFromBuildFunction(realm, ArrayValue, args, ([objNode, ..._args]) => {
+          return t.callExpression(t.memberExpression(objNode, t.identifier("map")), ((_args: any): Array<any>));
+        });
+        invariant(array instanceof AbstractObjectValue);
+        array.kind = "(A).map(B,C)";
+        let template = new ArrayValue(realm);
+        template.makePartial();
+        array.values = new ValuesDomain(new Set([template]));
+        return array;
+      }
     }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).

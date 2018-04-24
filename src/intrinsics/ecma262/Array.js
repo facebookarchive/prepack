@@ -10,7 +10,6 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { NativeFunctionValue } from "../../values/index.js";
 import { AbruptCompletion } from "../../completions.js";
 import {
   AbstractValue,
@@ -20,6 +19,8 @@ import {
   StringValue,
   ObjectValue,
   ArrayValue,
+  ECMAScriptSourceFunctionValue,
+  NativeFunctionValue,
 } from "../../values/index.js";
 import {
   Construct,
@@ -239,21 +240,38 @@ export default function(realm: Realm): NativeFunctionValue {
       // then create an abstract temporal with an array kind
       if (realm.isInPureScope() && items instanceof AbstractValue && items.values.isTop()) {
         let args = [arrayFrom, items];
+        let safeToCreateTemporal = true;
+
+        // if mapfn or thisArg exist and are not safe in this context to create,
+        // we cannot guarantee that something will be havoced
         if (mapfn) {
+          if (!(mapfn instanceof ECMAScriptSourceFunctionValue)) {
+            safeToCreateTemporal = false;
+          }
           args.push(mapfn);
           if (thisArg) {
+            if (!(thisArg instanceof AbstractValue)) {
+              safeToCreateTemporal = false;
+            }
             args.push(thisArg);
           }
         }
-        let array = AbstractValue.createTemporalFromBuildFunction(realm, ArrayValue, args, ([methodNode, ..._args]) => {
-          return t.callExpression(methodNode, ((_args: any): Array<any>));
-        });
-        invariant(array instanceof AbstractObjectValue);
-        array.kind = "Array.from(A, B, C)";
-        let template = new ArrayValue(realm);
-        template.makePartial();
-        array.values = new ValuesDomain(new Set([template]));
-        return array;
+        if (safeToCreateTemporal) {
+          let array = AbstractValue.createTemporalFromBuildFunction(
+            realm,
+            ArrayValue,
+            args,
+            ([methodNode, ..._args]) => {
+              return t.callExpression(methodNode, ((_args: any): Array<any>));
+            }
+          );
+          invariant(array instanceof AbstractObjectValue);
+          array.kind = "Array.from(A,B,C)";
+          let template = new ArrayValue(realm);
+          template.makePartial();
+          array.values = new ValuesDomain(new Set([template]));
+          return array;
+        }
       }
 
       // 4. Let usingIterator be ? GetMethod(items, @@iterator).

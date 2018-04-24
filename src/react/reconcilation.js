@@ -899,7 +899,7 @@ export class Reconciler {
       let args = this.realm.generator.getArgsForDeclaredValue(value);
       invariant(args);
       [, callbackVal, thisVal] = args;
-    } else if (value.kind === "Array.from(A, B, C)") {
+    } else if (value.kind === "Array.from(A,B,C)") {
       let args = this.realm.generator.getArgsForDeclaredValue(value);
       invariant(args);
       [, , callbackVal, thisVal] = args;

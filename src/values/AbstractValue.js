@@ -75,7 +75,7 @@ export type AbstractValueKind =
   | "(A).slice(B,C)"
   | "(A).split(B,C)"
   | "(A).map(B,C)"
-  | "Array.from(A, B, C)"
+  | "Array.from(A,B,C)"
   | "global.JSON.stringify(A)"
   | "global.JSON.parse(A)"
   | "JSON.stringify(...)"

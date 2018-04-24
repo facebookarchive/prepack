@@ -107,14 +107,14 @@ export function OrdinaryGet(
   let desc;
   // 2. Let desc be ? O.[[GetOwnProperty]](P).
   if (
-    Receiver instanceof AbstractValue &&
-    (Receiver.kind === "Array.from(A, B, C)" || Receiver.kind === "(A).map(B,C)")
+    Receiver instanceof AbstractObjectValue &&
+    (Receiver.kind === "Array.from(A,B,C)" || Receiver.kind === "(A).map(B,C)")
   ) {
     // If we deal with an integer up to max length
     // or of "length" then use $GetOwnProperty, which
     // will return an abstract value. Alternatively,
     // we use OrdinaryGetHelper and check the prototype
-    if (O.isPartialObject() && P !== "length" && !isValidPositiveInteger(P)) {
+    if (O.isPartialObject() && !O.isHavocedObject() && P !== "length" && !isValidPositiveInteger(P)) {
       return OrdinaryGetHelper();
     }
   }
