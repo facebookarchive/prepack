@@ -693,7 +693,8 @@ export type JoinType = {
   composePossiblyNormalCompletions(
     realm: Realm,
     pnc: PossiblyNormalCompletion,
-    c: PossiblyNormalCompletion
+    c: PossiblyNormalCompletion,
+    priorEffects?: Effects
   ): PossiblyNormalCompletion,
 
   updatePossiblyNormalCompletionWithSubsequentEffects(
