@@ -1109,12 +1109,19 @@ export class Realm {
       this.pathConditions = [].concat(this.pathConditions);
       this.captureEffects(completion);
     } else {
-      invariant(this.savedCompletion.savedEffects !== undefined);
+      let savedCompletion = this.savedCompletion;
+      invariant(savedCompletion.savedEffects !== undefined);
       invariant(this.generator !== undefined);
-      this.savedCompletion.savedEffects.generator.appendGenerator(this.generator, "composeWithSavedCompletion");
+      savedCompletion.savedEffects.generator.appendGenerator(this.generator, "composeWithSavedCompletion");
       this.generator = new Generator(this, "composeWithSavedCompletion");
       invariant(this.savedCompletion !== undefined);
-      this.savedCompletion = Join.composePossiblyNormalCompletions(this, this.savedCompletion, completion);
+      let e = this.getCapturedEffects(savedCompletion);
+      invariant(e !== undefined);
+      this.stopEffectCaptureAndUndoEffects(savedCompletion);
+      savedCompletion = Join.composePossiblyNormalCompletions(this, savedCompletion, completion, e);
+      this.applyEffects(e);
+      this.captureEffects(savedCompletion);
+      this.savedCompletion = savedCompletion;
     }
     pushPathConditionsLeadingToNormalCompletion(completion);
     return completion.value;
