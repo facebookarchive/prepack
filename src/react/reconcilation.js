@@ -891,6 +891,26 @@ export class Reconciler {
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
   ): AbstractValue {
+    let callbackVal;
+    let thisVal;
+
+    invariant(this.realm.generator);
+    if (value.kind === "(A).map(B,C)") {
+      let args = this.realm.generator.getArgsForDeclaredValue(value);
+      invariant(args);
+      [, callbackVal, thisVal] = args;
+    } else if (value.kind === "Array.from(A, B, C)") {
+      let args = this.realm.generator.getArgsForDeclaredValue(value);
+      invariant(args);
+      [, , callbackVal, thisVal] = args;
+    }
+    if (callbackVal instanceof ECMAScriptSourceFunctionValue) {
+      if (thisVal && thisVal !== this.realm.intrinsics.undefined) {
+        throw new ExpectedBailOut(`abstract mapped arrays with "this" argument are not yet supported`);
+      }
+      this._queueOptimizedClosure(callbackVal, evaluatedNode, componentType, context, branchState);
+      return value;
+    }
     let length = value.args.length;
     // TODO investigate what other kinds than "conditional" might be safe to deeply resolve
     if (length === 3 && value.kind === "conditional") {

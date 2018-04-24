@@ -10,8 +10,20 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { NumberValue, StringValue, ObjectValue, UndefinedValue, NullValue, Value } from "../../values/index.js";
+import {
+  NumberValue,
+  StringValue,
+  ObjectValue,
+  UndefinedValue,
+  NullValue,
+  Value,
+  AbstractValue,
+  AbstractObjectValue,
+  ArrayValue,
+} from "../../values/index.js";
 import invariant from "../../invariant.js";
+import * as t from "babel-types";
+import { ValuesDomain } from "../../domains/index.js";
 import { SameValueZeroPartial, AbstractRelationalComparison } from "../../methods/abstract.js";
 import {
   StrictEqualityComparisonPartial,
@@ -699,6 +711,26 @@ export default function(realm: Realm, obj: ObjectValue): void {
   obj.defineNativeMethod("map", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
+
+    if (
+      realm.isInPureScope() &&
+      O instanceof AbstractObjectValue &&
+      (O.kind === "Array.from(A, B, C)" || O.kind === "(A).map(B,C)")
+    ) {
+      let args = [context, callbackfn];
+      if (thisArg) {
+        args.push(thisArg);
+      }
+      let array = AbstractValue.createTemporalFromBuildFunction(realm, ArrayValue, args, ([objNode, ..._args]) => {
+        return t.callExpression(t.memberExpression(objNode, t.identifier("map")), ((_args: any): Array<any>));
+      });
+      invariant(array instanceof AbstractObjectValue);
+      array.kind = "(A).map(B,C)";
+      let template = new ArrayValue(realm);
+      template.makePartial();
+      array.values = new ValuesDomain(new Set([template]));
+      return array;
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));

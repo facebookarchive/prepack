@@ -616,6 +616,14 @@ export class Generator {
     );
   }
 
+  getArgsForDeclaredValue(declaredValue: AbstractValue): Array<Value> | void {
+    for (let entry of ((this._entries: any): Array<TemporalBuildNodeEntry>)) {
+      if (entry && entry.declared === declaredValue) {
+        return entry.args;
+      }
+    }
+  }
+
   // test must be a temporal value, which means that it must have a defined intrinsicName
   emitDoWhileStatement(test: AbstractValue, body: Generator) {
     this._addEntry({

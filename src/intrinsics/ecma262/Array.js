@@ -19,6 +19,7 @@ import {
   UndefinedValue,
   StringValue,
   ObjectValue,
+  ArrayValue,
 } from "../../values/index.js";
 import {
   Construct,
@@ -30,9 +31,12 @@ import {
   IsConstructor,
   IsCallable,
 } from "../../methods/index.js";
+import * as t from "babel-types";
 import { GetIterator, IteratorClose, IteratorStep, IteratorValue } from "../../methods/iterator.js";
 import { Create, Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
+import AbstractObjectValue from "../../../lib/values/AbstractObjectValue.js";
+import { ValuesDomain } from "../../domains/index.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   let func = new NativeFunctionValue(realm, "Array", "Array", 1, (context, [...items], argCount, NewTarget) => {
@@ -205,8 +209,8 @@ export default function(realm: Realm): NativeFunctionValue {
     });
 
   // ECMA262 22.1.2.1
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
-    func.defineNativeMethod("from", 1, (context, [items, mapfn, thisArg], argCount) => {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
+    let arrayFrom = func.defineNativeMethod("from", 1, (context, [items, mapfn, thisArg], argCount) => {
       // 1. Let C be the this value.
       let C = context;
 
@@ -230,6 +234,26 @@ export default function(realm: Realm): NativeFunctionValue {
 
         // c. Let mapping be true.
         mapping = true;
+      }
+      // If we're in pure scope and the items are completely abstract,
+      // then create an abstract temporal with an array kind
+      if (realm.isInPureScope() && items instanceof AbstractValue && items.values.isTop()) {
+        let args = [arrayFrom, items];
+        if (mapfn) {
+          args.push(mapfn);
+          if (thisArg) {
+            args.push(thisArg);
+          }
+        }
+        let array = AbstractValue.createTemporalFromBuildFunction(realm, ArrayValue, args, ([methodNode, ..._args]) => {
+          return t.callExpression(methodNode, ((_args: any): Array<any>));
+        });
+        invariant(array instanceof AbstractObjectValue);
+        array.kind = "Array.from(A, B, C)";
+        let template = new ArrayValue(realm);
+        template.makePartial();
+        array.values = new ValuesDomain(new Set([template]));
+        return array;
       }
 
       // 4. Let usingIterator be ? GetMethod(items, @@iterator).
@@ -379,6 +403,7 @@ export default function(realm: Realm): NativeFunctionValue {
       // 14. Return A.
       return A;
     });
+  }
 
   // ECMA262 22.1.2.5
   func.defineNativeGetter(realm.intrinsics.SymbolSpecies, context => {
