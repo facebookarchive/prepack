@@ -183,7 +183,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     for (let i = 0; i < resultA.length; i++) {
       let [nameA, valueA] = resultA[i];
       let [nameB, valueB] = resultB[i];
-      expect(mergeAdacentJSONTextNodes(valueB)).toEqual(mergeAdacentJSONTextNodes(valueA));
+      expect(mergeAdacentJSONTextNodes(valueB, firstRenderOnly)).toEqual(
+        mergeAdacentJSONTextNodes(valueA, firstRenderOnly)
+      );
       expect(nameB).toEqual(nameA);
     }
   }
