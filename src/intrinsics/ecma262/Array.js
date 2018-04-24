@@ -243,8 +243,10 @@ export default function(realm: Realm): NativeFunctionValue {
         let args = [arrayFrom, items];
         let safeToCreateTemporal = true;
 
-        // if mapfn or thisArg exist and are not safe in this context to create,
-        // we cannot guarantee that something will be havoced
+        // if mapfn or thisArg exist and are not statically known,
+        // we cannot guarantee that something will be not be havoced
+        // so rather, we skip this logic and continue with the default
+        // behaviur of Array.from
         if (mapfn) {
           if (!(mapfn instanceof ECMAScriptSourceFunctionValue || mapfn instanceof BoundFunctionValue)) {
             safeToCreateTemporal = false;

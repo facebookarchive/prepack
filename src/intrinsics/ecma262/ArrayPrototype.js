@@ -722,8 +722,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let args = [context, callbackfn];
       let safeToCreateTemporal = true;
 
-      // if mapfn or thisArg exist and are not safe in this context to create,
-      // we cannot guarantee that something will be havoced
+      // if mapfn or thisArg exist and are not statically known,
+      // we cannot guarantee that something will be not be havoced
+      // so rather, we skip this logic and continue with the default
+      // behaviur of Array.prototype.map
       if (!(callbackfn instanceof ECMAScriptSourceFunctionValue || callbackfn instanceof BoundFunctionValue)) {
         safeToCreateTemporal = false;
         if (thisArg) {
