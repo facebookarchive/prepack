@@ -82,6 +82,11 @@ __evaluatePureFunction(function() {
     );
   }
 
+  ViewCount.getTrials = function(renderer, Root) {
+    renderer.update(<Root feedback={{viewCountReduced: 0, viewCount: 0}} />);
+    return [['fb16 mocks', renderer.toJSON()]];
+  };
+
   if (this.__optimizeReactComponentTree) {
     __optimizeReactComponentTree(ViewCount, {
       firstRenderOnly: true,
