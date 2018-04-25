@@ -343,12 +343,6 @@ ReactStatistics {
       "children": Array [
         Object {
           "children": Array [],
-          "message": "",
-          "name": "FactoryComponent",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
           "message": "non-root factory class components are not suppoted",
           "name": "FactoryComponent",
           "status": "BAIL-OUT",
@@ -3359,6 +3353,36 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output fb-www mocks fb-www 15 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "evaluation failed",
+          "name": "Inner",
+          "status": "BAIL-OUT",
+        },
+        Object {
+          "children": Array [],
+          "message": "evaluation failed",
+          "name": "Inner",
+          "status": "BAIL-OUT",
+        },
+      ],
+      "message": "",
+      "name": "Outer",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 2,
+}
+`;
+
 exports[`Test React with JSX input, JSX output fb-www mocks repl example 1`] = `
 ReactStatistics {
   "componentsEvaluated": 7,
@@ -3757,12 +3781,6 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "FactoryComponent",
-          "status": "INLINED",
-        },
         Object {
           "children": Array [],
           "message": "non-root factory class components are not suppoted",
@@ -6775,6 +6793,36 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, create-element output fb-www mocks fb-www 15 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "evaluation failed",
+          "name": "Inner",
+          "status": "BAIL-OUT",
+        },
+        Object {
+          "children": Array [],
+          "message": "evaluation failed",
+          "name": "Inner",
+          "status": "BAIL-OUT",
+        },
+      ],
+      "message": "",
+      "name": "Outer",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 2,
+}
+`;
+
 exports[`Test React with JSX input, create-element output fb-www mocks repl example 1`] = `
 ReactStatistics {
   "componentsEvaluated": 7,
@@ -7173,12 +7221,6 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "FactoryComponent",
-          "status": "INLINED",
-        },
         Object {
           "children": Array [],
           "message": "non-root factory class components are not suppoted",
@@ -10156,6 +10198,36 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output fb-www mocks fb-www 15 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "evaluation failed",
+          "name": "Inner",
+          "status": "BAIL-OUT",
+        },
+        Object {
+          "children": Array [],
+          "message": "evaluation failed",
+          "name": "Inner",
+          "status": "BAIL-OUT",
+        },
+      ],
+      "message": "",
+      "name": "Outer",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 2,
+}
+`;
+
 exports[`Test React with create-element input, JSX output fb-www mocks repl example 1`] = `
 ReactStatistics {
   "componentsEvaluated": 7,
@@ -10554,12 +10626,6 @@ ReactStatistics {
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "FactoryComponent",
-          "status": "INLINED",
-        },
         Object {
           "children": Array [],
           "message": "non-root factory class components are not suppoted",
@@ -13534,6 +13600,36 @@ ReactStatistics {
   "inlinedComponents": 2,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output fb-www mocks fb-www 15 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "evaluation failed",
+          "name": "Inner",
+          "status": "BAIL-OUT",
+        },
+        Object {
+          "children": Array [],
+          "message": "evaluation failed",
+          "name": "Inner",
+          "status": "BAIL-OUT",
+        },
+      ],
+      "message": "",
+      "name": "Outer",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 2,
 }
 `;
 
