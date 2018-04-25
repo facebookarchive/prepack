@@ -18,11 +18,9 @@ import {
   UndefinedValue,
   StringValue,
   ObjectValue,
-  ArrayValue,
   ECMAScriptSourceFunctionValue,
   NativeFunctionValue,
   BoundFunctionValue,
-  AbstractObjectValue,
 } from "../../values/index.js";
 import {
   Construct,
@@ -38,7 +36,6 @@ import * as t from "babel-types";
 import { GetIterator, IteratorClose, IteratorStep, IteratorValue } from "../../methods/iterator.js";
 import { Create, Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
-import { ValuesDomain } from "../../domains/index.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   let func = new NativeFunctionValue(realm, "Array", "Array", 1, (context, [...items], argCount, NewTarget) => {

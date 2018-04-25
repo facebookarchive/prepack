@@ -16,7 +16,6 @@ import { NativeFunctionValue } from "../../values/index.js";
 import {
   AbstractValue,
   AbstractObjectValue,
-  ArrayValue,
   ObjectValue,
   NullValue,
   UndefinedValue,

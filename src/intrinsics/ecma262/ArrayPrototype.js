@@ -13,7 +13,6 @@ import type { Realm } from "../../realm.js";
 import {
   AbstractObjectValue,
   AbstractValue,
-  ArrayValue,
   BoundFunctionValue,
   ECMAScriptSourceFunctionValue,
   NullValue,
@@ -25,7 +24,6 @@ import {
 } from "../../values/index.js";
 import invariant from "../../invariant.js";
 import * as t from "babel-types";
-import { ValuesDomain } from "../../domains/index.js";
 import { SameValueZeroPartial, AbstractRelationalComparison } from "../../methods/abstract.js";
 import {
   StrictEqualityComparisonPartial,
