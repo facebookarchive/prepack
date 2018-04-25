@@ -16,6 +16,7 @@ import { NativeFunctionValue } from "../../values/index.js";
 import {
   AbstractValue,
   AbstractObjectValue,
+  ArrayValue,
   ObjectValue,
   NullValue,
   UndefinedValue,
@@ -355,9 +356,27 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.15
-  func.defineNativeMethod("keys", 1, (context, [O]) => {
+  let objectKeys = func.defineNativeMethod("keys", 1, (context, [O]) => {
     // 1. Let obj be ? ToObject(O).
     let obj = To.ToObject(realm, O);
+
+    // If we're in pure scope and the items are completely abstract,
+    // then create an abstract temporal with an array kind
+    if (realm.isInPureScope() && O instanceof AbstractObjectValue) {
+      let array = AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        ArrayValue,
+        [objectKeys, O],
+        ([methodNode, objNode]) => t.callExpression(methodNode, [objNode]),
+        { kind: "Object.keys(A)" }
+      );
+      invariant(array instanceof AbstractObjectValue);
+      let template = new ArrayValue(realm);
+      template.makePartial();
+      array.values = new ValuesDomain(new Set([template]));
+      debugger;
+      return array;
+    }
 
     // 2. Let nameList be ? EnumerableOwnProperties(obj, "key").
     let nameList = EnumerableOwnProperties(realm, obj.throwIfNotConcreteObject(), "key");

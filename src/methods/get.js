@@ -108,7 +108,7 @@ export function OrdinaryGet(
   // 2. Let desc be ? O.[[GetOwnProperty]](P).
   if (
     Receiver instanceof AbstractObjectValue &&
-    (Receiver.kind === "Array.from(A,B,C)" || Receiver.kind === "(A).map(B,C)")
+    (Receiver.kind === "Array.from(A,B,C)" || Receiver.kind === "(A).map(B,C)" || Receiver.kind === "Object.keys(A)")
   ) {
     // If we deal with an integer up to max length
     // or of "length" then use $GetOwnProperty, which
