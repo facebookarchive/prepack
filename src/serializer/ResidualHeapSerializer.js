@@ -232,7 +232,7 @@ export class ResidualHeapSerializer {
   declaredGlobalLets: Map<string, Value>;
 
   getStatistics(): SerializerStatistics {
-    invariant(this.realm.statistics instanceof SerializerStatistics);
+    invariant(this.realm.statistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
     return this.realm.statistics;
   }
 

@@ -409,7 +409,7 @@ export class Modules {
   moduleTracer: ModuleTracer;
 
   getStatistics(): SerializerStatistics {
-    invariant(this.realm.statistics instanceof SerializerStatistics);
+    invariant(this.realm.statistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
     return this.realm.statistics;
   }
 

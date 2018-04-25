@@ -97,7 +97,7 @@ export class Serializer {
 
   init(sources: Array<SourceFile>, sourceMaps?: boolean = false): void | SerializedResult {
     let realmStatistics = this.realm.statistics;
-    invariant(realmStatistics instanceof SerializerStatistics);
+    invariant(realmStatistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
     let statistics: SerializerStatistics = realmStatistics;
 
     let result = statistics.total.measure(() => {
@@ -289,7 +289,7 @@ export class Serializer {
         statistics.forcingGC
           ? undefined
           : "Memory statistics are unreliable because garbage collections could not be forced; pass --expose-gc to node.js to enable forced garbage collections.",
-        pf => `${pf.memory < 0 ? "-" : pf.memory > 0 ? "+" : ""}${Math.round(pf.memory / 1024 / 1024)}MB`
+        pf => `${pf.memory > 0 ? "+" : ""}${Math.round(pf.memory / 1024 / 1024)}MB`
       );
     }
 

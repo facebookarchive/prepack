@@ -82,8 +82,8 @@ export class PerformanceTracker {
 
   start(): void {
     invariant(this._running === false);
-    if (this._getTime !== undefined) this.time = this.time + this._getTime();
-    if (this._getMemory !== undefined) this.memory = this.memory + this._getMemory();
+    if (this._getTime !== undefined) this.time = this._getTime() - this.time;
+    if (this._getMemory !== undefined) this.memory = this._getMemory() - this.memory;
     this._running = true;
   }
 

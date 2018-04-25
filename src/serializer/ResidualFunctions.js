@@ -111,7 +111,7 @@ export class ResidualFunctions {
   simpleClosures: boolean;
 
   getStatistics() {
-    invariant(this.realm.statistics instanceof SerializerStatistics);
+    invariant(this.realm.statistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
     return this.realm.statistics;
   }
 

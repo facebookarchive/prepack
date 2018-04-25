@@ -60,7 +60,7 @@ export class Referentializer {
   _referentializedNameGenerator: NameGenerator;
 
   getStatistics(): SerializerStatistics {
-    invariant(this.realm.statistics instanceof SerializerStatistics);
+    invariant(this.realm.statistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
     return this.realm.statistics;
   }
 
