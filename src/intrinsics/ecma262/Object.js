@@ -362,19 +362,13 @@ export default function(realm: Realm): NativeFunctionValue {
 
     // If we're in pure scope and the items are completely abstract,
     // then create an abstract temporal with an array kind
-    if (realm.isInPureScope() && O instanceof AbstractObjectValue) {
-      let array = AbstractValue.createTemporalFromBuildFunction(
+    if (realm.isInPureScope() && obj instanceof AbstractObjectValue) {
+      let array = AbstractValue.createAbstractTemporalArray(
         realm,
-        ArrayValue,
-        [objectKeys, O],
+        [objectKeys, obj],
         ([methodNode, objNode]) => t.callExpression(methodNode, [objNode]),
         { kind: "Object.keys(A)" }
       );
-      invariant(array instanceof AbstractObjectValue);
-      let template = new ArrayValue(realm);
-      template.makePartial();
-      array.values = new ValuesDomain(new Set([template]));
-      debugger;
       return array;
     }
 

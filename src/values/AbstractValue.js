@@ -21,10 +21,12 @@ import { FatalError, CompilerDiagnostic } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
 import { PreludeGenerator } from "../utils/generator.js";
+import { Properties } from "../singletons.js";
 import buildExpressionTemplate from "../utils/builder.js";
 
 import {
   AbstractObjectValue,
+  ArrayValue,
   BooleanValue,
   ConcreteValue,
   NullValue,
@@ -919,6 +921,22 @@ export default class AbstractValue extends Value {
     realm.rebuildNestedProperties(value, name);
     invariant(value instanceof AbstractObjectValue);
     return value;
+  }
+
+  static createAbstractTemporalArray(
+    realm: Realm,
+    args: Array<Value>,
+    buildFunction: AbstractValueBuildNodeFunction,
+    optionalArgs?: {| kind?: AbstractValueKind, isPure?: boolean, skipInvariant?: boolean |}
+  ): AbstractObjectValue {
+    let array = AbstractValue.createTemporalFromBuildFunction(realm, ArrayValue, args, buildFunction, optionalArgs);
+    invariant(array instanceof AbstractObjectValue);
+    let template = new ArrayValue(realm);
+    Properties.Set(realm, template, "length", AbstractValue.createFromType(realm, NumberValue), false);
+    template.makePartial();
+    template.makeSimple();
+    array.values = new ValuesDomain(new Set([template]));
+    return array;
   }
 
   static makeKind(prefix: AbstractValueKindPrefix, suffix: string): AbstractValueKind {

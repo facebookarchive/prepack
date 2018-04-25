@@ -260,20 +260,12 @@ export default function(realm: Realm): NativeFunctionValue {
           }
         }
         if (safeToCreateTemporal) {
-          let array = AbstractValue.createTemporalFromBuildFunction(
+          return AbstractValue.createAbstractTemporalArray(
             realm,
-            ArrayValue,
             args,
             ([methodNode, ..._args]) => t.callExpression(methodNode, ((_args: any): Array<any>)),
-            {
-              kind: "Array.from(A,B,C)",
-            }
+            { kind: "Array.from(A,B,C)" }
           );
-          invariant(array instanceof AbstractObjectValue);
-          let template = new ArrayValue(realm);
-          template.makePartial();
-          array.values = new ValuesDomain(new Set([template]));
-          return array;
         }
       }
 

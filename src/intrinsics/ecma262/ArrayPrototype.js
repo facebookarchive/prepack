@@ -717,7 +717,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     if (
       realm.isInPureScope() &&
       O instanceof AbstractObjectValue &&
-      (O.kind === "Array.from(A,B,C)" || O.kind === "(A).map(B,C)")
+      (O.kind === "Array.from(A,B,C)" || O.kind === "(A).map(B,C)" || O.kind === "Object.keys(A)")
     ) {
       let args = [context, callbackfn];
       let safeToCreateTemporal = true;
@@ -737,19 +737,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
       }
 
       if (safeToCreateTemporal) {
-        let array = AbstractValue.createTemporalFromBuildFunction(
+        return AbstractValue.createAbstractTemporalArray(
           realm,
-          ArrayValue,
           args,
           ([objNode, ..._args]) =>
             t.callExpression(t.memberExpression(objNode, t.identifier("map")), ((_args: any): Array<any>)),
           { kind: "(A).map(B,C)" }
         );
-        invariant(array instanceof AbstractObjectValue);
-        let template = new ArrayValue(realm);
-        template.makePartial();
-        array.values = new ValuesDomain(new Set([template]));
-        return array;
       }
     }
 
