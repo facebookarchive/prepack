@@ -1169,7 +1169,6 @@ export class Reconciler {
             return this._resolveUnknownComponentType(reactElement, evaluatedNode);
           }
           let evaluatedChildNode = createReactEvaluatedNode("INLINED", getComponentName(this.realm, typeValue));
-          evaluatedNode.children.push(evaluatedChildNode);
           let render = this._renderComponent(
             typeValue,
             propsValue,
@@ -1178,6 +1177,7 @@ export class Reconciler {
             null,
             evaluatedChildNode
           );
+          evaluatedNode.children.push(evaluatedChildNode);
           result = render.result;
           this.statistics.inlinedComponents++;
           break;
