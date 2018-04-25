@@ -365,11 +365,13 @@ export class ResidualHeapSerializer {
       // conditional assignment
       values.push(cond);
       let consequent = absVal.args[1];
-      invariant(consequent instanceof AbstractValue);
+      if (consequent instanceof AbstractValue) {
+        this._getNestedAbstractValues(consequent, values);
+      }
       let alternate = absVal.args[2];
-      invariant(alternate instanceof AbstractValue);
-      this._getNestedAbstractValues(consequent, values);
-      this._getNestedAbstractValues(alternate, values);
+      if (alternate instanceof AbstractValue) {
+        this._getNestedAbstractValues(alternate, values);
+      }
     }
     return values;
   }
@@ -438,14 +440,19 @@ export class ResidualHeapSerializer {
 
   _emitProperty(
     val: ObjectValue,
-    key: string | SymbolValue,
+    key: string | SymbolValue | AbstractValue,
     desc: Descriptor | void,
     deleteIfMightHaveBeenDeleted: boolean = false
   ): void {
     // Location for the property to be assigned to
     let locationFunction = () => {
-      let serializedKey =
-        key instanceof SymbolValue ? this.serializeValue(key) : this.generator.getAsPropertyNameExpression(key);
+      let serializedKey;
+
+      if (key instanceof SymbolValue || key instanceof AbstractValue) {
+        serializedKey = this.serializeValue(key);
+      } else {
+        serializedKey = this.generator.getAsPropertyNameExpression(key);
+      }
       let computed = key instanceof SymbolValue || !t.isIdentifier(serializedKey);
       return t.memberExpression(this.getSerializeObjectIdentifier(val), serializedKey, computed);
     };

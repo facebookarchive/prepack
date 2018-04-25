@@ -344,11 +344,13 @@ export class ResidualHeapVisitor {
       // conditional assignment
       absVal.args[0] = this.visitEquivalentValue(cond);
       let consequent = absVal.args[1];
-      invariant(consequent instanceof AbstractValue);
+      if (consequent instanceof AbstractValue) {
+        this.visitObjectPropertiesWithComputedNames(consequent);
+      }
       let alternate = absVal.args[2];
-      invariant(alternate instanceof AbstractValue);
-      this.visitObjectPropertiesWithComputedNames(consequent);
-      this.visitObjectPropertiesWithComputedNames(alternate);
+      if (alternate instanceof AbstractValue) {
+        this.visitObjectPropertiesWithComputedNames(alternate);
+      }
     }
   }
 
