@@ -27,6 +27,7 @@ let babel = require("babel-core");
 let child_process = require("child_process");
 const EOL = os.EOL;
 let execSpec;
+let JSONTokenizer = require("../lib/utils/JSONTokenizer.js").default;
 
 function transformWithBabel(code, plugins, presets) {
   return babel.transform(code, {
@@ -543,6 +544,36 @@ function prepareReplExternalSepc(procPath) {
   return { printName: output.trim(), cmd: procPath.trim() };
 }
 
+function runWithCpuProfiler(args) {
+  let profiler;
+  try {
+    profiler = require("v8-profiler");
+  } catch (e) {
+    // Profiler optional dependency failed
+    console.error("v8-profiler doesn't work correctly on Windows, see issue #1695");
+    throw e;
+  }
+  profiler.setSamplingInterval(100); // default is 1000us
+  profiler.startProfiling("");
+  let result = run(args);
+  let data = profiler.stopProfiling("");
+  let start = Date.now();
+  let stream = fs.createWriteStream(args.cpuprofilePath);
+  let getNextToken = JSONTokenizer(data);
+  let write = () => {
+    for (let token = getNextToken(); token !== undefined; token = getNextToken()) {
+      if (!stream.write(token)) {
+        stream.once("drain", write);
+        return;
+      }
+    }
+    stream.end();
+    console.log(`Wrote ${args.cpuprofilePath} in ${Date.now() - start}ms`);
+  };
+  write();
+  return result;
+}
+
 function run(args) {
   let failed = 0;
   let passed = 0;
@@ -613,6 +644,7 @@ class ProgramArgs {
   noLazySupport: boolean;
   fast: boolean;
   residual: boolean;
+  cpuprofilePath: string;
   constructor(
     debugNames: boolean,
     debugScopes: boolean,
@@ -623,7 +655,8 @@ class ProgramArgs {
     lazyObjectsRuntime: string,
     noLazySupport: boolean,
     fast: boolean,
-    residual: boolean
+    residual: boolean,
+    cpuProfilePath: string
   ) {
     this.debugNames = debugNames;
     this.debugScopes = debugScopes;
@@ -635,6 +668,7 @@ class ProgramArgs {
     this.noLazySupport = noLazySupport;
     this.fast = fast;
     this.residual = residual;
+    this.cpuprofilePath = cpuProfilePath;
   }
 }
 
@@ -642,7 +676,7 @@ class ProgramArgs {
 function main(): number {
   try {
     let args = argsParse();
-    if (!run(args)) {
+    if (!(args.cpuprofilePath ? runWithCpuProfiler : run)(args)) {
       process.exit(1);
     } else {
       return 0;
@@ -679,7 +713,7 @@ class ArgsParseError {
 // Parses through the command line arguments and throws errors if usage is incorrect
 function argsParse(): ProgramArgs {
   let parsedArgs = minimist(process.argv.slice(2), {
-    string: ["filter", "outOfProcessRuntime"],
+    string: ["filter", "outOfProcessRuntime", "cpuprofilePath"],
     boolean: ["debugNames", "debugScopes", "verbose", "es5", "fast"],
     default: {
       debugNames: false,
@@ -693,6 +727,7 @@ function argsParse(): ProgramArgs {
       noLazySupport: false,
       fast: false,
       residual: false,
+      cpuprofilePath: "",
     },
   });
   if (typeof parsedArgs.debugNames !== "boolean") {
@@ -727,6 +762,9 @@ function argsParse(): ProgramArgs {
   if (typeof parsedArgs.residual !== "boolean") {
     throw new ArgsParseError("residual must be a boolean (either --residual or not)");
   }
+  if (typeof parsedArgs.cpuprofilePath !== "string") {
+    throw new ArgsParseError("cpuprofilePath must be a string");
+  }
   let programArgs = new ProgramArgs(
     parsedArgs.debugNames,
     parsedArgs.debugScopes,
@@ -737,7 +775,8 @@ function argsParse(): ProgramArgs {
     parsedArgs.lazyObjectsRuntime,
     parsedArgs.noLazySupport,
     parsedArgs.fast,
-    parsedArgs.residual
+    parsedArgs.residual,
+    parsedArgs.cpuprofilePath
   );
   return programArgs;
 }
