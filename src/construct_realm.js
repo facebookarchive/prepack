@@ -14,6 +14,7 @@ import initializeSingletons from "./initialize-singletons.js";
 import { initialize as initializeIntrinsics } from "./intrinsics/index.js";
 import initializeGlobal from "./intrinsics/ecma262/global.js";
 import type { RealmOptions } from "./options.js";
+import { RealmStatistics } from "./statistics.js";
 import * as evaluators from "./evaluators/index.js";
 import * as partialEvaluators from "./partial-evaluators/index.js";
 import { Environment } from "./singletons.js";
@@ -22,9 +23,13 @@ import { DebugServer } from "./debugger/server/Debugger.js";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
 import simplifyAndRefineAbstractValue from "./utils/simplifier.js";
 
-export default function(opts: RealmOptions = {}, debugChannel: void | DebugChannel = undefined): Realm {
+export default function(
+  opts: RealmOptions = {},
+  debugChannel: void | DebugChannel = undefined,
+  statistics: void | RealmStatistics = undefined
+): Realm {
   initializeSingletons();
-  let r = new Realm(opts);
+  let r = new Realm(opts, statistics || new RealmStatistics());
   if (debugChannel) {
     if (debugChannel.debuggerIsAttached()) {
       r.debuggerInstance = new DebugServer(debugChannel, r);

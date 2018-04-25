@@ -17,7 +17,8 @@ import type { BabelNodeStatement, BabelNodeExpression, BabelNodeIdentifier } fro
 import { NameGenerator } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import type { ResidualFunctionBinding, ScopeBinding, FunctionInstance } from "./types.js";
-import { SerializerStatistics, type ReferentializationScope } from "./types.js";
+import { type ReferentializationScope } from "./types.js";
+import { SerializerStatistics } from "./statistics.js";
 import { getOrDefault } from "./utils.js";
 import { Realm } from "../realm.js";
 
@@ -40,12 +41,10 @@ export class Referentializer {
     realm: Realm,
     options: SerializerOptions,
     scopeNameGenerator: NameGenerator,
-    referentializedNameGenerator: NameGenerator,
-    statistics: SerializerStatistics
+    referentializedNameGenerator: NameGenerator
   ) {
     this._options = options;
     this.scopeNameGenerator = scopeNameGenerator;
-    this.statistics = statistics;
 
     this.referentializationState = new Map();
     this._referentializedNameGenerator = referentializedNameGenerator;
@@ -54,12 +53,16 @@ export class Referentializer {
 
   _options: SerializerOptions;
   scopeNameGenerator: NameGenerator;
-  statistics: SerializerStatistics;
   realm: Realm;
 
   _newCapturedScopeInstanceIdx: number;
   referentializationState: Map<ReferentializationScope, ReferentializationState>;
   _referentializedNameGenerator: NameGenerator;
+
+  getStatistics(): SerializerStatistics {
+    invariant(this.realm.statistics instanceof SerializerStatistics);
+    return this.realm.statistics;
+  }
 
   _createReferentializationState(): ReferentializationState {
     return {
@@ -221,7 +224,7 @@ export class Referentializer {
       );
     }
 
-    this.statistics.referentialized++;
+    this.getStatistics().referentialized++;
   }
 
   // Cleans all scopes between passes of the serializer

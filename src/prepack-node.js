@@ -21,12 +21,27 @@ import { prepackSources } from "./prepack-standalone.js";
 import { type SourceMap } from "./types.js";
 import { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
 import { FileIOWrapper } from "./debugger/common/channel/FileIOWrapper.js";
-import type { SerializedResult } from "./serializer/types.js";
+import { type SerializedResult } from "./serializer/types.js";
+import { SerializerStatistics } from "./serializer/statistics.js";
 
 import fs from "fs";
 
 export * from "./prepack-node-environment";
 export * from "./prepack-standalone";
+
+function createStatistics(options: PrepackOptions) {
+  let gc = global.gc; // eslint-disable-line no-undef
+  return options.profile
+    ? new SerializerStatistics(
+        () => Date.now(),
+        () => {
+          if (gc) gc();
+          return process.memoryUsage().heapUsed;
+        },
+        !!gc
+      )
+    : new SerializerStatistics();
+}
 
 export function prepackStdin(
   options: PrepackOptions = defaultOptions,
@@ -48,7 +63,9 @@ export function prepackStdin(
       try {
         serialized = prepackSources(
           [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
-          options
+          options,
+          undefined,
+          createStatistics(options)
         );
         processSerializedCode(serialized);
         if (printDiagnostics()) process.exit(1);
@@ -89,7 +106,9 @@ export function prepackFile(
       try {
         serialized = prepackSources(
           [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
-          options
+          options,
+          undefined,
+          createStatistics(options)
         );
       } catch (err) {
         callback(err, null);
@@ -125,5 +144,5 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     let ioWrapper = new FileIOWrapper(false, debugOptions.inFilePath, debugOptions.outFilePath);
     debugChannel = new DebugChannel(ioWrapper);
   }
-  return prepackSources(sourceFiles, options, debugChannel);
+  return prepackSources(sourceFiles, options, debugChannel, createStatistics(options));
 }
