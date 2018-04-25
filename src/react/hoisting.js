@@ -95,7 +95,7 @@ export function canHoistFunction(
       // if declarativeEnvironmentRecord is null, it's likely a global binding
       // so we can assume that we can still hoist this function
       if (declarativeEnvironmentRecord !== null) {
-        if (!value) {
+        if (value === undefined) {
           return false;
         }
         invariant(value instanceof Value);
