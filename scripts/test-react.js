@@ -183,7 +183,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     for (let i = 0; i < resultA.length; i++) {
       let [nameA, valueA] = resultA[i];
       let [nameB, valueB] = resultB[i];
-      expect(mergeAdacentJSONTextNodes(valueB)).toEqual(mergeAdacentJSONTextNodes(valueA));
+      expect(mergeAdacentJSONTextNodes(valueB, firstRenderOnly)).toEqual(
+        mergeAdacentJSONTextNodes(valueA, firstRenderOnly)
+      );
       expect(nameB).toEqual(nameA);
     }
   }
@@ -501,6 +503,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Simple classes #3", async () => {
         await runTest(directory, "simple-classes-3.js");
+      });
+
+      it("Simple classes with Array.from", async () => {
+        await runTest(directory, "array-from.js");
+      });
+
+      it("Simple classes with Array.from 2", async () => {
+        await runTest(directory, "array-from2.js");
       });
 
       it("Inheritance chaining", async () => {

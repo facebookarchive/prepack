@@ -282,6 +282,7 @@ export function convertSimpleClassComponentToFunctionalComponent(
       (undefined: any),
       undefined
     );
+    traverse.clearCache();
   });
 }
 
@@ -849,7 +850,7 @@ export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElemen
       for (let [propName] of propsValue.properties) {
         // check for onSomething prop event handlers, i.e. onClick
         if (isEventProp(propName)) {
-          deleteProperty(reactElement, "ref");
+          deleteProperty(propsValue, propName);
         }
       }
     }

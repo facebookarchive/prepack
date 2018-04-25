@@ -75,4 +75,5 @@ export function stripFlowTypeAnnotations(ast: BabelNode): void {
     (undefined: any),
     undefined
   );
+  traverse.clearCache();
 }

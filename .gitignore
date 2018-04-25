@@ -10,5 +10,6 @@ coverage*/
 .vscode
 /fb-www
 facebook/test
+facebook/test-react
 facebook/tutorial
 prepack.min.js

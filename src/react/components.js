@@ -28,6 +28,7 @@ import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get, Construct } from "../methods/index.js";
 import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
+import traverse from "babel-traverse";
 import type { ClassComponentMetadata } from "../types.js";
 import type { ReactEvaluatedNode } from "../serializer/types.js";
 
@@ -91,6 +92,26 @@ export function getInitialContext(realm: Realm, componentType: ECMAScriptSourceF
   return value;
 }
 
+function visitClassMethodAstForThisUsage(realm: Realm, method: ECMAScriptSourceFunctionValue): void {
+  let formalParameters = method.$FormalParameters;
+  let code = method.$ECMAScriptCode;
+
+  traverse(
+    t.file(t.program([t.expressionStatement(t.functionExpression(null, formalParameters, code))])),
+    {
+      ThisExpression(path) {
+        let parentNode = path.parentPath.node;
+
+        if (!t.isMemberExpression(parentNode)) {
+          throw new SimpleClassBailOut(`possible leakage of independent "this" reference found`);
+        }
+      },
+    },
+    null,
+    {}
+  );
+}
+
 export function createSimpleClassInstance(
   realm: Realm,
   componentType: ECMAScriptSourceFunctionValue,
@@ -108,7 +129,11 @@ export function createSimpleClassInstance(
       throw new SimpleClassBailOut("lifecycle methods are not supported on simple classes");
     } else if (name !== "constructor") {
       allowedPropertyAccess.add(name);
-      Properties.Set(realm, instance, name, Get(realm, componentPrototype, name), true);
+      let method = Get(realm, componentPrototype, name);
+      if (method instanceof ECMAScriptSourceFunctionValue) {
+        visitClassMethodAstForThisUsage(realm, method);
+      }
+      Properties.Set(realm, instance, name, method, true);
     }
   }
   // assign props
