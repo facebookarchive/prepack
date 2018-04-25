@@ -277,7 +277,7 @@ export class ResidualHeapSerializer {
       if (desc !== undefined) {
         let val = desc.value;
         invariant(val instanceof AbstractValue);
-        this.emitter.emitNowOrAfterWaitingForDependencies(this._getNestedAbstractValues(val, [obj]), () => {
+        this.emitter.emitNowOrAfterWaitingForDependencies(this._getNestedValuesFromAbstract(val, [obj]), () => {
           invariant(val instanceof AbstractValue);
           this._emitPropertiesWithComputedNames(obj, val);
         });
@@ -347,7 +347,7 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _getNestedAbstractValues(absVal: AbstractValue, values: Array<Value>): Array<Value> {
+  _getNestedValuesFromAbstract(absVal: AbstractValue, values: Array<Value>): Array<Value> {
     if (absVal.kind === "widened property") return values;
     if (absVal.kind === "template for prototype member expression") return values;
     invariant(absVal.args.length === 3);
@@ -359,18 +359,22 @@ export class ResidualHeapSerializer {
       let V = absVal.args[1];
       values.push(V);
       let W = absVal.args[2];
-      if (W instanceof AbstractValue) this._getNestedAbstractValues(W, values);
+      if (W instanceof AbstractValue) this._getNestedValuesFromAbstract(W, values);
       else values.push(W);
     } else {
       // conditional assignment
       values.push(cond);
       let consequent = absVal.args[1];
       if (consequent instanceof AbstractValue) {
-        this._getNestedAbstractValues(consequent, values);
+        this._getNestedValuesFromAbstract(consequent, values);
+      } else {
+        values.push(consequent);
       }
       let alternate = absVal.args[2];
       if (alternate instanceof AbstractValue) {
-        this._getNestedAbstractValues(alternate, values);
+        this._getNestedValuesFromAbstract(alternate, values);
+      } else {
+        values.push(alternate);
       }
     }
     return values;
