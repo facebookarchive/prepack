@@ -71,15 +71,16 @@ function replaceName(path, residualFunctionBinding, name, data, state) {
     return;
 
   if (shouldVisit(path.node, data)) {
-    markVisited(residualFunctionBinding.serializedValue, data);
     let serializedValue = residualFunctionBinding.serializedValue;
+    markVisited(serializedValue, data);
 
     if (path.node.type === "JSXIdentifier" || path.node.type === "JSXMemberIdentifier") {
       path.replaceWith(convertExpressionToJSXIdentifier((serializedValue: any), true));
+      state.replacedSomething = true;
     } else {
       path.replaceWith(serializedValue);
+      state.replacedSomething = true;
     }
-    state.replacedSomething = true;
   }
 }
 
@@ -198,14 +199,16 @@ export let ClosureRefReplacer = {
           // `console.log(typeof f); function f(){} console.log(typeof f)` will print 'function', 'function'.
           // However, Babylon can't parse these, so it doesn't come up.
           path.replaceWith(node.consequent);
+          state.replacedSomething = true;
         } else {
           if (node.alternate !== null) {
             path.replaceWith(node.alternate);
+            state.replacedSomething = true;
           } else {
             path.remove();
+            state.replacedSomething = true;
           }
         }
-        state.replacedSomething = true;
       }
     },
   },
@@ -227,10 +230,11 @@ export let ClosureRefReplacer = {
       let leftTruthiness = getLiteralTruthiness(node.left);
       if (node.operator === "&&" && leftTruthiness.known) {
         path.replaceWith(leftTruthiness.value ? node.right : node.left);
+        state.replacedSomething = true;
       } else if (node.operator === "||" && leftTruthiness.known) {
         path.replaceWith(leftTruthiness.value ? node.left : node.right);
+        state.replacedSomething = true;
       }
-      state.replacedSomething = true;
     },
   },
 
