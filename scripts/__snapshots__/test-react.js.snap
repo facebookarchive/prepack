@@ -320,34 +320,48 @@ ReactStatistics {
 
 exports[`Test React with JSX input, JSX output Class component folding Simple classes with Array.from 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 1,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
-      "children": Array [],
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, JSX output Class component folding Simple classes with Array.from 2 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 1,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
-      "children": Array [],
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
@@ -984,23 +998,6 @@ ReactStatistics {
   ],
   "inlinedComponents": 4,
   "optimizedNestedClosures": 1,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Test React with JSX input, JSX output First render only getDerivedStateFromProps 5 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "MyComponent",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -3877,34 +3874,48 @@ ReactStatistics {
 
 exports[`Test React with JSX input, create-element output Class component folding Simple classes with Array.from 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 1,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
-      "children": Array [],
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with JSX input, create-element output Class component folding Simple classes with Array.from 2 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 1,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
-      "children": Array [],
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
@@ -4541,23 +4552,6 @@ ReactStatistics {
   ],
   "inlinedComponents": 4,
   "optimizedNestedClosures": 1,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Test React with JSX input, create-element output First render only getDerivedStateFromProps 5 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "MyComponent",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -7434,34 +7428,48 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output Class component folding Simple classes with Array.from 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 1,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
-      "children": Array [],
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, JSX output Class component folding Simple classes with Array.from 2 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 1,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
-      "children": Array [],
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
@@ -8098,23 +8106,6 @@ ReactStatistics {
   ],
   "inlinedComponents": 4,
   "optimizedNestedClosures": 1,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Test React with create-element input, JSX output First render only getDerivedStateFromProps 5 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "MyComponent",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;
@@ -10956,34 +10947,48 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output Class component folding Simple classes with Array.from 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 1,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
-      "children": Array [],
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
 
 exports[`Test React with create-element input, create-element output Class component folding Simple classes with Array.from 2 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 1,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
-      "children": Array [],
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
@@ -11620,23 +11625,6 @@ ReactStatistics {
   ],
   "inlinedComponents": 4,
   "optimizedNestedClosures": 1,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Test React with create-element input, create-element output First render only getDerivedStateFromProps 5 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "MyComponent",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
 `;

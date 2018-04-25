@@ -932,7 +932,13 @@ export default class AbstractValue extends Value {
     let array = AbstractValue.createTemporalFromBuildFunction(realm, ArrayValue, args, buildFunction, optionalArgs);
     invariant(array instanceof AbstractObjectValue);
     let template = new ArrayValue(realm);
-    Properties.Set(realm, template, "length", AbstractValue.createFromType(realm, NumberValue), false);
+    let lengthDesc = {
+      key: "length",
+      object: template,
+      value: AbstractValue.createFromType(realm, NumberValue),
+    };
+    Properties.OrdinaryDefineOwnProperty(realm, template, "length", lengthDesc);
+    template.$Set("length", AbstractValue.createFromType(realm, NumberValue), template);
     template.makePartial();
     template.makeSimple();
     array.values = new ValuesDomain(new Set([template]));
