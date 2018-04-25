@@ -613,6 +613,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "get-derived-state-from-props4.js", true);
       });
 
+      it("getDerivedStateFromProps 5", async () => {
+        await runTest(directory, "get-derived-state-from-props5.js", true);
+      });
+
       it("React Context", async () => {
         await runTest(directory, "react-context.js");
       });

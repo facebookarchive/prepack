@@ -30,6 +30,7 @@ import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { ClassComponentMetadata } from "../types.js";
 import type { ReactEvaluatedNode } from "../serializer/types.js";
+import { FatalError } from "../errors.js";
 
 const lifecycleMethods = new Set([
   "componentWillUnmount",
@@ -341,7 +342,22 @@ export function applyGetDerivedStateFromProps(
       }
     } else if (state !== realm.intrinsics.null && state !== realm.intrinsics.undefined) {
       let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
-      objectAssignCall(realm.intrinsics.undefined, [newState, prevState, state]);
+      try {
+        objectAssignCall(realm.intrinsics.undefined, [newState, prevState, state]);
+      } catch (e) {
+        if (realm.isInPureScope() && e instanceof FatalError) {
+          AbstractValue.createTemporalFromBuildFunction(
+            realm,
+            FunctionValue,
+            [objectAssign, newState, prevState, state],
+            ([methodNode, ..._args]) => {
+              return t.callExpression(methodNode, ((_args: any): Array<any>));
+            }
+          );
+          newState.makeSimple();
+          newState.makePartial();
+        }
+      }
       return newState;
     } else {
       return null;
