@@ -400,35 +400,40 @@ export class ResidualFunctions {
             let hasEmptyConstructor = !!functionValue.$HasEmptyConstructor;
             if (!isConstructor || (isConstructor && !hasEmptyConstructor)) {
               let methodParams = params.slice();
-              let methodBody = ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement);
-              // create the class method AST
-              let classMethod = t.classMethod(
-                methodType,
-                classMethodKeyNode,
-                methodParams,
-                methodBody,
-                classMethodComputed,
-                classMethodIsStatic
-              );
+              let createClassMethod = cloneDeep =>
+                // create the class method AST
+                t.classMethod(
+                  methodType,
+                  classMethodKeyNode,
+                  methodParams,
+                  cloneDeep ? ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement) : funcBody,
+                  classMethodComputed,
+                  classMethodIsStatic
+                );
+
+              let classMethod = createClassMethod(true);
               // traverse and replace refs in the class method
+              let state = {
+                residualFunctionBindings,
+                modified,
+                requireReturns: this.requireReturns,
+                statistics: this.statistics,
+                getModuleIdIfNodeIsRequireFunction: this.modules.getGetModuleIdIfNodeIsRequireFunction(methodParams, [
+                  functionValue,
+                ]),
+                factoryFunctionInfos,
+                replacedSomething: false,
+              };
               traverse(
                 t.file(
                   t.program([t.expressionStatement(t.classExpression(null, null, t.classBody([classMethod]), []))])
                 ),
                 ClosureRefReplacer,
                 null,
-                {
-                  residualFunctionBindings,
-                  modified,
-                  requireReturns: this.requireReturns,
-                  statistics: this.statistics,
-                  getModuleIdIfNodeIsRequireFunction: this.modules.getGetModuleIdIfNodeIsRequireFunction(methodParams, [
-                    functionValue,
-                  ]),
-                  factoryFunctionInfos,
-                }
+                state
               );
               traverse.clearCache();
+              if (!state.replacedSomething) classMethod = createClassMethod(false);
               // add the class method to the class expression node body
               if (isConstructor) {
                 funcOrClassNode.body.body.unshift(classMethod);
@@ -446,20 +451,15 @@ export class ResidualFunctions {
             }
           } else {
             let funcParams = params.slice();
-            funcOrClassNode = t.functionExpression(
-              null,
-              funcParams,
-              ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
-            );
-            let scopeInitialization = [];
-            for (let scope of scopeInstances.values()) {
-              scopeInitialization = scopeInitialization.concat(
-                this.referentializer.getReferentializedScopeInitialization(scope, t.numericLiteral(scope.id))
+            let createFuncOrClassNode = cloneDeep =>
+              t.functionExpression(
+                null,
+                funcParams,
+                cloneDeep ? ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement) : funcBody
               );
-            }
-            funcOrClassNode.body.body = scopeInitialization.concat(funcOrClassNode.body.body);
+            funcOrClassNode = createFuncOrClassNode(true);
 
-            traverse(t.file(t.program([t.expressionStatement(funcOrClassNode)])), ClosureRefReplacer, null, {
+            let state = {
               residualFunctionBindings,
               modified,
               requireReturns: this.requireReturns,
@@ -468,8 +468,21 @@ export class ResidualFunctions {
                 functionValue,
               ]),
               factoryFunctionInfos,
-            });
+              replacedSomething: false,
+            };
+            traverse(t.file(t.program([t.expressionStatement(funcOrClassNode)])), ClosureRefReplacer, null, state);
             traverse.clearCache();
+
+            if (!state.replacedSomething && scopeInstances.size === 0) funcOrClassNode = createFuncOrClassNode(false);
+            else {
+              let scopeInitialization = [];
+              for (let scope of scopeInstances.values()) {
+                scopeInitialization = scopeInitialization.concat(
+                  this.referentializer.getReferentializedScopeInitialization(scope, t.numericLiteral(scope.id))
+                );
+              }
+              funcOrClassNode.body.body = scopeInitialization.concat(funcOrClassNode.body.body);
+            }
           }
           let id = this.locationService.getLocation(functionValue);
           invariant(id !== undefined);
@@ -550,25 +563,15 @@ export class ResidualFunctions {
 
         // The Replacer below mutates the AST while the original AST may still be referenced
         // by another outer residual function so let's clone the original AST to avoid modifying it.
-        let factoryNode = t.functionExpression(
-          null,
-          factoryParams,
-          ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
-        );
+        let createFactoryNode = cloneDeep =>
+          t.functionExpression(
+            null,
+            factoryParams,
+            cloneDeep ? ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement) : funcBody
+          );
+        let factoryNode = createFactoryNode(true);
 
-        if (normalInstances[0].functionValue.$Strict) {
-          strictFunctionBodies.push(factoryNode);
-        } else {
-          unstrictFunctionBodies.push(factoryNode);
-        }
-
-        factoryNode.body.body = scopeInitialization.concat(factoryNode.body.body);
-
-        // factory functions do not depend on any nested generator scope, so they go to the prelude
-        let factoryDeclaration = t.variableDeclaration("var", [t.variableDeclarator(factoryId, factoryNode)]);
-        this.prelude.push(factoryDeclaration);
-
-        traverse(t.file(t.program([t.expressionStatement(factoryNode)])), ClosureRefReplacer, null, {
+        let state = {
           residualFunctionBindings: sameResidualBindings,
           modified,
           requireReturns: this.requireReturns,
@@ -578,8 +581,23 @@ export class ResidualFunctions {
             normalInstances.map(instance => instance.functionValue)
           ),
           factoryFunctionInfos,
-        });
+          replacedSomething: false,
+        };
+        traverse(t.file(t.program([t.expressionStatement(factoryNode)])), ClosureRefReplacer, null, state);
         traverse.clearCache();
+
+        if (!state.replacedSomething && scopeInitialization.length === 0) factoryNode = createFactoryNode(false);
+        else factoryNode.body.body = scopeInitialization.concat(factoryNode.body.body);
+
+        // factory functions do not depend on any nested generator scope, so they go to the prelude
+        let factoryDeclaration = t.variableDeclaration("var", [t.variableDeclarator(factoryId, factoryNode)]);
+        this.prelude.push(factoryDeclaration);
+
+        if (normalInstances[0].functionValue.$Strict) {
+          strictFunctionBodies.push(factoryNode);
+        } else {
+          unstrictFunctionBodies.push(factoryNode);
+        }
 
         for (let instance of normalInstances) {
           let { functionValue, residualFunctionBindings, insertionPoint } = instance;

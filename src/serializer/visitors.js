@@ -41,6 +41,7 @@ export type ClosureRefReplacerState = {
     | void
     | ((scope: BabelTraverseScope, node: BabelNodeCallExpression) => void | number | string),
   factoryFunctionInfos: Map<number, FactoryFunctionInfo>,
+  replacedSomething: boolean,
 };
 
 function markVisited(node, data) {
@@ -59,7 +60,7 @@ function shouldVisit(node, data) {
 //       they will be visited again and possibly transformed.
 //       If necessary we could implement this by following node.parentPath and checking
 //       if any parent nodes are marked visited, but that seem unnecessary right now.let closureRefReplacer = {
-function replaceName(path, residualFunctionBinding, name, data) {
+function replaceName(path, residualFunctionBinding, name, data, state) {
   // Let's skip names that are bound
   if (path.scope.hasBinding(name, /*noGlobals*/ true)) return;
 
@@ -78,6 +79,7 @@ function replaceName(path, residualFunctionBinding, name, data) {
     } else {
       path.replaceWith(serializedValue);
     }
+    state.replacedSomething = true;
   }
 }
 
@@ -126,7 +128,7 @@ export let ClosureRefReplacer = {
     let residualFunctionBindings = state.residualFunctionBindings;
     let name = path.node.name;
     let residualFunctionBinding = residualFunctionBindings.get(name);
-    if (residualFunctionBinding) replaceName(path, residualFunctionBinding, name, residualFunctionBindings);
+    if (residualFunctionBinding) replaceName(path, residualFunctionBinding, name, residualFunctionBindings, state);
   },
 
   CallExpression(path: BabelTraversePath, state: ClosureRefReplacerState) {
@@ -145,6 +147,7 @@ export let ClosureRefReplacer = {
       markVisited(new_node, state.residualFunctionBindings);
       path.replaceWith(new_node);
       state.statistics.requireCallsReplaced++;
+      state.replacedSomething = true;
     }
   },
 
@@ -155,7 +158,7 @@ export let ClosureRefReplacer = {
       let residualFunctionBinding = residualFunctionBindings.get(name);
       if (residualFunctionBinding) {
         let nestedPath = ids[name];
-        replaceName(nestedPath, residualFunctionBinding, name, residualFunctionBindings);
+        replaceName(nestedPath, residualFunctionBinding, name, residualFunctionBindings, state);
       }
     }
   },
@@ -179,6 +182,7 @@ export let ClosureRefReplacer = {
     if (duplicateFunctionInfo && canShareFunctionBody(duplicateFunctionInfo)) {
       const { factoryId } = duplicateFunctionInfo;
       path.replaceWith(t.callExpression(t.memberExpression(factoryId, t.identifier("bind")), [nullExpression]));
+      state.replacedSomething = true;
     }
   },
 
@@ -201,6 +205,7 @@ export let ClosureRefReplacer = {
             path.remove();
           }
         }
+        state.replacedSomething = true;
       }
     },
   },
@@ -211,6 +216,7 @@ export let ClosureRefReplacer = {
       let testTruthiness = getLiteralTruthiness(node.test);
       if (testTruthiness.known) {
         path.replaceWith(testTruthiness.value ? node.consequent : node.alternate);
+        state.replacedSomething = true;
       }
     },
   },
@@ -224,6 +230,7 @@ export let ClosureRefReplacer = {
       } else if (node.operator === "||" && leftTruthiness.known) {
         path.replaceWith(leftTruthiness.value ? node.left : node.right);
       }
+      state.replacedSomething = true;
     },
   },
 
@@ -233,6 +240,7 @@ export let ClosureRefReplacer = {
       let testTruthiness = getLiteralTruthiness(node.test);
       if (testTruthiness.known && !testTruthiness.value) {
         path.remove();
+        state.replacedSomething = true;
       }
     },
   },
