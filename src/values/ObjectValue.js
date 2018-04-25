@@ -908,6 +908,7 @@ export default class ObjectValue extends ConcreteValue {
         let cond = createTemplate(this.$Realm, P);
         let sentinel = AbstractValue.createFromType(this.$Realm, Value, "template for prototype member expression", [
           Receiver,
+          P,
         ]);
         newVal = Join.joinValuesAsConditional(this.$Realm, cond, V, sentinel);
       }

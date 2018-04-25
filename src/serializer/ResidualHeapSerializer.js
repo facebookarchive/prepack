@@ -1680,7 +1680,9 @@ export class ResidualHeapSerializer {
       invariant(ob !== undefined);
       return t.callExpression(this.preludeGenerator.memoizeReference("Object.assign"), [ob]);
     } else if (val.kind === "template for prototype member expression") {
-      return t.identifier("1");
+      let obj = this.serializeValue(val.args[0]);
+      let prop = this.serializeValue(val.args[1]);
+      return t.memberExpression(obj, prop, true);
     }
     let serializedValue = val.buildNode(serializedArgs);
     if (serializedValue.type === "Identifier") {
