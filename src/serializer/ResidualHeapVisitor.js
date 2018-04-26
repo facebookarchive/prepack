@@ -1229,14 +1229,13 @@ export class ResidualHeapVisitor {
           if (s instanceof Generator) {
             let effectsToApply = s.effectsToApply;
             if (effectsToApply) {
-              let outer = withEffectsAppliedInGlobalEnv;
-              withEffectsAppliedInGlobalEnv = f =>
-                outer(() => {
-                  this.realm.withEffectsAppliedInGlobalEnv(() => {
-                    f();
-                    return null;
-                  }, effectsToApply);
-                });
+              let inner = withEffectsAppliedInGlobalEnv;
+              withEffectsAppliedInGlobalEnv = f => {
+                this.realm.withEffectsAppliedInGlobalEnv(() => {
+                  inner(f);
+                  return null;
+                }, effectsToApply);
+              };
             }
             s = this.generatorParents.get(s);
           } else if (s instanceof FunctionValue) {
