@@ -2050,7 +2050,7 @@ export class ResidualHeapSerializer {
       !Array.from(this.serializedValues).every(val => this.residualValues.has(val))
     ) {
       this._logSerializedResidualMismatches();
-      // invariant(false, "serialized " + this.serializedValues.size + " of " + this.residualValues.size);
+      invariant(false, "serialized " + this.serializedValues.size + " of " + this.residualValues.size);
     }
 
     // TODO: find better way to do this?

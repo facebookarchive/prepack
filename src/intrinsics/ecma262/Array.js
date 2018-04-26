@@ -34,7 +34,7 @@ import {
 } from "../../methods/index.js";
 import * as t from "babel-types";
 import { GetIterator, IteratorClose, IteratorStep, IteratorValue } from "../../methods/iterator.js";
-import { Create, Properties, To } from "../../singletons.js";
+import { Create, Properties, To, Havoc } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -257,6 +257,7 @@ export default function(realm: Realm): NativeFunctionValue {
           }
         }
         if (safeToCreateTemporal) {
+          Havoc.value(realm, items);
           return AbstractValue.createAbstractTemporalArray(
             realm,
             args,
