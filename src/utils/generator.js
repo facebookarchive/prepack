@@ -254,7 +254,7 @@ class ModifiedBindingEntry extends GeneratorEntry {
 class ReturnValueEntry extends GeneratorEntry {
   constructor(generator: Generator, returnValue: Value) {
     super();
-    this.returnValue = returnValue;
+    this.returnValue = returnValue.promoteEmptyToUndefined();
     this.containingGenerator = generator;
   }
 
