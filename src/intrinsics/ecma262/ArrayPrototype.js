@@ -48,6 +48,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
+    if (Widen.hasWidenedNumericUnknownProperty(O)) {
+      let newArgs = [context, ...args];
+      return ArrayValue.createTemporalWithUnknownProperties(realm, newArgs, ([objNode, ..._args]) =>
+        t.callExpression(t.memberExpression(objNode, t.identifier("concat")), ((_args: any): Array<any>))
+      );
+    }
+
     // 2. Let A be ? ArraySpeciesCreate(O, 0).
     let A = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), 0);
 
@@ -306,6 +313,20 @@ export default function(realm: Realm, obj: ObjectValue): void {
   obj.defineNativeMethod("filter", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
+
+    if (Widen.hasWidenedNumericUnknownProperty(O)) {
+      let args = [context, callbackfn];
+      if (thisArg) {
+        args.push(thisArg);
+      }
+      return ArrayValue.createTemporalWithUnknownProperties(
+        realm,
+        args,
+        ([objNode, ..._args]) =>
+          t.callExpression(t.memberExpression(objNode, t.identifier("filter")), ((_args: any): Array<any>)),
+        { func: callbackfn, thisVal: thisArg }
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -848,6 +869,20 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
+    // if there is an initialValue, then we cannot be sure
+    // that the return value is an array and will like
+    // have side-effects so this is not supported for now
+    if (Widen.hasWidenedNumericUnknownProperty(O) && (!initialValue || initialValue === realm.intrinsics.undefined)) {
+      let args = [context, callbackfn];
+      return ArrayValue.createTemporalWithUnknownProperties(
+        realm,
+        args,
+        ([objNode, ..._args]) =>
+          t.callExpression(t.memberExpression(objNode, t.identifier("reduce")), ((_args: any): Array<any>)),
+        { func: callbackfn, thisVal: realm.intrinsics.undefined }
+      );
+    }
+
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
 
@@ -1166,6 +1201,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   obj.defineNativeMethod("slice", 2, (context, [start, end]) => {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
+
+    if (Widen.hasWidenedNumericUnknownProperty(O)) {
+      let newArgs = [context, start, end];
+      return ArrayValue.createTemporalWithUnknownProperties(realm, newArgs, ([objNode, ..._args]) =>
+        t.callExpression(t.memberExpression(objNode, t.identifier("slice")), ((_args: any): Array<any>))
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
