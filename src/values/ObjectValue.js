@@ -63,16 +63,6 @@ function isWidenedValue(v: void | Value) {
   return false;
 }
 
-// Check if string is a positive JavaScript integer
-// that is not larger than the max safe integer
-function isValidPositiveInteger(P: PropertyKeyValue): boolean {
-  if (typeof P === "string") {
-    let n = parseFloat(P);
-    return Number.isInteger(n) && n >= 0 && n <= Number.MAX_SAFE_INTEGER;
-  }
-  return false;
-}
-
 const lengthTemplateSrc = "(A).length";
 const lengthTemplate = buildExpressionTemplate(lengthTemplateSrc);
 
@@ -781,18 +771,27 @@ export default class ObjectValue extends ConcreteValue {
     } else if (absVal.kind === "widened numeric property") {
       invariant(propName instanceof StringValue);
       let P = propName.value;
-      if (propName === "length" || isValidPositiveInteger(P)) {
-        return AbstractValue.createTemporalFromBuildFunction(
-          this.$Realm,
-          absVal.getType(),
-          [Receiver, propName],
-          ([o, p]) => {
-            return t.memberExpression(o, p, true);
-          }
-        );
+      // these are safe methods to allow, as they return a new array
+      // so we use the ordinary get for these cases. Reduce can be
+      // unsafe, but we check for that in the prototype method
+      if (
+        propName === "map" ||
+        propName === "reduce" ||
+        propName === "slice" ||
+        propName === "filter" ||
+        propName === "concat"
+      ) {
+        invariant(Receiver instanceof ObjectValue);
+        return OrdinaryGet(this.$Realm, Receiver, P, Receiver);
       }
-      invariant(Receiver instanceof ObjectValue);
-      return OrdinaryGet(this.$Realm, Receiver, P, Receiver);
+      return AbstractValue.createTemporalFromBuildFunction(
+        this.$Realm,
+        absVal.getType(),
+        [Receiver, propName],
+        ([o, p]) => {
+          return t.memberExpression(o, p, true);
+        }
+      );
     }
     invariant(absVal.args.length === 3 && absVal.kind === "conditional");
     let generic_cond = absVal.args[0];

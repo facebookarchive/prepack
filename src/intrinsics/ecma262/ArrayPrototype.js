@@ -35,6 +35,7 @@ import {
   HasSomeCompatibleType,
 } from "../../methods/index.js";
 import { Create, Properties, To, Widen } from "../../singletons.js";
+import { FatalError, CompilerDiagnostic } from "../../errors.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.31
@@ -872,7 +873,17 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // if there is an initialValue, then we cannot be sure
     // that the return value is an array and will like
     // have side-effects so this is not supported for now
-    if (Widen.hasWidenedNumericUnknownProperty(O) && (!initialValue || initialValue === realm.intrinsics.undefined)) {
+    if (Widen.hasWidenedNumericUnknownProperty(O)) {
+      if (initialValue || initialValue !== realm.intrinsics.undefined) {
+        let diagnostic = new CompilerDiagnostic(
+          "array reduce with initial value is not supported",
+          realm.currentLocation,
+          "PP0034",
+          "FatalError"
+        );
+        realm.handleError(diagnostic);
+        throw new FatalError();
+      }
       let args = [context, callbackfn];
       return ArrayValue.createTemporalWithUnknownProperties(
         realm,
