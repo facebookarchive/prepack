@@ -255,7 +255,7 @@ export class Functions {
   }
 
   _forEachBindingOfEffects(effects: Effects, func: (binding: Binding) => void): void {
-    let [result, , nestedBindingsToIgnore] = effects;
+    let [result, , nestedBindingsToIgnore] = effects.data;
     for (let [binding] of nestedBindingsToIgnore) {
       func(binding);
     }
@@ -271,21 +271,11 @@ export class Functions {
     nestedEffectsList: Array<Effects>,
     evaluatedNode: ReactEvaluatedNode
   ): boolean {
-<<<<<<< HEAD
     let ignoreBindings = new Set();
     let failed = false;
 
     for (let nestedEffects of nestedEffectsList) {
       this._forEachBindingOfEffects(nestedEffects, binding => {
-=======
-    let recentBindings = effects.modifiedBindings;
-    let ignoreBindings = new Set();
-    let failed = false;
-
-    for (let nestedEffect of nestedEffects) {
-      let nestedBindingsToIgnore = nestedEffect.modifiedBindings;
-      for (let [binding] of nestedBindingsToIgnore) {
->>>>>>> master
         ignoreBindings.add(binding);
       });
     }
