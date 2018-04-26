@@ -13,14 +13,13 @@ import type { Realm } from "../../realm.js";
 import { AbruptCompletion } from "../../completions.js";
 import {
   AbstractValue,
+  ArrayValue,
   BooleanValue,
   NumberValue,
   UndefinedValue,
   StringValue,
   ObjectValue,
-  ECMAScriptSourceFunctionValue,
   NativeFunctionValue,
-  BoundFunctionValue,
 } from "../../values/index.js";
 import {
   Construct,
@@ -238,33 +237,19 @@ export default function(realm: Realm): NativeFunctionValue {
       // then create an abstract temporal with an array kind
       if (realm.isInPureScope() && items instanceof AbstractValue && items.values.isTop()) {
         let args = [arrayFrom, items];
-        let safeToCreateTemporal = true;
-
-        // if mapfn or thisArg exist and are not statically known,
-        // we cannot guarantee that something will be not be havoced
-        // so rather, we skip this logic and continue with the default
-        // behaviur of Array.from
         if (mapfn) {
-          if (!(mapfn instanceof ECMAScriptSourceFunctionValue || mapfn instanceof BoundFunctionValue)) {
-            safeToCreateTemporal = false;
-          }
           args.push(mapfn);
           if (thisArg) {
-            if (!(thisArg instanceof AbstractValue)) {
-              safeToCreateTemporal = false;
-            }
             args.push(thisArg);
           }
         }
-        if (safeToCreateTemporal) {
-          Havoc.value(realm, items);
-          return AbstractValue.createAbstractTemporalArray(
-            realm,
-            args,
-            ([methodNode, ..._args]) => t.callExpression(methodNode, ((_args: any): Array<any>)),
-            { kind: "Array.from(A,B,C)" }
-          );
-        }
+        Havoc.value(realm, items);
+        return ArrayValue.createTemporalWithUnknownProperties(
+          realm,
+          args,
+          ([methodNode, ..._args]) => t.callExpression(methodNode, ((_args: any): Array<any>)),
+          { func: mapfn, thisVal: thisArg }
+        );
       }
 
       // 4. Let usingIterator be ? GetMethod(items, @@iterator).

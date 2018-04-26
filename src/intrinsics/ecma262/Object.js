@@ -16,6 +16,7 @@ import { NativeFunctionValue } from "../../values/index.js";
 import {
   AbstractValue,
   AbstractObjectValue,
+  ArrayValue,
   ObjectValue,
   NullValue,
   UndefinedValue,
@@ -362,11 +363,8 @@ export default function(realm: Realm): NativeFunctionValue {
     // If we're in pure scope and the items are completely abstract,
     // then create an abstract temporal with an array kind
     if (realm.isInPureScope() && obj instanceof AbstractObjectValue) {
-      let array = AbstractValue.createAbstractTemporalArray(
-        realm,
-        [objectKeys, obj],
-        ([methodNode, objNode]) => t.callExpression(methodNode, [objNode]),
-        { kind: "Object.keys(A)" }
+      let array = ArrayValue.createTemporalWithUnknownProperties(realm, [objectKeys, obj], ([methodNode, objNode]) =>
+        t.callExpression(methodNode, [objNode])
       );
       return array;
     }

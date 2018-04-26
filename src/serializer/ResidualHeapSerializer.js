@@ -1814,7 +1814,7 @@ export class ResidualHeapSerializer {
       canOmit: (value: AbstractValue) => {
         return !this.referencedDeclaredValues.has(value);
       },
-      declare: (value: AbstractValue) => {
+      declare: (value: AbstractValue | ObjectValue) => {
         this.emitter.declare(value);
       },
       emitPropertyModification: (propertyBinding: PropertyBinding) => {

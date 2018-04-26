@@ -325,7 +325,7 @@ export class ResidualReactElementSerializer {
       this.residualHeapSerializer.serializedValues.add(childrenValue);
 
       if (childrenValue !== this.realm.intrinsics.undefined && childrenValue !== this.realm.intrinsics.null) {
-        if (childrenValue instanceof ArrayValue) {
+        if (childrenValue instanceof ArrayValue && !childrenValue.intrinsicName) {
           let childrenLength = getProperty(this.realm, childrenValue, "length");
           let childrenLengthValue = 0;
           if (childrenLength instanceof NumberValue) {

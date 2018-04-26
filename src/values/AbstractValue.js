@@ -21,12 +21,10 @@ import { FatalError, CompilerDiagnostic } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
 import { PreludeGenerator } from "../utils/generator.js";
-import { Properties } from "../singletons.js";
 import buildExpressionTemplate from "../utils/builder.js";
 
 import {
   AbstractObjectValue,
-  ArrayValue,
   BooleanValue,
   ConcreteValue,
   NullValue,
@@ -58,6 +56,7 @@ export type AbstractValueKind =
   | "build function"
   | "widened property"
   | "widened return result"
+  | "widened numeric property"
   | "conditional"
   | "resolved"
   | "dummy parameter"
@@ -76,9 +75,6 @@ export type AbstractValueKind =
   | "(A).toString()"
   | "(A).slice(B,C)"
   | "(A).split(B,C)"
-  | "(A).map(B,C)"
-  | "Array.from(A,B,C)"
-  | "Object.keys(A)"
   | "global.JSON.stringify(A)"
   | "global.JSON.parse(A)"
   | "JSON.stringify(...)"
@@ -773,7 +769,7 @@ export default class AbstractValue extends Value {
     let args = temp.args;
     let buildNode_ = temp.getBuildNode();
     invariant(realm.generator !== undefined);
-    return realm.generator.derive(types, values, args, buildNode_, optionalArgs);
+    return realm.generator.deriveAbstract(types, values, args, buildNode_, optionalArgs);
   }
 
   static createFromBuildFunction(
@@ -807,7 +803,7 @@ export default class AbstractValue extends Value {
     if (resultType === UndefinedValue) {
       return realm.generator.emitVoidExpression(types, values, args, buildFunction);
     } else {
-      return realm.generator.derive(types, values, args, buildFunction, optionalArgs);
+      return realm.generator.deriveAbstract(types, values, args, buildFunction, optionalArgs);
     }
   }
 
@@ -921,28 +917,6 @@ export default class AbstractValue extends Value {
     realm.rebuildNestedProperties(value, name);
     invariant(value instanceof AbstractObjectValue);
     return value;
-  }
-
-  static createAbstractTemporalArray(
-    realm: Realm,
-    args: Array<Value>,
-    buildFunction: AbstractValueBuildNodeFunction,
-    optionalArgs?: {| kind?: AbstractValueKind, isPure?: boolean, skipInvariant?: boolean |}
-  ): AbstractObjectValue {
-    let array = AbstractValue.createTemporalFromBuildFunction(realm, ArrayValue, args, buildFunction, optionalArgs);
-    invariant(array instanceof AbstractObjectValue);
-    let template = new ArrayValue(realm);
-    let lengthDesc = {
-      key: "length",
-      object: template,
-      value: AbstractValue.createFromType(realm, NumberValue),
-    };
-    Properties.OrdinaryDefineOwnProperty(realm, template, "length", lengthDesc);
-    template.$Set("length", AbstractValue.createFromType(realm, NumberValue), template);
-    template.makePartial();
-    template.makeSimple();
-    array.values = new ValuesDomain(new Set([template]));
-    return array;
   }
 
   static makeKind(prefix: AbstractValueKindPrefix, suffix: string): AbstractValueKind {

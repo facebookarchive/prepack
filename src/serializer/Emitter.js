@@ -430,15 +430,17 @@ export class Emitter {
     invariant(!this._finalized);
     this.emitAfterWaiting(this.getReasonToWaitForDependencies(dependencies), dependencies, func, targetBody);
   }
-  declare(value: AbstractValue) {
+  declare(value: AbstractValue | ObjectValue) {
     invariant(!this._finalized);
     invariant(!this._activeValues.has(value));
-    invariant(value.hasIdentifier());
+    invariant(value instanceof ObjectValue || value.hasIdentifier());
     invariant(this._isEmittingActiveGenerator());
     invariant(!this.cannotDeclare());
     invariant(!this._body.done);
-    if (this._body.declaredAbstractValues === undefined) this._body.declaredAbstractValues = new Map();
-    this._body.declaredAbstractValues.set(value, this._body);
+    if (value instanceof AbstractValue) {
+      if (this._body.declaredAbstractValues === undefined) this._body.declaredAbstractValues = new Map();
+      this._body.declaredAbstractValues.set(value, this._body);
+    }
     this._processValue(value);
   }
   emittingToAdditionalFunction() {

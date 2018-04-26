@@ -11,10 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import {
-  AbstractObjectValue,
-  AbstractValue,
-  BoundFunctionValue,
-  ECMAScriptSourceFunctionValue,
+  ArrayValue,
   NullValue,
   NumberValue,
   ObjectValue,
@@ -37,7 +34,7 @@ import {
   Get,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
-import { Create, Properties, To } from "../../singletons.js";
+import { Create, Properties, To, Widen } from "../../singletons.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.31
@@ -709,40 +706,21 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
   // ECMA262 22.1.3.16
   obj.defineNativeMethod("map", 1, (context, [callbackfn, thisArg]) => {
-    // 1. Let O be ? ToObject(this value).
+    // 1. Let O be ? ToObject(this value).]
     let O = To.ToObject(realm, context);
 
-    if (
-      realm.isInPureScope() &&
-      O instanceof AbstractObjectValue &&
-      (O.kind === "Array.from(A,B,C)" || O.kind === "(A).map(B,C)" || O.kind === "Object.keys(A)")
-    ) {
+    if (Widen.hasWidenedNumericUnknownProperty(O)) {
       let args = [context, callbackfn];
-      let safeToCreateTemporal = true;
-
-      // if mapfn or thisArg exist and are not statically known,
-      // we cannot guarantee that something will be not be havoced
-      // so rather, we skip this logic and continue with the default
-      // behaviur of Array.prototype.map
-      if (!(callbackfn instanceof ECMAScriptSourceFunctionValue || callbackfn instanceof BoundFunctionValue)) {
-        safeToCreateTemporal = false;
-        if (thisArg) {
-          if (!(thisArg instanceof AbstractValue)) {
-            safeToCreateTemporal = false;
-          }
-          args.push(thisArg);
-        }
+      if (thisArg) {
+        args.push(thisArg);
       }
-
-      if (safeToCreateTemporal) {
-        return AbstractValue.createAbstractTemporalArray(
-          realm,
-          args,
-          ([objNode, ..._args]) =>
-            t.callExpression(t.memberExpression(objNode, t.identifier("map")), ((_args: any): Array<any>)),
-          { kind: "(A).map(B,C)" }
-        );
-      }
+      return ArrayValue.createTemporalWithUnknownProperties(
+        realm,
+        args,
+        ([objNode, ..._args]) =>
+          t.callExpression(t.memberExpression(objNode, t.identifier("map")), ((_args: any): Array<any>)),
+        { func: callbackfn, thisVal: thisArg }
+      );
     }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).

@@ -64,6 +64,7 @@ import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
 import { createAbstractArgument } from "../intrinsics/prepack/utils.js";
 import { createInternalReactElement } from "./elements.js";
+import { Widen } from "../singletons.js";
 
 type ComponentResolutionStrategy =
   | "NORMAL"
@@ -891,26 +892,7 @@ export class Reconciler {
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
   ): AbstractValue {
-    let closureVal;
-    let thisVal;
-
     invariant(this.realm.generator);
-    if (value.kind === "(A).map(B,C)") {
-      let args = this.realm.generator.getArgsForDeclaredValue(value);
-      invariant(args);
-      [, closureVal, thisVal] = args;
-    } else if (value.kind === "Array.from(A,B,C)") {
-      let args = this.realm.generator.getArgsForDeclaredValue(value);
-      invariant(args);
-      [, , closureVal, thisVal] = args;
-    }
-    if (closureVal instanceof ECMAScriptSourceFunctionValue || closureVal instanceof BoundFunctionValue) {
-      if (thisVal && thisVal !== this.realm.intrinsics.undefined) {
-        throw new ExpectedBailOut(`abstract mapped arrays with "this" argument are not yet supported`);
-      }
-      this._queueOptimizedClosure(closureVal, evaluatedNode, componentType, context, branchState);
-      return value;
-    }
     let length = value.args.length;
     // TODO investigate what other kinds than "conditional" might be safe to deeply resolve
     if (length === 3 && value.kind === "conditional") {
@@ -1077,7 +1059,7 @@ export class Reconciler {
           evaluatedNode
         );
         // we can optimize further and flatten arrays on non-composite components
-        if (resolvedChildren instanceof ArrayValue) {
+        if (resolvedChildren instanceof ArrayValue && !resolvedChildren.intrinsicName) {
           resolvedChildren = flattenChildren(this.realm, resolvedChildren);
         }
         if (propsValue.properties.has("children")) {
@@ -1370,7 +1352,21 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
-  ) {
+  ): void {
+    if (Widen.hasWidenedNumericUnknownProperty(arrayValue)) {
+      let arrayHint = this.realm.react.arrayHints.get(arrayValue);
+
+      if (arrayHint !== undefined) {
+        let { func, thisVal } = arrayHint;
+        if (func instanceof ECMAScriptSourceFunctionValue || func instanceof BoundFunctionValue) {
+          if (thisVal && thisVal !== this.realm.intrinsics.undefined) {
+            throw new ExpectedBailOut(`abstract mapped arrays with "this" argument are not yet supported`);
+          }
+          this._queueOptimizedClosure(func, evaluatedNode, componentType, context, branchState);
+          return;
+        }
+      }
+    }
     forEachArrayValue(this.realm, arrayValue, (elementValue, elementPropertyDescriptor) => {
       elementPropertyDescriptor.value = this._resolveDeeply(
         componentType,

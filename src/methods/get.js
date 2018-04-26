@@ -83,16 +83,6 @@ export function GetFunctionRealm(realm: Realm, obj: ObjectValue): Realm {
   return realm;
 }
 
-// Check if string is a positive JavaScript integer
-// that is not larger than the max safe integer
-function isValidPositiveInteger(P: PropertyKeyValue): boolean {
-  if (typeof P === "string") {
-    let n = parseFloat(P);
-    return Number.isInteger(n) && n >= 0 && n <= Number.MAX_SAFE_INTEGER;
-  }
-  return false;
-}
-
 // ECMA262 9.1.8.1
 export function OrdinaryGet(
   realm: Realm,
@@ -104,21 +94,8 @@ export function OrdinaryGet(
   // 1. Assert: IsPropertyKey(P) is true.
   invariant(IsPropertyKey(realm, P), "expected property key");
 
-  let desc;
   // 2. Let desc be ? O.[[GetOwnProperty]](P).
-  if (
-    Receiver instanceof AbstractObjectValue &&
-    (Receiver.kind === "Array.from(A,B,C)" || Receiver.kind === "(A).map(B,C)" || Receiver.kind === "Object.keys(A)")
-  ) {
-    // If we deal with an integer up to max length
-    // or of "length" then use $GetOwnProperty, which
-    // will return an abstract value. Alternatively,
-    // we use OrdinaryGetHelper and check the prototype
-    if (O.isPartialObject() && !O.isHavocedObject() && P !== "length" && !isValidPositiveInteger(P)) {
-      return OrdinaryGetHelper();
-    }
-  }
-  desc = O.$GetOwnProperty(P);
+  let desc = O.$GetOwnProperty(P);
   if (desc === undefined || desc.joinCondition === undefined) return OrdinaryGetHelper();
 
   // joined descriptors need special treatment

@@ -133,6 +133,18 @@ export class WidenImplementation {
     return m3;
   }
 
+  hasWidenedNumericUnknownProperty(obj: Value): boolean {
+    if (obj instanceof ArrayValue && obj.intrinsicName) {
+      const prop = obj.unknownProperty;
+      if (prop !== undefined && prop.descriptor !== undefined) {
+        const desc = prop.descriptor;
+
+        return desc.value instanceof AbstractValue && desc.value.kind === "widened numeric property";
+      }
+    }
+    return false;
+  }
+
   widenBindings(realm: Realm, m1: Bindings, m2: Bindings): Bindings {
     let widen = (b: Binding, b1: void | BindingEntry, b2: void | BindingEntry) => {
       let l1 = b1 === undefined ? b.hasLeaked : b1.hasLeaked;
@@ -149,9 +161,13 @@ export class WidenImplementation {
           // Create a temporal location for binding
           let generator = realm.generator;
           invariant(generator !== undefined);
-          phiNode = generator.derive(result.types, result.values, [b.value || realm.intrinsics.undefined], ([n]) => n, {
-            skipInvariant: true,
-          });
+          phiNode = generator.deriveAbstract(
+            result.types,
+            result.values,
+            [b.value || realm.intrinsics.undefined],
+            ([n]) => n,
+            { skipInvariant: true }
+          );
           b.phiNode = phiNode;
         }
         // Let the widened value be a reference to the phiNode of the binding

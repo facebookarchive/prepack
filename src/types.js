@@ -896,6 +896,8 @@ export type WidenType = {
   // then we have reached a fixed point and no further calls to widen are needed. e1/e2 represent a general
   // summary of the loop, regardless of how many iterations will be performed at runtime.
   containsEffects(e1: Effects, e2: Effects): boolean,
+
+  hasWidenedNumericUnknownProperty(obj: Value): boolean,
 };
 
 export type numberOrValue = number | Value;

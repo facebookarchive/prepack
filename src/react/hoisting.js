@@ -59,6 +59,7 @@ function canHoistArray(
   residualHeapVisitor: ResidualHeapVisitor,
   visitedValues: Set<Value>
 ): boolean {
+  if (array.intrinsicName) return false;
   let lengthValue = Get(realm, array, "length");
   invariant(lengthValue instanceof NumberValue);
   let length = lengthValue.value;
@@ -144,12 +145,19 @@ function canHoistValue(
     return false;
   }
   visitedValues.add(value);
-  const canHoist =
-    (value instanceof ArrayValue && canHoistArray(realm, value, residualHeapVisitor, visitedValues)) ||
-    (value instanceof FunctionValue && canHoistFunction(realm, value, residualHeapVisitor, visitedValues)) ||
-    (value instanceof ObjectValue && canHoistObject(realm, value, residualHeapVisitor, visitedValues)) ||
-    (value instanceof AbstractValue && canHoistAbstract(realm, value, residualHeapVisitor)) ||
-    isPrimitive(realm, value);
+  let canHoist = false;
+
+  if (value instanceof ArrayValue) {
+    canHoist = canHoistArray(realm, value, residualHeapVisitor, visitedValues);
+  } else if (value instanceof FunctionValue) {
+    canHoist = canHoistFunction(realm, value, residualHeapVisitor, visitedValues);
+  } else if (value instanceof ObjectValue) {
+    canHoist = canHoistObject(realm, value, residualHeapVisitor, visitedValues);
+  } else if (value instanceof AbstractValue) {
+    canHoist = canHoistAbstract(realm, value, residualHeapVisitor);
+  } else if (isPrimitive) {
+    canHoist = true;
+  }
   visitedValues.delete(value);
   return canHoist;
 }

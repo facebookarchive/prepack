@@ -62,7 +62,7 @@ function deriveGetBinding(realm: Realm, binding: Binding) {
   let types = TypesDomain.topVal;
   let values = ValuesDomain.topVal;
   invariant(realm.generator !== undefined);
-  return realm.generator.derive(types, values, [], (_, context) => context.serializeBinding(binding));
+  return realm.generator.deriveAbstract(types, values, [], (_, context) => context.serializeBinding(binding));
 }
 
 export function havocBinding(binding: Binding) {

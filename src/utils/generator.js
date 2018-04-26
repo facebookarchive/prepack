@@ -616,14 +616,6 @@ export class Generator {
     );
   }
 
-  getArgsForDeclaredValue(declaredValue: AbstractValue): Array<Value> | void {
-    for (let entry of ((this._entries: any): Array<TemporalBuildNodeEntry>)) {
-      if (entry && entry.declared === declaredValue) {
-        return entry.args;
-      }
-    }
-  }
-
   // test must be a temporal value, which means that it must have a defined intrinsicName
   emitDoWhileStatement(test: AbstractValue, body: Generator) {
     this._addEntry({
@@ -888,7 +880,7 @@ export class Generator {
     args: Array<Value>,
     kind?: AbstractValueKind
   ): AbstractValue {
-    return this.derive(types, values, args, (nodes: any) => t.callExpression(createCallee(), nodes), { kind });
+    return this.deriveAbstract(types, values, args, (nodes: any) => t.callExpression(createCallee(), nodes), { kind });
   }
 
   emitStatement(args: Array<Value>, buildNode_: (Array<BabelNodeExpression>) => BabelNodeStatement) {
@@ -944,7 +936,37 @@ export class Generator {
     });
   }
 
-  derive(
+  deriveConcrete(
+    Constructor: typeof ConcreteValue,
+    args: Array<Value>,
+    buildNode_: DerivedExpressionBuildNodeFunction | BabelNodeExpression,
+    optionalArgs?: {| isPure?: boolean |}
+  ): ConcreteValue {
+    invariant(buildNode_ instanceof Function || args.length === 0);
+    let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
+    this.preludeGenerator.derivedIds.set(id.name, args);
+    let value = new Constructor(this.realm);
+    value.intrinsicName = id.name;
+    value.intrinsicNameGenerated = true;
+    this._addEntry({
+      isPure: optionalArgs ? optionalArgs.isPure : undefined,
+      declared: value,
+      args,
+      buildNode: (nodes: Array<BabelNodeExpression>, context: SerializationContext, valuesToProcess) => {
+        return t.variableDeclaration("var", [
+          t.variableDeclarator(
+            id,
+            (buildNode_: any) instanceof Function
+              ? ((buildNode_: any): DerivedExpressionBuildNodeFunction)(nodes, context, valuesToProcess)
+              : ((buildNode_: any): BabelNodeExpression)
+          ),
+        ]);
+      },
+    });
+    return value;
+  }
+
+  deriveAbstract(
     types: TypesDomain,
     values: ValuesDomain,
     args: Array<Value>,
