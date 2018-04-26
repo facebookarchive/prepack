@@ -31,7 +31,6 @@ import {
 } from "../values/index.js";
 import { CompilerDiagnostic } from "../errors.js";
 import type { AbstractValueBuildNodeFunction } from "../values/AbstractValue.js";
-import { hashString } from "../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
@@ -949,7 +948,15 @@ export class Generator {
     let options = {};
     if (optionalArgs && optionalArgs.kind) options.kind = optionalArgs.kind;
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let res = new Constructor(this.realm, types, values, hashString(id.name), [], id, options);
+    let res = new Constructor(
+      this.realm,
+      types,
+      values,
+      1735003607742176 + this.preludeGenerator.derivedIds.size,
+      [],
+      id,
+      options
+    );
     this._addEntry({
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: res,
