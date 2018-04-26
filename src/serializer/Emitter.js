@@ -245,7 +245,10 @@ export class Emitter {
   // Find the first ancestor in input generator body stack that is in current active stack.
   // It can always find one because the bottom one in the stack is the main generator.
   _getFirstAncestorGeneratorWithActiveBody(bodyStack: Array<SerializedBody>): SerializedBody {
-    const activeBody = bodyStack.slice().reverse().find(body => this._activeGeneratorStack.includes(body));
+    const activeBody = bodyStack
+      .slice()
+      .reverse()
+      .find(body => this._activeGeneratorStack.includes(body));
     invariant(activeBody);
     return activeBody;
   }

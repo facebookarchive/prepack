@@ -10,7 +10,7 @@
 /* @flow */
 
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
-import { construct_empty_effects, type Realm } from "../realm.js";
+import { construct_empty_effects, type Realm, Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding, PropertyKeyValue } from "../types.js";
 import {
   AbstractObjectValue,
@@ -180,7 +180,9 @@ function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: Pro
   let ownDesc = O.$GetOwnProperty(P);
   let ownDescValue = !ownDesc
     ? realm.intrinsics.undefined
-    : ownDesc.value === undefined ? realm.intrinsics.undefined : ownDesc.value;
+    : ownDesc.value === undefined
+      ? realm.intrinsics.undefined
+      : ownDesc.value;
   invariant(ownDescValue instanceof Value);
 
   if (!ownDesc || ownDescValue.mightHaveBeenDeleted()) {
@@ -258,7 +260,9 @@ export class PropertiesImplementation {
     if (existingBinding !== undefined || !(O.isPartialObject() && O.isSimpleObject())) ownDesc = O.$GetOwnProperty(P);
     let ownDescValue = !ownDesc
       ? realm.intrinsics.undefined
-      : ownDesc.value === undefined ? realm.intrinsics.undefined : ownDesc.value;
+      : ownDesc.value === undefined
+        ? realm.intrinsics.undefined
+        : ownDesc.value;
     invariant(ownDescValue instanceof Value);
 
     // 3. If ownDesc is undefined (or might be), then
@@ -303,23 +307,23 @@ export class PropertiesImplementation {
         return ownDesc !== undefined
           ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/1")
           : construct_empty_effects(realm);
-      });
+      }).data;
       ownDesc = descriptor2;
       let [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(joinCondition, () => {
         return ownDesc !== undefined
           ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/2")
           : construct_empty_effects(realm);
-      });
+      }).data;
 
       // Join the effects, creating an abstract view of what happened, regardless
       // of the actual value of ownDesc.joinCondition.
       let joinedEffects = Join.joinEffects(
         realm,
         joinCondition,
-        [compl1, gen1, bindings1, properties1, createdObj1],
-        [compl2, gen2, bindings2, properties2, createdObj2]
+        new Effects(compl1, gen1, bindings1, properties1, createdObj1),
+        new Effects(compl2, gen2, bindings2, properties2, createdObj2)
       );
-      let completion = joinedEffects[0];
+      let completion = joinedEffects.result;
       if (completion instanceof PossiblyNormalCompletion) {
         // in this case one of the branches may complete abruptly, which means that
         // not all control flow branches join into one flow at this point.
@@ -372,7 +376,9 @@ export class PropertiesImplementation {
         }
         let existingDescValue = !existingDescriptor
           ? realm.intrinsics.undefined
-          : existingDescriptor.value === undefined ? realm.intrinsics.undefined : existingDescriptor.value;
+          : existingDescriptor.value === undefined
+            ? realm.intrinsics.undefined
+            : existingDescriptor.value;
         invariant(existingDescValue instanceof Value);
 
         // d. If existingDescriptor is not undefined, then

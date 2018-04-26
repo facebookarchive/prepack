@@ -11,15 +11,8 @@
 
 import type { Binding } from "../environment.js";
 import { FatalError } from "../errors.js";
-import type {
-  Bindings,
-  BindingEntry,
-  Effects,
-  EvaluationResult,
-  PropertyBindings,
-  CreatedObjects,
-  Realm,
-} from "../realm.js";
+import type { Bindings, BindingEntry, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
+import { Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 
 import {
@@ -113,7 +106,7 @@ export class JoinImplementation {
     realm.stopEffectCaptureAndUndoEffects(c1);
     let joined_effects = this.joinPossiblyNormalCompletionWithAbruptCompletion(realm, c1, c2, e);
     realm.applyEffects(joined_effects);
-    let result = joined_effects[0];
+    let result = joined_effects.result;
     invariant(result instanceof AbruptCompletion);
     return result;
   }
@@ -154,32 +147,34 @@ export class JoinImplementation {
     }
   }
 
+  // Note that the resulting completion expects to be returned in a state where its normal effects have been applied
   composePossiblyNormalCompletions(
     realm: Realm,
     pnc: PossiblyNormalCompletion,
-    c: PossiblyNormalCompletion
+    c: PossiblyNormalCompletion,
+    priorEffects?: Effects
   ): PossiblyNormalCompletion {
     invariant(c.savedEffects === undefined); // the caller should ensure this
     let savedPathConditions = pnc.savedPathConditions;
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof Value) {
-        let [, g, b, p, o] = pnc.alternateEffects;
-        let newAlternateEffects = [c, g, b, p, o];
+        let [, g, b, p, o] = pnc.alternateEffects.data;
+        let newAlternateEffects = new Effects(c, g, b, p, o);
         return new PossiblyNormalCompletion(
           c.value,
           pnc.joinCondition,
           pnc.consequent,
-          pnc.consequentEffects,
+          !priorEffects ? pnc.consequentEffects : realm.composeEffects(priorEffects, pnc.consequentEffects),
           c,
-          newAlternateEffects,
+          !priorEffects ? newAlternateEffects : realm.composeEffects(priorEffects, newAlternateEffects),
           savedPathConditions,
           pnc.savedEffects
         );
       }
       invariant(pnc.alternate instanceof PossiblyNormalCompletion);
       let new_alternate = this.composePossiblyNormalCompletions(realm, pnc.alternate, c);
-      let [, g, b, p, o] = pnc.alternateEffects;
-      let newAlternateEffects = [new_alternate, g, b, p, o];
+      let [, g, b, p, o] = pnc.alternateEffects.data;
+      let newAlternateEffects = new Effects(new_alternate, g, b, p, o);
       return new PossiblyNormalCompletion(
         new_alternate.value,
         pnc.joinCondition,
@@ -193,8 +188,8 @@ export class JoinImplementation {
     } else {
       invariant(pnc.alternate instanceof AbruptCompletion);
       if (pnc.consequent instanceof Value) {
-        let [, g, b, p, o] = pnc.consequentEffects;
-        let newConsequentEffects = [c, g, b, p, o];
+        let [, g, b, p, o] = pnc.consequentEffects.data;
+        let newConsequentEffects = new Effects(c, g, b, p, o);
         return new PossiblyNormalCompletion(
           c.value,
           pnc.joinCondition,
@@ -208,8 +203,8 @@ export class JoinImplementation {
       }
       invariant(pnc.consequent instanceof PossiblyNormalCompletion);
       let new_consequent = this.composePossiblyNormalCompletions(realm, pnc.consequent, c);
-      let [, g, b, p, o] = pnc.consequentEffects;
-      let newConsequentEffects = [new_consequent, g, b, p, o];
+      let [, g, b, p, o] = pnc.consequentEffects.data;
+      let newConsequentEffects = new Effects(new_consequent, g, b, p, o);
       return new PossiblyNormalCompletion(
         new_consequent.value,
         pnc.joinCondition,
@@ -228,13 +223,13 @@ export class JoinImplementation {
     pnc: PossiblyNormalCompletion,
     subsequentEffects: Effects
   ) {
-    let v = subsequentEffects[0];
+    let v = subsequentEffects.result;
     invariant(v instanceof Value);
     pnc.value = v;
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof Value) {
         pnc.alternate = v;
-        pnc.alternateEffects[0] = v;
+        pnc.alternateEffects.result = v;
         pnc.alternateEffects = realm.composeEffects(pnc.alternateEffects, subsequentEffects);
       } else {
         invariant(pnc.alternate instanceof PossiblyNormalCompletion);
@@ -243,7 +238,7 @@ export class JoinImplementation {
     } else {
       if (pnc.consequent instanceof Value) {
         pnc.consequent = v;
-        pnc.consequentEffects[0] = v;
+        pnc.consequentEffects.result = v;
         pnc.consequentEffects = realm.composeEffects(pnc.consequentEffects, subsequentEffects);
       } else {
         invariant(pnc.consequent instanceof PossiblyNormalCompletion);
@@ -257,7 +252,7 @@ export class JoinImplementation {
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof Value) {
         pnc.alternate = v;
-        pnc.alternateEffects[0] = v;
+        pnc.alternateEffects.result = v;
       } else {
         invariant(pnc.alternate instanceof PossiblyNormalCompletion);
         this.updatePossiblyNormalCompletionWithValue(realm, pnc.alternate, v);
@@ -265,7 +260,7 @@ export class JoinImplementation {
     } else {
       if (pnc.consequent instanceof Value) {
         pnc.consequent = v;
-        pnc.consequentEffects[0] = v;
+        pnc.consequentEffects.result = v;
       } else {
         invariant(pnc.consequent instanceof PossiblyNormalCompletion);
         this.updatePossiblyNormalCompletionWithValue(realm, pnc.consequent, v);
@@ -286,7 +281,7 @@ export class JoinImplementation {
     e: Effects
   ): Effects {
     // set up e with ac as the completion. It's OK to do this repeatedly since ac is not changed by recursive calls.
-    e[0] = ac;
+    e.result = ac;
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof Value) {
         return this.joinEffects(
@@ -328,7 +323,7 @@ export class JoinImplementation {
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof Value) {
         pnc.alternate = this.joinValuesAsConditional(realm, joinCondition, pnc.alternate, v);
-        pnc.alternateEffects[0] = pnc.alternate;
+        pnc.alternateEffects.result = pnc.alternate;
       } else {
         invariant(pnc.alternate instanceof PossiblyNormalCompletion);
         this.joinPossiblyNormalCompletionWithValue(realm, joinCondition, pnc.alternate, v);
@@ -336,7 +331,7 @@ export class JoinImplementation {
     } else {
       if (pnc.consequent instanceof Value) {
         pnc.consequent = this.joinValuesAsConditional(realm, joinCondition, pnc.consequent, v);
-        pnc.consequentEffects[0] = pnc.consequent;
+        pnc.consequentEffects.result = pnc.consequent;
       } else {
         invariant(pnc.consequent instanceof PossiblyNormalCompletion);
         this.joinPossiblyNormalCompletionWithValue(realm, joinCondition, pnc.consequent, v);
@@ -353,7 +348,7 @@ export class JoinImplementation {
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof Value) {
         pnc.alternate = this.joinValuesAsConditional(realm, joinCondition, v, pnc.alternate);
-        pnc.alternateEffects[0] = pnc.alternate;
+        pnc.alternateEffects.result = pnc.alternate;
       } else {
         invariant(pnc.alternate instanceof PossiblyNormalCompletion);
         this.joinValueWithPossiblyNormalCompletion(realm, joinCondition, pnc.alternate, v);
@@ -361,7 +356,7 @@ export class JoinImplementation {
     } else {
       if (pnc.consequent instanceof Value) {
         pnc.consequent = this.joinValuesAsConditional(realm, joinCondition, v, pnc.consequent);
-        pnc.consequentEffects[0] = pnc.consequent;
+        pnc.consequentEffects.result = pnc.consequent;
       } else {
         invariant(pnc.consequent instanceof PossiblyNormalCompletion);
         this.joinValueWithPossiblyNormalCompletion(realm, joinCondition, pnc.consequent, v);
@@ -407,109 +402,124 @@ export class JoinImplementation {
     let [ae1, ae2] = ap;
     let rce = this.joinEffects(realm, joinCondition, ce1, ce2);
     let rae = this.joinEffects(realm, joinCondition, ae1, ae2);
-    let rc = rce[0];
+    let rc = rce.result;
     invariant(rc instanceof Value || rc instanceof Completion);
-    let ra = rae[0];
+    let ra = rae.result;
     invariant(ra instanceof Value || ra instanceof Completion);
     let rv = ra instanceof PossiblyNormalCompletion ? ra.value : ra;
     invariant(rv instanceof Value);
     return new PossiblyNormalCompletion(rv, rJoinCondition, rc, rce, ra, rae, []);
   }
 
-  joinEffectsAndPromoteNestedReturnCompletions(
+  joinEffectsAndPromoteNested(
+    CompletionType: typeof Completion,
     realm: Realm,
     c: Completion | Value,
     e: Effects,
-    nested_effects?: Effects
+    precedingEffects?: Effects
   ): Effects {
     if (c instanceof Value) {
-      // If not undefined, the nested effects were captured when evaluating a conditional code block that ended normally.
+      // If not undefined, precedingEffects were captured when evaluating a conditional code block that ended normally.
       // e represent effects that were captured since reaching the join point where the normal and abrupt
       // completions came together into the completion supplied to the outermost call to this recursive function.
-      if (nested_effects !== undefined) e = realm.composeEffects(nested_effects, e);
+      if (precedingEffects !== undefined) e = realm.composeEffects(precedingEffects, e);
       return e;
     }
     if (c instanceof AbruptCompletion && !(c instanceof JoinedAbruptCompletions)) {
       // The nested effects were captured when evaluating a conditional code block that ended abruptly.
       // An abrupt completion does not care about the effects that were collected since the join point.
-      invariant(nested_effects !== undefined);
-      return nested_effects;
+      invariant(precedingEffects !== undefined);
+      return precedingEffects;
     }
-    if (c instanceof PossiblyNormalCompletion) {
-      let e1 = this.joinEffectsAndPromoteNestedReturnCompletions(realm, c.consequent, e, c.consequentEffects);
-      let e2 = this.joinEffectsAndPromoteNestedReturnCompletions(realm, c.alternate, e, c.alternateEffects);
-      if (e1[0] instanceof AbruptCompletion) {
-        if (e2[0] instanceof Value) e2[0] = new ReturnCompletion(realm.intrinsics.undefined, realm.currentLocation);
-        return this.joinEffects(realm, c.joinCondition, e1, e2);
-      } else if (e2[0] instanceof AbruptCompletion) {
-        if (e1[0] instanceof Value) e1[0] = new ReturnCompletion(realm.intrinsics.undefined, realm.currentLocation);
-        return this.joinEffects(realm, c.joinCondition, e1, e2);
-      }
-    }
-    invariant(c instanceof JoinedAbruptCompletions);
-    // e will be ignored in the calls below since the branches are all abrupt.
-    let e1 = this.joinEffectsAndPromoteNestedReturnCompletions(realm, c.consequent, e, c.consequentEffects);
-    let e2 = this.joinEffectsAndPromoteNestedReturnCompletions(realm, c.alternate, e, c.alternateEffects);
-    let [r1, r2] = [e1[0], e2[0]];
-    if (r1 instanceof ReturnCompletion) {
-      // this can happen because joinEffectsAndPromoteNestedReturnCompletions above both had nested ReturnCompletions
-      if (r2 instanceof ReturnCompletion) {
-        return this.joinEffects(realm, c.joinCondition, e1, e2);
-      }
-      if (r2 instanceof JoinedAbruptCompletions) {
-        if (r2.consequent instanceof ReturnCompletion) {
-          let r1jr2c = this.joinEffects(realm, c.joinCondition, e1, r2.consequentEffects);
-          invariant(r1jr2c[0] instanceof ReturnCompletion);
-          let or = AbstractValue.createFromLogicalOp(realm, "||", c.joinCondition, r2.joinCondition);
-          invariant(or instanceof AbstractValue);
-          return this.joinEffects(realm, or, r1jr2c, r2.alternateEffects);
-        }
-        if (r2.alternate instanceof ReturnCompletion) {
-          let r1jr2a = this.joinEffects(realm, c.joinCondition, e1, r2.alternateEffects);
-          invariant(r1jr2a[0] instanceof ReturnCompletion);
-          let notR2jc = AbstractValue.createFromUnaryOp(realm, "!", r2.joinCondition);
-          let or = AbstractValue.createFromLogicalOp(realm, "||", c.joinCondition, notR2jc);
-          invariant(or instanceof AbstractValue);
-          return this.joinEffects(realm, or, r1jr2a, r2.consequentEffects);
+    if (precedingEffects) realm.applyEffects(precedingEffects, "", false);
+    try {
+      if (c instanceof PossiblyNormalCompletion) {
+        let e1 = this.joinEffectsAndPromoteNested(CompletionType, realm, c.consequent, e, c.consequentEffects);
+        let e2 = this.joinEffectsAndPromoteNested(CompletionType, realm, c.alternate, e, c.alternateEffects);
+        if (e1.result instanceof AbruptCompletion) {
+          if (e2.result instanceof Value)
+            e2.result = new CompletionType(realm.intrinsics.undefined, realm.currentLocation);
+          return this.joinEffects(realm, c.joinCondition, e1, e2);
+        } else if (e2.result instanceof AbruptCompletion) {
+          if (e1.result instanceof Value)
+            e1.result = new CompletionType(realm.intrinsics.undefined, realm.currentLocation);
+          return this.joinEffects(realm, c.joinCondition, e1, e2);
         }
       }
-    } else if (r2 instanceof ReturnCompletion) {
-      invariant(!(r1 instanceof ReturnCompletion)); // Otherwise their values should have been joined
-      if (r1 instanceof JoinedAbruptCompletions) {
-        if (r1.consequent instanceof ReturnCompletion) {
-          let r2jr1c = this.joinEffects(realm, c.joinCondition, r1.consequentEffects, e2);
-          invariant(r2jr1c[0] instanceof ReturnCompletion);
-          let or = AbstractValue.createFromLogicalOp(realm, "||", c.joinCondition, r1.joinCondition);
-          invariant(or instanceof AbstractValue);
-          return this.joinEffects(realm, or, r2jr1c, r1.alternateEffects);
+      invariant(c instanceof JoinedAbruptCompletions);
+      // e will be ignored in the calls below since the branches are all abrupt.
+      let e1 = this.joinEffectsAndPromoteNested(CompletionType, realm, c.consequent, e, c.consequentEffects);
+      let e2 = this.joinEffectsAndPromoteNested(CompletionType, realm, c.alternate, e, c.alternateEffects);
+      let [r1, r2] = [e1.result, e2.result];
+      if (r1 instanceof CompletionType) {
+        // this can happen because the two joinEffectsAndPromoteNested calls above both had nested CompletionTypes
+        if (r2 instanceof CompletionType) {
+          return this.joinEffects(realm, c.joinCondition, e1, e2);
         }
-        if (r1.alternate instanceof ReturnCompletion) {
-          let r2jr1a = this.joinEffects(realm, c.joinCondition, r1.alternateEffects, e2);
-          let notR1jc = AbstractValue.createFromUnaryOp(realm, "!", r1.joinCondition);
-          invariant(r2jr1a[0] instanceof ReturnCompletion);
-          let or = AbstractValue.createFromLogicalOp(realm, "||", c.joinCondition, notR1jc);
-          invariant(or instanceof AbstractValue);
-          return this.joinEffects(realm, or, r2jr1a, r1.consequentEffects);
+        if (r2 instanceof JoinedAbruptCompletions) {
+          if (r2.consequent instanceof CompletionType) {
+            let r1jr2c = this.joinEffects(realm, c.joinCondition, e1, r2.consequentEffects);
+            invariant(r1jr2c.result instanceof CompletionType);
+            let or = AbstractValue.createFromLogicalOp(realm, "||", c.joinCondition, r2.joinCondition);
+            invariant(or instanceof AbstractValue);
+            return this.joinEffects(realm, or, r1jr2c, r2.alternateEffects);
+          }
+          if (r2.alternate instanceof CompletionType) {
+            let r1jr2a = this.joinEffects(realm, c.joinCondition, e1, r2.alternateEffects);
+            invariant(r1jr2a.result instanceof CompletionType);
+            let notR2jc = AbstractValue.createFromUnaryOp(realm, "!", r2.joinCondition);
+            let or = AbstractValue.createFromLogicalOp(realm, "||", c.joinCondition, notR2jc);
+            invariant(or instanceof AbstractValue);
+            return this.joinEffects(realm, or, r1jr2a, r2.consequentEffects);
+          }
+        }
+      } else if (r2 instanceof CompletionType) {
+        invariant(!(r1 instanceof CompletionType)); // Otherwise their values should have been joined
+        if (r1 instanceof JoinedAbruptCompletions) {
+          if (r1.consequent instanceof CompletionType) {
+            let r2jr1c = this.joinEffects(realm, c.joinCondition, r1.consequentEffects, e2);
+            invariant(r2jr1c.result instanceof CompletionType);
+            let or = AbstractValue.createFromLogicalOp(realm, "||", c.joinCondition, r1.joinCondition);
+            invariant(or instanceof AbstractValue);
+            return this.joinEffects(realm, or, r2jr1c, r1.alternateEffects);
+          }
+          if (r1.alternate instanceof CompletionType) {
+            let r2jr1a = this.joinEffects(realm, c.joinCondition, r1.alternateEffects, e2);
+            let notR1jc = AbstractValue.createFromUnaryOp(realm, "!", r1.joinCondition);
+            invariant(r2jr1a.result instanceof CompletionType);
+            let or = AbstractValue.createFromLogicalOp(realm, "||", c.joinCondition, notR1jc);
+            invariant(or instanceof AbstractValue);
+            return this.joinEffects(realm, or, r2jr1a, r1.consequentEffects);
+          }
         }
       }
+      let e3 = this.joinEffects(realm, c.joinCondition, e1, e2);
+      let [r3] = e3.data;
+      if (r3 instanceof JoinedAbruptCompletions) {
+        let [joinedEffects, possiblyNormalCompletion] = this.unbundle(CompletionType, realm, r3);
+        realm.wrapSavedCompletion(possiblyNormalCompletion);
+        return joinedEffects;
+      }
+      return e3;
+    } finally {
+      if (precedingEffects) {
+        realm.restoreBindings(precedingEffects.data[2]);
+        realm.restoreProperties(precedingEffects.data[3]);
+      }
     }
-    let e3 = this.joinEffects(realm, c.joinCondition, e1, e2);
-    let [r3] = e3;
-    if (r3 instanceof JoinedAbruptCompletions) {
-      let [joinedEffects, possiblyNormalCompletion] = this.unbundleReturnCompletion(realm, r3);
-      realm.composeWithSavedCompletion(possiblyNormalCompletion);
-      return joinedEffects;
-    }
-    return e3;
   }
 
-  unbundleReturnCompletion(realm: Realm, c: JoinedAbruptCompletions): [Effects, PossiblyNormalCompletion] {
+  unbundle(
+    CompletionType: typeof Completion,
+    realm: Realm,
+    c: JoinedAbruptCompletions
+  ): [Effects, PossiblyNormalCompletion] {
     let empty_effects = construct_empty_effects(realm);
     let v = realm.intrinsics.empty;
-    if (c.consequent instanceof ReturnCompletion) {
+    if (c.consequent instanceof CompletionType) {
       let pnc = new PossiblyNormalCompletion(v, c.joinCondition, v, empty_effects, c.alternate, c.alternateEffects, []);
       return [c.consequentEffects, pnc];
-    } else if (c.alternate instanceof ReturnCompletion) {
+    } else if (c.alternate instanceof CompletionType) {
       let pnc = new PossiblyNormalCompletion(
         v,
         c.joinCondition,
@@ -521,7 +531,10 @@ export class JoinImplementation {
       );
       return [c.alternateEffects, pnc];
     } else {
-      invariant(false, "unbundleReturnCompletion needs an argument that contains a non nested return completion");
+      invariant(
+        false,
+        `unbundle needs an argument that contains a non nested completion of type ${CompletionType.name}`
+      );
     }
   }
 
@@ -552,18 +565,18 @@ export class JoinImplementation {
   }
 
   joinEffects(realm: Realm, joinCondition: AbstractValue, e1: Effects, e2: Effects): Effects {
-    let [result1, gen1, bindings1, properties1, createdObj1] = e1;
-    let [result2, gen2, bindings2, properties2, createdObj2] = e2;
+    let [result1, gen1, bindings1, properties1, createdObj1] = e1.data;
+    let [result2, gen2, bindings2, properties2, createdObj2] = e2.data;
 
     let result = this.joinResults(realm, joinCondition, result1, result2, e1, e2);
     if (result1 instanceof AbruptCompletion) {
       if (!(result2 instanceof AbruptCompletion)) {
         invariant(result instanceof PossiblyNormalCompletion);
-        return [result, gen2, bindings2, properties2, createdObj2];
+        return new Effects(result, gen2, bindings2, properties2, createdObj2);
       }
     } else if (result2 instanceof AbruptCompletion) {
       invariant(result instanceof PossiblyNormalCompletion);
-      return [result, gen1, bindings1, properties1, createdObj1];
+      return new Effects(result, gen1, bindings1, properties1, createdObj1);
     }
 
     let bindings = this.joinBindings(realm, joinCondition, bindings1, bindings2);
@@ -585,7 +598,19 @@ export class JoinImplementation {
 
     let generator = joinGenerators(realm, joinCondition, gen1, gen2);
 
-    return [result, generator, bindings, properties, createdObjects];
+    return new Effects(result, generator, bindings, properties, createdObjects);
+  }
+
+  joinNestedEffects(realm: Realm, c: Completion | Value, precedingEffects?: Effects): Effects {
+    if (c instanceof PossiblyNormalCompletion || c instanceof JoinedAbruptCompletions) {
+      let e1 = this.joinNestedEffects(realm, c.consequent, c.consequentEffects);
+      let e2 = this.joinNestedEffects(realm, c.alternate, c.alternateEffects);
+      return this.joinEffects(realm, c.joinCondition, e1, e2);
+    }
+    if (precedingEffects !== undefined) return precedingEffects;
+    let result = construct_empty_effects(realm);
+    result.result = c;
+    return result;
   }
 
   joinResults(
@@ -604,6 +629,8 @@ export class JoinImplementation {
       throw new FatalError();
     }
     if (result1 instanceof BreakCompletion && result2 instanceof BreakCompletion && result1.target === result2.target) {
+      let val = this.joinValues(realm, result1.value, result2.value, getAbstractValue);
+      invariant(val instanceof Value);
       return new BreakCompletion(realm.intrinsics.empty, joinCondition.expressionLocation, result1.target);
     }
     if (

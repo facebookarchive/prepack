@@ -151,7 +151,7 @@ export class ModuleTracer extends Tracer {
       }
 
       acceleratedModuleIds = [];
-      if (isTopLevelRequire && effects !== undefined && !(effects[0] instanceof AbruptCompletion)) {
+      if (isTopLevelRequire && effects !== undefined && !(effects.result instanceof AbruptCompletion)) {
         // We gathered all effects, but didn't apply them yet.
         // Let's check if there was any call to `require` in a
         // evaluate-for-effects context. If so, try to initialize
@@ -177,7 +177,7 @@ export class ModuleTracer extends Tracer {
           if (
             this.modules.accelerateUnsupportedRequires &&
             nestedEffects !== undefined &&
-            nestedEffects[0] instanceof Value &&
+            nestedEffects.result instanceof Value &&
             this.modules.isModuleInitialized(nestedModuleId)
           ) {
             acceleratedModuleIds.push(nestedModuleId);
@@ -231,7 +231,7 @@ export class ModuleTracer extends Tracer {
           this.requireSequence.push(moduleIdValue);
           const previousNumDelayedModules = this.statistics.delayedModules;
           let effects = this._callRequireAndAccelerate(isTopLevelRequire, moduleIdValue, performCall);
-          if (effects === undefined || effects[0] instanceof AbruptCompletion) {
+          if (effects === undefined || effects.result instanceof AbruptCompletion) {
             console.log(`delaying require(${moduleIdValue})`);
             this.statistics.delayedModules = previousNumDelayedModules + 1;
             // So we are about to emit a delayed require(...) call.
@@ -263,7 +263,7 @@ export class ModuleTracer extends Tracer {
               t.callExpression(t.identifier("require"), [t.valueToNode(moduleIdValue)])
             );
           } else {
-            result = effects[0];
+            result = effects.result;
             if (result instanceof Value) {
               realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
               this.modules.recordModuleInitialized(moduleIdValue, result);
@@ -607,7 +607,7 @@ export class Modules {
       if (this.initializedModules.has(moduleId)) continue;
       let effects = this.tryInitializeModule(moduleId, `Speculative initialization of module ${moduleId}`);
       if (effects === undefined) continue;
-      let result = effects[0];
+      let result = effects.result;
       if (!(result instanceof Value)) continue; // module might throw
       count++;
       this.initializedModules.set(moduleId, result);
@@ -623,7 +623,7 @@ export class Modules {
     try {
       let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
-      let [compl, generator, bindings, properties, createdObjects] = realm.evaluateNodeForEffectsInGlobalEnv(node);
+      let [compl, generator, bindings, properties, createdObjects] = realm.evaluateNodeForEffectsInGlobalEnv(node).data;
       // for lint unused
       invariant(bindings);
 

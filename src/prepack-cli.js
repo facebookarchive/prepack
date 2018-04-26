@@ -402,7 +402,13 @@ fi
   let profiler;
   try {
     if (cpuprofilePath !== undefined) {
-      profiler = require("v8-profiler");
+      try {
+        profiler = require("v8-profiler");
+      } catch (e) {
+        // Profiler optional dependency failed
+        console.error("v8-profiler doesn't work correctly on Windows, see issue #1695");
+        throw e;
+      }
       profiler.setSamplingInterval(100); // default is 1000us
       profiler.startProfiling("");
     }

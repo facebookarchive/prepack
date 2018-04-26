@@ -12,6 +12,7 @@
 import type { BabelNodeIfStatement, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
+import { Effects } from "../realm.js";
 
 import { AbruptCompletion, Completion, PossiblyNormalCompletion } from "../completions.js";
 import { Reference } from "../environment.js";
@@ -64,14 +65,14 @@ export default function(
 
   // Evaluate consequent and alternate in sandboxes and get their effects.
   let [consequentEffects, conAst, conIO] = realm.partiallyEvaluateNodeForEffects(ast.consequent, strictCode, env);
-  let [conCompl, gen1, bindings1, properties1, createdObj1] = consequentEffects;
+  let [conCompl, gen1, bindings1, properties1, createdObj1] = consequentEffects.data;
   let consequentAst = (conAst: any);
   if (conIO.length > 0) consequentAst = t.blockStatement(conIO.concat(consequentAst));
 
   let [alternateEffects, altAst, altIO] = ast.alternate
     ? realm.partiallyEvaluateNodeForEffects(ast.alternate, strictCode, env)
     : [construct_empty_effects(realm), undefined, []];
-  let [altCompl, gen2, bindings2, properties2, createdObj2] = alternateEffects;
+  let [altCompl, gen2, bindings2, properties2, createdObj2] = alternateEffects.data;
   let alternateAst = (altAst: any);
   if (altIO.length > 0) alternateAst = t.blockStatement(altIO.concat(alternateAst));
 
@@ -80,10 +81,10 @@ export default function(
   let joinedEffects = Join.joinEffects(
     realm,
     exprValue,
-    [conCompl, gen1, bindings1, properties1, createdObj1],
-    [altCompl, gen2, bindings2, properties2, createdObj2]
+    new Effects(conCompl, gen1, bindings1, properties1, createdObj1),
+    new Effects(altCompl, gen2, bindings2, properties2, createdObj2)
   );
-  completion = joinedEffects[0];
+  completion = joinedEffects.result;
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.

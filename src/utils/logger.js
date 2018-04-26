@@ -64,7 +64,7 @@ export class Logger {
         undefined,
         "tryQuery"
       );
-      invariant(effects[0] === realm.intrinsics.undefined);
+      invariant(effects.result === realm.intrinsics.undefined);
       return ((result: any): T);
     } finally {
       realm.errorHandler = oldErrorHandler;

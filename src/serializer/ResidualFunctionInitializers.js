@@ -57,7 +57,10 @@ export class ResidualFunctionInitializers {
         );
       infos.push(info);
     }
-    let id = infos.map(info => info.ownId).sort().join();
+    let id = infos
+      .map(info => info.ownId)
+      .sort()
+      .join();
     for (let info of infos) info.initializerIds.add(id);
     let initializer = this.initializers.get(id);
     if (initializer === undefined)

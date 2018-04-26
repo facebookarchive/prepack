@@ -43,13 +43,13 @@ export class ThrowCompletion extends AbruptCompletion {
 }
 export class ContinueCompletion extends AbruptCompletion {
   constructor(value: Value, location: ?BabelNodeSourceLocation, target: ?string) {
-    super(value, location, target);
+    super(value, location, target || null);
   }
 }
 
 export class BreakCompletion extends AbruptCompletion {
   constructor(value: Value, location: ?BabelNodeSourceLocation, target: ?string) {
-    super(value, location, target);
+    super(value, location, target || null);
   }
 }
 
@@ -109,8 +109,8 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     savedPathConditions: Array<AbstractValue>,
     savedEffects: void | Effects = undefined
   ) {
-    invariant(consequent === consequentEffects[0]);
-    invariant(alternate === alternateEffects[0]);
+    invariant(consequent === consequentEffects.result);
+    invariant(alternate === alternateEffects.result);
     invariant(
       consequent instanceof NormalCompletion ||
         consequent instanceof Value ||
@@ -131,7 +131,9 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     let loc =
       consequent instanceof AbruptCompletion
         ? consequent.location
-        : alternate instanceof Completion ? alternate.location : alternate.expressionLocation;
+        : alternate instanceof Completion
+          ? alternate.location
+          : alternate.expressionLocation;
     super(value, loc);
     this.joinCondition = joinCondition;
     this.consequent = consequent;

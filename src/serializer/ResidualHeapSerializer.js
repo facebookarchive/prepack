@@ -904,7 +904,9 @@ export class ResidualHeapSerializer {
         if (this._options.debugScopes) {
           let scopes = this.residualValues.get(val);
           invariant(scopes !== undefined);
-          const scopeList = Array.from(scopes).map(s => `"${s.getName()}"`).join(",");
+          const scopeList = Array.from(scopes)
+            .map(s => `"${s.getName()}"`)
+            .join(",");
           let comment = `${this._getValueDebugName(val)} referenced from scopes [${scopeList}]`;
           if (target.commonAncestor !== undefined)
             comment = `${comment} with common ancestor: ${target.commonAncestor.getName()}`;
@@ -983,7 +985,7 @@ export class ResidualHeapSerializer {
     let value = valueFn();
     let assignment = t.expressionStatement(t.assignmentExpression("=", location, value));
     if (mightHaveBeenDeleted) {
-      let condition = t.binaryExpression("!==", value, this.serializeValue(this.realm.intrinsics.empty));
+      let condition = t.binaryExpression("!==", value, this._serializeEmptyValue());
       let deletion = null;
       if (deleteIfMightHaveBeenDeleted) {
         invariant(location.type === "MemberExpression");
@@ -1702,14 +1704,18 @@ export class ResidualHeapSerializer {
     }
   }
 
+  _serializeEmptyValue(): BabelNodeExpression {
+    this.needsEmptyVar = true;
+    return emptyExpression;
+  }
+
   _serializeValue(val: Value): void | BabelNodeExpression {
     if (val instanceof AbstractValue) {
       return this._serializeAbstractValue(val);
     } else if (val.isIntrinsic()) {
       return this._serializeValueIntrinsic(val);
     } else if (val instanceof EmptyValue) {
-      this.needsEmptyVar = true;
-      return emptyExpression;
+      return this._serializeEmptyValue();
     } else if (val instanceof UndefinedValue) {
       return voidExpression;
     } else if (ResidualHeapInspector.isLeaf(val)) {
@@ -1890,7 +1896,7 @@ export class ResidualHeapSerializer {
       return;
     }
     this.rewrittenAdditionalFunctions.set(additionalFunctionValue, []);
-    let createdObjects = effects[4];
+    let createdObjects = effects.createdObjects;
     let nestedFunctions = new Set([...createdObjects].filter(object => object instanceof FunctionValue));
     // Allows us to emit function declarations etc. inside of this additional
     // function instead of adding them at global scope
@@ -2074,9 +2080,9 @@ export class ResidualHeapSerializer {
   _logSerializedResidualMismatches() {
     let logValue = value => {
       console.log(
-        `${value.constructor.name} ${value.intrinsicName || "(no intrinsic name)"} ${value instanceof PrimitiveValue
-          ? value.toDisplayString()
-          : "(cannot print value)"}`
+        `${value.constructor.name} ${value.intrinsicName || "(no intrinsic name)"} ${
+          value instanceof PrimitiveValue ? value.toDisplayString() : "(cannot print value)"
+        }`
       );
       let scopes = this.residualValues.get(value);
       if (scopes !== undefined) this._logScopes(scopes);

@@ -89,20 +89,55 @@ export class EnvironmentRecord {
     this.id = EnvironmentRecord.nextId++;
   }
 
-  +HasBinding: (N: string) => boolean;
-  +CreateMutableBinding: (N: string, D: boolean, isGlobal?: boolean) => Value;
-  +CreateImmutableBinding: (N: string, S: boolean, isGlobal?: boolean, skipRecord?: boolean) => Value;
-  +InitializeBinding: (N: string, V: Value, skipRecord?: boolean) => Value;
-  +SetMutableBinding: (N: string, V: Value, S: boolean) => Value;
-  +GetBindingValue: (N: string, S: boolean) => Value;
-  +DeleteBinding: (N: string) => boolean;
-  +HasThisBinding: () => boolean;
-  +GetThisBinding: () => NullValue | ObjectValue | AbstractObjectValue | UndefinedValue;
-  +HasSuperBinding: () => boolean;
-  +WithBaseObject: () => Value;
-  +BindThisValue: (
+  HasBinding(N: string): boolean {
+    invariant(false, "abstract method; please override");
+  }
+
+  CreateMutableBinding(N: string, D: boolean, isGlobal?: boolean): Value {
+    invariant(false, "abstract method; please override");
+  }
+
+  CreateImmutableBinding(N: string, S: boolean, isGlobal?: boolean, skipRecord?: boolean): Value {
+    invariant(false, "abstract method; please override");
+  }
+
+  InitializeBinding(N: string, V: Value, skipRecord?: boolean): Value {
+    invariant(false, "abstract method; please override");
+  }
+
+  SetMutableBinding(N: string, V: Value, S: boolean): Value {
+    invariant(false, "abstract method; please override");
+  }
+
+  GetBindingValue(N: string, S: boolean): Value {
+    invariant(false, "abstract method; please override");
+  }
+
+  DeleteBinding(N: string): boolean {
+    invariant(false, "abstract method; please override");
+  }
+
+  HasThisBinding(): boolean {
+    invariant(false, "abstract method; please override");
+  }
+
+  GetThisBinding(): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
+    invariant(false, "abstract method; please override");
+  }
+
+  HasSuperBinding(): boolean {
+    invariant(false, "abstract method; please override");
+  }
+
+  WithBaseObject(): Value {
+    invariant(false, "abstract method; please override");
+  }
+
+  BindThisValue(
     V: NullValue | ObjectValue | AbstractObjectValue | UndefinedValue
-  ) => NullValue | ObjectValue | AbstractObjectValue | UndefinedValue;
+  ): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
+    invariant(false, "abstract method; please override");
+  }
 }
 
 export type Binding = {
@@ -1134,16 +1169,18 @@ export class LexicalEnvironment {
         if (e instanceof ThrowCompletion) {
           let error = e.value;
           if (error instanceof ObjectValue) {
-            let message = error.$Get("message", error);
-            message.value = `Syntax error: ${message.value}`;
-            e.location.source = source.filePath;
-            // the position was not located properly on the
-            // syntax errors happen on one given position, so start position = end position
-            e.location.start = { line: e.location.line, column: e.location.column };
-            e.location.end = { line: e.location.line, column: e.location.column };
-            let diagnostic = new CompilerDiagnostic(message.value, e.location, "PP1004", "FatalError");
-            this.realm.handleError(diagnostic);
-            throw new FatalError(message.value);
+            let message = error._SafeGetDataPropertyValue("message");
+            if (message instanceof StringValue) {
+              message.value = `Syntax error: ${message.value}`;
+              e.location.source = source.filePath;
+              // the position was not located properly on the
+              // syntax errors happen on one given position, so start position = end position
+              e.location.start = { line: e.location.line, column: e.location.column };
+              e.location.end = { line: e.location.line, column: e.location.column };
+              let diagnostic = new CompilerDiagnostic(message.value, e.location, "PP1004", "FatalError");
+              this.realm.handleError(diagnostic);
+              throw new FatalError(message.value);
+            }
           }
         }
         throw e;

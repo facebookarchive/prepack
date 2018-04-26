@@ -12,6 +12,7 @@
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
+import { Effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { EnvironmentRecord } from "../environment.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
@@ -69,21 +70,21 @@ function callBothFunctionsAndJoinTheirEffects(
     () => EvaluateCall(func1, func1, ast, strictCode, env, realm),
     undefined,
     "callBothFunctionsAndJoinTheirEffects/1"
-  );
+  ).data;
 
   let [compl2, gen2, bindings2, properties2, createdObj2] = realm.evaluateForEffects(
     () => EvaluateCall(func2, func2, ast, strictCode, env, realm),
     undefined,
     "callBothFunctionsAndJoinTheirEffects/2"
-  );
+  ).data;
 
   let joinedEffects = Join.joinEffects(
     realm,
     cond,
-    [compl1, gen1, bindings1, properties1, createdObj1],
-    [compl2, gen2, bindings2, properties2, createdObj2]
+    new Effects(compl1, gen1, bindings1, properties1, createdObj1),
+    new Effects(compl2, gen2, bindings2, properties2, createdObj2)
   );
-  let completion = joinedEffects[0];
+  let completion = joinedEffects.result;
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.
@@ -179,7 +180,7 @@ function tryToEvaluateCallOrLeaveAsAbstract(
   } finally {
     realm.suppressDiagnostics = savedSuppressDiagnostics;
   }
-  let completion = effects[0];
+  let completion = effects.result;
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.

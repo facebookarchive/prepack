@@ -231,9 +231,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     originalConsoleError.apply(this, args);
   };
 
-  describe(`Test React with ${shouldTranspileSource ? "create-element input" : "JSX input"}, ${outputJsx
-    ? "JSX output"
-    : "create-element output"}`, () => {
+  describe(`Test React with ${shouldTranspileSource ? "create-element input" : "JSX input"}, ${
+    outputJsx ? "JSX output" : "create-element output"
+  }`, () => {
     describe("Functional component folding", () => {
       let directory = "functional-components";
 
@@ -433,6 +433,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "return-undefined.js");
       });
 
+      it("Null or undefined props", async () => {
+        await runTest(directory, "null-or-undefined-props.js");
+      });
+
       it("Event handlers", async () => {
         await runTest(directory, "event-handlers.js");
       });
@@ -495,6 +499,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Simple classes #3", async () => {
         await runTest(directory, "simple-classes-3.js");
+      });
+
+      it("Simple classes with Array.from", async () => {
+        await runTest(directory, "array-from.js");
+      });
+
+      it("Simple classes with Array.from 2", async () => {
+        await runTest(directory, "array-from2.js");
       });
 
       it("Inheritance chaining", async () => {
@@ -572,6 +584,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("React Context 5", async () => {
         await runTest(directory, "react-context5.js");
       });
+
+      it("React Context 6", async () => {
+        await runTest(directory, "react-context6.js");
+      });
     });
 
     describe("First render only", () => {
@@ -607,6 +623,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("getDerivedStateFromProps 4", async () => {
         await runTest(directory, "get-derived-state-from-props4.js", true);
+      });
+
+      it("getDerivedStateFromProps 5", async () => {
+        await runTest(directory, "get-derived-state-from-props5.js", true);
       });
 
       it("React Context", async () => {
@@ -697,6 +717,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("fb-www 13", async () => {
         await runTest(directory, "fb13.js");
+      });
+
+      it("fb-www 14", async () => {
+        await runTest(directory, "fb14.js");
+      });
+
+      it("fb-www 15", async () => {
+        await runTest(directory, "fb15.js");
       });
 
       it("repl example", async () => {
