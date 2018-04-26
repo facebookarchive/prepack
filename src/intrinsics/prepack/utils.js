@@ -26,7 +26,6 @@ import { To } from "../../singletons.js";
 import AbstractObjectValue from "../../values/AbstractObjectValue";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
 import { Utils } from "../../singletons";
-import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "../../invariant.js";
 
 const throwTemplateSrc = "(function(){throw new global.Error('abstract value defined at ' + A);})()";
@@ -62,26 +61,6 @@ export function parseTypeNameOrTemplate(
   } else {
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "typeNameOrTemplate has unsupported type");
   }
-}
-
-export function createAbstractArgument(
-  realm: Realm,
-  name: string,
-  location: ?BabelNodeSourceLocation,
-  type: typeof Value = Value
-) {
-  if (!realm.useAbstractInterpretation) {
-    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
-  }
-
-  let locString;
-  if (location) locString = describeLocation(realm, undefined, undefined, location);
-  let locVal = new StringValue(realm, locString || "(unknown location)");
-  let kind = AbstractValue.makeKind("abstractCounted", (realm.objectCount++).toString()); // need not be an object, but must be unique
-  let result = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), type, [locVal], kind);
-  result.intrinsicName = name;
-
-  return result;
 }
 
 export function createAbstract(
