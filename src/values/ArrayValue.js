@@ -101,7 +101,12 @@ export default class ArrayValue extends ObjectValue {
     reactArrayHint?: { func: Value, thisVal: Value }
   ): ArrayValue {
     invariant(realm.generator !== undefined);
-    let value = realm.generator.deriveConcrete(ArrayValue, args, buildFunction);
+    let value = realm.generator.deriveConcrete(
+      intrinsicName => new ArrayValue(realm, intrinsicName),
+      args,
+      buildFunction,
+      { isPure: true }
+    );
     invariant(value instanceof ArrayValue);
     // add unknownProperty so we manually handle this object property access
     value.unknownProperty = {

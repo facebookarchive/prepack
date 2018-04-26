@@ -731,7 +731,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).]
     let O = To.ToObject(realm, context);
 
-    if (Widen.hasWidenedNumericUnknownProperty(O)) {
+    if (Widen.hasWidenedNumericUnknownProperty(O) && O.isSimpleObject()) {
       let args = [context, callbackfn];
       if (thisArg) {
         args.push(thisArg);

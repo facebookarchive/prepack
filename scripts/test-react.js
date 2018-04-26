@@ -741,7 +741,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "hacker-news.js", false, data);
       });
 
-      // awaiting more work on nested optimized functions
+      // awaiting PR on nested additional support #1626,
+      // issues is that both the parent and child additional
+      // function share the same variable, so the serializer
+      // incorrectly emits it in the MainGenerator scope
       it("Function bind", async () => {
         await runTest(directory, "function-bind.js");
       });

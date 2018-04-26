@@ -65,8 +65,8 @@ export type SerializationContext = {|
   emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
   processValues: (Set<AbstractValue>) => void,
-  canOmit: AbstractValue => boolean,
-  declare: AbstractValue => void,
+  canOmit: (AbstractValue | ConcreteValue) => boolean,
+  declare: (AbstractValue | ConcreteValue) => void,
   emitPropertyModification: PropertyBinding => void,
   options: SerializerOptions,
 |};
@@ -74,8 +74,8 @@ export type SerializationContext = {|
 export type VisitEntryCallbacks = {|
   visitEquivalentValue: Value => Value,
   visitGenerator: (Generator, Generator) => void,
-  canSkip: AbstractValue => boolean,
-  recordDeclaration: AbstractValue => void,
+  canSkip: (AbstractValue | ConcreteValue) => boolean,
+  recordDeclaration: (AbstractValue | ConcreteValue) => void,
   recordDelayedEntry: (Generator, GeneratorEntry) => void,
   visitObjectProperty: PropertyBinding => void,
   visitModifiedBinding: Binding => [ResidualFunctionBinding, Value],
@@ -106,7 +106,7 @@ export class GeneratorEntry {
 }
 
 type TemporalBuildNodeEntryArgs = {
-  declared?: AbstractValue,
+  declared?: AbstractValue | ConcreteValue,
   args: Array<Value>,
   // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
   buildNode?: GeneratorBuildNodeFunction,
@@ -120,7 +120,7 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
     Object.assign(this, args);
   }
 
-  declared: void | AbstractValue;
+  declared: void | AbstractValue | ConcreteValue;
   args: Array<Value>;
   // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
   buildNode: void | GeneratorBuildNodeFunction;
@@ -937,7 +937,7 @@ export class Generator {
   }
 
   deriveConcrete(
-    Constructor: typeof ConcreteValue,
+    buildValue: (intrinsicName: string) => ConcreteValue,
     args: Array<Value>,
     buildNode_: DerivedExpressionBuildNodeFunction | BabelNodeExpression,
     optionalArgs?: {| isPure?: boolean |}
@@ -945,9 +945,10 @@ export class Generator {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
     this.preludeGenerator.derivedIds.set(id.name, args);
-    let value = new Constructor(this.realm);
-    value.intrinsicName = id.name;
-    value.intrinsicNameGenerated = true;
+    let value = buildValue(id.name);
+    if (value instanceof ObjectValue) {
+      value.intrinsicNameGenerated = true;
+    }
     this._addEntry({
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: value,

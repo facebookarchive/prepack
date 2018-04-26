@@ -15,11 +15,11 @@ import {
   AbstractValue,
   ArrayValue,
   BooleanValue,
-  NumberValue,
-  UndefinedValue,
-  StringValue,
-  ObjectValue,
   NativeFunctionValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
+  UndefinedValue,
 } from "../../values/index.js";
 import {
   Construct,
@@ -33,7 +33,7 @@ import {
 } from "../../methods/index.js";
 import * as t from "babel-types";
 import { GetIterator, IteratorClose, IteratorStep, IteratorValue } from "../../methods/iterator.js";
-import { Create, Properties, To, Havoc } from "../../singletons.js";
+import { Create, Havoc, Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
