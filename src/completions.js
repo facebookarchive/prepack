@@ -43,13 +43,13 @@ export class ThrowCompletion extends AbruptCompletion {
 }
 export class ContinueCompletion extends AbruptCompletion {
   constructor(value: Value, location: ?BabelNodeSourceLocation, target: ?string) {
-    super(value, location, target);
+    super(value, location, target || null);
   }
 }
 
 export class BreakCompletion extends AbruptCompletion {
   constructor(value: Value, location: ?BabelNodeSourceLocation, target: ?string) {
-    super(value, location, target);
+    super(value, location, target || null);
   }
 }
 
