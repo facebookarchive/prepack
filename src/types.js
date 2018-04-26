@@ -732,14 +732,19 @@ export type JoinType = {
     v: Value
   ): void,
 
-  joinEffectsAndPromoteNestedReturnCompletions(
+  joinEffectsAndPromoteNested(
+    CompletionType: typeof Completion,
     realm: Realm,
     c: Completion | Value,
     e: Effects,
     nested_effects?: Effects
   ): Effects,
 
-  unbundleReturnCompletion(realm: Realm, c: JoinedAbruptCompletions): [Effects, PossiblyNormalCompletion],
+  unbundle(
+    CompletionType: typeof Completion,
+    realm: Realm,
+    c: JoinedAbruptCompletions
+  ): [Effects, PossiblyNormalCompletion],
 
   removeNormalEffects(realm: Realm, c: PossiblyNormalCompletion): Effects,
 
