@@ -46,7 +46,6 @@ import {
   convertConfigObjectToReactComponentTreeConfig,
 } from "../react/utils.js";
 import * as t from "babel-types";
-import { createAbstractArgument } from "../intrinsics/prepack/utils.js";
 
 type AdditionalFunctionEntry = {
   value: ECMAScriptSourceFunctionValue | AbstractValue,
@@ -466,7 +465,7 @@ export class Functions {
         if (t.isIdentifier(parameterId)) {
           // Create an AbstractValue similar to __abstract being called
           args.push(
-            createAbstractArgument(
+            AbstractValue.createAbstractArgument(
               this.realm,
               ((parameterId: any): BabelNodeIdentifier).name,
               funcValue.expressionLocation
@@ -486,7 +485,7 @@ export class Functions {
       }
     }
 
-    let thisArg = createAbstractArgument(this.realm, "this", funcValue.expressionLocation, ObjectValue);
+    let thisArg = AbstractValue.createAbstractArgument(this.realm, "this", funcValue.expressionLocation, ObjectValue);
     return call.bind(this, thisArg, args);
   }
 
