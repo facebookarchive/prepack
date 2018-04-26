@@ -365,7 +365,7 @@ export class Reconciler {
       } else {
         this._queueNewComponentTree(componentType, evaluatedNode);
         evaluatedNode.status = "NEW_TREE";
-        throw new NewComponentTreeBranch();
+        throw new NewComponentTreeBranch(evaluatedNode);
       }
     }
     this.componentTreeState.status = "COMPLEX";
@@ -791,7 +791,7 @@ export class Reconciler {
       this._queueNewComponentTree(componentType, evaluatedNode);
       evaluatedNode.status = "NEW_TREE";
       evaluatedNode.message = "RelayContainer";
-      throw new NewComponentTreeBranch();
+      throw new NewComponentTreeBranch(evaluatedNode);
     }
     invariant(componentType instanceof ECMAScriptSourceFunctionValue);
     let value;
@@ -1171,7 +1171,6 @@ export class Reconciler {
             return this._resolveUnknownComponentType(reactElement, evaluatedNode);
           }
           let evaluatedChildNode = createReactEvaluatedNode("INLINED", getComponentName(this.realm, typeValue));
-          evaluatedNode.children.push(evaluatedChildNode);
           let render = this._renderComponent(
             typeValue,
             propsValue,
@@ -1180,6 +1179,7 @@ export class Reconciler {
             null,
             evaluatedChildNode
           );
+          evaluatedNode.children.push(evaluatedChildNode);
           result = render.result;
           this.statistics.inlinedComponents++;
           break;
@@ -1270,6 +1270,7 @@ export class Reconciler {
     // assign a bail out message
     if (error instanceof NewComponentTreeBranch) {
       this._findReactComponentTrees(propsValue, evaluatedNode, "NORMAL_FUNCTIONS");
+      evaluatedNode.children.push(error.evaluatedNode);
       // NO-OP (we don't queue a newComponentTree as this was already done)
     } else {
       // handle abrupt completions

@@ -630,6 +630,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "get-derived-state-from-props4.js", true);
       });
 
+      it("getDerivedStateFromProps 5", async () => {
+        await runTest(directory, "get-derived-state-from-props5.js", true);
+      });
+
       it("React Context", async () => {
         await runTest(directory, "react-context.js");
       });
@@ -722,6 +726,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("fb-www 14", async () => {
         await runTest(directory, "fb14.js");
+      });
+
+      it("fb-www 15", async () => {
+        await runTest(directory, "fb15.js");
       });
 
       it("repl example", async () => {

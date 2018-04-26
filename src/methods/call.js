@@ -409,9 +409,10 @@ export function OrdinaryCallEvaluateBody(
             } else {
               e = construct_empty_effects(realm);
             }
-            joinedEffects = Join.joinEffectsAndPromoteNestedReturnCompletions(realm, c, e);
+            joinedEffects = Join.joinEffectsAndPromoteNested(ReturnCompletion, realm, c, e);
           } else if (c instanceof JoinedAbruptCompletions) {
-            joinedEffects = Join.joinEffectsAndPromoteNestedReturnCompletions(realm, c, construct_empty_effects(realm));
+            let e = construct_empty_effects(realm);
+            joinedEffects = Join.joinEffectsAndPromoteNested(ReturnCompletion, realm, c, e);
           }
           if (joinedEffects !== undefined) {
             let result = joinedEffects.result;
@@ -448,7 +449,7 @@ export function OrdinaryCallEvaluateBody(
     // We need to carry on in normal mode (after arranging to capturing effects)
     // while stashing away the throw completions so that the next completion we return
     // incorporates them.
-    let [joinedEffects, possiblyNormalCompletion] = Join.unbundleReturnCompletion(realm, c);
+    let [joinedEffects, possiblyNormalCompletion] = Join.unbundle(ReturnCompletion, realm, c);
     realm.composeWithSavedCompletion(possiblyNormalCompletion);
     return joinedEffects;
   }
