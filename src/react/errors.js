@@ -9,6 +9,8 @@
 
 /* @flow */
 
+import { type ReactEvaluatedNode } from "../serializer/types.js";
+
 // ExpectedBailOut is like an error, that gets thrown during the reconcilation phase
 // allowing the reconcilation to continue on other branches of the tree, the message
 // given to ExpectedBailOut will be assigned to the value.$BailOutReason property and serialized
@@ -23,4 +25,10 @@ export class SimpleClassBailOut extends Error {}
 
 // NewComponentTreeBranch only occur when a complex class is found in a
 // component tree and the reconciler can no longer fold the component of that branch
-export class NewComponentTreeBranch extends Error {}
+export class NewComponentTreeBranch extends Error {
+  constructor(evaluatedNode: ReactEvaluatedNode) {
+    super();
+    this.evaluatedNode = evaluatedNode;
+  }
+  evaluatedNode: ReactEvaluatedNode;
+}
