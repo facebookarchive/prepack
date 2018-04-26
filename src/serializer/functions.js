@@ -137,26 +137,28 @@ export class Functions {
     parentAdditionalFunction: FunctionValue | void = undefined
   ): AdditionalFunctionEffects | null {
     let realm = this.realm;
-    let pncResult = effects.result;
-    if (pncResult instanceof PossiblyNormalCompletion || pncResult instanceof JoinedAbruptCompletions) {
+    let [result, generator] = effects.data;
+    if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
+      // joined generators have joined entries that will get visited recursively via result, so get rid of them here
+      generator.purgeEntriesWithGeneratorDepencies();
       // The completion is not the end of function execution, but a fork point for separate threads of control.
       // The effects of all of these threads need to get joined up and rolled into the top level effects,
       // so that applying the effects before serializing the body will fully initialize all variables and objects.
       effects = realm.evaluateForEffects(
         () => {
-          realm.applyEffects(effects, "_createAdditionalEffects/1", false);
-          if (pncResult instanceof PossiblyNormalCompletion) {
-            pncResult = Join.joinPossiblyNormalCompletionWithAbruptCompletion(
+          realm.applyEffects(effects, "_createAdditionalEffects/1", true);
+          if (result instanceof PossiblyNormalCompletion) {
+            result = Join.joinPossiblyNormalCompletionWithAbruptCompletion(
               realm,
-              pncResult,
-              new ReturnCompletion(pncResult.value),
+              result,
+              new ReturnCompletion(result.value),
               construct_empty_effects(realm)
             ).result;
           }
-          invariant(pncResult instanceof JoinedAbruptCompletions);
-          let completionEffects = Join.joinNestedEffects(realm, pncResult);
+          invariant(result instanceof JoinedAbruptCompletions);
+          let completionEffects = Join.joinNestedEffects(realm, result);
           realm.applyEffects(completionEffects, "_createAdditionalEffects/2", false);
-          return pncResult;
+          return result;
         },
         undefined,
         "_createAdditionalEffects"
