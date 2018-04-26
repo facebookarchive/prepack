@@ -1040,8 +1040,17 @@ export class ResidualHeapVisitor {
           action: () => entry.visit(callbacks, generator),
         });
       },
-      visitObjectProperty: (binding: PropertyBinding) => {
-        this.visitObjectProperty(binding);
+      visitModifiedObjectProperty: (binding: PropertyBinding) => {
+        let fixpoint_rerun = () => {
+          if (this.values.has(binding.object)) {
+            this.visitObjectProperty(binding);
+            return true;
+          } else {
+            this._enqueueWithUnrelatedScope(this.scope, fixpoint_rerun);
+            return false;
+          }
+        };
+        fixpoint_rerun();
       },
       visitModifiedBinding: (modifiedBinding: Binding) => {
         invariant(additionalFunctionInfo);

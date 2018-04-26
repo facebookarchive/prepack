@@ -77,7 +77,7 @@ export type VisitEntryCallbacks = {|
   canSkip: AbstractValue => boolean,
   recordDeclaration: AbstractValue => void,
   recordDelayedEntry: (Generator, GeneratorEntry) => void,
-  visitObjectProperty: PropertyBinding => void,
+  visitModifiedObjectProperty: PropertyBinding => void,
   visitModifiedBinding: Binding => [ResidualFunctionBinding, Value],
 |};
 
@@ -197,7 +197,7 @@ class ModifiedPropertyEntry extends GeneratorEntry {
     );
     let desc = this.propertyBinding.descriptor;
     invariant(desc === this.newDescriptor);
-    context.visitObjectProperty(this.propertyBinding);
+    context.visitModifiedObjectProperty(this.propertyBinding);
     return true;
   }
 }
