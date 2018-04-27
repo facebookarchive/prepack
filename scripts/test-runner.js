@@ -15,6 +15,7 @@ let prepackSources = require("../lib/prepack-node.js").prepackSources;
 import type { PrepackOptions } from "../lib/prepack-options";
 
 let Serializer = require("../lib/serializer/index.js").default;
+let SerializerStatistics = require("../lib/serializer/statistics.js").SerializerStatistics;
 let construct_realm = require("../lib/construct_realm.js").default;
 let initializeGlobals = require("../lib/globals.js").default;
 let chalk = require("chalk");
@@ -295,7 +296,7 @@ function runTest(name, code, options: PrepackOptions, args) {
         errorHandler: diag => "Fail",
         maxStackDepth: options.maxStackDepth,
       };
-      let realm = construct_realm(realmOptions);
+      let realm = construct_realm(realmOptions, undefined, new SerializerStatistics());
       initializeGlobals(realm);
       let serializerOptions = {
         initializeMoreModules,

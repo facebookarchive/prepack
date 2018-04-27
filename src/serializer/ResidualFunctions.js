@@ -29,7 +29,8 @@ import type { NameGenerator } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
 import type { FunctionInfo, FactoryFunctionInfo, FunctionInstance, AdditionalFunctionInfo } from "./types.js";
-import { BodyReference, AreSameResidualBinding, SerializerStatistics } from "./types.js";
+import { BodyReference, AreSameResidualBinding } from "./types.js";
+import { SerializerStatistics } from "./statistics.js";
 import { ClosureRefReplacer } from "./visitors.js";
 import { Modules } from "../utils/modules.js";
 import { ResidualFunctionInitializers } from "./ResidualFunctionInitializers.js";
@@ -46,7 +47,6 @@ type ResidualFunctionsResult = {
 export class ResidualFunctions {
   constructor(
     realm: Realm,
-    statistics: SerializerStatistics,
     options: SerializerOptions,
     modules: Modules,
     requireReturns: Map<number | string, BabelNodeExpression>,
@@ -62,7 +62,6 @@ export class ResidualFunctions {
     referentializer: Referentializer
   ) {
     this.realm = realm;
-    this.statistics = statistics;
     this.modules = modules;
     this.requireReturns = requireReturns;
     this.locationService = locationService;
@@ -93,7 +92,6 @@ export class ResidualFunctions {
 
   realm: Realm;
   modules: Modules;
-  statistics: SerializerStatistics;
   requireReturns: Map<number | string, BabelNodeExpression>;
   locationService: LocationService;
   prelude: Array<BabelNodeStatement>;
@@ -111,6 +109,11 @@ export class ResidualFunctions {
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
   referentializer: Referentializer;
   simpleClosures: boolean;
+
+  getStatistics() {
+    invariant(this.realm.statistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
+    return this.realm.statistics;
+  }
 
   addFunctionInstance(instance: FunctionInstance) {
     this.functionInstances.push(instance);
@@ -225,7 +228,7 @@ export class ResidualFunctions {
       this.functions.entries()
     );
     this._sortFunctionByOriginalOrdering(functionEntries);
-    this.statistics.functions = functionEntries.length;
+    this.getStatistics().functions = functionEntries.length;
     let unstrictFunctionBodies = [];
     let strictFunctionBodies = [];
     let funcNodes: Map<FunctionValue, BabelNodeFunctionExpression> = new Map();
@@ -371,7 +374,7 @@ export class ResidualFunctions {
       }
 
       let naiveProcessInstances = instancesToSplice => {
-        this.statistics.functionClones += instancesToSplice.length;
+        this.getStatistics().functionClones += instancesToSplice.length;
 
         for (let instance of instancesToSplice) {
           let { functionValue, residualFunctionBindings, scopeInstances } = instance;
@@ -417,7 +420,7 @@ export class ResidualFunctions {
                 residualFunctionBindings,
                 modified,
                 requireReturns: this.requireReturns,
-                statistics: this.statistics,
+                statistics: this.getStatistics(),
                 getModuleIdIfNodeIsRequireFunction: this.modules.getGetModuleIdIfNodeIsRequireFunction(methodParams, [
                   functionValue,
                 ]),
@@ -463,7 +466,7 @@ export class ResidualFunctions {
               residualFunctionBindings,
               modified,
               requireReturns: this.requireReturns,
-              statistics: this.statistics,
+              statistics: this.getStatistics(),
               getModuleIdIfNodeIsRequireFunction: this.modules.getGetModuleIdIfNodeIsRequireFunction(funcParams, [
                 functionValue,
               ]),
@@ -501,7 +504,7 @@ export class ResidualFunctions {
       if (additionalFunctionNestedInstances.length > 0) naiveProcessInstances(additionalFunctionNestedInstances);
       if (normalInstances.length > 0 && !this._shouldUseFactoryFunction(funcBody, normalInstances)) {
         naiveProcessInstances(normalInstances);
-        this.statistics.functionClones--;
+        this.getStatistics().functionClones--;
       } else if (normalInstances.length > 0) {
         const functionUniqueTag = ((funcBody: any): FunctionBodyAstNode).uniqueOrderedTag;
         invariant(functionUniqueTag);
@@ -575,7 +578,7 @@ export class ResidualFunctions {
           residualFunctionBindings: sameResidualBindings,
           modified,
           requireReturns: this.requireReturns,
-          statistics: this.statistics,
+          statistics: this.getStatistics(),
           getModuleIdIfNodeIsRequireFunction: this.modules.getGetModuleIdIfNodeIsRequireFunction(
             factoryParams,
             normalInstances.map(instance => instance.functionValue)

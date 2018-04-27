@@ -55,7 +55,8 @@ import type {
   AdditionalFunctionEffects,
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
-import { SerializerStatistics, BodyReference } from "./types.js";
+import { BodyReference } from "./types.js";
+import { SerializerStatistics } from "./statistics.js";
 import { Logger } from "../utils/logger.js";
 import { Modules } from "../utils/modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
@@ -103,7 +104,6 @@ export class ResidualHeapSerializer {
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
-    statistics: SerializerStatistics,
     react: ReactSerializerState,
     referentializer: Referentializer,
     generatorParents: Map<Generator, Generator | FunctionValue | "GLOBAL">,
@@ -113,7 +113,6 @@ export class ResidualHeapSerializer {
     this.logger = logger;
     this.modules = modules;
     this.residualHeapValueIdentifiers = residualHeapValueIdentifiers;
-    this.statistics = statistics;
     this.react = react;
     this.referentializer = referentializer;
 
@@ -140,7 +139,6 @@ export class ResidualHeapSerializer {
     this.residualReactElementSerializer = new ResidualReactElementSerializer(this.realm, this);
     this.residualFunctions = new ResidualFunctions(
       this.realm,
-      this.statistics,
       options,
       this.modules,
       this.requireReturns,
@@ -209,7 +207,6 @@ export class ResidualHeapSerializer {
   modules: Modules;
   residualHeapValueIdentifiers: ResidualHeapValueIdentifiers;
   requireReturns: Map<number | string, BabelNodeExpression>;
-  statistics: SerializerStatistics;
   residualHeapInspector: ResidualHeapInspector;
   residualValues: Map<Value, Set<Scope>>;
   residualFunctionInstances: Map<FunctionValue, FunctionInstance>;
@@ -238,6 +235,11 @@ export class ResidualHeapSerializer {
   conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>;
 
   declaredGlobalLets: Map<string, Value>;
+
+  getStatistics(): SerializerStatistics {
+    invariant(this.realm.statistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
+    return this.realm.statistics;
+  }
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -295,8 +297,8 @@ export class ResidualHeapSerializer {
       if (obj instanceof FunctionValue) this._emitConstructorPrototype(obj);
     }
 
-    this.statistics.objects++;
-    this.statistics.objectProperties += obj.properties.size;
+    this.getStatistics().objects++;
+    this.getStatistics().objectProperties += obj.properties.size;
   }
 
   _emitObjectPrototype(obj: ObjectValue, objectPrototypeAlreadyEstablished: boolean) {
@@ -938,14 +940,14 @@ export class ResidualHeapSerializer {
         if (init !== id) {
           this._declare(!!target.usedOnlyByResidualFunctions, bindingType || "var", id, init);
         }
-        this.statistics.valueIds++;
-        if (target.usedOnlyByResidualFunctions) this.statistics.delayedValues++;
+        this.getStatistics().valueIds++;
+        if (target.usedOnlyByResidualFunctions) this.getStatistics().delayedValues++;
       }
     } else {
       if (init) {
         this.residualHeapValueIdentifiers.deleteIdentifier(val);
         result = init;
-        this.statistics.valuesInlined++;
+        this.getStatistics().valuesInlined++;
       }
     }
 
@@ -1817,7 +1819,7 @@ export class ResidualHeapSerializer {
       statements.unshift(commentStatement("begin " + comment));
       statements.push(commentStatement("end " + comment));
     }
-    this.statistics.generators++;
+    this.getStatistics().generators++;
     return statements;
   }
 
@@ -1958,7 +1960,7 @@ export class ResidualHeapSerializer {
     this.prepareAdditionalFunctionValues();
 
     this.generator.serialize(this._getContext());
-    this.statistics.generators++;
+    this.getStatistics().generators++;
     invariant(this.emitter.declaredCount() <= this.preludeGenerator.derivedIds.size);
 
     // TODO #20: add timers

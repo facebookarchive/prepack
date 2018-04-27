@@ -17,7 +17,7 @@ import { SameValue } from "../methods/abstract.js";
 import { Realm, type Effects } from "../realm.js";
 import invariant from "../invariant.js";
 import type { Generator } from "../utils/generator.js";
-import { type RealmStatistics, RealmTimingStatistics } from "../types.js";
+import { type SerializerStatistics } from "./statistics.js";
 
 export type TryQuery<T> = (f: () => T, defaultValue: T) => T;
 
@@ -150,48 +150,6 @@ export class BodyReference {
   index: number;
 }
 
-export class TimingStatistics extends RealmTimingStatistics {
-  constructor() {
-    super();
-    this.totalTime = 0;
-    this.resolveInitializedModulesTime = 0;
-    this.initializeMoreModulesTime = 0;
-    this.optimizeReactComponentTreeRootsTime = 0;
-    this.checkThatFunctionsAreIndependentTime = 0;
-    this.deepTraversalTime = 0;
-    this.referenceCountsTime = 0;
-    this.serializePassTime = 0;
-    this.babelGenerateTime = 0;
-  }
-  totalTime: number;
-  resolveInitializedModulesTime: number;
-  initializeMoreModulesTime: number;
-  optimizeReactComponentTreeRootsTime: number;
-  checkThatFunctionsAreIndependentTime: number;
-  deepTraversalTime: number;
-  referenceCountsTime: number;
-  serializePassTime: number;
-  babelGenerateTime: number;
-
-  log() {
-    super.log(this.totalTime);
-    console.log(
-      `${this.resolveInitializedModulesTime}ms resolving initialized modules, ${
-        this.initializeMoreModulesTime
-      }ms initializing more modules, ${
-        this.optimizeReactComponentTreeRootsTime
-      }ms optimizing react component tree roots, ${
-        this.checkThatFunctionsAreIndependentTime
-      }ms evaluating functions to optimize`
-    );
-    console.log(
-      `${this.deepTraversalTime}ms visiting residual heap, ${this.referenceCountsTime}ms reference counting, ${
-        this.serializePassTime
-      }ms generating AST, ${this.babelGenerateTime}ms generating source code`
-    );
-  }
-}
-
 export type ReactEvaluatedNode = {
   children: Array<ReactEvaluatedNode>,
   message: string,
@@ -225,69 +183,6 @@ export class ReactStatistics {
   optimizedNestedClosures: number;
 }
 
-export class SerializerStatistics {
-  constructor() {
-    this.functions = 0;
-    this.delayedValues = 0;
-    this.initializedModules = 0;
-    this.acceleratedModules = 0;
-    this.delayedModules = 0;
-    this.totalModules = 0;
-    this.resetBeforePass();
-  }
-  resetBeforePass() {
-    this.objects = 0;
-    this.objectProperties = 0;
-    this.functionClones = 0;
-    this.lazyObjects = 0;
-    this.referentialized = 0;
-    this.valueIds = 0;
-    this.valuesInlined = 0;
-    this.generators = 0;
-    this.requireCalls = 0;
-    this.requireCallsReplaced = 0;
-  }
-  objects: number;
-  objectProperties: number;
-  functions: number;
-  functionClones: number;
-  lazyObjects: number;
-  referentialized: number;
-  valueIds: number;
-  valuesInlined: number;
-  delayedValues: number;
-  initializedModules: number;
-  acceleratedModules: number;
-  delayedModules: number;
-  totalModules: number;
-  generators: number;
-  requireCalls: number;
-  requireCallsReplaced: number;
-
-  log() {
-    console.log(`=== serialization statistics`);
-    console.log(`${this.objects} objects with ${this.objectProperties} properties`);
-    console.log(
-      `${this.functions} functions plus ${this.functionClones} clones due to captured variables; ${
-        this.referentialized
-      } captured mutable variables`
-    );
-    console.log(`${this.lazyObjects} objects are lazy.`);
-    console.log(
-      `${this.valueIds} eager and ${this.delayedValues} delayed value ids generated, and ${
-        this.valuesInlined
-      } values inlined.`
-    );
-    console.log(
-      `${this.initializedModules} out of ${this.totalModules} modules initialized, with ${
-        this.acceleratedModules
-      } accelerated and ${this.delayedModules} delayed.`
-    );
-    console.log(`${this.requireCallsReplaced} of ${this.requireCalls} require calls inlined.`);
-    console.log(`${this.generators} generators`);
-  }
-}
-
 export type LocationService = {
   getLocation: Value => BabelNodeIdentifier,
   createLocation: () => BabelNodeIdentifier,
@@ -305,9 +200,7 @@ export type ObjectRefCount = {
 export type SerializedResult = {
   code: string,
   map: void | SourceMap,
-  realmStatistics?: RealmStatistics,
-  reactStatistics?: ReactStatistics,
   statistics?: SerializerStatistics,
-  timingStatistics?: TimingStatistics,
+  reactStatistics?: ReactStatistics,
   heapGraph?: string,
 };
