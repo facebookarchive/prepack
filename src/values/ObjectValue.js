@@ -291,7 +291,7 @@ export default class ObjectValue extends ConcreteValue {
   refuseSerialization: boolean;
 
   equals(x: Value): boolean {
-    return x instanceof ObjectValue && this.getHash() === x.getHash();
+    return this === x;
   }
 
   getHash(): number {
