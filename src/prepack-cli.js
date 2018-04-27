@@ -66,7 +66,8 @@ function run(
                              (default = true)
     --check [start[, count]] Check residual functions for diagnostic messages. Do not serialize or produce residual code.
     --residual               Produces the residual program that results after constant folding.
-    --profile                Enables console logging of profile information of different phases of prepack.
+    --profile                Collect statistics about time and memory usage of the different internal passes
+    --logStatistics          Log statistics to console
     --statsFile              The name of the output file where statistics will be written to.
     --heapGraphFilePath      The name of the output file where heap graph will be written to.
     --inlineExpressions      When generating code, tells prepack to avoid naming expressions when they are only used once,
@@ -466,17 +467,15 @@ fi
       console.log(serialized.code);
     }
     if (statsFileName) {
-      if (
-        serialized.statistics === undefined ||
-        serialized.timingStatistics === undefined ||
-        serialized.realmStatistics === undefined
-      ) {
+      let statistics = serialized.statistics;
+      if (statistics === undefined) {
         return;
       }
       let stats = {
-        RealmStatistics: serialized.realmStatistics,
-        SerializerStatistics: serialized.statistics,
-        TimingStatistics: serialized.timingStatistics,
+        RealmStatistics: statistics.getRealmStatistics(),
+        SerializerStatistics: statistics.getSerializerStatistics(),
+        TimingStatistics: statistics.projectPerformanceTrackers("Time", pt => pt.time),
+        HeapStatistics: statistics.projectPerformanceTrackers("Memory", pt => pt.memory),
         MemoryStatistics: v8.getHeapStatistics(),
       };
       fs.writeFileSync(statsFileName, JSON.stringify(stats));

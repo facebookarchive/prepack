@@ -10,7 +10,6 @@
 /* @flow */
 
 import type {
-  RealmTimingStatistics,
   Intrinsics,
   PropertyBinding,
   Descriptor,
@@ -18,7 +17,7 @@ import type {
   ClassComponentMetadata,
   ReactHint,
 } from "./types.js";
-import { RealmStatistics } from "./types.js";
+import { RealmStatistics } from "./statistics.js";
 import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler, FatalError } from "./errors.js";
 import {
   AbstractObjectValue,
@@ -209,8 +208,8 @@ export function construct_empty_effects(realm: Realm): Effects {
 }
 
 export class Realm {
-  constructor(opts: RealmOptions) {
-    this.statistics = new RealmStatistics();
+  constructor(opts: RealmOptions, statistics: RealmStatistics) {
+    this.statistics = statistics;
     this.isReadOnly = false;
     this.useAbstractInterpretation = !!opts.serialize || !!opts.residual || !!opts.check;
     this.ignoreLeakLogic = false;
@@ -291,7 +290,6 @@ export class Realm {
   }
 
   statistics: RealmStatistics;
-  timingStatistics: void | RealmTimingStatistics;
   start: number;
   isReadOnly: boolean;
   isStrict: boolean;

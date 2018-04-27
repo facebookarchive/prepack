@@ -34,7 +34,7 @@ import {
   Get,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
-import { Create, Properties, To, Widen } from "../../singletons.js";
+import { Create, Properties, To } from "../../singletons.js";
 import { FatalError, CompilerDiagnostic } from "../../errors.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
@@ -49,9 +49,9 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    if (Widen.hasWidenedNumericUnknownProperty(O)) {
-      let newArgs = [context, ...args];
-      return ArrayValue.createTemporalWithUnknownProperties(realm, newArgs, ([objNode, ..._args]) =>
+    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O)) {
+      let newArgs = [O, ...args];
+      return ArrayValue.createTemporalWithWidenedNumericProperty(realm, newArgs, ([objNode, ..._args]) =>
         t.callExpression(t.memberExpression(objNode, t.identifier("concat")), ((_args: any): Array<any>))
       );
     }
@@ -315,12 +315,12 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    if (Widen.hasWidenedNumericUnknownProperty(O)) {
-      let args = [context, callbackfn];
+    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O)) {
+      let args = [O, callbackfn];
       if (thisArg) {
         args.push(thisArg);
       }
-      return ArrayValue.createTemporalWithUnknownProperties(
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         args,
         ([objNode, ..._args]) =>
@@ -728,15 +728,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
   // ECMA262 22.1.3.16
   obj.defineNativeMethod("map", 1, (context, [callbackfn, thisArg]) => {
-    // 1. Let O be ? ToObject(this value).]
+    // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    if (Widen.hasWidenedNumericUnknownProperty(O) && O.isSimpleObject()) {
-      let args = [context, callbackfn];
+    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) && O.isSimpleObject()) {
+      let args = [O, callbackfn];
       if (thisArg) {
         args.push(thisArg);
       }
-      return ArrayValue.createTemporalWithUnknownProperties(
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         args,
         ([objNode, ..._args]) =>
@@ -871,21 +871,21 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let O = To.ToObject(realm, context);
 
     // if there is an initialValue, then we cannot be sure
-    // that the return value is an array and will like
+    // array and will like -> array and the call will likely
     // have side-effects so this is not supported for now
-    if (Widen.hasWidenedNumericUnknownProperty(O)) {
-      if (initialValue || initialValue !== realm.intrinsics.undefined) {
+    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O)) {
+      if (initialValue || initialValue instanceof UndefinedValue) {
         let diagnostic = new CompilerDiagnostic(
           "array reduce with initial value is not supported",
           realm.currentLocation,
-          "PP0034",
+          "PP0035",
           "FatalError"
         );
         realm.handleError(diagnostic);
         throw new FatalError();
       }
-      let args = [context, callbackfn];
-      return ArrayValue.createTemporalWithUnknownProperties(
+      let args = [O, callbackfn];
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         args,
         ([objNode, ..._args]) =>
@@ -1213,9 +1213,9 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    if (Widen.hasWidenedNumericUnknownProperty(O)) {
-      let newArgs = [context, start, end];
-      return ArrayValue.createTemporalWithUnknownProperties(realm, newArgs, ([objNode, ..._args]) =>
+    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O)) {
+      let newArgs = [O, start, end];
+      return ArrayValue.createTemporalWithWidenedNumericProperty(realm, newArgs, ([objNode, ..._args]) =>
         t.callExpression(t.memberExpression(objNode, t.identifier("slice")), ((_args: any): Array<any>))
       );
     }

@@ -36,7 +36,7 @@ import {
   UndefinedValue,
   Value,
 } from "./index.js";
-import { hashBinary, hashCall, hashTernary, hashUnary } from "../methods/index.js";
+import { hashString, hashBinary, hashCall, hashTernary, hashUnary } from "../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 
@@ -859,6 +859,28 @@ export default class AbstractValue extends Value {
     result.kind = "widened";
     result.mightBeEmpty = value1.mightHaveBeenDeleted() || value2.mightHaveBeenDeleted();
     result.expressionLocation = value1.expressionLocation;
+    return result;
+  }
+
+  static createAbstractArgument(
+    realm: Realm,
+    name: string,
+    location: ?BabelNodeSourceLocation,
+    type: typeof Value = Value
+  ) {
+    if (!realm.useAbstractInterpretation) {
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
+    }
+
+    let realmPreludeGenerator = realm.preludeGenerator;
+    invariant(realmPreludeGenerator);
+    let id = t.identifier(name);
+    let types = new TypesDomain(type);
+    let values = ValuesDomain.topVal;
+    let Constructor = Value.isTypeCompatibleWith(type, ObjectValue) ? AbstractObjectValue : AbstractValue;
+    let result = new Constructor(realm, types, values, 943586754858 + hashString(name), [], id);
+    result.kind = AbstractValue.makeKind("abstractCounted", (realm.objectCount++).toString()); // need not be an object, but must be unique
+    result.expressionLocation = location;
     return result;
   }
 

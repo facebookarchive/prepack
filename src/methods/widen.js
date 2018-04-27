@@ -133,18 +133,6 @@ export class WidenImplementation {
     return m3;
   }
 
-  hasWidenedNumericUnknownProperty(obj: Value): boolean {
-    if (obj instanceof ArrayValue && obj.intrinsicName) {
-      const prop = obj.unknownProperty;
-      if (prop !== undefined && prop.descriptor !== undefined) {
-        const desc = prop.descriptor;
-
-        return desc.value instanceof AbstractValue && desc.value.kind === "widened numeric property";
-      }
-    }
-    return false;
-  }
-
   widenBindings(realm: Realm, m1: Bindings, m2: Bindings): Bindings {
     let widen = (b: Binding, b1: void | BindingEntry, b2: void | BindingEntry) => {
       let l1 = b1 === undefined ? b.hasLeaked : b1.hasLeaked;

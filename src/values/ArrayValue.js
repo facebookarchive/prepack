@@ -94,7 +94,7 @@ export default class ArrayValue extends ObjectValue {
     return Properties.OrdinaryDefineOwnProperty(this.$Realm, A, P, Desc);
   }
 
-  static createTemporalWithUnknownProperties(
+  static createTemporalWithWidenedNumericProperty(
     realm: Realm,
     args: Array<Value>,
     buildFunction: (Array<BabelNodeExpression>) => BabelNodeExpression,
@@ -120,5 +120,17 @@ export default class ArrayValue extends ObjectValue {
       realm.react.arrayHints.set(value, reactArrayHint);
     }
     return value;
+  }
+
+  static isIntrinsicAndHasWidenedNumericProperty(obj: Value): boolean {
+    if (obj instanceof ArrayValue && obj.intrinsicName) {
+      const prop = obj.unknownProperty;
+      if (prop !== undefined && prop.descriptor !== undefined) {
+        const desc = prop.descriptor;
+
+        return desc.value instanceof AbstractValue && desc.value.kind === "widened numeric property";
+      }
+    }
+    return false;
   }
 }

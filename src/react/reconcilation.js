@@ -62,9 +62,7 @@ import { ExpectedBailOut, SimpleClassBailOut, NewComponentTreeBranch } from "./e
 import { AbruptCompletion, Completion } from "../completions.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
-import { createAbstractArgument } from "../intrinsics/prepack/utils.js";
 import { createInternalReactElement } from "./elements.js";
-import { Widen } from "../singletons.js";
 
 type ComponentResolutionStrategy =
   | "NORMAL"
@@ -248,7 +246,7 @@ export class Reconciler {
           if (t.isIdentifier(parameterId)) {
             // Create an AbstractValue similar to __abstract being called
             args.push(
-              createAbstractArgument(
+              AbstractValue.createAbstractArgument(
                 this.realm,
                 ((parameterId: any): BabelNodeIdentifier).name,
                 targetFunc.expressionLocation
@@ -1354,7 +1352,7 @@ export class Reconciler {
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
   ): void {
-    if (Widen.hasWidenedNumericUnknownProperty(arrayValue)) {
+    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(arrayValue)) {
       let arrayHint = this.realm.react.arrayHints.get(arrayValue);
 
       if (arrayHint !== undefined) {

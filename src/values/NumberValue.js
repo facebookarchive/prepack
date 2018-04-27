@@ -22,7 +22,7 @@ export class NumberValue extends PrimitiveValue {
   value: number;
 
   equals(x: Value): boolean {
-    return x instanceof NumberValue && this.value === x.value;
+    return x instanceof NumberValue && Object.is(this.value, x.value);
   }
 
   getHash(): number {

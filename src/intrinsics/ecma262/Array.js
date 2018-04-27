@@ -244,7 +244,7 @@ export default function(realm: Realm): NativeFunctionValue {
           }
         }
         Havoc.value(realm, items);
-        return ArrayValue.createTemporalWithUnknownProperties(
+        return ArrayValue.createTemporalWithWidenedNumericProperty(
           realm,
           args,
           ([methodNode, ..._args]) => t.callExpression(methodNode, ((_args: any): Array<any>)),

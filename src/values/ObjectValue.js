@@ -291,7 +291,7 @@ export default class ObjectValue extends ConcreteValue {
   refuseSerialization: boolean;
 
   equals(x: Value): boolean {
-    return x instanceof ObjectValue && this.getHash() === x.getHash();
+    return this === x;
   }
 
   getHash(): number {
@@ -926,6 +926,7 @@ export default class ObjectValue extends ConcreteValue {
         let cond = createTemplate(this.$Realm, P);
         let sentinel = AbstractValue.createFromType(this.$Realm, Value, "template for prototype member expression", [
           Receiver,
+          P,
         ]);
         newVal = Join.joinValuesAsConditional(this.$Realm, cond, V, sentinel);
       }
