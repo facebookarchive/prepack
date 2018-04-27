@@ -31,7 +31,6 @@ import type {
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
 import invariant from "../invariant.js";
-import { SerializerStatistics } from "./types.js";
 import { Logger } from "../utils/logger.js";
 import { Modules } from "../utils/modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
@@ -71,7 +70,6 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
-    statistics: SerializerStatistics,
     react: ReactSerializerState,
     referentializer: Referentializer,
     generatorParents: Map<Generator, Generator | FunctionValue | "GLOBAL">,
@@ -92,7 +90,6 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
       additionalFunctionValuesAndEffects,
       additionalFunctionValueInfos,
       declarativeEnvironmentRecordsBindings,
-      statistics,
       react,
       referentializer,
       generatorParents,

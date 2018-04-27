@@ -1141,26 +1141,23 @@ export class LexicalEnvironment {
     sources: Array<SourceFile>,
     sourceType: SourceType = "script"
   ): [BabelNodeFile, { [string]: string }] {
-    let timingStatistics = this.realm.timingStatistics;
     let asts = [];
     let code = {};
     let directives = [];
     for (let source of sources) {
       try {
-        let start = Date.now();
-        let node = parse(this.realm, source.fileContents, source.filePath, sourceType);
-        if (timingStatistics !== undefined) timingStatistics.parsingTime += Date.now() - start;
+        let node = this.realm.statistics.parsing.measure(() =>
+          parse(this.realm, source.fileContents, source.filePath, sourceType)
+        );
 
         let sourceMapContents = source.sourceMapContents;
         if (sourceMapContents && sourceMapContents.length > 0) {
-          start = Date.now();
-          this.fixup_source_locations(node, sourceMapContents);
-          if (timingStatistics !== undefined) timingStatistics.fixupSourceLocationsTime += Date.now() - start;
+          this.realm.statistics.fixupSourceLocations.measure(() =>
+            this.fixup_source_locations(node, sourceMapContents)
+          );
         }
 
-        start = Date.now();
-        this.fixup_filenames(node);
-        if (timingStatistics !== undefined) timingStatistics.fixupFilenamesTime += Date.now() - start;
+        this.realm.statistics.fixupFilenames.measure(() => this.fixup_filenames(node));
 
         asts = asts.concat(node.program.body);
         code[source.filePath] = source.fileContents;
@@ -1199,16 +1196,12 @@ export class LexicalEnvironment {
     context.variableEnvironment = this;
     context.realm = this.realm;
     this.realm.pushContext(context);
-    let timingStatistics = this.realm.timingStatistics;
     let res, code;
     try {
       let ast;
       [ast, code] = this.concatenateAndParse(sources, sourceType);
       if (onParse) onParse(ast);
-      if (timingStatistics !== undefined) timingStatistics.evaluationTime = Date.now();
-      res = this.evaluateCompletion(ast, false);
-      if (timingStatistics !== undefined)
-        timingStatistics.evaluationTime = Date.now() - timingStatistics.evaluationTime;
+      res = this.realm.statistics.evaluation.measure(() => this.evaluateCompletion(ast, false));
     } finally {
       this.realm.popContext(context);
       this.realm.onDestroyScope(context.lexicalEnvironment);

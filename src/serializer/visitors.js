@@ -16,13 +16,8 @@ import { convertExpressionToJSXIdentifier } from "../react/jsx";
 import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeFunctionExpression } from "babel-types";
 import type { BabelTraversePath, BabelTraverseScope } from "babel-traverse";
 import type { FunctionBodyAstNode } from "../types.js";
-import type {
-  TryQuery,
-  FunctionInfo,
-  FactoryFunctionInfo,
-  ResidualFunctionBinding,
-  SerializerStatistics,
-} from "./types.js";
+import type { TryQuery, FunctionInfo, FactoryFunctionInfo, ResidualFunctionBinding } from "./types.js";
+import type { SerializerStatistics } from "./statistics.js";
 import { nullExpression } from "../utils/internalizer.js";
 
 export type ClosureRefVisitorState = {
