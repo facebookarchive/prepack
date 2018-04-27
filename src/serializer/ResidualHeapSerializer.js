@@ -686,7 +686,7 @@ export class ResidualHeapSerializer {
     description?: string,
   } {
     let scopes = this.residualValues.get(val);
-    invariant(scopes !== undefined);
+    invariant(scopes !== undefined, "value must have been visited");
 
     // All relevant values were visited in at least one scope.
     invariant(scopes.size >= 1);
@@ -702,7 +702,7 @@ export class ResidualHeapSerializer {
       if (scope instanceof FunctionValue) {
         functionValues.push(scope);
       } else {
-        invariant(scope instanceof Generator);
+        invariant(scope instanceof Generator, "scope must be either function value or generator");
         generators.push(scope);
       }
     }
@@ -729,14 +729,6 @@ export class ResidualHeapSerializer {
       console.log(
         `  is referenced only by additional function? ${referencingOnlyAdditionalFunction !== undefined ? "yes" : "no"}`
       );
-
-    let getBody = s => {
-      if (s === this.generator) {
-        return this.mainBody;
-      } else {
-        return this.activeGeneratorBodies.get(s);
-      }
-    };
 
     // flatten all function values into the scopes that use them
     generators = this._getReferencingGenerators(generators, functionValues, referencingOnlyAdditionalFunction);
@@ -770,19 +762,27 @@ export class ResidualHeapSerializer {
       (x, y) => commonAncestorOf(x, y, getGeneratorParent),
       generators[0]
     );
-    invariant(commonAncestor !== undefined);
+    invariant(commonAncestor !== undefined, "there must always be a common generator ancestor");
     if (trace) console.log(`  common ancestor: ${commonAncestor.getName()}`);
+
+    let getGeneratorActiveBody = s => {
+      if (s === this.generator) {
+        return this.mainBody;
+      } else {
+        return this.activeGeneratorBodies.get(s);
+      }
+    };
 
     let body;
     while (true) {
-      body = getBody(commonAncestor);
+      body = getGeneratorActiveBody(commonAncestor);
       if (body !== undefined) break;
       commonAncestor = getGeneratorParent(commonAncestor);
-      invariant(commonAncestor !== undefined);
+      invariant(commonAncestor !== undefined, "there must always be an active body for the common generator ancestor");
     }
 
     // So we have a (common ancestor) body now.
-    invariant(body !== undefined);
+    invariant(body !== undefined, "there must always be an active body");
 
     // However, there's a potential problem: That body might belong to a generator
     // which has nested generators that are currently being processed (they are not "done" yet).
@@ -794,7 +794,10 @@ export class ResidualHeapSerializer {
     this.emitter.dependenciesVisitor(val, {
       onAbstractValueWithIdentifier: dependency => {
         if (trace) console.log(`  depending on abstract value with identifier ${dependency.intrinsicName || "?"}`);
-        invariant(referencingOnlyAdditionalFunction === undefined || this.emitter.emittingToAdditionalFunction());
+        invariant(
+          referencingOnlyAdditionalFunction === undefined || this.emitter.emittingToAdditionalFunction(),
+          "additional function inconsistency"
+        );
         let declarationBody = this.emitter.getDeclarationBody(dependency);
         if (declarationBody !== undefined) {
           if (trace) console.log(`    has declaration body`);
@@ -808,7 +811,7 @@ export class ResidualHeapSerializer {
     if (trace) console.log(`  got ${notYetDoneBodies.size} not yet done bodies`);
     for (let s of generators)
       for (let g = s; g !== undefined; g = getGeneratorParent(g)) {
-        let scopeBody = getBody(g);
+        let scopeBody = getGeneratorActiveBody(g);
         if (
           scopeBody !== undefined &&
           (scopeBody.nestingLevel || 0) > (body.nestingLevel || 0) &&
