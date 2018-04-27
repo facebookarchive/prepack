@@ -397,9 +397,10 @@ export class Generator {
     let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects.data;
 
     let output = new Generator(realm, name, effects);
-    // joined generators have no entries of their own, so the generators of the components of result can do the job
-    if (!(result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions))
-      output.appendGenerator(generator, "");
+    // joined generators have joined entries that will get visited recursively (via result), so get rid of them here
+    if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions)
+      generator.purgeEntriesWithGeneratorDepencies();
+    output.appendGenerator(generator, "");
 
     for (let propertyBinding of modifiedProperties.keys()) {
       let object = propertyBinding.object;
@@ -1038,8 +1039,29 @@ export class Generator {
     }
   }
 
+  // PITFALL Warning: adding a new kind of TemporalBuildNodeEntry that is not the result of a join or composition
+  // will break this purgeEntriesWithGeneratorDepencies.
   _addEntry(entry: TemporalBuildNodeEntryArgs) {
     this._entries.push(new TemporalBuildNodeEntry(entry));
+  }
+
+  purgeEntriesWithGeneratorDepencies(): void {
+    let newEntries = [];
+    for (let oldEntry of this._entries) {
+      if (oldEntry instanceof PossiblyNormalReturnEntry || oldEntry instanceof JoinedAbruptCompletionsEntry) continue;
+      if (oldEntry instanceof TemporalBuildNodeEntry) {
+        if (oldEntry.dependencies !== undefined) {
+          // Take note: keep entries that are not the result of a join or composition
+          if (
+            oldEntry.dependencies.length !== 1 ||
+            !oldEntry.dependencies[0]._name.startsWith("evaluateForFixpointEffects")
+          )
+            continue;
+        }
+      }
+      newEntries.push(oldEntry);
+    }
+    this._entries = newEntries;
   }
 
   appendGenerator(other: Generator, leadingComment: string): void {
