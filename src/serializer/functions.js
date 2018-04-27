@@ -168,6 +168,7 @@ export class Functions {
       effects,
       transforms: [],
       generator: Generator.fromEffects(effects, this.realm, name, environmentRecordIdAfterGlobalCode),
+      additionalRoots: new Set(),
     };
     return retValue;
   }
