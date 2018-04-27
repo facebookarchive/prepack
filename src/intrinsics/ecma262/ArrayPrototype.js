@@ -10,8 +10,17 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { NumberValue, StringValue, ObjectValue, UndefinedValue, NullValue, Value } from "../../values/index.js";
+import {
+  ArrayValue,
+  NullValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
+  UndefinedValue,
+  Value,
+} from "../../values/index.js";
 import invariant from "../../invariant.js";
+import * as t from "babel-types";
 import { SameValueZeroPartial, AbstractRelationalComparison } from "../../methods/abstract.js";
 import {
   StrictEqualityComparisonPartial,
@@ -26,6 +35,7 @@ import {
   HasSomeCompatibleType,
 } from "../../methods/index.js";
 import { Create, Properties, To } from "../../singletons.js";
+import { FatalError, CompilerDiagnostic } from "../../errors.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.31
@@ -38,6 +48,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   obj.defineNativeMethod("concat", 1, (context, args, argCount) => {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
+
+    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O)) {
+      let newArgs = [O, ...args];
+      return ArrayValue.createTemporalWithWidenedNumericProperty(realm, newArgs, ([objNode, ..._args]) =>
+        t.callExpression(t.memberExpression(objNode, t.identifier("concat")), ((_args: any): Array<any>))
+      );
+    }
 
     // 2. Let A be ? ArraySpeciesCreate(O, 0).
     let A = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), 0);
@@ -297,6 +314,20 @@ export default function(realm: Realm, obj: ObjectValue): void {
   obj.defineNativeMethod("filter", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
+
+    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O)) {
+      let args = [O, callbackfn];
+      if (thisArg) {
+        args.push(thisArg);
+      }
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
+        realm,
+        args,
+        ([objNode, ..._args]) =>
+          t.callExpression(t.memberExpression(objNode, t.identifier("filter")), ((_args: any): Array<any>)),
+        { func: callbackfn, thisVal: thisArg }
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -700,6 +731,20 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
+    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) && O.isSimpleObject()) {
+      let args = [O, callbackfn];
+      if (thisArg) {
+        args.push(thisArg);
+      }
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
+        realm,
+        args,
+        ([objNode, ..._args]) =>
+          t.callExpression(t.memberExpression(objNode, t.identifier("map")), ((_args: any): Array<any>)),
+        { func: callbackfn, thisVal: thisArg }
+      );
+    }
+
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
 
@@ -824,6 +869,29 @@ export default function(realm: Realm, obj: ObjectValue): void {
   obj.defineNativeMethod("reduce", 1, (context, [callbackfn, initialValue]) => {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
+
+    // if there is an initialValue, then the call will likely
+    // have side-effects so this is not supported for now
+    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O)) {
+      if (initialValue || initialValue instanceof UndefinedValue) {
+        let diagnostic = new CompilerDiagnostic(
+          "array reduce with initial value is not supported",
+          realm.currentLocation,
+          "PP0035",
+          "FatalError"
+        );
+        realm.handleError(diagnostic);
+        throw new FatalError();
+      }
+      let args = [O, callbackfn];
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
+        realm,
+        args,
+        ([objNode, ..._args]) =>
+          t.callExpression(t.memberExpression(objNode, t.identifier("reduce")), ((_args: any): Array<any>)),
+        { func: callbackfn, thisVal: realm.intrinsics.undefined }
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
@@ -1143,6 +1211,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   obj.defineNativeMethod("slice", 2, (context, [start, end]) => {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
+
+    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O)) {
+      let newArgs = [O, start, end];
+      return ArrayValue.createTemporalWithWidenedNumericProperty(realm, newArgs, ([objNode, ..._args]) =>
+        t.callExpression(t.memberExpression(objNode, t.identifier("slice")), ((_args: any): Array<any>))
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
