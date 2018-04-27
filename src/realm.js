@@ -767,9 +767,11 @@ export class Realm {
         if (c instanceof PossiblyNormalCompletion) {
           // The current state may have advanced since the time control forked into the various paths recorded in c.
           // Update the normal path and restore the global state to what it was at the time of the fork.
+          let entries = this.generator._entries;
           let subsequentEffects = this.getCapturedEffects(c, c.value);
           invariant(subsequentEffects !== undefined);
           this.stopEffectCaptureAndUndoEffects(c);
+          this.generator._entries.push(...entries);
           Join.updatePossiblyNormalCompletionWithSubsequentEffects(this, c, subsequentEffects);
           this.savedCompletion = undefined;
         }

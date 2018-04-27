@@ -141,6 +141,7 @@ export class Functions {
       // The completion is not the end of function execution, but a fork point for separate threads of control.
       // The effects of all of these threads need to get joined up and rolled into the top level effects,
       // so that applying the effects before serializing the body will fully initialize all variables and objects.
+      let entries = effects.data[1]._entries;
       effects = realm.evaluateForEffects(
         () => {
           realm.applyEffects(effects, "_createAdditionalEffects/1", false);
@@ -160,6 +161,7 @@ export class Functions {
         undefined,
         "_createAdditionalEffects"
       );
+      effects.data[1]._entries.push(...entries);
     }
     let retValue: AdditionalFunctionEffects = {
       parentAdditionalFunction,
