@@ -55,7 +55,8 @@ import type {
   AdditionalFunctionEffects,
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
-import { SerializerStatistics, BodyReference } from "./types.js";
+import { BodyReference } from "./types.js";
+import { SerializerStatistics } from "./statistics.js";
 import { Logger } from "../utils/logger.js";
 import { Modules } from "../utils/modules.js";
 import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
@@ -103,7 +104,6 @@ export class ResidualHeapSerializer {
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
-    statistics: SerializerStatistics,
     react: ReactSerializerState,
     referentializer: Referentializer,
     generatorParents: Map<Generator, Generator | FunctionValue | "GLOBAL">,
@@ -113,7 +113,6 @@ export class ResidualHeapSerializer {
     this.logger = logger;
     this.modules = modules;
     this.residualHeapValueIdentifiers = residualHeapValueIdentifiers;
-    this.statistics = statistics;
     this.react = react;
     this.referentializer = referentializer;
 
@@ -140,7 +139,6 @@ export class ResidualHeapSerializer {
     this.residualReactElementSerializer = new ResidualReactElementSerializer(this.realm, this);
     this.residualFunctions = new ResidualFunctions(
       this.realm,
-      this.statistics,
       options,
       this.modules,
       this.requireReturns,
@@ -163,7 +161,12 @@ export class ResidualHeapSerializer {
       this.additionalFunctionValueNestedFunctions,
       referentializer
     );
-    this.emitter = new Emitter(this.residualFunctions, referencedDeclaredValues, conditionalFeasibility);
+    this.emitter = new Emitter(
+      this.residualFunctions,
+      referencedDeclaredValues,
+      conditionalFeasibility,
+      this.preludeGenerator.derivedIds
+    );
     this.mainBody = this.emitter.getBody();
     this.residualHeapInspector = residualHeapInspector;
     this.residualValues = residualValues;
@@ -204,7 +207,6 @@ export class ResidualHeapSerializer {
   modules: Modules;
   residualHeapValueIdentifiers: ResidualHeapValueIdentifiers;
   requireReturns: Map<number | string, BabelNodeExpression>;
-  statistics: SerializerStatistics;
   residualHeapInspector: ResidualHeapInspector;
   residualValues: Map<Value, Set<Scope>>;
   residualFunctionInstances: Map<FunctionValue, FunctionInstance>;
@@ -233,6 +235,11 @@ export class ResidualHeapSerializer {
   conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>;
 
   declaredGlobalLets: Map<string, Value>;
+
+  getStatistics(): SerializerStatistics {
+    invariant(this.realm.statistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
+    return this.realm.statistics;
+  }
 
   // Configures all mutable aspects of an object, in particular:
   // symbols, properties, prototype.
@@ -277,7 +284,7 @@ export class ResidualHeapSerializer {
       if (desc !== undefined) {
         let val = desc.value;
         invariant(val instanceof AbstractValue);
-        this.emitter.emitNowOrAfterWaitingForDependencies(this._getNestedAbstractValues(val, [obj]), () => {
+        this.emitter.emitNowOrAfterWaitingForDependencies(this._getNestedValuesFromAbstract(val, [obj]), () => {
           invariant(val instanceof AbstractValue);
           this._emitPropertiesWithComputedNames(obj, val);
         });
@@ -290,8 +297,8 @@ export class ResidualHeapSerializer {
       if (obj instanceof FunctionValue) this._emitConstructorPrototype(obj);
     }
 
-    this.statistics.objects++;
-    this.statistics.objectProperties += obj.properties.size;
+    this.getStatistics().objects++;
+    this.getStatistics().objectProperties += obj.properties.size;
   }
 
   _emitObjectPrototype(obj: ObjectValue, objectPrototypeAlreadyEstablished: boolean) {
@@ -347,7 +354,7 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _getNestedAbstractValues(absVal: AbstractValue, values: Array<Value>): Array<Value> {
+  _getNestedValuesFromAbstract(absVal: AbstractValue, values: Array<Value>): Array<Value> {
     if (absVal.kind === "widened property") return values;
     if (absVal.kind === "template for prototype member expression") return values;
     invariant(absVal.args.length === 3);
@@ -359,17 +366,23 @@ export class ResidualHeapSerializer {
       let V = absVal.args[1];
       values.push(V);
       let W = absVal.args[2];
-      if (W instanceof AbstractValue) this._getNestedAbstractValues(W, values);
+      if (W instanceof AbstractValue) this._getNestedValuesFromAbstract(W, values);
       else values.push(W);
     } else {
       // conditional assignment
       values.push(cond);
       let consequent = absVal.args[1];
-      invariant(consequent instanceof AbstractValue);
+      if (consequent instanceof AbstractValue) {
+        this._getNestedValuesFromAbstract(consequent, values);
+      } else {
+        values.push(consequent);
+      }
       let alternate = absVal.args[2];
-      invariant(alternate instanceof AbstractValue);
-      this._getNestedAbstractValues(consequent, values);
-      this._getNestedAbstractValues(alternate, values);
+      if (alternate instanceof AbstractValue) {
+        this._getNestedValuesFromAbstract(alternate, values);
+      } else {
+        values.push(alternate);
+      }
     }
     return values;
   }
@@ -396,37 +409,46 @@ export class ResidualHeapSerializer {
       // conditional assignment
       let serializedCond = this.serializeValue(cond);
       let consequent = absVal.args[1];
-      invariant(consequent instanceof AbstractValue);
-      let alternate = absVal.args[2];
-      invariant(alternate instanceof AbstractValue);
-      let oldBody = this.emitter.beginEmitting(
-        "consequent",
-        {
-          type: "ConditionalAssignmentBranch",
-          parentBody: undefined,
-          entries: [],
-          done: false,
-        },
-        /*isChild*/ true
-      );
-      this._emitPropertiesWithComputedNames(obj, consequent);
       let valuesToProcess = new Set();
-      let consequentBody = this.emitter.endEmitting("consequent", oldBody, valuesToProcess, /*isChild*/ true);
-      let consequentStatement = t.blockStatement(consequentBody.entries);
-      oldBody = this.emitter.beginEmitting(
-        "alternate",
-        {
-          type: "ConditionalAssignmentBranch",
-          parentBody: undefined,
-          entries: [],
-          done: false,
-        },
-        /*isChild*/ true
-      );
-      this._emitPropertiesWithComputedNames(obj, alternate);
-      let alternateBody = this.emitter.endEmitting("alternate", oldBody, valuesToProcess, /*isChild*/ true);
-      let alternateStatement = t.blockStatement(alternateBody.entries);
-      this.emitter.emit(t.ifStatement(serializedCond, consequentStatement, alternateStatement));
+      let consequentStatement;
+      let alternateStatement;
+
+      if (consequent instanceof AbstractValue) {
+        let oldBody = this.emitter.beginEmitting(
+          "consequent",
+          {
+            type: "ConditionalAssignmentBranch",
+            parentBody: undefined,
+            entries: [],
+            done: false,
+          },
+          /*isChild*/ true
+        );
+        this._emitPropertiesWithComputedNames(obj, consequent);
+        let consequentBody = this.emitter.endEmitting("consequent", oldBody, valuesToProcess, /*isChild*/ true);
+        consequentStatement = t.blockStatement(consequentBody.entries);
+      }
+      let alternate = absVal.args[2];
+      if (alternate instanceof AbstractValue) {
+        let oldBody = this.emitter.beginEmitting(
+          "alternate",
+          {
+            type: "ConditionalAssignmentBranch",
+            parentBody: undefined,
+            entries: [],
+            done: false,
+          },
+          /*isChild*/ true
+        );
+        this._emitPropertiesWithComputedNames(obj, alternate);
+        let alternateBody = this.emitter.endEmitting("alternate", oldBody, valuesToProcess, /*isChild*/ true);
+        alternateStatement = t.blockStatement(alternateBody.entries);
+      }
+      if (consequentStatement) {
+        this.emitter.emit(t.ifStatement(serializedCond, consequentStatement, alternateStatement));
+      } else if (alternateStatement) {
+        this.emitter.emit(t.ifStatement(t.unaryExpression("!", serializedCond), alternateStatement));
+      }
       this.emitter.processValues(valuesToProcess);
     }
   }
@@ -438,15 +460,17 @@ export class ResidualHeapSerializer {
 
   _emitProperty(
     val: ObjectValue,
-    key: string | SymbolValue,
+    key: string | SymbolValue | AbstractValue,
     desc: Descriptor | void,
     deleteIfMightHaveBeenDeleted: boolean = false
   ): void {
     // Location for the property to be assigned to
     let locationFunction = () => {
       let serializedKey =
-        key instanceof SymbolValue ? this.serializeValue(key) : this.generator.getAsPropertyNameExpression(key);
-      let computed = key instanceof SymbolValue || !t.isIdentifier(serializedKey);
+        key instanceof SymbolValue || key instanceof AbstractValue
+          ? this.serializeValue(key)
+          : this.generator.getAsPropertyNameExpression(key);
+      let computed = key instanceof SymbolValue || key instanceof AbstractValue || !t.isIdentifier(serializedKey);
       return t.memberExpression(this.getSerializeObjectIdentifier(val), serializedKey, computed);
     };
     if (desc === undefined) {
@@ -460,7 +484,7 @@ export class ResidualHeapSerializer {
     deleteIfMightHaveBeenDeleted: boolean,
     locationFunction: void | (() => BabelNodeLVal),
     val: ObjectValue,
-    key: string | SymbolValue,
+    key: string | SymbolValue | AbstractValue,
     desc: Descriptor
   ): BabelNodeStatement {
     if (desc.joinCondition) {
@@ -557,7 +581,7 @@ export class ResidualHeapSerializer {
       }
     }
     let serializedKey =
-      key instanceof SymbolValue
+      key instanceof SymbolValue || key instanceof AbstractValue
         ? this.serializeValue(key)
         : this.generator.getAsPropertyNameExpression(key, /*canBeIdentifier*/ false);
     invariant(!this.emitter.getReasonToWaitForDependencies([val]), "precondition of _emitProperty");
@@ -916,14 +940,14 @@ export class ResidualHeapSerializer {
         if (init !== id) {
           this._declare(!!target.usedOnlyByResidualFunctions, bindingType || "var", id, init);
         }
-        this.statistics.valueIds++;
-        if (target.usedOnlyByResidualFunctions) this.statistics.delayedValues++;
+        this.getStatistics().valueIds++;
+        if (target.usedOnlyByResidualFunctions) this.getStatistics().delayedValues++;
       }
     } else {
       if (init) {
         this.residualHeapValueIdentifiers.deleteIdentifier(val);
         result = init;
-        this.statistics.valuesInlined++;
+        this.getStatistics().valuesInlined++;
       }
     }
 
@@ -1421,7 +1445,7 @@ export class ResidualHeapSerializer {
   }
 
   // Checks whether a property can be defined via simple assignment, or using object literal syntax.
-  _canEmbedProperty(obj: ObjectValue, key: string | SymbolValue, prop: Descriptor): boolean {
+  _canEmbedProperty(obj: ObjectValue, key: string | SymbolValue | AbstractValue, prop: Descriptor): boolean {
     if (prop.joinCondition !== undefined) return false;
 
     let targetDescriptor = this.residualHeapInspector.getTargetIntegrityDescriptor(obj);
@@ -1666,6 +1690,10 @@ export class ResidualHeapSerializer {
       let ob = serializedArgs[0];
       invariant(ob !== undefined);
       return t.callExpression(this.preludeGenerator.memoizeReference("Object.assign"), [ob]);
+    } else if (val.kind === "template for prototype member expression") {
+      let obj = this.serializeValue(val.args[0]);
+      let prop = this.serializeValue(val.args[1]);
+      return t.memberExpression(obj, prop, true);
     }
     let serializedValue = val.buildNode(serializedArgs);
     if (serializedValue.type === "Identifier") {
@@ -1791,7 +1819,7 @@ export class ResidualHeapSerializer {
       statements.unshift(commentStatement("begin " + comment));
       statements.push(commentStatement("end " + comment));
     }
-    this.statistics.generators++;
+    this.getStatistics().generators++;
     return statements;
   }
 
@@ -1820,7 +1848,8 @@ export class ResidualHeapSerializer {
       emitPropertyModification: (propertyBinding: PropertyBinding) => {
         let object = propertyBinding.object;
         invariant(object instanceof ObjectValue);
-        this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
+        if (this.residualValues.has(object))
+          this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
       },
       options: this._options,
     };
@@ -1932,7 +1961,7 @@ export class ResidualHeapSerializer {
     this.prepareAdditionalFunctionValues();
 
     this.generator.serialize(this._getContext());
-    this.statistics.generators++;
+    this.getStatistics().generators++;
     invariant(this.emitter.declaredCount() <= this.preludeGenerator.derivedIds.size);
 
     // TODO #20: add timers

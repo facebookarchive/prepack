@@ -61,7 +61,8 @@ export class Emitter {
   constructor(
     residualFunctions: ResidualFunctions,
     referencedDeclaredValues: Map<AbstractValue, void | FunctionValue>,
-    conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>
+    conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>,
+    derivedIds: Map<string, Array<Value>>
   ) {
     this._mainBody = { type: "MainGenerator", parentBody: undefined, entries: [], done: false };
     this._waitingForValues = new Map();
@@ -82,6 +83,7 @@ export class Emitter {
       onAbstractValueWithIdentifier: val => {
         // If the value hasn't been declared yet, then we should wait for it.
         if (
+          derivedIds.has(val.getIdentifier().name) &&
           !this.cannotDeclare() &&
           !this.hasBeenDeclared(val) &&
           (!this.emittingToAdditionalFunction() || referencedDeclaredValues.get(val) !== undefined)

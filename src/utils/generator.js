@@ -31,7 +31,6 @@ import {
 } from "../values/index.js";
 import { CompilerDiagnostic } from "../errors.js";
 import type { AbstractValueBuildNodeFunction } from "../values/AbstractValue.js";
-import { hashString } from "../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
@@ -77,7 +76,7 @@ export type VisitEntryCallbacks = {|
   canSkip: AbstractValue => boolean,
   recordDeclaration: AbstractValue => void,
   recordDelayedEntry: (Generator, GeneratorEntry) => void,
-  visitObjectProperty: PropertyBinding => void,
+  visitModifiedObjectProperty: PropertyBinding => void,
   visitModifiedBinding: Binding => [ResidualFunctionBinding, Value],
 |};
 
@@ -197,7 +196,7 @@ class ModifiedPropertyEntry extends GeneratorEntry {
     );
     let desc = this.propertyBinding.descriptor;
     invariant(desc === this.newDescriptor);
-    context.visitObjectProperty(this.propertyBinding);
+    context.visitModifiedObjectProperty(this.propertyBinding);
     return true;
   }
 }
@@ -255,7 +254,7 @@ class ModifiedBindingEntry extends GeneratorEntry {
 class ReturnValueEntry extends GeneratorEntry {
   constructor(generator: Generator, returnValue: Value) {
     super();
-    this.returnValue = returnValue;
+    this.returnValue = returnValue.promoteEmptyToUndefined();
     this.containingGenerator = generator;
   }
 
@@ -398,9 +397,10 @@ export class Generator {
     let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects.data;
 
     let output = new Generator(realm, name, effects);
-    // joined generators have no entries of their own, so the generators of the components of result can do the job
-    if (!(result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions))
-      output.appendGenerator(generator, "");
+    // joined generators have joined entries that will get visited recursively (via result), so get rid of them here
+    if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions)
+      generator.purgeEntriesWithGeneratorDepencies();
+    output.appendGenerator(generator, "");
 
     for (let propertyBinding of modifiedProperties.keys()) {
       let object = propertyBinding.object;
@@ -949,7 +949,15 @@ export class Generator {
     let options = {};
     if (optionalArgs && optionalArgs.kind) options.kind = optionalArgs.kind;
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let res = new Constructor(this.realm, types, values, hashString(id.name), [], id, options);
+    let res = new Constructor(
+      this.realm,
+      types,
+      values,
+      1735003607742176 + this.preludeGenerator.derivedIds.size,
+      [],
+      id,
+      options
+    );
     this._addEntry({
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: res,
@@ -1031,8 +1039,29 @@ export class Generator {
     }
   }
 
+  // PITFALL Warning: adding a new kind of TemporalBuildNodeEntry that is not the result of a join or composition
+  // will break this purgeEntriesWithGeneratorDepencies.
   _addEntry(entry: TemporalBuildNodeEntryArgs) {
     this._entries.push(new TemporalBuildNodeEntry(entry));
+  }
+
+  purgeEntriesWithGeneratorDepencies(): void {
+    let newEntries = [];
+    for (let oldEntry of this._entries) {
+      if (oldEntry instanceof PossiblyNormalReturnEntry || oldEntry instanceof JoinedAbruptCompletionsEntry) continue;
+      if (oldEntry instanceof TemporalBuildNodeEntry) {
+        if (oldEntry.dependencies !== undefined) {
+          // Take note: keep entries that are not the result of a join or composition
+          if (
+            oldEntry.dependencies.length !== 1 ||
+            !oldEntry.dependencies[0]._name.startsWith("evaluateForFixpointEffects")
+          )
+            continue;
+        }
+      }
+      newEntries.push(oldEntry);
+    }
+    this._entries = newEntries;
   }
 
   appendGenerator(other: Generator, leadingComment: string): void {

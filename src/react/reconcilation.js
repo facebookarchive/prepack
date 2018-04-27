@@ -62,7 +62,6 @@ import { ExpectedBailOut, SimpleClassBailOut, NewComponentTreeBranch } from "./e
 import { AbruptCompletion, Completion } from "../completions.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
-import { createAbstractArgument } from "../intrinsics/prepack/utils.js";
 import { createInternalReactElement } from "./elements.js";
 
 type ComponentResolutionStrategy =
@@ -247,7 +246,7 @@ export class Reconciler {
           if (t.isIdentifier(parameterId)) {
             // Create an AbstractValue similar to __abstract being called
             args.push(
-              createAbstractArgument(
+              AbstractValue.createAbstractArgument(
                 this.realm,
                 ((parameterId: any): BabelNodeIdentifier).name,
                 targetFunc.expressionLocation
