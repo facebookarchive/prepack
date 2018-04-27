@@ -870,8 +870,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // if there is an initialValue, then we cannot be sure
-    // array and will like -> array and the call will likely
+    // if there is an initialValue, then the call will likely
     // have side-effects so this is not supported for now
     if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O)) {
       if (initialValue || initialValue instanceof UndefinedValue) {
