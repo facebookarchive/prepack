@@ -1646,14 +1646,15 @@ export class ResidualHeapSerializer {
         invariant(kind === "Object", "invariant established by visitor");
 
         let proto = val.$Prototype;
+        let { skipPrototype, constructor: _constructor } = getObjectPrototypeMetadata(this.realm, val);
         let createViaAuxiliaryConstructor =
           val.temporalAlias === undefined &&
           proto !== this.realm.intrinsics.ObjectPrototype &&
           this._findLastObjectPrototype(val) === this.realm.intrinsics.ObjectPrototype &&
-          proto instanceof ObjectValue;
-        let { skipPrototype, constructor: _constructor } = getObjectPrototypeMetadata(this.realm, val);
+          proto instanceof ObjectValue &&
+          !skipPrototype;
 
-        return createViaAuxiliaryConstructor
+        return createViaAuxiliaryConstructor || _constructor
           ? this._serializeValueObjectViaConstructor(val, skipPrototype, _constructor)
           : this.serializeValueRawObject(val, skipPrototype);
     }

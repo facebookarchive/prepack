@@ -15,7 +15,7 @@ import type { Realm } from "../realm.js";
 import { FatalError } from "../errors.js";
 import type { Descriptor } from "../types.js";
 import invariant from "../invariant.js";
-import { IsArray, IsArrayIndex, Get } from "../methods/index.js";
+import { IsArray, IsArrayIndex } from "../methods/index.js";
 import { Logger } from "../utils/logger.js";
 
 /**
@@ -104,14 +104,17 @@ export function withDescriptorValue(
 
 export const ClassPropertiesToIgnore: Set<string> = new Set(["arguments", "name", "caller"]);
 
-export function canIgnoreClassLengthProperty(val: ObjectValue, desc: void | Descriptor, logger: Logger) {
+export function canIgnoreClassLengthProperty(val: ObjectValue, desc: void | Descriptor, logger: Logger): boolean {
   if (desc && desc.value === undefined) {
     logger.logError(val, "Functions with length accessor properties are not supported in residual heap.");
   }
   return true;
 }
 
-export function getObjectPrototypeMetadata(realm: Realm, obj: ObjectValue) {
+export function getObjectPrototypeMetadata(
+  realm: Realm,
+  obj: ObjectValue
+): { skipPrototype: boolean, constructor: void | ECMAScriptSourceFunctionValue } {
   let proto = obj.$Prototype;
   let skipPrototype = false;
   let constructor;
@@ -122,19 +125,19 @@ export function getObjectPrototypeMetadata(realm: Realm, obj: ObjectValue) {
   if (proto && proto.$IsClassPrototype) {
     invariant(proto instanceof ObjectValue);
     // we now need to check if the prototpe has a constructor
-    if (proto.properties.has("constructor")) {
-      let _constructor = proto.properties.get("constructor");
-      invariant(_constructor !== undefined);
+    let _constructor = proto.properties.get("constructor");
+    if (_constructor !== undefined) {
       // if the contructor has been deleted then we have no way
       // to serialize the original class AST as it won't have been
       // evluated and thus visited
       if (_constructor.descriptor === undefined) {
         throw new FatalError("TODO #1024: implement object prototype serialization with deleted constructor");
       }
-      let classFunc = Get(realm, proto, "constructor");
-      constructor = classFunc;
-      invariant(constructor instanceof ECMAScriptSourceFunctionValue);
-      skipPrototype = true;
+      let classFunc = _constructor.descriptor.value;
+      if (classFunc instanceof ECMAScriptSourceFunctionValue) {
+        constructor = classFunc;
+        skipPrototype = true;
+      }
     }
   }
 
