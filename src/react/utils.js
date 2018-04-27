@@ -526,7 +526,7 @@ export function objectHasNoPartialKeyAndRef(
 
 function recursivelyFlattenArray(realm: Realm, array, targetArray): void {
   forEachArrayValue(realm, array, item => {
-    if (item instanceof ArrayValue) {
+    if (item instanceof ArrayValue && !item.intrinsicName) {
       recursivelyFlattenArray(realm, item, targetArray);
     } else {
       let lengthValue = Get(realm, targetArray, "length");

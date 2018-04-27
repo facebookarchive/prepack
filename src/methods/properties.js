@@ -1294,7 +1294,7 @@ export class PropertiesImplementation {
           if (value.kind !== "resolved") {
             let realmGenerator = realm.generator;
             invariant(realmGenerator);
-            value = realmGenerator.derive(value.types, value.values, value.args, value.getBuildNode(), {
+            value = realmGenerator.deriveAbstract(value.types, value.values, value.args, value.getBuildNode(), {
               kind: "resolved",
               // We can't emit the invariant here otherwise it'll assume the AbstractValue's type not the union type
               skipInvariant: true,

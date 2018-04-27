@@ -13,21 +13,22 @@ import { Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 import { IsArray, Get } from "../methods/index.js";
 import {
-  BoundFunctionValue,
-  ProxyValue,
-  SymbolValue,
-  NumberValue,
-  StringValue,
-  BooleanValue,
   AbstractValue,
+  BooleanValue,
+  BoundFunctionValue,
+  ConcreteValue,
+  ECMAScriptSourceFunctionValue,
   EmptyValue,
   FunctionValue,
-  ECMAScriptSourceFunctionValue,
-  Value,
-  ObjectValue,
   NativeFunctionValue,
-  UndefinedValue,
+  NumberValue,
+  ObjectValue,
   PrimitiveValue,
+  ProxyValue,
+  StringValue,
+  SymbolValue,
+  Value,
+  UndefinedValue,
 } from "../values/index.js";
 import * as t from "babel-types";
 import type {
@@ -100,7 +101,7 @@ export class ResidualHeapSerializer {
     residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     options: SerializerOptions,
-    referencedDeclaredValues: Map<AbstractValue, void | FunctionValue>,
+    referencedDeclaredValues: Map<AbstractValue | ConcreteValue, void | FunctionValue>,
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
@@ -216,7 +217,7 @@ export class ResidualHeapSerializer {
   _serializedValueWithIdentifiers: Set<Value>;
   residualFunctions: ResidualFunctions;
   _options: SerializerOptions;
-  referencedDeclaredValues: Map<AbstractValue, void | FunctionValue>;
+  referencedDeclaredValues: Map<AbstractValue | ConcreteValue, void | FunctionValue>;
   activeGeneratorBodies: Map<Generator, SerializedBody>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
@@ -1839,10 +1840,10 @@ export class ResidualHeapSerializer {
         this.emitter.processValues(valuesToProcess);
       },
       emitDefinePropertyBody: this.emitDefinePropertyBody.bind(this, false, undefined),
-      canOmit: (value: AbstractValue) => {
+      canOmit: (value: AbstractValue | ConcreteValue) => {
         return !this.referencedDeclaredValues.has(value);
       },
-      declare: (value: AbstractValue) => {
+      declare: (value: AbstractValue | ConcreteValue) => {
         this.emitter.declare(value);
       },
       emitPropertyModification: (propertyBinding: PropertyBinding) => {

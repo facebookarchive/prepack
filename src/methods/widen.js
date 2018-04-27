@@ -149,9 +149,13 @@ export class WidenImplementation {
           // Create a temporal location for binding
           let generator = realm.generator;
           invariant(generator !== undefined);
-          phiNode = generator.derive(result.types, result.values, [b.value || realm.intrinsics.undefined], ([n]) => n, {
-            skipInvariant: true,
-          });
+          phiNode = generator.deriveAbstract(
+            result.types,
+            result.values,
+            [b.value || realm.intrinsics.undefined],
+            ([n]) => n,
+            { skipInvariant: true }
+          );
           b.phiNode = phiNode;
         }
         // Let the widened value be a reference to the phiNode of the binding

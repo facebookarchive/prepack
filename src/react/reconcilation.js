@@ -890,6 +890,7 @@ export class Reconciler {
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
   ): AbstractValue {
+    invariant(this.realm.generator);
     let length = value.args.length;
     // TODO investigate what other kinds than "conditional" might be safe to deeply resolve
     if (length === 3 && value.kind === "conditional") {
@@ -1056,7 +1057,7 @@ export class Reconciler {
           evaluatedNode
         );
         // we can optimize further and flatten arrays on non-composite components
-        if (resolvedChildren instanceof ArrayValue) {
+        if (resolvedChildren instanceof ArrayValue && !resolvedChildren.intrinsicName) {
           resolvedChildren = flattenChildren(this.realm, resolvedChildren);
         }
         if (propsValue.properties.has("children")) {
@@ -1350,7 +1351,21 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
-  ) {
+  ): void {
+    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(arrayValue)) {
+      let arrayHint = this.realm.react.arrayHints.get(arrayValue);
+
+      if (arrayHint !== undefined) {
+        let { func, thisVal } = arrayHint;
+        if (func instanceof ECMAScriptSourceFunctionValue || func instanceof BoundFunctionValue) {
+          if (thisVal && thisVal !== this.realm.intrinsics.undefined) {
+            throw new ExpectedBailOut(`abstract mapped arrays with "this" argument are not yet supported`);
+          }
+          this._queueOptimizedClosure(func, evaluatedNode, componentType, context, branchState);
+          return;
+        }
+      }
+    }
     forEachArrayValue(this.realm, arrayValue, (elementValue, elementPropertyDescriptor) => {
       elementPropertyDescriptor.value = this._resolveDeeply(
         componentType,

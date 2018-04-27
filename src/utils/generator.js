@@ -64,8 +64,8 @@ export type SerializationContext = {|
   emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
   processValues: (Set<AbstractValue>) => void,
-  canOmit: AbstractValue => boolean,
-  declare: AbstractValue => void,
+  canOmit: (AbstractValue | ConcreteValue) => boolean,
+  declare: (AbstractValue | ConcreteValue) => void,
   emitPropertyModification: PropertyBinding => void,
   options: SerializerOptions,
 |};
@@ -73,8 +73,8 @@ export type SerializationContext = {|
 export type VisitEntryCallbacks = {|
   visitEquivalentValue: Value => Value,
   visitGenerator: (Generator, Generator) => void,
-  canSkip: AbstractValue => boolean,
-  recordDeclaration: AbstractValue => void,
+  canSkip: (AbstractValue | ConcreteValue) => boolean,
+  recordDeclaration: (AbstractValue | ConcreteValue) => void,
   recordDelayedEntry: (Generator, GeneratorEntry) => void,
   visitModifiedObjectProperty: PropertyBinding => void,
   visitModifiedBinding: Binding => [ResidualFunctionBinding, Value],
@@ -105,7 +105,7 @@ export class GeneratorEntry {
 }
 
 type TemporalBuildNodeEntryArgs = {
-  declared?: AbstractValue,
+  declared?: AbstractValue | ConcreteValue,
   args: Array<Value>,
   // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
   buildNode?: GeneratorBuildNodeFunction,
@@ -119,7 +119,7 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
     Object.assign(this, args);
   }
 
-  declared: void | AbstractValue;
+  declared: void | AbstractValue | ConcreteValue;
   args: Array<Value>;
   // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
   buildNode: void | GeneratorBuildNodeFunction;
@@ -880,7 +880,7 @@ export class Generator {
     args: Array<Value>,
     kind?: AbstractValueKind
   ): AbstractValue {
-    return this.derive(types, values, args, (nodes: any) => t.callExpression(createCallee(), nodes), { kind });
+    return this.deriveAbstract(types, values, args, (nodes: any) => t.callExpression(createCallee(), nodes), { kind });
   }
 
   emitStatement(args: Array<Value>, buildNode_: (Array<BabelNodeExpression>) => BabelNodeStatement) {
@@ -936,7 +936,38 @@ export class Generator {
     });
   }
 
-  derive(
+  deriveConcrete(
+    buildValue: (intrinsicName: string) => ConcreteValue,
+    args: Array<Value>,
+    buildNode_: DerivedExpressionBuildNodeFunction | BabelNodeExpression,
+    optionalArgs?: {| isPure?: boolean |}
+  ): ConcreteValue {
+    invariant(buildNode_ instanceof Function || args.length === 0);
+    let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
+    this.preludeGenerator.derivedIds.set(id.name, args);
+    let value = buildValue(id.name);
+    if (value instanceof ObjectValue) {
+      value.intrinsicNameGenerated = true;
+    }
+    this._addEntry({
+      isPure: optionalArgs ? optionalArgs.isPure : undefined,
+      declared: value,
+      args,
+      buildNode: (nodes: Array<BabelNodeExpression>, context: SerializationContext, valuesToProcess) => {
+        return t.variableDeclaration("var", [
+          t.variableDeclarator(
+            id,
+            (buildNode_: any) instanceof Function
+              ? ((buildNode_: any): DerivedExpressionBuildNodeFunction)(nodes, context, valuesToProcess)
+              : ((buildNode_: any): BabelNodeExpression)
+          ),
+        ]);
+      },
+    });
+    return value;
+  }
+
+  deriveAbstract(
     types: TypesDomain,
     values: ValuesDomain,
     args: Array<Value>,

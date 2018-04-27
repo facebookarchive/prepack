@@ -20,6 +20,7 @@ import {
   AbstractObjectValue,
   AbstractValue,
   BoundFunctionValue,
+  ConcreteValue,
   ECMAScriptFunctionValue,
   ECMAScriptSourceFunctionValue,
   EmptyValue,
@@ -137,7 +138,7 @@ export class ResidualHeapVisitor {
   // For every abstract value of kind "conditional", this map keeps track of whether the consequent and/or alternate is feasible in any scope
   conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>;
   inspector: ResidualHeapInspector;
-  referencedDeclaredValues: Map<AbstractValue, void | FunctionValue>;
+  referencedDeclaredValues: Map<AbstractValue | ConcreteValue, void | FunctionValue>;
   delayedActions: Array<{| generator: Generator, action: () => void | boolean |}>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>;
   functionInstances: Map<FunctionValue, FunctionInstance>;
@@ -1030,10 +1031,10 @@ export class ResidualHeapVisitor {
         // invariant(!this.generatorParents.has(generator));
         this.visitGenerator(generator, parent, additionalFunctionInfo);
       },
-      canSkip: (value: AbstractValue): boolean => {
+      canSkip: (value: AbstractValue | ConcreteValue): boolean => {
         return !this.referencedDeclaredValues.has(value) && !this.values.has(value);
       },
-      recordDeclaration: (value: AbstractValue) => {
+      recordDeclaration: (value: AbstractValue | ConcreteValue) => {
         this.referencedDeclaredValues.set(value, this._getAdditionalFunctionOfScope());
       },
       recordDelayedEntry: (generator, entry: GeneratorEntry) => {

@@ -10,13 +10,14 @@
 /* @flow */
 
 import {
-  BoundFunctionValue,
-  ProxyValue,
   AbstractValue,
+  BoundFunctionValue,
+  ConcreteValue,
   FunctionValue,
-  Value,
   ObjectValue,
+  ProxyValue,
   SymbolValue,
+  Value,
 } from "../values/index.js";
 import type { BabelNodeStatement } from "babel-types";
 import type { SerializedBody } from "./types.js";
@@ -60,7 +61,7 @@ type EmitterDependenciesVisitorCallbacks<T> = {
 export class Emitter {
   constructor(
     residualFunctions: ResidualFunctions,
-    referencedDeclaredValues: Map<AbstractValue, void | FunctionValue>,
+    referencedDeclaredValues: Map<AbstractValue | ConcreteValue, void | FunctionValue>,
     conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>,
     derivedIds: Map<string, Array<Value>>
   ) {
@@ -432,15 +433,17 @@ export class Emitter {
     invariant(!this._finalized);
     this.emitAfterWaiting(this.getReasonToWaitForDependencies(dependencies), dependencies, func, targetBody);
   }
-  declare(value: AbstractValue) {
+  declare(value: AbstractValue | ConcreteValue) {
     invariant(!this._finalized);
     invariant(!this._activeValues.has(value));
-    invariant(value.hasIdentifier());
+    invariant(value instanceof ConcreteValue || value.hasIdentifier());
     invariant(this._isEmittingActiveGenerator());
     invariant(!this.cannotDeclare());
     invariant(!this._body.done);
-    if (this._body.declaredAbstractValues === undefined) this._body.declaredAbstractValues = new Map();
-    this._body.declaredAbstractValues.set(value, this._body);
+    if (value instanceof AbstractValue) {
+      if (this._body.declaredAbstractValues === undefined) this._body.declaredAbstractValues = new Map();
+      this._body.declaredAbstractValues.set(value, this._body);
+    }
     this._processValue(value);
   }
   emittingToAdditionalFunction() {

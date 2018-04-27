@@ -22,6 +22,7 @@ import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler, FatalEr
 import {
   AbstractObjectValue,
   AbstractValue,
+  ArrayValue,
   ConcreteValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
@@ -258,6 +259,7 @@ export class Realm {
 
     this.react = {
       abstractHints: new WeakMap(),
+      arrayHints: new WeakMap(),
       classComponentMetadata: new Map(),
       currentOwner: undefined,
       enabled: opts.reactEnabled || false,
@@ -334,6 +336,7 @@ export class Realm {
     // (for example, when we use Relay's React containers with "fb-www" – which are AbstractObjectValues,
     // we need to know what React component was passed to this AbstractObjectValue so we can visit it next)
     abstractHints: WeakMap<AbstractValue | ObjectValue, ReactHint>,
+    arrayHints: WeakMap<ArrayValue, { func: Value, thisVal: Value }>,
     classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
     currentOwner?: ObjectValue,
     enabled: boolean,
@@ -901,7 +904,7 @@ export class Realm {
           this._emitPropertAssignments(gen, pbindings2, createdObjects2);
           this._emitLocalAssignments(gen, bindings2, createdObjects2);
           invariant(test instanceof AbstractValue);
-          let cond = gen.derive(test.types, test.values, [test], ([n]) => n, {
+          let cond = gen.deriveAbstract(test.types, test.values, [test], ([n]) => n, {
             skipInvariant: true,
           });
           return [effects1, effects2, cond];
@@ -932,7 +935,7 @@ export class Realm {
       let val = binding.value;
       if (val instanceof AbstractValue) {
         invariant(val._buildNode !== undefined);
-        let tval = gen.derive(val.types, val.values, [val], ([n]) => n, {
+        let tval = gen.deriveAbstract(val.types, val.values, [val], ([n]) => n, {
           skipInvariant: true,
         });
         tvalFor.set(key, tval);
@@ -985,7 +988,7 @@ export class Realm {
       let value = val && val.value;
       if (value instanceof AbstractValue) {
         invariant(value._buildNode !== undefined);
-        let tval = gen.derive(
+        let tval = gen.deriveAbstract(
           value.types,
           value.values,
           [key.object, value],

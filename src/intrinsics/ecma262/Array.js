@@ -10,15 +10,16 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { NativeFunctionValue } from "../../values/index.js";
 import { AbruptCompletion } from "../../completions.js";
 import {
   AbstractValue,
+  ArrayValue,
   BooleanValue,
+  NativeFunctionValue,
   NumberValue,
-  UndefinedValue,
-  StringValue,
   ObjectValue,
+  StringValue,
+  UndefinedValue,
 } from "../../values/index.js";
 import {
   Construct,
@@ -30,8 +31,9 @@ import {
   IsConstructor,
   IsCallable,
 } from "../../methods/index.js";
+import * as t from "babel-types";
 import { GetIterator, IteratorClose, IteratorStep, IteratorValue } from "../../methods/iterator.js";
-import { Create, Properties, To } from "../../singletons.js";
+import { Create, Havoc, Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -205,8 +207,8 @@ export default function(realm: Realm): NativeFunctionValue {
     });
 
   // ECMA262 22.1.2.1
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
-    func.defineNativeMethod("from", 1, (context, [items, mapfn, thisArg], argCount) => {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
+    let arrayFrom = func.defineNativeMethod("from", 1, (context, [items, mapfn, thisArg], argCount) => {
       // 1. Let C be the this value.
       let C = context;
 
@@ -230,6 +232,24 @@ export default function(realm: Realm): NativeFunctionValue {
 
         // c. Let mapping be true.
         mapping = true;
+      }
+      // If we're in pure scope and the items are completely abstract,
+      // then create an abstract temporal with an array kind
+      if (realm.isInPureScope() && items instanceof AbstractValue && items.values.isTop()) {
+        let args = [arrayFrom, items];
+        if (mapfn) {
+          args.push(mapfn);
+          if (thisArg) {
+            args.push(thisArg);
+          }
+        }
+        Havoc.value(realm, items);
+        return ArrayValue.createTemporalWithWidenedNumericProperty(
+          realm,
+          args,
+          ([methodNode, ..._args]) => t.callExpression(methodNode, ((_args: any): Array<any>)),
+          { func: mapfn, thisVal: thisArg }
+        );
       }
 
       // 4. Let usingIterator be ? GetMethod(items, @@iterator).
@@ -379,6 +399,7 @@ export default function(realm: Realm): NativeFunctionValue {
       // 14. Return A.
       return A;
     });
+  }
 
   // ECMA262 22.1.2.5
   func.defineNativeGetter(realm.intrinsics.SymbolSpecies, context => {
