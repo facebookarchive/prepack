@@ -108,6 +108,20 @@ function pushPathCondition(condition: Value) {
     invariant(left instanceof AbstractValue); // it is a mistake to create an abstract value when concrete value will do
     pushPathCondition(left);
     pushPathCondition(right);
+  } else if (condition.kind === "===") {
+    let [left, right] = condition.args;
+    if (right instanceof AbstractValue && right.kind === "conditional") [left, right] === [right, left];
+    if (left instanceof AbstractValue && left.kind === "conditional") {
+      let [cond, x, y] = left.args;
+      if (right instanceof ConcreteValue && x instanceof ConcreteValue && y instanceof ConcreteValue) {
+        if (right.equals(x) && !right.equals(y)) {
+          pushPathCondition(cond);
+        } else if (!right.equals(x) && right.equals(y)) {
+          pushInversePathCondition(cond);
+        }
+      }
+    }
+    realm.pathConditions.push(condition);
   } else {
     if (condition.kind === "!=" || condition.kind === "==") {
       let left = condition.args[0];

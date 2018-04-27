@@ -18,6 +18,7 @@ import { AbruptCompletion, BreakCompletion, PossiblyNormalCompletion, Completion
 import { InternalGetResultValue } from "./ForOfStatement.js";
 import { EmptyValue, AbstractValue, Value } from "../values/index.js";
 import { StrictEqualityComparisonPartial, UpdateEmpty } from "../methods/index.js";
+import { construct_empty_effects } from "../realm.js";
 import { Environment, Path, Join } from "../singletons.js";
 import { FatalError } from "../errors.js";
 import type { BabelNodeSwitchStatement, BabelNodeSwitchCase, BabelNodeExpression } from "babel-types";
@@ -334,13 +335,50 @@ export default function(
   labelSet: Array<string>
 ): Value {
   let expression = ast.discriminant;
-  let cases: Array<BabelNodeSwitchCase> = ast.cases;
 
   // 1. Let exprRef be the result of evaluating Expression.
   let exprRef = env.evaluate(expression, strictCode);
 
   // 2. Let switchValue be ? GetValue(exprRef).
   let switchValue = Environment.GetValue(realm, exprRef);
+  if (switchValue instanceof AbstractValue && !switchValue.values.isTop()) {
+    let elems = switchValue.values.getElements();
+    let n = elems.size;
+    if (n > 1 && n < 10) {
+      let joinedEffects = construct_empty_effects(realm);
+      for (let concreteSwitchValue of elems) {
+        let condition = AbstractValue.createFromBinaryOp(realm, "===", switchValue, concreteSwitchValue);
+        let effects = realm.evaluateForEffects(
+          () => {
+            return Path.withCondition(condition, () => {
+              return evaluationHelper(ast, concreteSwitchValue, strictCode, env, realm, labelSet);
+            });
+          },
+          undefined,
+          "specialized switch"
+        );
+        joinedEffects = Join.joinEffects(realm, condition, joinedEffects, effects);
+      }
+      realm.applyEffects(joinedEffects, "joined specialized switch");
+      let result = joinedEffects.data[0];
+      if (result instanceof AbruptCompletion) throw result;
+      invariant(result instanceof Value); // since evaluationHelper returns a value in non abrupt cases
+      return result;
+    }
+  }
+
+  return evaluationHelper(ast, switchValue, strictCode, env, realm, labelSet);
+}
+
+function evaluationHelper(
+  ast: BabelNodeSwitchStatement,
+  switchValue: Value,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  labelSet: Array<string>
+): Value {
+  let cases: Array<BabelNodeSwitchCase> = ast.cases;
 
   // 3. Let oldEnv be the running execution context's LexicalEnvironment.
   let oldEnv = realm.getRunningContext().lexicalEnvironment;
