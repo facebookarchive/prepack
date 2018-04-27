@@ -1846,7 +1846,8 @@ export class ResidualHeapSerializer {
       emitPropertyModification: (propertyBinding: PropertyBinding) => {
         let object = propertyBinding.object;
         invariant(object instanceof ObjectValue);
-        this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
+        if (this.residualValues.has(object))
+          this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
       },
       options: this._options,
     };

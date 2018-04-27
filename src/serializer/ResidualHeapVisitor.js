@@ -1042,8 +1042,17 @@ export class ResidualHeapVisitor {
           action: () => entry.visit(callbacks, generator),
         });
       },
-      visitObjectProperty: (binding: PropertyBinding) => {
-        this.visitObjectProperty(binding);
+      visitModifiedObjectProperty: (binding: PropertyBinding) => {
+        let fixpoint_rerun = () => {
+          if (this.values.has(binding.object)) {
+            this.visitObjectProperty(binding);
+            return true;
+          } else {
+            this._enqueueWithUnrelatedScope(this.scope, fixpoint_rerun);
+            return false;
+          }
+        };
+        fixpoint_rerun();
       },
       visitModifiedBinding: (modifiedBinding: Binding) => {
         invariant(additionalFunctionInfo);
@@ -1222,14 +1231,13 @@ export class ResidualHeapVisitor {
           if (s instanceof Generator) {
             let effectsToApply = s.effectsToApply;
             if (effectsToApply) {
-              let outer = withEffectsAppliedInGlobalEnv;
-              withEffectsAppliedInGlobalEnv = f =>
-                outer(() => {
-                  this.realm.withEffectsAppliedInGlobalEnv(() => {
-                    f();
-                    return null;
-                  }, effectsToApply);
-                });
+              let inner = withEffectsAppliedInGlobalEnv;
+              withEffectsAppliedInGlobalEnv = f => {
+                this.realm.withEffectsAppliedInGlobalEnv(() => {
+                  inner(f);
+                  return null;
+                }, effectsToApply);
+              };
             }
             s = this.generatorParents.get(s);
           } else if (s instanceof FunctionValue) {
