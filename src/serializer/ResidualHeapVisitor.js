@@ -139,7 +139,7 @@ export class ResidualHeapVisitor {
   conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>;
   inspector: ResidualHeapInspector;
   referencedDeclaredValues: Map<AbstractValue | ConcreteValue, void | FunctionValue>;
-  delayedActions: Array<{| generator: Generator, action: () => void | boolean |}>;
+  delayedActions: Array<{| scope: Scope, action: () => void | boolean |}>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>;
   functionInstances: Map<FunctionValue, FunctionInstance>;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
@@ -191,6 +191,7 @@ export class ResidualHeapVisitor {
       let s = generator;
       while (s instanceof Generator) {
         s = this.generatorParents.get(s);
+        invariant(s !== undefined);
       }
       invariant(s === "GLOBAL" || s instanceof FunctionValue);
       let additionalFunction = this._getAdditionalFunctionOfScope();
@@ -218,14 +219,7 @@ export class ResidualHeapVisitor {
 
   // Queues up an action to be later processed in some arbitrary scope.
   _enqueueWithUnrelatedScope(scope: Scope, action: () => void | boolean) {
-    let generator;
-    if (scope instanceof FunctionValue) generator = this.createdObjects.get(scope) || this.globalGenerator;
-    else if (scope === "GLOBAL") generator = this.globalGenerator;
-    else {
-      invariant(scope instanceof Generator);
-      generator = scope;
-    }
-    this.delayedActions.push({ generator, action });
+    this.delayedActions.push({ scope, action });
   }
 
   // Queues up visiting a value in some arbitrary scope.
@@ -552,7 +546,8 @@ export class ResidualHeapVisitor {
     if (additionalFunctionEffects) {
       this._visitAdditionalFunction(val, additionalFunctionEffects);
     } else {
-      this._withScope(val, () => {
+      this._enqueueWithUnrelatedScope(val, () => {
+        invariant(this.scope === val);
         invariant(functionInfo);
         for (let innerName of functionInfo.unbound) {
           let environment = this.resolveBinding(val, innerName);
@@ -975,52 +970,70 @@ export class ResidualHeapVisitor {
     invariant(!(val instanceof ObjectValue && val.refuseSerialization));
     if (val instanceof AbstractValue) {
       if (this.preProcessValue(val)) this.visitAbstractValue(val);
+      this.postProcessValue(val);
     } else if (val.isIntrinsic()) {
       // All intrinsic values exist from the beginning of time...
       // ...except for a few that come into existence as templates for abstract objects via executable code.
-      if (val instanceof ObjectValue && val._isScopedTemplate) this.preProcessValue(val);
-      else
-        this._withScope(this._getCommonScope(), () => {
+      if (val instanceof ObjectValue && val._isScopedTemplate) {
+        this.preProcessValue(val);
+        this.postProcessValue(val);
+      } else
+        this._enqueueWithUnrelatedScope(this._getCommonScope(), () => {
           this.preProcessValue(val);
+          this.postProcessValue(val);
         });
     } else if (val instanceof EmptyValue) {
       this.preProcessValue(val);
+      this.postProcessValue(val);
     } else if (ResidualHeapInspector.isLeaf(val)) {
       this.preProcessValue(val);
+      this.postProcessValue(val);
     } else if (IsArray(this.realm, val)) {
       invariant(val instanceof ObjectValue);
       if (this.preProcessValue(val)) this.visitValueArray(val);
+      this.postProcessValue(val);
     } else if (val instanceof ProxyValue) {
       if (this.preProcessValue(val)) this.visitValueProxy(val);
+      this.postProcessValue(val);
     } else if (val instanceof FunctionValue) {
-      // Every function references itself through arguments, prevent the recursive double-visit
+      let creationGenerator = this.createdObjects.get(val) || this.globalGenerator;
+
+      // 1. Visit function in its creation scope
+      this._enqueueWithUnrelatedScope(creationGenerator, () => {
+        invariant(val instanceof FunctionValue);
+        if (this.preProcessValue(val)) this.visitValueFunction(val);
+        this.postProcessValue(val);
+      });
+
+      // 2. If current scope is not related to creation scope,
+      //    and if this is not a recursive visit, mark the usage of this function
+      //    in the common scope as well.
       let commonScope = this._getCommonScope();
-      if (this.scope !== val && commonScope !== val) {
-        this._withScope(commonScope, () => {
-          invariant(val instanceof FunctionValue);
-          if (this.preProcessValue(val)) this.visitValueFunction(val);
+      if (commonScope !== creationGenerator && commonScope !== val) {
+        this._enqueueWithUnrelatedScope(commonScope, () => {
+          this.preProcessValue(val);
+          this.postProcessValue(val);
         });
-      } else {
-        // We didn't call preProcessValue, so let's avoid calling postProcessValue.
-        return;
       }
     } else if (val instanceof SymbolValue) {
       if (this.preProcessValue(val)) this.visitValueSymbol(val);
+      this.postProcessValue(val);
     } else {
       invariant(val instanceof ObjectValue);
 
       // Prototypes are reachable via function declarations, and those get hoisted, so we need to move
       // prototype initialization to the common scope code as well.
       if (val.originalConstructor !== undefined) {
-        this._withScope(this._getCommonScope(), () => {
+        this._enqueueWithUnrelatedScope(this._getCommonScope(), () => {
           invariant(val instanceof ObjectValue);
           if (this.preProcessValue(val)) this.visitValueObject(val);
+          this.postProcessValue(val);
         });
       } else {
         if (this.preProcessValue(val)) this.visitValueObject(val);
+        this.postProcessValue(val);
       }
     }
-    this.postProcessValue(val);
   }
 
   createGeneratorVisitCallbacks(additionalFunctionInfo?: AdditionalFunctionInfo): VisitEntryCallbacks {
@@ -1039,7 +1052,7 @@ export class ResidualHeapVisitor {
       },
       recordDelayedEntry: (generator, entry: GeneratorEntry) => {
         this.delayedActions.push({
-          generator,
+          scope: generator,
           action: () => entry.visit(callbacks, generator),
         });
       },
@@ -1207,6 +1220,14 @@ export class ResidualHeapVisitor {
       fixpoint_rerun();
     }
 
+    this._visitUntilFixpoint();
+
+    let referentializer = this.referentializer;
+    if (referentializer !== undefined)
+      for (let instance of this.functionInstances.values()) referentializer.referentialize(instance);
+  }
+
+  _visitUntilFixpoint() {
     // Do a fixpoint over all pure generator entries to make sure that we visit
     // arguments of only BodyEntries that are required by some other residual value
     let progress = true;
@@ -1215,14 +1236,21 @@ export class ResidualHeapVisitor {
       // as applying effects is expensive, and so we don't want to do it
       // more often than necessary.
       let actionsByGenerator = new Map();
-      for (let { generator, action } of this.delayedActions.reverse()) {
+      for (let { scope, action } of this.delayedActions.reverse()) {
+        let generator;
+        if (scope instanceof FunctionValue) generator = this.createdObjects.get(scope) || this.globalGenerator;
+        else if (scope === "GLOBAL") generator = this.globalGenerator;
+        else {
+          invariant(scope instanceof Generator);
+          generator = scope;
+        }
         let a = actionsByGenerator.get(generator);
         if (a === undefined) actionsByGenerator.set(generator, (a = []));
-        a.push(action);
+        a.push({ action, scope });
       }
       this.delayedActions = [];
       progress = false;
-      for (let [generator, actions] of actionsByGenerator) {
+      for (let [generator, scopedActions] of actionsByGenerator) {
         let withEffectsAppliedInGlobalEnv: (() => void) => void = f => f();
         let s = generator;
         let visited = new Set();
@@ -1248,17 +1276,15 @@ export class ResidualHeapVisitor {
           invariant(s instanceof Generator || s instanceof FunctionValue || s === "GLOBAL");
         }
 
-        this._withScope(generator, () =>
-          withEffectsAppliedInGlobalEnv(() => {
-            for (let action of actions) if (action() !== false) progress = true;
-          })
-        );
+        withEffectsAppliedInGlobalEnv(() => {
+          for (let { action, scope } of scopedActions) {
+            this._withScope(scope, () => {
+              if (action() !== false) progress = true;
+            });
+          }
+        });
       }
     }
-
-    let referentializer = this.referentializer;
-    if (referentializer !== undefined)
-      for (let instance of this.functionInstances.values()) referentializer.referentialize(instance);
   }
 
   _visitReactLibrary(someReactElement: ObjectValue) {

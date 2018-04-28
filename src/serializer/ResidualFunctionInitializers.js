@@ -107,7 +107,8 @@ export class ResidualFunctionInitializers {
     // to figure out if initialization needs to run.
     let location;
     for (let value of initializedValues) {
-      if (!value.mightBeUndefined()) {
+      // function declarations get hoisted, so let's not use their initialization state as a marker
+      if (!value.mightBeUndefined() && !(value instanceof FunctionValue)) {
         location = this.locationService.getLocation(value);
         if (location !== undefined) break;
       }
