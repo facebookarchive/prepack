@@ -583,6 +583,7 @@ function run(args) {
     execSpec = prepareReplExternalSepc(args.outOfProcessRuntime);
   }
 
+  let failedTests = [];
   for (let test of tests) {
     // filter hidden files
     if (path.basename(test.name)[0] === ".") continue;
@@ -612,6 +613,7 @@ function run(args) {
       flagPermutations.push([false, true, undefined, true]);
     }
     if (args.fast) flagPermutations = [[false, false, undefined, isSimpleClosureTest]];
+    let lastFailed = failed;
     for (let [delayInitializations, inlineExpressions, lazyObjectsRuntime, simpleClosures] of flagPermutations) {
       if ((skipLazyObjects || args.noLazySupport) && lazyObjectsRuntime) {
         continue;
@@ -627,8 +629,16 @@ function run(args) {
       if (runTest(test.name, test.file, options, args)) passed++;
       else failed++;
     }
+    if (failed !== lastFailed) failedTests.push(test);
   }
 
+  failedTests.sort((x, y) => y.file.length - x.file.length);
+  if (failedTests.length > 0) {
+    console.log("Summary of failed tests:");
+    for (let ft of failedTests) {
+      console.log(`  ${ft.name} (${ft.file.length} bytes)`);
+    }
+  }
   console.log("Passed:", `${passed}/${total}`, (Math.floor(passed / total * 100) || 0) + "%");
   return failed === 0;
 }
