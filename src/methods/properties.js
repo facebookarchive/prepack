@@ -1281,7 +1281,7 @@ export class PropertiesImplementation {
     if (IsDataDescriptor(realm, X)) {
       let value = X.value;
       if (O.isIntrinsic() && O.isPartialObject()) {
-        if (realm.invariantLevel >= 1 && value instanceof AbstractValue) {
+        if (value instanceof AbstractValue) {
           let savedUnion;
           let savedIndex;
           if (value.kind === "abstractConcreteUnion") {
@@ -1305,7 +1305,7 @@ export class PropertiesImplementation {
               args[savedIndex] = value;
               value = AbstractValue.createAbstractConcreteUnion(realm, ...args);
             }
-            if (typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
+            if (realm.invariantLevel >= 1 && typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
               realm.markPropertyAsChecked(O, P);
               realmGenerator.emitFullInvariant(O, P, value);
             }
