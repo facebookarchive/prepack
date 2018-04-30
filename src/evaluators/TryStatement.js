@@ -23,33 +23,6 @@ import { Value } from "../values/index.js";
 import type { BabelNodeTryStatement } from "babel-types";
 import invariant from "../invariant.js";
 
-// This function gets the evaluated effects with a collection of
-// prior nested affects applied (and their canBeApplied flag reset)
-// We can safely do this as we've wrapped the effects in evaluated
-// effects, meaning all the effects applied to Realm get restored
-function evaluateForEffectsWithPriorEffects(
-  realm: Realm,
-  priorEffects: Array<Effects>,
-  f: () => AbruptCompletion | Value,
-  generatorName: string
-): Effects {
-  return realm.evaluateForEffects(
-    () => {
-      for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
-      try {
-        return f();
-      } finally {
-        for (let priorEffect of priorEffects) {
-          invariant(!priorEffect.canBeApplied);
-          priorEffect.canBeApplied = true;
-        }
-      }
-    },
-    undefined,
-    generatorName
-  );
-}
-
 export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
   let wasInPureTryStatement = realm.isInPureTryStatement;
   if (realm.isInPureScope()) {
@@ -138,8 +111,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
     if (consequent instanceof JoinedAbruptCompletions || consequent instanceof PossiblyNormalCompletion) {
       consequentEffects = composeNestedThrowEffectsWithHandler(consequent, priorEffects);
     } else if (consequent instanceof ThrowCompletion) {
-      consequentEffects = evaluateForEffectsWithPriorEffects(
-        realm,
+      consequentEffects = realm.evaluateForEffectsWithPriorEffects(
         priorEffects,
         () => {
           invariant(ast.handler);
@@ -155,8 +127,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
     if (alternate instanceof PossiblyNormalCompletion || alternate instanceof JoinedAbruptCompletions) {
       alternateEffects = composeNestedThrowEffectsWithHandler(alternate, priorEffects);
     } else if (alternate instanceof ThrowCompletion) {
-      alternateEffects = evaluateForEffectsWithPriorEffects(
-        realm,
+      alternateEffects = realm.evaluateForEffectsWithPriorEffects(
         priorEffects,
         () => {
           invariant(ast.handler);
@@ -183,8 +154,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
     if (consequent instanceof JoinedAbruptCompletions || consequent instanceof PossiblyNormalCompletion) {
       consequentEffects = composeNestedThrowEffectsWithHandler(consequent, priorEffects);
     } else {
-      consequentEffects = evaluateForEffectsWithPriorEffects(
-        realm,
+      consequentEffects = realm.evaluateForEffectsWithPriorEffects(
         priorEffects,
         () => {
           invariant(ast.finalizer);
@@ -201,8 +171,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
     if (alternate instanceof PossiblyNormalCompletion || alternate instanceof JoinedAbruptCompletions) {
       alternateEffects = composeNestedThrowEffectsWithHandler(alternate, priorEffects);
     } else {
-      alternateEffects = evaluateForEffectsWithPriorEffects(
-        realm,
+      alternateEffects = realm.evaluateForEffectsWithPriorEffects(
         priorEffects,
         () => {
           invariant(ast.finalizer);
