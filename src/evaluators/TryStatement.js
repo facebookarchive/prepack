@@ -37,12 +37,14 @@ function evaluateForEffectsWithPriorEffects(
   return realm.evaluateForEffects(
     () => {
       for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
-      let v = f();
-      for (let priorEffect of priorEffects) {
-        invariant(!priorEffect.canBeApplied);
-        priorEffect.canBeApplied = true;
+      try {
+        return f();
+      } finally {
+        for (let priorEffect of priorEffects) {
+          invariant(!priorEffect.canBeApplied);
+          priorEffect.canBeApplied = true;
+        }
       }
-      return v;
     },
     undefined,
     generatorName
