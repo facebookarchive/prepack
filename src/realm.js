@@ -711,6 +711,8 @@ export class Realm {
       } finally {
         this.restoreBindings(effects.modifiedBindings);
         this.restoreProperties(effects.modifiedProperties);
+        invariant(!effects.canBeApplied);
+        effects.canBeApplied = true;
       }
     });
     invariant(result !== undefined, "If we get here, func must have returned undefined.");
@@ -800,8 +802,6 @@ export class Realm {
         if (result !== undefined) {
           this.restoreBindings(result.modifiedBindings);
           this.restoreProperties(result.modifiedProperties);
-          invariant(!result.canBeApplied);
-          result.canBeApplied = true;
         } else {
           this.restoreBindings(this.modifiedBindings);
           this.restoreProperties(this.modifiedProperties);

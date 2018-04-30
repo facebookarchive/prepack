@@ -22,6 +22,30 @@ import { Functions, Join } from "../singletons.js";
 import { Value } from "../values/index.js";
 import type { BabelNodeTryStatement } from "babel-types";
 import invariant from "../invariant.js";
+import { generate } from "rxjs/observable/generate";
+
+// This function gets the evaluated effects with a collection of
+// prior nested affects applied (and their canBeApplied flag reset)
+// We can safely do this as we're wrapped the effects in evaluated
+// effects, meaning all the effects applied to Realm get restored
+
+function evaluateForEffectsWithPriorEffects(
+  realm: Realm,
+  priorEffects: Array<Effects>,
+  f: () => AbruptCompletion | Value,
+  generatorName: string
+): Effects {
+  return realm.evaluateForEffects(
+    () => {
+      for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
+      let v = f();
+      for (let priorEffect of priorEffects) priorEffect.canBeApplied = true;
+      return v;
+    },
+    undefined,
+    generatorName
+  );
+}
 
 export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
   let wasInPureTryStatement = realm.isInPureTryStatement;
@@ -111,13 +135,13 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
     if (consequent instanceof JoinedAbruptCompletions || consequent instanceof PossiblyNormalCompletion) {
       consequentEffects = composeNestedThrowEffectsWithHandler(consequent, priorEffects);
     } else if (consequent instanceof ThrowCompletion) {
-      consequentEffects = realm.evaluateForEffects(
+      consequentEffects = evaluateForEffectsWithPriorEffects(
+        realm,
+        priorEffects,
         () => {
-          for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
           invariant(ast.handler);
           return env.evaluateCompletionDeref(ast.handler, strictCode, consequent);
         },
-        undefined,
         "composeNestedThrowEffectsWithHandler/1"
       );
     }
@@ -128,13 +152,13 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
     if (alternate instanceof PossiblyNormalCompletion || alternate instanceof JoinedAbruptCompletions) {
       alternateEffects = composeNestedThrowEffectsWithHandler(alternate, priorEffects);
     } else if (alternate instanceof ThrowCompletion) {
-      alternateEffects = realm.evaluateForEffects(
+      alternateEffects = evaluateForEffectsWithPriorEffects(
+        realm,
+        priorEffects,
         () => {
-          for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
           invariant(ast.handler);
           return env.evaluateCompletionDeref(ast.handler, strictCode, alternate);
         },
-        undefined,
         "composeNestedThrowEffectsWithHandler/2"
       );
     }
@@ -156,13 +180,13 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
     if (consequent instanceof JoinedAbruptCompletions || consequent instanceof PossiblyNormalCompletion) {
       consequentEffects = composeNestedThrowEffectsWithHandler(consequent, priorEffects);
     } else {
-      consequentEffects = realm.evaluateForEffects(
+      consequentEffects = evaluateForEffectsWithPriorEffects(
+        realm,
+        priorEffects,
         () => {
-          for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
           invariant(ast.finalizer);
           return env.evaluateCompletionDeref(ast.finalizer, strictCode);
         },
-        undefined,
         "composeNestedEffectsWithFinalizer/1"
       );
       if (!(consequentEffects.result instanceof AbruptCompletion)) consequentEffects.result = consequent;
@@ -174,14 +198,14 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
     if (alternate instanceof PossiblyNormalCompletion || alternate instanceof JoinedAbruptCompletions) {
       alternateEffects = composeNestedThrowEffectsWithHandler(alternate, priorEffects);
     } else {
-      alternateEffects = realm.evaluateForEffects(
+      alternateEffects = evaluateForEffectsWithPriorEffects(
+        realm,
+        priorEffects,
         () => {
-          for (let priorEffect of priorEffects) realm.applyEffects(priorEffect);
           invariant(ast.finalizer);
           return env.evaluateCompletionDeref(ast.finalizer, strictCode);
         },
-        undefined,
-        "composeNestedThrowEffectsWithHandler"
+        "composeNestedThrowEffectsWithHandler/2"
       );
       if (!(alternateEffects.result instanceof AbruptCompletion)) alternateEffects.result = alternate;
     }
