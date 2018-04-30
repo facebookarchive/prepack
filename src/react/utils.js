@@ -65,7 +65,7 @@ export function isReactElement(val: Value): boolean {
   }
   let $$typeof = Get(realm, val, "$$typeof");
   let globalObject = realm.$GlobalObject;
-  let globalSymbolValue = Get(realm, globalObject, "Symbol");
+  let globalSymbolValue = getProperty(realm, globalObject, "Symbol");
 
   if (globalSymbolValue === realm.intrinsics.undefined) {
     if ($$typeof instanceof NumberValue) {
