@@ -260,7 +260,7 @@ export class Functions {
     for (let [binding] of nestedBindingsToIgnore) {
       func(binding);
     }
-    if (result instanceof PossiblyNormalCompletion) {
+    if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
       this._forEachBindingOfEffects(result.alternateEffects, func);
       this._forEachBindingOfEffects(result.consequentEffects, func);
     }
