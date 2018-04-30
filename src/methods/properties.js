@@ -1281,7 +1281,7 @@ export class PropertiesImplementation {
     if (IsDataDescriptor(realm, X)) {
       let value = X.value;
       if (O.isIntrinsic() && O.isPartialObject()) {
-        if (realm.invariantLevel >= 1 && value instanceof AbstractValue) {
+        if (value instanceof AbstractValue) {
           let savedUnion;
           let savedIndex;
           if (value.kind === "abstractConcreteUnion") {
@@ -1294,7 +1294,7 @@ export class PropertiesImplementation {
           if (value.kind !== "resolved") {
             let realmGenerator = realm.generator;
             invariant(realmGenerator);
-            value = realmGenerator.derive(value.types, value.values, value.args, value.getBuildNode(), {
+            value = realmGenerator.deriveAbstract(value.types, value.values, value.args, value.getBuildNode(), {
               kind: "resolved",
               // We can't emit the invariant here otherwise it'll assume the AbstractValue's type not the union type
               skipInvariant: true,
@@ -1305,7 +1305,7 @@ export class PropertiesImplementation {
               args[savedIndex] = value;
               value = AbstractValue.createAbstractConcreteUnion(realm, ...args);
             }
-            if (typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
+            if (realm.invariantLevel >= 1 && typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
               realm.markPropertyAsChecked(O, P);
               realmGenerator.emitFullInvariant(O, P, value);
             }

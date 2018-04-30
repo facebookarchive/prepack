@@ -526,7 +526,7 @@ export function objectHasNoPartialKeyAndRef(
 
 function recursivelyFlattenArray(realm: Realm, array, targetArray): void {
   forEachArrayValue(realm, array, item => {
-    if (item instanceof ArrayValue) {
+    if (item instanceof ArrayValue && !item.intrinsicName) {
       recursivelyFlattenArray(realm, item, targetArray);
     } else {
       let lengthValue = Get(realm, targetArray, "length");
@@ -797,26 +797,21 @@ export function getValueFromFunctionCall(
   invariant(func.$Call, "Expected function to be a FunctionValue with $Call method");
   let funcCall = func.$Call;
   let newCall = func.$Construct;
-  let effects;
+  let completion;
   try {
-    effects = realm.evaluateForEffects(
-      () => {
-        invariant(func);
-        if (isConstructor) {
-          invariant(newCall);
-          return newCall(args, func);
-        } else {
-          return funcCall(funcThis, args);
-        }
-      },
-      null,
-      "getValueFromFunctionCall"
-    );
+    if (isConstructor) {
+      invariant(newCall);
+      completion = newCall(args, func);
+    } else {
+      completion = funcCall(funcThis, args);
+    }
   } catch (error) {
-    throw error;
+    if (error instanceof AbruptCompletion) {
+      completion = error;
+    } else {
+      throw error;
+    }
   }
-
-  let completion = effects.result;
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.
@@ -824,9 +819,6 @@ export function getValueFromFunctionCall(
     // all the branches come together into one.
     completion = realm.composeWithSavedCompletion(completion);
   }
-  // Note that the effects of (non joining) abrupt branches are not included
-  // in joinedEffects, but are tracked separately inside completion.
-  realm.applyEffects(effects);
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
   invariant(completion instanceof Value);

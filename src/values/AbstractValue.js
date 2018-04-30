@@ -56,6 +56,7 @@ export type AbstractValueKind =
   | "build function"
   | "widened property"
   | "widened return result"
+  | "widened numeric property"
   | "conditional"
   | "resolved"
   | "dummy parameter"
@@ -768,7 +769,7 @@ export default class AbstractValue extends Value {
     let args = temp.args;
     let buildNode_ = temp.getBuildNode();
     invariant(realm.generator !== undefined);
-    return realm.generator.derive(types, values, args, buildNode_, optionalArgs);
+    return realm.generator.deriveAbstract(types, values, args, buildNode_, optionalArgs);
   }
 
   static createFromBuildFunction(
@@ -802,7 +803,7 @@ export default class AbstractValue extends Value {
     if (resultType === UndefinedValue) {
       return realm.generator.emitVoidExpression(types, values, args, buildFunction);
     } else {
-      return realm.generator.derive(types, values, args, buildFunction, optionalArgs);
+      return realm.generator.deriveAbstract(types, values, args, buildFunction, optionalArgs);
     }
   }
 
