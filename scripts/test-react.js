@@ -277,6 +277,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-10.js");
       });
 
+      it("Simple 11", async () => {
+        await runTest(directory, "simple-11.js");
+      });
+
       it("Handle mapped arrays", async () => {
         await runTest(directory, "array-map.js");
       });
@@ -743,6 +747,11 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("fb-www 18", async () => {
         await runTest(directory, "fb18.js");
+      });
+
+      // fails due to Invariant Violation: an abstract value with an identifier "_$1" was referenced before being declared
+      it.skip("fb-www 19", async () => {
+        await runTest(directory, "fb19.js");
       });
 
       it("repl example", async () => {

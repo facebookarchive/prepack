@@ -168,6 +168,7 @@ export class Functions {
       effects,
       transforms: [],
       generator: Generator.fromEffects(effects, this.realm, name, environmentRecordIdAfterGlobalCode),
+      additionalRoots: new Set(),
     };
     return retValue;
   }
@@ -255,29 +256,41 @@ export class Functions {
     return noOpFunc;
   }
 
+  _forEachBindingOfEffects(effects: Effects, func: (binding: Binding) => void): void {
+    let [result, , nestedBindingsToIgnore] = effects.data;
+    for (let [binding] of nestedBindingsToIgnore) {
+      func(binding);
+    }
+    if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
+      this._forEachBindingOfEffects(result.alternateEffects, func);
+      this._forEachBindingOfEffects(result.consequentEffects, func);
+    }
+  }
+
   _hasWriteConflictsFromReactRenders(
     bindings: Set<Binding>,
     effects: Effects,
-    nestedEffects: Array<Effects>,
+    nestedEffectsList: Array<Effects>,
     evaluatedNode: ReactEvaluatedNode
   ): boolean {
-    let recentBindings = effects.modifiedBindings;
     let ignoreBindings = new Set();
     let failed = false;
+    // TODO: should we also check realm.savedEffects?
+    // ref: https://github.com/facebook/prepack/pull/1742
 
-    for (let nestedEffect of nestedEffects) {
-      let nestedBindingsToIgnore = nestedEffect.modifiedBindings;
-      for (let [binding] of nestedBindingsToIgnore) {
+    for (let nestedEffects of nestedEffectsList) {
+      this._forEachBindingOfEffects(nestedEffects, binding => {
         ignoreBindings.add(binding);
-      }
+      });
     }
 
-    for (let [binding] of recentBindings) {
+    this._forEachBindingOfEffects(effects, binding => {
       if (bindings.has(binding) && !ignoreBindings.has(binding)) {
         failed = true;
       }
       bindings.add(binding);
-    }
+    });
+
     if (failed) {
       evaluatedNode.status = "WRITE-CONFLICTS";
     }

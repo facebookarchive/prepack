@@ -46,6 +46,7 @@ export type AdditionalFunctionEffects = {
   effects: Effects,
   generator: Generator,
   transforms: Array<Function>,
+  additionalRoots: Set<ObjectValue>,
 };
 
 export type AdditionalFunctionInfo = {
