@@ -745,10 +745,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "fb17.js");
       });
 
+      it("fb-www 18", async () => {
+        await runTest(directory, "fb18.js");
+      });
+
       // fails due to Invariant Violation: an abstract value with an identifier "_$1" was referenced before being declared
-      // it("fb-www 19", async () => {
-      //   await runTest(directory, "fb19.js");
-      // });
+      it.skip("fb-www 19", async () => {
+        await runTest(directory, "fb19.js");
+      });
 
       it("repl example", async () => {
         await runTest(directory, "repl-example.js");

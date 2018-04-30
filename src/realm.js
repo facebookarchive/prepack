@@ -1473,6 +1473,32 @@ export class Realm {
     realmGenerator.appendGenerator(generator, leadingComment);
   }
 
+  // This function gets the evaluated effects with a collection of
+  // prior nested affects applied (and their canBeApplied flag reset)
+  // We can safely do this as we've wrapped the effects in evaluated
+  // effects, meaning all the effects applied to Realm get restored
+  evaluateForEffectsWithPriorEffects(
+    priorEffects: Array<Effects>,
+    f: () => AbruptCompletion | Value,
+    generatorName: string
+  ): Effects {
+    return this.evaluateForEffects(
+      () => {
+        for (let priorEffect of priorEffects) this.applyEffects(priorEffect);
+        try {
+          return f();
+        } finally {
+          for (let priorEffect of priorEffects) {
+            invariant(!priorEffect.canBeApplied);
+            priorEffect.canBeApplied = true;
+          }
+        }
+      },
+      undefined,
+      generatorName
+    );
+  }
+
   // Pass the error to the realm's error-handler
   // Return value indicates whether the caller should try to recover from the error or not.
   handleError(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
