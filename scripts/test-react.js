@@ -741,7 +741,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "fb17.js");
       });
 
-      it.only("fb-www 18", async () => {
+      it("fb-www 18", async () => {
         await runTest(directory, "fb18.js");
       });
 
