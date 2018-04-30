@@ -274,6 +274,8 @@ export class Functions {
   ): boolean {
     let ignoreBindings = new Set();
     let failed = false;
+    // TODO: should we also check realm.savedEffects?
+    // ref: https://github.com/facebook/prepack/pull/1742
 
     for (let nestedEffects of nestedEffectsList) {
       this._forEachBindingOfEffects(nestedEffects, binding => {
