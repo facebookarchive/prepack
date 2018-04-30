@@ -25,7 +25,7 @@ import invariant from "../invariant.js";
 
 // This function gets the evaluated effects with a collection of
 // prior nested affects applied (and their canBeApplied flag reset)
-// We can safely do this as we're wrapped the effects in evaluated
+// We can safely do this as we've wrapped the effects in evaluated
 // effects, meaning all the effects applied to Realm get restored
 
 function evaluateForEffectsWithPriorEffects(
