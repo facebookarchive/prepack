@@ -11,19 +11,19 @@
 
 import { Realm, type Effects } from "../realm.js";
 import {
+  AbstractObjectValue,
   AbstractValue,
+  ArrayValue,
+  BooleanValue,
+  BoundFunctionValue,
   ECMAScriptSourceFunctionValue,
+  FunctionValue,
+  NullValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
   Value,
   UndefinedValue,
-  StringValue,
-  NumberValue,
-  BooleanValue,
-  NullValue,
-  ArrayValue,
-  ObjectValue,
-  AbstractObjectValue,
-  FunctionValue,
-  BoundFunctionValue,
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState, type ReactEvaluatedNode } from "../serializer/types.js";
 import {
@@ -889,7 +889,7 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
-  ): AbstractValue {
+  ): Value {
     invariant(this.realm.generator);
     let length = value.args.length;
     // TODO investigate what other kinds than "conditional" might be safe to deeply resolve
@@ -920,9 +920,7 @@ export class Reconciler {
         // value.args[0] is guaranteed to be abstract and _resolveDeeply returns an abstract
         // when called on an abstract
         invariant(condition instanceof AbstractValue);
-        let abstractValue = AbstractValue.createFromConditionalOp(this.realm, condition, left, right);
-        invariant(abstractValue instanceof AbstractValue);
-        return abstractValue;
+        return AbstractValue.createFromConditionalOp(this.realm, condition, left, right);
       }
     } else {
       this.componentTreeState.deadEnds++;
@@ -937,13 +935,13 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
-  ) {
+  ): Value {
     let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
     let keyValue = getProperty(this.realm, reactElement, "key");
     let refValue = getProperty(this.realm, reactElement, "ref");
 
-    const resolveBranch = (abstract: AbstractValue): AbstractValue => {
+    const resolveBranch = (abstract: AbstractValue): Value => {
       invariant(abstract.kind === "conditional", "the reconciler tried to resolve a non conditional abstract");
       let condition = abstract.args[0];
       invariant(condition instanceof AbstractValue);
@@ -962,13 +960,10 @@ export class Reconciler {
         invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractValue);
         right = createInternalReactElement(this.realm, right, keyValue, refValue, propsValue);
       }
-      let val = AbstractValue.createFromConditionalOp(this.realm, condition, left, right);
-      invariant(val instanceof AbstractValue);
-      return val;
+      return AbstractValue.createFromConditionalOp(this.realm, condition, left, right);
     };
     invariant(typeValue instanceof AbstractValue);
-
-    return this._resolveAbstractValue(
+    return this._resolveDeeply(
       componentType,
       resolveBranch(typeValue),
       context,
