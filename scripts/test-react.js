@@ -732,13 +732,17 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "fb14.js");
       });
 
+      it("fb-www 15", async () => {
+        await runTest(directory, "fb15.js");
+      });
+
       // Skip for now, there's more issues to fix before we can enable
       it.skip("fb-www 16", async () => {
         await runTest(directory, "fb16.js");
       });
 
-      it("fb-www 15", async () => {
-        await runTest(directory, "fb15.js");
+      it("fb-www 17", async () => {
+        await runTest(directory, "fb17.js");
       });
 
       it("repl example", async () => {
