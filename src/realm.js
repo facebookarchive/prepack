@@ -1022,16 +1022,18 @@ export class Realm {
       invariant(value instanceof Value);
       let mightHaveBeenDeleted = value.mightHaveBeenDeleted();
       let mightBeUndefined = value.mightBeUndefined();
-      if (typeof key.key === "string") {
+      let keyKey = key.key;
+      if (typeof keyKey === "string") {
         gen.emitStatement([key.object, tval || value, this.intrinsics.empty], ([o, v, e]) => {
           invariant(path !== undefined);
-          let lh = path.buildNode([o, t.identifier(key.key)]);
+          invariant(typeof keyKey === "string");
+          let lh = path.buildNode([o, t.identifier(keyKey)]);
           let r = t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
           if (mightHaveBeenDeleted) {
             // If v === __empty || (v === undefined  && !(key.key in o))  then delete it
             let emptyTest = t.binaryExpression("===", v, e);
             let undefinedTest = t.binaryExpression("===", v, voidExpression);
-            let inTest = t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(key.key), o));
+            let inTest = t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(keyKey), o));
             let guard = t.logicalExpression("||", emptyTest, t.logicalExpression("&&", undefinedTest, inTest));
             let deleteIt = t.expressionStatement(t.unaryExpression("delete", (lh: any)));
             return t.ifStatement(mightBeUndefined ? emptyTest : guard, deleteIt, r);
@@ -1039,7 +1041,9 @@ export class Realm {
           return r;
         });
       } else {
-        gen.emitStatement([key.object, key.key, tval || value, this.intrinsics.empty], ([o, p, v, e]) => {
+        // TODO: What is keyKey is undefined?
+        invariant(keyKey instanceof Value);
+        gen.emitStatement([key.object, keyKey, tval || value, this.intrinsics.empty], ([o, p, v, e]) => {
           invariant(path !== undefined);
           let lh = path.buildNode([o, p]);
           return t.expressionStatement(t.assignmentExpression("=", (lh: any), v));

@@ -1853,8 +1853,10 @@ export class ResidualHeapSerializer {
       emitPropertyModification: (propertyBinding: PropertyBinding) => {
         let object = propertyBinding.object;
         invariant(object instanceof ObjectValue);
-        if (this.residualValues.has(object))
+        if (this.residualValues.has(object)) {
+          invariant(propertyBinding.key !== undefined, "established by visitor");
           this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
+        }
       },
       options: this._options,
     };

@@ -237,9 +237,14 @@ export class ResidualHeapVisitor {
     let desc = binding.descriptor;
     if (desc === undefined) return; //deleted
     let obj = binding.object;
-    if (obj instanceof AbstractObjectValue || !this.inspector.canIgnoreProperty(obj, binding.key)) {
+    invariant(binding.key !== undefined, "Undefined keys should never make it here.");
+    if (
+      obj instanceof AbstractObjectValue ||
+      !(typeof binding.key === "string" && this.inspector.canIgnoreProperty(obj, binding.key))
+    ) {
       this.visitDescriptor(desc);
     }
+    if (binding.key instanceof Value) this.visitValue(binding.key);
   }
 
   visitObjectProperties(obj: ObjectValue, kind?: ObjectKind): void {
