@@ -129,6 +129,9 @@ function tryToEvaluateOperationOrLeaveAsAbstract(
       throw error;
     }
   }
+  // Note that the effects of (non joining) abrupt branches are not included
+  // in joinedEffects, but are tracked separately inside completion.
+  realm.applyEffects(effects);
   let completion = effects.result;
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
@@ -138,9 +141,6 @@ function tryToEvaluateOperationOrLeaveAsAbstract(
     completion = realm.composeWithSavedCompletion(completion);
   }
 
-  // Note that the effects of (non joining) abrupt branches are not included
-  // in joinedEffects, but are tracked separately inside completion.
-  realm.applyEffects(effects);
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
   invariant(completion instanceof Value);
