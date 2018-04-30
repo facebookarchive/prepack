@@ -22,7 +22,6 @@ import { Functions, Join } from "../singletons.js";
 import { Value } from "../values/index.js";
 import type { BabelNodeTryStatement } from "babel-types";
 import invariant from "../invariant.js";
-import { generate } from "rxjs/observable/generate";
 
 // This function gets the evaluated effects with a collection of
 // prior nested affects applied (and their canBeApplied flag reset)
