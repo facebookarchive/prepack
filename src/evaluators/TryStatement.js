@@ -105,6 +105,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
     c: PossiblyNormalCompletion | JoinedAbruptCompletions,
     priorEffects: Array<Effects> = []
   ): Effects {
+    priorEffects.pop();
     let consequent = c.consequent;
     let consequentEffects = c.consequentEffects;
     priorEffects.push(consequentEffects);
@@ -121,7 +122,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
         "composeNestedThrowEffectsWithHandler/1"
       );
     }
-    priorEffects.shift();
+    priorEffects.pop();
     let alternate = c.alternate;
     let alternateEffects = c.alternateEffects;
     priorEffects.push(alternateEffects);
@@ -138,7 +139,6 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
         "composeNestedThrowEffectsWithHandler/2"
       );
     }
-    priorEffects.pop();
     return Join.joinEffects(realm, c.joinCondition, consequentEffects, alternateEffects);
   }
 
