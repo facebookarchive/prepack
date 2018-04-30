@@ -180,6 +180,9 @@ function tryToEvaluateCallOrLeaveAsAbstract(
   } finally {
     realm.suppressDiagnostics = savedSuppressDiagnostics;
   }
+  // Note that the effects of (non joining) abrupt branches are not included
+  // in effects, but are tracked separately inside completion.
+  realm.applyEffects(effects);
   let completion = effects.result;
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
@@ -188,9 +191,6 @@ function tryToEvaluateCallOrLeaveAsAbstract(
     // all the branches come together into one.
     completion = realm.composeWithSavedCompletion(completion);
   }
-  // Note that the effects of (non joining) abrupt branches are not included
-  // in effects, but are tracked separately inside completion.
-  realm.applyEffects(effects);
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
   invariant(completion instanceof Value);
