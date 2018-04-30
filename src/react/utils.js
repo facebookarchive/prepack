@@ -60,23 +60,24 @@ export function isReactElement(val: Value): boolean {
   if (realm.react.reactElements.has(val)) {
     return true;
   }
-  if (val.properties.has("$$typeof")) {
-    let $$typeof = Get(realm, val, "$$typeof");
-    let globalObject = realm.$GlobalObject;
-    let globalSymbolValue = Get(realm, globalObject, "Symbol");
+  if (!val.properties.has("type") || !val.properties.has("props") || !val.properties.has("$$typeof")) {
+    return false;
+  }
+  let $$typeof = Get(realm, val, "$$typeof");
+  let globalObject = realm.$GlobalObject;
+  let globalSymbolValue = Get(realm, globalObject, "Symbol");
 
-    if (globalSymbolValue === realm.intrinsics.undefined) {
-      if ($$typeof instanceof NumberValue) {
-        return $$typeof.value === 0xeac7;
-      }
-    } else if ($$typeof instanceof SymbolValue) {
-      let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
-      let _isReactElement = symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
-      if (_isReactElement) {
-        // add to Set to speed up future lookups
-        realm.react.reactElements.add(val);
-        return true;
-      }
+  if (globalSymbolValue === realm.intrinsics.undefined) {
+    if ($$typeof instanceof NumberValue) {
+      return $$typeof.value === 0xeac7;
+    }
+  } else if ($$typeof instanceof SymbolValue) {
+    let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
+    let _isReactElement = symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
+    if (_isReactElement) {
+      // add to Set to speed up future lookups
+      realm.react.reactElements.add(val);
+      return true;
     }
   }
   return false;
