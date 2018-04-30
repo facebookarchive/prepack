@@ -3490,6 +3490,23 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output fb-www mocks fb-www 18 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output fb-www mocks repl example 1`] = `
 ReactStatistics {
   "componentsEvaluated": 7,
@@ -7037,6 +7054,23 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, create-element output fb-www mocks fb-www 18 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, create-element output fb-www mocks repl example 1`] = `
 ReactStatistics {
   "componentsEvaluated": 7,
@@ -10549,6 +10583,23 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output fb-www mocks fb-www 18 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output fb-www mocks repl example 1`] = `
 ReactStatistics {
   "componentsEvaluated": 7,
@@ -14058,6 +14109,23 @@ ReactStatistics {
   "inlinedComponents": 0,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
+}
+`;
+
+exports[`Test React with create-element input, create-element output fb-www mocks fb-www 18 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
 }
 `;
 

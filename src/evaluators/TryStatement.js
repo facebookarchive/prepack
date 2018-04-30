@@ -121,7 +121,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
         "composeNestedThrowEffectsWithHandler/1"
       );
     }
-    priorEffects.pop();
+    priorEffects.shift();
     let alternate = c.alternate;
     let alternateEffects = c.alternateEffects;
     priorEffects.push(alternateEffects);
