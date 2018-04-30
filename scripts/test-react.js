@@ -277,6 +277,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-10.js");
       });
 
+      it("Simple 11", async () => {
+        await runTest(directory, "simple-11.js");
+      });
+
       it("Handle mapped arrays", async () => {
         await runTest(directory, "array-map.js");
       });
