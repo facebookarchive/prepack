@@ -150,6 +150,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
     c: PossiblyNormalCompletion | JoinedAbruptCompletions,
     priorEffects: Array<Effects> = []
   ): Effects {
+    priorEffects.pop();
     let consequent = c.consequent;
     let consequentEffects = c.consequentEffects;
     priorEffects.push(consequentEffects);
@@ -185,7 +186,6 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
       );
       if (!(alternateEffects.result instanceof AbruptCompletion)) alternateEffects.result = alternate;
     }
-    priorEffects.pop();
     return Join.joinEffects(realm, c.joinCondition, consequentEffects, alternateEffects);
   }
 }
