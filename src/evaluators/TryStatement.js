@@ -208,7 +208,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
           invariant(ast.finalizer);
           return env.evaluateCompletionDeref(ast.finalizer, strictCode);
         },
-        "composeNestedThrowEffectsWithHandler/2"
+        "composeNestedEffectsWithFinalizer/2"
       );
       if (!(alternateEffects.result instanceof AbruptCompletion)) alternateEffects.result = alternate;
     }
