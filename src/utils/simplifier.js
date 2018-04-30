@@ -154,8 +154,8 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
       if (Path.implies(notc)) return y;
       if (!isCondition) {
         if (Path.implies(AbstractValue.createFromBinaryOp(realm, "===", value, x))) return x;
-        if (Path.implies(AbstractValue.createFromBinaryOp(realm, "!==", value, x))) return y;
-        if (Path.implies(AbstractValue.createFromBinaryOp(realm, "!==", value, y))) return x;
+        if (!x.mightBeNumber() && Path.implies(AbstractValue.createFromBinaryOp(realm, "!==", value, x))) return y;
+        if (!y.mightBeNumber() && Path.implies(AbstractValue.createFromBinaryOp(realm, "!==", value, y))) return x;
         if (Path.implies(AbstractValue.createFromBinaryOp(realm, "===", value, y))) return y;
       }
       // c ? x : x <=> x
