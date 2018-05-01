@@ -333,28 +333,31 @@ export class ResidualHeapVisitor {
   visitObjectPropertiesWithComputedNames(absVal: AbstractValue): void {
     if (absVal.kind === "widened property") return;
     if (absVal.kind === "template for prototype member expression") return;
-    invariant(absVal.args.length === 3);
-    let cond = absVal.args[0];
-    invariant(cond instanceof AbstractValue);
-    if (cond.kind === "template for property name condition") {
-      let P = cond.args[0];
-      invariant(P instanceof AbstractValue);
-      let V = absVal.args[1];
-      let earlier_props = absVal.args[2];
-      if (earlier_props instanceof AbstractValue) this.visitObjectPropertiesWithComputedNames(earlier_props);
-      this.visitValue(P);
-      this.visitValue(V);
+    if (absVal.kind === "conditional") {
+      let cond = absVal.args[0];
+      invariant(cond instanceof AbstractValue);
+      if (cond.kind === "template for property name condition") {
+        let P = cond.args[0];
+        invariant(P instanceof AbstractValue);
+        let V = absVal.args[1];
+        let earlier_props = absVal.args[2];
+        if (earlier_props instanceof AbstractValue) this.visitObjectPropertiesWithComputedNames(earlier_props);
+        this.visitValue(P);
+        this.visitValue(V);
+      } else {
+        // conditional assignment
+        absVal.args[0] = this.visitEquivalentValue(cond);
+        let consequent = absVal.args[1];
+        if (consequent instanceof AbstractValue) {
+          this.visitObjectPropertiesWithComputedNames(consequent);
+        }
+        let alternate = absVal.args[2];
+        if (alternate instanceof AbstractValue) {
+          this.visitObjectPropertiesWithComputedNames(alternate);
+        }
+      }
     } else {
-      // conditional assignment
-      absVal.args[0] = this.visitEquivalentValue(cond);
-      let consequent = absVal.args[1];
-      if (consequent instanceof AbstractValue) {
-        this.visitObjectPropertiesWithComputedNames(consequent);
-      }
-      let alternate = absVal.args[2];
-      if (alternate instanceof AbstractValue) {
-        this.visitObjectPropertiesWithComputedNames(alternate);
-      }
+      this.visitValue(absVal);
     }
   }
 
@@ -1068,6 +1071,7 @@ export class ResidualHeapVisitor {
       visitModifiedObjectProperty: (binding: PropertyBinding) => {
         let fixpoint_rerun = () => {
           if (this.values.has(binding.object)) {
+            if (binding.key instanceof Value) this.visitValue(binding.key);
             this.visitObjectProperty(binding);
             return true;
           } else {

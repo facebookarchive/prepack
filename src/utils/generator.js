@@ -176,6 +176,22 @@ type ModifiedPropertyEntryArgs = {|
 class ModifiedPropertyEntry extends GeneratorEntry {
   constructor(args: ModifiedPropertyEntryArgs) {
     super();
+    let desc = args.newDescriptor;
+    if (desc !== undefined) {
+      let val = desc.value;
+      if (val instanceof AbstractValue && val.kind === "conditional") {
+        desc.value = removePrototypeMemberExpression(val);
+        function removePrototypeMemberExpression(absVal: AbstractValue): Value {
+          if (absVal.kind !== "conditional") return absVal;
+          let [c, x, y] = absVal.args;
+          if (!(y instanceof AbstractValue)) return absVal;
+          if (y.kind === "template for prototype member expression") return x;
+          y = removePrototypeMemberExpression(y);
+          invariant(c instanceof AbstractValue);
+          return AbstractValue.createFromConditionalOp(absVal.$Realm, c, x, y);
+        }
+      }
+    }
     Object.assign(this, args);
   }
 
