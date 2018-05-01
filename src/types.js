@@ -135,7 +135,7 @@ export type FunctionBodyAstNode = {
 export type PropertyBinding = {
   descriptor?: Descriptor,
   object: ObjectValue | AbstractObjectValue,
-  key: any,
+  key: void | string | SymbolValue | AbstractValue, // where an abstract value must be of type String or Number or Symbol
   // contains a build node that produces a member expression that resolves to this property binding (location)
   pathNode?: AbstractValue,
 };
