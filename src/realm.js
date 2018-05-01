@@ -1041,7 +1041,7 @@ export class Realm {
           return r;
         });
       } else {
-        // TODO: What is keyKey is undefined?
+        // TODO: What if keyKey is undefined?
         invariant(keyKey instanceof Value);
         gen.emitStatement([key.object, keyKey, tval || value, this.intrinsics.empty], ([o, p, v, e]) => {
           invariant(path !== undefined);
