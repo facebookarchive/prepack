@@ -1,6 +1,6 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 if (!this.__evaluatePureFunction) {
   this.__evaluatePureFunction = function(f) {
@@ -9,38 +9,34 @@ if (!this.__evaluatePureFunction) {
 }
 
 __evaluatePureFunction(function() {
-
   function FbtResult() {}
   FbtResult.prototype.$$typeof = Symbol.for("react.element");
 
-  function fbt() {};
-  function param() {};
+  function fbt() {}
+  function param() {}
   function plural(shouldThrow) {
     if (shouldThrow) {
-      throw new Error('no');
+      throw new Error("no");
     }
   }
 
-  var React = require('react');
+  var React = require("react");
 
   function App(props) {
-   return React.createElement(
-     'div',
-     new FbtResult(
-       {},
-       [param(props.foo), plural(props.bar)],
-     )
-   );
- }
+    return React.createElement(
+      "div",
+      new FbtResult({}, [param(props.foo), plural(props.bar)])
+    );
+  }
 
- App.getTrials = function(renderer, Root) {
-  renderer.update(<Root bar={false} />);
-  return [['fb19 mocks', renderer.toJSON()]];
+  App.getTrials = function(renderer, Root) {
+    renderer.update(<Root bar={false} />);
+    return [["fb19 mocks", renderer.toJSON()]];
   };
 
   if (this.__optimizeReactComponentTree) {
     __optimizeReactComponentTree(App, {
-      firstRenderOnly: true,
+      firstRenderOnly: true
     });
   }
 

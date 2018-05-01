@@ -535,8 +535,8 @@ export default class AbstractObjectValue extends AbstractValue {
       // use this join condition for the join of the two property values
       let [cond, ob1, ob2] = this.args;
       invariant(cond instanceof AbstractValue);
-      invariant(ob1 instanceof ObjectValue);
-      invariant(ob2 instanceof ObjectValue);
+      invariant(ob1 instanceof ObjectValue || ob1 instanceof AbstractObjectValue);
+      invariant(ob2 instanceof ObjectValue || ob2 instanceof AbstractObjectValue);
       let d1 = ob1.$GetOwnProperty(P);
       let d1val =
         d1 === undefined ? this.$Realm.intrinsics.undefined : IsDataDescriptor(this.$Realm, d1) ? d1.value : undefined;
