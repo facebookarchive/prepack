@@ -176,22 +176,6 @@ type ModifiedPropertyEntryArgs = {|
 class ModifiedPropertyEntry extends GeneratorEntry {
   constructor(args: ModifiedPropertyEntryArgs) {
     super();
-    let desc = args.newDescriptor;
-    if (desc !== undefined) {
-      let val = desc.value;
-      if (val instanceof AbstractValue && val.kind === "conditional") {
-        desc.value = removePrototypeMemberExpression(val);
-        function removePrototypeMemberExpression(absVal: AbstractValue): Value {
-          if (absVal.kind !== "conditional") return absVal;
-          let [c, x, y] = absVal.args;
-          if (!(y instanceof AbstractValue)) return absVal;
-          if (y.kind === "template for prototype member expression") return x;
-          y = removePrototypeMemberExpression(y);
-          invariant(c instanceof AbstractValue);
-          return AbstractValue.createFromConditionalOp(absVal.$Realm, c, x, y);
-        }
-      }
-    }
     Object.assign(this, args);
   }
 
@@ -469,10 +453,32 @@ export class Generator {
 
   emitPropertyModification(propertyBinding: PropertyBinding) {
     invariant(this.effectsToApply !== undefined);
+    let desc = propertyBinding.descriptor;
+    if (desc !== undefined) {
+      let value = desc.value;
+      if (value instanceof AbstractValue) {
+        if (value.kind === "conditional") {
+          let [c, x, y] = value.args;
+          if (c instanceof AbstractValue && c.kind === "template for property name condition") {
+            let ydesc = Object.assign({}, desc, { value: y });
+            let yprop = Object.assign({}, propertyBinding, { descriptor: ydesc });
+            this.emitPropertyModification(yprop);
+            let xdesc = Object.assign({}, desc, { value: x });
+            let key = c.args[0];
+            invariant(key instanceof AbstractValue);
+            let xprop = Object.assign({}, propertyBinding, { key, descriptor: xdesc });
+            this.emitPropertyModification(xprop);
+            return;
+          }
+        } else if (value.kind === "template for prototype member expression") {
+          return;
+        }
+      }
+    }
     this._entries.push(
       new ModifiedPropertyEntry({
         propertyBinding,
-        newDescriptor: propertyBinding.descriptor,
+        newDescriptor: desc,
         containingGenerator: this,
       })
     );
