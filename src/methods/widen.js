@@ -247,12 +247,16 @@ export class WidenImplementation {
           // For now, we only handle loop invariant properties
           //i.e. properties where the member expresssion does not involve any values written to inside the loop.
           let key = b.key;
-          if (typeof key === "string" || !(key.mightNotBeString() && key.mightNotBeNumber())) {
+          if (
+            typeof key === "string" ||
+            (key instanceof AbstractValue && !(key.mightNotBeString() && key.mightNotBeNumber()))
+          ) {
             if (typeof key === "string") {
               pathNode = AbstractValue.createFromWidenedProperty(realm, rval, [b.object], ([o]) =>
                 t.memberExpression(o, t.identifier(key))
               );
             } else {
+              invariant(key instanceof AbstractValue);
               pathNode = AbstractValue.createFromWidenedProperty(realm, rval, [b.object, key], ([o, p]) => {
                 return t.memberExpression(o, p, true);
               });
@@ -267,11 +271,13 @@ export class WidenImplementation {
               if (key === "length" && b.object instanceof ArrayValue) {
                 // do nothing, the array length will already be initialized
               } else if (typeof key === "string") {
-                generator.emitVoidExpression(rval.types, rval.values, [b.object, initVal], ([o, v]) =>
-                  t.assignmentExpression("=", t.memberExpression(o, t.identifier(key)), v)
-                );
+                generator.emitVoidExpression(rval.types, rval.values, [b.object, initVal], ([o, v]) => {
+                  invariant(typeof key === "string");
+                  return t.assignmentExpression("=", t.memberExpression(o, t.identifier(key)), v);
+                });
               } else {
-                generator.emitVoidExpression(rval.types, rval.values, [b.object, b.key, initVal], ([o, p, v]) =>
+                invariant(key instanceof AbstractValue);
+                generator.emitVoidExpression(rval.types, rval.values, [b.object, key, initVal], ([o, p, v]) =>
                   t.assignmentExpression("=", t.memberExpression(o, p, true), v)
                 );
               }
