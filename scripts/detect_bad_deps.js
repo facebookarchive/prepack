@@ -58,8 +58,7 @@ exec(cmd, function(error, stdout, stderr) {
   }
   if (inCycle || cycles === 0 || !(max_cycle_len > 0)) {
     console.error("Error while processing Flow stderr, couldn't find cycle information:");
-    for (let line of lines)
-        console.error(line);
+    for (let line of lines) console.error(line);
     process.exit(1);
   }
   console.log("Biggest cycle: " + max_cycle_len + " (out of " + cycles + " cycles reported by Flow)");
