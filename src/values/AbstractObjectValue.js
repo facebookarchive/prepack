@@ -237,12 +237,12 @@ export default class AbstractObjectValue extends AbstractValue {
       }
       invariant(false);
     } else if (this.kind === "conditional") {
-      // this is the join of two concrete objects
+      // this is the join of two concrete/abstract objects
       // use this join condition for the join of the two property values
       let [cond, ob1, ob2] = this.args;
       invariant(cond instanceof AbstractValue);
-      invariant(ob1 instanceof ObjectValue);
-      invariant(ob2 instanceof ObjectValue);
+      invariant(ob1 instanceof ObjectValue || ob1 instanceof AbstractObjectValue);
+      invariant(ob2 instanceof ObjectValue || ob2 instanceof AbstractObjectValue);
       let p1 = ob1.$GetPrototypeOf();
       let p2 = ob2.$GetPrototypeOf();
       let joinedObject = Join.joinValuesAsConditional(realm, cond, p1, p2);
@@ -531,7 +531,7 @@ export default class AbstractObjectValue extends AbstractValue {
       }
       invariant(false);
     } else if (this.kind === "conditional") {
-      // this is the join of two concrete objects
+      // this is the join of two concrete/abstract objects
       // use this join condition for the join of the two property values
       let [cond, ob1, ob2] = this.args;
       invariant(cond instanceof AbstractValue);
