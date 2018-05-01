@@ -29,7 +29,7 @@
         }
     }
 
-    __optimize(fn);
+    if (global.__optimize) __optimize(fn);
 
     global.fn = fn;
 
