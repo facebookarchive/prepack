@@ -1852,13 +1852,13 @@ export class ResidualHeapSerializer {
       },
       emitPropertyModification: (propertyBinding: PropertyBinding) => {
         let desc = propertyBinding.descriptor;
-        if (desc === undefined) return; //deleted
         let object = propertyBinding.object;
         invariant(object instanceof ObjectValue);
         if (this.residualValues.has(object)) {
           let key = propertyBinding.key;
           invariant(key !== undefined, "established by visitor");
-          let dependencies = this._getDescriptorValues(desc);
+          let dependencies = [];
+          if (desc !== undefined) dependencies.push(...this._getDescriptorValues(desc));
           dependencies.push(object);
           if (key instanceof Value) dependencies.push(key);
           this.emitter.emitNowOrAfterWaitingForDependencies(dependencies, () =>
