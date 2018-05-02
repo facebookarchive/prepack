@@ -39,7 +39,7 @@ export default function(
         let value = AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, [oldExpr], ([valNode]) =>
           t.updateExpression(ast.operator, valNode, ast.prefix)
         );
-        Havoc.value(oldExpr);
+        Havoc.value(realm, oldExpr);
         if (ast.prefix) {
           return value;
         } else {
