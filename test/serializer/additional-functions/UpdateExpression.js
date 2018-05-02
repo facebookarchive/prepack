@@ -1,7 +1,6 @@
 
 function additional1(x) {
-  x++
-  return x;
+  return x++;
 }
 
 function additional2(x) {
