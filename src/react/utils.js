@@ -63,7 +63,7 @@ export function isReactElement(val: Value): boolean {
   if (!val.properties.has("type") || !val.properties.has("props") || !val.properties.has("$$typeof")) {
     return false;
   }
-  let $$typeof = Get(realm, val, "$$typeof");
+  let $$typeof = getProperty(realm, val, "$$typeof");
   let globalObject = realm.$GlobalObject;
   let globalSymbolValue = getProperty(realm, globalObject, "Symbol");
 
