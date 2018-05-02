@@ -1851,11 +1851,19 @@ export class ResidualHeapSerializer {
         this.emitter.declare(value);
       },
       emitPropertyModification: (propertyBinding: PropertyBinding) => {
+        let desc = propertyBinding.descriptor;
         let object = propertyBinding.object;
         invariant(object instanceof ObjectValue);
         if (this.residualValues.has(object)) {
-          invariant(propertyBinding.key !== undefined, "established by visitor");
-          this._emitProperty(object, propertyBinding.key, propertyBinding.descriptor, true);
+          let key = propertyBinding.key;
+          invariant(key !== undefined, "established by visitor");
+          let dependencies = [];
+          if (desc !== undefined) dependencies.push(...this._getDescriptorValues(desc));
+          dependencies.push(object);
+          if (key instanceof Value) dependencies.push(key);
+          this.emitter.emitNowOrAfterWaitingForDependencies(dependencies, () =>
+            this._emitProperty(object, key, desc, true)
+          );
         }
       },
       options: this._options,

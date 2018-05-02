@@ -235,14 +235,13 @@ export class ResidualHeapVisitor {
 
   visitObjectProperty(binding: PropertyBinding) {
     let desc = binding.descriptor;
-    if (desc === undefined) return; //deleted
     let obj = binding.object;
     invariant(binding.key !== undefined, "Undefined keys should never make it here.");
     if (
       obj instanceof AbstractObjectValue ||
       !(typeof binding.key === "string" && this.inspector.canIgnoreProperty(obj, binding.key))
     ) {
-      this.visitDescriptor(desc);
+      if (desc !== undefined) this.visitDescriptor(desc);
     }
     if (binding.key instanceof Value) this.visitValue(binding.key);
   }
