@@ -17,7 +17,7 @@ export function mergeAdacentJSONTextNodes(node: JSON, removeFunctions: boolean, 
     visitedNodes = new Set();
   }
   if (visitedNodes.has(node)) {
-    return "[Circular]";
+    return node;
   }
   visitedNodes.add(node);
 
