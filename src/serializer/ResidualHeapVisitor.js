@@ -63,7 +63,7 @@ import {
   withDescriptorValue,
 } from "./utils.js";
 import { Environment, To } from "../singletons.js";
-import { isReactElement, valueIsReactLibraryObject } from "../react/utils.js";
+import { getProperty, getReactSymbol, isReactElement, valueIsReactLibraryObject } from "../react/utils.js";
 import { canHoistReactElement } from "../react/hoisting.js";
 import ReactElementSet from "../react/ReactElementSet.js";
 
@@ -797,7 +797,11 @@ export class ResidualHeapVisitor {
       case "ArrayBuffer":
         return;
       case "ReactElement":
-        if (this.realm.react.output === "create-element") {
+        let typeValue = getProperty(this.realm, val, "type");
+        let isReactFragment =
+          typeValue instanceof SymbolValue && typeValue === getReactSymbol("react.fragment", this.realm);
+
+        if (this.realm.react.output === "create-element" || isReactFragment) {
           this.someReactElement = val;
         }
         // check we can hoist a React Element
