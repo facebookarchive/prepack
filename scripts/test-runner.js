@@ -266,7 +266,7 @@ function runTest(name, code, options: PrepackOptions, args) {
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
   let initializeMoreModules = code.includes("// initialize more modules");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
-  if (code.includes("// inline expressions")) options.inlineExpressions = true;
+  if (args.verbose || code.includes("// inline expressions")) options.inlineExpressions = true;
   if (code.includes("// do not inline expressions")) options.inlineExpressions = false;
   options.invariantLevel = code.includes("// omit invariants") || args.verbose ? 0 : 99;
   if (code.includes("// emit concrete model")) options.emitConcreteModel = true;
