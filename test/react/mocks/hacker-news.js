@@ -62,7 +62,7 @@ module.exports = this.__evaluatePureFunction(() => {
         <tr>
           <td colSpan="2" />
           <td className="subtext">
-            <span className="score">{`${story.score} points`}</span>
+            <span className="score">{story.score + ' points'}</span>
             {' by '}
             <a href="#" className="hnuser">{story.by}</a>
             {' '}
@@ -72,7 +72,7 @@ module.exports = this.__evaluatePureFunction(() => {
             {' | '}
             <a href="#">hide</a>
             {' | '}
-            <a href="#">{`${story.descendants || 0} comments`}</a>
+            <a href="#">{(story.descendants || 0) + ' comments'}</a>
           </td>
         </tr>
         <tr
@@ -103,9 +103,13 @@ module.exports = this.__evaluatePureFunction(() => {
         <td>
           <table cellPadding="0" cellSpacing="0" className="itemlist">
             <tbody>
-              {stories.map((story, i) => (
-                <Story story={story} rank={++i} key={story.id} />
-              ))}
+              {
+                // we use Array.from to tell the compiler that this
+                // is definitely an array object
+                Array.from(stories).map((story, i) => (
+                  <Story story={story} rank={++i} key={story.id} />
+                ))
+              }
             </tbody>
           </table>
         </td>
