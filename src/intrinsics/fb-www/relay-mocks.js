@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ObjectValue, NativeFunctionValue, FunctionValue, AbstractValue, ECMAScriptSourceFunctionValue } from "../../values/index.js";
+import { ObjectValue, FunctionValue, AbstractValue, ECMAScriptSourceFunctionValue } from "../../values/index.js";
 import { Create, Environment } from "../../singletons.js";
 import { createAbstract } from "../prepack/utils.js";
 import { Get } from "../../methods/index.js";
@@ -18,6 +18,7 @@ import * as t from "babel-types";
 import invariant from "../../invariant";
 import { createReactHintObject } from "../../react/utils.js";
 import { parseExpression } from "babylon";
+import { addMockFunctionToObject } from "./utils.js";
 
 let reactRelayCode = `
   function createReactRelay(React) {
@@ -101,38 +102,34 @@ function createReactRelayContainer(
   realm: Realm,
   reactRelay: ObjectValue,
   containerName: string,
-  reactRelayFirstRenderValue: ObjectValue
+  reactRelayFirstRenderValue: ObjectValue,
+  relayRequireName: string
 ) {
   // we create a ReactRelay container function that returns an abstract object
   // allowing us to reconstruct this ReactReact.createSomeContainer(...) again
   // we also pass a reactHint so the reconciler can properly deal with this
-  reactRelay.$DefineOwnProperty(containerName, {
-    value: new NativeFunctionValue(realm, undefined, containerName, 0, (context, args) => {
-      let value = AbstractValue.createTemporalFromBuildFunction(realm, FunctionValue, [reactRelay, ...args], _args => {
-        let [reactRelayIdent, ...otherArgs] = _args;
+  addMockFunctionToObject(realm, reactRelay, relayRequireName, containerName, (funcValue, args) => {
+    let value = AbstractValue.createTemporalFromBuildFunction(realm, FunctionValue, [reactRelay, ...args], _args => {
+      let [reactRelayIdent, ...otherArgs] = _args;
 
-        return t.callExpression(
-          t.memberExpression(reactRelayIdent, t.identifier(containerName)),
-          ((otherArgs: any): Array<any>)
-        );
-      });
-      invariant(value instanceof AbstractValue);
-      let firstRenderContainerValue = Get(realm, reactRelayFirstRenderValue, containerName);
-      let firstRenderValue = realm.intrinsics.undefined;
+      return t.callExpression(
+        t.memberExpression(reactRelayIdent, t.identifier(containerName)),
+        ((otherArgs: any): Array<any>)
+      );
+    });
+    invariant(value instanceof AbstractValue);
+    let firstRenderContainerValue = Get(realm, reactRelayFirstRenderValue, containerName);
+    let firstRenderValue = realm.intrinsics.undefined;
 
-      if (firstRenderContainerValue instanceof ECMAScriptSourceFunctionValue) {
-        let firstRenderContainerValueCall = firstRenderContainerValue.$Call;
-        invariant(firstRenderContainerValueCall !== undefined);
-        firstRenderValue = firstRenderContainerValueCall(realm.intrinsics.undefined, args);
-        invariant(firstRenderValue instanceof ECMAScriptSourceFunctionValue);
-      }
+    if (firstRenderContainerValue instanceof ECMAScriptSourceFunctionValue) {
+      let firstRenderContainerValueCall = firstRenderContainerValue.$Call;
+      invariant(firstRenderContainerValueCall !== undefined);
+      firstRenderValue = firstRenderContainerValueCall(realm.intrinsics.undefined, args);
+      invariant(firstRenderValue instanceof ECMAScriptSourceFunctionValue);
+    }
 
-      realm.react.abstractHints.set(value, createReactHintObject(reactRelay, containerName, args, firstRenderValue));
-      return value;
-    }),
-    writable: false,
-    enumerable: false,
-    configurable: true,
+    realm.react.abstractHints.set(value, createReactHintObject(reactRelay, containerName, args, firstRenderValue));
+    return value;
   });
 }
 
@@ -156,7 +153,7 @@ export function createMockReactRelay(realm: Realm, relayRequireName: string): Ob
 
   let reactRelayContainers = ["createFragmentContainer", "createPaginationContainer", "createRefetchContainer"];
   for (let reactRelayContainer of reactRelayContainers) {
-    createReactRelayContainer(realm, reactRelay, reactRelayContainer, reactRelayFirstRenderValue);
+    createReactRelayContainer(realm, reactRelay, reactRelayContainer, reactRelayFirstRenderValue, relayRequireName);
   }
 
   let commitLocalUpdate = createAbstract(realm, "function", `require("${relayRequireName}").commitLocalUpdate`);
