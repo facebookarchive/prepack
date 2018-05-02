@@ -16,8 +16,9 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Add } from "../methods/index.js";
 import { AbstractValue, NumberValue, IntegralValue } from "../values/index.js";
 import type { BabelNodeUpdateExpression } from "babel-types";
-import { Environment, Properties, To } from "../singletons.js";
+import { Environment, Havoc, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
+import * as t from "babel-types";
 
 export default function(
   ast: BabelNodeUpdateExpression,
@@ -34,6 +35,17 @@ export default function(
   let oldExpr = Environment.GetValue(realm, expr);
   if (oldExpr instanceof AbstractValue) {
     if (!To.IsToNumberPure(realm, oldExpr)) {
+      if (realm.isInPureScope()) {
+        let value = AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, [oldExpr], ([valNode]) =>
+          t.updateExpression(ast.operator, valNode, ast.prefix)
+        );
+        Havoc.value(realm, oldExpr);
+        if (ast.prefix) {
+          return value;
+        } else {
+          return oldExpr;
+        }
+      }
       let error = new CompilerDiagnostic(
         "might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method",
         ast.argument.loc,

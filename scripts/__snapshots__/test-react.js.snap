@@ -3082,7 +3082,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, JSX output fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 5,
+  "componentsEvaluated": 7,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -3097,7 +3097,21 @@ ReactStatistics {
                   "status": "INLINED",
                 },
                 Object {
-                  "children": Array [],
+                  "children": Array [
+                    Object {
+                      "children": Array [
+                        Object {
+                          "children": Array [],
+                          "message": "",
+                          "name": "React.Fragment",
+                          "status": "NORMAL",
+                        },
+                      ],
+                      "message": "",
+                      "name": "Story",
+                      "status": "INLINED",
+                    },
+                  ],
                   "message": "",
                   "name": "StoryList",
                   "status": "INLINED",
@@ -3118,8 +3132,8 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 4,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
@@ -6859,7 +6873,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, create-element output fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 5,
+  "componentsEvaluated": 7,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -6874,7 +6888,21 @@ ReactStatistics {
                   "status": "INLINED",
                 },
                 Object {
-                  "children": Array [],
+                  "children": Array [
+                    Object {
+                      "children": Array [
+                        Object {
+                          "children": Array [],
+                          "message": "",
+                          "name": "React.Fragment",
+                          "status": "NORMAL",
+                        },
+                      ],
+                      "message": "",
+                      "name": "Story",
+                      "status": "INLINED",
+                    },
+                  ],
                   "message": "",
                   "name": "StoryList",
                   "status": "INLINED",
@@ -6895,8 +6923,8 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 4,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
@@ -10601,7 +10629,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 5,
+  "componentsEvaluated": 7,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -10616,7 +10644,21 @@ ReactStatistics {
                   "status": "INLINED",
                 },
                 Object {
-                  "children": Array [],
+                  "children": Array [
+                    Object {
+                      "children": Array [
+                        Object {
+                          "children": Array [],
+                          "message": "",
+                          "name": "React.Fragment",
+                          "status": "NORMAL",
+                        },
+                      ],
+                      "message": "",
+                      "name": "Story",
+                      "status": "INLINED",
+                    },
+                  ],
                   "message": "",
                   "name": "StoryList",
                   "status": "INLINED",
@@ -10637,8 +10679,8 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 4,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
@@ -14343,7 +14385,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output fb-www mocks Hacker News app 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 5,
+  "componentsEvaluated": 7,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -14358,7 +14400,21 @@ ReactStatistics {
                   "status": "INLINED",
                 },
                 Object {
-                  "children": Array [],
+                  "children": Array [
+                    Object {
+                      "children": Array [
+                        Object {
+                          "children": Array [],
+                          "message": "",
+                          "name": "React.Fragment",
+                          "status": "NORMAL",
+                        },
+                      ],
+                      "message": "",
+                      "name": "Story",
+                      "status": "INLINED",
+                    },
+                  ],
                   "message": "",
                   "name": "StoryList",
                   "status": "INLINED",
@@ -14379,8 +14435,8 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 4,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
