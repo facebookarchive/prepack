@@ -433,11 +433,14 @@ export class ToImplementation {
 
       case UndefinedValue:
       case NullValue:
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+      case PrimitiveValue:
+        if (arg.mightBeNull() || arg.mightHaveBeenDeleted() || arg.mightBeUndefined())
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
 
+      /*eslint-disable */
       default:
+        /*eslint-enable */
         if (realm.isInPureScope()) {
-          invariant(arg.getType() === Value); // Can't be primitive or object for sure, which leaves just Value.
           // will be serialized as Object.assign(serialized_arg)
           obj = AbstractValue.createFromType(realm, ObjectValue, "explicit conversion to object", [arg]);
           invariant(obj instanceof AbstractObjectValue);
