@@ -9,6 +9,7 @@
 
 /* @flow */
 
+import type { Realm } from "../../realm.js";
 import { ObjectValue, NativeFunctionValue, Value } from "../../values/index.js";
 import { Get } from "../../methods/index.js";
 import invariant from "../../invariant.js";
@@ -33,6 +34,7 @@ export function updateIntrinsicNames(
         invariant(val instanceof Value);
         val.intrinsicName = `require("${requireName}").${name}`;
         if (updatePrototype) {
+          invariant(val instanceof ObjectValue);
           let proto = Get(realm, val, "prototype");
           proto.intrinsicName = `require("${requireName}").${name}.prototype`;
         }

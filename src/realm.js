@@ -277,6 +277,7 @@ export class Realm {
     this.fbLibraries = {
       other: new Map(),
       react: undefined,
+      reactDom: undefined,
       reactRelay: undefined,
     };
 
@@ -353,6 +354,7 @@ export class Realm {
   fbLibraries: {
     other: Map<string, AbstractValue>,
     react: void | ObjectValue,
+    reactDom: void | ObjectValue,
     reactRelay: void | ObjectValue,
   };
 

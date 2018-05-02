@@ -13,7 +13,6 @@ import type { Realm } from "../../realm.js";
 import {
   ArrayValue,
   AbstractValue,
-  type AbstractValueKind,
   FunctionValue,
   AbstractObjectValue,
   NativeFunctionValue,
@@ -220,7 +219,10 @@ function createBootloader(realm: Realm, global: ObjectValue | AbstractObjectValu
   let loadModules = new NativeFunctionValue(realm, "loadModules", "loadModules", 1, (context, args) => {
     invariant(context.$Realm.generator);
     let val = AbstractValue.createTemporalFromBuildFunction(realm, FunctionValue, args, _args =>
-      t.callExpression(t.memberExpression(t.identifier("Bootloader"), t.identifier("loadModules")), ((_args: any): Array<any>))
+      t.callExpression(
+        t.memberExpression(t.identifier("Bootloader"), t.identifier("loadModules")),
+        ((_args: any): Array<any>)
+      )
     );
     invariant(val instanceof AbstractValue);
     return val;

@@ -614,7 +614,7 @@ export function createMockReactDOM(realm: Realm, reactDomRequireName: string): O
       FunctionValue,
       [funcVal, ...args],
       ([renderNode, ..._args]) => {
-        return t.callExpression(renderNode, _args);
+        return t.callExpression(renderNode, ((_args: any): Array<any>));
       }
     );
     invariant(reactDomMethod instanceof AbstractObjectValue);
