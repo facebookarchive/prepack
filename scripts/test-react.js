@@ -14,6 +14,7 @@ let path = require("path");
 let { prepackSources } = require("../lib/prepack-node.js");
 let babel = require("babel-core");
 let React = require("react");
+let ReactDOM = require("react-dom");
 let PropTypes = require("prop-types");
 let ReactRelay = require("react-relay");
 let ReactTestRenderer = require("react-test-renderer");
@@ -121,6 +122,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         case "React":
         case "react":
           return React;
+        case "react-dom":
+        case "ReactDOM":
+          return ReactDOM;
         case "PropTypes":
         case "prop-types":
           return PropTypes;
@@ -509,14 +513,18 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-classes-3.js");
       });
 
-      // These fail due to a nested optimized function bug
-      // it("Simple classes with Array.from", async () => {
-      //   await runTest(directory, "array-from.js");
-      // });
+      // awaiting PR on nested additional support #1626,
+      // issues is that both the parent and child additional
+      // function share the same variable, so the serializer
+      // incorrectly emits it in the MainGenerator scope
+      it.skip("Simple classes with Array.from", async () => {
+        await runTest(directory, "array-from.js");
+      });
 
-      // it("Simple classes with Array.from 2", async () => {
-      //   await runTest(directory, "array-from2.js");
-      // });
+      // same issue as last test
+      it.skip("Simple classes with Array.from 2", async () => {
+        await runTest(directory, "array-from2.js");
+      });
 
       it("Inheritance chaining", async () => {
         await runTest(directory, "inheritance-chain.js");
@@ -761,6 +769,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "fb20.js");
       });
 
+      it("fb-www 21", async () => {
+        await runTest(directory, "fb21.js");
+      });
+
+      it("fb-www 22", async () => {
+        await runTest(directory, "fb22.js");
+      });
+
       it("repl example", async () => {
         await runTest(directory, "repl-example.js");
       });
@@ -770,10 +786,6 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "hacker-news.js", false, data);
       });
 
-      // awaiting PR on nested additional support #1626,
-      // issues is that both the parent and child additional
-      // function share the same variable, so the serializer
-      // incorrectly emits it in the MainGenerator scope
       it("Function bind", async () => {
         await runTest(directory, "function-bind.js");
       });
