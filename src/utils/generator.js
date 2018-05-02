@@ -61,6 +61,8 @@ export type SerializationContext = {|
   serializeValue: Value => BabelNodeExpression,
   serializeBinding: Binding => BabelNodeIdentifier | BabelNodeMemberExpression,
   serializeGenerator: (Generator, Set<AbstractValue>) => Array<BabelNodeStatement>,
+  initGenerator: Generator => void,
+  finalizeGenerator: Generator => void,
   emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
   processValues: (Set<AbstractValue>) => void,
@@ -1082,7 +1084,9 @@ export class Generator {
 
   serialize(context: SerializationContext) {
     let serializeFn = () => {
+      context.initGenerator(this);
       for (let entry of this._entries) entry.serialize(context);
+      context.finalizeGenerator(this);
       return null;
     };
     if (this.effectsToApply) {

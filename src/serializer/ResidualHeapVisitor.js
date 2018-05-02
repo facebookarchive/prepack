@@ -118,6 +118,7 @@ export class ResidualHeapVisitor {
     invariant(environment instanceof GlobalEnvironmentRecord);
     this.globalEnvironmentRecord = environment;
     this.createdObjects = new Map();
+    this.additionalGeneratorRoots = new Map();
   }
 
   realm: Realm;
@@ -150,6 +151,7 @@ export class ResidualHeapVisitor {
   // Parents will always be a generator, optimized function value or "GLOBAL"
   generatorParents: Map<Generator, Generator | FunctionValue | "GLOBAL">;
   createdObjects: Map<ObjectValue, Generator>;
+  additionalGeneratorRoots: Map<Generator, Set<ObjectValue>>;
 
   globalEnvironmentRecord: GlobalEnvironmentRecord;
 
@@ -186,27 +188,57 @@ export class ResidualHeapVisitor {
   // created --- this causes the value later to be serialized in its
   // creation scope, ensuring that the value has the right creation / life time.
   _registerAdditionalRoot(value: ObjectValue) {
-    let generator = this.createdObjects.get(value);
+    let creationGenerator = this.createdObjects.get(value) || this.globalGenerator;
+
     let additionalFunction = this._getAdditionalFunctionOfScope() || "GLOBAL";
-    if (generator !== undefined) {
-      let s = generator;
+    let targetAdditionalFunction;
+    if (creationGenerator === this.globalGenerator) {
+      targetAdditionalFunction = "GLOBAL";
+    } else {
+      let s = creationGenerator;
       while (s instanceof Generator) {
         s = this.generatorParents.get(s);
         invariant(s !== undefined);
       }
       invariant(s === "GLOBAL" || s instanceof FunctionValue);
-      if (additionalFunction === s) return;
-    } else {
-      if (additionalFunction === "GLOBAL") return;
-      generator = this.globalGenerator;
+      targetAdditionalFunction = s;
     }
 
-    invariant(additionalFunction instanceof FunctionValue);
-    let additionalFVEffects = this.additionalFunctionValuesAndEffects.get(additionalFunction);
-    invariant(additionalFVEffects !== undefined);
-    additionalFVEffects.additionalRoots.add(value);
+    let usageScope;
+    if (additionalFunction === targetAdditionalFunction) {
+      usageScope = this.scope;
+    } else {
+      // Object was created outside of current additional function scope
+      invariant(additionalFunction instanceof FunctionValue);
+      let additionalFVEffects = this.additionalFunctionValuesAndEffects.get(additionalFunction);
+      invariant(additionalFVEffects !== undefined);
+      additionalFVEffects.additionalRoots.add(value);
 
-    this._visitInUnrelatedScope(generator, value);
+      this._visitInUnrelatedScope(creationGenerator, value);
+      usageScope = this.createdObjects.get(value) || this.globalGenerator;
+    }
+
+    usageScope = this.scope;
+    if (usageScope instanceof Generator) {
+      // Also check if object is used in some nested generator scope that involved
+      // applying effects; if so, store additional information that the serializer
+      // can use to proactive serialize such objects from within the right generator
+      let anyEffectsToApply = false;
+      for (let g = usageScope; g instanceof Generator; g = this.generatorParents.get(g)) {
+        if (g === creationGenerator) {
+          if (anyEffectsToApply) {
+            let s = this.additionalGeneratorRoots.get(g);
+            if (s === undefined) this.additionalGeneratorRoots.set(g, (s = new Set()));
+            if (!s.has(value)) {
+              s.add(value);
+              this._visitInUnrelatedScope(g, value);
+            }
+          }
+          break;
+        }
+        if (g.effectsToApply) anyEffectsToApply = true;
+      }
+    }
   }
 
   // Careful!
@@ -1074,6 +1106,7 @@ export class ResidualHeapVisitor {
       visitModifiedObjectProperty: (binding: PropertyBinding) => {
         let fixpoint_rerun = () => {
           if (this.values.has(binding.object)) {
+            this.visitValue(binding.object);
             if (binding.key instanceof Value) this.visitValue(binding.key);
             this.visitObjectProperty(binding);
             return true;

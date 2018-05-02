@@ -73,7 +73,8 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     react: ReactSerializerState,
     referentializer: Referentializer,
     generatorParents: Map<Generator, Generator | FunctionValue | "GLOBAL">,
-    conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>
+    conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>,
+    additionalGeneratorRoots: Map<Generator, Set<ObjectValue>>
   ) {
     super(
       realm,
@@ -93,7 +94,8 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
       react,
       referentializer,
       generatorParents,
-      conditionalFeasibility
+      conditionalFeasibility,
+      additionalGeneratorRoots
     );
     this._lazyObjectIdSeed = 1;
     this._valueLazyIds = new Map();

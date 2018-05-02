@@ -222,7 +222,8 @@ export class Serializer {
               this.react,
               referentializer,
               residualHeapVisitor.generatorParents,
-              residualHeapVisitor.conditionalFeasibility
+              residualHeapVisitor.conditionalFeasibility,
+              residualHeapVisitor.additionalGeneratorRoots
             ).serialize();
           });
           if (this.logger.hasErrors()) return undefined;
@@ -252,7 +253,8 @@ export class Serializer {
             this.react,
             referentializer,
             residualHeapVisitor.generatorParents,
-            residualHeapVisitor.conditionalFeasibility
+            residualHeapVisitor.conditionalFeasibility,
+            residualHeapVisitor.additionalGeneratorRoots
           ).serialize()
         );
       })();
