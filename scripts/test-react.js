@@ -761,6 +761,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "fb20.js");
       });
 
+      it("fb-www 22", async () => {
+        await runTest(directory, "fb22.js");
+      });
+
       it("repl example", async () => {
         await runTest(directory, "repl-example.js");
       });
