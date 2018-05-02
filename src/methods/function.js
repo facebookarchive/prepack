@@ -14,7 +14,13 @@ import type { PropertyKeyValue, FunctionBodyAstNode } from "../types.js";
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
-import { Completion, ReturnCompletion, AbruptCompletion, NormalCompletion } from "../completions.js";
+import {
+  Completion,
+  ReturnCompletion,
+  AbruptCompletion,
+  NormalCompletion,
+  JoinedAbruptCompletions,
+} from "../completions.js";
 import { ExecutionContext } from "../realm.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord } from "../environment.js";
 import {
@@ -1140,9 +1146,14 @@ export class FunctionImplementation {
         invariant(e !== undefined);
         realm.stopEffectCaptureAndUndoEffects(savedCompletion);
         let joined_effects = Join.joinPossiblyNormalCompletionWithAbruptCompletion(realm, savedCompletion, c, e);
-        realm.applyEffects(joined_effects);
         let jc = joined_effects.result;
         invariant(jc instanceof AbruptCompletion);
+        realm.applyEffects(
+          joined_effects,
+          "incorporateSavedCompletion",
+          // if the result is a joined completion, the nested generators will be appended later on
+          !(jc instanceof JoinedAbruptCompletions)
+        );
         return jc;
       }
     }
