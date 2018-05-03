@@ -14,15 +14,7 @@ import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { canHoistReactElement } from "../react/hoisting.js";
 import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression } from "babel-types";
-import {
-  ArrayValue,
-  NumberValue,
-  Value,
-  ObjectValue,
-  StringValue,
-  SymbolValue,
-  AbstractValue,
-} from "../values/index.js";
+import { AbstractValue, ArrayValue, NumberValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
 import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
 import { Logger } from "../utils/logger.js";
 import invariant from "../invariant.js";
@@ -191,6 +183,11 @@ export class ResidualReactElementSerializer {
             originalCreateElementIdentifier
           );
         } else {
+          // Note: it can be expected that we assign to the same variable multiple times
+          // this is due to fact ReactElements are immutable objects and the fact that
+          // when we inline/fold logic, the same ReactElements are referenced at different
+          // points with different attributes. Given we can't mutate an immutable object,
+          // we instead create new objects and assign to the same binding
           if (reactElement.declared) {
             this.residualHeapSerializer.emitter.emit(
               t.expressionStatement(t.assignmentExpression("=", id, reactElementAstNode))
@@ -237,11 +234,6 @@ export class ResidualReactElementSerializer {
 
   _serializeReactFragmentType(typeValue: SymbolValue): BabelNodeExpression {
     let reactLibraryObject = this._getReactLibraryValue();
-    // we want to visit the Symbol type, but we don't want to serialize it
-    // as this is a React internal
-    this.residualHeapSerializer.serializedValues.add(typeValue);
-    invariant(typeValue.$Description instanceof StringValue);
-    this.residualHeapSerializer.serializedValues.add(typeValue.$Description);
     return t.memberExpression(this.residualHeapSerializer.serializeValue(reactLibraryObject), t.identifier("Fragment"));
   }
 
@@ -306,7 +298,6 @@ export class ResidualReactElementSerializer {
       if (propsValue.isPartialObject()) {
         assignPropsAsASpreadProp();
       } else {
-        this.residualHeapSerializer.serializedValues.add(propsValue);
         for (let [propName, binding] of propsValue.properties) {
           if (binding.descriptor !== undefined && propName !== "children") {
             invariant(propName !== "key" && propName !== "ref", `"${propName}" is a reserved prop name`);
@@ -335,8 +326,6 @@ export class ResidualReactElementSerializer {
     // handle children
     if (propsValue.properties.has("children")) {
       let childrenValue = getProperty(this.realm, propsValue, "children");
-      this.residualHeapSerializer.serializedValues.add(childrenValue);
-
       if (childrenValue !== this.realm.intrinsics.undefined && childrenValue !== this.realm.intrinsics.null) {
         if (childrenValue instanceof ArrayValue && !childrenValue.intrinsicName) {
           let childrenLength = getProperty(this.realm, childrenValue, "length");
@@ -345,14 +334,11 @@ export class ResidualReactElementSerializer {
             childrenLengthValue = childrenLength.value;
             for (let i = 0; i < childrenLengthValue; i++) {
               let child = getProperty(this.realm, childrenValue, "" + i);
-              if (child instanceof Value) {
-                reactElement.children.push(this._serializeReactElementChild(child, reactElement));
-              } else {
-                this.logger.logError(
-                  value,
-                  `ReactElement "props.children[${i}]" failed to serialize due to a non-value`
-                );
-              }
+              invariant(
+                child instanceof Value,
+                `ReactElement "props.children[${i}]" failed to serialize due to a non-value`
+              );
+              reactElement.children.push(this._serializeReactElementChild(child, reactElement));
             }
           }
         } else {
