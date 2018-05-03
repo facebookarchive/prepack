@@ -169,7 +169,7 @@ export function canHoistReactElement(
   realm: Realm,
   reactElement: ObjectValue,
   residualHeapVisitor?: ResidualHeapVisitor,
-  visitedValues: Set<Value> | void
+  visitedValues?: Set<Value> | void
 ): boolean {
   if (realm.react.hoistableReactElements.has(reactElement)) {
     // cast because Flow thinks that we may have set a value to be something other than a boolean?
@@ -183,7 +183,10 @@ export function canHoistReactElement(
   let key = getProperty(realm, reactElement, "key");
   let props = getProperty(realm, reactElement, "props");
 
-  visitedValues.add(reactElement);
+  if (visitedValues === undefined) {
+    visitedValues = new Set();
+    visitedValues.add(reactElement);
+  }
   if (
     canHoistValue(realm, type, residualHeapVisitor, visitedValues) &&
     // we can't hoist string "refs" or if they're abstract, as they might be abstract strings
@@ -205,5 +208,5 @@ export function determineIfReactElementCanBeHoisted(
   reactElement: ObjectValue,
   residualHeapVisitor: ResidualHeapVisitor
 ): void {
-  canHoistReactElement(realm, reactElement, residualHeapVisitor, new Set());
+  canHoistReactElement(realm, reactElement, residualHeapVisitor);
 }
