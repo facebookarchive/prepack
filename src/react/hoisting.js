@@ -169,7 +169,7 @@ export function canHoistReactElement(
   realm: Realm,
   reactElement: ObjectValue,
   residualHeapVisitor?: ResidualHeapVisitor,
-  visitedValues: Set<Value> | void
+  visitedValues?: Set<Value> | void
 ): boolean {
   if (realm.react.hoistableReactElements.has(reactElement)) {
     // cast because Flow thinks that we may have set a value to be something other than a boolean?
@@ -201,4 +201,12 @@ export function canHoistReactElement(
   }
   realm.react.hoistableReactElements.set(reactElement, false);
   return false;
+}
+
+export function determineIfReactElementCanBeHoisted(
+  realm: Realm,
+  reactElement: ObjectValue,
+  residualHeapVisitor: ResidualHeapVisitor
+): void {
+  canHoistReactElement(realm, reactElement, residualHeapVisitor);
 }
