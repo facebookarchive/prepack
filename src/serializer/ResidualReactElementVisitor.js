@@ -10,13 +10,13 @@
 /* @flow */
 
 import { Realm } from "../realm.js";
-import { AbstractValue, ArrayValue, NumberValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
+import { AbstractValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { determineIfReactElementCanBeHoisted } from "../react/hoisting.js";
+import { traverseReactElement } from "../react/elements.js";
 import { getProperty, getReactSymbol } from "../react/utils.js";
 import ReactElementSet from "../react/ReactElementSet.js";
 import type { ReactOutputTypes } from "../options.js";
-import invariant from "../invariant.js";
 
 export class ResidualReactElementVisitor {
   constructor(realm: Realm, residualHeapVisitor: ResidualHeapVisitor) {
@@ -33,25 +33,28 @@ export class ResidualReactElementVisitor {
   someReactElement: void | ObjectValue;
   equivalenceSet: ReactElementSet;
 
-  _visitReactElementAttributes(reactElement: ObjectValue): void {
-    let keyValue = getProperty(this.realm, reactElement, "key");
-    let refValue = getProperty(this.realm, reactElement, "ref");
-    let propsValue = getProperty(this.realm, reactElement, "props");
+  visitReactElement(reactElement: ObjectValue): void {
+    let isReactFragment = false;
 
-    if (keyValue !== this.realm.intrinsics.null && keyValue !== this.realm.intrinsics.undefined) {
-      this.residualHeapVisitor.visitValue(keyValue);
-    }
-    if (refValue !== this.realm.intrinsics.null && refValue !== this.realm.intrinsics.undefined) {
-      this.residualHeapVisitor.visitValue(refValue);
-    }
-
-    if (propsValue instanceof AbstractValue) {
-      // visit object, as it's going to be spread
-      this.residualHeapVisitor.visitValue(propsValue);
-    } else if (propsValue instanceof ObjectValue) {
-      if (propsValue.isPartialObject()) {
+    traverseReactElement(this.realm, reactElement, {
+      visitType: (typeValue: Value) => {
+        isReactFragment =
+          typeValue instanceof SymbolValue && typeValue === getReactSymbol("react.fragment", this.realm);
+        // we don't want to visit fragments as they are internal values
+        if (!isReactFragment) {
+          this.residualHeapVisitor.visitValue(typeValue);
+        }
+      },
+      visitKey: (keyValue: Value) => {
+        this.residualHeapVisitor.visitValue(keyValue);
+      },
+      visitRef: (refValue: Value) => {
+        this.residualHeapVisitor.visitValue(refValue);
+      },
+      visitAbstractOrPartialProps: (propsValue: AbstractValue | ObjectValue) => {
         this.residualHeapVisitor.visitValue(propsValue);
-      } else {
+      },
+      visitConcreteProps: (propsValue: ObjectValue) => {
         // given that props is a concrete object, it should never be serialized
         // as we'll be doing it directly with the ReactElementSerializer
         // so we make the object as refusing serialization
@@ -62,52 +65,11 @@ export class ResidualReactElementVisitor {
             this.residualHeapVisitor.visitValue(propValue);
           }
         }
-      }
-    }
-  }
-
-  _visitReactElementChildren(reactElement: ObjectValue): void {
-    let propsValue = getProperty(this.realm, reactElement, "props");
-    if (!(propsValue instanceof ObjectValue)) {
-      return;
-    }
-    // handle children
-    if (propsValue.properties.has("children")) {
-      let childrenValue = getProperty(this.realm, propsValue, "children");
-      if (childrenValue !== this.realm.intrinsics.undefined && childrenValue !== this.realm.intrinsics.null) {
-        if (childrenValue instanceof ArrayValue && !childrenValue.intrinsicName) {
-          let childrenLength = getProperty(this.realm, childrenValue, "length");
-          let childrenLengthValue = 0;
-          if (childrenLength instanceof NumberValue) {
-            childrenLengthValue = childrenLength.value;
-            for (let i = 0; i < childrenLengthValue; i++) {
-              let child = getProperty(this.realm, childrenValue, "" + i);
-              invariant(
-                child instanceof Value,
-                `ReactElement "props.children[${i}]" failed to visit due to a non-value`
-              );
-              this.residualHeapVisitor.visitValue(child);
-            }
-          }
-        } else {
-          this.residualHeapVisitor.visitValue(childrenValue);
-        }
-      }
-    }
-  }
-
-  visitReactElement(reactElement: ObjectValue): void {
-    let typeValue = getProperty(this.realm, reactElement, "type");
-    let isReactFragment =
-      typeValue instanceof SymbolValue && typeValue === getReactSymbol("react.fragment", this.realm);
-
-    // we don't want to visit fragments as they are internal values
-    if (!isReactFragment) {
-      this.residualHeapVisitor.visitValue(typeValue);
-    }
-
-    this._visitReactElementAttributes(reactElement);
-    this._visitReactElementChildren(reactElement);
+      },
+      visitChildNode: (childValue: Value) => {
+        this.residualHeapVisitor.visitValue(childValue);
+      },
+    });
 
     if (this.realm.react.output === "create-element" || isReactFragment) {
       this.someReactElement = reactElement;
