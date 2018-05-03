@@ -895,7 +895,6 @@ export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElemen
 function checkForWriteBindings(effects: Effects): void {
   let [result, , writeBindings] = effects.data;
   for (let [binding] of writeBindings) {
-    debugger;
     throw new Error(`render was not pure due to side-effects from mutating ${binding.name}`);
   }
   if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {

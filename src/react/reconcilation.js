@@ -200,6 +200,13 @@ export class Reconciler {
       )
     );
     if (!checkIfRenderWasPure(effects, evaluatedRootNode)) {
+      var x = componentType.$Environment.parent.parent.environmentRecord.bindings.lazy.value;
+      if (x instanceof AbstractValue) {
+        // This should not be abstract, it should be null
+        // if you put a return null at the top of this function
+        // this will not be the same
+        invariant(false, ":(");
+      }
       return null;
     }
     this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
