@@ -223,10 +223,10 @@ export class ResidualHeapVisitor {
       // Also check if object is used in some nested generator scope that involved
       // applying effects; if so, store additional information that the serializer
       // can use to proactive serialize such objects from within the right generator
-      let anyEffectsToApply = false;
+      let anyRelevantEffects = false;
       for (let g = usageScope; g instanceof Generator; g = this.generatorParents.get(g)) {
         if (g === creationGenerator) {
-          if (anyEffectsToApply) {
+          if (anyRelevantEffects) {
             let s = this.additionalGeneratorRoots.get(g);
             if (s === undefined) this.additionalGeneratorRoots.set(g, (s = new Set()));
             if (!s.has(value)) {
@@ -236,7 +236,13 @@ export class ResidualHeapVisitor {
           }
           break;
         }
-        if (g.effectsToApply) anyEffectsToApply = true;
+        let effectsToApply = g.effectsToApply;
+        if (effectsToApply)
+          for (let pb of effectsToApply.modifiedProperties.keys())
+            if (pb.object === value) {
+              anyRelevantEffects = true;
+              break;
+            }
       }
     }
   }
