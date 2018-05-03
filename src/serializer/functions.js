@@ -256,47 +256,6 @@ export class Functions {
     return noOpFunc;
   }
 
-  _forEachBindingOfEffects(effects: Effects, func: (binding: Binding) => void): void {
-    let [result, , nestedBindingsToIgnore] = effects.data;
-    for (let [binding] of nestedBindingsToIgnore) {
-      func(binding);
-    }
-    if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
-      this._forEachBindingOfEffects(result.alternateEffects, func);
-      this._forEachBindingOfEffects(result.consequentEffects, func);
-    }
-  }
-
-  _hasWriteConflictsFromReactRenders(
-    bindings: Set<Binding>,
-    effects: Effects,
-    nestedEffectsList: Array<Effects>,
-    evaluatedNode: ReactEvaluatedNode
-  ): boolean {
-    let ignoreBindings = new Set();
-    let failed = false;
-    // TODO: should we also check realm.savedEffects?
-    // ref: https://github.com/facebook/prepack/pull/1742
-
-    for (let nestedEffects of nestedEffectsList) {
-      this._forEachBindingOfEffects(nestedEffects, binding => {
-        ignoreBindings.add(binding);
-      });
-    }
-
-    this._forEachBindingOfEffects(effects, binding => {
-      if (bindings.has(binding) && !ignoreBindings.has(binding)) {
-        failed = true;
-      }
-      bindings.add(binding);
-    });
-
-    if (failed) {
-      evaluatedNode.status = "WRITE-CONFLICTS";
-    }
-    return failed;
-  }
-
   optimizeReactComponentTreeRoots(
     statistics: ReactStatistics,
     react: ReactSerializerState,
@@ -325,12 +284,6 @@ export class Functions {
       if (componentTreeEffects === null) {
         if (this.realm.react.verbose) {
           logger.logInformation(`  ✖ ${evaluatedRootNode.name} (root)`);
-        }
-        continue;
-      }
-      if (this._hasWriteConflictsFromReactRenders(bindings, componentTreeEffects, [], evaluatedRootNode)) {
-        if (this.realm.react.verbose) {
-          logger.logInformation(`  ✖ ${evaluatedRootNode.name} (root - write conflicts)`);
         }
         continue;
       }
@@ -393,12 +346,6 @@ export class Functions {
         }
         continue;
       }
-      if (this._hasWriteConflictsFromReactRenders(bindings, closureEffects, nestedEffects, evaluatedNode)) {
-        if (this.realm.react.verbose) {
-          logger.logInformation(`    ✖ function "${getComponentName(this.realm, func)}" (write conflicts)`);
-        }
-        continue;
-      }
       if (this.realm.react.verbose) {
         logger.logInformation(`    ✔ function "${getComponentName(this.realm, func)}"`);
       }
@@ -445,12 +392,6 @@ export class Functions {
       if (branchEffects === null) {
         if (this.realm.react.verbose) {
           logger.logInformation(`    ✖ ${evaluatedNode.name} (branch)`);
-        }
-        continue;
-      }
-      if (this._hasWriteConflictsFromReactRenders(bindings, branchEffects, [], evaluatedNode)) {
-        if (this.realm.react.verbose) {
-          logger.logInformation(`    ✖ ${evaluatedNode.name} (branch - write conflicts)`);
         }
         continue;
       }

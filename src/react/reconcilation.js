@@ -43,6 +43,7 @@ import {
   getValueFromFunctionCall,
   evaluateWithNestedParentEffects,
   getComponentTypeFromRootValue,
+  checkIfRenderWasPure,
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
@@ -198,6 +199,9 @@ export class Reconciler {
         )
       )
     );
+    if (!checkIfRenderWasPure(effects, evaluatedRootNode)) {
+      return null;
+    }
     this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
     if (failed) {
       return null;
@@ -293,6 +297,9 @@ export class Reconciler {
         )
       )
     );
+    if (!checkIfRenderWasPure(effects, evaluatedNode)) {
+      return null;
+    }
     this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);
     if (failed) {
       return null;

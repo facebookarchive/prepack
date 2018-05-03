@@ -10,7 +10,7 @@
 /* @flow */
 
 import { Realm, Effects } from "../realm.js";
-import { PossiblyNormalCompletion, AbruptCompletion } from "../completions.js";
+import { AbruptCompletion, JoinedAbruptCompletions, PossiblyNormalCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
 import {
   AbstractObjectValue,
@@ -849,4 +849,72 @@ export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElemen
     }
   }
   return reactElement;
+}
+
+// _forEachBindingOfEffects(effects: Effects, func: (binding: Binding) => void): void {
+//   let [result, , nestedBindingsToIgnore] = effects.data;
+//   for (let [binding] of nestedBindingsToIgnore) {
+//     func(binding);
+//   }
+//   if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
+//     this._forEachBindingOfEffects(result.alternateEffects, func);
+//     this._forEachBindingOfEffects(result.consequentEffects, func);
+//   }
+// }
+
+// _hasWriteConflictsFromReactRenders(
+//   bindings: Set<Binding>,
+//   effects: Effects,
+//   nestedEffectsList: Array<Effects>,
+//   evaluatedNode: ReactEvaluatedNode
+// ): boolean {
+//   let ignoreBindings = new Set();
+//   let failed = false;
+//   // TODO: should we also check realm.savedEffects?
+//   // ref: https://github.com/facebook/prepack/pull/1742
+
+//   for (let nestedEffects of nestedEffectsList) {
+//     this._forEachBindingOfEffects(nestedEffects, binding => {
+//       ignoreBindings.add(binding);
+//     });
+//   }
+
+//   this._forEachBindingOfEffects(effects, binding => {
+//     if (bindings.has(binding) && !ignoreBindings.has(binding)) {
+//       failed = true;
+//     }
+//     bindings.add(binding);
+//   });
+
+//   if (failed) {
+//     evaluatedNode.status = "WRITE-CONFLICTS";
+//   }
+//   return failed;
+// }
+
+function checkForWriteBindings(effects: Effects): void {
+  let [result, , writeBindings] = effects.data;
+  for (let [binding] of writeBindings) {
+    debugger;
+    throw new Error(`render was not pure due to side-effects from mutating ${binding.name}`);
+  }
+  if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
+    checkForWriteBindings(result.alternateEffects);
+    checkForWriteBindings(result.consequentEffects);
+  }
+}
+
+export function checkIfRenderWasPure(effects: Effects, evaluatedNode: ReactEvaluatedNode): boolean {
+  // TODO: should we also check realm.savedEffects?
+  // ref: https://github.com/facebook/prepack/pull/1742
+
+  try {
+    checkForWriteBindings(effects);
+    return true;
+  } catch (err) {
+    evaluatedNode.status = "BAIL-OUT";
+    evaluatedNode.message = err.message;
+    evaluatedNode.children = []; // clear children as they are dead
+    return false;
+  }
 }
