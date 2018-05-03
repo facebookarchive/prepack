@@ -177,6 +177,11 @@ export class ResidualReactElementSerializer {
           originalCreateElementIdentifier
         );
       } else {
+        // Note: it can be expected that we assign to the same variable multiple times
+        // this is due to fact ReactElements are immutable objects and the fact that
+        // when we inline/fold logic, the same ReactElements are referenced at different
+        // points with different attributes. Given we can't mutate an immutable object,
+        // we instead create new objects and assign to the same binding
         if (reactElement.declared) {
           this.residualHeapSerializer.emitter.emit(
             t.expressionStatement(t.assignmentExpression("=", id, reactElementAstNode))
