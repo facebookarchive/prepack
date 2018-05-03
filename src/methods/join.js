@@ -631,7 +631,7 @@ export class JoinImplementation {
     if (result1 instanceof BreakCompletion && result2 instanceof BreakCompletion && result1.target === result2.target) {
       let val = this.joinValues(realm, result1.value, result2.value, getAbstractValue);
       invariant(val instanceof Value);
-      return new BreakCompletion(realm.intrinsics.empty, joinCondition.expressionLocation, result1.target);
+      return new BreakCompletion(val, joinCondition.expressionLocation, result1.target);
     }
     if (
       result1 instanceof ContinueCompletion &&
