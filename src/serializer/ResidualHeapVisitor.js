@@ -63,9 +63,8 @@ import {
   withDescriptorValue,
 } from "./utils.js";
 import { Environment, To } from "../singletons.js";
-import { getProperty, getReactSymbol, isReactElement, valueIsReactLibraryObject } from "../react/utils.js";
-import { canHoistReactElement } from "../react/hoisting.js";
-import ReactElementSet from "../react/ReactElementSet.js";
+import { isReactElement, valueIsReactLibraryObject } from "../react/utils.js";
+import { ResidualReactElementVisitor } from "./ResidualReactElementVisitor.js";
 
 export type Scope = FunctionValue | Generator;
 type BindingState = {|
@@ -107,10 +106,8 @@ export class ResidualHeapVisitor {
     this.inspector = new ResidualHeapInspector(realm, logger);
     this.referencedDeclaredValues = new Map();
     this.delayedActions = [];
-    this.someReactElement = undefined;
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
     this.equivalenceSet = new HashSet();
-    this.reactElementEquivalenceSet = new ReactElementSet(realm, this.equivalenceSet);
     this.additionalFunctionValueInfos = new Map();
     this.functionToCapturedScopes = new Map();
     this.generatorParents = new Map();
@@ -118,6 +115,7 @@ export class ResidualHeapVisitor {
     invariant(environment instanceof GlobalEnvironmentRecord);
     this.globalEnvironmentRecord = environment;
     this.createdObjects = new Map();
+    this.residualReactElementVisitor = new ResidualReactElementVisitor(this.realm, this);
   }
 
   realm: Realm;
@@ -145,13 +143,12 @@ export class ResidualHeapVisitor {
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   equivalenceSet: HashSet<AbstractValue>;
   classMethodInstances: Map<FunctionValue, ClassMethodInstance>;
-  someReactElement: void | ObjectValue;
-  reactElementEquivalenceSet: ReactElementSet;
   // Parents will always be a generator, optimized function value or "GLOBAL"
   generatorParents: Map<Generator, Generator | FunctionValue | "GLOBAL">;
   createdObjects: Map<ObjectValue, Generator>;
 
   globalEnvironmentRecord: GlobalEnvironmentRecord;
+  residualReactElementVisitor: ResidualReactElementVisitor;
 
   // Going backwards from the current scope, find either the containing
   // additional function, or if there isn't one, return the global generator.
@@ -251,14 +248,12 @@ export class ResidualHeapVisitor {
     if (obj.temporalAlias !== undefined) return;
 
     // visit properties
-    if (!isReactElement(obj)) {
-      for (let [symbol, propertyBinding] of obj.symbols) {
-        invariant(propertyBinding);
-        let desc = propertyBinding.descriptor;
-        if (desc === undefined) continue; //deleted
-        this.visitDescriptor(desc);
-        this.visitValue(symbol);
-      }
+    for (let [symbol, propertyBinding] of obj.symbols) {
+      invariant(propertyBinding);
+      let desc = propertyBinding.descriptor;
+      if (desc === undefined) continue; //deleted
+      this.visitDescriptor(desc);
+      this.visitValue(symbol);
     }
 
     // visit properties
@@ -290,7 +285,7 @@ export class ResidualHeapVisitor {
     }
 
     // prototype
-    if (!isReactElement(obj) && !skipPrototype) {
+    if (!skipPrototype) {
       // we don't want to the ReactElement prototype visited
       // as this is contained within the JSXElement, otherwise
       // they we be need to be emitted during serialization
@@ -776,6 +771,10 @@ export class ResidualHeapVisitor {
 
   visitValueObject(val: ObjectValue): void {
     this._registerAdditionalRoot(val);
+    if (isReactElement(val)) {
+      this.residualReactElementVisitor.visitReactElement(val);
+      return;
+    }
     let kind = val.getKind();
     this.visitObjectProperties(val, kind);
 
@@ -794,17 +793,6 @@ export class ResidualHeapVisitor {
       case "String":
       case "Boolean":
       case "ArrayBuffer":
-        return;
-      case "ReactElement":
-        let typeValue = getProperty(this.realm, val, "type");
-        let isReactFragment =
-          typeValue instanceof SymbolValue && typeValue === getReactSymbol("react.fragment", this.realm);
-
-        if (this.realm.react.output === "create-element" || isReactFragment) {
-          this.someReactElement = val;
-        }
-        // check we can hoist a React Element
-        canHoistReactElement(this.realm, val, this);
         return;
       case "Date":
         let dateValue = val.$DateValue;
@@ -972,7 +960,7 @@ export class ResidualHeapVisitor {
       return (equivalentValue: any);
     }
     if (val instanceof ObjectValue && isReactElement(val)) {
-      let equivalentReactElementValue = this.reactElementEquivalenceSet.add(val);
+      let equivalentReactElementValue = this.residualReactElementVisitor.equivalenceSet.add(val);
       if (this._mark(equivalentReactElementValue)) this.visitValueObject(equivalentReactElementValue);
       return (equivalentReactElementValue: any);
     }
@@ -1193,28 +1181,24 @@ export class ResidualHeapVisitor {
     // Set Visitor state
     // Allows us to emit function declarations etc. inside of this additional
     // function instead of adding them at global scope
-    let oldReactElementEquivalenceSet = this.reactElementEquivalenceSet;
-    this.reactElementEquivalenceSet = new ReactElementSet(this.realm, this.equivalenceSet);
+    this.residualReactElementVisitor.withCleanEquivilanceSet(() => {
+      let modifiedBindingInfo = new Map();
+      let [result] = additionalEffects.effects.data;
 
-    let modifiedBindingInfo = new Map();
-    let [result] = additionalEffects.effects.data;
+      invariant(funcInstance !== undefined);
+      invariant(functionInfo !== undefined);
+      let additionalFunctionInfo = {
+        functionValue,
+        captures: functionInfo.unbound,
+        modifiedBindings: modifiedBindingInfo,
+        instance: funcInstance,
+        hasReturn: !(result instanceof UndefinedValue),
+      };
+      this.additionalFunctionValueInfos.set(functionValue, additionalFunctionInfo);
 
-    invariant(funcInstance !== undefined);
-    invariant(functionInfo !== undefined);
-    let additionalFunctionInfo = {
-      functionValue,
-      captures: functionInfo.unbound,
-      modifiedBindings: modifiedBindingInfo,
-      instance: funcInstance,
-      hasReturn: !(result instanceof UndefinedValue),
-    };
-    this.additionalFunctionValueInfos.set(functionValue, additionalFunctionInfo);
-
-    let effectsGenerator = additionalEffects.generator;
-    this.visitGenerator(effectsGenerator, functionValue, additionalFunctionInfo);
-
-    // Cleanup
-    this.reactElementEquivalenceSet = oldReactElementEquivalenceSet;
+      let effectsGenerator = additionalEffects.generator;
+      this.visitGenerator(effectsGenerator, functionValue, additionalFunctionInfo);
+    });
   }
 
   visitRoots(): void {
@@ -1224,8 +1208,8 @@ export class ResidualHeapVisitor {
     if (this.realm.react.enabled) {
       let fixpoint_rerun = () => {
         let progress;
-        if (this.someReactElement !== undefined) {
-          this._visitReactLibrary(this.someReactElement);
+        if (this.residualReactElementVisitor.someReactElement !== undefined) {
+          this._visitReactLibrary(this.residualReactElementVisitor.someReactElement);
           progress = true;
         } else {
           this._enqueueWithUnrelatedScope(this.globalGenerator, fixpoint_rerun);
