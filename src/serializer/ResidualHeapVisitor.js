@@ -286,9 +286,6 @@ export class ResidualHeapVisitor {
 
     // prototype
     if (!skipPrototype) {
-      // we don't want to the ReactElement prototype visited
-      // as this is contained within the JSXElement, otherwise
-      // they we be need to be emitted during serialization
       this.visitObjectPrototype(obj);
     }
     if (obj instanceof FunctionValue) {
