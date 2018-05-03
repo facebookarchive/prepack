@@ -1172,6 +1172,9 @@ export class Reconciler {
             null,
             evaluatedChildNode
           );
+          if (this.realm.react.verbose && evaluatedChildNode.status === "INLINED") {
+            this.logger.logInformation(`    ✔ ${evaluatedNode.name} (inlined)`);
+          }
           evaluatedNode.children.push(evaluatedChildNode);
           result = render.result;
           this.statistics.inlinedComponents++;
