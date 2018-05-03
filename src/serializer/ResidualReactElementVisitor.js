@@ -12,6 +12,7 @@
 import { Realm } from "../realm.js";
 import { AbstractValue, ArrayValue, NumberValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
+import { determineIfReactElementCanBeHoisted } from "../react/hoisting.js";
 import { getProperty, getReactSymbol } from "../react/utils.js";
 import ReactElementSet from "../react/ReactElementSet.js";
 import type { ReactOutputTypes } from "../options.js";
@@ -111,6 +112,8 @@ export class ResidualReactElementVisitor {
     if (this.realm.react.output === "create-element" || isReactFragment) {
       this.someReactElement = reactElement;
     }
+    // determine if this ReactElement node tree is going to be hoistable
+    determineIfReactElementCanBeHoisted(this.realm, reactElement, this.residualHeapVisitor);
   }
 
   withCleanEquivilanceSet(func: () => void) {

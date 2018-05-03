@@ -183,10 +183,7 @@ export function canHoistReactElement(
   let key = getProperty(realm, reactElement, "key");
   let props = getProperty(realm, reactElement, "props");
 
-  if (visitedValues === undefined) {
-    visitedValues = new Set();
-    visitedValues.add(reactElement);
-  }
+  visitedValues.add(reactElement);
   if (
     canHoistValue(realm, type, residualHeapVisitor, visitedValues) &&
     // we can't hoist string "refs" or if they're abstract, as they might be abstract strings
@@ -201,4 +198,12 @@ export function canHoistReactElement(
   }
   realm.react.hoistableReactElements.set(reactElement, false);
   return false;
+}
+
+export function determineIfReactElementCanBeHoisted(
+  realm: Realm,
+  reactElement: ObjectValue,
+  residualHeapVisitor: ResidualHeapVisitor
+): void {
+  canHoistReactElement(realm, reactElement, residualHeapVisitor, new Set());
 }
