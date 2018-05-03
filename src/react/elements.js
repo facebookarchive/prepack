@@ -189,20 +189,19 @@ export function traverseReactElement(
   traversalVisitor: ElementTraversalVisitor
 ) {
   let typeValue = getProperty(realm, reactElement, "type");
-
   traversalVisitor.visitType(typeValue);
 
   let keyValue = getProperty(realm, reactElement, "key");
-  let refValue = getProperty(realm, reactElement, "ref");
-  let propsValue = getProperty(realm, reactElement, "props");
-
   if (keyValue !== realm.intrinsics.null && keyValue !== realm.intrinsics.undefined) {
     traversalVisitor.visitKey(keyValue);
   }
+
+  let refValue = getProperty(realm, reactElement, "ref");
   if (refValue !== realm.intrinsics.null && refValue !== realm.intrinsics.undefined) {
     traversalVisitor.visitRef(refValue);
   }
 
+  let propsValue = getProperty(realm, reactElement, "props");
   if (propsValue instanceof AbstractValue) {
     // visit object, as it's going to be spread
     traversalVisitor.visitAbstractOrPartialProps(propsValue);
