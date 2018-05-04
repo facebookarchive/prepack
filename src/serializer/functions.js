@@ -45,6 +45,7 @@ import {
   getComponentName,
   convertConfigObjectToReactComponentTreeConfig,
 } from "../react/utils.js";
+import { ReconcilerRenderBailOut } from "../react/errors.js";
 import * as t from "babel-types";
 
 type AdditionalFunctionEntry = {
@@ -187,10 +188,10 @@ export class Functions {
       environmentRecordIdAfterGlobalCode
     );
     if (additionalFunctionEffects === null) {
-      // TODO we don't support this yet, but will do very soon
-      // to unblock work, we'll just return at this point right now
-      evaluatedNode.status = "UNSUPPORTED_COMPLETION";
-      return;
+      throw new ReconcilerRenderBailOut(
+        `Failed to optimize React component tree for "${evaluatedNode.name}" due to an unsupported completion`,
+        evaluatedNode
+      );
     }
     effects = additionalFunctionEffects.effects;
     let value = effects.result;
@@ -281,12 +282,6 @@ export class Functions {
         continue;
       }
       let componentTreeEffects = reconciler.renderReactComponentTree(componentType, null, null, evaluatedRootNode);
-      if (componentTreeEffects === null) {
-        if (this.realm.react.verbose) {
-          logger.logInformation(`  ✖ ${evaluatedRootNode.name} (root)`);
-        }
-        continue;
-      }
       if (this.realm.react.verbose) {
         logger.logInformation(`  ✔ ${evaluatedRootNode.name} (root)`);
       }
@@ -340,12 +335,6 @@ export class Functions {
         branchState,
         evaluatedNode
       );
-      if (closureEffects === null) {
-        if (this.realm.react.verbose) {
-          logger.logInformation(`    ✖ function "${getComponentName(this.realm, func)}"`);
-        }
-        continue;
-      }
       if (this.realm.react.verbose) {
         logger.logInformation(`    ✔ function "${getComponentName(this.realm, func)}"`);
       }
@@ -389,12 +378,6 @@ export class Functions {
       }
       reconciler.clearComponentTreeState();
       let branchEffects = reconciler.renderReactComponentTree(branchComponentType, null, null, evaluatedNode);
-      if (branchEffects === null) {
-        if (this.realm.react.verbose) {
-          logger.logInformation(`    ✖ ${evaluatedNode.name} (branch)`);
-        }
-        continue;
-      }
       if (this.realm.react.verbose) {
         logger.logInformation(`    ✔ ${evaluatedNode.name} (branch)`);
       }

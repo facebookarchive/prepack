@@ -14,6 +14,7 @@ import {
   AbstractObjectValue,
   AbstractValue,
   BooleanValue,
+  BoundFunctionValue,
   ConcreteValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
@@ -23,7 +24,7 @@ import {
   StringValue,
   Value,
 } from "../../values/index.js";
-import { To } from "../../singletons.js";
+import { Havoc, To } from "../../singletons.js";
 import { ValuesDomain } from "../../domains/index.js";
 import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
@@ -395,6 +396,33 @@ export default function(realm: Realm): void {
   global.$DefineOwnProperty("__isIntegral", {
     value: new NativeFunctionValue(realm, "global.__isIntegral", "__isIntegral", 1, (context, [value]) => {
       return new BooleanValue(realm, value instanceof IntegralValue);
+    }),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__sideEffect", {
+    value: new NativeFunctionValue(realm, "global.__sideEffect", "__sideEffect", 1, (context, [func]) => {
+      invariant(func instanceof ECMAScriptSourceFunctionValue || func instanceof BoundFunctionValue);
+      func.kind = "sideEffectful wrapper";
+      // store the modifiedBindings before we havoc the function
+      let originalModifiedBindings = new Map(realm.modifiedBindings);
+      let originalModifiedProperties = new Map(realm.modifiedProperties);
+      // use the havoc system to mark all the bindings and modifications to objects
+      // in the function as havoced, thus making the values become abstract
+      if (func instanceof ECMAScriptSourceFunctionValue) {
+        Havoc.value(realm, func);
+      } else if (func instanceof BoundFunctionValue) {
+        Havoc.value(realm, func.$BoundTargetFunction);
+      }
+      // given we don't actually want the modified bindings/properties from the havoc
+      // as this is a side-effect and such, we can discard the modified bindings/properties
+      realm.modifiedBindings = originalModifiedBindings;
+      realm.modifiedProperties = originalModifiedProperties;
+      invariant(realm.generator !== undefined);
+      realm.generator.emitStatement([func], ([funcNode]) => t.expressionStatement(t.callExpression(funcNode, [])));
+      return realm.intrinsics.undefined;
     }),
     writable: true,
     enumerable: false,

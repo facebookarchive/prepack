@@ -15,6 +15,8 @@ import type { Realm } from "../realm.js";
 import { ObjectValue, NumberValue } from "./index.js";
 import invariant from "../invariant.js";
 
+export type FunctionValueKind = "sideEffectful wrapper";
+
 /* Abstract base class for all function objects */
 export default class FunctionValue extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {
@@ -31,6 +33,8 @@ export default class FunctionValue extends ObjectValue {
 
   // Allows for residual function with inference of parameters
   isUnsafeResidual: void | true;
+
+  kind: ?FunctionValueKind;
 
   getName(): string {
     throw new Error("Abstract method");

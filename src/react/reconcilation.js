@@ -27,23 +27,23 @@ import {
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState, type ReactEvaluatedNode } from "../serializer/types.js";
 import {
-  isReactElement,
-  valueIsClassComponent,
+  createReactEvaluatedNode,
+  evaluateWithNestedParentEffects,
+  flattenChildren,
   forEachArrayValue,
-  valueIsLegacyCreateClassComponent,
+  getComponentName,
+  getComponentTypeFromRootValue,
+  getProperty,
+  getReactSymbol,
+  getValueFromFunctionCall,
+  isReactElement,
+  sanitizeReactElementForFirstRenderOnly,
+  setProperty,
+  throwIfRenderWasNotPure,
+  valueIsClassComponent,
   valueIsFactoryClassComponent,
   valueIsKnownReactAbstraction,
-  getReactSymbol,
-  flattenChildren,
-  getProperty,
-  setProperty,
-  createReactEvaluatedNode,
-  getComponentName,
-  sanitizeReactElementForFirstRenderOnly,
-  getValueFromFunctionCall,
-  evaluateWithNestedParentEffects,
-  getComponentTypeFromRootValue,
-  checkIfRenderWasPure,
+  valueIsLegacyCreateClassComponent,
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
@@ -59,7 +59,7 @@ import {
   createClassInstanceForFirstRenderOnly,
   applyGetDerivedStateFromProps,
 } from "./components.js";
-import { ExpectedBailOut, SimpleClassBailOut, NewComponentTreeBranch } from "./errors.js";
+import { ExpectedBailOut, NewComponentTreeBranch, SimpleClassBailOut, ReconcilerRenderBailOut } from "./errors.js";
 import { AbruptCompletion, Completion } from "../completions.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
@@ -134,8 +134,7 @@ export class Reconciler {
     props: ObjectValue | AbstractObjectValue | null,
     context: ObjectValue | AbstractObjectValue | null,
     evaluatedRootNode: ReactEvaluatedNode
-  ): Effects | null {
-    let failed = false;
+  ): Effects {
     const renderComponentTree = () => {
       // initialProps and initialContext are created from Flow types from:
       // - if a functional component, the 1st and 2nd paramater of function
@@ -161,29 +160,22 @@ export class Reconciler {
         if (error.name === "Invariant Violation") {
           throw error;
         }
+
+        let message;
         if (error instanceof ExpectedBailOut) {
-          this.logger.logWarning(
-            componentType,
-            `__optimizeReactComponentTree() React component tree failed due expected bail-out - ${error.message}`
-          );
-          evaluatedRootNode.message = error.message;
-          evaluatedRootNode.status = "BAIL-OUT";
+          message = `Failed to optimize React component tree for "${
+            evaluatedRootNode.name
+          }" due to an expected bail-out: ${error.message}`;
         } else if (error instanceof AbruptCompletion) {
-          this.logger.logWarning(
-            componentType,
-            `__optimizeReactComponentTree() React component tree failed due runtime runtime exception thrown`
-          );
-          evaluatedRootNode.status = "ABRUPT_COMPLETION";
+          message = `Failed to optimize React component tree for "${
+            evaluatedRootNode.name
+          }" due to an exception thrown during render phase`;
         } else {
-          this.logger.logWarning(
-            componentType,
-            `__optimizeReactComponentTree() React component tree failed due to - ${error.message}`
-          );
-          evaluatedRootNode.message = "evaluation failed on new component tree branch";
-          evaluatedRootNode.status = "BAIL-OUT";
+          message = `Failed to optimize React component tree for "${evaluatedRootNode.name}" due to evaluation error: ${
+            error.message
+          }`;
         }
-        failed = true;
-        return this.realm.intrinsics.undefined;
+        throw new ReconcilerRenderBailOut(message, evaluatedRootNode);
       }
     };
 
@@ -199,20 +191,8 @@ export class Reconciler {
         )
       )
     );
-    if (!checkIfRenderWasPure(effects, evaluatedRootNode)) {
-      var x = componentType.$Environment.parent.parent.environmentRecord.bindings.lazy.value;
-      if (x instanceof AbstractValue) {
-        // This should not be abstract, it should be null
-        // if you put a return null at the top of this function
-        // this will not be the same
-        invariant(false, ":(");
-      }
-      return null;
-    }
+    throwIfRenderWasNotPure(effects, evaluatedRootNode);
     this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
-    if (failed) {
-      return null;
-    }
     return effects;
   }
 
@@ -231,8 +211,7 @@ export class Reconciler {
     context: ObjectValue | AbstractObjectValue | null,
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
-  ): Effects | null {
-    let failed = false;
+  ): Effects {
     const renderOptimizedClosure = () => {
       let baseObject = this.realm.$GlobalEnv.environmentRecord.WithBaseObject();
       // we want to optimize the function that is bound
@@ -292,8 +271,12 @@ export class Reconciler {
         if (error.name === "Invariant Violation") {
           throw error;
         }
-        failed = true;
-        return this.realm.intrinsics.undefined;
+        throw new ReconcilerRenderBailOut(
+          `Failed to optimize React component tree for "${evaluatedNode.name}" due to evaluation error: ${
+            error.message
+          }`,
+          evaluatedNode
+        );
       }
     };
 
@@ -304,13 +287,8 @@ export class Reconciler {
         )
       )
     );
-    if (!checkIfRenderWasPure(effects, evaluatedNode)) {
-      return null;
-    }
+    throwIfRenderWasNotPure(effects, evaluatedNode);
     this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);
-    if (failed) {
-      return null;
-    }
     return effects;
   }
 
@@ -1281,25 +1259,20 @@ export class Reconciler {
       // NO-OP (we don't queue a newComponentTree as this was already done)
     } else {
       // handle abrupt completions
-      if (error instanceof AbruptCompletion) {
-        let evaluatedChildNode = createReactEvaluatedNode("ABRUPT_COMPLETION", getComponentName(this.realm, typeValue));
-        evaluatedNode.children.push(evaluatedChildNode);
+      let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
+      evaluatedNode.children.push(evaluatedChildNode);
+      this._queueNewComponentTree(typeValue, evaluatedChildNode);
+      this._findReactComponentTrees(propsValue, evaluatedNode, "NORMAL_FUNCTIONS");
+      if (error instanceof ExpectedBailOut) {
+        evaluatedChildNode.message = error.message;
+        this._assignBailOutMessage(reactElement, error.message);
+      } else if (error instanceof FatalError) {
+        let message = "evaluation failed";
+        evaluatedChildNode.message = message;
+        this._assignBailOutMessage(reactElement, message);
       } else {
-        let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
-        evaluatedNode.children.push(evaluatedChildNode);
-        this._queueNewComponentTree(typeValue, evaluatedChildNode);
-        this._findReactComponentTrees(propsValue, evaluatedNode, "NORMAL_FUNCTIONS");
-        if (error instanceof ExpectedBailOut) {
-          evaluatedChildNode.message = error.message;
-          this._assignBailOutMessage(reactElement, error.message);
-        } else if (error instanceof FatalError) {
-          let message = "evaluation failed";
-          evaluatedChildNode.message = message;
-          this._assignBailOutMessage(reactElement, message);
-        } else {
-          evaluatedChildNode.message = `unknown error`;
-          throw error;
-        }
+        evaluatedChildNode.message = `unknown error`;
+        throw error;
       }
     }
     // a child component bailed out during component folding, so return the function value and continue

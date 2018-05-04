@@ -2,6 +2,10 @@ var React = require('React');
 // the JSX transform converts to React, so we need to add it back in
 this['React'] = React;
 
+if (!this.__sideEffect) {
+  __sideEffect = x => x();
+}
+
 // FB www polyfill
 if (!this.babelHelpers) {
   this.babelHelpers = {
@@ -52,9 +56,14 @@ module.exports = this.__evaluatePureFunction(() => {
     };
   }
 
-  var getMemoizedArray = memoize(function() {
-    return [];
+  var getMemoizedArray;
+  
+  __sideEffect(function() {
+    getMemoizedArray = memoize(function() {
+      return [];
+    });
   });
+  
 
   var React = require("react");
 

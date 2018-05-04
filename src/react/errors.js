@@ -32,3 +32,16 @@ export class NewComponentTreeBranch extends Error {
   }
   evaluatedNode: ReactEvaluatedNode;
 }
+
+// Used when an entire React component tree has failed to optimize
+// this is generally the equivilant to an invariant and should stop the build
+export class ReconcilerRenderBailOut extends Error {
+  constructor(message: string, evaluatedNode: ReactEvaluatedNode) {
+    super(message);
+    evaluatedNode.status = "BAIL-OUT";
+    evaluatedNode.message = message;
+    evaluatedNode.children = []; // clear children as they are dead
+    this.evaluatedNode = evaluatedNode;
+  }
+  evaluatedNode: ReactEvaluatedNode;
+}

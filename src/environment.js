@@ -68,7 +68,10 @@ function deriveGetBinding(realm: Realm, binding: Binding) {
 export function havocBinding(binding: Binding) {
   let realm = binding.environment.realm;
   let value = binding.value;
-  if (!binding.hasLeaked && (value instanceof ObjectValue && !value.isFinalObject())) {
+  if (
+    !binding.hasLeaked &&
+    ((value instanceof ObjectValue && !value.isFinalObject()) || !(value instanceof ObjectValue))
+  ) {
     realm.recordModifiedBinding(binding).hasLeaked = true;
   }
 }

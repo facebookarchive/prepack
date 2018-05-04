@@ -10,7 +10,12 @@
 /* @flow */
 
 import { Realm, Effects } from "../realm.js";
-import { AbruptCompletion, JoinedAbruptCompletions, PossiblyNormalCompletion } from "../completions.js";
+import {
+  AbruptCompletion,
+  JoinedAbruptCompletions,
+  PossiblyNormalCompletion,
+  ThrowCompletion,
+} from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
 import {
   AbstractObjectValue,
@@ -37,8 +42,10 @@ import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
+import { ReconcilerRenderBailOut } from "./errors.js";
 import { To } from "../singletons.js";
 import AbstractValue from "../values/AbstractValue";
+import { EnvironmentRecord } from "../environment.js";
 
 export type ReactSymbolTypes =
   | "react.element"
@@ -695,18 +702,7 @@ export function getProperty(
 }
 
 export function createReactEvaluatedNode(
-  status:
-    | "ROOT"
-    | "NEW_TREE"
-    | "INLINED"
-    | "BAIL-OUT"
-    | "WRITE-CONFLICTS"
-    | "UNKNOWN_TYPE"
-    | "RENDER_PROPS"
-    | "FORWARD_REF"
-    | "UNSUPPORTED_COMPLETION"
-    | "ABRUPT_COMPLETION"
-    | "NORMAL",
+  status: "ROOT" | "NEW_TREE" | "INLINED" | "BAIL-OUT" | "UNKNOWN_TYPE" | "RENDER_PROPS" | "FORWARD_REF" | "NORMAL",
   name: string
 ): ReactEvaluatedNode {
   return {
@@ -851,69 +847,42 @@ export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElemen
   return reactElement;
 }
 
-// _forEachBindingOfEffects(effects: Effects, func: (binding: Binding) => void): void {
-//   let [result, , nestedBindingsToIgnore] = effects.data;
-//   for (let [binding] of nestedBindingsToIgnore) {
-//     func(binding);
-//   }
-//   if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
-//     this._forEachBindingOfEffects(result.alternateEffects, func);
-//     this._forEachBindingOfEffects(result.consequentEffects, func);
-//   }
-// }
+function checkForSideEffects(effects: Effects, evaluatedNode: ReactEvaluatedNode): void {
+  let { modifiedBindings, result } = effects;
+  for (let [binding] of modifiedBindings) {
+    let env = binding.environment;
 
-// _hasWriteConflictsFromReactRenders(
-//   bindings: Set<Binding>,
-//   effects: Effects,
-//   nestedEffectsList: Array<Effects>,
-//   evaluatedNode: ReactEvaluatedNode
-// ): boolean {
-//   let ignoreBindings = new Set();
-//   let failed = false;
-//   // TODO: should we also check realm.savedEffects?
-//   // ref: https://github.com/facebook/prepack/pull/1742
-
-//   for (let nestedEffects of nestedEffectsList) {
-//     this._forEachBindingOfEffects(nestedEffects, binding => {
-//       ignoreBindings.add(binding);
-//     });
-//   }
-
-//   this._forEachBindingOfEffects(effects, binding => {
-//     if (bindings.has(binding) && !ignoreBindings.has(binding)) {
-//       failed = true;
-//     }
-//     bindings.add(binding);
-//   });
-
-//   if (failed) {
-//     evaluatedNode.status = "WRITE-CONFLICTS";
-//   }
-//   return failed;
-// }
-
-function checkForWriteBindings(effects: Effects): void {
-  let [result, , writeBindings] = effects.data;
-  for (let [binding] of writeBindings) {
-    throw new Error(`render was not pure due to side-effects from mutating ${binding.name}`);
+    if (!(env instanceof EnvironmentRecord)) {
+      let bindings = env.bindings;
+      let name = binding.name;
+      // ensure that this binding was created outside these effects
+      // it's pure to mutate a binding that was created in a pure function
+      if (bindings[name] === undefined) {
+        throw new ReconcilerRenderBailOut(
+          `Failed to optimize React component tree for "${
+            evaluatedNode.name
+          }" due to side-effects from mutating the binding "${name}". Try wrapping side-effects in __sideEffect()`,
+          evaluatedNode
+        );
+      }
+    }
   }
   if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
-    checkForWriteBindings(result.alternateEffects);
-    checkForWriteBindings(result.consequentEffects);
+    if (result.alternate instanceof ThrowCompletion || result.consequent instanceof ThrowCompletion) {
+      throw new ReconcilerRenderBailOut(
+        `Failed to optimize React component tree for "${
+          evaluatedNode.name
+        }" due to an exception thrown during render phase`,
+        evaluatedNode
+      );
+    }
+    checkForSideEffects(result.alternateEffects, evaluatedNode);
+    checkForSideEffects(result.consequentEffects, evaluatedNode);
   }
 }
 
-export function checkIfRenderWasPure(effects: Effects, evaluatedNode: ReactEvaluatedNode): boolean {
+export function throwIfRenderWasNotPure(effects: Effects, evaluatedNode: ReactEvaluatedNode): void {
   // TODO: should we also check realm.savedEffects?
   // ref: https://github.com/facebook/prepack/pull/1742
-
-  try {
-    checkForWriteBindings(effects);
-    return true;
-  } catch (err) {
-    evaluatedNode.status = "BAIL-OUT";
-    evaluatedNode.message = err.message;
-    evaluatedNode.children = []; // clear children as they are dead
-    return false;
-  }
+  checkForSideEffects(effects, evaluatedNode);
 }

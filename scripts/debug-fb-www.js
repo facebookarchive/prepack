@@ -193,7 +193,7 @@ function printReactEvaluationGraph(evaluatedRootNode, depth) {
     let line;
     if (status === "inlined") {
       line = `${chalk.gray(`-`)} ${chalk.green(name)} ${chalk.gray(`(${status + message})`)}`;
-    } else if (status === "unsupported_completion" || status === "unknown_type" || status === "bail-out") {
+    } else if (status === "unknown_type" || status === "bail-out") {
       line = `${chalk.gray(`-`)} ${chalk.red(name)} ${chalk.gray(`(${status + message})`)}`;
     } else {
       line = `${chalk.gray(`-`)} ${chalk.yellow(name)} ${chalk.gray(`(${status + message})`)}`;

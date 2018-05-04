@@ -4,10 +4,16 @@ this['React'] = React;
 
 let lazyVariable = null;
 
+if (!this.__sideEffect) {
+  __sideEffect = x => x();
+}
+
 function A(props) {
-  if (!lazyVariable) {
-    lazyVariable = props.x;
-  }
+  __sideEffect(function() {
+    if (!lazyVariable) {
+      lazyVariable = props.x;
+    }
+  });
   return <div>Hello {lazyVariable}</div>;
 }
 

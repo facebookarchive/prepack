@@ -12,13 +12,19 @@ function Child() {
 
 let instance = null;
 
+if (!this.__sideEffect) {
+  __sideEffect = x => x();
+}
+
 // we can't use ES2015 classes in Prepack yet (they don't serialize)
 // so we have to use ES5 instead
 var App = (function (superclass) {
   function App () {
     superclass.apply(this, arguments);
     this.divRefWorked = null;
-    instance = this;
+    __sideEffect(function() {
+      instance = this;
+    }.bind(this));
   }
 
   if ( superclass ) {
