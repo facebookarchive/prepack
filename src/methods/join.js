@@ -434,8 +434,12 @@ export class JoinImplementation {
     if (precedingEffects) realm.applyEffects(precedingEffects, "", false);
     try {
       if (c instanceof PossiblyNormalCompletion) {
-        let e1 = this.joinEffectsAndPromoteNested(CompletionType, realm, c.consequent, e, c.consequentEffects);
-        let e2 = this.joinEffectsAndPromoteNested(CompletionType, realm, c.alternate, e, c.alternateEffects);
+        let preceding_for_consequent = c.consequent instanceof AbruptCompletion ? c.consequentEffects : undefined;
+        let preceding_for_alternate = c.alternate instanceof AbruptCompletion ? c.alternateEffects : undefined;
+
+        let e1 = this.joinEffectsAndPromoteNested(CompletionType, realm, c.consequent, e, preceding_for_consequent);
+        let e2 = this.joinEffectsAndPromoteNested(CompletionType, realm, c.alternate, e, preceding_for_alternate);
+
         if (e1.result instanceof AbruptCompletion) {
           if (e2.result instanceof Value)
             e2.result = new CompletionType(realm.intrinsics.undefined, realm.currentLocation);
