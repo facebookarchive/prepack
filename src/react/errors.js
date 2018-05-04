@@ -10,6 +10,7 @@
 /* @flow */
 
 import { type ReactEvaluatedNode } from "../serializer/types.js";
+import { FatalError } from "../errors.js";
 
 // ExpectedBailOut is like an error, that gets thrown during the reconcilation phase
 // allowing the reconcilation to continue on other branches of the tree, the message
@@ -34,8 +35,9 @@ export class NewComponentTreeBranch extends Error {
 }
 
 // Used when an entire React component tree has failed to optimize
-// this is generally the equivilant to an invariant and should stop the build
-export class ReconcilerRenderBailOut extends Error {
+// this means there is a programming bug in the application that is
+// being Prepacked
+export class ReconcilerRenderBailOut extends FatalError {
   constructor(message: string, evaluatedNode: ReactEvaluatedNode) {
     super(message);
     evaluatedNode.status = "BAIL-OUT";

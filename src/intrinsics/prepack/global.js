@@ -406,6 +406,13 @@ export default function(realm: Realm): void {
     value: new NativeFunctionValue(realm, "global.__safeSideEffect", "__safeSideEffect", 1, (context, [func]) => {
       invariant(func instanceof ECMAScriptSourceFunctionValue || func instanceof BoundFunctionValue);
       func.kind = "sideEffectful wrapper";
+      // TODO: We can properly replace this logic with some custom logic rather than
+      // using the havoc system at some point. Right now, we use the havoc system to
+      // find all the bindings/properties within the "safe side effect" closure. It
+      // marks them as havoced, which means their values gets the "havoced" flag applied.
+      // With this flag, any accesses to them results in abstract values being returned
+      // making it possible to mutate/reference values in the pure function.
+
       // store the modifiedBindings before we havoc the function
       let originalModifiedBindings = new Map(realm.modifiedBindings);
       let originalModifiedProperties = new Map(realm.modifiedProperties);

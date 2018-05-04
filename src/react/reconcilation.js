@@ -111,8 +111,8 @@ function checkForSideEffects(effects: Effects, evaluatedNode: ReactEvaluatedNode
     if (!(env instanceof EnvironmentRecord)) {
       let bindings = env.bindings;
       let name = binding.name;
-      // ensure that this binding was created outside these effects
-      // it's pure to mutate a binding that was created in a pure function
+      // ensure that this binding mutated was one that was side-effectful
+      // i.e. the binding exists from a parent scope, rather than this scope
       if (bindings[name] === undefined) {
         throw new ReconcilerRenderBailOut(
           `Failed to optimize React component tree for "${
@@ -231,7 +231,7 @@ export class Reconciler {
         )
       )
     );
-    this._throwIfRenderWasNotPure(effects, evaluatedRootNode);
+    checkForSideEffects(effects, evaluatedRootNode);
     this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
     return effects;
   }
@@ -327,7 +327,7 @@ export class Reconciler {
         )
       )
     );
-    this._throwIfRenderWasNotPure(effects, evaluatedNode);
+    checkForSideEffects(effects, evaluatedNode);
     this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);
     return effects;
   }
@@ -1474,11 +1474,5 @@ export class Reconciler {
         }
       }
     }
-  }
-
-  _throwIfRenderWasNotPure(effects: Effects, evaluatedNode: ReactEvaluatedNode): void {
-    // TODO: should we also check realm.savedEffects?
-    // ref: https://github.com/facebook/prepack/pull/1742
-    checkForSideEffects(effects, evaluatedNode);
   }
 }
