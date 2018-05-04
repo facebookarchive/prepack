@@ -402,8 +402,8 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  global.$DefineOwnProperty("__sideEffect", {
-    value: new NativeFunctionValue(realm, "global.__sideEffect", "__sideEffect", 1, (context, [func]) => {
+  global.$DefineOwnProperty("__safeSideEffect", {
+    value: new NativeFunctionValue(realm, "global.__safeSideEffect", "__safeSideEffect", 1, (context, [func]) => {
       invariant(func instanceof ECMAScriptSourceFunctionValue || func instanceof BoundFunctionValue);
       func.kind = "sideEffectful wrapper";
       // store the modifiedBindings before we havoc the function

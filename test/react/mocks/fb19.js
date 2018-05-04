@@ -2,8 +2,8 @@ var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
 this["React"] = React;
 
-if (!this.__sideEffect) {
-  __sideEffect = x => x();
+if (!this.__safeSideEffect) {
+  __safeSideEffect = x => x();
 }
 
 if (!this.__evaluatePureFunction) {
@@ -20,7 +20,7 @@ __evaluatePureFunction(function() {
   function param() {}
   function plural(shouldThrow) {
     if (shouldThrow) {
-      __sideEffect(function() {
+      __safeSideEffect(function() {
         throw new Error("no");
       });
     }

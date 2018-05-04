@@ -7,8 +7,8 @@ if (!this.__evaluatePureFunction) {
   };
 }
 
-if (!this.__sideEffect) {
-  __sideEffect = x => x();
+if (!this.__safeSideEffect) {
+  __safeSideEffect = x => x();
 }
 
 module.exports = this.__evaluatePureFunction(() => {
@@ -20,7 +20,7 @@ module.exports = this.__evaluatePureFunction(() => {
     var error = new Error(message);
 
     error.framesToPop = 1;
-    __sideEffect(function() {
+    __safeSideEffect(function() {
       throw error;
     });
   };

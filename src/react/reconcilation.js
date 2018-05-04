@@ -117,7 +117,7 @@ function checkForSideEffects(effects: Effects, evaluatedNode: ReactEvaluatedNode
         throw new ReconcilerRenderBailOut(
           `Failed to optimize React component tree for "${
             evaluatedNode.name
-          }" due to side-effects from mutating the binding "${name}". Try wrapping side-effects in __sideEffect()`,
+          }" due to side-effects from mutating the binding "${name}". Try wrapping side-effects in __safeSideEffect()`,
           evaluatedNode
         );
       }
@@ -128,7 +128,7 @@ function checkForSideEffects(effects: Effects, evaluatedNode: ReactEvaluatedNode
       throw new ReconcilerRenderBailOut(
         `Failed to optimize React component tree for "${
           evaluatedNode.name
-        }" due to an exception thrown during render phase`,
+        }" due to an exception thrown during render phase. Try wrapping side-effects in __safeSideEffect()`,
         evaluatedNode
       );
     }
@@ -209,7 +209,7 @@ export class Reconciler {
         } else if (error instanceof AbruptCompletion) {
           message = `Failed to optimize React component tree for "${
             evaluatedRootNode.name
-          }" due to an exception thrown during render phase`;
+          }" due to an exception thrown during render phase. Try wrapping side-effects in __safeSideEffect()`;
         } else {
           message = `Failed to optimize React component tree for "${evaluatedRootNode.name}" due to evaluation error: ${
             error.message
