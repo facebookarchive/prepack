@@ -936,6 +936,7 @@ export class Reconciler {
     // TODO investigate what other kinds than "conditional" might be safe to deeply resolve
     if (value.kind === "conditional") {
       let [condValue, consequentVal, alternateVal] = value.args;
+      invariant(condValue instanceof AbstractValue);
       return this._resolveAbstractConditionalValue(
         componentType,
         condValue,
