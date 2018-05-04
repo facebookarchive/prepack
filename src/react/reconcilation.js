@@ -1295,7 +1295,6 @@ export class Reconciler {
     } else {
       // handle abrupt completions
       if (error instanceof AbruptCompletion) {
-        debugger;
         let evaluatedChildNode = createReactEvaluatedNode("ABRUPT_COMPLETION", getComponentName(this.realm, typeValue));
         evaluatedNode.children.push(evaluatedChildNode);
       } else {
