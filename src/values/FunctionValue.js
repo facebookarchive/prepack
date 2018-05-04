@@ -15,7 +15,7 @@ import type { Realm } from "../realm.js";
 import { ObjectValue, NumberValue } from "./index.js";
 import invariant from "../invariant.js";
 
-type FunctionValueKind = "sideEffectful wrapper";
+export type FunctionValueKind = "sideEffectful wrapper";
 
 /* Abstract base class for all function objects */
 export default class FunctionValue extends ObjectValue {

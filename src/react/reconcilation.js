@@ -39,7 +39,6 @@ import {
   isReactElement,
   sanitizeReactElementForFirstRenderOnly,
   setProperty,
-  throwIfRenderWasNotPure,
   valueIsClassComponent,
   valueIsFactoryClassComponent,
   valueIsKnownReactAbstraction,
@@ -51,6 +50,13 @@ import { FatalError, CompilerDiagnostic } from "../errors.js";
 import { BranchState, type BranchStatusEnum } from "./branching.js";
 import * as t from "babel-types";
 import {
+  AbruptCompletion,
+  Completion,
+  JoinedAbruptCompletions,
+  PossiblyNormalCompletion,
+  ThrowCompletion,
+} from "../completions.js";
+import {
   getInitialProps,
   getInitialContext,
   createClassInstance,
@@ -60,7 +66,7 @@ import {
   applyGetDerivedStateFromProps,
 } from "./components.js";
 import { ExpectedBailOut, NewComponentTreeBranch, SimpleClassBailOut, ReconcilerRenderBailOut } from "./errors.js";
-import { AbruptCompletion, Completion } from "../completions.js";
+import { EnvironmentRecord } from "../environment.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
 import { createInternalReactElement } from "./elements.js";
@@ -96,6 +102,40 @@ export type ComponentTreeState = {
   status: "SIMPLE" | "COMPLEX",
   contextNodeReferences: Map<ObjectValue | AbstractObjectValue, number>,
 };
+
+function checkForSideEffects(effects: Effects, evaluatedNode: ReactEvaluatedNode): void {
+  let { modifiedBindings, result } = effects;
+  for (let [binding] of modifiedBindings) {
+    let env = binding.environment;
+
+    if (!(env instanceof EnvironmentRecord)) {
+      let bindings = env.bindings;
+      let name = binding.name;
+      // ensure that this binding was created outside these effects
+      // it's pure to mutate a binding that was created in a pure function
+      if (bindings[name] === undefined) {
+        throw new ReconcilerRenderBailOut(
+          `Failed to optimize React component tree for "${
+            evaluatedNode.name
+          }" due to side-effects from mutating the binding "${name}". Try wrapping side-effects in __sideEffect()`,
+          evaluatedNode
+        );
+      }
+    }
+  }
+  if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
+    if (result.alternate instanceof ThrowCompletion || result.consequent instanceof ThrowCompletion) {
+      throw new ReconcilerRenderBailOut(
+        `Failed to optimize React component tree for "${
+          evaluatedNode.name
+        }" due to an exception thrown during render phase`,
+        evaluatedNode
+      );
+    }
+    checkForSideEffects(result.alternateEffects, evaluatedNode);
+    checkForSideEffects(result.consequentEffects, evaluatedNode);
+  }
+}
 
 export class Reconciler {
   constructor(
@@ -191,7 +231,7 @@ export class Reconciler {
         )
       )
     );
-    throwIfRenderWasNotPure(effects, evaluatedRootNode);
+    this._throwIfRenderWasNotPure(effects, evaluatedRootNode);
     this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
     return effects;
   }
@@ -287,7 +327,7 @@ export class Reconciler {
         )
       )
     );
-    throwIfRenderWasNotPure(effects, evaluatedNode);
+    this._throwIfRenderWasNotPure(effects, evaluatedNode);
     this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);
     return effects;
   }
@@ -1434,5 +1474,11 @@ export class Reconciler {
         }
       }
     }
+  }
+
+  _throwIfRenderWasNotPure(effects: Effects, evaluatedNode: ReactEvaluatedNode): void {
+    // TODO: should we also check realm.savedEffects?
+    // ref: https://github.com/facebook/prepack/pull/1742
+    checkForSideEffects(effects, evaluatedNode);
   }
 }
