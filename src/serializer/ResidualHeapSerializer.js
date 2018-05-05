@@ -710,11 +710,7 @@ export class ResidualHeapSerializer {
     let referencingOnlyAdditionalFunction = this.isReferencedOnlyByAdditionalFunction(val);
     if (generators.length === 0) {
       // This value is only referenced from residual functions.
-      if (
-        referencingOnlyAdditionalFunction === undefined &&
-        this._options.delayInitializations &&
-        !this._options.simpleClosures
-      ) {
+      if (referencingOnlyAdditionalFunction === undefined && this._options.delayInitializations) {
         // We can delay the initialization, and move it into a conditional code block in the residual functions!
         let body = this.residualFunctions.residualFunctionInitializers.registerValueOnlyReferencedByResidualFunctions(
           functionValues,

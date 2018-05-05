@@ -415,39 +415,25 @@ export class JoinImplementation {
     CompletionType: typeof Completion,
     realm: Realm,
     c: Completion | Value,
-    subsequentEffects: Effects,
-    precedingEffects?: Effects
+    normalEffects: Effects,
+    abruptEffects?: Effects
   ): Effects {
-    if (c instanceof Value) {
-      // If not undefined, precedingEffects were captured when evaluating a conditional code block that ended normally.
-      // subsequentEffects represent effects that were captured since reaching the join point where the normal and abrupt
-      // completions came together into the completion supplied to the outermost call to this recursive function.
-      if (precedingEffects !== undefined) return realm.composeEffects(precedingEffects, subsequentEffects);
-      return subsequentEffects;
-    }
+    if (c instanceof Value) return normalEffects;
     if (c instanceof AbruptCompletion && !(c instanceof JoinedAbruptCompletions)) {
-      // The nested effects were captured when evaluating a conditional code block that ended abruptly.
-      // An abrupt completion does not care about the effects that were collected since the join point.
-      invariant(precedingEffects !== undefined);
-      return precedingEffects;
+      invariant(abruptEffects !== undefined);
+      return abruptEffects;
     }
-    if (precedingEffects) realm.applyEffects(precedingEffects, "", false);
+    if (abruptEffects) realm.applyEffects(abruptEffects, "", false);
     try {
       invariant(c instanceof JoinedAbruptCompletions || c instanceof PossiblyNormalCompletion);
       let e1 = this.joinEffectsAndPromoteNested(
         CompletionType,
         realm,
         c.consequent,
-        subsequentEffects,
+        normalEffects,
         c.consequentEffects
       );
-      let e2 = this.joinEffectsAndPromoteNested(
-        CompletionType,
-        realm,
-        c.alternate,
-        subsequentEffects,
-        c.alternateEffects
-      );
+      let e2 = this.joinEffectsAndPromoteNested(CompletionType, realm, c.alternate, normalEffects, c.alternateEffects);
       let [r1, r2] = [e1.result, e2.result];
       if (c instanceof PossiblyNormalCompletion) {
         if (r1 instanceof AbruptCompletion) {
@@ -596,9 +582,9 @@ export class JoinImplementation {
       // Only get here if neither e1 nor e2 contain any branches with completions of CompletionType
       return this.joinEffects(realm, c.joinCondition, e1, e2);
     } finally {
-      if (precedingEffects) {
-        realm.restoreBindings(precedingEffects.data[2]);
-        realm.restoreProperties(precedingEffects.data[3]);
+      if (abruptEffects) {
+        realm.restoreBindings(abruptEffects.data[2]);
+        realm.restoreProperties(abruptEffects.data[3]);
       }
     }
   }

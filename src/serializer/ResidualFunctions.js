@@ -87,7 +87,6 @@ export class ResidualFunctions {
       if (!additionalFunctionValueInfos.has(instance.functionValue)) this.addFunctionInstance(instance);
     }
     this.additionalFunctionValueNestedFunctions = additionalFunctionValueNestedFunctions;
-    this.simpleClosures = !!options.simpleClosures;
   }
 
   realm: Realm;
@@ -108,7 +107,6 @@ export class ResidualFunctions {
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
   referentializer: Referentializer;
-  simpleClosures: boolean;
 
   getStatistics() {
     invariant(this.realm.statistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
@@ -144,7 +142,7 @@ export class ResidualFunctions {
     let functionInfo = this.residualFunctionInfos.get(funcBody);
     invariant(functionInfo);
     let { usesArguments } = functionInfo;
-    return !shouldInlineFunction() && instances.length > 1 && !usesArguments && !this.simpleClosures;
+    return !shouldInlineFunction() && instances.length > 1 && !usesArguments;
   }
 
   // Note: this function takes linear time. Please do not call it inside loop.
@@ -629,8 +627,7 @@ export class ResidualFunctions {
             usesThis ||
             hasFunctionArg ||
             (firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint)) ||
-            this.functionPrototypes.get(functionValue) !== undefined ||
-            this.simpleClosures
+            this.functionPrototypes.get(functionValue) !== undefined
           ) {
             let callArgs: Array<BabelNodeExpression | BabelNodeSpreadElement> = [t.thisExpression()];
             for (let flatArg of flatArgs) callArgs.push(flatArg);
