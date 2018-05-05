@@ -87,7 +87,6 @@ export type SerializerOptions = {
   logModules?: boolean,
   profile?: boolean,
   inlineExpressions?: boolean,
-  simpleClosures?: boolean,
   trace?: boolean,
   heapGraphFormat?: "DotLanguage" | "VISJS",
 };

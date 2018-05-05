@@ -365,16 +365,14 @@ function runTest(name, code, options: PrepackOptions, args) {
     }
     let copiesToFind = new Map();
     const copyMarker = "// Copies of ";
-    if (!options.simpleClosures) {
-      let searchStart = code.indexOf(copyMarker);
-      while (searchStart !== -1) {
-        let searchEnd = code.indexOf(":", searchStart);
-        let value = code.substring(searchStart + copyMarker.length, searchEnd);
-        let newline = code.indexOf("\n", searchStart);
-        let count = parseInt(code.substring(searchEnd + 1, newline), 10);
-        copiesToFind.set(new RegExp(value.replace(/[[\]]/g, "\\$&"), "gi"), count);
-        searchStart = code.indexOf(copyMarker, newline);
-      }
+    let searchStart = code.indexOf(copyMarker);
+    while (searchStart !== -1) {
+      let searchEnd = code.indexOf(":", searchStart);
+      let value = code.substring(searchStart + copyMarker.length, searchEnd);
+      let newline = code.indexOf("\n", searchStart);
+      let count = parseInt(code.substring(searchEnd + 1, newline), 10);
+      copiesToFind.set(new RegExp(value.replace(/[[\]]/g, "\\$&"), "gi"), count);
+      searchStart = code.indexOf(copyMarker, newline);
     }
     let addedCode = "";
     let injectAtRuntime = "// add at runtime:";
@@ -475,7 +473,7 @@ function runTest(name, code, options: PrepackOptions, args) {
           break;
         }
         // Test the number of clone functions generated with the inital prepack call
-        if (i === 0 && functionCloneCountMatch && !options.simpleClosures) {
+        if (i === 0 && functionCloneCountMatch) {
           let functionCount = parseInt(functionCloneCountMatch[1], 10);
           if (serialized.statistics && functionCount !== serialized.statistics.functionClones) {
             console.error(
@@ -614,7 +612,7 @@ function run(args) {
     }
     if (args.fast) flagPermutations = [[false, false, undefined, isSimpleClosureTest]];
     let lastFailed = failed;
-    for (let [delayInitializations, inlineExpressions, lazyObjectsRuntime, simpleClosures] of flagPermutations) {
+    for (let [delayInitializations, inlineExpressions, lazyObjectsRuntime] of flagPermutations) {
       if ((skipLazyObjects || args.noLazySupport) && lazyObjectsRuntime) {
         continue;
       }
@@ -623,7 +621,6 @@ function run(args) {
         delayInitializations,
         inlineExpressions,
         lazyObjectsRuntime,
-        simpleClosures,
         residual: args.residual,
       };
       if (runTest(test.name, test.file, options, args)) passed++;
