@@ -9,6 +9,7 @@
 
 /* @flow */
 
+import { Effects } from "../realm.js";
 import type {
   BabelBinaryOperator,
   BabelNodeExpression,
@@ -17,7 +18,7 @@ import type {
   BabelNodeSourceLocation,
   BabelUnaryOperator,
 } from "babel-types";
-import { FatalError, CompilerDiagnostic } from "../errors.js";
+import { CompilerDiagnostic, FatalError, InfeasiblePathError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
 import { PreludeGenerator } from "../utils/generator.js";
@@ -39,6 +40,8 @@ import {
 import { hashString, hashBinary, hashCall, hashTernary, hashUnary } from "../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
+import { Join, Path } from "../singletons.js";
+import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 
 import * as t from "babel-types";
 
@@ -943,5 +946,63 @@ export default class AbstractValue extends Value {
 
   static makeKind(prefix: AbstractValueKindPrefix, suffix: string): AbstractValueKind {
     return ((`${prefix}:${suffix}`: any): AbstractValueKind);
+  }
+
+  static evaluateWithAbstractConditional(
+    realm: Realm,
+    condValue: AbstractValue,
+    consequentEffectsFunc: () => Effects,
+    consequentInfeasibleFunc: () => Value,
+    alternateEffectsFunc: () => Effects,
+    alternateInfeasibleFunc: () => Value
+  ): Value {
+    // Evaluate consequent and alternate in sandboxes and get their effects.
+    let compl1, gen1, bindings1, properties1, createdObj1;
+    try {
+      [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(condValue, consequentEffectsFunc).data;
+    } catch (e) {
+      if (e instanceof InfeasiblePathError) {
+        return consequentInfeasibleFunc();
+      }
+      throw e;
+    }
+
+    let compl2, gen2, bindings2, properties2, createdObj2;
+    try {
+      [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(
+        condValue,
+        alternateEffectsFunc
+      ).data;
+    } catch (e) {
+      if (e instanceof InfeasiblePathError) {
+        return alternateInfeasibleFunc();
+      }
+      throw e;
+    }
+
+    // Join the effects, creating an abstract view of what happened, regardless
+    // of the actual value of condValue.
+    let joinedEffects = Join.joinEffects(
+      realm,
+      condValue,
+      new Effects(compl1, gen1, bindings1, properties1, createdObj1),
+      new Effects(compl2, gen2, bindings2, properties2, createdObj2)
+    );
+    let completion = joinedEffects.result;
+    if (completion instanceof PossiblyNormalCompletion) {
+      // in this case one of the branches may complete abruptly, which means that
+      // not all control flow branches join into one flow at this point.
+      // Consequently we have to continue tracking changes until the point where
+      // all the branches come together into one.
+      completion = realm.composeWithSavedCompletion(completion);
+    }
+    // Note that the effects of (non joining) abrupt branches are not included
+    // in joinedEffects, but are tracked separately inside completion.
+    realm.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
+
+    // return or throw completion
+    if (completion instanceof AbruptCompletion) throw completion;
+    invariant(completion instanceof Value);
+    return completion;
   }
 }
