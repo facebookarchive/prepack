@@ -44,9 +44,9 @@ export class ReconcilerRenderBailOut extends FatalError {
     evaluatedNode.message = message;
     evaluatedNode.children = []; // clear children as they are dead
     this.evaluatedNode = evaluatedNode;
+    // used for assertions in tests
     this.__isReconcilerRenderBailOut = true;
   }
   evaluatedNode: ReactEvaluatedNode;
+  __isReconcilerRenderBailOut: boolean;
 }
-
-ReconcilerRenderBailOut.__isReconcilerRenderBailOut = true;
