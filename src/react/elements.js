@@ -10,11 +10,20 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import { AbstractValue, AbstractObjectValue, Value, ObjectValue, FunctionValue, NullValue } from "../values/index.js";
+import {
+  AbstractValue,
+  AbstractObjectValue,
+  ArrayValue,
+  NumberValue,
+  Value,
+  ObjectValue,
+  FunctionValue,
+  NullValue,
+} from "../values/index.js";
 import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
-import { getReactSymbol, objectHasNoPartialKeyAndRef, deleteRefAndKeyFromProps } from "./utils.js";
+import { getProperty, getReactSymbol, objectHasNoPartialKeyAndRef, deleteRefAndKeyFromProps } from "./utils.js";
 import * as t from "babel-types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
@@ -163,4 +172,67 @@ export function createInternalReactElement(
   Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
   obj.makeFinal();
   return obj;
+}
+
+type ElementTraversalVisitor = {
+  visitType: (typeValue: Value) => void,
+  visitKey: (keyValue: Value) => void,
+  visitRef: (keyValue: Value) => void,
+  visitAbstractOrPartialProps: (propsValue: AbstractValue | ObjectValue) => void,
+  visitConcreteProps: (propsValue: ObjectValue) => void,
+  visitChildNode: (childValue: Value) => void,
+};
+
+export function traverseReactElement(
+  realm: Realm,
+  reactElement: ObjectValue,
+  traversalVisitor: ElementTraversalVisitor
+) {
+  let typeValue = getProperty(realm, reactElement, "type");
+  traversalVisitor.visitType(typeValue);
+
+  let keyValue = getProperty(realm, reactElement, "key");
+  if (keyValue !== realm.intrinsics.null && keyValue !== realm.intrinsics.undefined) {
+    traversalVisitor.visitKey(keyValue);
+  }
+
+  let refValue = getProperty(realm, reactElement, "ref");
+  if (refValue !== realm.intrinsics.null && refValue !== realm.intrinsics.undefined) {
+    traversalVisitor.visitRef(refValue);
+  }
+
+  let propsValue = getProperty(realm, reactElement, "props");
+  if (propsValue instanceof AbstractValue) {
+    // visit object, as it's going to be spread
+    traversalVisitor.visitAbstractOrPartialProps(propsValue);
+  } else if (propsValue instanceof ObjectValue) {
+    if (propsValue.isPartialObject()) {
+      traversalVisitor.visitAbstractOrPartialProps(propsValue);
+    } else {
+      traversalVisitor.visitConcreteProps(propsValue);
+      // handle children
+      if (propsValue.properties.has("children")) {
+        let childrenValue = getProperty(realm, propsValue, "children");
+        if (childrenValue !== realm.intrinsics.undefined && childrenValue !== realm.intrinsics.null) {
+          if (childrenValue instanceof ArrayValue && !childrenValue.intrinsicName) {
+            let childrenLength = getProperty(realm, childrenValue, "length");
+            let childrenLengthValue = 0;
+            if (childrenLength instanceof NumberValue) {
+              childrenLengthValue = childrenLength.value;
+              for (let i = 0; i < childrenLengthValue; i++) {
+                let child = getProperty(realm, childrenValue, "" + i);
+                invariant(
+                  child instanceof Value,
+                  `ReactElement "props.children[${i}]" failed to visit due to a non-value`
+                );
+                traversalVisitor.visitChildNode(child);
+              }
+            }
+          } else {
+            traversalVisitor.visitChildNode(childrenValue);
+          }
+        }
+      }
+    }
+  }
 }

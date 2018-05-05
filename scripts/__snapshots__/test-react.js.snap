@@ -2148,6 +2148,30 @@ exports[`Test React with JSX input, JSX output Functional component folding Simp
 
 exports[`Test React with JSX input, JSX output Functional component folding Simple 11 1`] = `"Failed to optimize React component tree for \\"App\\" due to an exception thrown during render phase"`;
 
+exports[`Test React with JSX input, JSX output Functional component folding Simple 12 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Author",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output Functional component folding Simple children 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
@@ -5719,6 +5743,30 @@ exports[`Test React with JSX input, create-element output Functional component f
 exports[`Test React with JSX input, create-element output Functional component folding Simple 10 1`] = `"Failed to optimize React component tree for \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
 exports[`Test React with JSX input, create-element output Functional component folding Simple 11 1`] = `"Failed to optimize React component tree for \\"App\\" due to an exception thrown during render phase"`;
+
+exports[`Test React with JSX input, create-element output Functional component folding Simple 12 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Author",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
 
 exports[`Test React with JSX input, create-element output Functional component folding Simple children 1`] = `
 ReactStatistics {
@@ -9292,6 +9340,30 @@ exports[`Test React with create-element input, JSX output Functional component f
 
 exports[`Test React with create-element input, JSX output Functional component folding Simple 11 1`] = `"Failed to optimize React component tree for \\"App\\" due to an exception thrown during render phase"`;
 
+exports[`Test React with create-element input, JSX output Functional component folding Simple 12 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Author",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output Functional component folding Simple children 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
@@ -12828,6 +12900,30 @@ exports[`Test React with create-element input, create-element output Functional 
 exports[`Test React with create-element input, create-element output Functional component folding Simple 10 1`] = `"Failed to optimize React component tree for \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
 exports[`Test React with create-element input, create-element output Functional component folding Simple 11 1`] = `"Failed to optimize React component tree for \\"App\\" due to an exception thrown during render phase"`;
+
+exports[`Test React with create-element input, create-element output Functional component folding Simple 12 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Author",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
 
 exports[`Test React with create-element input, create-element output Functional component folding Simple children 1`] = `
 ReactStatistics {

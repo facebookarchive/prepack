@@ -310,6 +310,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         });
       });
 
+      it("Simple 12", async () => {
+        await runTest(directory, "simple-12.js");
+      });
+
       it("Handle mapped arrays", async () => {
         await runTest(directory, "array-map.js");
       });

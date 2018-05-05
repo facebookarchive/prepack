@@ -281,6 +281,9 @@ export class Functions {
       if (reconciler.hasEvaluatedRootNode(componentType, evaluatedRootNode)) {
         continue;
       }
+      if (this.realm.react.verbose) {
+        logger.logInformation(`  Evaluating ${evaluatedRootNode.name} (root)`);
+      }
       let componentTreeEffects = reconciler.renderReactComponentTree(componentType, null, null, evaluatedRootNode);
       if (this.realm.react.verbose) {
         logger.logInformation(`  ✔ ${evaluatedRootNode.name} (root)`);
@@ -326,6 +329,9 @@ export class Functions {
       }
       if (func instanceof ECMAScriptSourceFunctionValue && reconciler.hasEvaluatedRootNode(func, evaluatedNode)) {
         continue;
+      }
+      if (this.realm.react.verbose) {
+        logger.logInformation(`    Evaluating function "${getComponentName(this.realm, func)}"`);
       }
       let closureEffects = reconciler.renderNestedOptimizedClosure(
         func,
@@ -377,6 +383,9 @@ export class Functions {
         continue;
       }
       reconciler.clearComponentTreeState();
+      if (this.realm.react.verbose) {
+        logger.logInformation(`    Evaluating ${evaluatedNode.name} (branch)`);
+      }
       let branchEffects = reconciler.renderReactComponentTree(branchComponentType, null, null, evaluatedNode);
       if (this.realm.react.verbose) {
         logger.logInformation(`    ✔ ${evaluatedNode.name} (branch)`);
