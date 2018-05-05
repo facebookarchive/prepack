@@ -75,7 +75,6 @@ let prepackOptions = {
   reactVerbose: true,
   inlineExpressions: true,
   invariantLevel: 0,
-  simpleClosures: true,
   abstractValueImpliesMax: 1000,
 };
 let inputPath = path.resolve("fb-www/input.js");
