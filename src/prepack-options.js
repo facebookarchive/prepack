@@ -50,7 +50,6 @@ export type PrepackOptions = {|
   serialize?: boolean,
   check?: Array<number>,
   inlineExpressions?: boolean,
-  simpleClosures?: boolean,
   sourceMaps?: boolean,
   initializeMoreModules?: boolean,
   statsFile?: string,
@@ -122,7 +121,6 @@ export function getSerializerOptions({
   logModules = false,
   profile = false,
   inlineExpressions = false,
-  simpleClosures = false,
   initializeMoreModules = false,
   trace = false,
 }: PrepackOptions): SerializerOptions {
@@ -138,7 +136,6 @@ export function getSerializerOptions({
     logModules,
     profile,
     inlineExpressions,
-    simpleClosures,
     trace,
   };
   if (lazyObjectsRuntime !== undefined) {
