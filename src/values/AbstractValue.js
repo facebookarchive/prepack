@@ -998,7 +998,7 @@ export default class AbstractValue extends Value {
     }
     // Note that the effects of (non joining) abrupt branches are not included
     // in joinedEffects, but are tracked separately inside completion.
-    realm.applyEffects(joinedEffects);
+    realm.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
 
     // return or throw completion
     if (completion instanceof AbruptCompletion) throw completion;
