@@ -359,37 +359,6 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with JSX input, JSX output First render only Class component as root with refs 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 3,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "SubChild",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "Child",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
 exports[`Test React with JSX input, JSX output First render only React Context 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
@@ -2171,151 +2140,13 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with JSX input, JSX output Functional component folding Simple 8 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with JSX input, JSX output Functional component folding Simple 8 1`] = `"Failed to optimize React component tree for \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Test React with JSX input, JSX output Functional component folding Simple 9 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with JSX input, JSX output Functional component folding Simple 9 1`] = `"Failed to optimize React component tree for \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Test React with JSX input, JSX output Functional component folding Simple 10 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App2",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 2,
-}
-`;
+exports[`Test React with JSX input, JSX output Functional component folding Simple 10 1`] = `"Failed to optimize React component tree for \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Test React with JSX input, JSX output Functional component folding Simple 11 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App2",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 2,
-}
-`;
+exports[`Test React with JSX input, JSX output Functional component folding Simple 11 1`] = `"Failed to optimize React component tree for \\"App\\" due to an exception thrown during render phase"`;
 
 exports[`Test React with JSX input, JSX output Functional component folding Simple children 1`] = `
 ReactStatistics {
@@ -3470,42 +3301,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with JSX input, JSX output fb-www mocks fb-www 12 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "B",
-              "status": "INLINED",
-            },
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "C",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with JSX input, JSX output fb-www mocks fb-www 12 1`] = `"Failed to optimize React component tree for \\"App\\" due to an exception thrown during render phase"`;
 
 exports[`Test React with JSX input, JSX output fb-www mocks fb-www 13 1`] = `
 ReactStatistics {
@@ -3633,22 +3429,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with JSX input, JSX output fb-www mocks fb-www 19 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with JSX input, JSX output fb-www mocks fb-www 19 1`] = `"Failed to optimize React component tree for \\"App\\" due to an exception thrown during render phase"`;
 
 exports[`Test React with JSX input, JSX output fb-www mocks fb-www 20 1`] = `
 ReactStatistics {
@@ -4147,37 +3928,6 @@ ReactStatistics {
   "inlinedComponents": 0,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
-}
-`;
-
-exports[`Test React with JSX input, create-element output First render only Class component as root with refs 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 3,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "SubChild",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "Child",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
 }
 `;
 
@@ -5962,151 +5712,13 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with JSX input, create-element output Functional component folding Simple 8 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with JSX input, create-element output Functional component folding Simple 8 1`] = `"Failed to optimize React component tree for \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Test React with JSX input, create-element output Functional component folding Simple 9 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with JSX input, create-element output Functional component folding Simple 9 1`] = `"Failed to optimize React component tree for \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Test React with JSX input, create-element output Functional component folding Simple 10 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App2",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 2,
-}
-`;
+exports[`Test React with JSX input, create-element output Functional component folding Simple 10 1`] = `"Failed to optimize React component tree for \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Test React with JSX input, create-element output Functional component folding Simple 11 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App2",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 2,
-}
-`;
+exports[`Test React with JSX input, create-element output Functional component folding Simple 11 1`] = `"Failed to optimize React component tree for \\"App\\" due to an exception thrown during render phase"`;
 
 exports[`Test React with JSX input, create-element output Functional component folding Simple children 1`] = `
 ReactStatistics {
@@ -7261,42 +6873,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with JSX input, create-element output fb-www mocks fb-www 12 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "B",
-              "status": "INLINED",
-            },
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "C",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with JSX input, create-element output fb-www mocks fb-www 12 1`] = `"Failed to optimize React component tree for \\"App\\" due to an exception thrown during render phase"`;
 
 exports[`Test React with JSX input, create-element output fb-www mocks fb-www 13 1`] = `
 ReactStatistics {
@@ -7424,22 +7001,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with JSX input, create-element output fb-www mocks fb-www 19 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with JSX input, create-element output fb-www mocks fb-www 19 1`] = `"Failed to optimize React component tree for \\"App\\" due to an exception thrown during render phase"`;
 
 exports[`Test React with JSX input, create-element output fb-www mocks fb-www 20 1`] = `
 ReactStatistics {
@@ -7938,37 +7500,6 @@ ReactStatistics {
   "inlinedComponents": 0,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
-}
-`;
-
-exports[`Test React with create-element input, JSX output First render only Class component as root with refs 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 3,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "SubChild",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "Child",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
 }
 `;
 
@@ -9753,151 +9284,13 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with create-element input, JSX output Functional component folding Simple 8 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with create-element input, JSX output Functional component folding Simple 8 1`] = `"Failed to optimize React component tree for \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Test React with create-element input, JSX output Functional component folding Simple 9 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with create-element input, JSX output Functional component folding Simple 9 1`] = `"Failed to optimize React component tree for \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Test React with create-element input, JSX output Functional component folding Simple 10 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App2",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 2,
-}
-`;
+exports[`Test React with create-element input, JSX output Functional component folding Simple 10 1`] = `"Failed to optimize React component tree for \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Test React with create-element input, JSX output Functional component folding Simple 11 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App2",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 2,
-}
-`;
+exports[`Test React with create-element input, JSX output Functional component folding Simple 11 1`] = `"Failed to optimize React component tree for \\"App\\" due to an exception thrown during render phase"`;
 
 exports[`Test React with create-element input, JSX output Functional component folding Simple children 1`] = `
 ReactStatistics {
@@ -11017,42 +10410,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with create-element input, JSX output fb-www mocks fb-www 12 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "B",
-              "status": "INLINED",
-            },
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "C",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with create-element input, JSX output fb-www mocks fb-www 12 1`] = `"Failed to optimize React component tree for \\"App\\" due to an exception thrown during render phase"`;
 
 exports[`Test React with create-element input, JSX output fb-www mocks fb-www 13 1`] = `
 ReactStatistics {
@@ -11180,22 +10538,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with create-element input, JSX output fb-www mocks fb-www 19 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with create-element input, JSX output fb-www mocks fb-www 19 1`] = `"Failed to optimize React component tree for \\"App\\" due to an exception thrown during render phase"`;
 
 exports[`Test React with create-element input, JSX output fb-www mocks fb-www 20 1`] = `
 ReactStatistics {
@@ -11694,37 +11037,6 @@ ReactStatistics {
   "inlinedComponents": 0,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 2,
-}
-`;
-
-exports[`Test React with create-element input, create-element output First render only Class component as root with refs 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 3,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "SubChild",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "Child",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
 }
 `;
 
@@ -13509,151 +12821,13 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with create-element input, create-element output Functional component folding Simple 8 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with create-element input, create-element output Functional component folding Simple 8 1`] = `"Failed to optimize React component tree for \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Test React with create-element input, create-element output Functional component folding Simple 9 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with create-element input, create-element output Functional component folding Simple 9 1`] = `"Failed to optimize React component tree for \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Test React with create-element input, create-element output Functional component folding Simple 10 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App2",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 2,
-}
-`;
+exports[`Test React with create-element input, create-element output Functional component folding Simple 10 1`] = `"Failed to optimize React component tree for \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Test React with create-element input, create-element output Functional component folding Simple 11 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App2",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 2,
-}
-`;
+exports[`Test React with create-element input, create-element output Functional component folding Simple 11 1`] = `"Failed to optimize React component tree for \\"App\\" due to an exception thrown during render phase"`;
 
 exports[`Test React with create-element input, create-element output Functional component folding Simple children 1`] = `
 ReactStatistics {
@@ -14773,42 +13947,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with create-element input, create-element output fb-www mocks fb-www 12 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "B",
-              "status": "INLINED",
-            },
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "C",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with create-element input, create-element output fb-www mocks fb-www 12 1`] = `"Failed to optimize React component tree for \\"App\\" due to an exception thrown during render phase"`;
 
 exports[`Test React with create-element input, create-element output fb-www mocks fb-www 13 1`] = `
 ReactStatistics {
@@ -14936,22 +14075,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with create-element input, create-element output fb-www mocks fb-www 19 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with create-element input, create-element output fb-www mocks fb-www 19 1`] = `"Failed to optimize React component tree for \\"App\\" due to an exception thrown during render phase"`;
 
 exports[`Test React with create-element input, create-element output fb-www mocks fb-www 20 1`] = `
 ReactStatistics {

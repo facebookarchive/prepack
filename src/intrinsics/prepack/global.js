@@ -14,7 +14,7 @@ import {
   AbstractObjectValue,
   AbstractValue,
   BooleanValue,
-  BoundFunctionValue,
+
   ConcreteValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
@@ -24,7 +24,7 @@ import {
   StringValue,
   Value,
 } from "../../values/index.js";
-import { Havoc, To } from "../../singletons.js";
+import { To } from "../../singletons.js";
 import { ValuesDomain } from "../../domains/index.js";
 import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
@@ -396,40 +396,6 @@ export default function(realm: Realm): void {
   global.$DefineOwnProperty("__isIntegral", {
     value: new NativeFunctionValue(realm, "global.__isIntegral", "__isIntegral", 1, (context, [value]) => {
       return new BooleanValue(realm, value instanceof IntegralValue);
-    }),
-    writable: true,
-    enumerable: false,
-    configurable: true,
-  });
-
-  global.$DefineOwnProperty("__safeSideEffect", {
-    value: new NativeFunctionValue(realm, "global.__safeSideEffect", "__safeSideEffect", 1, (context, [func]) => {
-      invariant(func instanceof ECMAScriptSourceFunctionValue || func instanceof BoundFunctionValue);
-      func.kind = "sideEffectful wrapper";
-      // TODO: We can properly replace this logic with some custom logic rather than
-      // using the havoc system at some point. Right now, we use the havoc system to
-      // find all the bindings/properties within the "safe side effect" closure. It
-      // marks them as havoced, which means their values gets the "havoced" flag applied.
-      // With this flag, any accesses to them results in abstract values being returned
-      // making it possible to mutate/reference values in the pure function.
-
-      // store the modifiedBindings before we havoc the function
-      let originalModifiedBindings = new Map(realm.modifiedBindings);
-      let originalModifiedProperties = new Map(realm.modifiedProperties);
-      // use the havoc system to mark all the bindings and modifications to objects
-      // in the function as havoced, thus making the values become abstract
-      if (func instanceof ECMAScriptSourceFunctionValue) {
-        Havoc.value(realm, func);
-      } else if (func instanceof BoundFunctionValue) {
-        Havoc.value(realm, func.$BoundTargetFunction);
-      }
-      // given we don't actually want the modified bindings/properties from the havoc
-      // as this is a side-effect and such, we can discard the modified bindings/properties
-      realm.modifiedBindings = originalModifiedBindings;
-      realm.modifiedProperties = originalModifiedProperties;
-      invariant(realm.generator !== undefined);
-      realm.generator.emitStatement([func], ([funcNode]) => t.expressionStatement(t.callExpression(funcNode, [])));
-      return realm.intrinsics.undefined;
     }),
     writable: true,
     enumerable: false,

@@ -294,8 +294,6 @@ class ObjectValueHavocingVisitor {
     let remainingHavocedBindings = getHavocedFunctionInfo(val);
 
     let environment = val.$Environment.parent;
-    let sideEffectfulWrapper = val.kind === "sideEffectful wrapper";
-
     while (environment) {
       let record = environment.environmentRecord;
       if (record instanceof ObjectEnvironmentRecord) {
@@ -309,7 +307,7 @@ class ObjectValueHavocingVisitor {
       invariant(record instanceof DeclarativeEnvironmentRecord);
       this.visitDeclarativeEnvironmentRecordBinding(record, remainingHavocedBindings);
 
-      if (record instanceof FunctionEnvironmentRecord && !sideEffectfulWrapper) {
+      if (record instanceof FunctionEnvironmentRecord) {
         // If this is a function environment, which is not tracked for havocs,
         // we can bail out because its bindings should not be mutated in a
         // pure function.

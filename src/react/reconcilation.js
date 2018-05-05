@@ -66,7 +66,7 @@ import {
   applyGetDerivedStateFromProps,
 } from "./components.js";
 import { ExpectedBailOut, NewComponentTreeBranch, SimpleClassBailOut, ReconcilerRenderBailOut } from "./errors.js";
-import { EnvironmentRecord } from "../environment.js";
+import { DeclarativeEnvironmentRecord, FunctionEnvironmentRecord } from "../environment.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
 import { createInternalReactElement } from "./elements.js";
@@ -108,16 +108,16 @@ function checkForSideEffects(effects: Effects, evaluatedNode: ReactEvaluatedNode
   for (let [binding] of modifiedBindings) {
     let env = binding.environment;
 
-    if (!(env instanceof EnvironmentRecord)) {
+    if (env instanceof DeclarativeEnvironmentRecord) {
       let bindings = env.bindings;
       let name = binding.name;
       // ensure that this binding mutated was one that was side-effectful
       // i.e. the binding exists from a parent scope, rather than this scope
-      if (bindings[name] === undefined) {
+      if (bindings[name] === undefined || !(env instanceof FunctionEnvironmentRecord)) {
         throw new ReconcilerRenderBailOut(
           `Failed to optimize React component tree for "${
             evaluatedNode.name
-          }" due to side-effects from mutating the binding "${name}". Try wrapping side-effects in __safeSideEffect()`,
+          }" due to side-effects from mutating the binding "${name}"`,
           evaluatedNode
         );
       }
@@ -128,7 +128,7 @@ function checkForSideEffects(effects: Effects, evaluatedNode: ReactEvaluatedNode
       throw new ReconcilerRenderBailOut(
         `Failed to optimize React component tree for "${
           evaluatedNode.name
-        }" due to an exception thrown during render phase. Try wrapping side-effects in __safeSideEffect()`,
+        }" due to an exception thrown during render phase`,
         evaluatedNode
       );
     }
@@ -209,7 +209,7 @@ export class Reconciler {
         } else if (error instanceof AbruptCompletion) {
           message = `Failed to optimize React component tree for "${
             evaluatedRootNode.name
-          }" due to an exception thrown during render phase. Try wrapping side-effects in __safeSideEffect()`;
+          }" due to an exception thrown during render phase`;
         } else {
           message = `Failed to optimize React component tree for "${evaluatedRootNode.name}" due to evaluation error: ${
             error.message

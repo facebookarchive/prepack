@@ -4,24 +4,16 @@ this['React'] = React;
 
 let lazyVariable = null;
 
-if (!this.__safeSideEffect) {
-  __safeSideEffect = x => x();
-}
-
 function A(props) {
-  __safeSideEffect(function() {
-    if (!lazyVariable) {
-      lazyVariable = 123;
-    }
-  });
+  if (!lazyVariable) {
+    lazyVariable = 123;
+  }
   return <div>Hello {lazyVariable}</div>;
 }
 
 function App(props) {
   if (props.x) {
-    __safeSideEffect(function() {
-      throw new Error("I am an error");
-    });
+    throw new Error("I am an error");
   }
   return (
     <div>
@@ -32,9 +24,7 @@ function App(props) {
 
 function App2(props) {
   if (props.x) {
-    __safeSideEffect(function() {
-      throw new Error("I am an error");
-    });
+    throw new Error("I am an error");
   }
   return (
     <div>

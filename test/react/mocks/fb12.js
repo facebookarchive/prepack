@@ -7,10 +7,6 @@ if (!this.__evaluatePureFunction) {
   };
 }
 
-if (!this.__safeSideEffect) {
-  __safeSideEffect = x => x();
-}
-
 module.exports = this.__evaluatePureFunction(() => {
   function nullthrows(x) {
     var message = arguments.length <= 1 || arguments[1] === undefined ? 'Got unexpected null or undefined' : arguments[1];
@@ -20,9 +16,7 @@ module.exports = this.__evaluatePureFunction(() => {
     var error = new Error(message);
 
     error.framesToPop = 1;
-    __safeSideEffect(function() {
-      throw error;
-    });
+    throw error;
   };
 
   function A(props) {

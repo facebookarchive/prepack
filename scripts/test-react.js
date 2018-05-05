@@ -81,9 +81,22 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     reactOutput: outputJsx ? "jsx" : "create-element",
     inlineExpressions: true,
     invariantLevel: 0,
-    simpleClosures: true,
     stripFlow: true,
   };
+
+  let checkForReconcilerRenderBailOut = false;
+
+  async function expectReconcilerRenderBailOut(func) {
+    checkForReconcilerRenderBailOut = true;
+    try {
+      await func();
+    } catch (e) {
+      expect(e.__isReconcilerRenderBailOut).toBe(true);
+      expect(e.message).toMatchSnapshot();
+    } finally {
+      checkForReconcilerRenderBailOut = false;
+    }
+  }
 
   function compileSourceWithPrepack(source) {
     let code = `(function(){${source}})()`;
@@ -92,6 +105,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     try {
       serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
     } catch (e) {
+      if (e.__isReconcilerRenderBailOut && checkForReconcilerRenderBailOut) {
+        throw e;
+      }
       errorsCaptured.forEach(error => {
         console.error(error);
       });
@@ -271,21 +287,27 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("Simple 8", async () => {
-        await runTest(directory, "simple-8.js");
+        await expectReconcilerRenderBailOut(async () => {
+          await runTest(directory, "simple-8.js");
+        });
       });
 
       it("Simple 9", async () => {
-        await runTest(directory, "simple-9.js");
+        await expectReconcilerRenderBailOut(async () => {
+          await runTest(directory, "simple-9.js");
+        });
       });
 
-      // fails with simpleClosures enabled
-      it.skip("Simple 10", async () => {
-        await runTest(directory, "simple-10.js");
+      it("Simple 10", async () => {
+        await expectReconcilerRenderBailOut(async () => {
+          await runTest(directory, "simple-10.js");
+        });
       });
 
-      // fails with simpleClosures enabled
-      it.skip("Simple 11", async () => {
-        await runTest(directory, "simple-11.js");
+      it("Simple 11", async () => {
+        await expectReconcilerRenderBailOut(async () => {
+          await runTest(directory, "simple-11.js");
+        });
       });
 
       it("Handle mapped arrays", async () => {
@@ -621,10 +643,6 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-2.js", true);
       });
 
-      it("Class component as root with refs", async () => {
-        await runTest(directory, "class-root-with-refs.js", true);
-      });
-
       it("componentWillMount", async () => {
         await runTest(directory, "will-mount.js", true);
       });
@@ -736,7 +754,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("fb-www 12", async () => {
-        await runTest(directory, "fb12.js");
+        await expectReconcilerRenderBailOut(async () => {
+          await runTest(directory, "fb12.js");
+        });
       });
 
       it("fb-www 13", async () => {
@@ -765,7 +785,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("fb-www 19", async () => {
-        await runTest(directory, "fb19.js");
+        await expectReconcilerRenderBailOut(async () => {
+          await runTest(directory, "fb19.js");
+        });
       });
 
       it("fb-www 20", async () => {
