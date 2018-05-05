@@ -193,6 +193,12 @@ export default class AbstractValue extends Value {
       }
       return true;
     };
+    // when we have a ToObject conversion, we don't want to
+    // the equivalence to equal one another as they may have
+    // been created at different points
+    if (this.kind === "explicit conversion to object") {
+      return false;
+    }
 
     return (
       this === x ||
