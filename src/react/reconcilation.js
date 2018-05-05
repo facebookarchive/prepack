@@ -66,7 +66,7 @@ import {
   applyGetDerivedStateFromProps,
 } from "./components.js";
 import { ExpectedBailOut, NewComponentTreeBranch, SimpleClassBailOut, ReconcilerRenderBailOut } from "./errors.js";
-import { DeclarativeEnvironmentRecord, FunctionEnvironmentRecord } from "../environment.js";
+import { DeclarativeEnvironmentRecord, FunctionEnvironmentRecord, GlobalEnvironmentRecord } from "../environment.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
 import { createInternalReactElement } from "./elements.js";
@@ -107,10 +107,10 @@ function checkForSideEffects(effects: Effects, evaluatedNode: ReactEvaluatedNode
   let { modifiedBindings, result } = effects;
   for (let [binding] of modifiedBindings) {
     let env = binding.environment;
+    let name = binding.name;
 
     if (env instanceof DeclarativeEnvironmentRecord) {
       let bindings = env.bindings;
-      let name = binding.name;
       // ensure that this binding mutated was one that was side-effectful
       // i.e. the binding exists from a parent scope, rather than this scope
       if (bindings[name] === undefined || !(env instanceof FunctionEnvironmentRecord)) {
@@ -121,6 +121,13 @@ function checkForSideEffects(effects: Effects, evaluatedNode: ReactEvaluatedNode
           evaluatedNode
         );
       }
+    } else if (env instanceof GlobalEnvironmentRecord) {
+      throw new ReconcilerRenderBailOut(
+        `Failed to optimize React component tree for "${
+          evaluatedNode.name
+        }" due to side-effects from mutating a global binding "${name}"`,
+        evaluatedNode
+      );
     }
   }
   if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
