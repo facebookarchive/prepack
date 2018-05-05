@@ -543,7 +543,7 @@ export default class AbstractObjectValue extends AbstractValue {
       let d2 = ob2.$GetOwnProperty(P);
       let d2val =
         d2 === undefined ? this.$Realm.intrinsics.undefined : IsDataDescriptor(this.$Realm, d2) ? d2.value : undefined;
-      if (d1val === undefined || d2val === undefined) {
+      if (d1val === undefined || d2val === undefined || (d1 === undefined && d2 === undefined)) {
         AbstractValue.reportIntrospectionError(this, P);
         throw new FatalError();
       }

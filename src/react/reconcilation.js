@@ -882,6 +882,48 @@ export class Reconciler {
     return "NORMAL";
   }
 
+  _resolveAbstractConditionalValue(
+    componentType: Value,
+    condValue: AbstractValue,
+    consequentVal: Value,
+    alternateVal: Value,
+    context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null,
+    evaluatedNode: ReactEvaluatedNode
+  ) {
+    let newBranchState = new BranchState();
+    let value = AbstractValue.evaluateWithAbstractConditional(
+      this.realm,
+      condValue,
+      () => {
+        return this.realm.evaluateForEffects(
+          () => this._resolveDeeply(componentType, consequentVal, context, "NEW_BRANCH", newBranchState, evaluatedNode),
+          null,
+          "_resolveAbstractConditionalValue consequent"
+        );
+      },
+      () => {
+        invariant(false, "TODO");
+      },
+      () => {
+        return this.realm.evaluateForEffects(
+          () => this._resolveDeeply(componentType, alternateVal, context, "NEW_BRANCH", newBranchState, evaluatedNode),
+          null,
+          "_resolveAbstractConditionalValue consequent"
+        );
+      },
+      () => {
+        invariant(false, "TODO");
+      }
+    );
+    let didBranch = newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
+    if (didBranch && branchState !== null) {
+      branchState.mergeBranchedLogic(newBranchState);
+    }
+    return value;
+  }
+
   _resolveAbstractValue(
     componentType: Value,
     value: AbstractValue,
@@ -891,37 +933,20 @@ export class Reconciler {
     evaluatedNode: ReactEvaluatedNode
   ): Value {
     invariant(this.realm.generator);
-    let length = value.args.length;
     // TODO investigate what other kinds than "conditional" might be safe to deeply resolve
-    if (length === 3 && value.kind === "conditional") {
-      let newBranchState = new BranchState();
-      let args = [];
-      let shouldCreateNewAbstract = false;
-      for (let i = 0; i < length; i++) {
-        let arg = this._resolveDeeply(
-          componentType,
-          value.args[i],
-          context,
-          "NEW_BRANCH",
-          newBranchState,
-          evaluatedNode
-        );
-        args.push(arg);
-        if (value.args[i] !== arg) {
-          shouldCreateNewAbstract = true;
-        }
-      }
-      let didBranch = newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
-      if (didBranch && branchState !== null) {
-        branchState.mergeBranchedLogic(newBranchState);
-      }
-      if (shouldCreateNewAbstract) {
-        let [condition, left, right] = args;
-        // value.args[0] is guaranteed to be abstract and _resolveDeeply returns an abstract
-        // when called on an abstract
-        invariant(condition instanceof AbstractValue);
-        return AbstractValue.createFromConditionalOp(this.realm, condition, left, right);
-      }
+    if (value.kind === "conditional") {
+      let [condValue, consequentVal, alternateVal] = value.args;
+      invariant(condValue instanceof AbstractValue);
+      return this._resolveAbstractConditionalValue(
+        componentType,
+        condValue,
+        consequentVal,
+        alternateVal,
+        context,
+        branchStatus,
+        branchState,
+        evaluatedNode
+      );
     } else {
       this.componentTreeState.deadEnds++;
     }
