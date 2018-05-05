@@ -270,6 +270,13 @@ function ForBodyEvaluation(
       invariant(c === valueOrCompletionAtUnconditionalExit);
     }
     if (valueOrCompletionAtUnconditionalExit instanceof Value) return valueOrCompletionAtUnconditionalExit;
+
+    // ECMA262 13.1.7
+    if (valueOrCompletionAtUnconditionalExit instanceof BreakCompletion) {
+      if (!valueOrCompletionAtUnconditionalExit.target)
+        return (UpdateEmpty(realm, valueOrCompletionAtUnconditionalExit, V): any).value;
+    }
+
     throw valueOrCompletionAtUnconditionalExit;
   }
 

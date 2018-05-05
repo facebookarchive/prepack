@@ -18,7 +18,6 @@ import { AbruptCompletion, BreakCompletion, PossiblyNormalCompletion, Completion
 import { InternalGetResultValue } from "./ForOfStatement.js";
 import { EmptyValue, AbstractValue, Value } from "../values/index.js";
 import { StrictEqualityComparisonPartial, UpdateEmpty } from "../methods/index.js";
-import { construct_empty_effects } from "../realm.js";
 import { Environment, Path, Join } from "../singletons.js";
 import { FatalError } from "../errors.js";
 import type { BabelNodeSwitchStatement, BabelNodeSwitchCase, BabelNodeExpression } from "babel-types";
@@ -345,7 +344,7 @@ export default function(
     let elems = switchValue.values.getElements();
     let n = elems.size;
     if (n > 1 && n < 10) {
-      let joinedEffects = construct_empty_effects(realm);
+      let joinedEffects;
       for (let concreteSwitchValue of elems) {
         let condition = AbstractValue.createFromBinaryOp(realm, "===", switchValue, concreteSwitchValue);
         let effects = realm.evaluateForEffects(
@@ -357,11 +356,20 @@ export default function(
           undefined,
           "specialized switch"
         );
-        joinedEffects = Join.joinEffects(realm, condition, joinedEffects, effects);
+        joinedEffects =
+          joinedEffects === undefined ? effects : Join.joinEffects(realm, condition, effects, joinedEffects);
       }
+      invariant(joinedEffects !== undefined);
       realm.applyEffects(joinedEffects, "joined specialized switch");
       let result = joinedEffects.data[0];
       if (result instanceof AbruptCompletion) throw result;
+      if (result instanceof PossiblyNormalCompletion) {
+        // in this case one of the branches may complete abruptly, which means that
+        // not all control flow branches join into one flow at this point.
+        // Consequently we have to continue tracking changes until the point where
+        // all the branches come together into one.
+        result = realm.composeWithSavedCompletion(result);
+      }
       invariant(result instanceof Value); // since evaluationHelper returns a value in non abrupt cases
       return result;
     }
