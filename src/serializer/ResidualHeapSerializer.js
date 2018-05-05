@@ -1861,9 +1861,11 @@ export class ResidualHeapSerializer {
           if (desc !== undefined) dependencies.push(...this._getDescriptorValues(desc));
           dependencies.push(object);
           if (key instanceof Value) dependencies.push(key);
-          this.emitter.emitNowOrAfterWaitingForDependencies(dependencies, () =>
-            this._emitProperty(object, key, desc, true)
-          );
+          this.emitter.emitNowOrAfterWaitingForDependencies(dependencies, () => {
+            // separate serialize object, as _emitProperty assumes that this already happened
+            this.serializeValue(object);
+            this._emitProperty(object, key, desc, true);
+          });
         }
       },
       options: this._options,
