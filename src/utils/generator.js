@@ -994,7 +994,7 @@ export class Generator {
     values: ValuesDomain,
     args: Array<Value>,
     buildNode_: DerivedExpressionBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: AbstractValueKind, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {| kind?: AbstractValueKind, isPure?: boolean, preserveArgs?: boolean, skipInvariant?: boolean |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
@@ -1002,12 +1002,13 @@ export class Generator {
     let options = {};
     if (optionalArgs && optionalArgs.kind) options.kind = optionalArgs.kind;
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
+    let preserveArgs = optionalArgs ? optionalArgs.preserveArgs : false;
     let res = new Constructor(
       this.realm,
       types,
       values,
       1735003607742176 + this.preludeGenerator.derivedIds.size,
-      [],
+      preserveArgs ? args : [],
       id,
       options
     );

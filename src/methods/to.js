@@ -453,6 +453,7 @@ export class ToImplementation {
             ([objAssignNode, argNode]) => t.callExpression(objAssignNode, [argNode]),
             {
               kind: "explicit conversion to object",
+              preserveArgs: true,
             }
           );
           invariant(obj instanceof AbstractObjectValue);
