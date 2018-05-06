@@ -1059,6 +1059,7 @@ export class ResidualHeapVisitor {
       visitModifiedObjectProperty: (binding: PropertyBinding) => {
         let fixpoint_rerun = () => {
           if (this.values.has(binding.object)) {
+            this.visitValue(binding.object);
             if (binding.key instanceof Value) this.visitValue(binding.key);
             this.visitObjectProperty(binding);
             return true;
