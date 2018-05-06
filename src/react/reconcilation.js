@@ -1504,7 +1504,7 @@ export class Reconciler {
     const getLocationFromValue = value => {
       // if we can't get a value, then it's likely that the source file was not given
       // (this happens in React tests) so instead don't print any location
-      return value.expressionLocation
+      return value && value.expressionLocation
         ? ` at location: ${value.expressionLocation.start.line}:${value.expressionLocation.start.column} ` +
             `- ${value.expressionLocation.end.line}:${value.expressionLocation.end.line}`
         : "";
