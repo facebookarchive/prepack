@@ -197,7 +197,10 @@ export class Reconciler {
         )
       )
     );
-    this._checkForSideEffects(componentType, effects, evaluatedRootNode);
+    this.realm.withEffectsAppliedInGlobalEnv(() => {
+      this._checkForSideEffects(componentType, effects, evaluatedRootNode);
+      return this.realm.intrinsics.undefined;
+    }, effects);
     this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
     return effects;
   }
@@ -1495,6 +1498,15 @@ export class Reconciler {
       }
     };
 
+    const getLocationFromValue = value => {
+      // if we can't get a value, then it's likely that the source file was not given
+      // (this happens in React tests) so instead don't print any location
+      return value.expressionLocation
+        ? ` at location: ${value.expressionLocation.start.line}:${value.expressionLocation.start.column} ` +
+            `- ${value.expressionLocation.end.line}:${value.expressionLocation.end.line}`
+        : "";
+    };
+
     findEnvs(this.realm.$GlobalEnv);
     findEnvs(env);
 
@@ -1503,10 +1515,11 @@ export class Reconciler {
       let name = binding.name;
 
       if (sideEffectfulEnvs.has(bindingEnv)) {
+        let location = getLocationFromValue(binding.value);
         throw new ReconcilerRenderBailOut(
           `Failed to optimize React component tree for "${
             evaluatedNode.name
-          }" due to side-effects from mutating the binding "${name}"`,
+          }" due to side-effects from mutating the binding "${name}"${location}`,
           evaluatedNode
         );
       }
