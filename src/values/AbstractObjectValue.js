@@ -249,7 +249,7 @@ export default class AbstractObjectValue extends AbstractValue {
       invariant(joinedObject instanceof AbstractObjectValue);
       return joinedObject;
     } else if (this.kind === "explicit conversion to object") {
-      let primitiveValue = this.args[0];
+      let primitiveValue = this.args[1];
       invariant(!Value.isTypeCompatibleWith(primitiveValue.getType(), PrimitiveValue));
       let result = AbstractValue.createFromBuildFunction(realm, ObjectValue, [primitiveValue], ([p]) => {
         invariant(realm.preludeGenerator !== undefined);

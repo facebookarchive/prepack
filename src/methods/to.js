@@ -441,8 +441,21 @@ export class ToImplementation {
       default:
         /*eslint-enable */
         if (realm.isInPureScope()) {
-          // will be serialized as Object.assign(serialized_arg)
-          obj = AbstractValue.createFromType(realm, ObjectValue, "explicit conversion to object", [arg]);
+          // get the global Object.assign
+          let globalObj = Get(realm, realm.$GlobalObject, "Object");
+          invariant(globalObj instanceof ObjectValue);
+          let objAssign = Get(realm, globalObj, "assign");
+
+          obj = AbstractValue.createTemporalFromBuildFunction(
+            realm,
+            ObjectValue,
+            [objAssign, arg],
+            ([objAssignNode, argNode]) => t.callExpression(objAssignNode, [argNode]),
+            {
+              kind: "explicit conversion to object",
+              preserveArgs: true,
+            }
+          );
           invariant(obj instanceof AbstractObjectValue);
         } else {
           obj = arg.throwIfNotConcreteObject();

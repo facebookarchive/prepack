@@ -115,7 +115,7 @@ export default function(realm: Realm): NativeFunctionValue {
             if (frm_was_partial) {
               if (frm instanceof AbstractObjectValue && frm.kind === "explicit conversion to object") {
                 // Make it implicit again since it is getting delayed into an Object.assign call.
-                delayedSources.push(frm.args[0]);
+                delayedSources.push(frm.args[1]);
               } else {
                 frmSnapshot = frm.getSnapshot();
                 frm.temporalAlias = frmSnapshot;
