@@ -176,10 +176,13 @@ export class Reconciler {
           message = `Failed to optimize React component tree for "${
             evaluatedRootNode.name
           }" due to an exception thrown during render phase`;
+        } else if (error instanceof FatalError) {
+          message = `Failed to optimize React component tree for "${
+            evaluatedRootNode.name
+          }" due to a fatal error during evaluation: ${error.message}`;
         } else {
-          message = `Failed to optimize React component tree for "${evaluatedRootNode.name}" due to evaluation error: ${
-            error.message
-          }`;
+          // if we don't know what the error is, then best to rethrow
+          throw error;
         }
         throw new ReconcilerRenderBailOut(message, evaluatedRootNode);
       }
