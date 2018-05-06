@@ -66,7 +66,7 @@ import {
   applyGetDerivedStateFromProps,
 } from "./components.js";
 import { ExpectedBailOut, NewComponentTreeBranch, SimpleClassBailOut, ReconcilerRenderBailOut } from "./errors.js";
-import { DeclarativeEnvironmentRecord, FunctionEnvironmentRecord, GlobalEnvironmentRecord } from "../environment.js";
+import { EnvironmentRecord, GlobalEnvironmentRecord, LexicalEnvironment, Reference } from "../environment.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
 import { createInternalReactElement } from "./elements.js";
@@ -102,47 +102,6 @@ export type ComponentTreeState = {
   status: "SIMPLE" | "COMPLEX",
   contextNodeReferences: Map<ObjectValue | AbstractObjectValue, number>,
 };
-
-function checkForSideEffects(effects: Effects, evaluatedNode: ReactEvaluatedNode): void {
-  let { modifiedBindings, result } = effects;
-  for (let [binding] of modifiedBindings) {
-    let env = binding.environment;
-    let name = binding.name;
-
-    if (env instanceof DeclarativeEnvironmentRecord) {
-      let bindings = env.bindings;
-      // ensure that this binding mutated was one that was side-effectful
-      // i.e. the binding exists from a parent scope, rather than this scope
-      if (bindings[name] === undefined || !(env instanceof FunctionEnvironmentRecord)) {
-        throw new ReconcilerRenderBailOut(
-          `Failed to optimize React component tree for "${
-            evaluatedNode.name
-          }" due to side-effects from mutating the binding "${name}"`,
-          evaluatedNode
-        );
-      }
-    } else if (env instanceof GlobalEnvironmentRecord) {
-      throw new ReconcilerRenderBailOut(
-        `Failed to optimize React component tree for "${
-          evaluatedNode.name
-        }" due to side-effects from mutating a global binding "${name}"`,
-        evaluatedNode
-      );
-    }
-  }
-  if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
-    if (result.alternate instanceof ThrowCompletion || result.consequent instanceof ThrowCompletion) {
-      throw new ReconcilerRenderBailOut(
-        `Failed to optimize React component tree for "${
-          evaluatedNode.name
-        }" due to an exception thrown during render phase`,
-        evaluatedNode
-      );
-    }
-    checkForSideEffects(result.alternateEffects, evaluatedNode);
-    checkForSideEffects(result.consequentEffects, evaluatedNode);
-  }
-}
 
 export class Reconciler {
   constructor(
@@ -238,7 +197,7 @@ export class Reconciler {
         )
       )
     );
-    checkForSideEffects(effects, evaluatedRootNode);
+    this._checkForSideEffects(componentType, effects, evaluatedRootNode);
     this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
     return effects;
   }
@@ -334,7 +293,7 @@ export class Reconciler {
         )
       )
     );
-    checkForSideEffects(effects, evaluatedNode);
+    this._checkForSideEffects(func, effects, evaluatedNode);
     this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);
     return effects;
   }
@@ -1508,6 +1467,86 @@ export class Reconciler {
           }
         }
       }
+    }
+  }
+
+  _checkForSideEffects(
+    func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
+    effects: Effects,
+    evaluatedNode: ReactEvaluatedNode
+  ): void {
+    let { modifiedBindings, modifiedProperties, result } = effects;
+    let env = func.$Environment;
+    let sideEffectfulEnvs = new Set();
+
+    // this function goes through a given environment
+    // and recursively finds parents or other env records
+    // and puts them into the side-effectful envs set
+    const findEnvs = _env => {
+      if (_env) {
+        sideEffectfulEnvs.add(_env);
+        if (_env instanceof GlobalEnvironmentRecord) {
+          findEnvs(_env.$DeclarativeRecord);
+        }
+        if (_env instanceof LexicalEnvironment) {
+          findEnvs(_env.environmentRecord);
+          findEnvs(_env.parent);
+        }
+      }
+    };
+
+    findEnvs(this.realm.$GlobalEnv);
+    findEnvs(env);
+
+    for (let [binding] of modifiedBindings) {
+      let bindingEnv = binding.environment;
+      let name = binding.name;
+
+      if (sideEffectfulEnvs.has(bindingEnv)) {
+        throw new ReconcilerRenderBailOut(
+          `Failed to optimize React component tree for "${
+            evaluatedNode.name
+          }" due to side-effects from mutating the binding "${name}"`,
+          evaluatedNode
+        );
+      }
+    }
+
+    for (let [propertyBinding] of modifiedProperties) {
+      if (typeof propertyBinding.key !== "string") {
+        let obj = propertyBinding.object;
+        let name = obj.__originalName;
+
+        if (name) {
+          let refOrValue = env.evaluate(t.identifier(name), false);
+
+          if (refOrValue instanceof Reference) {
+            let base = refOrValue.base;
+
+            if (base instanceof EnvironmentRecord && sideEffectfulEnvs.has(base)) {
+              throw new ReconcilerRenderBailOut(
+                `Failed to optimize React component tree for "${
+                  evaluatedNode.name
+                }" due to side-effects from mutating the object "${name}"`,
+                evaluatedNode
+              );
+            }
+          }
+        }
+      }
+    }
+
+    if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
+      if (result.alternate instanceof ThrowCompletion || result.consequent instanceof ThrowCompletion) {
+        throw new ReconcilerRenderBailOut(
+          `Failed to optimize React component tree for "${
+            evaluatedNode.name
+          }" due to an exception thrown during render phase`,
+          evaluatedNode
+        );
+      }
+      this._checkForSideEffects(func, result.alternateEffects, evaluatedNode);
+      this._checkForSideEffects(func, result.consequentEffects, evaluatedNode);
     }
   }
 }
