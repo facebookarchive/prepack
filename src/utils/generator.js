@@ -95,6 +95,8 @@ export type GeneratorBuildNodeFunction = (
 type ArgsAndBuildNode = [Array<Value>, (Array<BabelNodeExpression>) => BabelNodeStatement];
 
 export class GeneratorEntry {
+  isTerminal: boolean;
+
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     invariant(false, "GeneratorEntry is an abstract base class");
   }
@@ -111,11 +113,13 @@ type TemporalBuildNodeEntryArgs = {
   buildNode?: GeneratorBuildNodeFunction,
   dependencies?: Array<Generator>,
   isPure?: boolean,
+  isTerminal?: boolean,
 };
 
 class TemporalBuildNodeEntry extends GeneratorEntry {
   constructor(args: TemporalBuildNodeEntryArgs) {
     super();
+    this.isTerminal = !!args.isTerminal;
     Object.assign(this, args);
   }
 
@@ -176,6 +180,7 @@ type ModifiedPropertyEntryArgs = {|
 class ModifiedPropertyEntry extends GeneratorEntry {
   constructor(args: ModifiedPropertyEntryArgs) {
     super();
+    this.isTerminal = false;
     Object.assign(this, args);
   }
 
@@ -210,6 +215,7 @@ type ModifiedBindingEntryArgs = {|
 class ModifiedBindingEntry extends GeneratorEntry {
   constructor(args: ModifiedBindingEntryArgs) {
     super();
+    this.isTerminal = false;
     Object.assign(this, args);
   }
 
@@ -254,6 +260,7 @@ class ModifiedBindingEntry extends GeneratorEntry {
 class ReturnValueEntry extends GeneratorEntry {
   constructor(generator: Generator, returnValue: Value) {
     super();
+    this.isTerminal = true;
     this.returnValue = returnValue.promoteEmptyToUndefined();
     this.containingGenerator = generator;
   }
@@ -292,6 +299,9 @@ class PossiblyNormalReturnEntry extends GeneratorEntry {
     let alternateEffects =
       completion.alternate instanceof AbruptCompletion ? completion.alternateEffects : empty_effects;
     this.alternateGenerator = Generator.fromEffects(alternateEffects, realm, "AlternateEffects");
+
+    invariant(this.consequentGenerator.isTerminal() === this.alternateGenerator.isTerminal());
+    this.isTerminal = this.consequentGenerator.isTerminal();
   }
 
   completion: PossiblyNormalCompletion;
@@ -331,6 +341,9 @@ class JoinedAbruptCompletionsEntry extends GeneratorEntry {
 
     this.consequentGenerator = Generator.fromEffects(completion.consequentEffects, realm, "ConsequentEffects");
     this.alternateGenerator = Generator.fromEffects(completion.alternateEffects, realm, "AlternateEffects");
+
+    invariant(this.consequentGenerator.isTerminal() === this.alternateGenerator.isTerminal());
+    this.isTerminal = this.consequentGenerator.isTerminal();
   }
 
   completion: JoinedAbruptCompletions;
@@ -451,6 +464,10 @@ export class Generator {
     );
   }
 
+  isTerminal(): boolean {
+    return this._entries.length > 0 && this._entries[this._entries.length - 1].isTerminal;
+  }
+
   emitPropertyModification(propertyBinding: PropertyBinding) {
     invariant(this.effectsToApply !== undefined);
     let desc = propertyBinding.descriptor;
@@ -475,6 +492,7 @@ export class Generator {
         }
       }
     }
+    invariant(!this.isTerminal());
     this._entries.push(
       new ModifiedPropertyEntry({
         propertyBinding,
@@ -486,6 +504,7 @@ export class Generator {
 
   emitBindingModification(modifiedBinding: Binding) {
     invariant(this.effectsToApply !== undefined);
+    invariant(!this.isTerminal());
     this._entries.push(
       new ModifiedBindingEntry({
         modifiedBinding,
@@ -496,14 +515,17 @@ export class Generator {
   }
 
   emitReturnValue(result: Value) {
+    invariant(!this.isTerminal());
     this._entries.push(new ReturnValueEntry(this, result));
   }
 
   emitPossiblyNormalReturn(result: PossiblyNormalCompletion, realm: Realm) {
+    invariant(!this.isTerminal());
     this._entries.push(new PossiblyNormalReturnEntry(this, result, realm));
   }
 
   emitJoinedAbruptCompletions(result: JoinedAbruptCompletions, realm: Realm) {
+    invariant(!this.isTerminal());
     this._entries.push(new JoinedAbruptCompletionsEntry(this, result, realm));
   }
 
@@ -738,7 +760,11 @@ export class Generator {
 
   emitThrow(value: Value) {
     this._issueThrowCompilerDiagnostic(value);
-    this.emitStatement([value], ([argument]) => t.throwStatement(argument));
+    this._addEntry({
+      isTerminal: true,
+      args: [value],
+      buildNode: ([argument]) => t.throwStatement(argument),
+    });
   }
 
   // Checks the full set of possible concrete values as well as typeof
@@ -1095,6 +1121,7 @@ export class Generator {
   // PITFALL Warning: adding a new kind of TemporalBuildNodeEntry that is not the result of a join or composition
   // will break this purgeEntriesWithGeneratorDepencies.
   _addEntry(entry: TemporalBuildNodeEntryArgs) {
+    invariant(!this.isTerminal());
     this._entries.push(new TemporalBuildNodeEntry(entry));
   }
 
@@ -1124,9 +1151,11 @@ export class Generator {
 
     if (other.empty()) return;
     if (other.effectsToApply === undefined) {
+      invariant(!this.isTerminal());
       this._entries.push(...other._entries);
     } else {
       this._addEntry({
+        isTerminal: other.isTerminal(),
         args: [],
         buildNode: function(args, context, valuesToProcess) {
           let statements = context.serializeGenerator(other, valuesToProcess);
@@ -1148,7 +1177,9 @@ export class Generator {
 
   composeGenerators(generator1: Generator, generator2: Generator): void {
     invariant(generator1 !== this && generator2 !== this && generator1 !== generator2);
+    invariant(!generator1.isTerminal());
     this._addEntry({
+      isTerminal: generator2.isTerminal(),
       args: [],
       buildNode: function([], context, valuesToProcess) {
         let statements1 = generator1.empty() ? [] : context.serializeGenerator(generator1, valuesToProcess);
@@ -1163,7 +1194,9 @@ export class Generator {
 
   joinGenerators(joinCondition: AbstractValue, generator1: Generator, generator2: Generator): void {
     invariant(generator1 !== this && generator2 !== this && generator1 !== generator2);
+    invariant(generator1.isTerminal() === generator2.isTerminal());
     this._addEntry({
+      isTerminal: generator1.isTerminal(),
       args: [joinCondition],
       buildNode: function([cond], context, valuesToProcess) {
         let block1 = generator1.empty() ? null : serializeBody(generator1, context, valuesToProcess);
