@@ -41,6 +41,7 @@ import { getOrDefault } from "./utils.js";
 import type { DeclarativeEnvironmentRecord } from "../environment.js";
 import type { Referentializer } from "./Referentializer.js";
 import { Generator } from "../utils/generator.js";
+import { GeneratorDAG } from "./GeneratorDAG.js";
 
 const LAZY_OBJECTS_SERIALIZER_BODY_TYPE = "LazyObjectInitializer";
 
@@ -72,7 +73,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
     react: ReactSerializerState,
     referentializer: Referentializer,
-    generatorParents: Map<Generator, Generator | FunctionValue | "GLOBAL">,
+    generatorDAG: GeneratorDAG,
     conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>,
     additionalGeneratorRoots: Map<Generator, Set<ObjectValue>>
   ) {
@@ -93,7 +94,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
       declarativeEnvironmentRecordsBindings,
       react,
       referentializer,
-      generatorParents,
+      generatorDAG,
       conditionalFeasibility,
       additionalGeneratorRoots
     );

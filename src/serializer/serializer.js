@@ -221,7 +221,7 @@ export class Serializer {
               residualHeapVisitor.declarativeEnvironmentRecordsBindings,
               this.react,
               referentializer,
-              residualHeapVisitor.generatorParents,
+              residualHeapVisitor.generatorDAG,
               residualHeapVisitor.conditionalFeasibility,
               residualHeapVisitor.additionalGeneratorRoots
             ).serialize();
@@ -252,7 +252,7 @@ export class Serializer {
             residualHeapVisitor.declarativeEnvironmentRecordsBindings,
             this.react,
             referentializer,
-            residualHeapVisitor.generatorParents,
+            residualHeapVisitor.generatorDAG,
             residualHeapVisitor.conditionalFeasibility,
             residualHeapVisitor.additionalGeneratorRoots
           ).serialize()
