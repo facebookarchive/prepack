@@ -294,8 +294,8 @@ class ReturnValueEntry extends GeneratorEntry {
   }
 }
 
-class PossiblyNormalReturnEntry extends GeneratorEntry {
-  constructor(generator: Generator, completion: PossiblyNormalCompletion, realm: Realm) {
+class IfThenElseEntry extends GeneratorEntry {
+  constructor(generator: Generator, completion: PossiblyNormalCompletion | JoinedAbruptCompletions, realm: Realm) {
     super();
     this.completion = completion;
     this.containingGenerator = generator;
@@ -305,50 +305,7 @@ class PossiblyNormalReturnEntry extends GeneratorEntry {
     this.alternateGenerator = Generator.fromEffects(completion.alternateEffects, realm, "AlternateEffects");
   }
 
-  completion: PossiblyNormalCompletion;
-  containingGenerator: Generator;
-
-  condition: Value;
-  consequentGenerator: Generator;
-  alternateGenerator: Generator;
-
-  visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
-    invariant(
-      containingGenerator === this.containingGenerator,
-      "This entry requires effects to be applied and may not be moved"
-    );
-    this.condition = context.visitEquivalentValue(this.condition);
-    context.visitGenerator(this.consequentGenerator, containingGenerator);
-    context.visitGenerator(this.alternateGenerator, containingGenerator);
-    return true;
-  }
-
-  serialize(context: SerializationContext) {
-    let condition = context.serializeValue(this.condition);
-    let valuesToProcess = new Set();
-    let consequentBody = context.serializeGenerator(this.consequentGenerator, valuesToProcess);
-    let alternateBody = context.serializeGenerator(this.alternateGenerator, valuesToProcess);
-    context.emit(t.ifStatement(condition, t.blockStatement(consequentBody), t.blockStatement(alternateBody)));
-    context.processValues(valuesToProcess);
-  }
-
-  getDependencies() {
-    return [this.consequentGenerator, this.alternateGenerator];
-  }
-}
-
-class JoinedAbruptCompletionsEntry extends GeneratorEntry {
-  constructor(generator: Generator, completion: JoinedAbruptCompletions, realm: Realm) {
-    super();
-    this.completion = completion;
-    this.containingGenerator = generator;
-    this.condition = completion.joinCondition;
-
-    this.consequentGenerator = Generator.fromEffects(completion.consequentEffects, realm, "ConsequentEffects");
-    this.alternateGenerator = Generator.fromEffects(completion.alternateEffects, realm, "AlternateEffects");
-  }
-
-  completion: JoinedAbruptCompletions;
+  completion: PossiblyNormalCompletion | JoinedAbruptCompletions;
   containingGenerator: Generator;
 
   condition: Value;
@@ -516,11 +473,11 @@ export class Generator {
   }
 
   emitPossiblyNormalReturn(result: PossiblyNormalCompletion, realm: Realm) {
-    this._entries.push(new PossiblyNormalReturnEntry(this, result, realm));
+    this._entries.push(new IfThenElseEntry(this, result, realm));
   }
 
   emitJoinedAbruptCompletions(result: JoinedAbruptCompletions, realm: Realm) {
-    this._entries.push(new JoinedAbruptCompletionsEntry(this, result, realm));
+    this._entries.push(new IfThenElseEntry(this, result, realm));
   }
 
   getName(): string {
