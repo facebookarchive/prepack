@@ -632,8 +632,7 @@ export class Generator {
       if (branch instanceof JoinedAbruptCompletions || branch instanceof PossiblyNormalCompletion) {
         result.emitConditionalThrow(branch.joinCondition, branch.consequent, branch.alternate);
       } else if (branch instanceof ThrowCompletion) {
-        this._issueThrowCompilerDiagnostic(branch.value);
-        result.emitStatement([branch.value], ([arg]) => t.throwStatement(arg));
+        result.emitThrow(branch.value);
       } else {
         const value = branch instanceof ReturnCompletion ? branch.value : branch;
         invariant(value instanceof Value);
