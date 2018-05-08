@@ -398,12 +398,10 @@ export class Generator {
       output.emitReturnValue(result);
     } else if (result instanceof ReturnCompletion) {
       output.emitReturnValue(result.value);
-    } else if (result instanceof PossiblyNormalCompletion) {
-      output.emitPossiblyNormalReturn(result, realm);
+    } else if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
+      output.emitIfThenElse(result, realm);
     } else if (result instanceof ThrowCompletion) {
       output.emitThrow(result.value);
-    } else if (result instanceof JoinedAbruptCompletions) {
-      output.emitJoinedAbruptCompletions(result, realm);
     } else {
       invariant(false);
     }
@@ -472,11 +470,7 @@ export class Generator {
     this._entries.push(new ReturnValueEntry(this, result));
   }
 
-  emitPossiblyNormalReturn(result: PossiblyNormalCompletion, realm: Realm) {
-    this._entries.push(new IfThenElseEntry(this, result, realm));
-  }
-
-  emitJoinedAbruptCompletions(result: JoinedAbruptCompletions, realm: Realm) {
+  emitIfThenElse(result: PossiblyNormalCompletion | JoinedAbruptCompletions, realm: Realm) {
     this._entries.push(new IfThenElseEntry(this, result, realm));
   }
 
@@ -634,8 +628,7 @@ export class Generator {
       } else if (branch instanceof ThrowCompletion) {
         result.emitThrow(branch.value);
       } else {
-        const value = branch instanceof ReturnCompletion ? branch.value : branch;
-        invariant(value instanceof Value);
+        invariant(branch instanceof ReturnCompletion || branch instanceof Value);
       }
       return result;
     };
