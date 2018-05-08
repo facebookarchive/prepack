@@ -45,7 +45,7 @@ import {
   getComponentName,
   convertConfigObjectToReactComponentTreeConfig,
 } from "../react/utils.js";
-import { ReconcilerRenderBailOut } from "../react/errors.js";
+import { ReconcilerFatalError } from "../react/errors.js";
 import * as t from "babel-types";
 
 type AdditionalFunctionEntry = {
@@ -188,7 +188,7 @@ export class Functions {
       environmentRecordIdAfterGlobalCode
     );
     if (additionalFunctionEffects === null) {
-      throw new ReconcilerRenderBailOut(
+      throw new ReconcilerFatalError(
         `Failed to optimize React component tree for "${evaluatedNode.name}" due to an unsupported completion`,
         evaluatedNode
       );

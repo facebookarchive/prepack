@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { Realm, type Effects } from "../realm.js";
+import { Realm, type Effects, type SideEffectType } from "../realm.js";
 import {
   AbstractObjectValue,
   AbstractValue,
@@ -24,6 +24,7 @@ import {
   StringValue,
   Value,
   UndefinedValue,
+  SymbolValue,
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState, type ReactEvaluatedNode } from "../serializer/types.js";
 import {
@@ -33,6 +34,7 @@ import {
   forEachArrayValue,
   getComponentName,
   getComponentTypeFromRootValue,
+  getLocationFromValue,
   getProperty,
   getReactSymbol,
   getValueFromFunctionCall,
@@ -49,13 +51,7 @@ import invariant from "../invariant.js";
 import { FatalError, CompilerDiagnostic } from "../errors.js";
 import { BranchState, type BranchStatusEnum } from "./branching.js";
 import * as t from "babel-types";
-import {
-  AbruptCompletion,
-  Completion,
-  JoinedAbruptCompletions,
-  PossiblyNormalCompletion,
-  ThrowCompletion,
-} from "../completions.js";
+import { Completion } from "../completions.js";
 import {
   getInitialProps,
   getInitialContext,
@@ -65,11 +61,17 @@ import {
   createClassInstanceForFirstRenderOnly,
   applyGetDerivedStateFromProps,
 } from "./components.js";
-import { ExpectedBailOut, NewComponentTreeBranch, SimpleClassBailOut, ReconcilerRenderBailOut } from "./errors.js";
-import { EnvironmentRecord, GlobalEnvironmentRecord, LexicalEnvironment, Reference } from "../environment.js";
+import {
+  ExpectedBailOut,
+  NewComponentTreeBranch,
+  ReconcilerFatalError,
+  SimpleClassBailOut,
+  UnsupportedSideEffect,
+} from "./errors.js";
 import { Logger } from "../utils/logger.js";
-import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
+import type { ClassComponentMetadata, PropertyBinding, ReactComponentTreeConfig, ReactHint } from "../types.js";
 import { createInternalReactElement } from "./elements.js";
+import type { Binding } from "../environment.js";
 
 type ComponentResolutionStrategy =
   | "NORMAL"
@@ -163,47 +165,27 @@ export class Reconciler {
         this.statistics.optimizedTrees++;
         return result;
       } catch (error) {
-        if (error.name === "Invariant Violation") {
-          throw error;
-        }
-
-        let message;
-        if (error instanceof ExpectedBailOut) {
-          message = `Failed to optimize React component tree for "${
-            evaluatedRootNode.name
-          }" due to an expected bail-out: ${error.message}`;
-        } else if (error instanceof AbruptCompletion) {
-          message = `Failed to optimize React component tree for "${
-            evaluatedRootNode.name
-          }" due to an exception thrown during render phase`;
-        } else if (error instanceof FatalError) {
-          message = `Failed to optimize React component tree for "${
-            evaluatedRootNode.name
-          }" due to a fatal error during evaluation: ${error.message}`;
-        } else {
-          // if we don't know what the error is, then best to rethrow
-          throw error;
-        }
-        throw new ReconcilerRenderBailOut(message, evaluatedRootNode);
+        invariant(!(error instanceof Completion), "React root render caught a Completion instead of an expected error");
+        this._handleComponentTreeRootFailure(error, evaluatedRootNode);
+        // flow belives we can get here, when it should never be possible
+        invariant(false, "renderReactComponentTree error not handled correctly");
       }
     };
 
     let effects = this.realm.wrapInGlobalEnv(() =>
-      this.realm.evaluatePure(() =>
-        // TODO: (sebmarkbage): You could use the return value of this to detect if there are any mutations on objects other
-        // than newly created ones. Then log those to the error logger. That'll help us track violations in
-        // components. :)
-        this.realm.evaluateForEffects(
-          renderComponentTree,
-          /*state*/ null,
-          `react component: ${getComponentName(this.realm, componentType)}`
-        )
+      this.realm.evaluatePure(
+        () =>
+          // TODO: (sebmarkbage): You could use the return value of this to detect if there are any mutations on objects other
+          // than newly created ones. Then log those to the error logger. That'll help us track violations in
+          // components. :)
+          this.realm.evaluateForEffects(
+            renderComponentTree,
+            /*state*/ null,
+            `react component: ${getComponentName(this.realm, componentType)}`
+          ),
+        this._handleReportedSideEffect
       )
     );
-    this.realm.withEffectsAppliedInGlobalEnv(() => {
-      this._checkForSideEffects(componentType, effects, evaluatedRootNode);
-      return this.realm.intrinsics.undefined;
-    }, effects);
     this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
     return effects;
   }
@@ -280,15 +262,10 @@ export class Reconciler {
         this.statistics.optimizedNestedClosures++;
         return result;
       } catch (error) {
-        if (error.name === "Invariant Violation") {
-          throw error;
-        }
-        throw new ReconcilerRenderBailOut(
-          `Failed to optimize React component tree for "${evaluatedNode.name}" due to evaluation error: ${
-            error.message
-          }`,
-          evaluatedNode
-        );
+        invariant(!(error instanceof Completion), "React root render caught a Completion instead of an expected error");
+        this._handleComponentTreeRootFailure(error, evaluatedNode);
+        // flow belives we can get here, when it should never be possible
+        invariant(false, "renderNestedOptimizedClosure error not handled correctly");
       }
     };
 
@@ -299,7 +276,6 @@ export class Reconciler {
         )
       )
     );
-    this._checkForSideEffects(func, effects, evaluatedNode);
     this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);
     return effects;
   }
@@ -1276,8 +1252,36 @@ export class Reconciler {
       }
       return result;
     } catch (error) {
+      invariant(!(error instanceof Completion), "React root render caught a Completion instead of an expected error");
       return this._resolveComponentResolutionFailure(error, reactElement, evaluatedNode, branchStatus, branchState);
     }
+  }
+
+  _handleComponentTreeRootFailure(error: Error, evaluatedRootNode: ReactEvaluatedNode): void {
+    if (error.name === "Invariant Violation") {
+      throw error;
+    } else if (error instanceof ReconcilerFatalError) {
+      throw error;
+    } else if (error instanceof UnsupportedSideEffect) {
+      throw new ReconcilerFatalError(
+        `Failed to render React component root "${evaluatedRootNode.name}" due to ${error.message}`,
+        evaluatedRootNode
+      );
+    }
+    let message;
+    if (error instanceof ExpectedBailOut) {
+      message = `Failed to optimize React component tree for "${evaluatedRootNode.name}" due to an expected bail-out: ${
+        error.message
+      }`;
+    } else if (error instanceof FatalError) {
+      message = `Failed to optimize React component tree for "${
+        evaluatedRootNode.name
+      }" due to a fatal error during evaluation: ${error.message}`;
+    } else {
+      // if we don't know what the error is, then best to rethrow
+      throw error;
+    }
+    throw new ReconcilerFatalError(message, evaluatedRootNode);
   }
 
   _resolveComponentResolutionFailure(
@@ -1289,6 +1293,13 @@ export class Reconciler {
   ): Value {
     if (error.name === "Invariant Violation") {
       throw error;
+    } else if (error instanceof ReconcilerFatalError) {
+      throw error;
+    } else if (error instanceof UnsupportedSideEffect) {
+      throw new ReconcilerFatalError(
+        `Failed to render React component "${evaluatedNode.name}" due to ${error.message}`,
+        evaluatedNode
+      );
     }
     let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
@@ -1476,93 +1487,25 @@ export class Reconciler {
     }
   }
 
-  _checkForSideEffects(
-    func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
-    effects: Effects,
-    evaluatedNode: ReactEvaluatedNode
+  _handleReportedSideEffect(
+    sideEffectType: SideEffectType,
+    binding: void | Binding | PropertyBinding,
+    value: void | Value
   ): void {
-    let { modifiedBindings, modifiedProperties, result } = effects;
-    let env = func.$Environment;
-    let sideEffectfulEnvs = new Set();
+    let location = getLocationFromValue(value);
 
-    // this function goes through a given environment
-    // and recursively finds parents or other env records
-    // and puts them into the side-effectful envs set
-    const findEnvs = _env => {
-      if (_env) {
-        sideEffectfulEnvs.add(_env);
-        if (_env instanceof GlobalEnvironmentRecord) {
-          findEnvs(_env.$DeclarativeRecord);
-        }
-        if (_env instanceof LexicalEnvironment) {
-          findEnvs(_env.environmentRecord);
-          findEnvs(_env.parent);
-        }
+    if (sideEffectType === "MODIFIED_BINDING") {
+      let name = binding ? `"${((binding: any): Binding).name}"` : "unknown";
+      throw new UnsupportedSideEffect(`side-effects from mutating the binding ${name}${location}`);
+    } else if (sideEffectType === "MODIFIED_PROPERTY") {
+      let name = "";
+      let key = ((binding: any): PropertyBinding).key;
+      if (typeof key === "string") {
+        name = `"${key}"`;
       }
-    };
-
-    const getLocationFromValue = value => {
-      // if we can't get a value, then it's likely that the source file was not given
-      // (this happens in React tests) so instead don't print any location
-      return value && value.expressionLocation
-        ? ` at location: ${value.expressionLocation.start.line}:${value.expressionLocation.start.column} ` +
-            `- ${value.expressionLocation.end.line}:${value.expressionLocation.end.line}`
-        : "";
-    };
-
-    findEnvs(this.realm.$GlobalEnv);
-    findEnvs(env);
-
-    for (let [binding] of modifiedBindings) {
-      let bindingEnv = binding.environment;
-      let name = binding.name;
-
-      if (sideEffectfulEnvs.has(bindingEnv)) {
-        let location = getLocationFromValue(binding.value);
-        throw new ReconcilerRenderBailOut(
-          `Failed to optimize React component tree for "${
-            evaluatedNode.name
-          }" due to side-effects from mutating the binding "${name}"${location}`,
-          evaluatedNode
-        );
-      }
-    }
-
-    for (let [propertyBinding] of modifiedProperties) {
-      if (typeof propertyBinding.key !== "string") {
-        let obj = propertyBinding.object;
-        let name = obj.__originalName;
-
-        if (name) {
-          let refOrValue = env.evaluate(t.identifier(name), false);
-
-          if (refOrValue instanceof Reference) {
-            let base = refOrValue.base;
-
-            if (base instanceof EnvironmentRecord && sideEffectfulEnvs.has(base)) {
-              throw new ReconcilerRenderBailOut(
-                `Failed to optimize React component tree for "${
-                  evaluatedNode.name
-                }" due to side-effects from mutating the object "${name}"`,
-                evaluatedNode
-              );
-            }
-          }
-        }
-      }
-    }
-
-    if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
-      if (result.alternate instanceof ThrowCompletion || result.consequent instanceof ThrowCompletion) {
-        throw new ReconcilerRenderBailOut(
-          `Failed to optimize React component tree for "${
-            evaluatedNode.name
-          }" due to an exception thrown during render phase`,
-          evaluatedNode
-        );
-      }
-      this._checkForSideEffects(func, result.alternateEffects, evaluatedNode);
-      this._checkForSideEffects(func, result.consequentEffects, evaluatedNode);
+      throw new UnsupportedSideEffect(`side-effects from mutating the object ${name}${location}`);
+    } else if (sideEffectType === "EXCEPTION_THROWN") {
+      throw new UnsupportedSideEffect(`side-effects from throwing exception${location}`);
     }
   }
 }

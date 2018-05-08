@@ -192,7 +192,7 @@ function printReactEvaluationGraph(evaluatedRootNode, depth) {
     let line;
     if (status === "inlined") {
       line = `${chalk.gray(`-`)} ${chalk.green(name)} ${chalk.gray(`(${status + message})`)}`;
-    } else if (status === "unknown_type" || status === "bail-out") {
+    } else if (status === "unknown_type" || status === "bail-out" || status === "fatal") {
       line = `${chalk.gray(`-`)} ${chalk.red(name)} ${chalk.gray(`(${status + message})`)}`;
     } else {
       line = `${chalk.gray(`-`)} ${chalk.yellow(name)} ${chalk.gray(`(${status + message})`)}`;
@@ -247,6 +247,11 @@ readComponentsList()
   })
   .catch(e => {
     console.log(`\n${chalk.inverse(`=== Compilation Failed ===`)}\n`);
-    console.error(e.nativeStack || e.stack);
+    if (e.__isReconcilerFatalError) {
+      console.error(e.message + "\n");
+      printReactEvaluationGraph(e.evaluatedNode, 0);
+    } else {
+      console.error(e.nativeStack || e.stack);
+    }
     process.exit(1);
   });

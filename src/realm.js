@@ -68,6 +68,8 @@ export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 
 export type CreatedObjects = Set<ObjectValue>;
 
+export type SideEffectType = "MODIFIED_BINDING" | "MODIFIED_PROPERTY" | "EXCEPTION_THROWN";
+
 let effects_uid = 0;
 
 export class Effects {
@@ -315,6 +317,9 @@ export class Realm {
   createdObjects: void | CreatedObjects;
   createdObjectsTrackedForLeaks: void | CreatedObjects;
   reportObjectGetOwnProperties: void | (ObjectValue => void);
+  reportSideEffectCallback:
+    | void
+    | ((sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, value: void | Value) => void);
   reportPropertyAccess: void | (PropertyBinding => void);
   savedCompletion: void | PossiblyNormalCompletion;
 
@@ -623,17 +628,27 @@ export class Realm {
   // that it created itself. This promises that any abstract functions inside of it
   // also won't have effects on any objects or bindings that weren't created in this
   // call.
-  evaluatePure<T>(f: () => T) {
+  evaluatePure<T>(
+    f: () => T,
+    reportSideEffectFunc?: (
+      sideEffectType: SideEffectType,
+      binding: void | Binding | PropertyBinding,
+      value: void | Value
+    ) => void
+  ) {
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
+    let saved_reportSideEffectCallback = this.reportSideEffectCallback;
     // Track all objects (including function closures) created during
     // this call. This will be used to make the assumption that every
     // *other* object is unchanged (pure). These objects are marked
     // as leaked if they're passed to abstract functions.
     this.createdObjectsTrackedForLeaks = new Set();
+    this.reportSideEffectCallback = reportSideEffectFunc;
     try {
       return f();
     } finally {
       this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
+      this.reportSideEffectCallback = saved_reportSideEffectCallback;
     }
   }
 
@@ -1293,16 +1308,27 @@ export class Realm {
 
   // Record the current value of binding in this.modifiedBindings unless
   // there is already an entry for binding.
-  recordModifiedBinding(binding: Binding): Binding {
+  recordModifiedBinding(binding: Binding, value?: Value): Binding {
     if (binding.environment.isReadOnly) {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to modify a binding in read-only realm");
     }
-    if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding))
+    if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding)) {
+      if (value !== undefined && this.isInPureScope() && this.reportSideEffectCallback !== undefined) {
+        let env = binding.environment;
+
+        if (
+          !(env instanceof FunctionEnvironmentRecord) ||
+          (env instanceof FunctionEnvironmentRecord && env.$FunctionObject !== this.getRunningContext().function)
+        ) {
+          this.reportSideEffectCallback("MODIFIED_BINDING", binding, value);
+        }
+      }
       this.modifiedBindings.set(binding, {
         hasLeaked: binding.hasLeaked,
         value: binding.value,
       });
+    }
     return binding;
   }
 
@@ -1322,6 +1348,15 @@ export class Realm {
   // there is already an entry for binding.
   recordModifiedProperty(binding: void | PropertyBinding): void {
     if (binding === undefined) return;
+    if (
+      this.isInPureScope() &&
+      this.reportSideEffectCallback !== undefined &&
+      this.createdObjectsTrackedForLeaks !== undefined &&
+      binding.object instanceof ObjectValue &&
+      !this.createdObjectsTrackedForLeaks.has(binding.object)
+    ) {
+      this.reportSideEffectCallback("MODIFIED_PROPERTY", binding, binding.object);
+    }
     if (this.isReadOnly && (this.getRunningContext().isReadOnly || !this.isNewObject(binding.object))) {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to modify a property in read-only realm");

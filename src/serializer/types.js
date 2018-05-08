@@ -155,7 +155,16 @@ export type ReactEvaluatedNode = {
   children: Array<ReactEvaluatedNode>,
   message: string,
   name: string,
-  status: "ROOT" | "NEW_TREE" | "INLINED" | "BAIL-OUT" | "UNKNOWN_TYPE" | "RENDER_PROPS" | "FORWARD_REF" | "NORMAL",
+  status:
+    | "ROOT"
+    | "NEW_TREE"
+    | "INLINED"
+    | "BAIL-OUT"
+    | "FATAL"
+    | "UNKNOWN_TYPE"
+    | "RENDER_PROPS"
+    | "FORWARD_REF"
+    | "NORMAL",
 };
 
 export class ReactStatistics {

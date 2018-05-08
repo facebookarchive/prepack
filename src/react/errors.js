@@ -24,6 +24,12 @@ export class ExpectedBailOut extends Error {}
 // and an alternative complex class component route being used
 export class SimpleClassBailOut extends Error {}
 
+// When the reconciler detectes a side-effect in pure evaluation, it throws one
+// of these errors. This will fall straight through the the wrapping React
+// component render try/catch, which will then throw an appropiate
+// ReconcilerFatalError along with information on the React component stack
+export class UnsupportedSideEffect extends Error {}
+
 // NewComponentTreeBranch only occur when a complex class is found in a
 // component tree and the reconciler can no longer fold the component of that branch
 export class NewComponentTreeBranch extends Error {
@@ -37,16 +43,15 @@ export class NewComponentTreeBranch extends Error {
 // Used when an entire React component tree has failed to optimize
 // this means there is a programming bug in the application that is
 // being Prepacked
-export class ReconcilerRenderBailOut extends FatalError {
+export class ReconcilerFatalError extends FatalError {
   constructor(message: string, evaluatedNode: ReactEvaluatedNode) {
     super(message);
-    evaluatedNode.status = "BAIL-OUT";
+    evaluatedNode.status = "FATAL";
     evaluatedNode.message = message;
-    evaluatedNode.children = []; // clear children as they are dead
     this.evaluatedNode = evaluatedNode;
     // used for assertions in tests
-    this.__isReconcilerRenderBailOut = true;
+    this.__isReconcilerFatalError = true;
   }
   evaluatedNode: ReactEvaluatedNode;
-  __isReconcilerRenderBailOut: boolean;
+  __isReconcilerFatalError: boolean;
 }

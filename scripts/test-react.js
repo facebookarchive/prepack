@@ -84,17 +84,17 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     stripFlow: true,
   };
 
-  let checkForReconcilerRenderBailOut = false;
+  let checkForReconcilerFatalError = false;
 
-  async function expectReconcilerRenderBailOut(func) {
-    checkForReconcilerRenderBailOut = true;
+  async function expectReconcilerFatalError(func) {
+    checkForReconcilerFatalError = true;
     try {
       await func();
     } catch (e) {
-      expect(e.__isReconcilerRenderBailOut).toBe(true);
+      expect(e.__isReconcilerFatalError).toBe(true);
       expect(e.message).toMatchSnapshot();
     } finally {
-      checkForReconcilerRenderBailOut = false;
+      checkForReconcilerFatalError = false;
     }
   }
 
@@ -105,7 +105,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     try {
       serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
     } catch (e) {
-      if (e.__isReconcilerRenderBailOut && checkForReconcilerRenderBailOut) {
+      if (e.__isReconcilerFatalError && checkForReconcilerFatalError) {
         throw e;
       }
       errorsCaptured.forEach(error => {
@@ -287,25 +287,25 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("Simple 8", async () => {
-        await expectReconcilerRenderBailOut(async () => {
+        await expectReconcilerFatalError(async () => {
           await runTest(directory, "simple-8.js");
         });
       });
 
       it("Simple 9", async () => {
-        await expectReconcilerRenderBailOut(async () => {
+        await expectReconcilerFatalError(async () => {
           await runTest(directory, "simple-9.js");
         });
       });
 
       it("Simple 10", async () => {
-        await expectReconcilerRenderBailOut(async () => {
+        await expectReconcilerFatalError(async () => {
           await runTest(directory, "simple-10.js");
         });
       });
 
       it("Simple 11", async () => {
-        await expectReconcilerRenderBailOut(async () => {
+        await expectReconcilerFatalError(async () => {
           await runTest(directory, "simple-11.js");
         });
       });
@@ -758,7 +758,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("fb-www 12", async () => {
-        await expectReconcilerRenderBailOut(async () => {
+        await expectReconcilerFatalError(async () => {
           await runTest(directory, "fb12.js");
         });
       });
@@ -772,7 +772,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("fb-www 15", async () => {
-        await runTest(directory, "fb15.js");
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "fb15.js");
+        });
       });
 
       // Skip for now, there's more issues to fix before we can enable
@@ -789,7 +791,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("fb-www 19", async () => {
-        await expectReconcilerRenderBailOut(async () => {
+        await expectReconcilerFatalError(async () => {
           await runTest(directory, "fb19.js");
         });
       });

@@ -694,7 +694,16 @@ export function getProperty(
 }
 
 export function createReactEvaluatedNode(
-  status: "ROOT" | "NEW_TREE" | "INLINED" | "BAIL-OUT" | "UNKNOWN_TYPE" | "RENDER_PROPS" | "FORWARD_REF" | "NORMAL",
+  status:
+    | "ROOT"
+    | "NEW_TREE"
+    | "INLINED"
+    | "BAIL-OUT"
+    | "FATAL"
+    | "UNKNOWN_TYPE"
+    | "RENDER_PROPS"
+    | "FORWARD_REF"
+    | "NORMAL",
   name: string
 ): ReactEvaluatedNode {
   return {
@@ -837,4 +846,13 @@ export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElemen
     }
   }
   return reactElement;
+}
+
+export function getLocationFromValue(value: void | Value) {
+  // if we can't get a value, then it's likely that the source file was not given
+  // (this happens in React tests) so instead don't print any location
+  return value && value.expressionLocation
+    ? ` at location: ${value.expressionLocation.start.line}:${value.expressionLocation.start.column} ` +
+        `- ${value.expressionLocation.end.line}:${value.expressionLocation.end.line}`
+    : "";
 }
