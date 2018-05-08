@@ -92,8 +92,6 @@ export type GeneratorBuildNodeFunction = (
   Set<AbstractValue>
 ) => BabelNodeStatement;
 
-type ArgsAndBuildNode = [Array<Value>, (Array<BabelNodeExpression>) => BabelNodeStatement];
-
 export class GeneratorEntry {
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     invariant(false, "GeneratorEntry is an abstract base class");
@@ -672,71 +670,25 @@ export class Generator {
   }
 
   emitConditionalThrow(condition: AbstractValue, trueBranch: Completion | Value, falseBranch: Completion | Value) {
-    let [args, buildfunc] = this._deconstruct(
-      condition,
-      trueBranch,
-      falseBranch,
-      completion => {
-        this._issueThrowCompilerDiagnostic(completion.value);
-        let serializationArgs = [completion.value];
-        let func = ([arg]) => t.throwStatement(arg);
-        return [serializationArgs, func];
-      },
-      () => [[], () => t.emptyStatement()]
-    );
-    this.emitStatement(args, buildfunc);
-  }
-
-  _deconstruct(
-    condition: AbstractValue,
-    trueBranch: Completion | Value,
-    falseBranch: Completion | Value,
-    onThrowCompletion: ThrowCompletion => ArgsAndBuildNode,
-    onNormalValue: Value => ArgsAndBuildNode
-  ) {
-    let targs;
-    let tfunc;
-    let fargs;
-    let ffunc;
-    if (trueBranch instanceof JoinedAbruptCompletions || trueBranch instanceof PossiblyNormalCompletion) {
-      [targs, tfunc] = this._deconstruct(
-        trueBranch.joinCondition,
-        trueBranch.consequent,
-        trueBranch.alternate,
-        onThrowCompletion,
-        onNormalValue
-      );
-    } else if (trueBranch instanceof ThrowCompletion) {
-      [targs, tfunc] = onThrowCompletion(trueBranch);
-    } else {
-      let value = trueBranch instanceof ReturnCompletion ? trueBranch.value : trueBranch;
-      invariant(value instanceof Value);
-      [targs, tfunc] = onNormalValue(value);
-    }
-    if (falseBranch instanceof JoinedAbruptCompletions || falseBranch instanceof PossiblyNormalCompletion) {
-      [fargs, ffunc] = this._deconstruct(
-        falseBranch.joinCondition,
-        falseBranch.consequent,
-        falseBranch.alternate,
-        onThrowCompletion,
-        onNormalValue
-      );
-    } else if (falseBranch instanceof ThrowCompletion) {
-      [fargs, ffunc] = onThrowCompletion(falseBranch);
-    } else {
-      let value = falseBranch instanceof ReturnCompletion ? falseBranch.value : falseBranch;
-      invariant(value instanceof Value);
-      [fargs, ffunc] = onNormalValue(value);
-    }
-    let args = [condition].concat(targs).concat(fargs);
-    let func = nodes => {
-      return t.ifStatement(
-        nodes[0],
-        tfunc(nodes.slice().splice(1, targs.length)),
-        ffunc(nodes.slice().splice(targs.length + 1, fargs.length))
-      );
+    const branchToGenerator = (name: string, branch: Completion | Value): Generator => {
+      const result = new Generator(this.realm, name);
+      if (branch instanceof JoinedAbruptCompletions || branch instanceof PossiblyNormalCompletion) {
+        result.emitConditionalThrow(branch.joinCondition, branch.consequent, branch.alternate);
+      } else if (branch instanceof ThrowCompletion) {
+        this._issueThrowCompilerDiagnostic(branch.value);
+        result.emitStatement([branch.value], ([arg]) => t.throwStatement(arg));
+      } else {
+        const value = branch instanceof ReturnCompletion ? branch.value : branch;
+        invariant(value instanceof Value);
+      }
+      return result;
     };
-    return [args, func];
+
+    this.joinGenerators(
+      condition,
+      branchToGenerator("TrueBranch", trueBranch),
+      branchToGenerator("FalseBranch", falseBranch)
+    );
   }
 
   _issueThrowCompilerDiagnostic(value: Value) {
