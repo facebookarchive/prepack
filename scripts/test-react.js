@@ -15,6 +15,7 @@ let { prepackSources } = require("../lib/prepack-node.js");
 let babel = require("babel-core");
 let React = require("react");
 let ReactDOM = require("react-dom");
+let ReactDOMServer = require("react-dom/server");
 let PropTypes = require("prop-types");
 let ReactRelay = require("react-relay");
 let ReactTestRenderer = require("react-test-renderer");
@@ -125,6 +126,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         case "react-dom":
         case "ReactDOM":
           return ReactDOM;
+        case "react-dom/server":
+        case "ReactDOMServer":
+          return ReactDOMServer;
         case "PropTypes":
         case "prop-types":
           return PropTypes;
@@ -778,6 +782,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("fb-www 22", async () => {
         await runTest(directory, "fb22.js");
+      });
+
+      it("fb-www 23", async () => {
+        await runTest(directory, "fb23.js");
       });
 
       it("repl example", async () => {
