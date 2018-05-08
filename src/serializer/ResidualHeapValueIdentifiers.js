@@ -58,6 +58,10 @@ export class ResidualHeapValueIdentifiers {
     this.refs.set(val, id);
   }
 
+  hasIdentifier(val: Value): boolean {
+    return this.refs.has(val);
+  }
+
   getIdentifier(val: Value): BabelNodeIdentifier {
     let id = this.refs.get(val);
     invariant(id !== undefined);
