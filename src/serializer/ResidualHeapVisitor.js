@@ -1179,7 +1179,7 @@ export class ResidualHeapVisitor {
     // Set Visitor state
     // Allows us to emit function declarations etc. inside of this additional
     // function instead of adding them at global scope
-    this.residualReactElementVisitor.withCleanEquivilanceSet(() => {
+    this.residualReactElementVisitor.withCleanEquivalenceSet(() => {
       let modifiedBindingInfo = new Map();
       let [result] = additionalEffects.effects.data;
 
