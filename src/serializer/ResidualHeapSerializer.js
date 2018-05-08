@@ -1904,6 +1904,62 @@ export class ResidualHeapSerializer {
     }
   }
 
+  _annotateGeneratorStatements(generator: Generator, statements: Array<BabelNodeStatement>) {
+    let comment = `generator "${generator.getName()}"`;
+    let parent = this.generatorParents.get(generator);
+    if (parent instanceof Generator) {
+      comment = `${comment} with parent "${parent.getName()}"`;
+    } else if (parent instanceof FunctionValue) {
+      comment = `${comment} with function parent`;
+    } else {
+      invariant(parent === "GLOBAL");
+      comment = `${comment} with global parent`;
+    }
+    let beginComments = [commentStatement("begin " + comment)];
+    let effects = generator.effectsToApply;
+    if (effects) {
+      let valueToString = value =>
+        this.residualHeapValueIdentifiers.hasIdentifier(value)
+          ? this.residualHeapValueIdentifiers.getIdentifier(value).name
+          : "?";
+      let keyToString = key => (typeof key === "string" ? key : key instanceof Value ? valueToString(key) : "?");
+
+      beginComments.push(
+        commentStatement(
+          `  has effects: ${effects.createdObjects.size} created objects, ${
+            effects.modifiedBindings.size
+          } modified bindings, ${effects.modifiedProperties.size} modified properties`
+        )
+      );
+      if (effects.createdObjects.size > 0)
+        beginComments.push(
+          commentStatement(
+            `    created objects: ${Array.from(effects.createdObjects)
+              .map(valueToString)
+              .join(", ")}`
+          )
+        );
+      if (effects.modifiedBindings.size > 0)
+        beginComments.push(
+          commentStatement(
+            `    modified bindings: ${Array.from(effects.modifiedBindings.keys())
+              .map(b => b.name)
+              .join(", ")}`
+          )
+        );
+      if (effects.modifiedProperties.size > 0)
+        beginComments.push(
+          commentStatement(
+            `    modified properties: ${Array.from(effects.modifiedProperties.keys())
+              .map(b => `${valueToString(b.object)}.${keyToString(b.key)}`)
+              .join(", ")}`
+          )
+        );
+    }
+    statements.unshift(...beginComments);
+    statements.push(commentStatement("end " + comment));
+  }
+
   _withGeneratorScope(
     type: "Generator" | "AdditionalFunction",
     generator: Generator,
@@ -1920,20 +1976,7 @@ export class ResidualHeapSerializer {
     invariant(this.activeGeneratorBodies.has(generator));
     this.activeGeneratorBodies.delete(generator);
     const statements = this.emitter.endEmitting(generator, oldBody, valuesToProcess, /*isChild*/ isChild).entries;
-    if (this._options.debugScopes) {
-      let comment = `generator "${generator.getName()}"${generator.effectsToApply ? " with effects" : ""}`;
-      let parent = this.generatorDAG.getParent(generator);
-      if (parent instanceof Generator) {
-        comment = `${comment} with parent "${parent.getName()}"`;
-      } else if (parent instanceof FunctionValue) {
-        comment = `${comment} with function parent`;
-      } else {
-        invariant(parent === "GLOBAL");
-        comment = `${comment} with global parent`;
-      }
-      statements.unshift(commentStatement("begin " + comment));
-      statements.push(commentStatement("end " + comment));
-    }
+    if (this._options.debugScopes) this._annotateGeneratorStatements(generator, statements);
     this.getStatistics().generators++;
     return statements;
   }
