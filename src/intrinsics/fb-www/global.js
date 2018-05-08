@@ -11,7 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { AbstractValue, NativeFunctionValue, StringValue, ObjectValue } from "../../values/index.js";
-import { createMockReact, createMockReactDOM } from "./react-mocks.js";
+import { createMockReact, createMockReactDOM, createMockReactDOMServer } from "./react-mocks.js";
 import { createMockReactRelay } from "./relay-mocks.js";
 import { createAbstract } from "../prepack/utils.js";
 import { createFbMocks } from "./fb-mocks.js";
@@ -61,6 +61,13 @@ export default function(realm: Realm): void {
           return reactDom;
         }
         return realm.fbLibraries.reactDom;
+      } else if (requireNameValValue === "react-dom/server" || requireNameValValue === "ReactDOMServer") {
+        if (realm.fbLibraries.reactDomServer === undefined) {
+          let reactDomServer = createMockReactDOMServer(realm, requireNameValValue);
+          realm.fbLibraries.reactDomServer = reactDomServer;
+          return reactDomServer;
+        }
+        return realm.fbLibraries.reactDomServer;
       } else if (requireNameValValue === "react-relay" || requireNameValValue === "RelayModern") {
         if (realm.fbLibraries.reactRelay === undefined) {
           let reactRelay = createMockReactRelay(realm, requireNameValValue);
