@@ -41,7 +41,7 @@ import { hashString, hashBinary, hashCall, hashTernary, hashUnary } from "../met
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 import { Join, Path } from "../singletons.js";
-import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { AbruptCompletion, JoinedAbruptCompletions, PossiblyNormalCompletion } from "../completions.js";
 
 import * as t from "babel-types";
 
@@ -989,6 +989,10 @@ export default class AbstractValue extends Value {
       new Effects(compl2, gen2, bindings2, properties2, createdObj2)
     );
     let completion = joinedEffects.result;
+    if (completion instanceof JoinedAbruptCompletions) {
+      // Note that the effects are tracked separately inside completion and will be applied later.
+      throw completion;
+    }
     if (completion instanceof PossiblyNormalCompletion) {
       // in this case one of the branches may complete abruptly, which means that
       // not all control flow branches join into one flow at this point.
@@ -996,8 +1000,6 @@ export default class AbstractValue extends Value {
       // all the branches come together into one.
       completion = realm.composeWithSavedCompletion(completion);
     }
-    // Note that the effects of (non joining) abrupt branches are not included
-    // in joinedEffects, but are tracked separately inside completion.
     realm.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
 
     // return or throw completion
