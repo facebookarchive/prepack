@@ -22,6 +22,7 @@ import {
   NumberValue,
   ObjectValue,
   StringValue,
+  SymbolValue,
   Value,
   UndefinedValue,
 } from "../values/index.js";
@@ -326,8 +327,15 @@ export class Reconciler {
     evaluatedNode: ReactEvaluatedNode,
     props?: ObjectValue | AbstractObjectValue | null = null,
     context?: ObjectValue | AbstractObjectValue | null = null
-  ) {
-    invariant(rootValue instanceof ECMAScriptSourceFunctionValue || rootValue instanceof AbstractValue);
+  ): void {
+    if (rootValue instanceof SymbolValue) {
+      return;
+    }
+    invariant(
+      rootValue instanceof ECMAScriptSourceFunctionValue ||
+        rootValue instanceof AbstractValue ||
+        rootValue instanceof SymbolValue
+    );
     this.componentTreeState.deadEnds++;
     let componentType = getComponentTypeFromRootValue(this.realm, rootValue);
     if (componentType !== null && !this.hasEvaluatedRootNode(componentType, evaluatedNode)) {

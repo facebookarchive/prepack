@@ -722,8 +722,12 @@ export function getComponentName(realm: Realm, componentType: Value): string {
     componentType instanceof ECMAScriptSourceFunctionValue ||
       componentType instanceof BoundFunctionValue ||
       componentType instanceof AbstractObjectValue ||
-      componentType instanceof AbstractValue
+      componentType instanceof AbstractValue ||
+      componentType instanceof SymbolValue
   );
+  if (componentType === getReactSymbol("react.fragment", realm)) {
+    return "React.Fragment";
+  }
   let boundText = componentType instanceof BoundFunctionValue ? "bound " : "";
 
   if (componentType.__originalName) {
