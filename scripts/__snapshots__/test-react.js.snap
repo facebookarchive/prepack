@@ -3370,6 +3370,8 @@ ReactStatistics {
 
 exports[`Test React with JSX input, JSX output fb-www mocks fb-www 15 1`] = `"Failed to render React component root \\"Inner\\" due to side-effects from mutating the binding \\"result\\""`;
 
+exports[`Test React with JSX input, JSX output fb-www mocks fb-www 16 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating the object "`;
+
 exports[`Test React with JSX input, JSX output fb-www mocks fb-www 17 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
@@ -3506,6 +3508,42 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, JSX output fb-www mocks fb-www 23 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "B",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "C",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -6938,6 +6976,8 @@ ReactStatistics {
 
 exports[`Test React with JSX input, create-element output fb-www mocks fb-www 15 1`] = `"Failed to render React component root \\"Inner\\" due to side-effects from mutating the binding \\"result\\""`;
 
+exports[`Test React with JSX input, create-element output fb-www mocks fb-www 16 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating the object "`;
+
 exports[`Test React with JSX input, create-element output fb-www mocks fb-www 17 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
@@ -7074,6 +7114,42 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output fb-www mocks fb-www 23 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "B",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "C",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -10471,6 +10547,8 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output fb-www mocks fb-www 15 1`] = `"Failed to render React component root \\"Inner\\" due to side-effects from mutating the binding \\"result\\""`;
 
+exports[`Test React with create-element input, JSX output fb-www mocks fb-www 16 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating the object "`;
+
 exports[`Test React with create-element input, JSX output fb-www mocks fb-www 17 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
@@ -10607,6 +10685,42 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, JSX output fb-www mocks fb-www 23 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "B",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "C",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -14004,6 +14118,8 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output fb-www mocks fb-www 15 1`] = `"Failed to render React component root \\"Inner\\" due to side-effects from mutating the binding \\"result\\""`;
 
+exports[`Test React with create-element input, create-element output fb-www mocks fb-www 16 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating the object "`;
+
 exports[`Test React with create-element input, create-element output fb-www mocks fb-www 17 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
@@ -14140,6 +14256,42 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output fb-www mocks fb-www 23 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "B",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "C",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }

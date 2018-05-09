@@ -1059,6 +1059,7 @@ export class ResidualHeapVisitor {
       visitModifiedObjectProperty: (binding: PropertyBinding) => {
         let fixpoint_rerun = () => {
           if (this.values.has(binding.object)) {
+            this.visitValue(binding.object);
             if (binding.key instanceof Value) this.visitValue(binding.key);
             this.visitObjectProperty(binding);
             return true;
@@ -1178,7 +1179,7 @@ export class ResidualHeapVisitor {
     // Set Visitor state
     // Allows us to emit function declarations etc. inside of this additional
     // function instead of adding them at global scope
-    this.residualReactElementVisitor.withCleanEquivilanceSet(() => {
+    this.residualReactElementVisitor.withCleanEquivalenceSet(() => {
       let modifiedBindingInfo = new Map();
       let [result] = additionalEffects.effects.data;
 

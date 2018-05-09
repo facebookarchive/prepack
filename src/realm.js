@@ -280,6 +280,7 @@ export class Realm {
       other: new Map(),
       react: undefined,
       reactDom: undefined,
+      reactDomServer: undefined,
       reactRelay: undefined,
     };
 
@@ -360,6 +361,7 @@ export class Realm {
     other: Map<string, AbstractValue>,
     react: void | ObjectValue,
     reactDom: void | ObjectValue,
+    reactDomServer: void | ObjectValue,
     reactRelay: void | ObjectValue,
   };
 

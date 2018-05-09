@@ -632,3 +632,32 @@ export function createMockReactDOM(realm: Realm, reactDomRequireName: string): O
   reactDomValue.makeFinal();
   return reactDomValue;
 }
+
+export function createMockReactDOMServer(realm: Realm, requireName: string): ObjectValue {
+  let reactDomServerValue = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+  reactDomServerValue.refuseSerialization = true;
+
+  updateIntrinsicNames(realm, reactDomServerValue, requireName);
+
+  const genericTemporalFunc = (funcVal, args) => {
+    let reactDomMethod = AbstractValue.createTemporalFromBuildFunction(
+      realm,
+      FunctionValue,
+      [funcVal, ...args],
+      ([renderNode, ..._args]) => {
+        return t.callExpression(renderNode, ((_args: any): Array<any>));
+      }
+    );
+    invariant(reactDomMethod instanceof AbstractObjectValue);
+    return reactDomMethod;
+  };
+
+  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToString", genericTemporalFunc);
+  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToStaticMarkup", genericTemporalFunc);
+  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToNodeStream", genericTemporalFunc);
+  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToStaticNodeStream", genericTemporalFunc);
+
+  reactDomServerValue.refuseSerialization = false;
+  reactDomServerValue.makeFinal();
+  return reactDomServerValue;
+}
