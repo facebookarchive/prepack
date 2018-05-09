@@ -165,7 +165,6 @@ export class Reconciler {
         this.statistics.optimizedTrees++;
         return result;
       } catch (error) {
-        invariant(!(error instanceof Completion), "React root render caught a Completion instead of an expected error");
         this._handleComponentTreeRootFailure(error, evaluatedRootNode);
         // flow belives we can get here, when it should never be possible
         invariant(false, "renderReactComponentTree error not handled correctly");
@@ -259,7 +258,6 @@ export class Reconciler {
         this.statistics.optimizedNestedClosures++;
         return result;
       } catch (error) {
-        invariant(!(error instanceof Completion), "React root render caught a Completion instead of an expected error");
         this._handleComponentTreeRootFailure(error, evaluatedNode);
         // flow belives we can get here, when it should never be possible
         invariant(false, "renderNestedOptimizedClosure error not handled correctly");
@@ -1252,12 +1250,11 @@ export class Reconciler {
       }
       return result;
     } catch (error) {
-      invariant(!(error instanceof Completion), "React root render caught a Completion instead of an expected error");
       return this._resolveComponentResolutionFailure(error, reactElement, evaluatedNode, branchStatus, branchState);
     }
   }
 
-  _handleComponentTreeRootFailure(error: Error, evaluatedRootNode: ReactEvaluatedNode): void {
+  _handleComponentTreeRootFailure(error: Error | Completion, evaluatedRootNode: ReactEvaluatedNode): void {
     if (error.name === "Invariant Violation") {
       throw error;
     } else if (error instanceof ReconcilerFatalError) {
@@ -1265,6 +1262,19 @@ export class Reconciler {
     } else if (error instanceof UnsupportedSideEffect) {
       throw new ReconcilerFatalError(
         `Failed to render React component root "${evaluatedRootNode.name}" due to ${error.message}`,
+        evaluatedRootNode
+      );
+    } else if (error instanceof Completion) {
+      let value = error.value;
+      invariant(value instanceof ObjectValue);
+      let message = getProperty(this.realm, value, "message");
+      let stack = getProperty(this.realm, value, "stack");
+      invariant(message instanceof StringValue);
+      invariant(stack instanceof StringValue);
+      throw new ReconcilerFatalError(
+        `Failed to render React component "${evaluatedRootNode.name}" due to a JS error: ${message.value}\n${
+          stack.value
+        }`,
         evaluatedRootNode
       );
     }
@@ -1298,6 +1308,17 @@ export class Reconciler {
     } else if (error instanceof UnsupportedSideEffect) {
       throw new ReconcilerFatalError(
         `Failed to render React component "${evaluatedNode.name}" due to ${error.message}`,
+        evaluatedNode
+      );
+    } else if (error instanceof Completion) {
+      let value = error.value;
+      invariant(value instanceof ObjectValue);
+      let message = getProperty(this.realm, value, "message");
+      let stack = getProperty(this.realm, value, "stack");
+      invariant(message instanceof StringValue);
+      invariant(stack instanceof StringValue);
+      throw new ReconcilerFatalError(
+        `Failed to render React component "${evaluatedNode.name}" due to a JS error: ${message.value}\n${stack.value}`,
         evaluatedNode
       );
     }

@@ -150,7 +150,7 @@ export default class ObjectValue extends ConcreteValue {
           // To check if we are still initializing, guard the call by looking at
           // whether this.$IsClassPrototype has been initialized as a proxy for
           // object initialization in general.
-          invariant(this.$IsClassPrototype === undefined || !this.isHavocedObject(), "cannot mutate a havoced object");
+          // invariant(this.$IsClassPrototype === undefined || !this.isHavocedObject(), "cannot mutate a havoced object");
           let binding = this[propBindingName];
           if (binding === undefined) {
             let desc = { writeable: true, value: undefined };
