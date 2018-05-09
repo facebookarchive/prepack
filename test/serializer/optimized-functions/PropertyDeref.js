@@ -1,5 +1,5 @@
 function fn(arg) {
-  return arg != null && arg.x && arg.y; // needs both conjunctions to repro. Happens because of scope promotion
+  return arg != null && arg.x && arg.y;
 };
 
 if (global.__optimize) __optimize(fn);
