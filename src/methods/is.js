@@ -156,7 +156,7 @@ export function IsPropertyKey(realm: Realm, arg: string | Value): boolean {
 
   if (arg instanceof AbstractValue) {
     let loc = realm.currentLocation;
-    let error = new CompilerDiagnostic("property key is neither string nor symbol", loc, "PP0036", "FatalError");
+    let error = new CompilerDiagnostic("cannot determine if abstract property key is string or symbol", loc, "PP0036", "FatalError");
     realm.handleError(error);
     throw new FatalError();
   }
