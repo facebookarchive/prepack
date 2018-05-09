@@ -68,7 +68,7 @@ export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 
 export type CreatedObjects = Set<ObjectValue>;
 
-export type SideEffectType = "MODIFIED_BINDING" | "MODIFIED_PROPERTY" | "EXCEPTION_THROWN";
+export type SideEffectType = "MODIFIED_BINDING" | "MODIFIED_PROPERTY" | "EXCEPTION_THROWN" | "MODIFIED_GLOBAL";
 
 let effects_uid = 0;
 
@@ -320,7 +320,7 @@ export class Realm {
   reportObjectGetOwnProperties: void | (ObjectValue => void);
   reportSideEffectCallback:
     | void
-    | ((sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, value: void | Value) => void);
+    | ((sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, expressionLocation: any) => void);
   reportPropertyAccess: void | (PropertyBinding => void);
   savedCompletion: void | PossiblyNormalCompletion;
 
@@ -1345,7 +1345,7 @@ export class Realm {
           !(env instanceof FunctionEnvironmentRecord) ||
           (env instanceof FunctionEnvironmentRecord && !isEnvSafe(env))
         ) {
-          this.reportSideEffectCallback("MODIFIED_BINDING", binding, value);
+          this.reportSideEffectCallback("MODIFIED_BINDING", binding, value.expressionLocation);
         }
       }
       this.modifiedBindings.set(binding, {
@@ -1379,7 +1379,11 @@ export class Realm {
       binding.object instanceof ObjectValue &&
       !this.createdObjectsTrackedForLeaks.has(binding.object)
     ) {
-      this.reportSideEffectCallback("MODIFIED_PROPERTY", binding, binding.object);
+      if (binding.object === this.$GlobalObject) {
+        this.reportSideEffectCallback("MODIFIED_GLOBAL", binding, binding.object.expressionLocation);
+      } else {
+        this.reportSideEffectCallback("MODIFIED_PROPERTY", binding, binding.object.expressionLocation);
+      }
     }
     if (this.isReadOnly && (this.getRunningContext().isReadOnly || !this.isNewObject(binding.object))) {
       // This only happens during speculative execution and is reported elsewhere

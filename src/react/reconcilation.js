@@ -1486,20 +1486,24 @@ export class Reconciler {
   _handleReportedSideEffect(
     sideEffectType: SideEffectType,
     binding: void | Binding | PropertyBinding,
-    value: void | Value
+    expressionLocation: any
   ): void {
-    let location = getLocationFromValue(value);
+    let location = getLocationFromValue(expressionLocation);
 
     if (sideEffectType === "MODIFIED_BINDING") {
       let name = binding ? `"${((binding: any): Binding).name}"` : "unknown";
       throw new UnsupportedSideEffect(`side-effects from mutating the binding ${name}${location}`);
-    } else if (sideEffectType === "MODIFIED_PROPERTY") {
+    } else if (sideEffectType === "MODIFIED_PROPERTY" || sideEffectType === "MODIFIED_GLOBAL") {
       let name = "";
       let key = ((binding: any): PropertyBinding).key;
       if (typeof key === "string") {
         name = `"${key}"`;
       }
-      throw new UnsupportedSideEffect(`side-effects from mutating the object ${name}${location}`);
+      if (sideEffectType === "MODIFIED_PROPERTY") {
+        throw new UnsupportedSideEffect(`side-effects from mutating a property ${name}${location}`);
+      } else {
+        throw new UnsupportedSideEffect(`side-effects from mutating the global object property ${name}${location}`);
+      }
     } else if (sideEffectType === "EXCEPTION_THROWN") {
       throw new UnsupportedSideEffect(`side-effects from throwing exception${location}`);
     }

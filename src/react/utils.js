@@ -848,11 +848,11 @@ export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElemen
   return reactElement;
 }
 
-export function getLocationFromValue(value: void | Value) {
+export function getLocationFromValue(expressionLocation: any) {
   // if we can't get a value, then it's likely that the source file was not given
   // (this happens in React tests) so instead don't print any location
-  return value && value.expressionLocation
-    ? ` at location: ${value.expressionLocation.start.line}:${value.expressionLocation.start.column} ` +
-        `- ${value.expressionLocation.end.line}:${value.expressionLocation.end.line}`
+  return expressionLocation
+    ? ` at location: ${expressionLocation.start.line}:${expressionLocation.start.column} ` +
+        `- ${expressionLocation.end.line}:${expressionLocation.end.line}`
     : "";
 }
