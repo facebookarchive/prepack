@@ -59,6 +59,8 @@ export type SerializationContext = {|
   serializeValue: Value => BabelNodeExpression,
   serializeBinding: Binding => BabelNodeIdentifier | BabelNodeMemberExpression,
   serializeGenerator: (Generator, Set<AbstractValue>) => Array<BabelNodeStatement>,
+  initGenerator: Generator => void,
+  finalizeGenerator: Generator => void,
   emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
   processValues: (Set<AbstractValue>) => void,
@@ -98,6 +100,10 @@ export class GeneratorEntry {
   }
 
   serialize(context: SerializationContext) {
+    invariant(false, "GeneratorEntry is an abstract base class");
+  }
+
+  getDependencies(): void | Array<Generator> {
     invariant(false, "GeneratorEntry is an abstract base class");
   }
 }
@@ -163,6 +169,10 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
       if (this.declared !== undefined) context.declare(this.declared);
     }
   }
+
+  getDependencies() {
+    return this.dependencies;
+  }
 }
 
 type ModifiedPropertyEntryArgs = {|
@@ -196,6 +206,10 @@ class ModifiedPropertyEntry extends GeneratorEntry {
     invariant(desc === this.newDescriptor);
     context.visitModifiedObjectProperty(this.propertyBinding);
     return true;
+  }
+
+  getDependencies() {
+    return undefined;
   }
 }
 
@@ -247,6 +261,10 @@ class ModifiedBindingEntry extends GeneratorEntry {
     this.newValue = newValue;
     return true;
   }
+
+  getDependencies() {
+    return undefined;
+  }
 }
 
 class ReturnValueEntry extends GeneratorEntry {
@@ -271,6 +289,10 @@ class ReturnValueEntry extends GeneratorEntry {
   serialize(context: SerializationContext) {
     let result = context.serializeValue(this.returnValue);
     context.emit(t.returnStatement(result));
+  }
+
+  getDependencies() {
+    return undefined;
   }
 }
 
@@ -311,6 +333,10 @@ class PossiblyNormalReturnEntry extends GeneratorEntry {
     context.emit(t.ifStatement(condition, t.blockStatement(consequentBody), t.blockStatement(alternateBody)));
     context.processValues(valuesToProcess);
   }
+
+  getDependencies() {
+    return [this.consequentGenerator, this.alternateGenerator];
+  }
 }
 
 class JoinedAbruptCompletionsEntry extends GeneratorEntry {
@@ -349,6 +375,10 @@ class JoinedAbruptCompletionsEntry extends GeneratorEntry {
     let alternateBody = context.serializeGenerator(this.alternateGenerator, valuesToProcess);
     context.emit(t.ifStatement(condition, t.blockStatement(consequentBody), t.blockStatement(alternateBody)));
     context.processValues(valuesToProcess);
+  }
+
+  getDependencies() {
+    return [this.consequentGenerator, this.alternateGenerator];
   }
 }
 
@@ -1070,7 +1100,9 @@ export class Generator {
 
   serialize(context: SerializationContext) {
     let serializeFn = () => {
+      context.initGenerator(this);
       for (let entry of this._entries) entry.serialize(context);
+      context.finalizeGenerator(this);
       return null;
     };
     if (this.effectsToApply) {
@@ -1080,6 +1112,17 @@ export class Generator {
     }
   }
 
+  getDependencies(): Array<Generator> {
+    let res = [];
+    for (let entry of this._entries) {
+      let dependencies = entry.getDependencies();
+      if (dependencies !== undefined) res.push(...dependencies);
+    }
+    return res;
+  }
+
+  // PITFALL Warning: adding a new kind of TemporalBuildNodeEntry that is not the result of a join or composition
+  // will break this purgeEntriesWithGeneratorDepencies.
   _addEntry(entry: TemporalBuildNodeEntryArgs) {
     this._entries.push(new TemporalBuildNodeEntry(entry));
   }
