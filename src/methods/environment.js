@@ -137,7 +137,7 @@ export class EnvironmentImplementation {
       if (base instanceof AbstractValue) {
         // Ensure that abstract values are coerced to objects. This might yield
         // an operation that might throw.
-        base = To.ToObject(realm, base);
+        base = To.ToObject(realm, base, realm.isInPureScope());
       }
       // a. If HasPrimitiveBase(V) is true, then
       if (this.HasPrimitiveBase(realm, V)) {

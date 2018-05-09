@@ -951,6 +951,10 @@ export class ResidualHeapVisitor {
 
   visitEquivalentValue<T: Value>(val: T): T {
     if (val instanceof AbstractValue) {
+      if (val.kind === "explicit conversion to object") {
+        this.preProcessValue(val);
+        return val;
+      }
       let equivalentValue = this.equivalenceSet.add(val);
       if (this.preProcessValue(equivalentValue)) this.visitAbstractValue(equivalentValue);
       this.postProcessValue(equivalentValue);
