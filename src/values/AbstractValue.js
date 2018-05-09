@@ -746,6 +746,7 @@ export default class AbstractValue extends Value {
     let types = new TypesDomain(resultType);
     let Constructor = Value.isTypeCompatibleWith(resultType, ObjectValue) ? AbstractObjectValue : AbstractValue;
     let [hash, args] = hashCall(resultType.name + (kind || ""), ...(operands || []));
+    if (resultType === ObjectValue) hash = ++realm.objectCount;
     let result = new Constructor(realm, types, ValuesDomain.topVal, hash, args);
     if (kind) result.kind = kind;
     result.expressionLocation = realm.currentLocation;
