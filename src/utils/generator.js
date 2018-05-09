@@ -19,6 +19,7 @@ import {
   type AbstractValueKind,
   BooleanValue,
   ConcreteValue,
+  ECMAScriptSourceFunctionValue,
   FunctionValue,
   NullValue,
   NumberValue,
@@ -89,7 +90,8 @@ export type DerivedExpressionBuildNodeFunction = (
 export type GeneratorBuildNodeFunction = (
   Array<BabelNodeExpression>,
   SerializationContext,
-  Set<AbstractValue>
+  Set<AbstractValue>,
+  StrictMode?: boolean
 ) => BabelNodeStatement;
 
 type ArgsAndBuildNode = [Array<Value>, (Array<BabelNodeExpression>) => BabelNodeStatement];
@@ -99,7 +101,7 @@ export class GeneratorEntry {
     invariant(false, "GeneratorEntry is an abstract base class");
   }
 
-  serialize(context: SerializationContext) {
+  serialize(context: SerializationContext, strictMode?: boolean) {
     invariant(false, "GeneratorEntry is an abstract base class");
   }
 }
@@ -139,12 +141,12 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
     }
   }
 
-  serialize(context: SerializationContext) {
+  serialize(context: SerializationContext, strictMode?: boolean = false) {
     if (!this.isPure || !this.declared || !context.canOmit(this.declared)) {
       let nodes = this.args.map((boundArg, i) => context.serializeValue(boundArg));
       if (this.buildNode) {
         let valuesToProcess = new Set();
-        let node = this.buildNode(nodes, context, valuesToProcess);
+        let node = this.buildNode(nodes, context, valuesToProcess, strictMode);
         if (node.type === "BlockStatement") {
           let block: BabelNodeBlockStatement = (node: any);
           let statements = block.body;
@@ -533,13 +535,13 @@ export class Generator {
 
   emitGlobalDeclaration(key: string, value: Value) {
     this.preludeGenerator.declaredGlobals.add(key);
-    if (!(value instanceof UndefinedValue)) this.emitGlobalAssignment(key, value, true);
+    if (!(value instanceof UndefinedValue)) this.emitGlobalAssignment(key, value);
   }
 
-  emitGlobalAssignment(key: string, value: Value, strictMode: boolean) {
+  emitGlobalAssignment(key: string, value: Value) {
     this._addEntry({
       args: [value],
-      buildNode: ([valueNode]) =>
+      buildNode: ([valueNode], context, valuesToProcess, strictMode) =>
         t.expressionStatement(
           t.assignmentExpression("=", this.preludeGenerator.globalReference(key, !strictMode), valueNode)
         ),
@@ -556,10 +558,10 @@ export class Generator {
     });
   }
 
-  emitGlobalDelete(key: string, strictMode: boolean) {
+  emitGlobalDelete(key: string) {
     this._addEntry({
       args: [],
-      buildNode: ([]) =>
+      buildNode: ([], context, valuesToProcess, strictMode) =>
         t.expressionStatement(t.unaryExpression("delete", this.preludeGenerator.globalReference(key, !strictMode))),
     });
   }
@@ -1082,7 +1084,22 @@ export class Generator {
 
   serialize(context: SerializationContext) {
     let serializeFn = () => {
-      for (let entry of this._entries) entry.serialize(context);
+      // Check if any entries contain function values
+      // that are strict. If we find a function that is
+      // strict, ensure we serialize all other entries
+      // with strict mode too
+      let useStrictMode = this._entries.some(entry => {
+        if (entry instanceof TemporalBuildNodeEntry) {
+          return entry.args.some(val => {
+            if (val instanceof ECMAScriptSourceFunctionValue) {
+              return val.$Strict;
+            }
+            return false;
+          });
+        }
+        return false;
+      });
+      for (let entry of this._entries) entry.serialize(context, useStrictMode);
       return null;
     };
     if (this.effectsToApply) {
