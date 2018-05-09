@@ -86,6 +86,10 @@ export default class ObjectValue extends ConcreteValue {
     this.properties = new Map();
     this.symbols = new Map();
     this.refuseSerialization = refuseSerialization;
+
+    // this.$IsClassPrototype should be the last thing that gets initialized,
+    // as other code checks whether this.$IsClassPrototype === undefined
+    // as a proxy for whether initialization is still ongoing.
     this.$IsClassPrototype = false;
   }
 
@@ -139,7 +143,13 @@ export default class ObjectValue extends ConcreteValue {
           return binding === undefined ? undefined : binding.descriptor.value;
         },
         set: function(v) {
-          // this.$IsClassPrototype === undefined is true while the object is being initialized
+          // Let's make sure that the object is not havoced.
+          // To that end, we'd like to call this.isHavocedObject().
+          // However, while the object is still being initialized,
+          // properties may be set, but this.isHavocedObject() may not be called yet.
+          // To check if we are still initializing, guard the call by looking at
+          // whether this.$IsClassPrototype has been initialized as a proxy for
+          // object initialization in general.
           invariant(this.$IsClassPrototype === undefined || !this.isHavocedObject(), "cannot mutate a havoced object");
           let binding = this[propBindingName];
           if (binding === undefined) {
