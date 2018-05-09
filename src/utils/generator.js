@@ -889,6 +889,7 @@ export class Generator {
     let value = buildValue(id.name);
     if (value instanceof ObjectValue) {
       value.intrinsicNameGenerated = true;
+      value._isScopedTemplate = true; // because this object doesn't exist ahead of time, and the visitor would otherwise declare it in the common scope
     }
     this._addEntry({
       isPure: optionalArgs ? optionalArgs.isPure : undefined,

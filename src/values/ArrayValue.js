@@ -13,7 +13,7 @@ import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor, ObjectKind } from "../types.js";
 import { AbstractValue, ObjectValue, StringValue, NumberValue, Value } from "./index.js";
 import { IsAccessorDescriptor, IsPropertyKey, IsArrayIndex } from "../methods/is.js";
-import { Properties, To } from "../singletons.js";
+import { Create, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeExpression } from "babel-types";
 
@@ -102,7 +102,11 @@ export default class ArrayValue extends ObjectValue {
   ): ArrayValue {
     invariant(realm.generator !== undefined);
     let value = realm.generator.deriveConcrete(
-      intrinsicName => new ArrayValue(realm, intrinsicName),
+      intrinsicName => {
+        let a = Create.ArrayCreate(realm, 0);
+        a.intrinsicName = intrinsicName;
+        return a;
+      },
       args,
       buildFunction,
       { isPure: true }
@@ -116,6 +120,13 @@ export default class ArrayValue extends ObjectValue {
       },
       object: value,
     };
+    // Make length abstract
+    Properties.ArraySetLength(realm, value, {
+      value: AbstractValue.createFromType(realm, NumberValue),
+      writable: true,
+      enumerable: false,
+      configurable: false,
+    });
     if (realm.react.enabled && reactArrayHint !== undefined) {
       realm.react.arrayHints.set(value, reactArrayHint);
     }
