@@ -37,6 +37,7 @@ export type SerializedBody = {
   declaredAbstractValues?: Map<AbstractValue, SerializedBody>,
   parentBody?: SerializedBody,
   nestingLevel?: number,
+  processing?: boolean,
 };
 
 export type AdditionalFunctionEffects = {

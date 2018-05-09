@@ -35,7 +35,6 @@ import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
 import {
-  AbruptCompletion,
   Completion,
   JoinedAbruptCompletions,
   ThrowCompletion,
@@ -55,12 +54,13 @@ import type {
 import { nullExpression } from "./internalizer.js";
 import { Utils, concretize } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";
-import { construct_empty_effects } from "../realm.js";
 
 export type SerializationContext = {|
   serializeValue: Value => BabelNodeExpression,
   serializeBinding: Binding => BabelNodeIdentifier | BabelNodeMemberExpression,
   serializeGenerator: (Generator, Set<AbstractValue>) => Array<BabelNodeStatement>,
+  initGenerator: Generator => void,
+  finalizeGenerator: Generator => void,
   emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
   processValues: (Set<AbstractValue>) => void,
@@ -100,6 +100,10 @@ export class GeneratorEntry {
   }
 
   serialize(context: SerializationContext) {
+    invariant(false, "GeneratorEntry is an abstract base class");
+  }
+
+  getDependencies(): void | Array<Generator> {
     invariant(false, "GeneratorEntry is an abstract base class");
   }
 }
@@ -165,6 +169,10 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
       if (this.declared !== undefined) context.declare(this.declared);
     }
   }
+
+  getDependencies() {
+    return this.dependencies;
+  }
 }
 
 type ModifiedPropertyEntryArgs = {|
@@ -198,6 +206,10 @@ class ModifiedPropertyEntry extends GeneratorEntry {
     invariant(desc === this.newDescriptor);
     context.visitModifiedObjectProperty(this.propertyBinding);
     return true;
+  }
+
+  getDependencies() {
+    return undefined;
   }
 }
 
@@ -249,6 +261,10 @@ class ModifiedBindingEntry extends GeneratorEntry {
     this.newValue = newValue;
     return true;
   }
+
+  getDependencies() {
+    return undefined;
+  }
 }
 
 class ReturnValueEntry extends GeneratorEntry {
@@ -274,6 +290,10 @@ class ReturnValueEntry extends GeneratorEntry {
     let result = context.serializeValue(this.returnValue);
     context.emit(t.returnStatement(result));
   }
+
+  getDependencies() {
+    return undefined;
+  }
 }
 
 class PossiblyNormalReturnEntry extends GeneratorEntry {
@@ -283,15 +303,8 @@ class PossiblyNormalReturnEntry extends GeneratorEntry {
     this.containingGenerator = generator;
     this.condition = completion.joinCondition;
 
-    // The effects of the normal path have already been applied to generator
-    let empty_effects = construct_empty_effects(realm);
-    empty_effects.result = completion.value;
-    let consequentEffects =
-      completion.consequent instanceof AbruptCompletion ? completion.consequentEffects : empty_effects;
-    this.consequentGenerator = Generator.fromEffects(consequentEffects, realm, "ConsequentEffects");
-    let alternateEffects =
-      completion.alternate instanceof AbruptCompletion ? completion.alternateEffects : empty_effects;
-    this.alternateGenerator = Generator.fromEffects(alternateEffects, realm, "AlternateEffects");
+    this.consequentGenerator = Generator.fromEffects(completion.consequentEffects, realm, "ConsequentEffects");
+    this.alternateGenerator = Generator.fromEffects(completion.alternateEffects, realm, "AlternateEffects");
   }
 
   completion: PossiblyNormalCompletion;
@@ -319,6 +332,10 @@ class PossiblyNormalReturnEntry extends GeneratorEntry {
     let alternateBody = context.serializeGenerator(this.alternateGenerator, valuesToProcess);
     context.emit(t.ifStatement(condition, t.blockStatement(consequentBody), t.blockStatement(alternateBody)));
     context.processValues(valuesToProcess);
+  }
+
+  getDependencies() {
+    return [this.consequentGenerator, this.alternateGenerator];
   }
 }
 
@@ -359,6 +376,10 @@ class JoinedAbruptCompletionsEntry extends GeneratorEntry {
     context.emit(t.ifStatement(condition, t.blockStatement(consequentBody), t.blockStatement(alternateBody)));
     context.processValues(valuesToProcess);
   }
+
+  getDependencies() {
+    return [this.consequentGenerator, this.alternateGenerator];
+  }
 }
 
 function serializeBody(
@@ -397,10 +418,7 @@ export class Generator {
     let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects.data;
 
     let output = new Generator(realm, name, effects);
-    // joined generators have joined entries that will get visited recursively (via result), so get rid of them here
-    if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions)
-      generator.purgeEntriesWithGeneratorDepencies();
-    output.appendGenerator(generator, "");
+    output.appendGenerator(generator, generator._name);
 
     for (let propertyBinding of modifiedProperties.keys()) {
       let object = propertyBinding.object;
@@ -1082,7 +1100,9 @@ export class Generator {
 
   serialize(context: SerializationContext) {
     let serializeFn = () => {
+      context.initGenerator(this);
       for (let entry of this._entries) entry.serialize(context);
+      context.finalizeGenerator(this);
       return null;
     };
     if (this.effectsToApply) {
@@ -1092,29 +1112,19 @@ export class Generator {
     }
   }
 
+  getDependencies(): Array<Generator> {
+    let res = [];
+    for (let entry of this._entries) {
+      let dependencies = entry.getDependencies();
+      if (dependencies !== undefined) res.push(...dependencies);
+    }
+    return res;
+  }
+
   // PITFALL Warning: adding a new kind of TemporalBuildNodeEntry that is not the result of a join or composition
   // will break this purgeEntriesWithGeneratorDepencies.
   _addEntry(entry: TemporalBuildNodeEntryArgs) {
     this._entries.push(new TemporalBuildNodeEntry(entry));
-  }
-
-  purgeEntriesWithGeneratorDepencies(): void {
-    let newEntries = [];
-    for (let oldEntry of this._entries) {
-      if (oldEntry instanceof PossiblyNormalReturnEntry || oldEntry instanceof JoinedAbruptCompletionsEntry) continue;
-      if (oldEntry instanceof TemporalBuildNodeEntry) {
-        if (oldEntry.dependencies !== undefined) {
-          // Take note: keep entries that are not the result of a join or composition
-          if (
-            oldEntry.dependencies.length !== 1 ||
-            !oldEntry.dependencies[0]._name.startsWith("evaluateForFixpointEffects")
-          )
-            continue;
-        }
-      }
-      newEntries.push(oldEntry);
-    }
-    this._entries = newEntries;
   }
 
   appendGenerator(other: Generator, leadingComment: string): void {

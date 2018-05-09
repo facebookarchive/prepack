@@ -10,10 +10,10 @@
 /* @flow */
 
 import type { BabelNodeSourceLocation } from "babel-types";
-import { Completion, JoinedAbruptCompletions, PossiblyNormalCompletion, ReturnCompletion } from "../completions.js";
+import { Completion, JoinedAbruptCompletions, PossiblyNormalCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
-import { construct_empty_effects, type Effects, type PropertyBindings, Realm } from "../realm.js";
+import { type Effects, type PropertyBindings, Realm } from "../realm.js";
 import type { Binding } from "../environment.js";
 import type { PropertyBinding, ReactComponentTreeConfig, FunctionBodyAstNode } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
@@ -137,38 +137,16 @@ export class Functions {
     parentAdditionalFunction: FunctionValue | void = undefined
   ): AdditionalFunctionEffects | null {
     let realm = this.realm;
-    let [result, generator] = effects.data;
+    let result = effects.result;
+    let generator = Generator.fromEffects(effects, this.realm, name, environmentRecordIdAfterGlobalCode);
     if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
-      // joined generators have joined entries that will get visited recursively via result, so get rid of them here
-      generator.purgeEntriesWithGeneratorDepencies();
-      // The completion is not the end of function execution, but a fork point for separate threads of control.
-      // The effects of all of these threads need to get joined up and rolled into the top level effects,
-      // so that applying the effects before serializing the body will fully initialize all variables and objects.
-      effects = realm.evaluateForEffects(
-        () => {
-          realm.applyEffects(effects, "_createAdditionalEffects/1", true);
-          if (result instanceof PossiblyNormalCompletion) {
-            result = Join.joinPossiblyNormalCompletionWithAbruptCompletion(
-              realm,
-              result,
-              new ReturnCompletion(result.value),
-              construct_empty_effects(realm)
-            ).result;
-          }
-          invariant(result instanceof JoinedAbruptCompletions);
-          let completionEffects = Join.joinNestedEffects(realm, result);
-          realm.applyEffects(completionEffects, "_createAdditionalEffects/2", false);
-          return result;
-        },
-        undefined,
-        "_createAdditionalEffects"
-      );
+      effects = Join.joinNestedEffects(realm, result);
     }
     let retValue: AdditionalFunctionEffects = {
       parentAdditionalFunction,
       effects,
       transforms: [],
-      generator: Generator.fromEffects(effects, this.realm, name, environmentRecordIdAfterGlobalCode),
+      generator,
       additionalRoots: new Set(),
     };
     return retValue;
