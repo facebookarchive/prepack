@@ -840,7 +840,7 @@ export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElemen
   setProperty(reactElement, "ref", realm.intrinsics.null);
   // when dealing with host nodes, we want to sanitize them futher
   if (typeValue instanceof StringValue) {
-    let propsValue = Get(realm, reactElement, "props");
+    let propsValue = getProperty(realm, reactElement, "props");
     if (propsValue instanceof ObjectValue) {
       // remove all values apart from string/number/boolean
       for (let [propName] of propsValue.properties) {
