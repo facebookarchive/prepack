@@ -384,7 +384,7 @@ let reactCode = `
       if (childrenLength === 1) {
         props.children = children;
       } else if (childrenLength > 1) {
-        var childArray = Array(childrenLength);
+        var childArray = new Array(childrenLength);
         for (var i = 0; i < childrenLength; i++) {
           childArray[i] = arguments[i + 2];
         }
