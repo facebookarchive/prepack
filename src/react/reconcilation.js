@@ -100,10 +100,10 @@ export type ComponentTreeState = {
 export class Reconciler {
   constructor(
     realm: Realm,
-    logger: Logger,
+    componentTreeConfig: ReactComponentTreeConfig,
     statistics: ReactStatistics,
-    reactSerializerState: ReactSerializerState,
-    componentTreeConfig: ReactComponentTreeConfig
+    logger?: Logger,
+    reactSerializerState?: ReactSerializerState
   ) {
     this.realm = realm;
     this.statistics = statistics;
@@ -119,8 +119,8 @@ export class Reconciler {
 
   realm: Realm;
   statistics: ReactStatistics;
-  reactSerializerState: ReactSerializerState;
-  logger: Logger;
+  reactSerializerState: void | ReactSerializerState;
+  logger: void | Logger;
   componentTreeState: ComponentTreeState;
   alreadyEvaluatedRootNodes: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>;
   alreadyEvaluatedNestedClosures: Set<FunctionValue>;
@@ -162,23 +162,29 @@ export class Reconciler {
           throw error;
         }
         if (error instanceof ExpectedBailOut) {
-          this.logger.logWarning(
-            componentType,
-            `__optimizeReactComponentTree() React component tree failed due expected bail-out - ${error.message}`
-          );
+          if (this.logger !== undefined) {
+            this.logger.logWarning(
+              componentType,
+              `__optimizeReactComponentTree() React component tree failed due expected bail-out - ${error.message}`
+            );
+          }
           evaluatedRootNode.message = error.message;
           evaluatedRootNode.status = "BAIL-OUT";
         } else if (error instanceof AbruptCompletion) {
-          this.logger.logWarning(
-            componentType,
-            `__optimizeReactComponentTree() React component tree failed due runtime runtime exception thrown`
-          );
+          if (this.logger !== undefined) {
+            this.logger.logWarning(
+              componentType,
+              `__optimizeReactComponentTree() React component tree failed due runtime runtime exception thrown`
+            );
+          }
           evaluatedRootNode.status = "ABRUPT_COMPLETION";
         } else {
-          this.logger.logWarning(
-            componentType,
-            `__optimizeReactComponentTree() React component tree failed due to - ${error.message}`
-          );
+          if (this.logger !== undefined) {
+            this.logger.logWarning(
+              componentType,
+              `__optimizeReactComponentTree() React component tree failed due to - ${error.message}`
+            );
+          }
           evaluatedRootNode.message = "evaluation failed on new component tree branch";
           evaluatedRootNode.status = "BAIL-OUT";
         }
@@ -921,9 +927,11 @@ export class Reconciler {
         invariant(false, "TODO");
       }
     );
-    let didBranch = newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
-    if (didBranch && branchState !== null) {
-      branchState.mergeBranchedLogic(newBranchState);
+    if (this.reactSerializerState !== undefined) {
+      let didBranch = newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
+      if (didBranch && branchState !== null) {
+        branchState.mergeBranchedLogic(newBranchState);
+      }
     }
     return value;
   }
@@ -1201,7 +1209,7 @@ export class Reconciler {
             null,
             evaluatedChildNode
           );
-          if (this.realm.react.verbose && evaluatedChildNode.status === "INLINED") {
+          if (this.logger !== undefined && this.realm.react.verbose && evaluatedChildNode.status === "INLINED") {
             this.logger.logInformation(`    ✔ ${evaluatedChildNode.name} (inlined)`);
           }
           evaluatedNode.children.push(evaluatedChildNode);

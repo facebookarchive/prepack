@@ -289,7 +289,7 @@ export class Functions {
     }
     for (let { value: componentRoot, config } of recordedReactRootValues) {
       invariant(config);
-      let reconciler = new Reconciler(this.realm, this.moduleTracer.modules.logger, statistics, react, config);
+      let reconciler = new Reconciler(this.realm, config, statistics, this.moduleTracer.modules.logger, react);
       let componentType = getComponentTypeFromRootValue(this.realm, componentRoot);
       if (componentType === null) {
         continue;
