@@ -1688,9 +1688,7 @@ export class ResidualHeapSerializer {
       return serializedArgs[abstractIndex];
     }
     if (val.kind === "explicit conversion to object") {
-      let ob = serializedArgs[0];
-      invariant(ob !== undefined);
-      return t.callExpression(this.preludeGenerator.memoizeReference("Object.assign"), [ob]);
+      return serializedArgs[0];
     } else if (val.kind === "template for prototype member expression") {
       let obj = this.serializeValue(val.args[0]);
       let prop = this.serializeValue(val.args[1]);
