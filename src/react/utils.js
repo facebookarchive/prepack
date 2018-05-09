@@ -718,16 +718,15 @@ export function createReactEvaluatedNode(
 }
 
 export function getComponentName(realm: Realm, componentType: Value): string {
+  if (componentType === getReactSymbol("react.fragment", realm)) {
+    return "React.Fragment";
+  }
   invariant(
     componentType instanceof ECMAScriptSourceFunctionValue ||
       componentType instanceof BoundFunctionValue ||
       componentType instanceof AbstractObjectValue ||
-      componentType instanceof AbstractValue ||
-      componentType instanceof SymbolValue
+      componentType instanceof AbstractValue
   );
-  if (componentType === getReactSymbol("react.fragment", realm)) {
-    return "React.Fragment";
-  }
   let boundText = componentType instanceof BoundFunctionValue ? "bound " : "";
 
   if (componentType.__originalName) {

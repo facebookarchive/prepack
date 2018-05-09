@@ -331,11 +331,7 @@ export class Reconciler {
     if (rootValue instanceof SymbolValue) {
       return;
     }
-    invariant(
-      rootValue instanceof ECMAScriptSourceFunctionValue ||
-        rootValue instanceof AbstractValue ||
-        rootValue instanceof SymbolValue
-    );
+    invariant(rootValue instanceof ECMAScriptSourceFunctionValue || rootValue instanceof AbstractValue);
     this.componentTreeState.deadEnds++;
     let componentType = getComponentTypeFromRootValue(this.realm, rootValue);
     if (componentType !== null && !this.hasEvaluatedRootNode(componentType, evaluatedNode)) {
