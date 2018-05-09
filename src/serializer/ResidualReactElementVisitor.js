@@ -78,7 +78,7 @@ export class ResidualReactElementVisitor {
     determineIfReactElementCanBeHoisted(this.realm, reactElement, this.residualHeapVisitor);
   }
 
-  withCleanEquivilanceSet(func: () => void) {
+  withCleanEquivalenceSet(func: () => void) {
     let oldReactElementEquivalenceSet = this.equivalenceSet;
     this.equivalenceSet = new ReactElementSet(this.realm, this.residualHeapVisitor.equivalenceSet);
     func();
