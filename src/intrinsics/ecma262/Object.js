@@ -23,6 +23,7 @@ import {
   StringValue,
   BooleanValue,
   SymbolValue,
+  Value,
 } from "../../values/index.js";
 import {
   IsExtensible,
@@ -255,7 +256,7 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.6
-  func.defineNativeMethod("getOwnPropertyDescriptor", 2, (context, [O, P]) => {
+  let getOwnPropertyDescriptor = func.defineNativeMethod("getOwnPropertyDescriptor", 2, (context, [O, P]) => {
     // 1. Let obj be ? ToObject(O).
     let obj = To.ToObject(realm, O);
 
@@ -265,8 +266,41 @@ export default function(realm: Realm): NativeFunctionValue {
     // 3. Let desc be ? obj.[[GetOwnProperty]](key).
     let desc = obj.$GetOwnProperty(key);
 
+    let getterFunc = desc && desc.get;
+    // If we are returning a descriptor with a NativeFunctionValue
+    // and it has no intrinsic name, then we create a temporal as this
+    // can only be done at runtime
+    if (
+      getterFunc instanceof NativeFunctionValue &&
+      getterFunc.intrinsicName === undefined &&
+      realm.useAbstractInterpretation
+    ) {
+      invariant(P instanceof Value);
+      // this will create a property descriptor at runtime
+      let result = AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        ObjectValue,
+        [getOwnPropertyDescriptor, obj, P],
+        ([methodNode, objNode, keyNode]) => t.callExpression(methodNode, [objNode, keyNode])
+      );
+      invariant(result instanceof AbstractObjectValue);
+      result.makeSimple();
+      let get = Get(realm, result, "get");
+      let set = Get(realm, result, "set");
+      invariant(get instanceof AbstractValue);
+      invariant(set instanceof AbstractValue);
+      desc = {
+        get,
+        set,
+        enumerable: false,
+        configurable: true,
+      };
+    }
+
     // 4. Return FromPropertyDescriptor(desc).
-    return Props.FromPropertyDescriptor(realm, desc);
+    let propDesc = Props.FromPropertyDescriptor(realm, desc);
+
+    return propDesc;
   });
 
   // ECMA262 19.1.2.7

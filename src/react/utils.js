@@ -187,7 +187,7 @@ export function addKeyToReactElement(
   reactElement: ObjectValue
 ): void {
   // we need to apply a key when we're branched
-  let currentKeyValue = Get(realm, reactElement, "key") || realm.intrinsics.null;
+  let currentKeyValue = getProperty(realm, reactElement, "key") || realm.intrinsics.null;
   let uniqueKey = getUniqueReactElementKey("", reactSerializerState.usedReactElementKeys);
   let newKeyValue = new StringValue(realm, uniqueKey);
   if (currentKeyValue !== realm.intrinsics.null) {
@@ -831,7 +831,7 @@ function isEventProp(name: string): boolean {
 }
 
 export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElement: ObjectValue): ObjectValue {
-  let typeValue = Get(realm, reactElement, "type");
+  let typeValue = getProperty(realm, reactElement, "type");
 
   // ensure ref is null, as we don't use that on first render
   setProperty(reactElement, "ref", realm.intrinsics.null);

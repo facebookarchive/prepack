@@ -1906,7 +1906,7 @@ export class ResidualHeapSerializer {
 
   _annotateGeneratorStatements(generator: Generator, statements: Array<BabelNodeStatement>) {
     let comment = `generator "${generator.getName()}"`;
-    let parent = this.generatorDAG.getParent.get(generator);
+    let parent = this.generatorDAG.getParent(generator);
     if (parent instanceof Generator) {
       comment = `${comment} with parent "${parent.getName()}"`;
     } else if (parent instanceof FunctionValue) {
