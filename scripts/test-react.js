@@ -318,6 +318,12 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-12.js");
       });
 
+      it("Simple 13", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "simple-13.js");
+        });
+      });
+
       it("Handle mapped arrays", async () => {
         await runTest(directory, "array-map.js");
       });

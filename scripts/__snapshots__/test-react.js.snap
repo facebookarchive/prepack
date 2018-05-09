@@ -2172,6 +2172,8 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output Functional component folding Simple 13 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
 exports[`Test React with JSX input, JSX output Functional component folding Simple children 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
@@ -5777,6 +5779,8 @@ ReactStatistics {
   "optimizedTrees": 1,
 }
 `;
+
+exports[`Test React with JSX input, create-element output Functional component folding Simple 13 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
 exports[`Test React with JSX input, create-element output Functional component folding Simple children 1`] = `
 ReactStatistics {
@@ -9384,6 +9388,8 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output Functional component folding Simple 13 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
 exports[`Test React with create-element input, JSX output Functional component folding Simple children 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
@@ -12954,6 +12960,8 @@ ReactStatistics {
   "optimizedTrees": 1,
 }
 `;
+
+exports[`Test React with create-element input, create-element output Functional component folding Simple 13 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
 exports[`Test React with create-element input, create-element output Functional component folding Simple children 1`] = `
 ReactStatistics {
