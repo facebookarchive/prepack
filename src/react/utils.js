@@ -718,7 +718,7 @@ export function createReactEvaluatedNode(
 }
 
 export function getComponentName(realm: Realm, componentType: Value): string {
-  if (componentType === getReactSymbol("react.fragment", realm)) {
+  if (componentType instanceof SymbolValue && componentType === getReactSymbol("react.fragment", realm)) {
     return "React.Fragment";
   }
   invariant(
