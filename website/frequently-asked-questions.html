@@ -48,7 +48,7 @@
           <h2>Why do I get a <code>ReferenceError</code> when trying to prepack my code?</h2>
 
           <p class="align-left">
-            Trying to prepack a seemlingly simple program such as <code>global.result = UnknownProperty;</code> will cause a
+            Trying to prepack a seemingly simple program such as <code>global.result = UnknownProperty;</code> will cause a
             <code>ReferenceError</code>. The reason is that Prepack actually runs the global code, not knowing anything else
             about the environment. And the semantics of JavaScript is that an unknown identifier that cannot be resolved
             causes a <code>ReferenceError</code>. You might want to invest into modeling your environment.
