@@ -1313,13 +1313,35 @@ export class Realm {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to modify a binding in read-only realm");
     }
+
+    const isEnvSafe = root => {
+      let context = this.getRunningContext();
+      let { lexicalEnvironment: env, function: func } = context;
+
+      invariant(func instanceof FunctionValue);
+      if (func === root.$FunctionObject) {
+        return true;
+      }
+      if (this.createdObjectsTrackedForLeaks !== undefined && !this.createdObjectsTrackedForLeaks.has(func)) {
+        return false;
+      }
+      env = env.parent;
+      while (env) {
+        if (env.environmentRecord === root) {
+          return true;
+        }
+        env = env.parent;
+      }
+      return false;
+    };
+
     if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding)) {
       if (value !== undefined && this.isInPureScope() && this.reportSideEffectCallback !== undefined) {
         let env = binding.environment;
 
         if (
           !(env instanceof FunctionEnvironmentRecord) ||
-          (env instanceof FunctionEnvironmentRecord && env.$FunctionObject !== this.getRunningContext().function)
+          (env instanceof FunctionEnvironmentRecord && !isEnvSafe(env))
         ) {
           this.reportSideEffectCallback("MODIFIED_BINDING", binding, value);
         }

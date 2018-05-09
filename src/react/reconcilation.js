@@ -24,7 +24,6 @@ import {
   StringValue,
   Value,
   UndefinedValue,
-  SymbolValue,
 } from "../values/index.js";
 import { ReactStatistics, type ReactSerializerState, type ReactEvaluatedNode } from "../serializer/types.js";
 import {
@@ -175,9 +174,6 @@ export class Reconciler {
     let effects = this.realm.wrapInGlobalEnv(() =>
       this.realm.evaluatePure(
         () =>
-          // TODO: (sebmarkbage): You could use the return value of this to detect if there are any mutations on objects other
-          // than newly created ones. Then log those to the error logger. That'll help us track violations in
-          // components. :)
           this.realm.evaluateForEffects(
             renderComponentTree,
             /*state*/ null,
@@ -1261,7 +1257,7 @@ export class Reconciler {
     if (error.name === "Invariant Violation") {
       throw error;
     } else if (error instanceof ReconcilerFatalError) {
-      throw error;
+      throw new ReconcilerFatalError(error.message, evaluatedRootNode);
     } else if (error instanceof UnsupportedSideEffect) {
       throw new ReconcilerFatalError(
         `Failed to render React component root "${evaluatedRootNode.name}" due to ${error.message}`,
