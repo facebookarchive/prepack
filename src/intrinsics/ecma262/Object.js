@@ -266,7 +266,7 @@ export default function(realm: Realm): NativeFunctionValue {
     // 3. Let desc be ? obj.[[GetOwnProperty]](key).
     let desc = obj.$GetOwnProperty(key);
 
-    let getterFunc = desc.get;
+    let getterFunc = desc && desc.get;
     // If we are returning a descriptor with a NativeFunctionValue
     // and it has no intrinsic name, then we create a temporal as this
     // can only be done at runtime
@@ -276,12 +276,25 @@ export default function(realm: Realm): NativeFunctionValue {
       realm.useAbstractInterpretation
     ) {
       invariant(P instanceof Value);
-      return AbstractValue.createTemporalFromBuildFunction(
+      // this will create a property descriptor at runtime
+      let result = AbstractValue.createTemporalFromBuildFunction(
         realm,
         ObjectValue,
         [getOwnPropertyDescriptor, obj, P],
         ([methodNode, objNode, keyNode]) => t.callExpression(methodNode, [objNode, keyNode])
       );
+      invariant(result instanceof AbstractObjectValue);
+      result.makeSimple();
+      let get = Get(realm, result, "get");
+      let set = Get(realm, result, "set");
+      invariant(get instanceof AbstractValue);
+      invariant(set instanceof AbstractValue);
+      desc = {
+        get,
+        set,
+        enumerable: false,
+        configurable: true,
+      };
     }
 
     // 4. Return FromPropertyDescriptor(desc).
