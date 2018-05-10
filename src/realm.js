@@ -1386,9 +1386,11 @@ export class Realm {
 
       if (createdObjectsTrackedForLeaks !== undefined && !createdObjectsTrackedForLeaks.has(object)) {
         if (binding.object === this.$GlobalObject) {
-          this.reportSideEffectCallback && this.reportSideEffectCallback("MODIFIED_GLOBAL", binding, object.expressionLocation);
+          this.reportSideEffectCallback &&
+            this.reportSideEffectCallback("MODIFIED_GLOBAL", binding, object.expressionLocation);
         } else {
-          this.reportSideEffectCallback && this.reportSideEffectCallback("MODIFIED_PROPERTY", binding, object.expressionLocation);
+          this.reportSideEffectCallback &&
+            this.reportSideEffectCallback("MODIFIED_PROPERTY", binding, object.expressionLocation);
         }
       }
     }
