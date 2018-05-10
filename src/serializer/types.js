@@ -37,6 +37,7 @@ export type SerializedBody = {
   declaredAbstractValues?: Map<AbstractValue, SerializedBody>,
   parentBody?: SerializedBody,
   nestingLevel?: number,
+  processing?: boolean,
 };
 
 export type AdditionalFunctionEffects = {
@@ -160,12 +161,10 @@ export type ReactEvaluatedNode = {
     | "NEW_TREE"
     | "INLINED"
     | "BAIL-OUT"
-    | "WRITE-CONFLICTS"
+    | "FATAL"
     | "UNKNOWN_TYPE"
     | "RENDER_PROPS"
     | "FORWARD_REF"
-    | "UNSUPPORTED_COMPLETION"
-    | "ABRUPT_COMPLETION"
     | "NORMAL",
 };
 

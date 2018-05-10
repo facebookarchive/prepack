@@ -263,7 +263,7 @@ export class Referentializer {
     return t.variableDeclaration("var", [
       t.variableDeclarator(
         this._getReferentializationState(referentializationScope).capturedScopesArray,
-        t.callExpression(t.identifier("Array"), [
+        t.newExpression(t.identifier("Array"), [
           t.numericLiteral(this._getReferentializationState(referentializationScope).capturedScopeInstanceIdx),
         ])
       ),

@@ -35,7 +35,6 @@ import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
 import {
-  AbruptCompletion,
   Completion,
   JoinedAbruptCompletions,
   ThrowCompletion,
@@ -55,12 +54,13 @@ import type {
 import { nullExpression } from "./internalizer.js";
 import { Utils, concretize } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";
-import { construct_empty_effects } from "../realm.js";
 
 export type SerializationContext = {|
   serializeValue: Value => BabelNodeExpression,
   serializeBinding: Binding => BabelNodeIdentifier | BabelNodeMemberExpression,
   serializeGenerator: (Generator, Set<AbstractValue>) => Array<BabelNodeStatement>,
+  initGenerator: Generator => void,
+  finalizeGenerator: Generator => void,
   emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
   processValues: (Set<AbstractValue>) => void,
@@ -92,14 +92,16 @@ export type GeneratorBuildNodeFunction = (
   Set<AbstractValue>
 ) => BabelNodeStatement;
 
-type ArgsAndBuildNode = [Array<Value>, (Array<BabelNodeExpression>) => BabelNodeStatement];
-
 export class GeneratorEntry {
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     invariant(false, "GeneratorEntry is an abstract base class");
   }
 
   serialize(context: SerializationContext) {
+    invariant(false, "GeneratorEntry is an abstract base class");
+  }
+
+  getDependencies(): void | Array<Generator> {
     invariant(false, "GeneratorEntry is an abstract base class");
   }
 }
@@ -165,6 +167,10 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
       if (this.declared !== undefined) context.declare(this.declared);
     }
   }
+
+  getDependencies() {
+    return this.dependencies;
+  }
 }
 
 type ModifiedPropertyEntryArgs = {|
@@ -198,6 +204,10 @@ class ModifiedPropertyEntry extends GeneratorEntry {
     invariant(desc === this.newDescriptor);
     context.visitModifiedObjectProperty(this.propertyBinding);
     return true;
+  }
+
+  getDependencies() {
+    return undefined;
   }
 }
 
@@ -249,6 +259,10 @@ class ModifiedBindingEntry extends GeneratorEntry {
     this.newValue = newValue;
     return true;
   }
+
+  getDependencies() {
+    return undefined;
+  }
 }
 
 class ReturnValueEntry extends GeneratorEntry {
@@ -274,56 +288,14 @@ class ReturnValueEntry extends GeneratorEntry {
     let result = context.serializeValue(this.returnValue);
     context.emit(t.returnStatement(result));
   }
-}
 
-class PossiblyNormalReturnEntry extends GeneratorEntry {
-  constructor(generator: Generator, completion: PossiblyNormalCompletion, realm: Realm) {
-    super();
-    this.completion = completion;
-    this.containingGenerator = generator;
-    this.condition = completion.joinCondition;
-
-    // The effects of the normal path have already been applied to generator
-    let empty_effects = construct_empty_effects(realm);
-    empty_effects.result = completion.value;
-    let consequentEffects =
-      completion.consequent instanceof AbruptCompletion ? completion.consequentEffects : empty_effects;
-    this.consequentGenerator = Generator.fromEffects(consequentEffects, realm, "ConsequentEffects");
-    let alternateEffects =
-      completion.alternate instanceof AbruptCompletion ? completion.alternateEffects : empty_effects;
-    this.alternateGenerator = Generator.fromEffects(alternateEffects, realm, "AlternateEffects");
-  }
-
-  completion: PossiblyNormalCompletion;
-  containingGenerator: Generator;
-
-  condition: Value;
-  consequentGenerator: Generator;
-  alternateGenerator: Generator;
-
-  visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
-    invariant(
-      containingGenerator === this.containingGenerator,
-      "This entry requires effects to be applied and may not be moved"
-    );
-    this.condition = context.visitEquivalentValue(this.condition);
-    context.visitGenerator(this.consequentGenerator, containingGenerator);
-    context.visitGenerator(this.alternateGenerator, containingGenerator);
-    return true;
-  }
-
-  serialize(context: SerializationContext) {
-    let condition = context.serializeValue(this.condition);
-    let valuesToProcess = new Set();
-    let consequentBody = context.serializeGenerator(this.consequentGenerator, valuesToProcess);
-    let alternateBody = context.serializeGenerator(this.alternateGenerator, valuesToProcess);
-    context.emit(t.ifStatement(condition, t.blockStatement(consequentBody), t.blockStatement(alternateBody)));
-    context.processValues(valuesToProcess);
+  getDependencies() {
+    return undefined;
   }
 }
 
-class JoinedAbruptCompletionsEntry extends GeneratorEntry {
-  constructor(generator: Generator, completion: JoinedAbruptCompletions, realm: Realm) {
+class IfThenElseEntry extends GeneratorEntry {
+  constructor(generator: Generator, completion: PossiblyNormalCompletion | JoinedAbruptCompletions, realm: Realm) {
     super();
     this.completion = completion;
     this.containingGenerator = generator;
@@ -333,7 +305,7 @@ class JoinedAbruptCompletionsEntry extends GeneratorEntry {
     this.alternateGenerator = Generator.fromEffects(completion.alternateEffects, realm, "AlternateEffects");
   }
 
-  completion: JoinedAbruptCompletions;
+  completion: PossiblyNormalCompletion | JoinedAbruptCompletions;
   containingGenerator: Generator;
 
   condition: Value;
@@ -358,6 +330,10 @@ class JoinedAbruptCompletionsEntry extends GeneratorEntry {
     let alternateBody = context.serializeGenerator(this.alternateGenerator, valuesToProcess);
     context.emit(t.ifStatement(condition, t.blockStatement(consequentBody), t.blockStatement(alternateBody)));
     context.processValues(valuesToProcess);
+  }
+
+  getDependencies() {
+    return [this.consequentGenerator, this.alternateGenerator];
   }
 }
 
@@ -397,10 +373,7 @@ export class Generator {
     let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects.data;
 
     let output = new Generator(realm, name, effects);
-    // joined generators have joined entries that will get visited recursively (via result), so get rid of them here
-    if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions)
-      generator.purgeEntriesWithGeneratorDepencies();
-    output.appendGenerator(generator, "");
+    output.appendGenerator(generator, generator._name);
 
     for (let propertyBinding of modifiedProperties.keys()) {
       let object = propertyBinding.object;
@@ -425,12 +398,10 @@ export class Generator {
       output.emitReturnValue(result);
     } else if (result instanceof ReturnCompletion) {
       output.emitReturnValue(result.value);
-    } else if (result instanceof PossiblyNormalCompletion) {
-      output.emitPossiblyNormalReturn(result, realm);
+    } else if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
+      output.emitIfThenElse(result, realm);
     } else if (result instanceof ThrowCompletion) {
       output.emitThrow(result.value);
-    } else if (result instanceof JoinedAbruptCompletions) {
-      output.emitJoinedAbruptCompletions(result, realm);
     } else {
       invariant(false);
     }
@@ -499,12 +470,8 @@ export class Generator {
     this._entries.push(new ReturnValueEntry(this, result));
   }
 
-  emitPossiblyNormalReturn(result: PossiblyNormalCompletion, realm: Realm) {
-    this._entries.push(new PossiblyNormalReturnEntry(this, result, realm));
-  }
-
-  emitJoinedAbruptCompletions(result: JoinedAbruptCompletions, realm: Realm) {
-    this._entries.push(new JoinedAbruptCompletionsEntry(this, result, realm));
+  emitIfThenElse(result: PossiblyNormalCompletion | JoinedAbruptCompletions, realm: Realm) {
+    this._entries.push(new IfThenElseEntry(this, result, realm));
   }
 
   getName(): string {
@@ -654,71 +621,23 @@ export class Generator {
   }
 
   emitConditionalThrow(condition: AbstractValue, trueBranch: Completion | Value, falseBranch: Completion | Value) {
-    let [args, buildfunc] = this._deconstruct(
-      condition,
-      trueBranch,
-      falseBranch,
-      completion => {
-        this._issueThrowCompilerDiagnostic(completion.value);
-        let serializationArgs = [completion.value];
-        let func = ([arg]) => t.throwStatement(arg);
-        return [serializationArgs, func];
-      },
-      () => [[], () => t.emptyStatement()]
-    );
-    this.emitStatement(args, buildfunc);
-  }
-
-  _deconstruct(
-    condition: AbstractValue,
-    trueBranch: Completion | Value,
-    falseBranch: Completion | Value,
-    onThrowCompletion: ThrowCompletion => ArgsAndBuildNode,
-    onNormalValue: Value => ArgsAndBuildNode
-  ) {
-    let targs;
-    let tfunc;
-    let fargs;
-    let ffunc;
-    if (trueBranch instanceof JoinedAbruptCompletions || trueBranch instanceof PossiblyNormalCompletion) {
-      [targs, tfunc] = this._deconstruct(
-        trueBranch.joinCondition,
-        trueBranch.consequent,
-        trueBranch.alternate,
-        onThrowCompletion,
-        onNormalValue
-      );
-    } else if (trueBranch instanceof ThrowCompletion) {
-      [targs, tfunc] = onThrowCompletion(trueBranch);
-    } else {
-      let value = trueBranch instanceof ReturnCompletion ? trueBranch.value : trueBranch;
-      invariant(value instanceof Value);
-      [targs, tfunc] = onNormalValue(value);
-    }
-    if (falseBranch instanceof JoinedAbruptCompletions || falseBranch instanceof PossiblyNormalCompletion) {
-      [fargs, ffunc] = this._deconstruct(
-        falseBranch.joinCondition,
-        falseBranch.consequent,
-        falseBranch.alternate,
-        onThrowCompletion,
-        onNormalValue
-      );
-    } else if (falseBranch instanceof ThrowCompletion) {
-      [fargs, ffunc] = onThrowCompletion(falseBranch);
-    } else {
-      let value = falseBranch instanceof ReturnCompletion ? falseBranch.value : falseBranch;
-      invariant(value instanceof Value);
-      [fargs, ffunc] = onNormalValue(value);
-    }
-    let args = [condition].concat(targs).concat(fargs);
-    let func = nodes => {
-      return t.ifStatement(
-        nodes[0],
-        tfunc(nodes.slice().splice(1, targs.length)),
-        ffunc(nodes.slice().splice(targs.length + 1, fargs.length))
-      );
+    const branchToGenerator = (name: string, branch: Completion | Value): Generator => {
+      const result = new Generator(this.realm, name);
+      if (branch instanceof JoinedAbruptCompletions || branch instanceof PossiblyNormalCompletion) {
+        result.emitConditionalThrow(branch.joinCondition, branch.consequent, branch.alternate);
+      } else if (branch instanceof ThrowCompletion) {
+        result.emitThrow(branch.value);
+      } else {
+        invariant(branch instanceof ReturnCompletion || branch instanceof Value);
+      }
+      return result;
     };
-    return [args, func];
+
+    this.joinGenerators(
+      condition,
+      branchToGenerator("TrueBranch", trueBranch),
+      branchToGenerator("FalseBranch", falseBranch)
+    );
   }
 
   _issueThrowCompilerDiagnostic(value: Value) {
@@ -732,7 +651,7 @@ export class Generator {
         message += `
   ${objectStack.value}`;
     }
-    const diagnostic = new CompilerDiagnostic(message, value.expressionLocation, "PP1023", "Warning");
+    const diagnostic = new CompilerDiagnostic(message, value.expressionLocation, "PP0023", "Warning");
     this.realm.handleError(diagnostic);
   }
 
@@ -1082,7 +1001,9 @@ export class Generator {
 
   serialize(context: SerializationContext) {
     let serializeFn = () => {
+      context.initGenerator(this);
       for (let entry of this._entries) entry.serialize(context);
+      context.finalizeGenerator(this);
       return null;
     };
     if (this.effectsToApply) {
@@ -1092,29 +1013,19 @@ export class Generator {
     }
   }
 
+  getDependencies(): Array<Generator> {
+    let res = [];
+    for (let entry of this._entries) {
+      let dependencies = entry.getDependencies();
+      if (dependencies !== undefined) res.push(...dependencies);
+    }
+    return res;
+  }
+
   // PITFALL Warning: adding a new kind of TemporalBuildNodeEntry that is not the result of a join or composition
   // will break this purgeEntriesWithGeneratorDepencies.
   _addEntry(entry: TemporalBuildNodeEntryArgs) {
     this._entries.push(new TemporalBuildNodeEntry(entry));
-  }
-
-  purgeEntriesWithGeneratorDepencies(): void {
-    let newEntries = [];
-    for (let oldEntry of this._entries) {
-      if (oldEntry instanceof PossiblyNormalReturnEntry || oldEntry instanceof JoinedAbruptCompletionsEntry) continue;
-      if (oldEntry instanceof TemporalBuildNodeEntry) {
-        if (oldEntry.dependencies !== undefined) {
-          // Take note: keep entries that are not the result of a join or composition
-          if (
-            oldEntry.dependencies.length !== 1 ||
-            !oldEntry.dependencies[0]._name.startsWith("evaluateForFixpointEffects")
-          )
-            continue;
-        }
-      }
-      newEntries.push(oldEntry);
-    }
-    this._entries = newEntries;
   }
 
   appendGenerator(other: Generator, leadingComment: string): void {

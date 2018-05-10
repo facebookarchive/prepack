@@ -384,7 +384,7 @@ let reactCode = `
       if (childrenLength === 1) {
         props.children = children;
       } else if (childrenLength > 1) {
-        var childArray = Array(childrenLength);
+        var childArray = new Array(childrenLength);
         for (var i = 0; i < childrenLength; i++) {
           childArray[i] = arguments[i + 2];
         }
@@ -631,4 +631,33 @@ export function createMockReactDOM(realm: Realm, reactDomRequireName: string): O
   reactDomValue.refuseSerialization = false;
   reactDomValue.makeFinal();
   return reactDomValue;
+}
+
+export function createMockReactDOMServer(realm: Realm, requireName: string): ObjectValue {
+  let reactDomServerValue = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+  reactDomServerValue.refuseSerialization = true;
+
+  updateIntrinsicNames(realm, reactDomServerValue, requireName);
+
+  const genericTemporalFunc = (funcVal, args) => {
+    let reactDomMethod = AbstractValue.createTemporalFromBuildFunction(
+      realm,
+      FunctionValue,
+      [funcVal, ...args],
+      ([renderNode, ..._args]) => {
+        return t.callExpression(renderNode, ((_args: any): Array<any>));
+      }
+    );
+    invariant(reactDomMethod instanceof AbstractObjectValue);
+    return reactDomMethod;
+  };
+
+  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToString", genericTemporalFunc);
+  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToStaticMarkup", genericTemporalFunc);
+  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToNodeStream", genericTemporalFunc);
+  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToStaticNodeStream", genericTemporalFunc);
+
+  reactDomServerValue.refuseSerialization = false;
+  reactDomServerValue.makeFinal();
+  return reactDomServerValue;
 }

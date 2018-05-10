@@ -138,6 +138,7 @@ export type PropertyBinding = {
   key: void | string | SymbolValue | AbstractValue, // where an abstract value must be of type String or Number or Symbol
   // contains a build node that produces a member expression that resolves to this property binding (location)
   pathNode?: AbstractValue,
+  internalSlot?: boolean,
 };
 
 export type LexicalEnvironmentTypes = "global" | "module" | "script" | "function" | "block" | "catch" | "loop" | "with";

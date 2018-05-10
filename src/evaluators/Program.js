@@ -251,6 +251,7 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
         } else {
           invariant(false); // other kinds of abrupt completions should not get this far
         }
+        break;
       }
       if (!(res instanceof EmptyValue)) {
         val = res;

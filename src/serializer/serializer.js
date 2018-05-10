@@ -221,8 +221,9 @@ export class Serializer {
               residualHeapVisitor.declarativeEnvironmentRecordsBindings,
               this.react,
               referentializer,
-              residualHeapVisitor.generatorParents,
-              residualHeapVisitor.conditionalFeasibility
+              residualHeapVisitor.generatorDAG,
+              residualHeapVisitor.conditionalFeasibility,
+              residualHeapVisitor.additionalGeneratorRoots
             ).serialize();
           });
           if (this.logger.hasErrors()) return undefined;
@@ -251,8 +252,9 @@ export class Serializer {
             residualHeapVisitor.declarativeEnvironmentRecordsBindings,
             this.react,
             referentializer,
-            residualHeapVisitor.generatorParents,
-            residualHeapVisitor.conditionalFeasibility
+            residualHeapVisitor.generatorDAG,
+            residualHeapVisitor.conditionalFeasibility,
+            residualHeapVisitor.additionalGeneratorRoots
           ).serialize()
         );
       })();

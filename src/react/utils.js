@@ -10,10 +10,11 @@
 /* @flow */
 
 import { Realm, Effects } from "../realm.js";
-import { PossiblyNormalCompletion, AbruptCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
 import {
   AbstractObjectValue,
+  AbstractValue,
   Value,
   NumberValue,
   ObjectValue,
@@ -27,18 +28,16 @@ import {
   BooleanValue,
 } from "../values/index.js";
 import { Generator } from "../utils/generator.js";
-import type { Descriptor, ReactHint, PropertyBinding, ReactComponentTreeConfig } from "../types";
+import type { Descriptor, ReactHint, PropertyBinding, ReactComponentTreeConfig } from "../types.js";
 import { Get, cloneDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import type { ReactSerializerState, AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
 import invariant from "../invariant.js";
-import { Create, Properties } from "../singletons.js";
+import { Create, Properties, To } from "../singletons.js";
 import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { To } from "../singletons.js";
-import AbstractValue from "../values/AbstractValue";
 
 export type ReactSymbolTypes =
   | "react.element"
@@ -188,7 +187,7 @@ export function addKeyToReactElement(
   reactElement: ObjectValue
 ): void {
   // we need to apply a key when we're branched
-  let currentKeyValue = Get(realm, reactElement, "key") || realm.intrinsics.null;
+  let currentKeyValue = getProperty(realm, reactElement, "key") || realm.intrinsics.null;
   let uniqueKey = getUniqueReactElementKey("", reactSerializerState.usedReactElementKeys);
   let newKeyValue = new StringValue(realm, uniqueKey);
   if (currentKeyValue !== realm.intrinsics.null) {
@@ -700,12 +699,10 @@ export function createReactEvaluatedNode(
     | "NEW_TREE"
     | "INLINED"
     | "BAIL-OUT"
-    | "WRITE-CONFLICTS"
+    | "FATAL"
     | "UNKNOWN_TYPE"
     | "RENDER_PROPS"
     | "FORWARD_REF"
-    | "UNSUPPORTED_COMPLETION"
-    | "ABRUPT_COMPLETION"
     | "NORMAL",
   name: string
 ): ReactEvaluatedNode {
@@ -718,6 +715,9 @@ export function createReactEvaluatedNode(
 }
 
 export function getComponentName(realm: Realm, componentType: Value): string {
+  if (componentType instanceof SymbolValue && componentType === getReactSymbol("react.fragment", realm)) {
+    return "React.Fragment";
+  }
   invariant(
     componentType instanceof ECMAScriptSourceFunctionValue ||
       componentType instanceof BoundFunctionValue ||
@@ -831,13 +831,13 @@ function isEventProp(name: string): boolean {
 }
 
 export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElement: ObjectValue): ObjectValue {
-  let typeValue = Get(realm, reactElement, "type");
+  let typeValue = getProperty(realm, reactElement, "type");
 
   // ensure ref is null, as we don't use that on first render
   setProperty(reactElement, "ref", realm.intrinsics.null);
   // when dealing with host nodes, we want to sanitize them futher
   if (typeValue instanceof StringValue) {
-    let propsValue = Get(realm, reactElement, "props");
+    let propsValue = getProperty(realm, reactElement, "props");
     if (propsValue instanceof ObjectValue) {
       // remove all values apart from string/number/boolean
       for (let [propName] of propsValue.properties) {
@@ -849,4 +849,13 @@ export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElemen
     }
   }
   return reactElement;
+}
+
+export function getLocationFromValue(expressionLocation: any) {
+  // if we can't get a value, then it's likely that the source file was not given
+  // (this happens in React tests) so instead don't print any location
+  return expressionLocation
+    ? ` at location: ${expressionLocation.start.line}:${expressionLocation.start.column} ` +
+        `- ${expressionLocation.end.line}:${expressionLocation.end.line}`
+    : "";
 }

@@ -14,7 +14,7 @@ import child_process from "child_process";
 import * as DebugProtocol from "vscode-debugprotocol";
 import { DataHandler } from "./DataHandler.js";
 import { DebuggerConstants } from "./../common/DebuggerConstants";
-import { LaunchRequestArguments } from "./../common/types.js";
+import type { LaunchRequestArguments } from "./../common/types.js";
 
 export type DebuggerCLIArguments = {
   adapterPath: string,

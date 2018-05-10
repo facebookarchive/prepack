@@ -10,10 +10,10 @@
 /* @flow */
 
 import type { BabelNodeSourceLocation } from "babel-types";
-import { Completion, JoinedAbruptCompletions, PossiblyNormalCompletion, ReturnCompletion } from "../completions.js";
+import { Completion, JoinedAbruptCompletions, PossiblyNormalCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
-import { construct_empty_effects, type Effects, type PropertyBindings, Realm } from "../realm.js";
+import { type Effects, type PropertyBindings, Realm } from "../realm.js";
 import type { Binding } from "../environment.js";
 import type { PropertyBinding, ReactComponentTreeConfig, FunctionBodyAstNode } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
@@ -45,6 +45,7 @@ import {
   getComponentName,
   convertConfigObjectToReactComponentTreeConfig,
 } from "../react/utils.js";
+import { ReconcilerFatalError } from "../react/errors.js";
 import * as t from "babel-types";
 
 type AdditionalFunctionEntry = {
@@ -136,38 +137,16 @@ export class Functions {
     parentAdditionalFunction: FunctionValue | void = undefined
   ): AdditionalFunctionEffects | null {
     let realm = this.realm;
-    let [result, generator] = effects.data;
+    let result = effects.result;
+    let generator = Generator.fromEffects(effects, this.realm, name, environmentRecordIdAfterGlobalCode);
     if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
-      // joined generators have joined entries that will get visited recursively via result, so get rid of them here
-      generator.purgeEntriesWithGeneratorDepencies();
-      // The completion is not the end of function execution, but a fork point for separate threads of control.
-      // The effects of all of these threads need to get joined up and rolled into the top level effects,
-      // so that applying the effects before serializing the body will fully initialize all variables and objects.
-      effects = realm.evaluateForEffects(
-        () => {
-          realm.applyEffects(effects, "_createAdditionalEffects/1", true);
-          if (result instanceof PossiblyNormalCompletion) {
-            result = Join.joinPossiblyNormalCompletionWithAbruptCompletion(
-              realm,
-              result,
-              new ReturnCompletion(result.value),
-              construct_empty_effects(realm)
-            ).result;
-          }
-          invariant(result instanceof JoinedAbruptCompletions);
-          let completionEffects = Join.joinNestedEffects(realm, result);
-          realm.applyEffects(completionEffects, "_createAdditionalEffects/2", false);
-          return result;
-        },
-        undefined,
-        "_createAdditionalEffects"
-      );
+      effects = Join.joinNestedEffects(realm, result);
     }
     let retValue: AdditionalFunctionEffects = {
       parentAdditionalFunction,
       effects,
       transforms: [],
-      generator: Generator.fromEffects(effects, this.realm, name, environmentRecordIdAfterGlobalCode),
+      generator,
       additionalRoots: new Set(),
     };
     return retValue;
@@ -187,10 +166,10 @@ export class Functions {
       environmentRecordIdAfterGlobalCode
     );
     if (additionalFunctionEffects === null) {
-      // TODO we don't support this yet, but will do very soon
-      // to unblock work, we'll just return at this point right now
-      evaluatedNode.status = "UNSUPPORTED_COMPLETION";
-      return;
+      throw new ReconcilerFatalError(
+        `Failed to optimize React component tree for "${evaluatedNode.name}" due to an unsupported completion`,
+        evaluatedNode
+      );
     }
     effects = additionalFunctionEffects.effects;
     let value = effects.result;
@@ -256,47 +235,6 @@ export class Functions {
     return noOpFunc;
   }
 
-  _forEachBindingOfEffects(effects: Effects, func: (binding: Binding) => void): void {
-    let [result, , nestedBindingsToIgnore] = effects.data;
-    for (let [binding] of nestedBindingsToIgnore) {
-      func(binding);
-    }
-    if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
-      this._forEachBindingOfEffects(result.alternateEffects, func);
-      this._forEachBindingOfEffects(result.consequentEffects, func);
-    }
-  }
-
-  _hasWriteConflictsFromReactRenders(
-    bindings: Set<Binding>,
-    effects: Effects,
-    nestedEffectsList: Array<Effects>,
-    evaluatedNode: ReactEvaluatedNode
-  ): boolean {
-    let ignoreBindings = new Set();
-    let failed = false;
-    // TODO: should we also check realm.savedEffects?
-    // ref: https://github.com/facebook/prepack/pull/1742
-
-    for (let nestedEffects of nestedEffectsList) {
-      this._forEachBindingOfEffects(nestedEffects, binding => {
-        ignoreBindings.add(binding);
-      });
-    }
-
-    this._forEachBindingOfEffects(effects, binding => {
-      if (bindings.has(binding) && !ignoreBindings.has(binding)) {
-        failed = true;
-      }
-      bindings.add(binding);
-    });
-
-    if (failed) {
-      evaluatedNode.status = "WRITE-CONFLICTS";
-    }
-    return failed;
-  }
-
   optimizeReactComponentTreeRoots(
     statistics: ReactStatistics,
     react: ReactSerializerState,
@@ -325,18 +263,6 @@ export class Functions {
         logger.logInformation(`  Evaluating ${evaluatedRootNode.name} (root)`);
       }
       let componentTreeEffects = reconciler.renderReactComponentTree(componentType, null, null, evaluatedRootNode);
-      if (componentTreeEffects === null) {
-        if (this.realm.react.verbose) {
-          logger.logInformation(`  ✖ ${evaluatedRootNode.name} (root)`);
-        }
-        continue;
-      }
-      if (this._hasWriteConflictsFromReactRenders(bindings, componentTreeEffects, [], evaluatedRootNode)) {
-        if (this.realm.react.verbose) {
-          logger.logInformation(`  ✖ ${evaluatedRootNode.name} (root - write conflicts)`);
-        }
-        continue;
-      }
       if (this.realm.react.verbose) {
         logger.logInformation(`  ✔ ${evaluatedRootNode.name} (root)`);
       }
@@ -393,18 +319,6 @@ export class Functions {
         branchState,
         evaluatedNode
       );
-      if (closureEffects === null) {
-        if (this.realm.react.verbose) {
-          logger.logInformation(`    ✖ function "${getComponentName(this.realm, func)}"`);
-        }
-        continue;
-      }
-      if (this._hasWriteConflictsFromReactRenders(bindings, closureEffects, nestedEffects, evaluatedNode)) {
-        if (this.realm.react.verbose) {
-          logger.logInformation(`    ✖ function "${getComponentName(this.realm, func)}" (write conflicts)`);
-        }
-        continue;
-      }
       if (this.realm.react.verbose) {
         logger.logInformation(`    ✔ function "${getComponentName(this.realm, func)}"`);
       }
@@ -451,18 +365,6 @@ export class Functions {
         logger.logInformation(`    Evaluating ${evaluatedNode.name} (branch)`);
       }
       let branchEffects = reconciler.renderReactComponentTree(branchComponentType, null, null, evaluatedNode);
-      if (branchEffects === null) {
-        if (this.realm.react.verbose) {
-          logger.logInformation(`    ✖ ${evaluatedNode.name} (branch)`);
-        }
-        continue;
-      }
-      if (this._hasWriteConflictsFromReactRenders(bindings, branchEffects, [], evaluatedNode)) {
-        if (this.realm.react.verbose) {
-          logger.logInformation(`    ✖ ${evaluatedNode.name} (branch - write conflicts)`);
-        }
-        continue;
-      }
       if (this.realm.react.verbose) {
         logger.logInformation(`    ✔ ${evaluatedNode.name} (branch)`);
       }
