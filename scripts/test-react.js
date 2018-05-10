@@ -85,6 +85,20 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     stripFlow: true,
   };
 
+  let checkForReconcilerFatalError = false;
+
+  async function expectReconcilerFatalError(func) {
+    checkForReconcilerFatalError = true;
+    try {
+      await func();
+    } catch (e) {
+      expect(e.__isReconcilerFatalError).toBe(true);
+      expect(e.message).toMatchSnapshot();
+    } finally {
+      checkForReconcilerFatalError = false;
+    }
+  }
+
   function compileSourceWithPrepack(source) {
     let code = `(function(){${source}})()`;
     let serialized;
@@ -92,6 +106,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     try {
       serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
     } catch (e) {
+      if (e.__isReconcilerFatalError && checkForReconcilerFatalError) {
+        throw e;
+      }
       errorsCaptured.forEach(error => {
         console.error(error);
       });
@@ -274,23 +291,57 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("Simple 8", async () => {
-        await runTest(directory, "simple-8.js");
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "simple-8.js");
+        });
       });
 
       it("Simple 9", async () => {
-        await runTest(directory, "simple-9.js");
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "simple-9.js");
+        });
       });
 
       it("Simple 10", async () => {
-        await runTest(directory, "simple-10.js");
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "simple-10.js");
+        });
       });
 
       it("Simple 11", async () => {
-        await runTest(directory, "simple-11.js");
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "simple-11.js");
+        });
       });
 
       it("Simple 12", async () => {
         await runTest(directory, "simple-12.js");
+      });
+
+      it("Simple 13", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "simple-13.js");
+        });
+      });
+
+      it("Mutations - not-safe 1", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "not-safe.js");
+        });
+      });
+
+      it("Mutations - not-safe 2", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "not-safe2.js");
+        });
+      });
+
+      it("Mutations - safe 1", async () => {
+        await runTest(directory, "safe.js");
+      });
+
+      it("Mutations - safe 2", async () => {
+        await runTest(directory, "safe2.js");
       });
 
       it("Handle mapped arrays", async () => {
@@ -626,10 +677,6 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-2.js", true);
       });
 
-      it("Class component as root with refs", async () => {
-        await runTest(directory, "class-root-with-refs.js", true);
-      });
-
       it("componentWillMount", async () => {
         await runTest(directory, "will-mount.js", true);
       });
@@ -741,7 +788,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("fb-www 12", async () => {
-        await runTest(directory, "fb12.js");
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "fb12.js");
+        });
       });
 
       it("fb-www 13", async () => {
@@ -753,11 +802,15 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("fb-www 15", async () => {
-        await runTest(directory, "fb15.js");
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "fb15.js");
+        });
       });
 
       it("fb-www 16", async () => {
-        await runTest(directory, "fb16.js");
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "fb16.js");
+        });
       });
 
       it("fb-www 17", async () => {
@@ -769,7 +822,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("fb-www 19", async () => {
-        await runTest(directory, "fb19.js");
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "fb19.js");
+        });
       });
 
       it("fb-www 20", async () => {

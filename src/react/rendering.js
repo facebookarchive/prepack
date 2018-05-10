@@ -18,7 +18,6 @@ import {
   AbstractValue,
   ArrayValue,
   BooleanValue,
-  BoundFunctionValue,
   ECMAScriptSourceFunctionValue,
   NullValue,
   NumberValue,
@@ -31,6 +30,7 @@ import {
 import { Reconciler } from "./reconcilation.js";
 import {
   createReactEvaluatedNode,
+  evaluateWithNestedParentEffects,
   forEachArrayValue,
   getComponentName,
   getProperty,
@@ -308,7 +308,7 @@ function createMarkupForProperty(
   } else if (value instanceof StringValue || value instanceof NumberValue) {
     return name + "=" + quoteAttributeValueForBrowser(value.value + "");
   } else if (value instanceof AbstractValue) {
-    return [name + "=", renderAbstractWithEscaping(realm, value, htmlEscapeHelper)];
+    return [name + '="', renderAbstractWithEscaping(realm, value, htmlEscapeHelper), '"'];
   }
   invariant(false, "TODO");
 }
@@ -519,7 +519,7 @@ function normalizeNode(realm: Realm, reactNode: ReactNode): ReactNode {
     }
     invariant(newReactNode !== undefined);
     return newReactNode;
-  } else if (typeof reactNode === "string") {
+  } else if (typeof reactNode === "string" || reactNode instanceof AbstractValue) {
     return reactNode;
   }
   invariant(false, "TODO");
@@ -538,6 +538,8 @@ function renderReactNode(realm: Realm, reactNode: ReactNode): StringValue | Abst
   let normalizedNode = normalizeNode(realm, reactNode);
   if (typeof normalizedNode === "string") {
     return new StringValue(realm, normalizedNode);
+  } else if (normalizedNode instanceof AbstractValue) {
+    return normalizedNode;
   }
   invariant(Array.isArray(normalizedNode));
   let args = [];
@@ -764,6 +766,43 @@ class ReactDOMServerRenderer {
   }
 }
 
+function handleNestedOptimizedFunctions(realm: Realm, reconciler: Reconciler, staticMarkup: boolean): void {
+  for (let { func, evaluatedNode, componentType, context, branchState } of reconciler.nestedOptimizedClosures) {
+    if (reconciler.hasEvaluatedNestedClosure(func)) {
+      continue;
+    }
+    if (func instanceof ECMAScriptSourceFunctionValue && reconciler.hasEvaluatedRootNode(func, evaluatedNode)) {
+      continue;
+    }
+    let closureEffects = reconciler.renderNestedOptimizedClosure(
+      func,
+      [],
+      componentType,
+      context,
+      branchState,
+      evaluatedNode
+    );
+
+    // TODO this applies the above effects, then mutates the result of the above
+    // effects. This shouldn't be right, but works. If you wrap this below in
+    // evaluateForEffects and try to apply the effects, it doesn't work
+    realm.wrapInGlobalEnv(() =>
+      evaluateWithNestedParentEffects(realm, [closureEffects], () => {
+        let serverRenderer = new ReactDOMServerRenderer(realm, staticMarkup);
+        invariant(closureEffects.result instanceof Value);
+        let val = serverRenderer.render(closureEffects.result);
+        closureEffects.result = val;
+        return realm.intrinsics.undefined;
+      })
+    );
+
+    realm.react.optimizedNestedClosuresToWrite.push({
+      effects: closureEffects,
+      func,
+    });
+  }
+}
+
 export function renderToString(
   realm: Realm,
   reactElement: ObjectValue,
@@ -783,10 +822,6 @@ export function renderToString(
   invariant(effects.result instanceof Value);
   let serverRenderer = new ReactDOMServerRenderer(realm, staticMarkup);
   let renderValue = serverRenderer.render(effects.result);
-  // if we had any nested optimized closure, we need to process them later during
-  // in the serialization process, so it's with the other optimized closure logic
-  if (reconciler.nestedOptimizedClosures.length > 0) {
-    realm.react.evaluatedReconcilers.push(reconciler);
-  }
+  handleNestedOptimizedFunctions(realm, reconciler, staticMarkup);
   return renderValue;
 }

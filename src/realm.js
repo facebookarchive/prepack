@@ -23,6 +23,7 @@ import {
   AbstractObjectValue,
   AbstractValue,
   ArrayValue,
+  BoundFunctionValue,
   ConcreteValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
@@ -67,6 +68,8 @@ export type EvaluationResult = Completion | Reference | Value;
 export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 
 export type CreatedObjects = Set<ObjectValue>;
+
+export type SideEffectType = "MODIFIED_BINDING" | "MODIFIED_PROPERTY" | "EXCEPTION_THROWN" | "MODIFIED_GLOBAL";
 
 let effects_uid = 0;
 
@@ -259,11 +262,11 @@ export class Realm {
 
     this.react = {
       abstractHints: new WeakMap(),
+      optimizedNestedClosuresToWrite: [],
       arrayHints: new WeakMap(),
       classComponentMetadata: new Map(),
       currentOwner: undefined,
       enabled: opts.reactEnabled || false,
-      evaluatedReconcilers: [],
       output: opts.reactOutput || "create-element",
       hoistableFunctions: new WeakMap(),
       hoistableReactElements: new WeakMap(),
@@ -317,6 +320,9 @@ export class Realm {
   createdObjects: void | CreatedObjects;
   createdObjectsTrackedForLeaks: void | CreatedObjects;
   reportObjectGetOwnProperties: void | (ObjectValue => void);
+  reportSideEffectCallback:
+    | void
+    | ((sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, expressionLocation: any) => void);
   reportPropertyAccess: void | (PropertyBinding => void);
   savedCompletion: void | PossiblyNormalCompletion;
 
@@ -339,11 +345,14 @@ export class Realm {
     // (for example, when we use Relay's React containers with "fb-www" – which are AbstractObjectValues,
     // we need to know what React component was passed to this AbstractObjectValue so we can visit it next)
     abstractHints: WeakMap<AbstractValue | ObjectValue, ReactHint>,
+    optimizedNestedClosuresToWrite: Array<{
+      effects: Effects,
+      func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
+    }>,
     arrayHints: WeakMap<ArrayValue, { func: Value, thisVal: Value }>,
     classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
     currentOwner?: ObjectValue,
     enabled: boolean,
-    evaluatedReconcilers: Array<any>, // don't use Reconciler type or we get Flow cycle
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,
     output?: ReactOutputTypes,
@@ -627,17 +636,27 @@ export class Realm {
   // that it created itself. This promises that any abstract functions inside of it
   // also won't have effects on any objects or bindings that weren't created in this
   // call.
-  evaluatePure<T>(f: () => T) {
+  evaluatePure<T>(
+    f: () => T,
+    reportSideEffectFunc?: (
+      sideEffectType: SideEffectType,
+      binding: void | Binding | PropertyBinding,
+      value: void | Value
+    ) => void
+  ) {
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
+    let saved_reportSideEffectCallback = this.reportSideEffectCallback;
     // Track all objects (including function closures) created during
     // this call. This will be used to make the assumption that every
     // *other* object is unchanged (pure). These objects are marked
     // as leaked if they're passed to abstract functions.
     this.createdObjectsTrackedForLeaks = new Set();
+    this.reportSideEffectCallback = reportSideEffectFunc;
     try {
       return f();
     } finally {
       this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
+      this.reportSideEffectCallback = saved_reportSideEffectCallback;
     }
   }
 
@@ -1297,16 +1316,56 @@ export class Realm {
 
   // Record the current value of binding in this.modifiedBindings unless
   // there is already an entry for binding.
-  recordModifiedBinding(binding: Binding): Binding {
+  recordModifiedBinding(binding: Binding, value?: Value): Binding {
+    const isDefinedInsidePureFn = root => {
+      let context = this.getRunningContext();
+      let { lexicalEnvironment: env, function: func } = context;
+
+      invariant(func instanceof FunctionValue);
+      if (root instanceof FunctionEnvironmentRecord && func === root.$FunctionObject) {
+        return true;
+      }
+      if (this.createdObjectsTrackedForLeaks !== undefined && !this.createdObjectsTrackedForLeaks.has(func)) {
+        return false;
+      }
+      env = env.parent;
+      while (env) {
+        if (env.environmentRecord === root) {
+          return true;
+        }
+        env = env.parent;
+      }
+      return false;
+    };
+
+    if (
+      this.modifiedBindings !== undefined &&
+      !this.modifiedBindings.has(binding) &&
+      value !== undefined &&
+      this.isInPureScope() &&
+      this.reportSideEffectCallback !== undefined
+    ) {
+      let env = binding.environment;
+
+      if (
+        !(env instanceof DeclarativeEnvironmentRecord) ||
+        (env instanceof DeclarativeEnvironmentRecord && !isDefinedInsidePureFn(env))
+      ) {
+        this.reportSideEffectCallback("MODIFIED_BINDING", binding, value.expressionLocation);
+      }
+    }
+
     if (binding.environment.isReadOnly) {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to modify a binding in read-only realm");
     }
-    if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding))
+
+    if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding)) {
       this.modifiedBindings.set(binding, {
         hasLeaked: binding.hasLeaked,
         value: binding.value,
       });
+    }
     return binding;
   }
 
@@ -1326,6 +1385,21 @@ export class Realm {
   // there is already an entry for binding.
   recordModifiedProperty(binding: void | PropertyBinding): void {
     if (binding === undefined) return;
+    if (this.isInPureScope()) {
+      let object = binding.object;
+      invariant(object instanceof ObjectValue);
+      const createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
+
+      if (createdObjectsTrackedForLeaks !== undefined && !createdObjectsTrackedForLeaks.has(object)) {
+        if (binding.object === this.$GlobalObject) {
+          this.reportSideEffectCallback &&
+            this.reportSideEffectCallback("MODIFIED_GLOBAL", binding, object.expressionLocation);
+        } else {
+          this.reportSideEffectCallback &&
+            this.reportSideEffectCallback("MODIFIED_PROPERTY", binding, object.expressionLocation);
+        }
+      }
+    }
     if (this.isReadOnly && (this.getRunningContext().isReadOnly || !this.isNewObject(binding.object))) {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to modify a property in read-only realm");

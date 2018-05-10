@@ -381,7 +381,9 @@ export function applyGetDerivedStateFromProps(
           );
           newState.makeSimple();
           newState.makePartial();
+          return newState;
         }
+        throw e;
       }
       return newState;
     } else {
