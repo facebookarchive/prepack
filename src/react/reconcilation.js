@@ -1382,7 +1382,8 @@ export class Reconciler {
     if (value instanceof ObjectValue && isReactElement(value)) {
       return this._resolveReactElement(componentType, value, context, branchStatus, branchState, evaluatedNode);
     } else {
-      throw new ExpectedBailOut("unsupported value type during reconcilation");
+      let location = getLocationFromValue(value.expressionLocation);
+      throw new ExpectedBailOut(`invalid return value from render${location}`);
     }
   }
 
