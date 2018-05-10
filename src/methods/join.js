@@ -923,7 +923,8 @@ export class JoinImplementation {
     let getAbstractValue = (v1: void | Value, v2: void | Value) => {
       return this.joinValuesAsConditional(realm, joinCondition, v1, v2);
     };
-    let clone_with_abstract_value = (d: Descriptor) => {
+    let clone_with_abstract_value = (useD1: Boolean) => {
+      const d: Descriptor = useD1 ? d1 : d2;
       if (!IsDataDescriptor(realm, d)) {
         let d3: Descriptor = {};
         d3.joinCondition = joinCondition;
@@ -936,31 +937,41 @@ export class JoinImplementation {
         invariant(dcValue.length > 0);
         let elem0 = dcValue[0];
         if (elem0 instanceof Value) {
-          dc.value = dcValue.map(e => getAbstractValue((e: any), realm.intrinsics.empty));
+          dc.value = dcValue.map(e => {
+            return useD1
+              ? getAbstractValue((e: any), realm.intrinsics.empty)
+              : getAbstractValue(realm.intrinsics.empty, (e: any));
+          });
         } else {
           dc.value = dcValue.map(e => {
             let { $Key: key1, $Value: val1 } = (e: any);
-            let key3 = getAbstractValue(key1, realm.intrinsics.empty);
-            let val3 = getAbstractValue(val1, realm.intrinsics.empty);
+            let key3 = useD1
+              ? getAbstractValue(key1, realm.intrinsics.empty)
+              : getAbstractValue(realm.intrinsics.empty, key1);
+            let val3 = useD1
+              ? getAbstractValue(val1, realm.intrinsics.empty)
+              : getAbstractValue(realm.intrinsics.empty, val1);
             return { $Key: key3, $Value: val3 };
           });
         }
       } else {
         invariant(dcValue === undefined || dcValue instanceof Value);
-        dc.value = getAbstractValue(dcValue, realm.intrinsics.empty);
+        dc.value = useD1
+          ? getAbstractValue(dcValue, realm.intrinsics.empty)
+          : getAbstractValue(realm.intrinsics.empty, dcValue);
       }
       return dc;
     };
     if (d1 === undefined) {
       if (d2 === undefined) return undefined;
       // d2 is a new property created in only one branch, join with empty
-      let d3 = clone_with_abstract_value(d2);
+      let d3 = clone_with_abstract_value(false);
       if (!IsDataDescriptor(realm, d2)) d3.descriptor2 = d2;
       return d3;
     } else if (d2 === undefined) {
       invariant(d1 !== undefined);
       // d1 is a new property created in only one branch, join with empty
-      let d3 = clone_with_abstract_value(d1);
+      let d3 = clone_with_abstract_value(true);
       if (!IsDataDescriptor(realm, d1)) d3.descriptor1 = d1;
       return d3;
     } else {
