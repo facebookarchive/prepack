@@ -1094,6 +1094,17 @@ export class ResidualHeapVisitor {
       visitModifiedObjectProperty: (binding: PropertyBinding) => {
         let fixpoint_rerun = () => {
           if (this.values.has(binding.object)) {
+            if (binding.internalSlot) {
+              invariant(typeof binding.key === "string");
+              let error = new CompilerDiagnostic(
+                `Internal slot ${binding.key} modified in a nested context. This is not yet supported.`,
+                binding.object.expressionLocation,
+                "PP1006",
+                "FatalError"
+              );
+              this.realm.handleError(error) === "Fail";
+              throw new FatalError();
+            }
             this.visitValue(binding.object);
             if (binding.key instanceof Value) this.visitValue(binding.key);
             this.visitObjectProperty(binding);
