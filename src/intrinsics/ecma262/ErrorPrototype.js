@@ -41,26 +41,29 @@ export function build(name: string, realm: Realm, obj: ObjectValue): void {
 
     // 3. Let name be ? Get(O, "name").
     let nameValue = Get(realm, O, "name");
+    if (nameValue instanceof AbstractValue) {
+      return AbstractValue.createFromTemplate(realm, tsTemplate, StringValue, [O], tsTemplateSrc);
+    }
 
     // 4. If name is undefined, let name be "Error"; otherwise let name be ? ToString(name).
     let nameString = nameValue instanceof UndefinedValue ? "Error" : To.ToStringPartial(realm, nameValue);
 
     // 5. Let msg be ? Get(O, "message").
     let msg = Get(realm, O, "message");
+    if (msg instanceof AbstractValue) {
+      return AbstractValue.createFromTemplate(realm, tsTemplate, StringValue, [O], tsTemplateSrc);
+    }
 
     // 6. If msg is undefined, let msg be the empty String; otherwise let msg be ? ToString(msg).
     msg = msg instanceof UndefinedValue ? "" : To.ToStringPartial(realm, msg);
 
-    // 7. If name and msg are both the empty String, return "Error".
-    if (nameString === "" && msg === "") return new StringValue(realm, "Error");
-
-    // 8. If name is the empty String, return msg.
+    // 7. If name is the empty String, return msg.
     if (nameString === "") return new StringValue(realm, msg);
 
-    // 9. If msg is the empty String, return name.
+    // 8. If msg is the empty String, return name.
     if (msg === "") return new StringValue(realm, nameString);
 
-    // 10. Return the result of concatenating name, the code unit 0x003A (COLON), the code unit 0x0020 (SPACE), and msg.
+    // 9. Return the result of concatenating name, the code unit 0x003A (COLON), the code unit 0x0020 (SPACE), and msg.
     return new StringValue(realm, `${nameString}: ${msg}`);
   });
 }
