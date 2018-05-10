@@ -248,7 +248,7 @@ export default class AbstractObjectValue extends AbstractValue {
       let joinedObject = Join.joinValuesAsConditional(realm, cond, p1, p2);
       invariant(joinedObject instanceof AbstractObjectValue);
       return joinedObject;
-    } else if (this.kind === "explicit conversion to object") {
+    } else if (this.kind === "explicit conversion to object" || this.kind === "implicit conversion to object") {
       let primitiveValue = this.args[0];
       invariant(!Value.isTypeCompatibleWith(primitiveValue.getType(), PrimitiveValue));
       let result = AbstractValue.createFromBuildFunction(realm, ObjectValue, [primitiveValue], ([p]) => {
@@ -486,10 +486,16 @@ export default class AbstractObjectValue extends AbstractValue {
       let generateAbstractGet = () => {
         let type = Value;
         if (P === "length" && Value.isTypeCompatibleWith(this.getType(), ArrayValue)) type = NumberValue;
+        let unwrapped = this;
+        if (this.kind === "explicit conversion to object" || this.kind === "implicit conversion to object") {
+          // We can unwrap because the generated property access
+          // will implicitly convert it to an object.
+          unwrapped = this.args[0];
+        }
         return AbstractValue.createTemporalFromBuildFunction(
           this.$Realm,
           type,
-          [this],
+          [unwrapped],
           ([o]) => {
             invariant(typeof P === "string");
             return t.isValidIdentifier(P)

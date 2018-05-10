@@ -377,10 +377,10 @@ export class ToImplementation {
   }
 
   // ECMA262 7.1.13
-  ToObject(realm: Realm, arg: Value): ObjectValue | AbstractObjectValue {
+  ToObject(realm: Realm, arg: Value, implicitConversion: boolean = false): ObjectValue | AbstractObjectValue {
     if (arg instanceof AbstractObjectValue) return arg;
     if (arg instanceof AbstractValue) {
-      return this._WrapAbstractInObject(realm, arg);
+      return this._WrapAbstractInObject(realm, arg, implicitConversion);
     }
     if (arg instanceof UndefinedValue) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
@@ -407,7 +407,11 @@ export class ToImplementation {
     invariant(false);
   }
 
-  _WrapAbstractInObject(realm: Realm, arg: AbstractValue): ObjectValue | AbstractObjectValue {
+  _WrapAbstractInObject(
+    realm: Realm,
+    arg: AbstractValue,
+    implicitConversion: boolean = false
+  ): ObjectValue | AbstractObjectValue {
     let obj;
     switch (arg.getType()) {
       case IntegralValue:
@@ -442,7 +446,11 @@ export class ToImplementation {
         /*eslint-enable */
         if (realm.isInPureScope()) {
           // will be serialized as Object.assign(serialized_arg)
-          obj = AbstractValue.createFromType(realm, ObjectValue, "explicit conversion to object", [arg]);
+          if (implicitConversion) {
+            obj = AbstractValue.createFromType(realm, ObjectValue, "implicit conversion to object", [arg]);
+          } else {
+            obj = AbstractValue.createFromType(realm, ObjectValue, "explicit conversion to object", [arg]);
+          }
           invariant(obj instanceof AbstractObjectValue);
         } else {
           obj = arg.throwIfNotConcreteObject();

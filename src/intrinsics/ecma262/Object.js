@@ -114,7 +114,10 @@ export default function(realm: Realm): NativeFunctionValue {
             }
 
             if (frm_was_partial) {
-              if (frm instanceof AbstractObjectValue && frm.kind === "explicit conversion to object") {
+              if (
+                frm instanceof AbstractObjectValue &&
+                (frm.kind === "explicit conversion to object" || frm.kind === "implicit conversion to object")
+              ) {
                 // Make it implicit again since it is getting delayed into an Object.assign call.
                 delayedSources.push(frm.args[0]);
               } else {
@@ -397,9 +400,11 @@ export default function(realm: Realm): NativeFunctionValue {
     // If we're in pure scope and the items are completely abstract,
     // then create an abstract temporal with an array kind
     if (realm.isInPureScope() && obj instanceof AbstractObjectValue) {
+      // Use original object because Object.keys() call does an implicit conversion
+      let unwrapped = O;
       let array = ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
-        [objectKeys, obj],
+        [objectKeys, unwrapped],
         ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
       );
       return array;
