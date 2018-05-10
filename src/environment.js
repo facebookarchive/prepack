@@ -68,7 +68,7 @@ function deriveGetBinding(realm: Realm, binding: Binding) {
 export function havocBinding(binding: Binding) {
   let realm = binding.environment.realm;
   let value = binding.value;
-  if (!binding.hasLeaked && (value instanceof ObjectValue && !value.isFinalObject())) {
+  if (!binding.hasLeaked && !(value instanceof ObjectValue && value.isFinalObject)) {
     realm.recordModifiedBinding(binding).hasLeaked = true;
   }
 }
@@ -244,7 +244,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     invariant(binding && !binding.initialized, `shouldn't have the binding ${N}`);
 
     // 3. Set the bound value for N in envRec to V.
-    if (!skipRecord) this.realm.recordModifiedBinding(binding).value = V;
+    if (!skipRecord) this.realm.recordModifiedBinding(binding, V).value = V;
     else binding.value = V;
 
     // 4. Record that the binding for N in envRec has been initialized.
@@ -294,7 +294,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
         invariant(realm.generator);
         realm.generator.emitBindingAssignment(binding, V);
       } else {
-        realm.recordModifiedBinding(binding).value = V;
+        realm.recordModifiedBinding(binding, V).value = V;
       }
     } else {
       // 6. Else,

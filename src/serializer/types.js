@@ -161,12 +161,10 @@ export type ReactEvaluatedNode = {
     | "NEW_TREE"
     | "INLINED"
     | "BAIL-OUT"
-    | "WRITE-CONFLICTS"
+    | "FATAL"
     | "UNKNOWN_TYPE"
     | "RENDER_PROPS"
     | "FORWARD_REF"
-    | "UNSUPPORTED_COMPLETION"
-    | "ABRUPT_COMPLETION"
     | "NORMAL",
 };
 
