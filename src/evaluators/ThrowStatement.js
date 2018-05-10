@@ -24,5 +24,8 @@ export default function(
 ): Value {
   let exprRef = env.evaluate(ast.argument, strictCode);
   let exprValue = Environment.GetValue(realm, exprRef);
+  if (realm.isInPureScope() && realm.reportSideEffectCallback !== undefined) {
+    realm.reportSideEffectCallback("EXCEPTION_THROWN", undefined, ast.loc);
+  }
   throw new ThrowCompletion(exprValue, ast.loc);
 }
