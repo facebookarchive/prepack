@@ -263,6 +263,7 @@ export class Realm {
       classComponentMetadata: new Map(),
       currentOwner: undefined,
       enabled: opts.reactEnabled || false,
+      evaluatedReconcilers: [],
       output: opts.reactOutput || "create-element",
       hoistableFunctions: new WeakMap(),
       hoistableReactElements: new WeakMap(),
@@ -342,6 +343,7 @@ export class Realm {
     classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
     currentOwner?: ObjectValue,
     enabled: boolean,
+    evaluatedReconcilers: Array<any>, // don't use Reconciler type or we get Flow cycle
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,
     output?: ReactOutputTypes,

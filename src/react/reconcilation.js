@@ -1397,8 +1397,8 @@ export class Reconciler {
             throw new ExpectedBailOut(`abstract mapped arrays with "this" argument are not yet supported`);
           }
           this._queueOptimizedClosure(func, evaluatedNode, componentType, context, branchState);
-          return;
         }
+        return;
       }
     }
     forEachArrayValue(this.realm, arrayValue, (elementValue, elementPropertyDescriptor) => {
