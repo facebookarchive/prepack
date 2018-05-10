@@ -324,6 +324,26 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         });
       });
 
+      it("Mutations - not-safe 1", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "not-safe.js");
+        });
+      });
+
+      it("Mutations - not-safe 2", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "not-safe2.js");
+        });
+      });
+
+      it("Mutations - safe 1", async () => {
+        await runTest(directory, "safe.js");
+      });
+
+      it("Mutations - safe 2", async () => {
+        await runTest(directory, "safe2.js");
+      });
+
       it("Handle mapped arrays", async () => {
         await runTest(directory, "array-map.js");
       });

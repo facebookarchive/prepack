@@ -1311,17 +1311,12 @@ export class Realm {
   // Record the current value of binding in this.modifiedBindings unless
   // there is already an entry for binding.
   recordModifiedBinding(binding: Binding, value?: Value): Binding {
-    if (binding.environment.isReadOnly) {
-      // This only happens during speculative execution and is reported elsewhere
-      throw new FatalError("Trying to modify a binding in read-only realm");
-    }
-
-    const isEnvSafe = root => {
+    const isDefinedInsidePureFn = root => {
       let context = this.getRunningContext();
       let { lexicalEnvironment: env, function: func } = context;
 
       invariant(func instanceof FunctionValue);
-      if (func === root.$FunctionObject) {
+      if (root instanceof FunctionEnvironmentRecord && func === root.$FunctionObject) {
         return true;
       }
       if (this.createdObjectsTrackedForLeaks !== undefined && !this.createdObjectsTrackedForLeaks.has(func)) {
@@ -1337,17 +1332,29 @@ export class Realm {
       return false;
     };
 
-    if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding)) {
-      if (value !== undefined && this.isInPureScope() && this.reportSideEffectCallback !== undefined) {
-        let env = binding.environment;
+    if (
+      this.modifiedBindings !== undefined &&
+      !this.modifiedBindings.has(binding) &&
+      value !== undefined &&
+      this.isInPureScope() &&
+      this.reportSideEffectCallback !== undefined
+    ) {
+      let env = binding.environment;
 
-        if (
-          !(env instanceof FunctionEnvironmentRecord) ||
-          (env instanceof FunctionEnvironmentRecord && !isEnvSafe(env))
-        ) {
-          this.reportSideEffectCallback("MODIFIED_BINDING", binding, value.expressionLocation);
-        }
+      if (
+        !(env instanceof DeclarativeEnvironmentRecord) ||
+        (env instanceof DeclarativeEnvironmentRecord && !isDefinedInsidePureFn(env))
+      ) {
+        this.reportSideEffectCallback("MODIFIED_BINDING", binding, value.expressionLocation);
       }
+    }
+
+    if (binding.environment.isReadOnly) {
+      // This only happens during speculative execution and is reported elsewhere
+      throw new FatalError("Trying to modify a binding in read-only realm");
+    }
+
+    if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding)) {
       this.modifiedBindings.set(binding, {
         hasLeaked: binding.hasLeaked,
         value: binding.value,
@@ -1372,17 +1379,17 @@ export class Realm {
   // there is already an entry for binding.
   recordModifiedProperty(binding: void | PropertyBinding): void {
     if (binding === undefined) return;
-    if (
-      this.isInPureScope() &&
-      this.reportSideEffectCallback !== undefined &&
-      this.createdObjectsTrackedForLeaks !== undefined &&
-      binding.object instanceof ObjectValue &&
-      !this.createdObjectsTrackedForLeaks.has(binding.object)
-    ) {
-      if (binding.object === this.$GlobalObject) {
-        this.reportSideEffectCallback("MODIFIED_GLOBAL", binding, binding.object.expressionLocation);
-      } else {
-        this.reportSideEffectCallback("MODIFIED_PROPERTY", binding, binding.object.expressionLocation);
+    if (this.isInPureScope()) {
+      let object = binding.object;
+      invariant(object instanceof ObjectValue);
+      const createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
+
+      if (createdObjectsTrackedForLeaks !== undefined && !createdObjectsTrackedForLeaks.has(object)) {
+        if (binding.object === this.$GlobalObject) {
+          this.reportSideEffectCallback && this.reportSideEffectCallback("MODIFIED_GLOBAL", binding, object.expressionLocation);
+        } else {
+          this.reportSideEffectCallback && this.reportSideEffectCallback("MODIFIED_PROPERTY", binding, object.expressionLocation);
+        }
       }
     }
     if (this.isReadOnly && (this.getRunningContext().isReadOnly || !this.isNewObject(binding.object))) {
