@@ -750,7 +750,7 @@ export class Generator {
         message += `
   ${objectStack.value}`;
     }
-    const diagnostic = new CompilerDiagnostic(message, value.expressionLocation, "PP1023", "Warning");
+    const diagnostic = new CompilerDiagnostic(message, value.expressionLocation, "PP0023", "Warning");
     this.realm.handleError(diagnostic);
   }
 

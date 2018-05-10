@@ -158,6 +158,7 @@ export default class ObjectValue extends ConcreteValue {
               descriptor: desc,
               object: this,
               key: propName,
+              internalSlot: true,
             };
           }
           this.$Realm.recordModifiedProperty(binding);
