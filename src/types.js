@@ -847,6 +847,9 @@ export type CreateType = {
     env: EnvironmentRecord
   ): ObjectValue,
 
+  // How do I assign a spec section to this?
+  CopyDataProperties(realm: Realm, target: ObjectValue, source: Value, excluded: Array<StringValue>): ObjectValue,
+
   // ECMA262 7.3.4
   CreateDataProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value): boolean,
 
