@@ -68,14 +68,8 @@ function joinArrayOfsMapEntries(
   let n = Math.max((a1 && a1.length) || 0, (a2 && a2.length) || 0);
   let result = [];
   for (let i = 0; i < n; i++) {
-    let { $Key: key1, $Value: val1 } = (a1 && a1[i]) || {
-      $Key: empty,
-      $Value: empty,
-    };
-    let { $Key: key2, $Value: val2 } = (a2 && a2[i]) || {
-      $Key: empty,
-      $Value: empty,
-    };
+    let { $Key: key1, $Value: val1 } = (a1 && a1[i]) || { $Key: empty, $Value: empty };
+    let { $Key: key2, $Value: val2 } = (a2 && a2[i]) || { $Key: empty, $Value: empty };
     if (key1 === undefined && key2 === undefined) {
       result[i] = { $Key: undefined, $Value: undefined };
     } else {
