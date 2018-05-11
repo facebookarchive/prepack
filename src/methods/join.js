@@ -924,6 +924,7 @@ export class JoinImplementation {
       return this.joinValuesAsConditional(realm, joinCondition, v1, v2);
     };
     let clone_with_abstract_value = (d: Descriptor) => {
+      invariant(d === d1 || d === d2);
       if (!IsDataDescriptor(realm, d)) {
         let d3: Descriptor = {};
         d3.joinCondition = joinCondition;
@@ -936,18 +937,31 @@ export class JoinImplementation {
         invariant(dcValue.length > 0);
         let elem0 = dcValue[0];
         if (elem0 instanceof Value) {
-          dc.value = dcValue.map(e => getAbstractValue((e: any), realm.intrinsics.empty));
+          dc.value = dcValue.map(e => {
+            return d === d1
+              ? getAbstractValue((e: any), realm.intrinsics.empty)
+              : getAbstractValue(realm.intrinsics.empty, (e: any));
+          });
         } else {
           dc.value = dcValue.map(e => {
             let { $Key: key1, $Value: val1 } = (e: any);
-            let key3 = getAbstractValue(key1, realm.intrinsics.empty);
-            let val3 = getAbstractValue(val1, realm.intrinsics.empty);
+            let key3 =
+              d === d1
+                ? getAbstractValue(key1, realm.intrinsics.empty)
+                : getAbstractValue(realm.intrinsics.empty, key1);
+            let val3 =
+              d === d1
+                ? getAbstractValue(val1, realm.intrinsics.empty)
+                : getAbstractValue(realm.intrinsics.empty, val1);
             return { $Key: key3, $Value: val3 };
           });
         }
       } else {
         invariant(dcValue === undefined || dcValue instanceof Value);
-        dc.value = getAbstractValue(dcValue, realm.intrinsics.empty);
+        dc.value =
+          d === d1
+            ? getAbstractValue(dcValue, realm.intrinsics.empty)
+            : getAbstractValue(realm.intrinsics.empty, dcValue);
       }
       return dc;
     };
