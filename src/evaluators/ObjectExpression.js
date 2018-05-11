@@ -113,6 +113,20 @@ export default function(
       } else {
         Create.CreateDataPropertyOrThrow(realm, obj, propKey, propValue);
       }
+    } else if (prop.type === "SpreadProperty") {
+      // 1. Let exprValue be the result of evaluating AssignmentExpression.
+      let exprValue = env.evaluate(prop.argument, strictCode);
+
+      // 2. Let fromValue be GetValue(exprValue).
+      let fromValue = Environment.GetValue(realm, exprValue);
+
+      // 3. ReturnIfAbrupt(fromValue).
+
+      // 4. Let excludedNames be a new empty List.
+      let excludedNames = [];
+
+      // 4. Return ? CopyDataProperties(object, fromValue, excludedNames).
+      Create.CopyDataProperties(realm, obj, fromValue, excludedNames);
     } else {
       invariant(prop.type === "ObjectMethod");
       Properties.PropertyDefinitionEvaluation(realm, prop, obj, (env: any), strictCode, true);

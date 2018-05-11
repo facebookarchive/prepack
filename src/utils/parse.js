@@ -27,7 +27,7 @@ export default function(
   startLine: number = 1
 ): BabelNodeFile {
   try {
-    let plugins = [];
+    let plugins = ["objectRestSpread"];
     if (realm.react.enabled) {
       plugins.push("jsx");
     }
