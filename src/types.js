@@ -847,7 +847,7 @@ export type CreateType = {
     env: EnvironmentRecord
   ): ObjectValue,
 
-  // How do I assign a spec section to this?
+  // ECMA262 7.3.23 (sec-copydataproperties)
   CopyDataProperties(realm: Realm, target: ObjectValue, source: Value, excluded: Array<StringValue>): ObjectValue,
 
   // ECMA262 7.3.4

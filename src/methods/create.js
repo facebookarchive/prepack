@@ -566,52 +566,46 @@ export class CreateImplementation {
     // Assert: Type(excluded) is List.
     invariant(excluded instanceof Array, "Not an array");
 
-    let keys, from;
-    //   If source is undefined or null, let keys be a new empty List.
-    /* eslint-disable brace-style */
+    //   If source is undefined or null,
     if (source === realm.intrinsics.null || source === realm.intrinsics.undefined) {
-      keys = [];
-
-      // Seems necessary. Flow complained too.
-      from = new Value(realm);
-    }
-    /* eslint-enable brace-style */
-    //   Else,
-    else {
+      // let keys be a new empty List.
+    } else {
+      //   Else,
       // Let from be ! ToObject(source).
-      from = To.ToObject(realm, source);
+      let from = To.ToObject(realm, source);
 
       // Let keys be ? from.[[OwnPropertyKeys]]().
-      keys = from.$OwnPropertyKeys();
-    }
-    //   Repeat for each element nextKey of keys in List order,
-    for (let nextKey of keys) {
-      // Let found be false.
-      let found = false;
+      let keys = from.$OwnPropertyKeys();
 
-      //   Repeat for each element e of excluded,
-      for (let e of excluded) {
-        // Seems necessary. Flow complained too. Did I go wrong somewhere else?
-        invariant(e instanceof StringValue);
-        invariant(nextKey instanceof StringValue);
+      //   Repeat for each element nextKey of keys in List order,
+      for (let nextKey of keys) {
+        // Let found be false.
+        let found = false;
 
-        // If e is not empty and SameValue(e, nextKey) is true, then
-        if (!e.mightBeFalse() && SameValue(realm, e, nextKey)) {
-          // Set found to true.
-          found = true;
+        //   Repeat for each element e of excluded,
+        for (let e of excluded) {
+          // Seems necessary. Flow complained too. Did I go wrong somewhere else?
+          invariant(e instanceof StringValue);
+          invariant(nextKey instanceof StringValue);
+
+          // If e is not empty and SameValue(e, nextKey) is true, then
+          if (!e.mightBeFalse() && SameValue(realm, e, nextKey)) {
+            // Set found to true.
+            found = true;
+          }
         }
-      }
-      // If found is false, then
-      if (found === false) {
-        // Let desc be ? from.[[GetOwnProperty]](nextKey).
-        let desc = from.$GetOwnProperty(nextKey);
+        // If found is false, then
+        if (found === false) {
+          // Let desc be ? from.[[GetOwnProperty]](nextKey).
+          let desc = from.$GetOwnProperty(nextKey);
 
-        // If desc is not undefined and desc.[[Enumerable]] is true, then
-        if (desc !== undefined && desc.enumerable === true) {
-          // Let propValue be ? Get(from, nextKey).
-          let propValue = Get(realm, from, nextKey);
-          // Perform ! CreateDataProperty(target, nextKey, propValue).
-          this.CreateDataProperty(realm, target, nextKey, propValue);
+          // If desc is not undefined and desc.[[Enumerable]] is true, then
+          if (desc !== undefined && desc.enumerable === true) {
+            // Let propValue be ? Get(from, nextKey).
+            let propValue = Get(realm, from, nextKey);
+            // Perform ! CreateDataProperty(target, nextKey, propValue).
+            this.CreateDataProperty(realm, target, nextKey, propValue);
+          }
         }
       }
     }
