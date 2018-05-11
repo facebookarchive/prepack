@@ -38,8 +38,7 @@ import {
 } from "./utils.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
-// $FlowFixMe: flow complains that this isn't a module
-// but it is and it seems to load fine?
+// $FlowFixMe: flow complains that this isn't a module but it is, and it seems to load fine
 import hyphenateStyleName from "fbjs/lib/hyphenateStyleName";
 
 type ReactNode = Array<ReactNode> | string | AbstractValue | ArrayValue;
