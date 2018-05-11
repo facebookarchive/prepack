@@ -598,7 +598,7 @@ export class Generator {
     });
   }
 
-  emitConsoleLog(method: "log" | "warn" | "error", args: Array<string | ConcreteValue>) {
+  emitConsoleLog(method: "log" | "warn" | "error" | "time" | "timeEnd", args: Array<string | ConcreteValue>) {
     this.emitCall(
       () => t.memberExpression(t.identifier("console"), t.identifier(method)),
       args.map(v => (typeof v === "string" ? new StringValue(this.realm, v) : v))

@@ -30,7 +30,7 @@ function Story({story, rank}) {
             textAlign: 'right',
           }}
           className="title">
-          <span className="rank">{rank}.</span>
+          <span className="rank">{rank + '.'}</span>
         </td>
         <td
           className="votelinks"
@@ -201,19 +201,33 @@ App.propTypes = {
   stories: PropTypes.array.isRequired,
 };
 
-function getTrialsCompiler(renderer, Root, data) {
+function runCompileVersion(renderer, Root, data) {
   return [['server render', ReactDOMServer.renderToString(<App stories={data} />)]];
 }
 
-function getTrials(renderer, Root, data) {
+function runNonCompiledVersion(renderer, Root, data) {
   return [['server render', ReactDOMServer.renderToString(<App stories={data} />)]];
 }
 
+function getTrialsA(renderer, Root, data) {
+  // console.time("server render");
+  var result = runNonCompiledVersion(renderer, Root, data);
+  // console.timeEnd("server render");
+  return result;
+}
+
+function getTrialsB(renderer, Root, data) {
+  // console.time("compiled server render");
+  var result = runCompileVersion(renderer, Root, data);
+  // console.timeEnd("compiled server render");
+  return result;
+}
 if (this.__optimize) {
-  __optimize(getTrialsCompiler);
-  App.getTrials = getTrialsCompiler;
+  // this is only for the compiled route
+  __optimize(runCompileVersion);
+  App.getTrials = getTrialsB;
 } else {
-  App.getTrials = getTrials;
+  App.getTrials = getTrialsA;
 }
 
 module.exports = App;

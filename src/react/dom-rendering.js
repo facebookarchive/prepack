@@ -38,6 +38,8 @@ import {
 } from "./utils.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
+// $FlowFixMe: flow complains that this isn't a module
+// but it is and it seems to load fine?
 import hyphenateStyleName from "fbjs/lib/hyphenateStyleName";
 
 type ReactNode = Array<ReactNode> | string | AbstractValue | ArrayValue;
@@ -419,17 +421,6 @@ function createOpenTagMarkup(
   return ret;
 }
 
-function renderArrayHelper(array) {
-  let length = array.length;
-  let i = 0;
-  let str = "";
-
-  while (i++ < length) {
-    str += array[i];
-  }
-  return str;
-}
-
 function escapeHtml(string) {
   if (typeof string === "boolean" || typeof string === "number") {
     return "" + string;
@@ -582,12 +573,29 @@ function createHtmlEscapeHelper(realm: Realm) {
 }
 
 function createArrayHelper(realm: Realm) {
-  let escapeHelperAst = parseExpression(arrayHelper.toString(), { plugins: ["flow"] });
+  let arrayHelper = `
+    function arrayHelper(array) {
+      let length = array.length;
+      let i = 0;
+      let str = "";
+      let item;
+
+      while (i < length) {
+        item = array[i++];
+        if (previousWasTextNode === true) {
+          str += "<!-- -->" + item;
+        } else {
+          str += item;
+        }
+        previousWasTextNode = item[0] !== "<";
+      }
+      return str;
+    }
+  `;
+
+  let escapeHelperAst = parseExpression(arrayHelper, { plugins: ["flow"] });
   let helper = new ECMAScriptSourceFunctionValue(realm);
   let body = escapeHelperAst.body;
-  body.body.unshift(
-    t.variableDeclaration("var", [t.variableDeclarator(t.identifier("matchHtmlRegExp"), t.regExpLiteral("[\"'&<>]"))])
-  );
   ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
   helper.$ECMAScriptCode = body;
   helper.$FormalParameters = escapeHelperAst.params;
@@ -838,6 +846,10 @@ export function renderToString(
   // by hoisting it, it gets cached by the VM JITs
   realm.generator.emitStatement([], () =>
     t.variableDeclaration("var", [t.variableDeclarator(t.identifier("matchHtmlRegExp"), t.regExpLiteral("[\"'&<>]"))])
+  );
+  invariant(realm.generator);
+  realm.generator.emitStatement([], () =>
+    t.variableDeclaration("var", [t.variableDeclarator(t.identifier("previousWasTextNode"), t.booleanLiteral(false))])
   );
   invariant(effects);
   realm.applyEffects(effects);

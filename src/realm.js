@@ -1291,7 +1291,7 @@ export class Realm {
     }
   }
 
-  outputToConsole(method: "log" | "warn" | "error", args: Array<string | ConcreteValue>): void {
+  outputToConsole(method: "log" | "warn" | "error" | "time" | "timeEnd", args: Array<string | ConcreteValue>): void {
     if (this.isReadOnly) {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to create console output in read-only realm");

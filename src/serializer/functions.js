@@ -14,7 +14,6 @@ import { Completion, JoinedAbruptCompletions, PossiblyNormalCompletion } from ".
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import { type Effects, type PropertyBindings, Realm } from "../realm.js";
-import type { Binding } from "../environment.js";
 import type { PropertyBinding, ReactComponentTreeConfig, FunctionBodyAstNode } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
 import {
