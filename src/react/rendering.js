@@ -30,7 +30,6 @@ import {
 import { Reconciler } from "./reconcilation.js";
 import {
   createReactEvaluatedNode,
-  evaluateWithNestedParentEffects,
   forEachArrayValue,
   getComponentName,
   getProperty,
@@ -576,9 +575,6 @@ function createHtmlEscapeHelper(realm: Realm) {
   let escapeHelperAst = parseExpression(escapeHtml.toString(), { plugins: ["flow"] });
   let helper = new ECMAScriptSourceFunctionValue(realm);
   let body = escapeHelperAst.body;
-  body.body.unshift(
-    t.variableDeclaration("var", [t.variableDeclarator(t.identifier("matchHtmlRegExp"), t.regExpLiteral("[\"'&<>]"))])
-  );
   ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
   helper.$ECMAScriptCode = body;
   helper.$FormalParameters = escapeHelperAst.params;
@@ -806,21 +802,18 @@ function handleNestedOptimizedFunctions(realm: Realm, reconciler: Reconciler, st
       evaluatedNode
     );
 
-    // TODO this applies the above effects, then mutates the result of the above
-    // effects. This shouldn't be right, but works. If you wrap this below in
-    // evaluateForEffects and try to apply the effects, it doesn't work
-    realm.wrapInGlobalEnv(() =>
-      evaluateWithNestedParentEffects(realm, [closureEffects], () => {
+    let closureEffectsRenderedToString = realm.evaluateForEffectsWithPriorEffects(
+      [closureEffects],
+      () => {
         let serverRenderer = new ReactDOMServerRenderer(realm, staticMarkup);
         invariant(closureEffects.result instanceof Value);
-        let val = serverRenderer.render(closureEffects.result);
-        closureEffects.result = val;
-        return realm.intrinsics.undefined;
-      })
+        return serverRenderer.render(closureEffects.result);
+      },
+      "handleNestedOptimizedFunctions"
     );
 
     realm.react.optimizedNestedClosuresToWrite.push({
-      effects: closureEffects,
+      effects: closureEffectsRenderedToString,
       func,
     });
   }
@@ -840,6 +833,12 @@ export function renderToString(
   invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue);
   let effects = reconciler.renderReactComponentTree(typeValue, propsValue, null, evaluatedRootNode);
 
+  invariant(realm.generator);
+  // create a single regex used for the escape functions
+  // by hoisting it, it gets cached by the VM JITs
+  realm.generator.emitStatement([], () =>
+    t.variableDeclaration("var", [t.variableDeclarator(t.identifier("matchHtmlRegExp"), t.regExpLiteral("[\"'&<>]"))])
+  );
   invariant(effects);
   realm.applyEffects(effects);
   invariant(effects.result instanceof Value);
