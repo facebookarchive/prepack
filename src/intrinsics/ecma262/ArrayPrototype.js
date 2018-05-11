@@ -980,6 +980,29 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
+    // if there is an initialValue, then the call will likely
+    // have side-effects so this is not supported for now
+    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O)) {
+      if (initialValue || initialValue instanceof UndefinedValue) {
+        let diagnostic = new CompilerDiagnostic(
+          "array reduceRight with initial value is not supported",
+          realm.currentLocation,
+          "PP0035",
+          "FatalError"
+        );
+        realm.handleError(diagnostic);
+        throw new FatalError();
+      }
+      let args = [O, callbackfn];
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
+        realm,
+        args,
+        ([objNode, ..._args]) =>
+          t.callExpression(t.memberExpression(objNode, t.identifier("reduceRight")), ((_args: any): Array<any>)),
+        { func: callbackfn, thisVal: realm.intrinsics.undefined }
+      );
+    }
+
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
 

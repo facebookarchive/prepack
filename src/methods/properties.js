@@ -1231,7 +1231,11 @@ export class PropertiesImplementation {
         }
         AbstractValue.reportIntrospectionError(O, P);
         throw new FatalError();
-      } else if (realm.invariantLevel >= 2 && O.isIntrinsic()) {
+      } else if (
+        realm.invariantLevel >= 2 &&
+        O.isIntrinsic() &&
+        !ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O)
+      ) {
         let realmGenerator = realm.generator;
         // TODO: Because global variables are special, checking for missing global object properties doesn't quite work yet.
         if (
