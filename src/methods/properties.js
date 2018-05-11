@@ -303,17 +303,29 @@ export class PropertiesImplementation {
     if (joinCondition !== undefined) {
       let descriptor2 = ownDesc.descriptor2;
       ownDesc = ownDesc.descriptor1;
-      let [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(joinCondition, () => {
+      let {
+        result: compl1,
+        generator: gen1,
+        modifiedBindings: bindings1,
+        modifiedProperties: properties1,
+        createdObjects: createdObj1,
+      } = Path.withCondition(joinCondition, () => {
         return ownDesc !== undefined
           ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/1")
           : construct_empty_effects(realm);
-      }).data;
+      });
       ownDesc = descriptor2;
-      let [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(joinCondition, () => {
+      let {
+        result: compl2,
+        generator: gen2,
+        modifiedBindings: bindings2,
+        modifiedProperties: properties2,
+        createdObjects: createdObj2,
+      } = Path.withInverseCondition(joinCondition, () => {
         return ownDesc !== undefined
           ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/2")
           : construct_empty_effects(realm);
-      }).data;
+      });
 
       // Join the effects, creating an abstract view of what happened, regardless
       // of the actual value of ownDesc.joinCondition.
@@ -1167,7 +1179,12 @@ export class PropertiesImplementation {
         t.memberExpression(node, pname, !t.isIdentifier(pname))
       );
       // TODO: We can't be sure what the descriptor will be, but the value will be abstract.
-      return { configurable: true, enumerable: true, value: absVal, writable: true };
+      return {
+        configurable: true,
+        enumerable: true,
+        value: absVal,
+        writable: true,
+      };
     }
 
     // 1. Assert: IsPropertyKey(P) is true.
@@ -1222,7 +1239,12 @@ export class PropertiesImplementation {
             } else {
               absVal = createAbstractPropertyValue(Value);
             }
-            return { configurable: true, enumerable: true, value: absVal, writable: true };
+            return {
+              configurable: true,
+              enumerable: true,
+              value: absVal,
+              writable: true,
+            };
           } else {
             invariant(P instanceof SymbolValue);
             // Simple objects don't have symbol properties
@@ -1510,7 +1532,12 @@ export class PropertiesImplementation {
       methodDef.$Closure.$HasComputedName = !!MethodDefinition.computed;
 
       // 4. Let desc be the Property Descriptor{[[Value]]: methodDef.[[closure]], [[Writable]]: true, [[Enumerable]]: enumerable, [[Configurable]]: true}.
-      let desc: Descriptor = { value: methodDef.$Closure, writable: true, enumerable: enumerable, configurable: true };
+      let desc: Descriptor = {
+        value: methodDef.$Closure,
+        writable: true,
+        enumerable: enumerable,
+        configurable: true,
+      };
 
       // 5. Return DefinePropertyOrThrow(object, methodDef.[[key]], desc).
       return this.DefinePropertyOrThrow(realm, object, methodDef.$Key, desc);
@@ -1552,7 +1579,12 @@ export class PropertiesImplementation {
       Functions.SetFunctionName(realm, closure, propKey);
 
       // 10. Let desc be the Property Descriptor{[[Value]]: closure, [[Writable]]: true, [[Enumerable]]: enumerable, [[Configurable]]: true}.
-      let desc: Descriptor = { value: closure, writable: true, enumerable: enumerable, configurable: true };
+      let desc: Descriptor = {
+        value: closure,
+        writable: true,
+        enumerable: enumerable,
+        configurable: true,
+      };
 
       // 11. Return DefinePropertyOrThrow(object, propKey, desc).
       return this.DefinePropertyOrThrow(realm, object, propKey, desc);

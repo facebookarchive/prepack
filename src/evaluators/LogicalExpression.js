@@ -54,16 +54,26 @@ export default function(
   invariant(lcond instanceof AbstractValue);
 
   // Create empty effects for the case where ast.right is not evaluated
-  let [compl1, gen1, bindings1, properties1, createdObj1] = construct_empty_effects(realm).data;
+  let {
+    result: compl1,
+    generator: gen1,
+    modifiedBindings: bindings1,
+    modifiedProperties: properties1,
+    createdObjects: createdObj1,
+  } = construct_empty_effects(realm);
   compl1; // ignore
 
   // Evaluate ast.right in a sandbox to get its effects
   let compl2, gen2, bindings2, properties2, createdObj2;
   try {
     let wrapper = ast.operator === "&&" ? Path.withCondition : Path.withInverseCondition;
-    [compl2, gen2, bindings2, properties2, createdObj2] = wrapper(lcond, () =>
-      realm.evaluateNodeForEffects(ast.right, strictCode, env)
-    ).data;
+    ({
+      result: compl2,
+      generator: gen2,
+      modifiedBindings: bindings2,
+      modifiedProperties: properties2,
+      createdObjects: createdObj2,
+    } = wrapper(lcond, () => realm.evaluateNodeForEffects(ast.right, strictCode, env)));
   } catch (e) {
     if (e instanceof InfeasiblePathError) {
       // if && then lcond cannot be true on this path else lcond cannot be false on this path.

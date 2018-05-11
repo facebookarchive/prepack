@@ -65,14 +65,26 @@ export default function(
 
   // Evaluate consequent and alternate in sandboxes and get their effects.
   let [consequentEffects, conAst, conIO] = realm.partiallyEvaluateNodeForEffects(ast.consequent, strictCode, env);
-  let [conCompl, gen1, bindings1, properties1, createdObj1] = consequentEffects.data;
+  let {
+    result: conCompl,
+    generator: gen1,
+    modifiedBindings: bindings1,
+    modifiedProperties: properties1,
+    createdObjects: createdObj1,
+  } = consequentEffects;
   let consequentAst = (conAst: any);
   if (conIO.length > 0) consequentAst = t.blockStatement(conIO.concat(consequentAst));
 
   let [alternateEffects, altAst, altIO] = ast.alternate
     ? realm.partiallyEvaluateNodeForEffects(ast.alternate, strictCode, env)
     : [construct_empty_effects(realm), undefined, []];
-  let [altCompl, gen2, bindings2, properties2, createdObj2] = alternateEffects.data;
+  let {
+    result: altCompl,
+    generator: gen2,
+    modifiedBindings: bindings2,
+    modifiedProperties: properties2,
+    createdObjects: createdObj2,
+  } = alternateEffects;
   let alternateAst = (altAst: any);
   if (altIO.length > 0) alternateAst = t.blockStatement(altIO.concat(alternateAst));
 

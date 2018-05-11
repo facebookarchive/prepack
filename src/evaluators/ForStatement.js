@@ -203,7 +203,7 @@ function ForBodyEvaluation(
         joinedEffects = Join.joinEffectsAndPromoteNested(ContinueCompletion, realm, c, e);
       }
       invariant(joinedEffects !== undefined);
-      let [result] = joinedEffects.data;
+      let { result } = joinedEffects;
       // Note that the normal part of a PossiblyNormalCompletion will have been promoted to a continue completion
       if (result instanceof ContinueCompletion) {
         // The abrupt completions were all continue completions, so everything joined into a single continue completion
@@ -216,7 +216,7 @@ function ForBodyEvaluation(
       invariant(result instanceof JoinedAbruptCompletions);
       invariant(result.consequent instanceof ContinueCompletion || result.alternate instanceof ContinueCompletion);
       joinedEffects = extractAndSavePossiblyNormalCompletion(ContinueCompletion, result);
-      result = joinedEffects.data[0];
+      result = joinedEffects.result;
       invariant(result instanceof ContinueCompletion);
       realm.applyEffects(joinedEffects);
       return result.value;
@@ -249,7 +249,7 @@ function ForBodyEvaluation(
         joinedEffects = Join.joinEffectsAndPromoteNested(BreakCompletion, realm, c, e);
       }
       invariant(joinedEffects !== undefined);
-      let [result] = joinedEffects.data;
+      let { result } = joinedEffects;
       // Note that the normal part of a PossiblyNormalCompletion will have been promoted to a break completion
       if (result instanceof BreakCompletion) {
         // The abrupt completions were all break completions, so everything joined into a single break completion
@@ -262,7 +262,7 @@ function ForBodyEvaluation(
       invariant(result instanceof JoinedAbruptCompletions);
       invariant(result.consequent instanceof BreakCompletion || result.alternate instanceof BreakCompletion);
       joinedEffects = extractAndSavePossiblyNormalCompletion(BreakCompletion, result);
-      result = joinedEffects.data[0];
+      result = joinedEffects.result;
       invariant(result instanceof BreakCompletion);
       realm.applyEffects(joinedEffects);
       return result.value;

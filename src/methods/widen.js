@@ -46,8 +46,14 @@ export class WidenImplementation {
     let n = Math.max((a1 && a1.length) || 0, (a2 && a2.length) || 0);
     let result: Array<{ $Key: void | Value, $Value: void | Value }> = [];
     for (let i = 0; i < n; i++) {
-      let { $Key: key1, $Value: val1 } = a1[i] || { $Key: undefined, $Value: undefined };
-      let { $Key: key2, $Value: val2 } = a2[i] || { $Key: undefined, $Value: undefined };
+      let { $Key: key1, $Value: val1 } = a1[i] || {
+        $Key: undefined,
+        $Value: undefined,
+      };
+      let { $Key: key2, $Value: val2 } = a2[i] || {
+        $Key: undefined,
+        $Value: undefined,
+      };
       if (key1 === undefined && key2 === undefined) {
         result[i] = { $Key: undefined, $Value: undefined };
       } else {
@@ -86,8 +92,18 @@ export class WidenImplementation {
 
   // Returns a new effects summary that includes both e1 and e2.
   widenEffects(realm: Realm, e1: Effects, e2: Effects): Effects {
-    let [result1, , bindings1, properties1, createdObj1] = e1.data;
-    let [result2, , bindings2, properties2, createdObj2] = e2.data;
+    let {
+      result: result1,
+      modifiedBindings: bindings1,
+      modifiedProperties: properties1,
+      createdObjects: createdObj1,
+    } = e1;
+    let {
+      result: result2,
+      modifiedBindings: bindings2,
+      modifiedProperties: properties2,
+      createdObjects: createdObj2,
+    } = e2;
 
     let result = this.widenResults(realm, result1, result2);
     let bindings = this.widenBindings(realm, bindings1, bindings2);
@@ -328,8 +344,18 @@ export class WidenImplementation {
   // then we have reached a fixed point and no further calls to widen are needed. e1/e2 represent a general
   // summary of the loop, regardless of how many iterations will be performed at runtime.
   containsEffects(e1: Effects, e2: Effects): boolean {
-    let [result1, , bindings1, properties1, createdObj1] = e1.data;
-    let [result2, , bindings2, properties2, createdObj2] = e2.data;
+    let {
+      result: result1,
+      modifiedBindings: bindings1,
+      modifiedProperties: properties1,
+      createdObjects: createdObj1,
+    } = e1;
+    let {
+      result: result2,
+      modifiedBindings: bindings2,
+      modifiedProperties: properties2,
+      createdObjects: createdObj2,
+    } = e2;
 
     if (!this.containsResults(result1, result2)) return false;
     if (!this.containsBindings(bindings1, bindings2)) return false;
@@ -424,8 +450,14 @@ export class WidenImplementation {
     let empty = realm.intrinsics.empty;
     let n = Math.max((a1 && a1.length) || 0, (a2 && a2.length) || 0);
     for (let i = 0; i < n; i++) {
-      let { $Key: key1, $Value: val1 } = (a1 && a1[i]) || { $Key: empty, $Value: empty };
-      let { $Key: key2, $Value: val2 } = (a2 && a2[i]) || { $Key: empty, $Value: empty };
+      let { $Key: key1, $Value: val1 } = (a1 && a1[i]) || {
+        $Key: empty,
+        $Value: empty,
+      };
+      let { $Key: key2, $Value: val2 } = (a2 && a2[i]) || {
+        $Key: empty,
+        $Value: empty,
+      };
       if (key1 === undefined) {
         if (key2 !== undefined) return false;
       } else {

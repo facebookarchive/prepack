@@ -80,46 +80,18 @@ export class Effects {
     propertyBindings: PropertyBindings,
     createdObjects: CreatedObjects
   ) {
-    this.data = arguments;
+    this.result = result;
+    this.generator = generator;
+    this.modifiedBindings = bindings;
+    this.modifiedProperties = propertyBindings;
+    this.createdObjects = createdObjects;
+
     this.canBeApplied = true;
     this._id = effects_uid++;
   }
 
-  // TODO: Make these into properties
-  data: [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects];
   canBeApplied: boolean;
   _id: number;
-
-  get result(): EvaluationResult {
-    return this.data[0];
-  }
-  set result(newVal: EvaluationResult) {
-    this.data[0] = newVal;
-  }
-  get generator(): Generator {
-    return this.data[1];
-  }
-  set generator(newVal: Generator) {
-    this.data[1] = newVal;
-  }
-  get modifiedBindings(): Bindings {
-    return this.data[2];
-  }
-  set modifiedBindings(newVal: Bindings) {
-    this.data[2] = newVal;
-  }
-  get modifiedProperties(): PropertyBindings {
-    return this.data[3];
-  }
-  set modifiedProperties(newVal: PropertyBindings) {
-    this.data[3] = newVal;
-  }
-  get createdObjects(): CreatedObjects {
-    return this.data[4];
-  }
-  set createdObjects(newVal: CreatedObjects) {
-    this.data[4] = newVal;
-  }
 }
 
 export class Tracer {
@@ -918,7 +890,12 @@ export class Realm {
           // effects1 includes every value present in effects2, so doing another iteration using effects2 will not
           // result in any more values being added to abstract domains and hence a fixpoint has been reached.
           // Generate code using effects2 because its expressions have not been widened away.
-          let [, gen, bindings2, pbindings2, createdObjects2] = effects2.data;
+          let {
+            generator: gen,
+            modifiedBindings: bindings2,
+            modifiedProperties: pbindings2,
+            createdObjects: createdObjects2,
+          } = effects2;
           this._applyPropertiesToNewlyCreatedObjects(pbindings2, createdObjects2);
           this._emitPropertAssignments(gen, pbindings2, createdObjects2);
           this._emitLocalAssignments(gen, bindings2, createdObjects2);
@@ -1072,10 +1049,16 @@ export class Realm {
   }
 
   composeEffects(priorEffects: Effects, subsequentEffects: Effects): Effects {
-    let [, pg, pb, pp, po] = priorEffects.data;
-    let [sc, sg, sb, sp, so] = subsequentEffects.data;
+    let { generator: pg, modifiedBindings: pb, modifiedProperties: pp, createdObjects: po } = priorEffects;
+    let {
+      result: sc,
+      generator: sg,
+      modifiedBindings: sb,
+      modifiedProperties: sp,
+      createdObjects: so,
+    } = subsequentEffects;
     let result = construct_empty_effects(this);
-    let [, , rb, rp, ro] = result.data;
+    let { modifiedBindings: rb, modifiedProperties: rp, createdObjects: ro } = result;
 
     result.result = sc;
 
@@ -1224,7 +1207,13 @@ export class Realm {
 
     // Restore saved state
     if (completion.savedEffects !== undefined) {
-      let [c, g, b, p, o] = completion.savedEffects.data;
+      let {
+        result: c,
+        generator: g,
+        modifiedBindings: b,
+        modifiedProperties: p,
+        createdObjects: o,
+      } = completion.savedEffects;
       c;
       completion.savedEffects = undefined;
       this.generator = g;

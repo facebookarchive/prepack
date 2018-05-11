@@ -627,7 +627,13 @@ export class Modules {
     try {
       let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
-      let [compl, generator, bindings, properties, createdObjects] = realm.evaluateNodeForEffectsInGlobalEnv(node).data;
+      let {
+        result: compl,
+        generator,
+        modifiedBindings: bindings,
+        modifiedProperties: properties,
+        createdObjects,
+      } = realm.evaluateNodeForEffectsInGlobalEnv(node);
       // for lint unused
       invariant(bindings);
 

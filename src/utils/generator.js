@@ -158,7 +158,12 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
         let declared = this.declared;
         if (declared !== undefined && context.options.debugScopes) {
           let s = t.emptyStatement();
-          s.leadingComments = [({ type: "BlockComment", value: `declaring ${declared.intrinsicName || "?"}` }: any)];
+          s.leadingComments = [
+            ({
+              type: "BlockComment",
+              value: `declaring ${declared.intrinsicName || "?"}`,
+            }: any),
+          ];
           context.emit(s);
         }
         context.emit(node);
@@ -370,7 +375,7 @@ export class Generator {
   pathConditions: Array<AbstractValue>;
 
   static _generatorOfEffects(realm: Realm, name: string, environmentRecordIdAfterGlobalCode: number, effects: Effects) {
-    let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects.data;
+    let { result, generator, modifiedBindings, modifiedProperties, createdObjects } = effects;
 
     let output = new Generator(realm, name, effects);
     output.appendGenerator(generator, generator._name);
@@ -432,12 +437,17 @@ export class Generator {
           let [c, x, y] = value.args;
           if (c instanceof AbstractValue && c.kind === "template for property name condition") {
             let ydesc = Object.assign({}, desc, { value: y });
-            let yprop = Object.assign({}, propertyBinding, { descriptor: ydesc });
+            let yprop = Object.assign({}, propertyBinding, {
+              descriptor: ydesc,
+            });
             this.emitPropertyModification(yprop);
             let xdesc = Object.assign({}, desc, { value: x });
             let key = c.args[0];
             invariant(key instanceof AbstractValue);
-            let xprop = Object.assign({}, propertyBinding, { key, descriptor: xdesc });
+            let xprop = Object.assign({}, propertyBinding, {
+              key,
+              descriptor: xdesc,
+            });
             this.emitPropertyModification(xprop);
             return;
           }
@@ -913,7 +923,11 @@ export class Generator {
     values: ValuesDomain,
     args: Array<Value>,
     buildNode_: DerivedExpressionBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: AbstractValueKind, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {|
+      kind?: AbstractValueKind,
+      isPure?: boolean,
+      skipInvariant?: boolean,
+    |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));

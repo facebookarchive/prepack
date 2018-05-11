@@ -764,7 +764,11 @@ export default class AbstractValue extends Value {
     template: PreludeGenerator => ({}) => BabelNodeExpression,
     resultType: typeof Value,
     operands: Array<Value>,
-    optionalArgs?: {| kind?: AbstractValueKind, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {|
+      kind?: AbstractValueKind,
+      isPure?: boolean,
+      skipInvariant?: boolean,
+    |}
   ): AbstractValue {
     invariant(resultType !== UndefinedValue);
     let temp = AbstractValue.createFromTemplate(realm, template, resultType, operands, "");
@@ -799,7 +803,11 @@ export default class AbstractValue extends Value {
     resultType: typeof Value,
     args: Array<Value>,
     buildFunction: AbstractValueBuildNodeFunction,
-    optionalArgs?: {| kind?: AbstractValueKind, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {|
+      kind?: AbstractValueKind,
+      isPure?: boolean,
+      skipInvariant?: boolean,
+    |}
   ): AbstractValue | UndefinedValue {
     let types = new TypesDomain(resultType);
     let values = ValuesDomain.topVal;
@@ -960,7 +968,13 @@ export default class AbstractValue extends Value {
     // Evaluate consequent and alternate in sandboxes and get their effects.
     let compl1, gen1, bindings1, properties1, createdObj1;
     try {
-      [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(condValue, consequentEffectsFunc).data;
+      ({
+        result: compl1,
+        generator: gen1,
+        modifiedBindings: bindings1,
+        modifiedProperties: properties1,
+        createdObjects: createdObj1,
+      } = Path.withCondition(condValue, consequentEffectsFunc));
     } catch (e) {
       if (e instanceof InfeasiblePathError) {
         return consequentInfeasibleFunc();
@@ -970,10 +984,13 @@ export default class AbstractValue extends Value {
 
     let compl2, gen2, bindings2, properties2, createdObj2;
     try {
-      [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(
-        condValue,
-        alternateEffectsFunc
-      ).data;
+      ({
+        result: compl2,
+        generator: gen2,
+        modifiedBindings: bindings2,
+        modifiedProperties: properties2,
+        createdObjects: createdObj2,
+      } = Path.withInverseCondition(condValue, alternateEffectsFunc));
     } catch (e) {
       if (e instanceof InfeasiblePathError) {
         return alternateInfeasibleFunc();

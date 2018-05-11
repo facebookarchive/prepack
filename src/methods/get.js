@@ -115,11 +115,17 @@ export function OrdinaryGet(
   let compl1, gen1, bindings1, properties1, createdObj1;
   try {
     desc = descriptor1;
-    [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(joinCondition, () => {
+    ({
+      result: compl1,
+      generator: gen1,
+      modifiedBindings: bindings1,
+      modifiedProperties: properties1,
+      createdObjects: createdObj1,
+    } = Path.withCondition(joinCondition, () => {
       return desc !== undefined
         ? realm.evaluateForEffects(() => OrdinaryGetHelper(), undefined, "OrdinaryGet/1")
         : construct_empty_effects(realm);
-    }).data;
+    }));
   } catch (e) {
     if (e instanceof InfeasiblePathError) {
       // The joinCondition cannot be true in the current path, after all
@@ -132,11 +138,17 @@ export function OrdinaryGet(
   let compl2, gen2, bindings2, properties2, createdObj2;
   try {
     desc = descriptor2;
-    [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(joinCondition, () => {
+    ({
+      result: compl2,
+      generator: gen2,
+      modifiedBindings: bindings2,
+      modifiedProperties: properties2,
+      createdObjects: createdObj2,
+    } = Path.withInverseCondition(joinCondition, () => {
       return desc !== undefined
         ? realm.evaluateForEffects(() => OrdinaryGetHelper(), undefined, "OrdinaryGet/2")
         : construct_empty_effects(realm);
-    }).data;
+    }));
   } catch (e) {
     if (e instanceof InfeasiblePathError) {
       // The joinCondition cannot be false in the current path, after all
