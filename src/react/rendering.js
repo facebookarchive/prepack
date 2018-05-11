@@ -249,13 +249,9 @@ function createMarkupForRoot(): string {
   return ROOT_ATTRIBUTE_NAME + '=""';
 }
 
-function renderAbstractWithEscaping(
-  realm: Realm,
-  value: AbstractValue,
-  htmlEscapeHelper: ECMAScriptSourceFunctionValue
-): AbstractValue {
+function renderValueWithHelper(realm: Realm, value: Value, helper: ECMAScriptSourceFunctionValue): AbstractValue {
   // given we know nothing of this value, we need to escape the contents of it at runtime
-  let val = AbstractValue.createFromBuildFunction(realm, Value, [htmlEscapeHelper, value], ([helperNode, valueNode]) =>
+  let val = AbstractValue.createFromBuildFunction(realm, Value, [helper, value], ([helperNode, valueNode]) =>
     t.callExpression(helperNode, [valueNode])
   );
   invariant(val instanceof AbstractValue);
@@ -303,12 +299,12 @@ function createMarkupForProperty(
     } else if (value instanceof StringValue || value instanceof NumberValue) {
       return attributeName + "=" + quoteAttributeValueForBrowser(value.value + "");
     } else if (value instanceof AbstractValue) {
-      return [attributeName + "=", renderAbstractWithEscaping(realm, value, htmlEscapeHelper)];
+      return [attributeName + "=", renderValueWithHelper(realm, value, htmlEscapeHelper)];
     }
   } else if (value instanceof StringValue || value instanceof NumberValue) {
     return name + "=" + quoteAttributeValueForBrowser(value.value + "");
   } else if (value instanceof AbstractValue) {
-    return [name + '="', renderAbstractWithEscaping(realm, value, htmlEscapeHelper), '"'];
+    return [name + '="', renderValueWithHelper(realm, value, htmlEscapeHelper), '"'];
   }
   invariant(false, "TODO");
 }
@@ -422,6 +418,17 @@ function createOpenTagMarkup(
     ret.push(" " + createMarkupForRoot());
   }
   return ret;
+}
+
+function renderArrayHelper(array) {
+  let length = array.length;
+  let i = 0;
+  let str = "";
+
+  while (i++ < length) {
+    str += array[i];
+  }
+  return str;
 }
 
 function escapeHtml(string) {
@@ -578,17 +585,32 @@ function createHtmlEscapeHelper(realm: Realm) {
   return helper;
 }
 
+function createArrayHelper(realm: Realm) {
+  let escapeHelperAst = parseExpression(arrayHelper.toString(), { plugins: ["flow"] });
+  let helper = new ECMAScriptSourceFunctionValue(realm);
+  let body = escapeHelperAst.body;
+  body.body.unshift(
+    t.variableDeclaration("var", [t.variableDeclarator(t.identifier("matchHtmlRegExp"), t.regExpLiteral("[\"'&<>]"))])
+  );
+  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
+  helper.$ECMAScriptCode = body;
+  helper.$FormalParameters = escapeHelperAst.params;
+  return helper;
+}
+
 class ReactDOMServerRenderer {
   constructor(realm: Realm, makeStaticMarkup: boolean) {
     this.realm = realm;
     this.makeStaticMarkup = makeStaticMarkup;
     this.previousWasTextNode = false;
     this.htmlEscapeHelper = createHtmlEscapeHelper(realm);
+    this.arrayHelper = createArrayHelper(realm);
   }
   realm: Realm;
   makeStaticMarkup: boolean;
   previousWasTextNode: boolean;
   htmlEscapeHelper: ECMAScriptSourceFunctionValue;
+  arrayHelper: ECMAScriptSourceFunctionValue;
 
   render(value: Value, namespace: string = "html", depth: number = 0): StringValue | AbstractValue {
     let rootReactNode = this._renderValue(value, namespace, depth);
@@ -651,7 +673,7 @@ class ReactDOMServerRenderer {
       invariant(condValue instanceof AbstractValue);
       return this._renderAbstractConditionalValue(condValue, consequentVal, alternateVal, namespace, depth);
     } else {
-      return renderAbstractWithEscaping(this.realm, value, this.htmlEscapeHelper);
+      return renderValueWithHelper(this.realm, value, this.htmlEscapeHelper);
     }
   }
 
@@ -660,7 +682,7 @@ class ReactDOMServerRenderer {
       let arrayHint = this.realm.react.arrayHints.get(value);
 
       if (arrayHint !== undefined) {
-        return value;
+        return renderValueWithHelper(this.realm, value, this.arrayHelper);
       }
     }
     let elements = [];
@@ -721,6 +743,7 @@ class ReactDOMServerRenderer {
       } else if (innerMarkup instanceof ObjectValue) {
         invariant(false, "TODO");
       } else {
+        this.previousWasTextNode = false;
         let childrenValue = getProperty(this.realm, propsValue, "children");
         let childrenOut = this._renderValue(childrenValue, namespace, depth + 1);
 
