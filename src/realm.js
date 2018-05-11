@@ -90,6 +90,11 @@ export class Effects {
     this._id = effects_uid++;
   }
 
+  result: EvaluationResult;
+  generator: Generator;
+  modifiedBindings: Bindings;
+  modifiedProperties: PropertyBindings;
+  createdObjects: CreatedObjects;
   canBeApplied: boolean;
   _id: number;
 }
