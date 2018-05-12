@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict */
 
 import type { BabelNodeExpression } from "babel-types";
 import * as t from "babel-types";
