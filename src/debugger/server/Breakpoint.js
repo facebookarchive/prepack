@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict */
 
 export class Breakpoint {
   constructor(filePath: string, line: number, column: number = 0, temporary: boolean = false, enabled: boolean = true) {
