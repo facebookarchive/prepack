@@ -628,29 +628,29 @@ export class Modules {
       let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
 
       let {
-        result: compl,
+        result,
         generator,
-        modifiedBindings: bindings,
-        modifiedProperties: properties,
+        modifiedBindings,
+        modifiedProperties,
         createdObjects,
       } = realm.evaluateNodeForEffectsInGlobalEnv(node);
       // for lint unused
-      invariant(bindings);
+      invariant(modifiedBindings);
 
-      if (compl instanceof AbruptCompletion) return undefined;
-      invariant(compl instanceof Value);
+      if (result instanceof AbruptCompletion) return undefined;
+      invariant(result instanceof Value);
 
-      if (!generator.empty() || (compl instanceof ObjectValue && createdObjects.has(compl))) return undefined;
+      if (!generator.empty() || (result instanceof ObjectValue && createdObjects.has(result))) return undefined;
       // Check for escaping property assignments, if none escape, we got an existing object
       let escapes = false;
-      for (let [binding] of properties) {
+      for (let [binding] of modifiedProperties) {
         let object = binding.object;
         invariant(object instanceof ObjectValue);
         if (!createdObjects.has(object)) escapes = true;
       }
       if (escapes) return undefined;
 
-      return compl;
+      return result;
     } catch (err) {
       if (err instanceof FatalError) return undefined;
       throw err;

@@ -55,24 +55,24 @@ export default function(
 
   // Create empty effects for the case where ast.right is not evaluated
   let {
-    result: compl1,
-    generator: gen1,
-    modifiedBindings: bindings1,
-    modifiedProperties: properties1,
-    createdObjects: createdObj1,
+    result: result1,
+    generator: generator1,
+    modifiedBindings: modifiedBindings1,
+    modifiedProperties: modifiedProperties1,
+    createdObjects: createdObjects1,
   } = construct_empty_effects(realm);
-  compl1; // ignore
+  result1; // ignore
 
   // Evaluate ast.right in a sandbox to get its effects
-  let compl2, gen2, bindings2, properties2, createdObj2;
+  let result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2;
   try {
     let wrapper = ast.operator === "&&" ? Path.withCondition : Path.withInverseCondition;
     ({
-      result: compl2,
-      generator: gen2,
-      modifiedBindings: bindings2,
-      modifiedProperties: properties2,
-      createdObjects: createdObj2,
+      result: result2,
+      generator: generator2,
+      modifiedBindings: modifiedBindings2,
+      modifiedProperties: modifiedProperties2,
+      createdObjects: createdObjects2,
     } = wrapper(lcond, () => realm.evaluateNodeForEffects(ast.right, strictCode, env)));
   } catch (e) {
     if (e instanceof InfeasiblePathError) {
@@ -92,15 +92,15 @@ export default function(
     joinedEffects = Join.joinEffects(
       realm,
       lval,
-      new Effects(compl2, gen2, bindings2, properties2, createdObj2),
-      new Effects(lval, gen1, bindings1, properties1, createdObj1)
+      new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2),
+      new Effects(lval, generator1, modifiedBindings1, modifiedProperties1, createdObjects1)
     );
   } else {
     joinedEffects = Join.joinEffects(
       realm,
       lval,
-      new Effects(lval, gen1, bindings1, properties1, createdObj1),
-      new Effects(compl2, gen2, bindings2, properties2, createdObj2)
+      new Effects(lval, generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
+      new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
     );
   }
   let completion = joinedEffects.result;
@@ -118,12 +118,12 @@ export default function(
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
   invariant(completion instanceof Value); // references do not survive join
-  if (lval instanceof Value && compl2 instanceof Value) {
+  if (lval instanceof Value && result2 instanceof Value) {
     // joinEffects does the right thing for the side effects of the second expression but for the result the join
     // produces a conditional expressions of the form (a ? b : a) for a && b and (a ? a : b) for a || b
     // Rather than look for this pattern everywhere, we override this behavior and replace the completion with
     // the actual logical operator. This helps with simplification and reasoning when dealing with path conditions.
-    completion = AbstractValue.createFromLogicalOp(realm, ast.operator, lval, compl2, ast.loc);
+    completion = AbstractValue.createFromLogicalOp(realm, ast.operator, lval, result2, ast.loc);
   }
   return completion;
 }

@@ -958,14 +958,14 @@ export default class AbstractValue extends Value {
     alternateInfeasibleFunc: () => Value
   ): Value {
     // Evaluate consequent and alternate in sandboxes and get their effects.
-    let compl1, gen1, bindings1, properties1, createdObj1;
+    let result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1;
     try {
       ({
-        result: compl1,
-        generator: gen1,
-        modifiedBindings: bindings1,
-        modifiedProperties: properties1,
-        createdObjects: createdObj1,
+        result: result1,
+        generator: generator1,
+        modifiedBindings: modifiedBindings1,
+        modifiedProperties: modifiedProperties1,
+        createdObjects: createdObjects1,
       } = Path.withCondition(condValue, consequentEffectsFunc));
     } catch (e) {
       if (e instanceof InfeasiblePathError) {
@@ -974,14 +974,14 @@ export default class AbstractValue extends Value {
       throw e;
     }
 
-    let compl2, gen2, bindings2, properties2, createdObj2;
+    let result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2;
     try {
       ({
-        result: compl2,
-        generator: gen2,
-        modifiedBindings: bindings2,
-        modifiedProperties: properties2,
-        createdObjects: createdObj2,
+        result: result2,
+        generator: generator2,
+        modifiedBindings: modifiedBindings2,
+        modifiedProperties: modifiedProperties2,
+        createdObjects: createdObjects2,
       } = Path.withInverseCondition(condValue, alternateEffectsFunc));
     } catch (e) {
       if (e instanceof InfeasiblePathError) {
@@ -995,8 +995,8 @@ export default class AbstractValue extends Value {
     let joinedEffects = Join.joinEffects(
       realm,
       condValue,
-      new Effects(compl1, gen1, bindings1, properties1, createdObj1),
-      new Effects(compl2, gen2, bindings2, properties2, createdObj2)
+      new Effects(result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
+      new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
     );
     let completion = joinedEffects.result;
     if (completion instanceof JoinedAbruptCompletions) {

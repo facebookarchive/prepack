@@ -304,11 +304,11 @@ export class PropertiesImplementation {
       let descriptor2 = ownDesc.descriptor2;
       ownDesc = ownDesc.descriptor1;
       let {
-        result: compl1,
-        generator: gen1,
-        modifiedBindings: bindings1,
-        modifiedProperties: properties1,
-        createdObjects: createdObj1,
+        result: result1,
+        generator: generator1,
+        modifiedBindings: modifiedBindings1,
+        modifiedProperties: modifiedProperties1,
+        createdObjects: createdObjects1,
       } = Path.withCondition(joinCondition, () => {
         return ownDesc !== undefined
           ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/1")
@@ -316,11 +316,11 @@ export class PropertiesImplementation {
       });
       ownDesc = descriptor2;
       let {
-        result: compl2,
-        generator: gen2,
-        modifiedBindings: bindings2,
-        modifiedProperties: properties2,
-        createdObjects: createdObj2,
+        result: result2,
+        generator: generator2,
+        modifiedBindings: modifiedBindings2,
+        modifiedProperties: modifiedProperties2,
+        createdObjects: createdObjects2,
       } = Path.withInverseCondition(joinCondition, () => {
         return ownDesc !== undefined
           ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/2")
@@ -332,8 +332,8 @@ export class PropertiesImplementation {
       let joinedEffects = Join.joinEffects(
         realm,
         joinCondition,
-        new Effects(compl1, gen1, bindings1, properties1, createdObj1),
-        new Effects(compl2, gen2, bindings2, properties2, createdObj2)
+        new Effects(result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
+        new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
       );
       let completion = joinedEffects.result;
       if (completion instanceof PossiblyNormalCompletion) {
