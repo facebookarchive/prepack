@@ -201,7 +201,7 @@ declare module "babel-types" {
 
   declare class BabelNodeArrayExpression extends BabelNode {
     type: "ArrayExpression";
-    elements?: Array<void | BabelNodeExpression | BabelNodeSpreadElement>;
+    elements: Array<void | BabelNodeExpression | BabelNodeSpreadElement>;
   }
 
   declare class BabelNodeAssignmentExpression extends BabelNode {
@@ -1066,7 +1066,7 @@ declare module "babel-types" {
   declare type BabelNodeJSX = BabelNodeJSXAttribute | BabelNodeJSXClosingElement | BabelNodeJSXElement | BabelNodeJSXEmptyExpression | BabelNodeJSXExpressionContainer | BabelNodeJSXIdentifier | BabelNodeJSXMemberExpression | BabelNodeJSXNamespacedName | BabelNodeJSXOpeningElement | BabelNodeJSXSpreadAttribute | BabelNodeJSXText;
 
   declare function anyTypeAnnotation(): BabelNodeAnyTypeAnnotation;
-  declare function arrayExpression(elements?: Array<null | BabelNodeExpression | BabelNodeSpreadElement>): BabelNodeArrayExpression;
+  declare function arrayExpression(elements: Array<null | BabelNodeExpression | BabelNodeSpreadElement>): BabelNodeArrayExpression;
   declare function arrayPattern(elements: Array<BabelNodeExpression>, typeAnnotation: any, decorators?: Array<BabelNodeDecorator>): BabelNodeArrayPattern;
   declare function arrayTypeAnnotation(elementType: any): BabelNodeArrayTypeAnnotation;
   declare function arrowFunctionExpression(params: Array<BabelNodeLVal>, body: BabelNodeBlockStatement | BabelNodeExpression, async?: boolean, returnType?: any, typeParameters?: any): BabelNodeArrowFunctionExpression;
