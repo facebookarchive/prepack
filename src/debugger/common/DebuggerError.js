@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict */
 
 // More error types will be added as needed
 export type DebuggerErrorType = "Invalid command" | "Invalid response";
