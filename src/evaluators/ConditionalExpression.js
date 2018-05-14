@@ -10,9 +10,10 @@
 /* @flow */
 
 import type { LexicalEnvironment } from "../environment.js";
+import { AbruptCompletion } from "../completions.js";
 import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
-import type { Reference } from "../environment.js";
-import { evaluateWithAbstractConditional } from "./IfStatement.js";
+import { Reference } from "../environment.js";
+import { construct_empty_effects } from "../realm.js";
 import { Environment, To } from "../singletons.js";
 import type { BabelNodeConditionalExpression } from "babel-types";
 import invariant from "../invariant.js";
@@ -36,7 +37,40 @@ export default function(
   }
   invariant(exprValue instanceof AbstractValue);
 
-  if (!exprValue.mightNotBeTrue()) return env.evaluate(ast.consequent, strictCode);
-  if (!exprValue.mightNotBeFalse()) return env.evaluate(ast.alternate, strictCode);
-  return evaluateWithAbstractConditional(exprValue, ast.consequent, ast.alternate, strictCode, env, realm);
+  const consequent = ast.consequent;
+  const alternate = ast.alternate;
+  if (!exprValue.mightNotBeTrue()) return env.evaluate(consequent, strictCode);
+  if (!exprValue.mightNotBeFalse()) return env.evaluate(alternate, strictCode);
+  return AbstractValue.evaluateWithAbstractConditional(
+    realm,
+    exprValue,
+    () => {
+      return realm.evaluateNodeForEffects(consequent, strictCode, env);
+    },
+    () => {
+      let completion = env.evaluateCompletion(alternate, strictCode);
+      if (completion instanceof AbruptCompletion) {
+        throw completion;
+      }
+      if (completion instanceof Reference) {
+        return Environment.GetValue(realm, completion);
+      }
+      invariant(completion instanceof Value);
+      return completion;
+    },
+    () => {
+      return alternate ? realm.evaluateNodeForEffects(alternate, strictCode, env) : construct_empty_effects(realm);
+    },
+    () => {
+      let completion = env.evaluate(consequent, strictCode);
+      if (completion instanceof AbruptCompletion) {
+        throw completion;
+      }
+      if (completion instanceof Reference) {
+        return Environment.GetValue(realm, completion);
+      }
+      invariant(completion instanceof Value);
+      return completion;
+    }
+  );
 }
