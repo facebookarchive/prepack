@@ -661,14 +661,7 @@ export default class ObjectValue extends ConcreteValue {
           // these are safe methods to allow, as they return a new array
           // so we use the ordinary get for these cases. Reduce can be
           // unsafe, but we check for that in the prototype method
-          if (
-            propName === "map" ||
-            propName === "reduce" ||
-            propName === "reduceRight" ||
-            propName === "slice" ||
-            propName === "filter" ||
-            propName === "concat"
-          ) {
+          if (propName === "map" || propName === "slice" || propName === "filter" || propName === "concat") {
             invariant(Receiver instanceof ObjectValue);
             return OrdinaryGet(this.$Realm, Receiver, P, Receiver);
           }
