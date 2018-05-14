@@ -122,7 +122,10 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
   }
 
   // TODO: change to use _getTarget() to get the lazy objects initializer body.
-  _serializeLazyObjectInitializer(obj: ObjectValue): SerializedBody {
+  _serializeLazyObjectInitializer(
+    obj: ObjectValue,
+    emitIntegrityCommand: void | (SerializedBody => void)
+  ): SerializedBody {
     const initializerBody = {
       type: LAZY_OBJECTS_SERIALIZER_BODY_TYPE,
       parentBody: undefined,
@@ -131,6 +134,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     };
     let oldBody = this.emitter.beginEmitting(LAZY_OBJECTS_SERIALIZER_BODY_TYPE, initializerBody);
     this._emitObjectProperties(obj);
+    if (emitIntegrityCommand !== undefined) emitIntegrityCommand(this.emitter.getBody());
     this.emitter.endEmitting(LAZY_OBJECTS_SERIALIZER_BODY_TYPE, oldBody);
     return initializerBody;
   }
@@ -206,9 +210,13 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
   }
 
   // Override default serializer with lazy mode.
-  serializeValueRawObject(obj: ObjectValue, skipPrototype: boolean): BabelNodeExpression {
-    if (obj.temporalAlias !== undefined) return super.serializeValueRawObject(obj, skipPrototype);
-    this._lazyObjectInitializers.set(obj, this._serializeLazyObjectInitializer(obj));
+  serializeValueRawObject(
+    obj: ObjectValue,
+    skipPrototype: boolean,
+    emitIntegrityCommand: void | (SerializedBody => void)
+  ): BabelNodeExpression {
+    if (obj.temporalAlias !== undefined) return super.serializeValueRawObject(obj, skipPrototype, emitIntegrityCommand);
+    this._lazyObjectInitializers.set(obj, this._serializeLazyObjectInitializer(obj, emitIntegrityCommand));
     return this._serializeCreateLazyObject(obj);
   }
 
