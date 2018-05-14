@@ -1564,7 +1564,11 @@ export class ResidualHeapSerializer {
   }
 
   // Overridable.
-  serializeValueRawObject(val: ObjectValue, skipPrototype: boolean): BabelNodeExpression {
+  serializeValueRawObject(
+    val: ObjectValue,
+    skipPrototype: boolean,
+    emitIntegrityCommand: void | (SerializedBody => void)
+  ): BabelNodeExpression {
     let remainingProperties = new Map(val.properties);
     const dummyProperties = new Set();
     let props = [];
@@ -1651,7 +1655,10 @@ export class ResidualHeapSerializer {
     }
   }
 
-  serializeValueObject(val: ObjectValue): BabelNodeExpression | void {
+  serializeValueObject(
+    val: ObjectValue,
+    emitIntegrityCommand: void | (SerializedBody => void)
+  ): BabelNodeExpression | void {
     // If this object is a prototype object that was implicitly created by the runtime
     // for a constructor, then we can obtain a reference to this object
     // in a special way that's handled alongside function serialization.
@@ -1742,7 +1749,7 @@ export class ResidualHeapSerializer {
 
         return createViaAuxiliaryConstructor || _constructor
           ? this._serializeValueObjectViaConstructor(val, skipPrototype, _constructor)
-          : this.serializeValueRawObject(val, skipPrototype);
+          : this.serializeValueRawObject(val, skipPrototype, emitIntegrityCommand);
     }
   }
 
@@ -1864,6 +1871,7 @@ export class ResidualHeapSerializer {
 
     let objectSemaphore;
     let targetCommand = this.residualHeapInspector.getTargetIntegrityCommand(obj);
+    let emitIntegrityCommand;
     if (targetCommand) {
       let body = this.emitter.getBody();
       objectSemaphore = new CountingSemaphore(() => {
@@ -1881,6 +1889,14 @@ export class ResidualHeapSerializer {
         );
       });
       this._objectSemaphores.set(obj, objectSemaphore);
+      emitIntegrityCommand = alternateBody => {
+        if (objectSemaphore !== undefined) {
+          if (alternateBody !== undefined) body = alternateBody;
+          objectSemaphore.releaseOne();
+          this._objectSemaphores.delete(obj);
+        }
+        objectSemaphore = undefined;
+      };
     }
     let res;
     if (IsArray(this.realm, obj)) {
@@ -1888,12 +1904,9 @@ export class ResidualHeapSerializer {
     } else if (obj instanceof FunctionValue) {
       res = this._serializeValueFunction(obj);
     } else {
-      res = this.serializeValueObject(obj);
+      res = this.serializeValueObject(obj, emitIntegrityCommand);
     }
-    if (objectSemaphore !== undefined) {
-      objectSemaphore.releaseOne();
-      this._objectSemaphores.delete(obj);
-    }
+    if (emitIntegrityCommand !== undefined) emitIntegrityCommand();
     return res;
   }
 
