@@ -150,7 +150,18 @@ export default class ObjectValue extends ConcreteValue {
           // To check if we are still initializing, guard the call by looking at
           // whether this.$IsClassPrototype has been initialized as a proxy for
           // object initialization in general.
-          invariant(this.$IsClassPrototype === undefined || !this.isHavocedObject(), "cannot mutate a havoced object");
+          invariant(
+            // We're still initializing so we can set a property.
+            this.$IsClassPrototype === undefined ||
+            // It's not havoced so we can set a property.
+            !this.isHavocedObject() ||
+            // Object.assign() implementation needs to temporarily
+            // make potentially havoced objects non-partial and back.
+            // We don't gain anything from checking whether it's havoced
+            // before calling makePartial() so we'll whitelist this property.
+            propBindingName === "_isPartial_binding",
+            "cannot mutate a havoced object"
+          );
           let binding = this[propBindingName];
           if (binding === undefined) {
             let desc = { writeable: true, value: undefined };
