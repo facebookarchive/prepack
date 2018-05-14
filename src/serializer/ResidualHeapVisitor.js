@@ -547,16 +547,16 @@ export class ResidualHeapVisitor {
     if (!functionInfo) {
       functionInfo = {
         depth: 0,
-        unbound: new Set(),
+        unbound: new Map(),
+        requireCalls: new Map(),
         modified: new Set(),
         usesArguments: false,
         usesThis: false,
       };
       let state = {
-        tryQuery: this.logger.tryQuery.bind(this.logger),
-        val,
         functionInfo,
         realm: this.realm,
+        getModuleIdIfNodeIsRequireFunction: this.modules.getGetModuleIdIfNodeIsRequireFunction(formalParameters, [val]),
       };
 
       traverse(
@@ -588,7 +588,7 @@ export class ResidualHeapVisitor {
       this._enqueueWithUnrelatedScope(val, () => {
         invariant(this.scope === val);
         invariant(functionInfo);
-        for (let innerName of functionInfo.unbound) {
+        for (let innerName of functionInfo.unbound.keys()) {
           let environment = this.resolveBinding(val, innerName);
           let residualBinding = this.getBinding(val, environment, innerName);
           this.visitBinding(val, residualBinding);
@@ -1190,7 +1190,6 @@ export class ResidualHeapVisitor {
       invariant(functionInfo !== undefined);
       let additionalFunctionInfo = {
         functionValue,
-        captures: functionInfo.unbound,
         modifiedBindings: modifiedBindingInfo,
         instance: funcInstance,
         hasReturn: !(result instanceof UndefinedValue),
