@@ -370,7 +370,7 @@ export class Generator {
   pathConditions: Array<AbstractValue>;
 
   static _generatorOfEffects(realm: Realm, name: string, environmentRecordIdAfterGlobalCode: number, effects: Effects) {
-    let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects.data;
+    let { result, generator, modifiedBindings, modifiedProperties, createdObjects } = effects;
 
     let output = new Generator(realm, name, effects);
     output.appendGenerator(generator, generator._name);

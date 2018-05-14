@@ -1184,7 +1184,7 @@ export class ResidualHeapVisitor {
     // function instead of adding them at global scope
     this.residualReactElementVisitor.withCleanEquivalenceSet(() => {
       let modifiedBindingInfo = new Map();
-      let [result] = additionalEffects.effects.data;
+      let { result } = additionalEffects.effects;
 
       invariant(funcInstance !== undefined);
       invariant(functionInfo !== undefined);

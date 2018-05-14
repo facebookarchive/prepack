@@ -112,14 +112,20 @@ export function OrdinaryGet(
     return OrdinaryGetHelper();
   }
   invariant(joinCondition instanceof AbstractValue);
-  let compl1, gen1, bindings1, properties1, createdObj1;
+  let result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1;
   try {
     desc = descriptor1;
-    [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(joinCondition, () => {
+    ({
+      result: result1,
+      generator: generator1,
+      modifiedBindings: modifiedBindings1,
+      modifiedProperties: modifiedProperties1,
+      createdObjects: createdObjects1,
+    } = Path.withCondition(joinCondition, () => {
       return desc !== undefined
         ? realm.evaluateForEffects(() => OrdinaryGetHelper(), undefined, "OrdinaryGet/1")
         : construct_empty_effects(realm);
-    }).data;
+    }));
   } catch (e) {
     if (e instanceof InfeasiblePathError) {
       // The joinCondition cannot be true in the current path, after all
@@ -129,14 +135,20 @@ export function OrdinaryGet(
       throw e;
     }
   }
-  let compl2, gen2, bindings2, properties2, createdObj2;
+  let result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2;
   try {
     desc = descriptor2;
-    [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(joinCondition, () => {
+    ({
+      result: result2,
+      generator: generator2,
+      modifiedBindings: modifiedBindings2,
+      modifiedProperties: modifiedProperties2,
+      createdObjects: createdObjects2,
+    } = Path.withInverseCondition(joinCondition, () => {
       return desc !== undefined
         ? realm.evaluateForEffects(() => OrdinaryGetHelper(), undefined, "OrdinaryGet/2")
         : construct_empty_effects(realm);
-    }).data;
+    }));
   } catch (e) {
     if (e instanceof InfeasiblePathError) {
       // The joinCondition cannot be false in the current path, after all
@@ -151,8 +163,8 @@ export function OrdinaryGet(
   let joinedEffects = Join.joinEffects(
     realm,
     joinCondition,
-    new Effects(compl1, gen1, bindings1, properties1, createdObj1),
-    new Effects(compl2, gen2, bindings2, properties2, createdObj2)
+    new Effects(result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
+    new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
   );
   let completion = joinedEffects.result;
   if (completion instanceof PossiblyNormalCompletion) {

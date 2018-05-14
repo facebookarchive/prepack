@@ -65,24 +65,24 @@ export default function(
 
   // Evaluate consequent and alternate in sandboxes and get their effects.
   let [consequentEffects, conAst, conIO] = realm.partiallyEvaluateNodeForEffects(ast.consequent, strictCode, env);
-  let [conCompl, gen1, bindings1, properties1, createdObj1] = consequentEffects.data;
   let consequentAst = (conAst: any);
   if (conIO.length > 0) consequentAst = t.blockStatement(conIO.concat(consequentAst));
 
   let [alternateEffects, altAst, altIO] = ast.alternate
     ? realm.partiallyEvaluateNodeForEffects(ast.alternate, strictCode, env)
     : [construct_empty_effects(realm), undefined, []];
-  let [altCompl, gen2, bindings2, properties2, createdObj2] = alternateEffects.data;
   let alternateAst = (altAst: any);
   if (altIO.length > 0) alternateAst = t.blockStatement(altIO.concat(alternateAst));
 
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of exprValue.
+  const ce = consequentEffects;
+  const ae = alternateEffects;
   let joinedEffects = Join.joinEffects(
     realm,
     exprValue,
-    new Effects(conCompl, gen1, bindings1, properties1, createdObj1),
-    new Effects(altCompl, gen2, bindings2, properties2, createdObj2)
+    new Effects(ce.result, ce.generator, ce.modifiedBindings, ce.modifiedProperties, ce.createdObjects),
+    new Effects(ae.result, ae.generator, ae.modifiedBindings, ae.modifiedProperties, ae.createdObjects)
   );
   completion = joinedEffects.result;
   if (completion instanceof PossiblyNormalCompletion) {
