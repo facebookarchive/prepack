@@ -48,28 +48,20 @@ export default function(
       return realm.evaluateNodeForEffects(consequent, strictCode, env);
     },
     () => {
-      let completion = env.evaluateCompletion(alternate, strictCode);
+      let completion = env.evaluateCompletionDeref(alternate, strictCode);
       if (completion instanceof AbruptCompletion) {
         throw completion;
       }
-      if (completion instanceof Reference) {
-        return Environment.GetValue(realm, completion);
-      }
-      invariant(completion instanceof Value);
       return completion;
     },
     () => {
       return alternate ? realm.evaluateNodeForEffects(alternate, strictCode, env) : construct_empty_effects(realm);
     },
     () => {
-      let completion = env.evaluate(consequent, strictCode);
+      let completion = env.evaluateCompletionDeref(consequent, strictCode);
       if (completion instanceof AbruptCompletion) {
         throw completion;
       }
-      if (completion instanceof Reference) {
-        return Environment.GetValue(realm, completion);
-      }
-      invariant(completion instanceof Value);
       return completion;
     }
   );
