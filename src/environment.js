@@ -1362,7 +1362,7 @@ export class LexicalEnvironment {
     throw new TypeError(`Unsupported node type ${ast.type}`);
   }
 
-  evaluateDeref(ast: BabelNode, strictCode: boolean, metadata?: any): AbruptCompletion | Value {
+  evaluateDeref(ast: BabelNode, strictCode: boolean, metadata?: any): Value {
     let result = this.evaluate(ast, strictCode, metadata);
     if (result instanceof Reference) result = Environment.GetValue(this.realm, result);
     return result;
