@@ -83,6 +83,7 @@ import type { Binding } from "../environment.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import type { Referentializer } from "./Referentializer.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
+import { type Replacement, getReplacement } from "./ResidualFunctionInstantiator";
 
 function commentStatement(text: string) {
   let s = t.emptyStatement();
@@ -228,7 +229,7 @@ export class ResidualHeapSerializer {
   logger: Logger;
   modules: Modules;
   residualHeapValueIdentifiers: ResidualHeapValueIdentifiers;
-  requireReturns: Map<number | string, BabelNodeExpression>;
+  requireReturns: Map<number | string, Replacement>;
   residualHeapInspector: ResidualHeapInspector;
   residualValues: Map<Value, Set<Scope>>;
   residualFunctionInstances: Map<FunctionValue, FunctionInstance>;
@@ -2166,7 +2167,7 @@ export class ResidualHeapSerializer {
     // TODO #21: add event listeners
 
     for (let [moduleId, moduleValue] of this.modules.initializedModules)
-      this.requireReturns.set(moduleId, this.serializeValue(moduleValue));
+      this.requireReturns.set(moduleId, getReplacement(this.serializeValue(moduleValue), moduleValue));
 
     for (let [name, value] of this.declaredGlobalLets) {
       this.emitter.emit(
