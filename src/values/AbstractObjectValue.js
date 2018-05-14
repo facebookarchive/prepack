@@ -523,6 +523,13 @@ export default class AbstractObjectValue extends AbstractValue {
       throw new FatalError();
     }
 
+    let $GetHelper = ob => {
+      let d = ob.$GetOwnProperty(P);
+      if (d !== undefined) return d;
+      let proto = ob.$GetPrototypeOf();
+      return proto instanceof NullValue ? undefined : $GetHelper(proto);
+    };
+
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {
@@ -537,13 +544,14 @@ export default class AbstractObjectValue extends AbstractValue {
       invariant(cond instanceof AbstractValue);
       invariant(ob1 instanceof ObjectValue || ob1 instanceof AbstractObjectValue);
       invariant(ob2 instanceof ObjectValue || ob2 instanceof AbstractObjectValue);
-      let d1 = ob1.$GetOwnProperty(P);
+      let d1 = $GetHelper(ob1);
       let d1val =
         d1 === undefined ? this.$Realm.intrinsics.undefined : IsDataDescriptor(this.$Realm, d1) ? d1.value : undefined;
-      let d2 = ob2.$GetOwnProperty(P);
+      let d2 = $GetHelper(ob2);
       let d2val =
         d2 === undefined ? this.$Realm.intrinsics.undefined : IsDataDescriptor(this.$Realm, d2) ? d2.value : undefined;
-      if (d1val === undefined || d2val === undefined || (d1 === undefined && d2 === undefined)) {
+      // We do not currently join property getters
+      if (d1val === undefined || d2val === undefined) {
         AbstractValue.reportIntrospectionError(this, P);
         throw new FatalError();
       }
@@ -554,13 +562,14 @@ export default class AbstractObjectValue extends AbstractValue {
       let result;
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
-        let d = cv.$GetOwnProperty(P);
+        let d = $GetHelper(cv);
         // We do not currently join property getters
         if (d !== undefined && !IsDataDescriptor(this.$Realm, d)) {
           AbstractValue.reportIntrospectionError(this, P);
           throw new FatalError();
         }
         let cvVal = d === undefined ? this.$Realm.intrinsics.undefined : d.value;
+        invariant(cvVal instanceof Value);
         if (result === undefined) result = cvVal;
         else {
           let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
