@@ -422,21 +422,23 @@ export default function(realm: Realm): NativeFunctionValue {
       // 1. Let obj be ? ToObject(O).
       let obj = To.ToObject(realm, O);
 
-      // If we're in pure scope and the items are completely abstract,
-      // then create an abstract temporal with an array kind
-      if (realm.isInPureScope() && obj instanceof AbstractObjectValue) {
-        let array = ArrayValue.createTemporalWithWidenedNumericProperty(
-          realm,
-          [objectValues, obj],
-          ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
-        );
-        return array;
-      } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
-        return ArrayValue.createTemporalWithWidenedNumericProperty(
-          realm,
-          [objectValues, obj],
-          ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
-        );
+      if (realm.isInPureScope()) {
+        // If we're in pure scope and the items are completely abstract,
+        // then create an abstract temporal with an array kind
+        if (obj instanceof AbstractObjectValue) {
+          let array = ArrayValue.createTemporalWithWidenedNumericProperty(
+            realm,
+            [objectValues, obj],
+            ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+          );
+          return array;
+        } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
+          return ArrayValue.createTemporalWithWidenedNumericProperty(
+            realm,
+            [objectValues, obj],
+            ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+          );
+        }
       }
 
       // 2. Let nameList be ? EnumerableOwnProperties(obj, "value").
