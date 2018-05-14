@@ -545,13 +545,8 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
 export function evaluateWithNestedParentEffects(realm: Realm, nestedEffects: Array<Effects>, f: () => Effects) {
   let nextEffects = nestedEffects.slice();
   let effects = nextEffects.shift();
-  let [
-    value,
-    ,
-    modifiedBindings,
-    modifiedProperties: Map<PropertyBinding, void | Descriptor>,
-    createdObjects,
-  ] = effects.data;
+  let { result: value, modifiedBindings, createdObjects } = effects;
+  let modifiedProperties: Map<PropertyBinding, void | Descriptor> = effects.modifiedProperties;
   realm.applyEffects(
     new Effects(
       value,

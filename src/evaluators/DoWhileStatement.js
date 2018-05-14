@@ -79,8 +79,8 @@ export default function(
   let result = realm.evaluateForFixpointEffects(iteration);
   if (result !== undefined) {
     let [outsideEffects, insideEffects, cond] = result;
-    let [rval] = outsideEffects.data;
-    let [, bodyGenerator] = insideEffects.data;
+    let rval = outsideEffects.result;
+    let bodyGenerator = insideEffects.generator;
     realm.applyEffects(outsideEffects);
     let generator = realm.generator;
     invariant(generator !== undefined);
