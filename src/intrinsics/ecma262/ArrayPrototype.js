@@ -35,7 +35,6 @@ import {
   HasSomeCompatibleType,
 } from "../../methods/index.js";
 import { Create, Properties, To } from "../../singletons.js";
-import { FatalError, CompilerDiagnostic } from "../../errors.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.31
