@@ -113,7 +113,7 @@ export function evaluateWithAbstractConditional(
       return alternate ? realm.evaluateNodeForEffects(alternate, strictCode, env) : construct_empty_effects(realm);
     },
     () => {
-      let stmtCompletion = env.evaluate(consequent, strictCode);
+      let stmtCompletion = env.evaluateCompletion(consequent, strictCode);
       invariant(!(stmtCompletion instanceof Reference));
       stmtCompletion = UpdateEmpty(realm, stmtCompletion, realm.intrinsics.undefined);
       if (stmtCompletion instanceof AbruptCompletion) {
