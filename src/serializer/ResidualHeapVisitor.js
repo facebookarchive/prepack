@@ -1057,18 +1057,8 @@ export class ResidualHeapVisitor {
     } else {
       invariant(val instanceof ObjectValue);
 
-      // Prototypes are reachable via function declarations, and those get hoisted, so we need to move
-      // prototype initialization to the common scope code as well.
-      if (val.originalConstructor !== undefined) {
-        this._enqueueWithUnrelatedScope(this._getCommonScope(), () => {
-          invariant(val instanceof ObjectValue);
-          if (this.preProcessValue(val)) this.visitValueObject(val);
-          this.postProcessValue(val);
-        });
-      } else {
-        if (this.preProcessValue(val)) this.visitValueObject(val);
-        this.postProcessValue(val);
-      }
+      if (this.preProcessValue(val)) this.visitValueObject(val);
+      this.postProcessValue(val);
     }
   }
 
