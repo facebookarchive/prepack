@@ -10,9 +10,8 @@
 /* @flow */
 
 import type { LexicalEnvironment } from "../environment.js";
-import { AbruptCompletion } from "../completions.js";
 import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
-import { Reference } from "../environment.js";
+import type { Reference } from "../environment.js";
 import { construct_empty_effects } from "../realm.js";
 import { Environment, To } from "../singletons.js";
 import type { BabelNodeConditionalExpression } from "babel-types";
@@ -48,21 +47,13 @@ export default function(
       return realm.evaluateNodeForEffects(consequent, strictCode, env);
     },
     () => {
-      let completion = env.evaluateCompletionDeref(alternate, strictCode);
-      if (completion instanceof AbruptCompletion) {
-        throw completion;
-      }
-      return completion;
+      return env.evaluateDeref(alternate, strictCode);
     },
     () => {
       return alternate ? realm.evaluateNodeForEffects(alternate, strictCode, env) : construct_empty_effects(realm);
     },
     () => {
-      let completion = env.evaluateCompletionDeref(consequent, strictCode);
-      if (completion instanceof AbruptCompletion) {
-        throw completion;
-      }
-      return completion;
+      return env.evaluateDeref(consequent, strictCode);
     }
   );
 }
