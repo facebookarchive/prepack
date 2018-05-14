@@ -873,7 +873,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // if there is an initialValue, then the call will likely
     // have side-effects so this is not supported for now
     if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O)) {
-      if (initialValue || initialValue instanceof UndefinedValue) {
+      if (initialValue && !(initialValue instanceof UndefinedValue)) {
         let diagnostic = new CompilerDiagnostic(
           "array reduce with initial value is not supported",
           realm.currentLocation,
@@ -983,7 +983,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // if there is an initialValue, then the call will likely
     // have side-effects so this is not supported for now
     if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O)) {
-      if (initialValue || initialValue instanceof UndefinedValue) {
+      if (initialValue && !(initialValue instanceof UndefinedValue)) {
         let diagnostic = new CompilerDiagnostic(
           "array reduceRight with initial value is not supported",
           realm.currentLocation,
