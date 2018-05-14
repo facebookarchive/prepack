@@ -192,29 +192,43 @@ export function createClassInstanceForFirstRenderOnly(
   evaluatedNode: ReactEvaluatedNode
 ): ObjectValue {
   let instance = getValueFromFunctionCall(realm, componentType, realm.intrinsics.undefined, [props, context], true);
+  let objectAssign = Get(realm, realm.intrinsics.Object, "assign");
+  invariant(objectAssign instanceof ECMAScriptFunctionValue);
+  let objectAssignCall = objectAssign.$Call;
+  invariant(objectAssignCall !== undefined);
+
   invariant(instance instanceof ObjectValue);
   instance.refuseSerialization = true;
   // assign props
   Properties.Set(realm, instance, "props", props, true);
   // assign context
   Properties.Set(realm, instance, "context", context, true);
+  let state = Get(realm, instance, "state");
+  if (state instanceof AbstractObjectValue || state instanceof ObjectValue) {
+    state.makeFinal();
+  }
   // assign a mocked setState
-  let setState = new NativeFunctionValue(realm, undefined, `setState`, 1, (_context, [state, callback]) => {
-    let stateToUpdate = state;
+  let setState = new NativeFunctionValue(realm, undefined, `setState`, 1, (_context, [stateToUpdate, callback]) => {
     invariant(instance instanceof ObjectValue);
-    let currentState = Get(realm, instance, "state");
-    invariant(currentState instanceof ObjectValue);
+    let prevState = Get(realm, instance, "state");
+    invariant(prevState instanceof ObjectValue);
 
-    if (state instanceof ECMAScriptSourceFunctionValue && state.$Call) {
-      stateToUpdate = state.$Call(instance, [currentState]);
+    if (stateToUpdate instanceof ECMAScriptSourceFunctionValue && stateToUpdate.$Call) {
+      stateToUpdate = stateToUpdate.$Call(instance, [prevState]);
     }
     if (stateToUpdate instanceof ObjectValue) {
+      let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+      objectAssignCall(realm.intrinsics.undefined, [newState, prevState]);
+
       for (let [key, binding] of stateToUpdate.properties) {
         if (binding && binding.descriptor && binding.descriptor.enumerable) {
           let value = getProperty(realm, stateToUpdate, key);
-          Properties.Set(realm, currentState, key, value, true);
+          Properties.Set(realm, newState, key, value, true);
         }
       }
+
+      newState.makeFinal();
+      Properties.Set(realm, instance, "state", newState, true);
     }
     if (callback instanceof ECMAScriptSourceFunctionValue && callback.$Call) {
       callback.$Call(instance, []);
@@ -362,6 +376,7 @@ export function applyGetDerivedStateFromProps(
         );
         newState.makeSimple();
         newState.makePartial();
+        newState.makeFinal();
         let conditional = AbstractValue.createFromLogicalOp(realm, "&&", c, newState);
         return conditional;
       }
@@ -385,6 +400,7 @@ export function applyGetDerivedStateFromProps(
         }
         throw e;
       }
+      newState.makeFinal();
       return newState;
     } else {
       return null;
