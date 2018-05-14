@@ -1814,15 +1814,21 @@ export class ResidualHeapSerializer {
     } else {
       // This abstract value's dependencies should all be declared
       // but still need to check them again in case their serialized bodies are in different generator scope.
-      this.emitter.emitNowOrAfterWaitingForDependencies(
-        val.args,
-        () => {
-          const serializedValue = this._serializeAbstractValueHelper(val);
-          let uid = this.getSerializeObjectIdentifier(val);
-          this._declare(this.emitter.cannotDeclare(), "var", uid, serializedValue);
-        },
-        this.emitter.getBody()
-      );
+      let reason = this.emitter.getReasonToWaitForDependencies(val.args);
+      if (reason === undefined) {
+        return this._serializeAbstractValueHelper(val);
+      } else {
+        this.emitter.emitAfterWaiting(
+          reason,
+          val.args,
+          () => {
+            const serializedValue = this._serializeAbstractValueHelper(val);
+            let uid = this.getSerializeObjectIdentifier(val);
+            this._declare(this.emitter.cannotDeclare(), "var", uid, serializedValue);
+          },
+          this.emitter.getBody()
+        );
+      }
     }
   }
 
