@@ -439,7 +439,14 @@ export class Realm {
       this.timeoutCounter = this.timeoutCounterThreshold;
       let total = Date.now() - this.start;
       if (total > timeout) {
-        throw new FatalError("Timed out");
+        let error = new CompilerDiagnostic(
+          `total time has exceeded the timeout time: ${timeout}`,
+          this.currentLocation,
+          "PP0036",
+          "FatalError"
+        );
+        this.handleError(error);
+        throw new FatalError();
       }
     }
   }
