@@ -89,38 +89,7 @@ export function evaluateWithAbstractConditional(
   return AbstractValue.evaluateWithAbstractConditional(
     realm,
     condValue,
-    () => {
-      return realm.evaluateNodeForEffects(consequent, strictCode, env);
-    },
-    () => {
-      let stmtCompletion;
-      if (alternate) {
-        // 4.a. Let stmtCompletion be the result of evaluating the second Statement
-        stmtCompletion = env.evaluateCompletion(alternate, strictCode);
-      } else {
-        // 3 (of the if only statement). Return NormalCompletion(undefined)
-        stmtCompletion = realm.intrinsics.undefined;
-      }
-      invariant(!(stmtCompletion instanceof Reference));
-      stmtCompletion = UpdateEmpty(realm, stmtCompletion, realm.intrinsics.undefined);
-      if (stmtCompletion instanceof AbruptCompletion) {
-        throw stmtCompletion;
-      }
-      invariant(stmtCompletion instanceof Value);
-      return stmtCompletion;
-    },
-    () => {
-      return alternate ? realm.evaluateNodeForEffects(alternate, strictCode, env) : construct_empty_effects(realm);
-    },
-    () => {
-      let stmtCompletion = env.evaluateCompletion(consequent, strictCode);
-      invariant(!(stmtCompletion instanceof Reference));
-      stmtCompletion = UpdateEmpty(realm, stmtCompletion, realm.intrinsics.undefined);
-      if (stmtCompletion instanceof AbruptCompletion) {
-        throw stmtCompletion;
-      }
-      invariant(stmtCompletion instanceof Value);
-      return stmtCompletion;
-    }
+    () => realm.evaluateNodeForEffects(consequent, strictCode, env),
+    () => (alternate ? realm.evaluateNodeForEffects(alternate, strictCode, env) : construct_empty_effects(realm))
   );
 }

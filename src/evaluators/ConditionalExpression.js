@@ -43,17 +43,7 @@ export default function(
   return AbstractValue.evaluateWithAbstractConditional(
     realm,
     exprValue,
-    () => {
-      return realm.evaluateNodeForEffects(consequent, strictCode, env);
-    },
-    () => {
-      return env.evaluateDeref(alternate, strictCode);
-    },
-    () => {
-      return alternate ? realm.evaluateNodeForEffects(alternate, strictCode, env) : construct_empty_effects(realm);
-    },
-    () => {
-      return env.evaluateDeref(consequent, strictCode);
-    }
+    () => realm.evaluateNodeForEffects(consequent, strictCode, env),
+    () => (alternate ? realm.evaluateNodeForEffects(alternate, strictCode, env) : construct_empty_effects(realm))
   );
 }
