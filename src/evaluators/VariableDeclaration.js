@@ -11,7 +11,6 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { FatalError } from "../errors.js";
 import type { Value } from "../values/index.js";
 import { ObjectValue, StringValue } from "../values/index.js";
 import { IsAnonymousFunctionDefinition, HasOwnProperty } from "../methods/index.js";
@@ -27,10 +26,6 @@ function letAndConst(
   realm: Realm
 ): Value {
   for (let declar of ast.declarations) {
-    if (declar.id.type !== "Identifier") {
-      throw new FatalError("TODO #415: Patterns aren't supported yet");
-    }
-
     let Initializer = declar.init;
     if (!Initializer) {
       invariant(ast.kind !== "const", "const without an initializer");
@@ -42,33 +37,46 @@ function letAndConst(
       // 2. Return InitializeReferencedBinding(lhs, undefined).
       Environment.InitializeReferencedBinding(realm, lhs, realm.intrinsics.undefined);
       continue;
+    } else if (declar.id.type === "Identifier") {
+      // 1. Let bindingId be StringValue of BindingIdentifier.
+      let bindingId = declar.id.name;
+
+      // 2. Let lhs be ResolveBinding(bindingId).
+      let lhs = Environment.ResolveBinding(realm, bindingId, strictCode);
+
+      // 3. Let rhs be the result of evaluating Initializer.
+      let rhs = env.evaluate(Initializer, strictCode);
+
+      // 4. Let value be ? GetValue(rhs).
+      let value = Environment.GetValue(realm, rhs);
+
+      // 5. If IsAnonymousFunctionDefinition(Initializer) is true, then
+      if (IsAnonymousFunctionDefinition(realm, Initializer)) {
+        invariant(value instanceof ObjectValue);
+
+        // a. Let hasNameProperty be ? HasOwnProperty(value, "name").
+        let hasNameProperty = HasOwnProperty(realm, value, "name");
+
+        // b. If hasNameProperty is false, perform SetFunctionName(value, bindingId).
+        if (!hasNameProperty) Functions.SetFunctionName(realm, value, new StringValue(realm, bindingId));
+      }
+
+      // 6. Return InitializeReferencedBinding(lhs, value).
+      Environment.InitializeReferencedBinding(realm, lhs, value);
+    } else if (declar.id.type === "ObjectPattern" || declar.id.type === "ArrayPattern") {
+      // 1. Let rhs be the result of evaluating Initializer.
+      let rhs = env.evaluate(Initializer, strictCode);
+
+      // 2. Let rval be ? GetValue(rhs).
+      let rval = Environment.GetValue(realm, rhs);
+
+      // 3. Let env be the running execution context’s LexicalEnvironment.
+
+      // 4. Return the result of performing BindingInitialization for BindingPattern using value and env as the arguments.
+      Environment.BindingInitialization(realm, declar.id, rval, strictCode, env);
+    } else {
+      invariant(false, "unrecognized declaration");
     }
-
-    // 1. Let bindingId be StringValue of BindingIdentifier.
-    let bindingId = declar.id.name;
-
-    // 2. Let lhs be ResolveBinding(bindingId).
-    let lhs = Environment.ResolveBinding(realm, bindingId, strictCode);
-
-    // 3. Let rhs be the result of evaluating Initializer.
-    let rhs = env.evaluate(Initializer, strictCode);
-
-    // 4. Let value be ? GetValue(rhs).
-    let value = Environment.GetValue(realm, rhs);
-
-    // 5. If IsAnonymousFunctionDefinition(Initializer) is true, then
-    if (IsAnonymousFunctionDefinition(realm, Initializer)) {
-      invariant(value instanceof ObjectValue);
-
-      // a. Let hasNameProperty be ? HasOwnProperty(value, "name").
-      let hasNameProperty = HasOwnProperty(realm, value, "name");
-
-      // b. If hasNameProperty is false, perform SetFunctionName(value, bindingId).
-      if (!hasNameProperty) Functions.SetFunctionName(realm, value, new StringValue(realm, bindingId));
-    }
-
-    // 6. Return InitializeReferencedBinding(lhs, value).
-    Environment.InitializeReferencedBinding(realm, lhs, value);
   }
 
   return realm.intrinsics.empty;
