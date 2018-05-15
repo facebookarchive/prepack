@@ -442,7 +442,7 @@ export class Realm {
           "PP0036",
           "FatalError"
         );
-        this.handleError(error)
+        this.handleError(error);
         throw new FatalError();
       }
     }
