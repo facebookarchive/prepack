@@ -865,8 +865,7 @@ export class Reconciler {
     evaluatedNode: ReactEvaluatedNode
   ) {
     let newBranchState = new BranchState();
-    let value = AbstractValue.evaluateWithAbstractConditional(
-      this.realm,
+    let value = this.realm.evaluateWithAbstractConditional(
       condValue,
       () => {
         return this.realm.evaluateForEffects(
