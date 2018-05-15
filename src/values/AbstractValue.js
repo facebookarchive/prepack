@@ -119,7 +119,7 @@ export default class AbstractValue extends Value {
   }
 
   hashValue: number;
-  kind: ?AbstractValueKind;
+  kind: void | AbstractValueKind;
   types: TypesDomain;
   values: ValuesDomain;
   mightBeEmpty: boolean;
