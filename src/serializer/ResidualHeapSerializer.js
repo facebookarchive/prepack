@@ -850,7 +850,7 @@ export class ResidualHeapSerializer {
     // which is related to one of the scopes this value is used by.
     let notYetDoneBodies = new Set();
     this.emitter.dependenciesVisitor(val, {
-      onValueWithIdentifier: dependency => {
+      onAbstractValueWithIdentifier: dependency => {
         if (trace) console.log(`  depending on abstract value with identifier ${dependency.intrinsicName || "?"}`);
         invariant(
           referencingOnlyAdditionalFunction === undefined || this.emitter.emittingToAdditionalFunction(),

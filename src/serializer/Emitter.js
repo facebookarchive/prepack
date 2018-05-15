@@ -37,7 +37,10 @@ type EmitterDependenciesVisitorCallbacks<T> = {
   onFunction?: FunctionValue => void | T,
   // Callback invoked whenever a dependency is visited that is an abstract value with an identifier.
   // A return value that is not undefined indicates that the visitor should stop, and return the value as the overall result.
-  onValueWithIdentifier?: (AbstractValue | ConcreteValue) => void | T,
+  onAbstractValueWithIdentifier?: AbstractValue => void | T,
+  // Callback invoked whenever a dependency is visited that is an unknown array value with a widened numeric property.
+  // A return value that is not undefined indicates that the visitor should stop, and return the value as the overall result.
+  onArrayWithWidenedNumericProperty?: ArrayValue => void | T,
 };
 
 // The emitter keeps track of a stack of what's currently being emitted.
@@ -82,18 +85,21 @@ export class Emitter {
         this._residualFunctions.addFunctionUsage(val, this.getBodyReference());
         return undefined;
       },
-      onValueWithIdentifier: val => {
+      onAbstractValueWithIdentifier: val => {
         // If the value hasn't been declared yet, then we should wait for it.
         if (
-          val instanceof AbstractValue &&
           derivedIds.has(val.getIdentifier().name) &&
           !this.cannotDeclare() &&
           !this.hasBeenDeclared(val) &&
           (!this.emittingToAdditionalFunction() || referencedDeclaredValues.get(val) !== undefined)
         ) {
           return val;
-        } else if (
-          val instanceof ConcreteValue &&
+        }
+        return undefined;
+      },
+      onArrayWithWidenedNumericProperty: val => {
+        // If the value hasn't been declared yet, then we should wait for it.
+        if (
           !this.cannotDeclare() &&
           !this.hasBeenDeclared(val) &&
           (!this.emittingToAdditionalFunction() || referencedDeclaredValues.get(val) !== undefined)
@@ -328,7 +334,7 @@ export class Emitter {
     } else if (val instanceof AbstractValue) {
       if (val.hasIdentifier()) {
         // We ran into an abstract value that might have to be declared.
-        result = callbacks.onValueWithIdentifier ? callbacks.onValueWithIdentifier(val) : undefined;
+        result = callbacks.onAbstractValueWithIdentifier ? callbacks.onAbstractValueWithIdentifier(val) : undefined;
         if (result !== undefined) return result;
       }
       let argsToRecurse;
@@ -353,7 +359,9 @@ export class Emitter {
         if (result !== undefined) return result;
       }
     } else if (val instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(val)) {
-      result = callbacks.onValueWithIdentifier ? callbacks.onValueWithIdentifier(val) : undefined;
+      result = callbacks.onArrayWithWidenedNumericProperty
+        ? callbacks.onArrayWithWidenedNumericProperty(val)
+        : undefined;
       if (result !== undefined) return result;
     } else if (val instanceof ObjectValue) {
       let kind = val.getKind();
