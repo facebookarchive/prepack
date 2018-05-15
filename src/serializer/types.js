@@ -50,6 +50,8 @@ export type AdditionalFunctionEffects = {
   additionalRoots: Set<ObjectValue>,
 };
 
+export type WriteEffects = Map<FunctionValue, AdditionalFunctionEffects>;
+
 export type AdditionalFunctionInfo = {
   functionValue: FunctionValue,
   // TODO: use for storing modified residual function bindings (captured by other functions)

@@ -9,14 +9,18 @@
 
 /* @flow */
 
-import { ObjectValue, SymbolValue, ECMAScriptSourceFunctionValue } from "../values/index.js";
-import type { Realm } from "../realm.js";
+import { ECMAScriptSourceFunctionValue, FunctionValue, ObjectValue, SymbolValue } from "../values/index.js";
+import type { Effects, Realm } from "../realm.js";
 
 import { FatalError } from "../errors.js";
 import type { Descriptor } from "../types.js";
 import invariant from "../invariant.js";
 import { IsArray, IsArrayIndex } from "../methods/index.js";
 import { Logger } from "../utils/logger.js";
+import { Generator } from "../utils/generator.js";
+import { Join } from "../singletons.js";
+import { JoinedAbruptCompletions, PossiblyNormalCompletion } from "../completions.js";
+import type { AdditionalFunctionEffects } from "./types";
 
 /**
  * Get index property list length by searching array properties list for the max index key value plus 1.
@@ -145,4 +149,29 @@ export function getObjectPrototypeMetadata(
     skipPrototype,
     constructor,
   };
+}
+
+// NB: effects that are returned may be different than the effects passed in, so after this call, you may no longer
+// use the effects object you passed into this function.
+export function createAdditionalEffects(
+  realm: Realm,
+  effects: Effects,
+  fatalOnAbrupt: boolean,
+  name: string,
+  environmentRecordIdAfterGlobalCode: number,
+  parentAdditionalFunction: FunctionValue | void = undefined
+): AdditionalFunctionEffects | null {
+  let result = effects.result;
+  let generator = Generator.fromEffects(effects, realm, name, environmentRecordIdAfterGlobalCode);
+  if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
+    effects = Join.joinNestedEffects(realm, result);
+  }
+  let retValue: AdditionalFunctionEffects = {
+    parentAdditionalFunction,
+    effects,
+    transforms: [],
+    generator,
+    additionalRoots: new Set(),
+  };
+  return retValue;
 }
