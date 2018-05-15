@@ -656,7 +656,11 @@ export class JoinImplementation {
     }
   }
 
-  joinEffects(realm: Realm, joinCondition: AbstractValue, e1: Effects, e2: Effects): Effects {
+  joinEffects(realm: Realm, joinCondition: Value, e1: Effects, e2: Effects): Effects {
+    if (!joinCondition.mightNotBeTrue()) return e1;
+    if (!joinCondition.mightNotBeFalse()) return e2;
+    invariant(joinCondition instanceof AbstractValue);
+
     let {
       result: result1,
       generator: generator1,
@@ -896,7 +900,7 @@ export class JoinImplementation {
     }
   }
 
-  joinValuesAsConditional(realm: Realm, condition: AbstractValue, v1: void | Value, v2: void | Value): Value {
+  joinValuesAsConditional(realm: Realm, condition: Value, v1: void | Value, v2: void | Value): Value {
     return AbstractValue.createFromConditionalOp(realm, condition, v1, v2);
   }
 

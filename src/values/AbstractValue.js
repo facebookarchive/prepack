@@ -573,8 +573,10 @@ export default class AbstractValue extends Value {
     left: Value,
     right: Value,
     loc?: ?BabelNodeSourceLocation,
-    kind?: AbstractValueKind
-  ): AbstractValue {
+    kind?: AbstractValueKind,
+    isCondition?: boolean,
+    doNotSimplify?: boolean
+  ): Value {
     let leftTypes, leftValues;
     if (left instanceof AbstractValue) {
       leftTypes = left.types;
@@ -606,7 +608,10 @@ export default class AbstractValue extends Value {
     );
     result.kind = kind || op;
     result.expressionLocation = loc;
-    return result;
+    if (doNotSimplify) return result;
+    return isCondition
+      ? realm.simplifyAndRefineAbstractCondition(result)
+      : realm.simplifyAndRefineAbstractValue(result);
   }
 
   static createFromLogicalOp(
@@ -657,13 +662,16 @@ export default class AbstractValue extends Value {
 
   static createFromConditionalOp(
     realm: Realm,
-    condition: AbstractValue,
+    condition: Value,
     left: void | Value,
     right: void | Value,
     loc?: ?BabelNodeSourceLocation,
     isCondition?: boolean,
     doNotSimplify?: boolean
   ): Value {
+    if (!condition.mightNotBeTrue()) return left || realm.intrinsics.undefined;
+    if (!condition.mightNotBeFalse()) return right || realm.intrinsics.undefined;
+
     let types = TypesDomain.joinValues(left, right);
     if (types.getType() === NullValue) return realm.intrinsics.null;
     if (types.getType() === UndefinedValue) return realm.intrinsics.undefined;
