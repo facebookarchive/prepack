@@ -11,6 +11,7 @@
 
 import {
   AbstractValue,
+  ArrayValue,
   BoundFunctionValue,
   ConcreteValue,
   FunctionValue,
@@ -36,7 +37,7 @@ type EmitterDependenciesVisitorCallbacks<T> = {
   onFunction?: FunctionValue => void | T,
   // Callback invoked whenever a dependency is visited that is an abstract value with an identifier.
   // A return value that is not undefined indicates that the visitor should stop, and return the value as the overall result.
-  onAbstractValueWithIdentifier?: AbstractValue => void | T,
+  onValueWithIdentifier?: (AbstractValue | ConcreteValue) => void | T,
 };
 
 // The emitter keeps track of a stack of what's currently being emitted.
@@ -81,16 +82,25 @@ export class Emitter {
         this._residualFunctions.addFunctionUsage(val, this.getBodyReference());
         return undefined;
       },
-      onAbstractValueWithIdentifier: val => {
+      onValueWithIdentifier: val => {
         // If the value hasn't been declared yet, then we should wait for it.
         if (
+          val instanceof AbstractValue &&
           derivedIds.has(val.getIdentifier().name) &&
           !this.cannotDeclare() &&
           !this.hasBeenDeclared(val) &&
           (!this.emittingToAdditionalFunction() || referencedDeclaredValues.get(val) !== undefined)
-        )
+        ) {
           return val;
-        else return undefined;
+        } else if (
+          val instanceof ConcreteValue &&
+          !this.cannotDeclare() &&
+          !this.hasBeenDeclared(val) &&
+          (!this.emittingToAdditionalFunction() || referencedDeclaredValues.get(val) !== undefined)
+        ) {
+          return val;
+        }
+        return undefined;
       },
     };
     this._conditionalFeasibility = conditionalFeasibility;
@@ -147,7 +157,7 @@ export class Emitter {
   endEmitting(
     dependency: string | Generator | Value,
     oldBody: SerializedBody,
-    valuesToProcess: void | Set<AbstractValue>,
+    valuesToProcess: void | Set<AbstractValue | ConcreteValue>,
     isChild: boolean = false
   ) {
     invariant(!this._finalized);
@@ -170,17 +180,16 @@ export class Emitter {
       lastBody.done = true;
       // When we are done processing a body, we can propogate all declared abstract values
       // to its parent, possibly unlocking further processing...
-      if (lastBody.declaredAbstractValues) {
+      if (lastBody.declaredValues) {
         let anyPropagated = true;
         for (let b = lastBody; b.done && b.parentBody !== undefined && anyPropagated; b = b.parentBody) {
           anyPropagated = false;
-          let parentDeclaredAbstractValues = b.parentBody.declaredAbstractValues;
-          if (parentDeclaredAbstractValues === undefined)
-            b.parentBody.declaredAbstractValues = parentDeclaredAbstractValues = new Map();
-          invariant(b.declaredAbstractValues);
-          for (let [key, value] of b.declaredAbstractValues) {
-            if (!parentDeclaredAbstractValues.has(key)) {
-              parentDeclaredAbstractValues.set(key, value);
+          let parentDeclaredValues = b.parentBody.declaredValues;
+          if (parentDeclaredValues === undefined) b.parentBody.declaredValues = parentDeclaredValues = new Map();
+          invariant(b.declaredValues);
+          for (let [key, value] of b.declaredValues) {
+            if (!parentDeclaredValues.has(key)) {
+              parentDeclaredValues.set(key, value);
               if (valuesToProcess !== undefined) valuesToProcess.add(key);
               anyPropagated = true;
             }
@@ -191,7 +200,7 @@ export class Emitter {
 
     return lastBody;
   }
-  processValues(valuesToProcess: Set<AbstractValue>) {
+  processValues(valuesToProcess: Set<AbstractValue | ConcreteValue>) {
     for (let value of valuesToProcess) this._processValue(value);
   }
   finalize() {
@@ -268,7 +277,7 @@ export class Emitter {
   //    (tracked by `_activeValues`).
   // 2. a time-dependent value that is declared by some generator entry
   //    that has not yet been processed
-  //    (tracked by `declaredAbstractValues` in bodies)
+  //    (tracked by `declaredValues` in bodies)
   getReasonToWaitForDependencies(dependencies: Value | Array<Value>): void | Value {
     return this.dependenciesVisitor(dependencies, this._getReasonToWaitForDependenciesCallbacks);
   }
@@ -319,7 +328,7 @@ export class Emitter {
     } else if (val instanceof AbstractValue) {
       if (val.hasIdentifier()) {
         // We ran into an abstract value that might have to be declared.
-        result = callbacks.onAbstractValueWithIdentifier ? callbacks.onAbstractValueWithIdentifier(val) : undefined;
+        result = callbacks.onValueWithIdentifier ? callbacks.onValueWithIdentifier(val) : undefined;
         if (result !== undefined) return result;
       }
       let argsToRecurse;
@@ -343,6 +352,9 @@ export class Emitter {
         result = recurse(val.$Description);
         if (result !== undefined) return result;
       }
+    } else if (val instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(val)) {
+      result = callbacks.onValueWithIdentifier ? callbacks.onValueWithIdentifier(val) : undefined;
+      if (result !== undefined) return result;
     } else if (val instanceof ObjectValue) {
       let kind = val.getKind();
       switch (kind) {
@@ -435,10 +447,8 @@ export class Emitter {
     invariant(this._isEmittingActiveGenerator());
     invariant(!this.cannotDeclare());
     invariant(!this._body.done);
-    if (value instanceof AbstractValue) {
-      if (this._body.declaredAbstractValues === undefined) this._body.declaredAbstractValues = new Map();
-      this._body.declaredAbstractValues.set(value, this._body);
-    }
+    if (this._body.declaredValues === undefined) this._body.declaredValues = new Map();
+    this._body.declaredValues.set(value, this._body);
     this._processValue(value);
   }
   emittingToAdditionalFunction() {
@@ -450,19 +460,20 @@ export class Emitter {
     // Bodies of the following types will never contain any (temporal) abstract value declarations.
     return this._body.type === "DelayInitializations" || this._body.type === "LazyObjectInitializer";
   }
-  hasBeenDeclared(value: AbstractValue): boolean {
+  hasBeenDeclared(value: AbstractValue | ConcreteValue): boolean {
     return this.getDeclarationBody(value) !== undefined;
   }
-  getDeclarationBody(value: AbstractValue): void | SerializedBody {
-    for (let b = this._body; b !== undefined; b = b.parentBody)
-      if (b.declaredAbstractValues !== undefined && b.declaredAbstractValues.has(value)) {
+  getDeclarationBody(value: AbstractValue | ConcreteValue): void | SerializedBody {
+    for (let b = this._body; b !== undefined; b = b.parentBody) {
+      if (b.declaredValues !== undefined && b.declaredValues.has(value)) {
         return b;
       }
+    }
     return undefined;
   }
   declaredCount() {
-    let declaredAbstractValues = this._body.declaredAbstractValues;
-    return declaredAbstractValues === undefined ? 0 : declaredAbstractValues.size;
+    let declaredValues = this._body.declaredValues;
+    return declaredValues === undefined ? 0 : declaredValues.size;
   }
   getBody(): SerializedBody {
     return this._body;
