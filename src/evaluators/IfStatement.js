@@ -16,7 +16,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
 import { Reference } from "../environment.js";
 import { UpdateEmpty } from "../methods/index.js";
-import type { BabelNode, BabelNodeIfStatement } from "babel-types";
+import type { BabelNodeIfStatement } from "babel-types";
 import invariant from "../invariant.js";
 import { Environment, To } from "../singletons.js";
 
@@ -74,22 +74,11 @@ export function evaluate(ast: BabelNodeIfStatement, strictCode: boolean, env: Le
     return stmtCompletion;
   } else {
     invariant(exprValue instanceof AbstractValue);
-    return evaluateWithAbstractConditional(exprValue, ast.consequent, ast.alternate, strictCode, env, realm);
+    return realm.evaluateWithAbstractConditional(
+      exprValue,
+      () => realm.evaluateNodeForEffects(ast.consequent, strictCode, env),
+      () =>
+        ast.alternate ? realm.evaluateNodeForEffects(ast.alternate, strictCode, env) : construct_empty_effects(realm)
+    );
   }
-}
-
-export function evaluateWithAbstractConditional(
-  condValue: AbstractValue,
-  consequent: BabelNode,
-  alternate: ?BabelNode,
-  strictCode: boolean,
-  env: LexicalEnvironment,
-  realm: Realm
-): Value {
-  return AbstractValue.evaluateWithAbstractConditional(
-    realm,
-    condValue,
-    () => realm.evaluateNodeForEffects(consequent, strictCode, env),
-    () => (alternate ? realm.evaluateNodeForEffects(alternate, strictCode, env) : construct_empty_effects(realm))
-  );
 }
