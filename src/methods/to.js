@@ -736,8 +736,10 @@ export class ToImplementation {
       let primValue = this.ToPrimitiveOrAbstract(realm, val, "string");
       if (primValue.getType() === StringValue) return primValue;
       str = this.ToStringPartial(realm, primValue);
+    } else if (val instanceof AbstractValue) {
+      return this.ToStringAbstract(realm, val);
     } else {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "unknown value type, can't coerce to string");
+      invariant(false, "unknown value type, can't coerce to string");
     }
     return new StringValue(realm, str);
   }
