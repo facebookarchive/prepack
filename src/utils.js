@@ -10,6 +10,7 @@
 /* @flow */
 
 import {
+  AbstractValue,
   ArrayValue,
   BooleanValue,
   EmptyValue,
@@ -21,8 +22,10 @@ import {
   StringValue,
   SymbolValue,
   UndefinedValue,
+  PrimitiveValue,
   Value,
 } from "./values/index.js";
+import invariant from "./invariant.js";
 
 export function typeToString(type: typeof Value): void | string {
   function isInstance(proto, Constructor): boolean {
@@ -78,4 +81,28 @@ export function getTypeFromName(typeName: string): void | typeof Value {
     default:
       return undefined;
   }
+}
+
+export function describeValue(value: Value): string {
+  let title;
+  let suffix = "";
+  if (value instanceof PrimitiveValue) title = value.toDisplayString();
+  else if (value instanceof ObjectValue) title = "[object]";
+  else {
+    invariant(value instanceof AbstractValue, value.constructor.name);
+    title = "[abstract]";
+    if (value.kind !== undefined) title += `, kind: ${value.kind}`;
+    for (let arg of value.args) {
+      let t = describeValue(arg);
+      suffix +=
+        t
+          .split("\n")
+          .map(u => "  " + u)
+          .join("\n") + "\n";
+    }
+  }
+  title += `, hash: ${value.getHash()}`;
+  if (value.intrinsicName !== undefined) title += `, intrinsic name: ${value.intrinsicName}`;
+  if (value.__originalName !== undefined) title += `, original name: ${value.__originalName}`;
+  return suffix ? `${title}\n${suffix}` : title;
 }
