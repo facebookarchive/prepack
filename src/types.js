@@ -62,6 +62,24 @@ export const ElementSize = {
   Uint8Clamped: 1,
 };
 
+export type ConsoleMethodTypes =
+  | "assert"
+  | "clear"
+  | "count"
+  | "dir"
+  | "dirxml"
+  | "error"
+  | "group"
+  | "groupCollapsed"
+  | "groupEnd"
+  | "info"
+  | "log"
+  | "table"
+  | "time"
+  | "timeEnd"
+  | "trace"
+  | "warn";
+
 export type IterationKind = "key+value" | "value" | "key";
 
 export type SourceType = "module" | "script";

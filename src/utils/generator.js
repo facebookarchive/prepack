@@ -9,8 +9,8 @@
 
 /* @flow */
 
-import type { Realm, Effects } from "../realm.js";
-import type { PropertyBinding, Descriptor } from "../types.js";
+import type { Effects, Realm } from "../realm.js";
+import type { ConsoleMethodTypes, Descriptor, PropertyBinding } from "../types.js";
 import type { ResidualFunctionBinding } from "../serializer/types.js";
 import type { Binding } from "../environment.js";
 import {
@@ -598,7 +598,7 @@ export class Generator {
     });
   }
 
-  emitConsoleLog(method: "log" | "warn" | "error", args: Array<string | ConcreteValue>) {
+  emitConsoleLog(method: ConsoleMethodTypes, args: Array<string | ConcreteValue>) {
     this.emitCall(
       () => t.memberExpression(t.identifier("console"), t.identifier(method)),
       args.map(v => (typeof v === "string" ? new StringValue(this.realm, v) : v))
