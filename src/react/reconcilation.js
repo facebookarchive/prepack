@@ -882,17 +882,11 @@ export class Reconciler {
         );
       },
       () => {
-        invariant(false, "TODO");
-      },
-      () => {
         return this.realm.evaluateForEffects(
           () => this._resolveDeeply(componentType, alternateVal, context, "NEW_BRANCH", newBranchState, evaluatedNode),
           null,
           "_resolveAbstractConditionalValue consequent"
         );
-      },
-      () => {
-        invariant(false, "TODO");
       }
     );
     let didBranch = newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
