@@ -19,7 +19,13 @@ import type {
   ReactHint,
 } from "./types.js";
 import { RealmStatistics } from "./statistics.js";
-import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler, FatalError } from "./errors.js";
+import {
+  CompilerDiagnostic,
+  type ErrorHandlerResult,
+  type ErrorHandler,
+  FatalError,
+  InfeasiblePathError,
+} from "./errors.js";
 import {
   AbstractObjectValue,
   AbstractValue,
@@ -920,6 +926,78 @@ export class Realm {
     } catch (e) {
       return undefined;
     }
+  }
+
+  evaluateWithAbstractConditional(
+    condValue: AbstractValue,
+    consequentEffectsFunc: () => Effects,
+    alternateEffectsFunc: () => Effects
+  ): Value {
+    // Evaluate consequent and alternate in sandboxes and get their effects.
+    let effects1;
+    try {
+      effects1 = Path.withCondition(condValue, consequentEffectsFunc);
+    } catch (e) {
+      if (!(e instanceof InfeasiblePathError)) throw e;
+    }
+
+    let effects2;
+    try {
+      effects2 = Path.withInverseCondition(condValue, alternateEffectsFunc);
+    } catch (e) {
+      if (!(e instanceof InfeasiblePathError)) throw e;
+    }
+
+    let joinedEffects, completion;
+    if (effects1 === undefined || effects2 === undefined) {
+      if (effects1 === undefined && effects2 === undefined) throw new InfeasiblePathError();
+      joinedEffects = effects1 || effects2;
+      invariant(joinedEffects !== undefined);
+      completion = joinedEffects.result;
+    } else {
+      let {
+        result: result1,
+        generator: generator1,
+        modifiedBindings: modifiedBindings1,
+        modifiedProperties: modifiedProperties1,
+        createdObjects: createdObjects1,
+      } = effects1;
+
+      let {
+        result: result2,
+        generator: generator2,
+        modifiedBindings: modifiedBindings2,
+        modifiedProperties: modifiedProperties2,
+        createdObjects: createdObjects2,
+      } = effects2;
+
+      // Join the effects, creating an abstract view of what happened, regardless
+      // of the actual value of condValue.
+      joinedEffects = Join.joinEffects(
+        this,
+        condValue,
+        new Effects(result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
+        new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
+      );
+      completion = joinedEffects.result;
+      if (completion instanceof JoinedAbruptCompletions) {
+        // Note that the effects are tracked separately inside completion and will be applied later.
+        throw completion;
+      }
+      if (completion instanceof PossiblyNormalCompletion) {
+        // in this case one of the branches may complete abruptly, which means that
+        // not all control flow branches join into one flow at this point.
+        // Consequently we have to continue tracking changes until the point where
+        // all the branches come together into one.
+        completion = this.composeWithSavedCompletion(completion);
+      }
+    }
+    this.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
+
+    // return or throw completion
+    if (completion instanceof AbruptCompletion) throw completion;
+    invariant(completion instanceof Value);
+    return completion;
   }
 
   _applyPropertiesToNewlyCreatedObjects(
