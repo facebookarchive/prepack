@@ -217,7 +217,7 @@ export function optimizeReactComponentTreeRoot(
   statistics: ReactStatistics,
   reactSerializerState: ReactSerializerState
 ): void {
-  let reconciler = new Reconciler(realm, logger, statistics, reactSerializerState, config);
+  let reconciler = new Reconciler(realm, config, statistics, logger, reactSerializerState);
   let componentType = getComponentTypeFromRootValue(realm, componentRoot);
   if (componentType === null) {
     return;
