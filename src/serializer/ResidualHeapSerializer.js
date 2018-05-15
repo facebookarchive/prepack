@@ -23,7 +23,6 @@ import {
   NativeFunctionValue,
   NumberValue,
   ObjectValue,
-  PrimitiveValue,
   ProxyValue,
   StringValue,
   SymbolValue,
@@ -84,6 +83,7 @@ import { DeclarativeEnvironmentRecord } from "../environment.js";
 import type { Referentializer } from "./Referentializer.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
 import { type Replacement, getReplacement } from "./ResidualFunctionInstantiator";
+import { describeValue } from "../utils.js";
 
 function commentStatement(text: string) {
   let s = t.emptyStatement();
@@ -2319,11 +2319,7 @@ export class ResidualHeapSerializer {
 
   _logSerializedResidualMismatches() {
     let logValue = value => {
-      console.log(
-        `${value.constructor.name} ${value.intrinsicName || "(no intrinsic name)"} ${
-          value instanceof PrimitiveValue ? value.toDisplayString() : "(cannot print value)"
-        }`
-      );
+      console.log(describeValue(value));
       let scopes = this.residualValues.get(value);
       if (scopes !== undefined) this._logScopes(scopes);
     };
