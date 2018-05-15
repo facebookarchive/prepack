@@ -28,7 +28,13 @@ import {
   BooleanValue,
 } from "../values/index.js";
 import { Generator } from "../utils/generator.js";
-import type { Descriptor, ReactHint, PropertyBinding, ReactComponentTreeConfig } from "../types.js";
+import type {
+  Descriptor,
+  FunctionBodyAstNode,
+  ReactComponentTreeConfig,
+  ReactHint,
+  PropertyBinding,
+} from "../types.js";
 import { Get, cloneDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import type { ReactSerializerState, AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
@@ -853,4 +859,17 @@ export function getLocationFromValue(expressionLocation: any) {
     ? ` at location: ${expressionLocation.start.line}:${expressionLocation.start.column} ` +
         `- ${expressionLocation.end.line}:${expressionLocation.end.line}`
     : "";
+}
+
+export function createNoOpFunction(realm: Realm): ECMAScriptSourceFunctionValue {
+  if (realm.react.noOpFunction !== undefined) {
+    return realm.react.noOpFunction;
+  }
+  let noOpFunc = new ECMAScriptSourceFunctionValue(realm);
+  let body = t.blockStatement([]);
+  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
+  noOpFunc.$FormalParameters = [];
+  noOpFunc.$ECMAScriptCode = body;
+  realm.react.noOpFunction = noOpFunc;
+  return noOpFunc;
 }

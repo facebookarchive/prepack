@@ -108,10 +108,10 @@ export type ComponentTreeState = {
 export class Reconciler {
   constructor(
     realm: Realm,
-    logger: Logger,
+    componentTreeConfig: ReactComponentTreeConfig,
     statistics: ReactStatistics,
-    reactSerializerState: ReactSerializerState,
-    componentTreeConfig: ReactComponentTreeConfig
+    logger?: Logger,
+    reactSerializerState?: ReactSerializerState
   ) {
     this.realm = realm;
     this.statistics = statistics;
@@ -127,8 +127,8 @@ export class Reconciler {
 
   realm: Realm;
   statistics: ReactStatistics;
-  reactSerializerState: ReactSerializerState;
-  logger: Logger;
+  reactSerializerState: void | ReactSerializerState;
+  logger: void | Logger;
   componentTreeState: ComponentTreeState;
   alreadyEvaluatedRootNodes: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>;
   alreadyEvaluatedNestedClosures: Set<FunctionValue>;
@@ -137,24 +137,18 @@ export class Reconciler {
   nestedOptimizedClosures: Array<OptimizedClosure>;
   branchedComponentTrees: Array<BranchReactComponentTree>;
 
-  renderReactComponentTree(
+  resolveReactComponentTree(
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractObjectValue | null,
     context: ObjectValue | AbstractObjectValue | null,
     evaluatedRootNode: ReactEvaluatedNode
   ): Effects {
-    const renderComponentTree = () => {
-      // initialProps and initialContext are created from Flow types from:
-      // - if a functional component, the 1st and 2nd paramater of function
-      // - if a class component, use this.props and this.context
-      // if there are no Flow types for props or context, we will throw a
-      // FatalError, unless it's a functional component that has no paramater
-      // i.e let MyComponent = () => <div>Hello world</div>
+    const resolveComponentTree = () => {
       try {
         let initialProps = props || getInitialProps(this.realm, componentType);
         let initialContext = context || getInitialContext(this.realm, componentType);
         this.alreadyEvaluatedRootNodes.set(componentType, evaluatedRootNode);
-        let { result } = this._renderComponent(
+        let { result } = this._resolveComponent(
           componentType,
           initialProps,
           initialContext,
@@ -167,7 +161,7 @@ export class Reconciler {
       } catch (error) {
         this._handleComponentTreeRootFailure(error, evaluatedRootNode);
         // flow belives we can get here, when it should never be possible
-        invariant(false, "renderReactComponentTree error not handled correctly");
+        invariant(false, "resolveReactComponentTree error not handled correctly");
       }
     };
 
@@ -175,7 +169,7 @@ export class Reconciler {
       this.realm.evaluatePure(
         () =>
           this.realm.evaluateForEffects(
-            renderComponentTree,
+            resolveComponentTree,
             /*state*/ null,
             `react component: ${getComponentName(this.realm, componentType)}`
           ),
@@ -194,7 +188,7 @@ export class Reconciler {
     }
   }
 
-  renderNestedOptimizedClosure(
+  resolveNestedOptimizedClosure(
     func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
     nestedEffects: Array<Effects>,
     componentType: Value | null,
@@ -202,7 +196,7 @@ export class Reconciler {
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
   ): Effects {
-    const renderOptimizedClosure = () => {
+    const resolveOptimizedClosure = () => {
       let baseObject = this.realm.$GlobalEnv.environmentRecord.WithBaseObject();
       // we want to optimize the function that is bound
       if (func instanceof BoundFunctionValue) {
@@ -260,14 +254,14 @@ export class Reconciler {
       } catch (error) {
         this._handleComponentTreeRootFailure(error, evaluatedNode);
         // flow belives we can get here, when it should never be possible
-        invariant(false, "renderNestedOptimizedClosure error not handled correctly");
+        invariant(false, "resolveNestedOptimizedClosure error not handled correctly");
       }
     };
 
     let effects = this.realm.wrapInGlobalEnv(() =>
       this.realm.evaluatePure(() =>
         evaluateWithNestedParentEffects(this.realm, nestedEffects, () =>
-          this.realm.evaluateForEffects(renderOptimizedClosure, /*state*/ null, `react nested optimized closure`)
+          this.realm.evaluateForEffects(resolveOptimizedClosure, /*state*/ null, `react nested optimized closure`)
         )
       )
     );
@@ -318,7 +312,7 @@ export class Reconciler {
     }
   }
 
-  _renderComplexClassComponent(
+  _resolveComplexClassComponent(
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
@@ -354,7 +348,7 @@ export class Reconciler {
     return getValueFromFunctionCall(this.realm, renderMethod, instance, []);
   }
 
-  _renderSimpleClassComponent(
+  _resolveSimpleClassComponent(
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
@@ -371,7 +365,7 @@ export class Reconciler {
     return getValueFromFunctionCall(this.realm, renderMethod, instance, []);
   }
 
-  _renderFunctionalComponent(
+  _resolveFunctionalComponent(
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
@@ -607,7 +601,7 @@ export class Reconciler {
     this.componentTreeState.deadEnds++;
   }
 
-  _renderClassComponent(
+  _resolveClassComponent(
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
@@ -640,7 +634,7 @@ export class Reconciler {
       // a simple component using the above heuristics. If an error occurs during this process, we assume
       // that the class wasn't simple, then try again with the "complex" heuristics.
       try {
-        value = this._renderSimpleClassComponent(
+        value = this._resolveSimpleClassComponent(
           componentType,
           props,
           context,
@@ -661,7 +655,7 @@ export class Reconciler {
     }
     // handle the complex class component if there is not value
     if (value === undefined) {
-      value = this._renderComplexClassComponent(
+      value = this._resolveComplexClassComponent(
         componentType,
         props,
         context,
@@ -674,7 +668,7 @@ export class Reconciler {
     return value;
   }
 
-  _renderClassComponentForFirstRenderOnly(
+  _resolveClassComponentForFirstRenderOnly(
     componentType: ECMAScriptSourceFunctionValue,
     props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
@@ -740,10 +734,10 @@ export class Reconciler {
     }
     // add contextType to this component
     this.componentTreeState.contextTypes.add("relay");
-    return this._renderComponent(reactHint.firstRenderValue, props, context, branchStatus, branchState, evaluatedNode);
+    return this._resolveComponent(reactHint.firstRenderValue, props, context, branchStatus, branchState, evaluatedNode);
   }
 
-  _renderComponent(
+  _resolveComponent(
     componentType: Value,
     props: ObjectValue | AbstractValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
@@ -778,7 +772,7 @@ export class Reconciler {
       throw new ExpectedBailOut("components created with create-react-class are not supported");
     } else if (valueIsClassComponent(this.realm, componentType)) {
       if (this.componentTreeConfig.firstRenderOnly) {
-        value = this._renderClassComponentForFirstRenderOnly(
+        value = this._resolveClassComponentForFirstRenderOnly(
           componentType,
           props,
           context,
@@ -787,10 +781,10 @@ export class Reconciler {
           evaluatedNode
         );
       } else {
-        value = this._renderClassComponent(componentType, props, context, branchStatus, branchState, evaluatedNode);
+        value = this._resolveClassComponent(componentType, props, context, branchStatus, branchState, evaluatedNode);
       }
     } else {
-      value = this._renderFunctionalComponent(componentType, props, context, evaluatedNode);
+      value = this._resolveFunctionalComponent(componentType, props, context, evaluatedNode);
       if (valueIsFactoryClassComponent(this.realm, value)) {
         invariant(value instanceof ObjectValue);
         if (branchStatus !== "ROOT") {
@@ -895,9 +889,11 @@ export class Reconciler {
         invariant(false, "TODO");
       }
     );
-    let didBranch = newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
-    if (didBranch && branchState !== null) {
-      branchState.mergeBranchedLogic(newBranchState);
+    if (this.reactSerializerState !== undefined) {
+      let didBranch = newBranchState.applyBranchedLogic(this.realm, this.reactSerializerState);
+      if (didBranch && branchState !== null) {
+        branchState.mergeBranchedLogic(newBranchState);
+      }
     }
     return value;
   }
@@ -1167,7 +1163,7 @@ export class Reconciler {
             return this._resolveUnknownComponentType(reactElement, evaluatedNode);
           }
           let evaluatedChildNode = createReactEvaluatedNode("INLINED", getComponentName(this.realm, typeValue));
-          let render = this._renderComponent(
+          let render = this._resolveComponent(
             typeValue,
             propsValue,
             context,
@@ -1175,7 +1171,7 @@ export class Reconciler {
             null,
             evaluatedChildNode
           );
-          if (this.realm.react.verbose && evaluatedChildNode.status === "INLINED") {
+          if (this.logger !== undefined && this.realm.react.verbose && evaluatedChildNode.status === "INLINED") {
             this.logger.logInformation(`    ✔ ${evaluatedChildNode.name} (inlined)`);
           }
           evaluatedNode.children.push(evaluatedChildNode);
@@ -1417,8 +1413,8 @@ export class Reconciler {
             throw new ExpectedBailOut(`abstract mapped arrays with "this" argument are not yet supported`);
           }
           this._queueOptimizedClosure(func, evaluatedNode, componentType, context, branchState);
-          return;
         }
+        return;
       }
     }
     forEachArrayValue(this.realm, arrayValue, (elementValue, elementPropertyDescriptor) => {

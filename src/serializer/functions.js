@@ -10,42 +10,28 @@
 /* @flow */
 
 import type { BabelNodeSourceLocation } from "babel-types";
-import { Completion, JoinedAbruptCompletions, PossiblyNormalCompletion } from "../completions.js";
+import { Completion, PossiblyNormalCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import { type Effects, type PropertyBindings, Realm } from "../realm.js";
-import type { Binding } from "../environment.js";
-import type { PropertyBinding, ReactComponentTreeConfig, FunctionBodyAstNode } from "../types.js";
+import type { PropertyBinding, ReactComponentTreeConfig } from "../types.js";
 import { ignoreErrorsIn } from "../utils/errors.js";
 import {
-  Value,
   AbstractObjectValue,
-  FunctionValue,
-  ObjectValue,
   AbstractValue,
   ECMAScriptSourceFunctionValue,
+  FunctionValue,
+  ObjectValue,
   UndefinedValue,
-  BoundFunctionValue,
+  Value,
 } from "../values/index.js";
-import { Generator } from "../utils/generator.js";
 import { Get } from "../methods/index.js";
 import { ModuleTracer } from "../utils/modules.js";
-import { Join, Properties } from "../singletons.js";
+import { createAdditionalEffects } from "./utils.js";
 import { ReactStatistics } from "./types";
-import type { ReactSerializerState, AdditionalFunctionEffects, ReactEvaluatedNode } from "./types";
-import { Reconciler, type ComponentTreeState } from "../react/reconcilation.js";
-import {
-  valueIsClassComponent,
-  convertSimpleClassComponentToFunctionalComponent,
-  convertFunctionalComponentToComplexClassComponent,
-  normalizeFunctionalComponentParamaters,
-  getComponentTypeFromRootValue,
-  valueIsKnownReactAbstraction,
-  createReactEvaluatedNode,
-  getComponentName,
-  convertConfigObjectToReactComponentTreeConfig,
-} from "../react/utils.js";
-import { ReconcilerFatalError } from "../react/errors.js";
+import type { AdditionalFunctionEffects, ReactSerializerState, WriteEffects } from "./types";
+import { convertConfigObjectToReactComponentTreeConfig, valueIsKnownReactAbstraction } from "../react/utils.js";
+import { optimizeReactComponentTreeRoot } from "../react/optimizing.js";
 import * as t from "babel-types";
 
 type AdditionalFunctionEntry = {
@@ -66,7 +52,7 @@ export class Functions {
   // maps back from FunctionValue to the expression string
   functionExpressions: Map<FunctionValue, string>;
   moduleTracer: ModuleTracer;
-  writeEffects: Map<FunctionValue, AdditionalFunctionEffects>;
+  writeEffects: WriteEffects;
   _noOpFunction: void | ECMAScriptSourceFunctionValue;
 
   __optimizedFunctionEntryOfValue(value: Value): AdditionalFunctionEntry | void {
@@ -127,121 +113,12 @@ export class Functions {
     return recordedAdditionalFunctions;
   }
 
-  // NB: effects that are returned may be different than the effects passed in, so after this call, you may no longer
-  // use the effects object you passed into this function.
-  _createAdditionalEffects(
-    effects: Effects,
-    fatalOnAbrupt: boolean,
-    name: string,
-    environmentRecordIdAfterGlobalCode: number,
-    parentAdditionalFunction: FunctionValue | void = undefined
-  ): AdditionalFunctionEffects | null {
-    let realm = this.realm;
-    let result = effects.result;
-    let generator = Generator.fromEffects(effects, this.realm, name, environmentRecordIdAfterGlobalCode);
-    if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
-      effects = Join.joinNestedEffects(realm, result);
-    }
-    let retValue: AdditionalFunctionEffects = {
-      parentAdditionalFunction,
-      effects,
-      transforms: [],
-      generator,
-      additionalRoots: new Set(),
-    };
-    return retValue;
-  }
-
-  _generateWriteEffectsForReactComponentTree(
-    componentType: ECMAScriptSourceFunctionValue,
-    effects: Effects,
-    componentTreeState: ComponentTreeState,
-    evaluatedNode: ReactEvaluatedNode,
-    environmentRecordIdAfterGlobalCode: number
-  ): void {
-    let additionalFunctionEffects = this._createAdditionalEffects(
-      effects,
-      false,
-      "ReactAdditionalFunctionEffects",
-      environmentRecordIdAfterGlobalCode
-    );
-    if (additionalFunctionEffects === null) {
-      throw new ReconcilerFatalError(
-        `Failed to optimize React component tree for "${evaluatedNode.name}" due to an unsupported completion`,
-        evaluatedNode
-      );
-    }
-    effects = additionalFunctionEffects.effects;
-    let value = effects.result;
-
-    if (value === this.realm.intrinsics.undefined) {
-      // if we get undefined, then this component tree failed and a message was already logged
-      // in the reconciler
-      return;
-    }
-    if (valueIsClassComponent(this.realm, componentType)) {
-      if (componentTreeState.status === "SIMPLE") {
-        // if the root component was a class and is now simple, we can convert it from a class
-        // component to a functional component
-        convertSimpleClassComponentToFunctionalComponent(this.realm, componentType, additionalFunctionEffects);
-        normalizeFunctionalComponentParamaters(componentType);
-        this.writeEffects.set(componentType, additionalFunctionEffects);
-      } else {
-        let prototype = Get(this.realm, componentType, "prototype");
-        invariant(prototype instanceof ObjectValue);
-        let renderMethod = Get(this.realm, prototype, "render");
-        invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
-        this.writeEffects.set(renderMethod, additionalFunctionEffects);
-      }
-    } else {
-      if (componentTreeState.status === "COMPLEX") {
-        convertFunctionalComponentToComplexClassComponent(
-          this.realm,
-          componentType,
-          componentTreeState.componentType,
-          additionalFunctionEffects
-        );
-        let prototype = Get(this.realm, componentType, "prototype");
-        invariant(prototype instanceof ObjectValue);
-        let renderMethod = Get(this.realm, prototype, "render");
-        invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
-        this.writeEffects.set(renderMethod, additionalFunctionEffects);
-      } else {
-        normalizeFunctionalComponentParamaters(componentType);
-        this.writeEffects.set(componentType, additionalFunctionEffects);
-      }
-    }
-    // apply contextTypes for legacy context
-    if (componentTreeState.contextTypes.size > 0) {
-      let contextTypes = new ObjectValue(this.realm, this.realm.intrinsics.ObjectPrototype);
-      let noOpFunc = this._getNoOpFunction();
-      for (let key of componentTreeState.contextTypes) {
-        Properties.Set(this.realm, contextTypes, key, noOpFunc, true);
-      }
-      Properties.Set(this.realm, componentType, "contextTypes", contextTypes, true);
-    }
-  }
-
-  _getNoOpFunction(): ECMAScriptSourceFunctionValue {
-    if (this._noOpFunction) {
-      return this._noOpFunction;
-    }
-    let noOpFunc = new ECMAScriptSourceFunctionValue(this.realm);
-    let body = t.blockStatement([]);
-    ((body: any): FunctionBodyAstNode).uniqueOrderedTag = this.realm.functionBodyUniqueTagSeed++;
-    noOpFunc.$FormalParameters = [];
-    noOpFunc.$ECMAScriptCode = body;
-    this._noOpFunction = noOpFunc;
-    return noOpFunc;
-  }
-
   optimizeReactComponentTreeRoots(
     statistics: ReactStatistics,
-    react: ReactSerializerState,
+    reactSerializerState: ReactSerializerState,
     environmentRecordIdAfterGlobalCode: number
   ): void {
     let logger = this.moduleTracer.modules.logger;
-    let bindings = new Set();
     let recordedReactRootValues = this.__generateInitialAdditionalFunctions("__reactComponentTrees");
     // Get write effects of the components
     if (this.realm.react.verbose) {
@@ -249,132 +126,15 @@ export class Functions {
     }
     for (let { value: componentRoot, config } of recordedReactRootValues) {
       invariant(config);
-      let reconciler = new Reconciler(this.realm, this.moduleTracer.modules.logger, statistics, react, config);
-      let componentType = getComponentTypeFromRootValue(this.realm, componentRoot);
-      if (componentType === null) {
-        continue;
-      }
-      let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(this.realm, componentType));
-      statistics.evaluatedRootNodes.push(evaluatedRootNode);
-      if (reconciler.hasEvaluatedRootNode(componentType, evaluatedRootNode)) {
-        continue;
-      }
-      if (this.realm.react.verbose) {
-        logger.logInformation(`  Evaluating ${evaluatedRootNode.name} (root)`);
-      }
-      let componentTreeEffects = reconciler.renderReactComponentTree(componentType, null, null, evaluatedRootNode);
-      if (this.realm.react.verbose) {
-        logger.logInformation(`  ✔ ${evaluatedRootNode.name} (root)`);
-      }
-
-      this._generateWriteEffectsForReactComponentTree(
-        componentType,
-        componentTreeEffects,
-        reconciler.componentTreeState,
-        evaluatedRootNode,
-        environmentRecordIdAfterGlobalCode
-      );
-
-      let startingComponentTreeBranches = 0;
-      do {
-        startingComponentTreeBranches = reconciler.branchedComponentTrees.length;
-        this._optimizeReactComponentTreeBranches(reconciler, bindings, environmentRecordIdAfterGlobalCode);
-        this._optimizeReactNestedClosures(reconciler, bindings, environmentRecordIdAfterGlobalCode);
-      } while (startingComponentTreeBranches !== reconciler.branchedComponentTrees.length);
-    }
-  }
-
-  _optimizeReactNestedClosures(
-    reconciler: Reconciler,
-    bindings: Set<Binding>,
-    environmentRecordIdAfterGlobalCode: number
-  ): void {
-    let logger = this.moduleTracer.modules.logger;
-
-    if (this.realm.react.verbose && reconciler.nestedOptimizedClosures.length > 0) {
-      logger.logInformation(`  Evaluating nested closures...`);
-    }
-    for (let {
-      func,
-      evaluatedNode,
-      nestedEffects,
-      componentType,
-      context,
-      branchState,
-    } of reconciler.nestedOptimizedClosures) {
-      if (reconciler.hasEvaluatedNestedClosure(func)) {
-        continue;
-      }
-      if (func instanceof ECMAScriptSourceFunctionValue && reconciler.hasEvaluatedRootNode(func, evaluatedNode)) {
-        continue;
-      }
-      if (this.realm.react.verbose) {
-        logger.logInformation(`    Evaluating function "${getComponentName(this.realm, func)}"`);
-      }
-      let closureEffects = reconciler.renderNestedOptimizedClosure(
-        func,
-        nestedEffects,
-        componentType,
-        context,
-        branchState,
-        evaluatedNode
-      );
-      if (this.realm.react.verbose) {
-        logger.logInformation(`    ✔ function "${getComponentName(this.realm, func)}"`);
-      }
-      let additionalFunctionEffects = this._createAdditionalEffects(
-        closureEffects,
-        true,
-        "ReactNestedAdditionalFunctionEffects",
-        environmentRecordIdAfterGlobalCode
-      );
-      invariant(additionalFunctionEffects);
-      if (func instanceof BoundFunctionValue) {
-        invariant(func.$BoundTargetFunction instanceof ECMAScriptSourceFunctionValue);
-        this.writeEffects.set(func.$BoundTargetFunction, additionalFunctionEffects);
-      } else {
-        this.writeEffects.set(func, additionalFunctionEffects);
-      }
-    }
-  }
-
-  _optimizeReactComponentTreeBranches(
-    reconciler: Reconciler,
-    bindings: Set<Binding>,
-    environmentRecordIdAfterGlobalCode: number
-  ): void {
-    let logger = this.moduleTracer.modules.logger;
-
-    if (this.realm.react.verbose && reconciler.branchedComponentTrees.length > 0) {
-      logger.logInformation(`  Evaluating React component tree branches...`);
-    }
-    // for now we just use abstract props/context, in the future we'll create a new branch with a new component
-    // that used the props/context. It will extend the original component and only have a render method
-    for (let { rootValue: branchRootValue, evaluatedNode } of reconciler.branchedComponentTrees) {
-      let branchComponentType = getComponentTypeFromRootValue(this.realm, branchRootValue);
-      if (branchComponentType === null) {
-        evaluatedNode.status = "UNKNOWN_TYPE";
-        continue;
-      }
-      // so we don't process the same component multiple times (we might change this logic later)
-      if (reconciler.hasEvaluatedRootNode(branchComponentType, evaluatedNode)) {
-        continue;
-      }
-      reconciler.clearComponentTreeState();
-      if (this.realm.react.verbose) {
-        logger.logInformation(`    Evaluating ${evaluatedNode.name} (branch)`);
-      }
-      let branchEffects = reconciler.renderReactComponentTree(branchComponentType, null, null, evaluatedNode);
-      if (this.realm.react.verbose) {
-        logger.logInformation(`    ✔ ${evaluatedNode.name} (branch)`);
-      }
-      let branchComponentTreeState = reconciler.componentTreeState;
-      this._generateWriteEffectsForReactComponentTree(
-        branchComponentType,
-        branchEffects,
-        branchComponentTreeState,
-        evaluatedNode,
-        environmentRecordIdAfterGlobalCode
+      optimizeReactComponentTreeRoot(
+        this.realm,
+        componentRoot,
+        config,
+        this.writeEffects,
+        environmentRecordIdAfterGlobalCode,
+        logger,
+        statistics,
+        reactSerializerState
       );
     }
   }
@@ -447,7 +207,8 @@ export class Functions {
         this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
       );
       invariant(effects);
-      let additionalFunctionEffects = this._createAdditionalEffects(
+      let additionalFunctionEffects = createAdditionalEffects(
+        this.realm,
         effects,
         true,
         "AdditionalFunctionEffects",
