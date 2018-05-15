@@ -440,9 +440,10 @@ export class Realm {
           `total time has exceeded the timeout time: ${timeout}`,
           this.currentLocation,
           "PP0036",
-          "RecoverableError"
+          "FatalError"
         );
-        if (this.handleError(error) === "Recover") throw new FatalError();
+        this.handleError(error)
+        throw new FatalError();
       }
     }
   }
