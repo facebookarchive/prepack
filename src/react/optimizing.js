@@ -15,7 +15,7 @@ import { createAdditionalEffects } from "../serializer/utils.js";
 import {
   convertFunctionalComponentToComplexClassComponent,
   convertSimpleClassComponentToFunctionalComponent,
-  createNoOpFunction,
+  createNoopFunction,
   createReactEvaluatedNode,
   getComponentName,
   getComponentTypeFromRootValue,
@@ -101,7 +101,7 @@ function applyWriteEffectsForOptimizedComponent(
   // apply contextTypes for legacy context
   if (componentTreeState.contextTypes.size > 0) {
     let contextTypes = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
-    let noOpFunc = createNoOpFunction(realm);
+    let noOpFunc = createNoopFunction(realm);
     for (let key of componentTreeState.contextTypes) {
       Properties.Set(realm, contextTypes, key, noOpFunc, true);
     }

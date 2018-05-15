@@ -45,7 +45,7 @@ export class Functions {
     this.moduleTracer = moduleTracer;
     this.writeEffects = new Map();
     this.functionExpressions = new Map();
-    this._noOpFunction = undefined;
+    this._noopFunction = undefined;
   }
 
   realm: Realm;
@@ -53,7 +53,7 @@ export class Functions {
   functionExpressions: Map<FunctionValue, string>;
   moduleTracer: ModuleTracer;
   writeEffects: WriteEffects;
-  _noOpFunction: void | ECMAScriptSourceFunctionValue;
+  _noopFunction: void | ECMAScriptSourceFunctionValue;
 
   __optimizedFunctionEntryOfValue(value: Value): AdditionalFunctionEntry | void {
     let realm = this.realm;

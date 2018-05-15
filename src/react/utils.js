@@ -861,15 +861,15 @@ export function getLocationFromValue(expressionLocation: any) {
     : "";
 }
 
-export function createNoOpFunction(realm: Realm): ECMAScriptSourceFunctionValue {
-  if (realm.react.noOpFunction !== undefined) {
-    return realm.react.noOpFunction;
+export function createNoopFunction(realm: Realm): ECMAScriptSourceFunctionValue {
+  if (realm.react.noopFunction !== undefined) {
+    return realm.react.noopFunction;
   }
   let noOpFunc = new ECMAScriptSourceFunctionValue(realm);
   let body = t.blockStatement([]);
   ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
   noOpFunc.$FormalParameters = [];
   noOpFunc.$ECMAScriptCode = body;
-  realm.react.noOpFunction = noOpFunc;
+  realm.react.noopFunction = noOpFunc;
   return noOpFunc;
 }
