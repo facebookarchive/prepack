@@ -11,6 +11,7 @@
 
 import { AbstractValue, ConcreteValue, NullValue, UndefinedValue, Value } from "../values/index.js";
 import { InfeasiblePathError } from "../errors.js";
+import type { Realm } from "../realm.js";
 import invariant from "../invariant.js";
 
 export class PathImplementation {
@@ -182,7 +183,7 @@ function pushInversePathCondition(condition: Value) {
   }
 }
 
-function pushRefinedConditions(realm, unrefinedConditions: Array<AbstractValue>) {
+function pushRefinedConditions(realm: Realm, unrefinedConditions: Array<AbstractValue>) {
   let refinedConditions = unrefinedConditions.map(c => realm.simplifyAndRefineAbstractCondition(c));
   if (refinedConditions.some(c => !c.mightNotBeFalse())) throw new InfeasiblePathError();
   let pc = realm.pathConditions;
