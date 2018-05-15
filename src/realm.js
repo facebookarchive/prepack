@@ -10,11 +10,12 @@
 /* @flow */
 
 import type {
+  ClassComponentMetadata,
+  ConsoleMethodTypes,
+  DebugServerType,
+  Descriptor,
   Intrinsics,
   PropertyBinding,
-  Descriptor,
-  DebugServerType,
-  ClassComponentMetadata,
   ReactHint,
 } from "./types.js";
 import { RealmStatistics } from "./statistics.js";
@@ -1265,7 +1266,7 @@ export class Realm {
     }
   }
 
-  outputToConsole(method: "log" | "warn" | "error", args: Array<string | ConcreteValue>): void {
+  outputToConsole(method: ConsoleMethodTypes, args: Array<string | ConcreteValue>): void {
     if (this.isReadOnly) {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to create console output in read-only realm");
@@ -1274,6 +1275,7 @@ export class Realm {
       invariant(this.generator !== undefined);
       this.generator.emitConsoleLog(method, args);
     } else {
+      // $FlowFixMe: Flow doesn't have type data for all the console methods yet
       console[method](getString(this, args));
     }
 
