@@ -547,16 +547,16 @@ export class ResidualHeapVisitor {
     if (!functionInfo) {
       functionInfo = {
         depth: 0,
-        unbound: new Set(),
+        unbound: new Map(),
+        requireCalls: new Map(),
         modified: new Set(),
         usesArguments: false,
         usesThis: false,
       };
       let state = {
-        tryQuery: this.logger.tryQuery.bind(this.logger),
-        val,
         functionInfo,
         realm: this.realm,
+        getModuleIdIfNodeIsRequireFunction: this.modules.getGetModuleIdIfNodeIsRequireFunction(formalParameters, [val]),
       };
 
       traverse(
@@ -588,7 +588,7 @@ export class ResidualHeapVisitor {
       this._enqueueWithUnrelatedScope(val, () => {
         invariant(this.scope === val);
         invariant(functionInfo);
-        for (let innerName of functionInfo.unbound) {
+        for (let innerName of functionInfo.unbound.keys()) {
           let environment = this.resolveBinding(val, innerName);
           let residualBinding = this.getBinding(val, environment, innerName);
           this.visitBinding(val, residualBinding);
@@ -1057,18 +1057,8 @@ export class ResidualHeapVisitor {
     } else {
       invariant(val instanceof ObjectValue);
 
-      // Prototypes are reachable via function declarations, and those get hoisted, so we need to move
-      // prototype initialization to the common scope code as well.
-      if (val.originalConstructor !== undefined) {
-        this._enqueueWithUnrelatedScope(this._getCommonScope(), () => {
-          invariant(val instanceof ObjectValue);
-          if (this.preProcessValue(val)) this.visitValueObject(val);
-          this.postProcessValue(val);
-        });
-      } else {
-        if (this.preProcessValue(val)) this.visitValueObject(val);
-        this.postProcessValue(val);
-      }
+      if (this.preProcessValue(val)) this.visitValueObject(val);
+      this.postProcessValue(val);
     }
   }
 
@@ -1184,13 +1174,12 @@ export class ResidualHeapVisitor {
     // function instead of adding them at global scope
     this.residualReactElementVisitor.withCleanEquivalenceSet(() => {
       let modifiedBindingInfo = new Map();
-      let [result] = additionalEffects.effects.data;
+      let { result } = additionalEffects.effects;
 
       invariant(funcInstance !== undefined);
       invariant(functionInfo !== undefined);
       let additionalFunctionInfo = {
         functionValue,
-        captures: functionInfo.unbound,
         modifiedBindings: modifiedBindingInfo,
         instance: funcInstance,
         hasReturn: !(result instanceof UndefinedValue),

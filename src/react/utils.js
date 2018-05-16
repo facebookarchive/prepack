@@ -28,7 +28,13 @@ import {
   BooleanValue,
 } from "../values/index.js";
 import { Generator } from "../utils/generator.js";
-import type { Descriptor, ReactHint, PropertyBinding, ReactComponentTreeConfig } from "../types.js";
+import type {
+  Descriptor,
+  FunctionBodyAstNode,
+  ReactComponentTreeConfig,
+  ReactHint,
+  PropertyBinding,
+} from "../types.js";
 import { Get, cloneDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import type { ReactSerializerState, AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
@@ -551,7 +557,10 @@ export function evaluateWithNestedParentEffects(realm: Realm, nestedEffects: Arr
 
   if (nextEffects.length !== 0) {
     let effects = nextEffects.shift();
-    [value, , modifiedBindings, modifiedProperties, createdObjects] = effects.data;
+    value = effects.result;
+    createdObjects = effects.createdObjects;
+    modifiedBindings = effects.modifiedBindings;
+    modifiedProperties = effects.modifiedProperties;
     realm.applyEffects(
       new Effects(
         value,
@@ -861,4 +870,17 @@ export function getLocationFromValue(expressionLocation: any) {
     ? ` at location: ${expressionLocation.start.line}:${expressionLocation.start.column} ` +
         `- ${expressionLocation.end.line}:${expressionLocation.end.line}`
     : "";
+}
+
+export function createNoopFunction(realm: Realm): ECMAScriptSourceFunctionValue {
+  if (realm.react.noopFunction !== undefined) {
+    return realm.react.noopFunction;
+  }
+  let noOpFunc = new ECMAScriptSourceFunctionValue(realm);
+  let body = t.blockStatement([]);
+  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
+  noOpFunc.$FormalParameters = [];
+  noOpFunc.$ECMAScriptCode = body;
+  realm.react.noopFunction = noOpFunc;
+  return noOpFunc;
 }

@@ -9,7 +9,6 @@
 
 /* @flow */
 
-import { Effects } from "../realm.js";
 import type {
   BabelBinaryOperator,
   BabelNodeExpression,
@@ -18,7 +17,7 @@ import type {
   BabelNodeSourceLocation,
   BabelUnaryOperator,
 } from "babel-types";
-import { CompilerDiagnostic, FatalError, InfeasiblePathError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
 import { PreludeGenerator } from "../utils/generator.js";
@@ -40,8 +39,6 @@ import {
 import { hashString, hashBinary, hashCall, hashTernary, hashUnary } from "../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
-import { Join, Path } from "../singletons.js";
-import { AbruptCompletion, JoinedAbruptCompletions, PossiblyNormalCompletion } from "../completions.js";
 
 import * as t from "babel-types";
 
@@ -119,7 +116,7 @@ export default class AbstractValue extends Value {
   }
 
   hashValue: number;
-  kind: ?AbstractValueKind;
+  kind: void | AbstractValueKind;
   types: TypesDomain;
   values: ValuesDomain;
   mightBeEmpty: boolean;
@@ -573,8 +570,10 @@ export default class AbstractValue extends Value {
     left: Value,
     right: Value,
     loc?: ?BabelNodeSourceLocation,
-    kind?: AbstractValueKind
-  ): AbstractValue {
+    kind?: AbstractValueKind,
+    isCondition?: boolean,
+    doNotSimplify?: boolean
+  ): Value {
     let leftTypes, leftValues;
     if (left instanceof AbstractValue) {
       leftTypes = left.types;
@@ -606,7 +605,10 @@ export default class AbstractValue extends Value {
     );
     result.kind = kind || op;
     result.expressionLocation = loc;
-    return result;
+    if (doNotSimplify) return result;
+    return isCondition
+      ? realm.simplifyAndRefineAbstractCondition(result)
+      : realm.simplifyAndRefineAbstractValue(result);
   }
 
   static createFromLogicalOp(
@@ -657,13 +659,16 @@ export default class AbstractValue extends Value {
 
   static createFromConditionalOp(
     realm: Realm,
-    condition: AbstractValue,
+    condition: Value,
     left: void | Value,
     right: void | Value,
     loc?: ?BabelNodeSourceLocation,
     isCondition?: boolean,
     doNotSimplify?: boolean
   ): Value {
+    if (!condition.mightNotBeTrue()) return left || realm.intrinsics.undefined;
+    if (!condition.mightNotBeFalse()) return right || realm.intrinsics.undefined;
+
     let types = TypesDomain.joinValues(left, right);
     if (types.getType() === NullValue) return realm.intrinsics.null;
     if (types.getType() === UndefinedValue) return realm.intrinsics.undefined;
@@ -947,65 +952,5 @@ export default class AbstractValue extends Value {
 
   static makeKind(prefix: AbstractValueKindPrefix, suffix: string): AbstractValueKind {
     return ((`${prefix}:${suffix}`: any): AbstractValueKind);
-  }
-
-  static evaluateWithAbstractConditional(
-    realm: Realm,
-    condValue: AbstractValue,
-    consequentEffectsFunc: () => Effects,
-    consequentInfeasibleFunc: () => Value,
-    alternateEffectsFunc: () => Effects,
-    alternateInfeasibleFunc: () => Value
-  ): Value {
-    // Evaluate consequent and alternate in sandboxes and get their effects.
-    let compl1, gen1, bindings1, properties1, createdObj1;
-    try {
-      [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(condValue, consequentEffectsFunc).data;
-    } catch (e) {
-      if (e instanceof InfeasiblePathError) {
-        return consequentInfeasibleFunc();
-      }
-      throw e;
-    }
-
-    let compl2, gen2, bindings2, properties2, createdObj2;
-    try {
-      [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(
-        condValue,
-        alternateEffectsFunc
-      ).data;
-    } catch (e) {
-      if (e instanceof InfeasiblePathError) {
-        return alternateInfeasibleFunc();
-      }
-      throw e;
-    }
-
-    // Join the effects, creating an abstract view of what happened, regardless
-    // of the actual value of condValue.
-    let joinedEffects = Join.joinEffects(
-      realm,
-      condValue,
-      new Effects(compl1, gen1, bindings1, properties1, createdObj1),
-      new Effects(compl2, gen2, bindings2, properties2, createdObj2)
-    );
-    let completion = joinedEffects.result;
-    if (completion instanceof JoinedAbruptCompletions) {
-      // Note that the effects are tracked separately inside completion and will be applied later.
-      throw completion;
-    }
-    if (completion instanceof PossiblyNormalCompletion) {
-      // in this case one of the branches may complete abruptly, which means that
-      // not all control flow branches join into one flow at this point.
-      // Consequently we have to continue tracking changes until the point where
-      // all the branches come together into one.
-      completion = realm.composeWithSavedCompletion(completion);
-    }
-    realm.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
-
-    // return or throw completion
-    if (completion instanceof AbruptCompletion) throw completion;
-    invariant(completion instanceof Value);
-    return completion;
   }
 }

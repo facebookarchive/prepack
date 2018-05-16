@@ -43,7 +43,7 @@ function isSameNode(left, right) {
   }
 
   if (type === "BooleanLiteral" || type === "StringLiteral" || type === "NumericLiteral") {
-    return left.value === right.value;
+    return Object.is(left.value, right.value);
   }
 
   if (type === "UnaryExpression") {

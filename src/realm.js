@@ -10,15 +10,22 @@
 /* @flow */
 
 import type {
+  ClassComponentMetadata,
+  ConsoleMethodTypes,
+  DebugServerType,
+  Descriptor,
   Intrinsics,
   PropertyBinding,
-  Descriptor,
-  DebugServerType,
-  ClassComponentMetadata,
   ReactHint,
 } from "./types.js";
 import { RealmStatistics } from "./statistics.js";
-import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler, FatalError } from "./errors.js";
+import {
+  CompilerDiagnostic,
+  type ErrorHandlerResult,
+  type ErrorHandler,
+  FatalError,
+  InfeasiblePathError,
+} from "./errors.js";
 import {
   AbstractObjectValue,
   AbstractValue,
@@ -81,46 +88,23 @@ export class Effects {
     propertyBindings: PropertyBindings,
     createdObjects: CreatedObjects
   ) {
-    this.data = arguments;
+    this.result = result;
+    this.generator = generator;
+    this.modifiedBindings = bindings;
+    this.modifiedProperties = propertyBindings;
+    this.createdObjects = createdObjects;
+
     this.canBeApplied = true;
     this._id = effects_uid++;
   }
 
-  // TODO: Make these into properties
-  data: [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects];
+  result: EvaluationResult;
+  generator: Generator;
+  modifiedBindings: Bindings;
+  modifiedProperties: PropertyBindings;
+  createdObjects: CreatedObjects;
   canBeApplied: boolean;
   _id: number;
-
-  get result(): EvaluationResult {
-    return this.data[0];
-  }
-  set result(newVal: EvaluationResult) {
-    this.data[0] = newVal;
-  }
-  get generator(): Generator {
-    return this.data[1];
-  }
-  set generator(newVal: Generator) {
-    this.data[1] = newVal;
-  }
-  get modifiedBindings(): Bindings {
-    return this.data[2];
-  }
-  set modifiedBindings(newVal: Bindings) {
-    this.data[2] = newVal;
-  }
-  get modifiedProperties(): PropertyBindings {
-    return this.data[3];
-  }
-  set modifiedProperties(newVal: PropertyBindings) {
-    this.data[3] = newVal;
-  }
-  get createdObjects(): CreatedObjects {
-    return this.data[4];
-  }
-  set createdObjects(newVal: CreatedObjects) {
-    this.data[4] = newVal;
-  }
 }
 
 export class Tracer {
@@ -267,9 +251,10 @@ export class Realm {
       classComponentMetadata: new Map(),
       currentOwner: undefined,
       enabled: opts.reactEnabled || false,
-      output: opts.reactOutput || "create-element",
       hoistableFunctions: new WeakMap(),
       hoistableReactElements: new WeakMap(),
+      noopFunction: undefined,
+      output: opts.reactOutput || "create-element",
       reactElements: new WeakSet(),
       symbols: new Map(),
       verbose: opts.reactVerbose || false,
@@ -355,6 +340,7 @@ export class Realm {
     enabled: boolean,
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,
+    noopFunction: void | ECMAScriptSourceFunctionValue,
     output?: ReactOutputTypes,
     reactElements: WeakSet<ObjectValue>,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
@@ -465,7 +451,14 @@ export class Realm {
       this.timeoutCounter = this.timeoutCounterThreshold;
       let total = Date.now() - this.start;
       if (total > timeout) {
-        throw new FatalError("Timed out");
+        let error = new CompilerDiagnostic(
+          `total time has exceeded the timeout time: ${timeout}`,
+          this.currentLocation,
+          "PP0036",
+          "FatalError"
+        );
+        this.handleError(error);
+        throw new FatalError();
       }
     }
   }
@@ -924,12 +917,12 @@ export class Realm {
           // effects1 includes every value present in effects2, so doing another iteration using effects2 will not
           // result in any more values being added to abstract domains and hence a fixpoint has been reached.
           // Generate code using effects2 because its expressions have not been widened away.
-          let [, gen, bindings2, pbindings2, createdObjects2] = effects2.data;
-          this._applyPropertiesToNewlyCreatedObjects(pbindings2, createdObjects2);
-          this._emitPropertAssignments(gen, pbindings2, createdObjects2);
-          this._emitLocalAssignments(gen, bindings2, createdObjects2);
+          const e2 = effects2;
+          this._applyPropertiesToNewlyCreatedObjects(e2.modifiedProperties, e2.createdObjects);
+          this._emitPropertAssignments(e2.generator, e2.modifiedProperties, e2.createdObjects);
+          this._emitLocalAssignments(e2.generator, e2.modifiedBindings, e2.createdObjects);
           invariant(test instanceof AbstractValue);
-          let cond = gen.deriveAbstract(test.types, test.values, [test], ([n]) => n, {
+          let cond = e2.generator.deriveAbstract(test.types, test.values, [test], ([n]) => n, {
             skipInvariant: true,
           });
           return [effects1, effects2, cond];
@@ -939,6 +932,78 @@ export class Realm {
     } catch (e) {
       return undefined;
     }
+  }
+
+  evaluateWithAbstractConditional(
+    condValue: AbstractValue,
+    consequentEffectsFunc: () => Effects,
+    alternateEffectsFunc: () => Effects
+  ): Value {
+    // Evaluate consequent and alternate in sandboxes and get their effects.
+    let effects1;
+    try {
+      effects1 = Path.withCondition(condValue, consequentEffectsFunc);
+    } catch (e) {
+      if (!(e instanceof InfeasiblePathError)) throw e;
+    }
+
+    let effects2;
+    try {
+      effects2 = Path.withInverseCondition(condValue, alternateEffectsFunc);
+    } catch (e) {
+      if (!(e instanceof InfeasiblePathError)) throw e;
+    }
+
+    let joinedEffects, completion;
+    if (effects1 === undefined || effects2 === undefined) {
+      if (effects1 === undefined && effects2 === undefined) throw new InfeasiblePathError();
+      joinedEffects = effects1 || effects2;
+      invariant(joinedEffects !== undefined);
+      completion = joinedEffects.result;
+    } else {
+      let {
+        result: result1,
+        generator: generator1,
+        modifiedBindings: modifiedBindings1,
+        modifiedProperties: modifiedProperties1,
+        createdObjects: createdObjects1,
+      } = effects1;
+
+      let {
+        result: result2,
+        generator: generator2,
+        modifiedBindings: modifiedBindings2,
+        modifiedProperties: modifiedProperties2,
+        createdObjects: createdObjects2,
+      } = effects2;
+
+      // Join the effects, creating an abstract view of what happened, regardless
+      // of the actual value of condValue.
+      joinedEffects = Join.joinEffects(
+        this,
+        condValue,
+        new Effects(result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
+        new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
+      );
+      completion = joinedEffects.result;
+      if (completion instanceof JoinedAbruptCompletions) {
+        // Note that the effects are tracked separately inside completion and will be applied later.
+        throw completion;
+      }
+      if (completion instanceof PossiblyNormalCompletion) {
+        // in this case one of the branches may complete abruptly, which means that
+        // not all control flow branches join into one flow at this point.
+        // Consequently we have to continue tracking changes until the point where
+        // all the branches come together into one.
+        completion = this.composeWithSavedCompletion(completion);
+      }
+    }
+    this.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
+
+    // return or throw completion
+    if (completion instanceof AbruptCompletion) throw completion;
+    invariant(completion instanceof Value);
+    return completion;
   }
 
   _applyPropertiesToNewlyCreatedObjects(
@@ -1078,29 +1143,32 @@ export class Realm {
   }
 
   composeEffects(priorEffects: Effects, subsequentEffects: Effects): Effects {
-    let [, pg, pb, pp, po] = priorEffects.data;
-    let [sc, sg, sb, sp, so] = subsequentEffects.data;
     let result = construct_empty_effects(this);
-    let [, , rb, rp, ro] = result.data;
 
-    result.result = sc;
+    result.result = subsequentEffects.result;
 
-    result.generator = Join.composeGenerators(this, pg || result.generator, sg);
+    result.generator = Join.composeGenerators(
+      this,
+      priorEffects.generator || result.generator,
+      subsequentEffects.generator
+    );
 
-    if (pb) {
-      pb.forEach((val, key, m) => rb.set(key, val));
+    if (priorEffects.modifiedBindings) {
+      priorEffects.modifiedBindings.forEach((val, key, m) => result.modifiedBindings.set(key, val));
     }
-    sb.forEach((val, key, m) => rb.set(key, val));
+    subsequentEffects.modifiedBindings.forEach((val, key, m) => result.modifiedBindings.set(key, val));
 
-    if (pp) {
-      pp.forEach((desc, propertyBinding, m) => rp.set(propertyBinding, desc));
+    if (priorEffects.modifiedProperties) {
+      priorEffects.modifiedProperties.forEach((desc, propertyBinding, m) =>
+        result.modifiedProperties.set(propertyBinding, desc)
+      );
     }
-    sp.forEach((val, key, m) => rp.set(key, val));
+    subsequentEffects.modifiedProperties.forEach((val, key, m) => result.modifiedProperties.set(key, val));
 
-    if (po) {
-      po.forEach((ob, a) => ro.add(ob));
+    if (priorEffects.createdObjects) {
+      priorEffects.createdObjects.forEach((ob, a) => result.createdObjects.add(ob));
     }
-    so.forEach((ob, a) => ro.add(ob));
+    subsequentEffects.createdObjects.forEach((ob, a) => result.createdObjects.add(ob));
 
     return result;
   }
@@ -1230,13 +1298,13 @@ export class Realm {
 
     // Restore saved state
     if (completion.savedEffects !== undefined) {
-      let [c, g, b, p, o] = completion.savedEffects.data;
-      c;
+      const savedEffects = { ...completion.savedEffects };
+      savedEffects.result;
       completion.savedEffects = undefined;
-      this.generator = g;
-      this.modifiedBindings = b;
-      this.modifiedProperties = p;
-      this.createdObjects = o;
+      this.generator = savedEffects.generator;
+      this.modifiedBindings = savedEffects.modifiedBindings;
+      this.modifiedProperties = savedEffects.modifiedProperties;
+      this.createdObjects = savedEffects.createdObjects;
     } else {
       invariant(false);
     }
@@ -1291,7 +1359,7 @@ export class Realm {
     }
   }
 
-  outputToConsole(method: "log" | "warn" | "error" | "time" | "timeEnd", args: Array<string | ConcreteValue>): void {
+  outputToConsole(method: ConsoleMethodTypes, args: Array<string | ConcreteValue>): void {
     if (this.isReadOnly) {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to create console output in read-only realm");
@@ -1300,6 +1368,7 @@ export class Realm {
       invariant(this.generator !== undefined);
       this.generator.emitConsoleLog(method, args);
     } else {
+      // $FlowFixMe: Flow doesn't have type data for all the console methods yet
       console[method](getString(this, args));
     }
 

@@ -119,7 +119,6 @@ function AbstractCaseBlockEvaluation(
 
     let selector = CaseSelectorEvaluation(test, strictCode, env, realm);
     let selectionResult = computeBinary(realm, "===", input, selector);
-    invariant(selectionResult instanceof AbstractValue);
 
     if (Path.implies(selectionResult)) {
       //  we have a winning result for the switch case, bubble it back up!
@@ -361,7 +360,7 @@ export default function(
       }
       invariant(joinedEffects !== undefined);
       realm.applyEffects(joinedEffects, "joined specialized switch");
-      let result = joinedEffects.data[0];
+      let { result } = joinedEffects;
       if (result instanceof AbruptCompletion) throw result;
       if (result instanceof PossiblyNormalCompletion) {
         // in this case one of the branches may complete abruptly, which means that

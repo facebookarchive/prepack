@@ -9,10 +9,8 @@
 
 /* @flow */
 
-import type { Realm } from "../realm.js";
-import type { FunctionBodyAstNode } from "../types.js";
-import { parseExpression } from "babylon";
-import { ReactStatistics } from "../serializer/types.js";
+import type { Realm } from "../../realm.js";
+import { ReactStatistics } from "../../serializer/types.js";
 import {
   AbstractObjectValue,
   AbstractValue,
@@ -26,8 +24,8 @@ import {
   SymbolValue,
   Value,
   UndefinedValue,
-} from "../values/index.js";
-import { Reconciler } from "./reconcilation.js";
+} from "../../values/index.js";
+import { Reconciler } from "../reconcilation.js";
 import {
   createReactEvaluatedNode,
   forEachArrayValue,
@@ -35,219 +33,36 @@ import {
   getProperty,
   getReactSymbol,
   isReactElement,
-} from "./utils.js";
+} from "../utils.js";
 import * as t from "babel-types";
-import invariant from "../invariant.js";
+import invariant from "../../invariant.js";
+import {
+  convertValueToNode,
+  createArrayHelper,
+  createHtmlEscapeHelper,
+  createMarkupForRoot,
+  escapeHtml,
+  getNonChildrenInnerMarkup,
+  quoteAttributeValueForBrowser,
+  isCustomComponent,
+  normalizeNode,
+} from "./utils.js";
+import {
+  BOOLEAN,
+  getPropertyInfo,
+  isUnitlessNumber,
+  newlineEatingTags,
+  omittedCloseTags,
+  OVERLOADED_BOOLEAN,
+  RESERVED_PROPS,
+  shouldIgnoreAttribute,
+  shouldRemoveAttribute,
+  STYLE,
+} from "./dom-config.js";
 // $FlowFixMe: flow complains that this isn't a module but it is, and it seems to load fine
 import hyphenateStyleName from "fbjs/lib/hyphenateStyleName";
 
-type ReactNode = Array<ReactNode> | string | AbstractValue | ArrayValue;
-type PropertyType = 0 | 1 | 2 | 3 | 4 | 5 | 6;
-type PropertyInfo = {|
-  +acceptsBooleans: boolean,
-  +attributeName: string,
-  +attributeNamespace: string | null,
-  +mustUseProperty: boolean,
-  +propertyName: string,
-  +type: PropertyType,
-|};
-
-const STYLE = "style";
-const RESERVED_PROPS = new Set([
-  "children",
-  "dangerouslySetInnerHTML",
-  "suppressContentEditableWarning",
-  "suppressHydrationWarning",
-]);
-const ROOT_ATTRIBUTE_NAME = "data-reactroot";
-const matchHtmlRegExp = /["'&<>]/;
-const omittedCloseTags = new Set([
-  "area",
-  "base",
-  "br",
-  "col",
-  "embed",
-  "hr",
-  "img",
-  "input",
-  "keygen",
-  "link",
-  "meta",
-  "param",
-  "source",
-  "track",
-  "wbr",
-]);
-const newlineEatingTags = {
-  listing: true,
-  pre: true,
-  textarea: true,
-};
-const isUnitlessNumber = {
-  animationIterationCount: true,
-  borderImageOutset: true,
-  borderImageSlice: true,
-  borderImageWidth: true,
-  boxFlex: true,
-  boxFlexGroup: true,
-  boxOrdinalGroup: true,
-  columnCount: true,
-  columns: true,
-  flex: true,
-  flexGrow: true,
-  flexPositive: true,
-  flexShrink: true,
-  flexNegative: true,
-  flexOrder: true,
-  gridRow: true,
-  gridRowEnd: true,
-  gridRowSpan: true,
-  gridRowStart: true,
-  gridColumn: true,
-  gridColumnEnd: true,
-  gridColumnSpan: true,
-  gridColumnStart: true,
-  fontWeight: true,
-  lineClamp: true,
-  lineHeight: true,
-  opacity: true,
-  order: true,
-  orphans: true,
-  tabSize: true,
-  widows: true,
-  zIndex: true,
-  zoom: true,
-
-  // SVG-related properties
-  fillOpacity: true,
-  floodOpacity: true,
-  stopOpacity: true,
-  strokeDasharray: true,
-  strokeDashoffset: true,
-  strokeMiterlimit: true,
-  strokeOpacity: true,
-  strokeWidth: true,
-};
-const prefixes = ["Webkit", "ms", "Moz", "O"];
-
-Object.keys(isUnitlessNumber).forEach(function(prop) {
-  prefixes.forEach(function(prefix) {
-    isUnitlessNumber[prefixKey(prefix, prop)] = isUnitlessNumber[prop];
-  });
-});
-
-function prefixKey(prefix, key) {
-  return prefix + key.charAt(0).toUpperCase() + key.substring(1);
-}
-
-const RESERVED = 0;
-const STRING = 1;
-const BOOLEANISH_STRING = 2;
-const BOOLEAN = 3;
-const OVERLOADED_BOOLEAN = 4;
-const NUMERIC = 5;
-const POSITIVE_NUMERIC = 6;
-
-const properties = {};
-
-function PropertyInfoRecord(
-  name: string,
-  type: PropertyType,
-  mustUseProperty: boolean,
-  attributeName: string,
-  attributeNamespace: string | null
-) {
-  this.acceptsBooleans = type === BOOLEANISH_STRING || type === BOOLEAN || type === OVERLOADED_BOOLEAN;
-  this.attributeName = attributeName;
-  this.attributeNamespace = attributeNamespace;
-  this.mustUseProperty = mustUseProperty;
-  this.propertyName = name;
-  this.type = type;
-}
-
-[["acceptCharset", "accept-charset"], ["className", "class"], ["htmlFor", "for"], ["httpEquiv", "http-equiv"]].forEach(
-  ([name, attributeName]) => {
-    properties[name] = new PropertyInfoRecord(name, STRING, false, attributeName, null);
-  }
-);
-
-[
-  "children",
-  "dangerouslySetInnerHTML",
-  "defaultValue",
-  "defaultChecked",
-  "innerHTML",
-  "suppressContentEditableWarning",
-  "suppressHydrationWarning",
-  "style",
-].forEach(name => {
-  properties[name] = new PropertyInfoRecord(name, RESERVED, false, name, null);
-});
-
-function getPropertyInfo(name: string): PropertyInfo | null {
-  return properties.hasOwnProperty(name) ? properties[name] : null;
-}
-
-export function shouldIgnoreAttribute(
-  name: string,
-  propertyInfo: PropertyInfo | null,
-  isCustomComponentTag: boolean
-): boolean {
-  if (propertyInfo !== null) {
-    return propertyInfo.type === RESERVED;
-  }
-  if (isCustomComponentTag) {
-    return false;
-  }
-  if (name.length > 2 && (name[0] === "o" || name[0] === "O") && (name[1] === "n" || name[1] === "N")) {
-    return true;
-  }
-  return false;
-}
-
-function shouldRemoveAttribute(
-  realm: Realm,
-  name: string,
-  value: Value,
-  propertyInfo: PropertyInfo | null,
-  isCustomComponentTag: boolean
-): boolean {
-  if (value === realm.intrinsics.null || value === realm.intrinsics.undefined) {
-    return true;
-  }
-  // if (
-  //   shouldRemoveAttributeWithWarning(
-  //     name,
-  //     value,
-  //     propertyInfo,
-  //     isCustomComponentTag,
-  //   )
-  // ) {
-  //   return true;
-  // }
-  if (isCustomComponentTag) {
-    return false;
-  }
-  if (propertyInfo !== null) {
-    switch (propertyInfo.type) {
-      case BOOLEAN:
-        return !value;
-      case OVERLOADED_BOOLEAN:
-        return value === false;
-      case NUMERIC:
-        return isNaN(value);
-      case POSITIVE_NUMERIC:
-        return isNaN(value) || (value: any) < 1;
-      default:
-        return false;
-    }
-  }
-  return false;
-}
-
-function createMarkupForRoot(): string {
-  return ROOT_ATTRIBUTE_NAME + '=""';
-}
+export type ReactNode = Array<ReactNode> | string | AbstractValue | ArrayValue;
 
 function renderValueWithHelper(realm: Realm, value: Value, helper: ECMAScriptSourceFunctionValue): AbstractValue {
   // given we know nothing of this value, we need to escape the contents of it at runtime
@@ -258,23 +73,29 @@ function renderValueWithHelper(realm: Realm, value: Value, helper: ECMAScriptSou
   return val;
 }
 
-function isCustomComponent(realm: Realm, tagName: string, propsValue: ObjectValue | AbstractObjectValue): boolean {
-  if (tagName.indexOf("-") === -1) {
-    let is = getProperty(realm, propsValue, "is");
-    return is instanceof StringValue;
+function dangerousStyleValue(realm: Realm, name: string, value: Value, isCustomProperty: boolean): string {
+  let isEmpty =
+    value === realm.intrinsics.null ||
+    value === realm.intrinsics.undefined ||
+    value instanceof BooleanValue ||
+    (value instanceof StringValue && value.value === "");
+  if (isEmpty) {
+    return "";
   }
-  switch (tagName) {
-    case "annotation-xml":
-    case "color-profile":
-    case "font-face":
-    case "font-face-src":
-    case "font-face-uri":
-    case "font-face-format":
-    case "font-face-name":
-    case "missing-glyph":
-      return false;
-    default:
-      return true;
+
+  if (
+    !isCustomProperty &&
+    value instanceof NumberValue &&
+    value.value !== 0 &&
+    !(isUnitlessNumber.hasOwnProperty(name) && isUnitlessNumber[name])
+  ) {
+    return value.value + "px";
+  }
+
+  if (value instanceof StringValue || value instanceof NumberValue) {
+    return ("" + value.value).trim();
+  } else {
+    invariant(false, "TODO");
   }
 }
 
@@ -309,32 +130,6 @@ function createMarkupForProperty(
   invariant(false, "TODO");
 }
 
-function dangerousStyleValue(realm: Realm, name: string, value: Value, isCustomProperty: boolean): string {
-  let isEmpty =
-    value === realm.intrinsics.null ||
-    value === realm.intrinsics.undefined ||
-    value instanceof BooleanValue ||
-    (value instanceof StringValue && value.value === "");
-  if (isEmpty) {
-    return "";
-  }
-
-  if (
-    !isCustomProperty &&
-    value instanceof NumberValue &&
-    value.value !== 0 &&
-    !(isUnitlessNumber.hasOwnProperty(name) && isUnitlessNumber[name])
-  ) {
-    return value.value + "px";
-  }
-
-  if (value instanceof StringValue || value instanceof NumberValue) {
-    return ("" + value.value).trim();
-  } else {
-    invariant(false, "TODO");
-  }
-}
-
 function createMarkupForStyles(realm: Realm, styles: Value): Value {
   let serialized = [];
   let delimiter = "";
@@ -357,10 +152,6 @@ function createMarkupForStyles(realm: Realm, styles: Value): Value {
     return renderReactNode(realm, serialized);
   }
   return realm.intrinsics.null;
-}
-
-function quoteAttributeValueForBrowser(value: string): string {
-  return '"' + escapeHtml(value) + '"';
 }
 
 function createOpenTagMarkup(
@@ -420,116 +211,6 @@ function createOpenTagMarkup(
   return ret;
 }
 
-function escapeHtml(string) {
-  if (typeof string === "boolean" || typeof string === "number") {
-    return "" + string;
-  }
-  let str = "" + string;
-  let match = matchHtmlRegExp.exec(str);
-
-  if (!match) {
-    return str;
-  }
-
-  let escape;
-  let html = "";
-  let index = 0;
-  let lastIndex = 0;
-
-  for (index = match.index; index < str.length; index++) {
-    switch (str.charCodeAt(index)) {
-      case 34:
-        escape = "&quot;";
-        break;
-      case 38:
-        escape = "&amp;";
-        break;
-      case 39:
-        escape = "&#x27;";
-        break;
-      case 60:
-        escape = "&lt;";
-        break;
-      case 62:
-        escape = "&gt;";
-        break;
-      default:
-        continue;
-    }
-
-    if (lastIndex !== index) {
-      html += str.substring(lastIndex, index);
-    }
-
-    lastIndex = index + 1;
-    html += escape;
-  }
-
-  return lastIndex !== index ? html + str.substring(lastIndex, index) : html;
-}
-
-function getNonChildrenInnerMarkup(realm: Realm, propsValue: ObjectValue | AbstractObjectValue): ReactNode | null {
-  let innerHTML = getProperty(realm, propsValue, "dangerouslySetInnerHTML");
-
-  if (innerHTML instanceof ObjectValue) {
-    let _html = getProperty(realm, innerHTML, "dangerouslySetInnerHTML");
-
-    if (_html instanceof StringValue) {
-      return _html.value;
-    }
-  } else {
-    let content = getProperty(realm, propsValue, "children");
-
-    if (content instanceof StringValue || content instanceof NumberValue) {
-      return escapeHtml(content.value);
-    }
-  }
-  return null;
-}
-
-function normalizeNode(realm: Realm, reactNode: ReactNode): ReactNode {
-  if (Array.isArray(reactNode)) {
-    let newReactNode;
-
-    for (let element of reactNode) {
-      if (typeof element === "string") {
-        if (newReactNode === undefined) {
-          newReactNode = element;
-        } else if (typeof newReactNode === "string") {
-          newReactNode += element;
-        } else {
-          let lastNode = newReactNode[newReactNode.length - 1];
-          if (typeof lastNode === "string") {
-            newReactNode[newReactNode.length - 1] += element;
-          } else {
-            newReactNode.push(element);
-          }
-        }
-      } else if (newReactNode === undefined) {
-        newReactNode = [element];
-      } else if (typeof newReactNode === "string") {
-        newReactNode = [newReactNode, element];
-      } else {
-        newReactNode.push(element);
-      }
-    }
-    invariant(newReactNode !== undefined);
-    return newReactNode;
-  } else if (typeof reactNode === "string" || reactNode instanceof AbstractValue) {
-    return reactNode;
-  }
-  invariant(false, "TODO");
-}
-
-function convertValueToNode(value: Value): ReactNode {
-  if (value instanceof AbstractValue) {
-    return value;
-  } else if (value instanceof StringValue || value instanceof NumberValue) {
-    return value.value + "";
-  }
-  invariant(false, "TODO");
-}
-
 function renderReactNode(realm: Realm, reactNode: ReactNode): StringValue | AbstractValue {
   let normalizedNode = normalizeNode(realm, reactNode);
   if (typeof normalizedNode === "string") {
@@ -559,46 +240,6 @@ function renderReactNode(realm: Realm, reactNode: ReactNode): StringValue | Abst
   );
   invariant(val instanceof AbstractValue);
   return val;
-}
-
-function createHtmlEscapeHelper(realm: Realm) {
-  let escapeHelperAst = parseExpression(escapeHtml.toString(), { plugins: ["flow"] });
-  let helper = new ECMAScriptSourceFunctionValue(realm);
-  let body = escapeHelperAst.body;
-  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
-  helper.$ECMAScriptCode = body;
-  helper.$FormalParameters = escapeHelperAst.params;
-  return helper;
-}
-
-function createArrayHelper(realm: Realm) {
-  let arrayHelper = `
-    function arrayHelper(array) {
-      let length = array.length;
-      let i = 0;
-      let str = "";
-      let item;
-
-      while (i < length) {
-        item = array[i++];
-        if (previousWasTextNode === true) {
-          str += "<!-- -->" + item;
-        } else {
-          str += item;
-        }
-        previousWasTextNode = item[0] !== "<";
-      }
-      return str;
-    }
-  `;
-
-  let escapeHelperAst = parseExpression(arrayHelper, { plugins: ["flow"] });
-  let helper = new ECMAScriptSourceFunctionValue(realm);
-  let body = escapeHelperAst.body;
-  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
-  helper.$ECMAScriptCode = body;
-  helper.$FormalParameters = escapeHelperAst.params;
-  return helper;
 }
 
 class ReactDOMServerRenderer {
@@ -643,8 +284,7 @@ class ReactDOMServerRenderer {
     namespace: string,
     depth: number
   ): ReactNode {
-    let val = AbstractValue.evaluateWithAbstractConditional(
-      this.realm,
+    let val = this.realm.evaluateWithAbstractConditional(
       condValue,
       () => {
         return this.realm.evaluateForEffects(
@@ -654,17 +294,11 @@ class ReactDOMServerRenderer {
         );
       },
       () => {
-        invariant(false, "TODO");
-      },
-      () => {
         return this.realm.evaluateForEffects(
           () => this.render(alternateVal, namespace, depth),
           null,
           "_renderAbstractConditionalValue consequent"
         );
-      },
-      () => {
-        invariant(false, "TODO");
       }
     );
     return convertValueToNode(val);
@@ -800,7 +434,7 @@ function handleNestedOptimizedFunctions(realm: Realm, reconciler: Reconciler, st
     if (func instanceof ECMAScriptSourceFunctionValue && reconciler.hasEvaluatedRootNode(func, evaluatedNode)) {
       continue;
     }
-    let closureEffects = reconciler.renderNestedOptimizedClosure(
+    let closureEffects = reconciler.resolveNestedOptimizedClosure(
       func,
       [],
       componentType,
@@ -838,7 +472,7 @@ export function renderToString(
   let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(realm, typeValue));
   invariant(typeValue instanceof ECMAScriptSourceFunctionValue);
   invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue);
-  let effects = reconciler.renderReactComponentTree(typeValue, propsValue, null, evaluatedRootNode);
+  let effects = reconciler.resolveReactComponentTree(typeValue, propsValue, null, evaluatedRootNode);
 
   invariant(realm.generator);
   // create a single regex used for the escape functions

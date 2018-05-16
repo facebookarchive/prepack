@@ -23,7 +23,6 @@ import {
   NativeFunctionValue,
   NumberValue,
   ObjectValue,
-  PrimitiveValue,
   ProxyValue,
   StringValue,
   SymbolValue,
@@ -83,6 +82,8 @@ import type { Binding } from "../environment.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import type { Referentializer } from "./Referentializer.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
+import { type Replacement, getReplacement } from "./ResidualFunctionInstantiator";
+import { describeValue } from "../utils.js";
 
 function commentStatement(text: string) {
   let s = t.emptyStatement();
@@ -228,7 +229,7 @@ export class ResidualHeapSerializer {
   logger: Logger;
   modules: Modules;
   residualHeapValueIdentifiers: ResidualHeapValueIdentifiers;
-  requireReturns: Map<number | string, BabelNodeExpression>;
+  requireReturns: Map<number | string, Replacement>;
   residualHeapInspector: ResidualHeapInspector;
   residualValues: Map<Value, Set<Scope>>;
   residualFunctionInstances: Map<FunctionValue, FunctionInstance>;
@@ -1563,7 +1564,11 @@ export class ResidualHeapSerializer {
   }
 
   // Overridable.
-  serializeValueRawObject(val: ObjectValue, skipPrototype: boolean): BabelNodeExpression {
+  serializeValueRawObject(
+    val: ObjectValue,
+    skipPrototype: boolean,
+    emitIntegrityCommand: void | (SerializedBody => void)
+  ): BabelNodeExpression {
     let remainingProperties = new Map(val.properties);
     const dummyProperties = new Set();
     let props = [];
@@ -1650,7 +1655,10 @@ export class ResidualHeapSerializer {
     }
   }
 
-  serializeValueObject(val: ObjectValue): BabelNodeExpression | void {
+  serializeValueObject(
+    val: ObjectValue,
+    emitIntegrityCommand: void | (SerializedBody => void)
+  ): BabelNodeExpression | void {
     // If this object is a prototype object that was implicitly created by the runtime
     // for a constructor, then we can obtain a reference to this object
     // in a special way that's handled alongside function serialization.
@@ -1741,7 +1749,7 @@ export class ResidualHeapSerializer {
 
         return createViaAuxiliaryConstructor || _constructor
           ? this._serializeValueObjectViaConstructor(val, skipPrototype, _constructor)
-          : this.serializeValueRawObject(val, skipPrototype);
+          : this.serializeValueRawObject(val, skipPrototype, emitIntegrityCommand);
     }
   }
 
@@ -1814,15 +1822,21 @@ export class ResidualHeapSerializer {
     } else {
       // This abstract value's dependencies should all be declared
       // but still need to check them again in case their serialized bodies are in different generator scope.
-      this.emitter.emitNowOrAfterWaitingForDependencies(
-        val.args,
-        () => {
-          const serializedValue = this._serializeAbstractValueHelper(val);
-          let uid = this.getSerializeObjectIdentifier(val);
-          this._declare(this.emitter.cannotDeclare(), "var", uid, serializedValue);
-        },
-        this.emitter.getBody()
-      );
+      let reason = this.emitter.getReasonToWaitForDependencies(val.args);
+      if (reason === undefined) {
+        return this._serializeAbstractValueHelper(val);
+      } else {
+        this.emitter.emitAfterWaiting(
+          reason,
+          val.args,
+          () => {
+            const serializedValue = this._serializeAbstractValueHelper(val);
+            let uid = this.getSerializeObjectIdentifier(val);
+            this._declare(this.emitter.cannotDeclare(), "var", uid, serializedValue);
+          },
+          this.emitter.getBody()
+        );
+      }
     }
   }
 
@@ -1857,6 +1871,7 @@ export class ResidualHeapSerializer {
 
     let objectSemaphore;
     let targetCommand = this.residualHeapInspector.getTargetIntegrityCommand(obj);
+    let emitIntegrityCommand;
     if (targetCommand) {
       let body = this.emitter.getBody();
       objectSemaphore = new CountingSemaphore(() => {
@@ -1874,6 +1889,14 @@ export class ResidualHeapSerializer {
         );
       });
       this._objectSemaphores.set(obj, objectSemaphore);
+      emitIntegrityCommand = alternateBody => {
+        if (objectSemaphore !== undefined) {
+          if (alternateBody !== undefined) body = alternateBody;
+          objectSemaphore.releaseOne();
+          this._objectSemaphores.delete(obj);
+        }
+        objectSemaphore = undefined;
+      };
     }
     let res;
     if (IsArray(this.realm, obj)) {
@@ -1881,12 +1904,9 @@ export class ResidualHeapSerializer {
     } else if (obj instanceof FunctionValue) {
       res = this._serializeValueFunction(obj);
     } else {
-      res = this.serializeValueObject(obj);
+      res = this.serializeValueObject(obj, emitIntegrityCommand);
     }
-    if (objectSemaphore !== undefined) {
-      objectSemaphore.releaseOne();
-      this._objectSemaphores.delete(obj);
-    }
+    if (emitIntegrityCommand !== undefined) emitIntegrityCommand();
     return res;
   }
 
@@ -2160,7 +2180,7 @@ export class ResidualHeapSerializer {
     // TODO #21: add event listeners
 
     for (let [moduleId, moduleValue] of this.modules.initializedModules)
-      this.requireReturns.set(moduleId, this.serializeValue(moduleValue));
+      this.requireReturns.set(moduleId, getReplacement(this.serializeValue(moduleValue), moduleValue));
 
     for (let [name, value] of this.declaredGlobalLets) {
       this.emitter.emit(
@@ -2299,11 +2319,7 @@ export class ResidualHeapSerializer {
 
   _logSerializedResidualMismatches() {
     let logValue = value => {
-      console.log(
-        `${value.constructor.name} ${value.intrinsicName || "(no intrinsic name)"} ${
-          value instanceof PrimitiveValue ? value.toDisplayString() : "(cannot print value)"
-        }`
-      );
+      console.log(describeValue(value));
       let scopes = this.residualValues.get(value);
       if (scopes !== undefined) this._logScopes(scopes);
     };

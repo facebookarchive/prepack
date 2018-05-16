@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict */
 
 // A map with an incrementing counter as the keys
 // Used to store references to variable collections since DebugProtocol

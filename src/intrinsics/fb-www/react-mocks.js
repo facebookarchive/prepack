@@ -26,7 +26,7 @@ import { Environment } from "../../singletons.js";
 import { createReactHintObject, getReactSymbol, isReactElement } from "../../react/utils.js";
 import { createReactElement } from "../../react/elements.js";
 import { Properties, Create } from "../../singletons.js";
-import { renderToString } from "../../react/dom-rendering.js";
+import { renderToString } from "../../react/server-rendering/rendering.js";
 import * as t from "babel-types";
 import invariant from "../../invariant";
 import { updateIntrinsicNames, addMockFunctionToObject } from "./utils.js";

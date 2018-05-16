@@ -403,6 +403,10 @@ export default function(realm: Realm): NativeFunctionValue {
         ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
       );
       return array;
+    } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
+      return ArrayValue.createTemporalWithWidenedNumericProperty(realm, [objectKeys, obj], ([methodNode, objNode]) =>
+        t.callExpression(methodNode, [objNode])
+      );
     }
 
     // 2. Let nameList be ? EnumerableOwnProperties(obj, "key").
@@ -413,10 +417,29 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 9.1.2.16
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
-    func.defineNativeMethod("values", 1, (context, [O]) => {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
+    let objectValues = func.defineNativeMethod("values", 1, (context, [O]) => {
       // 1. Let obj be ? ToObject(O).
       let obj = To.ToObject(realm, O);
+
+      if (realm.isInPureScope()) {
+        // If we're in pure scope and the items are completely abstract,
+        // then create an abstract temporal with an array kind
+        if (obj instanceof AbstractObjectValue) {
+          let array = ArrayValue.createTemporalWithWidenedNumericProperty(
+            realm,
+            [objectValues, obj],
+            ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+          );
+          return array;
+        } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
+          return ArrayValue.createTemporalWithWidenedNumericProperty(
+            realm,
+            [objectValues, obj],
+            ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+          );
+        }
+      }
 
       // 2. Let nameList be ? EnumerableOwnProperties(obj, "value").
       let nameList = EnumerableOwnProperties(realm, obj.throwIfNotConcreteObject(), "value");
@@ -424,12 +447,30 @@ export default function(realm: Realm): NativeFunctionValue {
       // 3. Return CreateArrayFromList(nameList).
       return Create.CreateArrayFromList(realm, nameList);
     });
+  }
 
   // ECMA262 19.1.2.17
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
-    func.defineNativeMethod("entries", 1, (context, [O]) => {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
+    let objectEntries = func.defineNativeMethod("entries", 1, (context, [O]) => {
       // 1. Let obj be ? ToObject(O).
       let obj = To.ToObject(realm, O);
+
+      // If we're in pure scope and the items are completely abstract,
+      // then create an abstract temporal with an array kind
+      if (realm.isInPureScope() && obj instanceof AbstractObjectValue) {
+        let array = ArrayValue.createTemporalWithWidenedNumericProperty(
+          realm,
+          [objectEntries, obj],
+          ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+        );
+        return array;
+      } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
+        return ArrayValue.createTemporalWithWidenedNumericProperty(
+          realm,
+          [objectEntries, obj],
+          ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+        );
+      }
 
       // 2. Let nameList be ? EnumerableOwnProperties(obj, "key+value").
       let nameList = EnumerableOwnProperties(realm, obj.throwIfNotConcreteObject(), "key+value");
@@ -437,6 +478,7 @@ export default function(realm: Realm): NativeFunctionValue {
       // 3. Return CreateArrayFromList(nameList).
       return Create.CreateArrayFromList(realm, nameList);
     });
+  }
 
   // ECMA262 19.1.2.18
   func.defineNativeMethod("preventExtensions", 1, (context, [O]) => {

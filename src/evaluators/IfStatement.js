@@ -16,7 +16,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
 import { Reference } from "../environment.js";
 import { UpdateEmpty } from "../methods/index.js";
-import type { BabelNode, BabelNodeIfStatement } from "babel-types";
+import type { BabelNodeIfStatement } from "babel-types";
 import invariant from "../invariant.js";
 import { Environment, To } from "../singletons.js";
 
@@ -74,53 +74,11 @@ export function evaluate(ast: BabelNodeIfStatement, strictCode: boolean, env: Le
     return stmtCompletion;
   } else {
     invariant(exprValue instanceof AbstractValue);
-    return evaluateWithAbstractConditional(exprValue, ast.consequent, ast.alternate, strictCode, env, realm);
+    return realm.evaluateWithAbstractConditional(
+      exprValue,
+      () => realm.evaluateNodeForEffects(ast.consequent, strictCode, env),
+      () =>
+        ast.alternate ? realm.evaluateNodeForEffects(ast.alternate, strictCode, env) : construct_empty_effects(realm)
+    );
   }
-}
-
-export function evaluateWithAbstractConditional(
-  condValue: AbstractValue,
-  consequent: BabelNode,
-  alternate: ?BabelNode,
-  strictCode: boolean,
-  env: LexicalEnvironment,
-  realm: Realm
-): Value {
-  return AbstractValue.evaluateWithAbstractConditional(
-    realm,
-    condValue,
-    () => {
-      return realm.evaluateNodeForEffects(consequent, strictCode, env);
-    },
-    () => {
-      let stmtCompletion;
-      if (alternate) {
-        // 4.a. Let stmtCompletion be the result of evaluating the second Statement
-        stmtCompletion = env.evaluateCompletion(alternate, strictCode);
-      } else {
-        // 3 (of the if only statement). Return NormalCompletion(undefined)
-        stmtCompletion = realm.intrinsics.undefined;
-      }
-      invariant(!(stmtCompletion instanceof Reference));
-      stmtCompletion = UpdateEmpty(realm, stmtCompletion, realm.intrinsics.undefined);
-      if (stmtCompletion instanceof AbruptCompletion) {
-        throw stmtCompletion;
-      }
-      invariant(stmtCompletion instanceof Value);
-      return stmtCompletion;
-    },
-    () => {
-      return alternate ? realm.evaluateNodeForEffects(alternate, strictCode, env) : construct_empty_effects(realm);
-    },
-    () => {
-      let stmtCompletion = env.evaluate(consequent, strictCode);
-      invariant(!(stmtCompletion instanceof Reference));
-      stmtCompletion = UpdateEmpty(realm, stmtCompletion, realm.intrinsics.undefined);
-      if (stmtCompletion instanceof AbruptCompletion) {
-        throw stmtCompletion;
-      }
-      invariant(stmtCompletion instanceof Value);
-      return stmtCompletion;
-    }
-  );
 }

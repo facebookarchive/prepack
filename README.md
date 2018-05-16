@@ -116,6 +116,8 @@ In order to run the website locally at [localhost:8000](http://localhost:8000):
 
 ## How to contribute
 
+To read more about the project, check out this [suggested reading wiki](https://github.com/facebook/prepack/wiki/Suggested-reading)
+
 For more information about contributing pull requests and issues, see our [Contribution Guidelines](./CONTRIBUTING.md).
 
 ## License

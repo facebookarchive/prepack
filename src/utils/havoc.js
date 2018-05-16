@@ -171,26 +171,33 @@ class ObjectValueHavocingVisitor {
   }
 
   visitObjectPropertiesWithComputedNames(absVal: AbstractValue): void {
-    invariant(absVal.args.length === 3);
-    let cond = absVal.args[0];
-    invariant(cond instanceof AbstractValue);
-    if (cond.kind === "template for property name condition") {
-      let P = cond.args[0];
-      invariant(P instanceof AbstractValue);
-      let V = absVal.args[1];
-      let earlier_props = absVal.args[2];
-      if (earlier_props instanceof AbstractValue) this.visitObjectPropertiesWithComputedNames(earlier_props);
-      this.visitValue(P);
-      this.visitValue(V);
+    if (absVal.kind === "widened property") return;
+    if (absVal.kind === "template for prototype member expression") return;
+    if (absVal.kind === "conditional") {
+      let cond = absVal.args[0];
+      invariant(cond instanceof AbstractValue);
+      if (cond.kind === "template for property name condition") {
+        let P = cond.args[0];
+        invariant(P instanceof AbstractValue);
+        let V = absVal.args[1];
+        let earlier_props = absVal.args[2];
+        if (earlier_props instanceof AbstractValue) this.visitObjectPropertiesWithComputedNames(earlier_props);
+        this.visitValue(P);
+        this.visitValue(V);
+      } else {
+        // conditional assignment
+        this.visitValue(cond);
+        let consequent = absVal.args[1];
+        if (consequent instanceof AbstractValue) {
+          this.visitObjectPropertiesWithComputedNames(consequent);
+        }
+        let alternate = absVal.args[2];
+        if (alternate instanceof AbstractValue) {
+          this.visitObjectPropertiesWithComputedNames(alternate);
+        }
+      }
     } else {
-      // conditional assignment
-      this.visitValue(cond);
-      let consequent = absVal.args[1];
-      invariant(consequent instanceof AbstractValue);
-      let alternate = absVal.args[2];
-      invariant(alternate instanceof AbstractValue);
-      this.visitObjectPropertiesWithComputedNames(consequent);
-      this.visitObjectPropertiesWithComputedNames(alternate);
+      this.visitValue(absVal);
     }
   }
 

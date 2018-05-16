@@ -137,12 +137,16 @@ function emitResidualLoopIfSafe(
       envRec.CreateMutableBinding(n, false);
       envRec.InitializeBinding(n, absStr);
     }
-    let [compl, gen, bindings, properties, createdObj] = realm.evaluateNodeForEffects(body, strictCode, blockEnv).data;
-    if (compl instanceof Value && gen.empty() && bindings.size === 0 && properties.size === 1) {
-      invariant(createdObj.size === 0); // or there will be more than one property
+    let { result, generator: gen, modifiedBindings, modifiedProperties, createdObjects } = realm.evaluateNodeForEffects(
+      body,
+      strictCode,
+      blockEnv
+    );
+    if (result instanceof Value && gen.empty() && modifiedBindings.size === 0 && modifiedProperties.size === 1) {
+      invariant(createdObjects.size === 0); // or there will be more than one property
       let targetObject;
       let sourceObject;
-      properties.forEach((desc, key, map) => {
+      modifiedProperties.forEach((desc, key, map) => {
         if (key.object.unknownProperty === key) {
           targetObject = key.object;
           invariant(desc !== undefined);

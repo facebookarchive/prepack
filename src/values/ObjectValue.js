@@ -150,7 +150,18 @@ export default class ObjectValue extends ConcreteValue {
           // To check if we are still initializing, guard the call by looking at
           // whether this.$IsClassPrototype has been initialized as a proxy for
           // object initialization in general.
-          invariant(this.$IsClassPrototype === undefined || !this.isHavocedObject(), "cannot mutate a havoced object");
+          invariant(
+            // We're still initializing so we can set a property.
+            this.$IsClassPrototype === undefined ||
+              // It's not havoced so we can set a property.
+              !this.isHavocedObject() ||
+              // Object.assign() implementation needs to temporarily
+              // make potentially havoced objects non-partial and back.
+              // We don't gain anything from checking whether it's havoced
+              // before calling makePartial() so we'll whitelist this property.
+              propBindingName === "_isPartial_binding",
+            "cannot mutate a havoced object"
+          );
           let binding = this[propBindingName];
           if (binding === undefined) {
             let desc = { writeable: true, value: undefined };
@@ -646,16 +657,42 @@ export default class ObjectValue extends ConcreteValue {
       invariant(desc !== undefined);
       let val = desc.value;
       invariant(val instanceof AbstractValue);
-      let propName;
+      let propValue;
       if (P instanceof StringValue) {
-        propName = P;
+        propValue = P;
       } else if (typeof P === "string") {
-        propName = new StringValue(this.$Realm, P);
-      } else {
+        propValue = new StringValue(this.$Realm, P);
+      }
+
+      if (val.kind === "widened numeric property") {
+        let propName;
+
+        if (propValue instanceof StringValue) {
+          propName = propValue.value;
+          // these are safe methods to allow, as they return a new array
+          // so we use the ordinary get for these cases. Reduce can be
+          // unsafe, but we check for that in the prototype method
+          if (propName === "map" || propName === "slice" || propName === "filter" || propName === "concat") {
+            invariant(Receiver instanceof ObjectValue);
+            return OrdinaryGet(this.$Realm, Receiver, P, Receiver);
+          }
+        } else if (P instanceof SymbolValue) {
+          propValue = P;
+        }
+        invariant(propValue);
+        return AbstractValue.createTemporalFromBuildFunction(
+          this.$Realm,
+          val.getType(),
+          [Receiver, propValue],
+          ([o, p]) => {
+            return t.memberExpression(o, p, true);
+          }
+        );
+      } else if (!propValue) {
         AbstractValue.reportIntrospectionError(val, "abstract computed property name");
         throw new FatalError();
       }
-      return this.specializeJoin(val, Receiver, propName);
+      return this.specializeJoin(val, propValue);
     }
 
     // 1. Return ? OrdinaryGet(O, P, Receiver).
@@ -754,7 +791,7 @@ export default class ObjectValue extends ConcreteValue {
       if (desc !== undefined) {
         let val = desc.value;
         invariant(val instanceof AbstractValue);
-        result = this.specializeJoin(val, Receiver, P);
+        result = this.specializeJoin(val, P);
       }
     }
     // Join in all of the other values that were written to the object with
@@ -778,7 +815,7 @@ export default class ObjectValue extends ConcreteValue {
     return result;
   }
 
-  specializeJoin(absVal: AbstractValue, Receiver: Value, propName: Value): Value {
+  specializeJoin(absVal: AbstractValue, propName: Value): Value {
     if (absVal.kind === "widened property") {
       let ob = absVal.args[0];
       if (propName instanceof StringValue) {
@@ -789,31 +826,13 @@ export default class ObjectValue extends ConcreteValue {
       return AbstractValue.createTemporalFromBuildFunction(this.$Realm, absVal.getType(), [ob, propName], ([o, p]) => {
         return t.memberExpression(o, p, true);
       });
-    } else if (absVal.kind === "widened numeric property") {
-      invariant(propName instanceof StringValue);
-      let P = propName.value;
-      // these are safe methods to allow, as they return a new array
-      // so we use the ordinary get for these cases. Reduce can be
-      // unsafe, but we check for that in the prototype method
-      if (P === "map" || P === "reduce" || P === "slice" || P === "filter" || P === "concat") {
-        invariant(Receiver instanceof ObjectValue);
-        return OrdinaryGet(this.$Realm, Receiver, P, Receiver);
-      }
-      return AbstractValue.createTemporalFromBuildFunction(
-        this.$Realm,
-        absVal.getType(),
-        [Receiver, propName],
-        ([o, p]) => {
-          return t.memberExpression(o, p, true);
-        }
-      );
     }
     invariant(absVal.args.length === 3 && absVal.kind === "conditional");
     let generic_cond = absVal.args[0];
     invariant(generic_cond instanceof AbstractValue);
     let cond = this.specializeCond(generic_cond, propName);
     let arg1 = absVal.args[1];
-    if (arg1 instanceof AbstractValue && arg1.args.length === 3) arg1 = this.specializeJoin(arg1, Receiver, propName);
+    if (arg1 instanceof AbstractValue && arg1.args.length === 3) arg1 = this.specializeJoin(arg1, propName);
     let arg2 = absVal.args[2];
     if (arg2 instanceof AbstractValue) {
       if (arg2.kind === "template for prototype member expression") {
@@ -822,13 +841,13 @@ export default class ObjectValue extends ConcreteValue {
           t.memberExpression(o, p, true)
         );
       } else if (arg2.args.length === 3) {
-        arg2 = this.specializeJoin(arg2, Receiver, propName);
+        arg2 = this.specializeJoin(arg2, propName);
       }
     }
     return AbstractValue.createFromConditionalOp(this.$Realm, cond, arg1, arg2, absVal.expressionLocation);
   }
 
-  specializeCond(absVal: AbstractValue, propName: Value): AbstractValue {
+  specializeCond(absVal: AbstractValue, propName: Value): Value {
     if (absVal.kind === "template for property name condition")
       return AbstractValue.createFromBinaryOp(this.$Realm, "===", absVal.args[0], propName);
     return absVal;

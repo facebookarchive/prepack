@@ -7,9 +7,9 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict */
 
-export default function invariant(condition: any, format: string): void {
+export default function invariant(condition: boolean, format: string): void {
   if (condition) return;
 
   let error = new Error(format);

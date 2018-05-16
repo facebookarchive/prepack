@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict */
 
 //separator for messages according to the protocol
 const TWO_CRLF = "\r\n\r\n";

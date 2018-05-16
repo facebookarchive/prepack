@@ -865,7 +865,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     describe("react-dom server rendering", () => {
       let directory = "server-rendering";
 
-      it.only("Hacker News app", async () => {
+      it("Hacker News app", async () => {
         let data = JSON.parse(getDataFile(directory, "hacker-news.json"));
         await runTest(directory, "hacker-news.js", false, data);
       });

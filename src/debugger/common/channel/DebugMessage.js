@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict */
 
 //A collection of messages used between Prepack and the debug adapter
 export class DebugMessage {

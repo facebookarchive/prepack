@@ -62,6 +62,24 @@ export const ElementSize = {
   Uint8Clamped: 1,
 };
 
+export type ConsoleMethodTypes =
+  | "assert"
+  | "clear"
+  | "count"
+  | "dir"
+  | "dirxml"
+  | "error"
+  | "group"
+  | "groupCollapsed"
+  | "groupEnd"
+  | "info"
+  | "log"
+  | "table"
+  | "time"
+  | "timeEnd"
+  | "trace"
+  | "warn";
+
 export type IterationKind = "key+value" | "value" | "key";
 
 export type SourceType = "module" | "script";
@@ -337,12 +355,12 @@ export type DebugServerType = {
 };
 
 export type PathType = {
-  implies(condition: AbstractValue): boolean,
-  impliesNot(condition: AbstractValue): boolean,
-  withCondition<T>(condition: AbstractValue, evaluate: () => T): T,
-  withInverseCondition<T>(condition: AbstractValue, evaluate: () => T): T,
-  pushAndRefine(condition: AbstractValue): void,
-  pushInverseAndRefine(condition: AbstractValue): void,
+  implies(condition: Value): boolean,
+  impliesNot(condition: Value): boolean,
+  withCondition<T>(condition: Value, evaluate: () => T): T,
+  withInverseCondition<T>(condition: Value, evaluate: () => T): T,
+  pushAndRefine(condition: Value): void,
+  pushInverseAndRefine(condition: Value): void,
 };
 
 export type HavocType = {
@@ -749,7 +767,7 @@ export type JoinType = {
 
   removeNormalEffects(realm: Realm, c: PossiblyNormalCompletion): Effects,
 
-  joinEffects(realm: Realm, joinCondition: AbstractValue, e1: Effects, e2: Effects): Effects,
+  joinEffects(realm: Realm, joinCondition: Value, e1: Effects, e2: Effects): Effects,
 
   joinNestedEffects(realm: Realm, c: Completion, precedingEffects?: Effects): Effects,
 
@@ -784,7 +802,7 @@ export type JoinType = {
     getAbstractValue: (void | Value, void | Value) => Value
   ): Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
 
-  joinValuesAsConditional(realm: Realm, condition: AbstractValue, v1: void | Value, v2: void | Value): Value,
+  joinValuesAsConditional(realm: Realm, condition: Value, v1: void | Value, v2: void | Value): Value,
 
   joinPropertyBindings(
     realm: Realm,
@@ -847,6 +865,9 @@ export type CreateType = {
     argumentsList: Array<Value>,
     env: EnvironmentRecord
   ): ObjectValue,
+
+  // ECMA262 7.3.23 (sec-copydataproperties)
+  CopyDataProperties(realm: Realm, target: ObjectValue, source: Value, excluded: Array<StringValue>): ObjectValue,
 
   // ECMA262 7.3.4
   CreateDataProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value): boolean,
@@ -1024,4 +1045,5 @@ export type ConcretizeType = (realm: Realm, val: Value) => ConcreteValue;
 export type UtilsType = {|
   typeToString: (typeof Value) => void | string,
   getTypeFromName: string => void | typeof Value,
+  describeValue: Value => string,
 |};

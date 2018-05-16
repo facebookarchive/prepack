@@ -250,6 +250,9 @@ export class ResidualReactElementSerializer {
             expr = this._serializeReactFragmentType(typeValue);
           } else {
             expr = this.residualHeapSerializer.serializeValue(typeValue);
+            // Increment ref count one more time to ensure that this object will be assigned a unique id.
+            // Abstract values that are emitted as first argument to JSX elements needs a proper id.
+            this.residualHeapSerializer.residualHeapValueIdentifiers.incrementReferenceCount(typeValue);
           }
           reactElement.type = expr;
         });

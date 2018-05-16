@@ -50,9 +50,10 @@ export type AdditionalFunctionEffects = {
   additionalRoots: Set<ObjectValue>,
 };
 
+export type WriteEffects = Map<FunctionValue, AdditionalFunctionEffects>;
+
 export type AdditionalFunctionInfo = {
   functionValue: FunctionValue,
-  captures: Set<string>,
   // TODO: use for storing modified residual function bindings (captured by other functions)
   modifiedBindings: Map<Binding, ResidualFunctionBinding>,
   instance: FunctionInstance,
@@ -85,7 +86,8 @@ export type FunctionInstance = {
 
 export type FunctionInfo = {
   depth: number,
-  unbound: Set<string>,
+  unbound: Map<string, Array<BabelNodeIdentifier>>,
+  requireCalls: Map<BabelNode, number | string>,
   modified: Set<string>,
   usesArguments: boolean,
   usesThis: boolean,

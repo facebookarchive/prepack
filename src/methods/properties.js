@@ -303,25 +303,37 @@ export class PropertiesImplementation {
     if (joinCondition !== undefined) {
       let descriptor2 = ownDesc.descriptor2;
       ownDesc = ownDesc.descriptor1;
-      let [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(joinCondition, () => {
+      let {
+        result: result1,
+        generator: generator1,
+        modifiedBindings: modifiedBindings1,
+        modifiedProperties: modifiedProperties1,
+        createdObjects: createdObjects1,
+      } = Path.withCondition(joinCondition, () => {
         return ownDesc !== undefined
           ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/1")
           : construct_empty_effects(realm);
-      }).data;
+      });
       ownDesc = descriptor2;
-      let [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(joinCondition, () => {
+      let {
+        result: result2,
+        generator: generator2,
+        modifiedBindings: modifiedBindings2,
+        modifiedProperties: modifiedProperties2,
+        createdObjects: createdObjects2,
+      } = Path.withInverseCondition(joinCondition, () => {
         return ownDesc !== undefined
           ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/2")
           : construct_empty_effects(realm);
-      }).data;
+      });
 
       // Join the effects, creating an abstract view of what happened, regardless
       // of the actual value of ownDesc.joinCondition.
       let joinedEffects = Join.joinEffects(
         realm,
         joinCondition,
-        new Effects(compl1, gen1, bindings1, properties1, createdObj1),
-        new Effects(compl2, gen2, bindings2, properties2, createdObj2)
+        new Effects(result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
+        new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
       );
       let completion = joinedEffects.result;
       if (completion instanceof PossiblyNormalCompletion) {
@@ -1231,7 +1243,11 @@ export class PropertiesImplementation {
         }
         AbstractValue.reportIntrospectionError(O, P);
         throw new FatalError();
-      } else if (realm.invariantLevel >= 2 && O.isIntrinsic()) {
+      } else if (
+        realm.invariantLevel >= 2 &&
+        O.isIntrinsic() &&
+        !ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O)
+      ) {
         let realmGenerator = realm.generator;
         // TODO: Because global variables are special, checking for missing global object properties doesn't quite work yet.
         if (

@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict */
 
 export class DebuggerConstants {
   // request ID used between the debug adapter and Prepack when there is no

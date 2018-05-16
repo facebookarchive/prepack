@@ -9,8 +9,8 @@
 
 /* @flow */
 
-import type { Realm, Effects } from "../realm.js";
-import type { PropertyBinding, Descriptor } from "../types.js";
+import type { Effects, Realm } from "../realm.js";
+import type { ConsoleMethodTypes, Descriptor, PropertyBinding } from "../types.js";
 import type { ResidualFunctionBinding } from "../serializer/types.js";
 import type { Binding } from "../environment.js";
 import {
@@ -370,7 +370,7 @@ export class Generator {
   pathConditions: Array<AbstractValue>;
 
   static _generatorOfEffects(realm: Realm, name: string, environmentRecordIdAfterGlobalCode: number, effects: Effects) {
-    let [result, generator, modifiedBindings, modifiedProperties, createdObjects] = effects.data;
+    let { result, generator, modifiedBindings, modifiedProperties, createdObjects } = effects;
 
     let output = new Generator(realm, name, effects);
     output.appendGenerator(generator, generator._name);
@@ -598,7 +598,7 @@ export class Generator {
     });
   }
 
-  emitConsoleLog(method: "log" | "warn" | "error" | "time" | "timeEnd", args: Array<string | ConcreteValue>) {
+  emitConsoleLog(method: ConsoleMethodTypes, args: Array<string | ConcreteValue>) {
     this.emitCall(
       () => t.memberExpression(t.identifier("console"), t.identifier(method)),
       args.map(v => (typeof v === "string" ? new StringValue(this.realm, v) : v))
@@ -889,6 +889,7 @@ export class Generator {
     let value = buildValue(id.name);
     if (value instanceof ObjectValue) {
       value.intrinsicNameGenerated = true;
+      value._isScopedTemplate = true; // because this object doesn't exist ahead of time, and the visitor would otherwise declare it in the common scope
     }
     this._addEntry({
       isPure: optionalArgs ? optionalArgs.isPure : undefined,

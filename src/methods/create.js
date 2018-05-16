@@ -559,6 +559,61 @@ export class CreateImplementation {
     return O.$DefineOwnProperty(P, newDesc);
   }
 
+  CopyDataProperties(realm: Realm, target: ObjectValue, source: Value, excluded: Array<StringValue>) {
+    // Assert: Type(target) is Object.
+    invariant(target instanceof ObjectValue, "Not an object value");
+
+    // Assert: Type(excluded) is List.
+    invariant(excluded instanceof Array, "Not an array");
+
+    //   If source is undefined or null,
+    if (source === realm.intrinsics.null || source === realm.intrinsics.undefined) {
+      // let keys be a new empty List.
+    } else {
+      //   Else,
+      // Let from be ! ToObject(source).
+      let from = To.ToObject(realm, source);
+
+      // Let keys be ? from.[[OwnPropertyKeys]]().
+      let keys = from.$OwnPropertyKeys();
+
+      //   Repeat for each element nextKey of keys in List order,
+      for (let nextKey of keys) {
+        // Let found be false.
+        let found = false;
+
+        //   Repeat for each element e of excluded,
+        for (let e of excluded) {
+          // Seems necessary. Flow complained too. Did I go wrong somewhere else?
+          invariant(e instanceof StringValue);
+          invariant(nextKey instanceof StringValue);
+
+          // If e is not empty and SameValue(e, nextKey) is true, then
+          if (!e.mightBeFalse() && SameValue(realm, e, nextKey)) {
+            // Set found to true.
+            found = true;
+          }
+        }
+        // If found is false, then
+        if (found === false) {
+          // Let desc be ? from.[[GetOwnProperty]](nextKey).
+          let desc = from.$GetOwnProperty(nextKey);
+
+          // If desc is not undefined and desc.[[Enumerable]] is true, then
+          if (desc !== undefined && desc.enumerable === true) {
+            // Let propValue be ? Get(from, nextKey).
+            let propValue = Get(realm, from, nextKey);
+            // Perform ! CreateDataProperty(target, nextKey, propValue).
+            this.CreateDataProperty(realm, target, nextKey, propValue);
+          }
+        }
+      }
+    }
+
+    // Return target.
+    return target;
+  }
+
   // ECMA262 7.3.5
   CreateMethodProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value): boolean {
     // 1. Assert: Type(O) is Object.
