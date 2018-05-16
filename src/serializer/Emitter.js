@@ -368,7 +368,11 @@ export class Emitter {
       switch (kind) {
         case "Object":
           let proto = val.$Prototype;
-          if (proto instanceof ObjectValue) {
+          if (
+            proto instanceof ObjectValue &&
+            // if this is falsy, prototype chain might be cyclic
+            proto.usesOrdinaryObjectInternalPrototypeMethods()
+          ) {
             result = recurse(val.$Prototype);
             if (result !== undefined) return result;
           }
