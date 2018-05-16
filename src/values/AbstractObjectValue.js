@@ -215,6 +215,10 @@ export default class AbstractObjectValue extends AbstractValue {
     return this;
   }
 
+  usesOrdinaryObjectInternalPrototypeMethods(): boolean {
+    return true;
+  }
+
   // ECMA262 9.1.1
   $GetPrototypeOf(): ObjectValue | AbstractObjectValue | NullValue {
     let realm = this.$Realm;
