@@ -27,7 +27,7 @@ function letAndConst(
 ): Value {
   for (let declar of ast.declarations) {
     let Initializer = declar.init;
-    if (!Initializer) {
+    if (declar.id.type === "Identifier" && !Initializer) {
       invariant(ast.kind !== "const", "const without an initializer");
 
       // 1. Let lhs be ResolveBinding(StringValue of BindingIdentifier).
@@ -37,7 +37,7 @@ function letAndConst(
       // 2. Return InitializeReferencedBinding(lhs, undefined).
       Environment.InitializeReferencedBinding(realm, lhs, realm.intrinsics.undefined);
       continue;
-    } else if (declar.id.type === "Identifier") {
+    } else if (declar.id.type === "Identifier" && Initializer) {
       // 1. Let bindingId be StringValue of BindingIdentifier.
       let bindingId = declar.id.name;
 
@@ -63,7 +63,7 @@ function letAndConst(
 
       // 6. Return InitializeReferencedBinding(lhs, value).
       Environment.InitializeReferencedBinding(realm, lhs, value);
-    } else if (declar.id.type === "ObjectPattern" || declar.id.type === "ArrayPattern") {
+    } else if ((declar.id.type === "ObjectPattern" || declar.id.type === "ArrayPattern") && Initializer) {
       // 1. Let rhs be the result of evaluating Initializer.
       let rhs = env.evaluate(Initializer, strictCode);
 
