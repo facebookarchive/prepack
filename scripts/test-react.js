@@ -318,6 +318,13 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-12.js");
       });
 
+      // this should intentionally fail
+      it("Runtime error", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "runtime-error.js");
+        });
+      });
+
       it("Simple 13", async () => {
         await expectReconcilerFatalError(async () => {
           await runTest(directory, "simple-13.js");
@@ -817,8 +824,13 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "fb17.js");
       });
 
+      // Test fails for two reasons:
+      // - "uri.foo" on abstract string does not exist
+      // - unused.bar() does not exist (even if in try/catch)
       it("fb-www 18", async () => {
-        await runTest(directory, "fb18.js");
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "fb18.js");
+        });
       });
 
       it("fb-www 19", async () => {
