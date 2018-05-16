@@ -1608,7 +1608,7 @@ export class Realm {
     if (typeof message === "string") message = new StringValue(this, message);
     invariant(message instanceof StringValue);
     this.nextContextLocation = this.currentLocation;
-    return new ThrowCompletion(Construct(this, type, [message]), this.currentLocation);
+    return new ThrowCompletion(this, Construct(this, type, [message]), this.currentLocation);
   }
 
   appendGenerator(generator: Generator, leadingComment: string = ""): void {

@@ -2021,6 +2021,8 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output Functional component folding Runtime error 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
 exports[`Test React with JSX input, JSX output Functional component folding Simple 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
@@ -3465,22 +3467,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with JSX input, JSX output fb-www mocks fb-www 18 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with JSX input, JSX output fb-www mocks fb-www 18 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
 exports[`Test React with JSX input, JSX output fb-www mocks fb-www 19 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
@@ -5682,6 +5669,8 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, create-element output Functional component folding Runtime error 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
 exports[`Test React with JSX input, create-element output Functional component folding Simple 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
@@ -7126,22 +7115,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with JSX input, create-element output fb-www mocks fb-www 18 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with JSX input, create-element output fb-www mocks fb-www 18 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
 exports[`Test React with JSX input, create-element output fb-www mocks fb-www 19 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
@@ -9343,6 +9317,8 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output Functional component folding Runtime error 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
 exports[`Test React with create-element input, JSX output Functional component folding Simple 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
@@ -10752,22 +10728,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with create-element input, JSX output fb-www mocks fb-www 18 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with create-element input, JSX output fb-www mocks fb-www 18 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
 exports[`Test React with create-element input, JSX output fb-www mocks fb-www 19 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
@@ -12969,6 +12930,8 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, create-element output Functional component folding Runtime error 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
 exports[`Test React with create-element input, create-element output Functional component folding Simple 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
@@ -14378,22 +14341,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with create-element input, create-element output fb-www mocks fb-www 18 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Test React with create-element input, create-element output fb-www mocks fb-www 18 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
 exports[`Test React with create-element input, create-element output fb-www mocks fb-www 19 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
