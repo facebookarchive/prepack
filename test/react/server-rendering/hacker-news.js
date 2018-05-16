@@ -230,5 +230,9 @@ if (this.__optimize) {
   App.getTrials = getTrialsA;
 }
 
+// we run the getTrials from both version rather than
+// from the non-compiled version
+App.independent = true;
+
 module.exports = App;
 

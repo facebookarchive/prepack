@@ -212,6 +212,10 @@ module.exports = this.__evaluatePureFunction(() => {
     return results;
   };
 
+  // we run the getTrials from both version rather than
+  // from the non-compiled version
+  App.independent = true;
+
   App.propTypes = {
     stories: PropTypes.array.isRequired,
   };

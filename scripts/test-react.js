@@ -199,11 +199,11 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       throw new Error("React test runner issue");
     }
     // Use the original version of the test in case transforming messes it up.
-    let { getTrials: getTrialsA } = A;
+    let { getTrials: getTrialsA, independent } = A;
     let { getTrials: getTrialsB } = B;
     // Run tests that assert the rendered output matches.
     let resultA = getTrialsA(rendererA, A, data);
-    let resultB = getTrialsB(rendererB, B, data);
+    let resultB = independent ? getTrialsB(rendererB, B, data) : getTrialsA(rendererB, B, data);
 
     // The test has returned many values for us to check
     for (let i = 0; i < resultA.length; i++) {
