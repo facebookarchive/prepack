@@ -34,9 +34,12 @@ export class NormalCompletion extends Completion {}
 export class AbruptCompletion extends Completion {}
 
 export class ThrowCompletion extends AbruptCompletion {
-  constructor(value: Value, location: ?BabelNodeSourceLocation, nativeStack?: ?string) {
+  constructor(realm: Realm, value: Value, location: ?BabelNodeSourceLocation, nativeStack?: ?string) {
     super(value, location);
     this.nativeStack = nativeStack || new Error().stack;
+    if (realm.isInPureScope() && realm.reportSideEffectCallback !== undefined) {
+      realm.reportSideEffectCallback("EXCEPTION_THROWN", undefined, location);
+    }
   }
 
   nativeStack: string;

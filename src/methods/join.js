@@ -757,7 +757,7 @@ export class JoinImplementation {
     if (result1 instanceof ThrowCompletion && result2 instanceof ThrowCompletion) {
       let val = this.joinValues(realm, result1.value, result2.value, getAbstractValue);
       invariant(val instanceof Value);
-      return new ThrowCompletion(val, result1.location);
+      return new ThrowCompletion(realm, val, result1.location);
     }
     if (result1 instanceof AbruptCompletion && result2 instanceof AbruptCompletion) {
       return new JoinedAbruptCompletions(realm, joinCondition, result1, e1, result2, e2);
