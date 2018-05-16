@@ -318,6 +318,13 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-12.js");
       });
 
+      // this should intentionally fail
+      it("Runtime error", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "runtime-error.js");
+        });
+      });
+
       it("Simple 13", async () => {
         await expectReconcilerFatalError(async () => {
           await runTest(directory, "simple-13.js");
