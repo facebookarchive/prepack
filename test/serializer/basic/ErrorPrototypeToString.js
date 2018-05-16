@@ -24,4 +24,3 @@ function d() {
 
 x = a() + ";" + b() + ";" + c() + ";" + d();
 inspect = function() { return x; }
-console.log(x);
