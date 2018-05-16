@@ -636,7 +636,7 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 11738 || numPassedES6 < 3981 || numTimeouts > 0)) {
+  if (!args.filterString && (numPassedES5 < 11738 || numPassedES6 < 5406 || numTimeouts > 0)) {
     console.error(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -1161,7 +1161,6 @@ function filterFeatures(data: BannerData): boolean {
   if (features.includes("atomics")) return false;
   if (features.includes("u180e")) return false;
   if (features.includes("Symbol.isConcatSpreadable")) return false;
-  if (features.includes("destructuring-binding")) return false;
   if (features.includes("IsHTMLDDA")) return false;
   if (features.includes("regexp-unicode-property-escapes")) return false;
   if (features.includes("regexp-named-groups")) return false;
