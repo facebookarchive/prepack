@@ -11,10 +11,11 @@
 
 import { AbstractValue, ConcreteValue, NullValue, UndefinedValue, Value } from "../values/index.js";
 import { InfeasiblePathError } from "../errors.js";
+import type { Realm } from "../realm.js";
 import invariant from "../invariant.js";
 
 export class PathImplementation {
-  implies(condition: AbstractValue): boolean {
+  implies(condition: Value): boolean {
     if (!condition.mightNotBeTrue()) return true; // any path implies true
     let path = condition.$Realm.pathConditions;
     for (let i = path.length - 1; i >= 0; i--) {
@@ -24,7 +25,7 @@ export class PathImplementation {
     return false;
   }
 
-  impliesNot(condition: AbstractValue): boolean {
+  impliesNot(condition: Value): boolean {
     if (!condition.mightNotBeFalse()) return true; // any path implies !false
     let path = condition.$Realm.pathConditions;
     for (let i = path.length - 1; i >= 0; i--) {
@@ -34,13 +35,14 @@ export class PathImplementation {
     return false;
   }
 
-  withCondition<T>(condition: AbstractValue, evaluate: () => T): T {
+  withCondition<T>(condition: Value, evaluate: () => T): T {
+    if (!condition.mightNotBeFalse()) throw new InfeasiblePathError();
     let realm = condition.$Realm;
     let savedPath = realm.pathConditions;
     realm.pathConditions = [];
     try {
       pushPathCondition(condition);
-      pushRefinedConditions(condition, savedPath);
+      pushRefinedConditions(realm, savedPath);
       return evaluate();
     } catch (e) {
       if (e instanceof InfeasiblePathError) {
@@ -55,13 +57,14 @@ export class PathImplementation {
     }
   }
 
-  withInverseCondition<T>(condition: AbstractValue, evaluate: () => T): T {
+  withInverseCondition<T>(condition: Value, evaluate: () => T): T {
+    if (!condition.mightNotBeTrue()) throw new InfeasiblePathError();
     let realm = condition.$Realm;
     let savedPath = realm.pathConditions;
     realm.pathConditions = [];
     try {
       pushInversePathCondition(condition);
-      pushRefinedConditions(condition, savedPath);
+      pushRefinedConditions(realm, savedPath);
       return evaluate();
     } catch (e) {
       if (e instanceof InfeasiblePathError) {
@@ -76,22 +79,22 @@ export class PathImplementation {
     }
   }
 
-  pushAndRefine(condition: AbstractValue) {
+  pushAndRefine(condition: Value) {
     let realm = condition.$Realm;
     let savedPath = realm.pathConditions;
     realm.pathConditions = [];
 
     pushPathCondition(condition);
-    pushRefinedConditions(condition, savedPath);
+    pushRefinedConditions(realm, savedPath);
   }
 
-  pushInverseAndRefine(condition: AbstractValue) {
+  pushInverseAndRefine(condition: Value) {
     let realm = condition.$Realm;
     let savedPath = realm.pathConditions;
     realm.pathConditions = [];
 
     pushInversePathCondition(condition);
-    pushRefinedConditions(condition, savedPath);
+    pushRefinedConditions(realm, savedPath);
   }
 }
 
@@ -180,8 +183,7 @@ function pushInversePathCondition(condition: Value) {
   }
 }
 
-function pushRefinedConditions(condition: AbstractValue, unrefinedConditions: Array<AbstractValue>) {
-  let realm = condition.$Realm;
+function pushRefinedConditions(realm: Realm, unrefinedConditions: Array<AbstractValue>) {
   let refinedConditions = unrefinedConditions.map(c => realm.simplifyAndRefineAbstractCondition(c));
   if (refinedConditions.some(c => !c.mightNotBeFalse())) throw new InfeasiblePathError();
   let pc = realm.pathConditions;
