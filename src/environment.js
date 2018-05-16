@@ -65,10 +65,13 @@ function deriveGetBinding(realm: Realm, binding: Binding) {
   return realm.generator.deriveAbstract(types, values, [], (_, context) => context.serializeBinding(binding));
 }
 
-export function havocBinding(binding: Binding) {
+export function havocBinding(binding: Binding, havocCallback?: (value: Binding) => void) {
   let realm = binding.environment.realm;
   let value = binding.value;
-  if (!binding.hasLeaked && !(value instanceof ObjectValue && value.isFinalObject())) {
+  if (!binding.hasLeaked && !(value instanceof ObjectValue && value.isFinalObject)) {
+    if (havocCallback) {
+      havocCallback(binding);
+    }
     realm.recordModifiedBinding(binding).hasLeaked = true;
   }
 }

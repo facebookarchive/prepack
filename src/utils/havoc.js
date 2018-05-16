@@ -11,7 +11,7 @@
 
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
-import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
+import type { Descriptor, PropertyBinding } from "../types.js";
 import {
   havocBinding,
   DeclarativeEnvironmentRecord,
@@ -124,23 +124,23 @@ class ObjectValueHavocingVisitor {
     return true;
   }
 
-  visitObjectProperty(binding: PropertyBinding) {
+  visitObjectProperty(binding: PropertyBinding, havocCallback?: (value: Binding) => void) {
     let desc = binding.descriptor;
     if (desc === undefined) return; //deleted
-    this.visitDescriptor(desc);
+    this.visitDescriptor(desc, havocCallback);
   }
 
-  visitObjectProperties(obj: ObjectValue, kind?: ObjectKind): void {
+  visitObjectProperties(obj: ObjectValue, havocCallback?: (value: Binding) => void): void {
     // visit symbol properties
     for (let [, propertyBindingValue] of obj.symbols) {
       invariant(propertyBindingValue);
-      this.visitObjectProperty(propertyBindingValue);
+      this.visitObjectProperty(propertyBindingValue, havocCallback);
     }
 
     // visit string properties
     for (let [, propertyBindingValue] of obj.properties) {
       invariant(propertyBindingValue);
-      this.visitObjectProperty(propertyBindingValue);
+      this.visitObjectProperty(propertyBindingValue, havocCallback);
     }
 
     // inject properties with computed names
@@ -149,12 +149,12 @@ class ObjectValueHavocingVisitor {
       if (desc !== undefined) {
         let val = desc.value;
         invariant(val instanceof AbstractValue);
-        this.visitObjectPropertiesWithComputedNames(val);
+        this.visitObjectPropertiesWithComputedNames(val, havocCallback);
       }
     }
 
     // prototype
-    this.visitObjectPrototype(obj);
+    this.visitObjectPrototype(obj, havocCallback);
 
     if (TestIntegrityLevel(obj.$Realm, obj, "frozen") || obj.isFinalObject()) return;
 
@@ -165,12 +165,12 @@ class ObjectValueHavocingVisitor {
     }
   }
 
-  visitObjectPrototype(obj: ObjectValue) {
+  visitObjectPrototype(obj: ObjectValue, havocCallback?: (value: Binding) => void) {
     let proto = obj.$Prototype;
-    this.visitValue(proto);
+    this.visitValue(proto, havocCallback);
   }
 
-  visitObjectPropertiesWithComputedNames(absVal: AbstractValue): void {
+  visitObjectPropertiesWithComputedNames(absVal: AbstractValue, havocCallback?: (value: Binding) => void): void {
     if (absVal.kind === "widened property") return;
     if (absVal.kind === "template for prototype member expression") return;
     if (absVal.kind === "conditional") {
@@ -181,36 +181,39 @@ class ObjectValueHavocingVisitor {
         invariant(P instanceof AbstractValue);
         let V = absVal.args[1];
         let earlier_props = absVal.args[2];
-        if (earlier_props instanceof AbstractValue) this.visitObjectPropertiesWithComputedNames(earlier_props);
-        this.visitValue(P);
-        this.visitValue(V);
+        if (earlier_props instanceof AbstractValue) {
+          this.visitObjectPropertiesWithComputedNames(earlier_props, havocCallback);
+        }
+        this.visitValue(P, havocCallback);
+        this.visitValue(V, havocCallback);
       } else {
         // conditional assignment
-        this.visitValue(cond);
+        this.visitValue(cond, havocCallback);
         let consequent = absVal.args[1];
         if (consequent instanceof AbstractValue) {
-          this.visitObjectPropertiesWithComputedNames(consequent);
+          this.visitObjectPropertiesWithComputedNames(consequent, havocCallback);
         }
         let alternate = absVal.args[2];
         if (alternate instanceof AbstractValue) {
-          this.visitObjectPropertiesWithComputedNames(alternate);
+          this.visitObjectPropertiesWithComputedNames(alternate, havocCallback);
         }
       }
     } else {
-      this.visitValue(absVal);
+      this.visitValue(absVal, havocCallback);
     }
   }
 
-  visitDescriptor(desc: Descriptor): void {
+  visitDescriptor(desc: Descriptor, havocCallback?: (value: Binding) => void): void {
     invariant(desc.value === undefined || desc.value instanceof Value);
-    if (desc.value !== undefined) this.visitValue(desc.value);
-    if (desc.get !== undefined) this.visitValue(desc.get);
-    if (desc.set !== undefined) this.visitValue(desc.set);
+    if (desc.value !== undefined) this.visitValue(desc.value, havocCallback);
+    if (desc.get !== undefined) this.visitValue(desc.get, havocCallback);
+    if (desc.set !== undefined) this.visitValue(desc.set, havocCallback);
   }
 
   visitDeclarativeEnvironmentRecordBinding(
     record: DeclarativeEnvironmentRecord,
-    remainingHavocedBindings: HavocedFunctionInfo
+    remainingHavocedBindings: HavocedFunctionInfo,
+    havocCallback?: (value: Binding) => void
   ) {
     let bindings = record.bindings;
     for (let bindingName of Object.keys(bindings)) {
@@ -222,7 +225,7 @@ class ObjectValueHavocingVisitor {
         // If this binding can be read from the closure, its value has now havoced.
         let value = binding.value;
         if (value) {
-          this.visitValue(value);
+          this.visitValue(value, havocCallback);
         }
       }
       if (isWritten || isRead) {
@@ -232,12 +235,12 @@ class ObjectValueHavocingVisitor {
         // we don't have to havoc values written to this binding if only the binding
         // has been written to. We also don't have to havoc reads from this binding
         // if it is only read from.
-        havocBinding(binding);
+        havocBinding(binding, havocCallback);
       }
     }
   }
 
-  visitValueMap(val: ObjectValue): void {
+  visitValueMap(val: ObjectValue, havocCallback?: (value: Binding) => void): void {
     let kind = val.getKind();
 
     let entries;
@@ -255,12 +258,12 @@ class ObjectValueHavocingVisitor {
       let key = entry.$Key;
       let value = entry.$Value;
       if (key === undefined || value === undefined) continue;
-      this.visitValue(key);
-      this.visitValue(value);
+      this.visitValue(key, havocCallback);
+      this.visitValue(value, havocCallback);
     }
   }
 
-  visitValueSet(val: ObjectValue): void {
+  visitValueSet(val: ObjectValue, havocCallback?: (value: Binding) => void): void {
     let kind = val.getKind();
 
     let entries;
@@ -276,20 +279,20 @@ class ObjectValueHavocingVisitor {
     for (let i = 0; i < len; i++) {
       let entry = entries[i];
       if (entry === undefined) continue;
-      this.visitValue(entry);
+      this.visitValue(entry, havocCallback);
     }
   }
 
-  visitValueFunction(val: FunctionValue): void {
+  visitValueFunction(val: FunctionValue, havocCallback?: (value: Binding) => void): void {
     if (val.isHavocedObject()) {
       return;
     }
-    this.visitObjectProperties(val);
+    this.visitObjectProperties(val, havocCallback);
 
     if (val instanceof BoundFunctionValue) {
-      this.visitValue(val.$BoundTargetFunction);
-      this.visitValue(val.$BoundThis);
-      for (let boundArg of val.$BoundArguments) this.visitValue(boundArg);
+      this.visitValue(val.$BoundTargetFunction, havocCallback);
+      this.visitValue(val.$BoundThis, havocCallback);
+      for (let boundArg of val.$BoundArguments) this.visitValue(boundArg, havocCallback);
       return;
     }
 
@@ -304,7 +307,7 @@ class ObjectValueHavocingVisitor {
     while (environment) {
       let record = environment.environmentRecord;
       if (record instanceof ObjectEnvironmentRecord) {
-        this.visitValue(record.object);
+        this.visitValue(record.object, havocCallback);
         continue;
       }
       if (record instanceof GlobalEnvironmentRecord) {
@@ -312,7 +315,7 @@ class ObjectValueHavocingVisitor {
       }
 
       invariant(record instanceof DeclarativeEnvironmentRecord);
-      this.visitDeclarativeEnvironmentRecordBinding(record, remainingHavocedBindings);
+      this.visitDeclarativeEnvironmentRecordBinding(record, remainingHavocedBindings, havocCallback);
 
       if (record instanceof FunctionEnvironmentRecord) {
         // If this is a function environment, which is not tracked for havocs,
@@ -327,13 +330,13 @@ class ObjectValueHavocingVisitor {
     }
   }
 
-  visitValueObject(val: ObjectValue): void {
+  visitValueObject(val: ObjectValue, havocCallback?: (value: Binding) => void): void {
     if (val.isHavocedObject()) {
       return;
     }
 
     let kind = val.getKind();
-    this.visitObjectProperties(val, kind);
+    this.visitObjectProperties(val, havocCallback);
 
     switch (kind) {
       case "RegExp":
@@ -347,7 +350,7 @@ class ObjectValueHavocingVisitor {
       case "Date":
         let dateValue = val.$DateValue;
         invariant(dateValue !== undefined);
-        this.visitValue(dateValue);
+        this.visitValue(dateValue, havocCallback);
         return;
       case "Float32Array":
       case "Float64Array":
@@ -361,15 +364,15 @@ class ObjectValueHavocingVisitor {
       case "DataView":
         let buf = val.$ViewedArrayBuffer;
         invariant(buf !== undefined);
-        this.visitValue(buf);
+        this.visitValue(buf, havocCallback);
         return;
       case "Map":
       case "WeakMap":
-        this.visitValueMap(val);
+        this.visitValueMap(val, havocCallback);
         return;
       case "Set":
       case "WeakSet":
-        this.visitValueSet(val);
+        this.visitValueSet(val, havocCallback);
         return;
       default:
         invariant(kind === "Object", `Object of kind ${kind} is not supported in calls to abstract functions.`);
@@ -378,20 +381,20 @@ class ObjectValueHavocingVisitor {
     }
   }
 
-  visitValueProxy(val: ProxyValue): void {
-    this.visitValue(val.$ProxyTarget);
-    this.visitValue(val.$ProxyHandler);
+  visitValueProxy(val: ProxyValue, havocCallback?: (value: Binding) => void): void {
+    this.visitValue(val.$ProxyTarget, havocCallback);
+    this.visitValue(val.$ProxyHandler, havocCallback);
   }
 
-  visitAbstractValue(val: AbstractValue): void {
+  visitAbstractValue(val: AbstractValue, havocCallback?: (value: Binding) => void): void {
     for (let i = 0, n = val.args.length; i < n; i++) {
-      this.visitValue(val.args[i]);
+      this.visitValue(val.args[i], havocCallback);
     }
   }
 
-  visitValue(val: Value): void {
+  visitValue(val: Value, havocCallback?: (value: Binding) => void): void {
     if (val instanceof AbstractValue) {
-      if (this.mustVisit(val)) this.visitAbstractValue(val);
+      if (this.mustVisit(val)) this.visitAbstractValue(val, havocCallback);
     } else if (val.isIntrinsic()) {
       // All intrinsic values exist from the beginning of time...
       // ...except for a few that come into existance as templates for abstract objects.
@@ -401,17 +404,17 @@ class ObjectValueHavocingVisitor {
     } else if (val instanceof PrimitiveValue) {
       this.mustVisit(val);
     } else if (val instanceof ProxyValue) {
-      if (this.mustVisit(val)) this.visitValueProxy(val);
+      if (this.mustVisit(val)) this.visitValueProxy(val, havocCallback);
     } else if (val instanceof FunctionValue) {
       invariant(val instanceof FunctionValue);
-      if (this.mustVisit(val)) this.visitValueFunction(val);
+      if (this.mustVisit(val)) this.visitValueFunction(val, havocCallback);
     } else {
       invariant(val instanceof ObjectValue);
       if (val.originalConstructor !== undefined) {
         invariant(val instanceof ObjectValue);
-        if (this.mustVisit(val)) this.visitValueObject(val);
+        if (this.mustVisit(val)) this.visitValueObject(val, havocCallback);
       } else {
-        if (this.mustVisit(val)) this.visitValueObject(val);
+        if (this.mustVisit(val)) this.visitValueObject(val, havocCallback);
       }
     }
   }
@@ -433,7 +436,7 @@ function ensureFrozenValue(realm, value, loc) {
 // Ensure that a value is immutable. If it is not, set all its properties to abstract values
 // and all reachable bindings to abstract values.
 export class HavocImplementation {
-  value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation) {
+  value(realm: Realm, value: Value, havocCallback?: (value: Binding) => void, loc: ?BabelNodeSourceLocation) {
     let objectsTrackedForHavoc = realm.createdObjectsTrackedForLeaks;
     if (objectsTrackedForHavoc === undefined) {
       // We're not tracking a pure function. That means that we would track
@@ -447,7 +450,7 @@ export class HavocImplementation {
       // pure function is concerned. However, any mutable object needs to
       // be tainted as possibly having changed to anything.
       let visitor = new ObjectValueHavocingVisitor(objectsTrackedForHavoc);
-      visitor.visitValue(value);
+      visitor.visitValue(value, havocCallback);
     }
   }
 }

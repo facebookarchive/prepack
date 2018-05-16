@@ -116,6 +116,13 @@ function generateRuntimeCall(
   if (thisArg instanceof Value) args = [thisArg];
   if (propName !== undefined && typeof propName !== "string") args.push(propName);
   args = args.concat(ArgumentListEvaluation(realm, strictCode, env, ast.arguments));
+  let prerequisites;
+  let havocCallback = value => {
+    if (prerequisites === undefined) {
+      prerequisites = new Set();
+    }
+    prerequisites.add(value);
+  };
   for (let arg of args) {
     if (arg !== func) {
       // Since we don't know which function we are calling, we assume that any unfrozen object
@@ -123,7 +130,22 @@ function generateRuntimeCall(
       // as is any other object that is known to be reachable from this object.
       // NB: Note that this is still optimistic, particularly if the environment exposes the same object
       // to Prepack via alternative means, thus creating aliasing that is not tracked by Prepack.
-      Havoc.value(realm, arg, ast.loc);
+      Havoc.value(realm, arg, havocCallback, ast.loc);
+    }
+  }
+  if (prerequisites !== undefined) {
+    for (let prerequisite of prerequisites) {
+      if (args.includes(prerequisite.value)) {
+        continue;
+      }
+      // we emit an entry into the generator for the binding
+      // when the visitor gets to it, it will add the value
+      // into the args so we get the right binding reference
+      // that the function will have
+      realm.generator._addEntry({
+        args: [],
+        binding: prerequisite,
+      });
     }
   }
   let resultType = (func instanceof AbstractObjectValue ? func.functionResultType : undefined) || Value;
