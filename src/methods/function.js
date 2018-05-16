@@ -691,19 +691,19 @@ export class FunctionImplementation {
   }
 
   // ECMA262 9.2.11
-  SetFunctionName(realm: Realm, F: ObjectValue, name: PropertyKeyValue | AbstractValue, prefix?: string): boolean {
+  SetFunctionName(realm: Realm, F: ObjectValue, _name: PropertyKeyValue | AbstractValue, prefix?: string): boolean {
     // 1. Assert: F is an extensible object that does not have a name own property.
     invariant(F.getExtensible(), "expected object to be extensible and not have a name property");
 
     // 2. Assert: Type(name) is either Symbol or String.
     invariant(
-      typeof name === "string" ||
-        name instanceof StringValue ||
-        name instanceof SymbolValue ||
-        name instanceof AbstractValue,
+      typeof _name === "string" ||
+        _name instanceof StringValue ||
+        _name instanceof SymbolValue ||
+        _name instanceof AbstractValue,
       "expected name to be a string or symbol"
     );
-    if (typeof name === "string") name = new StringValue(realm, name);
+    let name = typeof _name === "string" ? new StringValue(realm, _name) : _name;
 
     // 3. Assert: If prefix was passed, then Type(prefix) is String.
     invariant(prefix === undefined || typeof prefix === "string", "expected prefix to be a string if passed");

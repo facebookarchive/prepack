@@ -847,7 +847,7 @@ export default class ObjectValue extends ConcreteValue {
     return AbstractValue.createFromConditionalOp(this.$Realm, cond, arg1, arg2, absVal.expressionLocation);
   }
 
-  specializeCond(absVal: AbstractValue, propName: Value): AbstractValue {
+  specializeCond(absVal: AbstractValue, propName: Value): Value {
     if (absVal.kind === "template for property name condition")
       return AbstractValue.createFromBinaryOp(this.$Realm, "===", absVal.args[0], propName);
     return absVal;

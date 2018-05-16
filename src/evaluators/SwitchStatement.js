@@ -119,7 +119,6 @@ function AbstractCaseBlockEvaluation(
 
     let selector = CaseSelectorEvaluation(test, strictCode, env, realm);
     let selectionResult = computeBinary(realm, "===", input, selector);
-    invariant(selectionResult instanceof AbstractValue);
 
     if (Path.implies(selectionResult)) {
       //  we have a winning result for the switch case, bubble it back up!

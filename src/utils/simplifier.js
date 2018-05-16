@@ -112,6 +112,13 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
       if (x.equals(x0) && y.equals(y0)) return value;
       return AbstractValue.createFromLogicalOp(realm, (value.kind: any), x, y, loc, isCondition, true);
     }
+    case "<":
+    case "<=":
+    case ">":
+    case ">=":
+      return distributeConditional(realm, value, isCondition, args =>
+        AbstractValue.createFromBinaryOp(realm, op, args[0], args[1], loc, undefined, isCondition)
+      );
     case "==":
     case "!=":
     case "===":
@@ -205,6 +212,45 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
     default:
       return value;
   }
+}
+
+function distributeConditional(
+  realm: Realm,
+  value: AbstractValue,
+  isCondition: boolean,
+  create: (Array<Value>) => Value
+): Value {
+  // Find a conditional argument
+  let condition;
+  let args = value.args;
+  for (let arg of args)
+    if (arg instanceof AbstractValue && arg.kind === "conditional") {
+      if (condition === undefined) condition = arg.args[0];
+      else if (condition !== arg.args[0]) return value; // giving up, multiple conditions involved
+    }
+
+  if (condition === undefined) return value; // no conditional found, nothing to do
+
+  // We have at least one conditional argument; if there are more than one, they all share the same condition
+  let leftArgs = args.slice(0);
+  let rightArgs = args.slice(0);
+  for (let i = 0; i < args.length; i++) {
+    let arg = args[i];
+    if (arg instanceof AbstractValue && arg.kind === "conditional") {
+      leftArgs[i] = arg.args[1];
+      rightArgs[i] = arg.args[2];
+    }
+  }
+
+  return AbstractValue.createFromConditionalOp(
+    realm,
+    condition,
+    create(leftArgs),
+    create(rightArgs),
+    condition.expressionLocation,
+    isCondition,
+    true
+  );
 }
 
 function simplifyEquality(realm: Realm, equality: AbstractValue): Value {

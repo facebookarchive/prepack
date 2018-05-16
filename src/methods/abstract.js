@@ -134,11 +134,14 @@ export function AbstractRelationalComparison(
   }
 
   if (px instanceof AbstractValue || py instanceof AbstractValue) {
+    let res;
     if (LeftFirst) {
-      return AbstractValue.createFromBinaryOp(realm, op, px, py);
+      res = AbstractValue.createFromBinaryOp(realm, op, px, py);
     } else {
-      return AbstractValue.createFromBinaryOp(realm, op, py, px);
+      res = AbstractValue.createFromBinaryOp(realm, op, py, px);
     }
+    invariant(res instanceof BooleanValue || res instanceof UndefinedValue || res instanceof AbstractValue);
+    return res;
   }
 
   // 3. If both px and py are Strings, then
@@ -255,7 +258,9 @@ export function AbstractEqualityComparison(
   if ((x instanceof StringValue || x instanceof NumberValue || x instanceof SymbolValue) && y instanceof ObjectValue) {
     const py = To.ToPrimitiveOrAbstract(realm, y);
     if (py instanceof AbstractValue) {
-      return AbstractValue.createFromBinaryOp(realm, "==", x, py);
+      let res = AbstractValue.createFromBinaryOp(realm, "==", x, py);
+      invariant(res instanceof BooleanValue || res instanceof AbstractValue);
+      return res;
     }
     return AbstractEqualityComparison(realm, x, py, op);
   }
@@ -264,7 +269,9 @@ export function AbstractEqualityComparison(
   if (x instanceof ObjectValue && (y instanceof StringValue || y instanceof NumberValue || y instanceof SymbolValue)) {
     const px = To.ToPrimitiveOrAbstract(realm, x);
     if (px instanceof AbstractValue) {
-      return AbstractValue.createFromBinaryOp(realm, "==", px, y);
+      let res = AbstractValue.createFromBinaryOp(realm, "==", px, y);
+      invariant(res instanceof BooleanValue || res instanceof AbstractValue);
+      return res;
     }
     return AbstractEqualityComparison(realm, px, y, op);
   }
