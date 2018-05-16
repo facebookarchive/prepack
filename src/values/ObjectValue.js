@@ -604,6 +604,13 @@ export default class ObjectValue extends ConcreteValue {
     return obj;
   }
 
+  // Whether [[{Get,Set}PrototypeOf]] delegate to Ordinary{Get,Set}PrototypeOf.
+  // E.g. ProxyValue overrides this to return false.
+  // See ECMA262 9.1.2.1 for an algorithm where this is relevant
+  usesOrdinaryObjectInternalPrototypeMethods(): boolean {
+    return true;
+  }
+
   // ECMA262 9.1.1
   $GetPrototypeOf(): ObjectValue | AbstractObjectValue | NullValue {
     return this.$Prototype;
