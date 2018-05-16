@@ -129,6 +129,9 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
   isPure: void | boolean;
 
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
+    if (this.binding && !this.declared) {
+      this.args.push(this.binding.value);
+    }
     if (this.isPure && this.declared && callbacks.canSkip(this.declared)) {
       callbacks.recordDelayedEntry(containingGenerator, this);
       return false;
