@@ -423,6 +423,65 @@ export class JoinImplementation {
     return new PossiblyNormalCompletion(rv, rJoinCondition, rc, rce, ra, rae, []);
   }
 
+  // Join all effects that result in completions of type CompletionType.
+  // Erase all completions of type Completion type from c, so that we never join them again.
+  // Also erase any generators that appears in branches resulting in completions of type CompletionType.
+  // Note that c is modified in place and should be replaced with a PossiblyNormalCompletion by the caller
+  // if either of its branches cease to be an AbruptCompletion.
+  extractAndJoinCompletionsOfType(
+    CompletionType: typeof AbruptCompletion,
+    realm: Realm,
+    c: AbruptCompletion,
+    convertToPNC: boolean = true
+  ): Effects {
+    let emptyEffects = construct_empty_effects(realm);
+    if (c instanceof CompletionType) {
+      emptyEffects.result = c;
+      return emptyEffects;
+    }
+    if (!(c instanceof JoinedAbruptCompletions)) {
+      return emptyEffects;
+    }
+    let dummyCompletion = new AbruptCompletion(realm.intrinsics.empty);
+    // Join up the consequent and alternate completions and compose them with their prefix effects
+    let ce = this.extractAndJoinCompletionsOfType(CompletionType, realm, c.consequent, convertToPNC);
+    // ce will be applied to the global state before any non joining branches in c.consequent, so move
+    // the generator from c.consequentEffects to ae.generator so that all branches will see its effects.
+    ce = realm.composeEffects(c.consequentEffects, ce);
+    ce.generator = c.consequentEffects.generator;
+    c.consequentEffects.generator = emptyEffects.generator;
+    if (ce.result instanceof CompletionType) {
+      // Erase completions of type CompletionType and prepare for transformation of c to a possibly normal completion
+      if (c.consequent instanceof CompletionType) {
+        c.consequentEffects.result = c.consequent = convertToPNC ? (realm.intrinsics.empty: any) : dummyCompletion;
+        convertToPNC = false;
+      } else if (convertToPNC && c.consequent instanceof JoinedAbruptCompletions) {
+        c.consequentEffects.result = c.consequent = (c.consequent.transferChildrenToPossiblyNormalCompletion(): any);
+        convertToPNC = false;
+      }
+    } else {
+      ce.result = new CompletionType(realm.intrinsics.empty);
+    }
+    let ae = this.extractAndJoinCompletionsOfType(CompletionType, realm, c.alternate, convertToPNC);
+    // ae will be applied to the global state before any non joining branches in c.alternate, so move
+    // the generator from c.alternateEffects to ae.generator so that all branches will see its effects.
+    ae = realm.composeEffects(c.alternateEffects, ae);
+    ae.generator = c.alternateEffects.generator;
+    c.alternateEffects.generator = emptyEffects.generator;
+    if (ae.result instanceof CompletionType) {
+      // Erase completions of type CompletionType and prepare for transformation of c to a possibly normal completion
+      if (c.alternate instanceof CompletionType) {
+        c.alternateEffects.result = c.alternate = convertToPNC ? (realm.intrinsics.empty: any) : dummyCompletion;
+      } else if (convertToPNC && c.alternate instanceof JoinedAbruptCompletions) {
+        c.alternateEffects.result = c.alternate = (c.alternate.transferChildrenToPossiblyNormalCompletion(): any);
+      }
+    } else {
+      ae.result = new CompletionType(realm.intrinsics.empty);
+    }
+
+    return this.joinEffects(realm, c.joinCondition, ce, ae);
+  }
+
   joinEffectsAndPromoteNested(
     CompletionType: typeof Completion,
     realm: Realm,
@@ -714,7 +773,11 @@ export class JoinImplementation {
     if (c instanceof PossiblyNormalCompletion || c instanceof JoinedAbruptCompletions) {
       let e1 = this.joinNestedEffects(realm, c.consequent, c.consequentEffects);
       let e2 = this.joinNestedEffects(realm, c.alternate, c.alternateEffects);
-      return this.joinEffects(realm, c.joinCondition, e1, e2);
+      e1.result = realm.intrinsics.empty;
+      e2.result = realm.intrinsics.empty;
+      let e3 = this.joinEffects(realm, c.joinCondition, e1, e2);
+      e3.result = c;
+      return e3;
     }
     if (precedingEffects !== undefined) return precedingEffects;
     let result = construct_empty_effects(realm);
