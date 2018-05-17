@@ -68,7 +68,7 @@ function deriveGetBinding(realm: Realm, binding: Binding) {
 export function havocBinding(binding: Binding) {
   let realm = binding.environment.realm;
   let value = binding.value;
-  if (!binding.hasLeaked && !(value instanceof ObjectValue && value.isFinalObject)) {
+  if (!binding.hasLeaked && !(value instanceof ObjectValue && value.isFinalObject())) {
     realm.recordModifiedBinding(binding).hasLeaked = true;
   }
 }
@@ -1206,7 +1206,10 @@ export class LexicalEnvironment {
       this.realm.popContext(context);
       this.realm.onDestroyScope(context.lexicalEnvironment);
       if (!this.destroyed) this.realm.onDestroyScope(this);
-      invariant(this.realm.activeLexicalEnvironments.size === 0);
+      invariant(
+        this.realm.activeLexicalEnvironments.size === 0,
+        `expected 0 active lexical environments, got ${this.realm.activeLexicalEnvironments.size}`
+      );
     }
     if (res instanceof AbruptCompletion) return [res, code];
 
@@ -1231,7 +1234,10 @@ export class LexicalEnvironment {
       this.realm.popContext(context);
       this.realm.onDestroyScope(context.lexicalEnvironment);
       if (!this.destroyed) this.realm.onDestroyScope(this);
-      invariant(this.realm.activeLexicalEnvironments.size === 0);
+      invariant(
+        this.realm.activeLexicalEnvironments.size === 0,
+        `expected 0 active lexical environments, got ${this.realm.activeLexicalEnvironments.size}`
+      );
     }
     invariant(partialAST.type === "File");
     let fileAst = ((partialAST: any): BabelNodeFile);
@@ -1271,7 +1277,10 @@ export class LexicalEnvironment {
       this.realm.popContext(context);
       // Avoid destroying "this" scope as execute may be called many times.
       if (context.lexicalEnvironment !== this) this.realm.onDestroyScope(context.lexicalEnvironment);
-      invariant(this.realm.activeLexicalEnvironments.size === 1);
+      invariant(
+        this.realm.activeLexicalEnvironments.size === 1,
+        `expected 1 active lexical environment, got ${this.realm.activeLexicalEnvironments.size}`
+      );
     }
     if (res instanceof AbruptCompletion) return res;
 

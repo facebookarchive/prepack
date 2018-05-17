@@ -34,7 +34,7 @@ export type SerializedBody = {
   type: SerializedBodyType,
   entries: Array<BabelNodeStatement>,
   done: boolean,
-  declaredAbstractValues?: Map<AbstractValue, SerializedBody>,
+  declaredValues?: Map<AbstractValue | ConcreteValue, SerializedBody>,
   parentBody?: SerializedBody,
   nestingLevel?: number,
   processing?: boolean,

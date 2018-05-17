@@ -1415,13 +1415,16 @@ export class PropertiesImplementation {
         return false;
       } else {
         // c. Else,
-        // TODO #1017 i. If the [[GetPrototypeOf]] internal method of p is not the ordinary object internal method defined in 9.1.1, let done be true.
-
-        // ii. Else, let p be the value of p's [[Prototype]] internal slot.
-        p = p.$Prototype;
-        if (p instanceof AbstractObjectValue) {
-          AbstractValue.reportIntrospectionError(p);
-          throw new FatalError();
+        // If the [[GetPrototypeOf]] internal method of p is not the ordinary object internal method defined in 9.1.1, let done be true.
+        if (!p.usesOrdinaryObjectInternalPrototypeMethods()) {
+          done = true;
+        } else {
+          // ii. Else, let p be the value of p's [[Prototype]] internal slot.
+          p = p.$Prototype;
+          if (p instanceof AbstractObjectValue) {
+            AbstractValue.reportIntrospectionError(p);
+            throw new FatalError();
+          }
         }
       }
     }

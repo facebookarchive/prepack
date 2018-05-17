@@ -58,12 +58,12 @@ import type { SerializerOptions } from "../options.js";
 export type SerializationContext = {|
   serializeValue: Value => BabelNodeExpression,
   serializeBinding: Binding => BabelNodeIdentifier | BabelNodeMemberExpression,
-  serializeGenerator: (Generator, Set<AbstractValue>) => Array<BabelNodeStatement>,
+  serializeGenerator: (Generator, Set<AbstractValue | ConcreteValue>) => Array<BabelNodeStatement>,
   initGenerator: Generator => void,
   finalizeGenerator: Generator => void,
   emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
-  processValues: (Set<AbstractValue>) => void,
+  processValues: (Set<AbstractValue | ConcreteValue>) => void,
   canOmit: (AbstractValue | ConcreteValue) => boolean,
   declare: (AbstractValue | ConcreteValue) => void,
   emitPropertyModification: PropertyBinding => void,
@@ -83,13 +83,13 @@ export type VisitEntryCallbacks = {|
 export type DerivedExpressionBuildNodeFunction = (
   Array<BabelNodeExpression>,
   SerializationContext,
-  Set<AbstractValue>
+  Set<AbstractValue | ConcreteValue>
 ) => BabelNodeExpression;
 
 export type GeneratorBuildNodeFunction = (
   Array<BabelNodeExpression>,
   SerializationContext,
-  Set<AbstractValue>
+  Set<AbstractValue | ConcreteValue>
 ) => BabelNodeStatement;
 
 export class GeneratorEntry {
@@ -340,7 +340,7 @@ class IfThenElseEntry extends GeneratorEntry {
 function serializeBody(
   generator: Generator,
   context: SerializationContext,
-  valuesToProcess: Set<AbstractValue>
+  valuesToProcess: Set<AbstractValue | ConcreteValue>
 ): BabelNodeBlockStatement {
   let statements = context.serializeGenerator(generator, valuesToProcess);
   if (statements.length === 1 && statements[0].type === "BlockStatement") return (statements[0]: any);

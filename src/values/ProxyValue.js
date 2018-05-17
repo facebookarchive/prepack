@@ -54,6 +54,10 @@ export default class ProxyValue extends ObjectValue {
     return false;
   }
 
+  usesOrdinaryObjectInternalPrototypeMethods(): boolean {
+    return false;
+  }
+
   // ECMA262 9.5.1
   $GetPrototypeOf(): NullValue | AbstractObjectValue | ObjectValue {
     let realm = this.$Realm;
