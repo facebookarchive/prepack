@@ -18,8 +18,6 @@ import invariant from "../invariant.js";
 import { IsArray, IsArrayIndex } from "../methods/index.js";
 import { Logger } from "../utils/logger.js";
 import { Generator } from "../utils/generator.js";
-import { Join } from "../singletons.js";
-import { JoinedAbruptCompletions, PossiblyNormalCompletion } from "../completions.js";
 import type { AdditionalFunctionEffects } from "./types";
 
 /**
@@ -151,8 +149,6 @@ export function getObjectPrototypeMetadata(
   };
 }
 
-// NB: effects that are returned may be different than the effects passed in, so after this call, you may no longer
-// use the effects object you passed into this function.
 export function createAdditionalEffects(
   realm: Realm,
   effects: Effects,
@@ -161,11 +157,7 @@ export function createAdditionalEffects(
   environmentRecordIdAfterGlobalCode: number,
   parentAdditionalFunction: FunctionValue | void = undefined
 ): AdditionalFunctionEffects | null {
-  let result = effects.result;
   let generator = Generator.fromEffects(effects, realm, name, environmentRecordIdAfterGlobalCode);
-  if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
-    effects = Join.joinNestedEffects(realm, result);
-  }
   let retValue: AdditionalFunctionEffects = {
     parentAdditionalFunction,
     effects,

@@ -31,6 +31,6 @@ else x = 11;
     } catch (e) {
       error = e.message;
     }
-    return 'prevfoo: ' + prevfoo + 'err: ' + error + ' ret ' + ret + ' foo ' + foo;
+    return 'prevfoo: ' + prevfoo + ' err: ' + error + ' ret ' + ret + ' foo ' + foo;
   }
 }());
