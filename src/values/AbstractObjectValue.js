@@ -573,9 +573,6 @@ export default class AbstractObjectValue extends AbstractValue {
       }
       invariant(d1val instanceof Value);
       invariant(d2val instanceof Value);
-      if (d1val === d2val) {
-        return d1val;
-      }
       return Join.joinValuesAsConditional(this.$Realm, cond, d1val, d2val);
     } else {
       let result;
