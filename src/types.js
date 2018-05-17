@@ -751,6 +751,13 @@ export type JoinType = {
     v: Value
   ): void,
 
+  extractAndJoinCompletionsOfType(
+    CompletionType: typeof AbruptCompletion,
+    realm: Realm,
+    c: AbruptCompletion,
+    convertToPNC?: boolean
+  ): Effects,
+
   joinEffectsAndPromoteNested(
     CompletionType: typeof Completion,
     realm: Realm,

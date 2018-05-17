@@ -954,6 +954,7 @@ export class Realm {
       joinedEffects = effects1 || effects2;
       invariant(joinedEffects !== undefined);
       completion = joinedEffects.result;
+      this.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
     } else {
       let {
         result: result1,
@@ -990,9 +991,11 @@ export class Realm {
         // Consequently we have to continue tracking changes until the point where
         // all the branches come together into one.
         completion = this.composeWithSavedCompletion(completion);
+        this.applyEffects(joinedEffects, "evaluateWithAbstractConditional", false);
+      } else {
+        this.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
       }
     }
-    this.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
 
     // return or throw completion
     if (completion instanceof AbruptCompletion) throw completion;

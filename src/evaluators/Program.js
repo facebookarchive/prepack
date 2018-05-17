@@ -235,16 +235,16 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
       let res = env.evaluateCompletionDeref(node, strictCode);
       if (res instanceof AbruptCompletion) {
         if (!realm.useAbstractInterpretation) throw res;
-        // We are about the leave this program and this presents a join point where all non exeptional control flows
-        // converge into a single flow using the joined effects as the new state.
-        res = Functions.incorporateSavedCompletion(realm, res);
-        // The call to incorporateSavedCompletion above, has taken care of the join because res is abrupt.
-        // What remains to be done is to emit throw statements to the generator.
         let generator = realm.generator;
         invariant(generator !== undefined);
-        if (res instanceof JoinedAbruptCompletions) {
-          generator.emitConditionalThrow(res.joinCondition, res.consequent, res.alternate);
-          res = res.value;
+        // We are about the leave this program and this presents a join point where all control flows
+        // converge into a single flow using the joined effects as the new state.
+        res = Functions.incorporateSavedCompletion(realm, res);
+        if (res instanceof JoinedAbruptCompletions && res.containsCompletion(ThrowCompletion)) {
+          // The global state is now at the point where the first fork occurred.
+          let joinedEffects = Join.joinNestedEffects(realm, res);
+          realm.applyEffects(joinedEffects);
+          res = joinedEffects.result;
         } else if (res instanceof ThrowCompletion) {
           generator.emitThrow(res.value);
           res = realm.intrinsics.undefined;
@@ -268,27 +268,31 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
   // We are about to leave this program and this presents a join point where all control flows
   // converge into a single flow and the joined effects become the final state.
   if (val instanceof Value) {
-    val = Functions.incorporateSavedCompletion(realm, val);
-    if (val instanceof PossiblyNormalCompletion) {
+    let res = Functions.incorporateSavedCompletion(realm, val);
+    if (res instanceof PossiblyNormalCompletion) {
       // There are still some conditional throws to emit and state still has to be joined in.
       // Get state to be joined in
-      let e = realm.getCapturedEffects(val);
+      let e = realm.getCapturedEffects(res);
       invariant(e !== undefined);
-      realm.stopEffectCaptureAndUndoEffects(val);
-      let joinedEffects = Join.joinPossiblyNormalCompletionWithAbruptCompletion(
+      let normalPathGenerator = e.generator;
+      realm.stopEffectCaptureAndUndoEffects(res);
+      let effectsTree = Join.joinPossiblyNormalCompletionWithAbruptCompletion(
         realm,
-        val,
+        res,
         new ReturnCompletion(realm.intrinsics.undefined),
         e
       );
-      // apply joined state because the serializer expects a single end program-state. It will
-      // handle conditionally emitting the abrupt and normal paths
-      realm.applyEffects(joinedEffects);
-      // The global state has now been updated to the join of all the flows reaching this join point
+      realm.applyEffects(effectsTree, "", false);
+      // The global state is now at the point where the first fork occurred.
+      res = effectsTree.result;
+      invariant(res instanceof JoinedAbruptCompletions);
       let generator = realm.generator;
       invariant(generator !== undefined);
-      generator.emitConditionalThrow(val.joinCondition, val.consequent, val.alternate);
-      val = val.value;
+      if (res.containsCompletion(ThrowCompletion)) {
+        generator.appendGenerator(effectsTree.generator, "");
+        generator.emitConditionalThrow(res.joinCondition, res.consequent, res.alternate);
+      }
+      generator.appendGenerator(normalPathGenerator, "non exceptional post fork entries");
     }
   } else {
     // program was empty. Nothing to do.
