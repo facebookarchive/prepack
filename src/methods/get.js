@@ -558,8 +558,7 @@ export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayV
 
   if (typeof P === "string") {
     // these are safe methods to allow, as they return a new array
-    // so we use the ordinary get for these cases. Reduce can be
-    // unsafe, but we check for that in the prototype method
+    // so we use the ordinary get for these cases.
     if (P === "map" || P === "slice" || P === "filter" || P === "concat") {
       return OrdinaryGet(realm, arr, P, arr);
     }
