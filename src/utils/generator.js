@@ -36,6 +36,7 @@ import * as t from "babel-types";
 import invariant from "../invariant.js";
 import {
   Completion,
+  AbruptCompletion,
   JoinedAbruptCompletions,
   ThrowCompletion,
   ReturnCompletion,
@@ -402,6 +403,8 @@ export class Generator {
       output.emitIfThenElse(result, realm);
     } else if (result instanceof ThrowCompletion) {
       output.emitThrow(result.value);
+    } else if (result instanceof AbruptCompletion) {
+      // no-op
     } else {
       invariant(false);
     }
@@ -1075,6 +1078,7 @@ export class Generator {
 
   joinGenerators(joinCondition: AbstractValue, generator1: Generator, generator2: Generator): void {
     invariant(generator1 !== this && generator2 !== this && generator1 !== generator2);
+    if (generator1.empty() && generator2.empty()) return;
     this._addEntry({
       args: [joinCondition],
       buildNode: function([cond], context, valuesToProcess) {

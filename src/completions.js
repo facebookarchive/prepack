@@ -85,6 +85,18 @@ export class JoinedAbruptCompletions extends AbruptCompletion {
   alternate: AbruptCompletion;
   alternateEffects: Effects;
 
+  containsCompletion(CompletionType: typeof Completion): boolean {
+    if (this.consequent instanceof CompletionType) return true;
+    if (this.alternate instanceof CompletionType) return true;
+    if (this.consequent instanceof JoinedAbruptCompletions) {
+      if (this.consequent.containsCompletion(CompletionType)) return true;
+    }
+    if (this.alternate instanceof JoinedAbruptCompletions) {
+      if (this.alternate.containsCompletion(CompletionType)) return true;
+    }
+    return false;
+  }
+
   containsBreakOrContinue(): boolean {
     if (this.consequent instanceof BreakCompletion || this.consequent instanceof ContinueCompletion) return true;
     if (this.alternate instanceof BreakCompletion || this.alternate instanceof ContinueCompletion) return true;
@@ -95,6 +107,18 @@ export class JoinedAbruptCompletions extends AbruptCompletion {
       if (this.alternate.containsBreakOrContinue()) return true;
     }
     return false;
+  }
+
+  transferChildrenToPossiblyNormalCompletion(): PossiblyNormalCompletion {
+    return new PossiblyNormalCompletion(
+      this.value.$Realm.intrinsics.empty,
+      this.joinCondition,
+      this.consequent,
+      this.consequentEffects,
+      this.alternate,
+      this.alternateEffects,
+      []
+    );
   }
 }
 
@@ -155,6 +179,18 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   savedEffects: void | Effects;
   // The path conditions that applied at the time of the oldest fork that caused this completion to arise.
   savedPathConditions: Array<AbstractValue>;
+
+  containsCompletion(CompletionType: typeof Completion): boolean {
+    if (this.consequent instanceof CompletionType) return true;
+    if (this.alternate instanceof CompletionType) return true;
+    if (this.consequent instanceof JoinedAbruptCompletions || this.consequent instanceof PossiblyNormalCompletion) {
+      if (this.consequent.containsCompletion(CompletionType)) return true;
+    }
+    if (this.alternate instanceof JoinedAbruptCompletions || this.alternate instanceof PossiblyNormalCompletion) {
+      if (this.alternate.containsCompletion(CompletionType)) return true;
+    }
+    return false;
+  }
 
   containsBreakOrContinue(): boolean {
     if (this.consequent instanceof BreakCompletion || this.consequent instanceof ContinueCompletion) return true;
