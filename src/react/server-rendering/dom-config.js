@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { Value } from "../../values/index.js";
+import { BooleanValue, FunctionValue, SymbolValue, Value } from "../../values/index.js";
 
 type PropertyType = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 type PropertyInfo = {|
@@ -156,6 +156,31 @@ export function getPropertyInfo(name: string): PropertyInfo | null {
   return properties.hasOwnProperty(name) ? properties[name] : null;
 }
 
+function shouldRemoveAttributeWithWarning(
+  name: string,
+  value: Value,
+  propertyInfo: PropertyInfo | null,
+  isCustomComponentTag: boolean
+): boolean {
+  if (propertyInfo !== null && propertyInfo.type === RESERVED) {
+    return false;
+  }
+  if (value instanceof FunctionValue || value instanceof SymbolValue) {
+    return true;
+  } else if (value instanceof BooleanValue) {
+    if (isCustomComponentTag) {
+      return false;
+    }
+    if (propertyInfo !== null) {
+      return !propertyInfo.acceptsBooleans;
+    } else {
+      const prefix = name.toLowerCase().slice(0, 5);
+      return prefix !== "data-" && prefix !== "aria-";
+    }
+  }
+  return false;
+}
+
 export function shouldRemoveAttribute(
   realm: Realm,
   name: string,
@@ -166,16 +191,9 @@ export function shouldRemoveAttribute(
   if (value === realm.intrinsics.null || value === realm.intrinsics.undefined) {
     return true;
   }
-  // if (
-  //   shouldRemoveAttributeWithWarning(
-  //     name,
-  //     value,
-  //     propertyInfo,
-  //     isCustomComponentTag,
-  //   )
-  // ) {
-  //   return true;
-  // }
+  if (shouldRemoveAttributeWithWarning(name, value, propertyInfo, isCustomComponentTag)) {
+    return true;
+  }
   if (isCustomComponentTag) {
     return false;
   }
