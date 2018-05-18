@@ -493,12 +493,14 @@ export default class AbstractObjectValue extends AbstractValue {
 
     if (this.values.isTop()) {
       let generateAbstractGet = () => {
+        let ob = this;
+        if (this.kind === "explicit conversion to object") ob = this.args[0];
         let type = Value;
         if (P === "length" && Value.isTypeCompatibleWith(this.getType(), ArrayValue)) type = NumberValue;
         return AbstractValue.createTemporalFromBuildFunction(
           this.$Realm,
           type,
-          [this],
+          [ob],
           ([o]) => {
             invariant(typeof P === "string");
             return t.isValidIdentifier(P)

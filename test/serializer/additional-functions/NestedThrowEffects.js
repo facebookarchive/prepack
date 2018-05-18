@@ -1,3 +1,4 @@
+// does not contain:.fakeB;
 (function() {
   function URI() {}
 

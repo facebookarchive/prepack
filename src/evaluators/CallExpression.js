@@ -47,6 +47,21 @@ export default function(
 
   // 1. Let ref be the result of evaluating MemberExpression.
   let ref = env.evaluate(ast.callee, strictCode);
+  if (
+    ref instanceof Reference &&
+    ref.base instanceof AbstractValue &&
+    ref.base.mightNotBeObject() &&
+    realm.isInPureScope()
+  ) {
+    let dummy = ref.base;
+    // avoid explicitly converting ref.base to an object because that will create a generator entry
+    // leading to two object allocations rather than one.
+    return realm.evaluateWithPossibleThrowCompletion(
+      () => generateRuntimeCall(ref, dummy, ast, strictCode, env, realm),
+      TypesDomain.topVal,
+      ValuesDomain.topVal
+    );
+  }
 
   // 2. Let func be ? GetValue(ref).
   let func = Environment.GetValue(realm, ref);
