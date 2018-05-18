@@ -14,19 +14,19 @@ import type { EnvironmentRecord } from "../environment.js";
 import type { PropertyKeyValue, IterationKind } from "../types.js";
 import {
   AbstractObjectValue,
+  AbstractValue,
+  ArrayValue,
+  ArgumentsExotic,
+  BooleanValue,
+  FunctionValue,
   NativeFunctionValue,
   NullValue,
-  BooleanValue,
-  ArrayValue,
-  ObjectValue,
-  Value,
-  StringValue,
   NumberValue,
-  FunctionValue,
-  UndefinedValue,
+  ObjectValue,
   StringExotic,
-  ArgumentsExotic,
-  AbstractValue,
+  StringValue,
+  UndefinedValue,
+  Value,
 } from "../values/index.js";
 import { GetPrototypeFromConstructor } from "./get.js";
 import { IsConstructor, IsPropertyKey, IsArray } from "./is.js";
