@@ -26,6 +26,7 @@ import {
   UndefinedValue,
   StringExotic,
   ArgumentsExotic,
+  AbstractValue,
 } from "../values/index.js";
 import { GetPrototypeFromConstructor } from "./get.js";
 import { IsConstructor, IsPropertyKey, IsArray } from "./is.js";
@@ -726,7 +727,7 @@ export class CreateImplementation {
       let next = Get(realm, obj, indexName);
 
       // c. If Type(next) is not an element of elementTypes, throw a TypeError exception.
-      if (elementTypes.indexOf(Type(realm, next)) < 0) {
+      if (elementTypes.indexOf(Type(realm, next)) < 0 || (realm.isInPureScope() && next instanceof AbstractValue)) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "invalid element type");
       }
 
