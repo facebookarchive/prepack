@@ -117,7 +117,10 @@ function lintCompiledSource(source) {
       commonjs: true,
       browser: true,
     },
-    rules: { "no-undef": "error" },
+    rules: {
+      "no-undef": "error",
+      "no-use-before-define": ["error", { variables: false, functions: false }],
+    },
     parserOptions: {
       ecmaVersion: 6,
       ecmaFeatures: {
