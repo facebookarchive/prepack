@@ -25,6 +25,7 @@ import type {
 import {
   AbstractObjectValue,
   AbstractValue,
+  ArrayValue,
   BooleanValue,
   ConcreteValue,
   NativeFunctionValue,
@@ -41,6 +42,7 @@ import buildExpressionTemplate from "../utils/builder.js";
 import { ECMAScriptSourceFunctionValue, type NativeFunctionCallback } from "./index.js";
 import {
   Get,
+  GetFromArrayWithWidenedNumericProperty,
   IsDataDescriptor,
   OrdinaryOwnPropertyKeys,
   OrdinaryGet,
@@ -672,29 +674,14 @@ export default class ObjectValue extends ConcreteValue {
       }
 
       if (val.kind === "widened numeric property") {
+        invariant(Receiver instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(Receiver));
         let propName;
-
-        if (propValue instanceof StringValue) {
-          propName = propValue.value;
-          // these are safe methods to allow, as they return a new array
-          // so we use the ordinary get for these cases. Reduce can be
-          // unsafe, but we check for that in the prototype method
-          if (propName === "map" || propName === "slice" || propName === "filter" || propName === "concat") {
-            invariant(Receiver instanceof ObjectValue);
-            return OrdinaryGet(this.$Realm, Receiver, P, Receiver);
-          }
-        } else if (P instanceof SymbolValue) {
-          propValue = P;
+        if (P instanceof StringValue) {
+          propName = P.value;
+        } else {
+          propName = P;
         }
-        invariant(propValue);
-        return AbstractValue.createTemporalFromBuildFunction(
-          this.$Realm,
-          val.getType(),
-          [Receiver, propValue],
-          ([o, p]) => {
-            return t.memberExpression(o, p, true);
-          }
-        );
+        return GetFromArrayWithWidenedNumericProperty(this.$Realm, Receiver, propName);
       } else if (!propValue) {
         AbstractValue.reportIntrospectionError(val, "abstract computed property name");
         throw new FatalError();

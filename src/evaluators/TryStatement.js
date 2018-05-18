@@ -56,18 +56,10 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
         realm.stopEffectCaptureAndUndoEffects(blockRes);
         Join.updatePossiblyNormalCompletionWithSubsequentEffects(realm, blockRes, subsequentEffects);
       }
-      // All of the forked threads of control are now joined together and the global state reflects their joint effects
+      // Add effects of normal exits from handler to blockRes and apply to global state
       let handlerEffects = composeNestedThrowEffectsWithHandler(blockRes);
+      realm.applyEffects(handlerEffects);
       handlerRes = handlerEffects.result;
-      if (handlerRes instanceof Value) {
-        // This can happen if all of the abrupt completions in blockRes were throw completions
-        // and if the handler does not introduce any abrupt completions of its own.
-        realm.applyEffects(handlerEffects);
-        // The global state is now all joined up
-      } else {
-        // more than thread of control leaves the handler
-        // The effects of each thread is tracked in handlerRes
-      }
     } else {
       // The handler is not invoked, so just carry on.
     }
@@ -119,6 +111,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
         },
         "composeNestedThrowEffectsWithHandler/1"
       );
+      c.consequentEffects.result = c.consequent = new AbruptCompletion(realm.intrinsics.empty);
     }
     priorEffects.pop();
     let alternate = c.alternate;
@@ -135,6 +128,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
         },
         "composeNestedThrowEffectsWithHandler/2"
       );
+      c.alternateEffects.result = c.alternate = new AbruptCompletion(realm.intrinsics.empty);
     }
     priorEffects.pop();
     return Join.joinEffects(realm, c.joinCondition, consequentEffects, alternateEffects);

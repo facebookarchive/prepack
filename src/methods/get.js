@@ -16,6 +16,7 @@ import type { PropertyKeyValue, CallableObjectValue } from "../types.js";
 import {
   AbstractObjectValue,
   AbstractValue,
+  ArrayValue,
   BoundFunctionValue,
   EmptyValue,
   NullValue,
@@ -23,6 +24,7 @@ import {
   ObjectValue,
   ProxyValue,
   StringValue,
+  SymbolValue,
   UndefinedValue,
   Value,
 } from "../values/index.js";
@@ -40,6 +42,7 @@ import {
 import { Create, Environment, Join, Path, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeTemplateLiteral } from "babel-types";
+import * as t from "babel-types";
 
 // ECMA262 7.3.22
 export function GetFunctionRealm(realm: Realm, obj: ObjectValue): Realm {
@@ -548,4 +551,23 @@ export function GetTemplateObject(realm: Realm, templateLiteral: BabelNodeTempla
 
   // 15. Return template.
   return template;
+}
+
+export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayValue, P: string | SymbolValue): Value {
+  let type = Value;
+
+  if (typeof P === "string") {
+    // these are safe methods to allow, as they return a new array
+    // so we use the ordinary get for these cases.
+    if (P === "map" || P === "slice" || P === "filter" || P === "concat") {
+      return OrdinaryGet(realm, arr, P, arr);
+    }
+    if (P === "length") {
+      type = NumberValue;
+    }
+  }
+  let prop = typeof P === "string" ? new StringValue(realm, P) : P;
+  return AbstractValue.createTemporalFromBuildFunction(realm, type, [arr, prop], ([o, p]) =>
+    t.memberExpression(o, p, true)
+  );
 }
