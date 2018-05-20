@@ -14,18 +14,18 @@ import type { EnvironmentRecord } from "../environment.js";
 import type { PropertyKeyValue, IterationKind } from "../types.js";
 import {
   AbstractObjectValue,
+  ArrayValue,
+  ArgumentsExotic,
+  BooleanValue,
+  FunctionValue,
   NativeFunctionValue,
   NullValue,
-  BooleanValue,
-  ArrayValue,
-  ObjectValue,
-  Value,
-  StringValue,
   NumberValue,
-  FunctionValue,
-  UndefinedValue,
+  ObjectValue,
   StringExotic,
-  ArgumentsExotic,
+  StringValue,
+  UndefinedValue,
+  Value,
 } from "../values/index.js";
 import { GetPrototypeFromConstructor } from "./get.js";
 import { IsConstructor, IsPropertyKey, IsArray } from "./is.js";
@@ -38,6 +38,8 @@ import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
 import traverseFast from "../utils/traverse-fast.js";
 import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeFunctionDeclaration } from "babel-types";
+
+const allElementTypes = ["Undefined", "Null", "Boolean", "String", "Symbol", "Number", "Object"];
 
 export class CreateImplementation {
   // ECMA262 9.4.3.3
@@ -701,7 +703,7 @@ export class CreateImplementation {
   // ECMA262 7.3.17
   CreateListFromArrayLike(realm: Realm, obj: Value, elementTypes?: Array<string>): Array<Value> {
     // 1. If elementTypes was not passed, let elementTypes be « Undefined, Null, Boolean, String, Symbol, Number, Object ».
-    elementTypes = elementTypes || ["Undefined", "Null", "Boolean", "String", "Symbol", "Number", "Object"];
+    elementTypes = elementTypes || allElementTypes;
 
     // 2. If Type(obj) is not Object, throw a TypeError exception.
     if (!(obj instanceof ObjectValue)) {
@@ -726,7 +728,7 @@ export class CreateImplementation {
       let next = Get(realm, obj, indexName);
 
       // c. If Type(next) is not an element of elementTypes, throw a TypeError exception.
-      if (elementTypes.indexOf(Type(realm, next)) < 0) {
+      if (elementTypes !== allElementTypes && elementTypes.indexOf(Type(realm, next)) < 0) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "invalid element type");
       }
 
