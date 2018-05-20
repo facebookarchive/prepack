@@ -8,5 +8,3 @@
 	    return;
     }
 })()
-
-let inspect = () => logstream;
