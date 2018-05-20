@@ -728,7 +728,7 @@ export class CreateImplementation {
       let next = Get(realm, obj, indexName);
 
       // c. If Type(next) is not an element of elementTypes, throw a TypeError exception.
-      if (elementTypes !== defaultElementTypes && elementTypes.indexOf(Type(realm, next)) < 0) {
+      if (elementTypes !== allElementTypes && elementTypes.indexOf(Type(realm, next)) < 0) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "invalid element type");
       }
 
