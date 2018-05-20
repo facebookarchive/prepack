@@ -39,7 +39,7 @@ import parse from "../utils/parse.js";
 import traverseFast from "../utils/traverse-fast.js";
 import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeFunctionDeclaration } from "babel-types";
 
-const defaultElementTypes = ["Undefined", "Null", "Boolean", "String", "Symbol", "Number", "Object"];
+const allElementTypes = ["Undefined", "Null", "Boolean", "String", "Symbol", "Number", "Object"];
 
 export class CreateImplementation {
   // ECMA262 9.4.3.3
@@ -703,7 +703,7 @@ export class CreateImplementation {
   // ECMA262 7.3.17
   CreateListFromArrayLike(realm: Realm, obj: Value, elementTypes?: Array<string>): Array<Value> {
     // 1. If elementTypes was not passed, let elementTypes be « Undefined, Null, Boolean, String, Symbol, Number, Object ».
-    elementTypes = elementTypes || defaultElementTypes;
+    elementTypes = elementTypes || allElementTypes;
 
     // 2. If Type(obj) is not Object, throw a TypeError exception.
     if (!(obj instanceof ObjectValue)) {
