@@ -61,6 +61,7 @@ import {
 } from "./dom-config.js";
 // $FlowFixMe: flow complains that this isn't a module but it is, and it seems to load fine
 import hyphenateStyleName from "fbjs/lib/hyphenateStyleName";
+import { To } from "../../singletons.js";
 
 export type ReactNode = Array<ReactNode> | string | AbstractValue | ArrayValue;
 
@@ -471,6 +472,9 @@ export function renderToString(
   let propsValue = getProperty(realm, reactElement, "props");
   let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(realm, typeValue));
   invariant(typeValue instanceof ECMAScriptSourceFunctionValue);
+  if (propsValue instanceof AbstractValue && !(propsValue instanceof AbstractObjectValue)) {
+    propsValue = To.ToObject(realm, propsValue);
+  }
   invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue);
   let effects = reconciler.resolveReactComponentTree(typeValue, propsValue, null, evaluatedRootNode);
 
