@@ -31,7 +31,7 @@ import { createAdditionalEffects } from "./utils.js";
 import { ReactStatistics } from "./types";
 import type { AdditionalFunctionEffects, ReactSerializerState, WriteEffects } from "./types";
 import { convertConfigObjectToReactComponentTreeConfig, valueIsKnownReactAbstraction } from "../react/utils.js";
-import { optimizeReactComponentTreeRoot } from "../react/optimizing.js";
+import { applyOptimizedReactComponents, optimizeReactComponentTreeRoot } from "../react/optimizing.js";
 import * as t from "babel-types";
 
 type AdditionalFunctionEntry = {
@@ -137,6 +137,7 @@ export class Functions {
         reactSerializerState
       );
     }
+    applyOptimizedReactComponents(this.realm, this.writeEffects, environmentRecordIdAfterGlobalCode);
   }
 
   _callOfFunction(funcValue: FunctionValue): void => Value {

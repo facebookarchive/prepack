@@ -91,6 +91,7 @@
     "eslint-plugin-flowtype": "^2.40.0",
     "eslint-plugin-header": "^1.0.0",
     "eslint-plugin-prettier": "^2.1.2",
+    "fbjs": "^0.8.16",
     "flow-bin": "^0.72.0",
     "flow-typed": "^2.3.0",
     "graceful-fs": "^4.1.11",
