@@ -3648,6 +3648,16 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output react-dom server rendering Hacker News app 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
 exports[`Test React with JSX input, create-element output Class component folding Classes with state 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -7296,6 +7306,16 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, create-element output react-dom server rendering Hacker News app 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
 exports[`Test React with create-element input, JSX output Class component folding Classes with state 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -10909,6 +10929,16 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output react-dom server rendering Hacker News app 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
 exports[`Test React with create-element input, create-element output Class component folding Classes with state 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -14519,5 +14549,15 @@ ReactStatistics {
   "inlinedComponents": 6,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output react-dom server rendering Hacker News app 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
 }
 `;

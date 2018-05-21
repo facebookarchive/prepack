@@ -30,6 +30,7 @@ import {
   AbstractObjectValue,
   AbstractValue,
   ArrayValue,
+  BoundFunctionValue,
   ConcreteValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
@@ -245,6 +246,7 @@ export class Realm {
 
     this.react = {
       abstractHints: new WeakMap(),
+      optimizedNestedClosuresToWrite: [],
       arrayHints: new WeakMap(),
       classComponentMetadata: new Map(),
       currentOwner: undefined,
@@ -328,6 +330,10 @@ export class Realm {
     // (for example, when we use Relay's React containers with "fb-www" – which are AbstractObjectValues,
     // we need to know what React component was passed to this AbstractObjectValue so we can visit it next)
     abstractHints: WeakMap<AbstractValue | ObjectValue, ReactHint>,
+    optimizedNestedClosuresToWrite: Array<{
+      effects: Effects,
+      func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
+    }>,
     arrayHints: WeakMap<ArrayValue, { func: Value, thisVal: Value }>,
     classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
     currentOwner?: ObjectValue,

@@ -41,5 +41,15 @@ export default function(realm: Realm): ObjectValue {
     });
   }
 
+  obj.defineNativeMethod("time", 0, (context, args) => {
+    realm.outputToConsole("time", args);
+    return realm.intrinsics.undefined;
+  });
+
+  obj.defineNativeMethod("timeEnd", 0, (context, args) => {
+    realm.outputToConsole("timeEnd", args);
+    return realm.intrinsics.undefined;
+  });
+
   return obj;
 }

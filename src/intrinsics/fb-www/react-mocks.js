@@ -23,9 +23,10 @@ import {
   NumberValue,
 } from "../../values/index.js";
 import { Environment } from "../../singletons.js";
-import { getReactSymbol, createReactHintObject } from "../../react/utils.js";
+import { createReactHintObject, getReactSymbol, isReactElement } from "../../react/utils.js";
 import { createReactElement } from "../../react/elements.js";
 import { Properties, Create } from "../../singletons.js";
+import { renderToString } from "../../react/experimental-server-rendering/rendering.js";
 import * as t from "babel-types";
 import invariant from "../../invariant";
 import { updateIntrinsicNames, addMockFunctionToObject } from "./utils.js";
@@ -652,8 +653,18 @@ export function createMockReactDOMServer(realm: Realm, requireName: string): Obj
     return reactDomMethod;
   };
 
-  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToString", genericTemporalFunc);
-  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToStaticMarkup", genericTemporalFunc);
+  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToString", (funcVal, [input]) => {
+    if (input instanceof ObjectValue && isReactElement(input)) {
+      return renderToString(realm, input, false);
+    }
+    return genericTemporalFunc(funcVal, [input]);
+  });
+  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToStaticMarkup", (funcVal, [input]) => {
+    if (input instanceof ObjectValue && isReactElement(input)) {
+      return renderToString(realm, input, true);
+    }
+    return genericTemporalFunc(funcVal, [input]);
+  });
   addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToNodeStream", genericTemporalFunc);
   addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToStaticNodeStream", genericTemporalFunc);
 
