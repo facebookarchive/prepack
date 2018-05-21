@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <title>Prepack &middot; Partial evaluator for JavaScript</title>
     <script src="js/prism.js"></script>
@@ -48,7 +48,7 @@
           <h2>Why do I get a <code>ReferenceError</code> when trying to prepack my code?</h2>
 
           <p class="align-left">
-            Trying to prepack a seemlingly simple program such as <code>global.result = UnknownProperty;</code> will cause a
+            Trying to prepack a seemingly simple program such as <code>global.result = UnknownProperty;</code> will cause a
             <code>ReferenceError</code>. The reason is that Prepack actually runs the global code, not knowing anything else
             about the environment. And the semantics of JavaScript is that an unknown identifier that cannot be resolved
             causes a <code>ReferenceError</code>. You might want to invest into modeling your environment.
@@ -73,7 +73,7 @@
             when the resulting prepacked code will run again later in the real run-time environment.
             (You can also directly inject such non-deterministic values using Prepack's <code>__abstract</code> built-in, or
             other modeling built-ins described in the section <i>The Environment matters!</i> on the landing page.)
-          </o>
+          </p>
           <p class="align-left">
             When the global code branches over such values,
             it is not clear at prepack-time which branch will be taken later in the real run-time environment.
@@ -137,6 +137,7 @@
               <a href="https://www.npmjs.com/package/babel-plugin-flow-prepack">A babel plugin which transforms Flow annotations into prepack model declarations.</a>
             </li>
           </ul>
+
         </div>
       </div>
     </div>
