@@ -50,6 +50,7 @@ import {
 import {
   BOOLEAN,
   getPropertyInfo,
+  isAttributeNameSafe,
   isUnitlessNumber,
   newlineEatingTags,
   omittedCloseTags,
@@ -95,6 +96,17 @@ function dangerousStyleValue(realm: Realm, name: string, value: Value, isCustomP
 
   if (value instanceof StringValue || value instanceof NumberValue) {
     return ("" + value.value).trim();
+  } else {
+    invariant(false, "TODO");
+  }
+}
+
+export function createMarkupForCustomAttribute(realm: Realm, name: string, value: Value): ReactNode {
+  if (!isAttributeNameSafe(name) || value == null) {
+    return "";
+  }
+  if (value instanceof StringValue || value instanceof NumberValue) {
+    return name + "=" + quoteAttributeValueForBrowser(value.value + "");
   } else {
     invariant(false, "TODO");
   }
@@ -181,8 +193,7 @@ function createOpenTagMarkup(
 
         if (isCustomComponent(realm, tagLowercase, propsValue)) {
           if (!RESERVED_PROPS.has(propName)) {
-            invariant(false, "TODO");
-            // markup = createMarkupForCustomAttribute(propName, propValue);
+            markup = createMarkupForCustomAttribute(realm, propName, propValue);
           }
         } else {
           markup = createMarkupForProperty(realm, propName, propValue, htmlEscapeHelper);

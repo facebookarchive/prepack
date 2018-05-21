@@ -24,9 +24,9 @@ import {
 import { getProperty } from "../utils.js";
 import invariant from "../../invariant.js";
 import type { ReactNode } from "./rendering.js";
+import { ROOT_ATTRIBUTE_NAME } from "./dom-config.js";
 
 const matchHtmlRegExp = /["'&<>]/;
-const ROOT_ATTRIBUTE_NAME = "data-reactroot";
 
 export function createMarkupForRoot(): string {
   return ROOT_ATTRIBUTE_NAME + '=""';
