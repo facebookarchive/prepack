@@ -1018,7 +1018,7 @@ export class ResidualHeapSerializer {
     return result;
   }
 
-  _serializeValueIntrinsic(val: Value): void | BabelNodeExpression {
+  _serializeValueIntrinsic(val: Value): BabelNodeExpression {
     let intrinsicName = val.intrinsicName;
     invariant(intrinsicName);
     if (val instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(val)) {
