@@ -1024,7 +1024,7 @@ export class ResidualHeapSerializer {
     if (val instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(val)) {
       invariant(
         this.emitter.hasBeenDeclared(val),
-        `an unknown array with numeric propeties and an identifier "${intrinsicName}" was referenced before being declared`
+        `an unknown array with numeric properties and an identifier "${intrinsicName}" was referenced before being declared`
       );
     }
     if (val instanceof ObjectValue && val.intrinsicNameGenerated) {
