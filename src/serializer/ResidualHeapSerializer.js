@@ -850,6 +850,25 @@ export class ResidualHeapSerializer {
     // which is related to one of the scopes this value is used by.
     let notYetDoneBodies = new Set();
     this.emitter.dependenciesVisitor(val, {
+      onArrayWithWidenedNumericProperty: dependency => {
+        if (trace) {
+          console.log(
+            `  depending on unknown array with numeric properties and an identifier ${dependency.intrinsicName || "?"}`
+          );
+        }
+        invariant(
+          referencingOnlyAdditionalFunction === undefined || this.emitter.emittingToAdditionalFunction(),
+          "additional function inconsistency"
+        );
+        let declarationBody = this.emitter.getDeclarationBody(dependency);
+        if (declarationBody !== undefined) {
+          if (trace) console.log(`    has declaration body`);
+          for (let b = declarationBody; b !== undefined; b = b.parentBody) {
+            if (notYetDoneBodies.has(b)) break;
+            notYetDoneBodies.add(b);
+          }
+        }
+      },
       onAbstractValueWithIdentifier: dependency => {
         if (trace) console.log(`  depending on abstract value with identifier ${dependency.intrinsicName || "?"}`);
         invariant(
