@@ -199,18 +199,23 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       throw new Error("React test runner issue");
     }
     // Use the original version of the test in case transforming messes it up.
-    let { getTrials } = A;
+    let { getTrials: getTrialsA, independent } = A;
+    let { getTrials: getTrialsB } = B;
     // Run tests that assert the rendered output matches.
-    let resultA = getTrials(rendererA, A, data);
-    let resultB = getTrials(rendererB, B, data);
+    let resultA = getTrialsA(rendererA, A, data);
+    let resultB = independent ? getTrialsB(rendererB, B, data) : getTrialsA(rendererB, B, data);
 
     // The test has returned many values for us to check
     for (let i = 0; i < resultA.length; i++) {
       let [nameA, valueA] = resultA[i];
       let [nameB, valueB] = resultB[i];
-      expect(mergeAdacentJSONTextNodes(valueB, firstRenderOnly)).toEqual(
-        mergeAdacentJSONTextNodes(valueA, firstRenderOnly)
-      );
+      if (typeof valueA === "string" && typeof valueB === "string") {
+        expect(valueA).toBe(valueB);
+      } else {
+        expect(mergeAdacentJSONTextNodes(valueB, firstRenderOnly)).toEqual(
+          mergeAdacentJSONTextNodes(valueA, firstRenderOnly)
+        );
+      }
       expect(nameB).toEqual(nameA);
     }
   }
@@ -866,6 +871,15 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Function bind", async () => {
         await runTest(directory, "function-bind.js");
+      });
+    });
+
+    describe("react-dom server rendering", () => {
+      let directory = "server-rendering";
+
+      it("Hacker News app", async () => {
+        let data = JSON.parse(getDataFile(directory, "hacker-news.json"));
+        await runTest(directory, "hacker-news.js", false, data);
       });
     });
   });
