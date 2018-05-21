@@ -14,6 +14,7 @@ import type { Descriptor, PropertyBinding } from "../types.js";
 import { IsArray, Get } from "../methods/index.js";
 import {
   AbstractValue,
+  ArrayValue,
   BooleanValue,
   BoundFunctionValue,
   ConcreteValue,
@@ -1017,9 +1018,15 @@ export class ResidualHeapSerializer {
     return result;
   }
 
-  _serializeValueIntrinsic(val: Value): BabelNodeExpression {
+  _serializeValueIntrinsic(val: Value): void | BabelNodeExpression {
     let intrinsicName = val.intrinsicName;
     invariant(intrinsicName);
+    if (val instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(val)) {
+      invariant(
+        this.emitter.hasBeenDeclared(val),
+        `an unknown array with numeric propeties and an instrinsic name "${intrinsicName}" was referenced before being declared`
+      );
+    }
     if (val instanceof ObjectValue && val.intrinsicNameGenerated) {
       // The intrinsic was generated at a particular point in time.
       return this.preludeGenerator.convertStringToMember(intrinsicName);
