@@ -9,7 +9,9 @@
 
 /* @flow */
 
-// Warning: This code is experimental and might not fully work
+// Warning: This code is experimental and might not fully work. There is no guarantee
+// that is up-to-date with the curent react-dom/server logic and there may also be
+// security holes in the string escaping because of this.
 
 import type { Realm } from "../../realm.js";
 import { AbstractValue, BooleanValue, FunctionValue, NumberValue, SymbolValue, Value } from "../../values/index.js";
