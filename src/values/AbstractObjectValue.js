@@ -26,7 +26,12 @@ import {
 import { protoExpression } from "../utils/internalizer.js";
 import type { AbstractValueBuildNodeFunction } from "./AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import { IsDataDescriptor, cloneDescriptor, equalDescriptors } from "../methods/index.js";
+import {
+  GetFromArrayWithWidenedNumericProperty,
+  IsDataDescriptor,
+  cloneDescriptor,
+  equalDescriptors,
+} from "../methods/index.js";
 import { Havoc, Join, Widen } from "../singletons.js";
 import type { BabelNodeExpression } from "babel-types";
 import invariant from "../invariant.js";
@@ -488,12 +493,14 @@ export default class AbstractObjectValue extends AbstractValue {
 
     if (this.values.isTop()) {
       let generateAbstractGet = () => {
+        let ob = this;
+        if (this.kind === "explicit conversion to object") ob = this.args[0];
         let type = Value;
         if (P === "length" && Value.isTypeCompatibleWith(this.getType(), ArrayValue)) type = NumberValue;
         return AbstractValue.createTemporalFromBuildFunction(
           this.$Realm,
           type,
-          [this],
+          [ob],
           ([o]) => {
             invariant(typeof P === "string");
             return t.isValidIdentifier(P)
@@ -528,6 +535,13 @@ export default class AbstractObjectValue extends AbstractValue {
     }
 
     let $GetHelper = ob => {
+      if (ob instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(ob) && typeof P === "string") {
+        return {
+          object: ob,
+          key: P,
+          value: GetFromArrayWithWidenedNumericProperty(this.$Realm, ob, P),
+        };
+      }
       let d = ob.$GetOwnProperty(P);
       if (d !== undefined) return d;
       let proto = ob.$GetPrototypeOf();

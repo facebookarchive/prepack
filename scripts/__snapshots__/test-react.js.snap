@@ -3425,7 +3425,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with JSX input, JSX output fb-www mocks fb-www 15 1`] = `"Failed to render React component root \\"Inner\\" due to side-effects from mutating the binding \\"result\\""`;
+exports[`Test React with JSX input, JSX output fb-www mocks fb-www 15 1`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
 
 exports[`Test React with JSX input, JSX output fb-www mocks fb-www 16 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
 
@@ -7083,7 +7083,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with JSX input, create-element output fb-www mocks fb-www 15 1`] = `"Failed to render React component root \\"Inner\\" due to side-effects from mutating the binding \\"result\\""`;
+exports[`Test React with JSX input, create-element output fb-www mocks fb-www 15 1`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
 
 exports[`Test React with JSX input, create-element output fb-www mocks fb-www 16 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
 
@@ -10706,7 +10706,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with create-element input, JSX output fb-www mocks fb-www 15 1`] = `"Failed to render React component root \\"Inner\\" due to side-effects from mutating the binding \\"result\\""`;
+exports[`Test React with create-element input, JSX output fb-www mocks fb-www 15 1`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
 
 exports[`Test React with create-element input, JSX output fb-www mocks fb-www 16 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
 
@@ -14329,7 +14329,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Test React with create-element input, create-element output fb-www mocks fb-www 15 1`] = `"Failed to render React component root \\"Inner\\" due to side-effects from mutating the binding \\"result\\""`;
+exports[`Test React with create-element input, create-element output fb-www mocks fb-www 15 1`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
 
 exports[`Test React with create-element input, create-element output fb-www mocks fb-www 16 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
 

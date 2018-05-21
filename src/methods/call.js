@@ -27,14 +27,8 @@ import {
 } from "../values/index.js";
 import { GetIterator, HasSomeCompatibleType, IsCallable, IsPropertyKey, IteratorStep, IteratorValue } from "./index.js";
 import { GeneratorStart } from "../methods/generator.js";
-import {
-  ReturnCompletion,
-  AbruptCompletion,
-  JoinedAbruptCompletions,
-  PossiblyNormalCompletion,
-} from "../completions.js";
+import { ReturnCompletion, AbruptCompletion, ThrowCompletion, JoinedAbruptCompletions } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
-import { construct_empty_effects } from "../realm.js";
 import { Create, Environment, Functions, Join, Havoc, To, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "babel-types";
@@ -396,62 +390,47 @@ export function OrdinaryCallEvaluateBody(
         try {
           realm.savedCompletion = undefined;
           let c = getCompletion();
+
           // We are about the leave this function and this presents a join point where all non exeptional control flows
-          // converge into a single flow using the joined effects as the new state.
-          c = Functions.incorporateSavedCompletion(realm, c);
-          let joinedEffects;
-          if (c instanceof PossiblyNormalCompletion) {
-            let e = realm.getCapturedEffects(c);
-            if (e !== undefined) {
-              // There were earlier, conditional exits from the function
-              // We join together the current effects with the effects of any earlier returns that are tracked in c.
-              realm.stopEffectCaptureAndUndoEffects(c);
-            } else {
-              e = construct_empty_effects(realm);
+          // converge into a single flow using their joint effects to update the post join point state.
+          if (!(c instanceof ReturnCompletion)) {
+            if (!(c instanceof AbruptCompletion)) {
+              c = new ReturnCompletion(realm.intrinsics.undefined, realm.currentLocation);
             }
-            joinedEffects = Join.joinEffectsAndPromoteNested(ReturnCompletion, realm, c, e);
-          } else if (c instanceof JoinedAbruptCompletions) {
-            let e = construct_empty_effects(realm);
-            joinedEffects = Join.joinEffectsAndPromoteNested(ReturnCompletion, realm, c, e);
           }
-          if (joinedEffects !== undefined) {
-            let result = joinedEffects.result;
-            if (result instanceof ReturnCompletion) {
-              realm.applyEffects(joinedEffects);
-              return result;
-            }
-            invariant(result instanceof JoinedAbruptCompletions);
-            if (!(result.consequent instanceof ReturnCompletion || result.alternate instanceof ReturnCompletion)) {
-              realm.applyEffects(joinedEffects);
-              throw result;
-            }
-            // There is a normal return exit, but also one or more throw completions.
-            // The throw completions must be extracted into a saved possibly normal completion
-            // so that the caller can pick them up in its next completion.
-            joinedEffects = extractAndSavePossiblyNormalCompletion(result);
-            result = joinedEffects.result;
-            invariant(result instanceof ReturnCompletion);
-            realm.applyEffects(joinedEffects);
-            return result;
-          } else {
-            invariant(c instanceof Value || c instanceof AbruptCompletion);
-            return c;
-          }
+          invariant(c instanceof AbruptCompletion);
+
+          // If there is a saved completion (i.e. unjoined abruptly completing control flows) then combine them with c
+          let abruptCompletion = Functions.incorporateSavedCompletion(realm, c);
+          invariant(abruptCompletion instanceof AbruptCompletion);
+
+          // If there is single completion, we don't need to join
+          if (!(abruptCompletion instanceof JoinedAbruptCompletions)) return abruptCompletion;
+
+          // If none of the completions are return completions, there is no need to join either
+          if (!abruptCompletion.containsCompletion(ReturnCompletion)) return abruptCompletion;
+
+          // Apply the joined effects of return completions to the current state since these now join the normal path
+          let joinedReturnEffects = Join.extractAndJoinCompletionsOfType(ReturnCompletion, realm, abruptCompletion);
+          realm.applyEffects(joinedReturnEffects);
+          c = joinedReturnEffects.result;
+          invariant(c instanceof ReturnCompletion);
+
+          // At this stage there can still be throw completions left inside abruptCompletion. If not just return.
+          let remainingCompletions = abruptCompletion.transferChildrenToPossiblyNormalCompletion();
+          if (!remainingCompletions.containsCompletion(ThrowCompletion)) return c;
+
+          // We now make a PossiblyNormalCompletion out of abruptCompletion.
+          // extractAndJoinCompletionsOfType helped with this by cheating and turning all of its nested completions
+          // that contain return completions into PossiblyNormalCompletions.
+          realm.savedCompletion = remainingCompletions;
+          realm.captureEffects(remainingCompletions); // so that we can join the normal path wtih them later on
+          return c;
         } finally {
           realm.incorporatePriorSavedCompletion(priorSavedCompletion);
         }
       }
     }
-  }
-
-  function extractAndSavePossiblyNormalCompletion(c: JoinedAbruptCompletions) {
-    // There are throw completions that conditionally escape from the the call.
-    // We need to carry on in normal mode (after arranging to capturing effects)
-    // while stashing away the throw completions so that the next completion we return
-    // incorporates them.
-    let [joinedEffects, possiblyNormalCompletion] = Join.unbundle(ReturnCompletion, realm, c);
-    realm.composeWithSavedCompletion(possiblyNormalCompletion);
-    return joinedEffects;
   }
 }
 
