@@ -9,6 +9,8 @@
 
 /* @flow */
 
+// Warning: This code is experimental and might not fully work
+
 import type { Realm } from "../../realm.js";
 import { ReactStatistics } from "../../serializer/types.js";
 import {

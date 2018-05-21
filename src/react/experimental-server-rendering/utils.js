@@ -9,6 +9,8 @@
 
 /* @flow */
 
+// Warning: This code is experimental and might not fully work
+
 import type { Realm } from "../../realm.js";
 import type { FunctionBodyAstNode } from "../../types.js";
 import { parseExpression } from "babylon";

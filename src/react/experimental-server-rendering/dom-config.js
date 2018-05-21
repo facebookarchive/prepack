@@ -9,6 +9,8 @@
 
 /* @flow */
 
+// Warning: This code is experimental and might not fully work
+
 import type { Realm } from "../../realm.js";
 import { AbstractValue, BooleanValue, FunctionValue, NumberValue, SymbolValue, Value } from "../../values/index.js";
 import invariant from "../../invariant.js";
