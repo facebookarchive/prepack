@@ -1061,6 +1061,12 @@ export class Reconciler {
             }
           }
           setProperty(newProps, "children", resolvedChildren);
+          if (propsValue.isSimpleObject()) {
+            newProps.makeSimple();
+          }
+          if (propsValue.isPartialObject()) {
+            newProps.makePartial();
+          }
           newProps.makeFinal();
           return createInternalReactElement(this.realm, typeValue, keyValue, refValue, newProps);
         }
