@@ -503,15 +503,15 @@ export class Generator {
 
   emitGlobalDeclaration(key: string, value: Value) {
     this.preludeGenerator.declaredGlobals.add(key);
-    if (!(value instanceof UndefinedValue)) this.emitGlobalAssignment(key, value, true);
+    if (!(value instanceof UndefinedValue)) this.emitGlobalAssignment(key, value);
   }
 
-  emitGlobalAssignment(key: string, value: Value, strictMode: boolean) {
+  emitGlobalAssignment(key: string, value: Value) {
     this._addEntry({
       args: [value],
       buildNode: ([valueNode]) =>
         t.expressionStatement(
-          t.assignmentExpression("=", this.preludeGenerator.globalReference(key, !strictMode), valueNode)
+          t.assignmentExpression("=", this.preludeGenerator.globalReference(key, false), valueNode)
         ),
     });
   }
@@ -526,11 +526,11 @@ export class Generator {
     });
   }
 
-  emitGlobalDelete(key: string, strictMode: boolean) {
+  emitGlobalDelete(key: string) {
     this._addEntry({
       args: [],
       buildNode: ([]) =>
-        t.expressionStatement(t.unaryExpression("delete", this.preludeGenerator.globalReference(key, !strictMode))),
+        t.expressionStatement(t.unaryExpression("delete", this.preludeGenerator.globalReference(key, false))),
     });
   }
 
