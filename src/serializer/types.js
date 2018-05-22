@@ -54,10 +54,8 @@ export type WriteEffects = Map<FunctionValue, AdditionalFunctionEffects>;
 
 export type AdditionalFunctionInfo = {
   functionValue: FunctionValue,
-  // TODO: use for storing modified residual function bindings (captured by other functions)
   modifiedBindings: Map<Binding, ResidualFunctionBinding>,
   instance: FunctionInstance,
-  hasReturn: boolean,
 };
 
 export type ClassMethodInstance = {|
@@ -186,8 +184,10 @@ export class ReactStatistics {
 }
 
 export type LocationService = {
+  getContainingAdditionalFunction: FunctionValue => void | FunctionValue,
   getLocation: Value => BabelNodeIdentifier,
-  createLocation: () => BabelNodeIdentifier,
+  createLocation: (void | FunctionValue) => BabelNodeIdentifier,
+  createFunction: (void | FunctionValue, Array<BabelNodeStatement>) => BabelNodeIdentifier,
 };
 
 export type ReactSerializerState = {
