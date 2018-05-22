@@ -875,14 +875,19 @@ export class Reconciler {
         );
       },
       effects => {
-        return this.realm.withEffectsAppliedInGlobalEnv(() => {
+        const handleAlternateVal = () => {
           return this.realm.evaluateForEffects(
             () =>
               this._resolveDeeply(componentType, alternateVal, context, "NEW_BRANCH", newBranchState, evaluatedNode),
             null,
             "_resolveAbstractConditionalValue consequent"
           );
-        }, effects);
+        };
+        if (effects) {
+          return this.realm.withEffectsAppliedInGlobalEnv(handleAlternateVal, effects);
+        } else {
+          return handleAlternateVal();
+        }
       }
     );
     if (this.reactSerializerState !== undefined) {

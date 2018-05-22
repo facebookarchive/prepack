@@ -942,7 +942,7 @@ export class Realm {
   evaluateWithAbstractConditional(
     condValue: AbstractValue,
     consequentEffectsFunc: () => Effects,
-    alternateEffectsFunc: () => Effects
+    alternateEffectsFunc: (effects?: Effects) => Effects
   ): Value {
     // Evaluate consequent and alternate in sandboxes and get their effects.
     let effects1;
