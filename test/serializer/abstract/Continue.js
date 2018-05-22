@@ -9,4 +9,4 @@ for (let i of [1, 2, 3]) {
 
 z = arr;
 
-inspect = function() { return "" + z; }
+inspect = function() { return "" + global.z; }

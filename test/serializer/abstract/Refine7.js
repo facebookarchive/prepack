@@ -1,7 +1,7 @@
 // add at runtime:var global=this;this.nativePerformanceNow = Date.now;
 if (global.__assumeDataProperty) __assumeDataProperty(this, "nativePerformanceNow", function() {
   if (this.__residual)
-    return __residual("number", function(global) {
+    return this.__residual("number", function(global) {
       return global.nativePerformanceNow();
     }, global);
   else return this.nativePerformanceNow();

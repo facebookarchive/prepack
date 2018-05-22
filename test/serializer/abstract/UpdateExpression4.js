@@ -1,9 +1,9 @@
 // throws introspection error
 
-var b = global.__abstract ? __abstract("boolean", "true") : true;
-var x = global.__abstract ? __abstract("number", "123") : 123;
+var b = global.__abstract ? global.__abstract("boolean", "true") : true;
+var x = global.__abstract ? global.__abstract("number", "123") : 123;
 badOb = { valueOf: function() { throw 13;} }
-var ob = global.__abstract ? __abstract("object", "badOb") : badOb;
+var ob = global.__abstract ? global.__abstract("object", "badOb") : badOb;
 var y = b ? ob : x;
 
 try{

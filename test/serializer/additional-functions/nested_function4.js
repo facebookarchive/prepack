@@ -21,10 +21,10 @@ if (global.__optimize) {
 inspect = function() {
   additional1();
   additional2();
-  let [ret1, ret1_] = foo();
-  let [ret2, ret2_] = foo();
+  let [ret1, ret1_] = global.foo();
+  let [ret2, ret2_] = global.foo();
   additional1();
-  let [ret3, ret3_] = foo();
+  let [ret3, ret3_] = global.foo();
   let strings = [ret1, ret1_, ret2, ret2_, ret3, ret3_].map(JSON.stringify).join(' ');
 
   return "PASS";

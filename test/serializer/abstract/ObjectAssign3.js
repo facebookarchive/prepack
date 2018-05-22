@@ -13,6 +13,6 @@ Object.assign = function(target, sources) {
   return target;
 };
 
-z = Object.assign({}, ob);
+global.z = Object.assign({}, ob);
 
-inspect = function() { return z.p; }
+inspect = function() { return global.z.p; }

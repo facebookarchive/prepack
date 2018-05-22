@@ -6,6 +6,6 @@ let o1 = Object.create(p1);
 let o2 = Object.create(p2);
 let o = x ? o1 : o2;
 
-z = Object.getPrototypeOf(o);
+var z = Object.getPrototypeOf(o);
 
 inspect = function() { return z.p; }

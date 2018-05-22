@@ -13,6 +13,6 @@
   }
   inspect = function() {
     additional();
-    return JSON.stringify(nested());
+    return JSON.stringify(global.nested());
   };
 })();

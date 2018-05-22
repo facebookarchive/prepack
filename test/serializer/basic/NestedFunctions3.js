@@ -1,5 +1,5 @@
 // Copies of x0: 3
-f = function() {
+var f = function() {
   return function() {
     var x0 = 1;
     var x1 = x0 + x0;
@@ -9,4 +9,4 @@ f = function() {
     return x4;
   }
 }
-g = f();
+var g = f();

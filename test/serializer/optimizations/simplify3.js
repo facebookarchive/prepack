@@ -5,6 +5,7 @@ let ob2 = b ? null : { foo: 24 };
 let ob2a = !b ? { foo: 244 } : null;
 let ob3 = b ? ob1 : ob2;
 
+var x, y;
 x = "no can do";
 if (undefined != ob1) {
   x = ob1.foo;

@@ -17,14 +17,14 @@ function makeMap(b) {
 let m1 = makeMap(x);
 let m2 = makeMap(!x);
 
-x1 = m1.get("a");
+var x1 = m1.get("a");
 
-x2 = [];
+var x2 = [];
 for (let [k, v] of m1) {
   x2.push([k, v]);
 }
 
-x3 = [];
+var x3 = [];
 for (let [k, v] of m2) {
   x3.push([k, v]);
 }

@@ -25,10 +25,10 @@ if (global.__optimize) {
 inspect = function() {
   additional1();
   additional2();
-  let bar1 = bar;
-  let foo1 = foo;
+  let bar1 = global.bar;
+  let foo1 = global.foo;
   additional1();
   additional2();
 
-  return ' ' + JSON.stringify(bar()) + foo().foo + bar1() + foo1().foo + (bar1 === bar) + (bar1() === bar()) + (foo1() === foo());
+  return ' ' + JSON.stringify(global.bar()) + global.foo().foo + bar1() + foo1().foo + (bar1 === global.bar) + (bar1() === global.bar()) + (foo1() === global.foo());
 }

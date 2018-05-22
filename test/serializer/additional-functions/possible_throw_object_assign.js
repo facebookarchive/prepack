@@ -1,4 +1,4 @@
-global.f = function(x, y) {
+var f = function(x, y) {
     if (y) Object.assign({}, x); else throw new Error();
 };
 

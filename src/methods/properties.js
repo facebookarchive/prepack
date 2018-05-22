@@ -116,7 +116,7 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
   if (desc === undefined) {
     // The property is being deleted
     if (O === realm.$GlobalObject) {
-      generator.emitGlobalDelete(P, realm.getRunningContext().isStrict);
+      generator.emitGlobalDelete(P);
     } else {
       generator.emitPropertyDelete(O, P);
     }
@@ -130,7 +130,7 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
           if (isValidIdentifier(P) && !desc.configurable && desc.enumerable && desc.writable) {
             generator.emitGlobalDeclaration(P, descValue);
           } else if (desc.configurable && desc.enumerable && desc.writable) {
-            generator.emitGlobalAssignment(P, descValue, realm.getRunningContext().isStrict);
+            generator.emitGlobalAssignment(P, descValue);
           } else {
             generator.emitDefineProperty(O, P, desc);
           }
@@ -149,7 +149,7 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
       if (equalDescriptors(desc, oldDesc)) {
         // only the value is being modified
         if (O === realm.$GlobalObject) {
-          generator.emitGlobalAssignment(P, descValue, realm.getRunningContext().isStrict);
+          generator.emitGlobalAssignment(P, descValue);
         } else {
           generator.emitPropertyAssignment(O, P, descValue);
         }

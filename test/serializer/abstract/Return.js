@@ -12,7 +12,7 @@ function f(b) {
   }
 }
 
-z = f(x);
-z1 = y;
+var z = f(x);
+var z1 = y;
 
 inspect = function() { return "" + z + z1; }

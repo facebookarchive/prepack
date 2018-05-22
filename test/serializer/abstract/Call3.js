@@ -10,6 +10,6 @@ function bar(x) {
   }
 }
 bar(5);
-z = obj.foo();
+var z = obj.foo();
 
 inspect = function() { return "" + z }
