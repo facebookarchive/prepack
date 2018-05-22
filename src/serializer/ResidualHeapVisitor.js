@@ -589,7 +589,7 @@ export class ResidualHeapVisitor {
         invariant(functionInfo);
         for (let innerName of functionInfo.unbound.keys()) {
           let environment = this.resolveBinding(val, innerName);
-          let residualBinding = this.getBinding(val, environment, innerName);
+          let residualBinding = this.getBinding(environment, innerName);
           this.visitBinding(val, residualBinding);
           residualFunctionBindings.set(innerName, residualBinding);
           if (functionInfo.modified.has(innerName)) residualBinding.modified = true;
@@ -680,7 +680,7 @@ export class ResidualHeapVisitor {
   }
 
   // Visits a binding, returns a ResidualFunctionBinding
-  getBinding(val: FunctionValue, environment: EnvironmentRecord, name: string): ResidualFunctionBinding {
+  getBinding(environment: EnvironmentRecord, name: string): ResidualFunctionBinding {
     if (environment === this.globalEnvironmentRecord.$DeclarativeRecord) environment = this.globalEnvironmentRecord;
 
     if (environment === this.globalEnvironmentRecord) {
@@ -1109,7 +1109,7 @@ export class ResidualHeapVisitor {
         invariant(additionalFunctionInfo);
         let { functionValue } = additionalFunctionInfo;
         invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
-        let residualBinding = this.getBinding(functionValue, modifiedBinding.environment, modifiedBinding.name);
+        let residualBinding = this.getBinding(modifiedBinding.environment, modifiedBinding.name);
         let funcInstance = additionalFunctionInfo.instance;
         invariant(funcInstance !== undefined);
         funcInstance.residualFunctionBindings.set(modifiedBinding.name, residualBinding);
@@ -1138,6 +1138,11 @@ export class ResidualHeapVisitor {
         // TODO nested optimized functions: revisit adding GLOBAL as outer optimized function
         residualBinding.potentialReferentializationScopes.add("GLOBAL");
         return [residualBinding, newValue];
+      },
+      visitBindingAssignment: (binding: Binding, value: Value) => {
+        let residualBinding = this.getBinding(binding.environment, binding.name);
+        residualBinding.modified = true;
+        return this.visitEquivalentValue(value);
       },
     };
     return callbacks;

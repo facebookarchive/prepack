@@ -191,7 +191,7 @@ export class Referentializer {
     return [t.variableDeclaration("var", [t.variableDeclarator(t.identifier(capturedScope), init)])];
   }
 
-  referentializeBinding(residualBinding: ResidualFunctionBinding, name: string, instance: FunctionInstance): void {
+  referentializeBinding(residualBinding: ResidualFunctionBinding): void {
     // Space for captured mutable bindings is allocated lazily.
     let scope = this._getSerializedBindingScopeInstance(residualBinding);
     let capturedScope = "__captured" + scope.name;
@@ -203,14 +203,39 @@ export class Referentializer {
     // an improvement to split these variables into multiple
     // scopes.
     const variableIndexInScope = scope.initializationValues.length;
+    const indexExpression = t.numericLiteral(variableIndexInScope);
     invariant(residualBinding.serializedValue);
     scope.initializationValues.push(residualBinding.serializedValue);
     scope.capturedScope = capturedScope;
 
     // Replace binding usage with scope references
+
+    // The rewritten .serializedValue refers to a local capturedScope variable
+    // which is only accessible from within residual functions where code
+    // to create this variable is emitted.
     residualBinding.serializedValue = t.memberExpression(
       t.identifier(capturedScope),
-      t.numericLiteral(variableIndexInScope),
+      indexExpression,
+      true // Array style access.
+    );
+
+    // .serializedUnscopedLocation is initialized with a more general expressions
+    // that can be used outside of residual functions.
+    // TODO: Creating these expressions just in case looks expensive. Measure, and potentially only create lazily.
+    const state = this._getReferentializationState(scope.referentializationScope);
+    const funcName = state.capturedScopeAccessFunctionId;
+    const scopeArray = state.capturedScopesArray;
+    // First get scope array entry and check if it's already initialized.
+    // Only if not yet, then call the initialization function.
+    const scopeName = t.numericLiteral(scope.id);
+    const capturedScopeExpression = t.logicalExpression(
+      "||",
+      t.memberExpression(scopeArray, scopeName, true),
+      t.callExpression(funcName, [scopeName])
+    );
+    residualBinding.serializedUnscopedLocation = t.memberExpression(
+      capturedScopeExpression,
+      indexExpression,
       true // Array style access.
     );
 

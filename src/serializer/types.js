@@ -12,7 +12,7 @@
 import { DeclarativeEnvironmentRecord, type Binding } from "../environment.js";
 import { ConcreteValue, Value, ObjectValue, AbstractValue } from "../values/index.js";
 import type { ECMAScriptSourceFunctionValue, FunctionValue } from "../values/index.js";
-import type { BabelNodeExpression, BabelNodeStatement } from "babel-types";
+import type { BabelNodeExpression, BabelNodeStatement, BabelNodeMemberExpression } from "babel-types";
 import { SameValue } from "../methods/abstract.js";
 import { Realm, type Effects } from "../realm.js";
 import invariant from "../invariant.js";
@@ -111,6 +111,7 @@ export type ResidualFunctionBinding = {
   declarativeEnvironmentRecord: null | DeclarativeEnvironmentRecord,
   // The serializedValue is only not yet present during the initialization of a binding that involves recursive dependencies.
   serializedValue?: void | BabelNodeExpression,
+  serializedUnscopedLocation?: void | BabelNodeIdentifier | BabelNodeMemberExpression,
   referentialized?: boolean,
   scope?: ScopeBinding,
   // Which additional functions a binding is accessed by. (Determines what initializer
