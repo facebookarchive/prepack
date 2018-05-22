@@ -942,7 +942,7 @@ export class Realm {
   evaluateWithAbstractConditional(
     condValue: AbstractValue,
     consequentEffectsFunc: () => Effects,
-    alternateEffectsFunc: () => Effects
+    alternateEffectsFunc: (effects?: Effects) => Effects
   ): Value {
     // Evaluate consequent and alternate in sandboxes and get their effects.
     let effects1;
@@ -954,7 +954,7 @@ export class Realm {
 
     let effects2;
     try {
-      effects2 = Path.withInverseCondition(condValue, alternateEffectsFunc);
+      effects2 = Path.withInverseCondition(condValue, () => alternateEffectsFunc(effects1));
     } catch (e) {
       if (!(e instanceof InfeasiblePathError)) throw e;
     }
