@@ -30,7 +30,6 @@ import {
   ProxyValue,
   StringValue,
   SymbolValue,
-  UndefinedValue,
   Value,
 } from "../values/index.js";
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
@@ -1173,16 +1172,13 @@ export class ResidualHeapVisitor {
     // Allows us to emit function declarations etc. inside of this additional
     // function instead of adding them at global scope
     this.residualReactElementVisitor.withCleanEquivalenceSet(() => {
-      let modifiedBindingInfo = new Map();
-      let { result } = additionalEffects.effects;
-
       invariant(funcInstance !== undefined);
       invariant(functionInfo !== undefined);
       let additionalFunctionInfo = {
+        modifiedBindings: new Map(),
         functionValue,
-        modifiedBindings: modifiedBindingInfo,
         instance: funcInstance,
-        hasReturn: !(result instanceof UndefinedValue),
+        prelude: [],
       };
       this.additionalFunctionValueInfos.set(functionValue, additionalFunctionInfo);
 

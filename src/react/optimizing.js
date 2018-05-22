@@ -252,3 +252,26 @@ export function optimizeReactComponentTreeRoot(
     optimizeReactNestedClosures(realm, reconciler, writeEffects, environmentRecordIdAfterGlobalCode, logger);
   } while (startingComponentTreeBranches !== reconciler.branchedComponentTrees.length);
 }
+
+export function applyOptimizedReactComponents(
+  realm: Realm,
+  writeEffects: WriteEffects,
+  environmentRecordIdAfterGlobalCode: number
+): void {
+  for (let { effects, func } of realm.react.optimizedNestedClosuresToWrite) {
+    let additionalFunctionEffects = createAdditionalEffects(
+      realm,
+      effects,
+      true,
+      "ReactNestedAdditionalFunctionEffects",
+      environmentRecordIdAfterGlobalCode
+    );
+    invariant(additionalFunctionEffects);
+    if (func instanceof BoundFunctionValue) {
+      invariant(func.$BoundTargetFunction instanceof ECMAScriptSourceFunctionValue);
+      writeEffects.set(func.$BoundTargetFunction, additionalFunctionEffects);
+    } else {
+      writeEffects.set(func, additionalFunctionEffects);
+    }
+  }
+}

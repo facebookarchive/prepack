@@ -30,6 +30,7 @@ import {
   AbstractObjectValue,
   AbstractValue,
   ArrayValue,
+  BoundFunctionValue,
   ConcreteValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
@@ -85,7 +86,8 @@ export class Effects {
     generator: Generator,
     bindings: Bindings,
     propertyBindings: PropertyBindings,
-    createdObjects: CreatedObjects
+    createdObjects: CreatedObjects,
+    priorEffects?: Effects
   ) {
     this.result = result;
     this.generator = generator;
@@ -95,6 +97,9 @@ export class Effects {
 
     this.canBeApplied = true;
     this._id = effects_uid++;
+    if (priorEffects) {
+      this.priorEffects = priorEffects;
+    }
   }
 
   result: EvaluationResult;
@@ -104,6 +109,7 @@ export class Effects {
   createdObjects: CreatedObjects;
   canBeApplied: boolean;
   _id: number;
+  priorEffects: void | Effects;
 }
 
 export class Tracer {
@@ -245,6 +251,7 @@ export class Realm {
 
     this.react = {
       abstractHints: new WeakMap(),
+      optimizedNestedClosuresToWrite: [],
       arrayHints: new WeakMap(),
       classComponentMetadata: new Map(),
       currentOwner: undefined,
@@ -328,6 +335,10 @@ export class Realm {
     // (for example, when we use Relay's React containers with "fb-www" – which are AbstractObjectValues,
     // we need to know what React component was passed to this AbstractObjectValue so we can visit it next)
     abstractHints: WeakMap<AbstractValue | ObjectValue, ReactHint>,
+    optimizedNestedClosuresToWrite: Array<{
+      effects: Effects,
+      func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
+    }>,
     arrayHints: WeakMap<ArrayValue, { func: Value, thisVal: Value }>,
     classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
     currentOwner?: ObjectValue,
@@ -1253,16 +1264,13 @@ export class Realm {
   }
 
   captureEffects(completion: PossiblyNormalCompletion) {
-    if (completion.savedEffects !== undefined) {
-      // Already called captureEffects, just carry on
-      return;
-    }
     completion.savedEffects = new Effects(
       this.intrinsics.undefined,
       (this.generator: any),
       (this.modifiedBindings: any),
       (this.modifiedProperties: any),
-      (this.createdObjects: any)
+      (this.createdObjects: any),
+      completion.savedEffects
     );
     this.generator = new Generator(this, "captured");
     this.modifiedBindings = new Map();
@@ -1295,13 +1303,16 @@ export class Realm {
 
     // Restore saved state
     if (completion.savedEffects !== undefined) {
-      const savedEffects = { ...completion.savedEffects };
-      savedEffects.result;
+      const savedEffects = completion.savedEffects;
       completion.savedEffects = undefined;
       this.generator = savedEffects.generator;
       this.modifiedBindings = savedEffects.modifiedBindings;
       this.modifiedProperties = savedEffects.modifiedProperties;
       this.createdObjects = savedEffects.createdObjects;
+      if (savedEffects.priorEffects !== undefined) {
+        completion.savedEffects = savedEffects.priorEffects;
+        this.stopEffectCaptureAndUndoEffects(completion);
+      }
     } else {
       invariant(false);
     }
