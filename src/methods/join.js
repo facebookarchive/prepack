@@ -164,7 +164,7 @@ export class JoinImplementation {
           c.value,
           pnc.joinCondition,
           pnc.consequent,
-          !priorEffects ? pnc.consequentEffects : realm.composeEffects(priorEffects, pnc.consequentEffects),
+          pnc.consequentEffects,
           c,
           !priorEffects ? newAlternateEffects : realm.composeEffects(priorEffects, newAlternateEffects),
           savedPathConditions,
@@ -172,21 +172,15 @@ export class JoinImplementation {
         );
       }
       invariant(pnc.alternate instanceof PossiblyNormalCompletion);
-      let new_alternate = this.composePossiblyNormalCompletions(realm, pnc.alternate, c);
+      let na = this.composePossiblyNormalCompletions(realm, pnc.alternate, c, priorEffects);
       let { generator, modifiedBindings, modifiedProperties, createdObjects } = pnc.alternateEffects;
-      let newAlternateEffects = new Effects(
-        new_alternate,
-        generator,
-        modifiedBindings,
-        modifiedProperties,
-        createdObjects
-      );
+      let newAlternateEffects = new Effects(na, generator, modifiedBindings, modifiedProperties, createdObjects);
       return new PossiblyNormalCompletion(
-        new_alternate.value,
+        c.value,
         pnc.joinCondition,
         pnc.consequent,
         pnc.consequentEffects,
-        new_alternate,
+        na,
         newAlternateEffects,
         savedPathConditions,
         pnc.savedEffects
@@ -200,7 +194,7 @@ export class JoinImplementation {
           c.value,
           pnc.joinCondition,
           c,
-          newConsequentEffects,
+          !priorEffects ? newConsequentEffects : realm.composeEffects(priorEffects, newConsequentEffects),
           pnc.alternate,
           pnc.alternateEffects,
           savedPathConditions,
@@ -208,19 +202,13 @@ export class JoinImplementation {
         );
       }
       invariant(pnc.consequent instanceof PossiblyNormalCompletion);
-      let new_consequent = this.composePossiblyNormalCompletions(realm, pnc.consequent, c);
+      let nc = this.composePossiblyNormalCompletions(realm, pnc.consequent, c);
       let { generator, modifiedBindings, modifiedProperties, createdObjects } = pnc.consequentEffects;
-      let newConsequentEffects = new Effects(
-        new_consequent,
-        generator,
-        modifiedBindings,
-        modifiedProperties,
-        createdObjects
-      );
+      let newConsequentEffects = new Effects(nc, generator, modifiedBindings, modifiedProperties, createdObjects);
       return new PossiblyNormalCompletion(
-        new_consequent.value,
+        c.value,
         pnc.joinCondition,
-        new_consequent,
+        nc,
         newConsequentEffects,
         pnc.alternate,
         pnc.alternateEffects,
