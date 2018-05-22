@@ -1,5 +1,5 @@
 // TODO: add copies checking after handling FunctionDeclaration
-f = function() {
+var f = function() {
   function nested() {
     var x0 = 1;
     var x1 = x0 + x0;
@@ -10,7 +10,7 @@ f = function() {
   }
   return nested;
 }
-g = f();
+var g = f();
 inspect = function() {
   return g();
 }

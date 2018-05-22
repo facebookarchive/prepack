@@ -22,5 +22,5 @@ function d() {
   return e.toString();
 }
 
-x = a() + ";" + b() + ";" + c() + ";" + d();
+var x = a() + ";" + b() + ";" + c() + ";" + d();
 inspect = function() { return x; }

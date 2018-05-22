@@ -35,30 +35,30 @@ let v10 = alwayst || t1;
 let v10a = alwaysf || t1;
 
 if (t1) {
-  x1 = v1;
+  var x1 = v1;
   x1a = v1a;
   x1f = v1f;
   x1fa = v1fa;
   x1ob = v1ob;
 
-  x2 = v2;
+  var x2 = v2;
   x2a = v2a;
   x2f = v2f;
   x2fa = v2fa;
   x2fa2 = v2fa2;
   x2fa3 = v2fa3;
 
-  x3 = v3;
-  x4 = v4;
-  x5 = v5;
-  x6 = v6;
-  x7 = v7;
-  x8 = v8;
+  var x3 = v3;
+  var x4 = v4;
+  var x5 = v5;
+  var x6 = v6;
+  var x7 = v7;
+  var x8 = v8;
 
-  x9 = v9;
-  x9a = v9a;
-  x10 = v10;
-  x10a = v10a;
+  var x9 = v9;
+  var x9a = v9a;
+  var x10 = v10;
+  var x10a = v10a;
 }
 
 inspect = function() { return "" + x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9 + x9a + x10 + x10a; }

@@ -5,6 +5,6 @@ function foo(b) {
   return "is false";
 }
 
-z = foo(!x);
+var z = foo(!x);
 
 inspect = function() { return z; }

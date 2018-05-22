@@ -21,6 +21,6 @@ function require(i) {
 
 __d(foo, 0);
 
-z = require(0);
+var z = require(0);
 
 inspect = function() { return z; }

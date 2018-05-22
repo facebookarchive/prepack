@@ -6,7 +6,7 @@ if (!this.__evaluatePureFunction) {
 
 var symbol = Symbol();
 
-result = __evaluatePureFunction(() => {
+var result = __evaluatePureFunction(() => {
   var somethingUnknown = global.__abstract ? __abstract(undefined, '({})') : {};
   somethingUnknown.foo = 123;
   somethingUnknown['0'] = 'bar';

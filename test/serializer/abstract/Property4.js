@@ -9,7 +9,7 @@ if (x) {
     ob.x = Date.now();
 }
 if (x) {
-    y = ob;
+    var y = ob;
 }
 
 inspect = function() { return y; }

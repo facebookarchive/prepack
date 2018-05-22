@@ -5,12 +5,12 @@ let bar1 = { y: 1 };
 let bar2 = { y: 2 };
 
 let ws = new WeakSet();
-x1 = ws.add(bar0);
+var x1 = ws.add(bar0);
 
 if (x) ws.add(bar1); else ws.add(bar2);
 
-x2 = ws.has(bar0);
-x3 = ws.delete(bar0);
+var x2 = ws.has(bar0);
+var x3 = ws.delete(bar0);
 // The code below does not currently work but could be made to work with a bit more effort. See #1047.
 // x4 = ws.has(bar0);
 // x5 = ws.delete(bar0);

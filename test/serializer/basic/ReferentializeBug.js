@@ -5,6 +5,6 @@
     function h() { return obj.x; }
     return [g(), g(), g(), h];
   }
-  a = f();
+  var a = f();
   inspect = function() { return a[3](); }
 })();

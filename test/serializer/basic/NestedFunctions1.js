@@ -10,6 +10,6 @@
   global.g1 = f();
   global.g2 = f();
   inspect = function() {
-    return g1() + g2();
+    return global.g1() + global.g2();
   }
 })();

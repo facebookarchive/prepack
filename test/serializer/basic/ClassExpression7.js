@@ -1,4 +1,4 @@
-class C {}
-C.prototype.foo = 42;
+global.C = class {}
+global.C.prototype.foo = 42;
 
-inspect = function() { return JSON.stringify(C); }
+inspect = function() { return JSON.stringify(global.C); }

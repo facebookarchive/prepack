@@ -6,7 +6,7 @@
         if (b) {
             x=Date.now(); // definition
         }
-        xx=x; // use of `x`
+        var xx=x; // use of `x`
     }
     xxx=x; // use of `x`
     inspect = function() { return xx >= 0; };

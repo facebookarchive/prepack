@@ -10,4 +10,4 @@ z = o.x;
 z1 = ob1.x;
 z2 = ob2.x;
 
-inspect = function() { return "" + z + z1 + z2; }
+inspect = function() { return "" + global.z + global.z1 + global.z2; }

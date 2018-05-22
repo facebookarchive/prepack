@@ -4,4 +4,4 @@ let xIsNull = x == null;
 let y = xIsNull ? null : {};
 if (y) global.result = true;
 
-inspect = function() { return result; }
+inspect = function() { return global.result; }
