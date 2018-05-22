@@ -48,7 +48,6 @@ function lintCompiledSource(source) {
       console.log(`${chalk.red(error.message)} ${chalk.gray(`(${error.line}:${error.column})`)}`);
     }
     console.log();
-    process.exit(1);
     throw new Error("Test failed lint");
   }
 }
