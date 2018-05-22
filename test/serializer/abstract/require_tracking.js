@@ -25,7 +25,7 @@ function define(factory, moduleId, dependencyMap) {
   var _verboseName = arguments[3];
   if (_verboseName) {
     modules[moduleId].verboseName = _verboseName;
-    verboseNamesToModuleIds[_verboseName] = moduleId;
+    global.verboseNamesToModuleIds[_verboseName] = moduleId;
   }
 }
 
@@ -96,7 +96,7 @@ function moduleThrewError(id) {
 
 define(function(global, require, module, exports) {
   var y = require(2);
-  var obj = global.__abstract ? __abstract(undefined, "({unsupported: true})") : ({unsupported: true});
+  var obj = global.__abstract ? global.__abstract(undefined, "({unsupported: true})") : ({unsupported: true});
   if (obj.unsupported) {
     exports.magic = 42 + y.foo;
   } else {

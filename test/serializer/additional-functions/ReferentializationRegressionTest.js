@@ -1,6 +1,6 @@
 // Copies of 42:1
 (function () {
-    function f() { return x; }
+    function f() { return global.x; }
     f.prop = 42;
     function g1() { return f; }
     function g2() { return f; }

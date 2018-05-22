@@ -1,7 +1,7 @@
 let x = global.__abstract ? __abstract("boolean", "true") : true
 
-y = 1;
-y1 = 2;
+var y = 1;
+var y1 = 2;
 
 function f(b) {
   y = 2;
@@ -14,6 +14,6 @@ function f(b) {
   }
 }
 
-z = f(!x);
+var z = f(!x);
 
 inspect = function() { return z; }

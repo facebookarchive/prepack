@@ -9,7 +9,7 @@ if (x) {
     ob.x = { left: nested, right: nested };
 }
 if (x) {
-    y = ob;
+    var y = ob;
 }
 
 inspect = function() { return y; }

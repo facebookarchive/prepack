@@ -7,6 +7,6 @@ xyz: while (true) {
   if (x) break xyz; else break xyz;
 }
 
-z = arr;
+var z = arr;
 
 inspect = function() { return "" + z; }

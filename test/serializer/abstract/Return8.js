@@ -1,6 +1,6 @@
 let x = global.__abstract ? __abstract("boolean", "true") : true
 
-y = 1;
+var y = 1;
 
 function f(b) {
   if (b) throw 1;
@@ -11,6 +11,6 @@ function g(b) {
   f(b);
 }
 
-z = g(x);
+var z = g(x);
 
 inspect = function() { return z; }

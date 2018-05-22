@@ -4,9 +4,9 @@
 let obj1 = new Object();
 let obj2 = new Object();
 let obj3 = new String("__not_dead_object_signature__");
-m = new WeakMap();
+var m = new WeakMap();
 
 m.set(obj1, obj3);
 m.set(obj2, obj1);
 
-inspect = function() {return "containsRootObject: " + s.has(obj2);}
+inspect = function() {return "containsRootObject: " + global.s.has(obj2);}

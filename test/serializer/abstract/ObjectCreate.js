@@ -6,6 +6,6 @@ if (global.__makeSimple) global.__makeSimple(ob);
 
 let p = x ? undefined : ob.p;
 
-y = Object.create(Object.prototype, p);
+var y = Object.create(Object.prototype, p);
 
 inspect = function() { return "" + y; }

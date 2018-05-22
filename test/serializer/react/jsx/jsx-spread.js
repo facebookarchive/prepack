@@ -57,4 +57,4 @@ global.reactElement = (
   </div>
 );
 
-inspect = function() { return reactElement; }
+inspect = function() { return global.reactElement; }

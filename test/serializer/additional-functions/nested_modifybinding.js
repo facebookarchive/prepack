@@ -16,6 +16,6 @@
     if (global.__optimize)
       global.__optimize(af1);
     inspect = function() {
-        return f()() + residual();
+        return global.f()() + global.residual();
     }
 })();

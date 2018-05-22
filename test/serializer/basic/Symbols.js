@@ -1,4 +1,4 @@
 // es6
-it = Symbol.iterator;
+var it = Symbol.iterator;
 
 inspect = function() { return it === Symbol.iterator; }

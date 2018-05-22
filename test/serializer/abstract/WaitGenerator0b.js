@@ -8,7 +8,7 @@
             x=Date.now(); // definition
         }
         if (c) {
-            xx=x+1; // use of `x`
+            var xx=x+1; // use of `x`
         } else {
             xx=x+2; // use of `x`
         }

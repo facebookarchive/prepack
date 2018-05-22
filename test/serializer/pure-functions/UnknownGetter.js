@@ -23,9 +23,9 @@ __evaluatePureFunction(() => {
   }
   Foo.prototype = abstractObj;
   let objWithProto = new Foo();
-  x = objWithProto[unknown];
-  y1 = abstractObj.y;
-  y2 = objWithProto.y;
+  var x = objWithProto[unknown];
+  var y1 = abstractObj.y;
+  var y2 = objWithProto.y;
 
   inspect = function() { return JSON.stringify({x,y1,y2}); }
 });
