@@ -23,4 +23,4 @@ if (x > 100) {
 }
 result = a;
 
-inspect = function() { return result; }
+inspect = function() { return global.result; }

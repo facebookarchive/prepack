@@ -4,7 +4,7 @@ function foo(b) {
   if (b) throw new Error("is true");
   return "is false";
 }
-
+var z;
 try {
   z = foo(x);
 } catch (e) {

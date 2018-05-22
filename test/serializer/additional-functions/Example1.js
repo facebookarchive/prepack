@@ -1,8 +1,8 @@
 
-AGlobalObject = {};
-AGlobalValue = 5;
-BGlobalObject = { bar: 5 };
-BGlobalValue = 10;
+var AGlobalObject = {};
+var AGlobalValue = 5;
+var BGlobalObject = { bar: 5 };
+var BGlobalValue = 10;
 
 function hello() {
   return " hello ";

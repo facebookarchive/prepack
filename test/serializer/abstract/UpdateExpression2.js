@@ -1,4 +1,4 @@
-let x = global.__abstract ? __abstract("number", "42") : 42;
+let x = global.__abstract ? global.__abstract("number", "42") : 42;
 let obj = {x: x};
 let arr = [x, { obj: obj }];
 let y = obj.x++;

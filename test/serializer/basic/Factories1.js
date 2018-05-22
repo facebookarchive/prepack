@@ -7,6 +7,6 @@
   var c = {"property": 3};
   var d = {"property": 4};
   var e = {"property": 5};
-  heap = [a,a,b,b,c,c,d,d,e,e];
+  var heap = [a,a,b,b,c,c,d,d,e,e];
   inspect = function() { return heap[0]["property"]; }
 })();

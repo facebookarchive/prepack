@@ -19,8 +19,8 @@ if (global.__optimize) {
 inspect = function() {
   additional1();
   additional2();
-  let ret1 = foo();
-  let ret2 = foo();
+  let ret1 = global.foo();
+  let ret2 = global.foo();
   ret1.x += 9;
 
   return ' ' + JSON.stringify(ret1) + JSON.stringify(ret2) + (ret1 === ret2);

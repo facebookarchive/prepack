@@ -1,5 +1,5 @@
 (function () {
-  first = function() {
+  global.first = function() {
     // Function ordering: 1
     second();
     return 10;
@@ -9,6 +9,6 @@
     return 20;
   };
   inspect = function() {
-    return first() + second();
+    return global.first() + second();
   }
 })();

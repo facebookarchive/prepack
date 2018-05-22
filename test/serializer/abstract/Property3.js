@@ -8,7 +8,7 @@ if (x) {
     ob.x = 456;
 }
 if (x) {
-    y = ob;
+    var y = ob;
 }
 
 inspect = function() { return y; }

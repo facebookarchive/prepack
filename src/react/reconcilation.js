@@ -1360,7 +1360,12 @@ export class Reconciler {
     ) {
       // terminal values
       return value;
-    } else if (value instanceof AbstractValue) {
+    }
+    invariant(
+      !(value instanceof ObjectValue) || value._isFinal !== undefined,
+      `An object value was detected during React reconcilation without its bindings properly applied`
+    );
+    if (value instanceof AbstractValue) {
       return this._resolveAbstractValue(componentType, value, context, branchStatus, branchState, evaluatedNode);
     }
     // TODO investigate what about other iterables type objects

@@ -1,5 +1,5 @@
 // add at runtime: global.bar = {x: 1};
-let bar = global.__abstract ? __makeSimple(__abstract({x: 1}, 'bar')) : {x: 1};
+let bar = global.__abstract ? __makeSimple(__abstract({x: 1}, 'global.bar')) : {x: 1};
 
 let foo = global.__abstract ? __abstract('function', '(function() { return this.x; })') : function() { return this.x; };
 bar.foo = foo;
@@ -21,4 +21,4 @@ let foo3 = c ? foo2 : foo;
 
 z1 = foo3(300)
 
-inspect = function() { return "" + x + y + z + z1; }
+inspect = function() { return "" + global.x + global.y + global.z + global.z1; }

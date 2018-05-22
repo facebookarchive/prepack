@@ -46,6 +46,7 @@ if (x) {
 } else {
   Object.defineProperty(ob5, "x", { configurable: false, get: () => 5 });
 }
+var z;
 try {
   z = ob5.x;
 } catch (e) {

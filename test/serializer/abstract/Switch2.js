@@ -1,4 +1,5 @@
 let x = global.__abstract ? __abstract("number", "1") : 1;
+var z1, z2, z3, z4, z5;
 z1 = z2 = z3 = z4 = z5 = 10;
 
 switch (x) {

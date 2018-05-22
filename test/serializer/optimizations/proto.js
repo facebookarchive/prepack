@@ -3,5 +3,5 @@ let o = {};
 Object.setPrototypeOf(o, proto);
 global.x = o;
 inspect = function() {
-  return Object.getPrototypeOf(x).a;
+  return Object.getPrototypeOf(global.x).a;
 }

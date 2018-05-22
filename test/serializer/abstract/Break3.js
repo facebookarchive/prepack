@@ -1,6 +1,6 @@
 let foo = global.__abstract ? __abstract("boolean", "true") : true;
 
-y = eval(`
+var y = eval(`
     do {
       if (foo) {
 	x = 1;

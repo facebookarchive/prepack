@@ -7,6 +7,6 @@ function foo() {
   return "!a && !b";
 }
 
-z = foo();
+var z = foo();
 
 inspect = function() { return z; }

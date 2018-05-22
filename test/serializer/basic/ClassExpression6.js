@@ -1,8 +1,8 @@
-x = 0;
+global.x = 0;
 
 var A = class {
   constructor(y) {
-    x = y + 10;
+    global.x = y + 10;
   }
   render() {
 
@@ -19,4 +19,4 @@ var C = class extends b.constructor {
 
 new C(1);
 
-inspect = function() { return x; }
+inspect = function() { return global.x; }

@@ -3,8 +3,8 @@ let foo = global.__abstract ? __abstract(function() { return this.x; }, '(functi
 
 bar.foo = foo;
 Object.freeze(bar);
-x = bar.foo();
+var x = bar.foo();
 bar.foo = function() { return "abc"; }
-y = bar.foo();
+var y = bar.foo();
 
 inspect = function() { return "" + x + y; }

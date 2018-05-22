@@ -153,6 +153,7 @@ export class ResidualHeapSerializer {
     this.intrinsicNameGenerator = this.preludeGenerator.createNameGenerator("$i_");
     this.functionNameGenerator = this.preludeGenerator.createNameGenerator("$f_");
     this.initializeConditionNameGenerator = this.preludeGenerator.createNameGenerator("_initialized");
+    this.initializerNameGenerator = this.preludeGenerator.createNameGenerator("__init_");
     this.requireReturns = new Map();
     this.serializedValues = new Set();
     this._serializedValueWithIdentifiers = new Set();
@@ -164,16 +165,27 @@ export class ResidualHeapSerializer {
       this.modules,
       this.requireReturns,
       {
+        getContainingAdditionalFunction: functionValue => {
+          let instance = this.residualFunctionInstances.get(functionValue);
+          invariant(instance !== undefined);
+          return instance.containingAdditionalFunction;
+        },
         getLocation: value => this.getSerializeObjectIdentifier(value),
-        createLocation: () => {
+        createLocation: containingAdditionalFunction => {
           let location = t.identifier(this.initializeConditionNameGenerator.generate());
-          // TODO: This function may get to create locations to be used in additional functions; is the global prelude the right place?
-          this.prelude.push(t.variableDeclaration("var", [t.variableDeclarator(location)]));
+          let declar = t.variableDeclaration("var", [t.variableDeclarator(location)]);
+          this._getPrelude(containingAdditionalFunction).push(declar);
           return location;
+        },
+        createFunction: (containingAdditionalFunction, statements) => {
+          let id = t.identifier(this.initializerNameGenerator.generate());
+          this._getPrelude(containingAdditionalFunction).push(
+            t.functionDeclaration(id, [], t.blockStatement(statements))
+          );
+          return id;
         },
       },
       this.prelude,
-      this.preludeGenerator.createNameGenerator("__init_"),
       this.factoryNameGenerator,
       residualFunctionInfos,
       residualFunctionInstances,
@@ -226,6 +238,7 @@ export class ResidualHeapSerializer {
   intrinsicNameGenerator: NameGenerator;
   functionNameGenerator: NameGenerator;
   initializeConditionNameGenerator: NameGenerator;
+  initializerNameGenerator: NameGenerator;
   logger: Logger;
   modules: Modules;
   residualHeapValueIdentifiers: ResidualHeapValueIdentifiers;
@@ -752,6 +765,7 @@ export class ResidualHeapSerializer {
   ): {
     body: SerializedBody,
     usedOnlyByResidualFunctions?: true,
+    referencingOnlyAdditionalFunction?: void | FunctionValue,
     commonAncestor?: Scope,
     description?: string,
   } {
@@ -780,14 +794,22 @@ export class ResidualHeapSerializer {
     let referencingOnlyAdditionalFunction = this.isReferencedOnlyByAdditionalFunction(val);
     if (generators.length === 0) {
       // This value is only referenced from residual functions.
-      if (referencingOnlyAdditionalFunction === undefined && this._options.delayInitializations) {
+      if (
+        this._options.delayInitializations &&
+        (referencingOnlyAdditionalFunction === undefined || !functionValues.includes(referencingOnlyAdditionalFunction))
+      ) {
         // We can delay the initialization, and move it into a conditional code block in the residual functions!
         let body = this.residualFunctions.residualFunctionInitializers.registerValueOnlyReferencedByResidualFunctions(
           functionValues,
           val
         );
 
-        return { body, usedOnlyByResidualFunctions: true, description: "delay_initializer" };
+        return {
+          body,
+          usedOnlyByResidualFunctions: true,
+          referencingOnlyAdditionalFunction,
+          description: "delay_initializer",
+        };
       }
     }
 
@@ -931,15 +953,26 @@ export class ResidualHeapSerializer {
     return ((residualBinding.serializedValue: any): BabelNodeIdentifier | BabelNodeMemberExpression);
   }
 
+  _getPrelude(additionalFunction: void | FunctionValue): Array<BabelNodeStatement> {
+    if (additionalFunction !== undefined) {
+      let body = this.residualFunctions.additionalFunctionPreludes.get(additionalFunction);
+      invariant(body !== undefined);
+      return body;
+    } else {
+      return this.prelude;
+    }
+  }
+
   _declare(
     emittingToResidualFunction: boolean,
+    referencingOnlyAdditionalFunction: void | FunctionValue,
     bindingType: BabelVariableKind,
     id: BabelNodeLVal,
     init: BabelNodeExpression
   ) {
     if (emittingToResidualFunction) {
       let declar = t.variableDeclaration(bindingType, [t.variableDeclarator(id)]);
-      this.mainBody.entries.push(declar);
+      this._getPrelude(referencingOnlyAdditionalFunction).push(declar);
       let assignment = t.expressionStatement(t.assignmentExpression("=", id, init));
       this.emitter.emit(assignment);
     } else {
@@ -1019,7 +1052,13 @@ export class ResidualHeapSerializer {
           this.emitter.emit(commentStatement(comment));
         }
         if (init !== id) {
-          this._declare(!!target.usedOnlyByResidualFunctions, bindingType || "var", id, init);
+          this._declare(
+            !!target.usedOnlyByResidualFunctions,
+            target.referencingOnlyAdditionalFunction,
+            bindingType || "var",
+            id,
+            init
+          );
         }
         this.getStatistics().valueIds++;
         if (target.usedOnlyByResidualFunctions) this.getStatistics().delayedValues++;
@@ -1851,7 +1890,7 @@ export class ResidualHeapSerializer {
           () => {
             const serializedValue = this._serializeAbstractValueHelper(val);
             let uid = this.getSerializeObjectIdentifier(val);
-            this._declare(this.emitter.cannotDeclare(), "var", uid, serializedValue);
+            this._declare(this.emitter.cannotDeclare(), undefined, "var", uid, serializedValue);
           },
           this.emitter.getBody()
         );
