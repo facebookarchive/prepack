@@ -49,4 +49,4 @@ global.React = {
 global.reactElement = <div><MyComponent foo="bar">Hello world</MyComponent></div>;
 global.reactElementB = <div><Container.MyComponent foo="bar">Hello world</Container.MyComponent></div>;
 
-inspect = function() { return [reactElement, reactElementB]; }
+inspect = function() { return [global.reactElement, global.reactElementB]; }

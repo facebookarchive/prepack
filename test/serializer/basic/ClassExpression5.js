@@ -1,8 +1,8 @@
-x = 0;
+global.x = 0;
 
 class Bar {
   constructor(y) {
-    x = y + 10;
+    global.x = y + 10;
   }
 }
 
@@ -14,4 +14,4 @@ class Foo extends Bar {
 
 new Foo(1);
 
-inspect = function() { return x; }
+inspect = function() { return global.x; }

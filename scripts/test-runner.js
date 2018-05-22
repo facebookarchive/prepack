@@ -29,12 +29,27 @@ let child_process = require("child_process");
 const EOL = os.EOL;
 let execSpec;
 let JSONTokenizer = require("../lib/utils/JSONTokenizer.js").default;
+let { Linter } = require("eslint");
+let lintConfig = require("./lint-config");
 
 function transformWithBabel(code, plugins, presets) {
   return babel.transform(code, {
     plugins: plugins,
     presets: presets,
   }).code;
+}
+
+function lintCompiledSource(source) {
+  let linter = new Linter();
+  let errors = linter.verify(source, lintConfig);
+  if (errors.length > 0) {
+    console.log("\nTest output failed lint due to:\n");
+    for (let error of errors) {
+      console.log(`${chalk.red(error.message)} ${chalk.gray(`(${error.line}:${error.column})`)}`);
+    }
+    console.log();
+    throw new Error("Test failed lint");
+  }
 }
 
 function search(dir, relative) {
@@ -454,6 +469,8 @@ function runTest(name, code, options: PrepackOptions, args) {
         if (args.es5) {
           codeToRun = transformWithBabel(codeToRun, [], [["env", { forceAllTransforms: true, modules: false }]]);
         }
+        // lint output
+        lintCompiledSource(codeToRun);
         try {
           if (execSpec) {
             actual = execExternal(execSpec, codeToRun);

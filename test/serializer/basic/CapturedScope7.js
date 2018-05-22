@@ -7,7 +7,7 @@
                 function() { return b++; /* This comment makes this function too big to be inlined. */ },
                 ];
     }
-    F = f();
+    var F = f();
     inspect = function() {
         F[0]();
         return F[1]();

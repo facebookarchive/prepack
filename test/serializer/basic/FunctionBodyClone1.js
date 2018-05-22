@@ -11,6 +11,6 @@
   // to make sure any AST change to nested function does not affect parent.
   global.f = foo;
   inspect = function() {
-    return f()();
+    return global.f()();
   };
 })();

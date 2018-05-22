@@ -9,4 +9,4 @@ global.f1 = function() {
 };
   
 if (global.__optimize) __optimize(f);
-global.inspect = function() { f(); f1(); return x !== y; }
+global.inspect = function() { global.f(); global.f1(); return x !== y; }

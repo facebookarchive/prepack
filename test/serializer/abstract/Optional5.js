@@ -9,6 +9,6 @@ function getCollectionData(collection) {
   };
 }
 
-z = getCollectionData(y);
+var z = getCollectionData(y);
 
 inspect = function() { return JSON.stringify(z); }

@@ -12,6 +12,6 @@
     }
     global.obj = obj.time;
     inspect = function() {
-      return obj.time > 0;
+      return global.obj.time > 0;
     }
 })();

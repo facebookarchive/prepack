@@ -8,6 +8,6 @@ function render(ob) {
 }
 let absOb = global.__abstract ? __abstract("object", "ob"): { x: { y: { z: {  } } } };
 if (global.__makeSimple) __makeSimple(absOb, "transitive");
-prepackedRender = render(absOb);
+var prepackedRender = render(absOb);
 
 inspect = function() { return JSON.stringify(prepackedRender); }

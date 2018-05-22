@@ -1,4 +1,4 @@
-class Foo {
+const Foo = class {
   constructor() {
     this.x = 10;
   }
@@ -7,7 +7,7 @@ class Foo {
   }
 }
 
-class Bar extends Foo {
+const Bar = class {
   constructor() {
     super();
     this.y = 10;

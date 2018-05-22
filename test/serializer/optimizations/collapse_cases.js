@@ -16,5 +16,5 @@
     global.g3 = f1();
     global.g4 = f2();
     global.g5 = f1();
-    inspect = function() { return g1() + g2() + g3() + g4(); }
+    inspect = function() { return global.g1() + global.g2() + global.g3() + global.g4(); }
 })();

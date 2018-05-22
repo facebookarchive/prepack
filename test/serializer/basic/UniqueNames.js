@@ -1,7 +1,7 @@
 (function() {
   function bar() {
     try {
-      return _0.name;
+      return global._0.name;
     } catch(e) {
       return "exception";
     }

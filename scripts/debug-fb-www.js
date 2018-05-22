@@ -21,6 +21,7 @@ let readFileAsync = promisify(readFile);
 let writeFileAsync = promisify(writeFile);
 let chalk = require("chalk");
 let { Linter } = require("eslint");
+let lintConfig = require("./lint-config");
 
 let errorsCaptured = [];
 
@@ -112,59 +113,7 @@ async function readComponentsList() {
 
 function lintCompiledSource(source) {
   let linter = new Linter();
-  let errors = linter.verify(source, {
-    env: {
-      commonjs: true,
-      browser: true,
-    },
-    rules: {
-      "no-undef": "error",
-      "no-use-before-define": ["error", { variables: false, functions: false }],
-    },
-    parserOptions: {
-      ecmaVersion: 6,
-      ecmaFeatures: {
-        jsx: true,
-      },
-    },
-    globals: {
-      // FB
-      React: true,
-      Env: true,
-      Bootloader: true,
-      JSResource: true,
-      babelHelpers: true,
-      regeneratorRuntime: true,
-      asset: true,
-      cx: true,
-      cssVar: true,
-      csx: true,
-      errorDesc: true,
-      errorHelpCenterID: true,
-      errorSummary: true,
-      gkx: true,
-      glyph: true,
-      ifRequired: true,
-      ix: true,
-      fbglyph: true,
-      fbt: true,
-      requireWeak: true,
-      xuiglyph: true,
-      // ES 6
-      Promise: true,
-      Map: true,
-      Set: true,
-      Proxy: true,
-      Symbol: true,
-      WeakMap: true,
-      // Vendor specific
-      MSApp: true,
-      ActiveXObject: true,
-      __REACT_DEVTOOLS_GLOBAL_HOOK__: true,
-      // CommonJS / Node
-      process: true,
-    },
-  });
+  let errors = linter.verify(source, lintConfig);
   if (errors.length > 0) {
     console.log(`\n${chalk.inverse(`=== Validation Failed ===`)}\n`);
     for (let error of errors) {

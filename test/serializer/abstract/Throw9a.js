@@ -1,6 +1,6 @@
-let x = global.__abstract ? __abstract("boolean", "true") : true;
-let y = global.__abstract ? __abstract("boolean", "false") : false;
-let z = global.__abstract ? __abstract("boolean", "(false)") : false;
+let x = global.__abstract ? global.__abstract("boolean", "true") : true;
+let y = global.__abstract ? global.__abstract("boolean", "false") : false;
+let z = global.__abstract ? global.__abstract("boolean", "(false)") : false;
 
 function foo1() {
   if (x) {
@@ -33,6 +33,11 @@ function foo4() {
     if (!z) return 2; throw new Error("x is false");
   }
 }
+
+var z1;
+var z2;
+var z3;
+var z4;
 
 try { z1 = foo1(); } catch (e) {}
 try { z2 = foo2(); } catch (e) {}
