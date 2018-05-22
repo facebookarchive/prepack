@@ -226,15 +226,16 @@ export function forEachArrayValue(
   mapFunc: (element: Value, descriptor: Descriptor) => void
 ): void {
   let lengthValue = Get(realm, array, "length");
-  invariant(lengthValue instanceof NumberValue, "Invalid length on ArrayValue during reconcilation");
+  invariant(lengthValue instanceof NumberValue, "TODO: support non-numeric length on forEachArrayValue");
   let length = lengthValue.value;
   for (let i = 0; i < length; i++) {
     let elementProperty = array.properties.get("" + i);
     let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
-    invariant(elementPropertyDescriptor, `Invalid ArrayValue[${i}] descriptor`);
-    let elementValue = elementPropertyDescriptor.value;
-    if (elementValue instanceof Value) {
-      mapFunc(elementValue, elementPropertyDescriptor);
+    if (elementPropertyDescriptor) {
+      let elementValue = elementPropertyDescriptor.value;
+      if (elementValue instanceof Value) {
+        mapFunc(elementValue, elementPropertyDescriptor);
+      }
     }
   }
 }
@@ -245,7 +246,7 @@ export function mapArrayValue(
   mapFunc: (element: Value, descriptor: Descriptor) => Value
 ): ArrayValue {
   let lengthValue = Get(realm, array, "length");
-  invariant(lengthValue instanceof NumberValue, "Invalid length on ArrayValue during reconcilation");
+  invariant(lengthValue instanceof NumberValue, "TODO: support non-numeric length on mapArrayValue");
   let length = lengthValue.value;
   let newArray = Create.ArrayCreate(realm, length);
   let returnTheNewArray = false;
@@ -253,15 +254,18 @@ export function mapArrayValue(
   for (let i = 0; i < length; i++) {
     let elementProperty = array.properties.get("" + i);
     let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
-    invariant(elementPropertyDescriptor, `Invalid ArrayValue[${i}] descriptor`);
-    let elementValue = elementPropertyDescriptor.value;
-    if (elementValue instanceof Value) {
-      let newElement = mapFunc(elementValue, elementPropertyDescriptor);
-      if (newElement !== elementValue) {
-        returnTheNewArray = true;
+    if (elementPropertyDescriptor) {
+      let elementValue = elementPropertyDescriptor.value;
+      if (elementValue instanceof Value) {
+        let newElement = mapFunc(elementValue, elementPropertyDescriptor);
+        if (newElement !== elementValue) {
+          returnTheNewArray = true;
+        }
+        Create.CreateDataPropertyOrThrow(realm, newArray, "" + i, newElement);
+        continue;
       }
-      Create.CreateDataPropertyOrThrow(realm, newArray, "" + i, newElement);
     }
+    Create.CreateDataPropertyOrThrow(realm, newArray, "" + i, realm.intrinsics.undefined);
   }
   return returnTheNewArray ? newArray : array;
 }
