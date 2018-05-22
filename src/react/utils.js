@@ -550,18 +550,27 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
 
 export function evaluateWithNestedParentEffects(realm: Realm, nestedEffects: Array<Effects>, f: () => Effects) {
   let nextEffects = nestedEffects.slice();
-  let effects = nextEffects.shift();
-  let { result: value, modifiedBindings, createdObjects } = effects;
-  let modifiedProperties: Map<PropertyBinding, void | Descriptor> = effects.modifiedProperties;
-  realm.applyEffects(
-    new Effects(
-      value,
-      new Generator(realm, "evaluateWithNestedEffects"),
-      modifiedBindings,
-      modifiedProperties,
-      createdObjects
-    )
-  );
+  let modifiedBindings;
+  let modifiedProperties;
+  let createdObjects;
+  let value;
+
+  if (nextEffects.length !== 0) {
+    let effects = nextEffects.shift();
+    value = effects.result;
+    createdObjects = effects.createdObjects;
+    modifiedBindings = effects.modifiedBindings;
+    modifiedProperties = effects.modifiedProperties;
+    realm.applyEffects(
+      new Effects(
+        value,
+        new Generator(realm, "evaluateWithNestedEffects"),
+        modifiedBindings,
+        modifiedProperties,
+        createdObjects
+      )
+    );
+  }
   try {
     if (nextEffects.length === 0) {
       return f();
@@ -569,8 +578,10 @@ export function evaluateWithNestedParentEffects(realm: Realm, nestedEffects: Arr
       return evaluateWithNestedParentEffects(realm, nextEffects, f);
     }
   } finally {
-    realm.restoreBindings(modifiedBindings);
-    realm.restoreProperties(modifiedProperties);
+    if (modifiedBindings && modifiedProperties) {
+      realm.restoreBindings(modifiedBindings);
+      realm.restoreProperties(modifiedProperties);
+    }
   }
 }
 

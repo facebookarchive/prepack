@@ -57,7 +57,6 @@ export class ResidualFunctions {
     requireReturns: Map<number | string, Replacement>,
     locationService: LocationService,
     prelude: Array<BabelNodeStatement>,
-    initializerNameGenerator: NameGenerator,
     factoryNameGenerator: NameGenerator,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     residualFunctionInstances: Map<FunctionValue, FunctionInstance>,
@@ -77,11 +76,7 @@ export class ResidualFunctions {
     this.functions = new Map();
     this.classes = new Map();
     this.functionInstances = [];
-    this.residualFunctionInitializers = new ResidualFunctionInitializers(
-      locationService,
-      prelude,
-      initializerNameGenerator
-    );
+    this.residualFunctionInitializers = new ResidualFunctionInitializers(locationService);
     this.residualFunctionInfos = residualFunctionInfos;
     this.residualFunctionInstances = residualFunctionInstances;
     this.residualClassMethodInstances = residualClassMethodInstances;
@@ -92,6 +87,10 @@ export class ResidualFunctions {
       if (!additionalFunctionValueInfos.has(instance.functionValue)) this.addFunctionInstance(instance);
     }
     this.additionalFunctionValueNestedFunctions = additionalFunctionValueNestedFunctions;
+    this.additionalFunctionPreludes = new Map();
+    for (let functionValue of additionalFunctionValueInfos.keys()) {
+      this.additionalFunctionPreludes.set(functionValue, []);
+    }
   }
 
   realm: Realm;
@@ -112,6 +111,7 @@ export class ResidualFunctions {
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
   referentializer: Referentializer;
+  additionalFunctionPreludes: Map<FunctionValue, Array<BabelNodeStatement>>;
 
   getStatistics() {
     invariant(this.realm.statistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
@@ -266,23 +266,22 @@ export class ResidualFunctions {
 
     let functionBodies = new Map();
     // these need to get spliced in at the end
-    let additionalFunctionPreludes = new Map();
     let additionalFunctionModifiedBindingsSegment: Map<FunctionValue, Array<BabelNodeStatement>> = new Map();
     let getModifiedBindingsSegment = additionalFunction =>
       getOrDefault(additionalFunctionModifiedBindingsSegment, additionalFunction, () => []);
     let getFunctionBody = (instance: FunctionInstance): Array<BabelNodeStatement> =>
       getOrDefault(functionBodies, instance, () => []);
-    let globalPrelude = this.prelude;
-    function getPrelude(instance: FunctionInstance): Array<BabelNodeStatement> {
+    let getPrelude = (instance: FunctionInstance): Array<BabelNodeStatement> => {
       let additionalFunction = instance.containingAdditionalFunction;
       let b;
-      if (additionalFunction) {
-        b = getOrDefault(additionalFunctionPreludes, additionalFunction, () => []);
+      if (additionalFunction !== undefined) {
+        b = this.additionalFunctionPreludes.get(additionalFunction);
+        invariant(b !== undefined);
       } else {
-        b = globalPrelude;
+        b = this.prelude;
       }
       return b;
-    }
+    };
 
     let functionEntries: Array<[BabelNodeBlockStatement, Array<FunctionInstance>]> = Array.from(
       this.functions.entries()
@@ -665,11 +664,14 @@ export class ResidualFunctions {
     }
 
     for (let referentializationScope of this.referentializer.referentializationState.keys()) {
-      let prelude = this.prelude;
+      let prelude;
       // Get the prelude for this additional function value
       if (referentializationScope !== "GLOBAL") {
         let additionalFunction = referentializationScope;
-        prelude = getOrDefault(additionalFunctionPreludes, additionalFunction, () => []);
+        prelude = this.additionalFunctionPreludes.get(additionalFunction);
+        invariant(prelude !== undefined);
+      } else {
+        prelude = this.prelude;
       }
       prelude.unshift(this.referentializer.createCaptureScopeAccessFunction(referentializationScope));
       prelude.unshift(this.referentializer.createCapturedScopesArrayInitialization(referentializationScope));
@@ -686,22 +688,6 @@ export class ResidualFunctions {
       }
     }
 
-    for (let [additionalFunction, body] of Array.from(rewrittenAdditionalFunctions.entries()).reverse()) {
-      let additionalFunctionInfo = this.additionalFunctionValueInfos.get(additionalFunction);
-      invariant(additionalFunctionInfo);
-      // Modified bindings initializers of optimized function
-      let bodySegment = additionalFunctionModifiedBindingsSegment.get(additionalFunction);
-      // initializers from Referentialization
-      let initializationStatements = getFunctionBody(additionalFunctionInfo.instance);
-      let prelude = additionalFunctionPreludes.get(additionalFunction);
-      let insertionPoint = additionalFunctionInfo.instance.insertionPoint;
-      invariant(insertionPoint);
-      // TODO: I think this inserts things in the wrong place
-      insertionPoint.body.entries.splice(insertionPoint.index, 0, ...initializationStatements);
-      if (bodySegment) body.unshift(...bodySegment);
-      if (prelude) body.unshift(...prelude);
-    }
-
     // Inject initializer code for indexed vars into functions (for delay initializations)
     for (let [functionValue, funcNode] of funcNodes) {
       let initializerStatement = this.residualFunctionInitializers.getInitializerStatement(functionValue);
@@ -710,6 +696,23 @@ export class ResidualFunctions {
         let blockStatement: BabelNodeBlockStatement = ((funcNode: any): BabelNodeFunctionExpression).body;
         blockStatement.body.unshift(initializerStatement);
       }
+    }
+
+    for (let [additionalFunction, body] of Array.from(rewrittenAdditionalFunctions.entries()).reverse()) {
+      let additionalFunctionInfo = this.additionalFunctionValueInfos.get(additionalFunction);
+      invariant(additionalFunctionInfo);
+      // Modified bindings initializers of optimized function
+      let bodySegment = additionalFunctionModifiedBindingsSegment.get(additionalFunction);
+      // initializers from Referentialization
+      let initializationStatements = getFunctionBody(additionalFunctionInfo.instance);
+      let prelude = this.additionalFunctionPreludes.get(additionalFunction);
+      invariant(prelude !== undefined);
+      let insertionPoint = additionalFunctionInfo.instance.insertionPoint;
+      invariant(insertionPoint);
+      // TODO: I think this inserts things in the wrong place
+      insertionPoint.body.entries.splice(insertionPoint.index, 0, ...initializationStatements);
+      if (bodySegment) body.unshift(...bodySegment);
+      body.unshift(...prelude);
     }
 
     return { unstrictFunctionBodies, strictFunctionBodies };

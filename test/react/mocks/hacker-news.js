@@ -37,7 +37,7 @@ module.exports = this.__evaluatePureFunction(() => {
               textAlign: 'right',
             }}
             className="title">
-            <span className="rank">{rank}.</span>
+            <span className="rank">{rank + "."}</span>
           </td>
           <td
             className="votelinks"
@@ -207,10 +207,14 @@ module.exports = this.__evaluatePureFunction(() => {
   App.getTrials = function(renderer, Root, data) {
     let results = [];
     renderer.update(<Root stories={data} />);
-    results.push(['clone element (true)', renderer.toJSON()]);
+    results.push(['hacker news', renderer.toJSON()]);
 
     return results;
   };
+
+  // we run the getTrials from both version rather than
+  // from the non-compiled version
+  App.independent = true;
 
   App.propTypes = {
     stories: PropTypes.array.isRequired,
