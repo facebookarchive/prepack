@@ -29,12 +29,79 @@ let child_process = require("child_process");
 const EOL = os.EOL;
 let execSpec;
 let JSONTokenizer = require("../lib/utils/JSONTokenizer.js").default;
+let { Linter } = require("eslint");
 
 function transformWithBabel(code, plugins, presets) {
   return babel.transform(code, {
     plugins: plugins,
     presets: presets,
   }).code;
+}
+
+function lintCompiledSource(source) {
+  let linter = new Linter();
+  let errors = linter.verify(source, {
+    env: {
+      commonjs: true,
+      browser: true,
+    },
+    rules: {
+      "no-undef": "error",
+      "no-use-before-define": ["error", { variables: false, functions: false }],
+    },
+    parserOptions: {
+      ecmaVersion: 6,
+      ecmaFeatures: {
+        jsx: true,
+      },
+    },
+    globals: {
+      // FB
+      React: true,
+      Env: true,
+      Bootloader: true,
+      JSResource: true,
+      babelHelpers: true,
+      regeneratorRuntime: true,
+      asset: true,
+      cx: true,
+      cssVar: true,
+      csx: true,
+      errorDesc: true,
+      errorHelpCenterID: true,
+      errorSummary: true,
+      gkx: true,
+      glyph: true,
+      ifRequired: true,
+      ix: true,
+      fbglyph: true,
+      fbt: true,
+      requireWeak: true,
+      xuiglyph: true,
+      // ES 6
+      Promise: true,
+      Map: true,
+      Set: true,
+      Proxy: true,
+      Symbol: true,
+      WeakMap: true,
+      // Vendor specific
+      MSApp: true,
+      ActiveXObject: true,
+      // CommonJS / Node
+      process: true,
+      // Test specific
+      inspect: true,
+    },
+  });
+  if (errors.length > 0) {
+    console.log("\nTest output failed lint due to:\n");
+    for (let error of errors) {
+      console.log(`${chalk.red(error.message)} ${chalk.gray(`(${error.line}:${error.column})`)}`);
+    }
+    console.log();
+    process.exit(1);
+  }
 }
 
 function search(dir, relative) {
@@ -454,6 +521,8 @@ function runTest(name, code, options: PrepackOptions, args) {
         if (args.es5) {
           codeToRun = transformWithBabel(codeToRun, [], [["env", { forceAllTransforms: true, modules: false }]]);
         }
+        // lint output
+        lintCompiledSource(codeToRun);
         try {
           if (execSpec) {
             actual = execExternal(execSpec, codeToRun);
