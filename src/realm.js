@@ -954,7 +954,7 @@ export class Realm {
 
     let effects2;
     try {
-      effects2 = Path.withInverseCondition(condValue, alternateEffectsFunc);
+      effects2 = Path.withInverseCondition(condValue, () => alternateEffectsFunc(effects1));
     } catch (e) {
       if (!(e instanceof InfeasiblePathError)) throw e;
     }

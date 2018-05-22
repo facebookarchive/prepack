@@ -874,12 +874,15 @@ export class Reconciler {
           "_resolveAbstractConditionalValue consequent"
         );
       },
-      () => {
-        return this.realm.evaluateForEffects(
-          () => this._resolveDeeply(componentType, alternateVal, context, "NEW_BRANCH", newBranchState, evaluatedNode),
-          null,
-          "_resolveAbstractConditionalValue consequent"
-        );
+      effects => {
+        return this.realm.withEffectsAppliedInGlobalEnv(() => {
+          return this.realm.evaluateForEffects(
+            () =>
+              this._resolveDeeply(componentType, alternateVal, context, "NEW_BRANCH", newBranchState, evaluatedNode),
+            null,
+            "_resolveAbstractConditionalValue consequent"
+          );
+        }, effects);
       }
     );
     if (this.reactSerializerState !== undefined) {
