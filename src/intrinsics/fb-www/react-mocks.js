@@ -23,9 +23,9 @@ import {
   NumberValue,
 } from "../../values/index.js";
 import { Environment } from "../../singletons.js";
-import { getReactSymbol, createReactHintObject } from "../../react/utils.js";
+import { createReactHintObject, getReactSymbol, resetRefAndKeyFromProps } from "../../react/utils.js";
 import { createReactElement } from "../../react/elements.js";
-import { Properties, Create } from "../../singletons.js";
+import { Properties, Create, To } from "../../singletons.js";
 import * as t from "babel-types";
 import invariant from "../../invariant";
 import { updateIntrinsicNames, addMockFunctionToObject } from "./utils.js";
@@ -498,12 +498,11 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
       if (config === realm.intrinsics.undefined || config === realm.intrinsics.null || config === undefined) {
         config = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
       }
-      invariant(
-        config instanceof ObjectValue ||
-          config instanceof AbstractObjectValue ||
-          config instanceof AbstractValue ||
-          config instanceof NullValue
-      );
+      if (config instanceof AbstractValue && !(config instanceof AbstractObjectValue)) {
+        config = To.ToObject(realm, config);
+      }
+      invariant(config instanceof ObjectValue || config instanceof AbstractObjectValue || config instanceof NullValue);
+      resetRefAndKeyFromProps(realm, config);
 
       if (Array.isArray(children)) {
         if (children.length === 0) {

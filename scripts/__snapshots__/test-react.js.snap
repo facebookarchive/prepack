@@ -9755,16 +9755,30 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output Functional component folding Simple with multiple JSX spreads #2 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 1,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
-      "children": Array [],
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "IWantThisToBeInlined",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Button",
+          "status": "INLINED",
+        },
+      ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
+  "inlinedComponents": 2,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -9772,16 +9786,23 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output Functional component folding Simple with multiple JSX spreads #3 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 1,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
-      "children": Array [],
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Button",
+          "status": "INLINED",
+        },
+      ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
+  "inlinedComponents": 1,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -9840,16 +9861,30 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output Functional component folding Simple with multiple JSX spreads 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 1,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
-      "children": Array [],
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "IWantThisToBeInlined",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Button",
+          "status": "INLINED",
+        },
+      ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
+  "inlinedComponents": 2,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -13368,16 +13403,30 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output Functional component folding Simple with multiple JSX spreads #2 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 1,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
-      "children": Array [],
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "IWantThisToBeInlined",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Button",
+          "status": "INLINED",
+        },
+      ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
+  "inlinedComponents": 2,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -13385,16 +13434,23 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output Functional component folding Simple with multiple JSX spreads #3 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 1,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
-      "children": Array [],
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Button",
+          "status": "INLINED",
+        },
+      ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
+  "inlinedComponents": 1,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -13453,16 +13509,30 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output Functional component folding Simple with multiple JSX spreads 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 1,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
-      "children": Array [],
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "IWantThisToBeInlined",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Button",
+          "status": "INLINED",
+        },
+      ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
+  "inlinedComponents": 2,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }

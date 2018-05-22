@@ -67,6 +67,7 @@ export function getInitialProps(
   // props objects don't have a key and ref, so we remove them
   deleteRefAndKeyFromProps(realm, value);
   invariant(value instanceof AbstractObjectValue);
+  value.makeFinal();
   return value;
 }
 

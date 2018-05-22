@@ -314,7 +314,7 @@ export class Reconciler {
 
   _resolveComplexClassComponent(
     componentType: ECMAScriptSourceFunctionValue,
-    props: ObjectValue | AbstractValue | AbstractObjectValue,
+    props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     classMetadata: ClassComponentMetadata,
     branchStatus: BranchStatusEnum,
@@ -350,7 +350,7 @@ export class Reconciler {
 
   _resolveSimpleClassComponent(
     componentType: ECMAScriptSourceFunctionValue,
-    props: ObjectValue | AbstractValue | AbstractObjectValue,
+    props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null,
@@ -367,7 +367,7 @@ export class Reconciler {
 
   _resolveFunctionalComponent(
     componentType: ECMAScriptSourceFunctionValue,
-    props: ObjectValue | AbstractValue | AbstractObjectValue,
+    props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     evaluatedNode: ReactEvaluatedNode
   ) {
@@ -376,7 +376,7 @@ export class Reconciler {
 
   _getClassComponentMetadata(
     componentType: ECMAScriptSourceFunctionValue,
-    props: ObjectValue | AbstractValue | AbstractObjectValue,
+    props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue
   ): ClassComponentMetadata {
     if (this.realm.react.classComponentMetadata.has(componentType)) {
@@ -603,7 +603,7 @@ export class Reconciler {
 
   _resolveClassComponent(
     componentType: ECMAScriptSourceFunctionValue,
-    props: ObjectValue | AbstractValue | AbstractObjectValue,
+    props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null,
@@ -670,7 +670,7 @@ export class Reconciler {
 
   _resolveClassComponentForFirstRenderOnly(
     componentType: ECMAScriptSourceFunctionValue,
-    props: ObjectValue | AbstractValue | AbstractObjectValue,
+    props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null,
@@ -711,7 +711,7 @@ export class Reconciler {
 
   _resolveRelayContainer(
     reactHint: ReactHint,
-    props: ObjectValue | AbstractValue | AbstractObjectValue,
+    props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null,
@@ -739,7 +739,7 @@ export class Reconciler {
 
   _resolveComponent(
     componentType: Value,
-    props: ObjectValue | AbstractValue | AbstractObjectValue,
+    props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null,
@@ -943,13 +943,13 @@ export class Reconciler {
       if (left instanceof AbstractValue && left.kind === "conditional") {
         left = resolveBranch(left);
       } else {
-        invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractValue);
+        invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue);
         left = createInternalReactElement(this.realm, left, keyValue, refValue, propsValue);
       }
       if (right instanceof AbstractValue && right.kind === "conditional") {
         right = resolveBranch(right);
       } else {
-        invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractValue);
+        invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue);
         right = createInternalReactElement(this.realm, right, keyValue, refValue, propsValue);
       }
       return AbstractValue.createFromConditionalOp(this.realm, condition, left, right);
@@ -1119,14 +1119,11 @@ export class Reconciler {
         evaluatedNode
       );
     }
-    if (
-      !(
-        propsValue instanceof ObjectValue ||
-        propsValue instanceof AbstractObjectValue ||
-        propsValue instanceof AbstractValue
-      )
-    ) {
-      this._assignBailOutMessage(reactElement, `props on <Component /> was not not an ObjectValue or an AbstractValue`);
+    if (!(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue)) {
+      this._assignBailOutMessage(
+        reactElement,
+        `props on <Component /> was not not an ObjectValue or an AbstractObjectValue`
+      );
       return reactElement;
     }
     let componentResolutionStrategy = this._getComponentResolutionStrategy(typeValue);
@@ -1360,7 +1357,8 @@ export class Reconciler {
     ) {
       // terminal values
       return value;
-    } else if (value instanceof AbstractValue) {
+    }
+    if (value instanceof AbstractValue) {
       return this._resolveAbstractValue(componentType, value, context, branchStatus, branchState, evaluatedNode);
     }
     // TODO investigate what about other iterables type objects

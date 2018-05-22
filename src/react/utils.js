@@ -15,17 +15,18 @@ import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
 import {
   AbstractObjectValue,
   AbstractValue,
-  Value,
+  ArrayValue,
+  BooleanValue,
+  BoundFunctionValue,
+  ECMAScriptSourceFunctionValue,
+  FunctionValue,
+  NullValue,
   NumberValue,
   ObjectValue,
-  SymbolValue,
-  FunctionValue,
   StringValue,
-  ArrayValue,
-  ECMAScriptSourceFunctionValue,
-  BoundFunctionValue,
+  SymbolValue,
   UndefinedValue,
-  BooleanValue,
+  Value,
 } from "../values/index.js";
 import { Generator } from "../utils/generator.js";
 import type {
@@ -43,6 +44,7 @@ import { Create, Properties, To } from "../singletons.js";
 import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
+import { ValuesDomain } from "../domains/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 
 export type ReactSymbolTypes =
@@ -520,14 +522,63 @@ export function deleteRefAndKeyFromProps(realm: Realm, props: ObjectValue | Abst
   deleteProperty(props, "key");
 }
 
-export function objectHasNoPartialKeyAndRef(
-  realm: Realm,
-  object: ObjectValue | AbstractValue | AbstractObjectValue
-): boolean {
-  if (object instanceof AbstractValue) {
-    return true;
+export function resetRefAndKeyFromProps(realm: Realm, props: Value): void {
+  if (props instanceof NullValue) {
+    return;
   }
-  return !(Get(realm, object, "key") instanceof AbstractValue || Get(realm, object, "ref") instanceof AbstractValue);
+  invariant(props instanceof ObjectValue || props instanceof AbstractObjectValue);
+  if (props instanceof AbstractObjectValue) {
+    if (props.values.isTop()) {
+      let template = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+      template.makePartial();
+      template.makeSimple();
+      props.values = new ValuesDomain(new Set([template]));
+    }
+    let elements = props.values.getElements();
+    if (elements.size === 1) {
+      props = Array.from(elements)[0];
+    } else {
+      for (let element of elements) {
+        resetRefAndKeyFromProps(realm, element);
+      }
+    }
+  }
+  let possibleKey = getProperty(realm, props, "key");
+  if (possibleKey === realm.intrinsics.null || possibleKey === realm.intrinsics.undefined) {
+    setProperty(props, "key", realm.intrinsics.undefined);
+    deleteProperty(props, "key");
+  }
+  let possibleRef = getProperty(realm, props, "ref");
+  if (possibleRef === realm.intrinsics.null || possibleRef === realm.intrinsics.undefined) {
+    setProperty(props, "ref", realm.intrinsics.undefined);
+    deleteProperty(props, "ref");
+  }
+}
+
+export function propsObjectIsSafeFromPartialKeyOrRef(
+  realm: Realm,
+  props: ObjectValue | AbstractValue | AbstractObjectValue
+): boolean {
+  if (props instanceof AbstractObjectValue && !props.values.isTop()) {
+    let elements = props.values.getElements();
+    if (elements.size === 1) {
+      props = Array.from(elements)[0];
+    } else {
+      for (let element of elements) {
+        let wasSafe = propsObjectIsSafeFromPartialKeyOrRef(realm, element);
+        if (!wasSafe) {
+          return false;
+        }
+      }
+      return true;
+    }
+  }
+  if (props instanceof ObjectValue) {
+    if (props.properties.has("key") && props.properties.has("ref")) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function recursivelyFlattenArray(realm: Realm, array, targetArray): void {
@@ -584,6 +635,9 @@ export function deleteProperty(object: ObjectValue | AbstractObjectValue, proper
     let elements = object.values.getElements();
     if (elements && elements.size > 0) {
       object = Array.from(elements)[0];
+    } else {
+      // intentionally left in
+      invariant("TODO: should we hit this?");
     }
     invariant(object instanceof ObjectValue);
   }
@@ -613,6 +667,9 @@ export function setProperty(
     let elements = object.values.getElements();
     if (elements && elements.size > 0) {
       object = Array.from(elements)[0];
+    } else {
+      // intentionally left in
+      invariant("TODO: should we hit this?");
     }
     invariant(object instanceof ObjectValue);
   }
@@ -664,8 +721,12 @@ export function getProperty(
       return realm.intrinsics.undefined;
     }
     let elements = object.values.getElements();
-    if (elements && elements.size > 0) {
+    invariant(elements);
+    if (elements.size > 0) {
       object = Array.from(elements)[0];
+    } else {
+      // intentionally left in
+      invariant("TODO: should we hit this?");
     }
     invariant(object instanceof ObjectValue);
   }
