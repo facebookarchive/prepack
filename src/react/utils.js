@@ -220,7 +220,11 @@ export function getUniqueReactElementKey(index?: string, usedReactElementKeys: S
 }
 
 // a helper function to loop over ArrayValues
-export function forEachArrayValue(realm: Realm, array: ObjectValue, mapFunc: Function): void {
+export function forEachArrayValue(
+  realm: Realm,
+  array: ArrayValue,
+  mapFunc: (element: Value, descriptor: Descriptor) => void
+): void {
   let lengthValue = Get(realm, array, "length");
   invariant(lengthValue instanceof NumberValue, "Invalid length on ArrayValue during reconcilation");
   let length = lengthValue.value;
@@ -233,6 +237,33 @@ export function forEachArrayValue(realm: Realm, array: ObjectValue, mapFunc: Fun
       mapFunc(elementValue, elementPropertyDescriptor);
     }
   }
+}
+
+export function mapArrayValue(
+  realm: Realm,
+  array: ArrayValue,
+  mapFunc: (element: Value, descriptor: Descriptor) => Value
+): ArrayValue {
+  let lengthValue = Get(realm, array, "length");
+  invariant(lengthValue instanceof NumberValue, "Invalid length on ArrayValue during reconcilation");
+  let length = lengthValue.value;
+  let newArray = Create.ArrayCreate(realm, length);
+  let returnTheNewArray = false;
+
+  for (let i = 0; i < length; i++) {
+    let elementProperty = array.properties.get("" + i);
+    let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
+    invariant(elementPropertyDescriptor, `Invalid ArrayValue[${i}] descriptor`);
+    let elementValue = elementPropertyDescriptor.value;
+    if (elementValue instanceof Value) {
+      let newElement = mapFunc(elementValue, elementPropertyDescriptor);
+      if (newElement !== elementValue) {
+        returnTheNewArray = true;
+      }
+      Create.CreateDataPropertyOrThrow(realm, newArray, "" + i, newElement);
+    }
+  }
+  return returnTheNewArray ? newArray : array;
 }
 
 function GetDescriptorForProperty(value: ObjectValue, propertyName: string): ?Descriptor {

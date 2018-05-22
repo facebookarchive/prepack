@@ -31,7 +31,7 @@ import {
   createReactEvaluatedNode,
   evaluateWithNestedParentEffects,
   flattenChildren,
-  forEachArrayValue,
+  mapArrayValue,
   getComponentName,
   getComponentTypeFromRootValue,
   getLocationFromValue,
@@ -423,7 +423,7 @@ export class Reconciler {
     }
     if (this.componentTreeConfig.firstRenderOnly) {
       if (propsValue instanceof ObjectValue) {
-        this._resolveReactElementHostChildren(
+        let resolvedReactElement = this._resolveReactElementHostChildren(
           componentType,
           reactElement,
           context,
@@ -431,16 +431,18 @@ export class Reconciler {
           branchState,
           evaluatedChildNode
         );
+        let resolvedPropsValue = getProperty(this.realm, resolvedReactElement, "props");
+        invariant(resolvedPropsValue instanceof ObjectValue || resolvedPropsValue instanceof AbstractObjectValue);
         setContextCurrentValue(lastValueProp);
         this._decremementReferenceForContextNode(contextConsumer);
         // if we no dead ends, we know the rest of the tree and can safely remove the provider
         if (this.componentTreeState.deadEnds === 0) {
-          let childrenValue = Get(this.realm, propsValue, "children");
+          let childrenValue = Get(this.realm, resolvedPropsValue, "children");
           evaluatedChildNode.status = "INLINED";
           this.statistics.inlinedComponents++;
           return childrenValue;
         }
-        return reactElement;
+        return resolvedReactElement;
       }
     }
     let children = this._resolveReactElementHostChildren(
@@ -1029,7 +1031,10 @@ export class Reconciler {
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
   ) {
+    let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
+    let keyValue = getProperty(this.realm, reactElement, "key");
+    let refValue = getProperty(this.realm, reactElement, "ref");
     // terminal host component. Start evaluating its children.
     if (propsValue instanceof ObjectValue && propsValue.properties.has("children")) {
       let childrenValue = Get(this.realm, propsValue, "children");
@@ -1047,10 +1052,17 @@ export class Reconciler {
         if (resolvedChildren instanceof ArrayValue && !resolvedChildren.intrinsicName) {
           resolvedChildren = flattenChildren(this.realm, resolvedChildren);
         }
-        if (propsValue.properties.has("children")) {
-          propsValue.refuseSerialization = true;
-          setProperty(propsValue, "children", resolvedChildren);
-          propsValue.refuseSerialization = false;
+        if (resolvedChildren !== childrenValue) {
+          let newProps = new ObjectValue(this.realm, this.realm.intrinsics.ObjectPrototype);
+
+          for (let [key, binding] of propsValue.properties) {
+            if (binding && binding.descriptor && binding.descriptor.enumerable && key !== "children") {
+              setProperty(newProps, key, getProperty(this.realm, propsValue, key));
+            }
+          }
+          setProperty(newProps, "children", resolvedChildren);
+          newProps.makeFinal();
+          return createInternalReactElement(this.realm, typeValue, keyValue, refValue, newProps);
         }
       }
     }
@@ -1370,8 +1382,7 @@ export class Reconciler {
     }
     // TODO investigate what about other iterables type objects
     if (value instanceof ArrayValue) {
-      this._resolveArray(componentType, value, context, branchStatus, branchState, evaluatedNode);
-      return value;
+      return this._resolveArray(componentType, value, context, branchStatus, branchState, evaluatedNode);
     }
     if (value instanceof ObjectValue && isReactElement(value)) {
       return this._resolveReactElement(componentType, value, context, branchStatus, branchState, evaluatedNode);
@@ -1400,7 +1411,7 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
-  ): void {
+  ): ArrayValue {
     if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(arrayValue)) {
       let arrayHint = this.realm.react.arrayHints.get(arrayValue);
 
@@ -1412,19 +1423,12 @@ export class Reconciler {
           }
           this._queueOptimizedClosure(func, evaluatedNode, componentType, context, branchState);
         }
-        return;
+        return arrayValue;
       }
     }
-    forEachArrayValue(this.realm, arrayValue, (elementValue, elementPropertyDescriptor) => {
-      elementPropertyDescriptor.value = this._resolveDeeply(
-        componentType,
-        elementValue,
-        context,
-        "NEW_BRANCH",
-        branchState,
-        evaluatedNode
-      );
-    });
+    return mapArrayValue(this.realm, arrayValue, elementValue =>
+      this._resolveDeeply(componentType, elementValue, context, "NEW_BRANCH", branchState, evaluatedNode)
+    );
   }
 
   hasEvaluatedRootNode(componentType: ECMAScriptSourceFunctionValue, evaluateNode: ReactEvaluatedNode): boolean {
