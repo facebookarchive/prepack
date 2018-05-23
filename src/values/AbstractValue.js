@@ -667,7 +667,7 @@ export default class AbstractValue extends Value {
     doNotSimplify?: boolean
   ): Value {
     if (left === right) {
-      return left;
+      return left || realm.intrinsics.undefined;
     }
     if (!condition.mightNotBeTrue()) return left || realm.intrinsics.undefined;
     if (!condition.mightNotBeFalse()) return right || realm.intrinsics.undefined;
