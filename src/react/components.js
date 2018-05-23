@@ -123,6 +123,7 @@ export function createSimpleClassInstance(
   invariant(componentPrototype instanceof ObjectValue);
   // create an instance object and disable serialization as we don't want to output the internals we set below
   let instance = new ObjectValue(realm, componentPrototype, "this", true);
+  realm.react.reactInstances.add(instance);
   let allowedPropertyAccess = new Set(["props", "context"]);
   for (let [name] of componentPrototype.properties) {
     if (lifecycleMethods.has(name)) {
@@ -192,6 +193,7 @@ export function createClassInstanceForFirstRenderOnly(
   evaluatedNode: ReactEvaluatedNode
 ): ObjectValue {
   let instance = getValueFromFunctionCall(realm, componentType, realm.intrinsics.undefined, [props, context], true);
+  realm.react.reactInstances.add(instance);
   let objectAssign = Get(realm, realm.intrinsics.Object, "assign");
   invariant(objectAssign instanceof ECMAScriptFunctionValue);
   let objectAssignCall = objectAssign.$Call;
@@ -253,6 +255,7 @@ export function createClassInstance(
   invariant(componentPrototype instanceof ObjectValue);
   // create an instance object and disable serialization as we don't want to output the internals we set below
   let instance = new ObjectValue(realm, componentPrototype, "this", true);
+  realm.react.reactInstances.add(instance);
   deeplyApplyInstancePrototypeProperties(realm, instance, componentPrototype, classMetadata);
 
   // assign refs
@@ -302,6 +305,10 @@ export function evaluateClassConstructor(
     instanceProperties,
     instanceSymbols,
   };
+}
+
+export function havocReactInstance(realm: Realm, instance: ObjectValue): void {
+  // TODO: maybe we should havoc some thing
 }
 
 export function applyGetDerivedStateFromProps(
