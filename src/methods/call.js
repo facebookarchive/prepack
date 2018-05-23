@@ -416,15 +416,18 @@ export function OrdinaryCallEvaluateBody(
           c = joinedReturnEffects.result;
           invariant(c instanceof ReturnCompletion);
 
-          // At this stage there can still be throw completions left inside abruptCompletion. If not just return.
-          let remainingCompletions = abruptCompletion.transferChildrenToPossiblyNormalCompletion();
-          if (!remainingCompletions.containsCompletion(ThrowCompletion)) return c;
-
           // We now make a PossiblyNormalCompletion out of abruptCompletion.
           // extractAndJoinCompletionsOfType helped with this by cheating and turning all of its nested completions
           // that contain return completions into PossiblyNormalCompletions.
+          let remainingCompletions = abruptCompletion.transferChildrenToPossiblyNormalCompletion();
+
+          // If there are no throw completions left inside remainingCompletions, just return.
+          if (!remainingCompletions.containsCompletion(ThrowCompletion)) return c;
+
+          // Stash the remaining completions in the realm start tracking the effects that need to be appended
+          // to the normal branch at the next join point.
           realm.savedCompletion = remainingCompletions;
-          realm.captureEffects(remainingCompletions); // so that we can join the normal path wtih them later on
+          realm.captureEffects(remainingCompletions); // so that we can join the normal path with them later on
           return c;
         } finally {
           realm.incorporatePriorSavedCompletion(priorSavedCompletion);
