@@ -15,7 +15,7 @@ function App() {
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
   var render = renderer.toJSON();
-  return [['hoely children #2', render.children.length]];
+  return [['do not optimize', render.children.length]];
 };
 
 if (this.__optimizeReactComponentTree) {
