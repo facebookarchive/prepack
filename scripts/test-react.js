@@ -894,7 +894,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     describe("react-dom", () => {
       let directory = "react-dom";
 
-      it.only("createPortal", async () => {
+      it("createPortal", async () => {
         await runTest(directory, "create-portal.js", false);
       });
     });
