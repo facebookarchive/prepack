@@ -1570,7 +1570,6 @@ export class Reconciler {
     expressionLocation: any
   ): void {
     let location = getLocationFromValue(expressionLocation);
-    debugger;
 
     if (sideEffectType === "MODIFIED_BINDING") {
       let name = binding ? `"${((binding: any): Binding).name}"` : "unknown";
