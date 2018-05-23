@@ -750,7 +750,7 @@ export class Reconciler {
     evaluatedNode: ReactEvaluatedNode
   ) {
     if (doNotOptimizeComponent(this.realm, componentType)) {
-      throw new DoNotOptimize("__doNotOptimize flag detected");
+      throw new DoNotOptimize("__reactCompilerDoNotOptimize flag detected");
     }
     this.statistics.componentsEvaluated++;
     if (valueIsKnownReactAbstraction(this.realm, componentType)) {
