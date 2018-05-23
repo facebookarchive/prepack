@@ -877,6 +877,7 @@ export class Reconciler {
     );
     evaluatedNode.children.push(evaluatedChildNode);
     if (resolvedReactPortalValue !== reactPortalValue) {
+      this.statistics.inlinedComponents++;
       let reactDomValue = this.realm.fbLibraries.reactDom;
       let reactDomPortalFunc = getProperty(this.realm, reactDomValue, "createPortal");
       return AbstractValue.createFromBuildFunction(
