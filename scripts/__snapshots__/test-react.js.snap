@@ -934,6 +934,23 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output Functional component folding __reactCompilerDoNotOptimize 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output Functional component folding 16.3 refs 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
@@ -4655,6 +4672,23 @@ ReactStatistics {
       "children": Array [],
       "message": "",
       "name": "MyComponent",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Functional component folding __reactCompilerDoNotOptimize 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -8394,6 +8428,23 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output Functional component folding __reactCompilerDoNotOptimize 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output Functional component folding 16.3 refs 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
@@ -12080,6 +12131,23 @@ ReactStatistics {
       "children": Array [],
       "message": "",
       "name": "MyComponent",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Functional component folding __reactCompilerDoNotOptimize 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
       "status": "ROOT",
     },
   ],

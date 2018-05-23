@@ -29,6 +29,7 @@ import {
 import { ReactStatistics, type ReactSerializerState, type ReactEvaluatedNode } from "../serializer/types.js";
 import {
   createReactEvaluatedNode,
+  doNotOptimizeComponent,
   evaluateWithNestedParentEffects,
   flattenChildren,
   mapArrayValue,
@@ -62,6 +63,7 @@ import {
   applyGetDerivedStateFromProps,
 } from "./components.js";
 import {
+  DoNotOptimize,
   ExpectedBailOut,
   NewComponentTreeBranch,
   ReconcilerFatalError,
@@ -747,6 +749,9 @@ export class Reconciler {
     branchState: BranchState | null,
     evaluatedNode: ReactEvaluatedNode
   ) {
+    if (doNotOptimizeComponent(this.realm, componentType)) {
+      throw new DoNotOptimize("__reactCompilerDoNotOptimize flag detected");
+    }
     this.statistics.componentsEvaluated++;
     if (valueIsKnownReactAbstraction(this.realm, componentType)) {
       invariant(componentType instanceof AbstractValue);
@@ -1319,7 +1324,7 @@ export class Reconciler {
       throw error;
     } else if (error instanceof ReconcilerFatalError) {
       throw new ReconcilerFatalError(error.message, evaluatedRootNode);
-    } else if (error instanceof UnsupportedSideEffect) {
+    } else if (error instanceof UnsupportedSideEffect || error instanceof DoNotOptimize) {
       throw new ReconcilerFatalError(
         `Failed to render React component root "${evaluatedRootNode.name}" due to ${error.message}`,
         evaluatedRootNode
@@ -1370,6 +1375,8 @@ export class Reconciler {
         `Failed to render React component "${evaluatedNode.name}" due to ${error.message}`,
         evaluatedNode
       );
+    } else if (error instanceof DoNotOptimize) {
+      return reactElement;
     } else if (error instanceof Completion) {
       let value = error.value;
       invariant(value instanceof ObjectValue);
