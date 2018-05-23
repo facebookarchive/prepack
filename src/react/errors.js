@@ -40,6 +40,8 @@ export class NewComponentTreeBranch extends Error {
   evaluatedNode: ReactEvaluatedNode;
 }
 
+export class DoNotOptimize extends Error {}
+
 // Used when an entire React component tree has failed to optimize
 // this means there is a programming bug in the application that is
 // being Prepacked

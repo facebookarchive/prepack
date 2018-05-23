@@ -15,17 +15,17 @@ import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
 import {
   AbstractObjectValue,
   AbstractValue,
-  Value,
+  ArrayValue,
+  BooleanValue,
+  BoundFunctionValue,
+  ECMAScriptSourceFunctionValue,
+  FunctionValue,
   NumberValue,
   ObjectValue,
-  SymbolValue,
-  FunctionValue,
   StringValue,
-  ArrayValue,
-  ECMAScriptSourceFunctionValue,
-  BoundFunctionValue,
+  SymbolValue,
   UndefinedValue,
-  BooleanValue,
+  Value,
 } from "../values/index.js";
 import { Generator } from "../utils/generator.js";
 import type {
@@ -918,4 +918,14 @@ export function createNoopFunction(realm: Realm): ECMAScriptSourceFunctionValue 
   noOpFunc.$ECMAScriptCode = body;
   realm.react.noopFunction = noOpFunc;
   return noOpFunc;
+}
+
+export function doNotOptimizeComponent(realm: Realm, componentType: Value): boolean {
+  let doNotOptimize = Get(realm, componentType, "__doNotOptimize");
+
+  if (doNotOptimize instanceof BooleanValue) {
+    return doNotOptimize.value;
+  }
+
+  return false;
 }
