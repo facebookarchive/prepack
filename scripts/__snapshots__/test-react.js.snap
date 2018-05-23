@@ -3714,7 +3714,7 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 2,
+  "inlinedComponents": 3,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -7444,7 +7444,7 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 2,
+  "inlinedComponents": 3,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -11139,7 +11139,7 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 2,
+  "inlinedComponents": 3,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -14834,7 +14834,7 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 2,
+  "inlinedComponents": 3,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
