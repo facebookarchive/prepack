@@ -886,7 +886,7 @@ export class Reconciler {
       let reactDomValue = this.realm.fbLibraries.reactDom;
       invariant(reactDomValue instanceof ObjectValue);
       let reactDomPortalFunc = getProperty(this.realm, reactDomValue, "createPortal");
-      return AbstractValue.createFromBuildFunction(
+      return AbstractValue.createTemporalFromBuildFunction(
         this.realm,
         ObjectValue,
         [reactDomPortalFunc, resolvedReactPortalValue, domNodeValue],

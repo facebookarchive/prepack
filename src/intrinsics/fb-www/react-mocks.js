@@ -628,7 +628,7 @@ export function createMockReactDOM(realm: Realm, reactDomRequireName: string): O
   addMockFunctionToObject(realm, reactDomValue, reactDomRequireName, "unmountComponentAtNode", genericTemporalFunc);
 
   const createPortalFunc = (funcVal, [reactPortalValue, domNodeValue]) => {
-    let reactDomMethod = AbstractValue.createFromBuildFunction(
+    let reactDomMethod = AbstractValue.createTemporalFromBuildFunction(
       realm,
       ObjectValue,
       [funcVal, reactPortalValue, domNodeValue],
