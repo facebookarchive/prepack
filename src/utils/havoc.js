@@ -36,6 +36,7 @@ import * as t from "babel-types";
 import traverse from "babel-traverse";
 import type { BabelTraversePath } from "babel-traverse";
 import type { BabelNodeSourceLocation } from "babel-types";
+import { havocReactInstance } from "../react/components.js";
 import invariant from "../invariant.js";
 
 type HavocedFunctionInfo = {
@@ -155,13 +156,19 @@ class ObjectValueHavocingVisitor {
 
     // prototype
     this.visitObjectPrototype(obj);
+    let realm = obj.$Realm;
 
-    if (TestIntegrityLevel(obj.$Realm, obj, "frozen") || obj.isFinalObject()) return;
+    if (TestIntegrityLevel(realm, obj, "frozen") || obj.isFinalObject()) return;
 
     // if this object wasn't already havoced, we need mark it as havoced
     // so that any mutation and property access get tracked after this.
     if (!obj.isHavocedObject()) {
-      obj.havoc();
+      // react components get treated with special cases
+      if (realm.react.enabled && realm.react.reactInstances.has(obj)) {
+        havocReactInstance(realm, obj);
+      } else {
+        obj.havoc();
+      }
     }
   }
 

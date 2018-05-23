@@ -261,6 +261,7 @@ export class Realm {
       noopFunction: undefined,
       output: opts.reactOutput || "create-element",
       reactElements: new WeakSet(),
+      reactInstances: new WeakSet(),
       symbols: new Map(),
       verbose: opts.reactVerbose || false,
     };
@@ -348,6 +349,7 @@ export class Realm {
     noopFunction: void | ECMAScriptSourceFunctionValue,
     output?: ReactOutputTypes,
     reactElements: WeakSet<ObjectValue>,
+    reactInstances: WeakSet<ObjectValue>,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
     verbose: boolean,
   };
