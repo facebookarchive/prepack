@@ -758,14 +758,6 @@ export type JoinType = {
     convertToPNC?: boolean
   ): Effects,
 
-  joinEffectsAndPromoteNested(
-    CompletionType: typeof Completion,
-    realm: Realm,
-    c: Completion | Value,
-    e: Effects,
-    nested_effects?: Effects
-  ): Effects,
-
   unbundle(
     CompletionType: typeof Completion,
     realm: Realm,
