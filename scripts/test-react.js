@@ -890,6 +890,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "hacker-news.js", false, data);
       });
     });
+
+    describe("react-dom", () => {
+      let directory = "react-dom";
+
+      it.only("createPortal", async () => {
+        await runTest(directory, "create-portal.js", false);
+      });
+    });
   });
 }
 

@@ -626,8 +626,25 @@ export function createMockReactDOM(realm: Realm, reactDomRequireName: string): O
   addMockFunctionToObject(realm, reactDomValue, reactDomRequireName, "hydrate", genericTemporalFunc);
   addMockFunctionToObject(realm, reactDomValue, reactDomRequireName, "findDOMNode", genericTemporalFunc);
   addMockFunctionToObject(realm, reactDomValue, reactDomRequireName, "unmountComponentAtNode", genericTemporalFunc);
-  // TODO we will have to treat createPortal differently
-  addMockFunctionToObject(realm, reactDomValue, reactDomRequireName, "createPortal", genericTemporalFunc);
+
+  const createPortalFunc = (funcVal, [reactPortalValue, domNodeValue]) => {
+    let reactDomMethod = AbstractValue.createFromBuildFunction(
+      realm,
+      ObjectValue,
+      [funcVal, reactPortalValue, domNodeValue],
+      ([renderNode, ..._args]) => {
+        return t.callExpression(renderNode, ((_args: any): Array<any>));
+      }
+    );
+    invariant(reactDomMethod instanceof AbstractObjectValue);
+    realm.react.abstractHints.set(
+      reactDomMethod,
+      createReactHintObject(reactDomValue, "createPortal", [reactPortalValue, domNodeValue], realm.intrinsics.undefined)
+    );
+    return reactDomMethod;
+  };
+
+  addMockFunctionToObject(realm, reactDomValue, reactDomRequireName, "createPortal", createPortalFunc);
 
   reactDomValue.refuseSerialization = false;
   reactDomValue.makeFinal();

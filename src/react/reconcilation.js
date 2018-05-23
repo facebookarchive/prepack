@@ -856,6 +856,41 @@ export class Reconciler {
     return "NORMAL";
   }
 
+  _resolveReactDomPortal(
+    createPortalNode: AbstractValue,
+    args: Array<Value>,
+    componentType: Value,
+    context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnum,
+    branchState: BranchState | null,
+    evaluatedNode: ReactEvaluatedNode
+  ) {
+    let [reactPortalValue, domNodeValue] = args;
+    let evaluatedChildNode = createReactEvaluatedNode("INLINED", "ReactDOM.createPortal");
+    let resolvedReactPortalValue = this._resolveDeeply(
+      componentType,
+      reactPortalValue,
+      context,
+      branchStatus,
+      branchState,
+      evaluatedChildNode
+    );
+    evaluatedNode.children.push(evaluatedChildNode);
+    if (resolvedReactPortalValue !== reactPortalValue) {
+      let reactDomValue = this.realm.fbLibraries.reactDom;
+      let reactDomPortalFunc = getProperty(this.realm, reactDomValue, "createPortal");
+      return AbstractValue.createFromBuildFunction(
+        this.realm,
+        ObjectValue,
+        [reactDomPortalFunc, resolvedReactPortalValue, domNodeValue],
+        ([renderNode, ..._args]) => {
+          return t.callExpression(renderNode, ((_args: any): Array<any>));
+        }
+      );
+    }
+    return createPortalNode;
+  }
+
   _resolveAbstractConditionalValue(
     componentType: Value,
     condValue: AbstractValue,
@@ -917,6 +952,22 @@ export class Reconciler {
         evaluatedNode
       );
     } else {
+      if (value instanceof AbstractValue && this.realm.react.abstractHints.has(value)) {
+        let reactHint = this.realm.react.abstractHints.get(value);
+
+        invariant(reactHint !== undefined);
+        if (reactHint.object === this.realm.fbLibraries.reactDom && reactHint.propertyName === "createPortal") {
+          return this._resolveReactDomPortal(
+            value,
+            reactHint.args,
+            componentType,
+            context,
+            branchStatus,
+            branchState,
+            evaluatedNode
+          );
+        }
+      }
       this.componentTreeState.deadEnds++;
     }
     return value;
@@ -1519,6 +1570,7 @@ export class Reconciler {
     expressionLocation: any
   ): void {
     let location = getLocationFromValue(expressionLocation);
+    debugger;
 
     if (sideEffectType === "MODIFIED_BINDING") {
       let name = binding ? `"${((binding: any): Binding).name}"` : "unknown";
