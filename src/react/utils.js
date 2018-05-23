@@ -921,11 +921,12 @@ export function createNoopFunction(realm: Realm): ECMAScriptSourceFunctionValue 
 }
 
 export function doNotOptimizeComponent(realm: Realm, componentType: Value): boolean {
-  let doNotOptimize = Get(realm, componentType, "__reactCompilerDoNotOptimize");
+  if (componentType instanceof ObjectValue) {
+    let doNotOptimize = Get(realm, componentType, "__reactCompilerDoNotOptimize");
 
-  if (doNotOptimize instanceof BooleanValue) {
-    return doNotOptimize.value;
+    if (doNotOptimize instanceof BooleanValue) {
+      return doNotOptimize.value;
+    }
   }
-
   return false;
 }
