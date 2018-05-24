@@ -609,6 +609,9 @@ export function propsObjectIsSafeFromPartialKeyOrRef(
     }
   }
   if (props instanceof ObjectValue) {
+    if (!props.isPartialObject()) {
+      return true;
+    }
     if (props.properties.has("key") && props.properties.has("ref")) {
       return true;
     }
@@ -683,7 +686,7 @@ export function deleteProperty(object: ObjectValue | AbstractObjectValue, proper
       object = Array.from(elements)[0];
     } else {
       // intentionally left in
-      invariant("TODO: should we hit this?");
+      invariant(false, "TODO: should we hit this?");
     }
     invariant(object instanceof ObjectValue);
   }
@@ -715,7 +718,7 @@ export function setProperty(
       object = Array.from(elements)[0];
     } else {
       // intentionally left in
-      invariant("TODO: should we hit this?");
+      invariant(false, "TODO: should we hit this?");
     }
     invariant(object instanceof ObjectValue);
   }
@@ -772,7 +775,7 @@ export function getProperty(
       object = Array.from(elements)[0];
     } else {
       // intentionally left in
-      invariant("TODO: should we hit this?");
+      invariant(false, "TODO: should we hit this?");
     }
     invariant(object instanceof ObjectValue);
   }

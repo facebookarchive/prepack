@@ -250,12 +250,7 @@ function evaluateJSXAttributes(
           abstractSpreadCount++;
           invariant(spreadValue instanceof AbstractValue || spreadValue instanceof ObjectValue);
 
-          if (
-            (spreadValue instanceof AbstractObjectValue &&
-              spreadValue.isSimpleObject() &&
-              spreadValue.isFinalObject()) ||
-            propsObjectIsSafeFromPartialKeyOrRef(realm, spreadValue)
-          ) {
+          if (propsObjectIsSafeFromPartialKeyOrRef(realm, spreadValue)) {
             safeAbstractSpreadCount++;
           }
           if (!isObjectEmpty(config)) {
@@ -313,6 +308,8 @@ function evaluateJSXAttributes(
         }
       } catch (e) {
         if (realm.isInPureScope() && e instanceof FatalError) {
+          let makeSafe = propsObjectIsSafeFromPartialKeyOrRef(realm, config);
+
           config = AbstractValue.createTemporalFromBuildFunction(
             realm,
             ObjectValue,
@@ -321,6 +318,9 @@ function evaluateJSXAttributes(
               return t.callExpression(methodNode, ((_args: any): Array<any>));
             }
           );
+          if (makeSafe) {
+            resetRefAndKeyFromProps(realm, config);
+          }
         }
       }
     }

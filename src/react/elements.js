@@ -20,7 +20,7 @@ import {
   ObjectValue,
   Value,
 } from "../values/index.js";
-import { Create, Properties } from "../singletons.js";
+import { Create, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
 import {
@@ -39,7 +39,11 @@ function createPropsObject(
   config: ObjectValue | AbstractObjectValue | NullValue,
   children: Value
 ): { key: Value, ref: Value, props: ObjectValue | AbstractObjectValue } {
-  let defaultProps = type instanceof ObjectValue ? Get(realm, type, "defaultProps") : realm.intrinsics.undefined;
+  let defaultProps =
+    type instanceof ObjectValue || type instanceof AbstractObjectValue
+      ? Get(realm, type, "defaultProps")
+      : realm.intrinsics.undefined;
+
   let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
   // start by having key and ref deleted, if they actually exist, they will be add later
   deleteRefAndKeyFromProps(realm, props);
@@ -145,10 +149,14 @@ function createPropsObject(
           }
         }
       }
+    } else if (defaultProps instanceof AbstractObjectValue) {
+      invariant(false, "TODO: we need to eventually support this");
     }
   }
   invariant(props instanceof ObjectValue || props instanceof AbstractObjectValue);
-  props.makeFinal();
+  if (props instanceof ObjectValue || (props instanceof AbstractObjectValue && !props.values.isTop())) {
+    props.makeFinal();
+  }
   return { key, props, ref };
 }
 
