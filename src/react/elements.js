@@ -23,7 +23,13 @@ import {
 import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
-import { deleteRefAndKeyFromProps, getProperty, getReactSymbol, hasNoPartialKeyOrRef } from "./utils.js";
+import {
+  deleteRefAndKeyFromProps,
+  getProperty,
+  getReactSymbol,
+  hasNoPartialKeyOrRef,
+  resetRefAndKeyFromProps,
+} from "./utils.js";
 import * as t from "babel-types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
@@ -149,9 +155,10 @@ function createPropsObject(
     }
   }
   invariant(props instanceof ObjectValue || props instanceof AbstractObjectValue);
-  if (props instanceof ObjectValue || (props instanceof AbstractObjectValue && !props.values.isTop())) {
-    props.makeFinal();
-  }
+  // we know the props has no keys because if it did it would have thrown above
+  // so we can remove them the props we create
+  resetRefAndKeyFromProps(realm, props);
+  props.makeFinal();
   return { key, props, ref };
 }
 
