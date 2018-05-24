@@ -301,7 +301,7 @@ class ObjectValueHavocingVisitor {
 
     let remainingHavocedBindings = getHavocedFunctionInfo(val);
 
-    let environment = val.$Environment.parent;
+    let environment = val.$Environment;
     while (environment) {
       let record = environment.environmentRecord;
       if (record instanceof ObjectEnvironmentRecord) {
