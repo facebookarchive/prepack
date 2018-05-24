@@ -216,13 +216,11 @@ function evaluateJSXAttributes(
   let abstractPropsArgs = [];
   let abstractSpreadCount = 0;
   let safeAbstractSpreadCount = 0;
-  let attributesAssigned = 0;
   let spreadValue;
 
   const setConfigProperty = (name: string, value: Value): void => {
     invariant(config instanceof ObjectValue);
     Properties.Set(realm, config, name, value, true);
-    attributesAssigned++;
   };
 
   for (let astAttribute of astAttributes) {

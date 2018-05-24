@@ -18,7 +18,6 @@ import {
   Value,
   AbstractObjectValue,
   AbstractValue,
-  NullValue,
   FunctionValue,
   NumberValue,
 } from "../../values/index.js";
