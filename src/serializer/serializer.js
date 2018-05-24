@@ -182,6 +182,9 @@ export class Serializer {
             additionalFunctionValuesAndEffects,
             referentializer
           );
+          // Copying dERB map so cache lookup returns the same object, and the subsequent
+          // invariant in ModifiedBindingEntry's visit() passes.
+          heapRefCounter.declarativeEnvironmentRecordsBindings = residualHeapVisitor.declarativeEnvironmentRecordsBindings;
           heapRefCounter.visitRoots();
 
           const heapGraphGenerator = new ResidualHeapGraphGenerator(
@@ -193,6 +196,7 @@ export class Serializer {
             heapRefCounter.getResult(),
             referentializer
           );
+          heapGraphGenerator.declarativeEnvironmentRecordsBindings = residualHeapVisitor.declarativeEnvironmentRecordsBindings;
           heapGraphGenerator.visitRoots();
           invariant(this.options.heapGraphFormat);
           heapGraph = heapGraphGenerator.generateResult(this.options.heapGraphFormat);
