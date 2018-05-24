@@ -79,6 +79,7 @@ export type VisitEntryCallbacks = {|
   recordDelayedEntry: (Generator, GeneratorEntry) => void,
   visitModifiedObjectProperty: PropertyBinding => void,
   visitModifiedBinding: Binding => [ResidualFunctionBinding, Value],
+  visitBindingAssignment: (Binding, Value) => Value,
 |};
 
 export type DerivedExpressionBuildNodeFunction = (
@@ -338,6 +339,34 @@ class IfThenElseEntry extends GeneratorEntry {
   }
 }
 
+class BindingAssignmentEntry extends GeneratorEntry {
+  constructor(binding: Binding, value: Value) {
+    super();
+    this.binding = binding;
+    this.value = value;
+  }
+
+  binding: Binding;
+  value: Value;
+
+  serialize(context: SerializationContext) {
+    context.emit(
+      t.expressionStatement(
+        t.assignmentExpression("=", context.serializeBinding(this.binding), context.serializeValue(this.value))
+      )
+    );
+  }
+
+  visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
+    this.value = context.visitBindingAssignment(this.binding, this.value);
+    return true;
+  }
+
+  getDependencies() {
+    return undefined;
+  }
+}
+
 function serializeBody(
   generator: Generator,
   context: SerializationContext,
@@ -535,17 +564,7 @@ export class Generator {
   }
 
   emitBindingAssignment(binding: Binding, value: Value) {
-    this._addEntry({
-      args: [value],
-      buildNode: ([valueNode], context) =>
-        t.expressionStatement(
-          t.assignmentExpression(
-            "=",
-            (context.serializeBinding(binding): BabelNodeIdentifier | BabelNodeMemberExpression),
-            valueNode
-          )
-        ),
-    });
+    this._entries.push(new BindingAssignmentEntry(binding, value));
   }
 
   emitPropertyAssignment(object: ObjectValue, key: string, value: Value) {

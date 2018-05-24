@@ -675,18 +675,14 @@ export class ResidualHeapSerializer {
     return t.expressionStatement(t.sequenceExpression(body));
   }
 
-  _serializeDeclarativeEnvironmentRecordBinding(
-    residualFunctionBinding: ResidualFunctionBinding,
-    name: string,
-    instance: FunctionInstance
-  ) {
+  _serializeDeclarativeEnvironmentRecordBinding(residualFunctionBinding: ResidualFunctionBinding) {
     if (!residualFunctionBinding.serializedValue) {
       let value = residualFunctionBinding.value;
       invariant(residualFunctionBinding.declarativeEnvironmentRecord);
 
       residualFunctionBinding.serializedValue = value !== undefined ? this.serializeValue(value) : voidExpression;
       if (residualFunctionBinding.modified) {
-        this.referentializer.referentializeBinding(residualFunctionBinding, name, instance);
+        this.referentializer.referentializeBinding(residualFunctionBinding);
       }
       if (value !== undefined && value.mightBeObject()) {
         // Increment ref count one more time to ensure that this object will be assigned a unique id.
@@ -949,8 +945,11 @@ export class ResidualHeapSerializer {
     let residualBinding = residualFunctionBindings.get(binding.name);
     invariant(residualBinding, "any referenced residual binding should have been visited");
 
-    invariant(residualBinding.serializedValue);
-    return ((residualBinding.serializedValue: any): BabelNodeIdentifier | BabelNodeMemberExpression);
+    this._serializeDeclarativeEnvironmentRecordBinding(residualBinding);
+
+    let location = residualBinding.serializedUnscopedLocation;
+    invariant(location !== undefined);
+    return location;
   }
 
   _getPrelude(additionalFunction: void | FunctionValue): Array<BabelNodeStatement> {
@@ -1422,10 +1421,7 @@ export class ResidualHeapSerializer {
       if (!residualBinding.declarativeEnvironmentRecord) {
         serializeBindingFunc = () => this._serializeGlobalBinding(boundName, residualBinding);
       } else {
-        serializeBindingFunc = () => {
-          invariant(instance !== undefined);
-          return this._serializeDeclarativeEnvironmentRecordBinding(residualBinding, boundName, instance);
-        };
+        serializeBindingFunc = () => this._serializeDeclarativeEnvironmentRecordBinding(residualBinding);
         if (residualBinding.value !== undefined) referencedValues.push(residualBinding.value);
       }
       bindingsEmittedSemaphore.acquireOne();

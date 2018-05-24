@@ -20,16 +20,17 @@ import {
   GlobalEnvironmentRecord,
 } from "../environment.js";
 import {
-  BoundFunctionValue,
-  ProxyValue,
   AbstractValue,
+  ArrayValue,
+  BoundFunctionValue,
+  ECMAScriptSourceFunctionValue,
   EmptyValue,
   FunctionValue,
-  PrimitiveValue,
-  Value,
-  ObjectValue,
   NativeFunctionValue,
-  ECMAScriptSourceFunctionValue,
+  ObjectValue,
+  PrimitiveValue,
+  ProxyValue,
+  Value,
 } from "../values/index.js";
 import { TestIntegrityLevel } from "../methods/index.js";
 import * as t from "babel-types";
@@ -300,7 +301,7 @@ class ObjectValueHavocingVisitor {
 
     let remainingHavocedBindings = getHavocedFunctionInfo(val);
 
-    let environment = val.$Environment.parent;
+    let environment = val.$Environment;
     while (environment) {
       let record = environment.environmentRecord;
       if (record instanceof ObjectEnvironmentRecord) {
@@ -393,9 +394,13 @@ class ObjectValueHavocingVisitor {
     if (val instanceof AbstractValue) {
       if (this.mustVisit(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
-      // All intrinsic values exist from the beginning of time...
+      // All intrinsic values exist from the beginning of time (except unknown arrays)...
       // ...except for a few that come into existance as templates for abstract objects.
-      this.mustVisit(val);
+      if (val instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(val)) {
+        if (this.mustVisit(val)) this.visitValueObject(val);
+      } else {
+        this.mustVisit(val);
+      }
     } else if (val instanceof EmptyValue) {
       this.mustVisit(val);
     } else if (val instanceof PrimitiveValue) {
