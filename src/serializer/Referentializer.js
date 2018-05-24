@@ -41,23 +41,23 @@ export class Referentializer {
     realm: Realm,
     options: SerializerOptions,
     scopeNameGenerator: NameGenerator,
-    referentializedNameGenerator: NameGenerator
+    scopeBindingNameGenerator: NameGenerator
   ) {
     this._options = options;
     this.scopeNameGenerator = scopeNameGenerator;
+    this.scopeBindingNameGenerator = scopeBindingNameGenerator;
 
     this.referentializationState = new Map();
-    this._referentializedNameGenerator = referentializedNameGenerator;
     this.realm = realm;
   }
 
   _options: SerializerOptions;
   scopeNameGenerator: NameGenerator;
+  scopeBindingNameGenerator: NameGenerator;
   realm: Realm;
 
   _newCapturedScopeInstanceIdx: number;
   referentializationState: Map<ReferentializationScope, ReferentializationState>;
-  _referentializedNameGenerator: NameGenerator;
 
   getStatistics(): SerializerStatistics {
     invariant(this.realm.statistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
@@ -68,7 +68,7 @@ export class Referentializer {
     return {
       capturedScopeInstanceIdx: 0,
       capturedScopesArray: t.identifier(this.scopeNameGenerator.generate("main")),
-      capturedScopeAccessFunctionId: t.identifier(this.scopeNameGenerator.generate("get_scope_binding")),
+      capturedScopeAccessFunctionId: t.identifier(this.scopeBindingNameGenerator.generate("get_scope_binding")),
       serializedScopes: new Map(),
     };
   }
