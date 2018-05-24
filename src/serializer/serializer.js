@@ -182,8 +182,9 @@ export class Serializer {
             additionalFunctionValuesAndEffects,
             referentializer
           );
-          // Copying dERB map so cache lookup returns the same object, and the subsequent
-          // invariant in ModifiedBindingEntry's visit() passes.
+          // ModifiedBindingEntry caches the state from declarativeEnvironmentRecordsBindings
+          // during the first visitor. We pass that same cache to future visitors so 
+          // those visitors receive the same object. 
           heapRefCounter.declarativeEnvironmentRecordsBindings =
             residualHeapVisitor.declarativeEnvironmentRecordsBindings;
           heapRefCounter.visitRoots();
