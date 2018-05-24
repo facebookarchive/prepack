@@ -967,30 +967,9 @@ export class Realm {
       completion = joinedEffects.result;
       this.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
     } else {
-      let {
-        result: result1,
-        generator: generator1,
-        modifiedBindings: modifiedBindings1,
-        modifiedProperties: modifiedProperties1,
-        createdObjects: createdObjects1,
-      } = effects1;
-
-      let {
-        result: result2,
-        generator: generator2,
-        modifiedBindings: modifiedBindings2,
-        modifiedProperties: modifiedProperties2,
-        createdObjects: createdObjects2,
-      } = effects2;
-
       // Join the effects, creating an abstract view of what happened, regardless
       // of the actual value of condValue.
-      joinedEffects = Join.joinEffects(
-        this,
-        condValue,
-        new Effects(result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
-        new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
-      );
+      joinedEffects = Join.joinEffects(this, condValue, effects1, effects2);
       completion = joinedEffects.result;
       if (completion instanceof JoinedAbruptCompletions) {
         // Note that the effects are tracked separately inside completion and will be applied later.
@@ -1216,11 +1195,6 @@ export class Realm {
       this.captureEffects(completion);
     } else {
       let savedCompletion = this.savedCompletion;
-      invariant(savedCompletion.savedEffects !== undefined);
-      invariant(this.generator !== undefined);
-      savedCompletion.savedEffects.generator.appendGenerator(this.generator, "composeWithSavedCompletion");
-      this.generator = new Generator(this, "composeWithSavedCompletion");
-      invariant(this.savedCompletion !== undefined);
       let e = this.getCapturedEffects(savedCompletion);
       invariant(e !== undefined);
       this.stopEffectCaptureAndUndoEffects(savedCompletion);
