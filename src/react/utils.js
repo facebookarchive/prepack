@@ -594,6 +594,9 @@ export function propsObjectIsSafeFromPartialKeyOrRef(
   realm: Realm,
   props: ObjectValue | AbstractValue | AbstractObjectValue
 ): boolean {
+  if (props instanceof ObjectValue && !props.isPartialObject()) {
+    return true;
+  }
   if (props instanceof AbstractObjectValue && !props.values.isTop()) {
     let elements = props.values.getElements();
     if (elements.size === 1) {
@@ -608,13 +611,8 @@ export function propsObjectIsSafeFromPartialKeyOrRef(
       return true;
     }
   }
-  if (props instanceof ObjectValue) {
-    if (!props.isPartialObject()) {
-      return true;
-    }
-    if (props.properties.has("key") && props.properties.has("ref")) {
-      return true;
-    }
+  if (props instanceof ObjectValue && props.properties.has("key") && props.properties.has("ref")) {
+    return true;
   }
   return false;
 }
