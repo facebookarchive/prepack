@@ -23,12 +23,7 @@ import {
 import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
-import {
-  deleteRefAndKeyFromProps,
-  getProperty,
-  getReactSymbol,
-  propsObjectIsSafeFromPartialKeyOrRef,
-} from "./utils.js";
+import { deleteRefAndKeyFromProps, getProperty, getReactSymbol, hasNoPartialKeyOrRef } from "./utils.js";
 import * as t from "babel-types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
@@ -37,7 +32,7 @@ function createPropsObject(
   realm: Realm,
   type: Value,
   config: ObjectValue | AbstractObjectValue | NullValue,
-  children: Value
+  children: void | Value
 ): { key: Value, ref: Value, props: ObjectValue | AbstractObjectValue } {
   let defaultProps =
     type instanceof ObjectValue || type instanceof AbstractObjectValue
@@ -83,7 +78,7 @@ function createPropsObject(
     (config instanceof AbstractObjectValue && config.isPartialObject()) ||
     (config instanceof ObjectValue && config.isPartialObject() && config.isSimpleObject())
   ) {
-    if (propsObjectIsSafeFromPartialKeyOrRef(realm, config)) {
+    if (hasNoPartialKeyOrRef(realm, config)) {
       let args = [];
       if (defaultProps !== realm.intrinsics.undefined) {
         args.push(defaultProps);
@@ -102,7 +97,7 @@ function createPropsObject(
       let objectAssignCall = objAssign.$Call;
       invariant(objectAssignCall !== undefined);
 
-      if (children !== realm.intrinsics.undefined) {
+      if (children !== undefined) {
         let childrenObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
         Properties.Set(realm, props, "children", children, true);
         args.push(childrenObject);
@@ -137,7 +132,7 @@ function createPropsObject(
   } else {
     applyProperties();
 
-    if (children !== realm.intrinsics.undefined) {
+    if (children !== undefined) {
       setProp("children", children);
     }
 
@@ -166,7 +161,7 @@ function splitReactElementsByConditionalType(
   consequentVal: Value,
   alternateVal: Value,
   config: ObjectValue | AbstractObjectValue | NullValue,
-  children: Value
+  children: void | Value
 ): Value {
   return realm.evaluateWithAbstractConditional(
     condValue,
@@ -191,7 +186,7 @@ export function createReactElement(
   realm: Realm,
   type: Value,
   config: ObjectValue | AbstractObjectValue | NullValue,
-  children: Value
+  children: void | Value
 ): Value {
   if (type instanceof AbstractValue && type.kind === "conditional") {
     let [condValue, consequentVal, alternateVal] = type.args;

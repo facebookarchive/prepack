@@ -38,11 +38,7 @@ import { Get } from "../methods/index.js";
 import { Create, Environment, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import { createReactElement } from "../react/elements.js";
-import {
-  deleteRefAndKeyFromProps,
-  propsObjectIsSafeFromPartialKeyOrRef,
-  resetRefAndKeyFromProps,
-} from "../react/utils.js";
+import { deleteRefAndKeyFromProps, hasNoPartialKeyOrRef, resetRefAndKeyFromProps } from "../react/utils.js";
 import { FatalError } from "../errors.js";
 
 // taken from Babel
@@ -154,9 +150,9 @@ function evaluateJSXChildren(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): ArrayValue | Value {
+): ArrayValue | Value | void {
   if (children.length === 0) {
-    return realm.intrinsics.undefined;
+    return undefined;
   }
   if (children.length === 1) {
     let singleChild = evaluateJSXValue(children[0], strictCode, env, realm);
@@ -250,7 +246,7 @@ function evaluateJSXAttributes(
           abstractSpreadCount++;
           invariant(spreadValue instanceof AbstractValue || spreadValue instanceof ObjectValue);
 
-          if (propsObjectIsSafeFromPartialKeyOrRef(realm, spreadValue)) {
+          if (hasNoPartialKeyOrRef(realm, spreadValue)) {
             safeAbstractSpreadCount++;
           }
           if (!isObjectEmpty(config)) {
@@ -278,8 +274,6 @@ function evaluateJSXAttributes(
       } else {
         // the spread is partial, so we can re-use that value
         config = spreadValue;
-        config.makePartial();
-        config.makeSimple();
       }
       resetRefAndKeyFromProps(realm, config);
     } else {
@@ -308,7 +302,7 @@ function evaluateJSXAttributes(
         }
       } catch (e) {
         if (realm.isInPureScope() && e instanceof FatalError) {
-          let makeSafe = propsObjectIsSafeFromPartialKeyOrRef(realm, config);
+          let makeSafe = hasNoPartialKeyOrRef(realm, config);
 
           config = AbstractValue.createTemporalFromBuildFunction(
             realm,
@@ -318,6 +312,7 @@ function evaluateJSXAttributes(
               return t.callExpression(methodNode, ((_args: any): Array<any>));
             }
           );
+          invariant(config instanceof AbstractObjectValue);
           if (makeSafe) {
             resetRefAndKeyFromProps(realm, config);
           }

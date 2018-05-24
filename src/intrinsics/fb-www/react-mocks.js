@@ -502,12 +502,12 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
       if (config instanceof AbstractValue && !(config instanceof AbstractObjectValue)) {
         config = To.ToObject(realm, config);
       }
-      invariant(config instanceof ObjectValue || config instanceof AbstractObjectValue || config instanceof NullValue);
+      invariant(config instanceof ObjectValue || config instanceof AbstractObjectValue);
       resetRefAndKeyFromProps(realm, config);
 
       if (Array.isArray(children)) {
         if (children.length === 0) {
-          children = realm.intrinsics.undefined;
+          children = undefined;
         } else if (children.length === 1) {
           children = children[0];
         } else {

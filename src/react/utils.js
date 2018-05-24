@@ -557,11 +557,7 @@ export function deleteRefAndKeyFromProps(realm: Realm, props: ObjectValue | Abst
   deleteProperty(props, "key");
 }
 
-export function resetRefAndKeyFromProps(realm: Realm, props: Value): void {
-  if (props instanceof NullValue) {
-    return;
-  }
-  invariant(props instanceof ObjectValue || props instanceof AbstractObjectValue);
+export function resetRefAndKeyFromProps(realm: Realm, props: ObjectValue | AbstractObjectValue): void {
   if (props instanceof AbstractObjectValue) {
     if (props.values.isTop()) {
       let template = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
@@ -574,7 +570,9 @@ export function resetRefAndKeyFromProps(realm: Realm, props: Value): void {
       props = Array.from(elements)[0];
     } else {
       for (let element of elements) {
-        resetRefAndKeyFromProps(realm, element);
+        if (element instanceof ObjectValue || element instanceof AbstractObjectValue) {
+          resetRefAndKeyFromProps(realm, element);
+        }
       }
     }
   }
@@ -590,10 +588,7 @@ export function resetRefAndKeyFromProps(realm: Realm, props: Value): void {
   }
 }
 
-export function propsObjectIsSafeFromPartialKeyOrRef(
-  realm: Realm,
-  props: ObjectValue | AbstractValue | AbstractObjectValue
-): boolean {
+export function hasNoPartialKeyOrRef(realm: Realm, props: ObjectValue | AbstractValue | AbstractObjectValue): boolean {
   if (props instanceof ObjectValue && !props.isPartialObject()) {
     return true;
   }
@@ -603,7 +598,7 @@ export function propsObjectIsSafeFromPartialKeyOrRef(
       props = Array.from(elements)[0];
     } else {
       for (let element of elements) {
-        let wasSafe = propsObjectIsSafeFromPartialKeyOrRef(realm, element);
+        let wasSafe = hasNoPartialKeyOrRef(realm, element);
         if (!wasSafe) {
           return false;
         }
