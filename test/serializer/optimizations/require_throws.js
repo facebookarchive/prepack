@@ -1,4 +1,4 @@
-let b = global.__abstract ? __abstract("boolean", "true") : true;
+let b = global.__abstract ? global.__abstract("boolean", "true") : true;
 
 var modules = Object.create(null);
 
@@ -24,7 +24,7 @@ function define(factory, moduleId, dependencyMap) {
   var _verboseName = arguments[3];
   if (_verboseName) {
     modules[moduleId].verboseName = _verboseName;
-    verboseNamesToModuleIds[_verboseName] = moduleId;
+    global.verboseNamesToModuleIds[_verboseName] = moduleId;
   }
 }
 
@@ -94,7 +94,7 @@ function moduleThrewError(id) {
 // === End require code ===
 
 define(function(global, require, module, exports) {
-  var obj = global.__abstract ? __makeSimple(__abstract({unsupported: true}, "({unsupported: true})")) : ({unsupported: true});
+  var obj = global.__abstract ? global.__makeSimple(global.__abstract({unsupported: true}, "({unsupported: true})")) : ({unsupported: true});
   if (obj.unsupported) {
     exports.magic = 42;
   } else {

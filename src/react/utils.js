@@ -222,19 +222,54 @@ export function getUniqueReactElementKey(index?: string, usedReactElementKeys: S
 }
 
 // a helper function to loop over ArrayValues
-export function forEachArrayValue(realm: Realm, array: ObjectValue, mapFunc: Function): void {
+export function forEachArrayValue(
+  realm: Realm,
+  array: ArrayValue,
+  mapFunc: (element: Value, descriptor: Descriptor) => void
+): void {
   let lengthValue = Get(realm, array, "length");
-  invariant(lengthValue instanceof NumberValue, "Invalid length on ArrayValue during reconcilation");
+  invariant(lengthValue instanceof NumberValue, "TODO: support non-numeric length on forEachArrayValue");
   let length = lengthValue.value;
   for (let i = 0; i < length; i++) {
     let elementProperty = array.properties.get("" + i);
     let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
-    invariant(elementPropertyDescriptor, `Invalid ArrayValue[${i}] descriptor`);
-    let elementValue = elementPropertyDescriptor.value;
-    if (elementValue instanceof Value) {
-      mapFunc(elementValue, elementPropertyDescriptor);
+    if (elementPropertyDescriptor) {
+      let elementValue = elementPropertyDescriptor.value;
+      if (elementValue instanceof Value) {
+        mapFunc(elementValue, elementPropertyDescriptor);
+      }
     }
   }
+}
+
+export function mapArrayValue(
+  realm: Realm,
+  array: ArrayValue,
+  mapFunc: (element: Value, descriptor: Descriptor) => Value
+): ArrayValue {
+  let lengthValue = Get(realm, array, "length");
+  invariant(lengthValue instanceof NumberValue, "TODO: support non-numeric length on mapArrayValue");
+  let length = lengthValue.value;
+  let newArray = Create.ArrayCreate(realm, length);
+  let returnTheNewArray = false;
+
+  for (let i = 0; i < length; i++) {
+    let elementProperty = array.properties.get("" + i);
+    let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
+    if (elementPropertyDescriptor) {
+      let elementValue = elementPropertyDescriptor.value;
+      if (elementValue instanceof Value) {
+        let newElement = mapFunc(elementValue, elementPropertyDescriptor);
+        if (newElement !== elementValue) {
+          returnTheNewArray = true;
+        }
+        Create.CreateDataPropertyOrThrow(realm, newArray, "" + i, newElement);
+        continue;
+      }
+    }
+    Create.CreateDataPropertyOrThrow(realm, newArray, "" + i, realm.intrinsics.undefined);
+  }
+  return returnTheNewArray ? newArray : array;
 }
 
 function GetDescriptorForProperty(value: ObjectValue, propertyName: string): ?Descriptor {
@@ -944,4 +979,15 @@ export function createNoopFunction(realm: Realm): ECMAScriptSourceFunctionValue 
   noOpFunc.$ECMAScriptCode = body;
   realm.react.noopFunction = noOpFunc;
   return noOpFunc;
+}
+
+export function doNotOptimizeComponent(realm: Realm, componentType: Value): boolean {
+  if (componentType instanceof ObjectValue) {
+    let doNotOptimize = Get(realm, componentType, "__reactCompilerDoNotOptimize");
+
+    if (doNotOptimize instanceof BooleanValue) {
+      return doNotOptimize.value;
+    }
+  }
+  return false;
 }

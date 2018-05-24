@@ -4,6 +4,6 @@
 let alive = new Object();
 let dead = new String("__dead_object_signature__");
 
-s = new Set([alive,dead]);
+var s = new Set([alive,dead]);
 
 inspect = function() {return "containsAlive: " + s.has(alive);}

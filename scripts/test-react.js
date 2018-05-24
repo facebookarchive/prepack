@@ -336,6 +336,18 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         });
       });
 
+      it("Simple 14", async () => {
+        await runTest(directory, "simple-14.js");
+      });
+
+      it("Simple 15", async () => {
+        await runTest(directory, "simple-15.js");
+      });
+
+      it("__reactCompilerDoNotOptimize", async () => {
+        await runTest(directory, "do-not-optimize.js");
+      });
+
       it("Mutations - not-safe 1", async () => {
         await expectReconcilerFatalError(async () => {
           await runTest(directory, "not-safe.js");

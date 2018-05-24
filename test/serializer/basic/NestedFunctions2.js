@@ -14,6 +14,6 @@
   global.h1 = g1();
   global.h2 = g1();
   inspect = function() {
-    return g1()() + g2()() + h1() + h2();
+    return global.g1()() + global.g2()() + global.h1() + global.h2();
   }
 })();

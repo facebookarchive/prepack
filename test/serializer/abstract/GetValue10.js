@@ -17,4 +17,4 @@ r6 = obj[absz];
 //obj[absx] = 777;
 r7 = obj.x;
 
-inspect = function() { return JSON.stringify([r0, r1, r2, r3, r4, r5, r6, r7]) + JSON.stringify(obj); }
+inspect = function() { return JSON.stringify([global.r0, global.r1, global.r2, global.r3, global.r4, global.r5, global.r6, global.r7]) + JSON.stringify(obj); }

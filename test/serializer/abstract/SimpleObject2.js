@@ -1,4 +1,4 @@
-// add at runtime: __a = { success: true }
+// add at runtime: var __a = { success: true }
 (function () {
     var template = {};
     if (global.__makeSimple) __makeSimple(template);

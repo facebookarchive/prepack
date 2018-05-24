@@ -22,8 +22,8 @@ function additional2() {
 }
 
 if (global.__optimize) {
-  __optimize(additional1);
-  __optimize(additional2);
+  global.__optimize(additional1);
+  global.__optimize(additional2);
 }
 
 inspect = function() {

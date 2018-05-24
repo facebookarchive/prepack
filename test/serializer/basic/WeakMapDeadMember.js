@@ -4,7 +4,7 @@
 let alive = new Object();
 let dead = new String("__dead_object_signature__");
 
-s = new WeakMap();
+var s = new WeakMap();
 
 s.set(alive, 1);
 s.set(dead, 1);

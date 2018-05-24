@@ -5,4 +5,4 @@ if (global.__abstract)
   }, "global.o");
 let check = o && typeof o.foo === 'number' && o.foo >= 3;
 
-inspect = function() { return check + ' ' + o.foo; }
+inspect = function() { return check + ' ' + global.o.foo; }

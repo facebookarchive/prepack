@@ -10,4 +10,4 @@ ob1.x = ob3.x;
 
 z = ob1.x;
 
-inspect = function() { return "" + z; }
+inspect = function() { return "" + global.z; }

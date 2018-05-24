@@ -1,4 +1,4 @@
-class Foo {
+const Foo = class {
   constructor() {
     this.x = 10;
   }

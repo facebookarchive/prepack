@@ -10,12 +10,12 @@ global.additional2 = function() {
 }
 
 if (global.__optimize) {
-  __optimize(additional1);
-  __optimize(additional2);
+  global.__optimize(additional1);
+  global.__optimize(additional2);
 }
 
 inspect = function() {
   let prevX = x;
-  additional1();
+  global.additional1();
   return "" + prevX + " " + x;
 }

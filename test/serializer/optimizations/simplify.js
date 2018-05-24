@@ -2,7 +2,8 @@ let b = global.__abstract ? __abstract("boolean", "true") : true;
 let ob1 = b ? { foo: 42 } : undefined;
 let ob2 = b ? { foo: 24 } : null;
 
-x = "no can do";
+var x = "no can do";
+var y;
 if (ob1 == null || undefined == ob2)
   x = "no can do";
 else {

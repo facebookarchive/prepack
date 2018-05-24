@@ -2,7 +2,7 @@ if (!global.__evaluatePureFunction) {
   global.__evaluatePureFunction = f => f();
 }
 
-result = __evaluatePureFunction(() => {
+var result = __evaluatePureFunction(() => {
   let c = global.__abstract ? __abstract("boolean", '(true)') : true;
   let unknown = global.__abstract ? __abstract("string", '("x")') : "x";
   var knownObject = {a:0};

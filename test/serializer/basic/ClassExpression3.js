@@ -1,4 +1,4 @@
-method1 = Symbol();
+global.method1 = Symbol();
 
 class Foo {
   constructor() {
@@ -9,8 +9,8 @@ class Foo {
   }
 }
 
-class Bar extends Foo {
-  [method1](z) {
+global.Bar = class extends Foo {
+  [global.method1](z) {
     return this.x + this.y + z;
   }
   get y() {
@@ -22,6 +22,6 @@ class Bar extends Foo {
 }
 
 inspect = function() { 
-  var foo = new Bar(); 
-  return [foo, foo[method1](10)]
+  var foo = new global.Bar(); 
+  return [foo, foo[global.method1](10)]
 }

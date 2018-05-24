@@ -1,6 +1,6 @@
 // does not contain:undefined
 // omit invariants
 (function() {
-  x = undefined;
+  var x = undefined;
   inspect = function() { return x; }
 })();
