@@ -3699,6 +3699,44 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output react-dom createPortal 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Foo",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "ReactDOM.createPortal",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output react-dom server rendering Hacker News app 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
@@ -7403,6 +7441,44 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output react-dom createPortal 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Foo",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "ReactDOM.createPortal",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -11117,6 +11193,44 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output react-dom createPortal 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Foo",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "ReactDOM.createPortal",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output react-dom server rendering Hacker News app 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
@@ -14821,6 +14935,44 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output react-dom createPortal 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Foo",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "ReactDOM.createPortal",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
