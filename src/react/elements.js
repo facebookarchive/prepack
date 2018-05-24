@@ -20,7 +20,7 @@ import {
   ObjectValue,
   Value,
 } from "../values/index.js";
-import { Create, Properties, To } from "../singletons.js";
+import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
 import {
