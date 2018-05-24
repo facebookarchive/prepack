@@ -152,12 +152,44 @@ function createPropsObject(
   return { key, props, ref };
 }
 
+function splitReactElementsByConditionalType(
+  realm: Realm,
+  condValue: AbstractValue,
+  consequentVal: Value,
+  alternateVal: Value,
+  config: ObjectValue | AbstractObjectValue | NullValue,
+  children: Value
+): Value {
+  return realm.evaluateWithAbstractConditional(
+    condValue,
+    () => {
+      return realm.evaluateForEffects(
+        () => createReactElement(realm, consequentVal, config, children),
+        null,
+        "splitReactElementsByConditionalType consequent"
+      );
+    },
+    () => {
+      return realm.evaluateForEffects(
+        () => createReactElement(realm, alternateVal, config, children),
+        null,
+        "splitReactElementsByConditionalType alternate"
+      );
+    }
+  );
+}
+
 export function createReactElement(
   realm: Realm,
   type: Value,
   config: ObjectValue | AbstractObjectValue | NullValue,
   children: Value
-) {
+): Value {
+  if (type instanceof AbstractValue && type.kind === "conditional") {
+    let [condValue, consequentVal, alternateVal] = type.args;
+    invariant(condValue instanceof AbstractValue);
+    return splitReactElementsByConditionalType(realm, condValue, consequentVal, alternateVal, config, children);
+  }
   let { key, props, ref } = createPropsObject(realm, type, config, children);
   return createInternalReactElement(realm, type, key, ref, props);
 }
@@ -168,7 +200,7 @@ export function createInternalReactElement(
   key: Value,
   ref: Value,
   props: ObjectValue | AbstractObjectValue
-) {
+): ObjectValue {
   let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
   Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactSymbol("react.element", realm));
   Create.CreateDataPropertyOrThrow(realm, obj, "type", type);

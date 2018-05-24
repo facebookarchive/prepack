@@ -329,12 +329,7 @@ function evaluateJSXAttributes(
   return config;
 }
 
-export default function(
-  ast: BabelNodeJSXElement,
-  strictCode: boolean,
-  env: LexicalEnvironment,
-  realm: Realm
-): ObjectValue {
+export default function(ast: BabelNodeJSXElement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
   invariant(realm.react.enabled, "JSXElements can only be evaluated with the reactEnabled option");
   let openingElement = ast.openingElement;
   let type = evaluateJSXIdentifier(openingElement.name, strictCode, env, realm);

@@ -922,7 +922,7 @@ export class Reconciler {
         return this.realm.evaluateForEffects(
           () => this._resolveDeeply(componentType, alternateVal, context, "NEW_BRANCH", newBranchState, evaluatedNode),
           null,
-          "_resolveAbstractConditionalValue consequent"
+          "_resolveAbstractConditionalValue alternate"
         );
       }
     );
@@ -978,51 +978,6 @@ export class Reconciler {
       this.componentTreeState.deadEnds++;
     }
     return value;
-  }
-
-  _resolveBranchedComponentType(
-    componentType: Value,
-    reactElement: ObjectValue,
-    context: ObjectValue | AbstractObjectValue,
-    branchStatus: BranchStatusEnum,
-    branchState: BranchState | null,
-    evaluatedNode: ReactEvaluatedNode
-  ): Value {
-    let typeValue = getProperty(this.realm, reactElement, "type");
-    let propsValue = getProperty(this.realm, reactElement, "props");
-    let keyValue = getProperty(this.realm, reactElement, "key");
-    let refValue = getProperty(this.realm, reactElement, "ref");
-
-    const resolveBranch = (abstract: AbstractValue): Value => {
-      invariant(abstract.kind === "conditional", "the reconciler tried to resolve a non conditional abstract");
-      let condition = abstract.args[0];
-      invariant(condition instanceof AbstractValue);
-      let left = abstract.args[1];
-      let right = abstract.args[2];
-
-      if (left instanceof AbstractValue && left.kind === "conditional") {
-        left = resolveBranch(left);
-      } else {
-        invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue);
-        left = createInternalReactElement(this.realm, left, keyValue, refValue, propsValue);
-      }
-      if (right instanceof AbstractValue && right.kind === "conditional") {
-        right = resolveBranch(right);
-      } else {
-        invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue);
-        right = createInternalReactElement(this.realm, right, keyValue, refValue, propsValue);
-      }
-      return AbstractValue.createFromConditionalOp(this.realm, condition, left, right);
-    };
-    invariant(typeValue instanceof AbstractValue);
-    return this._resolveDeeply(
-      componentType,
-      resolveBranch(typeValue),
-      context,
-      branchStatus,
-      branchState,
-      evaluatedNode
-    );
   }
 
   _resolveUnknownComponentType(reactElement: ObjectValue, evaluatedNode: ReactEvaluatedNode) {
@@ -1214,13 +1169,9 @@ export class Reconciler {
       switch (componentResolutionStrategy) {
         case "NORMAL": {
           if (typeValue instanceof AbstractValue && typeValue.kind === "conditional") {
-            return this._resolveBranchedComponentType(
-              componentType,
-              reactElement,
-              context,
-              branchStatus,
-              branchState,
-              evaluatedNode
+            invariant(
+              false,
+              "We should never have a component type that is condition, it should be handled in the createReactElement logic"
             );
           }
           if (

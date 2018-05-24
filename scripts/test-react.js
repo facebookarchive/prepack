@@ -575,6 +575,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("Dynamic ReactElement type #2", async () => {
         await runTest(directory, "dynamic-type2.js");
       });
+
+      it("Dynamic ReactElement type #3", async () => {
+        await runTest(directory, "dynamic-type3.js");
+      });
     });
 
     describe("Class component folding", () => {
