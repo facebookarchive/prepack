@@ -69,6 +69,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     errorHandler: diag => {
       errorsCaptured.push(diag);
       if (diag.severity !== "Warning" && diag.severity !== "Information") {
+        if (diag.errorCode === "PP0025") {
+          // recover from `unable to evaluate "key" and "ref" on a ReactElement
+          return "Recover";
+        }
         return "Fail";
       }
       return "Recover";

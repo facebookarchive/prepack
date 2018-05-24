@@ -78,46 +78,7 @@ function createPropsObject(
     (config instanceof AbstractObjectValue && config.isPartialObject()) ||
     (config instanceof ObjectValue && config.isPartialObject() && config.isSimpleObject())
   ) {
-    if (hasNoPartialKeyOrRef(realm, config)) {
-      let args = [];
-      if (defaultProps !== realm.intrinsics.undefined) {
-        args.push(defaultProps);
-      }
-      args.push(config);
-      // create a new props object that will be the target of the Object.assign
-      props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-      // props objects also don't have a key and ref, so we remove them
-      deleteRefAndKeyFromProps(realm, props);
-
-      // get the global Object.assign
-      let globalObj = Get(realm, realm.$GlobalObject, "Object");
-      invariant(globalObj instanceof ObjectValue);
-      let objAssign = Get(realm, globalObj, "assign");
-      invariant(objAssign instanceof ECMAScriptFunctionValue);
-      let objectAssignCall = objAssign.$Call;
-      invariant(objectAssignCall !== undefined);
-
-      if (children !== undefined) {
-        let childrenObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-        Properties.Set(realm, props, "children", children, true);
-        args.push(childrenObject);
-      }
-
-      try {
-        objectAssignCall(realm.intrinsics.undefined, [props, ...args]);
-      } catch (e) {
-        if (realm.isInPureScope() && e instanceof FatalError) {
-          props = AbstractValue.createTemporalFromBuildFunction(
-            realm,
-            ObjectValue,
-            [objAssign, props, ...args],
-            ([methodNode, ..._args]) => {
-              return t.callExpression(methodNode, ((_args: any): Array<any>));
-            }
-          );
-        }
-      }
-    } else {
+    if (!hasNoPartialKeyOrRef(realm, config)) {
       // if either are abstract, this will impact the reconcilation process
       // and ultimately prevent us from folding ReactElements properly
       let diagnostic = new CompilerDiagnostic(
@@ -128,6 +89,45 @@ function createPropsObject(
       );
       realm.handleError(diagnostic);
       if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
+    }
+
+    let args = [];
+    if (defaultProps !== realm.intrinsics.undefined) {
+      args.push(defaultProps);
+    }
+    args.push(config);
+    // create a new props object that will be the target of the Object.assign
+    props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+    // props objects also don't have a key and ref, so we remove them
+    deleteRefAndKeyFromProps(realm, props);
+
+    // get the global Object.assign
+    let globalObj = Get(realm, realm.$GlobalObject, "Object");
+    invariant(globalObj instanceof ObjectValue);
+    let objAssign = Get(realm, globalObj, "assign");
+    invariant(objAssign instanceof ECMAScriptFunctionValue);
+    let objectAssignCall = objAssign.$Call;
+    invariant(objectAssignCall !== undefined);
+
+    if (children !== undefined) {
+      let childrenObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+      Properties.Set(realm, props, "children", children, true);
+      args.push(childrenObject);
+    }
+
+    try {
+      objectAssignCall(realm.intrinsics.undefined, [props, ...args]);
+    } catch (e) {
+      if (realm.isInPureScope() && e instanceof FatalError) {
+        props = AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          ObjectValue,
+          [objAssign, props, ...args],
+          ([methodNode, ..._args]) => {
+            return t.callExpression(methodNode, ((_args: any): Array<any>));
+          }
+        );
+      }
     }
   } else {
     applyProperties();

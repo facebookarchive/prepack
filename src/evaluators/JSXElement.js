@@ -263,59 +263,46 @@ function evaluateJSXAttributes(
   }
 
   if (abstractSpreadCount > 0) {
-    // if we haven't assigned any attributes and we are dealing with a single
-    // spread attribute, we can just make the spread object the props
-    if (
-      attributesAssigned === 0 &&
-      ((spreadValue instanceof ObjectValue && spreadValue.isPartialObject()) || spreadValue instanceof AbstractValue)
-    ) {
-      if (spreadValue instanceof AbstractValue && !(spreadValue instanceof AbstractObjectValue)) {
-        config = To.ToObject(realm, spreadValue);
-      } else {
-        // the spread is partial, so we can re-use that value
-        config = spreadValue;
+    if (spreadValue instanceof AbstractValue && !(spreadValue instanceof AbstractObjectValue)) {
+      config = To.ToObject(realm, spreadValue);
+    }
+    // we create an abstract Object.assign() to deal with the fact that we don't what
+    // the props are because they contain abstract spread attributes that we can't
+    // evaluate ahead of time
+    // push the current config
+    abstractPropsArgs.push(config);
+
+    // create a new config object that will be the target of the Object.assign
+    config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+
+    // get the global Object.assign
+    let globalObj = Get(realm, realm.$GlobalObject, "Object");
+    invariant(globalObj instanceof ObjectValue);
+    let objAssign = Get(realm, globalObj, "assign");
+    invariant(objAssign instanceof ECMAScriptFunctionValue);
+    let objectAssignCall = objAssign.$Call;
+    invariant(objectAssignCall !== undefined);
+
+    try {
+      objectAssignCall(realm.intrinsics.undefined, [config, ...abstractPropsArgs]);
+      if (safeAbstractSpreadCount === abstractSpreadCount) {
+        resetRefAndKeyFromProps(realm, config);
       }
-      resetRefAndKeyFromProps(realm, config);
-    } else {
-      // we create an abstract Object.assign() to deal with the fact that we don't what
-      // the props are because they contain abstract spread attributes that we can't
-      // evaluate ahead of time
-      // push the current config
-      if (config.properties.size > 0) {
-        abstractPropsArgs.push(config);
-      }
-      // create a new config object that will be the target of the Object.assign
-      config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+    } catch (e) {
+      if (realm.isInPureScope() && e instanceof FatalError) {
+        let makeSafe = hasNoPartialKeyOrRef(realm, config);
 
-      // get the global Object.assign
-      let globalObj = Get(realm, realm.$GlobalObject, "Object");
-      invariant(globalObj instanceof ObjectValue);
-      let objAssign = Get(realm, globalObj, "assign");
-      invariant(objAssign instanceof ECMAScriptFunctionValue);
-      let objectAssignCall = objAssign.$Call;
-      invariant(objectAssignCall !== undefined);
-
-      try {
-        objectAssignCall(realm.intrinsics.undefined, [config, ...abstractPropsArgs]);
-        if (safeAbstractSpreadCount === abstractSpreadCount) {
-          resetRefAndKeyFromProps(realm, config);
-        }
-      } catch (e) {
-        if (realm.isInPureScope() && e instanceof FatalError) {
-          let makeSafe = hasNoPartialKeyOrRef(realm, config);
-
-          config = AbstractValue.createTemporalFromBuildFunction(
-            realm,
-            ObjectValue,
-            [objAssign, config, ...abstractPropsArgs],
-            ([methodNode, ..._args]) => {
-              return t.callExpression(methodNode, ((_args: any): Array<any>));
-            }
-          );
-          invariant(config instanceof AbstractObjectValue);
-          if (makeSafe) {
-            resetRefAndKeyFromProps(realm, config);
+        config = AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          ObjectValue,
+          [objAssign, config, ...abstractPropsArgs],
+          ([methodNode, ..._args]) => {
+            return t.callExpression(methodNode, ((_args: any): Array<any>));
           }
+        );
+        invariant(config instanceof AbstractObjectValue);
+        if (makeSafe) {
+          resetRefAndKeyFromProps(realm, config);
         }
       }
     }
