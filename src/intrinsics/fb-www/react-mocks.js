@@ -521,7 +521,6 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
           children.makeFinal();
         }
       }
-      invariant(children instanceof Value);
       return createReactElement(realm, type, config, children);
     }
   );
