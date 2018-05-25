@@ -70,6 +70,11 @@ export function havocBinding(binding: Binding) {
   let value = binding.value;
   if (!binding.hasLeaked && !(value instanceof ObjectValue && value.isFinalObject())) {
     realm.recordModifiedBinding(binding).hasLeaked = true;
+    if (value !== undefined) {
+      let realmGenerator = realm.generator;
+      if (realmGenerator !== undefined) realmGenerator.emitBindingAssignment(binding, value);
+      binding.value = realm.intrinsics.undefined;
+    }
   }
 }
 
