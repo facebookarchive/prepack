@@ -23,7 +23,7 @@ import {
 } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
-import { valueIsClassComponent, deleteRefAndKeyFromProps, getProperty, getValueFromFunctionCall } from "./utils";
+import { valueIsClassComponent, getProperty, getValueFromFunctionCall, resetRefAndKeyFromProps } from "./utils";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get, Construct } from "../methods/index.js";
 import { Properties } from "../singletons.js";
@@ -64,9 +64,8 @@ export function getInitialProps(
     }
   }
   let value = AbstractValue.createAbstractObject(realm, propsName || "props");
-  // props objects don't have a key and ref, so we remove them
-  deleteRefAndKeyFromProps(realm, value);
   invariant(value instanceof AbstractObjectValue);
+  resetRefAndKeyFromProps(realm, value);
   value.makeFinal();
   return value;
 }

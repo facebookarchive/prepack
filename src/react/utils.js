@@ -544,25 +544,11 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
   }
 }
 
-// props should never have "ref" or "key" properties, as they're part of ReactElement
-// object instead. to ensure that we can give this hint, we create them and then
-// delete them, so their descriptor is left undefined. we use this knowledge later
-// to ensure that when dealing with creating ReactElements with partial config,
-// we don't have to bail out becuase "config" may or may not have "key" or/and "ref"
-export function deleteRefAndKeyFromProps(realm: Realm, props: ObjectValue | AbstractObjectValue): void {
-  setProperty(props, "ref", realm.intrinsics.undefined);
-  deleteProperty(props, "ref");
-  setProperty(props, "key", realm.intrinsics.undefined);
-  deleteProperty(props, "key");
-}
-
 export function resetRefAndKeyFromProps(realm: Realm, props: ObjectValue | AbstractObjectValue): void {
   if (props instanceof AbstractObjectValue) {
     if (props.values.isTop()) {
-      let template = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-      template.makePartial();
-      template.makeSimple();
-      props.values = new ValuesDomain(new Set([template]));
+      realm.react.propsWithNoPartialKeyOrRef.add(props);
+      return;
     }
     let elements = props.values.getElements();
     if (elements.size === 1) {
@@ -587,11 +573,18 @@ export function resetRefAndKeyFromProps(realm: Realm, props: ObjectValue | Abstr
   }
 }
 
-export function hasNoPartialKeyOrRef(realm: Realm, props: ObjectValue | AbstractValue | AbstractObjectValue): boolean {
-  if (props instanceof ObjectValue && !props.isPartialObject()) {
+export function hasNoPartialKeyOrRef(realm: Realm, props: ObjectValue | AbstractObjectValue): boolean {
+  if (realm.react.propsWithNoPartialKeyOrRef.has(props)) {
     return true;
   }
-  if (props instanceof AbstractObjectValue && !props.values.isTop()) {
+  if (props instanceof ObjectValue && !props.isPartialObject()) {
+    realm.react.propsWithNoPartialKeyOrRef.add(props);
+    return true;
+  }
+  if (props instanceof AbstractObjectValue) {
+    if (props.values.isTop()) {
+      return false;
+    }
     let elements = props.values.getElements();
     if (elements.size === 1) {
       props = Array.from(elements)[0];
@@ -602,10 +595,12 @@ export function hasNoPartialKeyOrRef(realm: Realm, props: ObjectValue | Abstract
           return false;
         }
       }
+      realm.react.propsWithNoPartialKeyOrRef.add(props);
       return true;
     }
   }
   if (props instanceof ObjectValue && props.properties.has("key") && props.properties.has("ref")) {
+    realm.react.propsWithNoPartialKeyOrRef.add(props);
     return true;
   }
   return false;

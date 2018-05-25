@@ -38,7 +38,7 @@ import { Get } from "../methods/index.js";
 import { Create, Environment, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import { createReactElement } from "../react/elements.js";
-import { deleteRefAndKeyFromProps, hasNoPartialKeyOrRef, resetRefAndKeyFromProps } from "../react/utils.js";
+import { hasNoPartialKeyOrRef, resetRefAndKeyFromProps } from "../react/utils.js";
 import { FatalError } from "../errors.js";
 
 // taken from Babel
@@ -211,8 +211,6 @@ function evaluateJSXAttributes(
   realm: Realm
 ): ObjectValue | AbstractObjectValue {
   let config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  // start by having key and ref deleted, if they actually exist, they will be added later
-  deleteRefAndKeyFromProps(realm, config);
   let abstractPropsArgs = [];
   let abstractSpreadCount = 0;
   let safeAbstractSpreadCount = 0;
@@ -242,7 +240,10 @@ function evaluateJSXAttributes(
           }
         } else {
           abstractSpreadCount++;
-          invariant(spreadValue instanceof AbstractValue || spreadValue instanceof ObjectValue);
+          if (spreadValue instanceof AbstractValue && !(spreadValue instanceof AbstractObjectValue)) {
+            spreadValue = To.ToObject(realm, spreadValue);
+          }
+          invariant(spreadValue instanceof AbstractObjectValue || spreadValue instanceof ObjectValue);
 
           if (hasNoPartialKeyOrRef(realm, spreadValue)) {
             safeAbstractSpreadCount++;
@@ -252,7 +253,6 @@ function evaluateJSXAttributes(
           }
           abstractPropsArgs.push(spreadValue);
           config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-          deleteRefAndKeyFromProps(realm, config);
         }
         break;
       default:
@@ -261,9 +261,6 @@ function evaluateJSXAttributes(
   }
 
   if (abstractSpreadCount > 0) {
-    if (spreadValue instanceof AbstractValue && !(spreadValue instanceof AbstractObjectValue)) {
-      config = To.ToObject(realm, spreadValue);
-    }
     // we create an abstract Object.assign() to deal with the fact that we don't what
     // the props are because they contain abstract spread attributes that we can't
     // evaluate ahead of time

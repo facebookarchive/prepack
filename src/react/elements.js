@@ -23,13 +23,7 @@ import {
 import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
-import {
-  deleteRefAndKeyFromProps,
-  getProperty,
-  getReactSymbol,
-  hasNoPartialKeyOrRef,
-  resetRefAndKeyFromProps,
-} from "./utils.js";
+import { getProperty, getReactSymbol, hasNoPartialKeyOrRef, resetRefAndKeyFromProps } from "./utils.js";
 import * as t from "babel-types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
@@ -46,8 +40,6 @@ function createPropsObject(
       : realm.intrinsics.undefined;
 
   let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  // start by having key and ref deleted, if they actually exist, they will be add later
-  deleteRefAndKeyFromProps(realm, props);
   let key = realm.intrinsics.null;
   let ref = realm.intrinsics.null;
 
@@ -104,8 +96,6 @@ function createPropsObject(
     args.push(config);
     // create a new props object that will be the target of the Object.assign
     props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-    // props objects also don't have a key and ref, so we remove them
-    deleteRefAndKeyFromProps(realm, props);
 
     // get the global Object.assign
     let globalObj = Get(realm, realm.$GlobalObject, "Object");
@@ -155,10 +145,15 @@ function createPropsObject(
     }
   }
   invariant(props instanceof ObjectValue || props instanceof AbstractObjectValue);
-  // we know the props has no keys because if it did it would have thrown above
-  // so we can remove them the props we create
+  // We know the props has no keys because if it did it would have thrown above
+  // so we can remove them the props we create.
   resetRefAndKeyFromProps(realm, props);
-  props.makeFinal();
+  // If the object is an object or abstract object value that has a backing object
+  // value for a template, we can make them final. We can't make abstract values
+  // final though – but that's okay. They also can't be havoced.
+  if (props instanceof ObjectValue || (props instanceof AbstractObjectValue && !props.values.isTop())) {
+    props.makeFinal();
+  }
   return { key, props, ref };
 }
 
