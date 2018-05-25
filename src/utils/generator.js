@@ -263,7 +263,6 @@ class ModifiedBindingEntry extends GeneratorEntry {
       "ResidualFunctionBinding has been changed since last visit."
     );
     this.residualFunctionBinding = residualBinding;
-    this.modifiedBinding.value = newValue;
     this.newValue = newValue;
     return true;
   }

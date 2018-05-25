@@ -175,6 +175,17 @@ export class Serializer {
         );
 
         if (this.options.heapGraphFormat) {
+          if (additionalFunctionValuesAndEffects.size > 0) {
+            let diagnostic = new CompilerDiagnostic(
+              "Using __optimize with --heapGraphFilePath flag is not currently supported",
+              undefined,
+              "N/A",
+              "FatalError"
+            );
+            this.realm.handleError(diagnostic);
+            throw new FatalError("Using __optimize with --heapGraphFilePath flag is not currently supported");
+          }
+
           const heapRefCounter = new ResidualHeapRefCounter(
             this.realm,
             this.logger,
@@ -182,11 +193,6 @@ export class Serializer {
             additionalFunctionValuesAndEffects,
             referentializer
           );
-          // ModifiedBindingEntry caches the state from declarativeEnvironmentRecordsBindings
-          // during the first visitor. We pass that same cache to future visitors so 
-          // those visitors receive the same object. 
-          heapRefCounter.declarativeEnvironmentRecordsBindings =
-            residualHeapVisitor.declarativeEnvironmentRecordsBindings;
           heapRefCounter.visitRoots();
 
           const heapGraphGenerator = new ResidualHeapGraphGenerator(
@@ -198,8 +204,6 @@ export class Serializer {
             heapRefCounter.getResult(),
             referentializer
           );
-          heapGraphGenerator.declarativeEnvironmentRecordsBindings =
-            residualHeapVisitor.declarativeEnvironmentRecordsBindings;
           heapGraphGenerator.visitRoots();
           invariant(this.options.heapGraphFormat);
           heapGraph = heapGraphGenerator.generateResult(this.options.heapGraphFormat);
