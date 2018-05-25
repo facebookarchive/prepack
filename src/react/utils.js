@@ -552,7 +552,6 @@ export function hasNoPartialKeyOrRef(realm: Realm, props: ObjectValue | Abstract
     return true;
   }
   if (props instanceof ObjectValue && !props.isPartialObject()) {
-    realm.react.propsWithNoPartialKeyOrRef.add(props);
     return true;
   }
   if (props instanceof AbstractObjectValue) {
@@ -569,12 +568,10 @@ export function hasNoPartialKeyOrRef(realm: Realm, props: ObjectValue | Abstract
           return false;
         }
       }
-      realm.react.propsWithNoPartialKeyOrRef.add(props);
       return true;
     }
   }
   if (props instanceof ObjectValue && props.properties.has("key") && props.properties.has("ref")) {
-    realm.react.propsWithNoPartialKeyOrRef.add(props);
     return true;
   }
   return false;

@@ -507,7 +507,6 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
         config = To.ToObject(realm, config);
       }
       invariant(config instanceof ObjectValue || config instanceof AbstractObjectValue);
-      flagPropsWithNoPartialKeyOrRef(realm, config);
 
       if (Array.isArray(children)) {
         if (children.length === 0) {
