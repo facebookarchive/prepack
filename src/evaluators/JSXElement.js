@@ -38,7 +38,7 @@ import { Get } from "../methods/index.js";
 import { Create, Environment, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import { createReactElement } from "../react/elements.js";
-import { hasNoPartialKeyOrRef, resetRefAndKeyFromProps } from "../react/utils.js";
+import { flagPropsWithNoPartialKeyOrRef, hasNoPartialKeyOrRef } from "../react/utils.js";
 import { FatalError } from "../errors.js";
 
 // taken from Babel
@@ -281,11 +281,11 @@ function evaluateJSXAttributes(
     try {
       objectAssignCall(realm.intrinsics.undefined, [config, ...abstractPropsArgs]);
       if (safeAbstractSpreadCount === abstractSpreadCount) {
-        resetRefAndKeyFromProps(realm, config);
+        flagPropsWithNoPartialKeyOrRef(realm, config);
       }
     } catch (e) {
       if (realm.isInPureScope() && e instanceof FatalError) {
-        let makeSafe = hasNoPartialKeyOrRef(realm, config);
+        let flagProps = hasNoPartialKeyOrRef(realm, config);
 
         config = AbstractValue.createTemporalFromBuildFunction(
           realm,
@@ -296,8 +296,8 @@ function evaluateJSXAttributes(
           }
         );
         invariant(config instanceof AbstractObjectValue);
-        if (makeSafe) {
-          resetRefAndKeyFromProps(realm, config);
+        if (flagProps) {
+          flagPropsWithNoPartialKeyOrRef(realm, config);
         }
       }
     }

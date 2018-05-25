@@ -43,7 +43,6 @@ import { Create, Properties, To } from "../singletons.js";
 import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
-import { ValuesDomain } from "../domains/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 
 export type ReactSymbolTypes =
@@ -544,33 +543,8 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
   }
 }
 
-export function resetRefAndKeyFromProps(realm: Realm, props: ObjectValue | AbstractObjectValue): void {
-  if (props instanceof AbstractObjectValue) {
-    if (props.values.isTop()) {
-      realm.react.propsWithNoPartialKeyOrRef.add(props);
-      return;
-    }
-    let elements = props.values.getElements();
-    if (elements.size === 1) {
-      props = Array.from(elements)[0];
-    } else {
-      for (let element of elements) {
-        if (element instanceof ObjectValue || element instanceof AbstractObjectValue) {
-          resetRefAndKeyFromProps(realm, element);
-        }
-      }
-    }
-  }
-  let possibleKey = getProperty(realm, props, "key");
-  if (possibleKey === realm.intrinsics.null || possibleKey === realm.intrinsics.undefined) {
-    setProperty(props, "key", realm.intrinsics.undefined);
-    deleteProperty(props, "key");
-  }
-  let possibleRef = getProperty(realm, props, "ref");
-  if (possibleRef === realm.intrinsics.null || possibleRef === realm.intrinsics.undefined) {
-    setProperty(props, "ref", realm.intrinsics.undefined);
-    deleteProperty(props, "ref");
-  }
+export function flagPropsWithNoPartialKeyOrRef(realm: Realm, props: ObjectValue | AbstractObjectValue): void {
+  realm.react.propsWithNoPartialKeyOrRef.add(props);
 }
 
 export function hasNoPartialKeyOrRef(realm: Realm, props: ObjectValue | AbstractObjectValue): boolean {

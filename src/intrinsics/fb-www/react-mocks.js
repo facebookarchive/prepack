@@ -22,7 +22,12 @@ import {
   NumberValue,
 } from "../../values/index.js";
 import { Environment } from "../../singletons.js";
-import { createReactHintObject, getReactSymbol, resetRefAndKeyFromProps, isReactElement } from "../../react/utils.js";
+import {
+  createReactHintObject,
+  flagPropsWithNoPartialKeyOrRef,
+  getReactSymbol,
+  isReactElement,
+} from "../../react/utils.js";
 import { createReactElement } from "../../react/elements.js";
 import { Properties, Create, To } from "../../singletons.js";
 import { renderToString } from "../../react/experimental-server-rendering/rendering.js";
@@ -502,7 +507,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
         config = To.ToObject(realm, config);
       }
       invariant(config instanceof ObjectValue || config instanceof AbstractObjectValue);
-      resetRefAndKeyFromProps(realm, config);
+      flagPropsWithNoPartialKeyOrRef(realm, config);
 
       if (Array.isArray(children)) {
         if (children.length === 0) {

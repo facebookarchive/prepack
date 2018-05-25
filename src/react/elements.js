@@ -23,7 +23,7 @@ import {
 import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
-import { getProperty, getReactSymbol, hasNoPartialKeyOrRef, resetRefAndKeyFromProps } from "./utils.js";
+import { flagPropsWithNoPartialKeyOrRef, getProperty, getReactSymbol, hasNoPartialKeyOrRef } from "./utils.js";
 import * as t from "babel-types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
@@ -147,7 +147,7 @@ function createPropsObject(
   invariant(props instanceof ObjectValue || props instanceof AbstractObjectValue);
   // We know the props has no keys because if it did it would have thrown above
   // so we can remove them the props we create.
-  resetRefAndKeyFromProps(realm, props);
+  flagPropsWithNoPartialKeyOrRef(realm, props);
   // If the object is an object or abstract object value that has a backing object
   // value for a template, we can make them final. We can't make abstract values
   // final though – but that's okay. They also can't be havoced.
