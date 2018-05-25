@@ -174,12 +174,12 @@ export class ResidualHeapSerializer {
         createLocation: containingAdditionalFunction => {
           let location = t.identifier(this.initializeConditionNameGenerator.generate());
           let declar = t.variableDeclaration("var", [t.variableDeclarator(location)]);
-          this._getPrelude(containingAdditionalFunction).push(declar);
+          this.getPrelude(containingAdditionalFunction).push(declar);
           return location;
         },
         createFunction: (containingAdditionalFunction, statements) => {
           let id = t.identifier(this.initializerNameGenerator.generate());
-          this._getPrelude(containingAdditionalFunction).push(
+          this.getPrelude(containingAdditionalFunction).push(
             t.functionDeclaration(id, [], t.blockStatement(statements))
           );
           return id;
@@ -697,7 +697,7 @@ export class ResidualHeapSerializer {
   _getReferencingGenerators(
     initialGenerators: Array<Generator>,
     functionValues: Array<FunctionValue>,
-    referencingOnlyAdditionalFunction: void | FunctionValue
+    referencingOnlyOptimizedFunction: void | FunctionValue
   ): Array<Generator> {
     let result = new Set(initialGenerators);
     let activeFunctions = functionValues.slice();
@@ -706,7 +706,7 @@ export class ResidualHeapSerializer {
       let f = activeFunctions.pop();
       if (visitedFunctions.has(f)) continue;
       visitedFunctions.add(f);
-      if (f === referencingOnlyAdditionalFunction) {
+      if (f === referencingOnlyOptimizedFunction) {
         let g = this.additionalFunctionGenerators.get(f);
         invariant(g !== undefined);
         result.add(g);
@@ -726,7 +726,7 @@ export class ResidualHeapSerializer {
   }
 
   // Determine if a value is effectively referenced by a single additional function.
-  isReferencedOnlyByAdditionalFunction(val: Value): void | FunctionValue {
+  isReferencedOnlyByOptimizedFunction(val: Value): void | FunctionValue {
     let scopes = this.residualValues.get(val);
     invariant(scopes !== undefined);
     let additionalFunction;
@@ -741,7 +741,7 @@ export class ResidualHeapSerializer {
         if (additionalFunction !== undefined && additionalFunction !== s) return undefined;
         additionalFunction = s;
       } else {
-        let f = this.isReferencedOnlyByAdditionalFunction(s);
+        let f = this.isReferencedOnlyByOptimizedFunction(s);
         if (f === undefined) return undefined;
         if (additionalFunction !== undefined && additionalFunction !== f) return undefined;
         additionalFunction = f;
@@ -761,7 +761,7 @@ export class ResidualHeapSerializer {
   ): {
     body: SerializedBody,
     usedOnlyByResidualFunctions?: true,
-    referencingOnlyAdditionalFunction?: void | FunctionValue,
+    referencingOnlyOptimizedFunction?: void | FunctionValue,
     commonAncestor?: Scope,
     description?: string,
   } {
@@ -787,12 +787,12 @@ export class ResidualHeapSerializer {
       }
     }
 
-    let referencingOnlyAdditionalFunction = this.isReferencedOnlyByAdditionalFunction(val);
+    let referencingOnlyOptimizedFunction = this.isReferencedOnlyByOptimizedFunction(val);
     if (generators.length === 0) {
       // This value is only referenced from residual functions.
       if (
         this._options.delayInitializations &&
-        (referencingOnlyAdditionalFunction === undefined || !functionValues.includes(referencingOnlyAdditionalFunction))
+        (referencingOnlyOptimizedFunction === undefined || !functionValues.includes(referencingOnlyOptimizedFunction))
       ) {
         // We can delay the initialization, and move it into a conditional code block in the residual functions!
         let body = this.residualFunctions.residualFunctionInitializers.registerValueOnlyReferencedByResidualFunctions(
@@ -803,7 +803,7 @@ export class ResidualHeapSerializer {
         return {
           body,
           usedOnlyByResidualFunctions: true,
-          referencingOnlyAdditionalFunction,
+          referencingOnlyOptimizedFunction,
           description: "delay_initializer",
         };
       }
@@ -811,13 +811,13 @@ export class ResidualHeapSerializer {
 
     if (trace)
       console.log(
-        `  is referenced only by additional function? ${referencingOnlyAdditionalFunction !== undefined ? "yes" : "no"}`
+        `  is referenced only by additional function? ${referencingOnlyOptimizedFunction !== undefined ? "yes" : "no"}`
       );
 
     // flatten all function values into the scopes that use them
-    generators = this._getReferencingGenerators(generators, functionValues, referencingOnlyAdditionalFunction);
+    generators = this._getReferencingGenerators(generators, functionValues, referencingOnlyOptimizedFunction);
 
-    if (referencingOnlyAdditionalFunction === undefined) {
+    if (referencingOnlyOptimizedFunction === undefined) {
       // Remove all generators rooted in additional functions,
       // since we know that there's at least one root that's not in an additional function
       // which requires the value to be emitted outside of the additional function.
@@ -875,7 +875,7 @@ export class ResidualHeapSerializer {
           );
         }
         invariant(
-          referencingOnlyAdditionalFunction === undefined || this.emitter.emittingToAdditionalFunction(),
+          referencingOnlyOptimizedFunction === undefined || this.emitter.emittingToAdditionalFunction(),
           "additional function inconsistency"
         );
         let declarationBody = this.emitter.getDeclarationBody(dependency);
@@ -890,7 +890,7 @@ export class ResidualHeapSerializer {
       onAbstractValueWithIdentifier: dependency => {
         if (trace) console.log(`  depending on abstract value with identifier ${dependency.intrinsicName || "?"}`);
         invariant(
-          referencingOnlyAdditionalFunction === undefined || this.emitter.emittingToAdditionalFunction(),
+          referencingOnlyOptimizedFunction === undefined || this.emitter.emittingToAdditionalFunction(),
           "additional function inconsistency"
         );
         let declarationBody = this.emitter.getDeclarationBody(dependency);
@@ -952,7 +952,7 @@ export class ResidualHeapSerializer {
     return location;
   }
 
-  _getPrelude(additionalFunction: void | FunctionValue): Array<BabelNodeStatement> {
+  getPrelude(additionalFunction: void | FunctionValue): Array<BabelNodeStatement> {
     if (additionalFunction !== undefined) {
       let body = this.residualFunctions.additionalFunctionPreludes.get(additionalFunction);
       invariant(body !== undefined);
@@ -964,14 +964,14 @@ export class ResidualHeapSerializer {
 
   _declare(
     emittingToResidualFunction: boolean,
-    referencingOnlyAdditionalFunction: void | FunctionValue,
+    referencingOnlyOptimizedFunction: void | FunctionValue,
     bindingType: BabelVariableKind,
     id: BabelNodeLVal,
     init: BabelNodeExpression
   ) {
     if (emittingToResidualFunction) {
       let declar = t.variableDeclaration(bindingType, [t.variableDeclarator(id)]);
-      this._getPrelude(referencingOnlyAdditionalFunction).push(declar);
+      this.getPrelude(referencingOnlyOptimizedFunction).push(declar);
       let assignment = t.expressionStatement(t.assignmentExpression("=", id, init));
       this.emitter.emit(assignment);
     } else {
@@ -1053,7 +1053,7 @@ export class ResidualHeapSerializer {
         if (init !== id) {
           this._declare(
             !!target.usedOnlyByResidualFunctions,
-            target.referencingOnlyAdditionalFunction,
+            target.referencingOnlyOptimizedFunction,
             bindingType || "var",
             id,
             init
@@ -1402,12 +1402,12 @@ export class ResidualHeapSerializer {
     invariant(instance !== undefined);
     let residualBindings = instance.residualFunctionBindings;
 
-    let inAdditionalFunction = this.isReferencedOnlyByAdditionalFunction(val);
-    if (inAdditionalFunction !== undefined) instance.containingAdditionalFunction = inAdditionalFunction;
+    let inOptimizedFunction = this.isReferencedOnlyByOptimizedFunction(val);
+    if (inOptimizedFunction !== undefined) instance.containingAdditionalFunction = inOptimizedFunction;
     let bindingsEmittedSemaphore = new CountingSemaphore(() => {
       invariant(instance);
       // hoist if we are in an additionalFunction
-      if (inAdditionalFunction !== undefined && canHoistFunction(this.realm, val, undefined, new Set())) {
+      if (inOptimizedFunction !== undefined && canHoistFunction(this.realm, val, undefined, new Set())) {
         instance.insertionPoint = new BodyReference(this.mainBody, this.mainBody.entries.length);
         instance.containingAdditionalFunction = undefined;
       } else {
@@ -2150,7 +2150,7 @@ export class ResidualHeapSerializer {
     functionValue: FunctionValue,
     additionalEffects: AdditionalFunctionEffects
   ) {
-    let inAdditionalFunction = this.isReferencedOnlyByAdditionalFunction(functionValue);
+    let inAdditionalFunction = this.isReferencedOnlyByOptimizedFunction(functionValue);
     return this._withGeneratorScope(
       "AdditionalFunction",
       generator,
