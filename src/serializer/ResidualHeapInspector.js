@@ -156,7 +156,7 @@ export class ResidualHeapInspector {
           desc.value !== undefined &&
           !this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION) &&
           !this.realm.isCompatibleWith("mobile") &&
-          desc.writable === (val instanceof FunctionValue && !val.$Strict && targetDescriptor.writable) &&
+          desc.writable === true &&
           (desc.value instanceof AbstractValue ||
             (desc.value instanceof ConcreteValue &&
               val.__originalName &&
