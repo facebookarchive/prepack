@@ -147,6 +147,7 @@ export class ResidualHeapInspector {
       }
 
       if (key === "name") {
+        if (desc.enumerable !== false || desc.writable !== false || desc.configurable !== true) return false;
         // TODO #474: Make sure that we retain original function names. Or set name property.
         // Or ensure that nothing references the name property.
         // NOTE: with some old runtimes notably JSC, function names are not configurable
@@ -156,7 +157,6 @@ export class ResidualHeapInspector {
           desc.value !== undefined &&
           !this.realm.isCompatibleWith(this.realm.MOBILE_JSC_VERSION) &&
           !this.realm.isCompatibleWith("mobile") &&
-          desc.writable === true &&
           (desc.value instanceof AbstractValue ||
             (desc.value instanceof ConcreteValue &&
               val.__originalName &&
