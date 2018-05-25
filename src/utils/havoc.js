@@ -38,6 +38,8 @@ import traverse from "babel-traverse";
 import type { BabelTraversePath } from "babel-traverse";
 import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
+import { HeapInspector } from "../utils/HeapInspector.js";
+import { Logger } from "../utils/Logger.js";
 
 type HavocedFunctionInfo = {
   unboundReads: Set<string>,
@@ -103,14 +105,23 @@ function getHavocedFunctionInfo(value: FunctionValue) {
 }
 
 class ObjectValueHavocingVisitor {
+  realm: Realm;
   // ObjectValues to visit if they're reachable.
   objectsTrackedForHavoc: Set<ObjectValue>;
   // Values that has been visited.
   visitedValues: Set<Value>;
+  _heapInspector: HeapInspector;
 
-  constructor(objectsTrackedForHavoc: Set<ObjectValue>) {
+  constructor(realm: Realm, objectsTrackedForHavoc: Set<ObjectValue>) {
+    this.realm = realm;
     this.objectsTrackedForHavoc = objectsTrackedForHavoc;
     this.visitedValues = new Set();
+  }
+
+  getHeapInspector(): HeapInspector {
+    if (this._heapInspector === undefined)
+      this._heapInspector = new HeapInspector(this.realm, new Logger(this.realm, /*internalDebug*/ false));
+    return this._heapInspector;
   }
 
   mustVisit(val: Value): boolean {
@@ -157,8 +168,7 @@ class ObjectValueHavocingVisitor {
     // prototype
     this.visitObjectPrototype(obj);
 
-    let realm = obj.$Realm;
-    if (TestIntegrityLevel(realm, obj, "frozen")) return;
+    if (TestIntegrityLevel(this.realm, obj, "frozen")) return;
 
     // if this object wasn't already havoced, we need mark it as havoced
     // so that any mutation and property access get tracked after this.
@@ -172,9 +182,11 @@ class ObjectValueHavocingVisitor {
         // We have repros, e.g. test/serializer/additional-functions/ArrayConcat.js.
       }
       // TODO: We should emit current value and then reset value for all *internal slots*; this will require deep serializer support; or throw FatalError when we detect any non-initial values in internal slots.
-      // TODO: The following results in quite ugly code for function values, as they have properties such as `constructor` and `name`.
-      let realmGenerator = realm.generator;
+      let realmGenerator = this.realm.generator;
       for (let [name, propertyBinding] of obj.properties) {
+        // ignore properties with their correct default values
+        if (this.getHeapInspector().canIgnoreProperty(obj, name)) continue;
+
         let descriptor = propertyBinding.descriptor;
         if (descriptor === undefined) {
           // TODO: This happens, e.g. test/serializer/pure-functions/ObjectAssign2.js
@@ -202,10 +214,14 @@ class ObjectValueHavocingVisitor {
               }
               if (realmGenerator !== undefined) realmGenerator.emitPropertyAssignment(obj, name, value);
             }
-            realm.recordModifiedProperty(propertyBinding);
+            this.realm.recordModifiedProperty(propertyBinding);
             propertyBinding.descriptor = Object.assign({}, descriptor);
+
+            // TODO: We need a general way to find out the right default value
             propertyBinding.descriptor.value =
-              obj instanceof ArrayValue && name === "length" ? realm.intrinsics.zero : realm.intrinsics.undefined;
+              obj instanceof ArrayValue && name === "length"
+                ? this.realm.intrinsics.zero
+                : this.realm.intrinsics.undefined;
           }
         }
       }
@@ -492,7 +508,7 @@ export class HavocImplementation {
       // object can safely be assumed to be deeply immutable as far as this
       // pure function is concerned. However, any mutable object needs to
       // be tainted as possibly having changed to anything.
-      let visitor = new ObjectValueHavocingVisitor(objectsTrackedForHavoc);
+      let visitor = new ObjectValueHavocingVisitor(realm, objectsTrackedForHavoc);
       visitor.visitValue(value);
     }
   }

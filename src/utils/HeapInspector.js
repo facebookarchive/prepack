@@ -32,7 +32,7 @@ import { Logger } from "../utils/logger.js";
 
 type TargetIntegrityCommand = "freeze" | "seal" | "preventExtensions" | "";
 
-export class ResidualHeapInspector {
+export class HeapInspector {
   constructor(realm: Realm, logger: Logger) {
     this.realm = realm;
     this.logger = logger;
@@ -84,7 +84,7 @@ export class ResidualHeapInspector {
   };
 
   getTargetIntegrityDescriptor(val: ObjectValue) {
-    return ResidualHeapInspector._integrityDescriptors[this.getTargetIntegrityCommand(val)];
+    return HeapInspector._integrityDescriptors[this.getTargetIntegrityCommand(val)];
   }
 
   static isLeaf(val: Value): boolean {
@@ -245,10 +245,7 @@ export class ResidualHeapInspector {
     }
     let foundConstructor = false;
     for (let name of prototype.properties.keys())
-      if (
-        name === "constructor" &&
-        ResidualHeapInspector.getPropertyValue(prototype, name) === prototype.originalConstructor
-      )
+      if (name === "constructor" && HeapInspector.getPropertyValue(prototype, name) === prototype.originalConstructor)
         foundConstructor = true;
       else return false;
     return foundConstructor;

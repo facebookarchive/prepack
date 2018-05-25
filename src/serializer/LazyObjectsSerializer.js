@@ -33,7 +33,7 @@ import type { SerializerOptions } from "../options.js";
 import invariant from "../invariant.js";
 import { Logger } from "../utils/logger.js";
 import { Modules } from "../utils/modules.js";
-import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
+import { HeapInspector } from "../utils/HeapInspector.js";
 import type { Scope } from "./ResidualHeapVisitor.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
@@ -61,7 +61,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     logger: Logger,
     modules: Modules,
     residualHeapValueIdentifiers: ResidualHeapValueIdentifiers,
-    residualHeapInspector: ResidualHeapInspector,
+    residualHeapInspector: HeapInspector,
     residualValues: Map<Value, Set<Scope>>,
     residualFunctionInstances: Map<FunctionValue, FunctionInstance>,
     residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>,
