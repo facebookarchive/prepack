@@ -1025,15 +1025,9 @@ ReactStatistics {
               "children": Array [
                 Object {
                   "children": Array [],
-                  "message": "refs are not supported on <Components />",
-                  "name": "ClassComponent",
-                  "status": "BAIL-OUT",
-                },
-                Object {
-                  "children": Array [],
                   "message": "",
                   "name": "ClassComponent",
-                  "status": "BAIL-OUT",
+                  "status": "NEW_TREE",
                 },
               ],
               "message": "",
@@ -2732,6 +2726,8 @@ ReactStatistics {
   "optimizedTrees": 1,
 }
 `;
+
+exports[`Test React with JSX input, JSX output Functional component folding Unsafe spread 1`] = `"Failed to optimize React component tree for \\"App\\" due to a fatal error during evaluation: A fatal error occurred while prepacking."`;
 
 exports[`Test React with JSX input, JSX output Render props React Context 1`] = `
 ReactStatistics {
@@ -4819,15 +4815,9 @@ ReactStatistics {
               "children": Array [
                 Object {
                   "children": Array [],
-                  "message": "refs are not supported on <Components />",
-                  "name": "ClassComponent",
-                  "status": "BAIL-OUT",
-                },
-                Object {
-                  "children": Array [],
                   "message": "",
                   "name": "ClassComponent",
-                  "status": "BAIL-OUT",
+                  "status": "NEW_TREE",
                 },
               ],
               "message": "",
@@ -6526,6 +6516,8 @@ ReactStatistics {
   "optimizedTrees": 1,
 }
 `;
+
+exports[`Test React with JSX input, create-element output Functional component folding Unsafe spread 1`] = `"Failed to optimize React component tree for \\"App\\" due to a fatal error during evaluation: A fatal error occurred while prepacking."`;
 
 exports[`Test React with JSX input, create-element output Render props React Context 1`] = `
 ReactStatistics {
@@ -8613,15 +8605,9 @@ ReactStatistics {
               "children": Array [
                 Object {
                   "children": Array [],
-                  "message": "refs are not supported on <Components />",
-                  "name": "ClassComponent",
-                  "status": "BAIL-OUT",
-                },
-                Object {
-                  "children": Array [],
                   "message": "",
                   "name": "ClassComponent",
-                  "status": "BAIL-OUT",
+                  "status": "NEW_TREE",
                 },
               ],
               "message": "",
@@ -10316,6 +10302,23 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, JSX output Functional component folding Unsafe spread 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -12407,15 +12410,9 @@ ReactStatistics {
               "children": Array [
                 Object {
                   "children": Array [],
-                  "message": "refs are not supported on <Components />",
-                  "name": "ClassComponent",
-                  "status": "BAIL-OUT",
-                },
-                Object {
-                  "children": Array [],
                   "message": "",
                   "name": "ClassComponent",
-                  "status": "BAIL-OUT",
+                  "status": "NEW_TREE",
                 },
               ],
               "message": "",
@@ -14110,6 +14107,23 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Functional component folding Unsafe spread 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }

@@ -43,13 +43,26 @@ function createPropsObject(
   let key = realm.intrinsics.null;
   let ref = realm.intrinsics.null;
 
+  if (!hasNoPartialKeyOrRef(realm, config)) {
+    // if either are abstract, this will impact the reconcilation process
+    // and ultimately prevent us from folding ReactElements properly
+    let diagnostic = new CompilerDiagnostic(
+      `unable to evaluate "key" and "ref" on a ReactElement due to an abstract config passed to createElement`,
+      realm.currentLocation,
+      "PP0025",
+      "FatalError"
+    );
+    realm.handleError(diagnostic);
+    if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
+  }
+
   if (!(config instanceof NullValue)) {
-    let possibleKey = getProperty(realm, config, "key");
+    let possibleKey = Get(realm, config, "key");
     if (possibleKey !== realm.intrinsics.null && possibleKey !== realm.intrinsics.undefined) {
       key = computeBinary(realm, "+", realm.intrinsics.emptyString, possibleKey);
     }
 
-    let possibleRef = getProperty(realm, config, "ref");
+    let possibleRef = Get(realm, config, "ref");
     if (possibleRef !== realm.intrinsics.null && possibleRef !== realm.intrinsics.undefined) {
       ref = possibleRef;
     }
@@ -76,19 +89,6 @@ function createPropsObject(
     (config instanceof AbstractObjectValue && config.isPartialObject()) ||
     (config instanceof ObjectValue && config.isPartialObject() && config.isSimpleObject())
   ) {
-    if (!hasNoPartialKeyOrRef(realm, config)) {
-      // if either are abstract, this will impact the reconcilation process
-      // and ultimately prevent us from folding ReactElements properly
-      let diagnostic = new CompilerDiagnostic(
-        `unable to evaluate "key" and "ref" on a ReactElement due to an abstract config passed to createElement`,
-        realm.currentLocation,
-        "PP0025",
-        "FatalError"
-      );
-      realm.handleError(diagnostic);
-      if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
-    }
-
     let args = [];
     if (defaultProps !== realm.intrinsics.undefined) {
       args.push(defaultProps);

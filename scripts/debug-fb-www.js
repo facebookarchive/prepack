@@ -94,6 +94,8 @@ function compileSource(source) {
     errorsCaptured.forEach(error => printError(error));
     throw e;
   }
+  // warning about ref and keys
+  console.log(`Warning: the build assumes that ref and key aren't being spread.`);
   return {
     stats: serialized.reactStatistics,
     code: serialized.code,

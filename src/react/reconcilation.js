@@ -1159,8 +1159,15 @@ export class Reconciler {
     }
     let componentResolutionStrategy = this._getComponentResolutionStrategy(typeValue);
 
-    // we do not support "ref" on <Component /> ReactElements, unless it's a forwarded ref
-    if (!(refValue instanceof NullValue) && componentResolutionStrategy !== "FORWARD_REF") {
+    // We do not support "ref" on <Component /> ReactElements, unless it's a forwarded ref
+    if (
+      !(refValue instanceof NullValue) &&
+      componentResolutionStrategy !== "FORWARD_REF" &&
+      // If we have an abstract value, it might mean a bad ref, but we will have
+      // already thrown a FatalError in the createElement implementation by this
+      // point, so if we're here, then the FatalError has been recovered explicitly
+      !(refValue instanceof AbstractValue)
+    ) {
       this._resolveReactElementBadRef(reactElement, evaluatedNode);
     }
     try {
