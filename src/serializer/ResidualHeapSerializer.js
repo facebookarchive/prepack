@@ -1198,7 +1198,7 @@ export class ResidualHeapSerializer {
       if (!(lenProperty instanceof AbstractValue) || lenProperty.kind !== "widened property") {
         let semaphore = this._acquireOneObjectSemaphore(val);
         this.emitter.emitNowOrAfterWaitingForDependencies(
-          [val],
+          [val, lenProperty],
           () => {
             this._assignProperty(
               () => t.memberExpression(this.getSerializeObjectIdentifier(val), t.identifier("length")),
