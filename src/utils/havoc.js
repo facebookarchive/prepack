@@ -157,7 +157,7 @@ class ObjectValueHavocingVisitor {
     // prototype
     this.visitObjectPrototype(obj);
 
-    if (TestIntegrityLevel(obj.$Realm, obj, "frozen") || obj.isFinalObject()) return;
+    if (TestIntegrityLevel(obj.$Realm, obj, "frozen")) return;
 
     // if this object wasn't already havoced, we need mark it as havoced
     // so that any mutation and property access get tracked after this.
@@ -424,7 +424,7 @@ class ObjectValueHavocingVisitor {
 
 function ensureFrozenValue(realm, value, loc) {
   // TODO: This should really check if it is recursively immutability.
-  if (value instanceof ObjectValue && !TestIntegrityLevel(realm, value, "frozen") && !value.isFinalObject()) {
+  if (value instanceof ObjectValue && !TestIntegrityLevel(realm, value, "frozen")) {
     let diag = new CompilerDiagnostic(
       "Unfrozen object leaked before end of global code",
       loc || realm.currentLocation,
