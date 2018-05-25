@@ -15,7 +15,6 @@ import {
   AbstractObjectValue,
   ArrayValue,
   ECMAScriptFunctionValue,
-  NullValue,
   NumberValue,
   ObjectValue,
   Value,
@@ -31,7 +30,7 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 function createPropsObject(
   realm: Realm,
   type: Value,
-  config: ObjectValue | AbstractObjectValue | NullValue,
+  config: ObjectValue | AbstractObjectValue,
   children: void | Value
 ): { key: Value, ref: Value, props: ObjectValue | AbstractObjectValue } {
   let defaultProps =
@@ -56,16 +55,14 @@ function createPropsObject(
     if (realm.handleError(diagnostic) === "Fail") throw new FatalError();
   }
 
-  if (!(config instanceof NullValue)) {
-    let possibleKey = Get(realm, config, "key");
-    if (possibleKey !== realm.intrinsics.null && possibleKey !== realm.intrinsics.undefined) {
-      key = computeBinary(realm, "+", realm.intrinsics.emptyString, possibleKey);
-    }
+  let possibleKey = Get(realm, config, "key");
+  if (possibleKey !== realm.intrinsics.null && possibleKey !== realm.intrinsics.undefined) {
+    key = computeBinary(realm, "+", realm.intrinsics.emptyString, possibleKey);
+  }
 
-    let possibleRef = Get(realm, config, "ref");
-    if (possibleRef !== realm.intrinsics.null && possibleRef !== realm.intrinsics.undefined) {
-      ref = possibleRef;
-    }
+  let possibleRef = Get(realm, config, "ref");
+  if (possibleRef !== realm.intrinsics.null && possibleRef !== realm.intrinsics.undefined) {
+    ref = possibleRef;
   }
 
   const setProp = (name: string, value: Value): void => {
@@ -162,7 +159,7 @@ function splitReactElementsByConditionalType(
   condValue: AbstractValue,
   consequentVal: Value,
   alternateVal: Value,
-  config: ObjectValue | AbstractObjectValue | NullValue,
+  config: ObjectValue | AbstractObjectValue,
   children: void | Value
 ): Value {
   return realm.evaluateWithAbstractConditional(
@@ -187,7 +184,7 @@ function splitReactElementsByConditionalType(
 export function createReactElement(
   realm: Realm,
   type: Value,
-  config: ObjectValue | AbstractObjectValue | NullValue,
+  config: ObjectValue | AbstractObjectValue,
   children: void | Value
 ): Value {
   if (type instanceof AbstractValue && type.kind === "conditional") {
