@@ -291,7 +291,7 @@ export function OrdinaryCallEvaluateBody(
     let env = realm.getRunningContext().lexicalEnvironment;
     let context = env.environmentRecord.GetThisBinding();
 
-    if (context instanceof AbstractValue && context.kind === "conditional") {
+    if (context instanceof AbstractObjectValue && context.kind === "conditional") {
       // TODO: we should handle this case and split the calls up
       // on the conditional, as it may yield better results
     }

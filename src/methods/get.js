@@ -561,6 +561,7 @@ export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayV
     // that doesn't mutate global state or affect that of the values passed in as arguments
     if (P === "map" || P === "slice" || P === "filter" || P === "concat" || P === "indexOf" || P === "reverse") {
       let proto = arr.$GetPrototypeOf();
+      invariant(proto instanceof ObjectValue);
       return OrdinaryGet(realm, proto, P, arr);
     }
     if (P === "length") {

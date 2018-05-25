@@ -562,12 +562,12 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) && realm.isInPureScope()) {
-      return AbstractValue.createTemporalFromBuildFunction(
-        realm,
-        NumberValue,
-        [O, searchElement, fromIndex],
-        ([objNode, ..._args]) =>
-          t.callExpression(t.memberExpression(objNode, t.identifier("indexOf")), ((_args: any): Array<any>))
+      let args = [O, searchElement];
+      if (fromIndex) {
+        args.push(fromIndex);
+      }
+      return AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, args, ([objNode, ..._args]) =>
+        t.callExpression(t.memberExpression(objNode, t.identifier("indexOf")), ((_args: any): Array<any>))
       );
     }
 
@@ -1059,7 +1059,6 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) && realm.isInPureScope()) {
-      debugger;
       return AbstractValue.createTemporalFromBuildFunction(realm, ArrayValue, [O], ([objNode, ..._args]) =>
         t.callExpression(t.memberExpression(objNode, t.identifier("reverse")), [])
       );
