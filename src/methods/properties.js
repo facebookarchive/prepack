@@ -1172,7 +1172,8 @@ export class PropertiesImplementation {
 
   // ECMA262 9.1.5.1
   OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue): Descriptor | void {
-    if (!realm.ignoreLeakLogic && O.isHavocedObject()) {
+    // if the object is havoced and final, then it's still safe to read the value from the object
+    if (!realm.ignoreLeakLogic && O.isHavocedObject() && !O.isFinalObject()) {
       invariant(realm.generator);
       let pname = realm.generator.getAsPropertyNameExpression(StringKey(P));
       let absVal = AbstractValue.createTemporalFromBuildFunction(realm, Value, [O._templateFor || O], ([node]) =>
