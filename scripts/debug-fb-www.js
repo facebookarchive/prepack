@@ -94,8 +94,6 @@ function compileSource(source) {
     errorsCaptured.forEach(error => printError(error));
     throw e;
   }
-  // warning about ref and keys
-  console.log(`Warning: the build assumes that ref and key aren't being spread.`);
   return {
     stats: serialized.reactStatistics,
     code: serialized.code,
@@ -196,6 +194,8 @@ readComponentsList()
 
     let timeTaken = Math.floor((Date.now() - startTime) / 1000);
     console.log(`${chalk.gray(`Compile time`)}: ${timeTaken}s\n`);
+    // warning about ref and keys
+    console.log(`Warning: the build assumes that ref and key aren't being spread.`);
   })
   .catch(e => {
     console.log(`\n${chalk.inverse(`=== Compilation Failed ===`)}\n`);
