@@ -208,9 +208,17 @@ class ObjectValueHavocingVisitor {
             } else if (value.mightHaveBeenDeleted()) {
               throw new FatalError("TODO: Support havocing objects with properties that might have been deleted");
             } else {
-              // TODO: Support havocing objects with non-standard properties (configurable, writable, enumerable).
-
-              if (realmGenerator !== undefined) realmGenerator.emitPropertyAssignment(obj, name, value);
+              if (realmGenerator !== undefined) {
+                let targetDescriptor = this.getHeapInspector().getTargetIntegrityDescriptor(obj);
+                if (
+                  descriptor.writable !== targetDescriptor.writable ||
+                  descriptor.configurable !== targetDescriptor.configurable
+                ) {
+                  realmGenerator.emitDefineProperty(obj, name, descriptor);
+                } else {
+                  realmGenerator.emitPropertyAssignment(obj, name, value);
+                }
+              }
             }
             this.realm.recordModifiedProperty(propertyBinding);
             propertyBinding.descriptor = Object.assign({}, descriptor);
