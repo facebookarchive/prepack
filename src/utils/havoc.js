@@ -157,12 +157,58 @@ class ObjectValueHavocingVisitor {
     // prototype
     this.visitObjectPrototype(obj);
 
-    if (TestIntegrityLevel(obj.$Realm, obj, "frozen")) return;
+    let realm = obj.$Realm;
+    if (TestIntegrityLevel(realm, obj, "frozen")) return;
 
     // if this object wasn't already havoced, we need mark it as havoced
     // so that any mutation and property access get tracked after this.
     if (obj.mightNotBeHavocedObject()) {
       obj.havoc();
+      if (obj.symbols.size > 0) {
+        throw new FatalError("TODO: Support havocing objects with symbols");
+      }
+      if (obj.unknownProperty !== undefined) {
+        // TODO: Support unknown properties, or throw FatalError.
+        // We have repros, e.g. test/serializer/additional-functions/ArrayConcat.js.
+      }
+      // TODO: We should emit current value and then reset value for all *internal slots*; this will require deep serializer support; or throw FatalError when we detect any non-initial values in internal slots.
+      // TODO: The following results in quite ugly code for function values, as they have properties such as `constructor` and `name`.
+      let realmGenerator = realm.generator;
+      for (let [name, propertyBinding] of obj.properties) {
+        let descriptor = propertyBinding.descriptor;
+        if (descriptor === undefined) {
+          // TODO: This happens, e.g. test/serializer/pure-functions/ObjectAssign2.js
+          // If it indeed means deleted binding, should we initialize descriptor with a deleted value?
+          if (realmGenerator !== undefined) realmGenerator.emitPropertyDelete(obj, name);
+        } else {
+          let value = descriptor.value;
+          invariant(
+            value === undefined || value instanceof Value,
+            "cannot be an array because we are not dealing with intrinsics here"
+          );
+          if (value === undefined) {
+            // TODO: Deal with accessor properties
+            // We have repros, e.g. test/serializer/pure-functions/AbstractPropertyObjectKeyAssignment.js
+          } else {
+            invariant(value instanceof Value);
+            if (value instanceof EmptyValue) {
+              if (realmGenerator !== undefined) realmGenerator.emitPropertyDelete(obj, name);
+            } else if (value.mightHaveBeenDeleted()) {
+              throw new FatalError("TODO: Support havocing objects with properties that might have been deleted");
+            } else {
+              if (!descriptor.writable || !descriptor.configurable || !descriptor.enumerable) {
+                // TODO: Support havocing objects with non-standard properties
+                // We have repros, e.g. test/serializer/optimized-functions/HavocBindings1.js
+              }
+              if (realmGenerator !== undefined) realmGenerator.emitPropertyAssignment(obj, name, value);
+            }
+            realm.recordModifiedProperty(propertyBinding);
+            propertyBinding.descriptor = Object.assign({}, descriptor);
+            propertyBinding.descriptor.value =
+              obj instanceof ArrayValue && name === "length" ? realm.intrinsics.zero : realm.intrinsics.undefined;
+          }
+        }
+      }
     }
   }
 
@@ -412,12 +458,7 @@ class ObjectValueHavocingVisitor {
       if (this.mustVisit(val)) this.visitValueFunction(val);
     } else {
       invariant(val instanceof ObjectValue);
-      if (val.originalConstructor !== undefined) {
-        invariant(val instanceof ObjectValue);
-        if (this.mustVisit(val)) this.visitValueObject(val);
-      } else {
-        if (this.mustVisit(val)) this.visitValueObject(val);
-      }
+      if (this.mustVisit(val)) this.visitValueObject(val);
     }
   }
 }
