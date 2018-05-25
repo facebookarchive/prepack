@@ -74,8 +74,9 @@ export class ResidualReactElementSerializer {
   }
 
   _emitHoistedReactElement(
+    reactElement: ObjectValue,
     id: BabelNodeExpression,
-    reactElement: BabelNodeExpression,
+    reactElementAst: BabelNodeExpression,
     hoistedCreateElementIdentifier: BabelNodeIdentifier,
     originalCreateElementIdentifier: BabelNodeIdentifier
   ) {
@@ -96,13 +97,14 @@ export class ResidualReactElementSerializer {
           t.callExpression(funcId, originalCreateElementIdentifier ? [originalCreateElementIdentifier] : [])
         )
       );
-      this.residualHeapSerializer.emitter.emitLazyReactElementInitializer(statement);
+      let optimizedFunction = this.residualHeapSerializer.isReferencedOnlyByOptimizedFunction(reactElement);
+      this.residualHeapSerializer.getPrelude(optimizedFunction).push(statement);
     }
     // we then push the reactElement and its id into our list of elements to process after
     // the current additional function has serialzied
     invariant(this._lazilyHoistedNodes !== undefined);
     invariant(Array.isArray(this._lazilyHoistedNodes.nodes));
-    this._lazilyHoistedNodes.nodes.push({ id, astNode: reactElement });
+    this._lazilyHoistedNodes.nodes.push({ id, astNode: reactElementAst });
   }
 
   _getReactLibraryValue() {
@@ -127,7 +129,7 @@ export class ResidualReactElementSerializer {
     let propsValue = getProperty(this.realm, value, "props");
 
     let shouldHoist =
-      this.residualHeapSerializer.isReferencedOnlyByAdditionalFunction(value) !== undefined &&
+      this.residualHeapSerializer.isReferencedOnlyByOptimizedFunction(value) !== undefined &&
       canHoistReactElement(this.realm, value);
 
     let id = this.residualHeapSerializer.getSerializeObjectIdentifier(value);
@@ -178,6 +180,7 @@ export class ResidualReactElementSerializer {
         // also ensure we are in an additional function
         if (shouldHoist) {
           this._emitHoistedReactElement(
+            value,
             id,
             reactElementAstNode,
             hoistedCreateElementIdentifier,
