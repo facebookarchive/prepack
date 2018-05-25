@@ -22,12 +22,7 @@ import {
   NumberValue,
 } from "../../values/index.js";
 import { Environment } from "../../singletons.js";
-import {
-  createReactHintObject,
-  flagPropsWithNoPartialKeyOrRef,
-  getReactSymbol,
-  isReactElement,
-} from "../../react/utils.js";
+import { createReactHintObject, getReactSymbol, isReactElement } from "../../react/utils.js";
 import { createReactElement } from "../../react/elements.js";
 import { Properties, Create, To } from "../../singletons.js";
 import { renderToString } from "../../react/experimental-server-rendering/rendering.js";
