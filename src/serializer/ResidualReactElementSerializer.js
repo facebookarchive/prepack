@@ -96,7 +96,7 @@ export class ResidualReactElementSerializer {
           t.callExpression(funcId, originalCreateElementIdentifier ? [originalCreateElementIdentifier] : [])
         )
       );
-      this.residualHeapSerializer.emitter.emit(statement);
+      this.residualHeapSerializer.emitter.emitLazyReactElementInitializer(statement);
     }
     // we then push the reactElement and its id into our list of elements to process after
     // the current additional function has serialzied

@@ -504,4 +504,17 @@ export class Emitter {
     invariant(!this._finalized);
     return new BodyReference(this._body, this._body.entries.length);
   }
+  emitLazyReactElementInitializer(statement: BabelNodeStatement): void {
+    let currentBody = this._body;
+    let topBody = currentBody;
+
+    // find the top parent body
+    while (topBody.parentBody !== undefined) {
+      topBody = topBody.parentBody;
+    }
+    // temproarily set the body to be the top parent body
+    this._body = topBody;
+    this.emit(statement);
+    this._body = currentBody;
+  }
 }
