@@ -316,6 +316,22 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
+  global.$DefineOwnProperty("__makeFinal", {
+    value: new NativeFunctionValue(realm, "global.__makeFinal", "__makeFinal", 1, (context, [object]) => {
+      if (object instanceof ObjectValue || (object instanceof AbstractObjectValue && !object.values.isTop())) {
+        object.makeFinal();
+        return object;
+      }
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "not an object or abstract object value (non-top)"
+      );
+    }),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
   // __makeSimple(object) marks an (abstract) object as one that has no getters or setters.
   global.$DefineOwnProperty("__makeSimple", {
     value: new NativeFunctionValue(realm, "global.__makeSimple", "__makeSimple", 1, (context, [object, option]) => {
