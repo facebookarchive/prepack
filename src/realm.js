@@ -69,7 +69,7 @@ import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
 
-export type BindingEntry = { hasLeaked: boolean, value: void | Value };
+export type BindingEntry = { leakedImmutableValue: void | Value, hasLeaked: boolean, value: void | Value };
 export type Bindings = Map<Binding, BindingEntry>;
 export type EvaluationResult = Completion | Reference | Value;
 export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
@@ -1410,6 +1410,7 @@ export class Realm {
 
     if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding)) {
       this.modifiedBindings.set(binding, {
+        leakedImmutableValue: binding.leakedImmutableValue,
         hasLeaked: binding.hasLeaked,
         value: binding.value,
       });
@@ -1486,12 +1487,15 @@ export class Realm {
   // the value the Binding had just before the call to this method.
   restoreBindings(modifiedBindings: void | Bindings) {
     if (modifiedBindings === undefined) return;
-    modifiedBindings.forEach(({ hasLeaked, value }, binding, m) => {
+    modifiedBindings.forEach(({ leakedImmutableValue, hasLeaked, value }, binding, m) => {
+      let liv = binding.leakedImmutableValue;
       let l = binding.hasLeaked;
       let v = binding.value;
+      binding.leakedImmutableValue = liv;
       binding.hasLeaked = hasLeaked;
       binding.value = value;
       m.set(binding, {
+        leakedImmutableValue: liv,
         hasLeaked: l,
         value: v,
       });

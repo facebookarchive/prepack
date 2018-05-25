@@ -73,6 +73,7 @@ export function havocBinding(binding: Binding) {
     if (value !== undefined) {
       let realmGenerator = realm.generator;
       if (realmGenerator !== undefined) realmGenerator.emitBindingAssignment(binding, value);
+      if (!binding.mutable) binding.leakedImmutableValue = value;
       binding.value = realm.intrinsics.undefined;
     }
   }
@@ -159,6 +160,7 @@ export type Binding = {
   // bindings that are assigned to inside loops with abstract termination conditions need temporal locations
   phiNode?: AbstractValue,
   hasLeaked: boolean,
+  leakedImmutableValue?: Value,
 };
 
 // ECMA262 8.1.1.1
@@ -334,7 +336,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
     // 4. Return the value currently bound to N in envRec.
     if (binding.hasLeaked) {
-      return deriveGetBinding(realm, binding);
+      return binding.leakedImmutableValue || deriveGetBinding(realm, binding);
     }
     invariant(binding.value);
     return binding.value;

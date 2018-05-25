@@ -168,7 +168,8 @@ export class WidenImplementation {
         result._buildNode = args => t.identifier(phiName);
       }
       invariant(result instanceof Value);
-      return { hasLeaked, value: result };
+      // TODO: deal with leakedImmutableValue
+      return { leakedImmutableValue: undefined, hasLeaked, value: result };
     };
     return this.widenMaps(m1, m2, widen);
   }
@@ -366,7 +367,8 @@ export class WidenImplementation {
         b1.value === undefined ||
         b2.value === undefined ||
         !this._containsValues(b1.value, b2.value) ||
-        b1.hasLeaked !== b2.hasLeaked
+        b1.hasLeaked !== b2.hasLeaked ||
+        b1.leakedImmutableValue !== b2.leakedImmutableValue
       ) {
         return false;
       }
