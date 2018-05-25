@@ -557,10 +557,11 @@ export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayV
   let type = Value;
 
   if (typeof P === "string") {
-    // these are safe methods to allow, as they return a new array
-    // so we use the ordinary get for these cases.
-    if (P === "map" || P === "slice" || P === "filter" || P === "concat") {
-      return OrdinaryGet(realm, arr, P, arr);
+    // these are safe methods to allow, as they either return a new array or are a method
+    // that doesn't mutate global state or affect that of the values passed in as arguments
+    if (P === "map" || P === "slice" || P === "filter" || P === "concat" || P === "indexOf" || P === "reverse") {
+      let proto = arr.$GetPrototypeOf();
+      return OrdinaryGet(realm, proto, P, arr);
     }
     if (P === "length") {
       type = NumberValue;

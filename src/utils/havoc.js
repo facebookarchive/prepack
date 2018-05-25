@@ -397,6 +397,7 @@ class ObjectValueHavocingVisitor {
       // All intrinsic values exist from the beginning of time (except unknown arrays)...
       // ...except for a few that come into existance as templates for abstract objects.
       if (val instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(val)) {
+        debugger;
         if (this.mustVisit(val)) this.visitValueObject(val);
       } else {
         this.mustVisit(val);
