@@ -39,7 +39,7 @@ import type { BabelTraversePath } from "babel-traverse";
 import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
 import { HeapInspector } from "../utils/HeapInspector.js";
-import { Logger } from "../utils/Logger.js";
+import { Logger } from "../utils/logger.js";
 
 type HavocedFunctionInfo = {
   unboundReads: Set<string>,
@@ -208,10 +208,8 @@ class ObjectValueHavocingVisitor {
             } else if (value.mightHaveBeenDeleted()) {
               throw new FatalError("TODO: Support havocing objects with properties that might have been deleted");
             } else {
-              if (!descriptor.writable || !descriptor.configurable || !descriptor.enumerable) {
-                // TODO: Support havocing objects with non-standard properties
-                // We have repros, e.g. test/serializer/optimized-functions/HavocBindings1.js
-              }
+              // TODO: Support havocing objects with non-standard properties (configurable, writable, enumerable).
+
               if (realmGenerator !== undefined) realmGenerator.emitPropertyAssignment(obj, name, value);
             }
             this.realm.recordModifiedProperty(propertyBinding);
