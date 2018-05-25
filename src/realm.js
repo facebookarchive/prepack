@@ -86,8 +86,7 @@ export class Effects {
     generator: Generator,
     bindings: Bindings,
     propertyBindings: PropertyBindings,
-    createdObjects: CreatedObjects,
-    priorEffects?: Effects
+    createdObjects: CreatedObjects
   ) {
     this.result = result;
     this.generator = generator;
@@ -97,9 +96,6 @@ export class Effects {
 
     this.canBeApplied = true;
     this._id = effects_uid++;
-    if (priorEffects) {
-      this.priorEffects = priorEffects;
-    }
   }
 
   result: EvaluationResult;
@@ -109,7 +105,6 @@ export class Effects {
   createdObjects: CreatedObjects;
   canBeApplied: boolean;
   _id: number;
-  priorEffects: void | Effects;
 }
 
 export class Tracer {
@@ -1219,11 +1214,17 @@ export class Realm {
 
   incorporatePriorSavedCompletion(priorCompletion: void | PossiblyNormalCompletion) {
     if (priorCompletion === undefined) return;
+    // A completion that has been saved and that is still active, will always have savedEffects.
+    invariant(priorCompletion.savedEffects !== undefined);
     if (this.savedCompletion === undefined) {
+      // priorCompletion must be a previous savedCompletion, so the corresponding tracking maps would have been
+      // captured in priorCompletion.savedEffects and restored to the realm when clearing out this.savedCompletion.
+      // Since there is curently no savedCompletion, all the forks subsequent to the last normal fork in
+      // priorCompletion will have joined up again and their effects will have been applied to the current
+      // tracking maps.
+      invariant(this.modifiedBindings !== undefined);
       this.savedCompletion = priorCompletion;
-      this.captureEffects(priorCompletion);
     } else {
-      invariant(priorCompletion.savedEffects !== undefined);
       let savedEffects = this.savedCompletion.savedEffects;
       invariant(savedEffects !== undefined);
       this.restoreBindings(savedEffects.modifiedBindings);
@@ -1238,13 +1239,13 @@ export class Realm {
   }
 
   captureEffects(completion: PossiblyNormalCompletion) {
+    invariant(completion.savedEffects === undefined);
     completion.savedEffects = new Effects(
       this.intrinsics.undefined,
       (this.generator: any),
       (this.modifiedBindings: any),
       (this.modifiedProperties: any),
-      (this.createdObjects: any),
-      completion.savedEffects
+      (this.createdObjects: any)
     );
     this.generator = new Generator(this, "captured");
     this.modifiedBindings = new Map();
@@ -1283,10 +1284,6 @@ export class Realm {
       this.modifiedBindings = savedEffects.modifiedBindings;
       this.modifiedProperties = savedEffects.modifiedProperties;
       this.createdObjects = savedEffects.createdObjects;
-      if (savedEffects.priorEffects !== undefined) {
-        completion.savedEffects = savedEffects.priorEffects;
-        this.stopEffectCaptureAndUndoEffects(completion);
-      }
     } else {
       invariant(false);
     }
