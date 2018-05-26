@@ -122,11 +122,13 @@ export class Referentializer {
       });
     }
     // Default case.
-    cases.push(
-      t.switchCase(null, [
-        t.throwStatement(t.newExpression(t.identifier("Error"), [t.stringLiteral("Unknown scope selector")])),
-      ])
-    );
+    if (this.realm.invariantLevel) {
+      cases.push(
+        t.switchCase(null, [
+          t.throwStatement(t.newExpression(t.identifier("Error"), [t.stringLiteral("Unknown scope selector")])),
+        ])
+      );
+    }
 
     body.push(t.variableDeclaration("var", [t.variableDeclarator(captured)]));
     body.push(t.switchStatement(selectorParam, cases));
