@@ -63,12 +63,18 @@ MockURI.prototype.makeString = function() {
 };
 
 function runTestSuite(outputJsx, shouldTranspileSource) {
+  let checkForReconcilerFatalError = false;
+  let checkForPartialKeyOrRefError = false;
   let errorsCaptured = [];
   let reactTestRoot = path.join(__dirname, "../test/react/");
   let prepackOptions = {
     errorHandler: diag => {
       errorsCaptured.push(diag);
       if (diag.severity !== "Warning" && diag.severity !== "Information") {
+        if (diag.errorCode === "PP0025" && !checkForPartialKeyOrRefError) {
+          // recover from `unable to evaluate "key" and "ref" on a ReactElement
+          return "Recover";
+        }
         return "Fail";
       }
       return "Recover";
@@ -85,8 +91,6 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     stripFlow: true,
   };
 
-  let checkForReconcilerFatalError = false;
-
   async function expectReconcilerFatalError(func) {
     checkForReconcilerFatalError = true;
     try {
@@ -99,6 +103,18 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     }
   }
 
+  async function expectPartialKeyOrRefError(func) {
+    checkForPartialKeyOrRefError = true;
+    try {
+      await func();
+    } catch (e) {
+      expect(e.__isReconcilerFatalError).toBe(true);
+      expect(e.message).toMatchSnapshot();
+    } finally {
+      checkForPartialKeyOrRefError = false;
+    }
+  }
+
   function compileSourceWithPrepack(source) {
     let code = `(function(){${source}})()`;
     let serialized;
@@ -106,7 +122,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     try {
       serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
     } catch (e) {
-      if (e.__isReconcilerFatalError && checkForReconcilerFatalError) {
+      if (e.__isReconcilerFatalError && (checkForReconcilerFatalError || checkForPartialKeyOrRefError)) {
         throw e;
       }
       errorsCaptured.forEach(error => {
@@ -344,6 +360,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-15.js");
       });
 
+      it("Simple 16", async () => {
+        await runTest(directory, "simple-16.js");
+      });
+
       it("__reactCompilerDoNotOptimize", async () => {
         await runTest(directory, "do-not-optimize.js");
       });
@@ -402,6 +422,12 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("16.3 refs 3", async () => {
         await runTest(directory, "refs3.js");
+      });
+
+      it("Unsafe spread", async () => {
+        await expectPartialKeyOrRefError(async () => {
+          await runTest(directory, "unsafe-spread.js");
+        });
       });
 
       it("Simple with abstract props", async () => {
@@ -574,6 +600,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Dynamic ReactElement type #2", async () => {
         await runTest(directory, "dynamic-type2.js");
+      });
+
+      it("Dynamic ReactElement type #3", async () => {
+        await runTest(directory, "dynamic-type3.js");
       });
     });
 

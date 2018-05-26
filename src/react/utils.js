@@ -543,26 +543,38 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
   }
 }
 
-// props should never have "ref" or "key" properties, as they're part of ReactElement
-// object instead. to ensure that we can give this hint, we create them and then
-// delete them, so their descriptor is left undefined. we use this knowledge later
-// to ensure that when dealing with creating ReactElements with partial config,
-// we don't have to bail out becuase "config" may or may not have "key" or/and "ref"
-export function deleteRefAndKeyFromProps(realm: Realm, props: ObjectValue | AbstractObjectValue): void {
-  setProperty(props, "ref", realm.intrinsics.undefined);
-  deleteProperty(props, "ref");
-  setProperty(props, "key", realm.intrinsics.undefined);
-  deleteProperty(props, "key");
+export function flagPropsWithNoPartialKeyOrRef(realm: Realm, props: ObjectValue | AbstractObjectValue): void {
+  realm.react.propsWithNoPartialKeyOrRef.add(props);
 }
 
-export function objectHasNoPartialKeyAndRef(
-  realm: Realm,
-  object: ObjectValue | AbstractValue | AbstractObjectValue
-): boolean {
-  if (object instanceof AbstractValue) {
+export function hasNoPartialKeyOrRef(realm: Realm, props: ObjectValue | AbstractObjectValue): boolean {
+  if (realm.react.propsWithNoPartialKeyOrRef.has(props)) {
     return true;
   }
-  return !(Get(realm, object, "key") instanceof AbstractValue || Get(realm, object, "ref") instanceof AbstractValue);
+  if (props instanceof ObjectValue && !props.isPartialObject()) {
+    return true;
+  }
+  if (props instanceof AbstractObjectValue) {
+    if (props.values.isTop()) {
+      return false;
+    }
+    let elements = props.values.getElements();
+    if (elements.size === 1) {
+      props = Array.from(elements)[0];
+    } else {
+      for (let element of elements) {
+        let wasSafe = hasNoPartialKeyOrRef(realm, element);
+        if (!wasSafe) {
+          return false;
+        }
+      }
+      return true;
+    }
+  }
+  if (props instanceof ObjectValue && props.properties.has("key") && props.properties.has("ref")) {
+    return true;
+  }
+  return false;
 }
 
 function recursivelyFlattenArray(realm: Realm, array, targetArray): void {
@@ -630,6 +642,9 @@ export function deleteProperty(object: ObjectValue | AbstractObjectValue, proper
     let elements = object.values.getElements();
     if (elements && elements.size > 0) {
       object = Array.from(elements)[0];
+    } else {
+      // intentionally left in
+      invariant(false, "TODO: should we hit this?");
     }
     invariant(object instanceof ObjectValue);
   }
@@ -659,6 +674,9 @@ export function setProperty(
     let elements = object.values.getElements();
     if (elements && elements.size > 0) {
       object = Array.from(elements)[0];
+    } else {
+      // intentionally left in
+      invariant(false, "TODO: should we hit this?");
     }
     invariant(object instanceof ObjectValue);
   }
@@ -710,8 +728,12 @@ export function getProperty(
       return realm.intrinsics.undefined;
     }
     let elements = object.values.getElements();
-    if (elements && elements.size > 0) {
+    invariant(elements);
+    if (elements.size > 0) {
       object = Array.from(elements)[0];
+    } else {
+      // intentionally left in
+      invariant(false, "TODO: should we hit this?");
     }
     invariant(object instanceof ObjectValue);
   }
