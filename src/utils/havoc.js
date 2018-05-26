@@ -169,6 +169,7 @@ class ObjectValueHavocingVisitor {
     this.visitObjectPrototype(obj);
 
     if (TestIntegrityLevel(this.realm, obj, "frozen")) return;
+    let isFinalObject = obj.isFinalObject();
 
     // if this object wasn't already havoced, we need mark it as havoced
     // so that any mutation and property access get tracked after this.
@@ -221,10 +222,15 @@ class ObjectValueHavocingVisitor {
               }
             }
             this.realm.recordModifiedProperty(propertyBinding);
-            propertyBinding.descriptor = Object.assign({}, descriptor);
+
+            if (isFinalObject) {
+              let clonedDescriptor = Object.assign({}, descriptor);
+              clonedDescriptor.leakedFinalDescriptor = descriptor;
+              propertyBinding.descriptor = descriptor = clonedDescriptor;
+            }
 
             // TODO: We need a general way to find out the right default value
-            propertyBinding.descriptor.value =
+            descriptor.value =
               obj instanceof ArrayValue && name === "length"
                 ? this.realm.intrinsics.zero
                 : this.realm.intrinsics.undefined;
