@@ -11,6 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import {
+  AbstractValue,
   ArrayValue,
   NullValue,
   NumberValue,
@@ -557,6 +558,19 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
+    // If we have an object that is an unknown array with numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) && realm.isInPureScope()) {
+      let args = [O, searchElement];
+      if (fromIndex) {
+        args.push(fromIndex);
+      }
+      return AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, args, ([objNode, ..._args]) =>
+        t.callExpression(t.memberExpression(objNode, t.identifier("indexOf")), ((_args: any): Array<any>))
+      );
+    }
+
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));
 
@@ -1040,6 +1054,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
   obj.defineNativeMethod("reverse", 0, context => {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
+
+    // If we have an object that is an unknown array with numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) && realm.isInPureScope()) {
+      return AbstractValue.createTemporalFromBuildFunction(realm, ArrayValue, [O], ([objNode, ..._args]) =>
+        t.callExpression(t.memberExpression(objNode, t.identifier("reverse")), [])
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
     let len = To.ToLength(realm, Get(realm, O, "length"));

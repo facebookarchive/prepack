@@ -289,8 +289,14 @@ export function OrdinaryCallEvaluateBody(
 ): Reference | Value | AbruptCompletion {
   if (f instanceof NativeFunctionValue) {
     let env = realm.getRunningContext().lexicalEnvironment;
+    let context = env.environmentRecord.GetThisBinding();
+
+    if (context instanceof AbstractObjectValue && context.kind === "conditional") {
+      // TODO: we should handle this case and split the calls up
+      // on the conditional, as it may yield better results
+    }
     try {
-      return f.callCallback(env.environmentRecord.GetThisBinding(), argumentsList, env.environmentRecord.$NewTarget);
+      return f.callCallback(context, argumentsList, env.environmentRecord.$NewTarget);
     } catch (err) {
       if (err instanceof AbruptCompletion) {
         return err;
