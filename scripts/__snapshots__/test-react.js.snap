@@ -2729,6 +2729,23 @@ ReactStatistics {
 
 exports[`Test React with JSX input, JSX output Functional component folding Unsafe spread 1`] = `"Failed to optimize React component tree for \\"App\\" due to a fatal error during evaluation: A fatal error occurred while prepacking."`;
 
+exports[`Test React with JSX input, JSX output Functional component folding defaultProps 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output Render props React Context 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
@@ -6518,6 +6535,23 @@ ReactStatistics {
 `;
 
 exports[`Test React with JSX input, create-element output Functional component folding Unsafe spread 1`] = `"Failed to optimize React component tree for \\"App\\" due to a fatal error during evaluation: A fatal error occurred while prepacking."`;
+
+exports[`Test React with JSX input, create-element output Functional component folding defaultProps 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
 
 exports[`Test React with JSX input, create-element output Render props React Context 1`] = `
 ReactStatistics {
@@ -10324,6 +10358,23 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output Functional component folding defaultProps 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output Render props React Context 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
@@ -14113,6 +14164,23 @@ ReactStatistics {
 `;
 
 exports[`Test React with create-element input, create-element output Functional component folding Unsafe spread 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Functional component folding defaultProps 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
