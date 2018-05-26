@@ -184,8 +184,8 @@ function splitReactElementsByConditionalType(
 function splitReactElementsByConditionalConfig(
   realm: Realm,
   condValue: AbstractValue,
-  consequentVal: Value,
-  alternateVal: Value,
+  consequentVal: ObjectValue | AbstractObjectValue,
+  alternateVal: ObjectValue | AbstractObjectValue,
   type: Value,
   children: void | Value
 ): Value {
@@ -221,6 +221,8 @@ export function createReactElement(
   } else if (config instanceof AbstractObjectValue && config.kind === "conditional") {
     let [condValue, consequentVal, alternateVal] = config.args;
     invariant(condValue instanceof AbstractValue);
+    invariant(consequentVal instanceof ObjectValue || consequentVal instanceof AbstractObjectValue);
+    invariant(alternateVal instanceof ObjectValue || alternateVal instanceof AbstractObjectValue);
     return splitReactElementsByConditionalConfig(realm, condValue, consequentVal, alternateVal, type, children);
   }
   let { key, props, ref } = createPropsObject(realm, type, config, children);
@@ -246,7 +248,7 @@ export function createInternalReactElement(
   if (ref instanceof AbstractValue && ref.kind === "conditional") {
     invariant(false, "createInternalReactElement should never encounter a conditional ref");
   }
-  if (props instanceof AbstractValue && props.kind === "conditional") {
+  if (props instanceof AbstractObjectValue && props.kind === "conditional") {
     invariant(false, "createInternalReactElement should never encounter a conditional props");
   }
   Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactSymbol("react.element", realm));
