@@ -259,6 +259,7 @@ export class Realm {
       propsWithNoPartialKeyOrRef: new WeakSet(),
       reactElements: new WeakSet(),
       symbols: new Map(),
+      usedReactElementKeys: new Set(),
       verbose: opts.reactVerbose || false,
     };
 
@@ -348,6 +349,7 @@ export class Realm {
     propsWithNoPartialKeyOrRef: WeakSet<ObjectValue | AbstractObjectValue>,
     reactElements: WeakSet<ObjectValue>,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
+    usedReactElementKeys: Set<string>,
     verbose: boolean,
   };
   alreadyDescribedLocations: WeakMap<FunctionValue | BabelNodeSourceLocation, string | void>;

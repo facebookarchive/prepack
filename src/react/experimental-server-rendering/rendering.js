@@ -443,21 +443,14 @@ class ReactDOMServerRenderer {
 }
 
 function handleNestedOptimizedFunctions(realm: Realm, reconciler: Reconciler, staticMarkup: boolean): void {
-  for (let { func, evaluatedNode, componentType, context, branchState } of reconciler.nestedOptimizedClosures) {
+  for (let { func, evaluatedNode, componentType, context } of reconciler.nestedOptimizedClosures) {
     if (reconciler.hasEvaluatedNestedClosure(func)) {
       continue;
     }
     if (func instanceof ECMAScriptSourceFunctionValue && reconciler.hasEvaluatedRootNode(func, evaluatedNode)) {
       continue;
     }
-    let closureEffects = reconciler.resolveNestedOptimizedClosure(
-      func,
-      [],
-      componentType,
-      context,
-      branchState,
-      evaluatedNode
-    );
+    let closureEffects = reconciler.resolveNestedOptimizedClosure(func, [], componentType, context, evaluatedNode);
 
     let closureEffectsRenderedToString = realm.evaluateForEffectsWithPriorEffects(
       [closureEffects],

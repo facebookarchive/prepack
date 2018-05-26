@@ -38,13 +38,15 @@ import type {
 } from "../types.js";
 import { Get, cloneDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
-import type { ReactSerializerState, AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
+import type { AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
 import invariant from "../invariant.js";
 import { Create, Properties, To } from "../singletons.js";
 import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
+import { createInternalReactElement } from "./elements.js";
+import { ExpectedBailOut } from "./errors.js";
 
 export type ReactSymbolTypes =
   | "react.element"
@@ -188,19 +190,19 @@ export function valueIsFactoryClassComponent(realm: Realm, value: Value): boolea
   return false;
 }
 
-export function addKeyToReactElement(
-  realm: Realm,
-  reactSerializerState: ReactSerializerState,
-  reactElement: ObjectValue
-): void {
+export function addKeyToReactElement(realm: Realm, reactElement: ObjectValue): ObjectValue {
+  let typeValue = getProperty(realm, reactElement, "type");
+  let refValue = getProperty(realm, reactElement, "ref");
+  let propsValue = getProperty(realm, reactElement, "props");
   // we need to apply a key when we're branched
   let currentKeyValue = getProperty(realm, reactElement, "key") || realm.intrinsics.null;
-  let uniqueKey = getUniqueReactElementKey("", reactSerializerState.usedReactElementKeys);
+  let uniqueKey = getUniqueReactElementKey("", realm.react.usedReactElementKeys);
   let newKeyValue = new StringValue(realm, uniqueKey);
   if (currentKeyValue !== realm.intrinsics.null) {
     newKeyValue = computeBinary(realm, "+", currentKeyValue, newKeyValue);
   }
-  setProperty(reactElement, "key", newKeyValue);
+  invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue);
+  return createInternalReactElement(realm, typeValue, newKeyValue, refValue, propsValue);
 }
 // we create a unique key for each JSXElement to prevent collisions
 // otherwise React will detect a missing/conflicting key at runtime and
@@ -633,87 +635,6 @@ export function evaluateWithNestedParentEffects(realm: Realm, nestedEffects: Arr
   }
 }
 
-// This function is mainly use to delete internal properties
-// on objects that we know are safe to access internally
-// such as ReactElements. Deleting here does not
-// emit change to modified bindings and is intended
-// for only internal usage – not for user-land code
-export function deleteProperty(object: ObjectValue | AbstractObjectValue, property: string | SymbolValue): void {
-  if (object instanceof AbstractObjectValue) {
-    let elements = object.values.getElements();
-    if (elements && elements.size > 0) {
-      object = Array.from(elements)[0];
-    } else {
-      // intentionally left in
-      invariant(false, "TODO: should we hit this?");
-    }
-    invariant(object instanceof ObjectValue);
-  }
-  let binding;
-  if (typeof property === "string") {
-    binding = object.properties.get(property);
-  } else {
-    binding = object.symbols.get(property);
-  }
-  if (!binding) {
-    return;
-  }
-  binding.descriptor = undefined;
-}
-
-// This function is mainly use to set internal properties
-// on objects that we know are safe to access internally
-// such as ReactElements. Setting properties here does not
-// emit change to modified bindings and is intended
-// for only internal usage – not for user-land code
-export function setProperty(
-  object: ObjectValue | AbstractObjectValue,
-  property: string | SymbolValue,
-  value: Value
-): void {
-  if (object instanceof AbstractObjectValue) {
-    let elements = object.values.getElements();
-    if (elements && elements.size > 0) {
-      object = Array.from(elements)[0];
-    } else {
-      // intentionally left in
-      invariant(false, "TODO: should we hit this?");
-    }
-    invariant(object instanceof ObjectValue);
-  }
-  let defaultBinding = {
-    descriptor: {
-      configurable: true,
-      enumerable: true,
-      writable: true,
-      value,
-    },
-    key: property,
-    object,
-  };
-  let binding;
-  if (typeof property === "string") {
-    binding = object.properties.get(property);
-    if (!binding) {
-      binding = defaultBinding;
-      object.properties.set(property, binding);
-    }
-  } else if (property instanceof SymbolValue) {
-    binding = object.symbols.get(property);
-    if (!binding) {
-      binding = defaultBinding;
-      object.symbols.set(property, binding);
-    }
-  }
-  invariant(binding);
-  let descriptor = binding.descriptor;
-
-  if (!descriptor) {
-    return;
-  }
-  descriptor.value = value;
-}
-
 // This function is mainly use to get internal properties
 // on objects that we know are safe to access internally
 // such as ReactElements. Getting properties here does
@@ -787,6 +708,11 @@ export function createReactEvaluatedNode(
 export function getComponentName(realm: Realm, componentType: Value): string {
   if (componentType instanceof SymbolValue && componentType === getReactSymbol("react.fragment", realm)) {
     return "React.Fragment";
+  } else if (componentType instanceof SymbolValue) {
+    return "unknown symbol";
+  }
+  if (componentType === realm.intrinsics.undefined || componentType === realm.intrinsics.null) {
+    return "no name";
   }
   invariant(
     componentType instanceof ECMAScriptSourceFunctionValue ||
@@ -902,23 +828,46 @@ function isEventProp(name: string): boolean {
 
 export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElement: ObjectValue): ObjectValue {
   let typeValue = getProperty(realm, reactElement, "type");
+  let keyValue = getProperty(realm, reactElement, "key");
+  let propsValue = getProperty(realm, reactElement, "props");
 
-  // ensure ref is null, as we don't use that on first render
-  setProperty(reactElement, "ref", realm.intrinsics.null);
-  // when dealing with host nodes, we want to sanitize them futher
-  if (typeValue instanceof StringValue) {
-    let propsValue = getProperty(realm, reactElement, "props");
+  const sanitizeProps = (): ObjectValue | AbstractObjectValue => {
+    // if the props object is abstract, then we just return the value
     if (propsValue instanceof ObjectValue) {
-      // remove all values apart from string/number/boolean
-      for (let [propName] of propsValue.properties) {
-        // check for onSomething prop event handlers, i.e. onClick
-        if (isEventProp(propName)) {
-          deleteProperty(propsValue, propName);
+      let newProps = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+      for (let [propName, binding] of propsValue.properties) {
+        if (binding && binding.descriptor && binding.descriptor.enumerable) {
+          // check for onSomething prop event handlers, i.e. onClick
+          if (!isEventProp(propName)) {
+            Properties.Set(realm, newProps, propName, Get(realm, propsValue, propName), true);
+          }
         }
       }
+      if (propsValue.isPartialObject()) {
+        newProps.makePartial();
+      }
+      if (propsValue.isSimpleObject()) {
+        newProps.makeSimple();
+      }
+      if (realm.react.propsWithNoPartialKeyOrRef.has(propsValue)) {
+        flagPropsWithNoPartialKeyOrRef(realm, newProps);
+      }
+      newProps.makeFinal();
+      return newProps;
     }
-  }
-  return reactElement;
+    // otherwise, return the original props
+    invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue);
+    return propsValue;
+  };
+
+  invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue);
+  return createInternalReactElement(
+    realm,
+    typeValue,
+    keyValue,
+    realm.intrinsics.null,
+    typeValue instanceof StringValue ? sanitizeProps() : propsValue
+  );
 }
 
 export function getLocationFromValue(expressionLocation: any) {
@@ -977,4 +926,24 @@ export function createDefaultPropsHelper(realm: Realm): ECMAScriptSourceFunction
   helper.$FormalParameters = escapeHelperAst.params;
   realm.react.defaultPropsHelper = helper;
   return helper;
+}
+
+export function setContextCurrentValue(contextObject: ObjectValue | AbstractObjectValue, value: Value): void {
+  if (contextObject instanceof AbstractObjectValue && !contextObject.values.isTop()) {
+    let elements = contextObject.values.getElements();
+    if (elements && elements.size > 0) {
+      contextObject = Array.from(elements)[0];
+    } else {
+      // intentionally left in
+      invariant(false, "TODO: should we hit this?");
+    }
+  }
+  if (!(contextObject instanceof ObjectValue)) {
+    throw new ExpectedBailOut("cannot set currentValue on an abstract context consumer");
+  }
+  let binding = contextObject.properties.get("currentValue");
+
+  if (binding && binding.descriptor) {
+    binding.descriptor.value = value;
+  }
 }

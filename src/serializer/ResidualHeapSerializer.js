@@ -49,7 +49,6 @@ import type {
   FunctionInfo,
   FunctionInstance,
   AdditionalFunctionInfo,
-  ReactSerializerState,
   SerializedBody,
   ClassMethodInstance,
   AdditionalFunctionEffects,
@@ -124,7 +123,6 @@ export class ResidualHeapSerializer {
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
-    react: ReactSerializerState,
     referentializer: Referentializer,
     generatorDAG: GeneratorDAG,
     conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>,
@@ -134,7 +132,6 @@ export class ResidualHeapSerializer {
     this.logger = logger;
     this.modules = modules;
     this.residualHeapValueIdentifiers = residualHeapValueIdentifiers;
-    this.react = react;
     this.referentializer = referentializer;
 
     let realmGenerator = this.realm.generator;
@@ -258,7 +255,6 @@ export class ResidualHeapSerializer {
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>>;
   declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>;
-  react: ReactSerializerState;
   residualReactElementSerializer: ResidualReactElementSerializer;
   referentializer: Referentializer;
   additionalFunctionGenerators: Map<FunctionValue, Generator>;
