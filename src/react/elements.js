@@ -96,7 +96,6 @@ function createPropsObject(
     args.push(config);
     // create a new props object that will be the target of the Object.assign
     props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-    props.makePartial();
 
     // get the global Object.assign
     let globalObj = Get(realm, realm.$GlobalObject, "Object");
