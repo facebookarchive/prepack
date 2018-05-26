@@ -242,12 +242,6 @@ export function createInternalReactElement(
   if (type instanceof AbstractValue && type.kind === "conditional") {
     invariant(false, "createInternalReactElement should never encounter a conditional type");
   }
-  if (key instanceof AbstractValue && key.kind === "conditional") {
-    invariant(false, "createInternalReactElement should never encounter a conditional key");
-  }
-  if (ref instanceof AbstractValue && ref.kind === "conditional") {
-    invariant(false, "createInternalReactElement should never encounter a conditional ref");
-  }
   if (props instanceof AbstractObjectValue && props.kind === "conditional") {
     invariant(false, "createInternalReactElement should never encounter a conditional props");
   }
