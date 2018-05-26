@@ -12,6 +12,7 @@
 import { Realm, Effects } from "../realm.js";
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
+import { parseExpression } from "babylon";
 import {
   AbstractObjectValue,
   AbstractValue,
@@ -951,4 +952,29 @@ export function doNotOptimizeComponent(realm: Realm, componentType: Value): bool
     }
   }
   return false;
+}
+
+export function createDefaultPropsHelper(realm: Realm): ECMAScriptSourceFunctionValue {
+  if (realm.react.defaultPropsHelper !== undefined) {
+    return realm.react.defaultPropsHelper;
+  }
+  let defaultPropsHelper = `
+    function defaultPropsHelper(props, defaultProps) {
+      for (var propName in defaultProps) {
+        if (props[propName] === undefined) {
+          props[propName] = defaultProps[propName];
+        }
+      }
+      return props;
+    }
+  `;
+
+  let escapeHelperAst = parseExpression(defaultPropsHelper, { plugins: ["flow"] });
+  let helper = new ECMAScriptSourceFunctionValue(realm);
+  let body = escapeHelperAst.body;
+  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
+  helper.$ECMAScriptCode = body;
+  helper.$FormalParameters = escapeHelperAst.params;
+  realm.react.defaultPropsHelper = helper;
+  return helper;
 }

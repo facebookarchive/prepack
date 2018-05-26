@@ -424,6 +424,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "refs3.js");
       });
 
+      it("defaultProps", async () => {
+        await runTest(directory, "default-props.js");
+      });
+
       it("Unsafe spread", async () => {
         await expectPartialKeyOrRefError(async () => {
           await runTest(directory, "unsafe-spread.js");

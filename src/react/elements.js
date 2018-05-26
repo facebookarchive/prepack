@@ -22,7 +22,13 @@ import {
 import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
-import { flagPropsWithNoPartialKeyOrRef, getProperty, getReactSymbol, hasNoPartialKeyOrRef } from "./utils.js";
+import {
+  createDefaultPropsHelper,
+  flagPropsWithNoPartialKeyOrRef,
+  getProperty,
+  getReactSymbol,
+  hasNoPartialKeyOrRef,
+} from "./utils.js";
 import * as t from "babel-types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
@@ -87,9 +93,6 @@ function createPropsObject(
     (config instanceof ObjectValue && config.isPartialObject() && config.isSimpleObject())
   ) {
     let args = [];
-    if (defaultProps !== realm.intrinsics.undefined) {
-      args.push(defaultProps);
-    }
     args.push(config);
     // create a new props object that will be the target of the Object.assign
     props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
@@ -102,9 +105,11 @@ function createPropsObject(
     let objectAssignCall = objAssign.$Call;
     invariant(objectAssignCall !== undefined);
 
+    // TODO: maybe we can optimize the serialized output more here?
+    // do we really need to create an object just for { children }
     if (children !== undefined) {
       let childrenObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-      Properties.Set(realm, props, "children", children, true);
+      Properties.Set(realm, childrenObject, "children", children, true);
       args.push(childrenObject);
     }
 
@@ -112,6 +117,7 @@ function createPropsObject(
       objectAssignCall(realm.intrinsics.undefined, [props, ...args]);
     } catch (e) {
       if (realm.isInPureScope() && e instanceof FatalError) {
+        // TODO: maybe we can use temporalAlias and/or snapshots to improve this?
         props = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,
@@ -121,6 +127,18 @@ function createPropsObject(
           }
         );
       }
+    }
+
+    // handle default props on a partial/abstract config
+    if (defaultProps !== realm.intrinsics.undefined) {
+      props = AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        ObjectValue,
+        [createDefaultPropsHelper(realm), props, defaultProps],
+        ([methodNode, ..._args]) => {
+          return t.callExpression(methodNode, ((_args: any): Array<any>));
+        }
+      );
     }
   } else {
     applyProperties();
