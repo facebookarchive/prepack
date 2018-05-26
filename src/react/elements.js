@@ -181,6 +181,33 @@ function splitReactElementsByConditionalType(
   );
 }
 
+function splitReactElementsByConditionalConfig(
+  realm: Realm,
+  condValue: AbstractValue,
+  consequentVal: Value,
+  alternateVal: Value,
+  type: Value,
+  children: void | Value
+): Value {
+  return realm.evaluateWithAbstractConditional(
+    condValue,
+    () => {
+      return realm.evaluateForEffects(
+        () => createReactElement(realm, type, consequentVal, children),
+        null,
+        "splitReactElementsByConditionalConfig consequent"
+      );
+    },
+    () => {
+      return realm.evaluateForEffects(
+        () => createReactElement(realm, type, alternateVal, children),
+        null,
+        "splitReactElementsByConditionalConfig alternate"
+      );
+    }
+  );
+}
+
 export function createReactElement(
   realm: Realm,
   type: Value,
@@ -191,6 +218,10 @@ export function createReactElement(
     let [condValue, consequentVal, alternateVal] = type.args;
     invariant(condValue instanceof AbstractValue);
     return splitReactElementsByConditionalType(realm, condValue, consequentVal, alternateVal, config, children);
+  } else if (config instanceof AbstractObjectValue && config.kind === "conditional") {
+    let [condValue, consequentVal, alternateVal] = config.args;
+    invariant(condValue instanceof AbstractValue);
+    return splitReactElementsByConditionalConfig(realm, condValue, consequentVal, alternateVal, type, children);
   }
   let { key, props, ref } = createPropsObject(realm, type, config, children);
   return createInternalReactElement(realm, type, key, ref, props);
@@ -204,6 +235,20 @@ export function createInternalReactElement(
   props: ObjectValue | AbstractObjectValue
 ): ObjectValue {
   let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+
+  // sanity checks
+  if (type instanceof AbstractValue && type.kind === "conditional") {
+    invariant(false, "createInternalReactElement should never encounter a conditional type");
+  }
+  if (key instanceof AbstractValue && key.kind === "conditional") {
+    invariant(false, "createInternalReactElement should never encounter a conditional key");
+  }
+  if (ref instanceof AbstractValue && ref.kind === "conditional") {
+    invariant(false, "createInternalReactElement should never encounter a conditional ref");
+  }
+  if (props instanceof AbstractValue && props.kind === "conditional") {
+    invariant(false, "createInternalReactElement should never encounter a conditional props");
+  }
   Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactSymbol("react.element", realm));
   Create.CreateDataPropertyOrThrow(realm, obj, "type", type);
   Create.CreateDataPropertyOrThrow(realm, obj, "key", key);
