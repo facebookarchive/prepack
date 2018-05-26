@@ -99,7 +99,7 @@ export function getReactSymbol(symbolKey: ReactSymbolTypes, realm: Realm): Symbo
     let SymbolForDescriptor = SymbolFor.descriptor;
 
     if (SymbolForDescriptor !== undefined) {
-      let SymbolForValue = SymbolForDescriptor.value;
+      let SymbolForValue = getLastKnownValue(SymbolForDescriptor);
       if (SymbolForValue instanceof ObjectValue && typeof SymbolForValue.$Call === "function") {
         reactSymbol = SymbolForValue.$Call(realm.intrinsics.Symbol, [new StringValue(realm, symbolKey)]);
         invariant(reactSymbol instanceof SymbolValue);
@@ -233,7 +233,7 @@ export function forEachArrayValue(
     let elementProperty = array.properties.get("" + i);
     let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
     if (elementPropertyDescriptor) {
-      let elementValue = elementPropertyDescriptor.value;
+      let elementValue = getLastKnownValue(elementPropertyDescriptor);
       if (elementValue instanceof Value) {
         mapFunc(elementValue, elementPropertyDescriptor);
       }
@@ -256,7 +256,7 @@ export function mapArrayValue(
     let elementProperty = array.properties.get("" + i);
     let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
     if (elementPropertyDescriptor) {
-      let elementValue = elementPropertyDescriptor.value;
+      let elementValue = getLastKnownValue(elementPropertyDescriptor);
       if (elementValue instanceof Value) {
         let newElement = mapFunc(elementValue, elementPropertyDescriptor);
         if (newElement !== elementValue) {
@@ -488,6 +488,7 @@ export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFun
   }
   // ensure the length value is set to the correct value after
   // we've made mutations to the arguments of this function
+  invariant(lengthProperty.leakedFinalDescriptor === undefined);
   let lengthValue = lengthProperty.value;
   invariant(lengthValue instanceof NumberValue);
   lengthValue.value = func.$FormalParameters.length;
@@ -711,7 +712,13 @@ export function setProperty(
   if (!descriptor) {
     return;
   }
+  invariant(descriptor.leakedFinalDescriptor === undefined);
   descriptor.value = value;
+}
+
+function getLastKnownValue(descriptor) {
+  if (descriptor.leakedFinalDescriptor !== undefined) descriptor = descriptor.leakedFinalDescriptor;
+  return descriptor.value;
 }
 
 // This function is mainly use to get internal properties
@@ -752,10 +759,8 @@ export function getProperty(
   if (!descriptor) {
     return realm.intrinsics.undefined;
   }
-  let value;
-  if (descriptor.value) {
-    value = descriptor.value;
-  } else if (descriptor.get || descriptor.set) {
+  let value = getLastKnownValue(descriptor);
+  if (value === undefined) {
     AbstractValue.reportIntrospectionError(object, `react/utils/getProperty unsupported getter/setter property`);
     throw new FatalError();
   }
