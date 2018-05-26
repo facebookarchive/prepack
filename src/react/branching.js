@@ -71,7 +71,7 @@ export function getValueWithBranchingLogicApplied(realm: Realm, value: AbstractV
   return findFirstMatchingComponentTypes(consequentVal, alternateVal);
 }
 
-function applyBranchedLogicValue(realm: Realm, value: Value): Value {
+export function applyBranchedLogicValue(realm: Realm, value: Value): Value {
   if (
     value instanceof StringValue ||
     value instanceof NumberValue ||
