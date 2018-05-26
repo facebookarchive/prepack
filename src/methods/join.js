@@ -737,10 +737,15 @@ export class JoinImplementation {
       let l2 = b2 === undefined ? b.hasLeaked : b2.hasLeaked;
       let v1 = b1 === undefined ? b.value : b1.value;
       let v2 = b2 === undefined ? b.value : b2.value;
+      let liv1 = b1 === undefined ? b.leakedImmutableValue : b1.leakedImmutableValue;
+      let liv2 = b2 === undefined ? b.leakedImmutableValue : b2.leakedImmutableValue;
       let hasLeaked = l1 || l2; // If either has leaked, then this binding has leaked.
       let value = this.joinValues(realm, v1, v2, getAbstractValue);
+      let leakedImmutableValue =
+        liv1 === undefined && liv2 === undefined ? undefined : this.joinValues(realm, liv1, liv2, getAbstractValue);
       invariant(value instanceof Value);
-      return { hasLeaked, value };
+      invariant(leakedImmutableValue === undefined || leakedImmutableValue instanceof Value);
+      return { leakedImmutableValue, hasLeaked, value };
     };
     return this.joinMaps(m1, m2, join);
   }
