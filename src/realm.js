@@ -219,7 +219,7 @@ export class Realm {
     }
 
     this.start = Date.now();
-    this.compatibility = opts.compatibility || "browser";
+    this.compatibility = typeof opts.compatibility !== "undefined" ? opts.compatibility : "browser";
     this.maxStackDepth = opts.maxStackDepth || 225;
     this.invariantLevel = opts.invariantLevel || 0;
     this.invariantMode = opts.invariantMode || "throw";
@@ -710,19 +710,17 @@ export class Realm {
     strictCode: boolean,
     env: LexicalEnvironment,
     state?: any,
-    generatorName?: string
+    generatorName?: string = "evaluateNodeForEffects"
   ): Effects {
-    return this.evaluateForEffects(
-      () => env.evaluateCompletionDeref(ast, strictCode),
-      state,
-      generatorName || "evaluateNodeForEffects"
-    );
+    return this.evaluateForEffects(() => env.evaluateCompletionDeref(ast, strictCode), state, generatorName);
   }
 
-  evaluateForEffectsInGlobalEnv(func: () => Value, state?: any, generatorName?: string): Effects {
-    return this.wrapInGlobalEnv(() =>
-      this.evaluateForEffects(func, state, generatorName || "evaluateForEffectsInGlobalEnv")
-    );
+  evaluateForEffectsInGlobalEnv(
+    func: () => Value,
+    state?: any,
+    generatorName?: string = "evaluateForEffectsInGlobalEnv"
+  ): Effects {
+    return this.wrapInGlobalEnv(() => this.evaluateForEffects(func, state, generatorName));
   }
 
   // NB: does not apply generators because there's no way to cleanly revert them.
@@ -1261,9 +1259,8 @@ export class Realm {
     this.createdObjects = new Set();
   }
 
-  getCapturedEffects(completion: PossiblyNormalCompletion, v?: Value): void | Effects {
+  getCapturedEffects(completion: PossiblyNormalCompletion, v?: Value = this.intrinsics.undefined): void | Effects {
     if (completion.savedEffects === undefined) return undefined;
-    if (v === undefined) v = this.intrinsics.undefined;
     invariant(this.generator !== undefined);
     invariant(this.modifiedBindings !== undefined);
     invariant(this.modifiedProperties !== undefined);

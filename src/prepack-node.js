@@ -31,7 +31,7 @@ export * from "./prepack-standalone";
 
 function createStatistics(options: PrepackOptions) {
   let gc = global.gc; // eslint-disable-line no-undef
-  return options.profile
+  return typeof options.profile !== "undefined"
     ? new SerializerStatistics(
         () => Date.now(),
         () => {
@@ -52,11 +52,10 @@ export function prepackStdin(
   process.stdin.setEncoding("utf8");
   process.stdin.resume();
   process.stdin.on("data", function(code) {
-    fs.readFile(sourceMapFilename, "utf8", function(mapErr, sourceMap) {
+    fs.readFile(sourceMapFilename, "utf8", function(mapErr, sourceMap = "") {
       if (mapErr) {
         //if no sourcemap was provided we silently ignore
         if (sourceMapFilename !== "") console.warn(`No sourcemap found at ${sourceMapFilename}.`);
-        sourceMap = "";
       }
       let filename = "no-filename-specified";
       let serialized;
@@ -98,10 +97,9 @@ export function prepackFile(
       if (fileErrorHandler) fileErrorHandler(fileErr);
       return;
     }
-    fs.readFile(sourceMapFilename, "utf8", function(mapErr, sourceMap) {
+    fs.readFile(sourceMapFilename, "utf8", function(mapErr, sourceMap = "") {
       if (mapErr) {
         console.warn(`No sourcemap found at ${sourceMapFilename}.`);
-        sourceMap = "";
       }
       let serialized;
       try {
