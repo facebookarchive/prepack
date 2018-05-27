@@ -122,7 +122,7 @@ export class Referentializer {
       });
     }
     // Default case.
-    if (this.realm.invariantLevel) {
+    if (this.realm.invariantLevel >= 1) {
       cases.push(
         t.switchCase(null, [
           t.throwStatement(t.newExpression(t.identifier("Error"), [t.stringLiteral("Unknown scope selector")])),
