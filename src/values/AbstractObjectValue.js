@@ -76,7 +76,7 @@ export default class AbstractObjectValue extends AbstractValue {
     }
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
-      element.temoralAlias = temporalValue;
+      element.temporalAlias = temporalValue;
     }
   }
 
