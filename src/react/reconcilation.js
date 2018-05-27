@@ -127,7 +127,6 @@ function setContextCurrentValue(contextObject: ObjectValue | AbstractObjectValue
   }
 }
 
-
 export class Reconciler {
   constructor(
     realm: Realm,
