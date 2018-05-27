@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Value } from "./index.js";
 import type { Realm } from "../realm.js";
@@ -71,7 +71,7 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
       enumerable: false,
     });
 
-    if (name) {
+    if (typeof name !== "undefined") {
       if (name instanceof SymbolValue) {
         this.name = name.$Description ? `[${name.$Description.throwIfNotConcreteString().value}]` : "[native]";
       } else {
