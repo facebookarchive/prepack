@@ -91,7 +91,8 @@ export function prepackFile(
     prepackNodeCLI(filename, options, callback);
     return;
   }
-  let sourceMapFilename = options.inputSourceMapFilename || filename + ".map";
+  let sourceMapFilename =
+    typeof options.inputSourceMapFilename === "string" ? options.inputSourceMapFilename : filename + ".map";
   fs.readFile(filename, "utf8", function(fileErr, code) {
     if (fileErr) {
       if (fileErrorHandler) fileErrorHandler(fileErr);
@@ -130,16 +131,18 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
   const sourceFiles = filenames.map(filename => {
     let code = fs.readFileSync(filename, "utf8");
     let sourceMap = "";
-    let sourceMapFilename = options.inputSourceMapFilename || filename + ".map";
+    let sourceMapFilename =
+      typeof options.inputSourceMapFilename === "string" ? options.inputSourceMapFilename : filename + ".map";
     try {
       sourceMap = fs.readFileSync(sourceMapFilename, "utf8");
     } catch (_e) {
-      if (options.inputSourceMapFilename) console.warn(`No sourcemap found at ${sourceMapFilename}.`);
+      if (typeof options.inputSourceMapFilename === "string")
+        console.warn(`No sourcemap found at ${sourceMapFilename}.`);
     }
     return { filePath: filename, fileContents: code, sourceMapContents: sourceMap };
   });
   let debugChannel;
-  if (options.debugInFilePath && options.debugOutFilePath) {
+  if (typeof options.debugInFilePath === "string" && typeof options.debugOutFilePath === "string") {
     let debugOptions = getDebuggerOptions(options);
     let ioWrapper = new FileIOWrapper(false, debugOptions.inFilePath, debugOptions.outFilePath);
     debugChannel = new DebugChannel(ioWrapper);

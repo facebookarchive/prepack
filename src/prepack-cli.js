@@ -344,8 +344,11 @@ fi
     },
     flags
   );
-  if (heapGraphFilePath) resolvedOptions.heapGraphFormat = "DotLanguage";
-  if (lazyObjectsRuntime && (resolvedOptions.delayInitializations || resolvedOptions.inlineExpressions)) {
+  if (typeof heapGraphFilePath !== "undefined") resolvedOptions.heapGraphFormat = "DotLanguage";
+  if (
+    typeof lazyObjectsRuntime === "string" &&
+    (resolvedOptions.delayInitializations || resolvedOptions.inlineExpressions)
+  ) {
     console.error("lazy objects feature is incompatible with delayInitializations and inlineExpressions options");
     process.exit(1);
   }
@@ -481,7 +484,7 @@ fi
     if (outputSourceMap) {
       fs.writeFileSync(outputSourceMap, serialized.map ? JSON.stringify(serialized.map) : "");
     }
-    if (heapGraphFilePath) {
+    if (typeof heapGraphFilePath === "string") {
       invariant(serialized.heapGraph);
       fs.writeFileSync(heapGraphFilePath, serialized.heapGraph);
     }

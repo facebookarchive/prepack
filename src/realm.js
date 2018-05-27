@@ -198,7 +198,7 @@ export class Realm {
   constructor(opts: RealmOptions, statistics: RealmStatistics) {
     this.statistics = statistics;
     this.isReadOnly = false;
-    this.useAbstractInterpretation = !!opts.serialize || !!opts.residual || !!opts.check;
+    this.useAbstractInterpretation = opts.serialize === true || opts.residual === true || Array.isArray(opts.check);
     this.ignoreLeakLogic = false;
     this.isInPureTryStatement = false;
     if (opts.mathRandomSeed !== undefined) {
@@ -207,12 +207,12 @@ export class Realm {
     this.strictlyMonotonicDateNow = !!opts.strictlyMonotonicDateNow;
 
     // 0 = disabled
-    this.abstractValueImpliesMax = opts.abstractValueImpliesMax || 0;
+    this.abstractValueImpliesMax = typeof opts.abstractValueImpliesMax === "number" ? opts.abstractValueImpliesMax : 0;
     this.abstractValueImpliesCounter = 0;
     this.inSimplificationPath = false;
 
     this.timeout = opts.timeout;
-    if (this.timeout) {
+    if (typeof this.timeout === "number") {
       // We'll call Date.now for every this.timeoutCounterThreshold'th AST node.
       // The threshold is there to reduce the cost of the surprisingly expensive Date.now call.
       this.timeoutCounter = this.timeoutCounterThreshold = 1024;
@@ -455,7 +455,7 @@ export class Realm {
 
   testTimeout() {
     let timeout = this.timeout;
-    if (timeout && !--this.timeoutCounter) {
+    if (typeof timeout === "number" && !--this.timeoutCounter) {
       this.timeoutCounter = this.timeoutCounterThreshold;
       let total = Date.now() - this.start;
       if (total > timeout) {
