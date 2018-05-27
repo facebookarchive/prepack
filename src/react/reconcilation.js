@@ -1140,6 +1140,15 @@ export class Reconciler {
     let propsValue = getProperty(this.realm, reactElement, "props");
     let refValue = getProperty(this.realm, reactElement, "ref");
 
+    invariant(
+      !(typeValue instanceof AbstractValue && typeValue.kind === "conditional"),
+      `the reconciler should never encounter a ReactElement "type" that is conditional abstract value`
+    );
+    invariant(
+      !(propsValue instanceof AbstractValue && propsValue.kind === "conditional"),
+      `the reconciler should never encounter a ReactElement "props" that is conditional abstract value`
+    );
+
     if (typeValue instanceof StringValue) {
       return this._resolveReactElementHostChildren(
         componentType,
@@ -1175,12 +1184,6 @@ export class Reconciler {
 
       switch (componentResolutionStrategy) {
         case "NORMAL": {
-          if (typeValue instanceof AbstractValue && typeValue.kind === "conditional") {
-            invariant(
-              false,
-              "We should never have a component type that is condition, it should be handled in the createReactElement logic"
-            );
-          }
           if (
             !(typeValue instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(this.realm, typeValue))
           ) {
