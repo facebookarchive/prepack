@@ -30,6 +30,7 @@ import invariant from "./invariant";
 import zipFactory from "node-zip";
 import path from "path";
 import JSONTokenizer from "./utils/JSONTokenizer.js";
+import { isUndefinedOrNull } from "./utils.js";
 
 // Prepack helper
 declare var __residual: any;
@@ -344,7 +345,7 @@ fi
     },
     flags
   );
-  if (typeof heapGraphFilePath !== "undefined") resolvedOptions.heapGraphFormat = "DotLanguage";
+  if (!isUndefinedOrNull(heapGraphFilePath)) resolvedOptions.heapGraphFormat = "DotLanguage";
   if (
     typeof lazyObjectsRuntime === "string" &&
     (resolvedOptions.delayInitializations || resolvedOptions.inlineExpressions)

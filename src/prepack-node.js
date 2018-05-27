@@ -19,6 +19,7 @@ import { getDebuggerOptions } from "./prepack-options";
 import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment.js";
 import { prepackSources } from "./prepack-standalone.js";
 import { type SourceMap } from "./types.js";
+import { isUndefinedOrNull } from "./utils.js";
 import { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
 import { FileIOWrapper } from "./debugger/common/channel/FileIOWrapper.js";
 import { type SerializedResult } from "./serializer/types.js";
@@ -31,7 +32,7 @@ export * from "./prepack-standalone";
 
 function createStatistics(options: PrepackOptions) {
   let gc = global.gc; // eslint-disable-line no-undef
-  return typeof options.profile !== "undefined"
+  return !isUndefinedOrNull(options.profile)
     ? new SerializerStatistics(
         () => Date.now(),
         () => {

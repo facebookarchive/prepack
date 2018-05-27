@@ -14,6 +14,7 @@ import Serializer from "./serializer/index.js";
 import construct_realm from "./construct_realm.js";
 import initializeGlobals from "./globals.js";
 import invariant from "./invariant.js";
+import { isUndefinedOrNull } from "./utils.js";
 
 let chalk = require("chalk");
 let jsdom = require("jsdom");
@@ -170,8 +171,8 @@ function dump(
   let code = serialized.code;
   let total = Date.now() - start;
 
-  if (code.length >= 1000 || typeof outputFilename !== "undefined") {
-    let filename = typeof outputFilename !== "undefined" ? outputFilename : name + "-processed.js";
+  if (code.length >= 1000 || !isUndefinedOrNull(outputFilename)) {
+    let filename = typeof outputFilename === "string" ? outputFilename : name + "-processed.js";
     console.log(`Prepacked source code written to ${filename}.`);
     fs.writeFileSync(filename, code);
   }
@@ -186,7 +187,7 @@ function dump(
     beforeStats
   );
 
-  if (code.length <= 1000 && typeof outputFilename === "undefined") {
+  if (code.length <= 1000 && isUndefinedOrNull(outputFilename)) {
     console.log("+++++++++++++++++ Prepacked source code");
     console.log(code);
     console.log("=================");
