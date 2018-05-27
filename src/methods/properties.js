@@ -107,7 +107,11 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
   if (!O.isIntrinsic() && O.temporalAlias === undefined) return;
   if (P instanceof SymbolValue) return;
   if (P instanceof StringValue) P = P.value;
+<<<<<<< HEAD
   invariant(!O.mightBeHavocedObject()); // havoced objects are never updated
+=======
+  invariant(!O.isHavocedObject()); // havoced objects are never updated
+>>>>>>> Switching isFinalObject to might[Not]BeFinalObject
   invariant(!O.mightBeFinalObject()); // final objects are never updated
   invariant(typeof P === "string");
   let propertyBinding = InternalGetPropertiesMap(O, P).get(P);
@@ -1168,17 +1172,12 @@ export class PropertiesImplementation {
     if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
       if (!O.mightNotBeFinalObject()) {
         let existingBinding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
-        if (
-          existingBinding &&
-          existingBinding.descriptor &&
-          existingBinding.descriptor.leakedFinalDescriptor !== undefined
-        ) {
+        if (existingBinding && existingBinding.descriptor) {
+          invariant(existingBinding.descriptor.leakedFinalDescriptor !== undefined);
           return existingBinding.descriptor.leakedFinalDescriptor;
+        } else {
+          return realm.intrinsics.undefined;
         }
-      }
-
-      if (O.mightBeFinalObject()) {
-        throw new FatalError("TODO: Do not know how to read from havoced object that might or might not be final.");
       }
 
       invariant(realm.generator);

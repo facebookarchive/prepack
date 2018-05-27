@@ -169,7 +169,6 @@ class ObjectValueHavocingVisitor {
     this.visitObjectPrototype(obj);
 
     if (TestIntegrityLevel(this.realm, obj, "frozen")) return;
-    let isFinalObject = obj.isFinalObject();
 
     // if this object wasn't already havoced, we need mark it as havoced
     // so that any mutation and property access get tracked after this.
@@ -223,7 +222,7 @@ class ObjectValueHavocingVisitor {
             }
             this.realm.recordModifiedProperty(propertyBinding);
 
-            if (isFinalObject) {
+            if (!obj.mightNotBeFinalObject()) {
               let clonedDescriptor = Object.assign({}, descriptor);
               clonedDescriptor.leakedFinalDescriptor = descriptor;
               propertyBinding.descriptor = descriptor = clonedDescriptor;
