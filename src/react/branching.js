@@ -96,14 +96,14 @@ export function applyBranchedLogicValue(realm: Realm, value: Value): Value {
         return realm.evaluateForEffects(
           () => applyBranchedLogicValue(realm, consequentVal),
           null,
-          "splitReactElementsByConditionalType consequent"
+          "applyBranchedLogicValue consequent"
         );
       },
       () => {
         return realm.evaluateForEffects(
           () => applyBranchedLogicValue(realm, alternateVal),
           null,
-          "splitReactElementsByConditionalType alternate"
+          "applyBranchedLogicValue alternate"
         );
       }
     );
