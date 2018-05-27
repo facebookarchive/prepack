@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { BabelNode } from "babel-types";
 import invariant from "./../common/invariant.js";
@@ -20,7 +20,7 @@ export class SteppingManager {
     this._realm = realm;
     this._steppers = [];
     this._keepOldSteppers = false;
-    if (keepOldSteppers) this._keepOldSteppers = true;
+    if (typeof keepOldSteppers !== "undefined") this._keepOldSteppers = true;
   }
   _realm: Realm;
   _keepOldSteppers: boolean;

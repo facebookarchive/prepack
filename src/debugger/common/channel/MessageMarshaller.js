@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 import { DebugMessage } from "./DebugMessage.js";
 import type {
   Breakpoint,

@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { DebugSession, InitializedEvent, OutputEvent, TerminatedEvent, StoppedEvent } from "vscode-debugadapter";
 import * as DebugProtocol from "vscode-debugprotocol";
