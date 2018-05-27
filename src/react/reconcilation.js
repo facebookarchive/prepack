@@ -42,7 +42,6 @@ import {
   isReactElement,
   mapArrayValue,
   sanitizeReactElementForFirstRenderOnly,
-  setContextCurrentValue,
   valueIsClassComponent,
   valueIsFactoryClassComponent,
   valueIsKnownReactAbstraction,
@@ -107,6 +106,27 @@ export type ComponentTreeState = {
   status: "SIMPLE" | "COMPLEX",
   contextNodeReferences: Map<ObjectValue | AbstractObjectValue, number>,
 };
+
+function setContextCurrentValue(contextObject: ObjectValue | AbstractObjectValue, value: Value): void {
+  if (contextObject instanceof AbstractObjectValue && !contextObject.values.isTop()) {
+    let elements = contextObject.values.getElements();
+    if (elements && elements.size > 0) {
+      contextObject = Array.from(elements)[0];
+    } else {
+      // intentionally left in
+      invariant(false, "TODO: should we hit this?");
+    }
+  }
+  if (!(contextObject instanceof ObjectValue)) {
+    throw new ExpectedBailOut("cannot set currentValue on an abstract context consumer");
+  }
+  let binding = contextObject.properties.get("currentValue");
+
+  if (binding && binding.descriptor) {
+    binding.descriptor.value = value;
+  }
+}
+
 
 export class Reconciler {
   constructor(

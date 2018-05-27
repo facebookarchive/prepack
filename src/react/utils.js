@@ -46,7 +46,6 @@ import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { createInternalReactElement } from "./elements.js";
-import { ExpectedBailOut } from "./errors.js";
 
 export type ReactSymbolTypes =
   | "react.element"
@@ -926,24 +925,4 @@ export function createDefaultPropsHelper(realm: Realm): ECMAScriptSourceFunction
   helper.$FormalParameters = escapeHelperAst.params;
   realm.react.defaultPropsHelper = helper;
   return helper;
-}
-
-export function setContextCurrentValue(contextObject: ObjectValue | AbstractObjectValue, value: Value): void {
-  if (contextObject instanceof AbstractObjectValue && !contextObject.values.isTop()) {
-    let elements = contextObject.values.getElements();
-    if (elements && elements.size > 0) {
-      contextObject = Array.from(elements)[0];
-    } else {
-      // intentionally left in
-      invariant(false, "TODO: should we hit this?");
-    }
-  }
-  if (!(contextObject instanceof ObjectValue)) {
-    throw new ExpectedBailOut("cannot set currentValue on an abstract context consumer");
-  }
-  let binding = contextObject.properties.get("currentValue");
-
-  if (binding && binding.descriptor) {
-    binding.descriptor.value = value;
-  }
 }
