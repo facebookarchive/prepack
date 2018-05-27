@@ -71,6 +71,8 @@ export function getValueWithBranchingLogicApplied(realm: Realm, value: AbstractV
   return findFirstMatchingComponentTypes(consequentVal, alternateVal);
 }
 
+// When we apply branching logic, it means to add keys to all ReactElement nodes
+// we encounter, thus returning new ReactElements with the keys on them
 export function applyBranchedLogicValue(realm: Realm, value: Value): Value {
   if (
     value instanceof StringValue ||

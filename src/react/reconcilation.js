@@ -28,6 +28,7 @@ import {
 } from "../values/index.js";
 import { ReactStatistics, type ReactEvaluatedNode } from "../serializer/types.js";
 import {
+  createInternalReactElement,
   createReactEvaluatedNode,
   doNotOptimizeComponent,
   evaluateWithNestedParentEffects,
@@ -73,7 +74,6 @@ import {
 } from "./errors.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, PropertyBinding, ReactComponentTreeConfig, ReactHint } from "../types.js";
-import { createInternalReactElement } from "./elements.js";
 import type { Binding } from "../environment.js";
 
 type ComponentResolutionStrategy =

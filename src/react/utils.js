@@ -45,7 +45,6 @@ import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { createInternalReactElement } from "./elements.js";
 
 export type ReactSymbolTypes =
   | "react.element"
@@ -925,4 +924,22 @@ export function createDefaultPropsHelper(realm: Realm): ECMAScriptSourceFunction
   helper.$FormalParameters = escapeHelperAst.params;
   realm.react.defaultPropsHelper = helper;
   return helper;
+}
+
+export function createInternalReactElement(
+  realm: Realm,
+  type: Value,
+  key: Value,
+  ref: Value,
+  props: ObjectValue | AbstractObjectValue
+): ObjectValue {
+  let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactSymbol("react.element", realm));
+  Create.CreateDataPropertyOrThrow(realm, obj, "type", type);
+  Create.CreateDataPropertyOrThrow(realm, obj, "key", key);
+  Create.CreateDataPropertyOrThrow(realm, obj, "ref", ref);
+  Create.CreateDataPropertyOrThrow(realm, obj, "props", props);
+  Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
+  obj.makeFinal();
+  return obj;
 }

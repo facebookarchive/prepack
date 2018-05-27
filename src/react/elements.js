@@ -24,9 +24,9 @@ import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
 import {
   createDefaultPropsHelper,
+  createInternalReactElement,
   flagPropsWithNoPartialKeyOrRef,
   getProperty,
-  getReactSymbol,
   hasNoPartialKeyOrRef,
 } from "./utils.js";
 import * as t from "babel-types";
@@ -218,24 +218,6 @@ export function createReactElement(
   }
   let { key, props, ref } = createPropsObject(realm, type, config, children);
   return createInternalReactElement(realm, type, key, ref, props);
-}
-
-export function createInternalReactElement(
-  realm: Realm,
-  type: Value,
-  key: Value,
-  ref: Value,
-  props: ObjectValue | AbstractObjectValue
-): ObjectValue {
-  let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactSymbol("react.element", realm));
-  Create.CreateDataPropertyOrThrow(realm, obj, "type", type);
-  Create.CreateDataPropertyOrThrow(realm, obj, "key", key);
-  Create.CreateDataPropertyOrThrow(realm, obj, "ref", ref);
-  Create.CreateDataPropertyOrThrow(realm, obj, "props", props);
-  Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
-  obj.makeFinal();
-  return obj;
 }
 
 type ElementTraversalVisitor = {
