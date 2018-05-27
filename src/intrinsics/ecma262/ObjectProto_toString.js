@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, UndefinedValue, StringValue, NullValue } from "../../values/index.js";
@@ -39,28 +39,28 @@ export default function(realm: Realm): NativeFunctionValue {
 
       // 5. If isArray is true, let builtinTag be "Array".
       if (isArray) builtinTag = "Array";
-      else if (O.$StringData)
+      else if (typeof O.$StringData !== "undefined")
         // 6. Else, if O is an exotic String object, let builtinTag be "String".
         builtinTag = "String";
-      else if (O.$ParameterMap)
+      else if (typeof O.$ParameterMap !== "undefined")
         // 7. Else, if O has an [[ParameterMap]] internal slot, let builtinTag be "Arguments".
         builtinTag = "Arguments";
-      else if (O.$Call)
+      else if (typeof O.$Call !== "undefined")
         // 8. Else, if O has a [[Call]] internal method, let builtinTag be "Function".
         builtinTag = "Function";
-      else if (O.$ErrorData)
+      else if (typeof O.$ErrorData !== "undefined")
         // 9. Else, if O has an [[ErrorData]] internal slot, let builtinTag be "Error".
         builtinTag = "Error";
-      else if (O.$BooleanData)
+      else if (typeof O.$BooleanData !== "undefined")
         // 10. Else, if O has a [[BooleanData]] internal slot, let builtinTag be "Boolean".
         builtinTag = "Boolean";
-      else if (O.$NumberData)
+      else if (typeof O.$NumberData !== "undefined")
         // 11. Else, if O has a [[NumberData]] internal slot, let builtinTag be "Number".
         builtinTag = "Number";
-      else if (O.$DateValue)
+      else if (typeof O.$DateValue !== "undefined")
         // 12. Else, if O has a [[DateValue]] internal slot, let builtinTag be "Date".
         builtinTag = "Date";
-      else if (O.$RegExpMatcher)
+      else if (typeof O.$RegExpMatcher !== "undefined")
         // 13. Else, if O has a [[RegExpMatcher]] internal slot, let builtinTag be "RegExp".
         builtinTag = "RegExp";
       else {

@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import {
@@ -89,8 +89,8 @@ export function createAbstract(
     );
     if (locString !== undefined) break;
   }
-  if (!name) {
-    let locVal = new StringValue(realm, locString || "(unknown location)");
+  if (typeof name === "undefined") {
+    let locVal = new StringValue(realm, typeof locString === "string" ? locString : "(unknown location)");
     let kind = AbstractValue.makeKind("abstractCounted", (realm.objectCount++).toString()); // need not be an object, but must be unique
     result = AbstractValue.createFromTemplate(realm, throwTemplate, type, [locVal], kind);
   } else {
@@ -110,7 +110,7 @@ export function createAbstract(
   if (template && !(template instanceof FunctionValue)) {
     // why exclude functions?
     template.makePartial();
-    if (name) realm.rebuildNestedProperties(result, name);
+    if (typeof name === "string") realm.rebuildNestedProperties(result, name);
   }
   if (functionResultType) {
     invariant(result instanceof AbstractObjectValue);

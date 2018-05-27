@@ -33,13 +33,20 @@ import { valueIsKnownReactAbstraction } from "../../react/utils.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
 
 export function createAbstractFunction(realm: Realm, ...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
-  return new NativeFunctionValue(realm, "global.__abstract", "__abstract", 0, (context, [typeNameOrTemplate, name]) => {
-    if (name instanceof StringValue) name = name.value;
-    if (name !== undefined && typeof name !== "string") {
-      throw new TypeError("intrinsic name argument is not a string");
+  return new NativeFunctionValue(
+    realm,
+    "global.__abstract",
+    "__abstract",
+    0,
+    (context, [typeNameOrTemplate, _name]) => {
+      let name = _name;
+      if (name instanceof StringValue) name = name.value;
+      if (name !== undefined && typeof name !== "string") {
+        throw new TypeError("intrinsic name argument is not a string");
+      }
+      return createAbstract(realm, typeNameOrTemplate, name, ...additionalValues);
     }
-    return createAbstract(realm, typeNameOrTemplate, name, ...additionalValues);
-  });
+  );
 }
 
 export default function(realm: Realm): void {

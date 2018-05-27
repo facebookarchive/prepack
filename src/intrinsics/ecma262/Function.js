@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
@@ -15,7 +15,8 @@ import { Create } from "../../singletons.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.2.1
-  let func = new NativeFunctionValue(realm, "Function", "Function", 1, (context, args, argCount, NewTarget) => {
+  let func = new NativeFunctionValue(realm, "Function", "Function", 1, (context, _args, argCount, NewTarget) => {
+    let args = _args;
     // 1. Let C be the active function object.
     let C = func;
 
