@@ -137,18 +137,18 @@ function createMarkupForProperty(
     } else if (value instanceof StringValue || value instanceof NumberValue) {
       return attributeName + "=" + quoteAttributeValueForBrowser(value.value + "");
     } else if (value instanceof AbstractValue) {
-      return [attributeName + "=", renderValueWithHelper(realm, value, htmlEscapeHelper)];
+      return ([attributeName + "=", renderValueWithHelper(realm, value, htmlEscapeHelper)]: Array<ReactNode>);
     }
   } else if (value instanceof StringValue || value instanceof NumberValue) {
     return name + "=" + quoteAttributeValueForBrowser(value.value + "");
   } else if (value instanceof AbstractValue) {
-    return [name + '="', renderValueWithHelper(realm, value, htmlEscapeHelper), '"'];
+    return ([name + '="', renderValueWithHelper(realm, value, htmlEscapeHelper), '"']: Array<ReactNode>);
   }
   invariant(false, "TODO");
 }
 
 function createMarkupForStyles(realm: Realm, styles: Value): Value {
-  let serialized = [];
+  let serialized = ([]: Array<ReactNode>);
   let delimiter = "";
 
   if (styles instanceof ObjectValue && !styles.isPartialObject()) {
