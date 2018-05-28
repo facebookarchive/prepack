@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { FunctionValue, Value } from "../values/index.js";
 import * as t from "babel-types";

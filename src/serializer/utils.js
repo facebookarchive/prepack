@@ -48,9 +48,9 @@ export function commonAncestorOf<T>(node1: void | T, node2: void | T, getParent:
     let p2 = n2 && getParent(n2);
     if (p1 === node2) return node2;
     if (p2 === node1) return node1;
-    if (p1) count1++;
-    if (p2) count2++;
-    if (!p1 && !p2) break;
+    if (p1 === true) count1++;
+    if (p2 === true) count2++;
+    if (p1 === false && p2 === false) break;
     n1 = p1;
     n2 = p2;
   }
@@ -124,7 +124,7 @@ export function getObjectPrototypeMetadata(
   if (obj.$IsClassPrototype) {
     skipPrototype = true;
   }
-  if (proto && proto.$IsClassPrototype) {
+  if (proto && proto.$IsClassPrototype === true) {
     invariant(proto instanceof ObjectValue);
     // we now need to check if the prototpe has a constructor
     let _constructor = proto.properties.get("constructor");

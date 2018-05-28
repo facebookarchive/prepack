@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { DeclarativeEnvironmentRecord, type Binding } from "../environment.js";
 import { ConcreteValue, Value, ObjectValue, AbstractValue } from "../values/index.js";
@@ -46,7 +46,7 @@ export type AdditionalFunctionEffects = {
   parentAdditionalFunction: FunctionValue | void,
   effects: Effects,
   generator: Generator,
-  transforms: Array<Function>,
+  transforms: Array<(body: Array<BabelNodeStatement>) => void>,
   additionalRoots: Set<ObjectValue>,
 };
 
