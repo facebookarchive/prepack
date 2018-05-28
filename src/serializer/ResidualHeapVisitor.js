@@ -406,7 +406,7 @@ export class ResidualHeapVisitor {
     this.visitObjectProperties(val);
     const realm = this.realm;
     let lenProperty;
-    if (val.isHavocedObject()) {
+    if (val.mightBeHavocedObject()) {
       lenProperty = this.realm.evaluateWithoutLeakLogic(() => Get(realm, val, "length"));
     } else {
       lenProperty = Get(realm, val, "length");
