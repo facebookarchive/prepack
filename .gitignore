@@ -5,6 +5,7 @@
 npm-debug.log
 .DS_Store
 build/
+.idea/
 tmp_website_build/
 coverage*/
 .vscode
