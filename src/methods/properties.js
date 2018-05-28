@@ -107,11 +107,7 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
   if (!O.isIntrinsic() && O.temporalAlias === undefined) return;
   if (P instanceof SymbolValue) return;
   if (P instanceof StringValue) P = P.value;
-<<<<<<< HEAD
   invariant(!O.mightBeHavocedObject()); // havoced objects are never updated
-=======
-  invariant(!O.isHavocedObject()); // havoced objects are never updated
->>>>>>> Switching isFinalObject to might[Not]BeFinalObject
   invariant(!O.mightBeFinalObject()); // final objects are never updated
   invariant(typeof P === "string");
   let propertyBinding = InternalGetPropertiesMap(O, P).get(P);
