@@ -156,7 +156,7 @@ export default class ObjectValue extends ConcreteValue {
             // We're still initializing so we can set a property.
             this.$IsClassPrototype === undefined ||
               // It's not havoced so we can set a property.
-              !this.isHavocedObject() ||
+              this.mightNotBeHavocedObject() ||
               // Object.assign() implementation needs to temporarily
               // make potentially havoced objects non-partial and back.
               // We don't gain anything from checking whether it's havoced
@@ -399,8 +399,12 @@ export default class ObjectValue extends ConcreteValue {
     this._isHavoced = this.$Realm.intrinsics.true;
   }
 
-  isHavocedObject(): boolean {
+  mightBeHavocedObject(): boolean {
     return this._isHavoced.mightBeTrue();
+  }
+
+  mightNotBeHavocedObject(): boolean {
+    return this._isHavoced.mightNotBeTrue();
   }
 
   isSimpleObject(): boolean {
@@ -518,7 +522,7 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   getOwnPropertyKeysArray(): Array<string> {
-    if (this.isPartialObject() || this.isHavocedObject() || this.unknownProperty !== undefined) {
+    if (this.isPartialObject() || this.mightBeHavocedObject() || this.unknownProperty !== undefined) {
       AbstractValue.reportIntrospectionError(this);
       throw new FatalError();
     }
