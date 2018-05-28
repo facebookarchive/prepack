@@ -108,7 +108,7 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
   if (P instanceof SymbolValue) return;
   if (P instanceof StringValue) P = P.value;
   invariant(!O.mightBeHavocedObject()); // havoced objects are never updated
-  invariant(!O.isFinalObject()); // final objects are never updated
+  invariant(!O.mightBeFinalObject()); // final objects are never updated
   invariant(typeof P === "string");
   let propertyBinding = InternalGetPropertiesMap(O, P).get(P);
   invariant(propertyBinding !== undefined); // The callers ensure this
@@ -212,7 +212,7 @@ function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: Pro
 }
 
 function ensureIsNotFinal(realm: Realm, O: ObjectValue, P: void | PropertyKeyValue) {
-  if (!O.isFinalObject()) {
+  if (O.mightNotBeFinalObject()) {
     return;
   }
   if (realm.isInPureScope()) {
@@ -1173,7 +1173,7 @@ export class PropertiesImplementation {
   // ECMA262 9.1.5.1
   OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue): Descriptor | void {
     // if the object is havoced and final, then it's still safe to read the value from the object
-    if (!realm.ignoreLeakLogic && O.mightBeHavocedObject() && !O.isFinalObject()) {
+    if (!realm.ignoreLeakLogic && O.mightBeHavocedObject() && O.mightNotBeFinalObject()) {
       invariant(realm.generator);
       let pname = realm.generator.getAsPropertyNameExpression(StringKey(P));
       let absVal = AbstractValue.createTemporalFromBuildFunction(realm, Value, [O._templateFor || O], ([node]) =>

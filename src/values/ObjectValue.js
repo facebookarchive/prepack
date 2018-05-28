@@ -391,8 +391,12 @@ export default class ObjectValue extends ConcreteValue {
     return this._isPartial.mightBeTrue();
   }
 
-  isFinalObject(): boolean {
+  mightBeFinalObject(): boolean {
     return this._isFinal.mightBeTrue();
+  }
+
+  mightNotBeFinalObject(): boolean {
+    return this._isFinal.mightNotBeTrue();
   }
 
   havoc(): void {
