@@ -215,19 +215,11 @@ function ensureIsNotFinal(realm: Realm, O: ObjectValue, P: void | PropertyKeyVal
   if (O.mightNotBeFinalObject()) {
     return;
   }
-  if (realm.isInPureScope()) {
-    // It's not safe to write to this object anymore because it's already
-    // been used in a way that serializes its final state. We can, however,
-    // havoc it if we're in pure scope, and continue to emit assignments.
-    Havoc.value(realm, O);
-    if (!O.mightNotBeHavocedObject()) {
-      return;
-    }
-  }
+
   // We can't continue because this object is already in its final state.
   let error = new CompilerDiagnostic(
-    "Mutating an object with unknown properties, after some of those " +
-      "properties have already been used, is not yet supported.",
+    "Mutating a final object, or an object with unknown properties, after some of those " +
+      "properties have already been used, is not supported.",
     realm.currentLocation,
     "PP0026",
     "FatalError"
