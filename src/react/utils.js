@@ -321,7 +321,7 @@ export function convertSimpleClassComponentToFunctionalComponent(
         },
       },
       undefined,
-      (undefined: any),
+      {},
       undefined
     );
     traverse.clearCache();
