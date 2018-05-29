@@ -47,7 +47,8 @@ export function getValueWithBranchingLogicApplied(
 ): Value {
   let needsKeys = false;
 
-  const findMatchingHostTypes = (xTypeParent, yTypeParent) => {
+  // we check the inlined value and see if the component types match
+  const findMatchingComponentTypes = (xTypeParent, yTypeParent) => {
     let [, x, y] = value.args;
     if (x instanceof ObjectValue && isReactElement(x) && y instanceof ObjectValue && isReactElement(y)) {
       let xType = getProperty(realm, x, "type");
@@ -59,6 +60,7 @@ export function getValueWithBranchingLogicApplied(
     }
   };
 
+  // we first check our "parent" value, that was used to get the inlined value
   const findMismatchingNonHostTypes = (x: Value, y: Value): void => {
     if (x instanceof ObjectValue && isReactElement(x) && y instanceof ObjectValue && isReactElement(y)) {
       let xType = getProperty(realm, x, "type");
@@ -76,7 +78,7 @@ export function getValueWithBranchingLogicApplied(
           }
         }
       } else if (!xType.equals(yType)) {
-        return findMatchingHostTypes(xType, yType);
+        return findMatchingComponentTypes(xType, yType);
       }
     } else if (x instanceof ArrayValue && y instanceof ArrayValue) {
       forEachArrayValue(realm, x, (xElem, index) => {
