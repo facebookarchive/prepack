@@ -50,7 +50,7 @@ export function commonAncestorOf<T>(node1: void | T, node2: void | T, getParent:
     if (p2 === node1) return node1;
     if (p1 === true) count1++;
     if (p2 === true) count2++;
-    if (p1 === false && p2 === false) break;
+    if (p1 !== true && p2 !== true) break;
     n1 = p1;
     n2 = p2;
   }
