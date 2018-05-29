@@ -13,11 +13,18 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
 import { Effects } from "../realm.js";
-import type { LexicalEnvironment } from "../environment.js";
+import { type LexicalEnvironment, type BaseValue, mightBecomeAnObject } from "../environment.js";
 import { EnvironmentRecord } from "../environment.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import { Value } from "../values/index.js";
-import { AbstractValue, AbstractObjectValue, BooleanValue, ConcreteValue, FunctionValue } from "../values/index.js";
+import {
+  AbstractValue,
+  AbstractObjectValue,
+  BooleanValue,
+  ConcreteValue,
+  FunctionValue,
+  ObjectValue,
+  Value,
+} from "../values/index.js";
 import { Reference } from "../environment.js";
 import { Environment, Functions, Havoc, Join } from "../singletons.js";
 import {
@@ -52,7 +59,7 @@ export default function(
 }
 
 function evaluateReference(
-  ref: Reference,
+  ref: Reference | Value,
   ast: BabelNodeCallExpression,
   strictCode: boolean,
   env: LexicalEnvironment,
@@ -89,7 +96,10 @@ function evaluateConditionalReferenceBase(
   env: LexicalEnvironment,
   realm: Realm
 ): Value {
-  let [condValue, consequentVal, alternateVal] = ref.base.args;
+  let base = ref.base;
+  invariant(base instanceof AbstractValue);
+  invariant(base.kind === "conditional", "evaluateConditionalReferenceBase expects an abstract conditional");
+  let [condValue, consequentVal, alternateVal] = base.args;
   invariant(condValue instanceof AbstractValue);
 
   return realm.evaluateWithAbstractConditional(
@@ -97,9 +107,20 @@ function evaluateConditionalReferenceBase(
     () => {
       return realm.evaluateForEffects(
         () => {
-          invariant(consequentVal instanceof Value);
-          let consequentRef = new Reference(consequentVal, ref.referencedName, ref.strict, ref.thisValue);
-          return evaluateReference(consequentRef, ast, strictCode, env, realm);
+          if (
+            consequentVal instanceof AbstractObjectValue ||
+            consequentVal instanceof ObjectValue ||
+            mightBecomeAnObject(consequentVal)
+          ) {
+            let consequentRef = new Reference(
+              ((consequentVal: any): BaseValue),
+              ref.referencedName,
+              ref.strict,
+              ref.thisValue
+            );
+            return evaluateReference(consequentRef, ast, strictCode, env, realm);
+          }
+          return consequentVal;
         },
         null,
         "evaluateConditionalReferenceBase consequent"
@@ -108,9 +129,20 @@ function evaluateConditionalReferenceBase(
     () => {
       return realm.evaluateForEffects(
         () => {
-          invariant(alternateVal instanceof Value);
-          let alternateRef = new Reference(alternateVal, ref.referencedName, ref.strict, ref.thisValue);
-          return evaluateReference(alternateRef, ast, strictCode, env, realm);
+          if (
+            alternateVal instanceof AbstractObjectValue ||
+            alternateVal instanceof ObjectValue ||
+            mightBecomeAnObject(alternateVal)
+          ) {
+            let alternateRef = new Reference(
+              ((alternateVal: any): BaseValue),
+              ref.referencedName,
+              ref.strict,
+              ref.thisValue
+            );
+            return evaluateReference(alternateRef, ast, strictCode, env, realm);
+          }
+          return alternateVal;
         },
         null,
         "evaluateConditionalReferenceBase alternate"
