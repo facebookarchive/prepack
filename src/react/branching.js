@@ -61,7 +61,7 @@ export function getValueWithBranchingLogicApplied(
   };
 
   // we first check our "parent" value, that was used to get the inlined value
-  const findMismatchingNonHostTypes = (x: Value, y: Value): void => {
+  const findMismatchingNonHostTypes = (x: Value, y: Value, arrayDepth: number): void => {
     if (x instanceof ObjectValue && isReactElement(x) && y instanceof ObjectValue && isReactElement(y)) {
       let xType = getProperty(realm, x, "type");
       let yType = getProperty(realm, y, "type");
@@ -74,13 +74,13 @@ export function getValueWithBranchingLogicApplied(
           let yChildren = getProperty(realm, yProps, "children");
 
           if (xChildren instanceof Value && yChildren instanceof Value) {
-            findMismatchingNonHostTypes(xChildren, yChildren);
+            findMismatchingNonHostTypes(xChildren, yChildren, arrayDepth);
           }
         }
       } else if (!xType.equals(yType)) {
         return findMatchingComponentTypes(xType, yType);
       }
-    } else if (x instanceof ArrayValue) {
+    } else if (x instanceof ArrayValue && arrayDepth === 0) {
       forEachArrayValue(realm, x, (xElem, index) => {
         let yElem;
         if (y instanceof ArrayValue) {
@@ -92,10 +92,10 @@ export function getValueWithBranchingLogicApplied(
         }
 
         if (xElem instanceof Value && yElem instanceof Value) {
-          findMismatchingNonHostTypes(xElem, yElem);
+          findMismatchingNonHostTypes(xElem, yElem, arrayDepth + 1);
         }
       });
-    } else if (y instanceof ArrayValue) {
+    } else if (y instanceof ArrayValue && arrayDepth === 0) {
       forEachArrayValue(realm, y, (yElem, index) => {
         let xElem;
         if (x instanceof ArrayValue) {
@@ -107,13 +107,13 @@ export function getValueWithBranchingLogicApplied(
         }
 
         if (xElem instanceof Value && yElem instanceof Value) {
-          findMismatchingNonHostTypes(xElem, yElem);
+          findMismatchingNonHostTypes(xElem, yElem, arrayDepth + 1);
         }
       });
     }
   };
 
-  findMismatchingNonHostTypes(parentX, parentY);
+  findMismatchingNonHostTypes(parentX, parentY, 0);
 
   if (needsKeys) {
     return applyBranchedLogicValue(realm, value);
