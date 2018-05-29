@@ -97,6 +97,7 @@ function evaluateConditionalReferenceBase(
     () => {
       return realm.evaluateForEffects(
         () => {
+          invariant(consequentVal instanceof Value);
           let consequentRef = new Reference(consequentVal, ref.referencedName, ref.strict, ref.thisValue);
           return evaluateReference(consequentRef, ast, strictCode, env, realm);
         },
@@ -107,6 +108,7 @@ function evaluateConditionalReferenceBase(
     () => {
       return realm.evaluateForEffects(
         () => {
+          invariant(alternateVal instanceof Value);
           let alternateRef = new Reference(alternateVal, ref.referencedName, ref.strict, ref.thisValue);
           return evaluateReference(alternateRef, ast, strictCode, env, realm);
         },

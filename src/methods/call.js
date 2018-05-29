@@ -283,7 +283,7 @@ export function OrdinaryCallBindThis(
 
 function callNativeFunctionValue(
   realm: Realm,
-  f: ECMAScriptFunctionValue,
+  f: NativeFunctionValue,
   argumentsList: Array<Value>
 ): Value | AbruptCompletion {
   let env = realm.getRunningContext().lexicalEnvironment;
