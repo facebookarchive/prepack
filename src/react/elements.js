@@ -110,11 +110,6 @@ function createPropsObject(
     // do we really need to create an object just for { children }
     if (children !== undefined) {
       let childrenObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-      // if we have default props, then we need to ensure the children
-      // have keys if they are an array as we're spreading them
-      if (defaultProps !== realm.intrinsics.undefined) {
-        children = applyBranchedLogicValue(realm, children);
-      }
       Properties.Set(realm, childrenObject, "children", children, true);
       args.push(childrenObject);
     }
