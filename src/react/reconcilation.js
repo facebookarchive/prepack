@@ -124,6 +124,8 @@ function setContextCurrentValue(contextObject: ObjectValue | AbstractObjectValue
 
   if (binding && binding.descriptor) {
     binding.descriptor.value = value;
+  } else {
+    invariant(false, "setContextCurrentValue failed to set the currentValue");
   }
 }
 
