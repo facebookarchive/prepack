@@ -29,6 +29,7 @@ import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import invariant from "../../invariant.js";
 import { createAbstract, parseTypeNameOrTemplate } from "./utils.js";
+import { describeValue } from "../../utils.js";
 import { valueIsKnownReactAbstraction } from "../../react/utils.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
 
@@ -395,6 +396,15 @@ export default function(realm: Realm): void {
   global.$DefineOwnProperty("__isIntegral", {
     value: new NativeFunctionValue(realm, "global.__isIntegral", "__isIntegral", 1, (context, [value]) => {
       return new BooleanValue(realm, value instanceof IntegralValue);
+    }),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__describe", {
+    value: new NativeFunctionValue(realm, "global.__describe", "__describe", 1, (context, [value]) => {
+      return new StringValue(realm, describeValue(value));
     }),
     writable: true,
     enumerable: false,
