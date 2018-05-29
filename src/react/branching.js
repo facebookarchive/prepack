@@ -62,8 +62,6 @@ export function getValueWithBranchingLogicApplied(realm: Realm, value: AbstractV
       } else if (xType === yType) {
         return applyBranchedLogicValue(realm, value);
       }
-    } else if (x instanceof ArrayValue && y instanceof ArrayValue) {
-      // TODO maybe we nned to support this eventually?
     }
     return value;
   };
