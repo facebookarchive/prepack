@@ -897,7 +897,7 @@ export class Reconciler {
       }
     );
     if (value instanceof AbstractValue && value.kind === "conditional") {
-      return getValueWithBranchingLogicApplied(this.realm, value);
+      return getValueWithBranchingLogicApplied(this.realm, consequentVal, alternateVal, value);
     }
     return value;
   }

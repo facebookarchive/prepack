@@ -39,11 +39,13 @@ export type BranchStatusEnum = "ROOT" | "NO_BRANCH" | "NEW_BRANCH" | "BRANCH";
 // objects depending on various heuristics (if they have the same "type" for example)
 // A new branch state is created on a branch status of "NEW_BRANCH" and is reset to null once the branch is no
 // longer new
-export function getValueWithBranchingLogicApplied(realm: Realm, value: AbstractValue): Value {
-  let [condValue, consequentVal, alternateVal] = value.args;
-  invariant(condValue instanceof AbstractValue);
-
-  const findFirstMatchingComponentTypes = (x: Value, y: Value): Value => {
+export function getValueWithBranchingLogicApplied(
+  realm: Realm,
+  parentX: Value,
+  parentY: Value,
+  value: AbstractValue
+): Value {
+  const hasMismatchingNonHostTypes = (x: Value, y: Value, foundFunc: (x: Value, y: Value) => Value): Value => {
     if (x instanceof ObjectValue && isReactElement(x) && y instanceof ObjectValue && isReactElement(y)) {
       let xType = getProperty(realm, x, "type");
       let yType = getProperty(realm, y, "type");
@@ -56,17 +58,28 @@ export function getValueWithBranchingLogicApplied(realm: Realm, value: AbstractV
           let yChildren = getProperty(realm, yProps, "children");
 
           if (xChildren instanceof Value && yChildren instanceof Value) {
-            return findFirstMatchingComponentTypes(xChildren, yChildren);
+            return hasMismatchingNonHostTypes(xChildren, yChildren, foundFunc);
           }
         }
-      } else if (xType === yType) {
-        return applyBranchedLogicValue(realm, value);
+      } else if (!xType.equals(yType)) {
+        return foundFunc(xType, yType);
       }
     }
     return value;
   };
 
-  return findFirstMatchingComponentTypes(consequentVal, alternateVal);
+  return hasMismatchingNonHostTypes(parentX, parentY, xTypeParent => {
+    let [, x, y] = value.args;
+    if (x instanceof ObjectValue && isReactElement(x) && y instanceof ObjectValue && isReactElement(y)) {
+      let xType = getProperty(realm, x, "type");
+      let yType = getProperty(realm, y, "type");
+
+      if (xType.equals(yType) && !xTypeParent.equals(xType)) {
+        return applyBranchedLogicValue(realm, value);
+      }
+    }
+    return value;
+  });
 }
 
 // When we apply branching logic, it means to add keys to all ReactElement nodes
