@@ -80,6 +80,7 @@ export function getValueWithBranchingLogicApplied(
       }
     } else if (x instanceof ArrayValue && y instanceof ArrayValue) {
       forEachArrayValue(realm, x, (xElem, index) => {
+        invariant(y instanceof ArrayValue);
         let yElem = getProperty(realm, y, index + "");
 
         if (xElem instanceof Value && yElem instanceof Value) {
