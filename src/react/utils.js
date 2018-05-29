@@ -829,7 +829,7 @@ export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElemen
   let keyValue = getProperty(realm, reactElement, "key");
   let propsValue = getProperty(realm, reactElement, "props");
 
-  const sanitizeProps = (): ObjectValue | AbstractObjectValue => {
+  const sanitizeHostProps = (): ObjectValue | AbstractObjectValue => {
     // if the props object is abstract, then we just return the value
     if (propsValue instanceof ObjectValue) {
       let newProps = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
@@ -864,7 +864,7 @@ export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElemen
     typeValue,
     keyValue,
     realm.intrinsics.null,
-    typeValue instanceof StringValue ? sanitizeProps() : propsValue
+    typeValue instanceof StringValue ? sanitizeHostProps() : propsValue
   );
 }
 
