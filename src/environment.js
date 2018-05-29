@@ -287,7 +287,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     if (binding.strict === true) S = true;
 
     // 4. If the binding for N in envRec has not yet been initialized, throw a ReferenceError exception.
-    if (binding.initialized === false) {
+    if (binding.initialized !== true) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError, `${N} has not yet been initialized`);
     } else if (binding.mutable) {
       // 5. Else if the binding for N in envRec is a mutable binding, change its bound value to V.

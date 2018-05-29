@@ -31,7 +31,7 @@ export * from "./prepack-standalone";
 
 function createStatistics(options: PrepackOptions) {
   let gc = global.gc; // eslint-disable-line no-undef
-  return typeof options.profile !== "undefined"
+  return options.profile !== undefined
     ? new SerializerStatistics(
         () => Date.now(),
         () => {
@@ -91,7 +91,7 @@ export function prepackFile(
     return;
   }
   let sourceMapFilename =
-    typeof options.inputSourceMapFilename === "string" ? options.inputSourceMapFilename : filename + ".map";
+    options.inputSourceMapFilename !== undefined ? options.inputSourceMapFilename : filename + ".map";
   fs.readFile(filename, "utf8", function(fileErr, code) {
     if (fileErr) {
       if (fileErrorHandler) fileErrorHandler(fileErr);
@@ -130,17 +130,16 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     let code = fs.readFileSync(filename, "utf8");
     let sourceMap = "";
     let sourceMapFilename =
-      typeof options.inputSourceMapFilename === "string" ? options.inputSourceMapFilename : filename + ".map";
+      options.inputSourceMapFilename !== undefined ? options.inputSourceMapFilename : filename + ".map";
     try {
       sourceMap = fs.readFileSync(sourceMapFilename, "utf8");
     } catch (_e) {
-      if (typeof options.inputSourceMapFilename === "string")
-        console.warn(`No sourcemap found at ${sourceMapFilename}.`);
+      if (options.inputSourceMapFilename !== undefined) console.warn(`No sourcemap found at ${sourceMapFilename}.`);
     }
     return { filePath: filename, fileContents: code, sourceMapContents: sourceMap };
   });
   let debugChannel;
-  if (typeof options.debugInFilePath === "string" && typeof options.debugOutFilePath === "string") {
+  if (options.debugInFilePath !== undefined && options.debugOutFilePath !== undefined) {
     let debugOptions = getDebuggerOptions(options);
     let ioWrapper = new FileIOWrapper(false, debugOptions.inFilePath, debugOptions.outFilePath);
     debugChannel = new DebugChannel(ioWrapper);

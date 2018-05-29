@@ -207,19 +207,19 @@ export class Realm {
     this.strictlyMonotonicDateNow = !!opts.strictlyMonotonicDateNow;
 
     // 0 = disabled
-    this.abstractValueImpliesMax = typeof opts.abstractValueImpliesMax === "number" ? opts.abstractValueImpliesMax : 0;
+    this.abstractValueImpliesMax = opts.abstractValueImpliesMax !== undefined ? opts.abstractValueImpliesMax : 0;
     this.abstractValueImpliesCounter = 0;
     this.inSimplificationPath = false;
 
     this.timeout = opts.timeout;
-    if (typeof this.timeout === "number") {
+    if (this.timeout !== undefined) {
       // We'll call Date.now for every this.timeoutCounterThreshold'th AST node.
       // The threshold is there to reduce the cost of the surprisingly expensive Date.now call.
       this.timeoutCounter = this.timeoutCounterThreshold = 1024;
     }
 
     this.start = Date.now();
-    this.compatibility = typeof opts.compatibility !== "undefined" ? opts.compatibility : "browser";
+    this.compatibility = opts.compatibility !== undefined ? opts.compatibility : "browser";
     this.maxStackDepth = opts.maxStackDepth || 225;
     this.invariantLevel = opts.invariantLevel || 0;
     this.invariantMode = opts.invariantMode || "throw";
@@ -455,7 +455,7 @@ export class Realm {
 
   testTimeout() {
     let timeout = this.timeout;
-    if (typeof timeout === "number" && !--this.timeoutCounter) {
+    if (timeout !== undefined && !--this.timeoutCounter) {
       this.timeoutCounter = this.timeoutCounterThreshold;
       let total = Date.now() - this.start;
       if (total > timeout) {

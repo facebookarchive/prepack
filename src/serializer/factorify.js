@@ -204,12 +204,12 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
       let highestPairCount;
       for (let pairArgs in sharedPairs) {
         let pair = sharedPairs[pairArgs];
-        if (typeof highestPairArgs === "undefined" || pair.length > highestPairCount) {
+        if (highestPairArgs === undefined || pair.length > highestPairCount) {
           highestPairCount = pair.length;
           highestPairArgs = pairArgs;
         }
       }
-      if (typeof highestPairArgs === "undefined") continue;
+      if (highestPairArgs === undefined) continue;
 
       //
       let declarsSub = sharedPairs[highestPairArgs].concat(declar);

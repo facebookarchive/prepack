@@ -213,7 +213,7 @@ export function IsRegExp(realm: Realm, _argument: Value): boolean {
   if (isRegExp !== undefined) return To.ToBooleanPartial(realm, isRegExp) === true;
 
   // 4. If argument has a [[RegExpMatcher]] internal slot, return true.
-  if (typeof argument.$RegExpMatcher !== "undefined") return true;
+  if (argument.$RegExpMatcher !== undefined) return true;
 
   // 5. Return false.
   return false;
@@ -329,7 +329,7 @@ export function IsPromise(realm: Realm, _x: Value): boolean {
 
   // 2. If x does not have a [[PromiseState]] internal slot, return false.
   x = x.throwIfNotConcreteObject();
-  if (typeof x.$PromiseState === "undefined") return false;
+  if (x.$PromiseState === undefined) return false;
 
   // 3. Return true.
   return true;

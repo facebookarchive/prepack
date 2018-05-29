@@ -20,7 +20,7 @@ export class SteppingManager {
     this._realm = realm;
     this._steppers = [];
     this._keepOldSteppers = false;
-    if (typeof keepOldSteppers !== "undefined") this._keepOldSteppers = true;
+    if (keepOldSteppers === true) this._keepOldSteppers = true;
   }
   _realm: Realm;
   _keepOldSteppers: boolean;

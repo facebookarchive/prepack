@@ -71,7 +71,7 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
       enumerable: false,
     });
 
-    if (typeof name !== "undefined") {
+    if (name !== undefined) {
       if (name instanceof SymbolValue) {
         this.name = name.$Description ? `[${name.$Description.throwIfNotConcreteString().value}]` : "[native]";
       } else {

@@ -48,9 +48,9 @@ export function commonAncestorOf<T>(node1: void | T, node2: void | T, getParent:
     let p2 = n2 && getParent(n2);
     if (p1 === node2) return node2;
     if (p2 === node1) return node1;
-    if (typeof p1 !== "undefined") count1++;
-    if (typeof p2 !== "undefined") count2++;
-    if (typeof p1 === "undefined" && typeof p2 === "undefined") break;
+    if (p1 !== undefined) count1++;
+    if (p2 !== undefined) count2++;
+    if (p1 === undefined && p2 === undefined) break;
     n1 = p1;
     n2 = p2;
   }
