@@ -224,7 +224,7 @@ export function getUniqueReactElementKey(index?: string, usedReactElementKeys: S
 export function forEachArrayValue(
   realm: Realm,
   array: ArrayValue,
-  mapFunc: (element: Value, descriptor: Descriptor) => void
+  mapFunc: (element: Value, index: number) => void
 ): void {
   let lengthValue = Get(realm, array, "length");
   invariant(lengthValue instanceof NumberValue, "TODO: support non-numeric length on forEachArrayValue");
@@ -235,7 +235,7 @@ export function forEachArrayValue(
     if (elementPropertyDescriptor) {
       let elementValue = elementPropertyDescriptor.value;
       if (elementValue instanceof Value) {
-        mapFunc(elementValue, elementPropertyDescriptor);
+        mapFunc(elementValue, i);
       }
     }
   }

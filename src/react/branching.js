@@ -22,7 +22,7 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
-import { isReactElement, addKeyToReactElement, getProperty, mapArrayValue } from "./utils";
+import { isReactElement, addKeyToReactElement, forEachArrayValue, getProperty, mapArrayValue } from "./utils";
 import { ExpectedBailOut } from "./errors.js";
 
 // Branch status is used for when Prepack returns an abstract value from a render
@@ -45,7 +45,21 @@ export function getValueWithBranchingLogicApplied(
   parentY: Value,
   value: AbstractValue
 ): Value {
-  const hasMismatchingNonHostTypes = (x: Value, y: Value, foundFunc: (x: Value, y: Value) => Value): Value => {
+  let needsKeys = false;
+
+  const findMatchingHostTypes = (xTypeParent, yTypeParent) => {
+    let [, x, y] = value.args;
+    if (x instanceof ObjectValue && isReactElement(x) && y instanceof ObjectValue && isReactElement(y)) {
+      let xType = getProperty(realm, x, "type");
+      let yType = getProperty(realm, y, "type");
+
+      if (xType.equals(yType) && !xTypeParent.equals(xType) && !yTypeParent.equals(yType)) {
+        needsKeys = true;
+      }
+    }
+  };
+
+  const findMismatchingNonHostTypes = (x: Value, y: Value): void => {
     if (x instanceof ObjectValue && isReactElement(x) && y instanceof ObjectValue && isReactElement(y)) {
       let xType = getProperty(realm, x, "type");
       let yType = getProperty(realm, y, "type");
@@ -58,28 +72,29 @@ export function getValueWithBranchingLogicApplied(
           let yChildren = getProperty(realm, yProps, "children");
 
           if (xChildren instanceof Value && yChildren instanceof Value) {
-            return hasMismatchingNonHostTypes(xChildren, yChildren, foundFunc);
+            findMismatchingNonHostTypes(xChildren, yChildren);
           }
         }
       } else if (!xType.equals(yType)) {
-        return foundFunc(xType, yType);
+        return findMatchingHostTypes(xType, yType);
       }
+    } else if (x instanceof ArrayValue && y instanceof ArrayValue) {
+      forEachArrayValue(realm, x, (xElem, index) => {
+        let yElem = getProperty(realm, y, index + "");
+
+        if (xElem instanceof Value && yElem instanceof Value) {
+          findMismatchingNonHostTypes(xElem, yElem);
+        }
+      });
     }
-    return value;
   };
 
-  return hasMismatchingNonHostTypes(parentX, parentY, xTypeParent => {
-    let [, x, y] = value.args;
-    if (x instanceof ObjectValue && isReactElement(x) && y instanceof ObjectValue && isReactElement(y)) {
-      let xType = getProperty(realm, x, "type");
-      let yType = getProperty(realm, y, "type");
+  findMismatchingNonHostTypes(parentX, parentY);
 
-      if (xType.equals(yType) && !xTypeParent.equals(xType)) {
-        return applyBranchedLogicValue(realm, value);
-      }
-    }
-    return value;
-  });
+  if (needsKeys) {
+    return applyBranchedLogicValue(realm, value);
+  }
+  return value;
 }
 
 // When we apply branching logic, it means to add keys to all ReactElement nodes
