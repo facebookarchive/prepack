@@ -546,6 +546,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "type-change6.js");
       });
 
+      it("Component type change 7", async () => {
+        await runTest(directory, "type-change7.js");
+      });
+
+      it("Component type change 8", async () => {
+        await runTest(directory, "type-change8.js");
+      });
+
       it("Component type same", async () => {
         await runTest(directory, "type-same.js");
       });

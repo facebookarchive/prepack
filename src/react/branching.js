@@ -80,10 +80,31 @@ export function getValueWithBranchingLogicApplied(
       } else if (!xType.equals(yType)) {
         return findMatchingComponentTypes(xType, yType);
       }
-    } else if (x instanceof ArrayValue && y instanceof ArrayValue) {
+    } else if (x instanceof ArrayValue) {
       forEachArrayValue(realm, x, (xElem, index) => {
-        invariant(y instanceof ArrayValue);
-        let yElem = getProperty(realm, y, index + "");
+        let yElem;
+        if (y instanceof ArrayValue) {
+          // handle the case of [x].equals([y])
+          yElem = getProperty(realm, y, index + "");
+        } else if (index === 0) {
+          // handle the case of [x].equals(y)
+          yElem = y;
+        }
+
+        if (xElem instanceof Value && yElem instanceof Value) {
+          findMismatchingNonHostTypes(xElem, yElem);
+        }
+      });
+    } else if (y instanceof ArrayValue) {
+      forEachArrayValue(realm, y, (yElem, index) => {
+        let xElem;
+        if (x instanceof ArrayValue) {
+          // handle the case of [y].equals([x]
+          xElem = getProperty(realm, y, index + "");
+        } else if (index === 0) {
+          // handle the case of [y].equals(x)
+          xElem = x;
+        }
 
         if (xElem instanceof Value && yElem instanceof Value) {
           findMismatchingNonHostTypes(xElem, yElem);

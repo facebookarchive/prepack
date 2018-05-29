@@ -1520,6 +1520,66 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output Functional component folding Component type change 7 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, JSX output Functional component folding Component type change 8 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Bar",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output Functional component folding Component type same 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
@@ -5481,6 +5541,66 @@ ReactStatistics {
           "children": Array [],
           "message": "",
           "name": "Foo",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Functional component folding Component type change 7 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Functional component folding Component type change 8 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Bar",
           "status": "INLINED",
         },
         Object {
@@ -9482,6 +9602,66 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output Functional component folding Component type change 7 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, JSX output Functional component folding Component type change 8 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Bar",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output Functional component folding Component type same 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
@@ -13458,6 +13638,66 @@ ReactStatistics {
           "children": Array [],
           "message": "",
           "name": "Foo",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Functional component folding Component type change 7 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Functional component folding Component type change 8 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Bar",
           "status": "INLINED",
         },
         Object {

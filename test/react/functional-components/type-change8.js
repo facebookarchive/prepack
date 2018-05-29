@@ -4,9 +4,17 @@ this['React'] = React;
 
 function App(props) {
   if (props.foo) {
-    return <Foo callback={props.callback} />;
+    return (
+      <div>
+        {[<Bar callback={props.callback} />]}
+      </div>
+    );
   }
-  return <Bar callback={props.callback} />;
+  return (
+    <div>
+      <Foo callback={props.callback} />
+    </div>
+  );
 }
 
 function Foo(props) {

@@ -4,16 +4,20 @@ this['React'] = React;
 
 function App(props) {
   if (props.foo) {
-    return <Foo callback={props.callback} />;
+    return (
+      <div>
+        {[<Foo callback={props.callback} />]}
+      </div>
+    );
   }
-  return <Bar callback={props.callback} />;
+  return (
+    <div>
+      <Foo callback={props.callback} />
+    </div>
+  );
 }
 
 function Foo(props) {
-  return <input ref={props.callback} />;
-}
-
-function Bar(props) {
   return <input ref={props.callback} />;
 }
 
@@ -32,11 +36,7 @@ App.getTrials = function(renderer, Root) {
   renderer.update(<Root callback={callback} foo={false} />);
 
   let results = [];
-  results.push(['ensure refs was called 3 times', counter === 3]);
-  results.push(['ensure refs at 0 is not null', nodes[0] !== null]);
-  results.push(['ensure refs at 1 is null', nodes[1] === null]);
-  results.push(['ensure refs at 2 is not null', nodes[2] !== null]);
-  results.push(['ensure refs at 2 is not null', nodes[0] !== nodes[2]]);
+  results.push(['ensure refs was called 1 time', counter === 1]);
   return results;
 };
 
