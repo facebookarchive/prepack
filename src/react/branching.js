@@ -100,7 +100,7 @@ export function getValueWithBranchingLogicApplied(
         let xElem;
         if (x instanceof ArrayValue) {
           // handle the case of [y].equals([x]
-          xElem = getProperty(realm, y, index + "");
+          xElem = getProperty(realm, x, index + "");
         } else if (index === 0) {
           // handle the case of [y].equals(x)
           xElem = x;
