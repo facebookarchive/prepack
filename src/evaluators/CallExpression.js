@@ -47,26 +47,74 @@ export default function(
 
   // 1. Let ref be the result of evaluating MemberExpression.
   let ref = env.evaluate(ast.callee, strictCode);
+
+  return evaluateReference(ref, ast, strictCode, env, realm);
+}
+
+function evaluateReference(
+  ref: Reference,
+  ast: BabelNodeCallExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value {
   if (
     ref instanceof Reference &&
     ref.base instanceof AbstractValue &&
     ref.base.mightNotBeObject() &&
     realm.isInPureScope()
   ) {
-    let dummy = ref.base;
+    let base = ref.base;
+    if (base.kind === "conditional") {
+      return evaluateConditionalReferenceBase(ref, ast, strictCode, env, realm);
+    }
     // avoid explicitly converting ref.base to an object because that will create a generator entry
     // leading to two object allocations rather than one.
     return realm.evaluateWithPossibleThrowCompletion(
-      () => generateRuntimeCall(ref, dummy, ast, strictCode, env, realm),
+      () => generateRuntimeCall(ref, base, ast, strictCode, env, realm),
       TypesDomain.topVal,
       ValuesDomain.topVal
     );
   }
-
   // 2. Let func be ? GetValue(ref).
   let func = Environment.GetValue(realm, ref);
 
   return EvaluateCall(ref, func, ast, strictCode, env, realm);
+}
+
+function evaluateConditionalReferenceBase(
+  ref: Reference,
+  ast: BabelNodeCallExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value {
+  let [condValue, consequentVal, alternateVal] = ref.base.args;
+  invariant(condValue instanceof AbstractValue);
+
+  return realm.evaluateWithAbstractConditional(
+    condValue,
+    () => {
+      return realm.evaluateForEffects(
+        () => {
+          let consequentRef = new Reference(consequentVal, ref.referencedName, ref.strict, ref.thisValue);
+          return evaluateReference(consequentRef, ast, strictCode, env, realm);
+        },
+        null,
+        "evaluateConditionalReferenceBase consequent"
+      );
+    },
+    () => {
+      return realm.evaluateForEffects(
+        () => {
+          let alternateRef = new Reference(alternateVal, ref.referencedName, ref.strict, ref.thisValue);
+          return evaluateReference(alternateRef, ast, strictCode, env, realm);
+        },
+        null,
+        "evaluateConditionalReferenceBase alternate"
+      );
+    }
+  );
 }
 
 function callBothFunctionsAndJoinTheirEffects(
