@@ -31,7 +31,6 @@ import { Modules } from "./utils/modules.js";
 import { Logger } from "./utils/logger.js";
 import { Generator } from "./utils/generator.js";
 import { AbstractObjectValue, AbstractValue, ObjectValue } from "./values/index.js";
-import { isUndefinedOrNull } from "./utils";
 
 export function prepackSources(
   sources: Array<SourceFile>,
@@ -62,7 +61,7 @@ export function prepackSources(
     invariant(options.check);
     checkResidualFunctions(modules, options.check[0], options.check[1]);
     return { code: "", map: undefined };
-  } else if (options.serialize === true || options.residual === false || isUndefinedOrNull(options.residual)) {
+  } else if (options.serialize === true || options.residual === false || typeof options.residual === "undefined") {
     let serializer = new Serializer(realm, getSerializerOptions(options));
     let serialized = serializer.init(sources, options.sourceMaps);
 

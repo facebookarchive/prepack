@@ -106,7 +106,3 @@ export function describeValue(value: Value): string {
   if (value.__originalName !== undefined) title += `, original name: ${value.__originalName}`;
   return suffix ? `${title}\n${suffix}` : title;
 }
-
-export function isUndefinedOrNull(value: void | mixed): boolean {
-  return typeof value === "undefined" || value === null;
-}

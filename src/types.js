@@ -1052,5 +1052,4 @@ export type UtilsType = {|
   typeToString: (typeof Value) => void | string,
   getTypeFromName: string => void | typeof Value,
   describeValue: Value => string,
-  isUndefinedOrNull: (void | Value) => boolean,
 |};

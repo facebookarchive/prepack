@@ -12,7 +12,6 @@
 import { BabelNode } from "babel-types";
 import invariant from "./../common/invariant.js";
 import { Stepper, StepIntoStepper, StepOverStepper } from "./Stepper.js";
-import { isUndefinedOrNull } from "./../../utils.js";
 import type { Realm } from "./../../realm.js";
 import type { StoppableObject } from "./StopEventManager.js";
 
@@ -21,7 +20,7 @@ export class SteppingManager {
     this._realm = realm;
     this._steppers = [];
     this._keepOldSteppers = false;
-    if (!isUndefinedOrNull(keepOldSteppers)) this._keepOldSteppers = true;
+    if (typeof keepOldSteppers !== "undefined") this._keepOldSteppers = true;
   }
   _realm: Realm;
   _keepOldSteppers: boolean;
