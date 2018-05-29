@@ -934,6 +934,14 @@ export function createInternalReactElement(
   props: ObjectValue | AbstractObjectValue
 ): ObjectValue {
   let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+
+  // sanity checks
+  if (type instanceof AbstractValue && type.kind === "conditional") {
+    invariant(false, "createInternalReactElement should never encounter a conditional type");
+  }
+  if (props instanceof AbstractObjectValue && props.kind === "conditional") {
+    invariant(false, "createInternalReactElement should never encounter a conditional props");
+  }
   Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactSymbol("react.element", realm));
   Create.CreateDataPropertyOrThrow(realm, obj, "type", type);
   Create.CreateDataPropertyOrThrow(realm, obj, "key", key);

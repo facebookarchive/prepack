@@ -199,6 +199,33 @@ function splitReactElementsByConditionalType(
   );
 }
 
+function splitReactElementsByConditionalConfig(
+  realm: Realm,
+  condValue: AbstractValue,
+  consequentVal: ObjectValue | AbstractObjectValue,
+  alternateVal: ObjectValue | AbstractObjectValue,
+  type: Value,
+  children: void | Value
+): Value {
+  return realm.evaluateWithAbstractConditional(
+    condValue,
+    () => {
+      return realm.evaluateForEffects(
+        () => createReactElement(realm, type, consequentVal, children),
+        null,
+        "splitReactElementsByConditionalConfig consequent"
+      );
+    },
+    () => {
+      return realm.evaluateForEffects(
+        () => createReactElement(realm, type, alternateVal, children),
+        null,
+        "splitReactElementsByConditionalConfig alternate"
+      );
+    }
+  );
+}
+
 export function createReactElement(
   realm: Realm,
   type: Value,
@@ -209,6 +236,12 @@ export function createReactElement(
     let [condValue, consequentVal, alternateVal] = type.args;
     invariant(condValue instanceof AbstractValue);
     return splitReactElementsByConditionalType(realm, condValue, consequentVal, alternateVal, config, children);
+  } else if (config instanceof AbstractObjectValue && config.kind === "conditional") {
+    let [condValue, consequentVal, alternateVal] = config.args;
+    invariant(condValue instanceof AbstractValue);
+    invariant(consequentVal instanceof ObjectValue || consequentVal instanceof AbstractObjectValue);
+    invariant(alternateVal instanceof ObjectValue || alternateVal instanceof AbstractObjectValue);
+    return splitReactElementsByConditionalConfig(realm, condValue, consequentVal, alternateVal, type, children);
   }
   let { key, props, ref } = createPropsObject(realm, type, config, children);
   return createInternalReactElement(realm, type, key, ref, props);

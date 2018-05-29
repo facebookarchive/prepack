@@ -118,23 +118,22 @@ export default class AbstractObjectValue extends AbstractValue {
     return result;
   }
 
-  isFinalObject(): boolean {
+  mightBeFinalObject(): boolean {
     if (this.values.isTop()) return false;
-    let result;
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
-      if (result === undefined) {
-        result = element.isFinalObject();
-      } else if (result !== element.isFinalObject()) {
-        AbstractValue.reportIntrospectionError(this);
-        throw new FatalError();
-      }
+      if (element.mightBeFinalObject()) return true;
     }
-    if (result === undefined) {
-      AbstractValue.reportIntrospectionError(this);
-      throw new FatalError();
+    return false;
+  }
+
+  mightNotBeFinalObject(): boolean {
+    if (this.values.isTop()) return false;
+    for (let element of this.values.getElements()) {
+      invariant(element instanceof ObjectValue);
+      if (element.mightNotBeFinalObject()) return true;
     }
-    return result;
+    return false;
   }
 
   mightBeFalse(): boolean {
