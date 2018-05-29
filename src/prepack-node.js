@@ -97,9 +97,11 @@ export function prepackFile(
       if (fileErrorHandler) fileErrorHandler(fileErr);
       return;
     }
-    fs.readFile(sourceMapFilename, "utf8", function(mapErr, sourceMap = "") {
+    fs.readFile(sourceMapFilename, "utf8", function(mapErr, _sourceMap) {
+      let sourceMap = _sourceMap;
       if (mapErr) {
         console.warn(`No sourcemap found at ${sourceMapFilename}.`);
+        sourceMap = "";
       }
       let serialized;
       try {
