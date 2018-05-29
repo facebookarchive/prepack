@@ -44,21 +44,29 @@ function runTest(name: string, config: any) {
   // Verify the original test passes without Prepack
   console.log(chalk.inverse(name));
   const { testName, testBundle } = config;
+  console.log("-----------------------------");
   console.log("Running tests before Prepack:");
-  console.log(chalk.bold(`  js1 jest ${testName}`));
-  execSync(`${__dirname}/../../js/scripts/jest/jest ${testName}`, { stdio: "pipe" });
+  console.log(chalk.bold(`js1 jest ${testName}`));
+  console.log("-----------------------------");
+  execSync(`${__dirname}/../../js/scripts/jest/jest ${testName}`, { stdio: "inherit" });
+  console.log('\n\n\n');
 
   // Verify we can Prepack the bundle
+  console.log("-----------------------------");
   console.log("Prepacking:");
-  console.log(`  ${chalk.bold(path.resolve(testBundle))}`);
+  console.log(chalk.bold(path.resolve(testBundle)));
+  console.log("-----------------------------");
   const sourceCode = fs.readFileSync(testBundle, "utf8");
   mkdirp.sync(`${__dirname}/../fb-www`);
 
   fs.writeFileSync(`${__dirname}/../fb-www/input.js`, sourceCode, "utf8");
-  execSync(`${__dirname}/../../third-party/node/bin/node scripts/debug-fb-www.js`, { stdio: "pipe" });
+  execSync(`${__dirname}/../../third-party/node/bin/node scripts/debug-fb-www.js`, { stdio: "inherit" });
+  console.log('\n\n\n');
 
+  console.log("-----------------------------");
   console.log("Running tests after Prepack:");
-  console.log(chalk.bold(`  js1 jest ${testName}`));
+  console.log(chalk.bold(`js1 jest ${testName}`));
+  console.log("-----------------------------");
   const outputCode = fs.readFileSync(`${__dirname}/../fb-www/output.js`, "utf8");
   try {
     fs.writeFileSync(
@@ -72,7 +80,8 @@ function runTest(name: string, config: any) {
       "utf8"
     );
     // Verify the test passes on the output
-    execSync(`${__dirname}/../../js/scripts/jest/jest ${testName}`, { stdio: "pipe" });
+    execSync(`${__dirname}/../../js/scripts/jest/jest ${testName}`, { stdio: "inherit" });
+    console.log('\n\n\n');
     console.log("Success!");
   } finally {
     // Revert the change.
