@@ -50,7 +50,7 @@ export function getValueWithBranchingLogicApplied(
   let needsKeys = false;
 
   // we check the inlined value and see if the component types match
-  const findMatchingComponentTypes = (xTypeParent, yTypeParent) => {
+  const searchAndFlagMatchingComponentTypes = (xTypeParent, yTypeParent) => {
     let [, x, y] = value.args;
     if (x instanceof ObjectValue && isReactElement(x) && y instanceof ObjectValue && isReactElement(y)) {
       let xType = getProperty(realm, x, "type");
@@ -63,7 +63,7 @@ export function getValueWithBranchingLogicApplied(
   };
 
   // we first check our "parent" value, that was used to get the inlined value
-  const findMismatchingNonHostTypes = (x: Value, y: Value, arrayDepth: number): void => {
+  const searchAndFlagMismatchingNonHostTypes = (x: Value, y: Value, arrayDepth: number): void => {
     if (x instanceof ObjectValue && isReactElement(x) && y instanceof ObjectValue && isReactElement(y)) {
       let xType = getProperty(realm, x, "type");
       let yType = getProperty(realm, y, "type");
@@ -76,11 +76,11 @@ export function getValueWithBranchingLogicApplied(
           let yChildren = getProperty(realm, yProps, "children");
 
           if (xChildren instanceof Value && yChildren instanceof Value) {
-            findMismatchingNonHostTypes(xChildren, yChildren, arrayDepth);
+            searchAndFlagMismatchingNonHostTypes(xChildren, yChildren, arrayDepth);
           }
         }
       } else if (!xType.equals(yType)) {
-        return findMatchingComponentTypes(xType, yType);
+        searchAndFlagMatchingComponentTypes(xType, yType);
       }
     } else if (
       ArrayValue.isIntrinsicAndHasWidenedNumericProperty(x) ||
@@ -100,7 +100,7 @@ export function getValueWithBranchingLogicApplied(
         }
 
         if (xElem instanceof Value && yElem instanceof Value) {
-          findMismatchingNonHostTypes(xElem, yElem, arrayDepth + 1);
+          searchAndFlagMismatchingNonHostTypes(xElem, yElem, arrayDepth + 1);
         }
       });
     } else if (y instanceof ArrayValue && arrayDepth === 0) {
@@ -115,13 +115,13 @@ export function getValueWithBranchingLogicApplied(
         }
 
         if (xElem instanceof Value && yElem instanceof Value) {
-          findMismatchingNonHostTypes(xElem, yElem, arrayDepth + 1);
+          searchAndFlagMismatchingNonHostTypes(xElem, yElem, arrayDepth + 1);
         }
       });
     }
   };
 
-  findMismatchingNonHostTypes(parentX, parentY, 0);
+  searchAndFlagMismatchingNonHostTypes(parentX, parentY, 0);
 
   if (needsKeys) {
     return applyBranchedLogicValue(realm, value);

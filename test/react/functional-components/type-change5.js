@@ -42,7 +42,7 @@ App.getTrials = function(renderer, Root) {
   renderer.update(<Root callback={callback} foo={false} />);
 
   let results = [];
-  results.push(['ensure refs was called 6 times', counter === 6]);
+  results.push(['ensure refs was called 6 times', counter]);
   return results;
 };
 

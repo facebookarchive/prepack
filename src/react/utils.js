@@ -709,6 +709,10 @@ export function getComponentName(realm: Realm, componentType: Value): string {
   } else if (componentType instanceof SymbolValue) {
     return "unknown symbol";
   }
+  // $FlowFixMe: this code is fine, Flow thinks that coponentType is bound to string...
+  if (isReactComponent(componentType)) {
+    return "ReactElement";
+  }
   if (componentType === realm.intrinsics.undefined || componentType === realm.intrinsics.null) {
     return "no name";
   }
@@ -716,7 +720,8 @@ export function getComponentName(realm: Realm, componentType: Value): string {
     componentType instanceof ECMAScriptSourceFunctionValue ||
       componentType instanceof BoundFunctionValue ||
       componentType instanceof AbstractObjectValue ||
-      componentType instanceof AbstractValue
+      componentType instanceof AbstractValue ||
+      componentType instanceof ObjectValue
   );
   let boundText = componentType instanceof BoundFunctionValue ? "bound " : "";
 
@@ -743,7 +748,10 @@ export function getComponentName(realm: Realm, componentType: Value): string {
       return "forwarded ref";
     }
   }
-  return boundText + "anonymous";
+  if (componentType instanceof FunctionValue) {
+    return boundText + "anonymous";
+  }
+  return "unknown";
 }
 
 export function convertConfigObjectToReactComponentTreeConfig(
