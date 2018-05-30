@@ -19,6 +19,7 @@ import {
   ArrayValue,
   BoundFunctionValue,
   EmptyValue,
+  NativeFunctionValue,
   NullValue,
   NumberValue,
   ObjectValue,
@@ -557,14 +558,20 @@ export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayV
   if (typeof P === "string") {
     let proto = arr.$GetPrototypeOf();
     invariant(proto instanceof ObjectValue);
-    let value = OrdinaryGet(realm, proto, P, arr);
 
     if (P === "length") {
       return AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, [arr], ([o]) =>
         t.memberExpression(o, t.identifier("length"), false)
       );
-    } else if (value !== realm.intrinsics.undefined) {
-      return value;
+    } else if (proto === realm.intrinsics.ArrayPrototype) {
+      let prototypeBinding = proto.properties.get(P);
+      if (prototypeBinding !== undefined) {
+        let descriptor = prototypeBinding.descriptor;
+        // ensure we are accessing a built-in native function
+        if (descriptor !== undefined && descriptor.value instanceof NativeFunctionValue) {
+          return descriptor.value;
+        }
+      }
     }
   }
   let prop = typeof P === "string" ? new StringValue(realm, P) : P;
