@@ -159,7 +159,7 @@ function callBothFunctionsAndJoinTheirEffects(
   realm: Realm
 ): Value {
   let [cond, func1, func2] = args;
-  invariant(cond instanceof AbstractValue && cond.getType() === BooleanValue);
+  invariant(cond instanceof AbstractValue);
   invariant(Value.isTypeCompatibleWith(func1.getType(), FunctionValue));
   invariant(Value.isTypeCompatibleWith(func2.getType(), FunctionValue));
 
