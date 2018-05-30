@@ -22,12 +22,7 @@ import {
   normalizeFunctionalComponentParamaters,
   valueIsClassComponent,
 } from "./utils.js";
-import {
-  type WriteEffects,
-  type ReactEvaluatedNode,
-  type ReactSerializerState,
-  ReactStatistics,
-} from "../serializer/types.js";
+import { type WriteEffects, type ReactEvaluatedNode, ReactStatistics } from "../serializer/types.js";
 import { Reconciler, type ComponentTreeState } from "./reconcilation.js";
 import { ReconcilerFatalError } from "./errors.js";
 import { Properties } from "../singletons.js";
@@ -162,14 +157,7 @@ function optimizeReactNestedClosures(
   if (realm.react.verbose && reconciler.nestedOptimizedClosures.length > 0) {
     logger.logInformation(`  Evaluating nested closures...`);
   }
-  for (let {
-    func,
-    evaluatedNode,
-    nestedEffects,
-    componentType,
-    context,
-    branchState,
-  } of reconciler.nestedOptimizedClosures) {
+  for (let { func, evaluatedNode, nestedEffects, componentType, context } of reconciler.nestedOptimizedClosures) {
     if (reconciler.hasEvaluatedNestedClosure(func)) {
       continue;
     }
@@ -184,7 +172,6 @@ function optimizeReactNestedClosures(
       nestedEffects,
       componentType,
       context,
-      branchState,
       evaluatedNode
     );
     if (realm.react.verbose) {
@@ -214,10 +201,9 @@ export function optimizeReactComponentTreeRoot(
   writeEffects: WriteEffects,
   environmentRecordIdAfterGlobalCode: number,
   logger: Logger,
-  statistics: ReactStatistics,
-  reactSerializerState: ReactSerializerState
+  statistics: ReactStatistics
 ): void {
-  let reconciler = new Reconciler(realm, config, statistics, logger, reactSerializerState);
+  let reconciler = new Reconciler(realm, config, statistics, logger);
   let componentType = getComponentTypeFromRootValue(realm, componentRoot);
   if (componentType === null) {
     return;
