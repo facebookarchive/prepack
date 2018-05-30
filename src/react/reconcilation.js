@@ -1357,22 +1357,22 @@ export class Reconciler {
       evaluatedNode.children.push(error.evaluatedNode);
       // NO-OP (we don't queue a newComponentTree as this was already done)
     } else {
-      // handle abrupt completions
-      if (this.logger !== undefined && this.realm.react.verbose && evaluatedNode.status === "INLINED") {
-        this.logger.logInformation(`    ✖ ${evaluatedNode.name} (bail-out)`);
+      let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
+      if (this.logger !== undefined && this.realm.react.verbose) {
+        this.logger.logInformation(`    ✖ ${evaluatedChildNode.name} (bail-out)`);
       }
-      evaluatedNode.status = "BAIL-OUT";
-      this._queueNewComponentTree(typeValue, evaluatedNode);
+      evaluatedNode.children.push(evaluatedChildNode);
+      this._queueNewComponentTree(typeValue, evaluatedChildNode);
       this._findReactComponentTrees(propsValue, evaluatedNode, "NORMAL_FUNCTIONS");
       if (error instanceof ExpectedBailOut) {
-        evaluatedNode.message = error.message;
+        evaluatedChildNode.message = error.message;
         this._assignBailOutMessage(reactElement, error.message);
       } else if (error instanceof FatalError) {
         let message = "evaluation failed";
-        evaluatedNode.message = message;
+        evaluatedChildNode.message = message;
         this._assignBailOutMessage(reactElement, message);
       } else {
-        evaluatedNode.message = `unknown error`;
+        evaluatedChildNode.message = `unknown error`;
         throw error;
       }
     }
