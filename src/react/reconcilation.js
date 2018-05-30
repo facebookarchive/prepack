@@ -282,14 +282,16 @@ export class Reconciler {
     context: ObjectValue | AbstractObjectValue | null,
     branchState: BranchState | null
   ): void {
-    this.nestedOptimizedClosures.push({
-      evaluatedNode,
-      func,
-      nestedEffects: [],
-      componentType,
-      context,
-      branchState,
-    });
+    if (this.realm.react.optimizeNestedFunctions) {
+      this.nestedOptimizedClosures.push({
+        evaluatedNode,
+        func,
+        nestedEffects: [],
+        componentType,
+        context,
+        branchState,
+      });
+    }
   }
 
   _queueNewComponentTree(
@@ -1356,19 +1358,21 @@ export class Reconciler {
       // NO-OP (we don't queue a newComponentTree as this was already done)
     } else {
       // handle abrupt completions
-      let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
-      evaluatedNode.children.push(evaluatedChildNode);
-      this._queueNewComponentTree(typeValue, evaluatedChildNode);
+      if (this.logger !== undefined && this.realm.react.verbose && evaluatedNode.status === "INLINED") {
+        this.logger.logInformation(`    ✖ ${evaluatedNode.name} (bail-out)`);
+      }
+      evaluatedNode.status = "BAIL-OUT";
+      this._queueNewComponentTree(typeValue, evaluatedNode);
       this._findReactComponentTrees(propsValue, evaluatedNode, "NORMAL_FUNCTIONS");
       if (error instanceof ExpectedBailOut) {
-        evaluatedChildNode.message = error.message;
+        evaluatedNode.message = error.message;
         this._assignBailOutMessage(reactElement, error.message);
       } else if (error instanceof FatalError) {
         let message = "evaluation failed";
-        evaluatedChildNode.message = message;
+        evaluatedNode.message = message;
         this._assignBailOutMessage(reactElement, message);
       } else {
-        evaluatedChildNode.message = `unknown error`;
+        evaluatedNode.message = `unknown error`;
         throw error;
       }
     }

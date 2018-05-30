@@ -249,7 +249,9 @@ export function optimizeReactComponentTreeRoot(
   do {
     startingComponentTreeBranches = reconciler.branchedComponentTrees.length;
     optimizeReactComponentTreeBranches(realm, reconciler, writeEffects, environmentRecordIdAfterGlobalCode, logger);
-    optimizeReactNestedClosures(realm, reconciler, writeEffects, environmentRecordIdAfterGlobalCode, logger);
+    if (realm.react.optimizeNestedFunctions) {
+      optimizeReactNestedClosures(realm, reconciler, writeEffects, environmentRecordIdAfterGlobalCode, logger);
+    }
   } while (startingComponentTreeBranches !== reconciler.branchedComponentTrees.length);
 }
 
