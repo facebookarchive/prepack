@@ -49,7 +49,7 @@ function runTest(name: string, config: any) {
   console.log(chalk.bold(`js1 jest ${testName}`));
   console.log("-----------------------------");
   execSync(`${__dirname}/../../js/scripts/jest/jest ${testName}`, { stdio: "inherit" });
-  console.log('\n\n\n');
+  console.log("\n\n\n");
 
   // Verify we can Prepack the bundle
   console.log("-----------------------------");
@@ -61,7 +61,7 @@ function runTest(name: string, config: any) {
 
   fs.writeFileSync(`${__dirname}/../fb-www/input.js`, sourceCode, "utf8");
   execSync(`${__dirname}/../../third-party/node/bin/node scripts/debug-fb-www.js`, { stdio: "inherit" });
-  console.log('\n\n\n');
+  console.log("\n\n\n");
 
   console.log("-----------------------------");
   console.log("Running tests after Prepack:");
@@ -81,7 +81,7 @@ function runTest(name: string, config: any) {
     );
     // Verify the test passes on the output
     execSync(`${__dirname}/../../js/scripts/jest/jest ${testName}`, { stdio: "inherit" });
-    console.log('\n\n\n');
+    console.log("\n\n\n");
     console.log("Success!");
   } finally {
     // Revert the change.
