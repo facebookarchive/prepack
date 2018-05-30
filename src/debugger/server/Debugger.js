@@ -140,6 +140,11 @@ export class DebugServer {
         this._stepManager.processStepCommand("over", ast);
         this._onDebuggeeResume();
         return true;
+      case DebugMessage.STEPOUT_COMMAND:
+        invariant(ast !== undefined);
+        this._stepManager.processStepCommand("out", ast);
+        this._onDebuggeeResume();
+        return true;
       case DebugMessage.EVALUATE_COMMAND:
         invariant(args.kind === "evaluate");
         this.processEvaluateCommand(requestID, args);
@@ -256,6 +261,9 @@ export class DebugServer {
     this._variableManager.clean();
   }
 
+  /*
+    Returns whether there are more nodes in the ast.
+  */
   _checkAndUpdateLastExecuted(ast: BabelNode): boolean {
     if (ast.loc && ast.loc.source) {
       let filePath = ast.loc.source;

@@ -11,7 +11,7 @@
 
 import { BabelNode } from "babel-types";
 import invariant from "./../common/invariant.js";
-import { Stepper, StepIntoStepper, StepOverStepper } from "./Stepper.js";
+import { Stepper, StepIntoStepper, StepOverStepper, StepOutStepper } from "./Stepper.js";
 import type { Realm } from "./../../realm.js";
 import type { StoppableObject } from "./StopEventManager.js";
 
@@ -31,8 +31,11 @@ export class SteppingManager {
       this._processStepIn(currentNode);
     } else if (kind === "over") {
       this._processStepOver(currentNode);
+    } else if (kind === "out") {
+      this._processStepOut(currentNode);
+    } else {
+      invariant(false, `Invalid step type: ${kind}`);
     }
-    // TODO: implement stepOver and stepOut
   }
 
   _processStepIn(ast: BabelNode) {
@@ -50,6 +53,16 @@ export class SteppingManager {
     }
     this._steppers.push(
       new StepOverStepper(ast.loc.source, ast.loc.start.line, ast.loc.start.column, this._realm.contextStack.length)
+    );
+  }
+
+  _processStepOut(ast: BabelNode) {
+    invariant(ast.loc && ast.loc.source);
+    if (!this._keepOldSteppers) {
+      this._steppers = [];
+    }
+    this._steppers.push(
+      new StepOutStepper(ast.loc.source, ast.loc.start.line, ast.loc.start.column, this._realm.contextStack.length)
     );
   }
 

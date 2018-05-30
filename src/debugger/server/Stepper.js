@@ -72,11 +72,30 @@ export class StepOverStepper extends Stepper {
   isComplete(ast: BabelNode, currentStackSize: number): boolean {
     if (!this.isAstLocationChanged(ast)) return false;
     if (currentStackSize <= this._startStackSize) {
-      // two cases here:
-      // if current stack length < starting stack length, the program must have
-      // hit an exception so this stepper is no longer relevant
-      // if current stack length === starting stack length, the program returned
+      // Two cases here:
+      // If current stack length < starting stack length, the program must have
+      // hit an exception so this stepper is no longer relevant.
+      // If current stack length === starting stack length, the program returned
       // to the same stack depth, so a step over is complete
+      return true;
+    }
+    return false;
+  }
+}
+
+export class StepOutStepper extends Stepper {
+  constructor(filePath: string, line: number, column: number, stackSize: number) {
+    super(filePath, line, column);
+    this._startStackSize = stackSize;
+  }
+  _startStackSize: number;
+
+  isComplete(ast: BabelNode, currentStackSize: number): boolean {
+    if (!this.isAstLocationChanged(ast)) return false;
+    if (currentStackSize < this._startStackSize) {
+      // To step out of a function, we must finish executing it.
+      // When a function completes, its execution context will be
+      // popped off the stack.
       return true;
     }
     return false;
