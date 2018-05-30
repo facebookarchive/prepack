@@ -11,7 +11,13 @@
 
 import type { PropertyKeyValue } from "../types.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
-import { LexicalEnvironment, Reference, EnvironmentRecord, GlobalEnvironmentRecord } from "../environment.js";
+import {
+  EnvironmentRecord,
+  GlobalEnvironmentRecord,
+  LexicalEnvironment,
+  mightBecomeAnObject,
+  Reference,
+} from "../environment.js";
 import { FatalError } from "../errors.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import Value from "../values/Value.js";
@@ -291,7 +297,19 @@ function callNativeFunctionValue(
 
   const functionCall = contextVal => {
     try {
-      return f.callCallback(contextVal, argumentsList, env.environmentRecord.$NewTarget);
+      invariant(
+        contextVal instanceof AbstractObjectValue ||
+          contextVal instanceof ObjectValue ||
+          contextVal instanceof NullValue ||
+          contextVal instanceof UndefinedValue ||
+          mightBecomeAnObject(contextVal)
+      );
+      return f.callCallback(
+        // this is to get around Flow not understand the above invariant
+        ((contextVal: any): AbstractObjectValue | ObjectValue | NullValue | UndefinedValue),
+        argumentsList,
+        env.environmentRecord.$NewTarget
+      );
     } catch (err) {
       if (err instanceof AbruptCompletion) {
         return err;
