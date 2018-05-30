@@ -555,21 +555,22 @@ export function GetTemplateObject(realm: Realm, templateLiteral: BabelNodeTempla
 
 export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayValue, P: string | SymbolValue): Value {
   let type = Value;
+  let computed = true;
 
   if (typeof P === "string") {
     let proto = arr.$GetPrototypeOf();
     invariant(proto instanceof ObjectValue);
     let value = OrdinaryGet(realm, proto, P, arr);
 
-    if (value !== realm.intrinsics.undefined) {
-      return value;
-    }
     if (P === "length") {
       type = NumberValue;
+      computed = false;
+    } else if (value !== realm.intrinsics.undefined) {
+      return value;
     }
   }
   let prop = typeof P === "string" ? new StringValue(realm, P) : P;
   return AbstractValue.createTemporalFromBuildFunction(realm, type, [arr, prop], ([o, p]) =>
-    t.memberExpression(o, p, true)
+    t.memberExpression(o, p, computed)
   );
 }
