@@ -67,7 +67,7 @@ export default function(
         loc: e.loc,
         stackDecorated: false,
       };
-      throw new ThrowCompletion(realm, error, e.loc);
+      throw new ThrowCompletion(error, e.loc);
     } else {
       throw e;
     }
