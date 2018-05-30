@@ -9,7 +9,7 @@ function fn(a, b)  {
   array.shift();
   array.splice(1, 0, 15);
 
-  return array.filter(Boolean).join("-");
+  return array.filter(Boolean).join("-") + array.toString();
 }
 
 global.__optimize && __optimize(fn);
