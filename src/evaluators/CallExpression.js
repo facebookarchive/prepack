@@ -19,7 +19,6 @@ import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import {
   AbstractValue,
   AbstractObjectValue,
-  BooleanValue,
   ConcreteValue,
   FunctionValue,
   ObjectValue,
