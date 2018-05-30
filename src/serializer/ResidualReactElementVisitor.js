@@ -55,10 +55,6 @@ export class ResidualReactElementVisitor {
         this.residualHeapVisitor.visitValue(propsValue);
       },
       visitConcreteProps: (propsValue: ObjectValue) => {
-        // given that props is a concrete object, it should never be serialized
-        // as we'll be doing it directly with the ReactElementSerializer
-        // so we make the object as refusing serialization
-        propsValue.refuseSerialization = true;
         for (let [propName, binding] of propsValue.properties) {
           if (binding.descriptor !== undefined && propName !== "children") {
             let propValue = getProperty(this.realm, propsValue, propName);
