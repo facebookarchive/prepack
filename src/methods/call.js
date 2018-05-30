@@ -11,7 +11,13 @@
 
 import type { PropertyKeyValue } from "../types.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
-import { LexicalEnvironment, Reference, EnvironmentRecord, GlobalEnvironmentRecord } from "../environment.js";
+import {
+  EnvironmentRecord,
+  GlobalEnvironmentRecord,
+  LexicalEnvironment,
+  mightBecomeAnObject,
+  Reference,
+} from "../environment.js";
 import { FatalError } from "../errors.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import Value from "../values/Value.js";
@@ -281,22 +287,29 @@ export function OrdinaryCallBindThis(
   return envRec.BindThisValue(thisValue);
 }
 
-// ECMA262 9.2.1.3
-export function OrdinaryCallEvaluateBody(
+function callNativeFunctionValue(
   realm: Realm,
-  f: ECMAScriptFunctionValue,
+  f: NativeFunctionValue,
   argumentsList: Array<Value>
-): Reference | Value | AbruptCompletion {
-  if (f instanceof NativeFunctionValue) {
-    let env = realm.getRunningContext().lexicalEnvironment;
-    let context = env.environmentRecord.GetThisBinding();
+): Value | AbruptCompletion {
+  let env = realm.getRunningContext().lexicalEnvironment;
+  let context = env.environmentRecord.GetThisBinding();
 
-    if (context instanceof AbstractObjectValue && context.kind === "conditional") {
-      // TODO: we should handle this case and split the calls up
-      // on the conditional, as it may yield better results
-    }
+  const functionCall = contextVal => {
     try {
-      return f.callCallback(context, argumentsList, env.environmentRecord.$NewTarget);
+      invariant(
+        contextVal instanceof AbstractObjectValue ||
+          contextVal instanceof ObjectValue ||
+          contextVal instanceof NullValue ||
+          contextVal instanceof UndefinedValue ||
+          mightBecomeAnObject(contextVal)
+      );
+      return f.callCallback(
+        // this is to get around Flow not understand the above invariant
+        ((contextVal: any): AbstractObjectValue | ObjectValue | NullValue | UndefinedValue),
+        argumentsList,
+        env.environmentRecord.$NewTarget
+      );
     } catch (err) {
       if (err instanceof AbruptCompletion) {
         return err;
@@ -306,6 +319,33 @@ export function OrdinaryCallEvaluateBody(
         throw new FatalError(err);
       }
     }
+  };
+
+  if (context instanceof AbstractObjectValue && context.kind === "conditional") {
+    let [condValue, consequentVal, alternateVal] = context.args;
+    invariant(condValue instanceof AbstractValue);
+
+    return realm.evaluateWithAbstractConditional(
+      condValue,
+      () => {
+        return realm.evaluateForEffects(() => functionCall(consequentVal), null, "callNativeFunctionValue consequent");
+      },
+      () => {
+        return realm.evaluateForEffects(() => functionCall(alternateVal), null, "callNativeFunctionValue alternate");
+      }
+    );
+  }
+  return functionCall(context);
+}
+
+// ECMA262 9.2.1.3
+export function OrdinaryCallEvaluateBody(
+  realm: Realm,
+  f: ECMAScriptFunctionValue,
+  argumentsList: Array<Value>
+): Reference | Value | AbruptCompletion {
+  if (f instanceof NativeFunctionValue) {
+    return callNativeFunctionValue(realm, f, argumentsList);
   } else {
     invariant(f instanceof ECMAScriptSourceFunctionValue);
     let F = f;
