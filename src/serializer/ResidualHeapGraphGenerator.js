@@ -26,7 +26,7 @@ import {
   ProxyValue,
   ObjectValue,
 } from "../values/index.js";
-import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
+import { HeapInspector } from "../utils/HeapInspector.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 
 type Edge = {
@@ -98,7 +98,7 @@ export class ResidualHeapGraphGenerator extends ResidualHeapVisitor {
   }
 
   _shouldIgnore(val: Value): boolean {
-    return val instanceof EmptyValue || val.isIntrinsic() || ResidualHeapInspector.isLeaf(val);
+    return val instanceof EmptyValue || val.isIntrinsic() || HeapInspector.isLeaf(val);
   }
 
   _updateEdge(val: Value) {

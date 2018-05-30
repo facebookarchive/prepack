@@ -671,10 +671,8 @@ export function getProperty(
   if (!descriptor) {
     return realm.intrinsics.undefined;
   }
-  let value;
-  if (descriptor.value) {
-    value = descriptor.value;
-  } else if (descriptor.get || descriptor.set) {
+  let value = descriptor.value;
+  if (value === undefined) {
     AbstractValue.reportIntrospectionError(object, `react/utils/getProperty unsupported getter/setter property`);
     throw new FatalError();
   }
