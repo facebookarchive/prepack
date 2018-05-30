@@ -34,11 +34,13 @@ import { ExpectedBailOut } from "./errors.js";
 // events, as we can't merge lifecycles of mutliple trees when branched reliably
 export type BranchStatusEnum = "ROOT" | "NO_BRANCH" | "NEW_BRANCH" | "BRANCH";
 
-// Branch state is used to capture branched ReactElements so they can be analyzed and compared
-// once all branches have been processed. This allows us to add keys to the respective ReactElement
-// objects depending on various heuristics (if they have the same "type" for example)
-// A new branch state is created on a branch status of "NEW_BRANCH" and is reset to null once the branch is no
-// longer new
+// This function aims to determine if we need to add keys to the ReactElements
+// of the returned conditional abstract value branches. It does this by first
+// checking the parent branch nodes (these were use to render both respective branches)
+// for any cases where ReactElement types on host components mismatch.
+// Note: this implementation is not fully sound and is likely missing support
+// for all React reconcilation cases for handling of keys, see issue #1131
+
 export function getValueWithBranchingLogicApplied(
   realm: Realm,
   parentX: Value,
