@@ -70,6 +70,7 @@ export type RealmOptions = {
   reactEnabled?: boolean,
   reactOutput?: ReactOutputTypes,
   reactVerbose?: boolean,
+  reactOptimizeNestedFunctions?: boolean,
   stripFlow?: boolean,
   abstractValueImpliesMax?: number,
 };

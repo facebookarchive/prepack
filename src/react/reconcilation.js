@@ -292,13 +292,15 @@ export class Reconciler {
     componentType: Value | null,
     context: ObjectValue | AbstractObjectValue | null
   ): void {
-    this.nestedOptimizedClosures.push({
-      evaluatedNode,
-      func,
-      nestedEffects: [],
-      componentType,
-      context,
-    });
+    if (this.realm.react.optimizeNestedFunctions) {
+      this.nestedOptimizedClosures.push({
+        evaluatedNode,
+        func,
+        nestedEffects: [],
+        componentType,
+        context,
+      });
+    }
   }
 
   _queueNewComponentTree(
@@ -1266,8 +1268,10 @@ export class Reconciler {
       evaluatedNode.children.push(error.evaluatedNode);
       // NO-OP (we don't queue a newComponentTree as this was already done)
     } else {
-      // handle abrupt completions
       let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
+      if (this.logger !== undefined && this.realm.react.verbose) {
+        this.logger.logInformation(`    ✖ ${evaluatedChildNode.name} (bail-out)`);
+      }
       evaluatedNode.children.push(evaluatedChildNode);
       this._queueNewComponentTree(typeValue, evaluatedChildNode);
       this._findReactComponentTrees(propsValue, evaluatedNode, "NORMAL_FUNCTIONS");
