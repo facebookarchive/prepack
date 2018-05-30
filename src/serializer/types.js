@@ -191,10 +191,6 @@ export type LocationService = {
   createFunction: (void | FunctionValue, Array<BabelNodeStatement>) => BabelNodeIdentifier,
 };
 
-export type ReactSerializerState = {
-  usedReactElementKeys: Set<string>,
-};
-
 export type ObjectRefCount = {
   inComing: number, // The number of objects that references this object.
   outGoing: number, // The number of objects that are referenced by this object.

@@ -29,7 +29,7 @@ import { Get } from "../methods/index.js";
 import { ModuleTracer } from "../utils/modules.js";
 import { createAdditionalEffects } from "./utils.js";
 import { ReactStatistics } from "./types";
-import type { AdditionalFunctionEffects, ReactSerializerState, WriteEffects } from "./types";
+import type { AdditionalFunctionEffects, WriteEffects } from "./types";
 import { convertConfigObjectToReactComponentTreeConfig, valueIsKnownReactAbstraction } from "../react/utils.js";
 import { applyOptimizedReactComponents, optimizeReactComponentTreeRoot } from "../react/optimizing.js";
 import * as t from "babel-types";
@@ -113,11 +113,7 @@ export class Functions {
     return recordedAdditionalFunctions;
   }
 
-  optimizeReactComponentTreeRoots(
-    statistics: ReactStatistics,
-    reactSerializerState: ReactSerializerState,
-    environmentRecordIdAfterGlobalCode: number
-  ): void {
+  optimizeReactComponentTreeRoots(statistics: ReactStatistics, environmentRecordIdAfterGlobalCode: number): void {
     let logger = this.moduleTracer.modules.logger;
     let recordedReactRootValues = this.__generateInitialAdditionalFunctions("__reactComponentTrees");
     // Get write effects of the components
@@ -133,8 +129,7 @@ export class Functions {
         this.writeEffects,
         environmentRecordIdAfterGlobalCode,
         logger,
-        statistics,
-        reactSerializerState
+        statistics
       );
     }
     applyOptimizedReactComponents(this.realm, this.writeEffects, environmentRecordIdAfterGlobalCode);
