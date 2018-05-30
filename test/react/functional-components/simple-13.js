@@ -29,9 +29,7 @@ function Child(props) {
   return children();
 }
 
-__optimizeReactComponentTree(App, {
-  firstRenderOnly: true
-});
+__optimizeReactComponentTree(App);
 
 App.getTrials = function(renderer, Root) {
   // Just compile, don't run
