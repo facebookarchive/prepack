@@ -8,6 +8,9 @@ function fn(a, b)  {
   array.pop();
   array.shift();
   array.splice(1, 0, 15);
+  array = array.concat(array.slice()).reverse().map(function(x) {
+    return x + 1
+  });
 
   return array.filter(Boolean).join("-") + array.toString();
 }
