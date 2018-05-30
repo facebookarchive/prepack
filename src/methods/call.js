@@ -291,7 +291,7 @@ function callNativeFunctionValue(
 
   const functionCall = contextVal => {
     try {
-      return f.callCallback(context, argumentsList, env.environmentRecord.$NewTarget);
+      return f.callCallback(contextVal, argumentsList, env.environmentRecord.$NewTarget);
     } catch (err) {
       if (err instanceof AbruptCompletion) {
         return err;
