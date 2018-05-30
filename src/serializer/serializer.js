@@ -20,7 +20,7 @@ import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import type { SerializerOptions } from "../options.js";
 import { SerializerStatistics } from "./statistics.js";
-import { type ReactSerializerState, type SerializedResult, ReactStatistics } from "./types.js";
+import { type SerializedResult, ReactStatistics } from "./types.js";
 import { Functions } from "./functions.js";
 import { Logger } from "../utils/logger.js";
 import { Modules } from "../utils/modules.js";
@@ -54,9 +54,6 @@ export class Serializer {
     if (serializerOptions.trace) this.realm.tracers.push(new LoggingTracer(this.realm));
 
     this.options = serializerOptions;
-    this.react = {
-      usedReactElementKeys: new Set(),
-    };
   }
 
   realm: Realm;
@@ -64,7 +61,6 @@ export class Serializer {
   logger: Logger;
   modules: Modules;
   options: SerializerOptions;
-  react: ReactSerializerState;
 
   _execute(sources: Array<SourceFile>, sourceMaps?: boolean = false): { [string]: string } {
     let realm = this.realm;
@@ -121,11 +117,7 @@ export class Serializer {
       if (this.realm.react.enabled) {
         statistics.optimizeReactComponentTreeRoots.measure(() => {
           reactStatistics = new ReactStatistics();
-          this.functions.optimizeReactComponentTreeRoots(
-            reactStatistics,
-            this.react,
-            environmentRecordIdAfterGlobalCode
-          );
+          this.functions.optimizeReactComponentTreeRoots(reactStatistics, environmentRecordIdAfterGlobalCode);
         });
       }
 
@@ -219,7 +211,6 @@ export class Serializer {
               additionalFunctionValuesAndEffects,
               residualHeapVisitor.additionalFunctionValueInfos,
               residualHeapVisitor.declarativeEnvironmentRecordsBindings,
-              this.react,
               referentializer,
               residualHeapVisitor.generatorDAG,
               residualHeapVisitor.conditionalFeasibility,
@@ -250,7 +241,6 @@ export class Serializer {
             additionalFunctionValuesAndEffects,
             residualHeapVisitor.additionalFunctionValueInfos,
             residualHeapVisitor.declarativeEnvironmentRecordsBindings,
-            this.react,
             referentializer,
             residualHeapVisitor.generatorDAG,
             residualHeapVisitor.conditionalFeasibility,

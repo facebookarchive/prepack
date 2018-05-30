@@ -364,6 +364,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-16.js");
       });
 
+      it("Simple 17", async () => {
+        await runTest(directory, "simple-17.js");
+      });
+
       it("__reactCompilerDoNotOptimize", async () => {
         await runTest(directory, "do-not-optimize.js");
       });
@@ -524,6 +528,42 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Component type change", async () => {
         await runTest(directory, "type-change.js");
+      });
+
+      it("Component type change 2", async () => {
+        await runTest(directory, "type-change2.js");
+      });
+
+      it("Component type change 3", async () => {
+        await runTest(directory, "type-change3.js");
+      });
+
+      it("Component type change 4", async () => {
+        await runTest(directory, "type-change4.js");
+      });
+
+      it("Component type change 5", async () => {
+        await runTest(directory, "type-change5.js");
+      });
+
+      it("Component type change 6", async () => {
+        await runTest(directory, "type-change6.js");
+      });
+
+      it("Component type change 7", async () => {
+        await runTest(directory, "type-change7.js");
+      });
+
+      it("Component type change 8", async () => {
+        await runTest(directory, "type-change8.js");
+      });
+
+      it("Component type change 9", async () => {
+        await runTest(directory, "type-change9.js");
+      });
+
+      it("Component type change 10", async () => {
+        await runTest(directory, "type-change10.js");
       });
 
       it("Component type same", async () => {
