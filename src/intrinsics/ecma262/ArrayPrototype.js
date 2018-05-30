@@ -1059,9 +1059,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) && realm.isInPureScope()) {
-      return AbstractValue.createTemporalFromBuildFunction(realm, ArrayValue, [O], ([objNode, ..._args]) =>
+      AbstractValue.createTemporalFromBuildFunction(realm, ArrayValue, [O], ([objNode]) =>
         t.callExpression(t.memberExpression(objNode, t.identifier("reverse")), [])
       );
+      return O;
     }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).

@@ -295,7 +295,8 @@ function callNativeFunctionValue(
   let env = realm.getRunningContext().lexicalEnvironment;
   let context = env.environmentRecord.GetThisBinding();
 
-  const functionCall = contextVal => {
+  // we have an inConditional flag, as we do not want to return
+  const functionCall = (contextVal, inConditional) => {
     try {
       invariant(
         contextVal instanceof AbstractObjectValue ||
@@ -304,15 +305,16 @@ function callNativeFunctionValue(
           contextVal instanceof UndefinedValue ||
           mightBecomeAnObject(contextVal)
       );
-      return f.callCallback(
+      let completion = f.callCallback(
         // this is to get around Flow not understand the above invariant
         ((contextVal: any): AbstractObjectValue | ObjectValue | NullValue | UndefinedValue),
         argumentsList,
         env.environmentRecord.$NewTarget
       );
+      return inConditional ? completion.value : completion;
     } catch (err) {
       if (err instanceof AbruptCompletion) {
-        return err;
+        return inConditional ? err.value : err;
       } else if (err instanceof Error) {
         throw err;
       } else {
@@ -321,21 +323,33 @@ function callNativeFunctionValue(
     }
   };
 
+  const wrapInReturnCompletion = contextVal => new ReturnCompletion(contextVal, realm.currentLocation);
+
   if (context instanceof AbstractObjectValue && context.kind === "conditional") {
     let [condValue, consequentVal, alternateVal] = context.args;
     invariant(condValue instanceof AbstractValue);
 
-    return realm.evaluateWithAbstractConditional(
-      condValue,
-      () => {
-        return realm.evaluateForEffects(() => functionCall(consequentVal), null, "callNativeFunctionValue consequent");
-      },
-      () => {
-        return realm.evaluateForEffects(() => functionCall(alternateVal), null, "callNativeFunctionValue alternate");
-      }
+    return wrapInReturnCompletion(
+      realm.evaluateWithAbstractConditional(
+        condValue,
+        () => {
+          return realm.evaluateForEffects(
+            () => functionCall(consequentVal, true),
+            null,
+            "callNativeFunctionValue consequent"
+          );
+        },
+        () => {
+          return realm.evaluateForEffects(
+            () => functionCall(alternateVal, true),
+            null,
+            "callNativeFunctionValue alternate"
+          );
+        }
+      )
     );
   }
-  return functionCall(context);
+  return functionCall(context, false);
 }
 
 // ECMA262 9.2.1.3
