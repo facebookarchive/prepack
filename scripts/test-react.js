@@ -364,6 +364,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-16.js");
       });
 
+      it("Simple 17", async () => {
+        await runTest(directory, "simple-17.js");
+      });
+
       it("__reactCompilerDoNotOptimize", async () => {
         await runTest(directory, "do-not-optimize.js");
       });
