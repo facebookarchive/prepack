@@ -1169,10 +1169,9 @@ export class PropertiesImplementation {
       if (!O.mightNotBeFinalObject()) {
         let existingBinding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
         if (existingBinding && existingBinding.descriptor) {
-          invariant(existingBinding.descriptor.leakedFinalDescriptor !== undefined);
-          return existingBinding.descriptor.leakedFinalDescriptor;
+          return existingBinding.descriptor;
         } else {
-          return realm.intrinsics.undefined;
+          return undefined;
         }
       }
 

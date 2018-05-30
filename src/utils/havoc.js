@@ -220,19 +220,6 @@ class ObjectValueHavocingVisitor {
                 }
               }
             }
-            this.realm.recordModifiedProperty(propertyBinding);
-
-            if (!obj.mightNotBeFinalObject()) {
-              let clonedDescriptor = Object.assign({}, descriptor);
-              clonedDescriptor.leakedFinalDescriptor = descriptor;
-              propertyBinding.descriptor = descriptor = clonedDescriptor;
-            }
-
-            // TODO: We need a general way to find out the right default value
-            descriptor.value =
-              obj instanceof ArrayValue && name === "length"
-                ? this.realm.intrinsics.zero
-                : this.realm.intrinsics.undefined;
           }
         }
       }

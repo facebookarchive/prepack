@@ -136,9 +136,6 @@ export type Descriptor = {
   get?: UndefinedValue | CallableObjectValue | AbstractValue,
   set?: UndefinedValue | CallableObjectValue | AbstractValue,
 
-  // After havocing a property of a final object, this was the last valid descriptor.
-  leakedFinalDescriptor?: Descriptor,
-
   // Only used if the result of a join of two descriptors is not a data descriptor with identical attribute values.
   // When present, any update to the property must produce effects that are the join of updating both desriptors,
   // using joinCondition as the condition of the join.
