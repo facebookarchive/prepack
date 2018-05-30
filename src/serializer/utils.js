@@ -124,7 +124,7 @@ export function getObjectPrototypeMetadata(
   if (obj.$IsClassPrototype) {
     skipPrototype = true;
   }
-  if (proto && proto.$IsClassPrototype === true) {
+  if (proto && proto.$IsClassPrototype) {
     invariant(proto instanceof ObjectValue);
     // we now need to check if the prototpe has a constructor
     let _constructor = proto.properties.get("constructor");

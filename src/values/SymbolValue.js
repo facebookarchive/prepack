@@ -27,7 +27,7 @@ export default class SymbolValue extends PrimitiveValue {
   }
 
   getHash(): number {
-    if (typeof this.hashValue !== "number") {
+    if (this.hashValue === undefined) {
       this.hashValue = ++this.$Realm.symbolCount;
     }
     return this.hashValue;

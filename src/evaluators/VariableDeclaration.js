@@ -115,7 +115,7 @@ export default function(
 
       // 4. Let value be ? GetValue(rhs).
       let value = Environment.GetValue(realm, rhs);
-      if (declar.id && typeof declar.id.name !== "undefined") value.__originalName = bindingId;
+      if (declar.id && declar.id.name !== undefined) value.__originalName = bindingId;
 
       // 5. If IsAnonymousFunctionDefinition(Initializer) is true, then
       if (IsAnonymousFunctionDefinition(realm, Initializer)) {
