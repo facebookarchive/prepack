@@ -58,7 +58,7 @@ import { BodyReference } from "./types.js";
 import { SerializerStatistics } from "./statistics.js";
 import { Logger } from "../utils/logger.js";
 import { Modules } from "../utils/modules.js";
-import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
+import { HeapInspector } from "../utils/HeapInspector.js";
 import { ResidualFunctions } from "./ResidualFunctions.js";
 import type { Scope } from "./ResidualHeapVisitor.js";
 import { factorifyObjects } from "./factorify.js";
@@ -113,7 +113,7 @@ export class ResidualHeapSerializer {
     logger: Logger,
     modules: Modules,
     residualHeapValueIdentifiers: ResidualHeapValueIdentifiers,
-    residualHeapInspector: ResidualHeapInspector,
+    residualHeapInspector: HeapInspector,
     residualValues: Map<Value, Set<Scope>>,
     residualFunctionInstances: Map<FunctionValue, FunctionInstance>,
     residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>,
@@ -240,7 +240,7 @@ export class ResidualHeapSerializer {
   modules: Modules;
   residualHeapValueIdentifiers: ResidualHeapValueIdentifiers;
   requireReturns: Map<number | string, Replacement>;
-  residualHeapInspector: ResidualHeapInspector;
+  residualHeapInspector: HeapInspector;
   residualValues: Map<Value, Set<Scope>>;
   residualFunctionInstances: Map<FunctionValue, FunctionInstance>;
   residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>;
@@ -417,7 +417,7 @@ export class ResidualHeapSerializer {
     // If the original prototype object was mutated,
     // request its serialization here as this might be observable by
     // residual code.
-    let prototype = ResidualHeapInspector.getPropertyValue(func, "prototype");
+    let prototype = HeapInspector.getPropertyValue(func, "prototype");
     if (prototype instanceof ObjectValue && this.residualValues.has(prototype)) {
       this.emitter.emitNowOrAfterWaitingForDependencies(
         [func],
@@ -1013,7 +1013,7 @@ export class ResidualHeapSerializer {
     }
 
     this.serializedValues.add(val);
-    if (!referenceOnly && ResidualHeapInspector.isLeaf(val)) {
+    if (!referenceOnly && HeapInspector.isLeaf(val)) {
       let res = this._serializeValue(val);
       invariant(res !== undefined);
       return res;
@@ -1904,7 +1904,7 @@ export class ResidualHeapSerializer {
       return this._serializeEmptyValue();
     } else if (val instanceof UndefinedValue) {
       return voidExpression;
-    } else if (ResidualHeapInspector.isLeaf(val)) {
+    } else if (HeapInspector.isLeaf(val)) {
       return t.valueToNode(val.serialize());
     } else if (val instanceof ObjectValue) {
       return this._serializeValueObjectBase(val);
