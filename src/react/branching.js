@@ -80,6 +80,12 @@ export function getValueWithBranchingLogicApplied(
       } else if (!xType.equals(yType)) {
         return findMatchingComponentTypes(xType, yType);
       }
+    } else if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(x) ||
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(y)
+    ) {
+      // If either case is an unknown array, we do not know
+      // the contents of the array, so we cannot add keys
     } else if (x instanceof ArrayValue && arrayDepth === 0) {
       forEachArrayValue(realm, x, (xElem, index) => {
         let yElem;
