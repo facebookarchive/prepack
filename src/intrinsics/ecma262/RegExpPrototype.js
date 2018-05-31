@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import invariant from "../../invariant.js";
@@ -237,7 +237,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 21.2.5.8
-  obj.defineNativeMethod(realm.intrinsics.SymbolReplace, 2, (context, [string, replaceValue]) => {
+  obj.defineNativeMethod(realm.intrinsics.SymbolReplace, 2, (context, [string, _replaceValue]) => {
+    let replaceValue = _replaceValue;
     // 1. Let rx be the this value.
     let rx = context.throwIfNotConcrete();
 

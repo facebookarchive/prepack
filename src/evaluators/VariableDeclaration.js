@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
@@ -115,7 +115,7 @@ export default function(
 
       // 4. Let value be ? GetValue(rhs).
       let value = Environment.GetValue(realm, rhs);
-      if (declar.id && declar.id.name) value.__originalName = bindingId;
+      if (declar.id && declar.id.name !== undefined) value.__originalName = bindingId;
 
       // 5. If IsAnonymousFunctionDefinition(Initializer) is true, then
       if (IsAnonymousFunctionDefinition(realm, Initializer)) {

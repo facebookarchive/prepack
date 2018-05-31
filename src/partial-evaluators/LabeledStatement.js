@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { BabelNodeLabeledStatement, BabelNodeStatement } from "babel-types";
 import type { LexicalEnvironment } from "../environment.js";

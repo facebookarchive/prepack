@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { UISession } from "./UISession.js";
 import type { DebuggerCLIArguments } from "./UISession.js";

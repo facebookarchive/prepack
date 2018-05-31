@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { type Effects, Realm } from "../realm.js";
 import { AbstractValue, ECMAScriptSourceFunctionValue, BoundFunctionValue, ObjectValue } from "../values/index.js";
@@ -34,12 +34,13 @@ import { Logger } from "../utils/logger.js";
 function applyWriteEffectsForOptimizedComponent(
   realm: Realm,
   componentType: ECMAScriptSourceFunctionValue,
-  effects: Effects,
+  _effects: Effects,
   componentTreeState: ComponentTreeState,
   evaluatedNode: ReactEvaluatedNode,
   writeEffects: WriteEffects,
   environmentRecordIdAfterGlobalCode: number
 ): void {
+  let effects = _effects;
   let additionalFunctionEffects = createAdditionalEffects(
     realm,
     effects,

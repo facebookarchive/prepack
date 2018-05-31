@@ -61,7 +61,7 @@ export function prepackSources(
     invariant(options.check);
     checkResidualFunctions(modules, options.check[0], options.check[1]);
     return { code: "", map: undefined };
-  } else if (options.serialize || !options.residual) {
+  } else if (options.serialize === true || options.residual !== true) {
     let serializer = new Serializer(realm, getSerializerOptions(options));
     let serialized = serializer.init(sources, options.sourceMaps);
 

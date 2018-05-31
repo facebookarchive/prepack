@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { IsDetachedBuffer } from "../../methods/index.js";
@@ -22,7 +22,8 @@ export default function(realm: Realm): NativeFunctionValue {
     "DataView",
     "DataView",
     3,
-    (context, [buffer, byteOffset, byteLength], argCount, NewTarget) => {
+    (context, [_buffer, byteOffset, byteLength], argCount, NewTarget) => {
+      let buffer = _buffer;
       // 1. If NewTarget is undefined, throw a TypeError exception.
       if (!NewTarget) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);

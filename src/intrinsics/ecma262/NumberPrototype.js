@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import {
@@ -27,7 +27,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   obj.$NumberData = realm.intrinsics.zero;
 
   // ECMA262 20.1.3.2
-  obj.defineNativeMethod("toExponential", 1, (context, [fractionDigits]) => {
+  obj.defineNativeMethod("toExponential", 1, (context, [_fractionDigits]) => {
+    let fractionDigits = _fractionDigits;
     // 1. Let x be ? thisNumberValue(this value).
     let x = To.thisNumberValue(realm, context).value;
 

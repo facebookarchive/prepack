@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, NumberValue } from "../../values/index.js";
@@ -44,7 +44,8 @@ export default function(realm: Realm): NativeFunctionValue {
 
   // ECMA262 20.1.2.2
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
-    func.defineNativeMethod("isFinite", 1, (context, [number]) => {
+    func.defineNativeMethod("isFinite", 1, (context, [_number]) => {
+      let number = _number;
       // 1. If Type(number) is not Number, return false.
       if (!number.mightBeNumber()) return realm.intrinsics.false;
 
@@ -59,7 +60,8 @@ export default function(realm: Realm): NativeFunctionValue {
 
   // ECMA262 20.1.2.3
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
-    func.defineNativeMethod("isInteger", 1, (context, [number]) => {
+    func.defineNativeMethod("isInteger", 1, (context, [_number]) => {
+      let number = _number;
       // 1. If Type(number) is not Number, return false.
       if (!number.mightBeNumber()) return realm.intrinsics.false;
 
@@ -80,7 +82,8 @@ export default function(realm: Realm): NativeFunctionValue {
 
   // ECMA262 20.1.2.4
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
-    func.defineNativeMethod("isNaN", 1, (context, [number]) => {
+    func.defineNativeMethod("isNaN", 1, (context, [_number]) => {
+      let number = _number;
       // 1. If Type(number) is not Number, return false.
       if (!number.mightBeNumber()) return realm.intrinsics.false;
 
@@ -94,7 +97,8 @@ export default function(realm: Realm): NativeFunctionValue {
 
   // ECMA262 20.1.2.5
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
-    func.defineNativeMethod("isSafeInteger", 1, (context, [number]) => {
+    func.defineNativeMethod("isSafeInteger", 1, (context, [_number]) => {
+      let number = _number;
       // 1. If Type(number) is not Number, return false.
       if (!number.mightBeNumber()) return realm.intrinsics.false;
 

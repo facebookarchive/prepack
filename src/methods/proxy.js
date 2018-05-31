@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import { ProxyValue, NullValue, ObjectValue, Value, UndefinedValue } from "../values/index.js";
@@ -100,8 +100,9 @@ export function ProxyConstruct(
 }
 
 // ECMA262 9.5.14
-export function ProxyCreate(realm: Realm, target: Value, handler: Value): ProxyValue {
-  target = target.throwIfNotConcrete();
+export function ProxyCreate(realm: Realm, _target: Value, _handler: Value): ProxyValue {
+  let handler = _handler;
+  let target = _target.throwIfNotConcrete();
 
   // 1. If Type(target) is not Object, throw a TypeError exception.
   if (!(target instanceof ObjectValue)) {
