@@ -27,6 +27,9 @@ export class Stepper {
     invariant(false, "Abstract method, please override");
   }
 
+  // NOTE: Only checks if a node has changed within the same callstack.
+  // The same node in two different excutions contexts (e.g. recursive call)
+  // will not be detected. Check the stackSize in those cases.
   isAstLocationChanged(ast: BabelNode) {
     // we should only step to statements
     if (!IsStatement(ast)) return false;
@@ -69,17 +72,16 @@ export class StepOverStepper extends Stepper {
   }
   _startStackSize: number;
 
+  // It is not sufficient to simply check if the AST location has changed,
+  // since it is possible in recursive calls to return to the same
+  // AST node, but in a *different* call stack.
   isComplete(ast: BabelNode, currentStackSize: number): boolean {
-    if (!this.isAstLocationChanged(ast)) return false;
-    if (currentStackSize <= this._startStackSize) {
-      // Two cases here:
-      // If current stack length < starting stack length, the program must have
-      // hit an exception so this stepper is no longer relevant.
-      // If current stack length === starting stack length, the program returned
-      // to the same stack depth, so a step over is complete
-      return true;
-    }
-    return false;
+    // Two cases here:
+    // If current stack length < starting stack length, the program must have
+    // hit an exception so this stepper is no longer relevant.
+    // If current stack length === starting stack length, the program returned
+    // to the same stack depth, so a step over is complete
+    return currentStackSize <= this._startStackSize;
   }
 }
 
@@ -90,14 +92,13 @@ export class StepOutStepper extends Stepper {
   }
   _startStackSize: number;
 
+  // It is not sufficient to simply check if the AST location has changed,
+  // since it is possible in recursive calls to return to the same
+  // AST node, but in a *different* call stack.
   isComplete(ast: BabelNode, currentStackSize: number): boolean {
-    if (!this.isAstLocationChanged(ast)) return false;
-    if (currentStackSize < this._startStackSize) {
-      // To step out of a function, we must finish executing it.
-      // When a function completes, its execution context will be
-      // popped off the stack.
-      return true;
-    }
-    return false;
+    // To step out of a function, we must finish executing it.
+    // When a function completes, its execution context will be
+    // popped off the stack.
+    return currentStackSize < this._startStackSize;
   }
 }
