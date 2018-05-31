@@ -31,7 +31,11 @@ export default function(realm: Realm): NativeFunctionValue {
       // If we have an object that is an unknown array with numeric properties, then
       // we can return a temporal here as we know nothing of the array's properties.
       // This should be safe to do, as we never expose the internals of the array.
-      if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(array) && realm.isInPureScope()) {
+      if (
+        ArrayValue.isIntrinsicAndHasWidenedNumericProperty(array) &&
+        realm.isInPureScope() &&
+        array.$GetOwnProperty("toString") === undefined
+      ) {
         return AbstractValue.createTemporalFromBuildFunction(realm, StringValue, [array], ([objNode]) =>
           t.callExpression(t.memberExpression(objNode, t.identifier("toString")), [])
         );
