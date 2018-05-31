@@ -40,6 +40,7 @@ import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
 import { HeapInspector } from "../utils/HeapInspector.js";
 import { Logger } from "../utils/logger.js";
+import { isReactElement } from "../react/utils.js";
 
 type HavocedFunctionInfo = {
   unboundReads: Set<string>,
@@ -210,13 +211,15 @@ class ObjectValueHavocingVisitor {
             } else {
               if (realmGenerator !== undefined) {
                 let targetDescriptor = this.getHeapInspector().getTargetIntegrityDescriptor(obj);
-                if (
-                  descriptor.writable !== targetDescriptor.writable ||
-                  descriptor.configurable !== targetDescriptor.configurable
-                ) {
-                  realmGenerator.emitDefineProperty(obj, name, descriptor);
-                } else {
-                  realmGenerator.emitPropertyAssignment(obj, name, value);
+                if (!isReactElement(obj)) {
+                  if (
+                    descriptor.writable !== targetDescriptor.writable ||
+                    descriptor.configurable !== targetDescriptor.configurable
+                  ) {
+                    realmGenerator.emitDefineProperty(obj, name, descriptor);
+                  } else {
+                    realmGenerator.emitPropertyAssignment(obj, name, value);
+                  }
                 }
               }
             }

@@ -369,6 +369,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-17.js");
       });
 
+      it("Havocing of ReactElements should not result in property assignments", async () => {
+        await runTest(directory, "react-element-havoc.js");
+      });
+
       it("__reactCompilerDoNotOptimize", async () => {
         await runTest(directory, "do-not-optimize.js");
       });
