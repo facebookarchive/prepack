@@ -1,4 +1,4 @@
-// Copies of assign\(:1
+// Copies of assign\(:0
 global.f = function(x, y) {
   if (y) return Object.assign({}, x); else throw new Error();
 };

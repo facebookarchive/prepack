@@ -136,6 +136,24 @@ export default class AbstractObjectValue extends AbstractValue {
     return false;
   }
 
+  mightBeHavocedObject(): boolean {
+    if (this.values.isTop()) return false;
+    for (let element of this.values.getElements()) {
+      invariant(element instanceof ObjectValue);
+      if (element.mightBeHavocedObject()) return true;
+    }
+    return false;
+  }
+
+  mightNotBeHavocedObject(): boolean {
+    if (this.values.isTop()) return true;
+    for (let element of this.values.getElements()) {
+      invariant(element instanceof ObjectValue);
+      if (element.mightNotBeHavocedObject()) return true;
+    }
+    return false;
+  }
+
   mightBeFalse(): boolean {
     return false;
   }

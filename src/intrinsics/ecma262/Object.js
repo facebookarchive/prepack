@@ -73,8 +73,36 @@ export default function(realm: Realm): NativeFunctionValue {
       sources;
       let delayedSources = [];
 
+      const handleSnapshot = (frm, frm_was_partial) => {
+        if (to_must_be_partial) {
+          if (to instanceof AbstractObjectValue && to.values.isTop()) {
+            // We don't know which objects to make partial and making all objects partial is failure in itself
+            AbstractValue.reportIntrospectionError(to);
+            throw new FatalError();
+          } else {
+            // if to has properties, we better remove them because after the temporal call to Object.assign we don't know their values anymore
+            if (to.hasStringOrSymbolProperties()) {
+              // preserve them in a snapshot and add the snapshot to the sources
+              delayedSources.push(to.getSnapshot({ removeProperties: true }));
+            }
+
+            if (frm_was_partial) {
+              if (frm instanceof AbstractObjectValue && frm.kind === "explicit conversion to object") {
+                // Make it implicit again since it is getting delayed into an Object.assign call.
+                delayedSources.push(frm.args[0]);
+              } else {
+                let frmSnapshot = frm.getSnapshot();
+                frm.temporalAlias = frmSnapshot;
+                frm.makePartial();
+                delayedSources.push(frmSnapshot);
+              }
+            }
+          }
+        }
+      };
+
       const handleSource = nextSource => {
-        let keys, frm, frmSnapshot;
+        let keys, frm;
 
         // a. If nextSource is undefined or null, let keys be a new empty List.
         if (HasSomeCompatibleType(nextSource, NullValue, UndefinedValue)) return;
@@ -100,31 +128,7 @@ export default function(realm: Realm): NativeFunctionValue {
         }
         keys = frm.$OwnPropertyKeys();
 
-        if (to_must_be_partial) {
-          if (to instanceof AbstractObjectValue && to.values.isTop()) {
-            // We don't know which objects to make partial and making all objects partial is failure in itself
-            AbstractValue.reportIntrospectionError(to);
-            throw new FatalError();
-          } else {
-            // if to has properties, we better remove them because after the temporal call to Object.assign we don't know their values anymore
-            if (to.hasStringOrSymbolProperties()) {
-              // preserve them in a snapshot and add the snapshot to the sources
-              delayedSources.push(to.getSnapshot({ removeProperties: true }));
-            }
-
-            if (frm_was_partial) {
-              if (frm instanceof AbstractObjectValue && frm.kind === "explicit conversion to object") {
-                // Make it implicit again since it is getting delayed into an Object.assign call.
-                delayedSources.push(frm.args[0]);
-              } else {
-                frmSnapshot = frm.getSnapshot();
-                frm.temporalAlias = frmSnapshot;
-                frm.makePartial();
-                delayedSources.push(frmSnapshot);
-              }
-            }
-          }
-        }
+        handleSnapshot(frm, frm_was_partial);
 
         // c. Repeat for each element nextKey of keys in List order,
         invariant(frm, "from required");
@@ -137,20 +141,19 @@ export default function(realm: Realm): NativeFunctionValue {
         try {
           handleSource(nextSource);
         } catch (e) {
-          if (e instanceof FatalError && realm.isInPureScope()) {
-            let frm = To.ToObject(realm, nextSource);
-            if (frm.isPartialObject()) {
+          let frm = To.ToObject(realm, nextSource);
+          let validFrom = frm.mightNotBeHavocedObject();
+          let validTo = to instanceof ObjectValue || (to instanceof AbstractObjectValue && to.isSimpleObject());
+
+          if (e instanceof FatalError && realm.isInPureScope() && validFrom && validTo) {
+            let frm_was_partial = frm.isPartialObject();
+
+            if (frm_was_partial) {
               to_must_be_partial = true;
             }
-            if (frm instanceof AbstractObjectValue && frm.kind === "explicit conversion to object") {
-              // Make it implicit again since it is getting delayed into an Object.assign call.
-              delayedSources.push(frm.args[0]);
-            } else {
-              let frmSnapshot = frm.getSnapshot();
-              frm.temporalAlias = frmSnapshot;
-              frm.makePartial();
-              delayedSources.push(frmSnapshot);
-            }
+            handleSnapshot(frm, frm_was_partial);
+          } else {
+            throw e;
           }
         }
       }
