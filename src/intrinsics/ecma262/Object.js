@@ -137,7 +137,7 @@ export default function(realm: Realm): NativeFunctionValue {
         copyKeys(keys, frm, to);
       };
 
-      const tryAndApplySource = nextSource => {
+      const tryAndApplySourceOrRecover = nextSource => {
         let effects;
         let savedSuppressDiagnostics = realm.suppressDiagnostics;
         try {
@@ -148,14 +148,14 @@ export default function(realm: Realm): NativeFunctionValue {
               return realm.intrinsics.undefined;
             },
             undefined,
-            "tryAndApplySource"
+            "tryAndApplySourceOrRecover"
           );
         } catch (e) {
           let frm = To.ToObject(realm, nextSource);
           let validFrom = frm.mightNotBeHavocedObject();
           let validTo = to instanceof ObjectValue || (to instanceof AbstractObjectValue && to.isSimpleObject());
 
-          if (e instanceof FatalError && realm.isInPureScope() && validFrom && validTo) {
+          if (e instanceof FatalError && validFrom && validTo) {
             let frm_was_partial = frm.isPartialObject();
 
             if (frm_was_partial) {
@@ -185,7 +185,11 @@ export default function(realm: Realm): NativeFunctionValue {
 
       // 4. For each element nextSource of sources, in ascending index order,
       for (let nextSource of sources) {
-        tryAndApplySource(nextSource);
+        if (realm.isInPureScope()) {
+          tryAndApplySourceOrRecover(nextSource);
+        } else {
+          applySource(nextSource);
+        }
       }
 
       // 5. Return to.
