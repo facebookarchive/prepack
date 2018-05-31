@@ -124,6 +124,10 @@ function createPropsObject(
           [objAssign, props, ...args],
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
+          },
+          {
+            skipInvariant: true,
+            isPure: true,
           }
         );
       }
@@ -137,6 +141,10 @@ function createPropsObject(
         [createDefaultPropsHelper(realm), props, defaultProps],
         ([methodNode, ..._args]) => {
           return t.callExpression(methodNode, ((_args: any): Array<any>));
+        },
+        {
+          skipInvariant: true,
+          isPure: true,
         }
       );
     }

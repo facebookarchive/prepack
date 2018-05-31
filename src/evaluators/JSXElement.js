@@ -286,15 +286,17 @@ function evaluateJSXAttributes(
     } catch (e) {
       if (realm.isInPureScope() && e instanceof FatalError) {
         let flagProps = hasNoPartialKeyOrRef(realm, config);
-        // ensure the config partial
-        config.makePartial();
-
+        // TODO: maybe we can use temporalAlias and/or snapshots to improve this?
         config = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,
           [objAssign, config, ...abstractPropsArgs],
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
+          },
+          {
+            skipInvariant: true,
+            isPure: true,
           }
         );
         invariant(config instanceof AbstractObjectValue);
