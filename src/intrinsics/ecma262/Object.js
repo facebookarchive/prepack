@@ -73,12 +73,11 @@ export default function(realm: Realm): NativeFunctionValue {
       sources;
       let delayedSources = [];
 
-      // 4. For each element nextSource of sources, in ascending index order,
-      for (let nextSource of sources) {
+      const handleSource = nextSource => {
         let keys, frm, frmSnapshot;
 
         // a. If nextSource is undefined or null, let keys be a new empty List.
-        if (HasSomeCompatibleType(nextSource, NullValue, UndefinedValue)) continue;
+        if (HasSomeCompatibleType(nextSource, NullValue, UndefinedValue)) return;
 
         // b. Else,
         // i. Let from be ToObject(nextSource).
@@ -131,6 +130,29 @@ export default function(realm: Realm): NativeFunctionValue {
         invariant(frm, "from required");
         invariant(keys, "keys required");
         copyKeys(keys, frm, to);
+      };
+
+      // 4. For each element nextSource of sources, in ascending index order,
+      for (let nextSource of sources) {
+        try {
+          handleSource(nextSource);
+        } catch (e) {
+          if (e instanceof FatalError && realm.isInPureScope()) {
+            let frm = To.ToObject(realm, nextSource);
+            if (frm.isPartialObject()) {
+              to_must_be_partial = true;
+            }
+            if (frm instanceof AbstractObjectValue && frm.kind === "explicit conversion to object") {
+              // Make it implicit again since it is getting delayed into an Object.assign call.
+              delayedSources.push(frm.args[0]);
+            } else {
+              let frmSnapshot = frm.getSnapshot();
+              frm.temporalAlias = frmSnapshot;
+              frm.makePartial();
+              delayedSources.push(frmSnapshot);
+            }
+          }
+        }
       }
 
       // 5. Return to.
