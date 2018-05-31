@@ -14,7 +14,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { Reference } from "../environment.js";
-import { BreakCompletion, AbruptCompletion, ContinueCompletion } from "../completions.js";
+import { BreakCompletion, AbruptCompletion, ContinueCompletion, JoinedAbruptCompletions } from "../completions.js";
 import {
   AbstractObjectValue,
   AbstractValue,
@@ -33,7 +33,7 @@ import {
   DestructuringAssignmentEvaluation,
   GetIterator,
 } from "../methods/index.js";
-import { Environment, Properties, To } from "../singletons.js";
+import { Environment, Join, Properties, To } from "../singletons.js";
 import type {
   BabelNode,
   BabelNodeForOfStatement,
@@ -51,6 +51,24 @@ export function InternalGetResultValue(realm: Realm, result: Value | AbruptCompl
   } else {
     return result;
   }
+}
+
+export function TryToApplyEffectsOfJoiningBranches(realm: Realm, c: JoinedAbruptCompletions): AbruptCompletion {
+  let joinedEffects = Join.joinNestedEffects(realm, c);
+  let jr = joinedEffects.result;
+  invariant(jr instanceof AbruptCompletion);
+  if (jr instanceof ContinueCompletion || jr instanceof BreakCompletion) {
+    // The end of a loop body is join point for these.
+    realm.applyEffects(joinedEffects, "end of loop body");
+  } else if (jr instanceof JoinedAbruptCompletions) {
+    if (jr.containsBreakOrContinue()) {
+      // todo: extract the continue completions, apply those while stashing the other comletions
+      // in realm.savedCompletion. This may need customization depending on the caller.
+      AbstractValue.reportIntrospectionError(jr.joinCondition);
+      throw new FatalError();
+    }
+  }
+  return jr;
 }
 
 // ECMA262 13.7.1.2
@@ -328,6 +346,7 @@ export function ForInOfBodyEvaluation(
     // i. Let result be the result of evaluating stmt.
     let result = env.evaluateCompletion(stmt, strictCode);
     invariant(result instanceof Value || result instanceof AbruptCompletion);
+    if (result instanceof JoinedAbruptCompletions) result = TryToApplyEffectsOfJoiningBranches(realm, result);
 
     // j. Set the running execution context's LexicalEnvironment to oldEnv.
 

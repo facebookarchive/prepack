@@ -15,8 +15,8 @@ import { FatalError } from "../errors.js";
 import { Value } from "../values/index.js";
 import { EmptyValue } from "../values/index.js";
 import { UpdateEmpty } from "../methods/index.js";
-import { LoopContinues, InternalGetResultValue } from "./ForOfStatement.js";
-import { AbruptCompletion, BreakCompletion } from "../completions.js";
+import { LoopContinues, InternalGetResultValue, TryToApplyEffectsOfJoiningBranches } from "./ForOfStatement.js";
+import { AbruptCompletion, BreakCompletion, JoinedAbruptCompletions } from "../completions.js";
 import { Environment, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeDoWhileStatement } from "babel-types";
@@ -40,6 +40,7 @@ export default function(
       let stmt = env.evaluateCompletion(body, strictCode);
       //todo: check if stmt is a PossiblyNormalCompletion and defer to fixpoint computation below
       invariant(stmt instanceof Value || stmt instanceof AbruptCompletion);
+      if (stmt instanceof JoinedAbruptCompletions) stmt = TryToApplyEffectsOfJoiningBranches(realm, stmt);
 
       // b. If LoopContinues(stmt, labelSet) is false, return Completion(UpdateEmpty(stmt, V)).
       if (LoopContinues(realm, stmt, labelSet) === false) {

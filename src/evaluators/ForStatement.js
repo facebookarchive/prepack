@@ -24,7 +24,7 @@ import {
 } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { UpdateEmpty } from "../methods/index.js";
-import { LoopContinues, InternalGetResultValue } from "./ForOfStatement.js";
+import { LoopContinues, InternalGetResultValue, TryToApplyEffectsOfJoiningBranches } from "./ForOfStatement.js";
 import { Environment, Functions, Join, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeForStatement } from "babel-types";
@@ -100,6 +100,7 @@ function ForBodyEvaluation(
     // b. Let result be the result of evaluating stmt.
     let result = env.evaluateCompletion(stmt, strictCode);
     invariant(result instanceof Value || result instanceof AbruptCompletion);
+    if (result instanceof JoinedAbruptCompletions) result = TryToApplyEffectsOfJoiningBranches(realm, result);
 
     // c. If LoopContinues(result, labelSet) is false, return Completion(UpdateEmpty(result, V)).
     if (!LoopContinues(realm, result, labelSet)) {

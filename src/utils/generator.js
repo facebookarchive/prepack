@@ -1080,21 +1080,6 @@ export class Generator {
     }
   }
 
-  composeGenerators(generator1: Generator, generator2: Generator): void {
-    invariant(generator1 !== this && generator2 !== this && generator1 !== generator2);
-    this._addEntry({
-      args: [],
-      buildNode: function([], context, valuesToProcess) {
-        let statements1 = generator1.empty() ? [] : context.serializeGenerator(generator1, valuesToProcess);
-        let statements2 = generator2.empty() ? [] : context.serializeGenerator(generator2, valuesToProcess);
-        let statements = statements1.concat(statements2);
-        if (statements.length === 1) return statements[0];
-        return t.blockStatement(statements);
-      },
-      dependencies: [generator1, generator2],
-    });
-  }
-
   joinGenerators(joinCondition: AbstractValue, generator1: Generator, generator2: Generator): void {
     invariant(generator1 !== this && generator2 !== this && generator1 !== generator2);
     if (generator1.empty() && generator2.empty()) return;

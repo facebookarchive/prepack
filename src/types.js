@@ -696,7 +696,7 @@ export type JoinType = {
     c1: PossiblyNormalCompletion,
     c2: AbruptCompletion,
     realm: Realm
-  ): AbruptCompletion,
+  ): JoinedAbruptCompletions,
 
   unbundleNormalCompletion(
     completionOrValue: Completion | Value | Reference
@@ -769,6 +769,13 @@ export type JoinType = {
   joinEffects(realm: Realm, joinCondition: Value, e1: Effects, e2: Effects): Effects,
 
   joinNestedEffects(realm: Realm, c: Completion, precedingEffects?: Effects): Effects,
+
+  collapseResults(
+    realm: Realm,
+    joinCondition: AbstractValue,
+    result1: EvaluationResult,
+    result2: EvaluationResult
+  ): AbruptCompletion | PossiblyNormalCompletion | Value,
 
   joinResults(
     realm: Realm,
