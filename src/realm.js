@@ -55,7 +55,7 @@ import { cloneDescriptor, Construct } from "./methods/index.js";
 import {
   AbruptCompletion,
   Completion,
-  JoinedAbruptCompletions,
+  ForkedAbruptCompletion,
   PossiblyNormalCompletion,
   ThrowCompletion,
 } from "./completions.js";
@@ -497,7 +497,7 @@ export class Realm {
         this.clearBlockBindingsFromCompletion(completion.alternate, environmentRecord);
       if (completion.consequent instanceof Completion)
         this.clearBlockBindingsFromCompletion(completion.consequent, environmentRecord);
-    } else if (completion instanceof JoinedAbruptCompletions) {
+    } else if (completion instanceof ForkedAbruptCompletion) {
       this.clearBlockBindings(completion.alternateEffects.modifiedBindings, environmentRecord);
       this.clearBlockBindings(completion.consequentEffects.modifiedBindings, environmentRecord);
       if (completion.alternate instanceof Completion)
@@ -552,7 +552,7 @@ export class Realm {
         this.clearFunctionBindingsFromCompletion(completion.alternate, funcVal);
       if (completion.consequent instanceof Completion)
         this.clearFunctionBindingsFromCompletion(completion.consequent, funcVal);
-    } else if (completion instanceof JoinedAbruptCompletions) {
+    } else if (completion instanceof ForkedAbruptCompletion) {
       this.clearFunctionBindings(completion.alternateEffects.modifiedBindings, funcVal);
       this.clearFunctionBindings(completion.consequentEffects.modifiedBindings, funcVal);
       if (completion.alternate instanceof Completion)
@@ -972,9 +972,9 @@ export class Realm {
     } else {
       // Join the effects, creating an abstract view of what happened, regardless
       // of the actual value of condValue.
-      joinedEffects = Join.joinEffects(this, condValue, effects1, effects2);
+      joinedEffects = Join.joinForkOrChoose(this, condValue, effects1, effects2);
       completion = joinedEffects.result;
-      if (completion instanceof JoinedAbruptCompletions) {
+      if (completion instanceof ForkedAbruptCompletion) {
         // Note that the effects are tracked separately inside completion and will be applied later.
         throw completion;
       }

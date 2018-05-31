@@ -163,7 +163,7 @@ export function OrdinaryGet(
   }
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of ownDesc.joinCondition.
-  let joinedEffects = Join.joinEffects(
+  let joinedEffects = Join.joinForkOrChoose(
     realm,
     joinCondition,
     new Effects(result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1),

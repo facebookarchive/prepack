@@ -171,7 +171,7 @@ function AbstractCaseBlockEvaluation(
 
       invariant(trueEffects !== undefined);
       invariant(falseEffects !== undefined);
-      let joinedEffects = Join.joinEffects(realm, selectionResult, trueEffects, falseEffects);
+      let joinedEffects = Join.joinForkOrChoose(realm, selectionResult, trueEffects, falseEffects);
       let completion = joinedEffects.result;
       if (completion instanceof PossiblyNormalCompletion) {
         // in this case one of the branches may complete abruptly, which means that
@@ -356,7 +356,7 @@ export default function(
           "specialized switch"
         );
         joinedEffects =
-          joinedEffects === undefined ? effects : Join.joinEffects(realm, condition, effects, joinedEffects);
+          joinedEffects === undefined ? effects : Join.joinForkOrChoose(realm, condition, effects, joinedEffects);
       }
       invariant(joinedEffects !== undefined);
       realm.applyEffects(joinedEffects, "joined specialized switch");

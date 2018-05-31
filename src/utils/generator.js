@@ -37,7 +37,7 @@ import invariant from "../invariant.js";
 import {
   Completion,
   AbruptCompletion,
-  JoinedAbruptCompletions,
+  ForkedAbruptCompletion,
   ThrowCompletion,
   ReturnCompletion,
   PossiblyNormalCompletion,
@@ -297,7 +297,7 @@ class ReturnValueEntry extends GeneratorEntry {
 }
 
 class IfThenElseEntry extends GeneratorEntry {
-  constructor(generator: Generator, completion: PossiblyNormalCompletion | JoinedAbruptCompletions, realm: Realm) {
+  constructor(generator: Generator, completion: PossiblyNormalCompletion | ForkedAbruptCompletion, realm: Realm) {
     super();
     this.completion = completion;
     this.containingGenerator = generator;
@@ -307,7 +307,7 @@ class IfThenElseEntry extends GeneratorEntry {
     this.alternateGenerator = Generator.fromEffects(completion.alternateEffects, realm, "AlternateEffects");
   }
 
-  completion: PossiblyNormalCompletion | JoinedAbruptCompletions;
+  completion: PossiblyNormalCompletion | ForkedAbruptCompletion;
   containingGenerator: Generator;
 
   condition: Value;
@@ -428,7 +428,7 @@ export class Generator {
       output.emitReturnValue(result);
     } else if (result instanceof ReturnCompletion) {
       output.emitReturnValue(result.value);
-    } else if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
+    } else if (result instanceof PossiblyNormalCompletion || result instanceof ForkedAbruptCompletion) {
       output.emitIfThenElse(result, realm);
     } else if (result instanceof ThrowCompletion) {
       output.emitThrow(result.value);
@@ -502,7 +502,7 @@ export class Generator {
     this._entries.push(new ReturnValueEntry(this, result));
   }
 
-  emitIfThenElse(result: PossiblyNormalCompletion | JoinedAbruptCompletions, realm: Realm) {
+  emitIfThenElse(result: PossiblyNormalCompletion | ForkedAbruptCompletion, realm: Realm) {
     this._entries.push(new IfThenElseEntry(this, result, realm));
   }
 
@@ -645,7 +645,7 @@ export class Generator {
   emitConditionalThrow(condition: AbstractValue, trueBranch: Completion | Value, falseBranch: Completion | Value) {
     const branchToGenerator = (name: string, branch: Completion | Value): Generator => {
       const result = new Generator(this.realm, name);
-      if (branch instanceof JoinedAbruptCompletions || branch instanceof PossiblyNormalCompletion) {
+      if (branch instanceof ForkedAbruptCompletion || branch instanceof PossiblyNormalCompletion) {
         result.emitConditionalThrow(branch.joinCondition, branch.consequent, branch.alternate);
       } else if (branch instanceof ThrowCompletion) {
         result.emitThrow(branch.value);

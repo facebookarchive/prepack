@@ -27,7 +27,7 @@ import {
 } from "../values/index.js";
 import { GetIterator, HasSomeCompatibleType, IsCallable, IsPropertyKey, IteratorStep, IteratorValue } from "./index.js";
 import { GeneratorStart } from "../methods/generator.js";
-import { ReturnCompletion, AbruptCompletion, ThrowCompletion, JoinedAbruptCompletions } from "../completions.js";
+import { ReturnCompletion, AbruptCompletion, ThrowCompletion, ForkedAbruptCompletion } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
 import { Create, Environment, Functions, Join, Havoc, To, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
@@ -411,7 +411,7 @@ export function OrdinaryCallEvaluateBody(
           invariant(abruptCompletion instanceof AbruptCompletion);
 
           // If there is single completion, we don't need to join
-          if (!(abruptCompletion instanceof JoinedAbruptCompletions)) return abruptCompletion;
+          if (!(abruptCompletion instanceof ForkedAbruptCompletion)) return abruptCompletion;
 
           // If none of the completions are return completions, there is no need to join either
           if (!abruptCompletion.containsCompletion(ReturnCompletion)) return abruptCompletion;
