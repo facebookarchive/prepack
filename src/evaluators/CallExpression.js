@@ -67,6 +67,7 @@ function evaluateReference(
   if (
     ref instanceof Reference &&
     ref.base instanceof AbstractValue &&
+    // TODO: what about ref.base conditionals that mightBeObjects?
     ref.base.mightNotBeObject() &&
     realm.isInPureScope()
   ) {
