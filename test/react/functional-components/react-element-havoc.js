@@ -4,7 +4,8 @@ this['React'] = React;
 
 function App(props) {
   "use strict";
-  var x = <div a={1} b={2} c={props.c} />
+  var b = props.b !== null ? props.b.x !== null ? props.b.x : null : null;
+  var x = <div a={1} b={b} c={props.c} />
   props.someAbstractFunction(x);
   return x;
 }
