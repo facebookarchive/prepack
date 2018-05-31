@@ -51,7 +51,7 @@ import type {
 import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "../utils/logger.js";
 import { Modules } from "../utils/modules.js";
-import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
+import { HeapInspector } from "../utils/HeapInspector.js";
 import { Referentializer } from "./Referentializer.js";
 import {
   canIgnoreClassLengthProperty,
@@ -103,7 +103,7 @@ export class ResidualHeapVisitor {
     let generator = this.realm.generator;
     invariant(generator);
     this.scope = this.globalGenerator = generator;
-    this.inspector = new ResidualHeapInspector(realm, logger);
+    this.inspector = new HeapInspector(realm, logger);
     this.referencedDeclaredValues = new Map();
     this.delayedActions = [];
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
@@ -135,7 +135,7 @@ export class ResidualHeapVisitor {
 
   // For every abstract value of kind "conditional", this map keeps track of whether the consequent and/or alternate is feasible in any scope
   conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>;
-  inspector: ResidualHeapInspector;
+  inspector: HeapInspector;
   referencedDeclaredValues: Map<AbstractValue | ConcreteValue, void | FunctionValue>;
   delayedActions: Array<{| scope: Scope, action: () => void | boolean |}>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>;
@@ -346,7 +346,7 @@ export class ResidualHeapVisitor {
     // request its serialization here as this might be observable by
     // residual code.
     invariant(func instanceof FunctionValue);
-    let prototype = ResidualHeapInspector.getPropertyValue(func, "prototype");
+    let prototype = HeapInspector.getPropertyValue(func, "prototype");
     if (
       prototype instanceof ObjectValue &&
       prototype.originalConstructor === func &&
@@ -1020,7 +1020,7 @@ export class ResidualHeapVisitor {
     } else if (val instanceof EmptyValue) {
       this.preProcessValue(val);
       this.postProcessValue(val);
-    } else if (ResidualHeapInspector.isLeaf(val)) {
+    } else if (HeapInspector.isLeaf(val)) {
       this.preProcessValue(val);
       this.postProcessValue(val);
     } else if (IsArray(this.realm, val)) {

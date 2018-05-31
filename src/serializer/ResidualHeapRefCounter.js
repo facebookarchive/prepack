@@ -17,7 +17,7 @@ import type { ObjectRefCount, AdditionalFunctionEffects } from "./types.js";
 
 import invariant from "../invariant.js";
 import { Value, EmptyValue, FunctionValue } from "../values/index.js";
-import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
+import { HeapInspector } from "../utils/HeapInspector.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 
 /**
@@ -44,7 +44,7 @@ export class ResidualHeapRefCounter extends ResidualHeapVisitor {
   }
 
   _shouldIgnore(val: Value): boolean {
-    return val instanceof EmptyValue || val.isIntrinsic() || ResidualHeapInspector.isLeaf(val);
+    return val instanceof EmptyValue || val.isIntrinsic() || HeapInspector.isLeaf(val);
   }
 
   preProcessValue(val: Value): boolean {

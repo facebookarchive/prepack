@@ -38,6 +38,8 @@ import traverse from "babel-traverse";
 import type { BabelTraversePath } from "babel-traverse";
 import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
+import { HeapInspector } from "../utils/HeapInspector.js";
+import { Logger } from "../utils/logger.js";
 
 type HavocedFunctionInfo = {
   unboundReads: Set<string>,
@@ -103,14 +105,23 @@ function getHavocedFunctionInfo(value: FunctionValue) {
 }
 
 class ObjectValueHavocingVisitor {
+  realm: Realm;
   // ObjectValues to visit if they're reachable.
   objectsTrackedForHavoc: Set<ObjectValue>;
   // Values that has been visited.
   visitedValues: Set<Value>;
+  _heapInspector: HeapInspector;
 
-  constructor(objectsTrackedForHavoc: Set<ObjectValue>) {
+  constructor(realm: Realm, objectsTrackedForHavoc: Set<ObjectValue>) {
+    this.realm = realm;
     this.objectsTrackedForHavoc = objectsTrackedForHavoc;
     this.visitedValues = new Set();
+  }
+
+  getHeapInspector(): HeapInspector {
+    if (this._heapInspector === undefined)
+      this._heapInspector = new HeapInspector(this.realm, new Logger(this.realm, /*internalDebug*/ false));
+    return this._heapInspector;
   }
 
   mustVisit(val: Value): boolean {
@@ -157,12 +168,61 @@ class ObjectValueHavocingVisitor {
     // prototype
     this.visitObjectPrototype(obj);
 
-    if (TestIntegrityLevel(obj.$Realm, obj, "frozen")) return;
+    if (TestIntegrityLevel(this.realm, obj, "frozen")) return;
 
     // if this object wasn't already havoced, we need mark it as havoced
     // so that any mutation and property access get tracked after this.
     if (obj.mightNotBeHavocedObject()) {
       obj.havoc();
+      if (obj.symbols.size > 0) {
+        throw new FatalError("TODO: Support havocing objects with symbols");
+      }
+      if (obj.unknownProperty !== undefined) {
+        // TODO: Support unknown properties, or throw FatalError.
+        // We have repros, e.g. test/serializer/additional-functions/ArrayConcat.js.
+      }
+      // TODO: We should emit current value and then reset value for all *internal slots*; this will require deep serializer support; or throw FatalError when we detect any non-initial values in internal slots.
+      let realmGenerator = this.realm.generator;
+      for (let [name, propertyBinding] of obj.properties) {
+        // ignore properties with their correct default values
+        if (this.getHeapInspector().canIgnoreProperty(obj, name)) continue;
+
+        let descriptor = propertyBinding.descriptor;
+        if (descriptor === undefined) {
+          // TODO: This happens, e.g. test/serializer/pure-functions/ObjectAssign2.js
+          // If it indeed means deleted binding, should we initialize descriptor with a deleted value?
+          if (realmGenerator !== undefined) realmGenerator.emitPropertyDelete(obj, name);
+        } else {
+          let value = descriptor.value;
+          invariant(
+            value === undefined || value instanceof Value,
+            "cannot be an array because we are not dealing with intrinsics here"
+          );
+          if (value === undefined) {
+            // TODO: Deal with accessor properties
+            // We have repros, e.g. test/serializer/pure-functions/AbstractPropertyObjectKeyAssignment.js
+          } else {
+            invariant(value instanceof Value);
+            if (value instanceof EmptyValue) {
+              if (realmGenerator !== undefined) realmGenerator.emitPropertyDelete(obj, name);
+            } else if (value.mightHaveBeenDeleted()) {
+              throw new FatalError("TODO: Support havocing objects with properties that might have been deleted");
+            } else {
+              if (realmGenerator !== undefined) {
+                let targetDescriptor = this.getHeapInspector().getTargetIntegrityDescriptor(obj);
+                if (
+                  descriptor.writable !== targetDescriptor.writable ||
+                  descriptor.configurable !== targetDescriptor.configurable
+                ) {
+                  realmGenerator.emitDefineProperty(obj, name, descriptor);
+                } else {
+                  realmGenerator.emitPropertyAssignment(obj, name, value);
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 
@@ -412,12 +472,7 @@ class ObjectValueHavocingVisitor {
       if (this.mustVisit(val)) this.visitValueFunction(val);
     } else {
       invariant(val instanceof ObjectValue);
-      if (val.originalConstructor !== undefined) {
-        invariant(val instanceof ObjectValue);
-        if (this.mustVisit(val)) this.visitValueObject(val);
-      } else {
-        if (this.mustVisit(val)) this.visitValueObject(val);
-      }
+      if (this.mustVisit(val)) this.visitValueObject(val);
     }
   }
 }
@@ -451,7 +506,7 @@ export class HavocImplementation {
       // object can safely be assumed to be deeply immutable as far as this
       // pure function is concerned. However, any mutable object needs to
       // be tainted as possibly having changed to anything.
-      let visitor = new ObjectValueHavocingVisitor(objectsTrackedForHavoc);
+      let visitor = new ObjectValueHavocingVisitor(realm, objectsTrackedForHavoc);
       visitor.visitValue(value);
     }
   }

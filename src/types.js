@@ -128,9 +128,9 @@ export type Descriptor = {
   enumerable?: boolean,
   configurable?: boolean,
 
-  // If value.IsEmpty is true then this descriptor indicates that the
+  // If value instanceof EmptyValue, then this descriptor indicates that the
   // corresponding property has been deleted.
-  // Only internal properties (those starting with $) will ever have array values.
+  // Only internal properties (those starting with $ / where internalSlot of owning property binding is true) will ever have array values.
   value?: Value | Array<any>,
 
   get?: UndefinedValue | CallableObjectValue | AbstractValue,
