@@ -14,7 +14,7 @@ App.getTrials = function(renderer, Root) {
   function someAbstractFunction() {
     // NO-OP
   }
-  renderer.update(<Root someAbstractFunction={someAbstractFunction} c={3} />);
+  renderer.update(<Root someAbstractFunction={someAbstractFunction} b={null} c={3} />);
   return [['react element havoc', renderer.toJSON()]];
 };
 
