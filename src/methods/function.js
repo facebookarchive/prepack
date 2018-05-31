@@ -1147,13 +1147,8 @@ export class FunctionImplementation {
         realm.stopEffectCaptureAndUndoEffects(savedCompletion);
         let joined_effects = Join.joinPossiblyNormalCompletionWithAbruptCompletion(realm, savedCompletion, c, e);
         let jc = joined_effects.result;
-        invariant(jc instanceof AbruptCompletion);
-        realm.applyEffects(
-          joined_effects,
-          "incorporateSavedCompletion",
-          // if the result is a joined completion, the nested generators will be appended later on
-          !(jc instanceof JoinedAbruptCompletions)
-        );
+        invariant(jc instanceof JoinedAbruptCompletions);
+        realm.applyEffects(joined_effects, "incorporateSavedCompletion", false);
         return jc;
       }
     }
