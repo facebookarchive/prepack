@@ -175,17 +175,6 @@ export class Serializer {
         );
 
         if (this.options.heapGraphFormat) {
-          if (additionalFunctionValuesAndEffects.size > 0) {
-            let diagnostic = new CompilerDiagnostic(
-              "Using __optimize with --heapGraphFilePath flag is not currently supported",
-              undefined,
-              "N/A",
-              "FatalError"
-            );
-            this.realm.handleError(diagnostic);
-            throw new FatalError("Using __optimize with --heapGraphFilePath flag is not currently supported");
-          }
-
           const heapRefCounter = new ResidualHeapRefCounter(
             this.realm,
             this.logger,

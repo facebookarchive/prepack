@@ -42,7 +42,7 @@ onmessage = function(e) {
     }
   } catch (err) {
     buffer.push({
-      message: err.message || 'An unknown error occurred'
+      message: err.stack || 'An unknown error occurred'
     });
     postMessage({ type: 'error', data: buffer });
   }
