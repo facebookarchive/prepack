@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
@@ -17,7 +17,8 @@ import { StringValue } from "../../values/index.js";
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 18.2.6.3
   let name = "decodeURIComponent";
-  return new NativeFunctionValue(realm, name, name, 1, (context, [encodedURIComponent], argCount, NewTarget) => {
+  return new NativeFunctionValue(realm, name, name, 1, (context, [_encodedURIComponent], argCount, NewTarget) => {
+    let encodedURIComponent = _encodedURIComponent;
     if (NewTarget) throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, `${name} is not a constructor`);
 
     encodedURIComponent = encodedURIComponent.throwIfNotConcrete();

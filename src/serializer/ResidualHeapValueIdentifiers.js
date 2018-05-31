@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { Value } from "../values/index.js";
 import type { BabelNodeIdentifier } from "babel-types";

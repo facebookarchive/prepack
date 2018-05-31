@@ -67,7 +67,7 @@ export function havocBinding(binding: Binding) {
     if (value !== undefined) {
       let realmGenerator = realm.generator;
       if (realmGenerator !== undefined) realmGenerator.emitBindingAssignment(binding, value);
-      if (!binding.mutable) binding.leakedImmutableValue = value;
+      if (binding.mutable !== true) binding.leakedImmutableValue = value;
       binding.value = realm.intrinsics.undefined;
     }
   }
@@ -242,7 +242,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     let binding = envRec.bindings[N];
 
     // 2. Assert: envRec must have an uninitialized binding for N.
-    invariant(binding && !binding.initialized, `shouldn't have the binding ${N}`);
+    invariant(binding && binding.initialized !== true, `shouldn't have the binding ${N}`);
 
     // 3. Set the bound value for N in envRec to V.
     if (!skipRecord) this.realm.recordModifiedBinding(binding, V).value = V;
@@ -256,7 +256,8 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
   }
 
   // ECMA262 8.1.1.1.5
-  SetMutableBinding(N: string, V: Value, S: boolean): Value {
+  SetMutableBinding(N: string, V: Value, _S: boolean): Value {
+    let S = _S;
     // We can mutate frozen bindings because of captured bindings.
     let realm = this.realm;
 
@@ -283,10 +284,10 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     }
 
     // 3. If the binding for N in envRec is a strict binding, let S be true.
-    if (binding.strict) S = true;
+    if (binding.strict === true) S = true;
 
     // 4. If the binding for N in envRec has not yet been initialized, throw a ReferenceError exception.
-    if (!binding.initialized) {
+    if (binding.initialized !== true) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError, `${N} has not yet been initialized`);
     } else if (binding.mutable) {
       // 5. Else if the binding for N in envRec is a mutable binding, change its bound value to V.

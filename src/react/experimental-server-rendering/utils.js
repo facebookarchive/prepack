@@ -128,9 +128,9 @@ export function normalizeNode(realm: Realm, reactNode: ReactNode): ReactNode {
           }
         }
       } else if (newReactNode === undefined) {
-        newReactNode = [element];
+        newReactNode = ([element]: Array<ReactNode>);
       } else if (typeof newReactNode === "string") {
-        newReactNode = [newReactNode, element];
+        newReactNode = ([newReactNode, element]: Array<ReactNode>);
       } else {
         newReactNode.push(element);
       }

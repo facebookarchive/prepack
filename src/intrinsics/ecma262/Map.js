@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import {
@@ -32,7 +32,8 @@ import { Create } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
-  let func = new NativeFunctionValue(realm, "Map", "Map", 0, (context, [iterable], argCount, NewTarget) => {
+  let func = new NativeFunctionValue(realm, "Map", "Map", 0, (context, [_iterable], argCount, NewTarget) => {
+    let iterable = _iterable;
     // 1. If NewTarget is undefined, throw a TypeError exception.
     if (!NewTarget) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);

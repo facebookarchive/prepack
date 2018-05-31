@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, NumberValue, StringValue, SymbolValue } from "../../values/index.js";
@@ -127,7 +127,8 @@ export default function(realm: Realm): NativeFunctionValue {
 
   // ECMA262 21.1.2.4
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
-    func.defineNativeMethod("raw", 1, (context, [template, ...substitutions], argCount) => {
+    func.defineNativeMethod("raw", 1, (context, [template, ..._substitutions], argCount) => {
+      let substitutions = _substitutions;
       // 1. Let substitutions be a List consisting of all of the arguments passed to this function, starting with the second argument. If fewer than two arguments were passed, the List is empty.
       substitutions = argCount < 2 ? [] : substitutions;
 

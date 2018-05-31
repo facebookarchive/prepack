@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { CallableObjectValue } from "../types.js";
@@ -20,7 +20,8 @@ import { SameValue } from "./abstract.js";
 import { Create, To } from "../singletons.js";
 
 // ECMA262 7.4.1
-export function GetIterator(realm: Realm, obj: Value = realm.intrinsics.undefined, method?: Value): ObjectValue {
+export function GetIterator(realm: Realm, obj: Value = realm.intrinsics.undefined, _method?: Value): ObjectValue {
+  let method = _method;
   // 1. If method was not passed, then
   if (!method) {
     // a. Let method be ? GetMethod(obj, @@iterator).
@@ -28,7 +29,7 @@ export function GetIterator(realm: Realm, obj: Value = realm.intrinsics.undefine
   }
 
   // 2. Let iterator be ? Call(method, obj).
-  let iterator = Call(realm, method, obj);
+  let iterator = Call(realm, (method: Value), obj);
 
   // 3. If Type(iterator) is not Object, throw a TypeError exception.
   if (!(iterator instanceof ObjectValue)) {

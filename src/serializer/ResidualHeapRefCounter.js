@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Logger } from "../utils/logger.js";
 import type { Modules } from "../utils/modules.js";

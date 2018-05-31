@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import invariant from "./../common/invariant.js";
 import { Breakpoint } from "./Breakpoint.js";

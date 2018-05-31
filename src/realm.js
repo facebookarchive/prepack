@@ -198,7 +198,7 @@ export class Realm {
   constructor(opts: RealmOptions, statistics: RealmStatistics) {
     this.statistics = statistics;
     this.isReadOnly = false;
-    this.useAbstractInterpretation = !!opts.serialize || !!opts.residual || !!opts.check;
+    this.useAbstractInterpretation = opts.serialize === true || opts.residual === true || Array.isArray(opts.check);
     this.ignoreLeakLogic = false;
     this.isInPureTryStatement = false;
     if (opts.mathRandomSeed !== undefined) {
@@ -207,19 +207,19 @@ export class Realm {
     this.strictlyMonotonicDateNow = !!opts.strictlyMonotonicDateNow;
 
     // 0 = disabled
-    this.abstractValueImpliesMax = opts.abstractValueImpliesMax || 0;
+    this.abstractValueImpliesMax = opts.abstractValueImpliesMax !== undefined ? opts.abstractValueImpliesMax : 0;
     this.abstractValueImpliesCounter = 0;
     this.inSimplificationPath = false;
 
     this.timeout = opts.timeout;
-    if (this.timeout) {
+    if (this.timeout !== undefined) {
       // We'll call Date.now for every this.timeoutCounterThreshold'th AST node.
       // The threshold is there to reduce the cost of the surprisingly expensive Date.now call.
       this.timeoutCounter = this.timeoutCounterThreshold = 1024;
     }
 
     this.start = Date.now();
-    this.compatibility = opts.compatibility || "browser";
+    this.compatibility = opts.compatibility !== undefined ? opts.compatibility : "browser";
     this.maxStackDepth = opts.maxStackDepth || 225;
     this.invariantLevel = opts.invariantLevel || 0;
     this.invariantMode = opts.invariantMode || "throw";
@@ -455,7 +455,7 @@ export class Realm {
 
   testTimeout() {
     let timeout = this.timeout;
-    if (timeout && !--this.timeoutCounter) {
+    if (timeout !== undefined && !--this.timeoutCounter) {
       this.timeoutCounter = this.timeoutCounterThreshold;
       let total = Date.now() - this.start;
       if (total > timeout) {
@@ -710,19 +710,17 @@ export class Realm {
     strictCode: boolean,
     env: LexicalEnvironment,
     state?: any,
-    generatorName?: string
+    generatorName?: string = "evaluateNodeForEffects"
   ): Effects {
-    return this.evaluateForEffects(
-      () => env.evaluateCompletionDeref(ast, strictCode),
-      state,
-      generatorName || "evaluateNodeForEffects"
-    );
+    return this.evaluateForEffects(() => env.evaluateCompletionDeref(ast, strictCode), state, generatorName);
   }
 
-  evaluateForEffectsInGlobalEnv(func: () => Value, state?: any, generatorName?: string): Effects {
-    return this.wrapInGlobalEnv(() =>
-      this.evaluateForEffects(func, state, generatorName || "evaluateForEffectsInGlobalEnv")
-    );
+  evaluateForEffectsInGlobalEnv(
+    func: () => Value,
+    state?: any,
+    generatorName?: string = "evaluateForEffectsInGlobalEnv"
+  ): Effects {
+    return this.wrapInGlobalEnv(() => this.evaluateForEffects(func, state, generatorName));
   }
 
   // NB: does not apply generators because there's no way to cleanly revert them.
@@ -1261,9 +1259,8 @@ export class Realm {
     this.createdObjects = new Set();
   }
 
-  getCapturedEffects(completion: PossiblyNormalCompletion, v?: Value): void | Effects {
+  getCapturedEffects(completion: PossiblyNormalCompletion, v?: Value = this.intrinsics.undefined): void | Effects {
     if (completion.savedEffects === undefined) return undefined;
-    if (v === undefined) v = this.intrinsics.undefined;
     invariant(this.generator !== undefined);
     invariant(this.modifiedBindings !== undefined);
     invariant(this.modifiedProperties !== undefined);

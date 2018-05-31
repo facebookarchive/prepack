@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { ObjectValue, StringValue, NumberValue } from "../../values/index.js";
@@ -119,7 +119,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 24.2.4.5
-  obj.defineNativeMethod("getFloat32", 1, (context, [byteOffset, littleEndian]) => {
+  obj.defineNativeMethod("getFloat32", 1, (context, [byteOffset, _littleEndian]) => {
+    let littleEndian = _littleEndian;
     // 1. Let v be the this value.
     let v = context;
 
@@ -131,7 +132,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 24.2.4.6
-  obj.defineNativeMethod("getFloat64", 1, (context, [byteOffset, littleEndian]) => {
+  obj.defineNativeMethod("getFloat64", 1, (context, [byteOffset, _littleEndian]) => {
+    let littleEndian = _littleEndian;
     // 1. Let v be the this value.
     let v = context;
 
@@ -152,7 +154,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 24.2.4.8
-  obj.defineNativeMethod("getInt16", 1, (context, [byteOffset, littleEndian]) => {
+  obj.defineNativeMethod("getInt16", 1, (context, [byteOffset, _littleEndian]) => {
+    let littleEndian = _littleEndian;
     // 1. Let v be the this value.
     let v = context;
 
@@ -164,7 +167,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 24.2.4.9
-  obj.defineNativeMethod("getInt32", 1, (context, [byteOffset, littleEndian]) => {
+  obj.defineNativeMethod("getInt32", 1, (context, [byteOffset, _littleEndian]) => {
+    let littleEndian = _littleEndian;
     // 1. Let v be the this value.
     let v = context;
 
@@ -185,7 +189,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 24.2.4.11
-  obj.defineNativeMethod("getUint16", 1, (context, [byteOffset, littleEndian]) => {
+  obj.defineNativeMethod("getUint16", 1, (context, [byteOffset, _littleEndian]) => {
+    let littleEndian = _littleEndian;
     // 1. Let v be the this value.
     let v = context;
 
@@ -197,7 +202,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 24.2.4.12
-  obj.defineNativeMethod("getUint32", 1, (context, [byteOffset, littleEndian]) => {
+  obj.defineNativeMethod("getUint32", 1, (context, [byteOffset, _littleEndian]) => {
+    let littleEndian = _littleEndian;
     // 1. Let v be the this value.
     let v = context;
 
@@ -209,7 +215,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 24.2.4.13
-  obj.defineNativeMethod("setFloat32", 2, (context, [byteOffset, value, littleEndian]) => {
+  obj.defineNativeMethod("setFloat32", 2, (context, [byteOffset, value, _littleEndian]) => {
+    let littleEndian = _littleEndian;
     // 1. Let v be the this value.
     let v = context;
 
@@ -221,7 +228,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 24.2.4.14
-  obj.defineNativeMethod("setFloat64", 2, (context, [byteOffset, value, littleEndian]) => {
+  obj.defineNativeMethod("setFloat64", 2, (context, [byteOffset, value, _littleEndian]) => {
+    let littleEndian = _littleEndian;
     // 1. Let v be the this value.
     let v = context;
 
@@ -242,7 +250,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 24.2.4.16
-  obj.defineNativeMethod("setInt16", 2, (context, [byteOffset, value, littleEndian]) => {
+  obj.defineNativeMethod("setInt16", 2, (context, [byteOffset, value, _littleEndian]) => {
+    let littleEndian = _littleEndian;
     // 1. Let v be the this value.
     let v = context;
 
@@ -254,7 +263,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 24.2.4.17
-  obj.defineNativeMethod("setInt32", 2, (context, [byteOffset, value, littleEndian]) => {
+  obj.defineNativeMethod("setInt32", 2, (context, [byteOffset, value, _littleEndian]) => {
+    let littleEndian = _littleEndian;
     // 1. Let v be the this value.
     let v = context;
 
@@ -275,7 +285,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 24.2.4.19
-  obj.defineNativeMethod("setUint16", 2, (context, [byteOffset, value, littleEndian]) => {
+  obj.defineNativeMethod("setUint16", 2, (context, [byteOffset, value, _littleEndian]) => {
+    let littleEndian = _littleEndian;
     // 1. Let v be the this value.
     let v = context;
 
@@ -287,7 +298,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 24.2.4.20
-  obj.defineNativeMethod("setUint32", 2, (context, [byteOffset, value, littleEndian]) => {
+  obj.defineNativeMethod("setUint32", 2, (context, [byteOffset, value, _littleEndian]) => {
+    let littleEndian = _littleEndian;
     // 1. Let v be the this value.
     let v = context;
 

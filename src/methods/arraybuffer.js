@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { DataBlock, ElementType } from "../types.js";
@@ -49,11 +49,14 @@ export function CreateByteDataBlock(realm: Realm, size: number): DataBlock {
 export function CopyDataBlockBytes(
   realm: Realm,
   toBlock: DataBlock,
-  toIndex: number,
+  _toIndex: number,
   fromBlock: DataBlock,
-  fromIndex: number,
-  count: number
+  _fromIndex: number,
+  _count: number
 ): EmptyValue {
+  let toIndex = _toIndex;
+  let fromIndex = _fromIndex;
+  let count = _count;
   // 1. Assert: fromBlock and toBlock are distinct Data Block values.
   invariant(toBlock instanceof Uint8Array && fromBlock instanceof Uint8Array && toBlock !== fromBlock);
 
@@ -133,12 +136,12 @@ export function DetachArrayBuffer(realm: Realm, arrayBuffer: ObjectValue): NullV
 // ECMA262 24.2.1.1
 export function GetViewValue(
   realm: Realm,
-  view: Value,
+  _view: Value,
   requestIndex: Value,
   isLittleEndian: Value,
   type: ElementType
 ): NumberValue {
-  view = view.throwIfNotConcrete();
+  let view = _view.throwIfNotConcrete();
 
   // 1. If Type(view) is not Object, throw a TypeError exception.
   if (!(view instanceof ObjectValue)) {
@@ -200,8 +203,9 @@ export function GetValueFromBuffer(
   arrayBuffer: ObjectValue,
   byteIndex: number,
   type: ElementType,
-  isLittleEndian?: boolean
+  _isLittleEndian?: boolean
 ): NumberValue {
+  let isLittleEndian = _isLittleEndian;
   // 1. Assert: IsDetachedBuffer(arrayBuffer) is false.
   invariant(IsDetachedBuffer(realm, arrayBuffer) === false);
 
@@ -275,13 +279,13 @@ export function GetValueFromBuffer(
 // ECMA262 24.2.1.2
 export function SetViewValue(
   realm: Realm,
-  view: Value,
+  _view: Value,
   requestIndex: Value,
   isLittleEndian: Value,
   type: ElementType,
   value: Value
 ): UndefinedValue {
-  view = view.throwIfNotConcrete();
+  let view = _view.throwIfNotConcrete();
 
   // 1. If Type(view) is not Object, throw a TypeError exception.
   if (!(view instanceof ObjectValue)) {
@@ -345,8 +349,9 @@ export function CloneArrayBuffer(
   realm: Realm,
   srcBuffer: ObjectValue,
   srcByteOffset: number,
-  cloneConstructor?: ObjectValue
+  _cloneConstructor?: ObjectValue
 ): ObjectValue {
+  let cloneConstructor = _cloneConstructor;
   // 1. Assert: Type(srcBuffer) is Object and it has an [[ArrayBufferData]] internal slot.
   invariant(srcBuffer instanceof ObjectValue && srcBuffer.$ArrayBufferData);
 
@@ -359,10 +364,10 @@ export function CloneArrayBuffer(
     if (IsDetachedBuffer(realm, srcBuffer) === true) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(srcBuffer) is true");
     }
+  } else {
+    // 3. Else, Assert: IsConstructor(cloneConstructor) is true.
+    invariant(IsConstructor(realm, cloneConstructor) === true, "IsConstructor(cloneConstructor) is true");
   }
-
-  // 3. Else, Assert: IsConstructor(cloneConstructor) is true.
-  invariant(IsConstructor(realm, cloneConstructor) === true, "IsConstructor(cloneConstructor) is true");
 
   // 4. Let srcLength be the value of srcBuffer's [[ArrayBufferByteLength]] internal slot.
   let srcLength = srcBuffer.$ArrayBufferByteLength;
@@ -379,7 +384,7 @@ export function CloneArrayBuffer(
   invariant(srcBlock);
 
   // 8. Let targetBuffer be ? AllocateArrayBuffer(cloneConstructor, srcLength).
-  let targetBuffer = AllocateArrayBuffer(realm, cloneConstructor, srcLength);
+  let targetBuffer = AllocateArrayBuffer(realm, (cloneConstructor: ObjectValue), srcLength);
 
   // 9. If IsDetachedBuffer(srcBuffer) is true, throw a TypeError exception.
   if (IsDetachedBuffer(realm, srcBuffer) === true) {
@@ -404,8 +409,9 @@ export function SetValueInBuffer(
   byteIndex: number,
   type: ElementType,
   value: number,
-  isLittleEndian?: boolean
+  _isLittleEndian?: boolean
 ): UndefinedValue {
+  let isLittleEndian = _isLittleEndian;
   // 1. Assert: IsDetachedBuffer(arrayBuffer) is false.
   invariant(IsDetachedBuffer(realm, arrayBuffer) === false);
 

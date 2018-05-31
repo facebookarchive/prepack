@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import {
@@ -30,9 +30,11 @@ import type { BabelNodeClassMethod } from "babel-types";
 export function MakeConstructor(
   realm: Realm,
   F: ECMAScriptSourceFunctionValue,
-  writablePrototype?: boolean,
-  prototype?: ObjectValue
+  _writablePrototype?: boolean,
+  _prototype?: ObjectValue
 ): UndefinedValue {
+  let writablePrototype = _writablePrototype;
+  let prototype = _prototype;
   // 1. Assert: F is an ECMAScript function object.
   invariant(F instanceof ECMAScriptSourceFunctionValue, "expected function value");
 
@@ -78,9 +80,11 @@ export function MakeConstructor(
 export function Construct(
   realm: Realm,
   F: ObjectValue,
-  argumentsList?: Array<Value>,
-  newTarget?: ObjectValue
+  _argumentsList?: Array<Value>,
+  _newTarget?: ObjectValue
 ): ObjectValue {
+  let argumentsList = _argumentsList;
+  let newTarget = _newTarget;
   // If newTarget was not passed, let newTarget be F.
   if (!newTarget) newTarget = F;
 

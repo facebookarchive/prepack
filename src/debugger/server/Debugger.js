@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { BreakpointManager } from "./BreakpointManager.js";
 import type { BabelNode, BabelNodeSourceLocation } from "babel-types";

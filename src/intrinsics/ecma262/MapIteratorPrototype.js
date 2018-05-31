@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { StringValue, NumberValue, ObjectValue, UndefinedValue } from "../../values/index.js";
