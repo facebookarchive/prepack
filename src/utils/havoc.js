@@ -206,6 +206,7 @@ class ObjectValueHavocingVisitor {
             if (value instanceof EmptyValue) {
               if (realmGenerator !== undefined) realmGenerator.emitPropertyDelete(obj, name);
             } else if (value.mightHaveBeenDeleted()) {
+              // Tracking this in an issue: #2067
               // throw new FatalError("TODO: Support havocing objects with properties that might have been deleted");
             } else {
               if (realmGenerator !== undefined) {
