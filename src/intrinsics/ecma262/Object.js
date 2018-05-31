@@ -153,7 +153,7 @@ export default function(realm: Realm): NativeFunctionValue {
         } catch (e) {
           let frm = To.ToObject(realm, nextSource);
           let validFrom = frm.mightNotBeHavocedObject();
-          let validTo = to instanceof ObjectValue || (to instanceof AbstractObjectValue && to.isSimpleObject());
+          let validTo = to.isSimpleObject();
 
           if (e instanceof FatalError && validFrom && validTo) {
             let frm_was_partial = frm.isPartialObject();
