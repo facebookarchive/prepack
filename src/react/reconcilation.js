@@ -1357,8 +1357,8 @@ export class Reconciler {
           }
           this._queueOptimizedClosure(func, evaluatedNode, componentType, context);
         }
-        return arrayValue;
       }
+      return arrayValue;
     }
     return mapArrayValue(this.realm, arrayValue, elementValue =>
       this._resolveDeeply(componentType, elementValue, context, "NEW_BRANCH", evaluatedNode)

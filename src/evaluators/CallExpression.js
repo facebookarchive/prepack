@@ -13,11 +13,17 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
 import { Effects } from "../realm.js";
-import type { LexicalEnvironment } from "../environment.js";
+import { type LexicalEnvironment, type BaseValue, mightBecomeAnObject } from "../environment.js";
 import { EnvironmentRecord } from "../environment.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import { Value } from "../values/index.js";
-import { AbstractValue, AbstractObjectValue, BooleanValue, ConcreteValue, FunctionValue } from "../values/index.js";
+import {
+  AbstractValue,
+  AbstractObjectValue,
+  ConcreteValue,
+  FunctionValue,
+  ObjectValue,
+  Value,
+} from "../values/index.js";
 import { Reference } from "../environment.js";
 import { Environment, Functions, Havoc, Join } from "../singletons.js";
 import {
@@ -47,26 +53,102 @@ export default function(
 
   // 1. Let ref be the result of evaluating MemberExpression.
   let ref = env.evaluate(ast.callee, strictCode);
+
+  return evaluateReference(ref, ast, strictCode, env, realm);
+}
+
+function evaluateReference(
+  ref: Reference | Value,
+  ast: BabelNodeCallExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value {
   if (
     ref instanceof Reference &&
     ref.base instanceof AbstractValue &&
+    // TODO: what about ref.base conditionals that mightBeObjects?
     ref.base.mightNotBeObject() &&
     realm.isInPureScope()
   ) {
-    let dummy = ref.base;
+    let base = ref.base;
+    if (base.kind === "conditional") {
+      return evaluateConditionalReferenceBase(ref, ast, strictCode, env, realm);
+    }
     // avoid explicitly converting ref.base to an object because that will create a generator entry
     // leading to two object allocations rather than one.
     return realm.evaluateWithPossibleThrowCompletion(
-      () => generateRuntimeCall(ref, dummy, ast, strictCode, env, realm),
+      () => generateRuntimeCall(ref, base, ast, strictCode, env, realm),
       TypesDomain.topVal,
       ValuesDomain.topVal
     );
   }
-
   // 2. Let func be ? GetValue(ref).
   let func = Environment.GetValue(realm, ref);
 
   return EvaluateCall(ref, func, ast, strictCode, env, realm);
+}
+
+function evaluateConditionalReferenceBase(
+  ref: Reference,
+  ast: BabelNodeCallExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value {
+  let base = ref.base;
+  invariant(base instanceof AbstractValue);
+  invariant(base.kind === "conditional", "evaluateConditionalReferenceBase expects an abstract conditional");
+  let [condValue, consequentVal, alternateVal] = base.args;
+  invariant(condValue instanceof AbstractValue);
+
+  return realm.evaluateWithAbstractConditional(
+    condValue,
+    () => {
+      return realm.evaluateForEffects(
+        () => {
+          if (
+            consequentVal instanceof AbstractObjectValue ||
+            consequentVal instanceof ObjectValue ||
+            mightBecomeAnObject(consequentVal)
+          ) {
+            let consequentRef = new Reference(
+              ((consequentVal: any): BaseValue),
+              ref.referencedName,
+              ref.strict,
+              ref.thisValue
+            );
+            return evaluateReference(consequentRef, ast, strictCode, env, realm);
+          }
+          return consequentVal;
+        },
+        null,
+        "evaluateConditionalReferenceBase consequent"
+      );
+    },
+    () => {
+      return realm.evaluateForEffects(
+        () => {
+          if (
+            alternateVal instanceof AbstractObjectValue ||
+            alternateVal instanceof ObjectValue ||
+            mightBecomeAnObject(alternateVal)
+          ) {
+            let alternateRef = new Reference(
+              ((alternateVal: any): BaseValue),
+              ref.referencedName,
+              ref.strict,
+              ref.thisValue
+            );
+            return evaluateReference(alternateRef, ast, strictCode, env, realm);
+          }
+          return alternateVal;
+        },
+        null,
+        "evaluateConditionalReferenceBase alternate"
+      );
+    }
+  );
 }
 
 function callBothFunctionsAndJoinTheirEffects(
@@ -77,7 +159,7 @@ function callBothFunctionsAndJoinTheirEffects(
   realm: Realm
 ): Value {
   let [cond, func1, func2] = args;
-  invariant(cond instanceof AbstractValue && cond.getType() === BooleanValue);
+  invariant(cond instanceof AbstractValue);
   invariant(Value.isTypeCompatibleWith(func1.getType(), FunctionValue));
   invariant(Value.isTypeCompatibleWith(func2.getType(), FunctionValue));
 
