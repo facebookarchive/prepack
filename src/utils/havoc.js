@@ -211,7 +211,7 @@ class ObjectValueHavocingVisitor {
             } else {
               if (realmGenerator !== undefined) {
                 let targetDescriptor = this.getHeapInspector().getTargetIntegrityDescriptor(obj);
-                if (obj.mightNotBeFinalObject()) {
+                if (!isReactElement(obj)) {
                   if (
                     descriptor.writable !== targetDescriptor.writable ||
                     descriptor.configurable !== targetDescriptor.configurable
