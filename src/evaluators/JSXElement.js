@@ -269,8 +269,6 @@ function evaluateJSXAttributes(
 
     // create a new config object that will be the target of the Object.assign
     config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-    // ensure the config partial
-    config.makePartial();
 
     // get the global Object.assign
     let globalObj = Get(realm, realm.$GlobalObject, "Object");
@@ -288,6 +286,8 @@ function evaluateJSXAttributes(
     } catch (e) {
       if (realm.isInPureScope() && e instanceof FatalError) {
         let flagProps = hasNoPartialKeyOrRef(realm, config);
+        // ensure the config partial
+        config.makePartial();
 
         config = AbstractValue.createTemporalFromBuildFunction(
           realm,

@@ -13,6 +13,7 @@ import { ValuesDomain } from "../../domains/index.js";
 import { FatalError } from "../../errors.js";
 import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
+import { AbruptCompletion, PossiblyNormalCompletion } from "../../completions.js";
 import {
   AbstractValue,
   AbstractObjectValue,
@@ -101,7 +102,7 @@ export default function(realm: Realm): NativeFunctionValue {
         }
       };
 
-      const handleSource = nextSource => {
+      const applySource = nextSource => {
         let keys, frm;
 
         // a. If nextSource is undefined or null, let keys be a new empty List.
@@ -136,10 +137,19 @@ export default function(realm: Realm): NativeFunctionValue {
         copyKeys(keys, frm, to);
       };
 
-      // 4. For each element nextSource of sources, in ascending index order,
-      for (let nextSource of sources) {
+      const tryAndApplySource = nextSource => {
+        let effects;
+        let savedSuppressDiagnostics = realm.suppressDiagnostics;
         try {
-          handleSource(nextSource);
+          realm.suppressDiagnostics = true;
+          effects = realm.evaluateForEffects(
+            () => {
+              applySource(nextSource);
+              return realm.intrinsics.undefined;
+            },
+            undefined,
+            "tryAndApplySource"
+          );
         } catch (e) {
           let frm = To.ToObject(realm, nextSource);
           let validFrom = frm.mightNotBeHavocedObject();
@@ -152,10 +162,30 @@ export default function(realm: Realm): NativeFunctionValue {
               to_must_be_partial = true;
             }
             handleSnapshot(frm, frm_was_partial);
-          } else {
-            throw e;
+            return;
           }
+          throw e;
+        } finally {
+          realm.suppressDiagnostics = savedSuppressDiagnostics;
         }
+        // Note that the effects of (non joining) abrupt branches are not included
+        // in effects, but are tracked separately inside completion.
+        realm.applyEffects(effects);
+        let completion = effects.result;
+        if (completion instanceof PossiblyNormalCompletion) {
+          // in this case one of the branches may complete abruptly, which means that
+          // not all control flow branches join into one flow at this point.
+          // Consequently we have to continue tracking changes until the point where
+          // all the branches come together into one.
+          completion = realm.composeWithSavedCompletion(completion);
+        }
+        // return or throw completion
+        if (completion instanceof AbruptCompletion) throw completion;
+      };
+
+      // 4. For each element nextSource of sources, in ascending index order,
+      for (let nextSource of sources) {
+        tryAndApplySource(nextSource);
       }
 
       // 5. Return to.
