@@ -555,22 +555,20 @@ export function GetTemplateObject(realm: Realm, templateLiteral: BabelNodeTempla
 }
 
 export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayValue, P: string | SymbolValue): Value {
+  let proto = arr.$GetPrototypeOf();
+  invariant(proto instanceof ObjectValue && proto === realm.intrinsics.ArrayPrototype);
   if (typeof P === "string") {
-    let proto = arr.$GetPrototypeOf();
-    invariant(proto instanceof ObjectValue);
-
     if (P === "length") {
       return AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, [arr], ([o]) =>
         t.memberExpression(o, t.identifier("length"), false)
       );
-    } else if (proto === realm.intrinsics.ArrayPrototype) {
-      let prototypeBinding = proto.properties.get(P);
-      if (prototypeBinding !== undefined) {
-        let descriptor = prototypeBinding.descriptor;
-        // ensure we are accessing a built-in native function
-        if (descriptor !== undefined && descriptor.value instanceof NativeFunctionValue) {
-          return descriptor.value;
-        }
+    }
+    let prototypeBinding = proto.properties.get(P);
+    if (prototypeBinding !== undefined) {
+      let descriptor = prototypeBinding.descriptor;
+      // ensure we are accessing a built-in native function
+      if (descriptor !== undefined && descriptor.value instanceof NativeFunctionValue) {
+        return descriptor.value;
       }
     }
   }
