@@ -20,7 +20,7 @@ function App(props) {
 
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root item1="foo" item2="bar" />);
-  return [['simple render with jsx spread 7', renderer.toJSON()]];
+  return [['simple render with jsx spread 9', renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

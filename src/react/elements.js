@@ -295,6 +295,32 @@ export function traverseReactElement(
     traversalVisitor.visitRef(refValue);
   }
 
+  const handleChildren = () => {
+    // handle children
+    if (propsValue.properties.has("children")) {
+      let childrenValue = getProperty(realm, propsValue, "children");
+      if (childrenValue !== realm.intrinsics.undefined && childrenValue !== realm.intrinsics.null) {
+        if (childrenValue instanceof ArrayValue && !childrenValue.intrinsicName) {
+          let childrenLength = getProperty(realm, childrenValue, "length");
+          let childrenLengthValue = 0;
+          if (childrenLength instanceof NumberValue) {
+            childrenLengthValue = childrenLength.value;
+            for (let i = 0; i < childrenLengthValue; i++) {
+              let child = getProperty(realm, childrenValue, "" + i);
+              invariant(
+                child instanceof Value,
+                `ReactElement "props.children[${i}]" failed to visit due to a non-value`
+              );
+              traversalVisitor.visitChildNode(child);
+            }
+          }
+        } else {
+          traversalVisitor.visitChildNode(childrenValue);
+        }
+      }
+    }
+  };
+
   let propsValue = getProperty(realm, reactElement, "props");
   if (propsValue instanceof AbstractValue) {
     // visit object, as it's going to be spread
@@ -302,31 +328,10 @@ export function traverseReactElement(
   } else if (propsValue instanceof ObjectValue) {
     if (propsValue.isPartialObject()) {
       traversalVisitor.visitAbstractOrPartialProps(propsValue);
+      handleChildren();
     } else {
       traversalVisitor.visitConcreteProps(propsValue);
-      // handle children
-      if (propsValue.properties.has("children")) {
-        let childrenValue = getProperty(realm, propsValue, "children");
-        if (childrenValue !== realm.intrinsics.undefined && childrenValue !== realm.intrinsics.null) {
-          if (childrenValue instanceof ArrayValue && !childrenValue.intrinsicName) {
-            let childrenLength = getProperty(realm, childrenValue, "length");
-            let childrenLengthValue = 0;
-            if (childrenLength instanceof NumberValue) {
-              childrenLengthValue = childrenLength.value;
-              for (let i = 0; i < childrenLengthValue; i++) {
-                let child = getProperty(realm, childrenValue, "" + i);
-                invariant(
-                  child instanceof Value,
-                  `ReactElement "props.children[${i}]" failed to visit due to a non-value`
-                );
-                traversalVisitor.visitChildNode(child);
-              }
-            }
-          } else {
-            traversalVisitor.visitChildNode(childrenValue);
-          }
-        }
-      }
+      handleChildren();
     }
   }
 }
