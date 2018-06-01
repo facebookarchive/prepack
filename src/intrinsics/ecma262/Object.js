@@ -158,14 +158,13 @@ export default function(realm: Realm): NativeFunctionValue {
             "tryAndApplySourceOrRecover"
           );
         } catch (e) {
+          // ignore null or undefined
+          if (nextSource === realm.intrinsics.null || nextSource === realm.intrinsics.undefined) {
+            return;
+          }
           let frm = To.ToObject(realm, nextSource);
 
-          if (
-            e instanceof FatalError &&
-            to.isSimpleObject() &&
-            frm !== realm.intrinsics.null &&
-            frm !== realm.intrinsics.undefined
-          ) {
+          if (e instanceof FatalError && to.isSimpleObject()) {
             let frm_was_partial = frm.isPartialObject();
 
             if (frm_was_partial) {
