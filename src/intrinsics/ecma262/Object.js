@@ -87,7 +87,14 @@ export default function(realm: Realm): NativeFunctionValue {
               delayedSources.push(to.getSnapshot({ removeProperties: true }));
             }
 
-            if (frm_was_partial) {
+            if (frm instanceof ObjectValue && frm.mightBeHavocedObject()) {
+              // it's not safe to trust any of its values
+              let temporal = AbstractValue.createTemporalFromBuildFunction(realm, ObjectValue, [frm], ([x]) => x, {
+                skipInvariant: true,
+              });
+              invariant(temporal instanceof AbstractObjectValue);
+              delayedSources.push(temporal);
+            } else if (frm_was_partial) {
               if (frm instanceof AbstractObjectValue && frm.kind === "explicit conversion to object") {
                 // Make it implicit again since it is getting delayed into an Object.assign call.
                 delayedSources.push(frm.args[0]);
@@ -152,13 +159,10 @@ export default function(realm: Realm): NativeFunctionValue {
           );
         } catch (e) {
           let frm = To.ToObject(realm, nextSource);
-          let validFrom = frm.mightNotBeHavocedObject() && !frm.mightBeHavocedObject();
-          let validTo = to.isSimpleObject();
 
           if (
             e instanceof FatalError &&
-            validFrom &&
-            validTo &&
+            to.isSimpleObject() &&
             frm !== realm.intrinsics.null &&
             frm !== realm.intrinsics.undefined
           ) {

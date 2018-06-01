@@ -76,7 +76,7 @@ export default class AbstractObjectValue extends AbstractValue {
     }
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
-      element.temoralAlias = temporalValue;
+      element.temporalAlias = temporalValue;
     }
   }
 
@@ -132,24 +132,6 @@ export default class AbstractObjectValue extends AbstractValue {
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
       if (element.mightNotBeFinalObject()) return true;
-    }
-    return false;
-  }
-
-  mightBeHavocedObject(): boolean {
-    if (this.values.isTop()) return true;
-    for (let element of this.values.getElements()) {
-      invariant(element instanceof ObjectValue);
-      if (element.mightBeHavocedObject()) return true;
-    }
-    return false;
-  }
-
-  mightNotBeHavocedObject(): boolean {
-    if (this.values.isTop()) return true;
-    for (let element of this.values.getElements()) {
-      invariant(element instanceof ObjectValue);
-      if (element.mightNotBeHavocedObject()) return true;
     }
     return false;
   }
@@ -309,7 +291,8 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   // ECMA262 9.1.5
-  $GetOwnProperty(P: PropertyKeyValue): Descriptor | void {
+  $GetOwnProperty(_P: PropertyKeyValue): Descriptor | void {
+    let P = _P;
     if (P instanceof StringValue) P = P.value;
 
     if (this.values.isTop()) {
@@ -415,7 +398,8 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   // ECMA262 9.1.6
-  $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
+  $DefineOwnProperty(_P: PropertyKeyValue, Desc: Descriptor): boolean {
+    let P = _P;
     if (P instanceof StringValue) P = P.value;
     if (this.values.isTop()) {
       AbstractValue.reportIntrospectionError(this, P);
@@ -468,7 +452,8 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   // ECMA262 9.1.7
-  $HasProperty(P: PropertyKeyValue): boolean {
+  $HasProperty(_P: PropertyKeyValue): boolean {
+    let P = _P;
     if (P instanceof StringValue) P = P.value;
     if (this.values.isTop()) {
       let error = new CompilerDiagnostic(
@@ -505,7 +490,8 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   // ECMA262 9.1.8
-  $Get(P: PropertyKeyValue, Receiver: Value): Value {
+  $Get(_P: PropertyKeyValue, Receiver: Value): Value {
+    let P = _P;
     if (P instanceof StringValue) P = P.value;
 
     if (this.values.isTop()) {
@@ -708,7 +694,8 @@ export default class AbstractObjectValue extends AbstractValue {
     }
   }
 
-  $SetPartial(P: AbstractValue | PropertyKeyValue, V: Value, Receiver: Value): boolean {
+  $SetPartial(_P: AbstractValue | PropertyKeyValue, V: Value, Receiver: Value): boolean {
+    let P = _P;
     if (this.values.isTop()) {
       if (this.$Realm.isInPureScope()) {
         // If we're in a pure scope, we can havoc the key and the instance,
@@ -793,7 +780,8 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   // ECMA262 9.1.10
-  $Delete(P: PropertyKeyValue): boolean {
+  $Delete(_P: PropertyKeyValue): boolean {
+    let P = _P;
     if (P instanceof StringValue) P = P.value;
     if (this.values.isTop()) {
       AbstractValue.reportIntrospectionError(this, P);
