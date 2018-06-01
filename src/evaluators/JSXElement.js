@@ -264,7 +264,11 @@ function evaluateJSXAttributes(
   if (abstractSpreadCount > 0) {
     // if we only have a single spread config, then use that,
     // i.e. <div {...something} />  -->  React.createElement("div", something)
-    if (abstractSpreadCount === 1 && astAttributes.length === 1) {
+    if (
+      abstractSpreadCount === 1 &&
+      astAttributes.length === 1 &&
+      (spreadValue instanceof ObjectValue || spreadValue instanceof AbstractObjectValue)
+    ) {
       return spreadValue;
     }
     // we create an abstract Object.assign() to deal with the fact that we don't what
