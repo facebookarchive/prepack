@@ -59,6 +59,12 @@ import type { SerializerOptions } from "../options.js";
 export type SerializationContext = {|
   serializeValue: Value => BabelNodeExpression,
   serializeBinding: Binding => BabelNodeIdentifier | BabelNodeMemberExpression,
+  getPropertyAssignmentStatement: (
+    location: BabelNodeLVal,
+    value: BabelNodeExpression,
+    mightHaveBeenDeleted: boolean,
+    deleteIfMightHaveBeenDeleted: boolean
+  ) => BabelNodeStatement,
   serializeGenerator: (Generator, Set<AbstractValue | ConcreteValue>) => Array<BabelNodeStatement>,
   initGenerator: Generator => void,
   finalizeGenerator: Generator => void,
@@ -572,9 +578,12 @@ export class Generator {
     let propName = this.getAsPropertyNameExpression(key);
     this._addEntry({
       args: [object, value],
-      buildNode: ([objectNode, valueNode]) =>
-        t.expressionStatement(
-          t.assignmentExpression("=", t.memberExpression(objectNode, propName, !t.isIdentifier(propName)), valueNode)
+      buildNode: ([objectNode, valueNode], context) =>
+        context.getPropertyAssignmentStatement(
+          t.memberExpression(objectNode, propName, !t.isIdentifier(propName)),
+          valueNode,
+          value.mightHaveBeenDeleted(),
+          /* deleteIfMightHaveBeenDeleted */ true
         ),
     });
   }
