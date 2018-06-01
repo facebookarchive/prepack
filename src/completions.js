@@ -63,7 +63,7 @@ export class ReturnCompletion extends AbruptCompletion {
   }
 }
 
-export class JoinedAbruptCompletions extends AbruptCompletion {
+export class ForkedAbruptCompletion extends AbruptCompletion {
   constructor(
     realm: Realm,
     joinCondition: AbstractValue,
@@ -89,10 +89,10 @@ export class JoinedAbruptCompletions extends AbruptCompletion {
   containsCompletion(CompletionType: typeof Completion): boolean {
     if (this.consequent instanceof CompletionType) return true;
     if (this.alternate instanceof CompletionType) return true;
-    if (this.consequent instanceof JoinedAbruptCompletions) {
+    if (this.consequent instanceof ForkedAbruptCompletion) {
       if (this.consequent.containsCompletion(CompletionType)) return true;
     }
-    if (this.alternate instanceof JoinedAbruptCompletions) {
+    if (this.alternate instanceof ForkedAbruptCompletion) {
       if (this.alternate.containsCompletion(CompletionType)) return true;
     }
     return false;
@@ -101,10 +101,10 @@ export class JoinedAbruptCompletions extends AbruptCompletion {
   containsBreakOrContinue(): boolean {
     if (this.consequent instanceof BreakCompletion || this.consequent instanceof ContinueCompletion) return true;
     if (this.alternate instanceof BreakCompletion || this.alternate instanceof ContinueCompletion) return true;
-    if (this.consequent instanceof JoinedAbruptCompletions) {
+    if (this.consequent instanceof ForkedAbruptCompletion) {
       if (this.consequent.containsBreakOrContinue()) return true;
     }
-    if (this.alternate instanceof JoinedAbruptCompletions) {
+    if (this.alternate instanceof ForkedAbruptCompletion) {
       if (this.alternate.containsBreakOrContinue()) return true;
     }
     return false;
@@ -184,10 +184,10 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   containsCompletion(CompletionType: typeof Completion): boolean {
     if (this.consequent instanceof CompletionType) return true;
     if (this.alternate instanceof CompletionType) return true;
-    if (this.consequent instanceof JoinedAbruptCompletions || this.consequent instanceof PossiblyNormalCompletion) {
+    if (this.consequent instanceof ForkedAbruptCompletion || this.consequent instanceof PossiblyNormalCompletion) {
       if (this.consequent.containsCompletion(CompletionType)) return true;
     }
-    if (this.alternate instanceof JoinedAbruptCompletions || this.alternate instanceof PossiblyNormalCompletion) {
+    if (this.alternate instanceof ForkedAbruptCompletion || this.alternate instanceof PossiblyNormalCompletion) {
       if (this.alternate.containsCompletion(CompletionType)) return true;
     }
     return false;
@@ -196,10 +196,10 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   containsBreakOrContinue(): boolean {
     if (this.consequent instanceof BreakCompletion || this.consequent instanceof ContinueCompletion) return true;
     if (this.alternate instanceof BreakCompletion || this.alternate instanceof ContinueCompletion) return true;
-    if (this.consequent instanceof JoinedAbruptCompletions || this.consequent instanceof PossiblyNormalCompletion) {
+    if (this.consequent instanceof ForkedAbruptCompletion || this.consequent instanceof PossiblyNormalCompletion) {
       if (this.consequent.containsBreakOrContinue()) return true;
     }
-    if (this.alternate instanceof JoinedAbruptCompletions || this.alternate instanceof PossiblyNormalCompletion) {
+    if (this.alternate instanceof ForkedAbruptCompletion || this.alternate instanceof PossiblyNormalCompletion) {
       if (this.alternate.containsBreakOrContinue()) return true;
     }
     return false;
