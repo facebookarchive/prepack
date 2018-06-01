@@ -906,12 +906,13 @@ export class Reconciler {
 
   _resolveAbstractLogicalValue(
     componentType: Value,
-    leftValue: AbstractValue,
-    rightValue: Value,
-    operator: "||" | "&&",
+    value: AbstractValue,
     context: ObjectValue | AbstractObjectValue,
     evaluatedNode: ReactEvaluatedNode
   ) {
+    let [leftValue, rightValue] = value.args;
+    let operator = value.kind;
+
     if (operator === "||") {
       return this._resolveAbstractConditionalValue(
         componentType,
@@ -922,13 +923,29 @@ export class Reconciler {
         evaluatedNode
       );
     } else {
-      return this._resolveAbstractConditionalValue(
-        componentType,
+      return this.realm.evaluateWithAbstractConditional(
         leftValue,
-        rightValue,
-        leftValue,
-        context,
-        evaluatedNode
+        () => {
+          // in the case of x && y, the true case must compose the effects of x with those of y
+          let leftEffects = this.realm.evaluateForEffects(
+            () => this._resolveDeeply(componentType, leftValue, context, "NEW_BRANCH", evaluatedNode),
+            null,
+            "_resolveAbstractLogicalValue consequent (&&) leftEffects"
+          );
+          let rightEffects = this.realm.evaluateForEffects(
+            () => this._resolveDeeply(componentType, rightValue, context, "NEW_BRANCH", evaluatedNode),
+            null,
+            "_resolveAbstractLogicalValue consequent (&&) rightEffects"
+          );
+          return this.realm.composeEffects(leftEffects, rightEffects);
+        },
+        () => {
+          return this.realm.evaluateForEffects(
+            () => this._resolveDeeply(componentType, leftValue, context, "NEW_BRANCH", evaluatedNode),
+            null,
+            "_resolveAbstractLogicalValue alternate (&&)"
+          );
+        }
       );
     }
   }
@@ -954,9 +971,7 @@ export class Reconciler {
         evaluatedNode
       );
     } else if (value.kind === "||" || value.kind === "&&") {
-      let [leftValue, rightValue] = value.args;
-      let operator = value.kind;
-      return this._resolveAbstractLogicalValue(componentType, leftValue, rightValue, operator, context, evaluatedNode);
+      return this._resolveAbstractLogicalValue(componentType, value, context, evaluatedNode);
     } else {
       if (value instanceof AbstractValue && this.realm.react.abstractHints.has(value)) {
         let reactHint = this.realm.react.abstractHints.get(value);
