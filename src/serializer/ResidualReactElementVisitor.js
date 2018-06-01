@@ -10,7 +10,7 @@
 /* @flow strict-local */
 
 import { Realm } from "../realm.js";
-import { AbstractValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
+import { AbstractObjectValue, AbstractValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { determineIfReactElementCanBeHoisted } from "../react/hoisting.js";
 import { traverseReactElement } from "../react/elements.js";
@@ -52,10 +52,10 @@ export class ResidualReactElementVisitor {
         this.residualHeapVisitor.visitValue(refValue);
       },
       visitAbstractOrPartialProps: (propsValue: AbstractValue | ObjectValue) => {
-        if (propsValue.temporalAlias === undefined) {
-          this.residualHeapVisitor.visitValue(propsValue);
-        } else {
+        if (propsValue.temporalAlias instanceof AbstractObjectValue) {
           this.residualHeapVisitor.visitValue(propsValue.temporalAlias);
+        } else {
+          this.residualHeapVisitor.visitValue(propsValue);
         }
       },
       visitConcreteProps: (propsValue: ObjectValue) => {

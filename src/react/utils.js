@@ -837,7 +837,7 @@ export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElemen
   let keyValue = getProperty(realm, reactElement, "key");
   let propsValue = getProperty(realm, reactElement, "props");
 
-  invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue);
+  invariant(propsValue instanceof ObjectValue);
   return createInternalReactElement(
     realm,
     typeValue,
@@ -990,8 +990,11 @@ export function applyObjectAssignConfigsFoReactElement(realm: Realm, to: ObjectV
         let delayedSources = [];
 
         for (let obj of sources) {
+          if (obj === realm.intrinsics.null || obj === realm.intrinsics.undefined) {
+            continue;
+          }
           let source = To.ToObject(realm, obj);
-          if (source.isSimpleObject() && !source.isPartialObject()) {
+          if (source instanceof ObjectValue && !source.isPartialObject()) {
             // the object is simple and partial so we can safely copy over properties
             for (let [propName, binding] of source.properties) {
               if (binding.descriptor !== undefined) {
@@ -1026,12 +1029,7 @@ export function applyObjectAssignConfigsFoReactElement(realm: Realm, to: ObjectV
           { skipInvariant: true }
         );
         invariant(temporalTo instanceof AbstractObjectValue);
-        if (to instanceof AbstractObjectValue) {
-          temporalTo.values = to.values;
-        } else {
-          invariant(to instanceof ObjectValue);
-          temporalTo.values = new ValuesDomain(to);
-        }
+        temporalTo.values = new ValuesDomain(to);
         to.temporalAlias = temporalTo;
         return;
       } else {

@@ -109,10 +109,13 @@ function createPropsObject(
             let propBinding = props.properties.get(propName);
             // if the binding exists and value is abstract, it might be undefined
             // so in that case we need the helper, otherwise we can continue
-            if (propBinding !== undefined && !(propBinding.descriptor.value instanceof AbstractValue)) {
+            if (
+              propBinding !== undefined &&
+              !(propBinding.descriptor && propBinding.descriptor.value instanceof AbstractValue)
+            ) {
               defaultPropsEvaluated++;
               // if the value we have is undefined, we can apply the defaultProp
-              if (propBinding.descriptor.value === realm.intrinsics.undefined) {
+              if (propBinding.descriptor && propBinding.descriptor.value === realm.intrinsics.undefined) {
                 Properties.Set(realm, props, propName, Get(realm, defaultProps, propName), true);
               }
             }
@@ -139,6 +142,7 @@ function createPropsObject(
         if (children !== undefined && children instanceof AbstractValue) {
           // children === undefined ? defaultProps.children : children;
           let condition = AbstractValue.createFromBinaryOp(realm, "===", children, realm.intrinsics.undefined);
+          invariant(defaultProps instanceof AbstractObjectValue || defaultProps instanceof ObjectValue);
           let conditionalChildren = AbstractValue.createFromConditionalOp(
             realm,
             condition,
@@ -297,6 +301,7 @@ export function traverseReactElement(
 
   const handleChildren = () => {
     // handle children
+    invariant(propsValue instanceof ObjectValue);
     if (propsValue.properties.has("children")) {
       let childrenValue = getProperty(realm, propsValue, "children");
       if (childrenValue !== realm.intrinsics.undefined && childrenValue !== realm.intrinsics.null) {
