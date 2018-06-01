@@ -19,7 +19,7 @@ import {
   ReturnCompletion,
   AbruptCompletion,
   NormalCompletion,
-  JoinedAbruptCompletions,
+  ForkedAbruptCompletion,
 } from "../completions.js";
 import { ExecutionContext } from "../realm.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord } from "../environment.js";
@@ -1122,7 +1122,7 @@ export class FunctionImplementation {
   }
 
   // If c is an abrupt completion and realm.savedCompletion is defined, the result is an instance of
-  // JoinedAbruptCompletions and the effects that have been captured since the PossiblyNormalCompletion instance
+  // ForkedAbruptCompletion and the effects that have been captured since the PossiblyNormalCompletion instance
   // in realm.savedCompletion has been created, becomes the effects of the branch that terminates in c.
   // If c is a normal completion, the result is realm.savedCompletion, with its value updated to c.
   // If c is undefined, the result is just realm.savedCompletion.
@@ -1147,7 +1147,7 @@ export class FunctionImplementation {
         realm.stopEffectCaptureAndUndoEffects(savedCompletion);
         let joined_effects = Join.joinPossiblyNormalCompletionWithAbruptCompletion(realm, savedCompletion, c, e);
         let jc = joined_effects.result;
-        invariant(jc instanceof JoinedAbruptCompletions);
+        invariant(jc instanceof ForkedAbruptCompletion);
         realm.applyEffects(joined_effects, "incorporateSavedCompletion", false);
         return jc;
       }
