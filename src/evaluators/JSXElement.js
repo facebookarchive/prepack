@@ -37,7 +37,7 @@ import { Create, Environment, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import { createReactElement } from "../react/elements.js";
 import {
-  applyObjectAssignConfigsFoReactElement,
+  applyObjectAssignConfigsForReactElement,
   flagPropsWithNoPartialKeyOrRef,
   hasNoPartialKeyOrRef,
 } from "../react/utils.js";
@@ -264,9 +264,9 @@ function evaluateJSXAttributes(
   if (abstractSpreadCount > 0) {
     // if we only have a single spread config, then use that,
     // i.e. <div {...something} />  -->  React.createElement("div", something)
-    // if (abstractSpreadCount === 1 && astAttributes.length === 1) {
-    //   return spreadValue;
-    // }
+    if (abstractSpreadCount === 1 && astAttributes.length === 1) {
+      return spreadValue;
+    }
     // we create an abstract Object.assign() to deal with the fact that we don't what
     // the props are because they contain abstract spread attributes that we can't
     // evaluate ahead of time
@@ -276,7 +276,7 @@ function evaluateJSXAttributes(
     // create a new config object that will be the target of the Object.assign
     config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
-    applyObjectAssignConfigsFoReactElement(realm, config, abstractPropsArgs);
+    applyObjectAssignConfigsForReactElement(realm, config, abstractPropsArgs);
     if (safeAbstractSpreadCount === abstractSpreadCount) {
       flagPropsWithNoPartialKeyOrRef(realm, config);
     }

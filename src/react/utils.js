@@ -965,7 +965,7 @@ export function cloneProps(
   return clonedProps;
 }
 
-export function applyObjectAssignConfigsFoReactElement(realm: Realm, to: ObjectValue, sources: Array<Value>): void {
+export function applyObjectAssignConfigsForReactElement(realm: Realm, to: ObjectValue, sources: Array<Value>): void {
   // get the global Object.assign
   let globalObj = Get(realm, realm.$GlobalObject, "Object");
   invariant(globalObj instanceof ObjectValue);
@@ -986,16 +986,18 @@ export function applyObjectAssignConfigsFoReactElement(realm: Realm, to: ObjectV
       );
     } catch (error) {
       if (error instanceof FatalError) {
+        // if the built-in Object.assign failed, we need to recover
         realm.suppressDiagnostics = savedSuppressDiagnostics;
         let delayedSources = [];
 
         for (let obj of sources) {
+          // ignore null or undefined
           if (obj === realm.intrinsics.null || obj === realm.intrinsics.undefined) {
             continue;
           }
           let source = To.ToObject(realm, obj);
+          // the object is simple and partial so we can safely copy over properties
           if (source instanceof ObjectValue && !source.isPartialObject()) {
-            // the object is simple and partial so we can safely copy over properties
             for (let [propName, binding] of source.properties) {
               if (binding.descriptor !== undefined) {
                 Properties.Set(realm, to, propName, Get(realm, source, propName), true);
@@ -1003,6 +1005,9 @@ export function applyObjectAssignConfigsFoReactElement(realm: Realm, to: ObjectV
             }
             delayedSources.push(source.getSnapshot());
           } else {
+            // if we are dealing with an abstract object or one that is partial, then
+            // we don't try and copy its properties over as there's no guarantee they are
+            // safe to copy
             if (source instanceof AbstractObjectValue && source.kind === "explicit conversion to object") {
               // Make it implicit again since it is getting delayed into an Object.assign call.
               delayedSources.push(source.args[0]);
@@ -1016,7 +1021,7 @@ export function applyObjectAssignConfigsFoReactElement(realm: Realm, to: ObjectV
             }
           }
         }
-
+        // prepare our temporal Object.assign fallback
         to.makePartial();
         to.makeSimple();
         let temporalTo = AbstractValue.createTemporalFromBuildFunction(

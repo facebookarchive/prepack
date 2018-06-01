@@ -12,11 +12,11 @@
 import type { Realm } from "../realm.js";
 import { ValuesDomain } from "../domains/index.js";
 import { AbstractValue, AbstractObjectValue, ArrayValue, NumberValue, ObjectValue, Value } from "../values/index.js";
-import { Create, Properties, To } from "../singletons.js";
+import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
 import {
-  applyObjectAssignConfigsFoReactElement,
+  applyObjectAssignConfigsForReactElement,
   createDefaultPropsHelper,
   createInternalReactElement,
   flagPropsWithNoPartialKeyOrRef,
@@ -91,7 +91,7 @@ function createPropsObject(
     // create a new props object that will be the target of the Object.assign
     props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
-    applyObjectAssignConfigsFoReactElement(realm, props, args);
+    applyObjectAssignConfigsForReactElement(realm, props, args);
 
     if (children !== undefined) {
       Properties.Set(realm, props, "children", children, true);
