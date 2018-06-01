@@ -30,9 +30,10 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
   let adapterPath = "";
   let prepackRuntime = "";
   let prepackArguments = [];
-  let sourceFile = "";
+  let sourceFiles = [];
 
   let args = Array.from(process.argv);
+  console.log(args);
   args.splice(0, 2);
   //read in the arguments
   while (args.length > 0) {
@@ -41,7 +42,7 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
       console.error("Invalid argument: " + arg);
       process.exit(1);
     }
-    arg = arg.slice(2);
+    arg = arg.slice(2); // Slice off the -- prefix
     if (arg === "adapterPath") {
       adapterPath = args.shift();
     } else if (arg === "prepackRuntime") {
@@ -49,12 +50,21 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
     } else if (arg === "prepackArguments") {
       prepackArguments = args.shift().split(" ");
     } else if (arg === "sourceFile") {
-      sourceFile = args.shift();
+      // Support multiple source files.
+      // Interprets everything between --sourceFile and the next --[flag] or end
+      // to be a source file.
+      while (!arg.startsWith("--")) {
+        sourceFiles.push(args.shift());
+        if (args.length === 0) break;
+        arg = args[0];
+      }
     } else {
       console.error("Unknown argument: " + arg);
       process.exit(1);
     }
   }
+
+  console.log(`Source Files: ${sourceFiles}`);
 
   if (adapterPath.length === 0) {
     console.error("No path to the debug adapter provided!");
@@ -64,14 +74,14 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
     console.error("No Prepack runtime given to start Prepack");
     process.exit(1);
   }
-  if (sourceFile.length === 0) {
+  if (sourceFiles.length === 0) {
     console.error("No source code input file provided");
   }
   let result: DebuggerCLIArguments = {
     adapterPath: adapterPath,
     prepackRuntime: prepackRuntime,
     prepackArguments: prepackArguments,
-    sourceFile: sourceFile,
+    sourceFiles: sourceFiles,
   };
   return result;
 }
