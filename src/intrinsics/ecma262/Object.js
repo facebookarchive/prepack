@@ -152,7 +152,7 @@ export default function(realm: Realm): NativeFunctionValue {
           );
         } catch (e) {
           let frm = To.ToObject(realm, nextSource);
-          let validFrom = frm.mightNotBeHavocedObject();
+          let validFrom = frm.mightNotBeHavocedObject() && !frm.mightBeHavocedObject();
           let validTo = to.isSimpleObject();
 
           if (
