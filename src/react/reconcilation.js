@@ -904,6 +904,35 @@ export class Reconciler {
     return value;
   }
 
+  _resolveAbstractLogicalValue(
+    componentType: Value,
+    leftValue: AbstractValue,
+    rightValue: Value,
+    operator: "||" | "&&",
+    context: ObjectValue | AbstractObjectValue,
+    evaluatedNode: ReactEvaluatedNode
+  ) {
+    if (operator === "||") {
+      return this._resolveAbstractConditionalValue(
+        componentType,
+        leftValue,
+        leftValue,
+        rightValue,
+        context,
+        evaluatedNode
+      );
+    } else {
+      return this._resolveAbstractConditionalValue(
+        componentType,
+        leftValue,
+        rightValue,
+        leftValue,
+        context,
+        evaluatedNode
+      );
+    }
+  }
+
   _resolveAbstractValue(
     componentType: Value,
     value: AbstractValue,
@@ -924,6 +953,10 @@ export class Reconciler {
         context,
         evaluatedNode
       );
+    } else if (value.kind === "||" || value.kind === "&&") {
+      let [leftValue, rightValue] = value.args;
+      let operator = value.kind;
+      return this._resolveAbstractLogicalValue(componentType, leftValue, rightValue, operator, context, evaluatedNode);
     } else {
       if (value instanceof AbstractValue && this.realm.react.abstractHints.has(value)) {
         let reactHint = this.realm.react.abstractHints.get(value);
