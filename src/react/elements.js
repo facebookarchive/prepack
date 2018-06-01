@@ -142,7 +142,7 @@ function createPropsObject(
           }
         }
       }
-      // if defaultPropsEvauated === the amount of properties defaultProps has, then we've successfully
+      // if defaultPropsEvaluated === the amount of properties defaultProps has, then we've successfully
       // ensured all the defaultProps have already been dealt with, so we don't need the helper
       if (
         !(defaultProps instanceof ObjectValue) ||
