@@ -19,6 +19,7 @@ import {
   type AbstractValueKind,
   BooleanValue,
   ConcreteValue,
+  EmptyValue,
   FunctionValue,
   NullValue,
   NumberValue,
@@ -35,7 +36,6 @@ import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
 import {
-  Completion,
   AbruptCompletion,
   ForkedAbruptCompletion,
   ThrowCompletion,
@@ -642,24 +642,26 @@ export class Generator {
     });
   }
 
-  emitConditionalThrow(condition: AbstractValue, trueBranch: Completion | Value, falseBranch: Completion | Value) {
-    const branchToGenerator = (name: string, branch: Completion | Value): Generator => {
-      const result = new Generator(this.realm, name);
-      if (branch instanceof ForkedAbruptCompletion || branch instanceof PossiblyNormalCompletion) {
-        result.emitConditionalThrow(branch.joinCondition, branch.consequent, branch.alternate);
-      } else if (branch instanceof ThrowCompletion) {
-        result.emitThrow(branch.value);
-      } else {
-        invariant(branch instanceof ReturnCompletion || branch instanceof Value);
+  emitConditionalThrow(value: Value) {
+    function createStatement(val: Value, context: SerializationContext) {
+      if (!(val instanceof AbstractValue) || val.kind !== "conditional") {
+        return t.throwStatement(context.serializeValue(val));
       }
-      return result;
-    };
-
-    this.joinGenerators(
-      condition,
-      branchToGenerator("TrueBranch", trueBranch),
-      branchToGenerator("FalseBranch", falseBranch)
-    );
+      let [cond, trueVal, falseVal] = val.args;
+      let condVal = context.serializeValue(cond);
+      let trueStat, falseStat;
+      if (trueVal instanceof EmptyValue) trueStat = t.blockStatement([]);
+      else trueStat = createStatement(trueVal, context);
+      if (falseVal instanceof EmptyValue) falseStat = t.blockStatement([]);
+      else falseStat = createStatement(falseVal, context);
+      return t.ifStatement(condVal, trueStat, falseStat);
+    }
+    this._addEntry({
+      args: [value],
+      buildNode: function([argument], context: SerializationContext) {
+        return createStatement(value, context);
+      },
+    });
   }
 
   _issueThrowCompilerDiagnostic(value: Value) {

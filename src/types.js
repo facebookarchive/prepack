@@ -724,10 +724,7 @@ export type JoinType = {
 
   updatePossiblyNormalCompletionWithValue(realm: Realm, pnc: PossiblyNormalCompletion, v: Value): void,
 
-  // Returns the joined effects of all of the paths in pnc.
-  // The normal path in pnc is modified to become terminated by ac,
-  // so the overall completion will always be an instance of ForkedAbruptCompletion
-  joinPossiblyNormalCompletionWithAbruptCompletion(
+  replacePossiblyNormalCompletionWithForkedAbruptCompletion(
     realm: Realm,
     // a forked path with a non abrupt (normal) component
     pnc: PossiblyNormalCompletion,
@@ -735,7 +732,7 @@ export type JoinType = {
     ac: AbruptCompletion,
     // effects collected after pnc was constructed
     e: Effects
-  ): Effects,
+  ): ForkedAbruptCompletion,
 
   joinPossiblyNormalCompletionWithValue(
     realm: Realm,

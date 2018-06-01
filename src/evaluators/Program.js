@@ -9,13 +9,7 @@
 
 /* @flow */
 
-import {
-  AbruptCompletion,
-  ForkedAbruptCompletion,
-  PossiblyNormalCompletion,
-  ReturnCompletion,
-  ThrowCompletion,
-} from "../completions.js";
+import { AbruptCompletion, ForkedAbruptCompletion, PossiblyNormalCompletion, ThrowCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { Value, EmptyValue } from "../values/index.js";
@@ -270,29 +264,25 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
   if (val instanceof Value) {
     let res = Functions.incorporateSavedCompletion(realm, val);
     if (res instanceof PossiblyNormalCompletion) {
-      // There are still some conditional throws to emit and state still has to be joined in.
       // Get state to be joined in
       let e = realm.getCapturedEffects(res);
       invariant(e !== undefined);
-      let normalPathGenerator = e.generator;
       realm.stopEffectCaptureAndUndoEffects(res);
-      let effectsTree = Join.joinPossiblyNormalCompletionWithAbruptCompletion(
-        realm,
-        res,
-        new ReturnCompletion(realm.intrinsics.undefined),
-        e
-      );
-      realm.applyEffects(effectsTree, "", false);
-      // The global state is now at the point where the first fork occurred.
-      res = effectsTree.result;
-      invariant(res instanceof ForkedAbruptCompletion);
-      let generator = realm.generator;
-      invariant(generator !== undefined);
+      // The global state is now at the point where the last fork occurred.
       if (res.containsCompletion(ThrowCompletion)) {
-        generator.appendGenerator(effectsTree.generator, "");
-        generator.emitConditionalThrow(res.joinCondition, res.consequent, res.alternate);
+        // Join e with the remaining completions
+        let r = (e.result = new ThrowCompletion(realm.intrinsics.empty));
+        let fc = Join.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, res, r, e);
+        let allEffects = Join.extractAndJoinCompletionsOfType(ThrowCompletion, realm, fc);
+        realm.applyEffects(allEffects, "all code", true);
+        r = allEffects.result;
+        invariant(r instanceof ThrowCompletion);
+        let generator = realm.generator;
+        invariant(generator !== undefined);
+        generator.emitConditionalThrow(r.value);
+      } else {
+        realm.applyEffects(e, "all code", true);
       }
-      generator.appendGenerator(normalPathGenerator, "non exceptional post fork entries");
     }
   } else {
     // program was empty. Nothing to do.
