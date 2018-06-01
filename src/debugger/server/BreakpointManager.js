@@ -26,7 +26,6 @@ export class BreakpointManager {
     if (!IsStatement(ast)) return;
     if (ast.loc && ast.loc.source) {
       let location = ast.loc;
-      // console.log(`looking for breakpoints for file: ${ast.loc.source} at line ${ast.loc.start.line}`);
       let filePath = location.source;
       if (filePath === null) return;
       let lineNum = location.start.line;

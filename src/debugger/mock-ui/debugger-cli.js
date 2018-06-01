@@ -33,7 +33,6 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
   let sourceFiles = [];
 
   let args = Array.from(process.argv);
-  console.log(args);
   args.splice(0, 2);
   //read in the arguments
   while (args.length > 0) {
@@ -63,8 +62,6 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
       process.exit(1);
     }
   }
-
-  console.log(`Source Files: ${sourceFiles}`);
 
   if (adapterPath.length === 0) {
     console.error("No path to the debug adapter provided!");
