@@ -74,7 +74,7 @@ let prepackOptions = {
   reactEnabled: true,
   reactOutput: "jsx",
   reactVerbose: true,
-  reactOptimizeNestedFunctions: true,
+  reactOptimizeNestedFunctions: false,
   inlineExpressions: true,
   invariantLevel: 0,
   abstractValueImpliesMax: 1000,
