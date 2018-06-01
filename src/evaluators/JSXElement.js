@@ -286,12 +286,11 @@ function evaluateJSXAttributes(
     } catch (e) {
       if (realm.isInPureScope() && e instanceof FatalError) {
         let flagProps = hasNoPartialKeyOrRef(realm, config);
-        let emptyObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
         // TODO: maybe we can use temporalAlias and/or snapshots to improve this?
         config = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,
-          [objAssign, emptyObject, ...abstractPropsArgs],
+          [objAssign, config, ...abstractPropsArgs],
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           },

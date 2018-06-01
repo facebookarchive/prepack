@@ -118,11 +118,10 @@ function createPropsObject(
     } catch (e) {
       if (realm.isInPureScope() && e instanceof FatalError) {
         // TODO: maybe we can use temporalAlias and/or snapshots to improve this?
-        let emptyObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
         props = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,
-          [objAssign, emptyObject, ...args],
+          [objAssign, props, ...args],
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           },
