@@ -155,7 +155,13 @@ export default function(realm: Realm): NativeFunctionValue {
           let validFrom = frm.mightNotBeHavocedObject();
           let validTo = to.isSimpleObject();
 
-          if (e instanceof FatalError && validFrom && validTo) {
+          if (
+            e instanceof FatalError &&
+            validFrom &&
+            validTo &&
+            frm !== realm.intrinsics.null &&
+            frm !== realm.intrinsics.undefined
+          ) {
             let frm_was_partial = frm.isPartialObject();
 
             if (frm_was_partial) {
