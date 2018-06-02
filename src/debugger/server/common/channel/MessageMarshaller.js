@@ -30,7 +30,6 @@ import type {
   StackframeArguments,
   StepIntoArguments,
   StepOverArguments,
-  StepOutArguments,
   StoppedReason,
   EvaluateArguments,
   EvaluateResult,
@@ -48,20 +47,13 @@ export class MessageMarshaller {
     return `${requestID} ${messageType} ${JSON.stringify(breakpoints)}`;
   }
 
-  marshallStoppedResponse(
-    reason: StoppedReason,
-    filePath: string,
-    line: number,
-    column: number,
-    message?: string
-  ): string {
+  marshallStoppedResponse(reason: StoppedReason, filePath: string, line: number, column: number): string {
     let result: StoppedResult = {
       kind: "stopped",
       reason: reason,
       filePath: filePath,
       line: line,
       column: column,
-      message: message || "",
     };
     return `${this._lastRunRequestID} ${DebugMessage.STOPPED_RESPONSE} ${JSON.stringify(result)}`;
   }
@@ -108,10 +100,6 @@ export class MessageMarshaller {
 
   marshallStepOverRequest(requestID: number): string {
     return `${requestID} ${DebugMessage.STEPOVER_COMMAND}`;
-  }
-
-  marshallStepOutRequest(requestID: number): string {
-    return `${requestID} ${DebugMessage.STEPOUT_COMMAND}`;
   }
 
   marshallEvaluateRequest(requestID: number, frameId: void | number, expression: string): string {
@@ -174,13 +162,6 @@ export class MessageMarshaller {
           kind: "stepOver",
         };
         args = stepOverArgs;
-        break;
-      case DebugMessage.STEPOUT_COMMAND:
-        this._lastRunRequestID = requestID;
-        let stepOutArgs: StepOutArguments = {
-          kind: "stepOut",
-        };
-        args = stepOutArgs;
         break;
       case DebugMessage.EVALUATE_COMMAND:
         args = this._unmarshallEvaluateArguments(requestID, parts.slice(2).join(" "));

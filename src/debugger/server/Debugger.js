@@ -291,6 +291,18 @@ export class DebugServer {
     return false;
   }
 
+  handlePrepackException(err: Error, ast: BabelNode) {
+    invariant(ast.loc && ast.loc.source);
+    this._channel.sendStoppedResponse(
+      "Prepack Error",
+      ast.loc.source,
+      ast.loc.start.line,
+      ast.loc.start.column,
+      err.message
+    );
+    this.waitForRun(ast);
+  }
+
   shutdown() {
     // clean the channel pipes
     this._channel.shutdown();

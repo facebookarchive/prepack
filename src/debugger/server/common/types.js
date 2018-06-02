@@ -25,7 +25,6 @@ export type DebuggerRequestArguments =
   | VariablesArguments
   | StepIntoArguments
   | StepOverArguments
-  | StepOutArguments
   | EvaluateArguments;
 
 export type PrepackLaunchArguments = {
@@ -84,10 +83,6 @@ export type StepOverArguments = {
   kind: "stepOver",
 };
 
-export type StepOutArguments = {
-  kind: "stepOut",
-};
-
 export type EvaluateArguments = {
   kind: "evaluate",
   frameId?: number,
@@ -128,7 +123,6 @@ export type StoppedResult = {
   filePath: string,
   line: number,
   column: number,
-  message: string,
 };
 export type Scope = {
   name: string,
@@ -167,12 +161,11 @@ export type LaunchRequestArguments = {
   prepackArguments: Array<string>,
 };
 
-export type SteppingType = "Step Into" | "Step Over" | "Step Out";
-export type StoppedReason = "Entry" | "Breakpoint" | "Prepack Error" | SteppingType;
+export type SteppingType = "Step Into" | "Step Over";
+export type StoppedReason = "Entry" | "Breakpoint" | SteppingType;
 
 export type SourceData = {
   filePath: string,
   line: number,
   column: number,
-  stackSize: number,
 };

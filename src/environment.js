@@ -1347,9 +1347,15 @@ export class LexicalEnvironment {
     if (this.realm.debuggerInstance) {
       this.realm.debuggerInstance.checkForActions(ast);
     }
-    let res = this.evaluateAbstract(ast, strictCode, metadata);
-    invariant(res instanceof Value || res instanceof Reference, ast.type);
-    return res;
+    try {
+      let res = this.evaluateAbstract(ast, strictCode, metadata);
+      invariant(res instanceof Value || res instanceof Reference, ast.type);
+      return res;
+    } catch (err) {
+      if (this.realm.debuggerInstance) {
+        this.realm.debuggerInstance.handlePrepackException(err, ast);
+      }
+    }
   }
 
   evaluateAbstract(ast: BabelNode, strictCode: boolean, metadata?: any): Value | Reference {

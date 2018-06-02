@@ -53,9 +53,14 @@ class PrepackDebugSession extends DebugSession {
     this._adapterChannel.registerChannelEvent(DebugMessage.STOPPED_RESPONSE, (response: DebuggerResponse) => {
       let result = response.result;
       invariant(result.kind === "stopped");
+      let message = `${result.reason}: ${result.filePath} ${result.line}:${result.column}`;
+      if (result.message) {
+        message = message + " | " + result.message;
+      }
       this.sendEvent(
         new StoppedEvent(
-          `${result.reason}: ${result.filePath} ${result.line}:${result.column}`,
+          // `${result.reason}: ${result.filePath} ${result.line}:${result.column}`,
+          message,
           DebuggerConstants.PREPACK_THREAD_ID
         )
       );

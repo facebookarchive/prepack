@@ -351,6 +351,7 @@ export type ReactComponentTreeConfig = {
 
 export type DebugServerType = {
   checkForActions: BabelNode => void,
+  handlePrepackException: (Error, BabelNode) => void,
   shutdown: () => void,
 };
 
