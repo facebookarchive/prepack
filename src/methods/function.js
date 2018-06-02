@@ -14,13 +14,7 @@ import type { PropertyKeyValue, FunctionBodyAstNode } from "../types.js";
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
-import {
-  Completion,
-  ReturnCompletion,
-  AbruptCompletion,
-  NormalCompletion,
-  ForkedAbruptCompletion,
-} from "../completions.js";
+import { Completion, ReturnCompletion, AbruptCompletion, NormalCompletion } from "../completions.js";
 import { ExecutionContext } from "../realm.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord } from "../environment.js";
 import {
@@ -1145,11 +1139,7 @@ export class FunctionImplementation {
         let e = realm.getCapturedEffects(savedCompletion);
         invariant(e !== undefined);
         realm.stopEffectCaptureAndUndoEffects(savedCompletion);
-        let joined_effects = Join.joinPossiblyNormalCompletionWithAbruptCompletion(realm, savedCompletion, c, e);
-        let jc = joined_effects.result;
-        invariant(jc instanceof ForkedAbruptCompletion);
-        realm.applyEffects(joined_effects, "incorporateSavedCompletion", false);
-        return jc;
+        return Join.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, savedCompletion, c, e);
       }
     }
     return c;
