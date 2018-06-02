@@ -89,14 +89,14 @@ export default function(
   // use lval as is for the join condition.
   let joinedEffects;
   if (ast.operator === "&&") {
-    joinedEffects = Join.joinEffects(
+    joinedEffects = Join.joinForkOrChoose(
       realm,
       lval,
       new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2),
       new Effects(lval, generator1, modifiedBindings1, modifiedProperties1, createdObjects1)
     );
   } else {
-    joinedEffects = Join.joinEffects(
+    joinedEffects = Join.joinForkOrChoose(
       realm,
       lval,
       new Effects(lval, generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
@@ -119,7 +119,7 @@ export default function(
   if (completion instanceof AbruptCompletion) throw completion;
   invariant(completion instanceof Value); // references do not survive join
   if (lval instanceof Value && result2 instanceof Value) {
-    // joinEffects does the right thing for the side effects of the second expression but for the result the join
+    // joinForkOrChoose does the right thing for the side effects of the second expression but for the result the join
     // produces a conditional expressions of the form (a ? b : a) for a && b and (a ? a : b) for a || b
     // Rather than look for this pattern everywhere, we override this behavior and replace the completion with
     // the actual logical operator. This helps with simplification and reasoning when dealing with path conditions.
