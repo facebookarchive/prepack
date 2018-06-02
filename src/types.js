@@ -734,14 +734,14 @@ export type JoinType = {
     e: Effects
   ): ForkedAbruptCompletion,
 
-  joinPossiblyNormalCompletionWithValue(
+  updatePossiblyNormalCompletionWithConditionalValue(
     realm: Realm,
     joinCondition: AbstractValue,
     pnc: PossiblyNormalCompletion,
     v: Value
   ): void,
 
-  joinValueWithPossiblyNormalCompletion(
+  updatePossiblyNormalCompletionWithInverseConditionalValue(
     realm: Realm,
     joinCondition: AbstractValue,
     pnc: PossiblyNormalCompletion,
@@ -755,14 +755,6 @@ export type JoinType = {
     convertToPNC?: boolean
   ): Effects,
 
-  unbundle(
-    CompletionType: typeof Completion,
-    realm: Realm,
-    c: ForkedAbruptCompletion
-  ): [Effects, PossiblyNormalCompletion],
-
-  removeNormalEffects(realm: Realm, c: PossiblyNormalCompletion): Effects,
-
   joinForkOrChoose(realm: Realm, joinCondition: Value, e1: Effects, e2: Effects): Effects,
 
   joinNestedEffects(realm: Realm, c: Completion, precedingEffects?: Effects): Effects,
@@ -774,7 +766,7 @@ export type JoinType = {
     result2: EvaluationResult
   ): AbruptCompletion | PossiblyNormalCompletion | Value,
 
-  joinResults(
+  joinOrForkResults(
     realm: Realm,
     joinCondition: AbstractValue,
     result1: EvaluationResult,
@@ -804,8 +796,6 @@ export type JoinType = {
     v2: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
     getAbstractValue: (void | Value, void | Value) => Value
   ): Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
-
-  joinValuesAsConditional(realm: Realm, condition: Value, v1: void | Value, v2: void | Value): Value,
 
   joinPropertyBindings(
     realm: Realm,
