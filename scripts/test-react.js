@@ -475,6 +475,30 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-with-jsx-spread6.js");
       });
 
+      it("Simple with multiple JSX spreads #7", async () => {
+        await runTest(directory, "simple-with-jsx-spread7.js");
+      });
+
+      it("Simple with multiple JSX spreads #8", async () => {
+        await runTest(directory, "simple-with-jsx-spread8.js");
+      });
+
+      it("Simple with multiple JSX spreads #9", async () => {
+        await runTest(directory, "simple-with-jsx-spread9.js");
+      });
+
+      it("Simple with multiple JSX spreads #10", async () => {
+        await runTest(directory, "simple-with-jsx-spread10.js");
+      });
+
+      it("Simple with multiple JSX spreads #11", async () => {
+        await runTest(directory, "simple-with-jsx-spread11.js");
+      });
+
+      it("Simple with multiple JSX spreads #12", async () => {
+        await runTest(directory, "simple-with-jsx-spread12.js");
+      });
+
       it("Simple with Object.assign", async () => {
         await runTest(directory, "simple-assign.js");
       });
