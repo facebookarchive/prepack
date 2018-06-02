@@ -45,6 +45,7 @@ The following are a few plugins to other tools. They have been created and are m
 
 - [A Rollup plugin for Prepack](https://www.npmjs.com/package/rollup-plugin-prepack)
 - [A Webpack plugin for Prepack](https://www.npmjs.com/package/prepack-webpack-plugin)
+- [A Parcel plugin for Prepack](https://www.npmjs.com/package/parcel-plugin-prepack)
 - [A Visual Studio code plugin for Prepack](https://marketplace.visualstudio.com/items?itemName=RobinMalfait.prepack-vscode)
 - [A babel plugin which transforms Flow annotations into prepack model declarations](https://www.npmjs.com/package/babel-plugin-flow-prepack).
 
