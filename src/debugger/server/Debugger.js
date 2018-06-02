@@ -24,6 +24,7 @@ import type {
   VariablesArguments,
   EvaluateArguments,
   SourceData,
+  DebuggerLaunchArguments,
 } from "./../common/types.js";
 import type { Realm } from "./../../realm.js";
 import { ExecutionContext } from "./../../realm.js";
@@ -38,9 +39,11 @@ import {
   DeclarativeEnvironmentRecord,
   ObjectEnvironmentRecord,
 } from "./../../environment.js";
+import { CompilerDiagnostic } from "../../errors.js";
+import type { Severity } from "../../errors.js";
 
 export class DebugServer {
-  constructor(channel: DebugChannel, realm: Realm) {
+  constructor(channel: DebugChannel, realm: Realm, launchArgs: DebuggerLaunchArguments) {
     this._channel = channel;
     this._realm = realm;
     this._breakpointManager = new BreakpointManager();
@@ -48,6 +51,7 @@ export class DebugServer {
     this._stepManager = new SteppingManager(this._realm, /* default discard old steppers */ false);
     this._stopEventManager = new StopEventManager();
     this.waitForRun(undefined);
+    this._diagnosticSeverity = launchArgs.diagnosticSeverity || "FatalError";
   }
   // the collection of breakpoints
   _breakpointManager: BreakpointManager;
@@ -58,6 +62,8 @@ export class DebugServer {
   _stepManager: SteppingManager;
   _stopEventManager: StopEventManager;
   _lastExecuted: SourceData;
+  // Severity at which debugger will break when CompilerDiagnostics are generated. Default is Fatal.
+  _diagnosticSeverity: Severity;
 
   /* Block until adapter says to run
   /* ast: the current ast node we are stopped on
@@ -289,6 +295,41 @@ export class DebugServer {
       return true;
     }
     return false;
+  }
+
+  /*
+    Displays PP error message, then waits for user to run the program to
+    continue (similar to a breakpoint).
+  */
+  handlePrepackError(diagnostic: CompilerDiagnostic) {
+    invariant(diagnostic.location && diagnostic.location.source);
+    let location = diagnostic.location;
+    let message = `${diagnostic.severity} ${diagnostic.errorCode}: ${diagnostic.message}`;
+    this._channel.sendStoppedResponse(
+      "Prepack Error",
+      location.source || "",
+      location.start.line,
+      location.start.column,
+      message
+    );
+    // No ast parameter b/c you cannot stepInto/Over a line that's causing an exception
+    this.waitForRun();
+  }
+
+  // Return whether the debugger should stop on a CompilerDiagnostic of a given severity.
+  evaluateDiagnosticSeverity(severity: Severity): boolean {
+    switch (this._diagnosticSeverity) {
+      case "Information":
+        return true;
+      case "Warning":
+        return severity !== "Information";
+      case "RecoverableError":
+        return severity === "RecoverableError" || severity === "FatalError";
+      case "FatalError":
+        return severity === "FatalError";
+      default:
+        invariant(false, "Unexpected severity type");
+    }
   }
 
   shutdown() {

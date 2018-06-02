@@ -312,7 +312,7 @@ function runTest(name, code, options: PrepackOptions, args) {
         errorHandler: diag => "Fail",
         maxStackDepth: options.maxStackDepth,
       };
-      let realm = construct_realm(realmOptions, undefined, new SerializerStatistics());
+      let realm = construct_realm(realmOptions, undefined, undefined, new SerializerStatistics());
       initializeGlobals(realm);
       let serializerOptions = {
         initializeMoreModules,
