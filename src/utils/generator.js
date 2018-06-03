@@ -260,9 +260,15 @@ class ModifiedBindingEntry extends GeneratorEntry {
       containingGenerator === this.containingGenerator,
       "This entry requires effects to be applied and may not be moved"
     );
-    invariant(this.modifiedBinding.value === this.newValue);
+    invariant(
+      this.modifiedBinding.value === this.newValue,
+      "ModifiedBinding's value has been changed since last visit."
+    );
     let [residualBinding, newValue] = context.visitModifiedBinding(this.modifiedBinding);
-    invariant(this.residualFunctionBinding === undefined || this.residualFunctionBinding === residualBinding);
+    invariant(
+      this.residualFunctionBinding === undefined || this.residualFunctionBinding === residualBinding,
+      "ResidualFunctionBinding has been changed since last visit."
+    );
     this.residualFunctionBinding = residualBinding;
     this.newValue = newValue;
     return true;
