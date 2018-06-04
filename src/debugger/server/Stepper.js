@@ -14,12 +14,12 @@ import { BabelNode } from "babel-types";
 import invariant from "./../common/invariant.js";
 
 export class Stepper {
-  constructor(filePath: string, line: number, column: number, startStackSize: number) {
+  constructor(filePath: string, line: number, column: number, stackSize: number) {
     this._stepStartData = {
       filePath: filePath,
       line: line,
       column: column,
-      startStackSize: startStackSize,
+      stackSize: stackSize,
     };
   }
   _stepStartData: SourceData;
@@ -30,7 +30,7 @@ export class Stepper {
 
   // NOTE: Only checks if a node has changed within the same callstack.
   // The same node in two different excutions contexts (e.g. recursive call)
-  // will not be detected. Check the stackSize in those cases.
+  // will not be detected. Check the stackSize (via realm) in those cases.
   isAstLocationChanged(ast: BabelNode) {
     // we should only step to statements
     if (!IsStatement(ast)) return false;
@@ -63,8 +63,8 @@ export class StepIntoStepper extends Stepper {
   // Override
   isComplete(ast: BabelNode, currentStackSize: number): boolean {
     // If stacksize has changed, the position has changed, regardless if
-    // the AST node is the same (imagine a recursive call).
-    return this.isAstLocationChanged(ast) || currentStackSize !== this._stepStartData.startStackSize;
+    // the AST node is the same (e.g. a recursive call).
+    return this.isAstLocationChanged(ast) || currentStackSize !== this._stepStartData.stackSize;
   }
 }
 
@@ -74,15 +74,16 @@ export class StepOverStepper extends Stepper {
   }
 
   isComplete(ast: BabelNode, currentStackSize: number): boolean {
-    // If current stack length < starting stack length, the program must have
-    // hit an exception so this stepper is no longer relevant. Or, the program
-    // has stepped out of a function call, back up to the calling function.
-    if (currentStackSize < this._stepStartData.startStackSize) return true;
-    // If current stack length === starting stack length, the program returned
-    // to the same stack depth, so a step over is complete.
-    if (currentStackSize === this._stepStartData.startStackSize) return this.isAstLocationChanged(ast);
-
-    return false;
+    return (
+      // If current stack length < starting stack length, the program either
+      // hit an exception so this stepper is no longer relevant. Or, the program
+      // has stepped out of a function call, back up to the calling function.
+      currentStackSize < this._stepStartData.stackSize ||
+      // If current stack length === starting stack length, the program returned
+      // to the same stack depth. As long as the ast node has changed,
+      // the step over is complete.
+      (currentStackSize === this._stepStartData.stackSize && this.isAstLocationChanged(ast))
+    );
   }
 }
 
@@ -99,6 +100,6 @@ export class StepOutStepper extends Stepper {
     // To step out of a function, we must finish executing it.
     // When a function completes, its execution context will be
     // popped off the stack.
-    return currentStackSize < this._stepStartData.startStackSize;
+    return currentStackSize < this._stepStartData.stackSize;
   }
 }

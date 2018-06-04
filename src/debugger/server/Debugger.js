@@ -269,12 +269,14 @@ export class DebugServer {
       let filePath = ast.loc.source;
       let line = ast.loc.start.line;
       let column = ast.loc.start.column;
+      let stackSize = this._realm.contextStack.length;
       // check if the current location is same as the last one
       if (
         this._lastExecuted &&
         filePath === this._lastExecuted.filePath &&
         line === this._lastExecuted.line &&
-        column === this._lastExecuted.column
+        column === this._lastExecuted.column &&
+        stackSize === this._lastExecuted.stackSize
       ) {
         return false;
       }
@@ -282,6 +284,7 @@ export class DebugServer {
         filePath: filePath,
         line: line,
         column: column,
+        stackSize: this._realm.contextStack.length,
       };
       return true;
     }

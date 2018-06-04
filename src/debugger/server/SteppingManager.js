@@ -43,7 +43,9 @@ export class SteppingManager {
     if (!this._keepOldSteppers) {
       this._steppers = [];
     }
-    this._steppers.push(new StepIntoStepper(ast.loc.source, ast.loc.start.line, ast.loc.start.column));
+    this._steppers.push(
+      new StepIntoStepper(ast.loc.source, ast.loc.start.line, ast.loc.start.column, this._realm.contextStack.length)
+    );
   }
 
   _processStepOver(ast: BabelNode) {

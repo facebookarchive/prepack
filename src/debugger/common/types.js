@@ -173,5 +173,5 @@ export type SourceData = {
   filePath: string,
   line: number,
   column: number,
-  startStackSize: number,
+  stackSize: number,
 };
