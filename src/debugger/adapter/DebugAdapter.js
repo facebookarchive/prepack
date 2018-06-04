@@ -291,6 +291,13 @@ class PrepackDebugSession extends DebugSession {
   }
 
   // Override
+  stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): void {
+    this._adapterChannel.stepOut(response.request_seq, (dbgResponse: DebuggerResponse) => {
+      this.sendResponse(response);
+    });
+  }
+
+  // Override
   evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments): void {
     this._adapterChannel.evaluate(
       response.request_seq,
