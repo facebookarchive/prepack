@@ -1347,14 +1347,16 @@ export class LexicalEnvironment {
     if (this.realm.debuggerInstance) {
       this.realm.debuggerInstance.checkForActions(ast);
     }
+
+    // null-init so if evaluateAbstract fails, the invariant in the finally also fails
     try {
       let res = this.evaluateAbstract(ast, strictCode, metadata);
       invariant(res instanceof Value || res instanceof Reference, ast.type);
       return res;
     } catch (err) {
-      if (this.realm.debuggerInstance) {
-        this.realm.debuggerInstance.handlePrepackException(err, ast);
-      }
+      // Catch PP errors and surface them if using the debugger.
+      if (this.realm.debuggerInstance) this.realm.debuggerInstance.handlePrepackError(err, ast);
+      throw err;
     }
   }
 

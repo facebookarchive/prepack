@@ -54,16 +54,11 @@ class PrepackDebugSession extends DebugSession {
       let result = response.result;
       invariant(result.kind === "stopped");
       let message = `${result.reason}: ${result.filePath} ${result.line}:${result.column}`;
+      // Append failure message if there exists one (for PP failures)
       if (result.message) {
-        message = message + " | " + result.message;
+        message = message + ". " + result.message;
       }
-      this.sendEvent(
-        new StoppedEvent(
-          // `${result.reason}: ${result.filePath} ${result.line}:${result.column}`,
-          message,
-          DebuggerConstants.PREPACK_THREAD_ID
-        )
-      );
+      this.sendEvent(new StoppedEvent(message, DebuggerConstants.PREPACK_THREAD_ID));
     });
     this._adapterChannel.registerChannelEvent(DebugMessage.STEPINTO_RESPONSE, (response: DebuggerResponse) => {
       let result = response.result;

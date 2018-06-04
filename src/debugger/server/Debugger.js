@@ -291,7 +291,11 @@ export class DebugServer {
     return false;
   }
 
-  handlePrepackException(err: Error, ast: BabelNode) {
+  /*
+    Displays PP error message, then waits for user to run the program to
+    continue (similar to a breakpoint).
+  */
+  handlePrepackError(err: Error, ast: BabelNode) {
     invariant(ast.loc && ast.loc.source);
     this._channel.sendStoppedResponse(
       "Prepack Error",
