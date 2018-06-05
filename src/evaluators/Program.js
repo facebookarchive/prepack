@@ -265,8 +265,7 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
     let res = Functions.incorporateSavedCompletion(realm, val);
     if (res instanceof PossiblyNormalCompletion) {
       // Get state to be joined in
-      let e = realm.getCapturedEffects(res);
-      invariant(e !== undefined);
+      let e = realm.getCapturedEffects();
       realm.stopEffectCaptureAndUndoEffects(res);
       // The global state is now at the point where the last fork occurred.
       if (res.containsCompletion(ThrowCompletion)) {

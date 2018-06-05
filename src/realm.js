@@ -792,8 +792,7 @@ export class Realm {
         if (c instanceof PossiblyNormalCompletion) {
           // The current state may have advanced since the time control forked into the various paths recorded in c.
           // Update the normal path and restore the global state to what it was at the time of the fork.
-          let subsequentEffects = this.getCapturedEffects(c, c.value);
-          invariant(subsequentEffects !== undefined);
+          let subsequentEffects = this.getCapturedEffects(c.value);
           this.stopEffectCaptureAndUndoEffects(c);
           Join.updatePossiblyNormalCompletionWithSubsequentEffects(this, c, subsequentEffects);
           this.savedCompletion = undefined;
@@ -1196,8 +1195,7 @@ export class Realm {
       this.captureEffects(completion);
     } else {
       let savedCompletion = this.savedCompletion;
-      let e = this.getCapturedEffects(savedCompletion);
-      invariant(e !== undefined);
+      let e = this.getCapturedEffects();
       this.stopEffectCaptureAndUndoEffects(savedCompletion);
       savedCompletion = Join.composePossiblyNormalCompletions(this, savedCompletion, completion, e);
       this.applyEffects(e);
@@ -1259,8 +1257,7 @@ export class Realm {
     this.createdObjects = new Set();
   }
 
-  getCapturedEffects(completion: PossiblyNormalCompletion, v?: Value = this.intrinsics.undefined): void | Effects {
-    if (completion.savedEffects === undefined) return undefined;
+  getCapturedEffects(v?: Value = this.intrinsics.undefined): Effects {
     invariant(this.generator !== undefined);
     invariant(this.modifiedBindings !== undefined);
     invariant(this.modifiedProperties !== undefined);
