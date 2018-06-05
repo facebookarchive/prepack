@@ -184,14 +184,8 @@ export class ExecutionContext {
   }
 }
 
-export function construct_empty_effects(realm: Realm): Effects {
-  return new Effects(
-    realm.intrinsics.empty,
-    new Generator(realm, "construct_empty_effects"),
-    new Map(),
-    new Map(),
-    new Set()
-  );
+export function construct_empty_effects(realm: Realm, c: Completion | Value = realm.intrinsics.empty): Effects {
+  return new Effects(c, new Generator(realm, "construct_empty_effects"), new Map(), new Map(), new Set());
 }
 
 export class Realm {
