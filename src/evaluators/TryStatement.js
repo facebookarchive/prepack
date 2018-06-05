@@ -43,11 +43,10 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
       // Note: The handler may have introduced new forks
     } else if (blockRes instanceof ForkedAbruptCompletion || blockRes instanceof PossiblyNormalCompletion) {
       if (blockRes instanceof PossiblyNormalCompletion) {
-        // Nothing has been joined and we are going to keep it that way.
+        // The throw completions have not been joined and we are going to keep it that way.
         // The current state may have advanced since the time control forked into the various paths recorded in blockRes.
         // Update the normal path and restore the global state to what it was at the time of the fork.
-        let subsequentEffects = realm.getCapturedEffects(blockRes, blockRes.value);
-        invariant(subsequentEffects !== undefined);
+        let subsequentEffects = realm.getCapturedEffects(blockRes.value);
         realm.stopEffectCaptureAndUndoEffects(blockRes);
         Join.updatePossiblyNormalCompletionWithSubsequentEffects(realm, blockRes, subsequentEffects);
       }

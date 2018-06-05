@@ -1136,8 +1136,7 @@ export class FunctionImplementation {
         Join.updatePossiblyNormalCompletionWithValue(realm, savedCompletion, c);
         return savedCompletion;
       } else {
-        let e = realm.getCapturedEffects(savedCompletion);
-        invariant(e !== undefined);
+        let e = realm.getCapturedEffects();
         realm.stopEffectCaptureAndUndoEffects(savedCompletion);
         return Join.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, savedCompletion, c, e);
       }

@@ -102,8 +102,7 @@ export class JoinImplementation {
     c2: AbruptCompletion,
     realm: Realm
   ): ForkedAbruptCompletion {
-    let e = realm.getCapturedEffects(c1);
-    invariant(e !== undefined);
+    let e = realm.getCapturedEffects();
     realm.stopEffectCaptureAndUndoEffects(c1);
     return this.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, c1, c2, e);
   }
