@@ -881,9 +881,6 @@ export function doNotOptimizeComponent(realm: Realm, componentType: Value): bool
 }
 
 export function createDefaultPropsHelper(realm: Realm): ECMAScriptSourceFunctionValue {
-  if (realm.react.defaultPropsHelper !== undefined) {
-    return realm.react.defaultPropsHelper;
-  }
   let defaultPropsHelper = `
     function defaultPropsHelper(props, defaultProps) {
       for (var propName in defaultProps) {
@@ -901,7 +898,6 @@ export function createDefaultPropsHelper(realm: Realm): ECMAScriptSourceFunction
   ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
   helper.$ECMAScriptCode = body;
   helper.$FormalParameters = escapeHelperAst.params;
-  realm.react.defaultPropsHelper = helper;
   return helper;
 }
 

@@ -23,7 +23,10 @@ import { createDefaultPropsHelper } from "../../react/utils.js";
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
 
-  createDefaultPropsHelper(realm);
+  if (realm.react.enabled) {
+    // Create it eagerly so it's created outside effect branches
+    realm.react.defaultPropsHelper = createDefaultPropsHelper(realm);
+  }
 
   // module.exports support
   let moduleValue = AbstractValue.createAbstractObject(realm, "module");

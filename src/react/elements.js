@@ -17,7 +17,6 @@ import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
 import {
   applyObjectAssignConfigsForReactElement,
-  createDefaultPropsHelper,
   createInternalReactElement,
   flagPropsWithNoPartialKeyOrRef,
   getProperty,
@@ -174,7 +173,7 @@ function createPropsObject(
         let temporalTo = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,
-          [createDefaultPropsHelper(realm), props.getSnapshot(), defaultProps],
+          [realm.react.defaultPropsHelper, props.getSnapshot(), defaultProps],
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           },
