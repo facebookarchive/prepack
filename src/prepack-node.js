@@ -16,6 +16,7 @@ import { defaultOptions } from "./options";
 import { FatalError } from "./errors.js";
 import { type PrepackOptions } from "./prepack-options";
 import { getDebuggerOptions } from "./prepack-options";
+import type { DebuggerLaunchArguments } from "./debugger/common/types";
 import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment.js";
 import { prepackSources } from "./prepack-standalone.js";
 import { type SourceMap } from "./types.js";
@@ -64,6 +65,7 @@ export function prepackStdin(
           [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
           options,
           undefined,
+          undefined,
           createStatistics(options)
         );
         processSerializedCode(serialized);
@@ -109,6 +111,7 @@ export function prepackFile(
           [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
           options,
           undefined,
+          undefined,
           createStatistics(options)
         );
       } catch (err) {
@@ -120,7 +123,11 @@ export function prepackFile(
   });
 }
 
-export function prepackFileSync(filenames: Array<string>, options: PrepackOptions = defaultOptions) {
+export function prepackFileSync(
+  filenames: Array<string>,
+  options: PrepackOptions = defaultOptions,
+  debuggerLaunchArgs?: DebuggerLaunchArguments
+) {
   if (options.compatibility === "node-cli") {
     if (filenames.length !== 1) {
       console.error(`Does not support multiple file prepack in node-cli mode.`);
@@ -146,5 +153,5 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     let ioWrapper = new FileIOWrapper(false, debugOptions.inFilePath, debugOptions.outFilePath);
     debugChannel = new DebugChannel(ioWrapper);
   }
-  return prepackSources(sourceFiles, options, debugChannel, createStatistics(options));
+  return prepackSources(sourceFiles, options, debugChannel, debuggerLaunchArgs, createStatistics(options));
 }

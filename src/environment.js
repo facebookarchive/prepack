@@ -1348,16 +1348,9 @@ export class LexicalEnvironment {
       this.realm.debuggerInstance.checkForActions(ast);
     }
 
-    // null-init so if evaluateAbstract fails, the invariant in the finally also fails
-    try {
-      let res = this.evaluateAbstract(ast, strictCode, metadata);
-      invariant(res instanceof Value || res instanceof Reference, ast.type);
-      return res;
-    } catch (err) {
-      // Catch PP errors and surface them if using the debugger.
-      if (this.realm.debuggerInstance) this.realm.debuggerInstance.handlePrepackError(err, ast);
-      throw err;
-    }
+    let res = this.evaluateAbstract(ast, strictCode, metadata);
+    invariant(res instanceof Value || res instanceof Reference, ast.type);
+    return res;
   }
 
   evaluateAbstract(ast: BabelNode, strictCode: boolean, metadata?: any): Value | Reference {

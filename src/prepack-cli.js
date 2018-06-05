@@ -30,6 +30,7 @@ import invariant from "./invariant";
 import zipFactory from "node-zip";
 import path from "path";
 import JSONTokenizer from "./utils/JSONTokenizer.js";
+import type { DebuggerLaunchArguments } from "./debugger/common/types";
 
 // Prepack helper
 declare var __residual: any;
@@ -78,6 +79,7 @@ function run(
     --version                Output the version number.
     --repro                  Create a zip file with all information needed to reproduce a Prepack run"
     --cpuprofile             Create a CPU profile file for the run that can be loaded into the Chrome JavaScript CPU Profile viewer",
+    --debugDiagSeverity      FatalError | RecoverableError | Warning | Information (default = FatalError). Diagnostic level at which debugger will stop
   `;
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -126,6 +128,7 @@ function run(
     reproFileNames.push(fileName);
     return path.basename(fileName);
   };
+  let debuggerLaunchArgs: DebuggerLaunchArguments = {};
   while (args.length) {
     let arg = args.shift();
     if (!arg.startsWith("--")) {
@@ -258,6 +261,14 @@ function run(
           }
           invariantLevel = parseInt(invariantLevelString, 10);
           reproArguments.push("--invariantLevel", invariantLevel.toString());
+          break;
+        case "debugDiagSeverity":
+          arg = args.shift();
+          invariant(
+            arg === "FatalError" || arg === "RecoverableError" || arg === "Warning" || arg === "Information",
+            `Invalid debugger diagnostic severity: ${arg}`
+          );
+          debuggerLaunchArgs.diagnosticSeverity = arg;
           break;
         case "help":
           const options = [
@@ -417,7 +428,7 @@ fi
         prepackStdin(resolvedOptions, processSerializedCode, printDiagnostics);
         return;
       }
-      let serialized = prepackFileSync(inputFilenames, resolvedOptions);
+      let serialized = prepackFileSync(inputFilenames, resolvedOptions, debuggerLaunchArgs);
       printDiagnostics();
       if (resolvedOptions.serialize && serialized) processSerializedCode(serialized);
     } catch (err) {

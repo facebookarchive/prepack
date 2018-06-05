@@ -49,6 +49,8 @@ import type {
   BabelNodeSourceLocation,
 } from "babel-types";
 import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "./realm.js";
+import { CompilerDiagnostic } from "./errors.js";
+import type { Severity } from "./errors.js";
 
 export const ElementSize = {
   Float32: 4,
@@ -351,7 +353,8 @@ export type ReactComponentTreeConfig = {
 
 export type DebugServerType = {
   checkForActions: BabelNode => void,
-  handlePrepackError: (Error, BabelNode) => void,
+  handlePrepackError: CompilerDiagnostic => void,
+  evaluateDiagnosticSeverity: Severity => boolean,
   shutdown: () => void,
 };
 

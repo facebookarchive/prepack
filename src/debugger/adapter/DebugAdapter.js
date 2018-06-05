@@ -54,7 +54,7 @@ class PrepackDebugSession extends DebugSession {
       let result = response.result;
       invariant(result.kind === "stopped");
       let message = `${result.reason}: ${result.filePath} ${result.line}:${result.column}`;
-      // Append failure message if there exists one (for PP failures)
+      // Append message if there exists one (for PP errors)
       if (result.message) {
         message = message + ". " + result.message;
       }
