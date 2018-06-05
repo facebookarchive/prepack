@@ -15,6 +15,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { Value, EmptyValue } from "../values/index.js";
 import { GlobalEnvironmentRecord } from "../environment.js";
 import { Environment, Functions, Join } from "../singletons.js";
+import { Generator } from "../utils/generator.js";
 import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import traverseFast from "../utils/traverse-fast.js";
@@ -270,6 +271,8 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
       // The global state is now at the point where the last fork occurred.
       if (res.containsCompletion(ThrowCompletion)) {
         // Join e with the remaining completions
+        let normalGenerator = e.generator;
+        e.generator = new Generator(realm, "dummy"); // This generator comes after everything else.
         let r = (e.result = new ThrowCompletion(realm.intrinsics.empty));
         let fc = Join.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, res, r, e);
         let allEffects = Join.extractAndJoinCompletionsOfType(ThrowCompletion, realm, fc);
@@ -279,6 +282,7 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
         let generator = realm.generator;
         invariant(generator !== undefined);
         generator.emitConditionalThrow(r.value);
+        realm.appendGenerator(normalGenerator);
       } else {
         realm.applyEffects(e, "all code", true);
       }
