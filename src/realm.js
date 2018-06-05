@@ -1268,14 +1268,6 @@ export class Realm {
     return new Effects(v, this.generator, this.modifiedBindings, this.modifiedProperties, this.createdObjects);
   }
 
-  stopEffectCapture(completion: PossiblyNormalCompletion) {
-    let e = this.getCapturedEffects(completion);
-    if (e !== undefined) {
-      this.stopEffectCaptureAndUndoEffects(completion);
-      this.applyEffects(e);
-    }
-  }
-
   stopEffectCaptureAndUndoEffects(completion: PossiblyNormalCompletion) {
     // Roll back the state changes
     this.restoreBindings(this.modifiedBindings);
