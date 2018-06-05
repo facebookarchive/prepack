@@ -170,10 +170,12 @@ function createPropsObject(
           );
           Properties.Set(realm, props, "children", conditionalChildren, true);
         }
+        let defaultPropsHelper = realm.react.defaultPropsHelper;
+        invariant(defaultPropsHelper !== undefined);
         let temporalTo = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,
-          [realm.react.defaultPropsHelper, props.getSnapshot(), defaultProps],
+          [defaultPropsHelper, props.getSnapshot(), defaultProps],
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           },
