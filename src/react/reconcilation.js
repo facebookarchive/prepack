@@ -50,7 +50,7 @@ import {
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
-import { Properties } from "../singletons.js";
+import { Path, Properties } from "../singletons.js";
 import { FatalError, CompilerDiagnostic } from "../errors.js";
 import { getValueWithBranchingLogicApplied, type BranchStatusEnum } from "./branching.js";
 import * as t from "babel-types";
@@ -913,6 +913,7 @@ export class Reconciler {
     let [leftValue, rightValue] = value.args;
     let operator = value.kind;
 
+    invariant(leftValue instanceof AbstractValue);
     if (operator === "||") {
       return this._resolveAbstractConditionalValue(
         componentType,
@@ -923,30 +924,22 @@ export class Reconciler {
         evaluatedNode
       );
     } else {
-      return this.realm.evaluateWithAbstractConditional(
-        leftValue,
-        () => {
-          // in the case of x && y, the true case must compose the effects of x with those of y
-          let leftEffects = this.realm.evaluateForEffects(
-            () => this._resolveDeeply(componentType, leftValue, context, "NEW_BRANCH", evaluatedNode),
-            null,
-            "_resolveAbstractLogicalValue consequent (&&) leftEffects"
-          );
-          let rightEffects = this.realm.evaluateForEffects(
-            () => this._resolveDeeply(componentType, rightValue, context, "NEW_BRANCH", evaluatedNode),
-            null,
-            "_resolveAbstractLogicalValue consequent (&&) rightEffects"
-          );
-          return this.realm.composeEffects(leftEffects, rightEffects);
-        },
-        () => {
-          return this.realm.evaluateForEffects(
-            () => this._resolveDeeply(componentType, leftValue, context, "NEW_BRANCH", evaluatedNode),
-            null,
-            "_resolveAbstractLogicalValue alternate (&&)"
-          );
-        }
-      );
+      // When we have &&, for now we don't support inlining the left side of the logical operation
+      // and instead only attempt to inline the right side. This is the most common case in React
+      // where && is used as shorthand for a conditional check given left side happens, use right.
+      // Furthermore, as the right side might have generator entries, we need to evaluate its
+      // effects and wrap it in a conditional (the condition is always the left side).
+      let effects = Path.withCondition(leftValue, () => {
+        return this.realm.evaluateForEffects(
+          () => this._resolveDeeply(componentType, rightValue, context, "NEW_BRANCH", evaluatedNode),
+          null,
+          "_resolveAbstractLogicalValue alternate (&&)"
+        );
+      });
+      invariant(effects !== undefined, "_resolveAbstractLogicalValue TODO when effects are undefined");
+      this.realm.applyEffects(effects);
+      invariant(effects.result instanceof Value);
+      return AbstractValue.createFromLogicalOp(this.realm, "&&", leftValue, effects.result);
     }
   }
 
