@@ -11,7 +11,7 @@
 
 import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "./invariant.js";
-import type { Effects, Realm } from "./realm.js";
+import { Effects, type Realm } from "./realm.js";
 import { AbstractValue, Value } from "./values/index.js";
 
 export class Completion {
@@ -21,13 +21,50 @@ export class Completion {
     this.location = location;
   }
 
-  value: Value;
+  _value: Value;
+
+  get value(): Value {
+    if (this.effects) {
+      invariant(this === this.effects.result, "Result of effects must be equal to this");
+      invariant(this._value === this.effects.result._value, "effects.result.value !== this.value");
+    }
+    return this._value;
+  }
+
+  set value(newValue: Value) {
+    this._value = newValue;
+    if (this.effects) this.effects.result = newValue;
+  }
+
   target: ?string;
   location: ?BabelNodeSourceLocation;
+  //effects: ?Effects;
+
+  _effects: ?Effects;
+  get effects(): ?Effects {
+    return this._effects;
+  }
+
+  set effects(newEffects: Effects) {
+    invariant(newEffects);
+    this._effects = newEffects;
+  }
 }
 
-// Normal completions are returned just like spec completions
-export class NormalCompletion extends Completion {}
+// Normal completions are returned just like spec completions (usually)
+export class NormalCompletion extends Completion {
+  constructor(value: Value, effects?: Effects | BabelNodeSourceLocation | null | void, target?: ?string) {
+    if (effects instanceof Effects) {
+      super(value);
+      invariant(effects.result === value);
+      this.effects = effects;
+    } else if (effects) {
+      super(value, ((effects: any): BabelNodeSourceLocation), target);
+    } else {
+      super(value);
+    }
+  }
+}
 
 // Abrupt completions are thrown as exeptions, to make it a easier
 // to quickly get to the matching high level construct.
@@ -75,16 +112,45 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
     super(realm.intrinsics.empty, consequent.location);
     this.joinCondition = joinCondition;
     this.consequent = consequent;
-    this.consequentEffects = consequentEffects;
+    this.consequent.effects = consequentEffects;
     this.alternate = alternate;
-    this.alternateEffects = alternateEffects;
+    this.alternate.effects = alternateEffects;
+    invariant(this.consequentEffects);
+    invariant(this.alternateEffects);
   }
 
   joinCondition: AbstractValue;
-  consequent: AbruptCompletion;
-  consequentEffects: Effects;
-  alternate: AbruptCompletion;
-  alternateEffects: Effects;
+  //consequent: AbruptCompletion;
+  _consequent: ?AbruptCompletion;
+  get consequent(): AbruptCompletion {
+    return this._consequent;
+  }
+
+  set consequent(newAbruptCompletion: AbruptCompletion) {
+    invariant(newAbruptCompletion instanceof Completion);
+    this._consequent = newAbruptCompletion;
+  }
+  //alternate: AbruptCompletion;
+  _alternate: ?AbruptCompletion;
+  get alternate(): AbruptCompletion {
+    return this._alternate;
+  }
+
+  set alternate(newAbruptCompletion: AbruptCompletion) {
+    invariant(newAbruptCompletion instanceof Completion);
+    this._alternate = newAbruptCompletion;
+  }
+  // end debug code
+
+  get consequentEffects(): Effects {
+    invariant(this.consequent.effects);
+    return this.consequent.effects;
+  }
+
+  get alternateEffects(): Effects {
+    invariant(this.alternate.effects);
+    return this.alternate.effects;
+  }
 
   containsCompletion(CompletionType: typeof Completion): boolean {
     if (this.consequent instanceof CompletionType) return true;
@@ -156,6 +222,15 @@ export class PossiblyNormalCompletion extends NormalCompletion {
         alternate instanceof AbruptCompletion ||
         (alternate instanceof NormalCompletion && value === alternate.value)
     );
+    if (consequent instanceof Value) {
+      // TODO: location?
+      consequent = new NormalCompletion(consequent, consequentEffects);
+    }
+    if (alternate instanceof Value) {
+      alternate = new NormalCompletion(alternate, alternateEffects);
+    }
+    consequent.effects = consequentEffects;
+    alternate.effects = alternateEffects;
     let loc =
       consequent instanceof AbruptCompletion
         ? consequent.location
@@ -165,21 +240,28 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     super(value, loc);
     this.joinCondition = joinCondition;
     this.consequent = consequent;
-    this.consequentEffects = consequentEffects;
     this.alternate = alternate;
-    this.alternateEffects = alternateEffects;
     this.savedEffects = savedEffects;
     this.savedPathConditions = savedPathConditions;
   }
 
   joinCondition: AbstractValue;
-  consequent: Completion | Value;
-  consequentEffects: Effects;
-  alternate: Completion | Value;
-  alternateEffects: Effects;
+  consequent: Completion;
+  alternate: Completion;
   savedEffects: void | Effects;
   // The path conditions that applied at the time of the oldest fork that caused this completion to arise.
   savedPathConditions: Array<AbstractValue>;
+
+  get consequentEffects(): Effects {
+    invariant(this.consequent.effects);
+    return this.consequent.effects;
+  }
+
+  get alternateEffects(): Effects {
+    invariant(this.alternate.effects);
+    return this.alternate.effects;
+  }
+
 
   containsCompletion(CompletionType: typeof Completion): boolean {
     if (this.consequent instanceof CompletionType) return true;
