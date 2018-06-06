@@ -236,7 +236,7 @@ class ReportResults {
     if (total === 0) {
       return "100%";
     }
-    return (x / total * 100).toFixed(2) + "%";
+    return ((x / total) * 100).toFixed(2) + "%";
   }
 
   info(title: string, x: number, y: number, force: boolean): string {

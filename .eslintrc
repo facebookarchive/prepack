@@ -215,6 +215,7 @@
 
   // Prettier
     "prettier/prettier": ["error", {
+      "parser": "flow",
       "trailingComma": "es5",
       "printWidth": 120,
     }]

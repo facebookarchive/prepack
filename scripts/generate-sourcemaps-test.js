@@ -114,7 +114,7 @@ function run() {
     else failed++;
   }
 
-  console.log("Generated:", `${passed}/${total}`, (Math.floor(passed / total * 100) || 0) + "%");
+  console.log("Generated:", `${passed}/${total}`, (Math.floor((passed / total) * 100) || 0) + "%");
   return failed === 0;
 }
 

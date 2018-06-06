@@ -236,7 +236,7 @@ export function MakeDay(realm: Realm, year: number, month: number, date: number)
   let ym = y + Math.floor(m / 12);
 
   // 6. Let mn be m modulo 12.
-  let mn = m < 0 ? m % 12 + 12 : m % 12;
+  let mn = m < 0 ? (m % 12) + 12 : m % 12;
 
   // 7. Find a value t such that YearFromTime(t) is ym and MonthFromTime(t) is mn and DateFromTime(t) is 1;
   //    but if this is not possible (because some argument is out of range), return NaN.
