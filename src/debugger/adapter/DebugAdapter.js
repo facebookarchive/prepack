@@ -22,6 +22,13 @@ import type {
 } from "./../common/types.js";
 import { DebuggerConstants } from "./../common/DebuggerConstants.js";
 
+// Breakpoint requests send before PP was launched.
+// Buffered here, resent to PP after PP is launched.
+export type PrematureBP = {
+  breakpointArgs: DebugProtocol.SetBreakpointsArguments,
+  response: DebugProtocol.SetBreakpointsResponse,
+};
+
 /* An implementation of an debugger adapter adhering to the VSCode Debug protocol
  * The adapter is responsible for communication between the UI and Prepack
 */
@@ -37,6 +44,7 @@ class PrepackDebugSession extends DebugSession {
   }
   _clientID: void | string;
   _adapterChannel: AdapterChannel;
+  _prematureBreakpointRequests: Array<PrematureBP> = [];
 
   _generateDebugFilePath(direction: "in" | "out") {
     let time = Date.now();
@@ -126,6 +134,12 @@ class PrepackDebugSession extends DebugSession {
         process.exit();
       },
     };
+    if (this._prematureBreakpointRequests.length > 0) {
+      for (let entry of this._prematureBreakpointRequests) {
+        this.setBreakPointsRequest(entry.response, entry.breakpointArgs);
+      }
+    }
+
     this._adapterChannel.launch(response.request_seq, launchArgs, (dbgResponse: DebuggerResponse) => {
       this.sendResponse(response);
     });
@@ -165,27 +179,32 @@ class PrepackDebugSession extends DebugSession {
       };
       breakpointInfos.push(breakpointInfo);
     }
-    this._adapterChannel.setBreakpoints(response.request_seq, breakpointInfos, (dbgResponse: DebuggerResponse) => {
-      let result = dbgResponse.result;
-      invariant(result.kind === "breakpoint-add");
-      let breakpoints: Array<DebugProtocol.Breakpoint> = [];
-      for (const breakpointInfo of result.breakpoints) {
-        let source: DebugProtocol.Source = {
-          path: breakpointInfo.filePath,
+
+    if (this._adapterChannel) {
+      this._adapterChannel.setBreakpoints(response.request_seq, breakpointInfos, (dbgResponse: DebuggerResponse) => {
+        let result = dbgResponse.result;
+        invariant(result.kind === "breakpoint-add");
+        let breakpoints: Array<DebugProtocol.Breakpoint> = [];
+        for (const breakpointInfo of result.breakpoints) {
+          let source: DebugProtocol.Source = {
+            path: breakpointInfo.filePath,
+          };
+          let breakpoint: DebugProtocol.Breakpoint = {
+            verified: true,
+            source: source,
+            line: breakpointInfo.line,
+            column: breakpointInfo.column,
+          };
+          breakpoints.push(breakpoint);
+        }
+        response.body = {
+          breakpoints: breakpoints,
         };
-        let breakpoint: DebugProtocol.Breakpoint = {
-          verified: true,
-          source: source,
-          line: breakpointInfo.line,
-          column: breakpointInfo.column,
-        };
-        breakpoints.push(breakpoint);
-      }
-      response.body = {
-        breakpoints: breakpoints,
-      };
-      this.sendResponse(response);
-    });
+        this.sendResponse(response);
+      });
+    } else {
+      this._prematureBreakpointRequests.push({ response: response, breakpointArgs: args });
+    }
   }
 
   // Override

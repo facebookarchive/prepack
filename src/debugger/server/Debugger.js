@@ -64,6 +64,10 @@ export class DebugServer {
   _lastExecuted: SourceData;
   // Severity at which debugger will break when CompilerDiagnostics are generated. Default is Fatal.
   _diagnosticSeverity: Severity;
+  // Babel 1-indexes rows and 0-indexes columns.
+  // Debugger UI can set whatever it wants. Must check for consistency.
+  _uiColumnsStartAt1: boolean;
+  _uiLinesStartAt1: boolean;
 
   /* Block until adapter says to run
   /* ast: the current ast node we are stopped on
@@ -93,12 +97,32 @@ export class DebugServer {
     }
   }
 
+  // Converts indicies of UI to conform with what Babel gives Prepack.
+  // Babel 1-indexes rows and 0-indexes columns.
+  _convertAstIndex(ast: void | BabelNode): void | BabelNode {
+    if (ast && ast.loc) {
+      if (this._uiColumnsStartAt1) {
+        ast.loc.start.column = ast.loc.start.column - 1;
+        ast.loc.end.column = ast.loc.end.column - 1;
+      }
+
+      if (!this._uiLinesStartAt1) {
+        ast.loc.start.line = ast.loc.start.line + 1;
+        ast.loc.end.line = ast.loc.end.line + 1;
+      }
+    }
+
+    return ast;
+  }
+
   // Process a command from a debugger. Returns whether Prepack should unblock
   // if it is blocked
   processDebuggerCommand(request: DebuggerRequest, ast: void | BabelNode) {
     let requestID = request.id;
     let command = request.command;
     let args = request.arguments;
+    let convertedAst = this._convertAstIndex(ast);
+    console.log("command received ", command);
     switch (command) {
       case DebugMessage.BREAKPOINT_ADD_COMMAND:
         invariant(args.kind === "breakpoint");
@@ -126,7 +150,7 @@ export class DebugServer {
         return true;
       case DebugMessage.STACKFRAMES_COMMAND:
         invariant(args.kind === "stackframe");
-        this.processStackframesCommand(requestID, args, ast);
+        this.processStackframesCommand(requestID, args, convertedAst);
         break;
       case DebugMessage.SCOPES_COMMAND:
         invariant(args.kind === "scopes");
@@ -137,18 +161,18 @@ export class DebugServer {
         this.processVariablesCommand(requestID, args);
         break;
       case DebugMessage.STEPINTO_COMMAND:
-        invariant(ast !== undefined);
-        this._stepManager.processStepCommand("in", ast);
+        invariant(convertedAst !== undefined);
+        this._stepManager.processStepCommand("in", convertedAst);
         this._onDebuggeeResume();
         return true;
       case DebugMessage.STEPOVER_COMMAND:
-        invariant(ast !== undefined);
-        this._stepManager.processStepCommand("over", ast);
+        invariant(convertedAst !== undefined);
+        this._stepManager.processStepCommand("over", convertedAst);
         this._onDebuggeeResume();
         return true;
       case DebugMessage.STEPOUT_COMMAND:
-        invariant(ast !== undefined);
-        this._stepManager.processStepCommand("out", ast);
+        invariant(convertedAst !== undefined);
+        this._stepManager.processStepCommand("out", convertedAst);
         this._onDebuggeeResume();
         return true;
       case DebugMessage.EVALUATE_COMMAND:
