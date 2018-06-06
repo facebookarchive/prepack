@@ -15,7 +15,7 @@ import { Realm, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
 import { Get } from "../methods/index.js";
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
-import { Environment, Functions } from "../singletons.js";
+import { Environment } from "../singletons.js";
 import {
   AbstractValue,
   Value,
@@ -107,7 +107,6 @@ export class ModuleTracer extends Tracer {
   // If we don't delay unsupported requires, we simply want to record here
   // when a module gets initialized, and then we return.
   _callRequireAndRecord(moduleIdValue: number | string, performCall: () => Value) {
-    let realm = this.modules.realm;
     if (
       (this.requireStack.length === 0 || this.requireStack[this.requireStack.length - 1] !== moduleIdValue) &&
       this.modules.moduleIds.has(moduleIdValue)
@@ -115,21 +114,7 @@ export class ModuleTracer extends Tracer {
       this.requireStack.push(moduleIdValue);
       try {
         let value = performCall();
-        // Make this into a join point by suppressing the conditional exception.
-        // TODO: delete this code and let the caller deal with the conditional exception.
-        let completion = Functions.incorporateSavedCompletion(realm, value);
-        if (completion instanceof PossiblyNormalCompletion) {
-          realm.stopEffectCapture(completion);
-          let warning = new CompilerDiagnostic(
-            "Module import may fail with an exception",
-            completion.location,
-            "PP0018",
-            "Warning"
-          );
-          realm.handleError(warning);
-        } else {
-          this.modules.recordModuleInitialized(moduleIdValue, value);
-        }
+        this.modules.recordModuleInitialized(moduleIdValue, value);
         return value;
       } finally {
         invariant(this.requireStack.pop() === moduleIdValue);

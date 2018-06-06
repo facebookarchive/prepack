@@ -34,6 +34,8 @@ export class DebugMessage {
   static STEPINTO_COMMAND: string = "StepInto-command";
   // Command to step over a function
   static STEPOVER_COMMAND: string = "StepOver-command";
+  // Command to step out of an executing function
+  static STEPOUT_COMMAND: string = "StepOut-command";
   // Command to evaluate an expression
   static EVALUATE_COMMAND: string = "Evaluate-command";
 

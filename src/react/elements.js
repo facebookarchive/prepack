@@ -10,20 +10,13 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import {
-  AbstractValue,
-  AbstractObjectValue,
-  ArrayValue,
-  ECMAScriptFunctionValue,
-  NumberValue,
-  ObjectValue,
-  Value,
-} from "../values/index.js";
+import { ValuesDomain } from "../domains/index.js";
+import { AbstractValue, AbstractObjectValue, ArrayValue, NumberValue, ObjectValue, Value } from "../values/index.js";
 import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
 import {
-  createDefaultPropsHelper,
+  applyObjectAssignConfigsForReactElement,
   createInternalReactElement,
   flagPropsWithNoPartialKeyOrRef,
   getProperty,
@@ -38,7 +31,7 @@ function createPropsObject(
   type: Value,
   config: ObjectValue | AbstractObjectValue,
   children: void | Value
-): { key: Value, ref: Value, props: ObjectValue | AbstractObjectValue } {
+): { key: Value, ref: Value, props: ObjectValue } {
   let defaultProps =
     type instanceof ObjectValue || type instanceof AbstractObjectValue
       ? Get(realm, type, "defaultProps")
@@ -63,12 +56,32 @@ function createPropsObject(
 
   let possibleKey = Get(realm, config, "key");
   if (possibleKey !== realm.intrinsics.null && possibleKey !== realm.intrinsics.undefined) {
-    key = computeBinary(realm, "+", realm.intrinsics.emptyString, possibleKey);
+    // if the config has been marked as having no partial key or ref and the possible key
+    // is abstract, yet the config doesn't have a key property, then the key can remain null
+    let keyNotNeeded =
+      hasNoPartialKeyOrRef(realm, config) &&
+      possibleKey instanceof AbstractValue &&
+      config instanceof ObjectValue &&
+      !config.properties.has("key");
+
+    if (!keyNotNeeded) {
+      key = computeBinary(realm, "+", realm.intrinsics.emptyString, possibleKey);
+    }
   }
 
   let possibleRef = Get(realm, config, "ref");
   if (possibleRef !== realm.intrinsics.null && possibleRef !== realm.intrinsics.undefined) {
-    ref = possibleRef;
+    // if the config has been marked as having no partial key or ref and the possible ref
+    // is abstract, yet the config doesn't have a ref property, then the ref can remain null
+    let refNotNeeded =
+      hasNoPartialKeyOrRef(realm, config) &&
+      possibleRef instanceof AbstractValue &&
+      config instanceof ObjectValue &&
+      !config.properties.has("ref");
+
+    if (!refNotNeeded) {
+      ref = possibleRef;
+    }
   }
 
   const setProp = (name: string, value: Value): void => {
@@ -97,48 +110,86 @@ function createPropsObject(
     // create a new props object that will be the target of the Object.assign
     props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
-    // get the global Object.assign
-    let globalObj = Get(realm, realm.$GlobalObject, "Object");
-    invariant(globalObj instanceof ObjectValue);
-    let objAssign = Get(realm, globalObj, "assign");
-    invariant(objAssign instanceof ECMAScriptFunctionValue);
-    let objectAssignCall = objAssign.$Call;
-    invariant(objectAssignCall !== undefined);
+    applyObjectAssignConfigsForReactElement(realm, props, args);
 
-    // TODO: maybe we can optimize the serialized output more here?
-    // do we really need to create an object just for { children }
     if (children !== undefined) {
-      let childrenObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-      Properties.Set(realm, childrenObject, "children", children, true);
-      args.push(childrenObject);
-    }
-
-    try {
-      objectAssignCall(realm.intrinsics.undefined, [props, ...args]);
-    } catch (e) {
-      if (realm.isInPureScope() && e instanceof FatalError) {
-        // TODO: maybe we can use temporalAlias and/or snapshots to improve this?
-        props = AbstractValue.createTemporalFromBuildFunction(
-          realm,
-          ObjectValue,
-          [objAssign, props, ...args],
-          ([methodNode, ..._args]) => {
-            return t.callExpression(methodNode, ((_args: any): Array<any>));
-          }
-        );
-      }
+      Properties.Set(realm, props, "children", children, true);
     }
 
     // handle default props on a partial/abstract config
     if (defaultProps !== realm.intrinsics.undefined) {
-      props = AbstractValue.createTemporalFromBuildFunction(
-        realm,
-        ObjectValue,
-        [createDefaultPropsHelper(realm), props, defaultProps],
-        ([methodNode, ..._args]) => {
-          return t.callExpression(methodNode, ((_args: any): Array<any>));
+      let defaultPropsEvaluated = 0;
+
+      // first see if we can apply all the defaultProps without needing the helper
+      if (defaultProps instanceof ObjectValue && !defaultProps.isPartialObject()) {
+        for (let [propName, binding] of defaultProps.properties) {
+          if (binding.descriptor !== undefined && binding.descriptor.value !== realm.intrinsics.undefined) {
+            // see if we have this on our props object
+            let propBinding = props.properties.get(propName);
+            // if the binding exists and value is abstract, it might be undefined
+            // so in that case we need the helper, otherwise we can continue
+            if (
+              propBinding !== undefined &&
+              !(propBinding.descriptor && propBinding.descriptor.value instanceof AbstractValue)
+            ) {
+              defaultPropsEvaluated++;
+              // if the value we have is undefined, we can apply the defaultProp
+              if (propBinding.descriptor && propBinding.descriptor.value === realm.intrinsics.undefined) {
+                Properties.Set(realm, props, propName, Get(realm, defaultProps, propName), true);
+              }
+            }
+          }
         }
-      );
+      }
+      // if defaultPropsEvaluated === the amount of properties defaultProps has, then we've successfully
+      // ensured all the defaultProps have already been dealt with, so we don't need the helper
+      if (
+        !(defaultProps instanceof ObjectValue) ||
+        (defaultProps.isPartialObject() || defaultPropsEvaluated !== defaultProps.properties.size)
+      ) {
+        props.makePartial();
+        props.makeSimple();
+        // if the props has any properties that are "undefined", we need to make them abstract
+        // as the helper function applies defaultProps on values that are undefined or do not
+        // exist
+        for (let [propName, binding] of props.properties) {
+          if (binding.descriptor !== undefined && binding.descriptor.value === realm.intrinsics.undefined) {
+            Properties.Set(realm, props, propName, AbstractValue.createFromType(realm, Value), true);
+          }
+        }
+        // if we have children and they are abstract, they might be undefined at runtime
+        if (children !== undefined && children instanceof AbstractValue) {
+          // children === undefined ? defaultProps.children : children;
+          let condition = AbstractValue.createFromBinaryOp(realm, "===", children, realm.intrinsics.undefined);
+          invariant(defaultProps instanceof AbstractObjectValue || defaultProps instanceof ObjectValue);
+          let conditionalChildren = AbstractValue.createFromConditionalOp(
+            realm,
+            condition,
+            Get(realm, defaultProps, "children"),
+            children
+          );
+          Properties.Set(realm, props, "children", conditionalChildren, true);
+        }
+        let defaultPropsHelper = realm.react.defaultPropsHelper;
+        invariant(defaultPropsHelper !== undefined);
+        let temporalTo = AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          ObjectValue,
+          [defaultPropsHelper, props.getSnapshot(), defaultProps],
+          ([methodNode, ..._args]) => {
+            return t.callExpression(methodNode, ((_args: any): Array<any>));
+          },
+          { skipInvariant: true }
+        );
+        invariant(temporalTo instanceof AbstractObjectValue);
+        if (props instanceof AbstractObjectValue) {
+          temporalTo.values = props.values;
+        } else {
+          invariant(props instanceof ObjectValue);
+          temporalTo.values = new ValuesDomain(props);
+        }
+        props.temporalAlias = temporalTo;
+      }
     }
   } else {
     applyProperties();
@@ -159,16 +210,11 @@ function createPropsObject(
       invariant(false, "TODO: we need to eventually support this");
     }
   }
-  invariant(props instanceof ObjectValue || props instanceof AbstractObjectValue);
+  invariant(props instanceof ObjectValue);
   // We know the props has no keys because if it did it would have thrown above
   // so we can remove them the props we create.
   flagPropsWithNoPartialKeyOrRef(realm, props);
-  // If the object is an object or abstract object value that has a backing object
-  // value for a template, we can make them final. We can't make abstract values
-  // final though – but that's okay. They also can't be havoced.
-  if (props instanceof ObjectValue || (props instanceof AbstractObjectValue && !props.values.isTop())) {
-    props.makeFinal();
-  }
+  props.makeFinal();
   return { key, props, ref };
 }
 
@@ -274,6 +320,33 @@ export function traverseReactElement(
     traversalVisitor.visitRef(refValue);
   }
 
+  const handleChildren = () => {
+    // handle children
+    invariant(propsValue instanceof ObjectValue);
+    if (propsValue.properties.has("children")) {
+      let childrenValue = getProperty(realm, propsValue, "children");
+      if (childrenValue !== realm.intrinsics.undefined && childrenValue !== realm.intrinsics.null) {
+        if (childrenValue instanceof ArrayValue && !childrenValue.intrinsicName) {
+          let childrenLength = getProperty(realm, childrenValue, "length");
+          let childrenLengthValue = 0;
+          if (childrenLength instanceof NumberValue) {
+            childrenLengthValue = childrenLength.value;
+            for (let i = 0; i < childrenLengthValue; i++) {
+              let child = getProperty(realm, childrenValue, "" + i);
+              invariant(
+                child instanceof Value,
+                `ReactElement "props.children[${i}]" failed to visit due to a non-value`
+              );
+              traversalVisitor.visitChildNode(child);
+            }
+          }
+        } else {
+          traversalVisitor.visitChildNode(childrenValue);
+        }
+      }
+    }
+  };
+
   let propsValue = getProperty(realm, reactElement, "props");
   if (propsValue instanceof AbstractValue) {
     // visit object, as it's going to be spread
@@ -281,31 +354,10 @@ export function traverseReactElement(
   } else if (propsValue instanceof ObjectValue) {
     if (propsValue.isPartialObject()) {
       traversalVisitor.visitAbstractOrPartialProps(propsValue);
+      handleChildren();
     } else {
       traversalVisitor.visitConcreteProps(propsValue);
-      // handle children
-      if (propsValue.properties.has("children")) {
-        let childrenValue = getProperty(realm, propsValue, "children");
-        if (childrenValue !== realm.intrinsics.undefined && childrenValue !== realm.intrinsics.null) {
-          if (childrenValue instanceof ArrayValue && !childrenValue.intrinsicName) {
-            let childrenLength = getProperty(realm, childrenValue, "length");
-            let childrenLengthValue = 0;
-            if (childrenLength instanceof NumberValue) {
-              childrenLengthValue = childrenLength.value;
-              for (let i = 0; i < childrenLengthValue; i++) {
-                let child = getProperty(realm, childrenValue, "" + i);
-                invariant(
-                  child instanceof Value,
-                  `ReactElement "props.children[${i}]" failed to visit due to a non-value`
-                );
-                traversalVisitor.visitChildNode(child);
-              }
-            }
-          } else {
-            traversalVisitor.visitChildNode(childrenValue);
-          }
-        }
-      }
+      handleChildren();
     }
   }
 }

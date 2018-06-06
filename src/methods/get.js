@@ -164,7 +164,7 @@ export function OrdinaryGet(
   }
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of ownDesc.joinCondition.
-  let joinedEffects = Join.joinEffects(
+  let joinedEffects = Join.joinForkOrChoose(
     realm,
     joinCondition,
     new Effects(result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
@@ -219,7 +219,7 @@ export function OrdinaryGet(
         // Only get the parent value if it does not involve a getter call.
         // Use a property get for the joined value since it does the check for empty.
         let cond = AbstractValue.createFromBinaryOp(realm, "!==", descValue, realm.intrinsics.empty);
-        return Join.joinValuesAsConditional(realm, cond, descValue, parentVal);
+        return AbstractValue.createFromConditionalOp(realm, cond, descValue, parentVal);
       }
       invariant(!desc || descValue instanceof EmptyValue);
       return parent.$Get(P, Receiver);

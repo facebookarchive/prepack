@@ -31,7 +31,7 @@ import { Value } from "./values/index.js";
 import {
   AbruptCompletion,
   Completion,
-  JoinedAbruptCompletions,
+  ForkedAbruptCompletion,
   NormalCompletion,
   PossiblyNormalCompletion,
 } from "./completions.js";
@@ -512,7 +512,7 @@ export type FunctionType = {
   PerformEval(realm: Realm, x: Value, evalRealm: Realm, strictCaller: boolean, direct: boolean): Value,
 
   // If c is an abrupt completion and realm.savedCompletion is defined, the result is an instance of
-  // JoinedAbruptCompletions and the effects that have been captured since the PossiblyNormalCompletion instance
+  // ForkedAbruptCompletion and the effects that have been captured since the PossiblyNormalCompletion instance
   // in realm.savedCompletion has been created, becomes the effects of the branch that terminates in c.
   // If c is a normal completion, the result is realm.savedCompletion, with its value updated to c.
   // If c is undefined, the result is just realm.savedCompletion.
@@ -696,7 +696,7 @@ export type JoinType = {
     c1: PossiblyNormalCompletion,
     c2: AbruptCompletion,
     realm: Realm
-  ): JoinedAbruptCompletions,
+  ): ForkedAbruptCompletion,
 
   unbundleNormalCompletion(
     completionOrValue: Completion | Value | Reference
@@ -724,10 +724,7 @@ export type JoinType = {
 
   updatePossiblyNormalCompletionWithValue(realm: Realm, pnc: PossiblyNormalCompletion, v: Value): void,
 
-  // Returns the joined effects of all of the paths in pnc.
-  // The normal path in pnc is modified to become terminated by ac,
-  // so the overall completion will always be an instance of JoinedAbruptCompletions
-  joinPossiblyNormalCompletionWithAbruptCompletion(
+  replacePossiblyNormalCompletionWithForkedAbruptCompletion(
     realm: Realm,
     // a forked path with a non abrupt (normal) component
     pnc: PossiblyNormalCompletion,
@@ -735,16 +732,16 @@ export type JoinType = {
     ac: AbruptCompletion,
     // effects collected after pnc was constructed
     e: Effects
-  ): Effects,
+  ): ForkedAbruptCompletion,
 
-  joinPossiblyNormalCompletionWithValue(
+  updatePossiblyNormalCompletionWithConditionalValue(
     realm: Realm,
     joinCondition: AbstractValue,
     pnc: PossiblyNormalCompletion,
     v: Value
   ): void,
 
-  joinValueWithPossiblyNormalCompletion(
+  updatePossiblyNormalCompletionWithInverseConditionalValue(
     realm: Realm,
     joinCondition: AbstractValue,
     pnc: PossiblyNormalCompletion,
@@ -758,15 +755,7 @@ export type JoinType = {
     convertToPNC?: boolean
   ): Effects,
 
-  unbundle(
-    CompletionType: typeof Completion,
-    realm: Realm,
-    c: JoinedAbruptCompletions
-  ): [Effects, PossiblyNormalCompletion],
-
-  removeNormalEffects(realm: Realm, c: PossiblyNormalCompletion): Effects,
-
-  joinEffects(realm: Realm, joinCondition: Value, e1: Effects, e2: Effects): Effects,
+  joinForkOrChoose(realm: Realm, joinCondition: Value, e1: Effects, e2: Effects): Effects,
 
   joinNestedEffects(realm: Realm, c: Completion, precedingEffects?: Effects): Effects,
 
@@ -777,7 +766,7 @@ export type JoinType = {
     result2: EvaluationResult
   ): AbruptCompletion | PossiblyNormalCompletion | Value,
 
-  joinResults(
+  joinOrForkResults(
     realm: Realm,
     joinCondition: AbstractValue,
     result1: EvaluationResult,
@@ -807,8 +796,6 @@ export type JoinType = {
     v2: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
     getAbstractValue: (void | Value, void | Value) => Value
   ): Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
-
-  joinValuesAsConditional(realm: Realm, condition: Value, v1: void | Value, v2: void | Value): Value,
 
   joinPropertyBindings(
     realm: Realm,

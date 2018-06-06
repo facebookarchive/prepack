@@ -55,7 +55,7 @@ import { cloneDescriptor, Construct } from "./methods/index.js";
 import {
   AbruptCompletion,
   Completion,
-  JoinedAbruptCompletions,
+  ForkedAbruptCompletion,
   PossiblyNormalCompletion,
   ThrowCompletion,
 } from "./completions.js";
@@ -184,14 +184,8 @@ export class ExecutionContext {
   }
 }
 
-export function construct_empty_effects(realm: Realm): Effects {
-  return new Effects(
-    realm.intrinsics.empty,
-    new Generator(realm, "construct_empty_effects"),
-    new Map(),
-    new Map(),
-    new Set()
-  );
+export function construct_empty_effects(realm: Realm, c: Completion | Value = realm.intrinsics.empty): Effects {
+  return new Effects(c, new Generator(realm, "construct_empty_effects"), new Map(), new Map(), new Set());
 }
 
 export class Realm {
@@ -497,7 +491,7 @@ export class Realm {
         this.clearBlockBindingsFromCompletion(completion.alternate, environmentRecord);
       if (completion.consequent instanceof Completion)
         this.clearBlockBindingsFromCompletion(completion.consequent, environmentRecord);
-    } else if (completion instanceof JoinedAbruptCompletions) {
+    } else if (completion instanceof ForkedAbruptCompletion) {
       this.clearBlockBindings(completion.alternateEffects.modifiedBindings, environmentRecord);
       this.clearBlockBindings(completion.consequentEffects.modifiedBindings, environmentRecord);
       if (completion.alternate instanceof Completion)
@@ -552,7 +546,7 @@ export class Realm {
         this.clearFunctionBindingsFromCompletion(completion.alternate, funcVal);
       if (completion.consequent instanceof Completion)
         this.clearFunctionBindingsFromCompletion(completion.consequent, funcVal);
-    } else if (completion instanceof JoinedAbruptCompletions) {
+    } else if (completion instanceof ForkedAbruptCompletion) {
       this.clearFunctionBindings(completion.alternateEffects.modifiedBindings, funcVal);
       this.clearFunctionBindings(completion.consequentEffects.modifiedBindings, funcVal);
       if (completion.alternate instanceof Completion)
@@ -792,8 +786,7 @@ export class Realm {
         if (c instanceof PossiblyNormalCompletion) {
           // The current state may have advanced since the time control forked into the various paths recorded in c.
           // Update the normal path and restore the global state to what it was at the time of the fork.
-          let subsequentEffects = this.getCapturedEffects(c, c.value);
-          invariant(subsequentEffects !== undefined);
+          let subsequentEffects = this.getCapturedEffects(c.value);
           this.stopEffectCaptureAndUndoEffects(c);
           Join.updatePossiblyNormalCompletionWithSubsequentEffects(this, c, subsequentEffects);
           this.savedCompletion = undefined;
@@ -970,9 +963,9 @@ export class Realm {
     } else {
       // Join the effects, creating an abstract view of what happened, regardless
       // of the actual value of condValue.
-      joinedEffects = Join.joinEffects(this, condValue, effects1, effects2);
+      joinedEffects = Join.joinForkOrChoose(this, condValue, effects1, effects2);
       completion = joinedEffects.result;
-      if (completion instanceof JoinedAbruptCompletions) {
+      if (completion instanceof ForkedAbruptCompletion) {
         // Note that the effects are tracked separately inside completion and will be applied later.
         throw completion;
       }
@@ -1196,8 +1189,7 @@ export class Realm {
       this.captureEffects(completion);
     } else {
       let savedCompletion = this.savedCompletion;
-      let e = this.getCapturedEffects(savedCompletion);
-      invariant(e !== undefined);
+      let e = this.getCapturedEffects();
       this.stopEffectCaptureAndUndoEffects(savedCompletion);
       savedCompletion = Join.composePossiblyNormalCompletions(this, savedCompletion, completion, e);
       this.applyEffects(e);
@@ -1259,21 +1251,12 @@ export class Realm {
     this.createdObjects = new Set();
   }
 
-  getCapturedEffects(completion: PossiblyNormalCompletion, v?: Value = this.intrinsics.undefined): void | Effects {
-    if (completion.savedEffects === undefined) return undefined;
+  getCapturedEffects(v?: Value = this.intrinsics.undefined): Effects {
     invariant(this.generator !== undefined);
     invariant(this.modifiedBindings !== undefined);
     invariant(this.modifiedProperties !== undefined);
     invariant(this.createdObjects !== undefined);
     return new Effects(v, this.generator, this.modifiedBindings, this.modifiedProperties, this.createdObjects);
-  }
-
-  stopEffectCapture(completion: PossiblyNormalCompletion) {
-    let e = this.getCapturedEffects(completion);
-    if (e !== undefined) {
-      this.stopEffectCaptureAndUndoEffects(completion);
-      this.applyEffects(e);
-    }
   }
 
   stopEffectCaptureAndUndoEffects(completion: PossiblyNormalCompletion) {
