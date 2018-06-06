@@ -103,7 +103,7 @@
     "kcheck": "^2.0.0",
     "madge": "^1.6.0",
     "minimist": "^1.2.0",
-    "prettier": "1.12.1",
+    "prettier": "1.13.4",
     "prop-types": "^15.6.0",
     "react": "16.3.1",
     "react-dom": "16.3.1",
