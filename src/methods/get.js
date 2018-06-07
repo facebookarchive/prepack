@@ -564,7 +564,7 @@ export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayV
         NumberValue,
         [arr],
         ([o]) => t.memberExpression(o, t.identifier("length"), false),
-        { isPure: true }
+        { skipInvariant: true, isPure: true }
       );
     }
     let prototypeBinding = proto.properties.get(P);
@@ -582,6 +582,9 @@ export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayV
     Value,
     [arr, prop],
     ([o, p]) => t.memberExpression(o, p, true),
-    { isPure: true }
+    {
+      skipInvariant: true,
+      isPure: true,
+    }
   );
 }
