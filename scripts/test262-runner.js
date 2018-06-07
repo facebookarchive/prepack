@@ -675,7 +675,7 @@ function toPercentage(x: number, total: number): number {
   if (total === 0) {
     return 100;
   }
-  return Math.floor(x / total * 100);
+  return Math.floor((x / total) * 100);
 }
 
 function create_test_message(name: string, success: boolean, err: ?Error, isES6: boolean, isStrict: boolean): string {
