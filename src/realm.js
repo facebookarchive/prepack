@@ -98,7 +98,17 @@ export class Effects {
     this._id = effects_uid++;
   }
 
-  result: EvaluationResult;
+  //result: EvaluationResult;
+  _result: EvaluationResult;
+  get result(): EvaluationResult {
+    return this._result;
+  }
+  set result(newResult: EvaluationResult) {
+    /*if (newResult instanceof NormalCompletion && newResult.effects) {
+      newResult.value = newResult;
+    }*/
+    this._result = newResult;
+  }
   generator: Generator;
   modifiedBindings: Bindings;
   modifiedProperties: PropertyBindings;

@@ -40,6 +40,7 @@ import {
   ForkedAbruptCompletion,
   ThrowCompletion,
   ReturnCompletion,
+  NormalCompletion,
   PossiblyNormalCompletion,
 } from "../completions.js";
 import type {
@@ -438,6 +439,8 @@ export class Generator {
     if (result instanceof UndefinedValue) return output;
     if (result instanceof Value) {
       output.emitReturnValue(result);
+    } else if (result instanceof NormalCompletion) {
+      output.emitReturnValue(result.value);
     } else if (result instanceof ReturnCompletion) {
       output.emitReturnValue(result.value);
     } else if (result instanceof PossiblyNormalCompletion || result instanceof ForkedAbruptCompletion) {

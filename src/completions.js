@@ -47,6 +47,13 @@ export class Completion {
 
   set effects(newEffects: Effects) {
     invariant(newEffects);
+    // Temporary fixup for when we have a NormalCompletion and we're assinging a new set of
+    // Effects that has a result that is a Value instead of a NormalCompletion
+    if (newEffects.result instanceof Value) {
+      this.value = newEffects.result;
+      newEffects.result = this;
+    }
+    invariant(newEffects.result === this, "A completion's effects should always result in itself")
     this._effects = newEffects;
   }
 }
@@ -57,6 +64,7 @@ export class NormalCompletion extends Completion {
     if (effects instanceof Effects) {
       super(value);
       invariant(effects.result === value);
+      effects.result = this;
       this.effects = effects;
     } else if (effects) {
       super(value, ((effects: any): BabelNodeSourceLocation), target);
@@ -117,11 +125,13 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
     this.alternate.effects = alternateEffects;
     invariant(this.consequentEffects);
     invariant(this.alternateEffects);
+    invariant(this.consequentEffects.result === this.consequent);
+    invariant(this.alternateEffects.result === this.alternate);
   }
 
   joinCondition: AbstractValue;
   //consequent: AbruptCompletion;
-  _consequent: ?AbruptCompletion;
+  _consequent: AbruptCompletion;
   get consequent(): AbruptCompletion {
     return this._consequent;
   }
@@ -131,7 +141,7 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
     this._consequent = newAbruptCompletion;
   }
   //alternate: AbruptCompletion;
-  _alternate: ?AbruptCompletion;
+  _alternate: AbruptCompletion;
   get alternate(): AbruptCompletion {
     return this._alternate;
   }

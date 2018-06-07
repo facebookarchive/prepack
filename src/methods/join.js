@@ -224,7 +224,7 @@ export class JoinImplementation {
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof NormalCompletion) {
         pnc.alternate.value = v;
-        pnc.alternateEffects.result = v;
+        //pnc.alternateEffects.result = v;
         pnc.alternate.effects = realm.composeEffects(pnc.alternateEffects, subsequentEffects);
       } else {
         invariant(pnc.alternate instanceof PossiblyNormalCompletion);
@@ -233,7 +233,7 @@ export class JoinImplementation {
     } else {
       if (pnc.consequent instanceof NormalCompletion) {
         pnc.consequent.value = v;
-        pnc.consequentEffects.result = v;
+        //pnc.consequentEffects.result = v;
         pnc.consequent.effects = realm.composeEffects(pnc.consequentEffects, subsequentEffects);
       } else {
         invariant(pnc.consequent instanceof PossiblyNormalCompletion);
@@ -249,7 +249,7 @@ export class JoinImplementation {
         if (v instanceof AbstractValue) v = realm.simplifyAndRefineAbstractValue(v);
         if (pnc.alternate instanceof NormalCompletion) {
           pnc.alternate.value = v;
-          pnc.alternateEffects.result = v;
+          //pnc.alternateEffects.result = v;
           pnc.value = v;
         } else {
           invariant(pnc.alternate instanceof PossiblyNormalCompletion);
@@ -263,7 +263,7 @@ export class JoinImplementation {
         if (v instanceof AbstractValue) v = realm.simplifyAndRefineAbstractValue(v);
         if (pnc.consequent instanceof NormalCompletion) {
           pnc.consequent.value = v;
-          pnc.consequentEffects.result = v;
+          //pnc.consequentEffects.result = v;
           pnc.value = v;
         } else {
           invariant(pnc.consequent instanceof PossiblyNormalCompletion);
@@ -571,8 +571,12 @@ export class JoinImplementation {
       AbstractValue.reportIntrospectionError(joinCondition);
       throw new FatalError();
     }
-    if (result1 instanceof Value && result2 instanceof Value) {
-      let val = this.joinValues(realm, result1, result2, getAbstractValue);
+    if ((result1 instanceof NormalCompletion || result1 instanceof Value) &&
+        (result2 instanceof NormalCompletion || result2 instanceof Value)) {
+          // TODO: fix this, normal completions have effects
+      let res1 = result1 instanceof NormalCompletion ? result1.value : result1;
+      let res2 = result2 instanceof NormalCompletion ? result2.value : result2;
+      let val = this.joinValues(realm, res1, res2, getAbstractValue);
       invariant(val instanceof Value);
       return val;
     }
@@ -583,7 +587,7 @@ export class JoinImplementation {
       return this.joinPossiblyNormalCompletions(realm, joinCondition, result1, result2);
     }
     if (result1 instanceof AbruptCompletion) {
-      let value = result2;
+      let value = result2 instanceof NormalCompletion ? result2.value : result2;
       let savedEffects;
       let savedPathConditions = [];
       if (result2 instanceof PossiblyNormalCompletion) {
@@ -604,7 +608,8 @@ export class JoinImplementation {
       );
     }
     if (result2 instanceof AbruptCompletion) {
-      let value = result1;
+      // TODO: this too
+      let value = result1 instanceof NormalCompletion ? result1.value : result1;
       let savedEffects;
       let savedPathConditions = [];
       if (result1 instanceof PossiblyNormalCompletion) {
