@@ -21,21 +21,22 @@ import { Environment } from "./singletons.js";
 import { ObjectValue } from "./values/index.js";
 import { DebugServer } from "./debugger/server/Debugger.js";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
-import type { DebuggerLaunchArguments } from "./debugger/common/types";
 import simplifyAndRefineAbstractValue from "./utils/simplifier.js";
+import invariant from "./invariant.js";
 
 export default function(
   opts: RealmOptions = {},
   debugChannel: void | DebugChannel = undefined,
-  debuggerLaunchArgs: void | DebuggerLaunchArguments = undefined,
+  // debuggerLaunchArgs: void | DebuggerLaunchArguments = undefined,
   statistics: void | RealmStatistics = undefined
 ): Realm {
   initializeSingletons();
   let r = new Realm(opts, statistics || new RealmStatistics());
+  // Presence of debugChannel indicates we wish to use debugger.
   if (debugChannel) {
-    if (debugChannel.debuggerIsAttached() && debuggerLaunchArgs) {
-      r.debuggerInstance = new DebugServer(debugChannel, r, debuggerLaunchArgs);
-    }
+    invariant(debugChannel.debuggerIsAttached(), "Debugger intends to be used but is not attached.");
+    invariant(opts.debuggerLaunchArgs !== undefined, "Debugger intends to be used but does not have launch arguments.");
+    r.debuggerInstance = new DebugServer(debugChannel, r, opts.debuggerLaunchArgs);
   }
 
   let i = r.intrinsics;

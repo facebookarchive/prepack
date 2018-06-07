@@ -55,7 +55,7 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
       if (arg !== "FatalError" && arg !== "RecoverableError" && arg !== "Warning" && arg !== "Information") {
         console.error("Invalid debugger diagnostic severity level");
       }
-      prepackArguments = prepackArguments.concat(["--debugDiagSeverity", `${arg}`]);
+      prepackArguments = prepackArguments.concat(["--debugDiagnosticSeverity", `${arg}`]);
     } else {
       console.error("Unknown argument: " + arg);
       process.exit(1);

@@ -173,7 +173,7 @@ export type LaunchRequestArguments = {
 };
 
 export type SteppingType = "Step Into" | "Step Over" | "Step Out";
-export type StoppedReason = "Entry" | "Breakpoint" | "Prepack Error" | SteppingType;
+export type StoppedReason = "Entry" | "Breakpoint" | "Diagnostic" | SteppingType;
 
 export type SourceData = {
   filePath: string,

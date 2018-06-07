@@ -306,7 +306,7 @@ export class DebugServer {
     let location = diagnostic.location;
     let message = `${diagnostic.severity} ${diagnostic.errorCode}: ${diagnostic.message}`;
     this._channel.sendStoppedResponse(
-      "Prepack Error",
+      "Diagnostic",
       location.source || "",
       location.start.line,
       location.start.column,

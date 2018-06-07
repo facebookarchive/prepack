@@ -79,7 +79,7 @@ function run(
     --version                Output the version number.
     --repro                  Create a zip file with all information needed to reproduce a Prepack run"
     --cpuprofile             Create a CPU profile file for the run that can be loaded into the Chrome JavaScript CPU Profile viewer",
-    --debugDiagSeverity      FatalError | RecoverableError | Warning | Information (default = FatalError). Diagnostic level at which debugger will stop
+    --debugDiagnosticSeverity      FatalError | RecoverableError | Warning | Information (default = FatalError). Diagnostic level at which debugger will stop
   `;
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -262,7 +262,7 @@ function run(
           invariantLevel = parseInt(invariantLevelString, 10);
           reproArguments.push("--invariantLevel", invariantLevel.toString());
           break;
-        case "debugDiagSeverity":
+        case "debugDiagnosticSeverity":
           arg = args.shift();
           invariant(
             arg === "FatalError" || arg === "RecoverableError" || arg === "Warning" || arg === "Information",
@@ -352,6 +352,7 @@ fi
       reactOutput,
       invariantMode,
       invariantLevel,
+      debuggerLaunchArgs,
     },
     flags
   );
@@ -428,7 +429,7 @@ fi
         prepackStdin(resolvedOptions, processSerializedCode, printDiagnostics);
         return;
       }
-      let serialized = prepackFileSync(inputFilenames, resolvedOptions, debuggerLaunchArgs);
+      let serialized = prepackFileSync(inputFilenames, resolvedOptions);
       printDiagnostics();
       if (resolvedOptions.serialize && serialized) processSerializedCode(serialized);
     } catch (err) {

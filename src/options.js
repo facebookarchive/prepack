@@ -10,6 +10,7 @@
 /* @flow strict */
 
 import type { ErrorHandler } from "./errors.js";
+import type { DebuggerLaunchArguments } from "./debugger/common/types";
 
 export type Compatibility =
   | "browser"
@@ -73,6 +74,7 @@ export type RealmOptions = {
   reactOptimizeNestedFunctions?: boolean,
   stripFlow?: boolean,
   abstractValueImpliesMax?: number,
+  debuggerLaunchArgs?: DebuggerLaunchArguments,
 };
 
 export type SerializerOptions = {
