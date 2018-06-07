@@ -83,18 +83,13 @@ let reactNativeCode = `
       function () { return viewConfig }
     );
 
-    const RCTVirtualText = RCTText;
-
-    // const RCTVirtualText =
-    //   UIManager.RCTVirtualText == null
-    //     ? RCTText
-    //     : createReactNativeComponentClass('RCTVirtualText', () => ({
-    //         validAttributes: Object.assign({},
-    //           ReactNativeViewAttributes.UIView,
-    //           { isHighlighted: true }
-    //         ),
-    //         uiViewClassName: 'RCTVirtualText',
-    //       }));
+    const RCTVirtualText =  createReactNativeComponentClass('RCTVirtualText', () => ({
+              validAttributes: Object.assign({},
+                ReactNativeViewAttributes.UIView,
+                { isHighlighted: true }
+              ),
+              uiViewClassName: 'RCTVirtualText',
+            }));;
 
     function normalizeColor(color) {
       const matchers = getMatchers();
@@ -242,11 +237,8 @@ let reactNativeCode = `
       return '\\(\\s*(' + args.join(')\\s*,\\s*(') + ')\\s*\\)';
     }
 
-    let cachedMatchers;
-
     function getMatchers() {
-      if (cachedMatchers === undefined) {
-        cachedMatchers = {
+      var cachedMatchers = {
           rgb: new RegExp('rgb' + call(NUMBER, NUMBER, NUMBER)),
           rgba: new RegExp('rgba' + call(NUMBER, NUMBER, NUMBER, NUMBER)),
           hsl: new RegExp('hsl' + call(NUMBER, PERCENTAGE, PERCENTAGE)),
@@ -256,7 +248,6 @@ let reactNativeCode = `
           hex6: /^#([0-9a-fA-F]{6})$/,
           hex8: /^#([0-9a-fA-F]{8})$/,
         };
-      }
       return cachedMatchers;
     }
 
@@ -459,7 +450,7 @@ let reactNativeCode = `
         return color;
       }
     
-      let int32Color = normalizeColor(color);
+      var int32Color = normalizeColor(color);
       if (int32Color === null || int32Color === undefined) {
         return undefined;
       }
@@ -505,7 +496,7 @@ let reactNativeCode = `
                   TextAncestor.Provider,
                   { value: true },
                   React.createElement(
-                    RCTVirtualText,
+                    RCTText,
                     Object.assign(
                       {},
                       newProps,
@@ -537,8 +528,8 @@ let reactNativeCode = `
         TouchableText,
         Object.assign(
           {},
-          props,
-          { forwardedRef: ref }
+          props
+          // { forwardedRef: ref }
         )
       );
     });

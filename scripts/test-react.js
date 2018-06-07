@@ -19,7 +19,8 @@ let ReactDOMServer = require("react-dom/server");
 let PropTypes = require("prop-types");
 let ReactRelay = require("react-relay");
 let ReactTestRenderer = require("react-test-renderer");
-let { mergeAdacentJSONTextNodes } = require("../lib/utils/json.js");
+let ReactNative = require("react-native");
+let { mergeAdjacentJSONTextNodes } = require("../lib/utils/json.js");
 /* eslint-disable no-undef */
 let { expect, describe, it } = global;
 
@@ -174,6 +175,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
           return {};
         case "URI":
           return MockURI;
+        case "ReactNative":
+        case "react-native":
+          return ReactNative;
         default:
           throw new Error(`Unrecognized import: "${name}".`);
       }
@@ -188,7 +192,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     return moduleShim.exports;
   }
 
-  async function runTest(directory, name, firstRenderOnly = false, data) {
+  async function runTest(directory, name, firstRenderOnly = false, isRN = false, data) {
     let source = fs.readFileSync(path.join(reactTestRoot, directory, name)).toString();
     if (shouldTranspileSource) {
       source = transpileSource(source);
@@ -229,8 +233,8 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       if (typeof valueA === "string" && typeof valueB === "string") {
         expect(valueA).toBe(valueB);
       } else {
-        expect(mergeAdacentJSONTextNodes(valueB, firstRenderOnly)).toEqual(
-          mergeAdacentJSONTextNodes(valueA, firstRenderOnly)
+        expect(mergeAdjacentJSONTextNodes(valueB, firstRenderOnly, isRN)).toEqual(
+          mergeAdjacentJSONTextNodes(valueA, firstRenderOnly, isRN)
         );
       }
       expect(nameB).toEqual(nameA);
@@ -985,7 +989,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Hacker News app", async () => {
         let data = JSON.parse(getDataFile(directory, "hacker-news.json"));
-        await runTest(directory, "hacker-news.js", false, data);
+        await runTest(directory, "hacker-news.js", false, false, data);
       });
 
       it("Function bind", async () => {
@@ -998,7 +1002,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Hacker News app", async () => {
         let data = JSON.parse(getDataFile(directory, "hacker-news.json"));
-        await runTest(directory, "hacker-news.js", false, data);
+        await runTest(directory, "hacker-news.js", false, false, data);
       });
     });
 
@@ -1007,6 +1011,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("createPortal", async () => {
         await runTest(directory, "create-portal.js", false);
+      });
+    });
+
+    describe("react-native", () => {
+      let directory = "react-native";
+
+      it.only("Simple", async () => {
+        await runTest(directory, "simple.js", false, true);
       });
     });
   });

@@ -4348,6 +4348,76 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output react-native Simple 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 7,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, create-element output Class component folding Classes with state 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -8693,6 +8763,76 @@ ReactStatistics {
   "inlinedComponents": 0,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
+}
+`;
+
+exports[`Test React with JSX input, create-element output react-native Simple 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 7,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
 }
 `;
 
@@ -13059,6 +13199,76 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output react-native Simple 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 7,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, create-element output Class component folding Classes with state 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -17419,5 +17629,75 @@ ReactStatistics {
   "inlinedComponents": 0,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
+}
+`;
+
+exports[`Test React with create-element input, create-element output react-native Simple 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 7,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
 }
 `;

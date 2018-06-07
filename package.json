@@ -106,6 +106,7 @@
     "prop-types": "^15.6.0",
     "react": "16.3.1",
     "react-dom": "16.3.1",
+    "react-native": "^0.55.4",
     "react-relay": "^1.4.1",
     "react-test-renderer": "16.3.1",
     "remap-istanbul": "^0.9.1",
@@ -126,6 +127,7 @@
   "license": "BSD-3-Clause",
   "author": "Facebook",
   "jest": {
+    "preset": "react-native",
     "testMatch": [
       "**/scripts/test-react.js"
     ]
