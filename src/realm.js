@@ -1520,7 +1520,10 @@ export class Realm {
       propertyValue.intrinsicName = `${path}.${key}`;
       propertyValue.kind = "rebuiltProperty";
       propertyValue.args = [object];
-      propertyValue._buildNode = ([node]) => t.memberExpression(node, t.identifier(key));
+      propertyValue._buildNode = ([node]) =>
+        t.isValidIdentifier(key)
+          ? t.memberExpression(node, t.identifier(key), false)
+          : t.memberExpression(node, t.stringLiteral(key), true);
       this.rebuildNestedProperties(propertyValue, propertyValue.intrinsicName);
     }
   }
