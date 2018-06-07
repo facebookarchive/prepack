@@ -25,6 +25,7 @@ import type {
   EvaluateArguments,
   SourceData,
   DebuggerLaunchArguments,
+  Breakpoint,
 } from "./../common/types.js";
 import type { Realm } from "./../../realm.js";
 import { ExecutionContext } from "./../../realm.js";
@@ -50,8 +51,19 @@ export class DebugServer {
     this._variableManager = new VariableManager(realm);
     this._stepManager = new SteppingManager(this._realm, /* default discard old steppers */ false);
     this._stopEventManager = new StopEventManager();
-    this.waitForRun(undefined);
     this._diagnosticSeverity = launchArgs.diagnosticSeverity || "FatalError";
+    // Nuclide starts both at 1. Setting default for conformity.
+    if (launchArgs.uiLinesStartAt0 !== undefined) {
+      this._uiLinesStartAt0 = launchArgs.uiLinesStartAt0;
+    } else {
+      this._uiLinesStartAt0 = false;
+    }
+    if (launchArgs.uiColumnsStartAt1 !== undefined) {
+      this._uiColumnsStartAt1 = launchArgs.uiColumnsStartAt1;
+    } else {
+      this._uiColumnsStartAt1 = false;
+    }
+    this.waitForRun(undefined);
   }
   // the collection of breakpoints
   _breakpointManager: BreakpointManager;
@@ -67,7 +79,7 @@ export class DebugServer {
   // Babel 1-indexes rows and 0-indexes columns.
   // Debugger UI can set whatever it wants. Must check for consistency.
   _uiColumnsStartAt1: boolean;
-  _uiLinesStartAt1: boolean;
+  _uiLinesStartAt0: boolean;
 
   /* Block until adapter says to run
   /* ast: the current ast node we are stopped on
@@ -97,22 +109,14 @@ export class DebugServer {
     }
   }
 
-  // Converts indicies of UI to conform with what Babel gives Prepack.
+  // Converts indicies of UI's breakpoints to conform with what Babel gives Prepack.
   // Babel 1-indexes rows and 0-indexes columns.
-  _convertAstIndex(ast: void | BabelNode): void | BabelNode {
-    if (ast && ast.loc) {
-      if (this._uiColumnsStartAt1) {
-        ast.loc.start.column = ast.loc.start.column - 1;
-        ast.loc.end.column = ast.loc.end.column - 1;
-      }
-
-      if (!this._uiLinesStartAt1) {
-        ast.loc.start.line = ast.loc.start.line + 1;
-        ast.loc.end.line = ast.loc.end.line + 1;
-      }
+  _convertBreakpointIndex(breakpoints: Array<Breakpoint>): Array<Breakpoint> {
+    for (let idx = 0; idx < breakpoints.length; idx++) {
+      if (this._uiColumnsStartAt1) breakpoints[idx].column = breakpoints[idx].column - 1;
+      if (this._uiLinesStartAt0) breakpoints[idx].line = breakpoints[idx].line + 1;
     }
-
-    return ast;
+    return breakpoints;
   }
 
   // Process a command from a debugger. Returns whether Prepack should unblock
@@ -121,27 +125,30 @@ export class DebugServer {
     let requestID = request.id;
     let command = request.command;
     let args = request.arguments;
-    let convertedAst = this._convertAstIndex(ast);
-    console.log("command received ", command);
+    let convertedBreakpoints; // Match UI indexing to BabelNode indexing
     switch (command) {
       case DebugMessage.BREAKPOINT_ADD_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpointManager.addBreakpointMulti(args.breakpoints);
+        convertedBreakpoints = this._convertBreakpointIndex(args.breakpoints);
+        this._breakpointManager.addBreakpointMulti(convertedBreakpoints);
         this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.BREAKPOINT_REMOVE_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpointManager.removeBreakpointMulti(args.breakpoints);
+        convertedBreakpoints = this._convertBreakpointIndex(args.breakpoints);
+        this._breakpointManager.removeBreakpointMulti(convertedBreakpoints);
         this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_REMOVE_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.BREAKPOINT_ENABLE_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpointManager.enableBreakpointMulti(args.breakpoints);
+        convertedBreakpoints = this._convertBreakpointIndex(args.breakpoints);
+        this._breakpointManager.enableBreakpointMulti(convertedBreakpoints);
         this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_ENABLE_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.BREAKPOINT_DISABLE_COMMAND:
         invariant(args.kind === "breakpoint");
-        this._breakpointManager.disableBreakpointMulti(args.breakpoints);
+        convertedBreakpoints = this._convertBreakpointIndex(args.breakpoints);
+        this._breakpointManager.disableBreakpointMulti(convertedBreakpoints);
         this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_DISABLE_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.PREPACK_RUN_COMMAND:
@@ -150,7 +157,7 @@ export class DebugServer {
         return true;
       case DebugMessage.STACKFRAMES_COMMAND:
         invariant(args.kind === "stackframe");
-        this.processStackframesCommand(requestID, args, convertedAst);
+        this.processStackframesCommand(requestID, args, ast);
         break;
       case DebugMessage.SCOPES_COMMAND:
         invariant(args.kind === "scopes");
@@ -161,18 +168,18 @@ export class DebugServer {
         this.processVariablesCommand(requestID, args);
         break;
       case DebugMessage.STEPINTO_COMMAND:
-        invariant(convertedAst !== undefined);
-        this._stepManager.processStepCommand("in", convertedAst);
+        invariant(ast !== undefined);
+        this._stepManager.processStepCommand("in", ast);
         this._onDebuggeeResume();
         return true;
       case DebugMessage.STEPOVER_COMMAND:
-        invariant(convertedAst !== undefined);
-        this._stepManager.processStepCommand("over", convertedAst);
+        invariant(ast !== undefined);
+        this._stepManager.processStepCommand("over", ast);
         this._onDebuggeeResume();
         return true;
       case DebugMessage.STEPOUT_COMMAND:
-        invariant(convertedAst !== undefined);
-        this._stepManager.processStepCommand("out", convertedAst);
+        invariant(ast !== undefined);
+        this._stepManager.processStepCommand("out", ast);
         this._onDebuggeeResume();
         return true;
       case DebugMessage.EVALUATE_COMMAND:

@@ -44,7 +44,10 @@ class PrepackDebugSession extends DebugSession {
   }
   _clientID: void | string;
   _adapterChannel: AdapterChannel;
-  _prematureBreakpointRequests: Array<PrematureBP> = [];
+  // Buffering BP requests that are sent before PP channel has been established.
+  _bufferedBreakpointRequests: Array<PrematureBP> = [];
+  _uiLinesStartAt0: boolean = false;
+  _uiColumnsStartAt1: boolean = false;
 
   _generateDebugFilePath(direction: "in" | "out") {
     let time = Date.now();
@@ -86,7 +89,10 @@ class PrepackDebugSession extends DebugSession {
    */
   // Override
   initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
-    // Let the UI know that we can start accepting breakpoint requests.
+    // Store UI column/line indexing to give to debug server.
+    if (!args.linesStartAt1) this._uiLinesStartAt0 = true;
+    if (args.columnsStartAt1) this._uiColumnsStartAt1 = true;
+
     // The UI will end the configuration sequence by calling 'configurationDone' request.
     this.sendEvent(new InitializedEvent());
 
@@ -118,11 +124,14 @@ class PrepackDebugSession extends DebugSession {
     // set up the communication channel
     this._adapterChannel = new AdapterChannel(inFilePath, outFilePath);
     this._registerMessageCallbacks();
+    let prepackArgs = args.prepackArguments;
+    if (this._uiLinesStartAt0) prepackArgs = prepackArgs.concat(["--debugLinesStartAt0"]);
+    if (this._uiColumnsStartAt1) prepackArgs = prepackArgs.concat(["--debugColumnsStartAt1"]);
     let launchArgs: PrepackLaunchArguments = {
       kind: "launch",
       sourceFile: args.sourceFile,
       prepackRuntime: args.prepackRuntime,
-      prepackArguments: args.prepackArguments,
+      prepackArguments: prepackArgs,
       debugInFilePath: inFilePath,
       debugOutFilePath: outFilePath,
       outputCallback: (data: Buffer) => {
@@ -134,15 +143,16 @@ class PrepackDebugSession extends DebugSession {
         process.exit();
       },
     };
-    if (this._prematureBreakpointRequests.length > 0) {
-      for (let entry of this._prematureBreakpointRequests) {
-        this.setBreakPointsRequest(entry.response, entry.breakpointArgs);
-      }
-    }
 
     this._adapterChannel.launch(response.request_seq, launchArgs, (dbgResponse: DebuggerResponse) => {
       this.sendResponse(response);
     });
+
+    if (this._bufferedBreakpointRequests.length > 0) {
+      for (let entry of this._bufferedBreakpointRequests) {
+        this.setBreakPointsRequest(entry.response, entry.breakpointArgs);
+      }
+    }
   }
 
   /**
@@ -203,7 +213,9 @@ class PrepackDebugSession extends DebugSession {
         this.sendResponse(response);
       });
     } else {
-      this._prematureBreakpointRequests.push({ response: response, breakpointArgs: args });
+      // If adapterChannel hasn't been created yet, the breakpoint won't be communicated
+      // to the debug server. Buffer it here and send it after channel is created in LaunchRequest.
+      this._bufferedBreakpointRequests.push({ response: response, breakpointArgs: args });
     }
   }
 
