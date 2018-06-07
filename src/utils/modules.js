@@ -337,23 +337,26 @@ export class ModuleTracer extends Tracer {
       //   __d(factoryFunction, moduleId, dependencyArray)
 
       if (this.evaluateForEffectsNesting !== 0)
-        this.modules.logger.logError(F, "Defining a module in nested partial evaluation is not supported.");
-      let factoryFunction = argumentsList[0];
-      if (factoryFunction instanceof FunctionValue) {
-        let dependencies = this._tryExtractDependencies(argumentsList[2]);
-        if (dependencies !== undefined) this.modules.factoryFunctionDependencies.set(factoryFunction, dependencies);
-        else
-          this.modules.logger.logError(
-            argumentsList[2],
-            "Third argument to define function is present but not a concrete array."
-          );
-      } else
-        this.modules.logger.logError(factoryFunction, "First argument to define function is not a function value.");
-      let moduleId = argumentsList[1];
-      if (moduleId instanceof NumberValue || moduleId instanceof StringValue)
-        this.modules.moduleIds.add(moduleId.value);
+        this.modules.logger.logWarning(F, "Defining a module in nested partial evaluation is not supported.");
       else
-        this.modules.logger.logError(moduleId, "Second argument to define function is not a number or string value.");
+      {
+        let factoryFunction = argumentsList[0];
+        if (factoryFunction instanceof FunctionValue) {
+          let dependencies = this._tryExtractDependencies(argumentsList[2]);
+          if (dependencies !== undefined) this.modules.factoryFunctionDependencies.set(factoryFunction, dependencies);
+          else
+            this.modules.logger.logError(
+              argumentsList[2],
+              "Third argument to define function is present but not a concrete array."
+            );
+        } else
+          this.modules.logger.logError(factoryFunction, "First argument to define function is not a function value.");
+        let moduleId = argumentsList[1];
+        if (moduleId instanceof NumberValue || moduleId instanceof StringValue)
+          this.modules.moduleIds.add(moduleId.value);
+        else
+          this.modules.logger.logError(moduleId, "Second argument to define function is not a number or string value.");
+      }
     }
     return undefined;
   }
