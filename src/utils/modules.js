@@ -338,8 +338,7 @@ export class ModuleTracer extends Tracer {
 
       if (this.evaluateForEffectsNesting !== 0)
         this.modules.logger.logWarning(F, "Defining a module in nested partial evaluation is not supported.");
-      else
-      {
+      else {
         let factoryFunction = argumentsList[0];
         if (factoryFunction instanceof FunctionValue) {
           let dependencies = this._tryExtractDependencies(argumentsList[2]);
