@@ -10,7 +10,8 @@
 /* @flow strict-local */
 
 import { BreakpointManager } from "./BreakpointManager.js";
-import type { BabelNode, BabelNodeSourceLocation } from "babel-types";
+import { BabelNode } from "babel-types";
+import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "../common/invariant.js";
 import type { DebugChannel } from "./channel/DebugChannel.js";
 import { DebugMessage } from "./../common/channel/DebugMessage.js";
@@ -334,6 +335,8 @@ export class DebugServer {
   */
   handlePrepackError(diagnostic: CompilerDiagnostic) {
     invariant(diagnostic.location && diagnostic.location.source);
+    // The following constructs the message and stop instruction
+    // that is sent to the UI to actually execution.
     let location = diagnostic.location;
     let message = `${diagnostic.severity} ${diagnostic.errorCode}: ${diagnostic.message}`;
     this._channel.sendStoppedResponse(
@@ -343,8 +346,21 @@ export class DebugServer {
       location.start.column,
       message
     );
-    // No ast parameter b/c you cannot stepInto/Over a line that's causing an exception
-    this.waitForRun();
+
+    // The AST node is needed to satisfy the subsequent stackTrace request.
+    // let tempAst = {
+    //   type: "Noop", // Arbitrary entry here, simply to satisfy the field.
+    //   leadingComments: undefined,
+    //   innerComments: undefined,
+    //   trailingComments: undefined,
+    //   start: location.start,
+    //   end: location.end,
+    //   loc: location,
+    // };
+
+    let tempAst = new BabelNode();
+
+    this.waitForRun(tempAst);
   }
 
   // Return whether the debugger should stop on a CompilerDiagnostic of a given severity.
