@@ -243,6 +243,7 @@ export class Realm {
       optimizedNestedClosuresToWrite: [],
       arrayHints: new WeakMap(),
       classComponentMetadata: new Map(),
+      contextNodeReferences: new Set(),
       currentOwner: undefined,
       defaultPropsHelper: undefined,
       enabled: opts.reactEnabled || false,
@@ -266,6 +267,7 @@ export class Realm {
       react: undefined,
       reactDom: undefined,
       reactDomServer: undefined,
+      reactNative: undefined,
       reactRelay: undefined,
     };
 
@@ -334,6 +336,7 @@ export class Realm {
     }>,
     arrayHints: WeakMap<ArrayValue, { func: Value, thisVal: Value }>,
     classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
+    contextNodeReferences: Set<AbstractObjectValue>,
     currentOwner?: ObjectValue,
     defaultPropsHelper?: ECMAScriptSourceFunctionValue,
     enabled: boolean,
@@ -356,6 +359,7 @@ export class Realm {
     react: void | ObjectValue,
     reactDom: void | ObjectValue,
     reactDomServer: void | ObjectValue,
+    reactNative: void | ObjectValue,
     reactRelay: void | ObjectValue,
   };
 

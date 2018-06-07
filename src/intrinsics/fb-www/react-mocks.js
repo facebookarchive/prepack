@@ -22,10 +22,9 @@ import {
   NumberValue,
 } from "../../values/index.js";
 import { Environment } from "../../singletons.js";
-import { createReactHintObject, getReactSymbol, isReactElement } from "../../react/utils.js";
+import { createReactHintObject, getReactSymbol } from "../../react/utils.js";
 import { createReactElement } from "../../react/elements.js";
 import { Properties, Create, To } from "../../singletons.js";
-import { renderToString } from "../../react/experimental-server-rendering/rendering.js";
 import * as t from "babel-types";
 import invariant from "../../invariant";
 import { updateIntrinsicNames, addMockFunctionToObject } from "./utils.js";
@@ -538,14 +537,21 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
         [funcValue, defaultValue],
         ([methodNode, defaultValueNode]) => {
           return t.callExpression(methodNode, [defaultValueNode]);
-        }
+        },
+        { isPure: true }
       );
       invariant(consumer instanceof AbstractObjectValue);
       consumer.values = new ValuesDomain(new Set([consumerObject]));
 
-      let provider = AbstractValue.createTemporalFromBuildFunction(realm, ObjectValue, [consumer], ([consumerNode]) => {
-        return t.memberExpression(consumerNode, t.identifier("Provider"));
-      });
+      let provider = AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        ObjectValue,
+        [consumer],
+        ([consumerNode]) => {
+          return t.memberExpression(consumerNode, t.identifier("Provider"));
+        },
+        { isPure: true }
+      );
       invariant(provider instanceof AbstractObjectValue);
       provider.values = new ValuesDomain(new Set([providerObject]));
 
@@ -560,6 +566,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
 
       Properties.Set(realm, consumerObject, "Provider", provider, true);
 
+      realm.react.contextNodeReferences.add(consumer);
       return consumer;
     }
   );
@@ -571,7 +578,8 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
       [funcVal],
       ([createRefNode]) => {
         return t.callExpression(createRefNode, []);
-      }
+      },
+      { isPure: true }
     );
     invariant(createRef instanceof AbstractObjectValue);
     return createRef;
@@ -584,7 +592,8 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
       [funcVal, func],
       ([forwardRefNode, funcNode]) => {
         return t.callExpression(forwardRefNode, [funcNode]);
-      }
+      },
+      { isPure: true }
     );
     invariant(forwardedRef instanceof AbstractObjectValue);
     realm.react.abstractHints.set(
@@ -597,91 +606,4 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
   reactValue.refuseSerialization = false;
   reactValue.makeFinal();
   return reactValue;
-}
-
-export function createMockReactDOM(realm: Realm, reactDomRequireName: string): ObjectValue {
-  let reactDomValue = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
-  reactDomValue.refuseSerialization = true;
-
-  updateIntrinsicNames(realm, reactDomValue, reactDomRequireName);
-
-  const genericTemporalFunc = (funcVal, args) => {
-    let reactDomMethod = AbstractValue.createTemporalFromBuildFunction(
-      realm,
-      FunctionValue,
-      [funcVal, ...args],
-      ([renderNode, ..._args]) => {
-        return t.callExpression(renderNode, ((_args: any): Array<any>));
-      }
-    );
-    invariant(reactDomMethod instanceof AbstractObjectValue);
-    return reactDomMethod;
-  };
-
-  addMockFunctionToObject(realm, reactDomValue, reactDomRequireName, "render", genericTemporalFunc);
-  addMockFunctionToObject(realm, reactDomValue, reactDomRequireName, "hydrate", genericTemporalFunc);
-  addMockFunctionToObject(realm, reactDomValue, reactDomRequireName, "findDOMNode", genericTemporalFunc);
-  addMockFunctionToObject(realm, reactDomValue, reactDomRequireName, "unmountComponentAtNode", genericTemporalFunc);
-
-  const createPortalFunc = (funcVal, [reactPortalValue, domNodeValue]) => {
-    let reactDomMethod = AbstractValue.createTemporalFromBuildFunction(
-      realm,
-      ObjectValue,
-      [funcVal, reactPortalValue, domNodeValue],
-      ([renderNode, ..._args]) => {
-        return t.callExpression(renderNode, ((_args: any): Array<any>));
-      }
-    );
-    invariant(reactDomMethod instanceof AbstractObjectValue);
-    realm.react.abstractHints.set(
-      reactDomMethod,
-      createReactHintObject(reactDomValue, "createPortal", [reactPortalValue, domNodeValue], realm.intrinsics.undefined)
-    );
-    return reactDomMethod;
-  };
-
-  addMockFunctionToObject(realm, reactDomValue, reactDomRequireName, "createPortal", createPortalFunc);
-
-  reactDomValue.refuseSerialization = false;
-  reactDomValue.makeFinal();
-  return reactDomValue;
-}
-
-export function createMockReactDOMServer(realm: Realm, requireName: string): ObjectValue {
-  let reactDomServerValue = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
-  reactDomServerValue.refuseSerialization = true;
-
-  updateIntrinsicNames(realm, reactDomServerValue, requireName);
-
-  const genericTemporalFunc = (funcVal, args) => {
-    let reactDomMethod = AbstractValue.createTemporalFromBuildFunction(
-      realm,
-      FunctionValue,
-      [funcVal, ...args],
-      ([renderNode, ..._args]) => {
-        return t.callExpression(renderNode, ((_args: any): Array<any>));
-      }
-    );
-    invariant(reactDomMethod instanceof AbstractObjectValue);
-    return reactDomMethod;
-  };
-
-  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToString", (funcVal, [input]) => {
-    if (input instanceof ObjectValue && isReactElement(input)) {
-      return renderToString(realm, input, false);
-    }
-    return genericTemporalFunc(funcVal, [input]);
-  });
-  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToStaticMarkup", (funcVal, [input]) => {
-    if (input instanceof ObjectValue && isReactElement(input)) {
-      return renderToString(realm, input, true);
-    }
-    return genericTemporalFunc(funcVal, [input]);
-  });
-  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToNodeStream", genericTemporalFunc);
-  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToStaticNodeStream", genericTemporalFunc);
-
-  reactDomServerValue.refuseSerialization = false;
-  reactDomServerValue.makeFinal();
-  return reactDomServerValue;
 }

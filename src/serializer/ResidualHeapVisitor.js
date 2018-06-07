@@ -1206,7 +1206,7 @@ export class ResidualHeapVisitor {
       let fixpoint_rerun = () => {
         let progress;
         if (this.residualReactElementVisitor.someReactElement !== undefined) {
-          this._visitReactLibrary(this.residualReactElementVisitor.someReactElement);
+          this._visitReactLibrary(this.residualReactElementVisitor.someReactElement, this.residualReactElementVisitor.mustVisitReactElement);
           progress = true;
         } else {
           this._enqueueWithUnrelatedScope(this.globalGenerator, fixpoint_rerun);
@@ -1284,16 +1284,16 @@ export class ResidualHeapVisitor {
     }
   }
 
-  _visitReactLibrary(someReactElement: ObjectValue) {
+  _visitReactLibrary(someReactElement: ObjectValue, mustVisitReactElement: boolean) {
     // find and visit the React library
     let reactLibraryObject = this.realm.fbLibraries.react;
-    if (this.realm.react.output === "jsx") {
+    if (this.realm.react.output === "jsx" && !mustVisitReactElement) {
       // React might not be defined in scope, i.e. another library is using JSX
       // we don't throw an error as we should support JSX stand-alone
       if (reactLibraryObject !== undefined) {
         this.visitValue(reactLibraryObject);
       }
-    } else if (this.realm.react.output === "create-element") {
+    } else if (this.realm.react.output === "create-element" || mustVisitReactElement) {
       let logError = () => {
         this.logger.logError(
           someReactElement,

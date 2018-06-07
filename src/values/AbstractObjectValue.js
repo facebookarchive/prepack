@@ -511,7 +511,7 @@ export default class AbstractObjectValue extends AbstractValue {
               : t.memberExpression(o, t.stringLiteral(P), true);
           },
           {
-            skipInvariant: true,
+            skipInvariant: true, isPure: true,
           }
         );
       };
