@@ -559,8 +559,12 @@ export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayV
   invariant(proto instanceof ObjectValue && proto === realm.intrinsics.ArrayPrototype);
   if (typeof P === "string") {
     if (P === "length") {
-      return AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, [arr], ([o]) =>
-        t.memberExpression(o, t.identifier("length"), false)
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        NumberValue,
+        [arr],
+        ([o]) => t.memberExpression(o, t.identifier("length"), false),
+        { isPure: true }
       );
     }
     let prototypeBinding = proto.properties.get(P);
@@ -573,7 +577,11 @@ export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayV
     }
   }
   let prop = typeof P === "string" ? new StringValue(realm, P) : P;
-  return AbstractValue.createTemporalFromBuildFunction(realm, Value, [arr, prop], ([o, p]) =>
-    t.memberExpression(o, p, true)
+  return AbstractValue.createTemporalFromBuildFunction(
+    realm,
+    Value,
+    [arr, prop],
+    ([o, p]) => t.memberExpression(o, p, true),
+    { isPure: true }
   );
 }
