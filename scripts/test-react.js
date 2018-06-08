@@ -193,7 +193,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     return moduleShim.exports;
   }
 
-  async function runTest(directory, name, firstRenderOnly = false, isRN = false, data) {
+  async function runTest(directory, name, firstRenderOnly = false, data) {
     let source = fs.readFileSync(path.join(reactTestRoot, directory, name)).toString();
     if (shouldTranspileSource) {
       source = transpileSource(source);
@@ -234,8 +234,8 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       if (typeof valueA === "string" && typeof valueB === "string") {
         expect(valueA).toBe(valueB);
       } else {
-        expect(mergeAdjacentJSONTextNodes(valueB, firstRenderOnly, isRN)).toEqual(
-          mergeAdjacentJSONTextNodes(valueA, firstRenderOnly, isRN)
+        expect(mergeAdjacentJSONTextNodes(valueB, firstRenderOnly)).toEqual(
+          mergeAdjacentJSONTextNodes(valueA, firstRenderOnly)
         );
       }
       expect(nameB).toEqual(nameA);
@@ -1006,7 +1006,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Hacker News app", async () => {
         let data = JSON.parse(getDataFile(directory, "hacker-news.json"));
-        await runTest(directory, "hacker-news.js", false, false, data);
+        await runTest(directory, "hacker-news.js", false, data);
       });
 
       it("Function bind", async () => {
@@ -1019,7 +1019,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Hacker News app", async () => {
         let data = JSON.parse(getDataFile(directory, "hacker-news.json"));
-        await runTest(directory, "hacker-news.js", false, false, data);
+        await runTest(directory, "hacker-news.js", false, data);
       });
     });
 
@@ -1034,8 +1034,12 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     describe("react-native", () => {
       let directory = "react-native";
 
-      it("Simple", async () => {
-        await runTest(directory, "simple.js", false, true);
+      it.only("Simple", async () => {
+        await runTest(directory, "simple.js", false);
+      });
+
+      it.only("Simple 2", async () => {
+        await runTest(directory, "simple2.js", false);
       });
     });
   });

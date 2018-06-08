@@ -17,7 +17,7 @@ import { parseExpression } from "babylon";
 
 let reactNativeCode = `
   function createReactNative(React, reactNameRequireName) {
-    var Platform = __abstract("object", 'require("Platform")');
+    var Platform = __abstract("object", 'require("' + reactNameRequireName + '").Platform');
     
     var NativeModules = __abstract({
       nativePerformanceNow: __abstract("function"),

@@ -12,12 +12,7 @@ type JSONValue = Array<JSONValue> | string | number | JSON;
 type JSON = { [key: string]: JSONValue };
 
 // this will mutate the original JSON object
-export function mergeAdjacentJSONTextNodes(
-  node: JSON,
-  removeFunctions: boolean,
-  isRN: boolean,
-  visitedNodes?: Set<JSON>
-) {
+export function mergeAdjacentJSONTextNodes(node: JSON, removeFunctions: boolean, visitedNodes?: Set<JSON>) {
   if (visitedNodes === undefined) {
     visitedNodes = new Set();
   }
@@ -46,7 +41,7 @@ export function mergeAdjacentJSONTextNodes(
           arr.push(concatString);
           concatString = null;
         }
-        arr.push(mergeAdjacentJSONTextNodes(child, removeFunctions, isRN, visitedNodes));
+        arr.push(mergeAdjacentJSONTextNodes(child, removeFunctions, visitedNodes));
       }
     }
     if (concatString !== null) {
@@ -62,12 +57,8 @@ export function mergeAdjacentJSONTextNodes(
         } else {
           node[key] = "function";
         }
-      } else if (isRN && key === "type" && value === "View") {
-        node.type = "RCTView";
-      } else if (isRN && key === "type" && value === "Text") {
-        node.type = "RCTText";
       } else if (typeof value === "object" && value !== null) {
-        node[key] = mergeAdjacentJSONTextNodes(((value: any): JSON), removeFunctions, isRN, visitedNodes);
+        node[key] = mergeAdjacentJSONTextNodes(((value: any): JSON), removeFunctions, visitedNodes);
       }
     }
   }
