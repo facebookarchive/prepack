@@ -1,3 +1,5 @@
+// does not contain:x.thisShouldNotAppear
+
 function fn(x) {
   var a = x.thisShouldNotAppear;
 
