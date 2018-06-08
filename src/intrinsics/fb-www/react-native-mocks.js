@@ -1031,16 +1031,24 @@ let reactNativeCode = `
       function () { return viewConfig }
     );
 
-    const RCTVirtualText = RCTText;
-      // UIManager.RCTVirtualText == null
-      //   ? RCTText
-      //   : createReactNativeComponentClass('RCTVirtualText', () => ({
-      //         validAttributes: Object.assign({},
-      //           ReactNativeViewAttributes.UIView,
-      //           { isHighlighted: true }
-      //         ),
-      //         uiViewClassName: 'RCTVirtualText',
-      //       }));;
+    // TODO, for now use android
+    const RCTVirtualText = createReactNativeComponentClass('RCTVirtualText', () => ({
+      validAttributes: Object.assign({},
+        ReactNativeViewAttributes.UIView,
+        { isHighlighted: true }
+      ),
+      uiViewClassName: 'RCTVirtualText',
+    }));
+
+    // UIManager.RCTVirtualText == null
+    //   ? RCTText
+    //   : createReactNativeComponentClass('RCTVirtualText', () => ({
+    //         validAttributes: Object.assign({},
+    //           ReactNativeViewAttributes.UIView,
+    //           { isHighlighted: true }
+    //         ),
+    //         uiViewClassName: 'RCTVirtualText',
+    //       }));
 
     function normalizeColor(color) {
       const matchers = getMatchers();
