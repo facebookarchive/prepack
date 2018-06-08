@@ -535,10 +535,8 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
         realm,
         ObjectValue,
         [funcValue, defaultValue],
-        ([methodNode, defaultValueNode]) => {
-          return t.callExpression(methodNode, [defaultValueNode]);
-        },
-        { isPure: true }
+        ([methodNode, defaultValueNode]) => t.callExpression(methodNode, [defaultValueNode]),
+        { skipInvariant: true, isPure: true }
       );
       invariant(consumer instanceof AbstractObjectValue);
       consumer.values = new ValuesDomain(new Set([consumerObject]));
@@ -547,10 +545,8 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
         realm,
         ObjectValue,
         [consumer],
-        ([consumerNode]) => {
-          return t.memberExpression(consumerNode, t.identifier("Provider"));
-        },
-        { isPure: true }
+        ([consumerNode]) => t.memberExpression(consumerNode, t.identifier("Provider")),
+        { skipInvariant: true, isPure: true }
       );
       invariant(provider instanceof AbstractObjectValue);
       provider.values = new ValuesDomain(new Set([providerObject]));
@@ -577,7 +573,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
       ([createRefNode]) => {
         return t.callExpression(createRefNode, []);
       },
-      { isPure: true }
+      { skipInvariant: true, isPure: true }
     );
     invariant(createRef instanceof AbstractObjectValue);
     return createRef;
@@ -591,7 +587,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
       ([forwardRefNode, funcNode]) => {
         return t.callExpression(forwardRefNode, [funcNode]);
       },
-      { isPure: true }
+      { skipInvariant: true, isPure: true }
     );
     invariant(forwardedRef instanceof AbstractObjectValue);
     realm.react.abstractHints.set(

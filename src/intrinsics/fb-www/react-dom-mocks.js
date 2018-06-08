@@ -28,9 +28,8 @@ export function createMockReactDOM(realm: Realm, reactDomRequireName: string): O
       realm,
       FunctionValue,
       [funcVal, ...args],
-      ([renderNode, ..._args]) => {
-        return t.callExpression(renderNode, ((_args: any): Array<any>));
-      }
+      ([renderNode, ..._args]) => t.callExpression(renderNode, ((_args: any): Array<any>)),
+      { skipInvariant: true, isPure: true }
     );
     invariant(reactDomMethod instanceof AbstractObjectValue);
     return reactDomMethod;
@@ -46,9 +45,8 @@ export function createMockReactDOM(realm: Realm, reactDomRequireName: string): O
       realm,
       ObjectValue,
       [funcVal, reactPortalValue, domNodeValue],
-      ([renderNode, ..._args]) => {
-        return t.callExpression(renderNode, ((_args: any): Array<any>));
-      }
+      ([renderNode, ..._args]) => t.callExpression(renderNode, ((_args: any): Array<any>)),
+      { skipInvariant: true, isPure: true }
     );
     invariant(reactDomMethod instanceof AbstractObjectValue);
     realm.react.abstractHints.set(
@@ -76,9 +74,8 @@ export function createMockReactDOMServer(realm: Realm, requireName: string): Obj
       realm,
       FunctionValue,
       [funcVal, ...args],
-      ([renderNode, ..._args]) => {
-        return t.callExpression(renderNode, ((_args: any): Array<any>));
-      }
+      ([renderNode, ..._args]) => t.callExpression(renderNode, ((_args: any): Array<any>)),
+      { skipInvariant: true, isPure: true }
     );
     invariant(reactDomMethod instanceof AbstractObjectValue);
     return reactDomMethod;
