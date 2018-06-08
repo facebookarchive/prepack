@@ -9,5 +9,5 @@ function fn(x) {
 global.__optimize && __optimize(fn);
 
 inspect = function() {
-  return fn();
+  return fn({});
 };
