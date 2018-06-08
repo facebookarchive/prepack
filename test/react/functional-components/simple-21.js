@@ -3,29 +3,24 @@ var React = require('React');
 this['React'] = React;
 
 function Child(props) {
-  var x = Object.assign({}, props, {
-    a: 1,
-    b: 2,
-  });
-  return <span>{x.a}{x.b}{x.c}</span>
+  return <span>{props.x.toString()}</span>;
 }
 
 function App(props) {
   return (
     <div>
-      {props.x || <Child {...props} />}
-      {props.y && <Child {...props} />}
+      {props.x !== null && <Child {...props} />}
     </div>
   );
 }
 
 App.getTrials = function(renderer, Root) {
   let results = [];
-  renderer.update(<Root x={<span />} y={true} c={3} />);
+  renderer.update(<Root x={null} />);
   results.push(['deals with logical expression 1', renderer.toJSON()]);
-  renderer.update(<Root x={false} y={true} c={4} />);
+  renderer.update(<Root x={5} />);
   results.push(['deals with logical expression 2', renderer.toJSON()]);
-  renderer.update(<Root x={false} y={<div />} c={5} />);
+  renderer.update(<Root x={"hello world"} />);
   results.push(['deals with logical expression 3', renderer.toJSON()]);
   return results;
 };

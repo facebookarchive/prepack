@@ -381,6 +381,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-20.js");
       });
 
+      it("Simple 21", async () => {
+        await runTest(directory, "simple-21.js");
+      });
+
       it("Havocing of ReactElements should not result in property assignments", async () => {
         await runTest(directory, "react-element-havoc.js");
       });

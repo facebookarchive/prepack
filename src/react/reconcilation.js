@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { Realm, type Effects, type SideEffectType } from "../realm.js";
+import { construct_empty_effects, Realm, type Effects, type SideEffectType } from "../realm.js";
 import {
   AbstractObjectValue,
   AbstractValue,
@@ -50,7 +50,7 @@ import {
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
-import { Path, Properties } from "../singletons.js";
+import { Join, Path, Properties } from "../singletons.js";
 import { FatalError, CompilerDiagnostic } from "../errors.js";
 import { getValueWithBranchingLogicApplied, type BranchStatusEnum } from "./branching.js";
 import * as t from "babel-types";
@@ -885,14 +885,18 @@ export class Reconciler {
       condValue,
       () => {
         return this.realm.evaluateForEffects(
-          () => this._resolveDeeply(componentType, consequentVal, context, "NEW_BRANCH", evaluatedNode),
+          () => {
+            return this._resolveDeeply(componentType, consequentVal, context, "NEW_BRANCH", evaluatedNode);
+          },
           null,
           "_resolveAbstractConditionalValue consequent"
         );
       },
       () => {
         return this.realm.evaluateForEffects(
-          () => this._resolveDeeply(componentType, alternateVal, context, "NEW_BRANCH", evaluatedNode),
+          () => {
+            return this._resolveDeeply(componentType, alternateVal, context, "NEW_BRANCH", evaluatedNode);
+          },
           null,
           "_resolveAbstractConditionalValue alternate"
         );
@@ -931,13 +935,18 @@ export class Reconciler {
       // effects and wrap it in a conditional (the condition is always the left side).
       let effects = Path.withCondition(leftValue, () => {
         return this.realm.evaluateForEffects(
-          () => this._resolveDeeply(componentType, rightValue, context, "NEW_BRANCH", evaluatedNode),
+          () => {
+            return this._resolveDeeply(componentType, rightValue, context, "NEW_BRANCH", evaluatedNode);
+          },
           null,
-          "_resolveAbstractLogicalValue alternate (&&)"
+          "_resolveAbstractLogicalValue (&&)"
         );
       });
+      // we join with empty effects so we create an if statment block
+      let emptyEffects = construct_empty_effects(this.realm);
+      let joinedEffects = Join.joinForkOrChoose(this.realm, leftValue, effects, emptyEffects);
       invariant(effects !== undefined, "_resolveAbstractLogicalValue TODO when effects are undefined");
-      this.realm.applyEffects(effects);
+      this.realm.applyEffects(joinedEffects, "_resolveAbstractLogicalValue");
       invariant(effects.result instanceof Value);
       return AbstractValue.createFromLogicalOp(this.realm, "&&", leftValue, effects.result);
     }

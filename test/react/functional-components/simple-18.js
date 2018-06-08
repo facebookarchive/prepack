@@ -12,9 +12,6 @@ function App(props) {
 }
 
 App.getTrials = function(renderer, Root) {
-  function externalFunc() {
-    // NO-OP
-  }
   let results = [];
   renderer.update(<Root x={<span />} y={true} />);
   results.push(['deals with logical expression 1', renderer.toJSON()]);

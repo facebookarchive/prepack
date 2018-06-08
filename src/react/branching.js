@@ -9,7 +9,7 @@
 
 /* @flow strict-local */
 
-import { Realm } from "../realm.js";
+import { construct_empty_effects, Realm } from "../realm.js";
 import {
   AbstractValue,
   ArrayValue,
@@ -22,6 +22,7 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
+import { Join, Path } from "../singletons.js";
 import { isReactElement, addKeyToReactElement, forEachArrayValue, getProperty, mapArrayValue } from "./utils";
 import { ExpectedBailOut } from "./errors.js";
 
@@ -165,6 +166,45 @@ function applyBranchedLogicValue(realm: Realm, value: Value): Value {
         );
       }
     );
+  } else if (value instanceof AbstractValue && value.kind === "||") {
+    let [leftValue, rightValue] = value.args;
+    invariant(leftValue instanceof AbstractValue);
+
+    return realm.evaluateWithAbstractConditional(
+      leftValue,
+      () => {
+        return realm.evaluateForEffects(
+          () => applyBranchedLogicValue(realm, leftValue),
+          null,
+          "applyBranchedLogicValue consequent (||)"
+        );
+      },
+      () => {
+        return realm.evaluateForEffects(
+          () => applyBranchedLogicValue(realm, rightValue),
+          null,
+          "applyBranchedLogicValue alternate (||)"
+        );
+      }
+    );
+  } else if (value instanceof AbstractValue && value.kind === "&&") {
+    let [leftValue, rightValue] = value.args;
+    invariant(leftValue instanceof AbstractValue);
+
+    let effects = Path.withCondition(leftValue, () => {
+      return realm.evaluateForEffects(
+        () => applyBranchedLogicValue(realm, rightValue),
+        null,
+        "applyBranchedLogicValue (&&)"
+      );
+    });
+    // we join with empty effects so we create an if statment block
+    let emptyEffects = construct_empty_effects(realm);
+    let joinedEffects = Join.joinForkOrChoose(realm, leftValue, effects, emptyEffects);
+    invariant(effects !== undefined, "applyBranchedLogicValue TODO when effects are undefined");
+    realm.applyEffects(joinedEffects, "applyBranchedLogicValue");
+    invariant(effects.result instanceof Value);
+    return AbstractValue.createFromLogicalOp(realm, "&&", leftValue, effects.result);
   } else {
     throw new ExpectedBailOut("Unsupported value encountered when applying branched logic to values");
   }
