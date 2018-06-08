@@ -1206,7 +1206,10 @@ export class ResidualHeapVisitor {
       let fixpoint_rerun = () => {
         let progress;
         if (this.residualReactElementVisitor.someReactElement !== undefined) {
-          this._visitReactLibrary(this.residualReactElementVisitor.someReactElement, this.residualReactElementVisitor.mustVisitReactElement);
+          this._visitReactLibrary(
+            this.residualReactElementVisitor.someReactElement,
+            this.residualReactElementVisitor.mustVisitReactElement
+          );
           progress = true;
         } else {
           this._enqueueWithUnrelatedScope(this.globalGenerator, fixpoint_rerun);

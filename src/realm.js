@@ -266,6 +266,7 @@ export class Realm {
       react: undefined,
       reactDom: undefined,
       reactDomServer: undefined,
+      reactNative: undefined,
       reactRelay: undefined,
     };
 
@@ -356,6 +357,7 @@ export class Realm {
     react: void | ObjectValue,
     reactDom: void | ObjectValue,
     reactDomServer: void | ObjectValue,
+    reactNative: void | ObjectValue,
     reactRelay: void | ObjectValue,
   };
 

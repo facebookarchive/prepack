@@ -19,6 +19,7 @@ let ReactDOMServer = require("react-dom/server");
 let PropTypes = require("prop-types");
 let ReactRelay = require("react-relay");
 let ReactTestRenderer = require("react-test-renderer");
+// $FlowFixMe: react-native is a devDependency
 let ReactNative = require("react-native");
 let { mergeAdjacentJSONTextNodes } = require("../lib/utils/json.js");
 /* eslint-disable no-undef */
@@ -1033,7 +1034,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     describe("react-native", () => {
       let directory = "react-native";
 
-      it.only("Simple", async () => {
+      it("Simple", async () => {
         await runTest(directory, "simple.js", false, true);
       });
     });

@@ -4581,7 +4581,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, JSX output react-native Simple 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 7,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -4590,16 +4590,17 @@ ReactStatistics {
             Object {
               "children": Array [
                 Object {
-                  "children": Array [],
+                  "children": Array [
+                    Object {
+                      "children": Array [],
+                      "message": "",
+                      "name": "Context.Provider",
+                      "status": "INLINED",
+                    },
+                  ],
                   "message": "",
                   "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
+                  "status": "RENDER_PROPS",
                 },
               ],
               "message": "",
@@ -4616,16 +4617,17 @@ ReactStatistics {
             Object {
               "children": Array [
                 Object {
-                  "children": Array [],
+                  "children": Array [
+                    Object {
+                      "children": Array [],
+                      "message": "",
+                      "name": "Context.Provider",
+                      "status": "INLINED",
+                    },
+                  ],
                   "message": "",
                   "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
+                  "status": "RENDER_PROPS",
                 },
               ],
               "message": "",
@@ -4643,8 +4645,8 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 6,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 4,
+  "optimizedNestedClosures": 2,
   "optimizedTrees": 1,
 }
 `;
@@ -9230,7 +9232,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, create-element output react-native Simple 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 7,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -9239,16 +9241,17 @@ ReactStatistics {
             Object {
               "children": Array [
                 Object {
-                  "children": Array [],
+                  "children": Array [
+                    Object {
+                      "children": Array [],
+                      "message": "",
+                      "name": "Context.Provider",
+                      "status": "INLINED",
+                    },
+                  ],
                   "message": "",
                   "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
+                  "status": "RENDER_PROPS",
                 },
               ],
               "message": "",
@@ -9265,16 +9268,17 @@ ReactStatistics {
             Object {
               "children": Array [
                 Object {
-                  "children": Array [],
+                  "children": Array [
+                    Object {
+                      "children": Array [],
+                      "message": "",
+                      "name": "Context.Provider",
+                      "status": "INLINED",
+                    },
+                  ],
                   "message": "",
                   "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
+                  "status": "RENDER_PROPS",
                 },
               ],
               "message": "",
@@ -9292,8 +9296,8 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 6,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 4,
+  "optimizedNestedClosures": 2,
   "optimizedTrees": 1,
 }
 `;
@@ -13894,7 +13898,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output react-native Simple 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 7,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -13903,16 +13907,17 @@ ReactStatistics {
             Object {
               "children": Array [
                 Object {
-                  "children": Array [],
+                  "children": Array [
+                    Object {
+                      "children": Array [],
+                      "message": "",
+                      "name": "Context.Provider",
+                      "status": "INLINED",
+                    },
+                  ],
                   "message": "",
                   "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
+                  "status": "RENDER_PROPS",
                 },
               ],
               "message": "",
@@ -13929,16 +13934,17 @@ ReactStatistics {
             Object {
               "children": Array [
                 Object {
-                  "children": Array [],
+                  "children": Array [
+                    Object {
+                      "children": Array [],
+                      "message": "",
+                      "name": "Context.Provider",
+                      "status": "INLINED",
+                    },
+                  ],
                   "message": "",
                   "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
+                  "status": "RENDER_PROPS",
                 },
               ],
               "message": "",
@@ -13956,8 +13962,8 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 6,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 4,
+  "optimizedNestedClosures": 2,
   "optimizedTrees": 1,
 }
 `;
@@ -18558,7 +18564,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output react-native Simple 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 7,
+  "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -18567,16 +18573,17 @@ ReactStatistics {
             Object {
               "children": Array [
                 Object {
-                  "children": Array [],
+                  "children": Array [
+                    Object {
+                      "children": Array [],
+                      "message": "",
+                      "name": "Context.Provider",
+                      "status": "INLINED",
+                    },
+                  ],
                   "message": "",
                   "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
+                  "status": "RENDER_PROPS",
                 },
               ],
               "message": "",
@@ -18593,16 +18600,17 @@ ReactStatistics {
             Object {
               "children": Array [
                 Object {
-                  "children": Array [],
+                  "children": Array [
+                    Object {
+                      "children": Array [],
+                      "message": "",
+                      "name": "Context.Provider",
+                      "status": "INLINED",
+                    },
+                  ],
                   "message": "",
                   "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
+                  "status": "RENDER_PROPS",
                 },
               ],
               "message": "",
@@ -18620,8 +18628,8 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 6,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 4,
+  "optimizedNestedClosures": 2,
   "optimizedTrees": 1,
 }
 `;

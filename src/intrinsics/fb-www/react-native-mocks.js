@@ -10,13 +10,13 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ECMAScriptSourceFunctionValue, ObjectValue } from "../../values/index.js";
+import { ECMAScriptSourceFunctionValue, ObjectValue, StringValue } from "../../values/index.js";
 import { Environment } from "../../singletons.js";
 import invariant from "../../invariant";
 import { parseExpression } from "babylon";
 
 let reactNativeCode = `
-  function createReactNative(React) {
+  function createReactNative(React, reactNameRequireName) {
     var Platform = __abstract("object", 'require("Platform")');
     
     var NativeModules = __abstract({
@@ -113,7 +113,7 @@ let reactNativeCode = `
       SourceCode: __abstract({
         scriptURL: __abstract("string"),
       }),
-    }, 'require("NativeModules")');
+    }, 'require("' + reactNameRequireName + '").NativeModules');
 
     const {UIManager} = NativeModules;
 
@@ -1668,7 +1668,10 @@ export function createMockReactNative(realm: Realm, reactNativeRequireName: stri
     reactLibrary !== undefined,
     "Could not find React library in sourcecode. Ensure React is bundled or required."
   );
-  let reactNativeValue = factory(realm.intrinsics.undefined, [reactLibrary]);
+  let reactNativeValue = factory(realm.intrinsics.undefined, [
+    reactLibrary,
+    new StringValue(realm, reactNativeRequireName),
+  ]);
   invariant(reactNativeValue instanceof ObjectValue);
   reactNativeValue.refuseSerialization = true;
 
