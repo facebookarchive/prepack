@@ -425,27 +425,29 @@ export class Reconciler {
       let valueProp = Get(this.realm, propsValue, "value");
       setContextCurrentValue(contextConsumer, valueProp);
     }
-    if (propsValue instanceof ObjectValue) {
-      let resolvedReactElement = this._resolveReactElementHostChildren(
-        componentType,
-        reactElement,
-        context,
-        branchStatus,
-        evaluatedChildNode
-      );
-      let resolvedPropsValue = getProperty(this.realm, resolvedReactElement, "props");
-      invariant(resolvedPropsValue instanceof ObjectValue || resolvedPropsValue instanceof AbstractObjectValue);
-      invariant(lastValueProp instanceof Value);
-      setContextCurrentValue(contextConsumer, lastValueProp);
-      this._decremementReferenceForContextNode(contextConsumer);
-      // if we no dead ends, we know the rest of the tree and can safely remove the provider
-      if (this.componentTreeState.deadEnds === 0) {
-        let childrenValue = Get(this.realm, resolvedPropsValue, "children");
-        evaluatedChildNode.status = "INLINED";
-        this.statistics.inlinedComponents++;
-        return childrenValue;
+    if (this.componentTreeConfig.firstRenderOnly) {
+      if (propsValue instanceof ObjectValue) {
+        let resolvedReactElement = this._resolveReactElementHostChildren(
+          componentType,
+          reactElement,
+          context,
+          branchStatus,
+          evaluatedChildNode
+        );
+        let resolvedPropsValue = getProperty(this.realm, resolvedReactElement, "props");
+        invariant(resolvedPropsValue instanceof ObjectValue || resolvedPropsValue instanceof AbstractObjectValue);
+        invariant(lastValueProp instanceof Value);
+        setContextCurrentValue(contextConsumer, lastValueProp);
+        this._decremementReferenceForContextNode(contextConsumer);
+        // if we no dead ends, we know the rest of the tree and can safely remove the provider
+        if (this.componentTreeState.deadEnds === 0) {
+          let childrenValue = Get(this.realm, resolvedPropsValue, "children");
+          evaluatedChildNode.status = "INLINED";
+          this.statistics.inlinedComponents++;
+          return childrenValue;
+        }
+        return resolvedReactElement;
       }
-      return resolvedReactElement;
     }
     let children = this._resolveReactElementHostChildren(
       componentType,
@@ -494,7 +496,6 @@ export class Reconciler {
     componentType: Value,
     reactElement: ObjectValue,
     context: ObjectValue | AbstractObjectValue,
-    branchStatus: BranchStatusEnum,
     evaluatedNode: ReactEvaluatedNode
   ): Value | void {
     let typeValue = getProperty(this.realm, reactElement, "type");
@@ -507,23 +508,23 @@ export class Reconciler {
       if (propsValue instanceof ObjectValue && propsValue.properties.has("children")) {
         let renderProp = getProperty(this.realm, propsValue, "children");
 
-        // this._findReactComponentTrees(propsValue, evaluatedChildNode, "NORMAL_FUNCTIONS");
+        this._findReactComponentTrees(propsValue, evaluatedChildNode, "NORMAL_FUNCTIONS");
         if (renderProp instanceof ECMAScriptSourceFunctionValue) {
-          // if (this.componentTreeConfig.firstRenderOnly) {
-          if (typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue) {
-            // make sure this context is in our tree
-            if (this._hasReferenceForContextNode(typeValue)) {
-              let valueProp = Get(this.realm, typeValue, "currentValue");
-              let result = getValueFromFunctionCall(this.realm, renderProp, this.realm.intrinsics.undefined, [
-                valueProp,
-              ]);
-              this.statistics.inlinedComponents++;
-              this.statistics.componentsEvaluated++;
-              evaluatedChildNode.status = "INLINED";
-              return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode);
+          if (this.componentTreeConfig.firstRenderOnly) {
+            if (typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue) {
+              // make sure this context is in our tree
+              if (this._hasReferenceForContextNode(typeValue)) {
+                let valueProp = Get(this.realm, typeValue, "currentValue");
+                let result = getValueFromFunctionCall(this.realm, renderProp, this.realm.intrinsics.undefined, [
+                  valueProp,
+                ]);
+                this.statistics.inlinedComponents++;
+                this.statistics.componentsEvaluated++;
+                evaluatedChildNode.status = "INLINED";
+                return result;
+              }
             }
           }
-          // }
           this._queueOptimizedClosure(renderProp, evaluatedChildNode, componentType, context);
           return;
         } else {
@@ -796,17 +797,12 @@ export class Reconciler {
   }
 
   _createComponentTreeState(): ComponentTreeState {
-    let contextNodeReferences = new Map();
-
-    for (let contextNodeReference of this.realm.react.contextNodeReferences) {
-      contextNodeReferences.set(contextNodeReference, 1);
-    }
     return {
       componentType: undefined,
       contextTypes: new Set(),
       deadEnds: 0,
       status: "SIMPLE",
-      contextNodeReferences,
+      contextNodeReferences: new Map(),
     };
   }
 
@@ -1156,13 +1152,7 @@ export class Reconciler {
           );
         }
         case "CONTEXT_CONSUMER": {
-          result = this._resolveContextConsumerComponent(
-            componentType,
-            reactElement,
-            context,
-            branchStatus,
-            evaluatedNode
-          );
+          result = this._resolveContextConsumerComponent(componentType, reactElement, context, evaluatedNode);
           break;
         }
         case "FORWARD_REF": {

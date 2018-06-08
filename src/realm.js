@@ -243,7 +243,6 @@ export class Realm {
       optimizedNestedClosuresToWrite: [],
       arrayHints: new WeakMap(),
       classComponentMetadata: new Map(),
-      contextNodeReferences: new Set(),
       currentOwner: undefined,
       defaultPropsHelper: undefined,
       enabled: opts.reactEnabled || false,
@@ -267,7 +266,6 @@ export class Realm {
       react: undefined,
       reactDom: undefined,
       reactDomServer: undefined,
-      reactNative: undefined,
       reactRelay: undefined,
     };
 
@@ -336,7 +334,6 @@ export class Realm {
     }>,
     arrayHints: WeakMap<ArrayValue, { func: Value, thisVal: Value }>,
     classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
-    contextNodeReferences: Set<AbstractObjectValue>,
     currentOwner?: ObjectValue,
     defaultPropsHelper?: ECMAScriptSourceFunctionValue,
     enabled: boolean,
@@ -359,7 +356,6 @@ export class Realm {
     react: void | ObjectValue,
     reactDom: void | ObjectValue,
     reactDomServer: void | ObjectValue,
-    reactNative: void | ObjectValue,
     reactRelay: void | ObjectValue,
   };
 
@@ -1524,7 +1520,10 @@ export class Realm {
       propertyValue.intrinsicName = `${path}.${key}`;
       propertyValue.kind = "rebuiltProperty";
       propertyValue.args = [object];
-      propertyValue._buildNode = ([node]) => t.memberExpression(node, t.identifier(key));
+      propertyValue._buildNode = ([node]) =>
+        t.isValidIdentifier(key)
+          ? t.memberExpression(node, t.identifier(key), false)
+          : t.memberExpression(node, t.stringLiteral(key), true);
       this.rebuildNestedProperties(propertyValue, propertyValue.intrinsicName);
     }
   }
