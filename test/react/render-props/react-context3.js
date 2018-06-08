@@ -1,23 +1,16 @@
 var React = require('React');
 // the JSX transform converts to React, so we need to add it back in
 this['React'] = React;
-var { Provider, Consumer } = React.createContext(null);
-// this is done otherwise the test fails because getTrials
-// fails to get the same reference to the context as the
-// component, due to how test-react evaluates this module
-// (strange, I can't see any work around apart from this)
-// this shouldn't happen in real code, as we don't do
-// what we do with test-react and try and eval the module
-this['_Consumer'] = Consumer;
+var Ctx = React.createContext("bar");
 
 function Child(props) {
   return (
     <div>
-      <_Consumer>
+      <Ctx.Consumer>
         {value => {
           return <span>{value}</span>
         }}
-      </_Consumer>
+      </Ctx.Consumer>
     </div>
   )
 }
@@ -26,13 +19,23 @@ function App(props) {
   return <div><Child /></div>;
 }
 
+App.Ctx = Ctx;
+
 App.getTrials = function(renderer, Root) {
+  let results = [];
   renderer.update((
-    <Provider value={5}>
+    <Root.Ctx.Provider value={5}>
       <Root />
-    </Provider>
+    </Root.Ctx.Provider>
   ));
-  return [['render props context', renderer.toJSON()]];
+  results.push(['render props context', renderer.toJSON()]);
+  renderer.update((
+    <Root.Ctx.Provider value={7}>
+      <Root />
+    </Root.Ctx.Provider>
+  ));
+  results.push(['render props context', renderer.toJSON()]);
+  return results;
 };
 
 if (this.__optimizeReactComponentTree) {
