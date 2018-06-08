@@ -502,7 +502,7 @@ global.result = __evaluatePureFunction(() => {
   global.__optimize && __optimize(Main);
 
   global.inspect = function() {
-    return Main({});
+    return Main({}, {});
   };
 
   return Main;
