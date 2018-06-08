@@ -1132,13 +1132,15 @@ export class FunctionImplementation {
       }
       realm.savedCompletion = undefined;
       if (c === undefined) return savedCompletion;
+      // TODO: normal completion?
       if (c instanceof Value) {
-        Join.updatePossiblyNormalCompletionWithValue(realm, savedCompletion, c);
+        Join.updatePossiblyNormalCompletionWithValue(realm, savedCompletion, new NormalCompletion(c));
         return savedCompletion;
       } else {
         let e = realm.getCapturedEffects();
         realm.stopEffectCaptureAndUndoEffects(savedCompletion);
-        return Join.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, savedCompletion, c, e);
+        let result = Join.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, savedCompletion, c, e);
+        return result;
       }
     }
     return c;
@@ -1155,6 +1157,7 @@ export class FunctionImplementation {
     for (let node of body) {
       if (node.type !== "FunctionDeclaration") {
         let res = blockEnv.evaluateCompletionDeref(node, strictCode);
+        invariant(res instanceof AbruptCompletion || res instanceof Value);
         if (!(res instanceof EmptyValue)) {
           if (res instanceof AbruptCompletion) throw UpdateEmpty(realm, res, blockValue || realm.intrinsics.empty);
           invariant(res instanceof Value);

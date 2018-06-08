@@ -25,7 +25,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion, NormalCompletion } from "../completions.js";
 import { Environment, Havoc, To } from "../singletons.js";
 import type {
   BabelBinaryOperator,
@@ -230,6 +230,8 @@ export function computeBinary(
       }
       // return or throw completion
       if (completion instanceof AbruptCompletion) throw completion;
+      if (completion instanceof NormalCompletion && !(completion instanceof PossiblyNormalCompletion))
+        completion = completion.value;
       invariant(completion instanceof Value);
       return completion;
     }

@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion, NormalCompletion } from "../completions.js";
 import { construct_empty_effects, type Realm, Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding, PropertyKeyValue } from "../types.js";
 import {
@@ -341,6 +341,8 @@ export class PropertiesImplementation {
 
       // return or throw completion
       if (completion instanceof AbruptCompletion) throw completion;
+      if (completion instanceof NormalCompletion && !(completion instanceof PossiblyNormalCompletion))
+        completion = completion.value;
       invariant(completion instanceof Value);
       return To.ToBooleanPartial(realm, completion);
     }

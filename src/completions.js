@@ -24,6 +24,10 @@ export class Completion {
   value: Value;
   target: ?string;
   location: ?BabelNodeSourceLocation;
+
+  toDisplayString(): string {
+    return "[" + this.constructor.name + " value " + (this.value ? this.value.toDisplayString() : "undefined") + "]";
+  }
 }
 
 // Normal completions are returned just like spec completions
@@ -86,6 +90,13 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
   alternate: AbruptCompletion;
   alternateEffects: Effects;
 
+  toDisplayString(): string {
+    let superString = super.toDisplayString().slice(0, -1);
+    return (
+      superString + " c: [" + this.consequent.toDisplayString() + "] a: [" + this.alternate.toDisplayString() + "]]"
+    );
+  }
+
   containsCompletion(CompletionType: typeof Completion): boolean {
     if (this.consequent instanceof CompletionType) return true;
     if (this.alternate instanceof CompletionType) return true;
@@ -130,9 +141,9 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   constructor(
     value: Value,
     joinCondition: AbstractValue,
-    consequent: Completion | Value,
+    consequent: Completion,
     consequentEffects: Effects,
-    alternate: Completion | Value,
+    alternate: Completion,
     alternateEffects: Effects,
     savedPathConditions: Array<AbstractValue>,
     savedEffects: void | Effects = undefined
@@ -173,13 +184,20 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   }
 
   joinCondition: AbstractValue;
-  consequent: Completion | Value;
+  consequent: Completion;
   consequentEffects: Effects;
-  alternate: Completion | Value;
+  alternate: Completion;
   alternateEffects: Effects;
   savedEffects: void | Effects;
   // The path conditions that applied at the time of the oldest fork that caused this completion to arise.
   savedPathConditions: Array<AbstractValue>;
+
+  toDisplayString(): string {
+    let superString = super.toDisplayString().slice(0, -1);
+    return (
+      superString + " c: [" + this.consequent.toDisplayString() + "] a: [" + this.alternate.toDisplayString() + "]]"
+    );
+  }
 
   containsCompletion(CompletionType: typeof Completion): boolean {
     if (this.consequent instanceof CompletionType) return true;
