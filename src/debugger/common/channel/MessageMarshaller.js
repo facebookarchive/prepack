@@ -61,7 +61,7 @@ export class MessageMarshaller {
       filePath: filePath,
       line: line,
       column: column,
-      message: message || "",
+      message: message,
     };
     return `${this._lastRunRequestID} ${DebugMessage.STOPPED_RESPONSE} ${JSON.stringify(result)}`;
   }
