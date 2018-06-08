@@ -480,6 +480,9 @@ export class Reconciler {
   }
 
   _hasReferenceForContextNode(contextNode: ObjectValue | AbstractObjectValue): boolean {
+    if (this.componentTreeConfig.isRoot) {
+      return true;
+    }
     if (this.componentTreeState.contextNodeReferences.has(contextNode)) {
       let references = this.componentTreeState.contextNodeReferences.get(contextNode);
       if (!references) {
@@ -794,19 +797,12 @@ export class Reconciler {
   }
 
   _createComponentTreeState(): ComponentTreeState {
-    let contextNodeReferences = new Map();
-
-    if (this.componentTreeConfig.isRoot) {
-      for (let contextNodeReference of this.realm.react.contextNodes) {
-        contextNodeReferences.set(contextNodeReference, 1);
-      }
-    }
     return {
       componentType: undefined,
       contextTypes: new Set(),
       deadEnds: 0,
       status: "SIMPLE",
-      contextNodeReferences,
+      contextNodeReferences: new Map(),
     };
   }
 

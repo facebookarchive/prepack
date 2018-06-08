@@ -475,7 +475,7 @@ export function renderToString(
   staticMarkup: boolean
 ): StringValue | AbstractValue {
   let reactStatistics = new ReactStatistics();
-  let reconciler = new Reconciler(realm, { firstRenderOnly: true }, reactStatistics);
+  let reconciler = new Reconciler(realm, { firstRenderOnly: true, isRoot: true }, reactStatistics);
   let typeValue = getProperty(realm, reactElement, "type");
   let propsValue = getProperty(realm, reactElement, "props");
   let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(realm, typeValue));
