@@ -420,32 +420,37 @@ export class Reconciler {
     let lastValueProp = getProperty(this.realm, contextConsumer, "currentValue");
     this._incremementReferenceForContextNode(contextConsumer);
 
+    let valueProp;
     // if we have a value prop, set it
     if (propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue) {
-      let valueProp = Get(this.realm, propsValue, "value");
+      valueProp = Get(this.realm, propsValue, "value");
       setContextCurrentValue(contextConsumer, valueProp);
     }
     if (propsValue instanceof ObjectValue) {
-      let resolvedReactElement = this._resolveReactElementHostChildren(
-        componentType,
-        reactElement,
-        context,
-        branchStatus,
-        evaluatedChildNode
-      );
-      let resolvedPropsValue = getProperty(this.realm, resolvedReactElement, "props");
-      invariant(resolvedPropsValue instanceof ObjectValue || resolvedPropsValue instanceof AbstractObjectValue);
-      invariant(lastValueProp instanceof Value);
-      setContextCurrentValue(contextConsumer, lastValueProp);
-      this._decremementReferenceForContextNode(contextConsumer);
-      // if we no dead ends, we know the rest of the tree and can safely remove the provider
-      if (this.componentTreeState.deadEnds === 0) {
-        let childrenValue = Get(this.realm, resolvedPropsValue, "children");
-        evaluatedChildNode.status = "INLINED";
-        this.statistics.inlinedComponents++;
-        return childrenValue;
+      // if the value is abstract, we need to keep the render prop as unless
+      // we are in firstRenderOnly mode, where we can just inline the abstract value
+      if (!(valueProp instanceof AbstractValue) || this.componentTreeConfig.firstRenderOnly) {
+        let resolvedReactElement = this._resolveReactElementHostChildren(
+          componentType,
+          reactElement,
+          context,
+          branchStatus,
+          evaluatedChildNode
+        );
+        let resolvedPropsValue = getProperty(this.realm, resolvedReactElement, "props");
+        invariant(resolvedPropsValue instanceof ObjectValue || resolvedPropsValue instanceof AbstractObjectValue);
+        invariant(lastValueProp instanceof Value);
+        setContextCurrentValue(contextConsumer, lastValueProp);
+        this._decremementReferenceForContextNode(contextConsumer);
+        // if we no dead ends, we know the rest of the tree and can safely remove the provider
+        if (this.componentTreeState.deadEnds === 0) {
+          let childrenValue = Get(this.realm, resolvedPropsValue, "children");
+          evaluatedChildNode.status = "INLINED";
+          this.statistics.inlinedComponents++;
+          return childrenValue;
+        }
+        return resolvedReactElement;
       }
-      return resolvedReactElement;
     }
     let children = this._resolveReactElementHostChildren(
       componentType,
@@ -516,13 +521,17 @@ export class Reconciler {
             // make sure this context is in our tree
             if (this._hasReferenceForContextNode(typeValue)) {
               let valueProp = Get(this.realm, typeValue, "currentValue");
-              let result = getValueFromFunctionCall(this.realm, renderProp, this.realm.intrinsics.undefined, [
-                valueProp,
-              ]);
-              this.statistics.inlinedComponents++;
-              this.statistics.componentsEvaluated++;
-              evaluatedChildNode.status = "INLINED";
-              return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode);
+              // if the value is abstract, we need to keep the render prop as unless
+              // we are in firstRenderOnly mode, where we can just inline the abstract value
+              if (!(valueProp instanceof AbstractValue) || this.componentTreeConfig.firstRenderOnly) {
+                let result = getValueFromFunctionCall(this.realm, renderProp, this.realm.intrinsics.undefined, [
+                  valueProp,
+                ]);
+                this.statistics.inlinedComponents++;
+                this.statistics.componentsEvaluated++;
+                evaluatedChildNode.status = "INLINED";
+                return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode);
+              }
             }
           }
           this._queueOptimizedClosure(renderProp, evaluatedChildNode, componentType, context);

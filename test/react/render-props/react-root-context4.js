@@ -5,36 +5,37 @@ this['React'] = React;
 var { Provider, Consumer } = React.createContext(null);
 
 function Child(props) {
+  var renderProp = function(value) {
+    return <span>{value}</span>
+  }
+
   return (
     <div>
-      <Consumer>
-        {value => {
-          return <span>{value}</span>
-        }}
-      </Consumer>
+      <Consumer>{renderProp}</Consumer>
     </div>
   )
 }
 
 function App(props) {
   return (
-    <Provider value="a">
-      <Provider value="b">
-        <Child />
-      </Provider>
+    <Provider value={props.dynamicValue}>
       <Child />
     </Provider>
   );
 }
 
 App.getTrials = function(renderer, Root) {
-  renderer.update(<Root />);
-  return [['render props context', renderer.toJSON()]];
+  let results = [];
+  renderer.update(<Root dynamicValue={5} />);
+  results.push(['render props context', renderer.toJSON()]);
+  renderer.update(<Root dynamicValue={7} />);
+  results.push(['render props context', renderer.toJSON()]);
+  return results;
 };
 
 if (this.__optimizeReactComponentTree) {
   __optimizeReactComponentTree(App, {
-    firstRenderOnly: true,
+    isRoot: true,
   });
 }
 
