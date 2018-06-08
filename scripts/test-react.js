@@ -799,6 +799,18 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("React Context 6", async () => {
         await runTest(directory, "react-context6.js");
       });
+
+      it("React Context from root tree", async () => {
+        await runTest(directory, "react-root-context.js");
+      });
+
+      it("React Context from root tree 2", async () => {
+        await runTest(directory, "react-root-context2.js");
+      });
+
+      it("React Context from root tree 3", async () => {
+        await runTest(directory, "react-root-context3.js");
+      });
     });
 
     describe("First render only", () => {
@@ -854,6 +866,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("React Context 5", async () => {
         await runTest(directory, "react-context5.js");
+      });
+
+      it("React Context 6", async () => {
+        await runTest(directory, "react-context6.js");
       });
 
       it.skip("Replace this in callbacks", async () => {
