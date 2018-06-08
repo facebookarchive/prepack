@@ -51,7 +51,7 @@ import {
   OrdinaryPreventExtensions,
   HasCompatibleType,
 } from "../methods/index.js";
-import { Havoc, Join, Properties, To } from "../singletons.js";
+import { Havoc, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { typeAnnotation } from "babel-types";
 import * as t from "babel-types";
@@ -812,7 +812,7 @@ export default class ObjectValue extends ConcreteValue {
         undefined,
         "check for known property"
       );
-      result = Join.joinValuesAsConditional(this.$Realm, cond, val, result);
+      result = AbstractValue.createFromConditionalOp(this.$Realm, cond, val, result);
     }
     return result;
   }
@@ -970,7 +970,7 @@ export default class ObjectValue extends ConcreteValue {
           Receiver,
           P,
         ]);
-        newVal = Join.joinValuesAsConditional(this.$Realm, cond, V, sentinel);
+        newVal = AbstractValue.createFromConditionalOp(this.$Realm, cond, V, sentinel);
       }
       prop.descriptor = {
         writable: true,
@@ -988,7 +988,7 @@ export default class ObjectValue extends ConcreteValue {
           newVal = V; // It will be widened later on
         } else {
           let cond = createTemplate(this.$Realm, P);
-          newVal = Join.joinValuesAsConditional(this.$Realm, cond, V, oldVal);
+          newVal = AbstractValue.createFromConditionalOp(this.$Realm, cond, V, oldVal);
         }
       }
       desc.value = newVal;
@@ -1012,7 +1012,7 @@ export default class ObjectValue extends ConcreteValue {
         invariant(oldVal instanceof Value); // otherwise this is not simple
       }
       let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", P, new StringValue(this.$Realm, key));
-      let newVal = Join.joinValuesAsConditional(this.$Realm, cond, V, oldVal);
+      let newVal = AbstractValue.createFromConditionalOp(this.$Realm, cond, V, oldVal);
       Properties.OrdinarySet(this.$Realm, this, key, newVal, Receiver);
     }
     this.unknownProperty = savedUnknownProperty;

@@ -19,6 +19,7 @@ import {
   ArrayValue,
   BoundFunctionValue,
   EmptyValue,
+  NativeFunctionValue,
   NullValue,
   NumberValue,
   ObjectValue,
@@ -163,7 +164,7 @@ export function OrdinaryGet(
   }
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of ownDesc.joinCondition.
-  let joinedEffects = Join.joinEffects(
+  let joinedEffects = Join.joinForkOrChoose(
     realm,
     joinCondition,
     new Effects(result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
@@ -218,7 +219,7 @@ export function OrdinaryGet(
         // Only get the parent value if it does not involve a getter call.
         // Use a property get for the joined value since it does the check for empty.
         let cond = AbstractValue.createFromBinaryOp(realm, "!==", descValue, realm.intrinsics.empty);
-        return Join.joinValuesAsConditional(realm, cond, descValue, parentVal);
+        return AbstractValue.createFromConditionalOp(realm, cond, descValue, parentVal);
       }
       invariant(!desc || descValue instanceof EmptyValue);
       return parent.$Get(P, Receiver);
@@ -554,22 +555,25 @@ export function GetTemplateObject(realm: Realm, templateLiteral: BabelNodeTempla
 }
 
 export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayValue, P: string | SymbolValue): Value {
-  let type = Value;
-
+  let proto = arr.$GetPrototypeOf();
+  invariant(proto instanceof ObjectValue && proto === realm.intrinsics.ArrayPrototype);
   if (typeof P === "string") {
-    // these are safe methods to allow, as they either return a new array or are a method
-    // that doesn't mutate global state or affect that of the values passed in as arguments
-    if (P === "map" || P === "slice" || P === "filter" || P === "concat" || P === "indexOf" || P === "reverse") {
-      let proto = arr.$GetPrototypeOf();
-      invariant(proto instanceof ObjectValue);
-      return OrdinaryGet(realm, proto, P, arr);
-    }
     if (P === "length") {
-      type = NumberValue;
+      return AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, [arr], ([o]) =>
+        t.memberExpression(o, t.identifier("length"), false)
+      );
+    }
+    let prototypeBinding = proto.properties.get(P);
+    if (prototypeBinding !== undefined) {
+      let descriptor = prototypeBinding.descriptor;
+      // ensure we are accessing a built-in native function
+      if (descriptor !== undefined && descriptor.value instanceof NativeFunctionValue) {
+        return descriptor.value;
+      }
     }
   }
   let prop = typeof P === "string" ? new StringValue(realm, P) : P;
-  return AbstractValue.createTemporalFromBuildFunction(realm, type, [arr, prop], ([o, p]) =>
+  return AbstractValue.createTemporalFromBuildFunction(realm, Value, [arr, prop], ([o, p]) =>
     t.memberExpression(o, p, true)
   );
 }

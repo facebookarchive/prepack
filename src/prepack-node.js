@@ -31,7 +31,7 @@ export * from "./prepack-standalone";
 
 function createStatistics(options: PrepackOptions) {
   let gc = global.gc; // eslint-disable-line no-undef
-  return options.profile
+  return options.profile !== undefined
     ? new SerializerStatistics(
         () => Date.now(),
         () => {
@@ -52,11 +52,10 @@ export function prepackStdin(
   process.stdin.setEncoding("utf8");
   process.stdin.resume();
   process.stdin.on("data", function(code) {
-    fs.readFile(sourceMapFilename, "utf8", function(mapErr, sourceMap) {
+    fs.readFile(sourceMapFilename, "utf8", function(mapErr, sourceMap = "") {
       if (mapErr) {
         //if no sourcemap was provided we silently ignore
         if (sourceMapFilename !== "") console.warn(`No sourcemap found at ${sourceMapFilename}.`);
-        sourceMap = "";
       }
       let filename = "no-filename-specified";
       let serialized;
@@ -91,13 +90,15 @@ export function prepackFile(
     prepackNodeCLI(filename, options, callback);
     return;
   }
-  let sourceMapFilename = options.inputSourceMapFilename || filename + ".map";
+  let sourceMapFilename =
+    options.inputSourceMapFilename !== undefined ? options.inputSourceMapFilename : filename + ".map";
   fs.readFile(filename, "utf8", function(fileErr, code) {
     if (fileErr) {
       if (fileErrorHandler) fileErrorHandler(fileErr);
       return;
     }
-    fs.readFile(sourceMapFilename, "utf8", function(mapErr, sourceMap) {
+    fs.readFile(sourceMapFilename, "utf8", function(mapErr, _sourceMap) {
+      let sourceMap = _sourceMap;
       if (mapErr) {
         console.warn(`No sourcemap found at ${sourceMapFilename}.`);
         sourceMap = "";
@@ -130,16 +131,17 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
   const sourceFiles = filenames.map(filename => {
     let code = fs.readFileSync(filename, "utf8");
     let sourceMap = "";
-    let sourceMapFilename = options.inputSourceMapFilename || filename + ".map";
+    let sourceMapFilename =
+      options.inputSourceMapFilename !== undefined ? options.inputSourceMapFilename : filename + ".map";
     try {
       sourceMap = fs.readFileSync(sourceMapFilename, "utf8");
     } catch (_e) {
-      if (options.inputSourceMapFilename) console.warn(`No sourcemap found at ${sourceMapFilename}.`);
+      if (options.inputSourceMapFilename !== undefined) console.warn(`No sourcemap found at ${sourceMapFilename}.`);
     }
     return { filePath: filename, fileContents: code, sourceMapContents: sourceMap };
   });
   let debugChannel;
-  if (options.debugInFilePath && options.debugOutFilePath) {
+  if (options.debugInFilePath !== undefined && options.debugOutFilePath !== undefined) {
     let debugOptions = getDebuggerOptions(options);
     let ioWrapper = new FileIOWrapper(false, debugOptions.inFilePath, debugOptions.outFilePath);
     debugChannel = new DebugChannel(ioWrapper);

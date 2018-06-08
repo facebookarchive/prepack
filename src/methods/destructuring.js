@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import invariant from "../invariant.js";
 import type { Realm } from "../realm.js";
@@ -92,11 +92,12 @@ export function DestructuringAssignmentEvaluation(
 // ECMA262 12.15.5.3
 export function IteratorDestructuringAssignmentEvaluation(
   realm: Realm,
-  elements: $ReadOnlyArray<BabelNodeLVal | null>,
+  _elements: $ReadOnlyArray<BabelNodeLVal | null>,
   iteratorRecord: { $Iterator: ObjectValue, $Done: boolean },
   strictCode: boolean,
   env: LexicalEnvironment
 ) {
+  let elements = _elements;
   // Check if the last element is a rest element. If so then we want to save the
   // element and handle it separately after we iterate through the other
   // formals. This also enforces that a rest element may only ever be in the

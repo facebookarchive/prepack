@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import {
@@ -379,9 +379,9 @@ export default function(realm: Realm): ObjectValue {
   obj.defineNativeProperty(realm.intrinsics.SymbolToStringTag, new StringValue(realm, "JSON"), { writable: false });
 
   // ECMA262 24.3.2
-  obj.defineNativeMethod("stringify", 3, (context, [value, replacer, space]) => {
-    replacer = replacer.throwIfNotConcrete();
-    space = space.throwIfNotConcrete();
+  obj.defineNativeMethod("stringify", 3, (context, [value, _replacer, _space]) => {
+    let replacer = _replacer.throwIfNotConcrete();
+    let space = _space.throwIfNotConcrete();
 
     // 1. Let stack be a new empty List.
     let stack = [];

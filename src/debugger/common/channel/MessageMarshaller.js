@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 import { DebugMessage } from "./DebugMessage.js";
 import type {
   Breakpoint,
@@ -30,6 +30,7 @@ import type {
   StackframeArguments,
   StepIntoArguments,
   StepOverArguments,
+  StepOutArguments,
   StoppedReason,
   EvaluateArguments,
   EvaluateResult,
@@ -102,6 +103,10 @@ export class MessageMarshaller {
     return `${requestID} ${DebugMessage.STEPOVER_COMMAND}`;
   }
 
+  marshallStepOutRequest(requestID: number): string {
+    return `${requestID} ${DebugMessage.STEPOUT_COMMAND}`;
+  }
+
   marshallEvaluateRequest(requestID: number, frameId: void | number, expression: string): string {
     let evalArgs: EvaluateArguments = {
       kind: "evaluate",
@@ -162,6 +167,13 @@ export class MessageMarshaller {
           kind: "stepOver",
         };
         args = stepOverArgs;
+        break;
+      case DebugMessage.STEPOUT_COMMAND:
+        this._lastRunRequestID = requestID;
+        let stepOutArgs: StepOutArguments = {
+          kind: "stepOut",
+        };
+        args = stepOutArgs;
         break;
       case DebugMessage.EVALUATE_COMMAND:
         args = this._unmarshallEvaluateArguments(requestID, parts.slice(2).join(" "));

@@ -15,7 +15,7 @@ import { Realm, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
 import { Get } from "../methods/index.js";
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
-import { Environment, Functions } from "../singletons.js";
+import { Environment } from "../singletons.js";
 import {
   AbstractValue,
   Value,
@@ -107,7 +107,6 @@ export class ModuleTracer extends Tracer {
   // If we don't delay unsupported requires, we simply want to record here
   // when a module gets initialized, and then we return.
   _callRequireAndRecord(moduleIdValue: number | string, performCall: () => Value) {
-    let realm = this.modules.realm;
     if (
       (this.requireStack.length === 0 || this.requireStack[this.requireStack.length - 1] !== moduleIdValue) &&
       this.modules.moduleIds.has(moduleIdValue)
@@ -115,21 +114,7 @@ export class ModuleTracer extends Tracer {
       this.requireStack.push(moduleIdValue);
       try {
         let value = performCall();
-        // Make this into a join point by suppressing the conditional exception.
-        // TODO: delete this code and let the caller deal with the conditional exception.
-        let completion = Functions.incorporateSavedCompletion(realm, value);
-        if (completion instanceof PossiblyNormalCompletion) {
-          realm.stopEffectCapture(completion);
-          let warning = new CompilerDiagnostic(
-            "Module import may fail with an exception",
-            completion.location,
-            "PP0018",
-            "Warning"
-          );
-          realm.handleError(warning);
-        } else {
-          this.modules.recordModuleInitialized(moduleIdValue, value);
-        }
+        this.modules.recordModuleInitialized(moduleIdValue, value);
         return value;
       } finally {
         invariant(this.requireStack.pop() === moduleIdValue);
@@ -352,23 +337,25 @@ export class ModuleTracer extends Tracer {
       //   __d(factoryFunction, moduleId, dependencyArray)
 
       if (this.evaluateForEffectsNesting !== 0)
-        this.modules.logger.logError(F, "Defining a module in nested partial evaluation is not supported.");
-      let factoryFunction = argumentsList[0];
-      if (factoryFunction instanceof FunctionValue) {
-        let dependencies = this._tryExtractDependencies(argumentsList[2]);
-        if (dependencies !== undefined) this.modules.factoryFunctionDependencies.set(factoryFunction, dependencies);
+        this.modules.logger.logWarning(F, "Defining a module in nested partial evaluation is not supported.");
+      else {
+        let factoryFunction = argumentsList[0];
+        if (factoryFunction instanceof FunctionValue) {
+          let dependencies = this._tryExtractDependencies(argumentsList[2]);
+          if (dependencies !== undefined) this.modules.factoryFunctionDependencies.set(factoryFunction, dependencies);
+          else
+            this.modules.logger.logError(
+              argumentsList[2],
+              "Third argument to define function is present but not a concrete array."
+            );
+        } else
+          this.modules.logger.logError(factoryFunction, "First argument to define function is not a function value.");
+        let moduleId = argumentsList[1];
+        if (moduleId instanceof NumberValue || moduleId instanceof StringValue)
+          this.modules.moduleIds.add(moduleId.value);
         else
-          this.modules.logger.logError(
-            argumentsList[2],
-            "Third argument to define function is present but not a concrete array."
-          );
-      } else
-        this.modules.logger.logError(factoryFunction, "First argument to define function is not a function value.");
-      let moduleId = argumentsList[1];
-      if (moduleId instanceof NumberValue || moduleId instanceof StringValue)
-        this.modules.moduleIds.add(moduleId.value);
-      else
-        this.modules.logger.logError(moduleId, "Second argument to define function is not a number or string value.");
+          this.modules.logger.logError(moduleId, "Second argument to define function is not a number or string value.");
+      }
     }
     return undefined;
   }

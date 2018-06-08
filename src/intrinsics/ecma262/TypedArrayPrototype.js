@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import type { ElementType } from "../../types.js";
@@ -641,7 +641,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.2.3.15
-  obj.defineNativeMethod("join", 1, (context, [separator]) => {
+  obj.defineNativeMethod("join", 1, (context, [_separator]) => {
+    let separator = _separator;
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 

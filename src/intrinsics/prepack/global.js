@@ -29,17 +29,25 @@ import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import invariant from "../../invariant.js";
 import { createAbstract, parseTypeNameOrTemplate } from "./utils.js";
+import { describeValue } from "../../utils.js";
 import { valueIsKnownReactAbstraction } from "../../react/utils.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
 
 export function createAbstractFunction(realm: Realm, ...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
-  return new NativeFunctionValue(realm, "global.__abstract", "__abstract", 0, (context, [typeNameOrTemplate, name]) => {
-    if (name instanceof StringValue) name = name.value;
-    if (name !== undefined && typeof name !== "string") {
-      throw new TypeError("intrinsic name argument is not a string");
+  return new NativeFunctionValue(
+    realm,
+    "global.__abstract",
+    "__abstract",
+    0,
+    (context, [typeNameOrTemplate, _name]) => {
+      let name = _name;
+      if (name instanceof StringValue) name = name.value;
+      if (name !== undefined && typeof name !== "string") {
+        throw new TypeError("intrinsic name argument is not a string");
+      }
+      return createAbstract(realm, typeNameOrTemplate, name, ...additionalValues);
     }
-    return createAbstract(realm, typeNameOrTemplate, name, ...additionalValues);
-  });
+  );
 }
 
 export default function(realm: Realm): void {
@@ -411,6 +419,15 @@ export default function(realm: Realm): void {
   global.$DefineOwnProperty("__isIntegral", {
     value: new NativeFunctionValue(realm, "global.__isIntegral", "__isIntegral", 1, (context, [value]) => {
       return new BooleanValue(realm, value instanceof IntegralValue);
+    }),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__describe", {
+    value: new NativeFunctionValue(realm, "global.__describe", "__describe", 1, (context, [value]) => {
+      return new StringValue(realm, describeValue(value));
     }),
     writable: true,
     enumerable: false,

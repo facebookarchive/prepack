@@ -78,7 +78,7 @@ export default function(
   // of the actual value of exprValue.
   const ce = consequentEffects;
   const ae = alternateEffects;
-  let joinedEffects = Join.joinEffects(
+  let joinedEffects = Join.joinForkOrChoose(
     realm,
     exprValue,
     new Effects(ce.result, ce.generator, ce.modifiedBindings, ce.modifiedProperties, ce.createdObjects),

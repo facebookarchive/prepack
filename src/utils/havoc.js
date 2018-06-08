@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
@@ -206,8 +206,6 @@ class ObjectValueHavocingVisitor {
             invariant(value instanceof Value);
             if (value instanceof EmptyValue) {
               if (realmGenerator !== undefined) realmGenerator.emitPropertyDelete(obj, name);
-            } else if (value.mightHaveBeenDeleted()) {
-              throw new FatalError("TODO: Support havocing objects with properties that might have been deleted");
             } else {
               if (realmGenerator !== undefined) {
                 let targetDescriptor = this.getHeapInspector().getTargetIntegrityDescriptor(obj);

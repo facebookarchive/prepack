@@ -55,7 +55,7 @@ import { cloneDescriptor, Construct } from "./methods/index.js";
 import {
   AbruptCompletion,
   Completion,
-  JoinedAbruptCompletions,
+  ForkedAbruptCompletion,
   PossiblyNormalCompletion,
   ThrowCompletion,
 } from "./completions.js";
@@ -184,21 +184,15 @@ export class ExecutionContext {
   }
 }
 
-export function construct_empty_effects(realm: Realm): Effects {
-  return new Effects(
-    realm.intrinsics.empty,
-    new Generator(realm, "construct_empty_effects"),
-    new Map(),
-    new Map(),
-    new Set()
-  );
+export function construct_empty_effects(realm: Realm, c: Completion | Value = realm.intrinsics.empty): Effects {
+  return new Effects(c, new Generator(realm, "construct_empty_effects"), new Map(), new Map(), new Set());
 }
 
 export class Realm {
   constructor(opts: RealmOptions, statistics: RealmStatistics) {
     this.statistics = statistics;
     this.isReadOnly = false;
-    this.useAbstractInterpretation = !!opts.serialize || !!opts.residual || !!opts.check;
+    this.useAbstractInterpretation = opts.serialize === true || opts.residual === true || Array.isArray(opts.check);
     this.ignoreLeakLogic = false;
     this.isInPureTryStatement = false;
     if (opts.mathRandomSeed !== undefined) {
@@ -207,19 +201,19 @@ export class Realm {
     this.strictlyMonotonicDateNow = !!opts.strictlyMonotonicDateNow;
 
     // 0 = disabled
-    this.abstractValueImpliesMax = opts.abstractValueImpliesMax || 0;
+    this.abstractValueImpliesMax = opts.abstractValueImpliesMax !== undefined ? opts.abstractValueImpliesMax : 0;
     this.abstractValueImpliesCounter = 0;
     this.inSimplificationPath = false;
 
     this.timeout = opts.timeout;
-    if (this.timeout) {
+    if (this.timeout !== undefined) {
       // We'll call Date.now for every this.timeoutCounterThreshold'th AST node.
       // The threshold is there to reduce the cost of the surprisingly expensive Date.now call.
       this.timeoutCounter = this.timeoutCounterThreshold = 1024;
     }
 
     this.start = Date.now();
-    this.compatibility = opts.compatibility || "browser";
+    this.compatibility = opts.compatibility !== undefined ? opts.compatibility : "browser";
     this.maxStackDepth = opts.maxStackDepth || 225;
     this.invariantLevel = opts.invariantLevel || 0;
     this.invariantMode = opts.invariantMode || "throw";
@@ -455,7 +449,7 @@ export class Realm {
 
   testTimeout() {
     let timeout = this.timeout;
-    if (timeout && !--this.timeoutCounter) {
+    if (timeout !== undefined && !--this.timeoutCounter) {
       this.timeoutCounter = this.timeoutCounterThreshold;
       let total = Date.now() - this.start;
       if (total > timeout) {
@@ -497,7 +491,7 @@ export class Realm {
         this.clearBlockBindingsFromCompletion(completion.alternate, environmentRecord);
       if (completion.consequent instanceof Completion)
         this.clearBlockBindingsFromCompletion(completion.consequent, environmentRecord);
-    } else if (completion instanceof JoinedAbruptCompletions) {
+    } else if (completion instanceof ForkedAbruptCompletion) {
       this.clearBlockBindings(completion.alternateEffects.modifiedBindings, environmentRecord);
       this.clearBlockBindings(completion.consequentEffects.modifiedBindings, environmentRecord);
       if (completion.alternate instanceof Completion)
@@ -552,7 +546,7 @@ export class Realm {
         this.clearFunctionBindingsFromCompletion(completion.alternate, funcVal);
       if (completion.consequent instanceof Completion)
         this.clearFunctionBindingsFromCompletion(completion.consequent, funcVal);
-    } else if (completion instanceof JoinedAbruptCompletions) {
+    } else if (completion instanceof ForkedAbruptCompletion) {
       this.clearFunctionBindings(completion.alternateEffects.modifiedBindings, funcVal);
       this.clearFunctionBindings(completion.consequentEffects.modifiedBindings, funcVal);
       if (completion.alternate instanceof Completion)
@@ -710,19 +704,17 @@ export class Realm {
     strictCode: boolean,
     env: LexicalEnvironment,
     state?: any,
-    generatorName?: string
+    generatorName?: string = "evaluateNodeForEffects"
   ): Effects {
-    return this.evaluateForEffects(
-      () => env.evaluateCompletionDeref(ast, strictCode),
-      state,
-      generatorName || "evaluateNodeForEffects"
-    );
+    return this.evaluateForEffects(() => env.evaluateCompletionDeref(ast, strictCode), state, generatorName);
   }
 
-  evaluateForEffectsInGlobalEnv(func: () => Value, state?: any, generatorName?: string): Effects {
-    return this.wrapInGlobalEnv(() =>
-      this.evaluateForEffects(func, state, generatorName || "evaluateForEffectsInGlobalEnv")
-    );
+  evaluateForEffectsInGlobalEnv(
+    func: () => Value,
+    state?: any,
+    generatorName?: string = "evaluateForEffectsInGlobalEnv"
+  ): Effects {
+    return this.wrapInGlobalEnv(() => this.evaluateForEffects(func, state, generatorName));
   }
 
   // NB: does not apply generators because there's no way to cleanly revert them.
@@ -794,8 +786,7 @@ export class Realm {
         if (c instanceof PossiblyNormalCompletion) {
           // The current state may have advanced since the time control forked into the various paths recorded in c.
           // Update the normal path and restore the global state to what it was at the time of the fork.
-          let subsequentEffects = this.getCapturedEffects(c, c.value);
-          invariant(subsequentEffects !== undefined);
+          let subsequentEffects = this.getCapturedEffects(c.value);
           this.stopEffectCaptureAndUndoEffects(c);
           Join.updatePossiblyNormalCompletionWithSubsequentEffects(this, c, subsequentEffects);
           this.savedCompletion = undefined;
@@ -972,9 +963,9 @@ export class Realm {
     } else {
       // Join the effects, creating an abstract view of what happened, regardless
       // of the actual value of condValue.
-      joinedEffects = Join.joinEffects(this, condValue, effects1, effects2);
+      joinedEffects = Join.joinForkOrChoose(this, condValue, effects1, effects2);
       completion = joinedEffects.result;
-      if (completion instanceof JoinedAbruptCompletions) {
+      if (completion instanceof ForkedAbruptCompletion) {
         // Note that the effects are tracked separately inside completion and will be applied later.
         throw completion;
       }
@@ -1198,8 +1189,7 @@ export class Realm {
       this.captureEffects(completion);
     } else {
       let savedCompletion = this.savedCompletion;
-      let e = this.getCapturedEffects(savedCompletion);
-      invariant(e !== undefined);
+      let e = this.getCapturedEffects();
       this.stopEffectCaptureAndUndoEffects(savedCompletion);
       savedCompletion = Join.composePossiblyNormalCompletions(this, savedCompletion, completion, e);
       this.applyEffects(e);
@@ -1261,22 +1251,12 @@ export class Realm {
     this.createdObjects = new Set();
   }
 
-  getCapturedEffects(completion: PossiblyNormalCompletion, v?: Value): void | Effects {
-    if (completion.savedEffects === undefined) return undefined;
-    if (v === undefined) v = this.intrinsics.undefined;
+  getCapturedEffects(v?: Value = this.intrinsics.undefined): Effects {
     invariant(this.generator !== undefined);
     invariant(this.modifiedBindings !== undefined);
     invariant(this.modifiedProperties !== undefined);
     invariant(this.createdObjects !== undefined);
     return new Effects(v, this.generator, this.modifiedBindings, this.modifiedProperties, this.createdObjects);
-  }
-
-  stopEffectCapture(completion: PossiblyNormalCompletion) {
-    let e = this.getCapturedEffects(completion);
-    if (e !== undefined) {
-      this.stopEffectCaptureAndUndoEffects(completion);
-      this.applyEffects(e);
-    }
   }
 
   stopEffectCaptureAndUndoEffects(completion: PossiblyNormalCompletion) {
@@ -1540,7 +1520,10 @@ export class Realm {
       propertyValue.intrinsicName = `${path}.${key}`;
       propertyValue.kind = "rebuiltProperty";
       propertyValue.args = [object];
-      propertyValue._buildNode = ([node]) => t.memberExpression(node, t.identifier(key));
+      propertyValue._buildNode = ([node]) =>
+        t.isValidIdentifier(key)
+          ? t.memberExpression(node, t.identifier(key), false)
+          : t.memberExpression(node, t.stringLiteral(key), true);
       this.rebuildNestedProperties(propertyValue, propertyValue.intrinsicName);
     }
   }

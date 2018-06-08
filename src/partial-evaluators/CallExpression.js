@@ -114,7 +114,7 @@ function callBothFunctionsAndJoinTheirEffects(
     "callBothFunctionsAndJoinTheirEffects/2"
   );
 
-  let joinedEffects = Join.joinEffects(
+  let joinedEffects = Join.joinForkOrChoose(
     realm,
     cond,
     new Effects(e1.result, e1.generator, e1.modifiedBindings, e1.modifiedProperties, e1.createdObjects),

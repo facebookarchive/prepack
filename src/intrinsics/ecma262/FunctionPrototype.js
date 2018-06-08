@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { Functions, Properties } from "../../singletons.js";
@@ -164,8 +164,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   );
 
   // ECMA262 19.2.3.5
-  obj.defineNativeMethod("toString", 0, context => {
-    context = context.throwIfNotConcrete();
+  obj.defineNativeMethod("toString", 0, _context => {
+    let context = _context.throwIfNotConcrete();
     if (context instanceof NativeFunctionValue) {
       let name = context.name;
       if (name instanceof AbstractValue) {

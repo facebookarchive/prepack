@@ -11,7 +11,7 @@ Child.defaultProps = {
 };
 
 function App(props) {
-  return <div {...props.foo}>{props.bar}</div>
+  return <Child {...props.foo}>{props.bar}</Child>
 }
 
 

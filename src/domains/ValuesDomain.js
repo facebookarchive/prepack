@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { BabelBinaryOperator, BabelNodeLogicalOperator, BabelUnaryOperator } from "babel-types";
 import { AbruptCompletion } from "../completions.js";
@@ -44,7 +44,8 @@ import { Utils } from "../singletons.js";
    one value, one of which will by the EmptyValue.  */
 
 export default class ValuesDomain {
-  constructor(values: void | Set<ConcreteValue> | ConcreteValue) {
+  constructor(_values: void | Set<ConcreteValue> | ConcreteValue) {
+    let values = _values;
     if (values instanceof ConcreteValue) {
       let valueSet = new Set();
       valueSet.add(values);
@@ -455,9 +456,11 @@ export default class ValuesDomain {
     return false;
   }
 
-  static joinValues(realm: Realm, v1: void | Value, v2: void | Value): ValuesDomain {
-    if (v1 === undefined) v1 = realm.intrinsics.undefined;
-    if (v2 === undefined) v2 = realm.intrinsics.undefined;
+  static joinValues(
+    realm: Realm,
+    v1: Value = realm.intrinsics.undefined,
+    v2: Value = realm.intrinsics.undefined
+  ): ValuesDomain {
     if (v1 instanceof AbstractValue) return v1.values.joinWith(v2);
     if (v2 instanceof AbstractValue) return v2.values.joinWith(v1);
     let union = new Set();
@@ -481,9 +484,11 @@ export default class ValuesDomain {
     return new ValuesDomain(union);
   }
 
-  static meetValues(realm: Realm, v1: void | Value, v2: void | Value): ValuesDomain {
-    if (v1 === undefined) v1 = realm.intrinsics.undefined;
-    if (v2 === undefined) v2 = realm.intrinsics.undefined;
+  static meetValues(
+    realm: Realm,
+    v1: Value = realm.intrinsics.undefined,
+    v2: Value = realm.intrinsics.undefined
+  ): ValuesDomain {
     if (v1 instanceof AbstractValue) return v1.values.meetWith(v2);
     if (v2 instanceof AbstractValue) return v2.values.meetWith(v1);
     let intersection = new Set();

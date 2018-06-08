@@ -595,12 +595,9 @@ export class ResidualHeapSerializer {
       invariant(!this.emitter.getReasonToWaitForDependencies([descValue, val]), "precondition of _emitProperty");
       let mightHaveBeenDeleted = descValue.mightHaveBeenDeleted();
       // The only case we do not need to remove the dummy property is array index property.
-      return this._getPropertyAssignment(
-        locationFunction,
-        () => {
-          invariant(descValue instanceof Value);
-          return this.serializeValue(descValue);
-        },
+      return this._getPropertyAssignmentStatement(
+        locationFunction(),
+        this.serializeValue(descValue),
         mightHaveBeenDeleted,
         deleteIfMightHaveBeenDeleted
       );
@@ -1104,24 +1101,22 @@ export class ResidualHeapSerializer {
   }
 
   _assignProperty(
-    locationFn: () => BabelNodeLVal,
-    valueFn: () => BabelNodeExpression,
+    location: BabelNodeLVal,
+    value: BabelNodeExpression,
     mightHaveBeenDeleted: boolean,
     deleteIfMightHaveBeenDeleted: boolean = false
-  ) {
+  ): void {
     this.emitter.emit(
-      this._getPropertyAssignment(locationFn, valueFn, mightHaveBeenDeleted, deleteIfMightHaveBeenDeleted)
+      this._getPropertyAssignmentStatement(location, value, mightHaveBeenDeleted, deleteIfMightHaveBeenDeleted)
     );
   }
 
-  _getPropertyAssignment(
-    locationFn: () => BabelNodeLVal,
-    valueFn: () => BabelNodeExpression,
+  _getPropertyAssignmentStatement(
+    location: BabelNodeLVal,
+    value: BabelNodeExpression,
     mightHaveBeenDeleted: boolean,
     deleteIfMightHaveBeenDeleted: boolean = false
-  ) {
-    let location = locationFn();
-    let value = valueFn();
+  ): BabelNodeStatement {
     let assignment = t.expressionStatement(t.assignmentExpression("=", location, value));
     if (mightHaveBeenDeleted) {
       let condition = t.binaryExpression("!==", value, this._serializeEmptyValue());
@@ -1197,8 +1192,8 @@ export class ResidualHeapSerializer {
           [val, lenProperty],
           () => {
             this._assignProperty(
-              () => t.memberExpression(this.getSerializeObjectIdentifier(val), t.identifier("length")),
-              () => this.serializeValue(lenProperty),
+              t.memberExpression(this.getSerializeObjectIdentifier(val), t.identifier("length")),
+              this.serializeValue(lenProperty),
               false /*mightHaveBeenDeleted*/
             );
             if (semaphore !== undefined) semaphore.releaseOne();
@@ -2080,6 +2075,7 @@ export class ResidualHeapSerializer {
       processValues: (valuesToProcess: Set<AbstractValue | ConcreteValue>) => {
         this.emitter.processValues(valuesToProcess);
       },
+      getPropertyAssignmentStatement: this._getPropertyAssignmentStatement.bind(this),
       emitDefinePropertyBody: this.emitDefinePropertyBody.bind(this, false, undefined),
       canOmit: (value: AbstractValue | ConcreteValue) => {
         return !this.referencedDeclaredValues.has(value);

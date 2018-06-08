@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { DebugSession, InitializedEvent, OutputEvent, TerminatedEvent, StoppedEvent } from "vscode-debugadapter";
 import * as DebugProtocol from "vscode-debugprotocol";
@@ -286,6 +286,13 @@ class PrepackDebugSession extends DebugSession {
   // Override
   nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments): void {
     this._adapterChannel.stepOver(response.request_seq, (dbgResponse: DebuggerResponse) => {
+      this.sendResponse(response);
+    });
+  }
+
+  // Override
+  stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): void {
+    this._adapterChannel.stepOut(response.request_seq, (dbgResponse: DebuggerResponse) => {
       this.sendResponse(response);
     });
   }

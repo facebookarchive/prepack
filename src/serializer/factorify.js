@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import * as t from "babel-types";
 import type { BabelNodeStatement, BabelNodeObjectExpression, BabelNodeLVal } from "babel-types";
@@ -204,12 +204,12 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
       let highestPairCount;
       for (let pairArgs in sharedPairs) {
         let pair = sharedPairs[pairArgs];
-        if (!highestPairArgs || pair.length > highestPairCount) {
+        if (highestPairArgs === undefined || pair.length > highestPairCount) {
           highestPairCount = pair.length;
           highestPairArgs = pairArgs;
         }
       }
-      if (!highestPairArgs) continue;
+      if (highestPairArgs === undefined) continue;
 
       //
       let declarsSub = sharedPairs[highestPairArgs].concat(declar);

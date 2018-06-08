@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, NullValue, UndefinedValue } from "../../values/index.js";
@@ -28,7 +28,8 @@ import { CompilerDiagnostic } from "../../errors.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 23.2.1.1
-  let func = new NativeFunctionValue(realm, "Set", "Set", 0, (context, [iterable], argCount, NewTarget) => {
+  let func = new NativeFunctionValue(realm, "Set", "Set", 0, (context, [_iterable], argCount, NewTarget) => {
+    let iterable = _iterable;
     // 1. If NewTarget is undefined, throw a TypeError exception.
     if (!NewTarget) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
