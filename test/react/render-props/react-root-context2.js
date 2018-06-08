@@ -2,9 +2,7 @@ var React = require('React');
 // the JSX transform converts to React, so we need to add it back in
 this['React'] = React;
 
-var { Provider, Consumer } = React.createContext(null);
-// this is done otherwise the test fails
-this['_Consumer'] = Consumer;
+var { Provider, Consumer } = React.createContext("bar");
 
 function Child(props) {
   return (
