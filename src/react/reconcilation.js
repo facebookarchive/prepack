@@ -484,7 +484,7 @@ export class Reconciler {
     this.componentTreeState.contextNodeReferences.set(contextNode, references);
   }
 
-  _hasReferenceForContextNode(contextNode: ObjectValue | AbstractObjectValue): boolean {
+  _isContextValueKnown(contextNode: ObjectValue | AbstractObjectValue): boolean {
     if (this.componentTreeConfig.isRoot) {
       return true;
     }
@@ -519,7 +519,7 @@ export class Reconciler {
         if (renderProp instanceof ECMAScriptSourceFunctionValue) {
           if (typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue) {
             // make sure this context is in our tree
-            if (this._hasReferenceForContextNode(typeValue)) {
+            if (this._isContextValueKnown(typeValue)) {
               let valueProp = Get(this.realm, typeValue, "currentValue");
               // if the value is abstract, we need to keep the render prop as unless
               // we are in firstRenderOnly mode, where we can just inline the abstract value
