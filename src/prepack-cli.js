@@ -30,7 +30,7 @@ import invariant from "./invariant";
 import zipFactory from "node-zip";
 import path from "path";
 import JSONTokenizer from "./utils/JSONTokenizer.js";
-import type { DebuggerLaunchArguments } from "./debugger/common/types";
+import type { DebuggerConfigArguments } from "./debugger/common/types";
 
 // Prepack helper
 declare var __residual: any;
@@ -128,7 +128,7 @@ function run(
     reproFileNames.push(fileName);
     return path.basename(fileName);
   };
-  let debuggerLaunchArgs: DebuggerLaunchArguments = {};
+  let debuggerConfigArgs: DebuggerConfigArguments = {};
   while (args.length) {
     let arg = args.shift();
     if (!arg.startsWith("--")) {
@@ -268,7 +268,7 @@ function run(
             arg === "FatalError" || arg === "RecoverableError" || arg === "Warning" || arg === "Information",
             `Invalid debugger diagnostic severity: ${arg}`
           );
-          debuggerLaunchArgs.diagnosticSeverity = arg;
+          debuggerConfigArgs.diagnosticSeverity = arg;
           break;
         case "help":
           const options = [
@@ -352,7 +352,7 @@ fi
       reactOutput,
       invariantMode,
       invariantLevel,
-      debuggerLaunchArgs,
+      debuggerConfigArgs,
     },
     flags
   );

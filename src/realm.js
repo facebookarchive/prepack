@@ -1634,7 +1634,7 @@ export class Realm {
 
     // If debugger is attached, give it a first crack so that it can
     // stop execution for debugging before PP exits.
-    if (this.debuggerInstance && this.debuggerInstance.evaluateDiagnosticSeverity(diagnostic.severity)) {
+    if (this.debuggerInstance && this.debuggerInstance.shouldStopForSeverity(diagnostic.severity)) {
       this.debuggerInstance.handlePrepackError(diagnostic);
     }
 

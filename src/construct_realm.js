@@ -27,7 +27,6 @@ import invariant from "./invariant.js";
 export default function(
   opts: RealmOptions = {},
   debugChannel: void | DebugChannel = undefined,
-  // debuggerLaunchArgs: void | DebuggerLaunchArguments = undefined,
   statistics: void | RealmStatistics = undefined
 ): Realm {
   initializeSingletons();
@@ -35,8 +34,8 @@ export default function(
   // Presence of debugChannel indicates we wish to use debugger.
   if (debugChannel) {
     invariant(debugChannel.debuggerIsAttached(), "Debugger intends to be used but is not attached.");
-    invariant(opts.debuggerLaunchArgs !== undefined, "Debugger intends to be used but does not have launch arguments.");
-    r.debuggerInstance = new DebugServer(debugChannel, r, opts.debuggerLaunchArgs);
+    invariant(opts.debuggerConfigArgs !== undefined, "Debugger intends to be used but does not have launch arguments.");
+    r.debuggerInstance = new DebugServer(debugChannel, r, opts.debuggerConfigArgs);
   }
 
   let i = r.intrinsics;

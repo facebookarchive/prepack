@@ -24,7 +24,7 @@ import type {
   VariablesArguments,
   EvaluateArguments,
   SourceData,
-  DebuggerLaunchArguments,
+  DebuggerConfigArguments,
 } from "./../common/types.js";
 import type { Realm } from "./../../realm.js";
 import { ExecutionContext } from "./../../realm.js";
@@ -43,7 +43,7 @@ import { CompilerDiagnostic } from "../../errors.js";
 import type { Severity } from "../../errors.js";
 
 export class DebugServer {
-  constructor(channel: DebugChannel, realm: Realm, launchArgs: DebuggerLaunchArguments) {
+  constructor(channel: DebugChannel, realm: Realm, configArgs: DebuggerConfigArguments) {
     this._channel = channel;
     this._realm = realm;
     this._breakpointManager = new BreakpointManager();
@@ -51,7 +51,7 @@ export class DebugServer {
     this._stepManager = new SteppingManager(this._realm, /* default discard old steppers */ false);
     this._stopEventManager = new StopEventManager();
     this.waitForRun(undefined);
-    this._diagnosticSeverity = launchArgs.diagnosticSeverity || "FatalError";
+    this._diagnosticSeverity = configArgs.diagnosticSeverity || "FatalError";
   }
   // the collection of breakpoints
   _breakpointManager: BreakpointManager;
@@ -317,7 +317,7 @@ export class DebugServer {
   }
 
   // Return whether the debugger should stop on a CompilerDiagnostic of a given severity.
-  evaluateDiagnosticSeverity(severity: Severity): boolean {
+  shouldStopForSeverity(severity: Severity): boolean {
     switch (this._diagnosticSeverity) {
       case "Information":
         return true;

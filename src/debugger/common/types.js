@@ -40,7 +40,7 @@ export type PrepackLaunchArguments = {
   exitCallback: () => void,
 };
 
-export type DebuggerLaunchArguments = {
+export type DebuggerConfigArguments = {
   diagnosticSeverity?: Severity,
 };
 
@@ -133,7 +133,7 @@ export type StoppedResult = {
   filePath: string,
   line: number,
   column: number,
-  message: ?string,
+  message?: string,
 };
 export type Scope = {
   name: string,
