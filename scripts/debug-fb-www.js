@@ -40,10 +40,8 @@ function printError(error) {
       console.warn(`Warn: ${msg}`);
       return "Recover";
     case "RecoverableError":
-      console.error(`Error: ${msg}`);
-      return "Fail";
     case "FatalError":
-      console.error(`Fatal Error: ${msg}`);
+      console.error(`Error: ${msg}`);
       return "Fail";
     default:
       console.log(msg);
