@@ -157,8 +157,6 @@ function canHoistValue(
     canHoist = canHoistFunction(realm, value, residualHeapVisitor, visitedValues);
   } else if (value instanceof ObjectValue) {
     canHoist = canHoistObject(realm, value, residualHeapVisitor, visitedValues);
-  } else if (value instanceof ObjectValue) {
-    canHoist = canHoistObject(realm, value, residualHeapVisitor, visitedValues);
   } else if (value instanceof AbstractObjectValue && isBranchedReactElement(value)) {
     let reactElement = realm.react.branchedReactElements.get(value);
     invariant(reactElement !== undefined);
