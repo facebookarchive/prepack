@@ -143,8 +143,7 @@ function tryToEvaluateOperationOrLeaveAsAbstract(
 
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
-  if (completion instanceof NormalCompletion && !(completion instanceof PossiblyNormalCompletion))
-    completion = completion.value;
+  if (completion instanceof NormalCompletion) completion = completion.value;
   invariant(completion instanceof Value);
   return completion;
 }

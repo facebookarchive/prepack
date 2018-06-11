@@ -134,8 +134,7 @@ function callBothFunctionsAndJoinTheirEffects(
   realm.applyEffects(joinedEffects);
 
   // return or throw completion
-  if (joinedCompletion instanceof NormalCompletion && !(joinedCompletion instanceof PossiblyNormalCompletion))
-    joinedCompletion = joinedCompletion.value;
+  if (joinedCompletion instanceof NormalCompletion) joinedCompletion = joinedCompletion.value;
   invariant(joinedCompletion instanceof AbruptCompletion || joinedCompletion instanceof Value);
   return joinedCompletion;
 }

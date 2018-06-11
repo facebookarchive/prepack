@@ -192,8 +192,10 @@ function AbstractCaseBlockEvaluation(
 
       // return or throw completion
       if (completion instanceof AbruptCompletion) throw completion;
-      if (completion instanceof NormalCompletion && !(completion instanceof PossiblyNormalCompletion))
+      if (completion instanceof NormalCompletion) {
+        invariant(!(completion instanceof PossiblyNormalCompletion));
         completion = completion.value;
+      }
       invariant(completion instanceof Value);
       return completion;
     }
@@ -377,7 +379,10 @@ export default function(
         // all the branches come together into one.
         result = realm.composeWithSavedCompletion(result);
       }
-      if (result instanceof NormalCompletion && !(result instanceof PossiblyNormalCompletion)) result = result.value;
+      if (result instanceof NormalCompletion) {
+        invariant(!(result instanceof PossiblyNormalCompletion));
+        result = result.value;
+      }
       invariant(result instanceof Value); // since evaluationHelper returns a value in non abrupt cases
       return result;
     }

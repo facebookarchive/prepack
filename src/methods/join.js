@@ -375,6 +375,18 @@ export class JoinImplementation {
     }
   }
 
+  _getNormalCompletion(pnc: PossiblyNormalCompletion): NormalCompletion {
+    let result;
+    if (pnc.alternate instanceof NormalCompletion && !(pnc.alternate instanceof PossiblyNormalCompletion)) {
+      result = pnc.alternate;
+    } else {
+      invariant(pnc.consequent instanceof NormalCompletion && !(pnc.consequent instanceof PossiblyNormalCompletion));
+      result = pnc.consequent;
+    }
+    invariant(result.value === pnc.value);
+    return result;
+  }
+
   joinPossiblyNormalCompletions(
     realm: Realm,
     joinCondition: AbstractValue,
@@ -386,11 +398,7 @@ export class JoinImplementation {
     let fc = this.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, c, ac, ee);
     let ce = construct_empty_effects(realm, fc);
     let ae = construct_empty_effects(realm, a);
-    let getNormal = (pnc: PossiblyNormalCompletion) =>
-      c.alternate instanceof NormalCompletion && !(c.alternate instanceof PossiblyNormalCompletion)
-        ? c.alternate
-        : c.consequent;
-    let rv = this.collapseResults(realm, joinCondition, getNormal(c), getNormal(a));
+    let rv = this.collapseResults(realm, joinCondition, this._getNormalCompletion(c), this._getNormalCompletion(a));
     invariant(rv instanceof NormalCompletion);
     a.value = rv.value;
     return new PossiblyNormalCompletion(rv.value, joinCondition, fc, ce, a, ae, []);
@@ -618,10 +626,7 @@ export class JoinImplementation {
       let savedEffects;
       let savedPathConditions = [];
       if (result2 instanceof PossiblyNormalCompletion) {
-        value =
-          result2.alternate instanceof NormalCompletion && !(result2.alternate instanceof PossiblyNormalCompletion)
-            ? result2.alternate
-            : result2.consequent;
+        value = this._getNormalCompletion(result2);
         savedEffects = result2.savedEffects;
         savedPathConditions = result2.savedPathConditions;
       }

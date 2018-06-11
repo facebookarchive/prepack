@@ -1360,7 +1360,6 @@ export class LexicalEnvironment {
     if (evaluator) {
       this.realm.statistics.evaluatedNodes++;
       let result = evaluator(ast, strictCode, this, this.realm, metadata);
-      invariant(result instanceof Value || result instanceof Reference, ast.type);
       return result;
     }
 

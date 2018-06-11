@@ -31,7 +31,11 @@ export class Completion {
 }
 
 // Normal completions are returned just like spec completions
-export class NormalCompletion extends Completion {}
+export class NormalCompletion extends Completion {
+  toValue(): Value {
+    return this.value;
+  }
+}
 
 // Abrupt completions are thrown as exeptions, to make it a easier
 // to quickly get to the matching high level construct.

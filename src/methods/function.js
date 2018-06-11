@@ -1122,6 +1122,7 @@ export class FunctionImplementation {
   // If c is undefined, the result is just realm.savedCompletion.
   // Call this only when a join point has been reached.
   incorporateSavedCompletion(realm: Realm, c: void | AbruptCompletion | Value): void | Completion | Value {
+    invariant(!(c instanceof NormalCompletion), "This function doesn't accept NormalCompletions");
     let savedCompletion = realm.savedCompletion;
     if (savedCompletion !== undefined) {
       if (savedCompletion.savedPathConditions) {
@@ -1139,8 +1140,7 @@ export class FunctionImplementation {
       } else {
         let e = realm.getCapturedEffects();
         realm.stopEffectCaptureAndUndoEffects(savedCompletion);
-        let result = Join.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, savedCompletion, c, e);
-        return result;
+        return Join.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, savedCompletion, c, e);
       }
     }
     return c;

@@ -251,10 +251,7 @@ export class ModuleTracer extends Tracer {
             );
           } else {
             result = effects.result;
-            if (result instanceof NormalCompletion && !(result instanceof PossiblyNormalCompletion)) {
-              realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
-              this.modules.recordModuleInitialized(moduleIdValue, result.value);
-            } else if (result instanceof PossiblyNormalCompletion) {
+            if (result instanceof PossiblyNormalCompletion) {
               let warning = new CompilerDiagnostic(
                 "Module import may fail with an exception",
                 result.location,
@@ -264,6 +261,9 @@ export class ModuleTracer extends Tracer {
               realm.handleError(warning);
               result = result.value;
               realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
+            } else if (result instanceof NormalCompletion) {
+              realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
+              this.modules.recordModuleInitialized(moduleIdValue, result.value);
             } else {
               invariant(false);
             }
@@ -273,7 +273,7 @@ export class ModuleTracer extends Tracer {
           invariant(popped === moduleIdValue);
           this.log(`<require(${moduleIdValue})`);
         }
-        if (result instanceof NormalCompletion && !(result instanceof PossiblyNormalCompletion)) result = result.value;
+        if (result instanceof NormalCompletion) result = result.value;
         invariant(result instanceof Value);
         return result;
       });

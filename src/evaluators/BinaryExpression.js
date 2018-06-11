@@ -227,11 +227,11 @@ export function computeBinary(
         // Consequently we have to continue tracking changes until the point where
         // all the branches come together into one.
         completion = realm.composeWithSavedCompletion(completion);
+      } else if (completion instanceof NormalCompletion) {
+        completion = completion.value;
       }
       // return or throw completion
       if (completion instanceof AbruptCompletion) throw completion;
-      if (completion instanceof NormalCompletion && !(completion instanceof PossiblyNormalCompletion))
-        completion = completion.value;
       invariant(completion instanceof Value);
       return completion;
     }

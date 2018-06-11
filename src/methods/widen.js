@@ -110,22 +110,17 @@ export class WidenImplementation {
       !(result1 instanceof AbruptCompletion || result2 instanceof AbruptCompletion),
       "if a loop iteration ends abruptly, there is no need for fixed point computation"
     );
-    if (
-      result1 instanceof NormalCompletion &&
-      !(result1 instanceof PossiblyNormalCompletion) &&
-      result2 instanceof NormalCompletion &&
-      !(result2 instanceof PossiblyNormalCompletion)
-    ) {
-      let val = this.widenValues(realm, result1.value, result2.value);
-      invariant(val instanceof Value);
-      return new NormalCompletion(val);
-    }
     if (result1 instanceof PossiblyNormalCompletion || result2 instanceof PossiblyNormalCompletion) {
       //todo: #1174 figure out how to deal with loops that have embedded conditional exits
       // widen join pathConditions
       // widen normal result and Effects
       // use abrupt part of result2, depend stability to make this safe. See below.
       throw new FatalError();
+    }
+    if (result1 instanceof NormalCompletion && result2 instanceof NormalCompletion) {
+      let val = this.widenValues(realm, result1.value, result2.value);
+      invariant(val instanceof Value);
+      return new NormalCompletion(val);
     }
     invariant(false);
   }

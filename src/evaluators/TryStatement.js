@@ -75,7 +75,6 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
       let finalizerEffects = composeNestedEffectsWithFinalizer(blockRes);
       finalizerRes = finalizerEffects.result;
       // The result may become abrupt because of the finalizer, but it cannot become normal.
-      invariant(!(finalizerRes instanceof Value));
       invariant(!(finalizerRes instanceof NormalCompletion));
     } else {
       // A single thread of control has produced a normal blockRes and the global state is up to date.
@@ -86,9 +85,8 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
   if (finalizerRes instanceof AbruptCompletion) throw finalizerRes;
   if (finalizerRes instanceof PossiblyNormalCompletion) realm.composeWithSavedCompletion(finalizerRes);
   if (handlerRes instanceof PossiblyNormalCompletion) handlerRes = handlerRes.value;
+  if (handlerRes instanceof NormalCompletion) handlerRes = handlerRes.value;
   if (handlerRes instanceof Value) return (UpdateEmpty(realm, handlerRes, realm.intrinsics.undefined): any);
-  if (handlerRes instanceof NormalCompletion && !(handlerRes instanceof PossiblyNormalCompletion))
-    return (UpdateEmpty(realm, handlerRes.value, realm.intrinsics.undefined): any);
   throw handlerRes;
 
   // The handler is a potential join point for all throw completions, but is easier to not do the join here because
