@@ -619,7 +619,7 @@ export class JoinImplementation {
       let savedPathConditions = [];
       if (result2 instanceof PossiblyNormalCompletion) {
         value =
-          result2.alternate instanceof NormalCompletion && !(result2 instanceof PossiblyNormalCompletion)
+          result2.alternate instanceof NormalCompletion && !(result2.alternate instanceof PossiblyNormalCompletion)
             ? result2.alternate
             : result2.consequent;
         savedEffects = result2.savedEffects;
