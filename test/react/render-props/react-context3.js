@@ -22,12 +22,20 @@ function App(props) {
 App.Ctx = Ctx;
 
 App.getTrials = function(renderer, Root) {
+  let results = [];
   renderer.update((
     <Root.Ctx.Provider value={5}>
       <Root />
     </Root.Ctx.Provider>
   ));
-  return [['render props context', renderer.toJSON()]];
+  results.push(['render props context', renderer.toJSON()]);
+  renderer.update((
+    <Root.Ctx.Provider value={5}>
+      <Root />
+    </Root.Ctx.Provider>
+  ));
+  results.push(['render props context', renderer.toJSON()]);
+  return results;
 };
 
 if (this.__optimizeReactComponentTree) {
