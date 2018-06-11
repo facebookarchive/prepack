@@ -682,6 +682,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("Dynamic ReactElement type #3", async () => {
         await runTest(directory, "dynamic-type3.js");
       });
+
+      it.only("Lazy branched elements", async () => {
+        await runTest(directory, "lazy-branched-elements.js");
+      });
     });
 
     describe("Class component folding", () => {

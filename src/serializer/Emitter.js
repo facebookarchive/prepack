@@ -10,6 +10,7 @@
 /* @flow */
 
 import {
+  AbstractObjectValue,
   AbstractValue,
   ArrayValue,
   BoundFunctionValue,
@@ -26,6 +27,7 @@ import { Generator } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import { BodyReference } from "./types.js";
 import { ResidualFunctions } from "./ResidualFunctions.js";
+import { isBranchedReactElement, getProperty } from "../react/utils.js";
 
 // Type used to configure callbacks from the dependenciesVisitor of the Emitter.
 type EmitterDependenciesVisitorCallbacks<T> = {
@@ -332,6 +334,13 @@ export class Emitter {
       result = callbacks.onFunction ? callbacks.onFunction(val) : undefined;
       if (result !== undefined) return result;
     } else if (val instanceof AbstractValue) {
+      if (val instanceof AbstractObjectValue && isBranchedReactElement(val)) {
+        let realm = val.$Realm;
+        let reactElement = realm.react.branchedReactElements.get(val);
+        invariant(reactElement !== undefined);
+        result = recurse(reactElement);
+        if (result !== undefined) return result;
+      }
       if (val.hasIdentifier()) {
         // We ran into an abstract value that might have to be declared.
         result = callbacks.onAbstractValueWithIdentifier ? callbacks.onAbstractValueWithIdentifier(val) : undefined;
@@ -376,6 +385,21 @@ export class Emitter {
             result = recurse(val.$Prototype);
             if (result !== undefined) return result;
           }
+          break;
+        case "ReactElement":
+          let realm = val.$Realm;
+          let type = getProperty(realm, val, "type");
+          let props = getProperty(realm, val, "props");
+          let key = getProperty(realm, val, "key");
+          let ref = getProperty(realm, val, "ref");
+          result = recurse(type);
+          if (result !== undefined) return result;
+          result = recurse(props);
+          if (result !== undefined) return result;
+          result = recurse(key);
+          if (result !== undefined) return result;
+          result = recurse(ref);
+          if (result !== undefined) return result;
           break;
         case "Date":
           invariant(val.$DateValue !== undefined);
