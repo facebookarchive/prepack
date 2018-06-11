@@ -13,6 +13,7 @@ import { Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 import { IsArray, Get } from "../methods/index.js";
 import {
+  AbstractObjectValue,
   AbstractValue,
   BooleanValue,
   BoundFunctionValue,
@@ -83,6 +84,7 @@ import type { Referentializer } from "./Referentializer.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
 import { type Replacement, getReplacement } from "./ResidualFunctionInstantiator";
 import { describeValue } from "../utils.js";
+import { isBranchedReactElement } from "../react/utils.js";
 
 function commentStatement(text: string) {
   let s = t.emptyStatement();
@@ -1861,7 +1863,6 @@ export class ResidualHeapSerializer {
       else if (!cf.t && cf.f) return this.serializeValue(val.args[2]);
       else invariant(cf.t && cf.f);
     }
-
     if (val.hasIdentifier()) {
       return this._serializeAbstractValueHelper(val);
     } else {

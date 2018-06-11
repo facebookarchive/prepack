@@ -994,8 +994,7 @@ export class ResidualHeapVisitor {
       invariant(reactElement !== undefined);
       let equivalentReactElementValue = this.residualReactElementVisitor.equivalenceSet.add(reactElement);
       if (reactElement !== equivalentReactElementValue) {
-        if (this._mark(equivalentReactElementValue)) this.visitValueObject(equivalentReactElementValue);
-        return (equivalentReactElementValue: any);
+        this.realm.react.branchedReactElements.set(val, equivalentReactElementValue);
       }
     }
     if (val instanceof AbstractValue) {

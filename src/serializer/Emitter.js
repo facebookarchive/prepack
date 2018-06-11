@@ -341,7 +341,9 @@ export class Emitter {
       let argsToRecurse;
       if (val.kind === "conditional") {
         let cf = this._conditionalFeasibility.get(val);
-        invariant(cf !== undefined);
+        if (cf === undefined) {
+          return result;
+        }
         argsToRecurse = [];
         if (cf.t && cf.f) argsToRecurse.push(val.args[0]);
         if (cf.t) argsToRecurse.push(val.args[1]);

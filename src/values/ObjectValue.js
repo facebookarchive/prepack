@@ -67,6 +67,7 @@ function isWidenedValue(v: void | Value) {
 
 const lengthTemplateSrc = "(A).length";
 const lengthTemplate = buildExpressionTemplate(lengthTemplateSrc);
+let x = 0;
 
 export default class ObjectValue extends ConcreteValue {
   constructor(
@@ -88,6 +89,7 @@ export default class ObjectValue extends ConcreteValue {
     this.properties = new Map();
     this.symbols = new Map();
     this.refuseSerialization = refuseSerialization;
+    this.x = x++;
 
     // this.$IsClassPrototype should be the last thing that gets initialized,
     // as other code checks whether this.$IsClassPrototype === undefined

@@ -699,6 +699,23 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         }
         expect(count).toEqual(8);
       });
+
+      it("Lazy branched elements 2", async () => {
+        let createElement = React.createElement;
+        let count = 0;
+        // $FlowFixMe: intentional for this test
+        React.createElement = (type, config) => {
+          count++;
+          return createElement(type, config);
+        };
+        try {
+          await runTest(directory, "lazy-branched-elements2.js");
+        } finally {
+          // $FlowFixMe: intentional for this test
+          React.createElement = createElement;
+        }
+        expect(count).toEqual(7);
+      });
     });
 
     describe("Class component folding", () => {
