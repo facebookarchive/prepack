@@ -36,6 +36,7 @@ import {
   getComponentName,
   getProperty,
   getReactSymbol,
+  isBranchedReactElement,
   isReactElement,
 } from "../utils.js";
 import * as t from "babel-types";
@@ -429,6 +430,10 @@ class ReactDOMServerRenderer {
   _renderValue(value: Value, namespace: string, depth: number): ReactNode {
     if (value instanceof StringValue || value instanceof NumberValue) {
       return this._renderText(value);
+    } else if (value instanceof AbstractObjectValue && isBranchedReactElement(value)) {
+      let reactElement = this.realm.react.branchedReactElements.get(value);
+      invariant(reactElement !== undefined);
+      return this._renderReactElement(reactElement, namespace, depth);
     } else if (value instanceof ObjectValue && isReactElement(value)) {
       return this._renderReactElement(value, namespace, depth);
     } else if (value instanceof AbstractValue) {

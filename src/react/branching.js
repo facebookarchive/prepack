@@ -11,6 +11,7 @@
 
 import { Realm } from "../realm.js";
 import {
+  AbstractObjectValue,
   AbstractValue,
   ArrayValue,
   BooleanValue,
@@ -22,7 +23,14 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
-import { isReactElement, addKeyToReactElement, forEachArrayValue, getProperty, mapArrayValue } from "./utils";
+import {
+  isBranchedReactElement,
+  isReactElement,
+  addKeyToReactElement,
+  forEachArrayValue,
+  getProperty,
+  mapArrayValue,
+} from "./utils";
 import { ExpectedBailOut } from "./errors.js";
 
 // Branch status is used for when Prepack returns an abstract value from a render
@@ -52,6 +60,14 @@ export function getValueWithBranchingLogicApplied(
   // we check the inlined value and see if the component types match
   const searchAndFlagMatchingComponentTypes = (xTypeParent, yTypeParent) => {
     let [, x, y] = value.args;
+    if (x instanceof AbstractObjectValue && isBranchedReactElement(x)) {
+      x = realm.react.branchedReactElements.get(x);
+      invariant(x !== undefined);
+    }
+    if (y instanceof AbstractObjectValue && isBranchedReactElement(y)) {
+      y = realm.react.branchedReactElements.get(y);
+      invariant(y !== undefined);
+    }
     if (x instanceof ObjectValue && isReactElement(x) && y instanceof ObjectValue && isReactElement(y)) {
       let xType = getProperty(realm, x, "type");
       let yType = getProperty(realm, y, "type");
@@ -63,7 +79,19 @@ export function getValueWithBranchingLogicApplied(
   };
 
   // we first check our "parent" value, that was used to get the inlined value
-  const searchAndFlagMismatchingNonHostTypes = (x: Value, y: Value, arrayDepth: number): void => {
+  const searchAndFlagMismatchingNonHostTypes = (_x: Value, _y: Value, arrayDepth: number): void => {
+    // this looks silly to do, but Flow treats function
+    // parameters as constants :/
+    let x = _x;
+    let y = _y;
+    if (x instanceof AbstractObjectValue && isBranchedReactElement(x)) {
+      x = realm.react.branchedReactElements.get(x);
+      invariant(x !== undefined);
+    }
+    if (y instanceof AbstractObjectValue && isBranchedReactElement(y)) {
+      y = realm.react.branchedReactElements.get(y);
+      invariant(y !== undefined);
+    }
     if (x instanceof ObjectValue && isReactElement(x) && y instanceof ObjectValue && isReactElement(y)) {
       let xType = getProperty(realm, x, "type");
       let yType = getProperty(realm, y, "type");
@@ -140,6 +168,10 @@ function applyBranchedLogicValue(realm: Realm, value: Value): Value {
     value instanceof UndefinedValue
   ) {
     // terminal values
+  } else if (value instanceof AbstractObjectValue && isBranchedReactElement(value)) {
+    let reactElement = realm.react.branchedReactElements.get(value);
+    invariant(reactElement !== undefined);
+    return addKeyToReactElement(realm, reactElement);
   } else if (value instanceof ObjectValue && isReactElement(value)) {
     return addKeyToReactElement(realm, value);
   } else if (value instanceof ArrayValue) {
@@ -152,14 +184,14 @@ function applyBranchedLogicValue(realm: Realm, value: Value): Value {
       condValue,
       () => {
         return realm.evaluateForEffects(
-          () => applyBranchedLogicValue(realm, consequentVal),
+          () => wrapReactElementInBranchOrReturnValue(realm, applyBranchedLogicValue(realm, consequentVal)),
           null,
           "applyBranchedLogicValue consequent"
         );
       },
       () => {
         return realm.evaluateForEffects(
-          () => applyBranchedLogicValue(realm, alternateVal),
+          () => wrapReactElementInBranchOrReturnValue(realm, applyBranchedLogicValue(realm, alternateVal)),
           null,
           "applyBranchedLogicValue alternate"
         );
@@ -167,6 +199,37 @@ function applyBranchedLogicValue(realm: Realm, value: Value): Value {
     );
   } else {
     throw new ExpectedBailOut("Unsupported value encountered when applying branched logic to values");
+  }
+  return value;
+}
+
+// when a ReactElement is resolved in a conditional branch we
+// can improve runtime performance by ensuring that the ReactElement
+// is only created lazily in that specific branch and referenced
+// from then on. To do this we create a temporal abstract value
+// and set its kind to "branched ReactElement" so we properly track
+// the original ReactElement. If we don't have a ReactElement,
+// return the original value
+export function wrapReactElementInBranchOrReturnValue(realm: Realm, value: Value): Value {
+  if (value instanceof AbstractObjectValue && isBranchedReactElement(value)) {
+    let reactElement = realm.react.branchedReactElements.get(value);
+    invariant(reactElement !== undefined);
+    return wrapReactElementInBranchOrReturnValue(realm, reactElement);
+  } else if (value instanceof ObjectValue && isReactElement(value)) {
+    let branchedReactElement = AbstractValue.createTemporalFromBuildFunction(
+      realm,
+      ObjectValue,
+      [value],
+      ([node]) => node,
+      {
+        isPure: true,
+        kind: "branched ReactElement",
+        skipInvariant: true,
+      }
+    );
+    invariant(branchedReactElement instanceof AbstractObjectValue);
+    realm.react.branchedReactElements.set(branchedReactElement, value);
+    return branchedReactElement;
   }
   return value;
 }

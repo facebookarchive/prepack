@@ -40,6 +40,7 @@ import {
   getProperty,
   getReactSymbol,
   getValueFromFunctionCall,
+  isBranchedReactElement,
   isReactElement,
   mapArrayValue,
   sanitizeReactElementForFirstRenderOnly,
@@ -52,7 +53,11 @@ import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { Properties } from "../singletons.js";
 import { FatalError, CompilerDiagnostic } from "../errors.js";
-import { getValueWithBranchingLogicApplied, type BranchStatusEnum } from "./branching.js";
+import {
+  type BranchStatusEnum,
+  getValueWithBranchingLogicApplied,
+  wrapReactElementInBranchOrReturnValue,
+} from "./branching.js";
 import * as t from "babel-types";
 import { Completion } from "../completions.js";
 import {
@@ -885,14 +890,22 @@ export class Reconciler {
       condValue,
       () => {
         return this.realm.evaluateForEffects(
-          () => this._resolveDeeply(componentType, consequentVal, context, "NEW_BRANCH", evaluatedNode),
+          () =>
+            wrapReactElementInBranchOrReturnValue(
+              this.realm,
+              this._resolveDeeply(componentType, consequentVal, context, "NEW_BRANCH", evaluatedNode)
+            ),
           null,
           "_resolveAbstractConditionalValue consequent"
         );
       },
       () => {
         return this.realm.evaluateForEffects(
-          () => this._resolveDeeply(componentType, alternateVal, context, "NEW_BRANCH", evaluatedNode),
+          () =>
+            wrapReactElementInBranchOrReturnValue(
+              this.realm,
+              this._resolveDeeply(componentType, alternateVal, context, "NEW_BRANCH", evaluatedNode)
+            ),
           null,
           "_resolveAbstractConditionalValue alternate"
         );
@@ -1298,12 +1311,14 @@ export class Reconciler {
     );
     if (value instanceof AbstractValue) {
       return this._resolveAbstractValue(componentType, value, context, branchStatus, evaluatedNode);
-    }
-    // TODO investigate what about other iterables type objects
-    if (value instanceof ArrayValue) {
+    } else if (value instanceof ArrayValue) {
+      // TODO investigate what about other iterables type objects
       return this._resolveArray(componentType, value, context, branchStatus, evaluatedNode);
-    }
-    if (value instanceof ObjectValue && isReactElement(value)) {
+    } else if (value instanceof AbstractObjectValue && isBranchedReactElement(value)) {
+      let reactElement = this.realm.react.branchedReactElements.get(value);
+      invariant(reactElement !== undefined);
+      return this._resolveReactElement(componentType, reactElement, context, branchStatus, evaluatedNode);
+    } else if (value instanceof ObjectValue && isReactElement(value)) {
       return this._resolveReactElement(componentType, value, context, branchStatus, evaluatedNode);
     } else {
       let location = getLocationFromValue(value.expressionLocation);

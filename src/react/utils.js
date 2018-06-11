@@ -58,6 +58,10 @@ export type ReactSymbolTypes =
   | "react.call";
 
 export function isReactElement(val: Value): boolean {
+  invariant(
+    !isBranchedReactElement(val),
+    "isReactElement was checked on a branched ReactElement, this should never occur"
+  );
   if (!(val instanceof ObjectValue)) {
     return false;
   }
@@ -89,6 +93,13 @@ export function isReactElement(val: Value): boolean {
     }
   }
   return false;
+}
+
+export function isBranchedReactElement(val: Value): boolean {
+  if (!(val instanceof AbstractObjectValue)) {
+    return false;
+  }
+  return val.kind === "branched ReactElement";
 }
 
 export function getReactSymbol(symbolKey: ReactSymbolTypes, realm: Realm): SymbolValue {
@@ -645,6 +656,10 @@ export function getProperty(
   object: ObjectValue | AbstractObjectValue,
   property: string | SymbolValue
 ): Value {
+  invariant(
+    !isBranchedReactElement(object),
+    "getProperty was used on a branched ReactElement, this should never occur"
+  );
   if (object instanceof AbstractObjectValue) {
     if (object.values.isTop()) {
       return realm.intrinsics.undefined;
