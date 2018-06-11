@@ -784,7 +784,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "react-context3.js");
       });
 
-      it("React Context 4", async () => {
+      it.only("React Context 4", async () => {
         await runTest(directory, "react-context4.js");
       });
 
