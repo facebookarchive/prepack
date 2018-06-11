@@ -2,7 +2,7 @@ var React = require('React');
 // the JSX transform converts to React, so we need to add it back in
 this['React'] = React;
 
-var { Provider, Consumer } = React.createContext(null);
+var { Provider, Consumer } = React.createContext("bar");
 
 function Child(props) {
   var x = function(context) {
@@ -24,9 +24,12 @@ function Child(props) {
 
 function App(props) {
   return (
-    <Provider>
+    <div>
+      <Provider value={"foo"}>
+        <Child />
+      </Provider>
       <Child />
-    </Provider>
+    </div>
   );
 }
 
@@ -40,7 +43,9 @@ App.getTrials = function(renderer, Root) {
 };
 
 if (this.__optimizeReactComponentTree) {
-  __optimizeReactComponentTree(App);
+  __optimizeReactComponentTree(App, {
+    isRoot: true,
+  });
 }
 
 module.exports = App;

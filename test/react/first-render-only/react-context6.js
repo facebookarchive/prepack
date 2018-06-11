@@ -4,19 +4,17 @@ this['React'] = React;
 
 var { Provider, Consumer } = React.createContext(null);
 
+function Child2(props) {
+  return <span>{props.title}</span>;
+}
+
 function Child(props) {
-  var x = function(context) {
-    var click = function () {
-      return x;
-    }
-
-    return <span onClick={click}>{props.x}</span>
-  }
-
   return (
     <div>
       <Consumer>
-        {x}
+        {value => {
+          return <span><Child2 title={value} /></span>
+        }}
       </Consumer>
     </div>
   )
@@ -24,23 +22,24 @@ function Child(props) {
 
 function App(props) {
   return (
-    <Provider>
+    <div>
+      <Provider value="b">
+        <Child />
+      </Provider>
       <Child />
-    </Provider>
+    </div>
   );
 }
 
 App.getTrials = function(renderer, Root) {
-  let results = [];
   renderer.update(<Root />);
-  results.push(['render props context', renderer.toJSON()]);
-  renderer.update(<Root />);
-  results.push(['render props context', renderer.toJSON()]);
-  return results;
+  return [['render props context', renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {
-  __optimizeReactComponentTree(App);
+  __optimizeReactComponentTree(App, {
+    firstRenderOnly: true,
+  });
 }
 
 module.exports = App;
