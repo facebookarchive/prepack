@@ -52,20 +52,21 @@ export class DebugServer {
     this._variableManager = new VariableManager(realm);
     this._stepManager = new SteppingManager(this._realm, /* default discard old steppers */ false);
     this._stopEventManager = new StopEventManager();
-    this._diagnosticSeverity = launchArgs.diagnosticSeverity || "FatalError";
-    // Nuclide starts both at 1. Setting default for conformity.
-    if (launchArgs.uiLinesStartAt0 !== undefined) {
-      this._uiLinesStartAt0 = launchArgs.uiLinesStartAt0;
+    this._diagnosticSeverity = configArgs.diagnosticSeverity || "FatalError";
+    // Babel AST protocol defines rows start at 1, columns start at 0.
+    if (configArgs.uiLinesStartAt0 !== undefined) {
+      this._uiLinesStartAt0 = true;
     } else {
       this._uiLinesStartAt0 = false;
     }
-    if (launchArgs.uiColumnsStartAt1 !== undefined) {
-      this._uiColumnsStartAt1 = launchArgs.uiColumnsStartAt1;
+    if (configArgs.uiColumnsStartAt1 !== undefined) {
+      console.log('columns start at 1');
+      this._uiColumnsStartAt1 = true;
     } else {
+      console.log('columns start at 0');
       this._uiColumnsStartAt1 = false;
     }
     this.waitForRun(undefined);
-    this._diagnosticSeverity = configArgs.diagnosticSeverity || "FatalError";
   }
   // the collection of breakpoints
   _breakpointManager: BreakpointManager;
@@ -349,7 +350,7 @@ export class DebugServer {
     );
 
     // The AST node is needed to satisfy the subsequent stackTrace request.
-    let tempAst = {
+    const tempAst = {
       type: "Noop", // Arbitrary entry here, simply to satisfy the field.
       leadingComments: undefined,
       innerComments: undefined,

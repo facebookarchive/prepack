@@ -437,7 +437,7 @@ fi
         prepackStdin(resolvedOptions, processSerializedCode, printDiagnostics);
         return;
       }
-      let serialized = prepackFileSync(inputFilenames, resolvedOptions, debuggerConfigArgs);
+      let serialized = prepackFileSync(inputFilenames, resolvedOptions);
       printDiagnostics();
       if (resolvedOptions.serialize && serialized) processSerializedCode(serialized);
     } catch (err) {

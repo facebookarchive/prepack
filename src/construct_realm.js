@@ -21,14 +21,12 @@ import { Environment } from "./singletons.js";
 import { ObjectValue } from "./values/index.js";
 import { DebugServer } from "./debugger/server/Debugger.js";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
-import type { DebuggerConfigArguments } from "./debugger/common/types";
 import simplifyAndRefineAbstractValue from "./utils/simplifier.js";
 import invariant from "./invariant.js";
 
 export default function(
   opts: RealmOptions = {},
   debugChannel: void | DebugChannel = undefined,
-  debuggerConfigArgs: void | DebuggerConfigArguments = undefined,
   statistics: void | RealmStatistics = undefined
 ): Realm {
   initializeSingletons();

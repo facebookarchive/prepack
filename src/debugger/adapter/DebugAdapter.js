@@ -40,7 +40,7 @@ class PrepackDebugSession extends DebugSession {
   constructor() {
     super();
     this.setDebuggerLinesStartAt1(true);
-    this.setDebuggerColumnsStartAt1(true);
+    this.setDebuggerColumnsStartAt1(false);
   }
   _clientID: void | string;
   _adapterChannel: AdapterChannel;

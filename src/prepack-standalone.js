@@ -42,7 +42,7 @@ export function prepackSources(
 ): SerializedResult {
   let realmOptions = getRealmOptions(options);
   realmOptions.errorHandler = options.errorHandler;
-  let realm = construct_realm(realmOptions, debugChannel, debuggerConfigArgs, statistics || new SerializerStatistics());
+  let realm = construct_realm(realmOptions, debugChannel, statistics || new SerializerStatistics());
   initializeGlobals(realm);
   if (typeof options.additionalGlobals === "function") {
     options.additionalGlobals(realm);

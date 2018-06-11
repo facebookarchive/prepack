@@ -52,6 +52,7 @@ export class BreakpointManager {
   }
 
   _addBreakpoint(bp: BreakpointType) {
+    console.log(`New BP: ${bp.filePath} ${bp.line} ${bp.column}`);
     let breakpointMap = this._breakpointMaps.get(bp.filePath);
     if (!breakpointMap) {
       breakpointMap = new PerFileBreakpointMap(bp.filePath);
