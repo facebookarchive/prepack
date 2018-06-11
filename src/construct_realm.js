@@ -22,6 +22,7 @@ import { ObjectValue } from "./values/index.js";
 import { DebugServer } from "./debugger/server/Debugger.js";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
 import simplifyAndRefineAbstractValue from "./utils/simplifier.js";
+import invariant from "./invariant.js";
 
 export default function(
   opts: RealmOptions = {},
@@ -30,10 +31,11 @@ export default function(
 ): Realm {
   initializeSingletons();
   let r = new Realm(opts, statistics || new RealmStatistics());
+  // Presence of debugChannel indicates we wish to use debugger.
   if (debugChannel) {
-    if (debugChannel.debuggerIsAttached()) {
-      r.debuggerInstance = new DebugServer(debugChannel, r);
-    }
+    invariant(debugChannel.debuggerIsAttached(), "Debugger intends to be used but is not attached.");
+    invariant(opts.debuggerConfigArgs !== undefined, "Debugger intends to be used but does not have launch arguments.");
+    r.debuggerInstance = new DebugServer(debugChannel, r, opts.debuggerConfigArgs);
   }
 
   let i = r.intrinsics;
