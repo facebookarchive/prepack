@@ -686,6 +686,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("Lazy branched elements", async () => {
         let createElement = React.createElement;
         let count = 0;
+        // $FlowFixMe: intentional for this test
         React.createElement = (type, config) => {
           count++;
           return createElement(type, config);
@@ -693,6 +694,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         try {
           await runTest(directory, "lazy-branched-elements.js");
         } finally {
+          // $FlowFixMe: intentional for this test
           React.createElement = createElement;
         }
         expect(count).toEqual(8);
