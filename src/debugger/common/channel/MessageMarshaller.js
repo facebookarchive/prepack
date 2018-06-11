@@ -48,13 +48,20 @@ export class MessageMarshaller {
     return `${requestID} ${messageType} ${JSON.stringify(breakpoints)}`;
   }
 
-  marshallStoppedResponse(reason: StoppedReason, filePath: string, line: number, column: number): string {
+  marshallStoppedResponse(
+    reason: StoppedReason,
+    filePath: string,
+    line: number,
+    column: number,
+    message?: string
+  ): string {
     let result: StoppedResult = {
       kind: "stopped",
       reason: reason,
       filePath: filePath,
       line: line,
       column: column,
+      message: message,
     };
     return `${this._lastRunRequestID} ${DebugMessage.STOPPED_RESPONSE} ${JSON.stringify(result)}`;
   }
