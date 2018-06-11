@@ -49,7 +49,7 @@ type ElementConvType = {
 type numberOrValue = number | Value;
 
 function modulo(x: number, y: number): number {
-  return x < 0 ? x % y + y : x % y;
+  return x < 0 ? (x % y) + y : x % y;
 }
 
 export class ToImplementation {

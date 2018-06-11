@@ -629,7 +629,7 @@ export function evaluateWithNestedParentEffects(realm: Realm, nestedEffects: Arr
     }
   } finally {
     if (modifiedBindings && modifiedProperties) {
-      realm.restoreBindings(modifiedBindings);
+      realm.undoBindings(modifiedBindings);
       realm.restoreProperties(modifiedProperties);
     }
   }
@@ -760,6 +760,7 @@ export function convertConfigObjectToReactComponentTreeConfig(
 ): ReactComponentTreeConfig {
   // defaults
   let firstRenderOnly = false;
+  let isRoot = false;
 
   if (!(config instanceof UndefinedValue)) {
     for (let [key] of config.properties) {
@@ -771,6 +772,8 @@ export function convertConfigObjectToReactComponentTreeConfig(
         if (typeof value === "boolean") {
           if (key === "firstRenderOnly") {
             firstRenderOnly = value;
+          } else if (key === "isRoot") {
+            isRoot = value;
           }
         }
       } else {
@@ -787,6 +790,7 @@ export function convertConfigObjectToReactComponentTreeConfig(
   }
   return {
     firstRenderOnly,
+    isRoot,
   };
 }
 
@@ -881,9 +885,6 @@ export function doNotOptimizeComponent(realm: Realm, componentType: Value): bool
 }
 
 export function createDefaultPropsHelper(realm: Realm): ECMAScriptSourceFunctionValue {
-  if (realm.react.defaultPropsHelper !== undefined) {
-    return realm.react.defaultPropsHelper;
-  }
   let defaultPropsHelper = `
     function defaultPropsHelper(props, defaultProps) {
       for (var propName in defaultProps) {
@@ -901,7 +902,6 @@ export function createDefaultPropsHelper(realm: Realm): ECMAScriptSourceFunction
   ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
   helper.$ECMAScriptCode = body;
   helper.$FormalParameters = escapeHelperAst.params;
-  realm.react.defaultPropsHelper = helper;
   return helper;
 }
 

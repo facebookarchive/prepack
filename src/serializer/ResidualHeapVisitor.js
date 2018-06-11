@@ -708,16 +708,20 @@ export class ResidualHeapVisitor {
         environment,
         () => new Map()
       );
-      return getOrDefault(residualFunctionBindings, name, (): ResidualFunctionBinding => {
-        invariant(environment instanceof DeclarativeEnvironmentRecord);
-        return {
-          name,
-          value: undefined,
-          modified: false,
-          declarativeEnvironmentRecord: environment,
-          potentialReferentializationScopes: new Set(),
-        };
-      });
+      return getOrDefault(
+        residualFunctionBindings,
+        name,
+        (): ResidualFunctionBinding => {
+          invariant(environment instanceof DeclarativeEnvironmentRecord);
+          return {
+            name,
+            value: undefined,
+            modified: false,
+            declarativeEnvironmentRecord: environment,
+            potentialReferentializationScopes: new Set(),
+          };
+        }
+      );
       // Note that we don't yet visit the binding (and its value) here,
       // as that should be done by a call to visitBinding, in the right scope,
       // if the binding's incoming value is relevant.

@@ -499,6 +499,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-with-jsx-spread12.js");
       });
 
+      it("Simple with multiple JSX spreads #13", async () => {
+        await runTest(directory, "simple-with-jsx-spread13.js");
+      });
+
       it("Simple with Object.assign", async () => {
         await runTest(directory, "simple-assign.js");
       });
@@ -780,7 +784,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "react-context3.js");
       });
 
-      it("React Context 4", async () => {
+      it.only("React Context 4", async () => {
         await runTest(directory, "react-context4.js");
       });
 
@@ -790,6 +794,26 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("React Context 6", async () => {
         await runTest(directory, "react-context6.js");
+      });
+
+      it("React Context 7", async () => {
+        await runTest(directory, "react-context7.js");
+      });
+
+      it("React Context from root tree", async () => {
+        await runTest(directory, "react-root-context.js");
+      });
+
+      it("React Context from root tree 2", async () => {
+        await runTest(directory, "react-root-context2.js");
+      });
+
+      it("React Context from root tree 3", async () => {
+        await runTest(directory, "react-root-context3.js");
+      });
+
+      it("React Context from root tree 4", async () => {
+        await runTest(directory, "react-root-context4.js");
       });
     });
 
@@ -846,6 +870,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("React Context 5", async () => {
         await runTest(directory, "react-context5.js");
+      });
+
+      it("React Context 6", async () => {
+        await runTest(directory, "react-context6.js");
       });
 
       it.skip("Replace this in callbacks", async () => {

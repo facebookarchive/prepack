@@ -40,7 +40,7 @@ export type PrepackLaunchArguments = {
   exitCallback: () => void,
 };
 
-export type DebuggerLaunchArguments = {
+export type DebuggerConfigArguments = {
   diagnosticSeverity?: Severity,
   uiColumnsStartAt1?: boolean,
   uiLinesStartAt0?: boolean,
@@ -135,7 +135,7 @@ export type StoppedResult = {
   filePath: string,
   line: number,
   column: number,
-  message: string,
+  message?: string,
 };
 export type Scope = {
   name: string,
@@ -175,7 +175,7 @@ export type LaunchRequestArguments = {
 };
 
 export type SteppingType = "Step Into" | "Step Over" | "Step Out";
-export type StoppedReason = "Entry" | "Breakpoint" | "Prepack Error" | SteppingType;
+export type StoppedReason = "Entry" | "Breakpoint" | "Diagnostic" | SteppingType;
 
 export type SourceData = {
   filePath: string,

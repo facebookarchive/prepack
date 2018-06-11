@@ -18,9 +18,15 @@ import { createFbMocks } from "./fb-mocks.js";
 import { FatalError } from "../../errors";
 import { Get } from "../../methods/index.js";
 import invariant from "../../invariant";
+import { createDefaultPropsHelper } from "../../react/utils.js";
 
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
+
+  if (realm.react.enabled) {
+    // Create it eagerly so it's created outside effect branches
+    realm.react.defaultPropsHelper = createDefaultPropsHelper(realm);
+  }
 
   // module.exports support
   let moduleValue = AbstractValue.createAbstractObject(realm, "module");

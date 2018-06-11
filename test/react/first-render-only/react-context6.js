@@ -1,32 +1,38 @@
 var React = require('React');
 // the JSX transform converts to React, so we need to add it back in
 this['React'] = React;
-var Ctx = React.createContext(null);
+
+var { Provider, Consumer } = React.createContext(null);
+
+function Child2(props) {
+  return <span>{props.title}</span>;
+}
 
 function Child(props) {
   return (
     <div>
-      <Ctx.Consumer>
+      <Consumer>
         {value => {
-          return <span>{value}</span>
+          return <span><Child2 title={value} /></span>
         }}
-      </Ctx.Consumer>
+      </Consumer>
     </div>
   )
 }
 
 function App(props) {
-  return <div><Child /></div>;
+  return (
+    <div>
+      <Provider value="b">
+        <Child />
+      </Provider>
+      <Child />
+    </div>
+  );
 }
 
-App.Ctx = Ctx;
-
 App.getTrials = function(renderer, Root) {
-  renderer.update((
-    <Root.Ctx.Provider value={5}>
-      <Root />
-    </Root.Ctx.Provider>
-  ));
+  renderer.update(<Root />);
   return [['render props context', renderer.toJSON()]];
 };
 

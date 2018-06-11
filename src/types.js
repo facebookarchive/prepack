@@ -349,12 +349,13 @@ export type ReactHint = {| firstRenderValue: Value, object: ObjectValue, propert
 
 export type ReactComponentTreeConfig = {
   firstRenderOnly: boolean,
+  isRoot: boolean,
 };
 
 export type DebugServerType = {
   checkForActions: BabelNode => void,
   handlePrepackError: CompilerDiagnostic => void,
-  evaluateDiagnosticSeverity: Severity => boolean,
+  shouldStopForSeverity: Severity => boolean,
   shutdown: () => void,
 };
 

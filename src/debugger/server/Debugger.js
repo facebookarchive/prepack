@@ -25,8 +25,8 @@ import type {
   VariablesArguments,
   EvaluateArguments,
   SourceData,
-  DebuggerLaunchArguments,
   Breakpoint,
+  DebuggerConfigArguments,
 } from "./../common/types.js";
 import type { Realm } from "./../../realm.js";
 import { ExecutionContext } from "./../../realm.js";
@@ -45,7 +45,7 @@ import { CompilerDiagnostic } from "../../errors.js";
 import type { Severity } from "../../errors.js";
 
 export class DebugServer {
-  constructor(channel: DebugChannel, realm: Realm, launchArgs: DebuggerLaunchArguments) {
+  constructor(channel: DebugChannel, realm: Realm, configArgs: DebuggerConfigArguments) {
     this._channel = channel;
     this._realm = realm;
     this._breakpointManager = new BreakpointManager();
@@ -65,6 +65,7 @@ export class DebugServer {
       this._uiColumnsStartAt1 = false;
     }
     this.waitForRun(undefined);
+    this._diagnosticSeverity = configArgs.diagnosticSeverity || "FatalError";
   }
   // the collection of breakpoints
   _breakpointManager: BreakpointManager;
@@ -340,7 +341,7 @@ export class DebugServer {
     let location = diagnostic.location;
     let message = `${diagnostic.severity} ${diagnostic.errorCode}: ${diagnostic.message}`;
     this._channel.sendStoppedResponse(
-      "Prepack Error",
+      "Diagnostic",
       location.source || "",
       location.start.line,
       location.start.column,
@@ -348,23 +349,21 @@ export class DebugServer {
     );
 
     // The AST node is needed to satisfy the subsequent stackTrace request.
-    // let tempAst = {
-    //   type: "Noop", // Arbitrary entry here, simply to satisfy the field.
-    //   leadingComments: undefined,
-    //   innerComments: undefined,
-    //   trailingComments: undefined,
-    //   start: location.start,
-    //   end: location.end,
-    //   loc: location,
-    // };
-
-    let tempAst = new BabelNode();
+    let tempAst = {
+      type: "Noop", // Arbitrary entry here, simply to satisfy the field.
+      leadingComments: undefined,
+      innerComments: undefined,
+      trailingComments: undefined,
+      start: location.start,
+      end: location.end,
+      loc: location,
+    };
 
     this.waitForRun(tempAst);
   }
 
   // Return whether the debugger should stop on a CompilerDiagnostic of a given severity.
-  evaluateDiagnosticSeverity(severity: Severity): boolean {
+  shouldStopForSeverity(severity: Severity): boolean {
     switch (this._diagnosticSeverity) {
       case "Information":
         return true;

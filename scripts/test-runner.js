@@ -653,7 +653,7 @@ function run(args) {
       console.log(`  ${ft.name} (${ft.file.length} bytes)`);
     }
   }
-  console.log("Passed:", `${passed}/${total}`, (Math.floor(passed / total * 100) || 0) + "%");
+  console.log("Passed:", `${passed}/${total}`, (Math.floor((passed / total) * 100) || 0) + "%");
   return failed === 0;
 }
 

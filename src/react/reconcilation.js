@@ -139,10 +139,10 @@ export class Reconciler {
     this.realm = realm;
     this.statistics = statistics;
     this.logger = logger;
+    this.componentTreeConfig = componentTreeConfig;
     this.componentTreeState = this._createComponentTreeState();
     this.alreadyEvaluatedRootNodes = new Map();
     this.alreadyEvaluatedNestedClosures = new Set();
-    this.componentTreeConfig = componentTreeConfig;
     this.nestedOptimizedClosures = [];
     this.branchedComponentTrees = [];
   }
@@ -420,13 +420,16 @@ export class Reconciler {
     let lastValueProp = getProperty(this.realm, contextConsumer, "currentValue");
     this._incremementReferenceForContextNode(contextConsumer);
 
+    let valueProp;
     // if we have a value prop, set it
     if (propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue) {
-      let valueProp = Get(this.realm, propsValue, "value");
+      valueProp = Get(this.realm, propsValue, "value");
       setContextCurrentValue(contextConsumer, valueProp);
     }
-    if (this.componentTreeConfig.firstRenderOnly) {
-      if (propsValue instanceof ObjectValue) {
+    if (propsValue instanceof ObjectValue) {
+      // if the value is abstract, we need to keep the render prop as unless
+      // we are in firstRenderOnly mode, where we can just inline the abstract value
+      if (!(valueProp instanceof AbstractValue) || this.componentTreeConfig.firstRenderOnly) {
         let resolvedReactElement = this._resolveReactElementHostChildren(
           componentType,
           reactElement,
@@ -481,7 +484,10 @@ export class Reconciler {
     this.componentTreeState.contextNodeReferences.set(contextNode, references);
   }
 
-  _hasReferenceForContextNode(contextNode: ObjectValue | AbstractObjectValue): boolean {
+  _isContextValueKnown(contextNode: ObjectValue | AbstractObjectValue): boolean {
+    if (this.componentTreeConfig.isRoot) {
+      return true;
+    }
     if (this.componentTreeState.contextNodeReferences.has(contextNode)) {
       let references = this.componentTreeState.contextNodeReferences.get(contextNode);
       if (!references) {
@@ -496,6 +502,7 @@ export class Reconciler {
     componentType: Value,
     reactElement: ObjectValue,
     context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnum,
     evaluatedNode: ReactEvaluatedNode
   ): Value | void {
     let typeValue = getProperty(this.realm, reactElement, "type");
@@ -510,18 +517,20 @@ export class Reconciler {
 
         this._findReactComponentTrees(propsValue, evaluatedChildNode, "NORMAL_FUNCTIONS");
         if (renderProp instanceof ECMAScriptSourceFunctionValue) {
-          if (this.componentTreeConfig.firstRenderOnly) {
-            if (typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue) {
-              // make sure this context is in our tree
-              if (this._hasReferenceForContextNode(typeValue)) {
-                let valueProp = Get(this.realm, typeValue, "currentValue");
+          if (typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue) {
+            // make sure this context is in our tree
+            if (this._isContextValueKnown(typeValue)) {
+              let valueProp = Get(this.realm, typeValue, "currentValue");
+              // if the value is abstract, we need to keep the render prop as unless
+              // we are in firstRenderOnly mode, where we can just inline the abstract value
+              if (!(valueProp instanceof AbstractValue) || this.componentTreeConfig.firstRenderOnly) {
                 let result = getValueFromFunctionCall(this.realm, renderProp, this.realm.intrinsics.undefined, [
                   valueProp,
                 ]);
                 this.statistics.inlinedComponents++;
                 this.statistics.componentsEvaluated++;
                 evaluatedChildNode.status = "INLINED";
-                return result;
+                return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode);
               }
             }
           }
@@ -1152,7 +1161,13 @@ export class Reconciler {
           );
         }
         case "CONTEXT_CONSUMER": {
-          result = this._resolveContextConsumerComponent(componentType, reactElement, context, evaluatedNode);
+          result = this._resolveContextConsumerComponent(
+            componentType,
+            reactElement,
+            context,
+            branchStatus,
+            evaluatedNode
+          );
           break;
         }
         case "FORWARD_REF": {

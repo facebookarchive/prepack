@@ -66,8 +66,8 @@ class PrepackDebugSession extends DebugSession {
       invariant(result.kind === "stopped");
       let message = `${result.reason}: ${result.filePath} ${result.line}:${result.column}`;
       // Append message if there exists one (for PP errors)
-      if (result.message) {
-        message = message + ". " + result.message;
+      if (result.message !== undefined) {
+        message += `. ${result.message}`;
       }
       this.sendEvent(new StoppedEvent(message, DebuggerConstants.PREPACK_THREAD_ID));
     });

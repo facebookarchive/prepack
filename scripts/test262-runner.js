@@ -33,7 +33,8 @@ import minimist from "minimist";
 import process from "process";
 
 const EOL = os.EOL;
-const numCPUs = os.cpus().length;
+const cpus = os.cpus();
+const numCPUs = cpus ? cpus.length : 1;
 require("source-map-support").install();
 
 type HarnessMap = { [key: string]: string };
@@ -464,7 +465,7 @@ function masterRunMultiProcess(
   const granularity = Math.floor(tests.length / 10);
   const originalTestLength = tests.length;
   // Fork workers.
-  const numWorkers = Math.floor(numCPUs * args.cpuScale);
+  const numWorkers = Math.max(1, Math.floor(numCPUs * args.cpuScale));
   console.log(`Master starting up, forking ${numWorkers} workers`);
   for (let i = 0; i < numWorkers; i++) {
     cluster.fork();
@@ -675,7 +676,7 @@ function toPercentage(x: number, total: number): number {
   if (total === 0) {
     return 100;
   }
-  return Math.floor(x / total * 100);
+  return Math.floor((x / total) * 100);
 }
 
 function create_test_message(name: string, success: boolean, err: ?Error, isES6: boolean, isStrict: boolean): string {
