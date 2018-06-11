@@ -1236,6 +1236,7 @@ export class ResidualHeapVisitor {
       // as applying effects is expensive, and so we don't want to do it
       // more often than necessary.
       let actionsByGenerator = new Map();
+      let expected = 0;
       for (let { scope, action } of this.delayedActions) {
         let generator;
         if (scope instanceof FunctionValue) generator = this.generatorDAG.getCreator(scope) || this.globalGenerator;
@@ -1247,6 +1248,7 @@ export class ResidualHeapVisitor {
         let a = actionsByGenerator.get(generator);
         if (a === undefined) actionsByGenerator.set(generator, (a = []));
         a.push({ action, scope });
+        expected++;
       }
       this.delayedActions = [];
       progress = false;
@@ -1254,11 +1256,11 @@ export class ResidualHeapVisitor {
       // This way, we only have to apply any given effects once, regardless of how many actions we have associated with whatever generators.
       let effectsInfos: Map<Effects, { runner: () => void, nestedEffectsRunners: Array<() => void> }> = new Map();
       let topEffectsRunners: Array<() => void> = [];
-      let count = 0;
+      let actual = 0;
       for (let [generator, scopedActions] of actionsByGenerator) {
         let runGeneratorAction = () => {
           for (let { action, scope } of scopedActions) {
-            count++;
+            actual++;
             this._withScope(scope, () => {
               if (action() !== false) progress = true;
             });
@@ -1274,8 +1276,9 @@ export class ResidualHeapVisitor {
             let effectsToApply = s.effectsToApply;
             if (effectsToApply) {
               let info = effectsInfos.get(effectsToApply);
+              let runner;
               if (info === undefined) {
-                let runner = () => {
+                runner = () => {
                   this.realm.withEffectsAppliedInGlobalEnv(() => {
                     invariant(info !== undefined);
                     for (let nestedEffectsRunner of info.nestedEffectsRunners) nestedEffectsRunner();
@@ -1283,16 +1286,12 @@ export class ResidualHeapVisitor {
                   }, effectsToApply);
                 };
                 effectsInfos.set(effectsToApply, (info = { runner, nestedEffectsRunners: [] }));
-                if (newNestedRunner !== undefined) info.nestedEffectsRunners.push(newNestedRunner);
-                newNestedRunner = runner;
-              } else {
-                newNestedRunner = undefined;
-                if (runGeneratorAction === undefined) break;
               }
-              if (runGeneratorAction !== undefined) {
-                info.nestedEffectsRunners.push(runGeneratorAction);
-                runGeneratorAction = undefined;
-              }
+              if (newNestedRunner !== undefined) info.nestedEffectsRunners.push(newNestedRunner);
+              newNestedRunner = runner;
+              if (runGeneratorAction === undefined) break;
+              info.nestedEffectsRunners.push(runGeneratorAction);
+              runGeneratorAction = undefined;
             }
             s = this.generatorDAG.getParent(s);
           } else if (s instanceof FunctionValue) {
@@ -1307,8 +1306,9 @@ export class ResidualHeapVisitor {
         } else if (newNestedRunner !== undefined) topEffectsRunners.push(newNestedRunner);
       }
       for (let topEffectsRunner of topEffectsRunners) topEffectsRunner();
+      invariant(expected === actual);
       if (this.realm.react.verbose) {
-        this.logger.logInformation(`  (${count} items left)`);
+        this.logger.logInformation(`  (${actual} items processed)`);
       }
     }
   }
