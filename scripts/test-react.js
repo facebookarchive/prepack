@@ -683,8 +683,19 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "dynamic-type3.js");
       });
 
-      it.only("Lazy branched elements", async () => {
-        await runTest(directory, "lazy-branched-elements.js");
+      it("Lazy branched elements", async () => {
+        let createElement = React.createElement;
+        let count = 0;
+        React.createElement = (type, config) => {
+          count++;
+          return createElement(type, config);
+        };
+        try {
+          await runTest(directory, "lazy-branched-elements.js");
+        } finally {
+          React.createElement = createElement;
+        }
+        expect(count).toEqual(8);
       });
     });
 

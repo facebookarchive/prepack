@@ -1,20 +1,6 @@
-var React = require('react');
+var React = require('React');
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = {
-  createElement() {
-    var _react = require("react");
-    if (!window.createElementCalls) {
-      window.createElementCalls = 1;
-    } else {
-      window.createElementCalls++;
-    }
-    return _react.createElement.call(this, arguments);
-  }
-}
-
-function A(props) {
-  return <div>Hello {props.x}</div>;
-}
+this['React'] = React;
 
 function App(props) {
   return (
@@ -23,10 +9,11 @@ function App(props) {
 }
 
 App.getTrials = function(renderer, Root) {
-  renderer.update(<Root x={true} a="1" />);
   let results = [];
+  renderer.update(<Root x={true} a="1" />);
   results.push(['lazy branched elements output', renderer.toJSON()]);
-  results.push(['lazy branched elements count', window.createElementCalls]);
+  renderer.update(<Root x={false} a="1" />);
+  results.push(['lazy branched elements output', renderer.toJSON()]);
   return results;
 };
 
