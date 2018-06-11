@@ -361,4 +361,3 @@ export function traverseReactElement(
     }
   }
 }
-
