@@ -629,7 +629,7 @@ export function evaluateWithNestedParentEffects(realm: Realm, nestedEffects: Arr
     }
   } finally {
     if (modifiedBindings && modifiedProperties) {
-      realm.restoreBindings(modifiedBindings);
+      realm.undoBindings(modifiedBindings);
       realm.restoreProperties(modifiedProperties);
     }
   }

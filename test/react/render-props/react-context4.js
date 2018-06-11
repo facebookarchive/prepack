@@ -2,28 +2,32 @@ var React = require('React');
 // the JSX transform converts to React, so we need to add it back in
 this['React'] = React;
 
+<<<<<<< HEAD
 var { Provider, Consumer } = React.createContext(null);
+=======
+var Ctx = React.createContext(null);
+>>>>>>> master
 
 function Child(props) {
   return (
     <div>
-      <Consumer>
+      <Ctx.Consumer>
         {value => {
           return <span>{value}</span>
         }}
-      </Consumer>
+      </Ctx.Consumer>
     </div>
   )
 }
 
 function App(props) {
   return (
-    <Provider value="a">
-      <Provider value="b">
+    <Ctx.Provider value="a">
+      <Ctx.Provider value="b">
         <Child />
-      </Provider>
+      </Ctx.Provider>
       <Child />
-    </Provider>
+    </Ctx.Provider>
   );
 }
 

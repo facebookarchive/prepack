@@ -1,7 +1,7 @@
 var React = require('React');
 // the JSX transform converts to React, so we need to add it back in
 this['React'] = React;
-var Ctx = React.createContext("bar");
+var Ctx = React.createContext(null);
 
 function Child(props) {
   return (
@@ -30,7 +30,7 @@ App.getTrials = function(renderer, Root) {
   ));
   results.push(['render props context', renderer.toJSON()]);
   renderer.update((
-    <Root.Ctx.Provider value={7}>
+    <Root.Ctx.Provider value={5}>
       <Root />
     </Root.Ctx.Provider>
   ));
