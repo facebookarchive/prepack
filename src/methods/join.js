@@ -718,7 +718,23 @@ export class JoinImplementation {
         liv1 === undefined && liv2 === undefined ? undefined : this.joinValues(realm, liv1, liv2, getAbstractValue);
       invariant(value instanceof Value);
       invariant(leakedImmutableValue === undefined || leakedImmutableValue instanceof Value);
-      return { leakedImmutableValue, hasLeaked, value };
+      let previousLeakedImmutableValue, previousHasLeaked, previousValue;
+      if (b1 !== undefined) {
+        previousLeakedImmutableValue = b1.previousLeakedImmutableValue;
+        previousHasLeaked = b1.previousHasLeaked;
+        previousValue = b1.previousValue;
+        invariant(
+          b2 === undefined ||
+            (previousLeakedImmutableValue === b2.previousLeakedImmutableValue &&
+              previousHasLeaked === b2.previousHasLeaked &&
+              previousValue === b2.previousValue)
+        );
+      } else if (b2 !== undefined) {
+        previousLeakedImmutableValue = b2.previousLeakedImmutableValue;
+        previousHasLeaked = b2.previousHasLeaked;
+        previousValue = b2.previousValue;
+      }
+      return { leakedImmutableValue, hasLeaked, value, previousLeakedImmutableValue, previousHasLeaked, previousValue };
     };
     return this.joinMaps(m1, m2, join);
   }
