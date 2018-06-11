@@ -11,10 +11,10 @@
 
 import type { BabelNodeSourceLocation } from "babel-types";
 
-// Information: Just an informative message with no semantic implications whatsoever
-// Warning: We came across something that has a well-defined meaning, but is likely to be wrong anyway.
-// RecoverableError: Something is clearly wrong and we'd like you to know, but, by sprinkling in some well-meaning assumptions, we could carry on the analysis to possibly give you even more diagnostics.
-// FatalError: Something is clearly wrong and we'd like you to know, and there is just nothing we can do about it, so we stop completely right there.
+// Information: Just an informative message with no semantic implications whatsoever.
+// Warning: Prepack will produce code that matches the behavior of the original code, but the original code might have an error.
+// RecoverableError: Prepack might produce code that deviates in behavior from the original code, if the original code is not well behaved.
+// FatalError: Prepack is unable to produce code that could possibly match the behavior of the original code.
 export type Severity = "FatalError" | "RecoverableError" | "Warning" | "Information";
 export type ErrorHandlerResult = "Fail" | "Recover";
 export type ErrorCode = "PP0001";
