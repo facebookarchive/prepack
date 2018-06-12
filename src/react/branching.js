@@ -182,9 +182,6 @@ function applyBranchedLogicValue(realm: Realm, value: Value): Value {
 // return the original value
 export function wrapReactElementInBranchOrReturnValue(realm: Realm, value: Value): Value {
   if (value instanceof ObjectValue && isReactElement(value)) {
-    if (value.temporalAlias !== undefined) {
-      debugger;
-    }
     let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
     value.copyKeys(value.$OwnPropertyKeys(), value, obj);
     let temporal = AbstractValue.createTemporalFromBuildFunction(realm, ObjectValue, [obj], ([node]) => node, {
