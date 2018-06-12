@@ -232,7 +232,7 @@ function createBootloader(realm: Realm, global: ObjectValue | AbstractObjectValu
           t.memberExpression(t.identifier("Bootloader"), t.identifier("loadModules")),
           ((_args: any): Array<any>)
         ),
-      { skipInvariant: true, isPure: true }
+      { skipInvariant: true }
     );
     invariant(val instanceof AbstractValue);
     return val;

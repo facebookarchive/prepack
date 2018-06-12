@@ -373,7 +373,7 @@ export function applyGetDerivedStateFromProps(
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           },
-          { skipInvariant: true, isPure: true }
+          { skipInvariant: true }
         );
         newState.makeSimple();
         newState.makePartial();
@@ -394,7 +394,7 @@ export function applyGetDerivedStateFromProps(
             ([methodNode, ..._args]) => {
               return t.callExpression(methodNode, ((_args: any): Array<any>));
             },
-            { skipInvariant: true, isPure: true }
+            { skipInvariant: true }
           );
           newState.makeSimple();
           newState.makePartial();
