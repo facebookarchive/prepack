@@ -244,6 +244,7 @@ export class Realm {
     this.evaluators = (Object.create(null): any);
     this.partialEvaluators = (Object.create(null): any);
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
+    this.temporalAliasArgs = new WeakMap();
 
     this.react = {
       abstractHints: new WeakMap(),
@@ -327,6 +328,12 @@ export class Realm {
   contextStack: Array<ExecutionContext> = [];
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
+
+  // temporalAliasArgs is used to map a temporal abstract object value
+  // to its respective temporal args used to originally create the temporal.
+  // This is used to "clone" immutable objects where they have a dependency
+  // on a temporal alias (for example, Object.assign) when used with snapshotting
+  temporalAliasArgs: WeakMap<AbstractObjectValue | ObjectValue, Array<Value>>;
 
   react: {
     // reactHints are generated to help improve the effeciency of the React reconciler when

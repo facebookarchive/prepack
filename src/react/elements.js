@@ -172,10 +172,13 @@ function createPropsObject(
         }
         let defaultPropsHelper = realm.react.defaultPropsHelper;
         invariant(defaultPropsHelper !== undefined);
+        let snapshot = props.getSnapshot();
+        props.temporalAlias = snapshot;
+        let temporalArgs = [defaultPropsHelper, snapshot, defaultProps];
         let temporalTo = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,
-          [defaultPropsHelper, props.getSnapshot(), defaultProps],
+          temporalArgs,
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           },
@@ -189,6 +192,10 @@ function createPropsObject(
           temporalTo.values = new ValuesDomain(props);
         }
         props.temporalAlias = temporalTo;
+        // Store the args for the temporal so we can easily clone
+        // and reconstruct the temporal at another point, rather than
+        // mutate the existing temporal
+        realm.temporalAliasArgs.set(temporalTo, temporalArgs);
       }
     }
   } else {
