@@ -63,7 +63,7 @@ export class ResidualReactElementVisitor {
         }
       },
       visitChildNode: (childValue: Value) => {
-        this.residualHeapVisitor.visitValue(childValue);
+        return this.residualHeapVisitor.visitEquivalentValue(childValue);
       },
     });
 

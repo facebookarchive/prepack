@@ -547,6 +547,29 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "key-change.js");
       });
 
+      it("Equivalence", async () => {
+        let createElement = React.createElement;
+        let count = 0;
+        // For this test we want to also check how React.createElement
+        // calls occur so we can validate that we are correctly using
+        // lazy branched elements. To do this, we override the createElement
+        // call and increment a counter for ever call.
+
+        // $FlowFixMe: intentional for this test
+        React.createElement = (type, config) => {
+          count++;
+          return createElement(type, config);
+        };
+        try {
+          await runTest(directory, "equivalence.js");
+        } finally {
+          // $FlowFixMe: intentional for this test
+          React.createElement = createElement;
+        }
+        // The non-compiled version has 20 calls, the compiled should have 8 calls
+        expect(count).toEqual(28);
+      });
+
       it("Delete element prop key", async () => {
         await runTest(directory, "delete-element-prop-key.js");
       });
