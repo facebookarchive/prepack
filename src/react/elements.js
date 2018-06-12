@@ -299,7 +299,7 @@ type ElementTraversalVisitor = {
   visitRef: (keyValue: Value) => void,
   visitAbstractOrPartialProps: (propsValue: AbstractValue | ObjectValue) => void,
   visitConcreteProps: (propsValue: ObjectValue) => void,
-  visitChildNode: (childValue: Value) => void,
+  visitChildNode: (childValue: Value) => void | Value,
 };
 
 export function traverseReactElement(
