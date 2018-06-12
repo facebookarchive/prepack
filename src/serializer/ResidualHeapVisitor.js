@@ -996,6 +996,9 @@ export class ResidualHeapVisitor {
       return (equivalentValue: any);
     }
     if (val instanceof ObjectValue && isReactElement(val)) {
+      if (val.temporalAlias !== undefined) {
+        return this.visitEquivalentValue(val.temporalAlias);
+      }
       let equivalentReactElementValue = this.residualReactElementVisitor.equivalenceSet.add(val);
       if (this._mark(equivalentReactElementValue)) this.visitValueObject(equivalentReactElementValue);
       return (equivalentReactElementValue: any);

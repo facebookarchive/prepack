@@ -11,16 +11,16 @@
 
 import { Realm } from "../realm.js";
 import {
-  Value,
+  AbstractValue,
+  ArrayValue,
+  BooleanValue,
+  ECMAScriptSourceFunctionValue,
+  FunctionValue,
   NumberValue,
   ObjectValue,
   SymbolValue,
-  FunctionValue,
   StringValue,
-  ArrayValue,
-  BooleanValue,
-  AbstractValue,
-  ECMAScriptSourceFunctionValue,
+  Value,
 } from "../values/index.js";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
