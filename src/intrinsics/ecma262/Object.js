@@ -148,10 +148,11 @@ export default function(realm: Realm): NativeFunctionValue {
         to.makeSimple();
 
         // Tell serializer that it may add properties to to only after temporalTo has been emitted
+        let temporalArgs = [ObjectAssign, to, ...delayedSources];
         let temporalTo = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,
-          [ObjectAssign, to, ...delayedSources],
+          temporalArgs,
           ([methodNode, targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
             return t.callExpression(methodNode, [targetNode, ...sourceNodes]);
           },
@@ -165,6 +166,10 @@ export default function(realm: Realm): NativeFunctionValue {
           temporalTo.values = new ValuesDomain(to);
         }
         to.temporalAlias = temporalTo;
+        // Store the args for the temporal so we can easily clone
+        // and reconstruct the temporal at another point, rather than
+        // mutate the existing temporal
+        realm.temporalAliasArgs.set(temporalTo, temporalArgs);
       }
       return to;
     });
