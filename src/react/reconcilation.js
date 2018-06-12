@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { construct_empty_effects, Realm, type Effects, type SideEffectType } from "../realm.js";
+import { Realm, type Effects, type SideEffectType } from "../realm.js";
 import {
   AbstractObjectValue,
   AbstractValue,
@@ -50,7 +50,7 @@ import {
 } from "./utils";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
-import { Join, Path, Properties } from "../singletons.js";
+import { Properties } from "../singletons.js";
 import { FatalError, CompilerDiagnostic } from "../errors.js";
 import {
   type BranchStatusEnum,
