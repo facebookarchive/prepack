@@ -2236,6 +2236,23 @@ export class ResidualHeapSerializer {
       );
     }
 
+    if (this._options.prepackInfo) {
+      this.emitter.emit(
+        t.expressionStatement(
+          t.assignmentExpression(
+            "=",
+            this.preludeGenerator.globalReference("__PREPACK__", false),
+            t.objectExpression([
+              t.objectProperty(
+                t.identifier("lazyObjects"),
+                t.booleanLiteral(this._options.lazyObjectsRuntime !== undefined)
+              ),
+            ])
+          )
+        )
+      );
+    }
+
     this.postGeneratorSerialization();
 
     Array.prototype.push.apply(this.prelude, this.preludeGenerator.prelude);
