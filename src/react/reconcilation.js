@@ -52,7 +52,11 @@ import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { Join, Path, Properties } from "../singletons.js";
 import { FatalError, CompilerDiagnostic } from "../errors.js";
-import { getValueWithBranchingLogicApplied, type BranchStatusEnum } from "./branching.js";
+import {
+  type BranchStatusEnum,
+  getValueWithBranchingLogicApplied,
+  wrapReactElementInBranchOrReturnValue,
+} from "./branching.js";
 import * as t from "babel-types";
 import { Completion } from "../completions.js";
 import {
@@ -139,10 +143,10 @@ export class Reconciler {
     this.realm = realm;
     this.statistics = statistics;
     this.logger = logger;
+    this.componentTreeConfig = componentTreeConfig;
     this.componentTreeState = this._createComponentTreeState();
     this.alreadyEvaluatedRootNodes = new Map();
     this.alreadyEvaluatedNestedClosures = new Set();
-    this.componentTreeConfig = componentTreeConfig;
     this.nestedOptimizedClosures = [];
     this.branchedComponentTrees = [];
   }
@@ -420,13 +424,16 @@ export class Reconciler {
     let lastValueProp = getProperty(this.realm, contextConsumer, "currentValue");
     this._incremementReferenceForContextNode(contextConsumer);
 
+    let valueProp;
     // if we have a value prop, set it
     if (propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue) {
-      let valueProp = Get(this.realm, propsValue, "value");
+      valueProp = Get(this.realm, propsValue, "value");
       setContextCurrentValue(contextConsumer, valueProp);
     }
-    if (this.componentTreeConfig.firstRenderOnly) {
-      if (propsValue instanceof ObjectValue) {
+    if (propsValue instanceof ObjectValue) {
+      // if the value is abstract, we need to keep the render prop as unless
+      // we are in firstRenderOnly mode, where we can just inline the abstract value
+      if (!(valueProp instanceof AbstractValue) || this.componentTreeConfig.firstRenderOnly) {
         let resolvedReactElement = this._resolveReactElementHostChildren(
           componentType,
           reactElement,
@@ -481,7 +488,10 @@ export class Reconciler {
     this.componentTreeState.contextNodeReferences.set(contextNode, references);
   }
 
-  _hasReferenceForContextNode(contextNode: ObjectValue | AbstractObjectValue): boolean {
+  _isContextValueKnown(contextNode: ObjectValue | AbstractObjectValue): boolean {
+    if (this.componentTreeConfig.isRoot) {
+      return true;
+    }
     if (this.componentTreeState.contextNodeReferences.has(contextNode)) {
       let references = this.componentTreeState.contextNodeReferences.get(contextNode);
       if (!references) {
@@ -496,6 +506,7 @@ export class Reconciler {
     componentType: Value,
     reactElement: ObjectValue,
     context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnum,
     evaluatedNode: ReactEvaluatedNode
   ): Value | void {
     let typeValue = getProperty(this.realm, reactElement, "type");
@@ -510,18 +521,20 @@ export class Reconciler {
 
         this._findReactComponentTrees(propsValue, evaluatedChildNode, "NORMAL_FUNCTIONS");
         if (renderProp instanceof ECMAScriptSourceFunctionValue) {
-          if (this.componentTreeConfig.firstRenderOnly) {
-            if (typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue) {
-              // make sure this context is in our tree
-              if (this._hasReferenceForContextNode(typeValue)) {
-                let valueProp = Get(this.realm, typeValue, "currentValue");
+          if (typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue) {
+            // make sure this context is in our tree
+            if (this._isContextValueKnown(typeValue)) {
+              let valueProp = Get(this.realm, typeValue, "currentValue");
+              // if the value is abstract, we need to keep the render prop as unless
+              // we are in firstRenderOnly mode, where we can just inline the abstract value
+              if (!(valueProp instanceof AbstractValue) || this.componentTreeConfig.firstRenderOnly) {
                 let result = getValueFromFunctionCall(this.realm, renderProp, this.realm.intrinsics.undefined, [
                   valueProp,
                 ]);
                 this.statistics.inlinedComponents++;
                 this.statistics.componentsEvaluated++;
                 evaluatedChildNode.status = "INLINED";
-                return result;
+                return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode);
               }
             }
           }
@@ -885,18 +898,22 @@ export class Reconciler {
       condValue,
       () => {
         return this.realm.evaluateForEffects(
-          () => {
-            return this._resolveDeeply(componentType, consequentVal, context, "NEW_BRANCH", evaluatedNode);
-          },
+          () =>
+            wrapReactElementInBranchOrReturnValue(
+              this.realm,
+              this._resolveDeeply(componentType, consequentVal, context, "NEW_BRANCH", evaluatedNode)
+            ),
           null,
           "_resolveAbstractConditionalValue consequent"
         );
       },
       () => {
         return this.realm.evaluateForEffects(
-          () => {
-            return this._resolveDeeply(componentType, alternateVal, context, "NEW_BRANCH", evaluatedNode);
-          },
+          () =>
+            wrapReactElementInBranchOrReturnValue(
+              this.realm,
+              this._resolveDeeply(componentType, alternateVal, context, "NEW_BRANCH", evaluatedNode)
+            ),
           null,
           "_resolveAbstractConditionalValue alternate"
         );
@@ -928,27 +945,14 @@ export class Reconciler {
         evaluatedNode
       );
     } else {
-      // When we have &&, for now we don't support inlining the left side of the logical operation
-      // and instead only attempt to inline the right side. This is the most common case in React
-      // where && is used as shorthand for a conditional check given left side happens, use right.
-      // Furthermore, as the right side might have generator entries, we need to evaluate its
-      // effects and wrap it in a conditional (the condition is always the left side).
-      let effects = Path.withCondition(leftValue, () => {
-        return this.realm.evaluateForEffects(
-          () => {
-            return this._resolveDeeply(componentType, rightValue, context, "NEW_BRANCH", evaluatedNode);
-          },
-          null,
-          "_resolveAbstractLogicalValue (&&)"
-        );
-      });
-      // we join with empty effects so we create an if statment block
-      let emptyEffects = construct_empty_effects(this.realm);
-      let joinedEffects = Join.joinForkOrChoose(this.realm, leftValue, effects, emptyEffects);
-      invariant(effects !== undefined, "_resolveAbstractLogicalValue TODO when effects are undefined");
-      this.realm.applyEffects(joinedEffects, "_resolveAbstractLogicalValue");
-      invariant(effects.result instanceof Value);
-      return AbstractValue.createFromLogicalOp(this.realm, "&&", leftValue, effects.result);
+      return this._resolveAbstractConditionalValue(
+        componentType,
+        leftValue,
+        rightValue,
+        leftValue,
+        context,
+        evaluatedNode
+      );
     }
   }
 
@@ -1202,7 +1206,13 @@ export class Reconciler {
           );
         }
         case "CONTEXT_CONSUMER": {
-          result = this._resolveContextConsumerComponent(componentType, reactElement, context, evaluatedNode);
+          result = this._resolveContextConsumerComponent(
+            componentType,
+            reactElement,
+            context,
+            branchStatus,
+            evaluatedNode
+          );
           break;
         }
         case "FORWARD_REF": {
@@ -1348,12 +1358,10 @@ export class Reconciler {
     );
     if (value instanceof AbstractValue) {
       return this._resolveAbstractValue(componentType, value, context, branchStatus, evaluatedNode);
-    }
-    // TODO investigate what about other iterables type objects
-    if (value instanceof ArrayValue) {
+    } else if (value instanceof ArrayValue) {
+      // TODO investigate what about other iterables type objects
       return this._resolveArray(componentType, value, context, branchStatus, evaluatedNode);
-    }
-    if (value instanceof ObjectValue && isReactElement(value)) {
+    } else if (value instanceof ObjectValue && isReactElement(value)) {
       return this._resolveReactElement(componentType, value, context, branchStatus, evaluatedNode);
     } else {
       let location = getLocationFromValue(value.expressionLocation);

@@ -563,6 +563,29 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "key-change.js");
       });
 
+      it("Equivalence", async () => {
+        let createElement = React.createElement;
+        let count = 0;
+        // For this test we want to also check how React.createElement
+        // calls occur so we can validate that we are correctly using
+        // lazy branched elements. To do this, we override the createElement
+        // call and increment a counter for ever call.
+
+        // $FlowFixMe: intentional for this test
+        React.createElement = (type, config) => {
+          count++;
+          return createElement(type, config);
+        };
+        try {
+          await runTest(directory, "equivalence.js");
+        } finally {
+          // $FlowFixMe: intentional for this test
+          React.createElement = createElement;
+        }
+        // The non-compiled version has 20 calls, the compiled should have 8 calls
+        expect(count).toEqual(28);
+      });
+
       it("Delete element prop key", async () => {
         await runTest(directory, "delete-element-prop-key.js");
       });
@@ -613,6 +636,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Component type change 10", async () => {
         await runTest(directory, "type-change10.js");
+      });
+
+      it("Component type change 11", async () => {
+        await runTest(directory, "type-change11.js");
       });
 
       it("Component type same", async () => {
@@ -697,6 +724,57 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Dynamic ReactElement type #3", async () => {
         await runTest(directory, "dynamic-type3.js");
+      });
+
+      it("Dynamic ReactElement type #4", async () => {
+        await runTest(directory, "dynamic-type4.js");
+      });
+
+      it("Lazy branched elements", async () => {
+        let createElement = React.createElement;
+        let count = 0;
+        // For this test we want to also check how React.createElement
+        // calls occur so we can validate that we are correctly using
+        // lazy branched elements. To do this, we override the createElement
+        // call and increment a counter for ever call.
+
+        // $FlowFixMe: intentional for this test
+        React.createElement = (type, config) => {
+          count++;
+          return createElement(type, config);
+        };
+        try {
+          await runTest(directory, "lazy-branched-elements.js");
+        } finally {
+          // $FlowFixMe: intentional for this test
+          React.createElement = createElement;
+        }
+        // The non-compiled version has 4 calls, the compiled should have 4 calls
+        expect(count).toEqual(8);
+      });
+
+      it("Lazy branched elements 2", async () => {
+        let createElement = React.createElement;
+        let count = 0;
+        // For this test we want to also check how React.createElement
+        // calls occur so we can validate that we are correctly using
+        // lazy branched elements. To do this, we override the createElement
+        // call and increment a counter for ever call.
+
+        // $FlowFixMe: intentional for this test
+        React.createElement = (type, config) => {
+          count++;
+          return createElement(type, config);
+        };
+        try {
+          await runTest(directory, "lazy-branched-elements2.js");
+        } finally {
+          // $FlowFixMe: intentional for this test
+          React.createElement = createElement;
+        }
+        // The non-compiled version has 4 calls, the compiled should have 3 calls
+        // (3 because one of the calls has been removing by inlining)
+        expect(count).toEqual(7);
       });
     });
 
@@ -811,6 +889,26 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("React Context 6", async () => {
         await runTest(directory, "react-context6.js");
       });
+
+      it("React Context 7", async () => {
+        await runTest(directory, "react-context7.js");
+      });
+
+      it("React Context from root tree", async () => {
+        await runTest(directory, "react-root-context.js");
+      });
+
+      it("React Context from root tree 2", async () => {
+        await runTest(directory, "react-root-context2.js");
+      });
+
+      it("React Context from root tree 3", async () => {
+        await runTest(directory, "react-root-context3.js");
+      });
+
+      it("React Context from root tree 4", async () => {
+        await runTest(directory, "react-root-context4.js");
+      });
     });
 
     describe("First render only", () => {
@@ -866,6 +964,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("React Context 5", async () => {
         await runTest(directory, "react-context5.js");
+      });
+
+      it("React Context 6", async () => {
+        await runTest(directory, "react-context6.js");
       });
 
       it.skip("Replace this in callbacks", async () => {

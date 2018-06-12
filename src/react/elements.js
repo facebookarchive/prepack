@@ -172,10 +172,13 @@ function createPropsObject(
         }
         let defaultPropsHelper = realm.react.defaultPropsHelper;
         invariant(defaultPropsHelper !== undefined);
+        let snapshot = props.getSnapshot();
+        props.temporalAlias = snapshot;
+        let temporalArgs = [defaultPropsHelper, snapshot, defaultProps];
         let temporalTo = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,
-          [defaultPropsHelper, props.getSnapshot(), defaultProps],
+          temporalArgs,
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           },
@@ -189,6 +192,10 @@ function createPropsObject(
           temporalTo.values = new ValuesDomain(props);
         }
         props.temporalAlias = temporalTo;
+        // Store the args for the temporal so we can easily clone
+        // and reconstruct the temporal at another point, rather than
+        // mutate the existing temporal
+        realm.temporalAliasArgs.set(temporalTo, temporalArgs);
       }
     }
   } else {
@@ -299,7 +306,7 @@ type ElementTraversalVisitor = {
   visitRef: (keyValue: Value) => void,
   visitAbstractOrPartialProps: (propsValue: AbstractValue | ObjectValue) => void,
   visitConcreteProps: (propsValue: ObjectValue) => void,
-  visitChildNode: (childValue: Value) => void,
+  visitChildNode: (childValue: Value) => void | Value,
 };
 
 export function traverseReactElement(
@@ -337,11 +344,31 @@ export function traverseReactElement(
                 child instanceof Value,
                 `ReactElement "props.children[${i}]" failed to visit due to a non-value`
               );
-              traversalVisitor.visitChildNode(child);
+              let equivalentChild = traversalVisitor.visitChildNode(child);
+              // If the visitor returns an equivalentChild that is of different
+              // value then we should update our ReactElement children with the
+              // new value. This is because we've already visisted the same
+              // child before (ReactElement or abstract value)
+              if (equivalentChild !== undefined && equivalentChild !== child) {
+                Properties.Set(realm, childrenValue, "" + i, equivalentChild, true);
+              }
             }
           }
         } else {
-          traversalVisitor.visitChildNode(childrenValue);
+          let equivalentChildren = traversalVisitor.visitChildNode(childrenValue);
+          // If the visitor returns an equivalentChild that is of different
+          // value then we should update our ReactElement children with the
+          // new value. This is because we've already visisted the same
+          // child before (ReactElement or abstract value)
+          if (equivalentChildren !== undefined && equivalentChildren !== childrenValue) {
+            // "props" are immutable objects, but need to mutate them in this instance
+            // so we need to temporarily make them not final so we can do so. Given
+            // we're in the visitor/serialization stage, this shouldn't have any
+            // affect on the application, it's simply to improve optimization
+            propsValue.makeNotFinal();
+            Properties.Set(realm, propsValue, "children", equivalentChildren, true);
+            propsValue.makeFinal();
+          }
         }
       }
     }
