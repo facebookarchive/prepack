@@ -283,12 +283,7 @@ export class ResidualReactElementSerializer {
       visitAbstractOrPartialProps: (propsValue: AbstractValue | ObjectValue) => {
         let reactElementSpread = this._createReactElementAttribute();
         this._serializeNowOrAfterWaitingForDependencies(propsValue, reactElement, () => {
-          let expr;
-          if (propsValue.temporalAlias instanceof AbstractObjectValue) {
-            expr = this.residualHeapSerializer.serializeValue(propsValue.temporalAlias);
-          } else {
-            expr = this.residualHeapSerializer.serializeValue(propsValue);
-          }
+          let expr = this.residualHeapSerializer.serializeValue(propsValue);
           reactElementSpread.expr = expr;
           reactElementSpread.type = "SPREAD";
         });

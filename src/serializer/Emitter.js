@@ -26,6 +26,7 @@ import { Generator } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import { BodyReference } from "./types.js";
 import { ResidualFunctions } from "./ResidualFunctions.js";
+import { getProperty } from "../react/utils.js";
 
 // Type used to configure callbacks from the dependenciesVisitor of the Emitter.
 type EmitterDependenciesVisitorCallbacks<T> = {
@@ -368,6 +369,10 @@ export class Emitter {
       switch (kind) {
         case "Object":
           let proto = val.$Prototype;
+          if (val.temporalAlias !== undefined) {
+            result = recurse(val.temporalAlias);
+            if (result !== undefined) return result;
+          }
           if (
             proto instanceof ObjectValue &&
             // if this is falsy, prototype chain might be cyclic
@@ -380,6 +385,21 @@ export class Emitter {
         case "Date":
           invariant(val.$DateValue !== undefined);
           result = recurse(val.$DateValue);
+          if (result !== undefined) return result;
+          break;
+        case "ReactElement":
+          let realm = val.$Realm;
+          let type = getProperty(realm, val, "type");
+          let props = getProperty(realm, val, "props");
+          let key = getProperty(realm, val, "key");
+          let ref = getProperty(realm, val, "ref");
+          result = recurse(type);
+          if (result !== undefined) return result;
+          result = recurse(props);
+          if (result !== undefined) return result;
+          result = recurse(key);
+          if (result !== undefined) return result;
+          result = recurse(ref);
           if (result !== undefined) return result;
           break;
         default:
