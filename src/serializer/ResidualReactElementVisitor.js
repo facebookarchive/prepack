@@ -10,7 +10,7 @@
 /* @flow strict-local */
 
 import { Realm } from "../realm.js";
-import { AbstractObjectValue, AbstractValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
+import { AbstractValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { determineIfReactElementCanBeHoisted } from "../react/hoisting.js";
 import { traverseReactElement } from "../react/elements.js";

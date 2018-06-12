@@ -12,7 +12,7 @@
 import { Realm, Effects } from "../realm.js";
 import { ValuesDomain } from "../domains/index.js";
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
-import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
+import type { BabelNode, BabelNodeJSXIdentifier, BabelNodeExpression } from "babel-types";
 import { parseExpression } from "babylon";
 import {
   AbstractObjectValue,
@@ -931,9 +931,12 @@ export function createInternalReactElement(
   return obj;
 }
 
-function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps: ObjectValue): AbstractObjectValue {
+function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps: ObjectValue): void {
   let temporalAlias = props.temporalAlias;
+  invariant(temporalAlias !== undefined);
   if (temporalAlias.kind === "conditional") {
+    // Leave in for now, we should deal with this later, but there might
+    // be a better option.
     invariant(false, "TODO applyClonedTemporalAlias conditional");
   }
   let temporalArgs = realm.temporalAliasArgs.get(temporalAlias);
@@ -951,12 +954,8 @@ function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps:
     { skipInvariant: true }
   );
   invariant(temporalTo instanceof AbstractObjectValue);
-  if (clonedProps instanceof AbstractObjectValue) {
-    temporalTo.values = clonedProps.values;
-  } else {
-    invariant(clonedProps instanceof ObjectValue);
-    temporalTo.values = new ValuesDomain(clonedProps);
-  }
+  invariant(clonedProps instanceof ObjectValue);
+  temporalTo.values = new ValuesDomain(clonedProps);
   clonedProps.temporalAlias = temporalTo;
   // Store the args for the temporal so we can easily clone
   // and reconstruct the temporal at another point, rather than
