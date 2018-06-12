@@ -683,6 +683,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "dynamic-type3.js");
       });
 
+      it("Dynamic ReactElement type #4", async () => {
+        await runTest(directory, "dynamic-type4.js");
+      });
+
       it("Lazy branched elements", async () => {
         let createElement = React.createElement;
         let count = 0;
