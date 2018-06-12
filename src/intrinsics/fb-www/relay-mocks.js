@@ -109,14 +109,20 @@ function createReactRelayContainer(
   // allowing us to reconstruct this ReactReact.createSomeContainer(...) again
   // we also pass a reactHint so the reconciler can properly deal with this
   addMockFunctionToObject(realm, reactRelay, relayRequireName, containerName, (funcValue, args) => {
-    let value = AbstractValue.createTemporalFromBuildFunction(realm, FunctionValue, [reactRelay, ...args], _args => {
-      let [reactRelayIdent, ...otherArgs] = _args;
+    let value = AbstractValue.createTemporalFromBuildFunction(
+      realm,
+      FunctionValue,
+      [reactRelay, ...args],
+      _args => {
+        let [reactRelayIdent, ...otherArgs] = _args;
 
-      return t.callExpression(
-        t.memberExpression(reactRelayIdent, t.identifier(containerName)),
-        ((otherArgs: any): Array<any>)
-      );
-    });
+        return t.callExpression(
+          t.memberExpression(reactRelayIdent, t.identifier(containerName)),
+          ((otherArgs: any): Array<any>)
+        );
+      },
+      { skipInvariant: true, isPure: true }
+    );
     invariant(value instanceof AbstractValue);
     let firstRenderContainerValue = Get(realm, reactRelayFirstRenderValue, containerName);
     let firstRenderValue = realm.intrinsics.undefined;

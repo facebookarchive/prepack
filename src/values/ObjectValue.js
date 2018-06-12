@@ -562,8 +562,8 @@ export default class ObjectValue extends ConcreteValue {
       let template = new ObjectValue(this.$Realm, this.$Realm.intrinsics.ObjectPrototype);
       this.copyKeys(this.$OwnPropertyKeys(), this, template);
       let result = AbstractValue.createTemporalFromBuildFunction(this.$Realm, ObjectValue, [template], ([x]) => x, {
-        isPure: true,
         skipInvariant: true,
+        isPure: true,
       });
       invariant(result instanceof AbstractObjectValue);
       result.values = new ValuesDomain(template);
@@ -755,8 +755,12 @@ export default class ObjectValue extends ConcreteValue {
         // this name on other parts of the prototype chain.
         // TODO #1675: A fix to 1675 needs to take this into account.
         Havoc.value(this.$Realm, Receiver);
-        return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [Receiver, P], ([o, p]) =>
-          t.memberExpression(o, p, true)
+        return AbstractValue.createTemporalFromBuildFunction(
+          this.$Realm,
+          Value,
+          [Receiver, P],
+          ([o, p]) => t.memberExpression(o, p, true),
+          { skipInvariant: true, isPure: true }
         );
       } else {
         let error = new CompilerDiagnostic(
@@ -779,14 +783,22 @@ export default class ObjectValue extends ConcreteValue {
     if (this.isPartialObject()) {
       if (isWidenedValue(P)) {
         // TODO #1678: Use a snapshot or havoc this object.
-        return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [this, P], ([o, p]) =>
-          t.memberExpression(o, p, true)
+        return AbstractValue.createTemporalFromBuildFunction(
+          this.$Realm,
+          Value,
+          [this, P],
+          ([o, p]) => t.memberExpression(o, p, true),
+          { skipInvariant: true, isPure: true }
         );
       }
       result = AbstractValue.createFromType(this.$Realm, Value, "sentinel member expression", [this, P]);
     } else {
-      result = AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [this, P], ([o, p]) =>
-        t.memberExpression(o, p, true)
+      result = AbstractValue.createTemporalFromBuildFunction(
+        this.$Realm,
+        Value,
+        [this, P],
+        ([o, p]) => t.memberExpression(o, p, true),
+        { skipInvariant: true, isPure: true }
       );
     }
 
@@ -830,9 +842,13 @@ export default class ObjectValue extends ConcreteValue {
         let pNumber = +pName;
         if (pName === pNumber + "") propName = new NumberValue(this.$Realm, pNumber);
       }
-      return AbstractValue.createTemporalFromBuildFunction(this.$Realm, absVal.getType(), [ob, propName], ([o, p]) => {
-        return t.memberExpression(o, p, true);
-      });
+      return AbstractValue.createTemporalFromBuildFunction(
+        this.$Realm,
+        absVal.getType(),
+        [ob, propName],
+        ([o, p]) => t.memberExpression(o, p, true),
+        { skipInvariant: true, isPure: true }
+      );
     }
     invariant(absVal.args.length === 3 && absVal.kind === "conditional");
     let generic_cond = absVal.args[0];
@@ -844,8 +860,12 @@ export default class ObjectValue extends ConcreteValue {
     if (arg2 instanceof AbstractValue) {
       if (arg2.kind === "template for prototype member expression") {
         let ob = arg2.args[0];
-        arg2 = AbstractValue.createTemporalFromBuildFunction(this.$Realm, absVal.getType(), [ob, propName], ([o, p]) =>
-          t.memberExpression(o, p, true)
+        arg2 = AbstractValue.createTemporalFromBuildFunction(
+          this.$Realm,
+          absVal.getType(),
+          [ob, propName],
+          ([o, p]) => t.memberExpression(o, p, true),
+          { skipInvariant: true, isPure: true }
         );
       } else if (arg2.args.length === 3) {
         arg2 = this.specializeJoin(arg2, propName);

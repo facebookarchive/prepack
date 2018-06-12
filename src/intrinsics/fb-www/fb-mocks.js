@@ -97,7 +97,8 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
           [objectWithoutPropertiesValue, obj, keys],
           ([methodNode, objNode, propRemoveNode]) => {
             return t.callExpression(methodNode, [objNode, propRemoveNode]);
-          }
+          },
+          { skipInvariant: true, isPure: true }
         );
         if (value instanceof AbstractObjectValue) {
           // as we are returning an abstract object, we mark it as simple
@@ -189,8 +190,12 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
 function createMagicGlobalFunction(realm: Realm, global: ObjectValue | AbstractObjectValue, functionName: string) {
   global.$DefineOwnProperty(functionName, {
     value: new NativeFunctionValue(realm, functionName, functionName, 0, (context, args) => {
-      let val = AbstractValue.createTemporalFromBuildFunction(realm, FunctionValue, args, _args =>
-        t.callExpression(t.identifier(functionName), ((_args: any): Array<any>))
+      let val = AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        FunctionValue,
+        args,
+        _args => t.callExpression(t.identifier(functionName), ((_args: any): Array<any>)),
+        { skipInvariant: true, isPure: true }
       );
       invariant(val instanceof AbstractValue);
       return val;
@@ -218,11 +223,16 @@ function createBootloader(realm: Realm, global: ObjectValue | AbstractObjectValu
 
   let loadModules = new NativeFunctionValue(realm, "loadModules", "loadModules", 1, (context, args) => {
     invariant(context.$Realm.generator);
-    let val = AbstractValue.createTemporalFromBuildFunction(realm, FunctionValue, args, _args =>
-      t.callExpression(
-        t.memberExpression(t.identifier("Bootloader"), t.identifier("loadModules")),
-        ((_args: any): Array<any>)
-      )
+    let val = AbstractValue.createTemporalFromBuildFunction(
+      realm,
+      FunctionValue,
+      args,
+      _args =>
+        t.callExpression(
+          t.memberExpression(t.identifier("Bootloader"), t.identifier("loadModules")),
+          ((_args: any): Array<any>)
+        ),
+      { skipInvariant: true }
     );
     invariant(val instanceof AbstractValue);
     return val;
