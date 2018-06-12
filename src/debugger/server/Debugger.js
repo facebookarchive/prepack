@@ -25,7 +25,6 @@ import type {
   VariablesArguments,
   EvaluateArguments,
   SourceData,
-  Breakpoint,
   DebuggerConfigArguments,
 } from "./../common/types.js";
 import type { Realm } from "./../../realm.js";
@@ -43,6 +42,7 @@ import {
 } from "./../../environment.js";
 import { CompilerDiagnostic } from "../../errors.js";
 import type { Severity } from "../../errors.js";
+import * as t from "babel-types";
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm, configArgs: DebuggerConfigArguments) {
@@ -53,19 +53,6 @@ export class DebugServer {
     this._stepManager = new SteppingManager(this._realm, /* default discard old steppers */ false);
     this._stopEventManager = new StopEventManager();
     this._diagnosticSeverity = configArgs.diagnosticSeverity || "FatalError";
-    // Babel AST protocol defines rows start at 1, columns start at 0.
-    if (configArgs.uiLinesStartAt0 !== undefined) {
-      this._uiLinesStartAt0 = true;
-    } else {
-      this._uiLinesStartAt0 = false;
-    }
-    if (configArgs.uiColumnsStartAt1 !== undefined) {
-      console.log('columns start at 1');
-      this._uiColumnsStartAt1 = true;
-    } else {
-      console.log('columns start at 0');
-      this._uiColumnsStartAt1 = false;
-    }
     this.waitForRun(undefined);
   }
   // the collection of breakpoints
@@ -79,10 +66,6 @@ export class DebugServer {
   _lastExecuted: SourceData;
   // Severity at which debugger will break when CompilerDiagnostics are generated. Default is Fatal.
   _diagnosticSeverity: Severity;
-  // Babel 1-indexes rows and 0-indexes columns.
-  // Debugger UI can set whatever it wants. Must check for consistency.
-  _uiColumnsStartAt1: boolean;
-  _uiLinesStartAt0: boolean;
 
   /* Block until adapter says to run
   /* ast: the current ast node we are stopped on
@@ -112,46 +95,31 @@ export class DebugServer {
     }
   }
 
-  // Converts indicies of UI's breakpoints to conform with what Babel gives Prepack.
-  // Babel 1-indexes rows and 0-indexes columns.
-  _convertBreakpointIndex(breakpoints: Array<Breakpoint>): Array<Breakpoint> {
-    for (let idx = 0; idx < breakpoints.length; idx++) {
-      if (this._uiColumnsStartAt1) breakpoints[idx].column = breakpoints[idx].column - 1;
-      if (this._uiLinesStartAt0) breakpoints[idx].line = breakpoints[idx].line + 1;
-    }
-    return breakpoints;
-  }
-
   // Process a command from a debugger. Returns whether Prepack should unblock
   // if it is blocked
   processDebuggerCommand(request: DebuggerRequest, ast: void | BabelNode) {
     let requestID = request.id;
     let command = request.command;
     let args = request.arguments;
-    let convertedBreakpoints; // Match UI indexing to BabelNode indexing
     switch (command) {
       case DebugMessage.BREAKPOINT_ADD_COMMAND:
         invariant(args.kind === "breakpoint");
-        convertedBreakpoints = this._convertBreakpointIndex(args.breakpoints);
-        this._breakpointManager.addBreakpointMulti(convertedBreakpoints);
+        this._breakpointManager.addBreakpointMulti(args.breakpoints);
         this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.BREAKPOINT_REMOVE_COMMAND:
         invariant(args.kind === "breakpoint");
-        convertedBreakpoints = this._convertBreakpointIndex(args.breakpoints);
-        this._breakpointManager.removeBreakpointMulti(convertedBreakpoints);
+        this._breakpointManager.removeBreakpointMulti(args.breakpoints);
         this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_REMOVE_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.BREAKPOINT_ENABLE_COMMAND:
         invariant(args.kind === "breakpoint");
-        convertedBreakpoints = this._convertBreakpointIndex(args.breakpoints);
-        this._breakpointManager.enableBreakpointMulti(convertedBreakpoints);
+        this._breakpointManager.enableBreakpointMulti(args.breakpoints);
         this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_ENABLE_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.BREAKPOINT_DISABLE_COMMAND:
         invariant(args.kind === "breakpoint");
-        convertedBreakpoints = this._convertBreakpointIndex(args.breakpoints);
-        this._breakpointManager.disableBreakpointMulti(convertedBreakpoints);
+        this._breakpointManager.disableBreakpointMulti(args.breakpoints);
         this._channel.sendBreakpointsAcknowledge(DebugMessage.BREAKPOINT_DISABLE_ACKNOWLEDGE, requestID, args);
         break;
       case DebugMessage.PREPACK_RUN_COMMAND:
@@ -350,7 +318,7 @@ export class DebugServer {
     );
 
     // The AST node is needed to satisfy the subsequent stackTrace request.
-    const tempAst = {
+    let tempAst = {
       type: "Noop", // Arbitrary entry here, simply to satisfy the field.
       leadingComments: undefined,
       innerComments: undefined,

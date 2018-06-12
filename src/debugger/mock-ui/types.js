@@ -42,8 +42,6 @@ export type PrepackLaunchArguments = {
 
 export type DebuggerConfigArguments = {
   diagnosticSeverity?: Severity,
-  uiColumnsStartAt1?: boolean,
-  uiLinesStartAt0?: boolean,
 };
 
 export type Breakpoint = {

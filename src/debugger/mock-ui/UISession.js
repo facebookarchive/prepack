@@ -524,8 +524,6 @@ export class UISession {
       clientID: DebuggerConstants.CLI_CLIENTID,
       // a unique name for each adapter
       adapterID: "Prepack-Debugger-Adapter",
-      linesStartAt1: true,
-      columnsStartAt1: true,
       supportsVariableType: true,
       supportsVariablePaging: false,
       supportsRunInTerminalRequest: false,

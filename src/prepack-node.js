@@ -64,7 +64,6 @@ export function prepackStdin(
           [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
           options,
           undefined,
-          undefined,
           createStatistics(options)
         );
         processSerializedCode(serialized);
@@ -109,7 +108,6 @@ export function prepackFile(
         serialized = prepackSources(
           [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
           options,
-          undefined,
           undefined,
           createStatistics(options)
         );

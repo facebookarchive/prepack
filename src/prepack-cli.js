@@ -79,8 +79,6 @@ function run(
     --version                Output the version number.
     --repro                  Create a zip file with all information needed to reproduce a Prepack run"
     --cpuprofile             Create a CPU profile file for the run that can be loaded into the Chrome JavaScript CPU Profile viewer",
-    --debugColumnsStartAt1   Set if column numbering starts at 1. Default starts at 0.
-    --debugLinesStartAt0      Set if line number starts at 0. Defulat starts at 1.
     --debugDiagnosticSeverity      FatalError | RecoverableError | Warning | Information (default = FatalError). Diagnostic level at which debugger will stop
   `;
   let args = Array.from(process.argv);
@@ -271,12 +269,6 @@ function run(
             `Invalid debugger diagnostic severity: ${arg}`
           );
           debuggerConfigArgs.diagnosticSeverity = arg;
-          break;
-        case "debugLinesStartAt0":
-          debuggerConfigArgs.uiLinesStartAt0 = true;
-          break;
-        case "debugColumnsStartAt1":
-          debuggerConfigArgs.uiColumnsStartAt1 = true;
           break;
         case "help":
           const options = [

@@ -39,7 +39,6 @@ export class BreakpointManager {
 
   // Try to find a breakpoint at the given location and check if we should stop on it
   _findStoppableBreakpoint(filePath: string, lineNum: number, colNum: number): null | Breakpoint {
-    // console.log(`Checking ${filePath}: ${lineNum} ${colNum}`);
     let breakpoint = this.getBreakpoint(filePath, lineNum, colNum);
     if (breakpoint && breakpoint.enabled) {
       return breakpoint;
@@ -52,13 +51,14 @@ export class BreakpointManager {
   }
 
   _addBreakpoint(bp: BreakpointType) {
-    console.log(`New BP: ${bp.filePath} ${bp.line} ${bp.column}`);
     let breakpointMap = this._breakpointMaps.get(bp.filePath);
     if (!breakpointMap) {
       breakpointMap = new PerFileBreakpointMap(bp.filePath);
       this._breakpointMaps.set(bp.filePath, breakpointMap);
     }
-    breakpointMap.addBreakpoint(bp.line, bp.column);
+    // We don't support column debugging, so set every breakpoint
+    // to column 0 for consistency.
+    breakpointMap.addBreakpoint(bp.line, 0);
   }
 
   getBreakpoint(filePath: string, lineNum: number, columnNum: number = 0): void | Breakpoint {

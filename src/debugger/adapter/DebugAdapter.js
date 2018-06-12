@@ -40,14 +40,12 @@ class PrepackDebugSession extends DebugSession {
   constructor() {
     super();
     this.setDebuggerLinesStartAt1(true);
-    this.setDebuggerColumnsStartAt1(false);
+    this.setDebuggerColumnsStartAt1(true);
   }
   _clientID: void | string;
   _adapterChannel: AdapterChannel;
-  // Buffering BP requests that are sent before PP channel has been established.
+  // Buffering requests that are sent before PP channel has been established.
   _bufferedBreakpointRequests: Array<PrematureBP> = [];
-  _uiLinesStartAt0: boolean = false;
-  _uiColumnsStartAt1: boolean = false;
 
   _generateDebugFilePath(direction: "in" | "out") {
     let time = Date.now();
@@ -89,13 +87,6 @@ class PrepackDebugSession extends DebugSession {
    */
   // Override
   initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
-    // Store UI column/line indexing to give to debug server.
-    if (!args.linesStartAt1) this._uiLinesStartAt0 = true;
-    if (args.columnsStartAt1) this._uiColumnsStartAt1 = true;
-
-    // The UI will end the configuration sequence by calling 'configurationDone' request.
-    this.sendEvent(new InitializedEvent());
-
     this._clientID = args.clientID;
     response.body = response.body || {};
     response.body.supportsConfigurationDoneRequest = true;
@@ -124,14 +115,11 @@ class PrepackDebugSession extends DebugSession {
     // set up the communication channel
     this._adapterChannel = new AdapterChannel(inFilePath, outFilePath);
     this._registerMessageCallbacks();
-    let prepackArgs = args.prepackArguments;
-    if (this._uiLinesStartAt0) prepackArgs = prepackArgs.concat(["--debugLinesStartAt0"]);
-    if (this._uiColumnsStartAt1) prepackArgs = prepackArgs.concat(["--debugColumnsStartAt1"]);
     let launchArgs: PrepackLaunchArguments = {
       kind: "launch",
       sourceFile: args.sourceFile,
       prepackRuntime: args.prepackRuntime,
-      prepackArguments: prepackArgs,
+      prepackArguments: args.prepackArguments,
       debugInFilePath: inFilePath,
       debugOutFilePath: outFilePath,
       outputCallback: (data: Buffer) => {
@@ -148,10 +136,17 @@ class PrepackDebugSession extends DebugSession {
       this.sendResponse(response);
     });
 
+    // The UI will end the configuration sequence by calling 'configurationDone' request.
+    // Sending this during the initializeResponse caused non-determinism in request ordering
+    // that would prevent the debugger from starting.
+    this.sendEvent(new InitializedEvent());
+
+    // It is possible that this gets stuck in an infinte loop that keeps adding the requests
+    // into the arrays if _hasLaunchedDebugServer never becomes true. Because of this, these
+    // loops come after an invarient to ensure the server exists and this situation cannot happen.
+    invariant(this._adapterChannel !== undefined, "Debug Server could not launch");
     if (this._bufferedBreakpointRequests.length > 0) {
-      for (let entry of this._bufferedBreakpointRequests) {
-        this.setBreakPointsRequest(entry.response, entry.breakpointArgs);
-      }
+      this._bufferedBreakpointRequests.map(entry => this.setBreakPointsRequest(entry.response, entry.breakpointArgs));
     }
   }
 
