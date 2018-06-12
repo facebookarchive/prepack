@@ -876,7 +876,8 @@ export class Reconciler {
         [reactDomPortalFunc, resolvedReactPortalValue, domNodeValue],
         ([renderNode, ..._args]) => {
           return t.callExpression(renderNode, ((_args: any): Array<any>));
-        }
+        },
+        { skipInvariant: true, isPure: true }
       );
     }
     return createPortalNode;

@@ -1031,7 +1031,7 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           },
-          { skipInvariant: true }
+          { skipInvariant: true, isPure: true }
         );
         invariant(temporalTo instanceof AbstractObjectValue);
         temporalTo.values = new ValuesDomain(to);
