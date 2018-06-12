@@ -552,6 +552,29 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "key-change.js");
       });
 
+      it("Equivalence", async () => {
+        let createElement = React.createElement;
+        let count = 0;
+        // For this test we want to also check how React.createElement
+        // calls occur so we can validate that we are correctly using
+        // lazy branched elements. To do this, we override the createElement
+        // call and increment a counter for ever call.
+
+        // $FlowFixMe: intentional for this test
+        React.createElement = (type, config) => {
+          count++;
+          return createElement(type, config);
+        };
+        try {
+          await runTest(directory, "equivalence.js");
+        } finally {
+          // $FlowFixMe: intentional for this test
+          React.createElement = createElement;
+        }
+        // The non-compiled version has 20 calls, the compiled should have 8 calls
+        expect(count).toEqual(28);
+      });
+
       it("Delete element prop key", async () => {
         await runTest(directory, "delete-element-prop-key.js");
       });
@@ -801,6 +824,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "react-context6.js");
       });
 
+      it("React Context 7", async () => {
+        await runTest(directory, "react-context7.js");
+      });
+
       it("React Context from root tree", async () => {
         await runTest(directory, "react-root-context.js");
       });
@@ -811,6 +838,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("React Context from root tree 3", async () => {
         await runTest(directory, "react-root-context3.js");
+      });
+
+      it("React Context from root tree 4", async () => {
+        await runTest(directory, "react-root-context4.js");
       });
     });
 
@@ -1031,14 +1062,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
     });
 
-    describe("react-native", () => {
+    describe.skip("react-native", () => {
       let directory = "react-native";
 
-      it.only("Simple", async () => {
+      it("Simple", async () => {
         await runTest(directory, "simple.js", false);
       });
 
-      it.only("Simple 2", async () => {
+      it("Simple 2", async () => {
         await runTest(directory, "simple2.js", false);
       });
     });

@@ -1938,6 +1938,23 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output Functional component folding Equivalence 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output Functional component folding Event handlers 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -3605,6 +3622,44 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output Render props React Context 7 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Context.Provider",
+          "status": "NORMAL",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output Render props React Context from root tree 1`] = `
 ReactStatistics {
   "componentsEvaluated": 6,
@@ -3767,6 +3822,44 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, JSX output Render props React Context from root tree 4 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Context.Provider",
+          "status": "NORMAL",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -4576,167 +4669,6 @@ ReactStatistics {
   "inlinedComponents": 0,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
-}
-`;
-
-exports[`Test React with JSX input, JSX output react-native Simple 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 7,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
-                },
-              ],
-              "message": "",
-              "name": "TouchableText",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
-                },
-              ],
-              "message": "",
-              "name": "TouchableText",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 6,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Test React with JSX input, JSX output react-native Simple 2 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 9,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
-                },
-              ],
-              "message": "",
-              "name": "TouchableText",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [
-                    Object {
-                      "children": Array [
-                        Object {
-                          "children": Array [
-                            Object {
-                              "children": Array [],
-                              "message": "",
-                              "name": "Context.Consumer",
-                              "status": "INLINED",
-                            },
-                          ],
-                          "message": "",
-                          "name": "TouchableText",
-                          "status": "INLINED",
-                        },
-                      ],
-                      "message": "",
-                      "name": "",
-                      "status": "FORWARD_REF",
-                    },
-                  ],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
-                },
-              ],
-              "message": "",
-              "name": "TouchableText",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 8,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
 }
 `;
 
@@ -6678,6 +6610,23 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, create-element output Functional component folding Equivalence 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, create-element output Functional component folding Event handlers 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -8345,6 +8294,44 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, create-element output Render props React Context 7 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Context.Provider",
+          "status": "NORMAL",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, create-element output Render props React Context from root tree 1`] = `
 ReactStatistics {
   "componentsEvaluated": 6,
@@ -8507,6 +8494,44 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Render props React Context from root tree 4 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Context.Provider",
+          "status": "NORMAL",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -9316,167 +9341,6 @@ ReactStatistics {
   "inlinedComponents": 0,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
-}
-`;
-
-exports[`Test React with JSX input, create-element output react-native Simple 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 7,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
-                },
-              ],
-              "message": "",
-              "name": "TouchableText",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
-                },
-              ],
-              "message": "",
-              "name": "TouchableText",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 6,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Test React with JSX input, create-element output react-native Simple 2 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 9,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
-                },
-              ],
-              "message": "",
-              "name": "TouchableText",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [
-                    Object {
-                      "children": Array [
-                        Object {
-                          "children": Array [
-                            Object {
-                              "children": Array [],
-                              "message": "",
-                              "name": "Context.Consumer",
-                              "status": "INLINED",
-                            },
-                          ],
-                          "message": "",
-                          "name": "TouchableText",
-                          "status": "INLINED",
-                        },
-                      ],
-                      "message": "",
-                      "name": "",
-                      "status": "FORWARD_REF",
-                    },
-                  ],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
-                },
-              ],
-              "message": "",
-              "name": "TouchableText",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 8,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
 }
 `;
 
@@ -11418,6 +11282,23 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output Functional component folding Equivalence 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output Functional component folding Event handlers 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -13100,6 +12981,44 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output Render props React Context 7 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Context.Provider",
+          "status": "NORMAL",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, JSX output Render props React Context from root tree 1`] = `
 ReactStatistics {
   "componentsEvaluated": 6,
@@ -13262,6 +13181,44 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, JSX output Render props React Context from root tree 4 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Context.Provider",
+          "status": "NORMAL",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -14071,167 +14028,6 @@ ReactStatistics {
   "inlinedComponents": 0,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
-}
-`;
-
-exports[`Test React with create-element input, JSX output react-native Simple 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 7,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
-                },
-              ],
-              "message": "",
-              "name": "TouchableText",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
-                },
-              ],
-              "message": "",
-              "name": "TouchableText",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 6,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Test React with create-element input, JSX output react-native Simple 2 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 9,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
-                },
-              ],
-              "message": "",
-              "name": "TouchableText",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [
-                    Object {
-                      "children": Array [
-                        Object {
-                          "children": Array [
-                            Object {
-                              "children": Array [],
-                              "message": "",
-                              "name": "Context.Consumer",
-                              "status": "INLINED",
-                            },
-                          ],
-                          "message": "",
-                          "name": "TouchableText",
-                          "status": "INLINED",
-                        },
-                      ],
-                      "message": "",
-                      "name": "",
-                      "status": "FORWARD_REF",
-                    },
-                  ],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
-                },
-              ],
-              "message": "",
-              "name": "TouchableText",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 8,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
 }
 `;
 
@@ -16173,6 +15969,23 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, create-element output Functional component folding Equivalence 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, create-element output Functional component folding Event handlers 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -17855,6 +17668,44 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, create-element output Render props React Context 7 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Context.Provider",
+          "status": "NORMAL",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with create-element input, create-element output Render props React Context from root tree 1`] = `
 ReactStatistics {
   "componentsEvaluated": 6,
@@ -18017,6 +17868,44 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Render props React Context from root tree 4 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Context.Provider",
+          "status": "NORMAL",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -18826,166 +18715,5 @@ ReactStatistics {
   "inlinedComponents": 0,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 0,
-}
-`;
-
-exports[`Test React with create-element input, create-element output react-native Simple 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 7,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
-                },
-              ],
-              "message": "",
-              "name": "TouchableText",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
-                },
-              ],
-              "message": "",
-              "name": "TouchableText",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 6,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Test React with create-element input, create-element output react-native Simple 2 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 9,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
-                },
-              ],
-              "message": "",
-              "name": "TouchableText",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [
-                Object {
-                  "children": Array [],
-                  "message": "",
-                  "name": "Context.Consumer",
-                  "status": "INLINED",
-                },
-                Object {
-                  "children": Array [
-                    Object {
-                      "children": Array [
-                        Object {
-                          "children": Array [
-                            Object {
-                              "children": Array [],
-                              "message": "",
-                              "name": "Context.Consumer",
-                              "status": "INLINED",
-                            },
-                          ],
-                          "message": "",
-                          "name": "TouchableText",
-                          "status": "INLINED",
-                        },
-                      ],
-                      "message": "",
-                      "name": "",
-                      "status": "FORWARD_REF",
-                    },
-                  ],
-                  "message": "",
-                  "name": "Context.Provider",
-                  "status": "INLINED",
-                },
-              ],
-              "message": "",
-              "name": "TouchableText",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 8,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
 }
 `;

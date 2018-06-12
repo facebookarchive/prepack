@@ -11,7 +11,7 @@
 
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord, EnvironmentRecord } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { Realm } from "../realm.js";
+import { type Effects, Realm } from "../realm.js";
 import { Path } from "../singletons.js";
 import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
 import type { Binding } from "../environment.js";
@@ -1228,6 +1228,9 @@ export class ResidualHeapVisitor {
   }
 
   _visitUntilFixpoint() {
+    if (this.realm.react.verbose) {
+      this.logger.logInformation(`Computing fixed point...`);
+    }
     // Do a fixpoint over all pure generator entries to make sure that we visit
     // arguments of only BodyEntries that are required by some other residual value
     let progress = true;
@@ -1236,7 +1239,8 @@ export class ResidualHeapVisitor {
       // as applying effects is expensive, and so we don't want to do it
       // more often than necessary.
       let actionsByGenerator = new Map();
-      for (let { scope, action } of this.delayedActions.reverse()) {
+      let expected = 0;
+      for (let { scope, action } of this.delayedActions) {
         let generator;
         if (scope instanceof FunctionValue) generator = this.generatorDAG.getCreator(scope) || this.globalGenerator;
         else if (scope === "GLOBAL") generator = this.globalGenerator;
@@ -1247,26 +1251,50 @@ export class ResidualHeapVisitor {
         let a = actionsByGenerator.get(generator);
         if (a === undefined) actionsByGenerator.set(generator, (a = []));
         a.push({ action, scope });
+        expected++;
       }
       this.delayedActions = [];
       progress = false;
+      // We build up a tree of effects runner that mirror the nesting of Generator effects.
+      // This way, we only have to apply any given effects once, regardless of how many actions we have associated with whatever generators.
+      let effectsInfos: Map<Effects, { runner: () => void, nestedEffectsRunners: Array<() => void> }> = new Map();
+      let topEffectsRunners: Array<() => void> = [];
+      let actual = 0;
       for (let [generator, scopedActions] of actionsByGenerator) {
-        let withEffectsAppliedInGlobalEnv: (() => void) => void = f => f();
+        let runGeneratorAction = () => {
+          for (let { action, scope } of scopedActions) {
+            actual++;
+            this._withScope(scope, () => {
+              if (action() !== false) progress = true;
+            });
+          }
+        };
         let s = generator;
         let visited = new Set();
+        let newNestedRunner;
         while (s !== "GLOBAL") {
           invariant(!visited.has(s));
           visited.add(s);
           if (s instanceof Generator) {
             let effectsToApply = s.effectsToApply;
             if (effectsToApply) {
-              let inner = withEffectsAppliedInGlobalEnv;
-              withEffectsAppliedInGlobalEnv = f => {
-                this.realm.withEffectsAppliedInGlobalEnv(() => {
-                  inner(f);
-                  return null;
-                }, effectsToApply);
-              };
+              let info = effectsInfos.get(effectsToApply);
+              let runner;
+              if (info === undefined) {
+                runner = () => {
+                  this.realm.withEffectsAppliedInGlobalEnv(() => {
+                    invariant(info !== undefined);
+                    for (let nestedEffectsRunner of info.nestedEffectsRunners) nestedEffectsRunner();
+                    return null;
+                  }, effectsToApply);
+                };
+                effectsInfos.set(effectsToApply, (info = { runner, nestedEffectsRunners: [] }));
+              }
+              if (newNestedRunner !== undefined) info.nestedEffectsRunners.push(newNestedRunner);
+              newNestedRunner = runner;
+              if (runGeneratorAction === undefined) break;
+              info.nestedEffectsRunners.push(runGeneratorAction);
+              runGeneratorAction = undefined;
             }
             s = this.generatorDAG.getParent(s);
           } else if (s instanceof FunctionValue) {
@@ -1275,14 +1303,15 @@ export class ResidualHeapVisitor {
           }
           invariant(s instanceof Generator || s instanceof FunctionValue || s === "GLOBAL");
         }
-
-        withEffectsAppliedInGlobalEnv(() => {
-          for (let { action, scope } of scopedActions) {
-            this._withScope(scope, () => {
-              if (action() !== false) progress = true;
-            });
-          }
-        });
+        if (runGeneratorAction !== undefined) {
+          invariant(newNestedRunner === undefined);
+          runGeneratorAction();
+        } else if (newNestedRunner !== undefined) topEffectsRunners.push(newNestedRunner);
+      }
+      for (let topEffectsRunner of topEffectsRunners) topEffectsRunner();
+      invariant(expected === actual);
+      if (this.realm.react.verbose) {
+        this.logger.logInformation(`  (${actual} items processed)`);
       }
     }
   }

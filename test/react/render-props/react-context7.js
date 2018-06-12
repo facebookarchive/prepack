@@ -2,26 +2,23 @@ var React = require('React');
 // the JSX transform converts to React, so we need to add it back in
 this['React'] = React;
 
-var { Provider, Consumer } = React.createContext("bar");
+var { Provider, Consumer } = React.createContext(null);
 
 function Child(props) {
+  var renderProp = function(value) {
+    return <span>{value}</span>
+  }
+
   return (
     <div>
-      <Consumer>
-        {value => {
-          return <span>{value}</span>
-        }}
-      </Consumer>
+      <Consumer>{renderProp}</Consumer>
     </div>
   )
 }
 
 function App(props) {
   return (
-    <Provider value="a">
-      <Provider value="b">
-        <Child />
-      </Provider>
+    <Provider value={props.dynamicValue}>
       <Child />
     </Provider>
   );
@@ -29,17 +26,15 @@ function App(props) {
 
 App.getTrials = function(renderer, Root) {
   let results = [];
-  renderer.update(<Root />);
+  renderer.update(<Root dynamicValue={5} />);
   results.push(['render props context', renderer.toJSON()]);
-  renderer.update(<Root />);
+  renderer.update(<Root dynamicValue={7} />);
   results.push(['render props context', renderer.toJSON()]);
   return results;
 };
 
 if (this.__optimizeReactComponentTree) {
-  __optimizeReactComponentTree(App, {
-    isRoot: true,
-  });
+  __optimizeReactComponentTree(App);
 }
 
 module.exports = App;

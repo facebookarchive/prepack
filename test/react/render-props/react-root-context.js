@@ -2,7 +2,7 @@ var React = require('React');
 // the JSX transform converts to React, so we need to add it back in
 this['React'] = React;
 
-var { Provider, Consumer } = React.createContext(null);
+var { Provider, Consumer } = React.createContext("bar");
 
 function Child(props) {
   var x = function(context) {
@@ -25,7 +25,7 @@ function Child(props) {
 function App(props) {
   return (
     <div>
-      <Provider>
+      <Provider value={"foo"}>
         <Child />
       </Provider>
       <Child />
@@ -34,8 +34,12 @@ function App(props) {
 }
 
 App.getTrials = function(renderer, Root) {
+  let results = [];
   renderer.update(<Root />);
-  return [['render props context', renderer.toJSON()]];
+  results.push(['render props context', renderer.toJSON()]);
+  renderer.update(<Root />);
+  results.push(['render props context', renderer.toJSON()]);
+  return results;
 };
 
 if (this.__optimizeReactComponentTree) {

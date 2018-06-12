@@ -3,8 +3,6 @@ var React = require('React');
 this['React'] = React;
 
 var { Provider, Consumer } = React.createContext(null);
-// this is done otherwise the test fails
-this['_Consumer'] = Consumer;
 
 function Child2(props) {
   return <span>{props.title}</span>;
