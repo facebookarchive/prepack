@@ -167,48 +167,8 @@ function applyBranchedLogicValue(realm: Realm, value: Value): Value {
         );
       }
     );
-  } else if (value instanceof AbstractValue && value.kind === "||") {
-    let [leftValue, rightValue] = value.args;
-    invariant(leftValue instanceof AbstractValue);
-
-    return realm.evaluateWithAbstractConditional(
-      leftValue,
-      () => {
-        return realm.evaluateForEffects(
-          () => wrapReactElementInBranchOrReturnValue(realm, applyBranchedLogicValue(realm, leftValue)),
-          null,
-          "applyBranchedLogicValue consequent (||)"
-        );
-      },
-      () => {
-        return realm.evaluateForEffects(
-          () => wrapReactElementInBranchOrReturnValue(realm, applyBranchedLogicValue(realm, rightValue)),
-          null,
-          "applyBranchedLogicValue alternate (||)"
-        );
-      }
-    );
-  } else if (value instanceof AbstractValue && value.kind === "&&") {
-    let [leftValue, rightValue] = value.args;
-    invariant(leftValue instanceof AbstractValue);
-
-    return realm.evaluateWithAbstractConditional(
-      leftValue,
-      () => {
-        return realm.evaluateForEffects(
-          () => wrapReactElementInBranchOrReturnValue(realm, applyBranchedLogicValue(realm, rightValue)),
-          null,
-          "applyBranchedLogicValue consequent (&&)"
-        );
-      },
-      () => {
-        return realm.evaluateForEffects(
-          () => wrapReactElementInBranchOrReturnValue(realm, applyBranchedLogicValue(realm, leftValue)),
-          null,
-          "applyBranchedLogicValue alternate (&&)"
-        );
-      }
-    );
+  } else if (value instanceof AbstractValue && (value.kind === "||" || value.kind === "&&")) {
+    invariant(false, "applyBranchedLogicValue encounterted a logical expression (|| or &&), this should never occur");
   } else {
     throw new ExpectedBailOut("Unsupported value encountered when applying branched logic to values");
   }
