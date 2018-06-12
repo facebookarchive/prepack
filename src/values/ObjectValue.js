@@ -387,6 +387,10 @@ export default class ObjectValue extends ConcreteValue {
     this._isFinal = this.$Realm.intrinsics.true;
   }
 
+  makeNotFinal(): void {
+    this._isFinal = this.$Realm.intrinsics.false;
+  }
+
   isPartialObject(): boolean {
     return this._isPartial.mightBeTrue();
   }
