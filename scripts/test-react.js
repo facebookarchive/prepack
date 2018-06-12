@@ -369,6 +369,22 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-17.js");
       });
 
+      it("Simple 18", async () => {
+        await runTest(directory, "simple-18.js");
+      });
+
+      it("Simple 19", async () => {
+        await runTest(directory, "simple-19.js");
+      });
+
+      it("Simple 20", async () => {
+        await runTest(directory, "simple-20.js");
+      });
+
+      it("Simple 21", async () => {
+        await runTest(directory, "simple-21.js");
+      });
+
       it("Havocing of ReactElements should not result in property assignments", async () => {
         await runTest(directory, "react-element-havoc.js");
       });
@@ -620,6 +636,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Component type change 10", async () => {
         await runTest(directory, "type-change10.js");
+      });
+
+      it("Component type change 11", async () => {
+        await runTest(directory, "type-change11.js");
       });
 
       it("Component type same", async () => {
