@@ -248,7 +248,6 @@ export class Realm {
     this.react = {
       abstractHints: new WeakMap(),
       arrayHints: new WeakMap(),
-      branchedReactElements: new WeakMap(),
       classComponentMetadata: new Map(),
       currentOwner: undefined,
       defaultPropsHelper: undefined,
@@ -337,7 +336,6 @@ export class Realm {
     // we need to know what React component was passed to this AbstractObjectValue so we can visit it next)
     abstractHints: WeakMap<AbstractValue | ObjectValue, ReactHint>,
     arrayHints: WeakMap<ArrayValue, { func: Value, thisVal: Value }>,
-    branchedReactElements: WeakMap<AbstractObjectValue, ObjectValue>,
     classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
     currentOwner?: ObjectValue,
     defaultPropsHelper?: ECMAScriptSourceFunctionValue,

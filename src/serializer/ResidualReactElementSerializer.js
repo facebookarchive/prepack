@@ -242,18 +242,6 @@ export class ResidualReactElementSerializer {
   }
 
   serializeReactElement(val: ObjectValue): BabelNodeExpression {
-    if (val.temporalAlias !== undefined) {
-      const serializedValue = this.residualHeapSerializer.serializeValue(val.temporalAlias);
-      let uid = this.residualHeapSerializer.getSerializeObjectIdentifier(val);
-      this.residualHeapSerializer._declare(
-        this.residualHeapSerializer.emitter.cannotDeclare(),
-        undefined,
-        "var",
-        uid,
-        serializedValue
-      );
-      return;
-    }
     let reactElement = this._createReactElement(val);
 
     traverseReactElement(this.realm, reactElement.value, {

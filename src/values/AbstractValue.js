@@ -79,8 +79,7 @@ export type AbstractValueKind =
   | "global.JSON.parse(A)"
   | "JSON.stringify(...)"
   | "JSON.parse(...)"
-  | "global.Math.imul(A, B)"
-  | "branched ReactElement";
+  | "global.Math.imul(A, B)";
 
 // Use AbstractValue.makeKind to make a kind from one of these prefices.
 type AbstractValueKindPrefix =
