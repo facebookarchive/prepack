@@ -188,7 +188,6 @@ function createPropsObject(
           invariant(props instanceof ObjectValue);
           temporalTo.values = new ValuesDomain(props);
         }
-        debugger;
         props.temporalAlias = temporalTo;
       }
     }
