@@ -547,6 +547,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "key-change.js");
       });
 
+      it("Equivalence", async () => {
+        await runTest(directory, "equivalence.js");
+      });
+
       it("Delete element prop key", async () => {
         await runTest(directory, "delete-element-prop-key.js");
       });
