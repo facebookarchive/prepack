@@ -382,7 +382,8 @@ fi
 
     let informations = 0;
     let warnings = 0;
-    let errors = 0;
+    let recoverableErrors = 0;
+    let fatalErrors = 0;
     let printCompilerDiagnostic = (
       compilerDiagnostic: CompilerDiagnostic,
       locString?: string = "At an unknown location"
@@ -394,9 +395,12 @@ fi
         case "Warning":
           warnings++;
           break;
+        case "RecoverableError":
+          recoverableErrors++;
+          break;
         default:
-          invariant(compilerDiagnostic.severity === "RecoverableError" || compilerDiagnostic.severity === "FatalError");
-          errors++;
+          invariant(compilerDiagnostic.severity === "FatalError");
+          fatalErrors++;
           break;
       }
       console.error(
@@ -429,11 +433,12 @@ fi
       printCompilerDiagnostic(compilerDiagnostic, locString);
     }
     for (let compilerDiagnostic of compilerDiagnosticsList) printCompilerDiagnostic(compilerDiagnostic);
-    invariant(informations + warnings + errors > 0);
+    invariant(informations + warnings + recoverableErrors + fatalErrors > 0);
     let plural = (count, word) => (count === 1 ? word : `${word}s`);
     console.error(
-      `Prepack ${errors > 0 ? "failed" : "succeeded"}, reporting ${[
-        errors > 0 ? `${errors} ${plural(errors, "error")}` : undefined,
+      `Prepack ${fatalErrors > 0 ? "failed" : "succeeded"}, reporting ${[
+        fatalErrors > 0 ? `${fatalErrors} ${plural(fatalErrors, "fatal error")}` : undefined,
+        recoverableErrors > 0 ? `${recoverableErrors} ${plural(recoverableErrors, "recoverable error")}` : undefined,
         warnings > 0 ? `${warnings} ${plural(warnings, "warning")}` : undefined,
         informations > 0 ? `${informations} ${plural(informations, "informational message")}` : undefined,
       ]
@@ -441,7 +446,7 @@ fi
         .join(", ")}.`
     );
 
-    return errors === 0;
+    return fatalErrors === 0;
   }
 
   let profiler;
