@@ -562,7 +562,6 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
       Properties.Set(realm, providerObject, "context", consumer, true);
 
       Properties.Set(realm, consumerObject, "Provider", provider, true);
-
       return consumer;
     }
   );

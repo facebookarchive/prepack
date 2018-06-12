@@ -2,18 +2,16 @@ var React = require('React');
 // the JSX transform converts to React, so we need to add it back in
 this['React'] = React;
 
-var { Provider, Consumer } = React.createContext(null);
-// this is done otherwise the test fails
-this['_Consumer'] = Consumer;
+var Ctx = React.createContext(null);
 
 function Child(props) {
   return (
     <div>
-      <Consumer>
+      <Ctx.Consumer>
         {value => {
           return <span>{value}</span>
         }}
-      </Consumer>
+      </Ctx.Consumer>
     </div>
   )
 }
@@ -21,9 +19,9 @@ function Child(props) {
 function App(props) {
   return (
     <div>
-      <Provider value="b">
+      <Ctx.Provider value="b">
         <Child />
-      </Provider>
+      </Ctx.Provider>
       <Child />
     </div>
   );
