@@ -42,7 +42,6 @@ import {
 } from "./../../environment.js";
 import { CompilerDiagnostic } from "../../errors.js";
 import type { Severity } from "../../errors.js";
-import * as t from "babel-types";
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm, configArgs: DebuggerConfigArguments) {
@@ -71,12 +70,12 @@ export class DebugServer {
   /* ast: the current ast node we are stopped on
   /* reason: the reason the debuggee is stopping
   */
-  waitForRun(ast: void | BabelNode) {
+  waitForRun(loc: void | BabelNodeSourceLocation) {
     let keepRunning = false;
     let request;
     while (!keepRunning) {
       request = this._channel.readIn();
-      keepRunning = this.processDebuggerCommand(request, ast);
+      keepRunning = this.processDebuggerCommand(request, loc);
     }
   }
 
@@ -88,16 +87,17 @@ export class DebugServer {
       if (breakpoint) stoppables.push(breakpoint);
       let reason = this._stopEventManager.getDebuggeeStopReason(ast, stoppables);
       if (reason) {
-        invariant(ast.loc && ast.loc.source);
+        invariant(ast.loc && ast.loc !== null && ast.loc.source);
         this._channel.sendStoppedResponse(reason, ast.loc.source, ast.loc.start.line, ast.loc.start.column);
-        this.waitForRun(ast);
+        invariant(ast.loc !== undefined && ast.loc !== null);
+        this.waitForRun(ast.loc);
       }
     }
   }
 
   // Process a command from a debugger. Returns whether Prepack should unblock
   // if it is blocked
-  processDebuggerCommand(request: DebuggerRequest, ast: void | BabelNode) {
+  processDebuggerCommand(request: DebuggerRequest, loc: void | BabelNodeSourceLocation) {
     let requestID = request.id;
     let command = request.command;
     let args = request.arguments;
@@ -128,7 +128,7 @@ export class DebugServer {
         return true;
       case DebugMessage.STACKFRAMES_COMMAND:
         invariant(args.kind === "stackframe");
-        this.processStackframesCommand(requestID, args, ast);
+        this.processStackframesCommand(requestID, args, loc);
         break;
       case DebugMessage.SCOPES_COMMAND:
         invariant(args.kind === "scopes");
@@ -139,18 +139,18 @@ export class DebugServer {
         this.processVariablesCommand(requestID, args);
         break;
       case DebugMessage.STEPINTO_COMMAND:
-        invariant(ast !== undefined);
-        this._stepManager.processStepCommand("in", ast);
+        invariant(loc !== undefined);
+        this._stepManager.processStepCommand("in", loc);
         this._onDebuggeeResume();
         return true;
       case DebugMessage.STEPOVER_COMMAND:
-        invariant(ast !== undefined);
-        this._stepManager.processStepCommand("over", ast);
+        invariant(loc !== undefined);
+        this._stepManager.processStepCommand("over", loc);
         this._onDebuggeeResume();
         return true;
       case DebugMessage.STEPOUT_COMMAND:
-        invariant(ast !== undefined);
-        this._stepManager.processStepCommand("out", ast);
+        invariant(loc !== undefined);
+        this._stepManager.processStepCommand("out", loc);
         this._onDebuggeeResume();
         return true;
       case DebugMessage.EVALUATE_COMMAND:
@@ -163,9 +163,9 @@ export class DebugServer {
     return false;
   }
 
-  processStackframesCommand(requestID: number, args: StackframeArguments, ast: void | BabelNode) {
+  processStackframesCommand(requestID: number, args: StackframeArguments, astLoc: void | BabelNodeSourceLocation) {
     let frameInfos: Array<Stackframe> = [];
-    let loc = this._getFrameLocation(ast ? ast.loc : null);
+    let loc = this._getFrameLocation(astLoc ? astLoc : null);
     let fileName = loc.fileName;
     let line = loc.line;
     let column = loc.column;
@@ -317,20 +317,9 @@ export class DebugServer {
       message
     );
 
-    // The AST node is needed to satisfy the subsequent stackTrace request.
-    let tempAst = {
-      type: "Noop", // Arbitrary entry here, simply to satisfy the field.
-      leadingComments: undefined,
-      innerComments: undefined,
-      trailingComments: undefined,
-      start: location.start,
-      end: location.end,
-      loc: location,
-    };
-
-    this.waitForRun(tempAst);
+    // The AST Node's location is needed to satisfy the subsequent stackTrace request.
+    this.waitForRun(location);
   }
-
   // Return whether the debugger should stop on a CompilerDiagnostic of a given severity.
   shouldStopForSeverity(severity: Severity): boolean {
     switch (this._diagnosticSeverity) {
