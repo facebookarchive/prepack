@@ -387,6 +387,10 @@ export default class ObjectValue extends ConcreteValue {
     this._isFinal = this.$Realm.intrinsics.true;
   }
 
+  makeNotFinal(): void {
+    this._isFinal = this.$Realm.intrinsics.false;
+  }
+
   isPartialObject(): boolean {
     return this._isPartial.mightBeTrue();
   }
@@ -558,6 +562,7 @@ export default class ObjectValue extends ConcreteValue {
       let template = new ObjectValue(this.$Realm, this.$Realm.intrinsics.ObjectPrototype);
       this.copyKeys(this.$OwnPropertyKeys(), this, template);
       let result = AbstractValue.createTemporalFromBuildFunction(this.$Realm, ObjectValue, [template], ([x]) => x, {
+        isPure: true,
         skipInvariant: true,
         isPure: true,
       });
