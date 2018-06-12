@@ -14,7 +14,7 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { Reference } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
-import { Value, ObjectValue, UndefinedValue } from "../values/index.js";
+import { Value, ObjectValue, UndefinedValue, StringValue } from "../values/index.js";
 import { NormalCompletion, AbruptCompletion } from "../completions.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import {
@@ -29,9 +29,165 @@ import {
   GetV,
 } from "./index.js";
 import { Create, Environment, Functions, Properties } from "../singletons.js";
-import type { BabelNodeLVal, BabelNodeArrayPattern, BabelNodeObjectPattern } from "babel-types";
+import type {
+  BabelNodeIdentifier,
+  BabelNodeAssignmentPattern,
+  BabelNodeObjectProperty,
+  BabelNodeRestProperty,
+  BabelNodeLVal,
+  BabelNodeArrayPattern,
+  BabelNodeObjectPattern,
+} from "babel-types";
 
-// ECMA262 12.15.5.2
+function RestDestructuringAssignmentEvaluation(
+  realm: Realm,
+  property: BabelNodeRestProperty,
+  value: Value,
+  excludedNames: Array<PropertyKeyValue>,
+  strictCode: boolean,
+  env: LexicalEnvironment
+) {
+  let DestructuringAssignmentTarget = property.argument;
+
+  let lref;
+  // 1. If DestructuringAssignmentTarget is neither an ObjectLiteral nor an ArrayLiteral, then
+  if (DestructuringAssignmentTarget.type !== "ObjectPattern" && DestructuringAssignmentTarget.type !== "ArrayPattern") {
+    // a. Let lref be the result of evaluating DestructuringAssignmentTarget.
+    lref = env.evaluate(DestructuringAssignmentTarget, strictCode);
+
+    // b. ReturnIfAbrupt(lref).
+  }
+
+  // 2. Let restObj be ObjectCreate(%ObjectPrototype%).
+  let restObj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+
+  // 3. Let assignStatus be CopyDataProperties(restObj, value, excludedNames).
+  /* let assignStatus = */ Create.CopyDataProperties(realm, restObj, value, excludedNames);
+  // 4. ReturnIfAbrupt(assignStatus).
+
+  // 5. If DestructuringAssignmentTarget is neither an ObjectLiteral nor an ArrayLiteral, then
+  if (DestructuringAssignmentTarget.type !== "ObjectPattern" && DestructuringAssignmentTarget.type !== "ArrayPattern") {
+    invariant(lref);
+    // Return PutValue(lref, restObj).
+    return Properties.PutValue(realm, lref, restObj);
+  }
+
+  // 6. Let nestedAssignmentPattern be the parse of the source text corresponding to DestructuringAssignmentTarget using either AssignmentPattern[?Yield, ?Await] as the goal symbol, adopting the parameter values from AssignmentRestProperty.
+  let nestedAssignmentPattern = DestructuringAssignmentTarget;
+
+  return DestructuringAssignmentEvaluation(realm, nestedAssignmentPattern, restObj, strictCode, env);
+}
+
+function PropertyDestructuringAssignmentEvaluation(
+  realm: Realm,
+  properties: Array<BabelNodeObjectProperty>,
+  value: Value,
+  strictCode: boolean,
+  env: LexicalEnvironment
+) {
+  // Base condition for recursive call below
+  if (properties.length === 0) {
+    return [];
+  }
+
+  let AssignmentProperty = properties.slice(-1)[0];
+  let AssignmentPropertyList = properties.slice(0, -1);
+
+  // 1. Let propertyNames be the result of performing PropertyDestructuringAssignmentEvaluation for AssignmentPropertyList using value as the argument.
+  let propertyNames = PropertyDestructuringAssignmentEvaluation(realm, AssignmentPropertyList, value, strictCode, env);
+
+  // 2. ReturnIfAbrupt(status propertyNames).
+
+  // Let nextNames be the result of performing PropertyDestructuringAssignmentEvaluation for AssignmentProperty using value as the argument.
+  let nextNames;
+
+  // AssignmentProperty : IdentifierReference Initializer
+  if (
+    AssignmentProperty.key.type === "Identifier" &&
+    ((AssignmentProperty.value.type === "Identifier" &&
+      AssignmentProperty.value.name === AssignmentProperty.key.name) ||
+      (AssignmentProperty.value.type === "AssignmentPattern" &&
+        AssignmentProperty.value.left.name === AssignmentProperty.key.name)) &&
+    AssignmentProperty.computed === false
+  ) {
+    let Initializer;
+
+    if (AssignmentProperty.value.type === "AssignmentPattern") {
+      Initializer = (AssignmentProperty.value: BabelNodeAssignmentPattern).right;
+    }
+
+    // 1. Let P be StringValue of IdentifierReference.
+    let P = (AssignmentProperty.key: BabelNodeIdentifier).name;
+
+    // 2. Let lref be ? ResolveBinding(P).
+    let lref = Environment.ResolveBinding(realm, P, strictCode, env);
+
+    // 3. Let v be ? GetV(value, P).
+    let v = GetV(realm, value, P);
+
+    // 4. If Initializer is present and v is undefined, then
+    if (Initializer !== undefined && v instanceof UndefinedValue) {
+      // 4a. Let defaultValue be the result of evaluating Initializer.
+      let defaultValue = env.evaluate(Initializer, strictCode);
+
+      // 4b. Let v be ? GetValue(defaultValue).
+      v = Environment.GetValue(realm, defaultValue);
+
+      // 4c. If IsAnonymousFunctionDefinition(Initializer) is true, then
+      if (IsAnonymousFunctionDefinition(realm, Initializer)) {
+        invariant(v instanceof ObjectValue);
+
+        // i. Let hasNameProperty be ? HasOwnProperty(v, "name").
+        let hasNameProperty = HasOwnProperty(realm, v, "name");
+
+        // j. If hasNameProperty is false, perform SetFunctionName(v, P).
+        if (hasNameProperty === false) {
+          Functions.SetFunctionName(realm, v, P);
+        }
+      }
+    }
+
+    // Perform ? PutValue(lref, v).
+    Properties.PutValue(realm, lref, v);
+
+    // Return a new List containing P.
+    nextNames = [new StringValue(realm, P)];
+  } else {
+    // AssignmentProperty : PropertyName:AssignmentElement
+
+    // 1. Let name be the result of evaluating PropertyName.
+    let name = EvalPropertyName(AssignmentProperty, env, realm, strictCode);
+
+    // 2. ReturnIfAbrupt(name).
+
+    // 3. Let status be the result of performing KeyedDestructuringAssignmentEvaluation of AssignmentElement with value and name as the arguments.
+    /* let status = */ KeyedDestructuringAssignmentEvaluation(
+      realm,
+      // $FlowFixMe
+      AssignmentProperty.value,
+      value,
+      name,
+      strictCode,
+      env
+    );
+
+    // 4. ReturnIfAbrupt(status).
+
+    // 5. Return a new List containing name.
+    nextNames = [name];
+  }
+
+  // 4. ReturnIfAbrupt(nextNames).
+
+  invariant(nextNames instanceof Array);
+  // 5. Append each item in nextNames to the end of propertyNames.
+  propertyNames = propertyNames.concat(nextNames);
+
+  // 6. Return propertyNames.
+  return propertyNames;
+}
+
+// 2.1 Object Rest/Spread Properties
 export function DestructuringAssignmentEvaluation(
   realm: Realm,
   pattern: BabelNodeArrayPattern | BabelNodeObjectPattern,
@@ -40,19 +196,65 @@ export function DestructuringAssignmentEvaluation(
   env: LexicalEnvironment
 ) {
   if (pattern.type === "ObjectPattern") {
-    // 1. Perform ? RequireObjectCoercible(value).
-    RequireObjectCoercible(realm, value);
-
-    // 2. Return the result of performing DestructuringAssignmentEvaluation for AssignmentPropertyList using value as the argument.
+    let AssignmentPropertyList = [],
+      AssignmentRestProperty = null;
 
     for (let property of pattern.properties) {
-      // 1. Let name be the result of evaluating PropertyName.
-      let name = EvalPropertyName(property, env, realm, strictCode);
+      if (property.type === "RestProperty") {
+        AssignmentRestProperty = property;
+      } else {
+        AssignmentPropertyList.push(property);
+      }
+    }
 
-      // 2. ReturnIfAbrupt(name).
+    // ObjectAssignmentPattern:
+    //   { AssignmentPropertyList }
+    //   { AssignmentPropertyList, }
+    if (!AssignmentRestProperty) {
+      // 1. Perform ? RequireObjectCoercible(value).
+      RequireObjectCoercible(realm, value);
 
-      // 3. Return the result of performing KeyedDestructuringAssignmentEvaluation of AssignmentElement with value and name as the arguments.
-      KeyedDestructuringAssignmentEvaluation(realm, property.value, value, name, strictCode, env);
+      // 2. Perform ? PropertyDestructuringAssignmentEvaluation for AssignmentPropertyList using value as the argument.
+      PropertyDestructuringAssignmentEvaluation(realm, AssignmentPropertyList, value, strictCode, env);
+
+      // 3. Return NormalCompletion(empty).
+      return realm.intrinsics.empty;
+    }
+
+    // ObjectAssignmentPattern : { AssignmentRestProperty }
+    if (AssignmentPropertyList.length === 0) {
+      // 1. Let excludedNames be a new empty List.
+      let excludedNames = [];
+
+      // 2. Return the result of performing RestDestructuringAssignmentEvaluation of AssignmentRestProperty with value and excludedNames as the arguments.
+      return RestDestructuringAssignmentEvaluation(
+        realm,
+        AssignmentRestProperty,
+        value,
+        excludedNames,
+        strictCode,
+        env
+      );
+    } else {
+      // ObjectAssignmentPattern : { AssignmentPropertyList, AssignmentRestProperty }
+      // 1. Let excludedNames be the result of performing ? PropertyDestructuringAssignmentEvaluation for AssignmentPropertyList using value as the argument.
+      let excludedNames = PropertyDestructuringAssignmentEvaluation(
+        realm,
+        AssignmentPropertyList,
+        value,
+        strictCode,
+        env
+      );
+
+      // 2. Return the result of performing RestDestructuringAssignmentEvaluation of AssignmentRestProperty with value and excludedNames as the arguments.
+      return RestDestructuringAssignmentEvaluation(
+        realm,
+        AssignmentRestProperty,
+        value,
+        excludedNames,
+        strictCode,
+        env
+      );
     }
   } else if (pattern.type === "ArrayPattern") {
     // 1. Let iterator be ? GetIterator(value).
