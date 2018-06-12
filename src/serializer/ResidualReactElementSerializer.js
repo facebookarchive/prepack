@@ -14,7 +14,7 @@ import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { canHoistReactElement } from "../react/hoisting.js";
 import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression } from "babel-types";
-import { AbstractObjectValue, AbstractValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
+import { AbstractValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
 import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
 import { Logger } from "../utils/logger.js";
 import invariant from "../invariant.js";
@@ -283,12 +283,7 @@ export class ResidualReactElementSerializer {
       visitAbstractOrPartialProps: (propsValue: AbstractValue | ObjectValue) => {
         let reactElementSpread = this._createReactElementAttribute();
         this._serializeNowOrAfterWaitingForDependencies(propsValue, reactElement, () => {
-          let expr;
-          if (propsValue.temporalAlias instanceof AbstractObjectValue) {
-            expr = this.residualHeapSerializer.serializeValue(propsValue.temporalAlias);
-          } else {
-            expr = this.residualHeapSerializer.serializeValue(propsValue);
-          }
+          let expr = this.residualHeapSerializer.serializeValue(propsValue);
           reactElementSpread.expr = expr;
           reactElementSpread.type = "SPREAD";
         });
