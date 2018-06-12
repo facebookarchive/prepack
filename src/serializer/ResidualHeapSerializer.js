@@ -1861,7 +1861,6 @@ export class ResidualHeapSerializer {
       else if (!cf.t && cf.f) return this.serializeValue(val.args[2]);
       else invariant(cf.t && cf.f);
     }
-
     if (val.hasIdentifier()) {
       return this._serializeAbstractValueHelper(val);
     } else {

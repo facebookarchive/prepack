@@ -705,6 +705,57 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("Dynamic ReactElement type #3", async () => {
         await runTest(directory, "dynamic-type3.js");
       });
+
+      it("Dynamic ReactElement type #4", async () => {
+        await runTest(directory, "dynamic-type4.js");
+      });
+
+      it("Lazy branched elements", async () => {
+        let createElement = React.createElement;
+        let count = 0;
+        // For this test we want to also check how React.createElement
+        // calls occur so we can validate that we are correctly using
+        // lazy branched elements. To do this, we override the createElement
+        // call and increment a counter for ever call.
+
+        // $FlowFixMe: intentional for this test
+        React.createElement = (type, config) => {
+          count++;
+          return createElement(type, config);
+        };
+        try {
+          await runTest(directory, "lazy-branched-elements.js");
+        } finally {
+          // $FlowFixMe: intentional for this test
+          React.createElement = createElement;
+        }
+        // The non-compiled version has 4 calls, the compiled should have 4 calls
+        expect(count).toEqual(8);
+      });
+
+      it("Lazy branched elements 2", async () => {
+        let createElement = React.createElement;
+        let count = 0;
+        // For this test we want to also check how React.createElement
+        // calls occur so we can validate that we are correctly using
+        // lazy branched elements. To do this, we override the createElement
+        // call and increment a counter for ever call.
+
+        // $FlowFixMe: intentional for this test
+        React.createElement = (type, config) => {
+          count++;
+          return createElement(type, config);
+        };
+        try {
+          await runTest(directory, "lazy-branched-elements2.js");
+        } finally {
+          // $FlowFixMe: intentional for this test
+          React.createElement = createElement;
+        }
+        // The non-compiled version has 4 calls, the compiled should have 3 calls
+        // (3 because one of the calls has been removing by inlining)
+        expect(count).toEqual(7);
+      });
     });
 
     describe("Class component folding", () => {

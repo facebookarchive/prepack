@@ -11,14 +11,14 @@
 
 import { Realm } from "../realm.js";
 import {
-  Value,
-  ObjectValue,
-  StringValue,
-  NumberValue,
   AbstractValue,
   ArrayValue,
   FunctionValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
   SymbolValue,
+  Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
 import { isReactElement, getProperty } from "./utils";
