@@ -80,6 +80,7 @@ function run(
     --repro                  Create a zip file with all information needed to reproduce a Prepack run"
     --cpuprofile             Create a CPU profile file for the run that can be loaded into the Chrome JavaScript CPU Profile viewer",
     --debugDiagnosticSeverity      FatalError | RecoverableError | Warning | Information (default = FatalError). Diagnostic level at which debugger will stop
+    --prepackInfo        Emit a global variable with information about the corresponding PrePack run.
   `;
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -120,6 +121,7 @@ function run(
     residual: false,
     profile: false,
     reactEnabled: false,
+    prepackInfo: false,
   };
 
   let reproArguments = [];
@@ -356,6 +358,7 @@ fi
     },
     flags
   );
+
   if (heapGraphFilePath !== undefined) resolvedOptions.heapGraphFormat = "DotLanguage";
   if (lazyObjectsRuntime !== undefined && (resolvedOptions.delayInitializations || resolvedOptions.inlineExpressions)) {
     console.error("lazy objects feature is incompatible with delayInitializations and inlineExpressions options");
