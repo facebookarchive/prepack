@@ -26,13 +26,13 @@ export class SteppingManager {
   _keepOldSteppers: boolean;
   _steppers: Array<Stepper>;
 
-  processStepCommand(kind: "in" | "over" | "out", currentNodeLoc: BabelNodeSourceLocation) {
+  processStepCommand(kind: "in" | "over" | "out", currentNodeLocation: BabelNodeSourceLocation) {
     if (kind === "in") {
-      this._processStepIn(currentNodeLoc);
+      this._processStepIn(currentNodeLocation);
     } else if (kind === "over") {
-      this._processStepOver(currentNodeLoc);
+      this._processStepOver(currentNodeLocation);
     } else if (kind === "out") {
-      this._processStepOut(currentNodeLoc);
+      this._processStepOut(currentNodeLocation);
     } else {
       invariant(false, `Invalid step type: ${kind}`);
     }

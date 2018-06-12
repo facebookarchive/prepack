@@ -87,9 +87,9 @@ export class DebugServer {
       if (breakpoint) stoppables.push(breakpoint);
       let reason = this._stopEventManager.getDebuggeeStopReason(ast, stoppables);
       if (reason) {
-        invariant(ast.loc && ast.loc !== null && ast.loc.source);
+        invariant(ast.loc && ast.loc.source);
         this._channel.sendStoppedResponse(reason, ast.loc.source, ast.loc.start.line, ast.loc.start.column);
-        invariant(ast.loc !== undefined && ast.loc !== null);
+        invariant(ast.loc && ast.loc !== null);
         this.waitForRun(ast.loc);
       }
     }
