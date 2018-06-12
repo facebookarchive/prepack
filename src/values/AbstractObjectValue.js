@@ -512,7 +512,6 @@ export default class AbstractObjectValue extends AbstractValue {
           },
           {
             skipInvariant: true,
-            isPure: true,
           }
         );
       };

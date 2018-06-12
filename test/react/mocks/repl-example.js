@@ -32,4 +32,4 @@ if (this.__optimizeReactComponentTree) {
   __optimizeReactComponentTree(Foo);
 }
 
-this.Foo = Foo;
+window.Foo = Foo;

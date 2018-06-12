@@ -39,5 +39,5 @@ __evaluatePureFunction(function() {
     });
   }
 
-  this.app = App;
+  window.app = App;
 });

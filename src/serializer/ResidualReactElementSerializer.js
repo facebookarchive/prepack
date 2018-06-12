@@ -14,7 +14,7 @@ import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { canHoistReactElement } from "../react/hoisting.js";
 import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression } from "babel-types";
-import { AbstractObjectValue, AbstractValue, ObjectValue, StringValue, SymbolValue, Value } from "../values/index.js";
+import { AbstractValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
 import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
 import { Logger } from "../utils/logger.js";
 import invariant from "../invariant.js";
@@ -141,18 +141,7 @@ export class ResidualReactElementSerializer {
     let dependencies = [typeValue, keyValue, refValue, propsValue, value];
     let createElement;
 
-    // if we have a host component with an uppercase name, like RCTText,
-    // we cannot use JSX, so use createElement instead
-    let outputMode = this.reactOutput;
-    if (
-      outputMode === "jsx" &&
-      typeValue instanceof StringValue &&
-      typeValue.value[0] === typeValue.value[0].toUpperCase()
-    ) {
-      outputMode = "create-element";
-    }
-
-    if (outputMode === "create-element") {
+    if (this.reactOutput === "create-element") {
       createElement = this._getReactCreateElementValue();
       dependencies.push(createElement);
     }
@@ -160,9 +149,9 @@ export class ResidualReactElementSerializer {
     this.residualHeapSerializer.emitter.emitNowOrAfterWaitingForDependencies(
       dependencies,
       () => {
-        if (outputMode === "jsx") {
+        if (this.reactOutput === "jsx") {
           reactElementAstNode = this._serializeReactElementToJSXElement(value, reactElement);
-        } else if (outputMode === "create-element") {
+        } else if (this.reactOutput === "create-element") {
           originalCreateElementIdentifier = this.residualHeapSerializer.serializeValue(createElement);
 
           if (shouldHoist) {
@@ -294,12 +283,7 @@ export class ResidualReactElementSerializer {
       visitAbstractOrPartialProps: (propsValue: AbstractValue | ObjectValue) => {
         let reactElementSpread = this._createReactElementAttribute();
         this._serializeNowOrAfterWaitingForDependencies(propsValue, reactElement, () => {
-          let expr;
-          if (propsValue.temporalAlias instanceof AbstractObjectValue) {
-            expr = this.residualHeapSerializer.serializeValue(propsValue.temporalAlias);
-          } else {
-            expr = this.residualHeapSerializer.serializeValue(propsValue);
-          }
+          let expr = this.residualHeapSerializer.serializeValue(propsValue);
           reactElementSpread.expr = expr;
           reactElementSpread.type = "SPREAD";
         });

@@ -1,8 +1,8 @@
 var React = require('react');
 this['React'] = React;
 
-// FB www polyfill, clashes with Jest RN preset
-if (!this.__optimizeReactComponentTree) {
+// FB www polyfill
+if (!this.babelHelpers) {
   this.babelHelpers = {
     inherits(subClass, superClass) {
       Object.assign(subClass, superClass);

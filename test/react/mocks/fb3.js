@@ -1,5 +1,5 @@
-if (!this.__evaluatePureFunction) {
-  this.__evaluatePureFunction = function(f) {
+if (!window.__evaluatePureFunction) {
+  window.__evaluatePureFunction = function(f) {
     return f();
   };
 }
@@ -10,7 +10,7 @@ if (!this.__evaluatePureFunction) {
 
   var ReactRelay = require('RelayModern');
 
-  this.__evaluatePureFunction(() => {
+  window.__evaluatePureFunction(() => {
     ReactRelay.createFragmentContainer(App);
   });
 })();

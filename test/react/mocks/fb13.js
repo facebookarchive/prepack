@@ -4,7 +4,7 @@ function func(x) {
   }
 }
 
-if (this.__optimize) {
+if (window.__optimize) {
   __optimize(func);
 }
 

@@ -3624,7 +3624,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, JSX output Render props React Context 7 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -3636,7 +3636,7 @@ ReactStatistics {
                   "children": Array [],
                   "message": "",
                   "name": "Context.Consumer",
-                  "status": "INLINED",
+                  "status": "RENDER_PROPS",
                 },
               ],
               "message": "",
@@ -3654,8 +3654,8 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
@@ -3829,7 +3829,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, JSX output Render props React Context from root tree 4 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -3841,7 +3841,7 @@ ReactStatistics {
                   "children": Array [],
                   "message": "",
                   "name": "Context.Consumer",
-                  "status": "INLINED",
+                  "status": "RENDER_PROPS",
                 },
               ],
               "message": "",
@@ -3859,8 +3859,8 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
@@ -8296,7 +8296,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, create-element output Render props React Context 7 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -8308,7 +8308,7 @@ ReactStatistics {
                   "children": Array [],
                   "message": "",
                   "name": "Context.Consumer",
-                  "status": "INLINED",
+                  "status": "RENDER_PROPS",
                 },
               ],
               "message": "",
@@ -8326,8 +8326,8 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
@@ -8501,7 +8501,7 @@ ReactStatistics {
 
 exports[`Test React with JSX input, create-element output Render props React Context from root tree 4 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -8513,7 +8513,7 @@ ReactStatistics {
                   "children": Array [],
                   "message": "",
                   "name": "Context.Consumer",
-                  "status": "INLINED",
+                  "status": "RENDER_PROPS",
                 },
               ],
               "message": "",
@@ -8531,8 +8531,8 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
@@ -12983,7 +12983,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output Render props React Context 7 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -12995,7 +12995,7 @@ ReactStatistics {
                   "children": Array [],
                   "message": "",
                   "name": "Context.Consumer",
-                  "status": "INLINED",
+                  "status": "RENDER_PROPS",
                 },
               ],
               "message": "",
@@ -13013,8 +13013,8 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
@@ -13188,7 +13188,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output Render props React Context from root tree 4 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -13200,7 +13200,7 @@ ReactStatistics {
                   "children": Array [],
                   "message": "",
                   "name": "Context.Consumer",
-                  "status": "INLINED",
+                  "status": "RENDER_PROPS",
                 },
               ],
               "message": "",
@@ -13218,8 +13218,8 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
@@ -17670,7 +17670,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output Render props React Context 7 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -17682,7 +17682,7 @@ ReactStatistics {
                   "children": Array [],
                   "message": "",
                   "name": "Context.Consumer",
-                  "status": "INLINED",
+                  "status": "RENDER_PROPS",
                 },
               ],
               "message": "",
@@ -17700,8 +17700,8 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;
@@ -17875,7 +17875,7 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output Render props React Context from root tree 4 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -17887,7 +17887,7 @@ ReactStatistics {
                   "children": Array [],
                   "message": "",
                   "name": "Context.Consumer",
-                  "status": "INLINED",
+                  "status": "RENDER_PROPS",
                 },
               ],
               "message": "",
@@ -17905,8 +17905,8 @@ ReactStatistics {
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
 `;

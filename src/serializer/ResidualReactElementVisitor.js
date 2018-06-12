@@ -10,7 +10,7 @@
 /* @flow strict-local */
 
 import { Realm } from "../realm.js";
-import { AbstractObjectValue, AbstractValue, ObjectValue, StringValue, SymbolValue, Value } from "../values/index.js";
+import { AbstractValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { determineIfReactElementCanBeHoisted } from "../react/hoisting.js";
 import { traverseReactElement } from "../react/elements.js";
@@ -24,7 +24,6 @@ export class ResidualReactElementVisitor {
     this.residualHeapVisitor = residualHeapVisitor;
     this.reactOutput = realm.react.output || "create-element";
     this.someReactElement = undefined;
-    this.mustVisitReactElement = false;
     this.equivalenceSet = new ReactElementSet(realm, residualHeapVisitor.equivalenceSet);
   }
 
@@ -32,7 +31,6 @@ export class ResidualReactElementVisitor {
   residualHeapVisitor: ResidualHeapVisitor;
   reactOutput: ReactOutputTypes;
   someReactElement: void | ObjectValue;
-  mustVisitReactElement: boolean;
   equivalenceSet: ReactElementSet;
 
   visitReactElement(reactElement: ObjectValue): void {
@@ -54,11 +52,7 @@ export class ResidualReactElementVisitor {
         this.residualHeapVisitor.visitValue(refValue);
       },
       visitAbstractOrPartialProps: (propsValue: AbstractValue | ObjectValue) => {
-        if (propsValue.temporalAlias instanceof AbstractObjectValue) {
-          this.residualHeapVisitor.visitValue(propsValue.temporalAlias);
-        } else {
-          this.residualHeapVisitor.visitValue(propsValue);
-        }
+        this.residualHeapVisitor.visitValue(propsValue);
       },
       visitConcreteProps: (propsValue: ObjectValue) => {
         for (let [propName, binding] of propsValue.properties) {
@@ -69,20 +63,13 @@ export class ResidualReactElementVisitor {
         }
       },
       visitChildNode: (childValue: Value) => {
-        this.residualHeapVisitor.visitValue(childValue);
+        return this.residualHeapVisitor.visitEquivalentValue(childValue);
       },
     });
 
-    let typeValue = getProperty(this.realm, reactElement, "type");
-    let mustVisitReactElement =
-      this.realm.react.output === "jsx" &&
-      typeValue instanceof StringValue &&
-      typeValue.value[0] === typeValue.value[0].toUpperCase();
-
-    if (this.realm.react.output === "create-element" || isReactFragment || mustVisitReactElement) {
+    if (this.realm.react.output === "create-element" || isReactFragment) {
       this.someReactElement = reactElement;
     }
-    this.mustVisitReactElement = mustVisitReactElement;
     // determine if this ReactElement node tree is going to be hoistable
     determineIfReactElementCanBeHoisted(this.realm, reactElement, this.residualHeapVisitor);
   }
