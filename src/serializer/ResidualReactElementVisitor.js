@@ -52,7 +52,11 @@ export class ResidualReactElementVisitor {
         this.residualHeapVisitor.visitValue(refValue);
       },
       visitAbstractOrPartialProps: (propsValue: AbstractValue | ObjectValue) => {
-        this.residualHeapVisitor.visitValue(propsValue);
+        if (propsValue.temporalAlias instanceof AbstractObjectValue) {
+          this.residualHeapVisitor.visitEquivalentValue(propsValue.temporalAlias);
+        } else {
+          this.residualHeapVisitor.visitValue(propsValue);
+        }
       },
       visitConcreteProps: (propsValue: ObjectValue) => {
         for (let [propName, binding] of propsValue.properties) {

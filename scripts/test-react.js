@@ -686,6 +686,11 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("Lazy branched elements", async () => {
         let createElement = React.createElement;
         let count = 0;
+        // For this test we want to also check how React.createElement
+        // calls occur so we can validate that we are correctly using
+        // lazy branched elements. To do this, we override the createElement
+        // call and increment a counter for ever call.
+
         // $FlowFixMe: intentional for this test
         React.createElement = (type, config) => {
           count++;
@@ -697,12 +702,18 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
           // $FlowFixMe: intentional for this test
           React.createElement = createElement;
         }
+        // The non-compiled version has 4 calls, the compiled should have 4 calls
         expect(count).toEqual(8);
       });
 
-      it.only("Lazy branched elements 2", async () => {
+      it("Lazy branched elements 2", async () => {
         let createElement = React.createElement;
         let count = 0;
+        // For this test we want to also check how React.createElement
+        // calls occur so we can validate that we are correctly using
+        // lazy branched elements. To do this, we override the createElement
+        // call and increment a counter for ever call.
+
         // $FlowFixMe: intentional for this test
         React.createElement = (type, config) => {
           count++;
@@ -714,6 +725,8 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
           // $FlowFixMe: intentional for this test
           React.createElement = createElement;
         }
+        // The non-compiled version has 4 calls, the compiled should have 3 calls
+        // (3 because one of the calls has been removing by inlining)
         expect(count).toEqual(7);
       });
     });

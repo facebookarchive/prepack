@@ -1003,9 +1003,6 @@ export class ResidualHeapVisitor {
       if (this._mark(equivalentReactElementValue)) this.visitValueObject(equivalentReactElementValue);
       return (equivalentReactElementValue: any);
     }
-    if (val.temporalAlias !== undefined) {
-      this.visitEquivalentValue(val.temporalAlias);
-    }
     this.visitValue(val);
     return val;
   }
