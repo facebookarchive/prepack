@@ -23,14 +23,8 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
-import {
-  isBranchedReactElement,
-  isReactElement,
-  addKeyToReactElement,
-  forEachArrayValue,
-  getProperty,
-  mapArrayValue,
-} from "./utils";
+import { ValuesDomain } from "../domains/index.js";
+import { isReactElement, addKeyToReactElement, forEachArrayValue, getProperty, mapArrayValue } from "./utils";
 import { ExpectedBailOut } from "./errors.js";
 
 // Branch status is used for when Prepack returns an abstract value from a render
@@ -60,14 +54,6 @@ export function getValueWithBranchingLogicApplied(
   // we check the inlined value and see if the component types match
   const searchAndFlagMatchingComponentTypes = (xTypeParent, yTypeParent) => {
     let [, x, y] = value.args;
-    if (x instanceof AbstractObjectValue && isBranchedReactElement(x)) {
-      x = realm.react.branchedReactElements.get(x);
-      invariant(x !== undefined);
-    }
-    if (y instanceof AbstractObjectValue && isBranchedReactElement(y)) {
-      y = realm.react.branchedReactElements.get(y);
-      invariant(y !== undefined);
-    }
     if (x instanceof ObjectValue && isReactElement(x) && y instanceof ObjectValue && isReactElement(y)) {
       let xType = getProperty(realm, x, "type");
       let yType = getProperty(realm, y, "type");
@@ -79,19 +65,7 @@ export function getValueWithBranchingLogicApplied(
   };
 
   // we first check our "parent" value, that was used to get the inlined value
-  const searchAndFlagMismatchingNonHostTypes = (_x: Value, _y: Value, arrayDepth: number): void => {
-    // this looks silly to do, but Flow treats function
-    // parameters as constants :/
-    let x = _x;
-    let y = _y;
-    if (x instanceof AbstractObjectValue && isBranchedReactElement(x)) {
-      x = realm.react.branchedReactElements.get(x);
-      invariant(x !== undefined);
-    }
-    if (y instanceof AbstractObjectValue && isBranchedReactElement(y)) {
-      y = realm.react.branchedReactElements.get(y);
-      invariant(y !== undefined);
-    }
+  const searchAndFlagMismatchingNonHostTypes = (x: Value, y: Value, arrayDepth: number): void => {
     if (x instanceof ObjectValue && isReactElement(x) && y instanceof ObjectValue && isReactElement(y)) {
       let xType = getProperty(realm, x, "type");
       let yType = getProperty(realm, y, "type");
@@ -168,10 +142,6 @@ function applyBranchedLogicValue(realm: Realm, value: Value): Value {
     value instanceof UndefinedValue
   ) {
     // terminal values
-  } else if (value instanceof AbstractObjectValue && isBranchedReactElement(value)) {
-    let reactElement = realm.react.branchedReactElements.get(value);
-    invariant(reactElement !== undefined);
-    return addKeyToReactElement(realm, reactElement);
   } else if (value instanceof ObjectValue && isReactElement(value)) {
     return addKeyToReactElement(realm, value);
   } else if (value instanceof ArrayValue) {
@@ -211,25 +181,19 @@ function applyBranchedLogicValue(realm: Realm, value: Value): Value {
 // the original ReactElement. If we don't have a ReactElement,
 // return the original value
 export function wrapReactElementInBranchOrReturnValue(realm: Realm, value: Value): Value {
-  if (value instanceof AbstractObjectValue && isBranchedReactElement(value)) {
-    let reactElement = realm.react.branchedReactElements.get(value);
-    invariant(reactElement !== undefined);
-    return wrapReactElementInBranchOrReturnValue(realm, reactElement);
-  } else if (value instanceof ObjectValue && isReactElement(value)) {
-    let branchedReactElement = AbstractValue.createTemporalFromBuildFunction(
-      realm,
-      ObjectValue,
-      [value],
-      ([node]) => node,
-      {
-        isPure: true,
-        kind: "branched ReactElement",
-        skipInvariant: true,
-      }
-    );
-    invariant(branchedReactElement instanceof AbstractObjectValue);
-    realm.react.branchedReactElements.set(branchedReactElement, value);
-    return branchedReactElement;
+  if (value instanceof ObjectValue && isReactElement(value)) {
+    if (value.temporalAlias !== undefined) {
+      debugger;
+    }
+    let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+    value.copyKeys(value.$OwnPropertyKeys(), value, obj);
+    let temporal = AbstractValue.createTemporalFromBuildFunction(realm, ObjectValue, [obj], ([node]) => node, {
+      isPure: true,
+      skipInvariant: true,
+    });
+    invariant(temporal instanceof AbstractObjectValue);
+    temporal.values = new ValuesDomain(value);
+    value.temporalAlias = temporal;
   }
   return value;
 }

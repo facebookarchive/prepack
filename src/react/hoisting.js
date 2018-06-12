@@ -11,7 +11,6 @@
 
 import { Realm } from "../realm.js";
 import {
-  AbstractObjectValue,
   AbstractValue,
   ArrayValue,
   BooleanValue,
@@ -25,7 +24,7 @@ import {
 } from "../values/index.js";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
-import { isBranchedReactElement, isReactElement, getProperty } from "./utils.js";
+import { isReactElement, getProperty } from "./utils.js";
 import { ResidualHeapVisitor } from "../serializer/ResidualHeapVisitor.js";
 
 // a nested object of a React Element should be hoisted where all its properties are known
@@ -157,10 +156,6 @@ function canHoistValue(
     canHoist = canHoistFunction(realm, value, residualHeapVisitor, visitedValues);
   } else if (value instanceof ObjectValue) {
     canHoist = canHoistObject(realm, value, residualHeapVisitor, visitedValues);
-  } else if (value instanceof AbstractObjectValue && isBranchedReactElement(value)) {
-    let reactElement = realm.react.branchedReactElements.get(value);
-    invariant(reactElement !== undefined);
-    return canHoistReactElement(realm, reactElement, residualHeapVisitor, visitedValues);
   } else if (value instanceof AbstractValue) {
     canHoist = canHoistAbstract(realm, value, residualHeapVisitor);
   } else if (isPrimitive) {

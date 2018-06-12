@@ -11,7 +11,7 @@
 
 import { Realm } from "../realm.js";
 import {
-  AbstractObjectValue,
+
   AbstractValue,
   ArrayValue,
   FunctionValue,
@@ -22,7 +22,7 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
-import { isBranchedReactElement, isReactElement, getProperty } from "./utils";
+import { isReactElement, getProperty } from "./utils";
 import { HashSet } from "../methods/index.js";
 
 type ReactElementValueMapKey = Value | number | string;
@@ -81,10 +81,6 @@ export default class ReactElementSet {
   _getValue(val: ReactElementValueMapKey, map: ReactElementValueMap, visitedValues: Set<Value>): ReactElementNode {
     if (val instanceof StringValue || val instanceof NumberValue) {
       val = val.value;
-    } else if (val instanceof AbstractObjectValue && isBranchedReactElement(val)) {
-      let reactElement = this.realm.react.branchedReactElements.get(val);
-      invariant(reactElement !== undefined);
-      val = this._getObjectValue(reactElement, visitedValues);
     } else if (val instanceof AbstractValue) {
       val = this.equivalenceSet.add(val);
     } else if (val instanceof ArrayValue) {

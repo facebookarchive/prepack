@@ -62,7 +62,7 @@ import {
   withDescriptorValue,
 } from "./utils.js";
 import { Environment, To } from "../singletons.js";
-import { isBranchedReactElement, isReactElement, valueIsReactLibraryObject } from "../react/utils.js";
+import { isReactElement, valueIsReactLibraryObject } from "../react/utils.js";
 import { ResidualReactElementVisitor } from "./ResidualReactElementVisitor.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
 
@@ -989,14 +989,6 @@ export class ResidualHeapVisitor {
   }
 
   visitEquivalentValue<T: Value>(val: T): T {
-    if (val instanceof AbstractObjectValue && isBranchedReactElement(val)) {
-      let reactElement = this.realm.react.branchedReactElements.get(val);
-      invariant(reactElement !== undefined);
-      let equivalentReactElementValue = this.residualReactElementVisitor.equivalenceSet.add(reactElement);
-      if (reactElement !== equivalentReactElementValue) {
-        this.realm.react.branchedReactElements.set(val, equivalentReactElementValue);
-      }
-    }
     if (val instanceof AbstractValue) {
       let equivalentValue = this.equivalenceSet.add(val);
       if (this.preProcessValue(equivalentValue)) this.visitAbstractValue(equivalentValue);
@@ -1004,9 +996,15 @@ export class ResidualHeapVisitor {
       return (equivalentValue: any);
     }
     if (val instanceof ObjectValue && isReactElement(val)) {
+      if (val.temporalAlias !== undefined) {
+        return this.visitEquivalentValue(val.temporalAlias);
+      }
       let equivalentReactElementValue = this.residualReactElementVisitor.equivalenceSet.add(val);
       if (this._mark(equivalentReactElementValue)) this.visitValueObject(equivalentReactElementValue);
       return (equivalentReactElementValue: any);
+    }
+    if (val.temporalAlias !== undefined) {
+      this.visitEquivalentValue(val.temporalAlias);
     }
     this.visitValue(val);
     return val;

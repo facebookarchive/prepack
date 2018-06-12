@@ -84,7 +84,6 @@ import type { Referentializer } from "./Referentializer.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
 import { type Replacement, getReplacement } from "./ResidualFunctionInstantiator";
 import { describeValue } from "../utils.js";
-import { isBranchedReactElement } from "../react/utils.js";
 
 function commentStatement(text: string) {
   let s = t.emptyStatement();

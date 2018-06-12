@@ -40,7 +40,6 @@ import {
   getProperty,
   getReactSymbol,
   getValueFromFunctionCall,
-  isBranchedReactElement,
   isReactElement,
   mapArrayValue,
   sanitizeReactElementForFirstRenderOnly,
@@ -1329,10 +1328,6 @@ export class Reconciler {
     } else if (value instanceof ArrayValue) {
       // TODO investigate what about other iterables type objects
       return this._resolveArray(componentType, value, context, branchStatus, evaluatedNode);
-    } else if (value instanceof AbstractObjectValue && isBranchedReactElement(value)) {
-      let reactElement = this.realm.react.branchedReactElements.get(value);
-      invariant(reactElement !== undefined);
-      return this._resolveReactElement(componentType, reactElement, context, branchStatus, evaluatedNode);
     } else if (value instanceof ObjectValue && isReactElement(value)) {
       return this._resolveReactElement(componentType, value, context, branchStatus, evaluatedNode);
     } else {

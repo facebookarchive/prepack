@@ -700,7 +700,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         expect(count).toEqual(8);
       });
 
-      it("Lazy branched elements 2", async () => {
+      it.only("Lazy branched elements 2", async () => {
         let createElement = React.createElement;
         let count = 0;
         // $FlowFixMe: intentional for this test
