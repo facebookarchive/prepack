@@ -20,6 +20,7 @@ import type {
 } from "./options";
 import { Realm } from "./realm.js";
 import invariant from "./invariant.js";
+import type { DebuggerConfigArguments } from "./debugger/common/types";
 
 export type PrepackOptions = {|
   additionalGlobals?: Realm => void,
@@ -63,6 +64,7 @@ export type PrepackOptions = {|
   debugInFilePath?: string,
   debugOutFilePath?: string,
   abstractValueImpliesMax?: number,
+  debuggerConfigArgs?: DebuggerConfigArguments,
 |};
 
 export function getRealmOptions({
@@ -86,6 +88,7 @@ export function getRealmOptions({
   timeout,
   maxStackDepth,
   abstractValueImpliesMax,
+  debuggerConfigArgs,
 }: PrepackOptions): RealmOptions {
   return {
     compatibility,
@@ -108,6 +111,7 @@ export function getRealmOptions({
     timeout,
     maxStackDepth,
     abstractValueImpliesMax,
+    debuggerConfigArgs,
   };
 }
 

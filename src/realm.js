@@ -1652,6 +1652,13 @@ export class Realm {
       let stack = error._SafeGetDataPropertyValue("stack");
       if (stack instanceof StringValue) diagnostic.callStack = stack.value;
     }
+
+    // If debugger is attached, give it a first crack so that it can
+    // stop execution for debugging before PP exits.
+    if (this.debuggerInstance && this.debuggerInstance.shouldStopForSeverity(diagnostic.severity)) {
+      this.debuggerInstance.handlePrepackError(diagnostic);
+    }
+
     // Default behaviour is to bail on the first error
     let errorHandler = this.errorHandler;
     if (!errorHandler) {
