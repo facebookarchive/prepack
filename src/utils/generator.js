@@ -41,7 +41,7 @@ import {
   ThrowCompletion,
   ReturnCompletion,
   PossiblyNormalCompletion,
-  NormalCompletion,
+  SimpleNormalCompletion,
 } from "../completions.js";
 import type {
   BabelNodeExpression,
@@ -439,7 +439,7 @@ export class Generator {
     if (result instanceof UndefinedValue) return output;
     if (result instanceof PossiblyNormalCompletion || result instanceof ForkedAbruptCompletion) {
       output.emitIfThenElse(result, realm);
-    } else if (result instanceof NormalCompletion) {
+    } else if (result instanceof SimpleNormalCompletion) {
       output.emitReturnValue(result.value);
     } else if (result instanceof ReturnCompletion) {
       output.emitReturnValue(result.value);

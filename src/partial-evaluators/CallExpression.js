@@ -14,7 +14,7 @@ import type { Realm } from "../realm.js";
 import { Effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 
-import { AbruptCompletion, Completion, PossiblyNormalCompletion, NormalCompletion } from "../completions.js";
+import { AbruptCompletion, Completion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { EnvironmentRecord, Reference } from "../environment.js";
 import { EvaluateDirectCallWithArgList, GetThisValue, IsInTailPosition, SameValue } from "../methods/index.js";
 import { Environment, Functions, Join } from "../singletons.js";
@@ -134,7 +134,7 @@ function callBothFunctionsAndJoinTheirEffects(
   realm.applyEffects(joinedEffects);
 
   // return or throw completion
-  if (joinedCompletion instanceof NormalCompletion) joinedCompletion = joinedCompletion.value;
+  if (joinedCompletion instanceof SimpleNormalCompletion) joinedCompletion = joinedCompletion.value;
   invariant(joinedCompletion instanceof AbruptCompletion || joinedCompletion instanceof Value);
   return joinedCompletion;
 }

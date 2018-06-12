@@ -14,7 +14,7 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Realm, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
 import { Get } from "../methods/index.js";
-import { AbruptCompletion, PossiblyNormalCompletion, NormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { Environment } from "../singletons.js";
 import {
   AbstractValue,
@@ -261,7 +261,7 @@ export class ModuleTracer extends Tracer {
               realm.handleError(warning);
               result = result.value;
               realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
-            } else if (result instanceof NormalCompletion) {
+            } else if (result instanceof SimpleNormalCompletion) {
               realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
               this.modules.recordModuleInitialized(moduleIdValue, result.value);
             } else {
@@ -273,7 +273,7 @@ export class ModuleTracer extends Tracer {
           invariant(popped === moduleIdValue);
           this.log(`<require(${moduleIdValue})`);
         }
-        if (result instanceof NormalCompletion) result = result.value;
+        if (result instanceof SimpleNormalCompletion) result = result.value;
         invariant(result instanceof Value);
         return result;
       });

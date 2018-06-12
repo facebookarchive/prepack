@@ -16,7 +16,7 @@ import { Value } from "../values/index.js";
 import { EmptyValue } from "../values/index.js";
 import { UpdateEmpty } from "../methods/index.js";
 import { LoopContinues, InternalGetResultValue, TryToApplyEffectsOfJoiningBranches } from "./ForOfStatement.js";
-import { AbruptCompletion, BreakCompletion, ForkedAbruptCompletion, NormalCompletion } from "../completions.js";
+import { AbruptCompletion, BreakCompletion, ForkedAbruptCompletion, SimpleNormalCompletion } from "../completions.js";
 import { Environment, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeDoWhileStatement } from "babel-types";
@@ -73,7 +73,7 @@ export default function(
   // so instead try to compute a fixpoint for it
   let iteration = () => {
     let bodyResult = env.evaluateCompletion(body, strictCode);
-    if (bodyResult instanceof Value) bodyResult = new NormalCompletion(bodyResult);
+    if (bodyResult instanceof Value) bodyResult = new SimpleNormalCompletion(bodyResult);
     let exprRef = env.evaluate(test, strictCode);
     let testResult = Environment.GetConditionValue(realm, exprRef);
     return [testResult, bodyResult];
@@ -87,7 +87,7 @@ export default function(
     let generator = realm.generator;
     invariant(generator !== undefined);
     generator.emitDoWhileStatement(cond, bodyGenerator);
-    invariant(rval instanceof NormalCompletion, "todo: handle loops that throw exceptions or return");
+    invariant(rval instanceof SimpleNormalCompletion, "todo: handle loops that throw exceptions or return");
     return rval.value;
   }
 

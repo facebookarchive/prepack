@@ -15,7 +15,7 @@ import type { Bindings, BindingEntry, EvaluationResult, PropertyBindings, Create
 import { Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 
-import { AbruptCompletion, PossiblyNormalCompletion, NormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { Reference } from "../environment.js";
 import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
 import { Generator } from "../utils/generator.js";
@@ -104,7 +104,7 @@ export class WidenImplementation {
     realm: Realm,
     result1: EvaluationResult,
     result2: EvaluationResult
-  ): PossiblyNormalCompletion | NormalCompletion {
+  ): PossiblyNormalCompletion | SimpleNormalCompletion {
     invariant(!(result1 instanceof Reference || result2 instanceof Reference), "loop bodies should not result in refs");
     invariant(
       !(result1 instanceof AbruptCompletion || result2 instanceof AbruptCompletion),
@@ -117,10 +117,10 @@ export class WidenImplementation {
       // use abrupt part of result2, depend stability to make this safe. See below.
       throw new FatalError();
     }
-    if (result1 instanceof NormalCompletion && result2 instanceof NormalCompletion) {
+    if (result1 instanceof SimpleNormalCompletion && result2 instanceof SimpleNormalCompletion) {
       let val = this.widenValues(realm, result1.value, result2.value);
       invariant(val instanceof Value);
-      return new NormalCompletion(val);
+      return new SimpleNormalCompletion(val);
     }
     invariant(false);
   }
@@ -353,10 +353,8 @@ export class WidenImplementation {
 
   containsResults(result1: EvaluationResult, result2: EvaluationResult): boolean {
     if (
-      result1 instanceof NormalCompletion &&
-      !(result1 instanceof PossiblyNormalCompletion) &&
-      result2 instanceof NormalCompletion &&
-      !(result2 instanceof PossiblyNormalCompletion)
+      result1 instanceof SimpleNormalCompletion &&
+      result2 instanceof SimpleNormalCompletion
     )
       return this._containsValues(result1.value, result2.value);
     return false;

@@ -14,7 +14,7 @@ import type { PropertyKeyValue, FunctionBodyAstNode } from "../types.js";
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
-import { Completion, ReturnCompletion, AbruptCompletion, NormalCompletion } from "../completions.js";
+import { Completion, ReturnCompletion, AbruptCompletion, SimpleNormalCompletion } from "../completions.js";
 import { ExecutionContext } from "../realm.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord } from "../environment.js";
 import {
@@ -1122,7 +1122,7 @@ export class FunctionImplementation {
   // If c is undefined, the result is just realm.savedCompletion.
   // Call this only when a join point has been reached.
   incorporateSavedCompletion(realm: Realm, c: void | AbruptCompletion | Value): void | Completion | Value {
-    invariant(!(c instanceof NormalCompletion), "This function doesn't accept NormalCompletions");
+    invariant(!(c instanceof SimpleNormalCompletion), "This function doesn't accept NormalCompletions");
     let savedCompletion = realm.savedCompletion;
     if (savedCompletion !== undefined) {
       if (savedCompletion.savedPathConditions) {
@@ -1135,7 +1135,7 @@ export class FunctionImplementation {
       if (c === undefined) return savedCompletion;
       // TODO: normal completion?
       if (c instanceof Value) {
-        Join.updatePossiblyNormalCompletionWithValue(realm, savedCompletion, new NormalCompletion(c));
+        Join.updatePossiblyNormalCompletionWithValue(realm, savedCompletion, new SimpleNormalCompletion(c));
         return savedCompletion;
       } else {
         let e = realm.getCapturedEffects();
@@ -1172,7 +1172,7 @@ export class FunctionImplementation {
 
   PartiallyEvaluateStatements(
     body: Array<BabelNodeStatement>,
-    blockValue: void | NormalCompletion | Value,
+    blockValue: void | SimpleNormalCompletion | Value,
     strictCode: boolean,
     blockEnv: LexicalEnvironment,
     realm: Realm
@@ -1187,7 +1187,7 @@ export class FunctionImplementation {
           if (blockValue === undefined || blockValue instanceof Value) {
             if (res instanceof AbruptCompletion)
               return [UpdateEmpty(realm, res, blockValue || realm.intrinsics.empty), statementAsts];
-            invariant(res instanceof NormalCompletion || res instanceof Value);
+            invariant(res instanceof SimpleNormalCompletion || res instanceof Value);
             blockValue = res;
           }
         }

@@ -32,7 +32,7 @@ import {
   AbruptCompletion,
   Completion,
   ForkedAbruptCompletion,
-  NormalCompletion,
+  SimpleNormalCompletion,
   PossiblyNormalCompletion,
 } from "./completions.js";
 import { EnvironmentRecord, LexicalEnvironment, Reference } from "./environment.js";
@@ -534,7 +534,7 @@ export type FunctionType = {
 
   PartiallyEvaluateStatements(
     body: Array<BabelNodeStatement>,
-    blockValue: void | NormalCompletion | Value,
+    blockValue: void | SimpleNormalCompletion | Value,
     strictCode: boolean,
     blockEnv: LexicalEnvironment,
     realm: Realm
@@ -705,11 +705,11 @@ export type JoinType = {
 
   unbundleNormalCompletion(
     completionOrValue: Completion | Value | Reference
-  ): [void | NormalCompletion, Value | Reference],
+  ): [void | SimpleNormalCompletion, Value | Reference],
 
   composeNormalCompletions(
-    leftCompletion: void | NormalCompletion,
-    rightCompletion: void | NormalCompletion,
+    leftCompletion: void | SimpleNormalCompletion,
+    rightCompletion: void | SimpleNormalCompletion,
     resultValue: Value,
     realm: Realm
   ): PossiblyNormalCompletion | Value,
@@ -727,7 +727,7 @@ export type JoinType = {
     subsequentEffects: Effects
   ): void,
 
-  updatePossiblyNormalCompletionWithValue(realm: Realm, pnc: PossiblyNormalCompletion, nc: NormalCompletion): void,
+  updatePossiblyNormalCompletionWithValue(realm: Realm, pnc: PossiblyNormalCompletion, nc: SimpleNormalCompletion): void,
 
   replacePossiblyNormalCompletionWithForkedAbruptCompletion(
     realm: Realm,
@@ -743,14 +743,14 @@ export type JoinType = {
     realm: Realm,
     joinCondition: AbstractValue,
     pnc: PossiblyNormalCompletion,
-    nc: NormalCompletion
+    nc: SimpleNormalCompletion
   ): void,
 
   updatePossiblyNormalCompletionWithInverseConditionalValue(
     realm: Realm,
     joinCondition: AbstractValue,
     pnc: PossiblyNormalCompletion,
-    nc: NormalCompletion
+    nc: SimpleNormalCompletion
   ): void,
 
   extractAndJoinCompletionsOfType(
@@ -769,7 +769,7 @@ export type JoinType = {
     joinCondition: AbstractValue,
     result1: EvaluationResult,
     result2: EvaluationResult
-  ): AbruptCompletion | PossiblyNormalCompletion | NormalCompletion,
+  ): AbruptCompletion | PossiblyNormalCompletion | SimpleNormalCompletion,
 
   joinOrForkResults(
     realm: Realm,
@@ -778,7 +778,7 @@ export type JoinType = {
     result2: EvaluationResult,
     e1: Effects,
     e2: Effects
-  ): AbruptCompletion | PossiblyNormalCompletion | NormalCompletion,
+  ): AbruptCompletion | PossiblyNormalCompletion | SimpleNormalCompletion,
 
   composeGenerators(realm: Realm, generator1: Generator, generator2: Generator): Generator,
 

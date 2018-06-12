@@ -17,7 +17,7 @@ import { computeBinary } from "./BinaryExpression.js";
 import {
   AbruptCompletion,
   BreakCompletion,
-  NormalCompletion,
+  SimpleNormalCompletion,
   PossiblyNormalCompletion,
   Completion,
 } from "../completions.js";
@@ -192,8 +192,7 @@ function AbstractCaseBlockEvaluation(
 
       // return or throw completion
       if (completion instanceof AbruptCompletion) throw completion;
-      if (completion instanceof NormalCompletion) {
-        invariant(!(completion instanceof PossiblyNormalCompletion));
+      if (completion instanceof SimpleNormalCompletion) {
         completion = completion.value;
       }
       invariant(completion instanceof Value);
@@ -379,8 +378,7 @@ export default function(
         // all the branches come together into one.
         result = realm.composeWithSavedCompletion(result);
       }
-      if (result instanceof NormalCompletion) {
-        invariant(!(result instanceof PossiblyNormalCompletion));
+      if (result instanceof SimpleNormalCompletion) {
         result = result.value;
       }
       invariant(result instanceof Value); // since evaluationHelper returns a value in non abrupt cases

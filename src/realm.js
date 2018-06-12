@@ -55,7 +55,7 @@ import { cloneDescriptor, Construct } from "./methods/index.js";
 import {
   AbruptCompletion,
   Completion,
-  NormalCompletion,
+  SimpleNormalCompletion,
   ForkedAbruptCompletion,
   PossiblyNormalCompletion,
   ThrowCompletion,
@@ -194,7 +194,7 @@ export class ExecutionContext {
 
 export function construct_empty_effects(
   realm: Realm,
-  c: Completion = new NormalCompletion(realm.intrinsics.empty)
+  c: Completion = new SimpleNormalCompletion(realm.intrinsics.empty)
 ): Effects {
   return new Effects(c, new Generator(realm, "construct_empty_effects"), new Map(), new Map(), new Set());
 }
@@ -822,7 +822,7 @@ export class Realm {
         */
 
         // Return the captured state changes and evaluation result
-        if (c instanceof Value) c = new NormalCompletion(c);
+        if (c instanceof Value) c = new SimpleNormalCompletion(c);
         result = new Effects(c, astGenerator, astBindings, astProperties, astCreatedObjects);
         return result;
       } finally {
@@ -871,7 +871,7 @@ export class Realm {
         undefined,
         "evaluateWithUndo"
       );
-      return effects.result instanceof NormalCompletion && !(effects.result instanceof PossiblyNormalCompletion)
+      return effects.result instanceof SimpleNormalCompletion
         ? effects.result.value
         : defaultValue;
     } finally {
@@ -899,7 +899,7 @@ export class Realm {
         // all the branches come together into one.
         resultVal = this.composeWithSavedCompletion(resultVal);
       }
-      invariant(resultVal instanceof NormalCompletion);
+      invariant(resultVal instanceof SimpleNormalCompletion);
       return resultVal.value;
     } catch (e) {
       if (diagnostic !== undefined) return diagnostic;
@@ -997,7 +997,7 @@ export class Realm {
 
     // return or throw completion
     if (completion instanceof AbruptCompletion) throw completion;
-    if (completion instanceof NormalCompletion && !(completion instanceof PossiblyNormalCompletion))
+    if (completion instanceof SimpleNormalCompletion)
       completion = completion.value;
     invariant(completion instanceof Value);
     //TODO: fix
@@ -1258,7 +1258,7 @@ export class Realm {
   captureEffects(completion: PossiblyNormalCompletion) {
     invariant(completion.savedEffects === undefined);
     completion.savedEffects = new Effects(
-      new NormalCompletion(this.intrinsics.undefined),
+      new SimpleNormalCompletion(this.intrinsics.undefined),
       (this.generator: any),
       (this.modifiedBindings: any),
       (this.modifiedProperties: any),
@@ -1276,7 +1276,7 @@ export class Realm {
     invariant(this.modifiedProperties !== undefined);
     invariant(this.createdObjects !== undefined);
     return new Effects(
-      new NormalCompletion(v),
+      new SimpleNormalCompletion(v),
       this.generator,
       this.modifiedBindings,
       this.modifiedProperties,

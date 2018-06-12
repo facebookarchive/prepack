@@ -15,7 +15,7 @@
 
 import type { Realm } from "../../realm.js";
 import { ReactStatistics } from "../../serializer/types.js";
-import { NormalCompletion } from "../../completions.js";
+import { SimpleNormalCompletion } from "../../completions.js";
 import {
   AbstractObjectValue,
   AbstractValue,
@@ -457,7 +457,7 @@ function handleNestedOptimizedFunctions(realm: Realm, reconciler: Reconciler, st
       [closureEffects],
       () => {
         let serverRenderer = new ReactDOMServerRenderer(realm, staticMarkup);
-        invariant(closureEffects.result instanceof NormalCompletion);
+        invariant(closureEffects.result instanceof SimpleNormalCompletion);
         return serverRenderer.render(closureEffects.result.value);
       },
       "handleNestedOptimizedFunctions"
@@ -499,7 +499,7 @@ export function renderToString(
   );
   invariant(effects);
   realm.applyEffects(effects);
-  invariant(effects.result instanceof NormalCompletion);
+  invariant(effects.result instanceof SimpleNormalCompletion);
   let serverRenderer = new ReactDOMServerRenderer(realm, staticMarkup);
   let renderValue = serverRenderer.render(effects.result.value);
   handleNestedOptimizedFunctions(realm, reconciler, staticMarkup);

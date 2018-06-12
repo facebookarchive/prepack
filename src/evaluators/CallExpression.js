@@ -10,7 +10,7 @@
 /* @flow */
 
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { AbruptCompletion, PossiblyNormalCompletion, NormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
 import { Effects } from "../realm.js";
 import { type LexicalEnvironment, type BaseValue, mightBecomeAnObject } from "../environment.js";
@@ -196,7 +196,7 @@ function callBothFunctionsAndJoinTheirEffects(
 
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
-  invariant(completion instanceof NormalCompletion);
+  invariant(completion instanceof SimpleNormalCompletion);
   return completion.value;
 }
 
@@ -290,7 +290,7 @@ function tryToEvaluateCallOrLeaveAsAbstract(
   }
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
-  if (completion instanceof NormalCompletion && !(completion instanceof PossiblyNormalCompletion))
+  if (completion instanceof SimpleNormalCompletion)
     completion = completion.value;
   invariant(completion instanceof Value);
   return completion;

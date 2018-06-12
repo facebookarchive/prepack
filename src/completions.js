@@ -31,11 +31,11 @@ export class Completion {
 }
 
 // Normal completions are returned just like spec completions
-export class NormalCompletion extends Completion {
-  toValue(): Value {
-    return this.value;
-  }
-}
+export class NormalCompletion extends Completion {}
+
+// SimpleNormalCompletions are returned just like spec completions. This class exists as the parallel for
+// PossiblyNormalCompletion to make comparisons easier.
+export class SimpleNormalCompletion extends NormalCompletion {}
 
 // Abrupt completions are thrown as exeptions, to make it a easier
 // to quickly get to the matching high level construct.
@@ -156,18 +156,14 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     invariant(alternate === alternateEffects.result);
     invariant(
       consequent instanceof NormalCompletion ||
-        consequent instanceof Value ||
-        alternate instanceof NormalCompletion ||
-        alternate instanceof Value
+        alternate instanceof NormalCompletion
     );
     invariant(consequent instanceof AbruptCompletion || alternate instanceof AbruptCompletion);
     invariant(
-      value === consequent ||
         consequent instanceof AbruptCompletion ||
         (consequent instanceof NormalCompletion && value === consequent.value)
     );
     invariant(
-      value === alternate ||
         alternate instanceof AbruptCompletion ||
         (alternate instanceof NormalCompletion && value === alternate.value)
     );

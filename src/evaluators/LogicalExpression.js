@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import { Effects } from "../realm.js";
-import { AbruptCompletion, PossiblyNormalCompletion, NormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { InfeasiblePathError } from "../errors.js";
 import { construct_empty_effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
@@ -93,13 +93,13 @@ export default function(
       realm,
       lval,
       new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2),
-      new Effects(new NormalCompletion(lval), generator1, modifiedBindings1, modifiedProperties1, createdObjects1)
+      new Effects(new SimpleNormalCompletion(lval), generator1, modifiedBindings1, modifiedProperties1, createdObjects1)
     );
   } else {
     joinedEffects = Join.joinForkOrChoose(
       realm,
       lval,
-      new Effects(new NormalCompletion(lval), generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
+      new Effects(new SimpleNormalCompletion(lval), generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
       new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
     );
   }
@@ -117,7 +117,7 @@ export default function(
 
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
-  if (completion instanceof NormalCompletion) completion = completion.value;
+  if (completion instanceof SimpleNormalCompletion) completion = completion.value;
   invariant(completion instanceof Value); // references do not survive join
   if (lval instanceof Value && result2 instanceof Value) {
     // joinForkOrChoose does the right thing for the side effects of the second expression but for the result the join

@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { BreakCompletion, NormalCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { BreakCompletion, SimpleNormalCompletion, PossiblyNormalCompletion } from "../completions.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { ForInOfHeadEvaluation, ForInOfBodyEvaluation } from "./ForOfStatement.js";
@@ -143,8 +143,7 @@ function emitResidualLoopIfSafe(
       blockEnv
     );
     if (
-      result instanceof NormalCompletion &&
-      !(result instanceof PossiblyNormalCompletion) &&
+      result instanceof SimpleNormalCompletion &&
       gen.empty() &&
       modifiedBindings.size === 0 &&
       modifiedProperties.size === 1

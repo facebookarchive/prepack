@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { AbruptCompletion, PossiblyNormalCompletion, NormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { ObjectValue, Value, AbstractObjectValue, AbstractValue } from "../values/index.js";
 import { Environment, Havoc } from "../singletons.js";
@@ -125,7 +125,7 @@ function tryToEvaluateConstructOrLeaveAsAbstract(
 
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
-  if (completion instanceof NormalCompletion) completion = completion.value;
+  if (completion instanceof SimpleNormalCompletion) completion = completion.value;
   invariant(completion instanceof ObjectValue || completion instanceof AbstractObjectValue);
   return completion;
 }
