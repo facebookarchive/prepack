@@ -737,7 +737,8 @@ export class ResidualHeapSerializer {
     return false;
   }
 
-  // Determine if a value is effectively referenced by an optimized function.
+  // Try and get the root optimized function when passed in an optimized function
+  // that may or may not be nested in the tree of said root, or is the root optimized function
   tryGetOptimizedFunctionRoot(val: Value): void | FunctionValue {
     let scopes = this.residualValues.get(val);
     let functionValues = new Set();
