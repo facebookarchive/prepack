@@ -333,7 +333,7 @@ function generateRuntimeForStatement(
   );
   traverse.clearCache();
 
-  if (functionInfo.usesReturn || functionInfo.usesArguments || functionInfo.usesGotoToLabel) {
+  if (functionInfo.usesReturn || functionInfo.usesThrow || functionInfo.usesArguments || functionInfo.usesGotoToLabel) {
     // We do not have support for these yet
     let diagnostic = new CompilerDiagnostic(
       `"failed to recover from a for/while loop bail-out due to unsupported logic in loop body`,
