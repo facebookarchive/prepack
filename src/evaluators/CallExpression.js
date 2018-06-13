@@ -182,6 +182,7 @@ function callBothFunctionsAndJoinTheirEffects(
     new Effects(e2.result, e2.generator, e2.modifiedBindings, e2.modifiedProperties, e2.createdObjects)
   );
   let completion = joinedEffects.result;
+  if (completion instanceof SimpleNormalCompletion) completion = completion.value;
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.
@@ -196,8 +197,8 @@ function callBothFunctionsAndJoinTheirEffects(
 
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
-  invariant(completion instanceof SimpleNormalCompletion);
-  return completion.value;
+  invariant(completion instanceof Value);
+  return completion;
 }
 
 function generateRuntimeCall(
