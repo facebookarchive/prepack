@@ -14,13 +14,7 @@ import type { PropertyKeyValue, FunctionBodyAstNode } from "../types.js";
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
-import {
-  Completion,
-  ReturnCompletion,
-  AbruptCompletion,
-  SimpleNormalCompletion,
-  NormalCompletion,
-} from "../completions.js";
+import { Completion, ReturnCompletion, AbruptCompletion, NormalCompletion } from "../completions.js";
 import { ExecutionContext } from "../realm.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord } from "../environment.js";
 import {

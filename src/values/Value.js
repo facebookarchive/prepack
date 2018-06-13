@@ -34,10 +34,6 @@ export default class Value {
   // Name from original source if existant
   __originalName: void | string;
 
-  toValue(): Value {
-    return this;
-  }
-
   toDisplayString(): string {
     return (
       "[" + this.constructor.name + " originally; " + (this.__originalName ? this.__originalName : "undefined") + "]"

@@ -1210,9 +1210,7 @@ export class Realm {
       this.savedCompletion = savedCompletion;
     }
     pushPathConditionsLeadingToNormalCompletion(completion);
-    let result = completion.value;
-    invariant(result instanceof Value, "composeWithSavedCompletion must return a value");
-    return result;
+    return completion.value;
 
     function pushPathConditionsLeadingToNormalCompletion(c: PossiblyNormalCompletion) {
       if (c.consequent instanceof AbruptCompletion) {

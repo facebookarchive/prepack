@@ -125,7 +125,7 @@ export default function(
   if (completion instanceof AbruptCompletion) throw completion;
   if (completion instanceof SimpleNormalCompletion) completion = completion.value;
   if (result2 instanceof SimpleNormalCompletion) result2 = result2.value;
-  invariant(completion instanceof Value); // references do not survive join
+  invariant(completion instanceof Value);
   if (lval instanceof Value && result2 instanceof Value) {
     // joinForkOrChoose does the right thing for the side effects of the second expression but for the result the join
     // produces a conditional expressions of the form (a ? b : a) for a && b and (a ? a : b) for a || b

@@ -194,6 +194,24 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     );
   }
 
+  getNormalCompletion(): SimpleNormalCompletion {
+    let result;
+    if (this.alternate instanceof SimpleNormalCompletion) {
+      result = this.alternate;
+    } else if (this.consequent instanceof SimpleNormalCompletion) {
+      result = this.consequent;
+    } else {
+      if (this.alternate instanceof PossiblyNormalCompletion) {
+        result = this.alternate.getNormalCompletion();
+      } else {
+        invariant(this.consequent instanceof PossiblyNormalCompletion);
+        result = this.consequent.getNormalCompletion();
+      }
+    }
+    invariant(result.value === this.value);
+    return result;
+  }
+
   containsCompletion(CompletionType: typeof Completion): boolean {
     if (this.consequent instanceof CompletionType) return true;
     if (this.alternate instanceof CompletionType) return true;
