@@ -46,7 +46,7 @@ function createStatistics(options: PrepackOptions) {
 export function prepackStdin(
   options: PrepackOptions = defaultOptions,
   processSerializedCode: SerializedResult => void,
-  printDiagnostics: () => boolean
+  printDiagnostics: boolean => boolean
 ) {
   let sourceMapFilename = options.inputSourceMapFilename || "";
   process.stdin.setEncoding("utf8");
@@ -59,6 +59,7 @@ export function prepackStdin(
       }
       let filename = "no-filename-specified";
       let serialized;
+      let success;
       try {
         serialized = prepackSources(
           [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
@@ -67,15 +68,16 @@ export function prepackStdin(
           createStatistics(options)
         );
         processSerializedCode(serialized);
-        if (printDiagnostics()) process.exit(1);
+        success = printDiagnostics(false);
       } catch (err) {
-        printDiagnostics();
+        printDiagnostics(err instanceof FatalError);
         if (!(err instanceof FatalError)) {
           // if it is not a FatalError, it means prepack failed, and we should display the Prepack stack trace.
           console.error(err.stack);
         }
-        process.exit(1);
+        success = false;
       }
+      if (!success) process.exit(1);
     });
   });
 }
