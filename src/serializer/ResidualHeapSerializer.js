@@ -720,17 +720,19 @@ export class ResidualHeapSerializer {
     return Array.from(result);
   }
 
-  isNestedOptimizedFunction(optimizedFunction: FunctionValue, parentOptimizedFunction: FunctionValue): boolean {
-    if (optimizedFunction === parentOptimizedFunction) {
-      return false;
-    }
-    let env = optimizedFunction.$Environment;
-    while (env.parent !== null) {
-      let envRecord = env.environmentRecord;
-      if (envRecord instanceof FunctionEnvironmentRecord && envRecord.$FunctionObject === parentOptimizedFunction) {
-        return true;
+  isDefinedInsideFunction(childFunction: FunctionValue, maybeParentFunctions: Set<FunctionValue>): boolean {
+    for (let maybeParentFunction of maybeParentFunctions) {
+      if (childFunction === maybeParentFunction) {
+        continue;
       }
-      env = env.parent;
+      let env = childFunction.$Environment;
+      while (env.parent !== null) {
+        let envRecord = env.environmentRecord;
+        if (envRecord instanceof FunctionEnvironmentRecord && envRecord.$FunctionObject === maybeParentFunction) {
+          return true;
+        }
+        env = env.parent;
+      }
     }
     return false;
   }
@@ -738,8 +740,8 @@ export class ResidualHeapSerializer {
   // Determine if a value is effectively referenced by an optimized function.
   isReferencedOnlyByOptimizedFunction(val: Value): void | FunctionValue {
     let scopes = this.residualValues.get(val);
+    let functionValues = new Set();
     invariant(scopes !== undefined);
-    let additionalFunction;
     for (let scope of scopes) {
       let s = scope;
       while (s instanceof Generator) {
@@ -747,18 +749,21 @@ export class ResidualHeapSerializer {
       }
       if (s === "GLOBAL") return undefined;
       invariant(s instanceof FunctionValue);
-      if (this.additionalFunctionGenerators.has(s)) {
-        if (additionalFunction !== undefined) {
-          if (this.isNestedOptimizedFunction(s, additionalFunction)) {
-            continue;
-          }
-          if (additionalFunction !== s) {
-            return undefined;
-          }
+      functionValues.add(s);
+    }
+    let additionalFunction;
+
+    for (let functionValue of functionValues) {
+      if (this.additionalFunctionGenerators.has(functionValue)) {
+        if (this.isDefinedInsideFunction(functionValue, functionValues)) {
+          continue;
         }
-        additionalFunction = s;
+        if (additionalFunction !== undefined && additionalFunction !== functionValue) {
+          return undefined;
+        }
+        additionalFunction = functionValue;
       } else {
-        let f = this.isReferencedOnlyByOptimizedFunction(s);
+        let f = this.isReferencedOnlyByOptimizedFunction(functionValue);
         if (f === undefined) return undefined;
         if (additionalFunction !== undefined && additionalFunction !== f) return undefined;
         additionalFunction = f;
