@@ -330,8 +330,14 @@ function generateRuntimeForStatement(
 
   if (functionInfo.usesReturn || functionInfo.usesArguments || functionInfo.usesGotoToLabel) {
     // We do not have support for these yet
-    // TODO: issue number upon creation of issue
-    throw new FatalError("TODO: #? handle more loop bail out cases");
+    let diagnostic = new CompilerDiagnostic(
+      `"failed to recover from a for/while loop bail-out due to unsupported logic in loop body`,
+      realm.currentLocaiton,
+      "PP0035",
+      "FatalError"
+    );
+    realm.handleError(diagnostic);
+    throw new FatalError();
   }
   let args = [wrapperFunction];
 
