@@ -717,7 +717,6 @@ export class ResidualHeapSerializer {
         invariant(g !== undefined);
         result.add(g);
       } else {
-
         let scopes = this.residualValues.get(f);
         invariant(scopes);
         for (let scope of scopes)
@@ -732,7 +731,7 @@ export class ResidualHeapSerializer {
     return Array.from(result);
   }
 
-  isNestedOptimizedFunction(optimizedFunction, parentOptimizedFunction): boolean {
+  isNestedOptimizedFunction(optimizedFunction: FunctionValue, parentOptimizedFunction: FunctionValue): boolean {
     if (optimizedFunction === parentOptimizedFunction) {
       return false;
     }
