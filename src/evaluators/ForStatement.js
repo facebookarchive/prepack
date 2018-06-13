@@ -353,6 +353,10 @@ function generateRuntimeForStatement(
     args.push(thisVal);
   }
 
+  // We havoc the wrapping function value, which in turn invokes the havocing
+  // logic which is transitive. The havocing logic should recursively visit
+  // all bindings/objects in the loop and its body and mark the associated
+  // bindings/objects that do havoc appropiately.
   Havoc.value(realm, wrapperFunction);
 
   let wrapperValue = AbstractValue.createTemporalFromBuildFunction(
