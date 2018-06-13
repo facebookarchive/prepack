@@ -738,7 +738,7 @@ export class ResidualHeapSerializer {
   }
 
   // Determine if a value is effectively referenced by an optimized function.
-  isReferencedOnlyByOptimizedFunction(val: Value): void | FunctionValue {
+  tryGetOptimizedFunctionRoot(val: Value): void | FunctionValue {
     let scopes = this.residualValues.get(val);
     let functionValues = new Set();
     invariant(scopes !== undefined);
@@ -763,7 +763,7 @@ export class ResidualHeapSerializer {
         }
         additionalFunction = functionValue;
       } else {
-        let f = this.isReferencedOnlyByOptimizedFunction(functionValue);
+        let f = this.tryGetOptimizedFunctionRoot(functionValue);
         if (f === undefined) return undefined;
         if (additionalFunction !== undefined && additionalFunction !== f) return undefined;
         additionalFunction = f;
@@ -809,7 +809,7 @@ export class ResidualHeapSerializer {
       }
     }
 
-    let referencingOnlyOptimizedFunction = this.isReferencedOnlyByOptimizedFunction(val);
+    let referencingOnlyOptimizedFunction = this.tryGetOptimizedFunctionRoot(val);
     if (generators.length === 0) {
       // This value is only referenced from residual functions.
       if (
@@ -1427,7 +1427,7 @@ export class ResidualHeapSerializer {
     invariant(instance !== undefined);
     let residualBindings = instance.residualFunctionBindings;
 
-    let inOptimizedFunction = this.isReferencedOnlyByOptimizedFunction(val);
+    let inOptimizedFunction = this.tryGetOptimizedFunctionRoot(val);
     if (inOptimizedFunction !== undefined) instance.containingAdditionalFunction = inOptimizedFunction;
     let bindingsEmittedSemaphore = new CountingSemaphore(() => {
       invariant(instance);
@@ -2175,7 +2175,7 @@ export class ResidualHeapSerializer {
     functionValue: FunctionValue,
     additionalEffects: AdditionalFunctionEffects
   ) {
-    let inAdditionalFunction = this.isReferencedOnlyByOptimizedFunction(functionValue);
+    let inAdditionalFunction = this.tryGetOptimizedFunctionRoot(functionValue);
     return this._withGeneratorScope(
       "AdditionalFunction",
       generator,
