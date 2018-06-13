@@ -23,6 +23,7 @@ import {
   PossiblyNormalCompletion,
   ForkedAbruptCompletion,
   SimpleNormalCompletion,
+  NormalCompletion,
   ReturnCompletion,
   ThrowCompletion,
 } from "../completions.js";
@@ -109,7 +110,7 @@ export class JoinImplementation {
 
   unbundleNormalCompletion(
     completionOrValue: Completion | Value | Reference
-  ): [void | SimpleNormalCompletion, Value | Reference] {
+  ): [void | NormalCompletion, Value | Reference] {
     let completion, value;
     if (completionOrValue instanceof PossiblyNormalCompletion) {
       completion = completionOrValue;

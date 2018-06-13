@@ -705,11 +705,11 @@ export type JoinType = {
 
   unbundleNormalCompletion(
     completionOrValue: Completion | Value | Reference
-  ): [void | SimpleNormalCompletion, Value | Reference],
+  ): [void | NormalCompletion, Value | Reference],
 
   composeNormalCompletions(
-    leftCompletion: void | SimpleNormalCompletion,
-    rightCompletion: void | SimpleNormalCompletion,
+    leftCompletion: void | NormalCompletion,
+    rightCompletion: void | NormalCompletion,
     resultValue: Value,
     realm: Realm
   ): PossiblyNormalCompletion | Value,
