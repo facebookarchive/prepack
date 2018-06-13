@@ -26,6 +26,7 @@ export class BreakpointManager {
     if (!IsStatement(ast)) return;
     if (ast.loc && ast.loc.source) {
       let location = ast.loc;
+      // console.log(`Checking ${location.source}: ${location.start.line} ${location.start.column}`);
       let filePath = location.source;
       if (filePath === null) return;
       let lineNum = location.start.line;
@@ -51,6 +52,7 @@ export class BreakpointManager {
   }
 
   _addBreakpoint(bp: BreakpointType) {
+    // console.log(`Adding BP: ${bp.filePath}: ${bp.line}`);
     let breakpointMap = this._breakpointMaps.get(bp.filePath);
     if (!breakpointMap) {
       breakpointMap = new PerFileBreakpointMap(bp.filePath);

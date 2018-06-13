@@ -42,6 +42,8 @@ import {
 } from "./../../environment.js";
 import { CompilerDiagnostic } from "../../errors.js";
 import type { Severity } from "../../errors.js";
+import type { SourceFile } from "./../../types.js";
+import { getAbsoluteSourcePath, findCommonPrefix } from "./PathNormalizer.js";
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm, configArgs: DebuggerConfigArguments) {
@@ -52,6 +54,7 @@ export class DebugServer {
     this._stepManager = new SteppingManager(this._realm, /* default discard old steppers */ false);
     this._stopEventManager = new StopEventManager();
     this._diagnosticSeverity = configArgs.diagnosticSeverity || "FatalError";
+    this._findSourcemapPrefix(configArgs.sourceMaps);
     this.waitForRun(undefined);
   }
   // the collection of breakpoints
@@ -63,6 +66,8 @@ export class DebugServer {
   _stepManager: SteppingManager;
   _stopEventManager: StopEventManager;
   _lastExecuted: SourceData;
+  // Prefix used to translate relative paths stored in AST nodes into absolute paths given to IDE.
+  _sourcemapPrefix: string;
   // Severity at which debugger will break when CompilerDiagnostics are generated. Default is Fatal.
   _diagnosticSeverity: Severity;
 
@@ -88,7 +93,9 @@ export class DebugServer {
       let reason = this._stopEventManager.getDebuggeeStopReason(ast, stoppables);
       if (reason) {
         invariant(ast.loc && ast.loc.source);
-        this._channel.sendStoppedResponse(reason, ast.loc.source, ast.loc.start.line, ast.loc.start.column);
+        let absolutePath = this._relativeToAbsolute(ast.loc.source);
+        invariant(ast.loc); // To appease flow
+        this._channel.sendStoppedResponse(reason, absolutePath, ast.loc.start.line, ast.loc.start.column);
         invariant(ast.loc && ast.loc !== null);
         this.waitForRun(ast.loc);
       }
@@ -101,6 +108,14 @@ export class DebugServer {
     let requestID = request.id;
     let command = request.command;
     let args = request.arguments;
+    // Convert incoming location sources to relative paths in order to match internal representation of filenames.
+    if (loc && loc.source) loc.source = this._absoluteToRelative(loc.source);
+    if (args.kind === "breakpoint") {
+      for (let bp of args.breakpoints) {
+        bp.filePath = this._absoluteToRelative(bp.filePath);
+      }
+    }
+
     switch (command) {
       case DebugMessage.BREAKPOINT_ADD_COMMAND:
         invariant(args.kind === "breakpoint");
@@ -182,7 +197,7 @@ export class DebugServer {
       let frameInfo: Stackframe = {
         id: this._realm.contextStack.length - 1 - i,
         functionName: functionName,
-        fileName: fileName,
+        fileName: this._relativeToAbsolute(fileName), // Outward facing paths must be absolute.
         line: line,
         column: column,
       };
@@ -299,19 +314,52 @@ export class DebugServer {
     return false;
   }
 
+  _findSourcemapPrefix(sourceMaps: Array<SourceFile> | void) {
+    if (sourceMaps) {
+      // Extract paths to all original source files
+      let sourcePaths = [];
+      for (let map of sourceMaps) {
+        if (map.sourceMapContents) {
+          let sources = JSON.parse(map.sourceMapContents).sources;
+          for (let source of sources) {
+            sourcePaths.push(getAbsoluteSourcePath(map.filePath, source));
+          }
+        } else {
+          // Should probably break out of everything and not attempt to infer a shared prefix if missing some sourcemaps.
+        }
+      }
+
+      this._sourcemapPrefix = findCommonPrefix(sourcePaths);
+    } else {
+      this._sourcemapPrefix = "";
+    }
+
+    console.log("Prefix", this._sourcemapPrefix);
+  }
+
+  _relativeToAbsolute(path: string): string {
+    return `${this._sourcemapPrefix}${path}`;
+  }
+
+  _absoluteToRelative(path: string): string {
+    return path.replace(this._sourcemapPrefix, "");
+  }
+
   /*
     Displays PP error message, then waits for user to run the program to
     continue (similar to a breakpoint).
   */
   handlePrepackError(diagnostic: CompilerDiagnostic) {
-    invariant(diagnostic.location && diagnostic.location.source);
+    invariant(diagnostic.location);
     // The following constructs the message and stop instruction
     // that is sent to the UI to actually execution.
     let location = diagnostic.location;
+    let absoluteSource = "";
+    if (location.source !== null) absoluteSource = this._relativeToAbsolute(location.source);
     let message = `${diagnostic.severity} ${diagnostic.errorCode}: ${diagnostic.message}`;
     this._channel.sendStoppedResponse(
       "Diagnostic",
-      location.source || "",
+      absoluteSource,
       location.start.line,
       location.start.column,
       message
@@ -320,6 +368,7 @@ export class DebugServer {
     // The AST Node's location is needed to satisfy the subsequent stackTrace request.
     this.waitForRun(location);
   }
+
   // Return whether the debugger should stop on a CompilerDiagnostic of a given severity.
   shouldStopForSeverity(severity: Severity): boolean {
     switch (this._diagnosticSeverity) {

@@ -99,7 +99,9 @@ export class AdapterChannel {
     if (args.prepackRuntime.length > 0) {
       // user specified a Prepack path
       runtime = "node";
-      prepackCommand = [args.prepackRuntime].concat(prepackCommand);
+      prepackCommand = ["--max_old_space_size=8192", "--stack_size=10000"]
+        .concat([args.prepackRuntime])
+        .concat(prepackCommand);
     }
     this._prepackProcess = child_process.spawn(runtime, prepackCommand);
 

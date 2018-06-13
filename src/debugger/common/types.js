@@ -10,7 +10,8 @@
 /* @flow strict */
 
 import * as DebugProtocol from "vscode-debugprotocol";
-import type { Severity } from "../../errors.js";
+import type { Severity } from "./../../errors.js";
+import type { SourceFile } from "./../../types.js";
 
 export type DebuggerRequest = {
   id: number,
@@ -42,6 +43,7 @@ export type PrepackLaunchArguments = {
 
 export type DebuggerConfigArguments = {
   diagnosticSeverity?: Severity,
+  sourceMaps?: Array<SourceFile>,
 };
 
 export type Breakpoint = {
