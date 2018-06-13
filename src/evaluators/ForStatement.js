@@ -337,10 +337,9 @@ function generateRuntimeForStatement(
 
   if (functionInfo.usesThis) {
     let thisRef = env.evaluate(t.thisExpression(), strictCode);
-    if (thisRef instanceof Value) {
-      Havoc.value(realm, thisRef);
-      args.push(thisRef);
-    }
+    let thisVal = Environment.GetValue(realm, thisRef);
+    Havoc.value(realm, thisVal);
+    args.push(thisVal);
   }
 
   Havoc.value(realm, wrapperFunction);
