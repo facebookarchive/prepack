@@ -696,22 +696,11 @@ export class ResidualHeapSerializer {
     let activeFunctions = functionValues.slice();
     let visitedFunctions = new Set();
 
-    mainLoop: while (activeFunctions.length > 0) {
+    while (activeFunctions.length > 0) {
       let f = activeFunctions.pop();
       if (visitedFunctions.has(f)) continue;
       visitedFunctions.add(f);
 
-      // If this is an additional function, ensure its not
-      // a nested value of any of the function values
-      if (this.optimizedFunctionGenerators.has(f)) {
-        for (let functionValue of functionValues) {
-          if (functionValue !== f && this.optimizedFunctionGenerators.has(functionValue)) {
-            if (this.isNestedOptimizedFunction(f, functionValue)) {
-              continue mainLoop;
-            }
-          }
-        }
-      }
       if (f === referencingOnlyOptimizedFunction) {
         let g = this.optimizedFunctionGenerators.get(f);
         invariant(g !== undefined);
