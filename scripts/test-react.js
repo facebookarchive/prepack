@@ -797,16 +797,11 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-classes-3.js");
       });
 
-      // awaiting PR on nested additional support #1626,
-      // issues is that both the parent and child additional
-      // function share the same variable, so the serializer
-      // incorrectly emits it in the MainGenerator scope
-      it.skip("Simple classes with Array.from", async () => {
+      it("Simple classes with Array.from", async () => {
         await runTest(directory, "array-from.js");
       });
 
-      // same issue as last test
-      it.skip("Simple classes with Array.from 2", async () => {
+      it("Simple classes with Array.from 2", async () => {
         await runTest(directory, "array-from2.js");
       });
 
