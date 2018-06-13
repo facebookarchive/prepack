@@ -336,7 +336,7 @@ function generateRuntimeForStatement(
   if (functionInfo.usesReturn || functionInfo.usesThrow || functionInfo.usesArguments || functionInfo.usesGotoToLabel) {
     // We do not have support for these yet
     let diagnostic = new CompilerDiagnostic(
-      `"failed to recover from a for/while loop bail-out due to unsupported logic in loop body`,
+      `failed to recover from a for/while loop bail-out due to unsupported logic in loop body`,
       realm.currentLocation,
       "PP0035",
       "FatalError"
