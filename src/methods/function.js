@@ -14,7 +14,13 @@ import type { PropertyKeyValue, FunctionBodyAstNode } from "../types.js";
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
-import { Completion, ReturnCompletion, AbruptCompletion, SimpleNormalCompletion } from "../completions.js";
+import {
+  Completion,
+  ReturnCompletion,
+  AbruptCompletion,
+  SimpleNormalCompletion,
+  NormalCompletion,
+} from "../completions.js";
 import { ExecutionContext } from "../realm.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord } from "../environment.js";
 import {
@@ -1122,7 +1128,7 @@ export class FunctionImplementation {
   // If c is undefined, the result is just realm.savedCompletion.
   // Call this only when a join point has been reached.
   incorporateSavedCompletion(realm: Realm, c: void | AbruptCompletion | Value): void | Completion | Value {
-    invariant(!(c instanceof SimpleNormalCompletion), "This function doesn't accept NormalCompletions");
+    invariant(!(c instanceof SimpleNormalCompletion), "TODO: This function doesn't accept NormalCompletions");
     let savedCompletion = realm.savedCompletion;
     if (savedCompletion !== undefined) {
       if (savedCompletion.savedPathConditions) {
@@ -1133,7 +1139,6 @@ export class FunctionImplementation {
       }
       realm.savedCompletion = undefined;
       if (c === undefined) return savedCompletion;
-      // TODO: normal completion?
       if (c instanceof Value) {
         Join.updatePossiblyNormalCompletionWithValue(realm, savedCompletion, new SimpleNormalCompletion(c));
         return savedCompletion;
@@ -1172,7 +1177,7 @@ export class FunctionImplementation {
 
   PartiallyEvaluateStatements(
     body: Array<BabelNodeStatement>,
-    blockValue: void | SimpleNormalCompletion | Value,
+    blockValue: void | NormalCompletion | Value,
     strictCode: boolean,
     blockEnv: LexicalEnvironment,
     realm: Realm

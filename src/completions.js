@@ -154,18 +154,13 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   ) {
     invariant(consequent === consequentEffects.result);
     invariant(alternate === alternateEffects.result);
-    invariant(
-      consequent instanceof NormalCompletion ||
-        alternate instanceof NormalCompletion
-    );
+    invariant(consequent instanceof NormalCompletion || alternate instanceof NormalCompletion);
     invariant(consequent instanceof AbruptCompletion || alternate instanceof AbruptCompletion);
     invariant(
-        consequent instanceof AbruptCompletion ||
-        (consequent instanceof NormalCompletion && value === consequent.value)
+      consequent instanceof AbruptCompletion || (consequent instanceof NormalCompletion && value === consequent.value)
     );
     invariant(
-        alternate instanceof AbruptCompletion ||
-        (alternate instanceof NormalCompletion && value === alternate.value)
+      alternate instanceof AbruptCompletion || (alternate instanceof NormalCompletion && value === alternate.value)
     );
     let loc =
       consequent instanceof AbruptCompletion

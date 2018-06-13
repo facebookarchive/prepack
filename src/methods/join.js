@@ -579,10 +579,7 @@ export class JoinImplementation {
       invariant(val instanceof Value);
       return new ThrowCompletion(val, result1.location);
     }
-    if (
-      result1 instanceof SimpleNormalCompletion &&
-      result2 instanceof SimpleNormalCompletion
-    ) {
+    if (result1 instanceof SimpleNormalCompletion && result2 instanceof SimpleNormalCompletion) {
       return new SimpleNormalCompletion(getAbstractValue(result1.value, result2.value));
     }
     AbstractValue.reportIntrospectionError(joinCondition);
@@ -607,10 +604,7 @@ export class JoinImplementation {
     if (result1 instanceof PossiblyNormalCompletion && result2 instanceof PossiblyNormalCompletion) {
       return this.joinPossiblyNormalCompletions(realm, joinCondition, result1, result2);
     }
-    if (
-      result1 instanceof SimpleNormalCompletion &&
-      result2 instanceof SimpleNormalCompletion
-    ) {
+    if (result1 instanceof SimpleNormalCompletion && result2 instanceof SimpleNormalCompletion) {
       let val = this.joinValues(realm, result1.value, result2.value, getAbstractValue);
       invariant(val instanceof Value);
       return new SimpleNormalCompletion(val);

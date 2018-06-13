@@ -871,9 +871,7 @@ export class Realm {
         undefined,
         "evaluateWithUndo"
       );
-      return effects.result instanceof SimpleNormalCompletion
-        ? effects.result.value
-        : defaultValue;
+      return effects.result instanceof SimpleNormalCompletion ? effects.result.value : defaultValue;
     } finally {
       this.errorHandler = oldErrorHandler;
     }
@@ -997,8 +995,7 @@ export class Realm {
 
     // return or throw completion
     if (completion instanceof AbruptCompletion) throw completion;
-    if (completion instanceof SimpleNormalCompletion)
-      completion = completion.value;
+    if (completion instanceof SimpleNormalCompletion) completion = completion.value;
     invariant(completion instanceof Value);
     //TODO: fix
     return completion;

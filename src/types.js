@@ -34,6 +34,7 @@ import {
   ForkedAbruptCompletion,
   SimpleNormalCompletion,
   PossiblyNormalCompletion,
+  NormalCompletion,
 } from "./completions.js";
 import { EnvironmentRecord, LexicalEnvironment, Reference } from "./environment.js";
 import { Generator } from "./utils/generator.js";
@@ -534,7 +535,7 @@ export type FunctionType = {
 
   PartiallyEvaluateStatements(
     body: Array<BabelNodeStatement>,
-    blockValue: void | SimpleNormalCompletion | Value,
+    blockValue: void | NormalCompletion | Value,
     strictCode: boolean,
     blockEnv: LexicalEnvironment,
     realm: Realm
@@ -727,7 +728,11 @@ export type JoinType = {
     subsequentEffects: Effects
   ): void,
 
-  updatePossiblyNormalCompletionWithValue(realm: Realm, pnc: PossiblyNormalCompletion, nc: SimpleNormalCompletion): void,
+  updatePossiblyNormalCompletionWithValue(
+    realm: Realm,
+    pnc: PossiblyNormalCompletion,
+    nc: SimpleNormalCompletion
+  ): void,
 
   replacePossiblyNormalCompletionWithForkedAbruptCompletion(
     realm: Realm,

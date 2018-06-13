@@ -352,10 +352,7 @@ export class WidenImplementation {
   }
 
   containsResults(result1: EvaluationResult, result2: EvaluationResult): boolean {
-    if (
-      result1 instanceof SimpleNormalCompletion &&
-      result2 instanceof SimpleNormalCompletion
-    )
+    if (result1 instanceof SimpleNormalCompletion && result2 instanceof SimpleNormalCompletion)
       return this._containsValues(result1.value, result2.value);
     return false;
   }

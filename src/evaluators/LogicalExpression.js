@@ -99,7 +99,13 @@ export default function(
     joinedEffects = Join.joinForkOrChoose(
       realm,
       lval,
-      new Effects(new SimpleNormalCompletion(lval), generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
+      new Effects(
+        new SimpleNormalCompletion(lval),
+        generator1,
+        modifiedBindings1,
+        modifiedProperties1,
+        createdObjects1
+      ),
       new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
     );
   }
