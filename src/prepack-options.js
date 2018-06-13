@@ -65,7 +65,6 @@ export type PrepackOptions = {|
   debugOutFilePath?: string,
   abstractValueImpliesMax?: number,
   debuggerConfigArgs?: DebuggerConfigArguments,
-  prepackInfo?: boolean,
 |};
 
 export function getRealmOptions({
@@ -131,7 +130,6 @@ export function getSerializerOptions({
   inlineExpressions = false,
   initializeMoreModules = false,
   trace = false,
-  prepackInfo = false,
 }: PrepackOptions): SerializerOptions {
   let result: SerializerOptions = {
     delayInitializations,
@@ -146,7 +144,6 @@ export function getSerializerOptions({
     profile,
     inlineExpressions,
     trace,
-    prepackInfo,
   };
   if (lazyObjectsRuntime !== undefined) {
     result.lazyObjectsRuntime = lazyObjectsRuntime;
