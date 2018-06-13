@@ -10,11 +10,12 @@
 /* @flow strict-local */
 
 import { Realm } from "../realm.js";
-import { AbstractValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
+import { AbstractValue, FunctionValue, ObjectValue, SymbolValue, Value, StringValue } from "../values/index.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { determineIfReactElementCanBeHoisted } from "../react/hoisting.js";
 import { traverseReactElement } from "../react/elements.js";
-import { getProperty, getReactSymbol } from "../react/utils.js";
+import { getProperty, getReactSymbol, isEventProp } from "../react/utils.js";
+import invariant from "../invariant.js";
 import ReactElementSet from "../react/ReactElementSet.js";
 import type { ReactOutputTypes } from "../options.js";
 
@@ -34,7 +35,11 @@ export class ResidualReactElementVisitor {
   equivalenceSet: ReactElementSet;
 
   visitReactElement(reactElement: ObjectValue): void {
+    let reactElementData = this.realm.react.reactElements.get(reactElement);
+    invariant(reactElementData !== undefined);
+    let { firstRenderOnly } = reactElementData;
     let isReactFragment = false;
+    let isHostComponent = false;
 
     traverseReactElement(this.realm, reactElement, {
       visitType: (typeValue: Value) => {
@@ -44,22 +49,35 @@ export class ResidualReactElementVisitor {
         if (!isReactFragment) {
           this.residualHeapVisitor.visitValue(typeValue);
         }
+        if (typeValue instanceof StringValue) {
+          isHostComponent = true;
+        }
       },
       visitKey: (keyValue: Value) => {
         this.residualHeapVisitor.visitValue(keyValue);
       },
       visitRef: (refValue: Value) => {
-        this.residualHeapVisitor.visitValue(refValue);
+        if (!firstRenderOnly) {
+          this.residualHeapVisitor.visitValue(refValue);
+        }
       },
       visitAbstractOrPartialProps: (propsValue: AbstractValue | ObjectValue) => {
         this.residualHeapVisitor.visitValue(propsValue);
       },
       visitConcreteProps: (propsValue: ObjectValue) => {
         for (let [propName, binding] of propsValue.properties) {
-          if (binding.descriptor !== undefined && propName !== "children") {
-            let propValue = getProperty(this.realm, propsValue, propName);
-            this.residualHeapVisitor.visitValue(propValue);
+          invariant(propName !== "key" && propName !== "ref", `"${propName}" is a reserved prop name`);
+          if (binding.descriptor === undefined || propName === "children") {
+            continue;
           }
+          let propValue = getProperty(this.realm, propsValue, propName);
+
+          // In firstRenderOnly mode, we strip off onEventHanlders and any props
+          // that are functions as they are not required for init render.
+          if (firstRenderOnly && isHostComponent && (isEventProp(propName) || propValue instanceof FunctionValue)) {
+            continue;
+          }
+          this.residualHeapVisitor.visitValue(propValue);
         }
       },
       visitChildNode: (childValue: Value) => {

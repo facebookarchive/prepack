@@ -182,19 +182,24 @@ export class Reconciler {
       }
     };
 
-    let effects = this.realm.wrapInGlobalEnv(() =>
-      this.realm.evaluatePure(
-        () =>
-          this.realm.evaluateForEffects(
-            resolveComponentTree,
-            /*state*/ null,
-            `react component: ${getComponentName(this.realm, componentType)}`
-          ),
-        this._handleReportedSideEffect
-      )
-    );
-    this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
-    return effects;
+    try {
+      this.realm.react.activeReconciler = this;
+      let effects = this.realm.wrapInGlobalEnv(() =>
+        this.realm.evaluatePure(
+          () =>
+            this.realm.evaluateForEffects(
+              resolveComponentTree,
+              /*state*/ null,
+              `react component: ${getComponentName(this.realm, componentType)}`
+            ),
+          this._handleReportedSideEffect
+        )
+      );
+      this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
+      return effects;
+    } finally {
+      this.realm.react.activeReconciler = undefined;
+    }
   }
 
   _handleNestedOptimizedClosuresFromEffects(effects: Effects, evaluatedNode: ReactEvaluatedNode) {
@@ -274,15 +279,20 @@ export class Reconciler {
       }
     };
 
-    let effects = this.realm.wrapInGlobalEnv(() =>
-      this.realm.evaluatePure(() =>
-        evaluateWithNestedParentEffects(this.realm, nestedEffects, () =>
-          this.realm.evaluateForEffects(resolveOptimizedClosure, /*state*/ null, `react nested optimized closure`)
+    try {
+      this.realm.react.activeReconciler = this;
+      let effects = this.realm.wrapInGlobalEnv(() =>
+        this.realm.evaluatePure(() =>
+          evaluateWithNestedParentEffects(this.realm, nestedEffects, () =>
+            this.realm.evaluateForEffects(resolveOptimizedClosure, /*state*/ null, `react nested optimized closure`)
+          )
         )
-      )
-    );
-    this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);
-    return effects;
+      );
+      this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);
+      return effects;
+    } finally {
+      this.realm.react.activeReconciler = undefined;
+    }
   }
 
   clearComponentTreeState(): void {
@@ -1073,7 +1083,7 @@ export class Reconciler {
           resolvedChildren = flattenChildren(this.realm, resolvedChildren);
         }
         if (resolvedChildren !== childrenValue) {
-          let newProps = cloneProps(this.realm, propsValue, false, resolvedChildren);
+          let newProps = cloneProps(this.realm, propsValue, resolvedChildren);
 
           return createInternalReactElement(this.realm, typeValue, keyValue, refValue, newProps);
         }

@@ -291,19 +291,19 @@ export class ResidualReactElementSerializer {
       },
       visitConcreteProps: (propsValue: ObjectValue) => {
         for (let [propName, binding] of propsValue.properties) {
-          if (binding.descriptor !== undefined && propName !== "children") {
-            invariant(propName !== "key" && propName !== "ref", `"${propName}" is a reserved prop name`);
-            let propValue = getProperty(this.realm, propsValue, propName);
-            let reactElementAttribute = this._createReactElementAttribute();
-
-            this._serializeNowOrAfterWaitingForDependencies(propValue, reactElement, () => {
-              let expr = this.residualHeapSerializer.serializeValue(propValue);
-              reactElementAttribute.expr = expr;
-              reactElementAttribute.key = propName;
-              reactElementAttribute.type = "PROPERTY";
-            });
-            reactElement.attributes.push(reactElementAttribute);
+          if (binding.descriptor === undefined || propName === "children") {
+            continue;
           }
+          let propValue = getProperty(this.realm, propsValue, propName);
+          let reactElementAttribute = this._createReactElementAttribute();
+
+          this._serializeNowOrAfterWaitingForDependencies(propValue, reactElement, () => {
+            let expr = this.residualHeapSerializer.serializeValue(propValue);
+            reactElementAttribute.expr = expr;
+            reactElementAttribute.key = propName;
+            reactElementAttribute.type = "PROPERTY";
+          });
+          reactElement.attributes.push(reactElementAttribute);
         }
       },
       visitChildNode: (childValue: Value) => {

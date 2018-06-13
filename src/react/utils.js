@@ -830,7 +830,7 @@ export function getValueFromFunctionCall(
   return completion;
 }
 
-function isEventProp(name: string): boolean {
+export function isEventProp(name: string): boolean {
   return name.length > 2 && name[0].toLowerCase() === "o" && name[1].toLowerCase() === "n";
 }
 
@@ -911,6 +911,12 @@ export function createInternalReactElement(
   Create.CreateDataPropertyOrThrow(realm, obj, "props", props);
   Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
   obj.makeFinal();
+  // If we're in "rendering" a React component tree, we should have an active reconciler
+  let activeReconciler = realm.react.activeReconciler;
+  let createdDuringReconcilation = activeReconciler !== undefined;
+  let firstRenderOnly = createdDuringReconcilation ? activeReconciler.componentTreeConfig.firstRenderOnly : false;
+
+  realm.react.reactElements.set(obj, { createdDuringReconcilation, firstRenderOnly });
   return obj;
 }
 
@@ -946,19 +952,14 @@ function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps:
   realm.temporalAliasArgs.set(temporalTo, newTemporalArgs);
 }
 
-export function cloneProps(
-  realm: Realm,
-  props: ObjectValue,
-  excludeEventProps: boolean,
-  newChildren?: Value
-): ObjectValue {
+export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value): ObjectValue {
   let clonedProps = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
 
   for (let [propName, binding] of props.properties) {
     if (binding && binding.descriptor && binding.descriptor.enumerable) {
       if (newChildren !== undefined && propName === "children") {
         Properties.Set(realm, clonedProps, propName, newChildren, true);
-      } else if (!excludeEventProps || !isEventProp(propName)) {
+      } else {
         Properties.Set(realm, clonedProps, propName, getProperty(realm, props, propName), true);
       }
     }
