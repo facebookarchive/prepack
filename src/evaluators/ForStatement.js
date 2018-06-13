@@ -338,7 +338,7 @@ function generateRuntimeForStatement(
     let diagnostic = new CompilerDiagnostic(
       `failed to recover from a for/while loop bail-out due to unsupported logic in loop body`,
       realm.currentLocation,
-      "PP0035",
+      "PP0037",
       "FatalError"
     );
     realm.handleError(diagnostic);
