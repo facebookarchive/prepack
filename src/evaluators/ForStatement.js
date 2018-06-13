@@ -11,7 +11,7 @@
 
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
-import { Value, EmptyValue } from "../values/index.js";
+import { AbstractValue, Value, EmptyValue, ECMAScriptSourceFunctionValue } from "../values/index.js";
 import {
   AbruptCompletion,
   BreakCompletion,
@@ -22,12 +22,24 @@ import {
   ReturnCompletion,
   ThrowCompletion,
 } from "../completions.js";
+import traverse from "babel-traverse";
+import type { BabelTraversePath } from "babel-traverse";
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { UpdateEmpty } from "../methods/index.js";
 import { LoopContinues, InternalGetResultValue, TryToApplyEffectsOfJoiningBranches } from "./ForOfStatement.js";
-import { Environment, Functions, Join, To } from "../singletons.js";
+import { Environment, Functions, Havoc, Join, To } from "../singletons.js";
 import invariant from "../invariant.js";
+import * as t from "babel-types";
+import type { FunctionBodyAstNode } from "../types.js";
 import type { BabelNodeForStatement } from "babel-types";
+
+type BailOutWrapperInfo = {
+  usesArguments: boolean,
+  usesThis: boolean,
+  usesReturn: boolean,
+  usesGotoToLabel: boolean,
+};
 
 // ECMA262 13.7.4.9
 export function CreatePerIterationEnvironment(realm: Realm, perIterationBindings: Array<string>) {
@@ -268,8 +280,147 @@ function ForBodyEvaluation(
   }
 }
 
+let BailOutWrapperClosureRefVisitor = {
+  ReferencedIdentifier(path: BabelTraversePath, state: BailOutWrapperInfo) {
+    if (path.node.name === "arguments") {
+      state.usesArguments = true;
+    }
+  },
+  ThisExpression(path: BabelTraversePath, state: BailOutWrapperInfo) {
+    state.usesThis = true;
+  },
+  "BreakStatement|ContinueStatement"(path: BabelTraversePath, state: BailOutWrapperInfo) {
+    if (path.node.label !== undefined) {
+      state.usesGotoToLabel = true;
+    }
+  },
+  ReturnStatement(path: BabelTraversePath, state: BailOutWrapperInfo) {
+    state.usesReturn = true;
+  },
+};
+
+function generateRuntimeForStatement(
+  ast: BabelNodeForStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  labelSet: ?Array<string>
+): AbstractValue {
+  let wrapperFunction = new ECMAScriptSourceFunctionValue(realm);
+  let body = t.blockStatement([ast]);
+  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
+  wrapperFunction.$ECMAScriptCode = body;
+  wrapperFunction.$FormalParameters = [];
+  wrapperFunction.$Environment = env;
+  // We need to scan to AST looking for "this", "return", labels and "arguments"
+  let functionInfo = {
+    usesArguments: false,
+    usesThis: false,
+    usesReturn: false,
+    usesGotoToLabel: false,
+  };
+
+  traverse(
+    t.file(t.program([t.expressionStatement(t.functionExpression(null, [], body))])),
+    BailOutWrapperClosureRefVisitor,
+    null,
+    functionInfo
+  );
+  traverse.clearCache();
+
+  if (functionInfo.usesReturn || functionInfo.usesArguments || functionInfo.usesGotoToLabel) {
+    // We do not have support for these yet
+    // TODO: issue number upon creation of issue
+    throw new FatalError("TODO: #? handle more loop bail out cases");
+  }
+  let args = [wrapperFunction];
+
+  if (functionInfo.usesThis) {
+    let thisRef = env.evaluate(t.thisExpression(), strictCode);
+    if (thisRef instanceof Value) {
+      Havoc.value(realm, thisRef);
+      args.push(thisRef);
+    }
+  }
+
+  Havoc.value(realm, wrapperFunction);
+
+  let wrapperValue = AbstractValue.createTemporalFromBuildFunction(
+    realm,
+    Value,
+    args,
+    ([func, thisExpr]) =>
+      functionInfo.usesThis
+        ? t.callExpression(t.memberExpression(func, t.identifier("call")), [thisExpr])
+        : t.callExpression(func, [])
+  );
+  invariant(wrapperValue instanceof AbstractValue);
+  return wrapperValue;
+}
+
+function tryToEvaluateForStatementOrLeaveAsAbstract(
+  ast: BabelNodeForStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  labelSet: ?Array<string>
+): Value {
+  let effects;
+  let savedSuppressDiagnostics = realm.suppressDiagnostics;
+  try {
+    realm.suppressDiagnostics = true;
+    effects = realm.evaluateForEffects(
+      () => evaluateForStatement(ast, strictCode, env, realm, labelSet),
+      undefined,
+      "tryToEvaluateForStatementOrLeaveAsAbstract"
+    );
+  } catch (error) {
+    if (error instanceof FatalError) {
+      realm.suppressDiagnostics = savedSuppressDiagnostics;
+      return realm.evaluateWithPossibleThrowCompletion(
+        () => generateRuntimeForStatement(ast, strictCode, env, realm, labelSet),
+        TypesDomain.topVal,
+        ValuesDomain.topVal
+      );
+    } else {
+      throw error;
+    }
+  } finally {
+    realm.suppressDiagnostics = savedSuppressDiagnostics;
+  }
+  // Note that the effects of (non joining) abrupt branches are not included
+  // in effects, but are tracked separately inside completion.
+  realm.applyEffects(effects);
+  let completion = effects.result;
+  if (completion instanceof PossiblyNormalCompletion) {
+    // in this case one of the branches may complete abruptly, which means that
+    // not all control flow branches join into one flow at this point.
+    // Consequently we have to continue tracking changes until the point where
+    // all the branches come together into one.
+    completion = realm.composeWithSavedCompletion(completion);
+  }
+  // return or throw completion
+  if (completion instanceof AbruptCompletion) throw completion;
+  invariant(completion instanceof Value);
+  return completion;
+}
+
 // ECMA262 13.7.4.7
 export default function(
+  ast: BabelNodeForStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  labelSet: ?Array<string>
+): Value {
+  if (realm.isInPureScope()) {
+    return tryToEvaluateForStatementOrLeaveAsAbstract(ast, strictCode, env, realm, labelSet);
+  } else {
+    return evaluateForStatement(ast, strictCode, env, realm, labelSet);
+  }
+}
+
+function evaluateForStatement(
   ast: BabelNodeForStatement,
   strictCode: boolean,
   env: LexicalEnvironment,
