@@ -212,7 +212,7 @@ export class ResidualHeapSerializer {
     this.declarativeEnvironmentRecordsBindings = declarativeEnvironmentRecordsBindings;
     this.generatorDAG = generatorDAG;
     this.conditionalFeasibility = conditionalFeasibility;
-    this.optimizedFunctionGenerators = new Map();
+    this.additionalFunctionGenerators = new Map();
     this.declaredGlobalLets = new Map();
     this._objectSemaphores = new Map();
     this.additionalGeneratorRoots = additionalGeneratorRoots;
@@ -257,7 +257,7 @@ export class ResidualHeapSerializer {
   declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>;
   residualReactElementSerializer: ResidualReactElementSerializer;
   referentializer: Referentializer;
-  optimizedFunctionGenerators: Map<FunctionValue, Generator>;
+  additionalFunctionGenerators: Map<FunctionValue, Generator>;
 
   // function values nested in additional functions can't delay initializations
   // TODO: revisit this and fix additional functions to be capable of delaying initializations
@@ -702,7 +702,7 @@ export class ResidualHeapSerializer {
       visitedFunctions.add(f);
 
       if (f === referencingOnlyOptimizedFunction) {
-        let g = this.optimizedFunctionGenerators.get(f);
+        let g = this.additionalFunctionGenerators.get(f);
         invariant(g !== undefined);
         result.add(g);
       } else {
@@ -739,7 +739,7 @@ export class ResidualHeapSerializer {
   isReferencedOnlyByOptimizedFunction(val: Value): void | FunctionValue {
     let scopes = this.residualValues.get(val);
     invariant(scopes !== undefined);
-    let optimizedFunction;
+    let additionalFunction;
     for (let scope of scopes) {
       let s = scope;
       while (s instanceof Generator) {
@@ -747,24 +747,24 @@ export class ResidualHeapSerializer {
       }
       if (s === "GLOBAL") return undefined;
       invariant(s instanceof FunctionValue);
-      if (this.optimizedFunctionGenerators.has(s)) {
-        if (optimizedFunction !== undefined) {
-          if (this.isNestedOptimizedFunction(s, optimizedFunction)) {
+      if (this.additionalFunctionGenerators.has(s)) {
+        if (additionalFunction !== undefined) {
+          if (this.isNestedOptimizedFunction(s, additionalFunction)) {
             continue;
           }
-          if (optimizedFunction !== s) {
+          if (additionalFunction !== s) {
             return undefined;
           }
         }
-        optimizedFunction = s;
+        additionalFunction = s;
       } else {
         let f = this.isReferencedOnlyByOptimizedFunction(s);
         if (f === undefined) return undefined;
-        if (optimizedFunction !== undefined && optimizedFunction !== f) return undefined;
-        optimizedFunction = f;
+        if (additionalFunction !== undefined && additionalFunction !== f) return undefined;
+        additionalFunction = f;
       }
     }
-    return optimizedFunction;
+    return additionalFunction;
   }
 
   _getActiveBodyOfGenerator(generator: Generator): void | SerializedBody {
@@ -866,7 +866,7 @@ export class ResidualHeapSerializer {
     // In the case where we have no common ancestor but we have an optimized function reference,
     // we can attempt to use the generator of the single optimized function
     if (commonAncestor === undefined && referencingOnlyOptimizedFunction !== undefined) {
-      commonAncestor = this.optimizedFunctionGenerators.get(referencingOnlyOptimizedFunction);
+      commonAncestor = this.additionalFunctionGenerators.get(referencingOnlyOptimizedFunction);
     }
     invariant(commonAncestor !== undefined, "there must always be a common generator ancestor");
     if (trace) console.log(`  common ancestor: ${commonAncestor.getName()}`);
@@ -2235,8 +2235,8 @@ export class ResidualHeapSerializer {
     let additionalFVEffects = this.additionalFunctionValuesAndEffects;
     if (additionalFVEffects)
       for (let [additionalFunctionValue, { generator }] of additionalFVEffects.entries()) {
-        invariant(!this.optimizedFunctionGenerators.has(additionalFunctionValue));
-        this.optimizedFunctionGenerators.set(additionalFunctionValue, generator);
+        invariant(!this.additionalFunctionGenerators.has(additionalFunctionValue));
+        this.additionalFunctionGenerators.set(additionalFunctionValue, generator);
       }
   }
 
