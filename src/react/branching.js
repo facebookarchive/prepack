@@ -167,6 +167,8 @@ function applyBranchedLogicValue(realm: Realm, value: Value): Value {
         );
       }
     );
+  } else if (value instanceof AbstractValue && (value.kind === "||" || value.kind === "&&")) {
+    invariant(false, "applyBranchedLogicValue encounterted a logical expression (|| or &&), this should never occur");
   } else {
     throw new ExpectedBailOut("Unsupported value encountered when applying branched logic to values");
   }
