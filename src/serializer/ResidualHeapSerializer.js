@@ -2231,12 +2231,12 @@ export class ResidualHeapSerializer {
     this.rewrittenAdditionalFunctions.set(additionalFunctionValue, body);
   }
 
-  prepareOptimizedFunctionValues() {
+  prepareAdditionalFunctionValues() {
     let additionalFVEffects = this.additionalFunctionValuesAndEffects;
     if (additionalFVEffects)
-      for (let [optimizedFunctionValue, { generator }] of additionalFVEffects.entries()) {
-        invariant(!this.optimizedFunctionGenerators.has(optimizedFunctionValue));
-        this.optimizedFunctionGenerators.set(optimizedFunctionValue, generator);
+      for (let [additionalFunctionValue, { generator }] of additionalFVEffects.entries()) {
+        invariant(!this.optimizedFunctionGenerators.has(additionalFunctionValue));
+        this.optimizedFunctionGenerators.set(additionalFunctionValue, generator);
       }
   }
 
@@ -2246,7 +2246,7 @@ export class ResidualHeapSerializer {
   }
 
   serialize(): BabelNodeFile {
-    this.prepareOptimizedFunctionValues();
+    this.prepareAdditionalFunctionValues();
 
     this.generator.serialize(this._getContext());
     this.getStatistics().generators++;
