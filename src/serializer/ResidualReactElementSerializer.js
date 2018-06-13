@@ -97,7 +97,7 @@ export class ResidualReactElementSerializer {
           t.callExpression(funcId, originalCreateElementIdentifier ? [originalCreateElementIdentifier] : [])
         )
       );
-      let optimizedFunction = this.residualHeapSerializer.isReferencedOnlyByOptimizedFunction(reactElement);
+      let optimizedFunction = this.residualHeapSerializer.tryGetOptimizedFunctionRoot(reactElement);
       this.residualHeapSerializer.getPrelude(optimizedFunction).push(statement);
     }
     // we then push the reactElement and its id into our list of elements to process after
@@ -129,7 +129,7 @@ export class ResidualReactElementSerializer {
     let propsValue = getProperty(this.realm, value, "props");
 
     let shouldHoist =
-      this.residualHeapSerializer.isReferencedOnlyByOptimizedFunction(value) !== undefined &&
+      this.residualHeapSerializer.tryGetOptimizedFunctionRoot(value) !== undefined &&
       canHoistReactElement(this.realm, value);
 
     let id = this.residualHeapSerializer.getSerializeObjectIdentifier(value);
