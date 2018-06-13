@@ -83,8 +83,6 @@ export function isReactElement(val: Value): boolean {
     let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
     let _isReactElement = symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
     if (_isReactElement) {
-      // add to Set to speed up future lookups
-      realm.react.reactElements.add(val);
       return true;
     }
   }
@@ -834,21 +832,6 @@ export function getValueFromFunctionCall(
 
 function isEventProp(name: string): boolean {
   return name.length > 2 && name[0].toLowerCase() === "o" && name[1].toLowerCase() === "n";
-}
-
-export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElement: ObjectValue): ObjectValue {
-  let typeValue = getProperty(realm, reactElement, "type");
-  let keyValue = getProperty(realm, reactElement, "key");
-  let propsValue = getProperty(realm, reactElement, "props");
-
-  invariant(propsValue instanceof ObjectValue);
-  return createInternalReactElement(
-    realm,
-    typeValue,
-    keyValue,
-    realm.intrinsics.null,
-    typeValue instanceof StringValue ? cloneProps(realm, propsValue, true) : propsValue
-  );
 }
 
 export function getLocationFromValue(expressionLocation: any) {

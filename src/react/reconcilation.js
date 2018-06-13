@@ -42,7 +42,6 @@ import {
   getValueFromFunctionCall,
   isReactElement,
   mapArrayValue,
-  sanitizeReactElementForFirstRenderOnly,
   valueIsClassComponent,
   valueIsFactoryClassComponent,
   valueIsKnownReactAbstraction,
@@ -1123,10 +1122,7 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     evaluatedNode: ReactEvaluatedNode
   ) {
-    reactElement = this.componentTreeConfig.firstRenderOnly
-      ? sanitizeReactElementForFirstRenderOnly(this.realm, reactElement)
-      : reactElement;
-
+    // We used to sanitize out props for firstRender here, we now do this during serialization
     let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
     let refValue = getProperty(this.realm, reactElement, "ref");
