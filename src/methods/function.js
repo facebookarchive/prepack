@@ -1128,7 +1128,6 @@ export class FunctionImplementation {
   // If c is undefined, the result is just realm.savedCompletion.
   // Call this only when a join point has been reached.
   incorporateSavedCompletion(realm: Realm, c: void | AbruptCompletion | Value): void | Completion | Value {
-    invariant(!(c instanceof SimpleNormalCompletion), "TODO: This function doesn't accept NormalCompletions");
     let savedCompletion = realm.savedCompletion;
     if (savedCompletion !== undefined) {
       if (savedCompletion.savedPathConditions) {
@@ -1140,7 +1139,7 @@ export class FunctionImplementation {
       realm.savedCompletion = undefined;
       if (c === undefined) return savedCompletion;
       if (c instanceof Value) {
-        Join.updatePossiblyNormalCompletionWithValue(realm, savedCompletion, new SimpleNormalCompletion(c));
+        Join.updatePossiblyNormalCompletionWithValue(realm, savedCompletion, c);
         return savedCompletion;
       } else {
         let e = realm.getCapturedEffects();
@@ -1162,7 +1161,6 @@ export class FunctionImplementation {
     for (let node of body) {
       if (node.type !== "FunctionDeclaration") {
         let res = blockEnv.evaluateCompletionDeref(node, strictCode);
-        invariant(res instanceof AbruptCompletion || res instanceof Value);
         if (!(res instanceof EmptyValue)) {
           if (res instanceof AbruptCompletion) throw UpdateEmpty(realm, res, blockValue || realm.intrinsics.empty);
           invariant(res instanceof Value);
@@ -1192,7 +1190,7 @@ export class FunctionImplementation {
           if (blockValue === undefined || blockValue instanceof Value) {
             if (res instanceof AbruptCompletion)
               return [UpdateEmpty(realm, res, blockValue || realm.intrinsics.empty), statementAsts];
-            invariant(res instanceof SimpleNormalCompletion || res instanceof Value);
+            invariant(res instanceof NormalCompletion || res instanceof Value);
             blockValue = res;
           }
         }

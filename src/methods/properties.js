@@ -341,8 +341,7 @@ export class PropertiesImplementation {
 
       // return or throw completion
       if (completion instanceof AbruptCompletion) throw completion;
-      if (completion instanceof SimpleNormalCompletion && !(completion instanceof PossiblyNormalCompletion))
-        completion = completion.value;
+      if (completion instanceof SimpleNormalCompletion) completion = completion.value;
       invariant(completion instanceof Value);
       return To.ToBooleanPartial(realm, completion);
     }

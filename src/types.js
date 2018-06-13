@@ -728,11 +728,7 @@ export type JoinType = {
     subsequentEffects: Effects
   ): void,
 
-  updatePossiblyNormalCompletionWithValue(
-    realm: Realm,
-    pnc: PossiblyNormalCompletion,
-    nc: SimpleNormalCompletion
-  ): void,
+  updatePossiblyNormalCompletionWithValue(realm: Realm, pnc: PossiblyNormalCompletion, v: Value): void,
 
   replacePossiblyNormalCompletionWithForkedAbruptCompletion(
     realm: Realm,
@@ -744,14 +740,14 @@ export type JoinType = {
     e: Effects
   ): ForkedAbruptCompletion,
 
-  updatePossiblyNormalCompletionWithConditionalValue(
+  updatePossiblyNormalCompletionWithConditionalSimpleNormalCompletion(
     realm: Realm,
     joinCondition: AbstractValue,
     pnc: PossiblyNormalCompletion,
     nc: SimpleNormalCompletion
   ): void,
 
-  updatePossiblyNormalCompletionWithInverseConditionalValue(
+  updatePossiblyNormalCompletionWithInverseConditionalSimpleNormalCompletion(
     realm: Realm,
     joinCondition: AbstractValue,
     pnc: PossiblyNormalCompletion,
@@ -774,7 +770,7 @@ export type JoinType = {
     joinCondition: AbstractValue,
     result1: EvaluationResult,
     result2: EvaluationResult
-  ): AbruptCompletion | PossiblyNormalCompletion | SimpleNormalCompletion,
+  ): Completion,
 
   joinOrForkResults(
     realm: Realm,
@@ -783,7 +779,7 @@ export type JoinType = {
     result2: EvaluationResult,
     e1: Effects,
     e2: Effects
-  ): AbruptCompletion | PossiblyNormalCompletion | SimpleNormalCompletion,
+  ): Completion,
 
   composeGenerators(realm: Realm, generator1: Generator, generator2: Generator): Generator,
 

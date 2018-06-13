@@ -997,7 +997,6 @@ export class Realm {
     if (completion instanceof AbruptCompletion) throw completion;
     if (completion instanceof SimpleNormalCompletion) completion = completion.value;
     invariant(completion instanceof Value);
-    //TODO: fix
     return completion;
   }
 
@@ -1642,7 +1641,7 @@ export class Realm {
           return f();
         } finally {
           for (let priorEffect of priorEffects) {
-            invariant(!priorEffect.canBeApplied, "Prior effects not applied");
+            invariant(!priorEffect.canBeApplied);
             priorEffect.canBeApplied = true;
           }
         }
