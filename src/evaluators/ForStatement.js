@@ -39,6 +39,7 @@ type BailOutWrapperInfo = {
   usesThis: boolean,
   usesReturn: boolean,
   usesGotoToLabel: boolean,
+  usesThrow: boolean,
 };
 
 // ECMA262 13.7.4.9
@@ -297,6 +298,9 @@ let BailOutWrapperClosureRefVisitor = {
   ReturnStatement(path: BabelTraversePath, state: BailOutWrapperInfo) {
     state.usesReturn = true;
   },
+  ThrowStatement(path: BabelTraversePath, state: BailOutWrapperInfo) {
+    state.usesThrow = true;
+  },
 };
 
 function generateRuntimeForStatement(
@@ -312,12 +316,13 @@ function generateRuntimeForStatement(
   wrapperFunction.$ECMAScriptCode = body;
   wrapperFunction.$FormalParameters = [];
   wrapperFunction.$Environment = env;
-  // We need to scan to AST looking for "this", "return", labels and "arguments"
+  // We need to scan to AST looking for "this", "return", "throw", labels and "arguments"
   let functionInfo = {
     usesArguments: false,
     usesThis: false,
     usesReturn: false,
     usesGotoToLabel: false,
+    usesThrow: false,
   };
 
   traverse(
