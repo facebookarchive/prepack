@@ -512,6 +512,7 @@ export default class AbstractObjectValue extends AbstractValue {
           },
           {
             skipInvariant: true,
+            isPure: true,
           }
         );
       };
@@ -606,8 +607,12 @@ export default class AbstractObjectValue extends AbstractValue {
     if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
     if (this.values.isTop()) {
       if (this.isSimpleObject() && this.isIntrinsic()) {
-        return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [this, P], ([o, p]) =>
-          t.memberExpression(o, p, true)
+        return AbstractValue.createTemporalFromBuildFunction(
+          this.$Realm,
+          Value,
+          [this, P],
+          ([o, p]) => t.memberExpression(o, p, true),
+          { skipInvariant: true, isPure: true }
         );
       }
       if (this.$Realm.isInPureScope()) {
@@ -622,8 +627,12 @@ export default class AbstractObjectValue extends AbstractValue {
         Havoc.value(this.$Realm, Receiver);
         // Coercion can only have effects on anything reachable from the key.
         Havoc.value(this.$Realm, P);
-        return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [Receiver, P], ([o, p]) =>
-          t.memberExpression(o, p, true)
+        return AbstractValue.createTemporalFromBuildFunction(
+          this.$Realm,
+          Value,
+          [Receiver, P],
+          ([o, p]) => t.memberExpression(o, p, true),
+          { skipInvariant: true, isPure: true }
         );
       }
       let error = new CompilerDiagnostic(
