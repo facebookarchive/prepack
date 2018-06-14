@@ -305,8 +305,7 @@ export class DebugServer {
   */
   handlePrepackError(diagnostic: CompilerDiagnostic) {
     invariant(diagnostic.location && diagnostic.location.source);
-    // The following constructs the message and stop instruction
-    // that is sent to the UI to actually execution.
+    // The following constructs the message and stop-instruction that is sent to the UI to actually stop the execution.
     let location = diagnostic.location;
     let message = `${diagnostic.severity} ${diagnostic.errorCode}: ${diagnostic.message}`;
     this._channel.sendStoppedResponse(
