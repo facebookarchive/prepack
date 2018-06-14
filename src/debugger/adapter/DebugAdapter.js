@@ -59,30 +59,30 @@ class PrepackDebugSession extends DebugSession {
   }
 
   _registerMessageCallbacks() {
-    if (this._adapterChannel !== undefined) {
-      this._adapterChannel.registerChannelEvent(DebugMessage.STOPPED_RESPONSE, (response: DebuggerResponse) => {
-        let result = response.result;
-        invariant(result.kind === "stopped");
-        let message = `${result.reason}: ${result.filePath} ${result.line}:${result.column}`;
-        // Append message if there exists one (for Prepack errors)
-        if (result.message !== undefined) {
-          message += `. ${result.message}`;
-        }
-        this.sendEvent(new StoppedEvent(message, DebuggerConstants.PREPACK_THREAD_ID));
-      });
-    }
-    if (this._adapterChannel !== undefined) {
-      this._adapterChannel.registerChannelEvent(DebugMessage.STEPINTO_RESPONSE, (response: DebuggerResponse) => {
-        let result = response.result;
-        invariant(result.kind === "stepInto");
-        this.sendEvent(
-          new StoppedEvent(
-            "Stepped into " + `${result.filePath} ${result.line}:${result.column}`,
-            DebuggerConstants.PREPACK_THREAD_ID
-          )
-        );
-      });
-    }
+    this._ensureAdapterChannelCreated("registerMessageCallbacks");
+    invariant(this._adapterChannel !== undefined, "Adapter Channel used before it was created, in debugger.");
+    this._adapterChannel.registerChannelEvent(DebugMessage.STOPPED_RESPONSE, (response: DebuggerResponse) => {
+      let result = response.result;
+      invariant(result.kind === "stopped");
+      let message = `${result.reason}: ${result.filePath} ${result.line}:${result.column}`;
+      // Append message if there exists one (for Prepack errors)
+      if (result.message !== undefined) {
+        message += `. ${result.message}`;
+      }
+      this.sendEvent(new StoppedEvent(message, DebuggerConstants.PREPACK_THREAD_ID));
+    });
+    this._ensureAdapterChannelCreated("registerMessageCallbacks");
+    invariant(this._adapterChannel !== undefined, "Adapter Channel used before it was created, in debugger.");
+    this._adapterChannel.registerChannelEvent(DebugMessage.STEPINTO_RESPONSE, (response: DebuggerResponse) => {
+      let result = response.result;
+      invariant(result.kind === "stepInto");
+      this.sendEvent(
+        new StoppedEvent(
+          "Stepped into " + `${result.filePath} ${result.line}:${result.column}`,
+          DebuggerConstants.PREPACK_THREAD_ID
+        )
+      );
+    });
   }
 
   /**
@@ -138,11 +138,11 @@ class PrepackDebugSession extends DebugSession {
       },
     };
 
-    if (this._adapterChannel !== undefined) {
-      this._adapterChannel.launch(response.request_seq, launchArgs, (dbgResponse: DebuggerResponse) => {
-        this.sendResponse(response);
-      });
-    }
+    this._ensureAdapterChannelCreated("launchRequest");
+    invariant(this._adapterChannel !== undefined, "Adapter Channel used before it was created, in debugger.");
+    this._adapterChannel.launch(response.request_seq, launchArgs, (dbgResponse: DebuggerResponse) => {
+      this.sendResponse(response);
+    });
 
     // The UI will end the configuration sequence by calling 'configurationDone' request.
     // Sending this during the initializeResponse caused non-determinism in request ordering
@@ -152,10 +152,9 @@ class PrepackDebugSession extends DebugSession {
     // It is possible that this gets stuck in an infinite loop that keeps adding the requests
     // into the arrays if _hasLaunchedDebugServer never becomes true. Because of this, these
     // loops come after an invarient to ensure the server exists and this situation cannot happen.
-    if (this._adapterChannel !== undefined) console.error("Debug Server could not launch");
-    if (this._bufferedBreakpointRequests.length > 0) {
-      this._bufferedBreakpointRequests.map(entry => this.setBreakPointsRequest(entry.response, entry.breakpointArgs));
-    }
+    // if (this._bufferedBreakpointRequests.length > 0) {
+    //   this._bufferedBreakpointRequests.map(entry => this.setBreakPointsRequest(entry.response, entry.breakpointArgs));
+    // }
   }
 
   /**
@@ -164,11 +163,11 @@ class PrepackDebugSession extends DebugSession {
   // Override
   continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
     // send a Run request to Prepack and try to send the next request
-    if (this._adapterChannel !== undefined) {
-      this._adapterChannel.run(response.request_seq, (dbgResponse: DebuggerResponse) => {
-        this.sendResponse(response);
-      });
-    }
+    this._ensureAdapterChannelCreated("continueRequest");
+    invariant(this._adapterChannel !== undefined, "Adapter Channel used before it was created, in debugger.");
+    this._adapterChannel.run(response.request_seq, (dbgResponse: DebuggerResponse) => {
+      this.sendResponse(response);
+    });
   }
 
   // Override
@@ -195,62 +194,63 @@ class PrepackDebugSession extends DebugSession {
       breakpointInfos.push(breakpointInfo);
     }
 
-    if (this._adapterChannel !== undefined) {
-      this._adapterChannel.setBreakpoints(response.request_seq, breakpointInfos, (dbgResponse: DebuggerResponse) => {
-        let result = dbgResponse.result;
-        invariant(result.kind === "breakpoint-add");
-        let breakpoints: Array<DebugProtocol.Breakpoint> = [];
-        for (const breakpointInfo of result.breakpoints) {
-          let source: DebugProtocol.Source = {
-            path: breakpointInfo.filePath,
-          };
-          let breakpoint: DebugProtocol.Breakpoint = {
-            verified: true,
-            source: source,
-            line: breakpointInfo.line,
-            column: breakpointInfo.column,
-          };
-          breakpoints.push(breakpoint);
-        }
-        response.body = {
-          breakpoints: breakpoints,
+    this._ensureAdapterChannelCreated("setBreakPointsRequest");
+    invariant(this._adapterChannel !== undefined, "Adapter Channel used before it was created, in debugger.");
+    this._adapterChannel.setBreakpoints(response.request_seq, breakpointInfos, (dbgResponse: DebuggerResponse) => {
+      let result = dbgResponse.result;
+      invariant(result.kind === "breakpoint-add");
+      let breakpoints: Array<DebugProtocol.Breakpoint> = [];
+      for (const breakpointInfo of result.breakpoints) {
+        let source: DebugProtocol.Source = {
+          path: breakpointInfo.filePath,
         };
-        this.sendResponse(response);
-      });
-    } else {
-      // If adapterChannel hasn't been created yet, the breakpoint won't be communicated
-      // to the debug server. Buffer it here and send it after channel is created in LaunchRequest.
-      this._bufferedBreakpointRequests.push({ response: response, breakpointArgs: args });
-    }
+        let breakpoint: DebugProtocol.Breakpoint = {
+          verified: true,
+          source: source,
+          line: breakpointInfo.line,
+          column: breakpointInfo.column,
+        };
+        breakpoints.push(breakpoint);
+      }
+      response.body = {
+        breakpoints: breakpoints,
+      };
+      this.sendResponse(response);
+    });
+    // } else {
+    //   // If adapterChannel hasn't been created yet, the breakpoint won't be communicated
+    //   // to the debug server. Buffer it here and send it after channel is created in LaunchRequest.
+    //   this._bufferedBreakpointRequests.push({ response: response, breakpointArgs: args });
+    // }
   }
 
   // Override
   stackTraceRequest(response: DebugProtocol.StackTraceResponse, args: DebugProtocol.StackTraceArguments): void {
-    if (this._adapterChannel !== undefined) {
-      this._adapterChannel.getStackFrames(response.request_seq, (dbgResponse: DebuggerResponse) => {
-        let result = dbgResponse.result;
-        invariant(result.kind === "stackframe");
-        let frameInfos = result.stackframes;
-        let frames: Array<DebugProtocol.StackFrame> = [];
-        for (const frameInfo of frameInfos) {
-          let source: DebugProtocol.Source = {
-            path: frameInfo.fileName,
-          };
-          let frame: DebugProtocol.StackFrame = {
-            id: frameInfo.id,
-            name: frameInfo.functionName,
-            source: source,
-            line: frameInfo.line,
-            column: frameInfo.column,
-          };
-          frames.push(frame);
-        }
-        response.body = {
-          stackFrames: frames,
+    this._ensureAdapterChannelCreated("stackTraceRequest");
+    invariant(this._adapterChannel !== undefined);
+    this._adapterChannel.getStackFrames(response.request_seq, (dbgResponse: DebuggerResponse) => {
+      let result = dbgResponse.result;
+      invariant(result.kind === "stackframe");
+      let frameInfos = result.stackframes;
+      let frames: Array<DebugProtocol.StackFrame> = [];
+      for (const frameInfo of frameInfos) {
+        let source: DebugProtocol.Source = {
+          path: frameInfo.fileName,
         };
-        this.sendResponse(response);
-      });
-    }
+        let frame: DebugProtocol.StackFrame = {
+          id: frameInfo.id,
+          name: frameInfo.functionName,
+          source: source,
+          line: frameInfo.line,
+          column: frameInfo.column,
+        };
+        frames.push(frame);
+      }
+      response.body = {
+        stackFrames: frames,
+      };
+      this.sendResponse(response);
+    });
   }
 
   // Override
@@ -268,101 +268,110 @@ class PrepackDebugSession extends DebugSession {
 
   // Override
   scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments): void {
-    if (this._adapterChannel !== undefined) {
-      this._adapterChannel.getScopes(response.request_seq, args.frameId, (dbgResponse: DebuggerResponse) => {
-        let result = dbgResponse.result;
-        invariant(result.kind === "scopes");
-        let scopeInfos = result.scopes;
-        let scopes: Array<DebugProtocol.Scope> = [];
-        for (const scopeInfo of scopeInfos) {
-          let scope: DebugProtocol.Scope = {
-            name: scopeInfo.name,
-            variablesReference: scopeInfo.variablesReference,
-            expensive: scopeInfo.expensive,
-          };
-          scopes.push(scope);
-        }
-        response.body = {
-          scopes: scopes,
+    this._ensureAdapterChannelCreated("scopesRequest");
+    invariant(this._adapterChannel !== undefined, "Adapter Channel used before it was created, in debugger.");
+    this._adapterChannel.getScopes(response.request_seq, args.frameId, (dbgResponse: DebuggerResponse) => {
+      let result = dbgResponse.result;
+      invariant(result.kind === "scopes");
+      let scopeInfos = result.scopes;
+      let scopes: Array<DebugProtocol.Scope> = [];
+      for (const scopeInfo of scopeInfos) {
+        let scope: DebugProtocol.Scope = {
+          name: scopeInfo.name,
+          variablesReference: scopeInfo.variablesReference,
+          expensive: scopeInfo.expensive,
         };
-        this.sendResponse(response);
-      });
-    }
+        scopes.push(scope);
+      }
+      response.body = {
+        scopes: scopes,
+      };
+      this.sendResponse(response);
+    });
   }
 
   // Override
   variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments): void {
-    if (this._adapterChannel !== undefined) {
-      this._adapterChannel.getVariables(
-        response.request_seq,
-        args.variablesReference,
-        (dbgResponse: DebuggerResponse) => {
-          let result = dbgResponse.result;
-          invariant(result.kind === "variables");
-          let variableInfos = result.variables;
-          let variables: Array<DebugProtocol.Variable> = [];
-          for (const varInfo of variableInfos) {
-            let variable: DebugProtocol.Variable = {
-              name: varInfo.name,
-              value: varInfo.value,
-              variablesReference: varInfo.variablesReference,
-            };
-            variables.push(variable);
-          }
-          response.body = {
-            variables: variables,
+    this._ensureAdapterChannelCreated("variablesRequest");
+    invariant(this._adapterChannel !== undefined, "Adapter Channel used before it was created, in debugger.");
+    this._adapterChannel.getVariables(
+      response.request_seq,
+      args.variablesReference,
+      (dbgResponse: DebuggerResponse) => {
+        let result = dbgResponse.result;
+        invariant(result.kind === "variables");
+        let variableInfos = result.variables;
+        let variables: Array<DebugProtocol.Variable> = [];
+        for (const varInfo of variableInfos) {
+          let variable: DebugProtocol.Variable = {
+            name: varInfo.name,
+            value: varInfo.value,
+            variablesReference: varInfo.variablesReference,
           };
-          this.sendResponse(response);
+          variables.push(variable);
         }
-      );
-    }
+        response.body = {
+          variables: variables,
+        };
+        this.sendResponse(response);
+      }
+    );
   }
 
   // Override
   stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments): void {
-    if (this._adapterChannel !== undefined) {
-      this._adapterChannel.stepInto(response.request_seq, (dbgResponse: DebuggerResponse) => {
-        this.sendResponse(response);
-      });
-    }
+    this._ensureAdapterChannelCreated("stepInRequest");
+    invariant(this._adapterChannel !== undefined, "Adapter Channel used before it was created, in debugger.");
+    this._adapterChannel.stepInto(response.request_seq, (dbgResponse: DebuggerResponse) => {
+      this.sendResponse(response);
+    });
   }
 
   // Override
   nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments): void {
-    if (this._adapterChannel !== undefined) {
-      this._adapterChannel.stepOver(response.request_seq, (dbgResponse: DebuggerResponse) => {
-        this.sendResponse(response);
-      });
-    }
+    this._ensureAdapterChannelCreated("nextRequest");
+    invariant(this._adapterChannel !== undefined, "Adapter Channel used before it was created, in debugger.");
+    this._adapterChannel.stepOver(response.request_seq, (dbgResponse: DebuggerResponse) => {
+      this.sendResponse(response);
+    });
   }
 
   // Override
   stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): void {
-    if (this._adapterChannel !== undefined) {
-      this._adapterChannel.stepOut(response.request_seq, (dbgResponse: DebuggerResponse) => {
-        this.sendResponse(response);
-      });
-    }
+    this._ensureAdapterChannelCreated("stepOutRequest");
+    invariant(this._adapterChannel !== undefined, "Adapter Channel used before it was created, in debugger.");
+    this._adapterChannel.stepOut(response.request_seq, (dbgResponse: DebuggerResponse) => {
+      this.sendResponse(response);
+    });
   }
 
   // Override
   evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments): void {
+    this._ensureAdapterChannelCreated("evaluateRequest");
+    invariant(this._adapterChannel !== undefined, "Adapter Channel used before it was created, in debugger.");
+    this._adapterChannel.evaluate(
+      response.request_seq,
+      args.frameId,
+      args.expression,
+      (dbgResponse: DebuggerResponse) => {
+        let evalResult = dbgResponse.result;
+        invariant(evalResult.kind === "evaluate");
+        response.body = {
+          result: evalResult.displayValue,
+          type: evalResult.type,
+          variablesReference: evalResult.variablesReference,
+        };
+        this.sendResponse(response);
+      }
+    );
+  }
+
+  _ensureAdapterChannelCreated(callingRequest: string) {
+    // All responses that involve the Adapter Channel should only be invoked
+    // after the channel has been created. If this ordering is perturbed,
+    // there was likely a change in the protocol implementation by Nuclide.
     if (this._adapterChannel !== undefined) {
-      this._adapterChannel.evaluate(
-        response.request_seq,
-        args.frameId,
-        args.expression,
-        (dbgResponse: DebuggerResponse) => {
-          let evalResult = dbgResponse.result;
-          invariant(evalResult.kind === "evaluate");
-          response.body = {
-            result: evalResult.displayValue,
-            type: evalResult.type,
-            variablesReference: evalResult.variablesReference,
-          };
-          this.sendResponse(response);
-        }
-      );
+      throw Error(`Adapter Channel in Debugger is being used before it has been created. Caused by ${callingRequest}.`);
     }
   }
 }
