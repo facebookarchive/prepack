@@ -437,12 +437,10 @@ export class Generator {
     }
 
     if (result instanceof UndefinedValue) return output;
-    if (result instanceof PossiblyNormalCompletion || result instanceof ForkedAbruptCompletion) {
+    if (result instanceof SimpleNormalCompletion || result instanceof ReturnCompletion) {
+      output.emitReturnValue(result.value);
+    } else if (result instanceof PossiblyNormalCompletion || result instanceof ForkedAbruptCompletion) {
       output.emitIfThenElse(result, realm);
-    } else if (result instanceof SimpleNormalCompletion) {
-      output.emitReturnValue(result.value);
-    } else if (result instanceof ReturnCompletion) {
-      output.emitReturnValue(result.value);
     } else if (result instanceof ThrowCompletion) {
       output.emitThrow(result.value);
     } else if (result instanceof AbruptCompletion) {
