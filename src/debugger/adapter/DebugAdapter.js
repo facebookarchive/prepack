@@ -44,8 +44,6 @@ class PrepackDebugSession extends DebugSession {
   }
   _clientID: void | string;
   _adapterChannel: void | AdapterChannel;
-  // Buffering requests that are sent before Prepack channel has been established.
-  _bufferedBreakpointRequests: Array<PrematureBP> = [];
 
   _generateDebugFilePath(direction: "in" | "out") {
     let time = Date.now();
@@ -106,10 +104,10 @@ class PrepackDebugSession extends DebugSession {
   ): void {
     // initial handshake with UI is complete
     if (this._clientID !== DebuggerConstants.CLI_CLIENTID) {
-      if (this._adapterChannel !== undefined) {
-        // for all ui except the CLI, autosend the first run request
-        this._adapterChannel.run(DebuggerConstants.DEFAULT_REQUEST_ID, (runResponse: DebuggerResponse) => {});
-      }
+      this._ensureAdapterChannelCreated("configurationDoneRequest");
+      invariant(this._adapterChannel !== undefined, "Adapter Channel used before it was created, in debugger.");
+      // for all ui except the CLI, autosend the first run request
+      this._adapterChannel.run(DebuggerConstants.DEFAULT_REQUEST_ID, (runResponse: DebuggerResponse) => {});
     }
     this.sendResponse(response);
   }
@@ -148,13 +146,6 @@ class PrepackDebugSession extends DebugSession {
     // Sending this during the initializeResponse caused non-determinism in request ordering
     // that would prevent the debugger from starting.
     this.sendEvent(new InitializedEvent());
-
-    // It is possible that this gets stuck in an infinite loop that keeps adding the requests
-    // into the arrays if _hasLaunchedDebugServer never becomes true. Because of this, these
-    // loops come after an invarient to ensure the server exists and this situation cannot happen.
-    // if (this._bufferedBreakpointRequests.length > 0) {
-    //   this._bufferedBreakpointRequests.map(entry => this.setBreakPointsRequest(entry.response, entry.breakpointArgs));
-    // }
   }
 
   /**
@@ -217,11 +208,6 @@ class PrepackDebugSession extends DebugSession {
       };
       this.sendResponse(response);
     });
-    // } else {
-    //   // If adapterChannel hasn't been created yet, the breakpoint won't be communicated
-    //   // to the debug server. Buffer it here and send it after channel is created in LaunchRequest.
-    //   this._bufferedBreakpointRequests.push({ response: response, breakpointArgs: args });
-    // }
   }
 
   // Override
