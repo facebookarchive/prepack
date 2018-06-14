@@ -359,7 +359,7 @@ export class ResidualFunctions {
       let { instance } = additionalFunctionInfo;
       let functionValue = ((funcValue: any): ECMAScriptSourceFunctionValue);
       let params = functionValue.$FormalParameters;
-      let isLexical = funcValue instanceof ECMAScriptFunctionValue && funcValue.$ThisMode === "lexical";
+      let isLexical = functionValue.$ThisMode === "lexical";
       invariant(params !== undefined);
 
       let rewrittenBody = rewrittenAdditionalFunctions.get(funcValue);
