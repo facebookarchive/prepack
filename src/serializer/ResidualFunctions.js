@@ -11,7 +11,7 @@
 
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
-import { FunctionValue, ECMAScriptSourceFunctionValue, ObjectValue } from "../values/index.js";
+import { FunctionValue, ECMAScriptFunctionValue, ECMAScriptSourceFunctionValue, ObjectValue } from "../values/index.js";
 import type { SerializerOptions } from "../options.js";
 import * as t from "babel-types";
 import type {
@@ -359,7 +359,7 @@ export class ResidualFunctions {
       let { instance } = additionalFunctionInfo;
       let functionValue = ((funcValue: any): ECMAScriptSourceFunctionValue);
       let params = functionValue.$FormalParameters;
-      let isLexical = funcValue.$ThisMode === "lexical";
+      let isLexical = funcValue instanceof ECMAScriptFunctionValue && funcValue.$ThisMode === "lexical";
       invariant(params !== undefined);
 
       let rewrittenBody = rewrittenAdditionalFunctions.get(funcValue);
