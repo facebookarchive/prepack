@@ -193,6 +193,12 @@ export function wrapReactElementInBranchOrReturnValue(realm: Realm, value: Value
     invariant(temporal instanceof AbstractObjectValue);
     temporal.values = new ValuesDomain(value);
     value.temporalAlias = temporal;
+    // If we're in "rendering" a React component tree, we should have an active reconciler
+    let activeReconciler = realm.react.activeReconciler;
+    let createdDuringReconcilation = activeReconciler !== undefined;
+    let firstRenderOnly = createdDuringReconcilation ? activeReconciler.componentTreeConfig.firstRenderOnly : false;
+
+    realm.react.reactElements.set(obj, { createdDuringReconcilation, firstRenderOnly });
   }
   return value;
 }
