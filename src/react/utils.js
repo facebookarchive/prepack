@@ -83,6 +83,8 @@ export function isReactElement(val: Value): boolean {
     let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
     let _isReactElement = symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
     if (_isReactElement) {
+      // If we get there, it means the ReactElement was created in manual user-space
+      realm.react.reactElements.set(val, { createdDuringReconcilation: false, firstRenderOnly: false });
       return true;
     }
   }
