@@ -46,4 +46,4 @@ global.reactElement = createElement('div', null, createElement(MyComponent, {
   foo: 'bar'
 }, 'Hello world'));
 
-inspect = function() { return reactElement; }
+inspect = function() { return global.reactElement; }

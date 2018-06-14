@@ -37,19 +37,23 @@ export class ThrowCompletion extends AbruptCompletion {
   constructor(value: Value, location: ?BabelNodeSourceLocation, nativeStack?: ?string) {
     super(value, location);
     this.nativeStack = nativeStack || new Error().stack;
+    let realm = value.$Realm;
+    if (realm.isInPureScope() && realm.reportSideEffectCallback !== undefined) {
+      realm.reportSideEffectCallback("EXCEPTION_THROWN", undefined, location);
+    }
   }
 
   nativeStack: string;
 }
 export class ContinueCompletion extends AbruptCompletion {
   constructor(value: Value, location: ?BabelNodeSourceLocation, target: ?string) {
-    super(value, location, target);
+    super(value, location, target || null);
   }
 }
 
 export class BreakCompletion extends AbruptCompletion {
   constructor(value: Value, location: ?BabelNodeSourceLocation, target: ?string) {
-    super(value, location, target);
+    super(value, location, target || null);
   }
 }
 
@@ -59,7 +63,7 @@ export class ReturnCompletion extends AbruptCompletion {
   }
 }
 
-export class JoinedAbruptCompletions extends AbruptCompletion {
+export class ForkedAbruptCompletion extends AbruptCompletion {
   constructor(
     realm: Realm,
     joinCondition: AbstractValue,
@@ -82,16 +86,40 @@ export class JoinedAbruptCompletions extends AbruptCompletion {
   alternate: AbruptCompletion;
   alternateEffects: Effects;
 
+  containsCompletion(CompletionType: typeof Completion): boolean {
+    if (this.consequent instanceof CompletionType) return true;
+    if (this.alternate instanceof CompletionType) return true;
+    if (this.consequent instanceof ForkedAbruptCompletion) {
+      if (this.consequent.containsCompletion(CompletionType)) return true;
+    }
+    if (this.alternate instanceof ForkedAbruptCompletion) {
+      if (this.alternate.containsCompletion(CompletionType)) return true;
+    }
+    return false;
+  }
+
   containsBreakOrContinue(): boolean {
     if (this.consequent instanceof BreakCompletion || this.consequent instanceof ContinueCompletion) return true;
     if (this.alternate instanceof BreakCompletion || this.alternate instanceof ContinueCompletion) return true;
-    if (this.consequent instanceof JoinedAbruptCompletions) {
+    if (this.consequent instanceof ForkedAbruptCompletion) {
       if (this.consequent.containsBreakOrContinue()) return true;
     }
-    if (this.alternate instanceof JoinedAbruptCompletions) {
+    if (this.alternate instanceof ForkedAbruptCompletion) {
       if (this.alternate.containsBreakOrContinue()) return true;
     }
     return false;
+  }
+
+  transferChildrenToPossiblyNormalCompletion(): PossiblyNormalCompletion {
+    return new PossiblyNormalCompletion(
+      this.value.$Realm.intrinsics.empty,
+      this.joinCondition,
+      this.consequent,
+      this.consequentEffects,
+      this.alternate,
+      this.alternateEffects,
+      []
+    );
   }
 }
 
@@ -109,8 +137,8 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     savedPathConditions: Array<AbstractValue>,
     savedEffects: void | Effects = undefined
   ) {
-    invariant(consequent === consequentEffects[0]);
-    invariant(alternate === alternateEffects[0]);
+    invariant(consequent === consequentEffects.result);
+    invariant(alternate === alternateEffects.result);
     invariant(
       consequent instanceof NormalCompletion ||
         consequent instanceof Value ||
@@ -131,7 +159,9 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     let loc =
       consequent instanceof AbruptCompletion
         ? consequent.location
-        : alternate instanceof Completion ? alternate.location : alternate.expressionLocation;
+        : alternate instanceof Completion
+          ? alternate.location
+          : alternate.expressionLocation;
     super(value, loc);
     this.joinCondition = joinCondition;
     this.consequent = consequent;
@@ -151,13 +181,25 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   // The path conditions that applied at the time of the oldest fork that caused this completion to arise.
   savedPathConditions: Array<AbstractValue>;
 
+  containsCompletion(CompletionType: typeof Completion): boolean {
+    if (this.consequent instanceof CompletionType) return true;
+    if (this.alternate instanceof CompletionType) return true;
+    if (this.consequent instanceof ForkedAbruptCompletion || this.consequent instanceof PossiblyNormalCompletion) {
+      if (this.consequent.containsCompletion(CompletionType)) return true;
+    }
+    if (this.alternate instanceof ForkedAbruptCompletion || this.alternate instanceof PossiblyNormalCompletion) {
+      if (this.alternate.containsCompletion(CompletionType)) return true;
+    }
+    return false;
+  }
+
   containsBreakOrContinue(): boolean {
     if (this.consequent instanceof BreakCompletion || this.consequent instanceof ContinueCompletion) return true;
     if (this.alternate instanceof BreakCompletion || this.alternate instanceof ContinueCompletion) return true;
-    if (this.consequent instanceof JoinedAbruptCompletions || this.consequent instanceof PossiblyNormalCompletion) {
+    if (this.consequent instanceof ForkedAbruptCompletion || this.consequent instanceof PossiblyNormalCompletion) {
       if (this.consequent.containsBreakOrContinue()) return true;
     }
-    if (this.alternate instanceof JoinedAbruptCompletions || this.alternate instanceof PossiblyNormalCompletion) {
+    if (this.alternate instanceof ForkedAbruptCompletion || this.alternate instanceof PossiblyNormalCompletion) {
       if (this.alternate.containsBreakOrContinue()) return true;
     }
     return false;

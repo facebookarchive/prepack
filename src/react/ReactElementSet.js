@@ -11,14 +11,14 @@
 
 import { Realm } from "../realm.js";
 import {
-  Value,
-  ObjectValue,
-  StringValue,
-  NumberValue,
   AbstractValue,
   ArrayValue,
   FunctionValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
   SymbolValue,
+  Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
 import { isReactElement, getProperty } from "./utils";
@@ -128,6 +128,7 @@ export default class ReactElementSet {
   // for arrays: [0] -> [1] -> [2]... as nodes
   _getArrayValue(array: ArrayValue, visitedValues: Set<Value>): ArrayValue {
     if (visitedValues.has(array)) return array;
+    if (array.intrinsicName) return array;
     visitedValues.add(array);
     let lengthValue = getProperty(this.realm, array, "length");
     invariant(lengthValue instanceof NumberValue);

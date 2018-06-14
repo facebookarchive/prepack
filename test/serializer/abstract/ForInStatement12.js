@@ -1,6 +1,6 @@
-let tmp = { w: undefined, nest: { x: 1 } };
+// add at runtime:let tmp = { w: undefined, nest: { x: 1 } };
 let str = "({ w: undefined, nest: { x: 1 } })";
-let ob = global.__abstract ? __abstract(tmp, str) : tmp;
+let ob = global.__abstract ? __abstract({ w: undefined, nest: __abstract({ x: 1 }) }, "tmp") : tmp;
 
 let tgt = {};
 

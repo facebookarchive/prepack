@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, NumberValue, StringValue, SymbolValue } from "../../values/index.js";
@@ -127,7 +127,8 @@ export default function(realm: Realm): NativeFunctionValue {
 
   // ECMA262 21.1.2.4
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
-    func.defineNativeMethod("raw", 1, (context, [template, ...substitutions], argCount) => {
+    func.defineNativeMethod("raw", 1, (context, [template, ..._substitutions], argCount) => {
+      let substitutions = _substitutions;
       // 1. Let substitutions be a List consisting of all of the arguments passed to this function, starting with the second argument. If fewer than two arguments were passed, the List is empty.
       substitutions = argCount < 2 ? [] : substitutions;
 
@@ -135,10 +136,10 @@ export default function(realm: Realm): NativeFunctionValue {
       let numberOfSubstitutions = substitutions.length;
 
       // 3. Let cooked be ? ToObject(template).
-      let cooked = To.ToObjectPartial(realm, template);
+      let cooked = To.ToObject(realm, template);
 
       // 4. Let raw be ? ToObject(? Get(cooked, "raw")).
-      let raw = To.ToObjectPartial(realm, Get(realm, cooked, "raw"));
+      let raw = To.ToObject(realm, Get(realm, cooked, "raw"));
 
       // 5. Let literalSegments be ? ToLength(? Get(raw, "length")).
       let literalSegments = To.ToLength(realm, Get(realm, raw, "length"));
@@ -172,10 +173,10 @@ export default function(realm: Realm): NativeFunctionValue {
         let next;
         // e. If nextIndex < numberOfSubstitutions, let next be substitutions[nextIndex].
         if (nextIndex < numberOfSubstitutions) next = substitutions[nextIndex];
-        else
+        else {
           // f. Else, let next be the empty String.
           next = realm.intrinsics.emptyString;
-
+        }
         // g. Let nextSub be ? ToString(next).
         let nextSub = To.ToStringPartial(realm, next);
 

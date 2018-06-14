@@ -6,7 +6,7 @@ a = {x: 123, y: 444};
 if (global.__makeSimple) global.__makeSimple(a);
 a[n] = 456;
 
-b = {xx: 123};
+var b = {xx: 123};
 if (global.__makeSimple) global.__makeSimple(b);
 b[n] = 456;
 b[m] = 789;
@@ -17,8 +17,8 @@ if (c) {
   b[n] = 777;
 }
 
-z = a.x;
-z1 = b.xx;
-z2 = b.x;
+var z = a.x;
+var z1 = b.xx;
+var z2 = b.x;
 
 inspect = function() { return '' + z + z1 + z2 + b["x"]; }

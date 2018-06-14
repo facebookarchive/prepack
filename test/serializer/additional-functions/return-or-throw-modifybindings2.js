@@ -1,5 +1,5 @@
 // does not contain:z = 5;
-// add at runtime: x = 3;
+// add at runtime: global.x = 3;
 var x;
 if (global.__abstract) x = __abstract("number", "(11)");
 else x = 11;
@@ -31,6 +31,6 @@ else x = 11;
     } catch (e) {
       error = e.message;
     }
-    return 'prevfoo: ' + prevfoo + 'err: ' + error + ' ret ' + ret + ' foo ' + foo;
+    return 'prevfoo: ' + prevfoo + ' err: ' + error + ' ret ' + ret + ' foo ' + foo;
   }
 }());

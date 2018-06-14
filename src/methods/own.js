@@ -20,7 +20,7 @@ import invariant from "../invariant.js";
 // ECMA262 19.1.2.8.1
 export function GetOwnPropertyKeys(realm: Realm, O: Value, Type: Function): ArrayValue {
   // 1. Let obj be ? ToObject(O).
-  let obj = To.ToObject(realm, O.throwIfNotConcrete());
+  let obj = To.ToObject(realm, O);
 
   // 2. Let keys be ? obj.[[OwnPropertyKeys]]().
   let keys = obj.$OwnPropertyKeys();
@@ -48,7 +48,10 @@ export function OrdinaryOwnPropertyKeys(realm: Realm, o: ObjectValue): Array<Pro
 
   // 2. For each own property key P of O that is an integer index, in ascending numeric index order
   let properties = o.getOwnPropertyKeysArray();
-  for (let key of properties.filter(x => IsArrayIndex(realm, x)).map(x => parseInt(x, 10)).sort((x, y) => x - y)) {
+  for (let key of properties
+    .filter(x => IsArrayIndex(realm, x))
+    .map(x => parseInt(x, 10))
+    .sort((x, y) => x - y)) {
     // i. Add P as the last element of keys.
     keys.push(new StringValue(realm, key + ""));
   }

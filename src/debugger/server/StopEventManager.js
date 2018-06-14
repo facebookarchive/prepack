@@ -7,11 +7,11 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import invariant from "./../common/invariant.js";
 import { Breakpoint } from "./Breakpoint.js";
-import { Stepper, StepIntoStepper, StepOverStepper } from "./Stepper.js";
+import { Stepper, StepIntoStepper, StepOverStepper, StepOutStepper } from "./Stepper.js";
 import { BabelNode } from "babel-types";
 import type { StoppedReason } from "./../common/types.js";
 
@@ -35,6 +35,8 @@ export class StopEventManager {
       stoppedReason = "Step Into";
     } else if (stoppable instanceof StepOverStepper) {
       stoppedReason = "Step Over";
+    } else if (stoppable instanceof StepOutStepper) {
+      stoppedReason = "Step Out";
     } else {
       invariant(false, "Invalid stoppable object");
     }

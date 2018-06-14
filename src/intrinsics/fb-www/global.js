@@ -7,20 +7,26 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { AbstractValue, NativeFunctionValue, StringValue, ObjectValue } from "../../values/index.js";
-import { createMockReact } from "./react-mocks.js";
+import { createMockReact, createMockReactDOM, createMockReactDOMServer } from "./react-mocks.js";
 import { createMockReactRelay } from "./relay-mocks.js";
 import { createAbstract } from "../prepack/utils.js";
 import { createFbMocks } from "./fb-mocks.js";
 import { FatalError } from "../../errors";
 import { Get } from "../../methods/index.js";
 import invariant from "../../invariant";
+import { createDefaultPropsHelper } from "../../react/utils.js";
 
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
+
+  if (realm.react.enabled) {
+    // Create it eagerly so it's created outside effect branches
+    realm.react.defaultPropsHelper = createDefaultPropsHelper(realm);
+  }
 
   // module.exports support
   let moduleValue = AbstractValue.createAbstractObject(realm, "module");
@@ -54,6 +60,20 @@ export default function(realm: Realm): void {
           return react;
         }
         return realm.fbLibraries.react;
+      } else if (requireNameValValue === "react-dom" || requireNameValValue === "ReactDOM") {
+        if (realm.fbLibraries.reactDom === undefined) {
+          let reactDom = createMockReactDOM(realm, requireNameValValue);
+          realm.fbLibraries.reactDom = reactDom;
+          return reactDom;
+        }
+        return realm.fbLibraries.reactDom;
+      } else if (requireNameValValue === "react-dom/server" || requireNameValValue === "ReactDOMServer") {
+        if (realm.fbLibraries.reactDomServer === undefined) {
+          let reactDomServer = createMockReactDOMServer(realm, requireNameValValue);
+          realm.fbLibraries.reactDomServer = reactDomServer;
+          return reactDomServer;
+        }
+        return realm.fbLibraries.reactDomServer;
       } else if (requireNameValValue === "react-relay" || requireNameValValue === "RelayModern") {
         if (realm.fbLibraries.reactRelay === undefined) {
           let reactRelay = createMockReactRelay(realm, requireNameValValue);

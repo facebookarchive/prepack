@@ -10,7 +10,7 @@
 /* @flow */
 
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
-import { construct_empty_effects, type Realm } from "../realm.js";
+import { construct_empty_effects, type Realm, Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding, PropertyKeyValue } from "../types.js";
 import {
   AbstractObjectValue,
@@ -107,8 +107,8 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
   if (!O.isIntrinsic() && O.temporalAlias === undefined) return;
   if (P instanceof SymbolValue) return;
   if (P instanceof StringValue) P = P.value;
-  invariant(!O.isHavocedObject()); // havoced objects are never updated
-  invariant(!O.isFinalObject()); // final objects are never updated
+  invariant(!O.mightBeHavocedObject()); // havoced objects are never updated
+  invariant(!O.mightBeFinalObject()); // final objects are never updated
   invariant(typeof P === "string");
   let propertyBinding = InternalGetPropertiesMap(O, P).get(P);
   invariant(propertyBinding !== undefined); // The callers ensure this
@@ -116,7 +116,7 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
   if (desc === undefined) {
     // The property is being deleted
     if (O === realm.$GlobalObject) {
-      generator.emitGlobalDelete(P, realm.getRunningContext().isStrict);
+      generator.emitGlobalDelete(P);
     } else {
       generator.emitPropertyDelete(O, P);
     }
@@ -130,7 +130,7 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
           if (isValidIdentifier(P) && !desc.configurable && desc.enumerable && desc.writable) {
             generator.emitGlobalDeclaration(P, descValue);
           } else if (desc.configurable && desc.enumerable && desc.writable) {
-            generator.emitGlobalAssignment(P, descValue, realm.getRunningContext().isStrict);
+            generator.emitGlobalAssignment(P, descValue);
           } else {
             generator.emitDefineProperty(O, P, desc);
           }
@@ -149,7 +149,7 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
       if (equalDescriptors(desc, oldDesc)) {
         // only the value is being modified
         if (O === realm.$GlobalObject) {
-          generator.emitGlobalAssignment(P, descValue, realm.getRunningContext().isStrict);
+          generator.emitGlobalAssignment(P, descValue);
         } else {
           generator.emitPropertyAssignment(O, P, descValue);
         }
@@ -180,14 +180,16 @@ function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: Pro
   let ownDesc = O.$GetOwnProperty(P);
   let ownDescValue = !ownDesc
     ? realm.intrinsics.undefined
-    : ownDesc.value === undefined ? realm.intrinsics.undefined : ownDesc.value;
+    : ownDesc.value === undefined
+      ? realm.intrinsics.undefined
+      : ownDesc.value;
   invariant(ownDescValue instanceof Value);
 
   if (!ownDesc || ownDescValue.mightHaveBeenDeleted()) {
     // O might not object, so first ask its parent
     let parent = O.$GetPrototypeOf();
-    parent.throwIfNotConcrete(); //TODO #1016: deal with abstract parents
     if (!(parent instanceof NullValue)) {
+      parent = parent.throwIfNotConcreteObject(); //TODO #1016: deal with abstract parents
       if (!parentPermitsChildPropertyCreation(realm, parent, P)) return false;
     }
 
@@ -210,22 +212,14 @@ function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: Pro
 }
 
 function ensureIsNotFinal(realm: Realm, O: ObjectValue, P: void | PropertyKeyValue) {
-  if (!O.isFinalObject()) {
+  if (O.mightNotBeFinalObject()) {
     return;
   }
-  if (realm.isInPureScope()) {
-    // It's not safe to write to this object anymore because it's already
-    // been used in a way that serializes its final state. We can, however,
-    // havoc it if we're in pure scope, and continue to emit assignments.
-    Havoc.value(realm, O);
-    if (O.isHavocedObject()) {
-      return;
-    }
-  }
+
   // We can't continue because this object is already in its final state.
   let error = new CompilerDiagnostic(
-    "Mutating an object with unknown properties, after some of those " +
-      "properties have already been used, is not yet supported.",
+    "Mutating a final object, or an object with unknown properties, after some of those " +
+      "properties have already been used, is not supported.",
     realm.currentLocation,
     "PP0026",
     "FatalError"
@@ -238,7 +232,7 @@ export class PropertiesImplementation {
   // ECMA262 9.1.9.1
   OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
     ensureIsNotFinal(realm, O, P);
-    if (!realm.ignoreLeakLogic && O.isHavocedObject()) {
+    if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
       // Writing a value to a havoced (because leaked) object leaks the value, so havoc it.
       Havoc.value(realm, V);
       if (realm.generator) {
@@ -258,17 +252,19 @@ export class PropertiesImplementation {
     if (existingBinding !== undefined || !(O.isPartialObject() && O.isSimpleObject())) ownDesc = O.$GetOwnProperty(P);
     let ownDescValue = !ownDesc
       ? realm.intrinsics.undefined
-      : ownDesc.value === undefined ? realm.intrinsics.undefined : ownDesc.value;
+      : ownDesc.value === undefined
+        ? realm.intrinsics.undefined
+        : ownDesc.value;
     invariant(ownDescValue instanceof Value);
 
     // 3. If ownDesc is undefined (or might be), then
     if (!ownDesc || ownDescValue.mightHaveBeenDeleted()) {
       // a. Let parent be ? O.[[GetPrototypeOf]]().
       let parent = O.$GetPrototypeOf();
-      parent.throwIfNotConcrete(); //TODO #1016: deal with abstract parents
 
       // b. If parent is not null, then
       if (!(parent instanceof NullValue)) {
+        parent = parent.throwIfNotConcreteObject(); //TODO #1016: deal with abstract parents
         if (!ownDesc) {
           // i. Return ? parent.[[Set]](P, V, Receiver).
           return parent.$Set(P, V, Receiver);
@@ -299,13 +295,25 @@ export class PropertiesImplementation {
     if (joinCondition !== undefined) {
       let descriptor2 = ownDesc.descriptor2;
       ownDesc = ownDesc.descriptor1;
-      let [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(joinCondition, () => {
+      let {
+        result: result1,
+        generator: generator1,
+        modifiedBindings: modifiedBindings1,
+        modifiedProperties: modifiedProperties1,
+        createdObjects: createdObjects1,
+      } = Path.withCondition(joinCondition, () => {
         return ownDesc !== undefined
           ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/1")
           : construct_empty_effects(realm);
       });
       ownDesc = descriptor2;
-      let [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(joinCondition, () => {
+      let {
+        result: result2,
+        generator: generator2,
+        modifiedBindings: modifiedBindings2,
+        modifiedProperties: modifiedProperties2,
+        createdObjects: createdObjects2,
+      } = Path.withInverseCondition(joinCondition, () => {
         return ownDesc !== undefined
           ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/2")
           : construct_empty_effects(realm);
@@ -313,13 +321,13 @@ export class PropertiesImplementation {
 
       // Join the effects, creating an abstract view of what happened, regardless
       // of the actual value of ownDesc.joinCondition.
-      let joinedEffects = Join.joinEffects(
+      let joinedEffects = Join.joinForkOrChoose(
         realm,
         joinCondition,
-        [compl1, gen1, bindings1, properties1, createdObj1],
-        [compl2, gen2, bindings2, properties2, createdObj2]
+        new Effects(result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
+        new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
       );
-      let completion = joinedEffects[0];
+      let completion = joinedEffects.result;
       if (completion instanceof PossiblyNormalCompletion) {
         // in this case one of the branches may complete abruptly, which means that
         // not all control flow branches join into one flow at this point.
@@ -372,7 +380,9 @@ export class PropertiesImplementation {
         }
         let existingDescValue = !existingDescriptor
           ? realm.intrinsics.undefined
-          : existingDescriptor.value === undefined ? realm.intrinsics.undefined : existingDescriptor.value;
+          : existingDescriptor.value === undefined
+            ? realm.intrinsics.undefined
+            : existingDescriptor.value;
         invariant(existingDescValue instanceof Value);
 
         // d. If existingDescriptor is not undefined, then
@@ -511,7 +521,7 @@ export class PropertiesImplementation {
     // 3. If desc is undefined, return true.
     if (!desc) {
       ensureIsNotFinal(realm, O, P);
-      if (!realm.ignoreLeakLogic && O.isHavocedObject()) {
+      if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
         if (realm.generator) {
           realm.generator.emitPropertyDelete(O, StringKey(P));
         }
@@ -522,7 +532,7 @@ export class PropertiesImplementation {
     // 4. If desc.[[Configurable]] is true, then
     if (desc.configurable) {
       ensureIsNotFinal(realm, O, P);
-      if (O.isHavocedObject()) {
+      if (O.mightBeHavocedObject()) {
         if (realm.generator) {
           realm.generator.emitPropertyDelete(O, StringKey(P));
         }
@@ -649,7 +659,7 @@ export class PropertiesImplementation {
 
       if (O !== undefined && P !== undefined) {
         ensureIsNotFinal(realm, O, P);
-        if (!realm.ignoreLeakLogic && O.isHavocedObject()) {
+        if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
           havocDescriptor(realm, Desc);
           if (realm.generator) {
             realm.generator.emitDefineProperty(O, StringKey(P), Desc);
@@ -737,7 +747,7 @@ export class PropertiesImplementation {
 
     if (O !== undefined && P !== undefined) {
       ensureIsNotFinal(realm, O, P);
-      if (!realm.ignoreLeakLogic && O.isHavocedObject()) {
+      if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
         havocDescriptor(realm, Desc);
         if (realm.generator) {
           realm.generator.emitDefineProperty(O, StringKey(P), Desc);
@@ -873,7 +883,7 @@ export class PropertiesImplementation {
     invariant(O instanceof ObjectValue || O instanceof AbstractObjectValue);
 
     // 2. Let props be ? ToObject(Properties).
-    let props = To.ToObject(realm, Properties.throwIfNotConcrete());
+    let props = To.ToObject(realm, Properties);
 
     // 3. Let keys be ? props.[[OwnPropertyKeys]]().
     let keys = props.$OwnPropertyKeys();
@@ -995,23 +1005,18 @@ export class PropertiesImplementation {
 
     // 6. Else if IsPropertyReference(V) is true, then
     if (Environment.IsPropertyReference(realm, V)) {
+      if (base instanceof AbstractValue) {
+        // Ensure that abstract values are coerced to objects. This might yield
+        // an operation that might throw.
+        base = To.ToObject(realm, base);
+      }
       // a. If HasPrimitiveBase(V) is true, then
       if (Environment.HasPrimitiveBase(realm, V)) {
         // i. Assert: In realm case, base will never be null or undefined.
         invariant(base instanceof Value && !HasSomeCompatibleType(base, UndefinedValue, NullValue));
 
         // ii. Set base to ToObject(base).
-        base = To.ToObjectPartial(realm, base);
-      }
-      if (!(base instanceof AbstractObjectValue) && base instanceof AbstractValue) {
-        let diagnostic = new CompilerDiagnostic(
-          `member expression object ${AbstractValue.describe(base)} is unknown`,
-          realm.currentLocation,
-          "PP0012",
-          "FatalError"
-        );
-        realm.handleError(diagnostic);
-        throw new FatalError();
+        base = To.ToObject(realm, base);
       }
       invariant(base instanceof ObjectValue || base instanceof AbstractObjectValue);
 
@@ -1159,11 +1164,25 @@ export class PropertiesImplementation {
 
   // ECMA262 9.1.5.1
   OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue): Descriptor | void {
-    if (!realm.ignoreLeakLogic && O.isHavocedObject()) {
+    // if the object is havoced and final, then it's still safe to read the value from the object
+    if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
+      if (!O.mightNotBeFinalObject()) {
+        let existingBinding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
+        if (existingBinding && existingBinding.descriptor) {
+          return existingBinding.descriptor;
+        } else {
+          return undefined;
+        }
+      }
+
       invariant(realm.generator);
       let pname = realm.generator.getAsPropertyNameExpression(StringKey(P));
-      let absVal = AbstractValue.createTemporalFromBuildFunction(realm, Value, [O._templateFor || O], ([node]) =>
-        t.memberExpression(node, pname, !t.isIdentifier(pname))
+      let absVal = AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        [O._templateFor || O],
+        ([node]) => t.memberExpression(node, pname, !t.isIdentifier(pname)),
+        { isPure: true }
       );
       // TODO: We can't be sure what the descriptor will be, but the value will be abstract.
       return { configurable: true, enumerable: true, value: absVal, writable: true };
@@ -1194,7 +1213,7 @@ export class PropertiesImplementation {
                   ([node]) => {
                     return t.memberExpression(node, pname, !t.isIdentifier(pname));
                   },
-                  { kind: P }
+                  { kind: AbstractValue.makeKind("property", P) }
                 );
               } else {
                 return AbstractValue.createTemporalFromBuildFunction(
@@ -1204,7 +1223,7 @@ export class PropertiesImplementation {
                   ([node]) => {
                     return t.memberExpression(node, pname, !t.isIdentifier(pname));
                   },
-                  { skipInvariant: true }
+                  { skipInvariant: true, isPure: true }
                 );
               }
             }
@@ -1230,11 +1249,42 @@ export class PropertiesImplementation {
         }
         AbstractValue.reportIntrospectionError(O, P);
         throw new FatalError();
+      } else if (
+        realm.invariantLevel >= 2 &&
+        O.isIntrinsic() &&
+        !ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O)
+      ) {
+        let realmGenerator = realm.generator;
+        // TODO: Because global variables are special, checking for missing global object properties doesn't quite work yet.
+        if (
+          realmGenerator &&
+          typeof P === "string" &&
+          O !== realm.$GlobalObject &&
+          !realm.hasBindingBeenChecked(O, P)
+        ) {
+          realm.markPropertyAsChecked(O, P);
+          realmGenerator.emitPropertyInvariant(O, P, "MISSING");
+        }
       }
       return undefined;
     }
     realm.callReportPropertyAccess(existingBinding);
-    if (!existingBinding.descriptor) return undefined;
+    if (!existingBinding.descriptor) {
+      if (realm.invariantLevel >= 2 && O.isIntrinsic()) {
+        let realmGenerator = realm.generator;
+        // TODO: Because global variables are special, checking for missing global object properties doesn't quite work yet.
+        if (
+          realmGenerator &&
+          typeof P === "string" &&
+          O !== realm.$GlobalObject &&
+          !realm.hasBindingBeenChecked(O, P)
+        ) {
+          realm.markPropertyAsChecked(O, P);
+          realmGenerator.emitPropertyInvariant(O, P, "MISSING");
+        }
+      }
+      return undefined;
+    }
 
     // 3. Let D be a newly created Property Descriptor with no fields.
     let D = {};
@@ -1252,36 +1302,59 @@ export class PropertiesImplementation {
     // 5. If X is a data property, then
     if (IsDataDescriptor(realm, X)) {
       let value = X.value;
-      if (O.isPartialObject() && value instanceof AbstractValue && value.kind !== "resolved") {
-        let savedUnion;
-        let savedIndex;
-        if (value.kind === "abstractConcreteUnion") {
-          savedUnion = value;
-          savedIndex = savedUnion.args.findIndex(e => e instanceof AbstractValue);
-          invariant(savedIndex >= 0);
-          value = savedUnion.args[savedIndex];
-          invariant(value instanceof AbstractValue);
+      if (O.isIntrinsic() && O.isPartialObject()) {
+        if (value instanceof AbstractValue) {
+          let savedUnion;
+          let savedIndex;
+          if (value.kind === "abstractConcreteUnion") {
+            savedUnion = value;
+            savedIndex = savedUnion.args.findIndex(e => e instanceof AbstractValue);
+            invariant(savedIndex >= 0);
+            value = savedUnion.args[savedIndex];
+            invariant(value instanceof AbstractValue);
+          }
+          if (value.kind !== "resolved") {
+            let realmGenerator = realm.generator;
+            invariant(realmGenerator);
+            value = realmGenerator.deriveAbstract(value.types, value.values, value.args, value.getBuildNode(), {
+              kind: "resolved",
+              // We can't emit the invariant here otherwise it'll assume the AbstractValue's type not the union type
+              skipInvariant: true,
+            });
+            if (savedUnion !== undefined) {
+              invariant(savedIndex !== undefined);
+              let args = savedUnion.args.slice(0);
+              args[savedIndex] = value;
+              value = AbstractValue.createAbstractConcreteUnion(realm, ...args);
+            }
+            if (realm.invariantLevel >= 1 && typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
+              realm.markPropertyAsChecked(O, P);
+              realmGenerator.emitFullInvariant(O, P, value);
+            }
+            InternalSetProperty(realm, O, P, {
+              value: value,
+              writable: "writable" in X ? X.writable : false,
+              enumerable: "enumerable" in X ? X.enumerable : false,
+              configurable: "configurable" in X ? X.configurable : false,
+            });
+          }
+        } else if (realm.invariantLevel >= 1 && value instanceof Value && !(value instanceof AbstractValue)) {
+          let realmGenerator = realm.generator;
+          invariant(realmGenerator);
+          if (typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
+            realm.markPropertyAsChecked(O, P);
+            realmGenerator.emitFullInvariant(O, P, value);
+          }
         }
-        let realmGenerator = realm.generator;
-        invariant(realmGenerator);
-        value = realmGenerator.derive(value.types, value.values, value.args, value.getBuildNode(), {
-          kind: "resolved",
-          // We can't emit the invariant here otherwise it'll assume the AbstractValue's type not the union type
-          skipInvariant: true,
-        });
-        if (savedUnion !== undefined) {
-          invariant(savedIndex !== undefined);
-          let args = savedUnion.args.slice(0);
-          args[savedIndex] = value;
-          value = AbstractValue.createAbstractConcreteUnion(realm, ...args);
+      } else {
+        // TODO: Because global variables are special, checking for global object properties doesn't quite work yet.
+        if (O !== realm.$GlobalObject && O.isIntrinsic() && realm.invariantLevel >= 2 && value instanceof Value) {
+          let realmGenerator = realm.generator;
+          if (realmGenerator && typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
+            realm.markPropertyAsChecked(O, P);
+            realmGenerator.emitFullInvariant(O, P, value);
+          }
         }
-        if (typeof P === "string") realmGenerator.emitFullInvariant(O, P, value);
-        InternalSetProperty(realm, O, P, {
-          value: value,
-          writable: "writable" in X ? X.writable : false,
-          enumerable: "enumerable" in X ? X.enumerable : false,
-          configurable: "configurable" in X ? X.configurable : false,
-        });
       }
 
       // a. Set D.[[Value]] to the value of X's [[Value]] attribute.
@@ -1313,7 +1386,7 @@ export class PropertiesImplementation {
   // ECMA262 9.1.2.1
   OrdinarySetPrototypeOf(realm: Realm, O: ObjectValue, V: ObjectValue | NullValue): boolean {
     ensureIsNotFinal(realm, O);
-    if (!realm.ignoreLeakLogic && O.isHavocedObject()) {
+    if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
       throw new FatalError();
     }
 
@@ -1327,7 +1400,7 @@ export class PropertiesImplementation {
     let current = O.$Prototype;
 
     // 4. If SameValue(V, current) is true, return true.
-    if (SameValue(realm, V, current)) return true;
+    if (SameValuePartial(realm, V, current)) return true;
 
     // 5. If extensible is false, return false.
     if (!extensible) return false;
@@ -1343,15 +1416,22 @@ export class PropertiesImplementation {
       // a. If p is null, let done be true.
       if (p instanceof NullValue) {
         done = true;
-      } else if (SameValue(realm, p, O)) {
+      } else if (SameValuePartial(realm, p, O)) {
         // b. Else if SameValue(p, O) is true, return false.
         return false;
       } else {
         // c. Else,
-        // TODO #1017 i. If the [[GetPrototypeOf]] internal method of p is not the ordinary object internal method defined in 9.1.1, let done be true.
-
-        // ii. Else, let p be the value of p's [[Prototype]] internal slot.
-        p = p.$Prototype;
+        // If the [[GetPrototypeOf]] internal method of p is not the ordinary object internal method defined in 9.1.1, let done be true.
+        if (!p.usesOrdinaryObjectInternalPrototypeMethods()) {
+          done = true;
+        } else {
+          // ii. Else, let p be the value of p's [[Prototype]] internal slot.
+          p = p.$Prototype;
+          if (p instanceof AbstractObjectValue) {
+            AbstractValue.reportIntrospectionError(p);
+            throw new FatalError();
+          }
+        }
       }
     }
 

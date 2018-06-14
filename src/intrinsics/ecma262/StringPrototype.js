@@ -381,10 +381,10 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
       let filler;
       // 6. If fillString is undefined, let filler be a String consisting solely of the code unit 0x0020 (SPACE).
       if (!fillString || fillString instanceof UndefinedValue) filler = " ";
-      else
+      else {
         // 7. Else, let filler be ? ToString(fillString).
         filler = To.ToStringPartial(realm, fillString);
-
+      }
       // 8. If filler is the empty String, return S.
       if (filler === "") return new StringValue(realm, S);
 
@@ -419,10 +419,10 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
       let filler;
       // 6. If fillString is undefined, let filler be a String consisting solely of the code unit 0x0020 (SPACE).
       if (!fillString || fillString instanceof UndefinedValue) filler = " ";
-      else
+      else {
         // 7. Else, let filler be ? ToString(fillString).
         filler = To.ToStringPartial(realm, fillString);
-
+      }
       // 8. If filler is the empty String, return S.
       if (filler === "") return new StringValue(realm, S);
 

@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { FunctionValue, Value } from "../values/index.js";
 import * as t from "babel-types";
@@ -24,17 +24,11 @@ import { factorifyObjects } from "./factorify.js";
 // and it provides the ability to generate initialization code for those values that
 // can be placed into the residual functions.
 export class ResidualFunctionInitializers {
-  constructor(
-    locationService: LocationService,
-    prelude: Array<BabelNodeStatement>,
-    initializerNameGenerator: NameGenerator
-  ) {
+  constructor(locationService: LocationService) {
     this.functionInitializerInfos = new Map();
     this.initializers = new Map();
     this.sharedInitializers = new Map();
     this.locationService = locationService;
-    this.initializerNameGenerator = initializerNameGenerator;
-    this.prelude = prelude;
   }
 
   // ownId: uid of the FunctionValue, initializer ids are strings of sorted lists of FunctionValues referencing the value
@@ -42,8 +36,6 @@ export class ResidualFunctionInitializers {
   initializers: Map<string, { id: string, order: number, body: SerializedBody, values: Array<Value> }>;
   sharedInitializers: Map<string, BabelNodeStatement>;
   locationService: LocationService;
-  prelude: Array<BabelNodeStatement>;
-  initializerNameGenerator: NameGenerator;
 
   registerValueOnlyReferencedByResidualFunctions(functionValues: Array<FunctionValue>, val: Value): SerializedBody {
     invariant(functionValues.length >= 1);
@@ -57,7 +49,10 @@ export class ResidualFunctionInitializers {
         );
       infos.push(info);
     }
-    let id = infos.map(info => info.ownId).sort().join();
+    let id = infos
+      .map(info => info.ownId)
+      .sort()
+      .join();
     for (let info of infos) info.initializerIds.add(id);
     let initializer = this.initializers.get(id);
     if (initializer === undefined)
@@ -90,6 +85,7 @@ export class ResidualFunctionInitializers {
   }
 
   _conditionalInitialization(
+    containingAdditionalFunction: void | FunctionValue,
     initializedValues: Array<Value>,
     initializationStatements: Array<BabelNodeStatement>
   ): BabelNodeStatement {
@@ -104,7 +100,8 @@ export class ResidualFunctionInitializers {
     // to figure out if initialization needs to run.
     let location;
     for (let value of initializedValues) {
-      if (!value.mightBeUndefined()) {
+      // function declarations get hoisted, so let's not use their initialization state as a marker
+      if (!value.mightBeUndefined() && !(value instanceof FunctionValue)) {
         location = this.locationService.getLocation(value);
         if (location !== undefined) break;
       }
@@ -112,7 +109,7 @@ export class ResidualFunctionInitializers {
     if (location === undefined) {
       // Second, if we didn't find a non-undefined value, let's make one up.
       // It will transition from `undefined` to `null`.
-      location = this.locationService.createLocation();
+      location = this.locationService.createLocation(containingAdditionalFunction);
       initializationStatements.unshift(t.expressionStatement(t.assignmentExpression("=", location, nullExpression)));
     }
     return t.ifStatement(
@@ -134,6 +131,7 @@ export class ResidualFunctionInitializers {
   getInitializerStatement(functionValue: FunctionValue): void | BabelNodeStatement {
     let initializerInfo = this.functionInitializerInfos.get(functionValue);
     if (initializerInfo === undefined) return undefined;
+    let containingAdditionalFunction = this.locationService.getContainingAdditionalFunction(functionValue);
 
     invariant(initializerInfo.initializerIds.size > 0);
     let ownInitializer = this.initializers.get(initializerInfo.ownId);
@@ -160,7 +158,11 @@ export class ResidualFunctionInitializers {
       } else {
         let ast = this.sharedInitializers.get(initializer.id);
         if (ast === undefined) {
-          ast = this._conditionalInitialization(initializer.values, initializer.body.entries);
+          ast = this._conditionalInitialization(
+            containingAdditionalFunction,
+            initializer.values,
+            initializer.body.entries
+          );
           // We inline compact initializers, as calling a function would introduce too much
           // overhead. To determine if an initializer is compact, we count the number of
           // nodes in the AST, and check if it exceeds a certain threshold.
@@ -172,8 +174,7 @@ export class ResidualFunctionInitializers {
             return false;
           });
           if (count > 24) {
-            let id = t.identifier(this.initializerNameGenerator.generate());
-            this.prelude.push(t.functionDeclaration(id, [], t.blockStatement([ast])));
+            let id = this.locationService.createFunction(containingAdditionalFunction, [ast]);
             ast = t.expressionStatement(t.callExpression(id, []));
           }
           this.sharedInitializers.set(initializer.id, ast);
@@ -182,6 +183,10 @@ export class ResidualFunctionInitializers {
       }
     }
 
-    return this._conditionalInitialization(initializedValues || [], initializationStatements);
+    return this._conditionalInitialization(
+      containingAdditionalFunction,
+      initializedValues || [],
+      initializationStatements
+    );
   }
 }

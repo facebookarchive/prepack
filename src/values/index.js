@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 export { default as Value } from "./Value.js";
 export { default as ConcreteValue } from "./ConcreteValue.js";
@@ -38,4 +38,5 @@ export { default as StringValue } from "./StringValue.js";
 export { default as SymbolValue } from "./SymbolValue.js";
 
 export { default as AbstractValue, AbstractValueBuildNodeFunction } from "./AbstractValue.js";
+export type { AbstractValueKind } from "./AbstractValue.js";
 export { default as AbstractObjectValue } from "./AbstractObjectValue.js";

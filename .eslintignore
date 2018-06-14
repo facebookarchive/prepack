@@ -1,6 +1,6 @@
 test262
 lib
-fb-www
+/fb-www
 underscore-with-tests.js
 flow-typed
 test/**/*.js

@@ -14,6 +14,7 @@
 import invariant from "./invariant.js";
 import { ExecutionContext } from "./realm.js";
 import Serializer from "./serializer/index.js";
+import { SerializerStatistics } from "./serializer/statistics.js";
 import { Completion } from "./completions.js";
 import { Value } from "./values";
 import construct_realm from "./construct_realm.js";
@@ -52,7 +53,7 @@ export function prepackNodeCLISync(filename: string, options: PrepackOptions = d
     );
   }
 
-  let realm = construct_realm(getRealmOptions(options));
+  let realm = construct_realm(getRealmOptions(options), undefined, new SerializerStatistics());
   initializeGlobals(realm);
 
   let processObj = initializeProcess(realm, ["node", filename]);

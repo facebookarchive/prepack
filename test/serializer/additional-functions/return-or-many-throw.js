@@ -1,5 +1,5 @@
 // does not contain:z = 5;
-// add at runtime: x = 3;
+// add at runtime: global.x = 3;
 
 var x;
 if (global.__abstract) x = __abstract("number", "(4)");
@@ -43,5 +43,5 @@ inspect = function() {
   } catch (e) {
     error = e.message;
   }
-  return 'err: ' + error + ' ret ' + ret + ' normal ret ' + normalRet + ' foo ' + foo;
+  return 'err: ' + error + ' ret ' + ret + ' normal ret ' + normalRet + ' foo ' + obj.foo;
 }

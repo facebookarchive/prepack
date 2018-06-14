@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict */
 
 //A collection of messages used between Prepack and the debug adapter
 export class DebugMessage {
@@ -34,6 +34,8 @@ export class DebugMessage {
   static STEPINTO_COMMAND: string = "StepInto-command";
   // Command to step over a function
   static STEPOVER_COMMAND: string = "StepOver-command";
+  // Command to step out of an executing function
+  static STEPOUT_COMMAND: string = "StepOut-command";
   // Command to evaluate an expression
   static EVALUATE_COMMAND: string = "Evaluate-command";
 

@@ -7,26 +7,47 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { ObjectValue } from "../../values/index.js";
 
+const consoleMethods = [
+  "assert",
+  "clear",
+  "count",
+  "dir",
+  "dirxml",
+  "error",
+  "group",
+  "groupCollapsed",
+  "groupEnd",
+  "info",
+  "log",
+  "table",
+  "time",
+  "timeEnd",
+  "trace",
+  "warn",
+];
+
 export default function(realm: Realm): ObjectValue {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "console");
 
-  obj.defineNativeMethod("log", 0, (context, args) => {
-    realm.outputToConsole("log", args);
+  for (let method of consoleMethods) {
+    obj.defineNativeMethod(method, 0, (context, args) => {
+      realm.outputToConsole(method, args);
+      return realm.intrinsics.undefined;
+    });
+  }
+
+  obj.defineNativeMethod("time", 0, (context, args) => {
+    realm.outputToConsole("time", args);
     return realm.intrinsics.undefined;
   });
 
-  obj.defineNativeMethod("error", 0, (context, args) => {
-    realm.outputToConsole("error", args);
-    return realm.intrinsics.undefined;
-  });
-
-  obj.defineNativeMethod("warn", 0, (context, args) => {
-    realm.outputToConsole("warn", args);
+  obj.defineNativeMethod("timeEnd", 0, (context, args) => {
+    realm.outputToConsole("timeEnd", args);
     return realm.intrinsics.undefined;
   });
 

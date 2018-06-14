@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Variable, EvaluateResult } from "./../common/types.js";
 import { ReferenceMap } from "./ReferenceMap.js";

@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import { LexicalEnvironment, ObjectEnvironmentRecord } from "../environment.js";
@@ -36,7 +36,7 @@ export default function(
     let error = new CompilerDiagnostic("with object must be a known value", loc, "PP0007", "RecoverableError");
     if (realm.handleError(error) === "Fail") throw new FatalError();
   }
-  let obj = To.ToObjectPartial(realm, val);
+  let obj = To.ToObject(realm, val);
 
   // 3. Let oldEnv be the running execution context's LexicalEnvironment.
   let oldEnv = env;

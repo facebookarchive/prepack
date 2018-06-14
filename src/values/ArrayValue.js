@@ -7,14 +7,15 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor, ObjectKind } from "../types.js";
-import { ObjectValue, StringValue, NumberValue, Value } from "./index.js";
+import { AbstractValue, ObjectValue, StringValue, NumberValue, Value } from "./index.js";
 import { IsAccessorDescriptor, IsPropertyKey, IsArrayIndex } from "../methods/is.js";
 import { Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
+import type { BabelNodeExpression } from "babel-types";
 
 export default class ArrayValue extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {
@@ -91,5 +92,47 @@ export default class ArrayValue extends ObjectValue {
 
     // 1. Return OrdinaryDefineOwnProperty(A, P, Desc).
     return Properties.OrdinaryDefineOwnProperty(this.$Realm, A, P, Desc);
+  }
+
+  static createTemporalWithWidenedNumericProperty(
+    realm: Realm,
+    args: Array<Value>,
+    buildFunction: (Array<BabelNodeExpression>) => BabelNodeExpression,
+    reactArrayHint?: { func: Value, thisVal: Value }
+  ): ArrayValue {
+    invariant(realm.generator !== undefined);
+
+    let value = realm.generator.deriveConcrete(
+      intrinsicName => new ArrayValue(realm, intrinsicName),
+      args,
+      buildFunction,
+      { isPure: true }
+    );
+
+    invariant(value instanceof ArrayValue);
+    // Add unknownProperty so we manually handle this object property access
+    value.unknownProperty = {
+      key: undefined,
+      descriptor: {
+        value: AbstractValue.createFromType(realm, Value, "widened numeric property"),
+      },
+      object: value,
+    };
+    if (realm.react.enabled && reactArrayHint !== undefined) {
+      realm.react.arrayHints.set(value, reactArrayHint);
+    }
+    return value;
+  }
+
+  static isIntrinsicAndHasWidenedNumericProperty(obj: Value): boolean {
+    if (obj instanceof ArrayValue && obj.intrinsicName) {
+      const prop = obj.unknownProperty;
+      if (prop !== undefined && prop.descriptor !== undefined) {
+        const desc = prop.descriptor;
+
+        return desc.value instanceof AbstractValue && desc.value.kind === "widened numeric property";
+      }
+    }
+    return false;
   }
 }

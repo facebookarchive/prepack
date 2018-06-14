@@ -19,6 +19,7 @@ import { ExecutionContext } from "../realm.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord } from "../environment.js";
 import {
   AbstractValue,
+  AbstractObjectValue,
   BoundFunctionValue,
   ECMAScriptSourceFunctionValue,
   EmptyValue,
@@ -684,19 +685,19 @@ export class FunctionImplementation {
   }
 
   // ECMA262 9.2.11
-  SetFunctionName(realm: Realm, F: ObjectValue, name: PropertyKeyValue | AbstractValue, prefix?: string): boolean {
+  SetFunctionName(realm: Realm, F: ObjectValue, _name: PropertyKeyValue | AbstractValue, prefix?: string): boolean {
     // 1. Assert: F is an extensible object that does not have a name own property.
     invariant(F.getExtensible(), "expected object to be extensible and not have a name property");
 
     // 2. Assert: Type(name) is either Symbol or String.
     invariant(
-      typeof name === "string" ||
-        name instanceof StringValue ||
-        name instanceof SymbolValue ||
-        name instanceof AbstractValue,
+      typeof _name === "string" ||
+        _name instanceof StringValue ||
+        _name instanceof SymbolValue ||
+        _name instanceof AbstractValue,
       "expected name to be a string or symbol"
     );
-    if (typeof name === "string") name = new StringValue(realm, name);
+    let name = typeof _name === "string" ? new StringValue(realm, _name) : _name;
 
     // 3. Assert: If prefix was passed, then Type(prefix) is String.
     invariant(prefix === undefined || typeof prefix === "string", "expected prefix to be a string if passed");
@@ -863,7 +864,7 @@ export class FunctionImplementation {
   // ECMA262 9.2.3
   FunctionAllocate(
     realm: Realm,
-    functionPrototype: ObjectValue,
+    functionPrototype: ObjectValue | AbstractObjectValue,
     strict: boolean,
     functionKind: "normal" | "non-constructor" | "generator"
   ): ECMAScriptSourceFunctionValue {
@@ -1115,7 +1116,7 @@ export class FunctionImplementation {
   }
 
   // If c is an abrupt completion and realm.savedCompletion is defined, the result is an instance of
-  // JoinedAbruptCompletions and the effects that have been captured since the PossiblyNormalCompletion instance
+  // ForkedAbruptCompletion and the effects that have been captured since the PossiblyNormalCompletion instance
   // in realm.savedCompletion has been created, becomes the effects of the branch that terminates in c.
   // If c is a normal completion, the result is realm.savedCompletion, with its value updated to c.
   // If c is undefined, the result is just realm.savedCompletion.
@@ -1135,14 +1136,9 @@ export class FunctionImplementation {
         Join.updatePossiblyNormalCompletionWithValue(realm, savedCompletion, c);
         return savedCompletion;
       } else {
-        let e = realm.getCapturedEffects(savedCompletion);
-        invariant(e !== undefined);
+        let e = realm.getCapturedEffects();
         realm.stopEffectCaptureAndUndoEffects(savedCompletion);
-        let joined_effects = Join.joinPossiblyNormalCompletionWithAbruptCompletion(realm, savedCompletion, c, e);
-        realm.applyEffects(joined_effects);
-        let jc = joined_effects[0];
-        invariant(jc instanceof AbruptCompletion);
-        return jc;
+        return Join.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, savedCompletion, c, e);
       }
     }
     return c;

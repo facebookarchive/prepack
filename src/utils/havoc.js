@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
@@ -20,16 +20,17 @@ import {
   GlobalEnvironmentRecord,
 } from "../environment.js";
 import {
-  BoundFunctionValue,
-  ProxyValue,
   AbstractValue,
+  ArrayValue,
+  BoundFunctionValue,
+  ECMAScriptSourceFunctionValue,
   EmptyValue,
   FunctionValue,
-  PrimitiveValue,
-  Value,
-  ObjectValue,
   NativeFunctionValue,
-  ECMAScriptSourceFunctionValue,
+  ObjectValue,
+  PrimitiveValue,
+  ProxyValue,
+  Value,
 } from "../values/index.js";
 import { TestIntegrityLevel } from "../methods/index.js";
 import * as t from "babel-types";
@@ -37,6 +38,9 @@ import traverse from "babel-traverse";
 import type { BabelTraversePath } from "babel-traverse";
 import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "../invariant.js";
+import { HeapInspector } from "../utils/HeapInspector.js";
+import { Logger } from "../utils/logger.js";
+import { isReactElement } from "../react/utils.js";
 
 type HavocedFunctionInfo = {
   unboundReads: Set<string>,
@@ -97,18 +101,28 @@ function getHavocedFunctionInfo(value: FunctionValue) {
     null,
     functionInfo
   );
+  traverse.clearCache();
   return functionInfo;
 }
 
 class ObjectValueHavocingVisitor {
+  realm: Realm;
   // ObjectValues to visit if they're reachable.
   objectsTrackedForHavoc: Set<ObjectValue>;
   // Values that has been visited.
   visitedValues: Set<Value>;
+  _heapInspector: HeapInspector;
 
-  constructor(objectsTrackedForHavoc: Set<ObjectValue>) {
+  constructor(realm: Realm, objectsTrackedForHavoc: Set<ObjectValue>) {
+    this.realm = realm;
     this.objectsTrackedForHavoc = objectsTrackedForHavoc;
     this.visitedValues = new Set();
+  }
+
+  getHeapInspector(): HeapInspector {
+    if (this._heapInspector === undefined)
+      this._heapInspector = new HeapInspector(this.realm, new Logger(this.realm, /*internalDebug*/ false));
+    return this._heapInspector;
   }
 
   mustVisit(val: Value): boolean {
@@ -155,12 +169,61 @@ class ObjectValueHavocingVisitor {
     // prototype
     this.visitObjectPrototype(obj);
 
-    if (TestIntegrityLevel(obj.$Realm, obj, "frozen") || obj.isFinalObject()) return;
+    if (TestIntegrityLevel(this.realm, obj, "frozen")) return;
 
     // if this object wasn't already havoced, we need mark it as havoced
     // so that any mutation and property access get tracked after this.
-    if (!obj.isHavocedObject()) {
+    if (obj.mightNotBeHavocedObject()) {
       obj.havoc();
+      if (obj.symbols.size > 0) {
+        throw new FatalError("TODO: Support havocing objects with symbols");
+      }
+      if (obj.unknownProperty !== undefined) {
+        // TODO: Support unknown properties, or throw FatalError.
+        // We have repros, e.g. test/serializer/additional-functions/ArrayConcat.js.
+      }
+      // TODO: We should emit current value and then reset value for all *internal slots*; this will require deep serializer support; or throw FatalError when we detect any non-initial values in internal slots.
+      let realmGenerator = this.realm.generator;
+      for (let [name, propertyBinding] of obj.properties) {
+        // ignore properties with their correct default values
+        if (this.getHeapInspector().canIgnoreProperty(obj, name)) continue;
+
+        let descriptor = propertyBinding.descriptor;
+        if (descriptor === undefined) {
+          // TODO: This happens, e.g. test/serializer/pure-functions/ObjectAssign2.js
+          // If it indeed means deleted binding, should we initialize descriptor with a deleted value?
+          if (realmGenerator !== undefined) realmGenerator.emitPropertyDelete(obj, name);
+        } else {
+          let value = descriptor.value;
+          invariant(
+            value === undefined || value instanceof Value,
+            "cannot be an array because we are not dealing with intrinsics here"
+          );
+          if (value === undefined) {
+            // TODO: Deal with accessor properties
+            // We have repros, e.g. test/serializer/pure-functions/AbstractPropertyObjectKeyAssignment.js
+          } else {
+            invariant(value instanceof Value);
+            if (value instanceof EmptyValue) {
+              if (realmGenerator !== undefined) realmGenerator.emitPropertyDelete(obj, name);
+            } else {
+              if (realmGenerator !== undefined) {
+                let targetDescriptor = this.getHeapInspector().getTargetIntegrityDescriptor(obj);
+                if (!isReactElement(obj)) {
+                  if (
+                    descriptor.writable !== targetDescriptor.writable ||
+                    descriptor.configurable !== targetDescriptor.configurable
+                  ) {
+                    realmGenerator.emitDefineProperty(obj, name, descriptor);
+                  } else {
+                    realmGenerator.emitPropertyAssignment(obj, name, value);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 
@@ -170,26 +233,33 @@ class ObjectValueHavocingVisitor {
   }
 
   visitObjectPropertiesWithComputedNames(absVal: AbstractValue): void {
-    invariant(absVal.args.length === 3);
-    let cond = absVal.args[0];
-    invariant(cond instanceof AbstractValue);
-    if (cond.kind === "template for property name condition") {
-      let P = cond.args[0];
-      invariant(P instanceof AbstractValue);
-      let V = absVal.args[1];
-      let earlier_props = absVal.args[2];
-      if (earlier_props instanceof AbstractValue) this.visitObjectPropertiesWithComputedNames(earlier_props);
-      this.visitValue(P);
-      this.visitValue(V);
+    if (absVal.kind === "widened property") return;
+    if (absVal.kind === "template for prototype member expression") return;
+    if (absVal.kind === "conditional") {
+      let cond = absVal.args[0];
+      invariant(cond instanceof AbstractValue);
+      if (cond.kind === "template for property name condition") {
+        let P = cond.args[0];
+        invariant(P instanceof AbstractValue);
+        let V = absVal.args[1];
+        let earlier_props = absVal.args[2];
+        if (earlier_props instanceof AbstractValue) this.visitObjectPropertiesWithComputedNames(earlier_props);
+        this.visitValue(P);
+        this.visitValue(V);
+      } else {
+        // conditional assignment
+        this.visitValue(cond);
+        let consequent = absVal.args[1];
+        if (consequent instanceof AbstractValue) {
+          this.visitObjectPropertiesWithComputedNames(consequent);
+        }
+        let alternate = absVal.args[2];
+        if (alternate instanceof AbstractValue) {
+          this.visitObjectPropertiesWithComputedNames(alternate);
+        }
+      }
     } else {
-      // conditional assignment
-      this.visitValue(cond);
-      let consequent = absVal.args[1];
-      invariant(consequent instanceof AbstractValue);
-      let alternate = absVal.args[2];
-      invariant(alternate instanceof AbstractValue);
-      this.visitObjectPropertiesWithComputedNames(consequent);
-      this.visitObjectPropertiesWithComputedNames(alternate);
+      this.visitValue(absVal);
     }
   }
 
@@ -273,7 +343,7 @@ class ObjectValueHavocingVisitor {
   }
 
   visitValueFunction(val: FunctionValue): void {
-    if (val.isHavocedObject()) {
+    if (!val.mightNotBeHavocedObject()) {
       return;
     }
     this.visitObjectProperties(val);
@@ -292,7 +362,7 @@ class ObjectValueHavocingVisitor {
 
     let remainingHavocedBindings = getHavocedFunctionInfo(val);
 
-    let environment = val.$Environment.parent;
+    let environment = val.$Environment;
     while (environment) {
       let record = environment.environmentRecord;
       if (record instanceof ObjectEnvironmentRecord) {
@@ -320,7 +390,7 @@ class ObjectValueHavocingVisitor {
   }
 
   visitValueObject(val: ObjectValue): void {
-    if (val.isHavocedObject()) {
+    if (!val.mightNotBeHavocedObject()) {
       return;
     }
 
@@ -385,9 +455,13 @@ class ObjectValueHavocingVisitor {
     if (val instanceof AbstractValue) {
       if (this.mustVisit(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
-      // All intrinsic values exist from the beginning of time...
+      // All intrinsic values exist from the beginning of time (except unknown arrays)...
       // ...except for a few that come into existance as templates for abstract objects.
-      this.mustVisit(val);
+      if (val instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(val)) {
+        if (this.mustVisit(val)) this.visitValueObject(val);
+      } else {
+        this.mustVisit(val);
+      }
     } else if (val instanceof EmptyValue) {
       this.mustVisit(val);
     } else if (val instanceof PrimitiveValue) {
@@ -399,19 +473,14 @@ class ObjectValueHavocingVisitor {
       if (this.mustVisit(val)) this.visitValueFunction(val);
     } else {
       invariant(val instanceof ObjectValue);
-      if (val.originalConstructor !== undefined) {
-        invariant(val instanceof ObjectValue);
-        if (this.mustVisit(val)) this.visitValueObject(val);
-      } else {
-        if (this.mustVisit(val)) this.visitValueObject(val);
-      }
+      if (this.mustVisit(val)) this.visitValueObject(val);
     }
   }
 }
 
 function ensureFrozenValue(realm, value, loc) {
   // TODO: This should really check if it is recursively immutability.
-  if (value instanceof ObjectValue && !TestIntegrityLevel(realm, value, "frozen") && !value.isFinalObject()) {
+  if (value instanceof ObjectValue && !TestIntegrityLevel(realm, value, "frozen")) {
     let diag = new CompilerDiagnostic(
       "Unfrozen object leaked before end of global code",
       loc || realm.currentLocation,
@@ -438,7 +507,7 @@ export class HavocImplementation {
       // object can safely be assumed to be deeply immutable as far as this
       // pure function is concerned. However, any mutable object needs to
       // be tainted as possibly having changed to anything.
-      let visitor = new ObjectValueHavocingVisitor(objectsTrackedForHavoc);
+      let visitor = new ObjectValueHavocingVisitor(realm, objectsTrackedForHavoc);
       visitor.visitValue(value);
     }
   }

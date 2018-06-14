@@ -12,7 +12,11 @@
 import type { BabelBinaryOperator, BabelUnaryOperator } from "babel-types";
 import invariant from "../invariant.js";
 
-interface Hashable { getHash(): number, mightBeString(): boolean, mightBeObject(): boolean }
+interface Hashable {
+  getHash(): number;
+  mightBeString(): boolean;
+  mightBeObject(): boolean;
+}
 
 export function hashBinary<T: Hashable>(op: BabelBinaryOperator, x: T, y: T): [number, Array<T>] {
   let xHash = x.getHash();

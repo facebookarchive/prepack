@@ -7,12 +7,20 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { ErrorHandler } from "./errors.js";
-import type { SerializerOptions, RealmOptions, Compatibility, DebuggerOptions, ReactOutputTypes } from "./options";
+import type {
+  SerializerOptions,
+  RealmOptions,
+  Compatibility,
+  DebuggerOptions,
+  ReactOutputTypes,
+  InvariantModeTypes,
+} from "./options";
 import { Realm } from "./realm.js";
 import invariant from "./invariant.js";
+import type { DebuggerConfigArguments } from "./debugger/common/types";
 
 export type PrepackOptions = {|
   additionalGlobals?: Realm => void,
@@ -31,18 +39,19 @@ export type PrepackOptions = {|
   logModules?: boolean,
   mathRandomSeed?: string,
   errorHandler?: ErrorHandler,
-  omitInvariants?: boolean,
+  invariantLevel?: number,
+  invariantMode?: InvariantModeTypes,
   emitConcreteModel?: boolean,
   outputFilename?: string,
   profile?: boolean,
   reactEnabled?: boolean,
   reactOutput?: ReactOutputTypes,
   reactVerbose?: boolean,
+  reactOptimizeNestedFunctions?: boolean,
   residual?: boolean,
   serialize?: boolean,
   check?: Array<number>,
   inlineExpressions?: boolean,
-  simpleClosures?: boolean,
   sourceMaps?: boolean,
   initializeMoreModules?: boolean,
   statsFile?: string,
@@ -55,6 +64,7 @@ export type PrepackOptions = {|
   debugInFilePath?: string,
   debugOutFilePath?: string,
   abstractValueImpliesMax?: number,
+  debuggerConfigArgs?: DebuggerConfigArguments,
 |};
 
 export function getRealmOptions({
@@ -62,12 +72,14 @@ export function getRealmOptions({
   debugNames = false,
   errorHandler,
   mathRandomSeed,
-  omitInvariants = false,
+  invariantLevel = 0,
+  invariantMode = "throw",
   emitConcreteModel = false,
   uniqueSuffix,
   reactEnabled,
   reactOutput,
   reactVerbose,
+  reactOptimizeNestedFunctions,
   residual,
   serialize = !residual,
   check,
@@ -76,18 +88,21 @@ export function getRealmOptions({
   timeout,
   maxStackDepth,
   abstractValueImpliesMax,
+  debuggerConfigArgs,
 }: PrepackOptions): RealmOptions {
   return {
     compatibility,
     debugNames,
     errorHandler,
     mathRandomSeed,
-    omitInvariants,
+    invariantLevel,
+    invariantMode,
     emitConcreteModel,
     uniqueSuffix,
     reactEnabled,
     reactOutput,
     reactVerbose,
+    reactOptimizeNestedFunctions,
     residual,
     serialize,
     check,
@@ -96,6 +111,7 @@ export function getRealmOptions({
     timeout,
     maxStackDepth,
     abstractValueImpliesMax,
+    debuggerConfigArgs,
   };
 }
 
@@ -112,7 +128,6 @@ export function getSerializerOptions({
   logModules = false,
   profile = false,
   inlineExpressions = false,
-  simpleClosures = false,
   initializeMoreModules = false,
   trace = false,
 }: PrepackOptions): SerializerOptions {
@@ -128,7 +143,6 @@ export function getSerializerOptions({
     logModules,
     profile,
     inlineExpressions,
-    simpleClosures,
     trace,
   };
   if (lazyObjectsRuntime !== undefined) {

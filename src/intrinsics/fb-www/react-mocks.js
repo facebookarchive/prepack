@@ -14,23 +14,21 @@ import { parseExpression } from "babylon";
 import { ValuesDomain } from "../../domains/index.js";
 import {
   ObjectValue,
-  ECMAScriptFunctionValue,
   ECMAScriptSourceFunctionValue,
-  NativeFunctionValue,
   Value,
   AbstractObjectValue,
   AbstractValue,
-  NullValue,
   FunctionValue,
   NumberValue,
 } from "../../values/index.js";
-import { Get } from "../../methods/index.js";
 import { Environment } from "../../singletons.js";
-import { getReactSymbol } from "../../react/utils.js";
+import { createReactHintObject, getReactSymbol, isReactElement } from "../../react/utils.js";
 import { createReactElement } from "../../react/elements.js";
-import { Properties, Create } from "../../singletons.js";
+import { Properties, Create, To } from "../../singletons.js";
+import { renderToString } from "../../react/experimental-server-rendering/rendering.js";
 import * as t from "babel-types";
 import invariant from "../../invariant";
+import { updateIntrinsicNames, addMockFunctionToObject } from "./utils.js";
 
 // most of the code here was taken from https://github.com/facebook/react/blob/master/packages/react/src/ReactElement.js
 let reactCode = `
@@ -386,7 +384,7 @@ let reactCode = `
       if (childrenLength === 1) {
         props.children = children;
       } else if (childrenLength > 1) {
-        var childArray = Array(childrenLength);
+        var childArray = new Array(childrenLength);
         for (var i = 0; i < childrenLength; i++) {
           childArray[i] = arguments[i + 2];
         }
@@ -477,45 +475,37 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
     currentOwner,
   ]);
   invariant(reactValue instanceof ObjectValue);
-  reactValue.intrinsicName = `require("${reactRequireName}")`;
-  invariant(reactValue instanceof ObjectValue);
-
-  let reactComponentValue = Get(realm, reactValue, "Component");
-  reactComponentValue.intrinsicName = `require("${reactRequireName}").Component`;
-  invariant(reactComponentValue instanceof ECMAScriptFunctionValue);
-  let reactPureComponentValue = Get(realm, reactValue, "PureComponent");
-  reactPureComponentValue.intrinsicName = `require("${reactRequireName}").PureComponent`;
-  invariant(reactPureComponentValue instanceof ECMAScriptFunctionValue);
-  reactComponentValue.$FunctionKind = "normal";
-  invariant(reactComponentValue instanceof ObjectValue);
-
-  let reactComponentPrototypeValue = Get(realm, reactComponentValue, "prototype");
-  reactComponentPrototypeValue.intrinsicName = `require("${reactRequireName}").Component.prototype`;
-
-  let reactPureComponentPrototypeValue = Get(realm, reactPureComponentValue, "prototype");
-  reactPureComponentPrototypeValue.intrinsicName = `require("${reactRequireName}").PureComponent.prototype`;
-
-  let reactCloneElementValue = Get(realm, reactValue, "cloneElement");
-  reactCloneElementValue.intrinsicName = `require("${reactRequireName}").cloneElement`;
-
   reactValue.refuseSerialization = true;
-  let reactElementValue = new NativeFunctionValue(
+
+  // update existing properties with the new intrinsic mock values
+  updateIntrinsicNames(realm, reactValue, reactRequireName, [
+    "PropTypes",
+    "Children",
+    "isValidElement",
+    "cloneElement",
+    { name: "Component", updatePrototype: true },
+    { name: "PureComponent", updatePrototype: true },
+  ]);
+
+  addMockFunctionToObject(
     realm,
-    undefined,
-    `createElement`,
-    0,
+    reactValue,
+    reactRequireName,
+    "createElement",
     (context, [type, config, ...children]) => {
       invariant(type instanceof Value);
-      invariant(
-        config instanceof ObjectValue ||
-          config instanceof AbstractObjectValue ||
-          config instanceof AbstractValue ||
-          config instanceof NullValue
-      );
+      // if config is undefined/null, use an empy object
+      if (config === realm.intrinsics.undefined || config === realm.intrinsics.null || config === undefined) {
+        config = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+      }
+      if (config instanceof AbstractValue && !(config instanceof AbstractObjectValue)) {
+        config = To.ToObject(realm, config);
+      }
+      invariant(config instanceof ObjectValue || config instanceof AbstractObjectValue);
 
       if (Array.isArray(children)) {
         if (children.length === 0) {
-          children = realm.intrinsics.undefined;
+          children = undefined;
         } else if (children.length === 1) {
           children = children[0];
         } else {
@@ -529,41 +519,36 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
           children.makeFinal();
         }
       }
-      invariant(children instanceof Value);
       return createReactElement(realm, type, config, children);
     }
   );
-  reactValue.$DefineOwnProperty("createElement", {
-    value: reactElementValue,
-    writable: false,
-    enumerable: false,
-    configurable: true,
-  });
-  reactElementValue.intrinsicName = `require("${reactRequireName}").createElement`;
 
-  let reactContextValue = new NativeFunctionValue(
+  addMockFunctionToObject(
     realm,
-    undefined,
-    `createContext`,
-    0,
-    (_, [defaultValue = realm.intrinsics.undefined]) => {
+    reactValue,
+    reactRequireName,
+    "createContext",
+    (funcValue, [defaultValue = realm.intrinsics.undefined]) => {
       invariant(defaultValue instanceof Value);
       let consumerObject = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
       let providerObject = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
       let consumer = AbstractValue.createTemporalFromBuildFunction(
         realm,
         ObjectValue,
-        [reactContextValue, defaultValue],
-        ([methodNode, defaultValueNode]) => {
-          return t.callExpression(methodNode, [defaultValueNode]);
-        }
+        [funcValue, defaultValue],
+        ([methodNode, defaultValueNode]) => t.callExpression(methodNode, [defaultValueNode]),
+        { skipInvariant: true, isPure: true }
       );
       invariant(consumer instanceof AbstractObjectValue);
       consumer.values = new ValuesDomain(new Set([consumerObject]));
 
-      let provider = AbstractValue.createTemporalFromBuildFunction(realm, ObjectValue, [consumer], ([consumerNode]) => {
-        return t.memberExpression(consumerNode, t.identifier("Provider"));
-      });
+      let provider = AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        ObjectValue,
+        [consumer],
+        ([consumerNode]) => t.memberExpression(consumerNode, t.identifier("Provider")),
+        { skipInvariant: true, isPure: true }
+      );
       invariant(provider instanceof AbstractObjectValue);
       provider.values = new ValuesDomain(new Set([providerObject]));
 
@@ -577,27 +562,133 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
       Properties.Set(realm, providerObject, "context", consumer, true);
 
       Properties.Set(realm, consumerObject, "Provider", provider, true);
-
       return consumer;
     }
   );
-  reactValue.$DefineOwnProperty("createContext", {
-    value: reactContextValue,
-    writable: false,
-    enumerable: false,
-    configurable: true,
+
+  addMockFunctionToObject(realm, reactValue, reactRequireName, "createRef", funcVal => {
+    let createRef = AbstractValue.createTemporalFromBuildFunction(
+      realm,
+      FunctionValue,
+      [funcVal],
+      ([createRefNode]) => {
+        return t.callExpression(createRefNode, []);
+      },
+      { skipInvariant: true, isPure: true }
+    );
+    invariant(createRef instanceof AbstractObjectValue);
+    return createRef;
   });
-  reactContextValue.intrinsicName = `require("${reactRequireName}").createContext`;
 
-  let reactIsValidElementValue = Get(realm, reactValue, "isValidElement");
-  reactIsValidElementValue.intrinsicName = `require("${reactRequireName}").isValidElement`;
-
-  let reactChildrenValue = Get(realm, reactValue, "Children");
-  reactChildrenValue.intrinsicName = `require("${reactRequireName}").Children`;
-
-  let reactPropTypesValue = Get(realm, reactValue, "PropTypes");
-  reactPropTypesValue.intrinsicName = `require("${reactRequireName}").PropTypes`;
+  addMockFunctionToObject(realm, reactValue, reactRequireName, "forwardRef", (funcVal, [func]) => {
+    let forwardedRef = AbstractValue.createTemporalFromBuildFunction(
+      realm,
+      FunctionValue,
+      [funcVal, func],
+      ([forwardRefNode, funcNode]) => {
+        return t.callExpression(forwardRefNode, [funcNode]);
+      },
+      { skipInvariant: true, isPure: true }
+    );
+    invariant(forwardedRef instanceof AbstractObjectValue);
+    realm.react.abstractHints.set(
+      forwardedRef,
+      createReactHintObject(reactValue, "forwardRef", [func], realm.intrinsics.undefined)
+    );
+    return forwardedRef;
+  });
 
   reactValue.refuseSerialization = false;
+  reactValue.makeFinal();
   return reactValue;
+}
+
+export function createMockReactDOM(realm: Realm, reactDomRequireName: string): ObjectValue {
+  let reactDomValue = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+  reactDomValue.refuseSerialization = true;
+
+  updateIntrinsicNames(realm, reactDomValue, reactDomRequireName);
+
+  const genericTemporalFunc = (funcVal, args) => {
+    let reactDomMethod = AbstractValue.createTemporalFromBuildFunction(
+      realm,
+      FunctionValue,
+      [funcVal, ...args],
+      ([renderNode, ..._args]) => {
+        return t.callExpression(renderNode, ((_args: any): Array<any>));
+      },
+      { skipInvariant: true, isPure: true }
+    );
+    invariant(reactDomMethod instanceof AbstractObjectValue);
+    return reactDomMethod;
+  };
+
+  addMockFunctionToObject(realm, reactDomValue, reactDomRequireName, "render", genericTemporalFunc);
+  addMockFunctionToObject(realm, reactDomValue, reactDomRequireName, "hydrate", genericTemporalFunc);
+  addMockFunctionToObject(realm, reactDomValue, reactDomRequireName, "findDOMNode", genericTemporalFunc);
+  addMockFunctionToObject(realm, reactDomValue, reactDomRequireName, "unmountComponentAtNode", genericTemporalFunc);
+
+  const createPortalFunc = (funcVal, [reactPortalValue, domNodeValue]) => {
+    let reactDomMethod = AbstractValue.createTemporalFromBuildFunction(
+      realm,
+      ObjectValue,
+      [funcVal, reactPortalValue, domNodeValue],
+      ([renderNode, ..._args]) => {
+        return t.callExpression(renderNode, ((_args: any): Array<any>));
+      },
+      { skipInvariant: true, isPure: true }
+    );
+    invariant(reactDomMethod instanceof AbstractObjectValue);
+    realm.react.abstractHints.set(
+      reactDomMethod,
+      createReactHintObject(reactDomValue, "createPortal", [reactPortalValue, domNodeValue], realm.intrinsics.undefined)
+    );
+    return reactDomMethod;
+  };
+
+  addMockFunctionToObject(realm, reactDomValue, reactDomRequireName, "createPortal", createPortalFunc);
+
+  reactDomValue.refuseSerialization = false;
+  reactDomValue.makeFinal();
+  return reactDomValue;
+}
+
+export function createMockReactDOMServer(realm: Realm, requireName: string): ObjectValue {
+  let reactDomServerValue = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+  reactDomServerValue.refuseSerialization = true;
+
+  updateIntrinsicNames(realm, reactDomServerValue, requireName);
+
+  const genericTemporalFunc = (funcVal, args) => {
+    let reactDomMethod = AbstractValue.createTemporalFromBuildFunction(
+      realm,
+      FunctionValue,
+      [funcVal, ...args],
+      ([renderNode, ..._args]) => {
+        return t.callExpression(renderNode, ((_args: any): Array<any>));
+      },
+      { skipInvariant: true, isPure: true }
+    );
+    invariant(reactDomMethod instanceof AbstractObjectValue);
+    return reactDomMethod;
+  };
+
+  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToString", (funcVal, [input]) => {
+    if (input instanceof ObjectValue && isReactElement(input)) {
+      return renderToString(realm, input, false);
+    }
+    return genericTemporalFunc(funcVal, [input]);
+  });
+  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToStaticMarkup", (funcVal, [input]) => {
+    if (input instanceof ObjectValue && isReactElement(input)) {
+      return renderToString(realm, input, true);
+    }
+    return genericTemporalFunc(funcVal, [input]);
+  });
+  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToNodeStream", genericTemporalFunc);
+  addMockFunctionToObject(realm, reactDomServerValue, requireName, "renderToStaticNodeStream", genericTemporalFunc);
+
+  reactDomServerValue.refuseSerialization = false;
+  reactDomServerValue.makeFinal();
+  return reactDomServerValue;
 }

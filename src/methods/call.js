@@ -11,7 +11,13 @@
 
 import type { PropertyKeyValue } from "../types.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
-import { LexicalEnvironment, Reference, EnvironmentRecord, GlobalEnvironmentRecord } from "../environment.js";
+import {
+  EnvironmentRecord,
+  GlobalEnvironmentRecord,
+  LexicalEnvironment,
+  mightBecomeAnObject,
+  Reference,
+} from "../environment.js";
 import { FatalError } from "../errors.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import Value from "../values/Value.js";
@@ -27,14 +33,8 @@ import {
 } from "../values/index.js";
 import { GetIterator, HasSomeCompatibleType, IsCallable, IsPropertyKey, IteratorStep, IteratorValue } from "./index.js";
 import { GeneratorStart } from "../methods/generator.js";
-import {
-  ReturnCompletion,
-  AbruptCompletion,
-  JoinedAbruptCompletions,
-  PossiblyNormalCompletion,
-} from "../completions.js";
+import { ReturnCompletion, AbruptCompletion, ThrowCompletion, ForkedAbruptCompletion } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
-import { construct_empty_effects } from "../realm.js";
 import { Create, Environment, Functions, Join, Havoc, To, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "babel-types";
@@ -271,7 +271,7 @@ export function OrdinaryCallBindThis(
     } else {
       //  b. Else,
       // i. Let thisValue be ! ToObject(thisArgument).
-      thisValue = To.ToObjectPartial(calleeRealm, thisArgument);
+      thisValue = To.ToObject(calleeRealm, thisArgument);
 
       // ii. NOTE ToObject produces wrapper objects using calleeRealm.
     }
@@ -287,6 +287,71 @@ export function OrdinaryCallBindThis(
   return envRec.BindThisValue(thisValue);
 }
 
+function callNativeFunctionValue(
+  realm: Realm,
+  f: NativeFunctionValue,
+  argumentsList: Array<Value>
+): Value | AbruptCompletion {
+  let env = realm.getRunningContext().lexicalEnvironment;
+  let context = env.environmentRecord.GetThisBinding();
+
+  // we have an inConditional flag, as we do not want to return
+  const functionCall = (contextVal, inConditional) => {
+    try {
+      invariant(
+        contextVal instanceof AbstractObjectValue ||
+          contextVal instanceof ObjectValue ||
+          contextVal instanceof NullValue ||
+          contextVal instanceof UndefinedValue ||
+          mightBecomeAnObject(contextVal)
+      );
+      let completion = f.callCallback(
+        // this is to get around Flow not understand the above invariant
+        ((contextVal: any): AbstractObjectValue | ObjectValue | NullValue | UndefinedValue),
+        argumentsList,
+        env.environmentRecord.$NewTarget
+      );
+      return inConditional ? completion.value : completion;
+    } catch (err) {
+      if (err instanceof AbruptCompletion) {
+        return inConditional ? err.value : err;
+      } else if (err instanceof Error) {
+        throw err;
+      } else {
+        throw new FatalError(err);
+      }
+    }
+  };
+
+  const wrapInReturnCompletion = contextVal => new ReturnCompletion(contextVal, realm.currentLocation);
+
+  if (context instanceof AbstractObjectValue && context.kind === "conditional") {
+    let [condValue, consequentVal, alternateVal] = context.args;
+    invariant(condValue instanceof AbstractValue);
+
+    return wrapInReturnCompletion(
+      realm.evaluateWithAbstractConditional(
+        condValue,
+        () => {
+          return realm.evaluateForEffects(
+            () => functionCall(consequentVal, true),
+            null,
+            "callNativeFunctionValue consequent"
+          );
+        },
+        () => {
+          return realm.evaluateForEffects(
+            () => functionCall(alternateVal, true),
+            null,
+            "callNativeFunctionValue alternate"
+          );
+        }
+      )
+    );
+  }
+  return functionCall(context, false);
+}
+
 // ECMA262 9.2.1.3
 export function OrdinaryCallEvaluateBody(
   realm: Realm,
@@ -294,18 +359,7 @@ export function OrdinaryCallEvaluateBody(
   argumentsList: Array<Value>
 ): Reference | Value | AbruptCompletion {
   if (f instanceof NativeFunctionValue) {
-    let env = realm.getRunningContext().lexicalEnvironment;
-    try {
-      return f.callCallback(env.environmentRecord.GetThisBinding(), argumentsList, env.environmentRecord.$NewTarget);
-    } catch (err) {
-      if (err instanceof AbruptCompletion) {
-        return err;
-      } else if (err instanceof Error) {
-        throw err;
-      } else {
-        throw new FatalError(err);
-      }
-    }
+    return callNativeFunctionValue(realm, f, argumentsList);
   } else {
     invariant(f instanceof ECMAScriptSourceFunctionValue);
     let F = f;
@@ -342,7 +396,7 @@ export function OrdinaryCallEvaluateBody(
           //todo: need to emit a specialized function that temporally captures the heap state at this point
         } else {
           realm.applyEffects(effects);
-          let c = effects[0];
+          let c = effects.result;
           return processResult(() => {
             invariant(c instanceof Value || c instanceof AbruptCompletion);
             return c;
@@ -396,61 +450,50 @@ export function OrdinaryCallEvaluateBody(
         try {
           realm.savedCompletion = undefined;
           let c = getCompletion();
+
           // We are about the leave this function and this presents a join point where all non exeptional control flows
-          // converge into a single flow using the joined effects as the new state.
-          c = Functions.incorporateSavedCompletion(realm, c);
-          let joinedEffects;
-          if (c instanceof PossiblyNormalCompletion) {
-            let e = realm.getCapturedEffects(c);
-            if (e !== undefined) {
-              // There were earlier, conditional exits from the function
-              // We join together the current effects with the effects of any earlier returns that are tracked in c.
-              realm.stopEffectCaptureAndUndoEffects(c);
-            } else {
-              e = construct_empty_effects(realm);
+          // converge into a single flow using their joint effects to update the post join point state.
+          if (!(c instanceof ReturnCompletion)) {
+            if (!(c instanceof AbruptCompletion)) {
+              c = new ReturnCompletion(realm.intrinsics.undefined, realm.currentLocation);
             }
-            joinedEffects = Join.joinEffectsAndPromoteNestedReturnCompletions(realm, c, e);
-          } else if (c instanceof JoinedAbruptCompletions) {
-            joinedEffects = Join.joinEffectsAndPromoteNestedReturnCompletions(realm, c, construct_empty_effects(realm));
           }
-          if (joinedEffects !== undefined) {
-            let result = joinedEffects[0];
-            if (result instanceof ReturnCompletion) {
-              realm.applyEffects(joinedEffects);
-              return result;
-            }
-            invariant(result instanceof JoinedAbruptCompletions);
-            if (!(result.consequent instanceof ReturnCompletion || result.alternate instanceof ReturnCompletion)) {
-              realm.applyEffects(joinedEffects);
-              throw result;
-            }
-            // There is a normal return exit, but also one or more throw completions.
-            // The throw completions must be extracted into a saved possibly normal completion
-            // so that the caller can pick them up in its next completion.
-            joinedEffects = extractAndSavePossiblyNormalCompletion(result);
-            result = joinedEffects[0];
-            invariant(result instanceof ReturnCompletion);
-            realm.applyEffects(joinedEffects);
-            return result;
-          } else {
-            invariant(c instanceof Value || c instanceof AbruptCompletion);
-            return c;
-          }
+          invariant(c instanceof AbruptCompletion);
+
+          // If there is a saved completion (i.e. unjoined abruptly completing control flows) then combine them with c
+          let abruptCompletion = Functions.incorporateSavedCompletion(realm, c);
+          invariant(abruptCompletion instanceof AbruptCompletion);
+
+          // If there is single completion, we don't need to join
+          if (!(abruptCompletion instanceof ForkedAbruptCompletion)) return abruptCompletion;
+
+          // If none of the completions are return completions, there is no need to join either
+          if (!abruptCompletion.containsCompletion(ReturnCompletion)) return abruptCompletion;
+
+          // Apply the joined effects of return completions to the current state since these now join the normal path
+          let joinedReturnEffects = Join.extractAndJoinCompletionsOfType(ReturnCompletion, realm, abruptCompletion);
+          realm.applyEffects(joinedReturnEffects);
+          c = joinedReturnEffects.result;
+          invariant(c instanceof ReturnCompletion);
+
+          // We now make a PossiblyNormalCompletion out of abruptCompletion.
+          // extractAndJoinCompletionsOfType helped with this by cheating and turning all of its nested completions
+          // that contain return completions into PossiblyNormalCompletions.
+          let remainingCompletions = abruptCompletion.transferChildrenToPossiblyNormalCompletion();
+
+          // If there are no throw completions left inside remainingCompletions, just return.
+          if (!remainingCompletions.containsCompletion(ThrowCompletion)) return c;
+
+          // Stash the remaining completions in the realm start tracking the effects that need to be appended
+          // to the normal branch at the next join point.
+          realm.savedCompletion = remainingCompletions;
+          realm.captureEffects(remainingCompletions); // so that we can join the normal path with them later on
+          return c;
         } finally {
           realm.incorporatePriorSavedCompletion(priorSavedCompletion);
         }
       }
     }
-  }
-
-  function extractAndSavePossiblyNormalCompletion(c: JoinedAbruptCompletions) {
-    // There are throw completions that conditionally escape from the the call.
-    // We need to carry on in normal mode (after arranging to capturing effects)
-    // while stashing away the throw completions so that the next completion we return
-    // incorporates them.
-    let [joinedEffects, possiblyNormalCompletion] = Join.unbundleReturnCompletion(realm, c);
-    realm.composeWithSavedCompletion(possiblyNormalCompletion);
-    return joinedEffects;
   }
 }
 

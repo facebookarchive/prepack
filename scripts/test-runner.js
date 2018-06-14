@@ -15,6 +15,7 @@ let prepackSources = require("../lib/prepack-node.js").prepackSources;
 import type { PrepackOptions } from "../lib/prepack-options";
 
 let Serializer = require("../lib/serializer/index.js").default;
+let SerializerStatistics = require("../lib/serializer/statistics.js").SerializerStatistics;
 let construct_realm = require("../lib/construct_realm.js").default;
 let initializeGlobals = require("../lib/globals.js").default;
 let chalk = require("chalk");
@@ -27,12 +28,28 @@ let babel = require("babel-core");
 let child_process = require("child_process");
 const EOL = os.EOL;
 let execSpec;
+let JSONTokenizer = require("../lib/utils/JSONTokenizer.js").default;
+let { Linter } = require("eslint");
+let lintConfig = require("./lint-config");
 
 function transformWithBabel(code, plugins, presets) {
   return babel.transform(code, {
     plugins: plugins,
     presets: presets,
   }).code;
+}
+
+function lintCompiledSource(source) {
+  let linter = new Linter();
+  let errors = linter.verify(source, lintConfig);
+  if (errors.length > 0) {
+    console.log("\nTest output failed lint due to:\n");
+    for (let error of errors) {
+      console.log(`${chalk.red(error.message)} ${chalk.gray(`(${error.line}:${error.column})`)}`);
+    }
+    console.log();
+    throw new Error("Test failed lint");
+  }
 }
 
 function search(dir, relative) {
@@ -264,9 +281,9 @@ function runTest(name, code, options: PrepackOptions, args) {
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
   let initializeMoreModules = code.includes("// initialize more modules");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
-  if (code.includes("// inline expressions")) options.inlineExpressions = true;
+  if (args.verbose || code.includes("// inline expressions")) options.inlineExpressions = true;
   if (code.includes("// do not inline expressions")) options.inlineExpressions = false;
-  if (code.includes("// omit invariants")) options.omitInvariants = true;
+  options.invariantLevel = code.includes("// omit invariants") || args.verbose ? 0 : 99;
   if (code.includes("// emit concrete model")) options.emitConcreteModel = true;
   if (code.includes("// exceeds stack limit")) options.maxStackDepth = 10;
   if (code.includes("// react")) {
@@ -278,6 +295,7 @@ function runTest(name, code, options: PrepackOptions, args) {
   options = ((Object.assign({}, options, {
     compatibility,
     debugNames: args.debugNames,
+    debugScopes: args.debugScopes,
     initializeMoreModules,
     delayUnsupportedRequires,
     errorHandler: diag => "Fail",
@@ -294,7 +312,7 @@ function runTest(name, code, options: PrepackOptions, args) {
         errorHandler: diag => "Fail",
         maxStackDepth: options.maxStackDepth,
       };
-      let realm = construct_realm(realmOptions);
+      let realm = construct_realm(realmOptions, undefined, new SerializerStatistics());
       initializeGlobals(realm);
       let serializerOptions = {
         initializeMoreModules,
@@ -362,16 +380,14 @@ function runTest(name, code, options: PrepackOptions, args) {
     }
     let copiesToFind = new Map();
     const copyMarker = "// Copies of ";
-    if (!options.simpleClosures) {
-      let searchStart = code.indexOf(copyMarker);
-      while (searchStart !== -1) {
-        let searchEnd = code.indexOf(":", searchStart);
-        let value = code.substring(searchStart + copyMarker.length, searchEnd);
-        let newline = code.indexOf("\n", searchStart);
-        let count = parseInt(code.substring(searchEnd + 1, newline), 10);
-        copiesToFind.set(new RegExp(value, "gi"), count);
-        searchStart = code.indexOf(copyMarker, newline);
-      }
+    let searchStart = code.indexOf(copyMarker);
+    while (searchStart !== -1) {
+      let searchEnd = code.indexOf(":", searchStart);
+      let value = code.substring(searchStart + copyMarker.length, searchEnd);
+      let newline = code.indexOf("\n", searchStart);
+      let count = parseInt(code.substring(searchEnd + 1, newline), 10);
+      copiesToFind.set(new RegExp(value.replace(/[[\]]/g, "\\$&"), "gi"), count);
+      searchStart = code.indexOf(copyMarker, newline);
     }
     let addedCode = "";
     let injectAtRuntime = "// add at runtime:";
@@ -435,9 +451,9 @@ function runTest(name, code, options: PrepackOptions, args) {
             matchesIssue = true;
             console.error(
               chalk.red(
-                `Wrong number of occurrances of ${pattern.toString()} got ${matches
-                  ? matches.length
-                  : 0} instead of ${count}`
+                `Wrong number of occurrances of ${pattern.toString()} got ${
+                  matches ? matches.length : 0
+                } instead of ${count}`
               )
             );
             console.error(newCode);
@@ -453,6 +469,8 @@ function runTest(name, code, options: PrepackOptions, args) {
         if (args.es5) {
           codeToRun = transformWithBabel(codeToRun, [], [["env", { forceAllTransforms: true, modules: false }]]);
         }
+        // lint output
+        lintCompiledSource(codeToRun);
         try {
           if (execSpec) {
             actual = execExternal(execSpec, codeToRun);
@@ -472,13 +490,14 @@ function runTest(name, code, options: PrepackOptions, args) {
           break;
         }
         // Test the number of clone functions generated with the inital prepack call
-        if (i === 0 && functionCloneCountMatch && !options.simpleClosures) {
+        if (i === 0 && functionCloneCountMatch) {
           let functionCount = parseInt(functionCloneCountMatch[1], 10);
           if (serialized.statistics && functionCount !== serialized.statistics.functionClones) {
             console.error(
               chalk.red(
-                `Code generation serialized an unexpected number of clone functions. Expected: ${functionCount}, Got: ${serialized
-                  .statistics.functionClones}`
+                `Code generation serialized an unexpected number of clone functions. Expected: ${functionCount}, Got: ${
+                  serialized.statistics.functionClones
+                }`
               )
             );
             break;
@@ -541,6 +560,36 @@ function prepareReplExternalSepc(procPath) {
   return { printName: output.trim(), cmd: procPath.trim() };
 }
 
+function runWithCpuProfiler(args) {
+  let profiler;
+  try {
+    profiler = require("v8-profiler");
+  } catch (e) {
+    // Profiler optional dependency failed
+    console.error("v8-profiler doesn't work correctly on Windows, see issue #1695");
+    throw e;
+  }
+  profiler.setSamplingInterval(100); // default is 1000us
+  profiler.startProfiling("");
+  let result = run(args);
+  let data = profiler.stopProfiling("");
+  let start = Date.now();
+  let stream = fs.createWriteStream(args.cpuprofilePath);
+  let getNextToken = JSONTokenizer(data);
+  let write = () => {
+    for (let token = getNextToken(); token !== undefined; token = getNextToken()) {
+      if (!stream.write(token)) {
+        stream.once("drain", write);
+        return;
+      }
+    }
+    stream.end();
+    console.log(`Wrote ${args.cpuprofilePath} in ${Date.now() - start}ms`);
+  };
+  write();
+  return result;
+}
+
 function run(args) {
   let failed = 0;
   let passed = 0;
@@ -549,6 +598,7 @@ function run(args) {
     execSpec = prepareReplExternalSepc(args.outOfProcessRuntime);
   }
 
+  let failedTests = [];
   for (let test of tests) {
     // filter hidden files
     if (path.basename(test.name)[0] === ".") continue;
@@ -578,7 +628,8 @@ function run(args) {
       flagPermutations.push([false, true, undefined, true]);
     }
     if (args.fast) flagPermutations = [[false, false, undefined, isSimpleClosureTest]];
-    for (let [delayInitializations, inlineExpressions, lazyObjectsRuntime, simpleClosures] of flagPermutations) {
+    let lastFailed = failed;
+    for (let [delayInitializations, inlineExpressions, lazyObjectsRuntime] of flagPermutations) {
       if ((skipLazyObjects || args.noLazySupport) && lazyObjectsRuntime) {
         continue;
       }
@@ -587,21 +638,29 @@ function run(args) {
         delayInitializations,
         inlineExpressions,
         lazyObjectsRuntime,
-        simpleClosures,
         residual: args.residual,
       };
       if (runTest(test.name, test.file, options, args)) passed++;
       else failed++;
     }
+    if (failed !== lastFailed) failedTests.push(test);
   }
 
-  console.log("Passed:", `${passed}/${total}`, (Math.floor(passed / total * 100) || 0) + "%");
+  failedTests.sort((x, y) => y.file.length - x.file.length);
+  if (failedTests.length > 0) {
+    console.log("Summary of failed tests:");
+    for (let ft of failedTests) {
+      console.log(`  ${ft.name} (${ft.file.length} bytes)`);
+    }
+  }
+  console.log("Passed:", `${passed}/${total}`, (Math.floor((passed / total) * 100) || 0) + "%");
   return failed === 0;
 }
 
 // Object to store all command line arguments
 class ProgramArgs {
   debugNames: boolean;
+  debugScopes: boolean;
   verbose: boolean;
   filter: string;
   outOfProcessRuntime: string;
@@ -610,8 +669,10 @@ class ProgramArgs {
   noLazySupport: boolean;
   fast: boolean;
   residual: boolean;
+  cpuprofilePath: string;
   constructor(
     debugNames: boolean,
+    debugScopes: boolean,
     verbose: boolean,
     filter: string,
     outOfProcessRuntime: string,
@@ -619,9 +680,11 @@ class ProgramArgs {
     lazyObjectsRuntime: string,
     noLazySupport: boolean,
     fast: boolean,
-    residual: boolean
+    residual: boolean,
+    cpuProfilePath: string
   ) {
     this.debugNames = debugNames;
+    this.debugScopes = debugScopes;
     this.verbose = verbose;
     this.filter = filter; //lets user choose specific test files, runs all tests if omitted
     this.outOfProcessRuntime = outOfProcessRuntime;
@@ -630,6 +693,7 @@ class ProgramArgs {
     this.noLazySupport = noLazySupport;
     this.fast = fast;
     this.residual = residual;
+    this.cpuprofilePath = cpuProfilePath;
   }
 }
 
@@ -637,7 +701,7 @@ class ProgramArgs {
 function main(): number {
   try {
     let args = argsParse();
-    if (!run(args)) {
+    if (!(args.cpuprofilePath ? runWithCpuProfiler : run)(args)) {
       process.exit(1);
     } else {
       return 0;
@@ -658,7 +722,7 @@ function usage(): string {
   return (
     `Usage: ${process.argv[0]} ${process.argv[1]} ` +
     EOL +
-    `[--verbose] [--filter <string>] [--outOfProcessRuntime <path>] [--es5] [--noLazySupport]`
+    `[--debugNames] [--debugScopes] [--es5] [--fast] [--noLazySupport] [--verbose] [--filter <string>] [--outOfProcessRuntime <path>] `
   );
 }
 
@@ -674,10 +738,11 @@ class ArgsParseError {
 // Parses through the command line arguments and throws errors if usage is incorrect
 function argsParse(): ProgramArgs {
   let parsedArgs = minimist(process.argv.slice(2), {
-    string: ["filter", "outOfProcessRuntime"],
-    boolean: ["debugNames", "verbose", "es5", "fast"],
+    string: ["filter", "outOfProcessRuntime", "cpuprofilePath"],
+    boolean: ["debugNames", "debugScopes", "verbose", "es5", "fast"],
     default: {
       debugNames: false,
+      debugScopes: false,
       verbose: false,
       es5: false, // if true test marked as es6 only are not run
       filter: "",
@@ -687,10 +752,14 @@ function argsParse(): ProgramArgs {
       noLazySupport: false,
       fast: false,
       residual: false,
+      cpuprofilePath: "",
     },
   });
   if (typeof parsedArgs.debugNames !== "boolean") {
     throw new ArgsParseError("debugNames must be a boolean (either --debugNames or not)");
+  }
+  if (typeof parsedArgs.debugScopes !== "boolean") {
+    throw new ArgsParseError("debugScopes must be a boolean (either --debugScopes or not)");
   }
   if (typeof parsedArgs.verbose !== "boolean") {
     throw new ArgsParseError("verbose must be a boolean (either --verbose or not)");
@@ -718,8 +787,12 @@ function argsParse(): ProgramArgs {
   if (typeof parsedArgs.residual !== "boolean") {
     throw new ArgsParseError("residual must be a boolean (either --residual or not)");
   }
+  if (typeof parsedArgs.cpuprofilePath !== "string") {
+    throw new ArgsParseError("cpuprofilePath must be a string");
+  }
   let programArgs = new ProgramArgs(
     parsedArgs.debugNames,
+    parsedArgs.debugScopes,
     parsedArgs.verbose,
     parsedArgs.filter,
     parsedArgs.outOfProcessRuntime,
@@ -727,7 +800,8 @@ function argsParse(): ProgramArgs {
     parsedArgs.lazyObjectsRuntime,
     parsedArgs.noLazySupport,
     parsedArgs.fast,
-    parsedArgs.residual
+    parsedArgs.residual,
+    parsedArgs.cpuprofilePath
   );
   return programArgs;
 }

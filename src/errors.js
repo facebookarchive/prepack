@@ -7,10 +7,14 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict */
 
 import type { BabelNodeSourceLocation } from "babel-types";
 
+// Information: Just an informative message with no semantic implications whatsoever.
+// Warning: Prepack will produce code that matches the behavior of the original code, but the original code might have an error.
+// RecoverableError: Prepack might produce code that deviates in behavior from the original code, if the original code is not well behaved.
+// FatalError: Prepack is unable to produce code that could possibly match the behavior of the original code.
 export type Severity = "FatalError" | "RecoverableError" | "Warning" | "Information";
 export type ErrorHandlerResult = "Fail" | "Recover";
 export type ErrorCode = "PP0001";
@@ -37,7 +41,15 @@ export class CompilerDiagnostic extends Error {
 // built-in super classes.
 export class FatalError extends Error {
   constructor(message?: string) {
-    super(message || "A fatal error occurred while prepacking.");
+    super(message === undefined ? "A fatal error occurred while prepacking." : message);
+  }
+}
+
+// This error is thrown when exploring a path whose entry conditon implies that an earlier path conditon must be false.
+// Such paths are infeasible (dead) and must be elided from the evaluation.
+export class InfeasiblePathError extends Error {
+  constructor() {
+    super("Infeasible path explored");
   }
 }
 

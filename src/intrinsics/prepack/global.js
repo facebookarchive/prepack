@@ -29,24 +29,32 @@ import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
 import invariant from "../../invariant.js";
 import { createAbstract, parseTypeNameOrTemplate } from "./utils.js";
+import { describeValue } from "../../utils.js";
 import { valueIsKnownReactAbstraction } from "../../react/utils.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
 
 export function createAbstractFunction(realm: Realm, ...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
-  return new NativeFunctionValue(realm, "global.__abstract", "__abstract", 0, (context, [typeNameOrTemplate, name]) => {
-    if (name instanceof StringValue) name = name.value;
-    if (name !== undefined && typeof name !== "string") {
-      throw new TypeError("intrinsic name argument is not a string");
+  return new NativeFunctionValue(
+    realm,
+    "global.__abstract",
+    "__abstract",
+    0,
+    (context, [typeNameOrTemplate, _name]) => {
+      let name = _name;
+      if (name instanceof StringValue) name = name.value;
+      if (name !== undefined && typeof name !== "string") {
+        throw new TypeError("intrinsic name argument is not a string");
+      }
+      return createAbstract(realm, typeNameOrTemplate, name, ...additionalValues);
     }
-    return createAbstract(realm, typeNameOrTemplate, name, ...additionalValues);
-  });
+  );
 }
 
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
 
-  global.$DefineOwnProperty("dump", {
-    value: new NativeFunctionValue(realm, "global.dump", "dump", 0, (context, args) => {
+  global.$DefineOwnProperty("__dump", {
+    value: new NativeFunctionValue(realm, "global.__dump", "__dump", 0, (context, args) => {
       console.log("dump", args.map(arg => arg.serialize()));
       return context;
     }),
@@ -94,7 +102,12 @@ export default function(realm: Realm): void {
   });
 
   global.$DefineOwnProperty("__optimizedFunctions", {
-    value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__optimizedFunctions", true),
+    value: new ObjectValue(
+      realm,
+      realm.intrinsics.ObjectPrototype,
+      "__optimizedFunctions",
+      /* refuseSerialization */ true
+    ),
     writable: true,
     enumerable: false,
     configurable: true,
@@ -127,7 +140,12 @@ export default function(realm: Realm): void {
 
   if (realm.react.enabled) {
     global.$DefineOwnProperty("__reactComponentTrees", {
-      value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__reactComponentTrees", true),
+      value: new ObjectValue(
+        realm,
+        realm.intrinsics.ObjectPrototype,
+        "__reactComponentTrees",
+        /* refuseSerialization */ true
+      ),
       writable: true,
       enumerable: false,
       configurable: true,
@@ -196,7 +214,26 @@ export default function(realm: Realm): void {
   // Maps from initialized moduleId to exports object
   // NB: Changes to this shouldn't ever be serialized
   global.$DefineOwnProperty("__initializedModules", {
-    value: new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "__initializedModules", true),
+    value: new ObjectValue(
+      realm,
+      realm.intrinsics.ObjectPrototype,
+      "__initializedModules",
+      /* refuseSerialization */ true
+    ),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  // Set of property bindings whose invariant got checked
+  // NB: Changes to this shouldn't ever be serialized
+  global.$DefineOwnProperty("__checkedBindings", {
+    value: new ObjectValue(
+      realm,
+      realm.intrinsics.ObjectPrototype,
+      "__checkedBindings",
+      /* refuseSerialization */ true
+    ),
     writable: true,
     enumerable: false,
     configurable: true,
@@ -262,14 +299,6 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  // TODO #1023: Remove this property. It's just here as some existing internal test cases assume that the __annotate property is exists and is readable.
-  global.$DefineOwnProperty("__annotate", {
-    value: realm.intrinsics.undefined,
-    writable: true,
-    enumerable: false,
-    configurable: true,
-  });
-
   // Internal helper function for tests.
   // __isAbstract(value) checks if a given value is abstract.
   global.$DefineOwnProperty("__isAbstract", {
@@ -289,6 +318,22 @@ export default function(realm: Realm): void {
         return object;
       }
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not an (abstract) object");
+    }),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__makeFinal", {
+    value: new NativeFunctionValue(realm, "global.__makeFinal", "__makeFinal", 1, (context, [object]) => {
+      if (object instanceof ObjectValue || (object instanceof AbstractObjectValue && !object.values.isTop())) {
+        object.makeFinal();
+        return object;
+      }
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "not an object or abstract object value (non-top)"
+      );
     }),
     writable: true,
     enumerable: false,
@@ -326,29 +371,17 @@ export default function(realm: Realm): void {
           invariant(generator);
 
           let key = To.ToStringPartial(realm, propertyName);
-          let propertyIdentifier = generator.getAsPropertyNameExpression(key);
-          let computed = !t.isIdentifier(propertyIdentifier);
 
           if (realm.emitConcreteModel) {
             generator.emitConcreteModel(key, value);
-          } else {
-            let accessedPropertyOf = objectNode => t.memberExpression(objectNode, propertyIdentifier, computed);
-            let inExpressionOf = objectNode =>
-              t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(key), objectNode), true);
-
+          } else if (realm.invariantLevel >= 1) {
             let invariantOptionString = invariantOptions
               ? To.ToStringPartial(realm, invariantOptions)
               : "FULL_INVARIANT";
             switch (invariantOptionString) {
               // checks (!property in object || object.property === undefined)
               case "VALUE_DEFINED_INVARIANT":
-                let condition = ([objectNode, valueNode]) =>
-                  t.logicalExpression(
-                    "||",
-                    inExpressionOf(objectNode),
-                    t.binaryExpression("===", accessedPropertyOf(objectNode), t.valueToNode(undefined))
-                  );
-                generator.emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
+                generator.emitPropertyInvariant(object, key, value.mightBeUndefined() ? "PRESENT" : "DEFINED");
                 break;
               case "SKIP_INVARIANT":
                 break;
@@ -358,6 +391,7 @@ export default function(realm: Realm): void {
               default:
                 invariant(false, "Invalid invariantOption " + invariantOptionString);
             }
+            if (!realm.neverCheckProperty(object, key)) realm.markPropertyAsChecked(object, key);
           }
           realm.generator = undefined; // don't emit code during the following $Set call
           // casting to due to Flow workaround above
@@ -385,6 +419,15 @@ export default function(realm: Realm): void {
   global.$DefineOwnProperty("__isIntegral", {
     value: new NativeFunctionValue(realm, "global.__isIntegral", "__isIntegral", 1, (context, [value]) => {
       return new BooleanValue(realm, value instanceof IntegralValue);
+    }),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__describe", {
+    value: new NativeFunctionValue(realm, "global.__describe", "__describe", 1, (context, [value]) => {
+      return new StringValue(realm, describeValue(value));
     }),
     writable: true,
     enumerable: false,

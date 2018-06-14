@@ -7,4 +7,3 @@
     }
     inspect = function() { return global.obj.time > 0; }
 })();
-        

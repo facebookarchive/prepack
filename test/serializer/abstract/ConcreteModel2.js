@@ -3,8 +3,8 @@
 if (global.__assumeDataProperty) {
   __assumeDataProperty(global, "inspect", undefined);
   __assumeDataProperty(this, "nativeTraceBeginAsyncSection", function(tag, name, cookie) {
-    if (__residual)
-    return __residual("void", function(tag, name, cookie, global) {
+    if (global.__residual)
+    return global.__residual("void", function(tag, name, cookie, global) {
       return global.nativeTraceBeginAsyncSection(tag, name, cookie);
     }, tag, name, cookie, global);
     else
@@ -30,7 +30,7 @@ if (global.__assumeDataProperty) {
   }, "global.nativeModuleProxy"));
 } else {
   global.nativeTraceBeginAsyncSection = function (tag, name, cookie) {
-    if (__residual) return __residual("void", function (tag, name, cookie, global) {
+    if (global.__residual) return global.__residual("void", function (tag, name, cookie, global) {
       return global.nativeTraceBeginAsyncSection(tag, name, cookie);
     }, tag, name, cookie, global);else return this.nativeTraceBeginAsyncSection(tag, name, cookie);
   };
@@ -56,9 +56,9 @@ if (global.__assumeDataProperty) {
 if (global.__makePartial) __makePartial(global);
 
 inspect = function() {
-  return nativeTraceBeginAsyncSection !== undefined &&
-    nativeModuleProxy.nativePerformanceNow() === undefined &&
-    nativeModuleProxy.UIManager.customBubblingEventTypes !== undefined &&
-    nativeModuleProxy.UIManager.AndroidLazyViewManagersEnabled !== undefined &&
-    nativeModuleProxy.DeviceInfo.Dimensions.windowPhysicalPixels.width !== undefined;
+  return global.nativeTraceBeginAsyncSection !== undefined &&
+    global.nativeModuleProxy.nativePerformanceNow() === undefined &&
+    global.nativeModuleProxy.UIManager.customBubblingEventTypes !== undefined &&
+    global.nativeModuleProxy.UIManager.AndroidLazyViewManagersEnabled !== undefined &&
+    global.nativeModuleProxy.DeviceInfo.Dimensions.windowPhysicalPixels.width !== undefined;
 }

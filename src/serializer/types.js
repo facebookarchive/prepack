@@ -7,16 +7,17 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { DeclarativeEnvironmentRecord, type Binding } from "../environment.js";
 import { ConcreteValue, Value, ObjectValue, AbstractValue } from "../values/index.js";
 import type { ECMAScriptSourceFunctionValue, FunctionValue } from "../values/index.js";
-import type { BabelNodeExpression, BabelNodeStatement } from "babel-types";
+import type { BabelNodeExpression, BabelNodeStatement, BabelNodeMemberExpression } from "babel-types";
 import { SameValue } from "../methods/abstract.js";
 import { Realm, type Effects } from "../realm.js";
 import invariant from "../invariant.js";
 import type { Generator } from "../utils/generator.js";
+import { type SerializerStatistics } from "./statistics.js";
 
 export type TryQuery<T> = (f: () => T, defaultValue: T) => T;
 
@@ -33,24 +34,28 @@ export type SerializedBody = {
   type: SerializedBodyType,
   entries: Array<BabelNodeStatement>,
   done: boolean,
-  declaredAbstractValues?: Map<AbstractValue, SerializedBody>,
+  declaredValues?: Map<AbstractValue | ConcreteValue, SerializedBody>,
   parentBody?: SerializedBody,
   nestingLevel?: number,
+  processing?: boolean,
 };
 
 export type AdditionalFunctionEffects = {
+  // All of these effects must be applied for this additional function
+  // to be properly setup
+  parentAdditionalFunction: FunctionValue | void,
   effects: Effects,
   generator: Generator,
-  transforms: Array<Function>,
+  transforms: Array<(body: Array<BabelNodeStatement>) => void>,
+  additionalRoots: Set<ObjectValue>,
 };
+
+export type WriteEffects = Map<FunctionValue, AdditionalFunctionEffects>;
 
 export type AdditionalFunctionInfo = {
   functionValue: FunctionValue,
-  captures: Set<string>,
-  // TODO: use for storing modified residual function bindings (captured by other functions)
   modifiedBindings: Map<Binding, ResidualFunctionBinding>,
   instance: FunctionInstance,
-  hasReturn: boolean,
 };
 
 export type ClassMethodInstance = {|
@@ -80,7 +85,8 @@ export type FunctionInstance = {
 export type FunctionInfo = {
   depth: number,
   lexicalDepth: number,
-  unbound: Set<string>,
+  unbound: Map<string, Array<BabelNodeIdentifier>>,
+  requireCalls: Map<BabelNode, number | string>,
   modified: Set<string>,
   usesArguments: boolean,
   usesThis: boolean,
@@ -99,12 +105,14 @@ export type FactoryFunctionInfo = {
 };
 
 export type ResidualFunctionBinding = {
+  name: string,
   value: void | Value,
   modified: boolean,
   // null means a global binding
   declarativeEnvironmentRecord: null | DeclarativeEnvironmentRecord,
   // The serializedValue is only not yet present during the initialization of a binding that involves recursive dependencies.
   serializedValue?: void | BabelNodeExpression,
+  serializedUnscopedLocation?: void | BabelNodeIdentifier | BabelNodeMemberExpression,
   referentialized?: boolean,
   scope?: ScopeBinding,
   // Which additional functions a binding is accessed by. (Determines what initializer
@@ -113,7 +121,7 @@ export type ResidualFunctionBinding = {
   // If the binding is overwritten by an additional function, these contain the
   // new values
   // TODO #1087: make this a map and support arbitrary binding modifications
-  additionalFunctionOverridesValue?: true,
+  additionalFunctionOverridesValue?: FunctionValue,
 };
 
 export type ScopeBinding = {
@@ -146,23 +154,6 @@ export class BodyReference {
   index: number;
 }
 
-export class TimingStatistics {
-  constructor() {
-    this.totalTime = 0;
-    this.globalCodeTime = 0;
-    this.initializeMoreModulesTime = 0;
-    this.deepTraversalTime = 0;
-    this.referenceCountsTime = 0;
-    this.serializePassTime = 0;
-  }
-  totalTime: number;
-  globalCodeTime: number;
-  initializeMoreModulesTime: number;
-  deepTraversalTime: number;
-  referenceCountsTime: number;
-  serializePassTime: number;
-}
-
 export type ReactEvaluatedNode = {
   children: Array<ReactEvaluatedNode>,
   message: string,
@@ -172,10 +163,10 @@ export type ReactEvaluatedNode = {
     | "NEW_TREE"
     | "INLINED"
     | "BAIL-OUT"
+    | "FATAL"
     | "UNKNOWN_TYPE"
     | "RENDER_PROPS"
-    | "UNSUPPORTED_COMPLETION"
-    | "ABRUPT_COMPLETION"
+    | "FORWARD_REF"
     | "NORMAL",
 };
 
@@ -194,52 +185,11 @@ export class ReactStatistics {
   optimizedNestedClosures: number;
 }
 
-export class SerializerStatistics {
-  constructor() {
-    this.objects = 0;
-    this.objectProperties = 0;
-    this.functions = 0;
-    this.functionClones = 0;
-    this.referentialized = 0;
-    this.valueIds = 0;
-    this.valuesInlined = 0;
-    this.delayedValues = 0;
-    this.acceleratedModules = 0;
-    this.delayedModules = 0;
-  }
-  objects: number;
-  objectProperties: number;
-  functions: number;
-  functionClones: number;
-  referentialized: number;
-  valueIds: number;
-  valuesInlined: number;
-  delayedValues: number;
-  acceleratedModules: number;
-  delayedModules: number;
-
-  log() {
-    console.log(`=== serialization statistics`);
-    console.log(`${this.objects} objects with ${this.objectProperties} properties`);
-    console.log(
-      `${this.functions} functions plus ${this.functionClones} clones due to captured variables; ${this
-        .referentialized} captured mutable variables`
-    );
-    console.log(
-      `${this.valueIds} eager and ${this.delayedValues} delayed value ids generated, and ${this
-        .valuesInlined} values inlined`
-    );
-    console.log(`${this.acceleratedModules} accelerated and ${this.delayedModules} delayed modules.`);
-  }
-}
-
 export type LocationService = {
+  getContainingAdditionalFunction: FunctionValue => void | FunctionValue,
   getLocation: Value => BabelNodeIdentifier,
-  createLocation: () => BabelNodeIdentifier,
-};
-
-export type ReactSerializerState = {
-  usedReactElementKeys: Set<string>,
+  createLocation: (void | FunctionValue) => BabelNodeIdentifier,
+  createFunction: (void | FunctionValue, Array<BabelNodeStatement>) => BabelNodeIdentifier,
 };
 
 export type ObjectRefCount = {
@@ -250,8 +200,7 @@ export type ObjectRefCount = {
 export type SerializedResult = {
   code: string,
   map: void | SourceMap,
-  reactStatistics?: ReactStatistics,
   statistics?: SerializerStatistics,
-  timingStats?: TimingStatistics,
+  reactStatistics?: ReactStatistics,
   heapGraph?: string,
 };

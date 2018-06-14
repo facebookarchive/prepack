@@ -1,3 +1,4 @@
+/* eslint-disable */
 class Foo {
   constructor() {
     this.x = 10;
@@ -6,8 +7,9 @@ class Foo {
     return this.x + y;
   }
 }
+/* eslint-enable */
 
-class Bar extends Foo {
+const Bar = class extends Foo {
   constructor() {
     super();
     this.y = 10;
@@ -17,7 +19,7 @@ class Bar extends Foo {
   }
 }
 
-inspect = function() { 
-  var foo = new Bar(); 
+inspect = function() {
+  var foo = new Bar();
   return [foo, foo.method(10)]
 }

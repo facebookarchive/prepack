@@ -13,5 +13,5 @@ if (global.__assumeDataProperty) {
 if (global.__makePartial) __makePartial(global);
 
 inspect = function() {
-  return fooFunc() === undefined && barUndefined === undefined && barzAbstract === undefined;
+  return global.fooFunc() === undefined && global.barUndefined === undefined && global.barzAbstract === undefined;
 }

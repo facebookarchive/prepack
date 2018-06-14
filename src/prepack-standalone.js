@@ -24,7 +24,8 @@ import { defaultOptions } from "./options";
 import invariant from "./invariant.js";
 import { version } from "../package.json";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
-import { type SerializedResult, SerializerStatistics } from "./serializer/types.js";
+import { type SerializedResult } from "./serializer/types.js";
+import { SerializerStatistics } from "./serializer/statistics.js";
 import { ResidualHeapVisitor } from "./serializer/ResidualHeapVisitor.js";
 import { Modules } from "./utils/modules.js";
 import { Logger } from "./utils/logger.js";
@@ -34,11 +35,12 @@ import { AbstractObjectValue, AbstractValue, ObjectValue } from "./values/index.
 export function prepackSources(
   sources: Array<SourceFile>,
   options: PrepackOptions = defaultOptions,
-  debugChannel: DebugChannel | void = undefined
+  debugChannel: DebugChannel | void = undefined,
+  statistics: SerializerStatistics | void = undefined
 ): SerializedResult {
   let realmOptions = getRealmOptions(options);
   realmOptions.errorHandler = options.errorHandler;
-  let realm = construct_realm(realmOptions, debugChannel);
+  let realm = construct_realm(realmOptions, debugChannel, statistics || new SerializerStatistics());
   initializeGlobals(realm);
   if (typeof options.additionalGlobals === "function") {
     options.additionalGlobals(realm);
@@ -50,7 +52,6 @@ export function prepackSources(
     let modules = new Modules(
       realm,
       logger,
-      new SerializerStatistics(),
       !!options.logModules,
       !!options.delayUnsupportedRequires,
       !!options.accelerateUnsupportedRequires
@@ -60,7 +61,7 @@ export function prepackSources(
     invariant(options.check);
     checkResidualFunctions(modules, options.check[0], options.check[1]);
     return { code: "", map: undefined };
-  } else if (options.serialize || !options.residual) {
+  } else if (options.serialize === true || options.residual !== true) {
     let serializer = new Serializer(realm, getSerializerOptions(options));
     let serialized = serializer.init(sources, options.sourceMaps);
 

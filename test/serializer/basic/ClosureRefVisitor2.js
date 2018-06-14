@@ -1,4 +1,4 @@
-// does not contain:call
+// omit invariants
 (function() {
     var f = function() {
         return function() {

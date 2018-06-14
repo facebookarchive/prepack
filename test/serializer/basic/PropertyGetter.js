@@ -1,4 +1,4 @@
-s = {};
+var s = {};
 Object.defineProperty(s, "p", { 
   configurable: true, 
   enumerable: true, 

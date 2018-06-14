@@ -19,8 +19,8 @@ import generate from "babel-generator";
 import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import type { SerializerOptions } from "../options.js";
-import { TimingStatistics, SerializerStatistics, ReactStatistics } from "./types.js";
-import type { ReactSerializerState, SerializedResult } from "./types.js";
+import { SerializerStatistics } from "./statistics.js";
+import { type SerializedResult, ReactStatistics } from "./types.js";
 import { Functions } from "./functions.js";
 import { Logger } from "../utils/logger.js";
 import { Modules } from "../utils/modules.js";
@@ -43,11 +43,9 @@ export class Serializer {
 
     this.realm = realm;
     this.logger = new Logger(this.realm, !!serializerOptions.internalDebug);
-    this.statistics = new SerializerStatistics();
     this.modules = new Modules(
       this.realm,
       this.logger,
-      this.statistics,
       !!serializerOptions.logModules,
       !!serializerOptions.delayUnsupportedRequires,
       !!serializerOptions.accelerateUnsupportedRequires
@@ -56,9 +54,6 @@ export class Serializer {
     if (serializerOptions.trace) this.realm.tracers.push(new LoggingTracer(this.realm));
 
     this.options = serializerOptions;
-    this.react = {
-      usedReactElementKeys: new Set(),
-    };
   }
 
   realm: Realm;
@@ -66,8 +61,6 @@ export class Serializer {
   logger: Logger;
   modules: Modules;
   options: SerializerOptions;
-  statistics: SerializerStatistics;
-  react: ReactSerializerState;
 
   _execute(sources: Array<SourceFile>, sourceMaps?: boolean = false): { [string]: string } {
     let realm = this.realm;
@@ -99,172 +92,199 @@ export class Serializer {
   }
 
   init(sources: Array<SourceFile>, sourceMaps?: boolean = false): void | SerializedResult {
-    // Phase 1: Let's interpret.
-    let timingStats = this.options.profile ? new TimingStatistics() : undefined;
-    if (timingStats !== undefined) {
-      timingStats.totalTime = Date.now();
-      timingStats.globalCodeTime = Date.now();
-    }
-    if (this.realm.react.verbose) {
-      this.logger.logInformation(`Evaluating initialization path...`);
-    }
-    let code = this._execute(sources);
-    let environmentRecordIdAfterGlobalCode = EnvironmentRecord.nextId;
-    if (timingStats !== undefined) timingStats.globalCodeTime = Date.now() - timingStats.globalCodeTime;
-    if (this.logger.hasErrors()) return undefined;
-    this.modules.resolveInitializedModules();
-    this.functions.checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode);
-    let reactStatistics;
-    if (this.realm.react.enabled) {
-      reactStatistics = new ReactStatistics();
-      this.functions.optimizeReactComponentTreeRoots(reactStatistics, this.react, environmentRecordIdAfterGlobalCode);
-    }
+    let realmStatistics = this.realm.statistics;
+    invariant(realmStatistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
+    let statistics: SerializerStatistics = realmStatistics;
 
-    if (this.options.initializeMoreModules) {
-      if (timingStats !== undefined) timingStats.initializeMoreModulesTime = Date.now();
-      this.modules.initializeMoreModules();
+    let result = statistics.total.measure(() => {
+      // Phase 1: Let's interpret.
+      if (this.realm.react.verbose) {
+        this.logger.logInformation(`Evaluating initialization path...`);
+      }
+
+      let code = this._execute(sources);
+      let environmentRecordIdAfterGlobalCode = EnvironmentRecord.nextId;
+
       if (this.logger.hasErrors()) return undefined;
-      if (timingStats !== undefined)
-        timingStats.initializeMoreModulesTime = Date.now() - timingStats.initializeMoreModulesTime;
-    }
 
-    let additionalFunctionValuesAndEffects = this.functions.getAdditionalFunctionValuesToEffects();
+      statistics.resolveInitializedModules.measure(() => this.modules.resolveInitializedModules());
 
-    // Deep traversal of the heap to identify the necessary scope of residual functions
-    if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now();
-    let preludeGenerator = this.realm.preludeGenerator;
-    invariant(preludeGenerator !== undefined);
-    let referentializer = new Referentializer(
-      this.realm,
-      this.options,
-      preludeGenerator.createNameGenerator("__scope_"),
-      preludeGenerator.createNameGenerator("$"),
-      this.statistics
-    );
-    if (this.realm.react.verbose) {
-      this.logger.logInformation(`Visiting evaluated nodes...`);
-    }
-    let residualHeapVisitor = new ResidualHeapVisitor(
-      this.realm,
-      this.logger,
-      this.modules,
-      additionalFunctionValuesAndEffects,
-      referentializer
-    );
-    residualHeapVisitor.visitRoots();
-    if (this.logger.hasErrors()) return undefined;
-    if (timingStats !== undefined) timingStats.deepTraversalTime = Date.now() - timingStats.deepTraversalTime;
-
-    if (this.realm.react.verbose) {
-      this.logger.logInformation(`Serializing evaluated nodes...`);
-    }
-    const realmPreludeGenerator = this.realm.preludeGenerator;
-    invariant(realmPreludeGenerator);
-    const residualHeapValueIdentifiers = new ResidualHeapValueIdentifiers(
-      residualHeapVisitor.values.keys(),
-      realmPreludeGenerator
-    );
-
-    let heapGraph;
-    if (this.options.heapGraphFormat) {
-      const heapRefCounter = new ResidualHeapRefCounter(
-        this.realm,
-        this.logger,
-        this.modules,
-        additionalFunctionValuesAndEffects,
-        referentializer
+      statistics.checkThatFunctionsAreIndependent.measure(() =>
+        this.functions.checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode)
       );
-      heapRefCounter.visitRoots();
 
-      const heapGraphGenerator = new ResidualHeapGraphGenerator(
-        this.realm,
-        this.logger,
-        this.modules,
-        additionalFunctionValuesAndEffects,
-        residualHeapValueIdentifiers,
-        heapRefCounter.getResult(),
-        referentializer
+      let reactStatistics;
+      if (this.realm.react.enabled) {
+        statistics.optimizeReactComponentTreeRoots.measure(() => {
+          reactStatistics = new ReactStatistics();
+          this.functions.optimizeReactComponentTreeRoots(reactStatistics, environmentRecordIdAfterGlobalCode);
+        });
+      }
+
+      if (this.options.initializeMoreModules) {
+        statistics.initializeMoreModules.measure(() => this.modules.initializeMoreModules());
+        if (this.logger.hasErrors()) return undefined;
+      }
+
+      let heapGraph;
+      let ast = (() => {
+        // We wrap the following in an anonymous function declaration to ensure
+        // that all local variables are locally scoped, and allocated memory cannot
+        // get released when this function returns.
+
+        let additionalFunctionValuesAndEffects = this.functions.getAdditionalFunctionValuesToEffects();
+
+        // Deep traversal of the heap to identify the necessary scope of residual functions
+        let preludeGenerator = this.realm.preludeGenerator;
+        invariant(preludeGenerator !== undefined);
+        let referentializer = new Referentializer(
+          this.realm,
+          this.options,
+          preludeGenerator.createNameGenerator("__scope_"),
+          preludeGenerator.createNameGenerator("__get_scope_binding_")
+        );
+        if (this.realm.react.verbose) {
+          this.logger.logInformation(`Visiting evaluated nodes...`);
+        }
+        let residualHeapVisitor = new ResidualHeapVisitor(
+          this.realm,
+          this.logger,
+          this.modules,
+          additionalFunctionValuesAndEffects,
+          referentializer
+        );
+        statistics.deepTraversal.measure(() => residualHeapVisitor.visitRoots());
+        if (this.logger.hasErrors()) return undefined;
+
+        if (this.realm.react.verbose) {
+          this.logger.logInformation(`Serializing evaluated nodes...`);
+        }
+        const realmPreludeGenerator = this.realm.preludeGenerator;
+        invariant(realmPreludeGenerator);
+        const residualHeapValueIdentifiers = new ResidualHeapValueIdentifiers(
+          residualHeapVisitor.values.keys(),
+          realmPreludeGenerator
+        );
+
+        if (this.options.heapGraphFormat) {
+          const heapRefCounter = new ResidualHeapRefCounter(
+            this.realm,
+            this.logger,
+            this.modules,
+            additionalFunctionValuesAndEffects,
+            referentializer
+          );
+          heapRefCounter.visitRoots();
+
+          const heapGraphGenerator = new ResidualHeapGraphGenerator(
+            this.realm,
+            this.logger,
+            this.modules,
+            additionalFunctionValuesAndEffects,
+            residualHeapValueIdentifiers,
+            heapRefCounter.getResult(),
+            referentializer
+          );
+          heapGraphGenerator.visitRoots();
+          invariant(this.options.heapGraphFormat);
+          heapGraph = heapGraphGenerator.generateResult(this.options.heapGraphFormat);
+        }
+
+        // Phase 2: Let's serialize the heap and generate code.
+        // Serialize for the first time in order to gather reference counts
+
+        if (this.options.inlineExpressions) {
+          residualHeapValueIdentifiers.initPass1();
+          statistics.referenceCounts.measure(() => {
+            new ResidualHeapSerializer(
+              this.realm,
+              this.logger,
+              this.modules,
+              residualHeapValueIdentifiers,
+              residualHeapVisitor.inspector,
+              residualHeapVisitor.values,
+              residualHeapVisitor.functionInstances,
+              residualHeapVisitor.classMethodInstances,
+              residualHeapVisitor.functionInfos,
+              this.options,
+              residualHeapVisitor.referencedDeclaredValues,
+              additionalFunctionValuesAndEffects,
+              residualHeapVisitor.additionalFunctionValueInfos,
+              residualHeapVisitor.declarativeEnvironmentRecordsBindings,
+              referentializer,
+              residualHeapVisitor.generatorDAG,
+              residualHeapVisitor.conditionalFeasibility,
+              residualHeapVisitor.additionalGeneratorRoots
+            ).serialize();
+          });
+          if (this.logger.hasErrors()) return undefined;
+          residualHeapValueIdentifiers.initPass2();
+        }
+
+        // Serialize for a second time, using reference counts to minimize number of generated identifiers
+        const TargetSerializer =
+          this.options.lazyObjectsRuntime != null ? LazyObjectsSerializer : ResidualHeapSerializer;
+        statistics.resetBeforePass();
+        return statistics.serializePass.measure(() =>
+          new TargetSerializer(
+            this.realm,
+            this.logger,
+            this.modules,
+            residualHeapValueIdentifiers,
+            residualHeapVisitor.inspector,
+            residualHeapVisitor.values,
+            residualHeapVisitor.functionInstances,
+            residualHeapVisitor.classMethodInstances,
+            residualHeapVisitor.functionInfos,
+            this.options,
+            residualHeapVisitor.referencedDeclaredValues,
+            additionalFunctionValuesAndEffects,
+            residualHeapVisitor.additionalFunctionValueInfos,
+            residualHeapVisitor.declarativeEnvironmentRecordsBindings,
+            referentializer,
+            residualHeapVisitor.generatorDAG,
+            residualHeapVisitor.conditionalFeasibility,
+            residualHeapVisitor.additionalGeneratorRoots
+          ).serialize()
+        );
+      })();
+
+      invariant(ast !== undefined);
+      if (this.realm.stripFlow) {
+        stripFlowTypeAnnotations(ast);
+      }
+
+      // the signature for generate is not complete, hence the any
+      let generated = statistics.babelGenerate.measure(() => generate(ast, { sourceMaps: sourceMaps }, (code: any)));
+
+      invariant(!this.logger.hasErrors());
+      return {
+        code: generated.code,
+        map: generated.map,
+        statistics,
+        reactStatistics,
+        heapGraph,
+      };
+    });
+
+    if (this.options.logStatistics) {
+      statistics.log();
+      statistics.logSerializerPerformanceTrackers(
+        "time statistics",
+        statistics.forcingGC
+          ? "Time statistics are skewed because of forced garbage collections; remove --expose-gc flag from node.js invocation to disable forced garbage collections."
+          : undefined,
+        pf => `${pf.time}ms`
       );
-      heapGraphGenerator.visitRoots();
-      invariant(this.options.heapGraphFormat);
-      heapGraph = heapGraphGenerator.generateResult(this.options.heapGraphFormat);
+      statistics.logSerializerPerformanceTrackers(
+        "memory statistics",
+        statistics.forcingGC
+          ? undefined
+          : "Memory statistics are unreliable because garbage collections could not be forced; pass --expose-gc to node.js to enable forced garbage collections.",
+        pf => `${pf.memory > 0 ? "+" : ""}${Math.round(pf.memory / 1024 / 1024)}MB`
+      );
     }
 
-    // Phase 2: Let's serialize the heap and generate code.
-    // Serialize for the first time in order to gather reference counts
-
-    if (this.options.inlineExpressions) {
-      if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now();
-      residualHeapValueIdentifiers.initPass1();
-      new ResidualHeapSerializer(
-        this.realm,
-        this.logger,
-        this.modules,
-        residualHeapValueIdentifiers,
-        residualHeapVisitor.inspector,
-        residualHeapVisitor.values,
-        residualHeapVisitor.functionInstances,
-        residualHeapVisitor.classMethodInstances,
-        residualHeapVisitor.functionInfos,
-        this.options,
-        residualHeapVisitor.referencedDeclaredValues,
-        additionalFunctionValuesAndEffects,
-        residualHeapVisitor.additionalFunctionValueInfos,
-        residualHeapVisitor.declarativeEnvironmentRecordsBindings,
-        this.statistics,
-        this.react,
-        referentializer,
-        residualHeapVisitor.generatorParents
-      ).serialize();
-      if (this.logger.hasErrors()) return undefined;
-      if (timingStats !== undefined) timingStats.referenceCountsTime = Date.now() - timingStats.referenceCountsTime;
-      residualHeapValueIdentifiers.initPass2();
-    }
-
-    // Serialize for a second time, using reference counts to minimize number of generated identifiers
-    if (timingStats !== undefined) timingStats.serializePassTime = Date.now();
-    const TargetSerializer = this.options.lazyObjectsRuntime != null ? LazyObjectsSerializer : ResidualHeapSerializer;
-    let residualHeapSerializer = new TargetSerializer(
-      this.realm,
-      this.logger,
-      this.modules,
-      residualHeapValueIdentifiers,
-      residualHeapVisitor.inspector,
-      residualHeapVisitor.values,
-      residualHeapVisitor.functionInstances,
-      residualHeapVisitor.classMethodInstances,
-      residualHeapVisitor.functionInfos,
-      this.options,
-      residualHeapVisitor.referencedDeclaredValues,
-      additionalFunctionValuesAndEffects,
-      residualHeapVisitor.additionalFunctionValueInfos,
-      residualHeapVisitor.declarativeEnvironmentRecordsBindings,
-      this.statistics,
-      this.react,
-      referentializer,
-      residualHeapVisitor.generatorParents
-    );
-
-    let ast = residualHeapSerializer.serialize();
-    if (this.realm.stripFlow) {
-      stripFlowTypeAnnotations(ast);
-    }
-
-    // the signature for generate is not complete, hence the any
-    let generated = generate(ast, { sourceMaps: sourceMaps }, (code: any));
-    if (timingStats !== undefined) {
-      timingStats.serializePassTime = Date.now() - timingStats.serializePassTime;
-      timingStats.totalTime = Date.now() - timingStats.totalTime;
-    }
-    invariant(!this.logger.hasErrors());
-    if (this.options.logStatistics) residualHeapSerializer.statistics.log();
-    return {
-      code: generated.code,
-      map: generated.map,
-      reactStatistics: reactStatistics,
-      statistics: residualHeapSerializer.statistics,
-      timingStats: timingStats,
-      heapGraph,
-    };
+    return result;
   }
 }

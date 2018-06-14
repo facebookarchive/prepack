@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 import invariant from "./../../common/invariant.js";
 import { FileIOWrapper } from "./../../common/channel/FileIOWrapper.js";
 import { DebugMessage } from "./../../common/channel/DebugMessage.js";
@@ -75,8 +75,8 @@ export class DebugChannel {
     this.writeOut(this._marshaller.marshallBreakpointAcknowledge(requestID, messageType, args.breakpoints));
   }
 
-  sendStoppedResponse(reason: StoppedReason, filePath: string, line: number, column: number): void {
-    this.writeOut(this._marshaller.marshallStoppedResponse(reason, filePath, line, column));
+  sendStoppedResponse(reason: StoppedReason, filePath: string, line: number, column: number, message?: string): void {
+    this.writeOut(this._marshaller.marshallStoppedResponse(reason, filePath, line, column, message));
   }
 
   sendStackframeResponse(requestID: number, stackframes: Array<Stackframe>): void {

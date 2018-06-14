@@ -1,4 +1,4 @@
-f = function() {
+var f = function() {
   return nested; // note that declaration comes later --- this is okay!
   function nested() {
     var x0 = 1;
@@ -9,7 +9,7 @@ f = function() {
     return x4;
   }
 }
-g = f();
+var g = f();
 inspect = function() {  
   return f()();
 }

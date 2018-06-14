@@ -14,18 +14,18 @@ import type { EnvironmentRecord } from "../environment.js";
 import type { PropertyKeyValue, IterationKind } from "../types.js";
 import {
   AbstractObjectValue,
+  ArrayValue,
+  ArgumentsExotic,
+  BooleanValue,
+  FunctionValue,
   NativeFunctionValue,
   NullValue,
-  BooleanValue,
-  ArrayValue,
-  ObjectValue,
-  Value,
-  StringValue,
   NumberValue,
-  FunctionValue,
-  UndefinedValue,
+  ObjectValue,
   StringExotic,
-  ArgumentsExotic,
+  StringValue,
+  UndefinedValue,
+  Value,
 } from "../values/index.js";
 import { GetPrototypeFromConstructor } from "./get.js";
 import { IsConstructor, IsPropertyKey, IsArray } from "./is.js";
@@ -39,9 +39,11 @@ import parse from "../utils/parse.js";
 import traverseFast from "../utils/traverse-fast.js";
 import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeFunctionDeclaration } from "babel-types";
 
+const allElementTypes = ["Undefined", "Null", "Boolean", "String", "Symbol", "Number", "Object"];
+
 export class CreateImplementation {
   // ECMA262 9.4.3.3
-  StringCreate(realm: Realm, value: StringValue, prototype: ObjectValue): ObjectValue {
+  StringCreate(realm: Realm, value: StringValue, prototype: ObjectValue | AbstractObjectValue): ObjectValue {
     // 1. Assert: Type(value) is String.
     invariant(value instanceof StringValue, "expected string value");
 
@@ -277,7 +279,7 @@ export class CreateImplementation {
   }
 
   // ECMA262 9.4.2.2
-  ArrayCreate(realm: Realm, length: number, proto?: ObjectValue): ArrayValue {
+  ArrayCreate(realm: Realm, length: number, proto?: ObjectValue | AbstractObjectValue): ArrayValue {
     // 1. Assert: length is an integer Number ≥ 0.
     invariant(length >= 0);
 
@@ -559,6 +561,61 @@ export class CreateImplementation {
     return O.$DefineOwnProperty(P, newDesc);
   }
 
+  CopyDataProperties(realm: Realm, target: ObjectValue, source: Value, excluded: Array<PropertyKeyValue>) {
+    // Assert: Type(target) is Object.
+    invariant(target instanceof ObjectValue, "Not an object value");
+
+    // Assert: Type(excluded) is List.
+    invariant(excluded instanceof Array, "Not an array");
+
+    //   If source is undefined or null,
+    if (source === realm.intrinsics.null || source === realm.intrinsics.undefined) {
+      // let keys be a new empty List.
+    } else {
+      //   Else,
+      // Let from be ! ToObject(source).
+      let from = To.ToObject(realm, source);
+
+      // Let keys be ? from.[[OwnPropertyKeys]]().
+      let keys = from.$OwnPropertyKeys();
+
+      //   Repeat for each element nextKey of keys in List order,
+      for (let nextKey of keys) {
+        // Let found be false.
+        let found = false;
+
+        //   Repeat for each element e of excluded,
+        for (let e of excluded) {
+          // Seems necessary. Flow complained too. Did I go wrong somewhere else?
+          invariant(e instanceof StringValue);
+          invariant(nextKey instanceof StringValue);
+
+          // If e is not empty and SameValue(e, nextKey) is true, then
+          if (!e.mightBeFalse() && SameValue(realm, e, nextKey)) {
+            // Set found to true.
+            found = true;
+          }
+        }
+        // If found is false, then
+        if (found === false) {
+          // Let desc be ? from.[[GetOwnProperty]](nextKey).
+          let desc = from.$GetOwnProperty(nextKey);
+
+          // If desc is not undefined and desc.[[Enumerable]] is true, then
+          if (desc !== undefined && desc.enumerable === true) {
+            // Let propValue be ? Get(from, nextKey).
+            let propValue = Get(realm, from, nextKey);
+            // Perform ! CreateDataProperty(target, nextKey, propValue).
+            this.CreateDataProperty(realm, target, nextKey, propValue);
+          }
+        }
+      }
+    }
+
+    // Return target.
+    return target;
+  }
+
   // ECMA262 7.3.5
   CreateMethodProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value): boolean {
     // 1. Assert: Type(O) is Object.
@@ -600,7 +657,11 @@ export class CreateImplementation {
   }
 
   // ECMA262 9.1.12
-  ObjectCreate(realm: Realm, proto: ObjectValue | NullValue, internalSlotsList?: { [key: string]: void }): ObjectValue {
+  ObjectCreate(
+    realm: Realm,
+    proto: ObjectValue | AbstractObjectValue | NullValue,
+    internalSlotsList?: { [key: string]: void }
+  ): ObjectValue {
     // 1. If internalSlotsList was not provided, let internalSlotsList be an empty List.
     internalSlotsList = internalSlotsList || {};
 
@@ -642,7 +703,7 @@ export class CreateImplementation {
   // ECMA262 7.3.17
   CreateListFromArrayLike(realm: Realm, obj: Value, elementTypes?: Array<string>): Array<Value> {
     // 1. If elementTypes was not passed, let elementTypes be « Undefined, Null, Boolean, String, Symbol, Number, Object ».
-    elementTypes = elementTypes || ["Undefined", "Null", "Boolean", "String", "Symbol", "Number", "Object"];
+    elementTypes = elementTypes || allElementTypes;
 
     // 2. If Type(obj) is not Object, throw a TypeError exception.
     if (!(obj instanceof ObjectValue)) {
@@ -667,7 +728,7 @@ export class CreateImplementation {
       let next = Get(realm, obj, indexName);
 
       // c. If Type(next) is not an element of elementTypes, throw a TypeError exception.
-      if (elementTypes.indexOf(Type(realm, next)) < 0) {
+      if (elementTypes !== allElementTypes && elementTypes.indexOf(Type(realm, next)) < 0) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "invalid element type");
       }
 
@@ -766,7 +827,11 @@ export class CreateImplementation {
     } catch (e) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, "parse failed");
     }
-    let { program: { body: [functionDeclaration] } } = ast;
+    let {
+      program: {
+        body: [functionDeclaration],
+      },
+    } = ast;
     if (!functionDeclaration) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, "parse failed");
     }

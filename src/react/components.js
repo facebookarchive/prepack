@@ -17,16 +17,21 @@ import {
   AbstractObjectValue,
   SymbolValue,
   NativeFunctionValue,
+  ECMAScriptFunctionValue,
+  Value,
+  FunctionValue,
 } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
-import { valueIsClassComponent, deleteRefAndKeyFromProps, getProperty, getValueFromFunctionCall } from "./utils";
+import { flagPropsWithNoPartialKeyOrRef, getProperty, getValueFromFunctionCall, valueIsClassComponent } from "./utils";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get, Construct } from "../methods/index.js";
 import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
+import traverse from "babel-traverse";
 import type { ClassComponentMetadata } from "../types.js";
 import type { ReactEvaluatedNode } from "../serializer/types.js";
+import { FatalError } from "../errors.js";
 
 const lifecycleMethods = new Set([
   "componentWillUnmount",
@@ -59,9 +64,9 @@ export function getInitialProps(
     }
   }
   let value = AbstractValue.createAbstractObject(realm, propsName || "props");
-  // props objects don't have a key and ref, so we remove them
-  deleteRefAndKeyFromProps(realm, value);
   invariant(value instanceof AbstractObjectValue);
+  flagPropsWithNoPartialKeyOrRef(realm, value);
+  value.makeFinal();
   return value;
 }
 
@@ -88,6 +93,26 @@ export function getInitialContext(realm: Realm, componentType: ECMAScriptSourceF
   return value;
 }
 
+function visitClassMethodAstForThisUsage(realm: Realm, method: ECMAScriptSourceFunctionValue): void {
+  let formalParameters = method.$FormalParameters;
+  let code = method.$ECMAScriptCode;
+
+  traverse(
+    t.file(t.program([t.expressionStatement(t.functionExpression(null, formalParameters, code))])),
+    {
+      ThisExpression(path) {
+        let parentNode = path.parentPath.node;
+
+        if (!t.isMemberExpression(parentNode)) {
+          throw new SimpleClassBailOut(`possible leakage of independent "this" reference found`);
+        }
+      },
+    },
+    null,
+    {}
+  );
+}
+
 export function createSimpleClassInstance(
   realm: Realm,
   componentType: ECMAScriptSourceFunctionValue,
@@ -105,7 +130,11 @@ export function createSimpleClassInstance(
       throw new SimpleClassBailOut("lifecycle methods are not supported on simple classes");
     } else if (name !== "constructor") {
       allowedPropertyAccess.add(name);
-      Properties.Set(realm, instance, name, Get(realm, componentPrototype, name), true);
+      let method = Get(realm, componentPrototype, name);
+      if (method instanceof ECMAScriptSourceFunctionValue) {
+        visitClassMethodAstForThisUsage(realm, method);
+      }
+      Properties.Set(realm, instance, name, method, true);
     }
   }
   // assign props
@@ -163,29 +192,43 @@ export function createClassInstanceForFirstRenderOnly(
   evaluatedNode: ReactEvaluatedNode
 ): ObjectValue {
   let instance = getValueFromFunctionCall(realm, componentType, realm.intrinsics.undefined, [props, context], true);
+  let objectAssign = Get(realm, realm.intrinsics.Object, "assign");
+  invariant(objectAssign instanceof ECMAScriptFunctionValue);
+  let objectAssignCall = objectAssign.$Call;
+  invariant(objectAssignCall !== undefined);
+
   invariant(instance instanceof ObjectValue);
   instance.refuseSerialization = true;
   // assign props
   Properties.Set(realm, instance, "props", props, true);
   // assign context
   Properties.Set(realm, instance, "context", context, true);
+  let state = Get(realm, instance, "state");
+  if (state instanceof AbstractObjectValue || state instanceof ObjectValue) {
+    state.makeFinal();
+  }
   // assign a mocked setState
-  let setState = new NativeFunctionValue(realm, undefined, `setState`, 1, (_context, [state, callback]) => {
-    let stateToUpdate = state;
+  let setState = new NativeFunctionValue(realm, undefined, `setState`, 1, (_context, [stateToUpdate, callback]) => {
     invariant(instance instanceof ObjectValue);
-    let currentState = Get(realm, instance, "state");
-    invariant(currentState instanceof ObjectValue);
+    let prevState = Get(realm, instance, "state");
+    invariant(prevState instanceof ObjectValue);
 
-    if (state instanceof ECMAScriptSourceFunctionValue && state.$Call) {
-      stateToUpdate = state.$Call(instance, [currentState]);
+    if (stateToUpdate instanceof ECMAScriptSourceFunctionValue && stateToUpdate.$Call) {
+      stateToUpdate = stateToUpdate.$Call(instance, [prevState]);
     }
     if (stateToUpdate instanceof ObjectValue) {
+      let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+      objectAssignCall(realm.intrinsics.undefined, [newState, prevState]);
+
       for (let [key, binding] of stateToUpdate.properties) {
         if (binding && binding.descriptor && binding.descriptor.enumerable) {
           let value = getProperty(realm, stateToUpdate, key);
-          Properties.Set(realm, currentState, key, value, true);
+          Properties.Set(realm, newState, key, value, true);
         }
       }
+
+      newState.makeFinal();
+      Properties.Set(realm, instance, "state", newState, true);
     }
     if (callback instanceof ECMAScriptSourceFunctionValue && callback.$Call) {
       callback.$Call(instance, []);
@@ -259,4 +302,119 @@ export function evaluateClassConstructor(
     instanceProperties,
     instanceSymbols,
   };
+}
+
+export function applyGetDerivedStateFromProps(
+  realm: Realm,
+  getDerivedStateFromProps: ECMAScriptSourceFunctionValue,
+  instance: ObjectValue,
+  props: ObjectValue | AbstractValue | AbstractObjectValue
+): void {
+  let prevState = Get(realm, instance, "state");
+  let getDerivedStateFromPropsCall = getDerivedStateFromProps.$Call;
+  invariant(getDerivedStateFromPropsCall !== undefined);
+  let partialState = getDerivedStateFromPropsCall(realm.intrinsics.null, [props, prevState]);
+
+  const deriveState = state => {
+    let objectAssign = Get(realm, realm.intrinsics.Object, "assign");
+    invariant(objectAssign instanceof ECMAScriptFunctionValue);
+    let objectAssignCall = objectAssign.$Call;
+    invariant(objectAssignCall !== undefined);
+
+    if (state instanceof AbstractValue && !(state instanceof AbstractObjectValue)) {
+      const kind = state.kind;
+
+      if (kind === "conditional") {
+        let condition = state.args[0];
+        let a = deriveState(state.args[1]);
+        let b = deriveState(state.args[2]);
+        invariant(condition instanceof AbstractValue);
+        if (a === null && b === null) {
+          return null;
+        } else if (a === null) {
+          invariant(b instanceof Value);
+          return AbstractValue.createFromConditionalOp(realm, condition, realm.intrinsics.false, b);
+        } else if (b === null) {
+          invariant(a instanceof Value);
+          return AbstractValue.createFromConditionalOp(realm, condition, a, realm.intrinsics.false);
+        } else {
+          invariant(a instanceof Value);
+          invariant(b instanceof Value);
+          return AbstractValue.createFromConditionalOp(realm, condition, a, b);
+        }
+      } else if (kind === "||" || kind === "&&") {
+        let a = deriveState(state.args[0]);
+        let b = deriveState(state.args[1]);
+        if (b === null) {
+          invariant(a instanceof Value);
+          return AbstractValue.createFromLogicalOp(realm, kind, a, realm.intrinsics.false);
+        } else {
+          invariant(a instanceof Value);
+          invariant(b instanceof Value);
+          return AbstractValue.createFromLogicalOp(realm, kind, a, b);
+        }
+      } else {
+        invariant(state.args !== undefined, "TODO: unknown abstract value passed to deriveState");
+        // as the value is completely abstract, we need to add a bunch of
+        // operations to be emitted to ensure we do the right thing at runtime
+        let a = AbstractValue.createFromBinaryOp(realm, "!==", state, realm.intrinsics.null);
+        let b = AbstractValue.createFromBinaryOp(realm, "!==", state, realm.intrinsics.undefined);
+        let c = AbstractValue.createFromLogicalOp(realm, "&&", a, b);
+        invariant(c instanceof AbstractValue);
+        let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+        // we cannot use the standard Object.assign as partial state
+        // is not simple. however, given getDerivedStateFromProps is
+        // meant to be pure, we can assume that there are no getters on
+        // the partial abstract state
+        AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          FunctionValue,
+          [objectAssign, newState, prevState, state],
+          ([methodNode, ..._args]) => {
+            return t.callExpression(methodNode, ((_args: any): Array<any>));
+          },
+          { skipInvariant: true }
+        );
+        newState.makeSimple();
+        newState.makePartial();
+        newState.makeFinal();
+        let conditional = AbstractValue.createFromLogicalOp(realm, "&&", c, newState);
+        return conditional;
+      }
+    } else if (state !== realm.intrinsics.null && state !== realm.intrinsics.undefined) {
+      let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+      try {
+        objectAssignCall(realm.intrinsics.undefined, [newState, prevState, state]);
+      } catch (e) {
+        if (realm.isInPureScope() && e instanceof FatalError) {
+          AbstractValue.createTemporalFromBuildFunction(
+            realm,
+            FunctionValue,
+            [objectAssign, newState, prevState, state],
+            ([methodNode, ..._args]) => {
+              return t.callExpression(methodNode, ((_args: any): Array<any>));
+            },
+            { skipInvariant: true }
+          );
+          newState.makeSimple();
+          newState.makePartial();
+          return newState;
+        }
+        throw e;
+      }
+      newState.makeFinal();
+      return newState;
+    } else {
+      return null;
+    }
+  };
+
+  let newState = deriveState(partialState);
+  if (newState !== null) {
+    if (newState instanceof AbstractValue) {
+      newState = AbstractValue.createFromLogicalOp(realm, "||", newState, prevState);
+    }
+    invariant(newState instanceof Value);
+    Properties.Set(realm, instance, "state", newState, true);
+  }
 }

@@ -21,6 +21,7 @@ let readFileAsync = promisify(readFile);
 let writeFileAsync = promisify(writeFile);
 let chalk = require("chalk");
 let { Linter } = require("eslint");
+let lintConfig = require("./lint-config");
 
 let errorsCaptured = [];
 
@@ -39,10 +40,8 @@ function printError(error) {
       console.warn(`Warn: ${msg}`);
       return "Recover";
     case "RecoverableError":
-      console.error(`Error: ${msg}`);
-      return "Fail";
     case "FatalError":
-      console.error(`Fatal Error: ${msg}`);
+      console.error(`Error: ${msg}`);
       return "Fail";
     default:
       console.log(msg);
@@ -58,7 +57,7 @@ let prepackOptions = {
     errorsCaptured.push(diag);
     if (diag.severity !== "Warning") {
       if (diag.errorCode === "PP0025") {
-        // recover from `unable to evaluate "key" and "ref" on a ReactElement due to an abstract config passed to createElement`
+        // recover from `unable to evaluate "key" and "ref" on a ReactElement
         return "Recover";
       }
       return "Fail";
@@ -73,9 +72,9 @@ let prepackOptions = {
   reactEnabled: true,
   reactOutput: "jsx",
   reactVerbose: true,
+  reactOptimizeNestedFunctions: false,
   inlineExpressions: true,
-  omitInvariants: true,
-  simpleClosures: true,
+  invariantLevel: 0,
   abstractValueImpliesMax: 1000,
 };
 let inputPath = path.resolve("fb-www/input.js");
@@ -113,53 +112,7 @@ async function readComponentsList() {
 
 function lintCompiledSource(source) {
   let linter = new Linter();
-  let errors = linter.verify(source, {
-    env: {
-      commonjs: true,
-      browser: true,
-    },
-    rules: { "no-undef": "error" },
-    parserOptions: {
-      ecmaVersion: 6,
-      ecmaFeatures: {
-        jsx: true,
-      },
-    },
-    globals: {
-      // FB
-      React: true,
-      Env: true,
-      Bootloader: true,
-      JSResource: true,
-      babelHelpers: true,
-      asset: true,
-      cx: true,
-      cssVar: true,
-      csx: true,
-      errorDesc: true,
-      errorHelpCenterID: true,
-      errorSummary: true,
-      gkx: true,
-      glyph: true,
-      ifRequired: true,
-      ix: true,
-      fbglyph: true,
-      requireWeak: true,
-      xuiglyph: true,
-      // ES 6
-      Promise: true,
-      Map: true,
-      Set: true,
-      Proxy: true,
-      Symbol: true,
-      WeakMap: true,
-      // Vendor specific
-      MSApp: true,
-      __REACT_DEVTOOLS_GLOBAL_HOOK__: true,
-      // CommonJS / Node
-      process: true,
-    },
-  });
+  let errors = linter.verify(source, lintConfig);
   if (errors.length > 0) {
     console.log(`\n${chalk.inverse(`=== Validation Failed ===`)}\n`);
     for (let error of errors) {
@@ -190,7 +143,7 @@ function printReactEvaluationGraph(evaluatedRootNode, depth) {
     let line;
     if (status === "inlined") {
       line = `${chalk.gray(`-`)} ${chalk.green(name)} ${chalk.gray(`(${status + message})`)}`;
-    } else if (status === "unsupported_completion" || status === "unknown_type" || status === "bail-out") {
+    } else if (status === "unknown_type" || status === "bail-out" || status === "fatal") {
       line = `${chalk.gray(`-`)} ${chalk.red(name)} ${chalk.gray(`(${status + message})`)}`;
     } else {
       line = `${chalk.gray(`-`)} ${chalk.yellow(name)} ${chalk.gray(`(${status + message})`)}`;
@@ -245,6 +198,11 @@ readComponentsList()
   })
   .catch(e => {
     console.log(`\n${chalk.inverse(`=== Compilation Failed ===`)}\n`);
-    console.error(e.nativeStack || e.stack);
+    if (e.__isReconcilerFatalError) {
+      console.error(e.message + "\n");
+      printReactEvaluationGraph(e.evaluatedNode, 0);
+    } else {
+      console.error(e.nativeStack || e.stack);
+    }
     process.exit(1);
   });

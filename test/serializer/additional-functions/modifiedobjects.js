@@ -36,5 +36,5 @@ inspect = function inspect() {
   let z2 = toCapture1;
   additional2();
 
-  return '' + z + z2 + x + y + toCapture1 + toCapture2 + toCapture3 + foo + bar + (foo === bar);
+  return '' + z + z2 + x + y + toCapture1 + toCapture2 + toCapture3 + global.foo + global.bar + (global.foo === global.bar);
 }

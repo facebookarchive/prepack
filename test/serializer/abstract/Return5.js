@@ -1,6 +1,6 @@
 let x = global.__abstract ? __abstract("boolean", "true") : true;
 
-y = 1;
+var y = 1;
 
 function f(b) {
   if (b) return 1;
@@ -10,6 +10,6 @@ function f(b) {
   return 3;
 }
 
-z = f(!x);
+var z = f(!x);
 
 inspect = function() { return "" + y + z; }

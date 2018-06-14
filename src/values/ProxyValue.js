@@ -10,10 +10,18 @@
 /* @flow */
 
 import { Realm } from "../realm.js";
-import { Value, SymbolValue, NullValue, ObjectValue, UndefinedValue, StringValue } from "./index.js";
+import {
+  Value,
+  AbstractObjectValue,
+  SymbolValue,
+  NullValue,
+  ObjectValue,
+  UndefinedValue,
+  StringValue,
+} from "./index.js";
 import type { Descriptor, PropertyKeyValue } from "../types.js";
 import invariant from "../invariant.js";
-import { SameValue, SameValuePartial, SamePropertyKey } from "../methods/abstract.js";
+import { SameValuePartial, SamePropertyKey } from "../methods/abstract.js";
 import { GetMethod } from "../methods/get.js";
 import { IsExtensible, IsPropertyKey, IsDataDescriptor, IsAccessorDescriptor } from "../methods/is.js";
 import { Create, Properties, To } from "../singletons.js";
@@ -46,8 +54,12 @@ export default class ProxyValue extends ObjectValue {
     return false;
   }
 
+  usesOrdinaryObjectInternalPrototypeMethods(): boolean {
+    return false;
+  }
+
   // ECMA262 9.5.1
-  $GetPrototypeOf(): NullValue | ObjectValue {
+  $GetPrototypeOf(): NullValue | AbstractObjectValue | ObjectValue {
     let realm = this.$Realm;
 
     // 1. Let handler be the value of the [[ProxyHandler]] internal slot of O.
@@ -92,7 +104,7 @@ export default class ProxyValue extends ObjectValue {
     let targetProto = target.$GetPrototypeOf();
 
     // 12. If SameValue(handlerProto, targetProto) is false, throw a TypeError exception.
-    if (!SameValue(realm, handlerProto, targetProto)) {
+    if (!SameValuePartial(realm, handlerProto, targetProto)) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
     }
 
@@ -147,7 +159,7 @@ export default class ProxyValue extends ObjectValue {
     let targetProto = target.$GetPrototypeOf();
 
     // 13. If SameValue(V, targetProto) is false, throw a TypeError exception.
-    if (!SameValue(realm, V, targetProto)) {
+    if (!SameValuePartial(realm, V, targetProto)) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
     }
 

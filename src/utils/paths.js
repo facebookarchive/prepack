@@ -7,13 +7,15 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { AbstractValue, ConcreteValue, NullValue, UndefinedValue, Value } from "../values/index.js";
+import { InfeasiblePathError } from "../errors.js";
+import type { Realm } from "../realm.js";
 import invariant from "../invariant.js";
 
 export class PathImplementation {
-  implies(condition: AbstractValue): boolean {
+  implies(condition: Value): boolean {
     if (!condition.mightNotBeTrue()) return true; // any path implies true
     let path = condition.$Realm.pathConditions;
     for (let i = path.length - 1; i >= 0; i--) {
@@ -23,7 +25,7 @@ export class PathImplementation {
     return false;
   }
 
-  impliesNot(condition: AbstractValue): boolean {
+  impliesNot(condition: Value): boolean {
     if (!condition.mightNotBeFalse()) return true; // any path implies !false
     let path = condition.$Realm.pathConditions;
     for (let i = path.length - 1; i >= 0; i--) {
@@ -33,54 +35,72 @@ export class PathImplementation {
     return false;
   }
 
-  withCondition<T>(condition: AbstractValue, evaluate: () => T): T {
+  withCondition<T>(condition: Value, evaluate: () => T): T {
+    if (!condition.mightNotBeFalse()) throw new InfeasiblePathError();
     let realm = condition.$Realm;
     let savedPath = realm.pathConditions;
     realm.pathConditions = [];
     try {
       pushPathCondition(condition);
-      pushRefinedConditions(condition, savedPath);
+      pushRefinedConditions(realm, savedPath);
       return evaluate();
+    } catch (e) {
+      if (e instanceof InfeasiblePathError) {
+        // if condition is true, one of the saved path conditions must be false
+        // since we have to assume that those conditions are true we now know that on this path, condition is false
+        realm.pathConditions = savedPath;
+        pushInversePathCondition(condition);
+      }
+      throw e;
     } finally {
       realm.pathConditions = savedPath;
     }
   }
 
-  withInverseCondition<T>(condition: AbstractValue, evaluate: () => T): T {
+  withInverseCondition<T>(condition: Value, evaluate: () => T): T {
+    if (!condition.mightNotBeTrue()) throw new InfeasiblePathError();
     let realm = condition.$Realm;
     let savedPath = realm.pathConditions;
     realm.pathConditions = [];
     try {
       pushInversePathCondition(condition);
-      pushRefinedConditions(condition, savedPath);
+      pushRefinedConditions(realm, savedPath);
       return evaluate();
+    } catch (e) {
+      if (e instanceof InfeasiblePathError) {
+        // if condition is false, one of the saved path conditions must be false
+        // since we have to assume that those conditions are true we now know that on this path, condition is true
+        realm.pathConditions = savedPath;
+        pushPathCondition(condition);
+      }
+      throw e;
     } finally {
       realm.pathConditions = savedPath;
     }
   }
 
-  pushAndRefine(condition: AbstractValue) {
+  pushAndRefine(condition: Value) {
     let realm = condition.$Realm;
     let savedPath = realm.pathConditions;
     realm.pathConditions = [];
 
     pushPathCondition(condition);
-    pushRefinedConditions(condition, savedPath);
+    pushRefinedConditions(realm, savedPath);
   }
 
-  pushInverseAndRefine(condition: AbstractValue) {
+  pushInverseAndRefine(condition: Value) {
     let realm = condition.$Realm;
     let savedPath = realm.pathConditions;
     realm.pathConditions = [];
 
     pushInversePathCondition(condition);
-    pushRefinedConditions(condition, savedPath);
+    pushRefinedConditions(realm, savedPath);
   }
 }
 
-// A path condition is an abstract value that is known to be true in a particular code path
+// A path condition is an abstract value that must be true in this particular code path, so we want to assume as much
 function pushPathCondition(condition: Value) {
-  invariant(condition.mightNotBeFalse(), "pushing false"); // it is mistake to assert that false is true
+  invariant(condition.mightNotBeFalse(), "pushing false"); // it is mistake to assume that false is true
   if (condition instanceof ConcreteValue) return;
   if (!condition.mightNotBeTrue()) return;
   invariant(condition instanceof AbstractValue);
@@ -91,6 +111,20 @@ function pushPathCondition(condition: Value) {
     invariant(left instanceof AbstractValue); // it is a mistake to create an abstract value when concrete value will do
     pushPathCondition(left);
     pushPathCondition(right);
+  } else if (condition.kind === "===") {
+    let [left, right] = condition.args;
+    if (right instanceof AbstractValue && right.kind === "conditional") [left, right] === [right, left];
+    if (left instanceof AbstractValue && left.kind === "conditional") {
+      let [cond, x, y] = left.args;
+      if (right instanceof ConcreteValue && x instanceof ConcreteValue && y instanceof ConcreteValue) {
+        if (right.equals(x) && !right.equals(y)) {
+          pushPathCondition(cond);
+        } else if (!right.equals(x) && right.equals(y)) {
+          pushInversePathCondition(cond);
+        }
+      }
+    }
+    realm.pathConditions.push(condition);
   } else {
     if (condition.kind === "!=" || condition.kind === "==") {
       let left = condition.args[0];
@@ -111,9 +145,9 @@ function pushPathCondition(condition: Value) {
   }
 }
 
-// An inverse path condition is an abstract value that is known to be false in a particular code path
+// An inverse path condition is an abstract value that must be false in this particular code path, so we want to assume as much
 function pushInversePathCondition(condition: Value) {
-  // it is mistake to assert that true is false.
+  // it is mistake to assume that true is false.
   invariant(condition.mightNotBeTrue());
   if (condition instanceof ConcreteValue) return;
   invariant(condition instanceof AbstractValue);
@@ -131,8 +165,8 @@ function pushInversePathCondition(condition: Value) {
       if (left instanceof ConcreteValue && right instanceof AbstractValue) [left, right] = [right, left];
       if (left instanceof AbstractValue && (right instanceof UndefinedValue || right instanceof NullValue)) {
         let op = condition.kind === "!=" ? "===" : "!==";
-        if (op === "!==") pushInversePathCondition(left);
-        else pushPathCondition(left);
+        if (op === "!==") pushPathCondition(left);
+        else pushInversePathCondition(left);
         let leftEqNull = AbstractValue.createFromBinaryOp(realm, op, left, realm.intrinsics.null);
         if (leftEqNull.mightNotBeFalse()) pushPathCondition(leftEqNull);
         let leftEqUndefined = AbstractValue.createFromBinaryOp(realm, op, left, realm.intrinsics.undefined);
@@ -149,10 +183,11 @@ function pushInversePathCondition(condition: Value) {
   }
 }
 
-function pushRefinedConditions(condition: AbstractValue, unrefinedConditions: Array<AbstractValue>) {
-  let realm = condition.$Realm;
+function pushRefinedConditions(realm: Realm, unrefinedConditions: Array<AbstractValue>) {
   let refinedConditions = unrefinedConditions.map(c => realm.simplifyAndRefineAbstractCondition(c));
-  let pc = realm.pathConditions.pop();
+  if (refinedConditions.some(c => !c.mightNotBeFalse())) throw new InfeasiblePathError();
+  let pc = realm.pathConditions;
+  realm.pathConditions = [];
   for (let c of refinedConditions) pushPathCondition(c);
-  realm.pathConditions.push(pc);
+  for (let c of pc) realm.pathConditions.push(c);
 }

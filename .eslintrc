@@ -25,7 +25,8 @@
     "clearTimeout": false,
     "clearInterval": false,
     "__dirname": false,
-    "Set": false
+    "Set": false,
+    "gc": false
   },
 
   "rules": {
@@ -214,6 +215,7 @@
 
   // Prettier
     "prettier/prettier": ["error", {
+      "parser": "flow",
       "trailingComma": "es5",
       "printWidth": 120,
     }]

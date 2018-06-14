@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Intrinsics } from "../types.js";
 import type { Realm } from "../realm.js";
@@ -239,7 +239,12 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
 
   // typed array prototypes
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
-    i.TypedArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "TypedArray.prototype");
+    i.TypedArrayPrototype = new ObjectValue(
+      realm,
+      i.ObjectPrototype,
+      "TypedArray.prototype",
+      /* refuseSerialization */ true
+    );
   i.Float32ArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "Float32Array.prototype");
   i.Float64ArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "Float64Array.prototype");
   i.Int8ArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "Int8Array.prototype");

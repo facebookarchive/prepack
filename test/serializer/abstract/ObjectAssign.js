@@ -77,4 +77,4 @@ Object.assign(dimensions, dims);
 global.x = dimensions.window;
 global.y = dimensions.screen;
 
-inspect = function() { return JSON.stringify(x) + JSON.stringify(y);  }
+inspect = function() { return JSON.stringify(global.x) + JSON.stringify(global.y);  }

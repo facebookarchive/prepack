@@ -21,13 +21,7 @@ import type {
 import type { Realm } from "./realm.js";
 import type { SourceFile, SourceMap, SourceType } from "./types.js";
 
-import {
-  AbruptCompletion,
-  Completion,
-  JoinedAbruptCompletions,
-  PossiblyNormalCompletion,
-  ThrowCompletion,
-} from "./completions.js";
+import { AbruptCompletion, Completion, ThrowCompletion } from "./completions.js";
 import { CompilerDiagnostic, FatalError } from "./errors.js";
 import { defaultOptions } from "./options";
 import type { PartialEvaluatorOptions } from "./options";
@@ -62,13 +56,20 @@ function deriveGetBinding(realm: Realm, binding: Binding) {
   let types = TypesDomain.topVal;
   let values = ValuesDomain.topVal;
   invariant(realm.generator !== undefined);
-  return realm.generator.derive(types, values, [], (_, context) => context.serializeBinding(binding));
+  return realm.generator.deriveAbstract(types, values, [], (_, context) => context.serializeBinding(binding));
 }
 
 export function havocBinding(binding: Binding) {
   let realm = binding.environment.realm;
+  let value = binding.value;
   if (!binding.hasLeaked) {
     realm.recordModifiedBinding(binding).hasLeaked = true;
+    if (value !== undefined) {
+      let realmGenerator = realm.generator;
+      if (realmGenerator !== undefined) realmGenerator.emitBindingAssignment(binding, value);
+      if (binding.mutable !== true) binding.leakedImmutableValue = value;
+      binding.value = realm.intrinsics.undefined;
+    }
   }
 }
 
@@ -88,20 +89,55 @@ export class EnvironmentRecord {
     this.id = EnvironmentRecord.nextId++;
   }
 
-  +HasBinding: (N: string) => boolean;
-  +CreateMutableBinding: (N: string, D: boolean, isGlobal?: boolean) => Value;
-  +CreateImmutableBinding: (N: string, S: boolean, isGlobal?: boolean, skipRecord?: boolean) => Value;
-  +InitializeBinding: (N: string, V: Value, skipRecord?: boolean) => Value;
-  +SetMutableBinding: (N: string, V: Value, S: boolean) => Value;
-  +GetBindingValue: (N: string, S: boolean) => Value;
-  +DeleteBinding: (N: string) => boolean;
-  +HasThisBinding: () => boolean;
-  +GetThisBinding: () => NullValue | ObjectValue | AbstractObjectValue | UndefinedValue;
-  +HasSuperBinding: () => boolean;
-  +WithBaseObject: () => Value;
-  +BindThisValue: (
+  HasBinding(N: string): boolean {
+    invariant(false, "abstract method; please override");
+  }
+
+  CreateMutableBinding(N: string, D: boolean, isGlobal?: boolean): Value {
+    invariant(false, "abstract method; please override");
+  }
+
+  CreateImmutableBinding(N: string, S: boolean, isGlobal?: boolean, skipRecord?: boolean): Value {
+    invariant(false, "abstract method; please override");
+  }
+
+  InitializeBinding(N: string, V: Value, skipRecord?: boolean): Value {
+    invariant(false, "abstract method; please override");
+  }
+
+  SetMutableBinding(N: string, V: Value, S: boolean): Value {
+    invariant(false, "abstract method; please override");
+  }
+
+  GetBindingValue(N: string, S: boolean): Value {
+    invariant(false, "abstract method; please override");
+  }
+
+  DeleteBinding(N: string): boolean {
+    invariant(false, "abstract method; please override");
+  }
+
+  HasThisBinding(): boolean {
+    invariant(false, "abstract method; please override");
+  }
+
+  GetThisBinding(): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
+    invariant(false, "abstract method; please override");
+  }
+
+  HasSuperBinding(): boolean {
+    invariant(false, "abstract method; please override");
+  }
+
+  WithBaseObject(): Value {
+    invariant(false, "abstract method; please override");
+  }
+
+  BindThisValue(
     V: NullValue | ObjectValue | AbstractObjectValue | UndefinedValue
-  ) => NullValue | ObjectValue | AbstractObjectValue | UndefinedValue;
+  ): NullValue | ObjectValue | AbstractObjectValue | UndefinedValue {
+    invariant(false, "abstract method; please override");
+  }
 }
 
 export type Binding = {
@@ -118,6 +154,7 @@ export type Binding = {
   // bindings that are assigned to inside loops with abstract termination conditions need temporal locations
   phiNode?: AbstractValue,
   hasLeaked: boolean,
+  leakedImmutableValue?: Value,
 };
 
 // ECMA262 8.1.1.1
@@ -205,10 +242,10 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     let binding = envRec.bindings[N];
 
     // 2. Assert: envRec must have an uninitialized binding for N.
-    invariant(binding && !binding.initialized, `shouldn't have the binding ${N}`);
+    invariant(binding && binding.initialized !== true, `shouldn't have the binding ${N}`);
 
     // 3. Set the bound value for N in envRec to V.
-    if (!skipRecord) this.realm.recordModifiedBinding(binding).value = V;
+    if (!skipRecord) this.realm.recordModifiedBinding(binding, V).value = V;
     else binding.value = V;
 
     // 4. Record that the binding for N in envRec has been initialized.
@@ -219,7 +256,8 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
   }
 
   // ECMA262 8.1.1.1.5
-  SetMutableBinding(N: string, V: Value, S: boolean): Value {
+  SetMutableBinding(N: string, V: Value, _S: boolean): Value {
+    let S = _S;
     // We can mutate frozen bindings because of captured bindings.
     let realm = this.realm;
 
@@ -246,10 +284,10 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     }
 
     // 3. If the binding for N in envRec is a strict binding, let S be true.
-    if (binding.strict) S = true;
+    if (binding.strict === true) S = true;
 
     // 4. If the binding for N in envRec has not yet been initialized, throw a ReferenceError exception.
-    if (!binding.initialized) {
+    if (binding.initialized !== true) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.ReferenceError, `${N} has not yet been initialized`);
     } else if (binding.mutable) {
       // 5. Else if the binding for N in envRec is a mutable binding, change its bound value to V.
@@ -258,7 +296,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
         invariant(realm.generator);
         realm.generator.emitBindingAssignment(binding, V);
       } else {
-        realm.recordModifiedBinding(binding).value = V;
+        realm.recordModifiedBinding(binding, V).value = V;
       }
     } else {
       // 6. Else,
@@ -293,7 +331,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
 
     // 4. Return the value currently bound to N in envRec.
     if (binding.hasLeaked) {
-      return deriveGetBinding(realm, binding);
+      return binding.leakedImmutableValue || deriveGetBinding(realm, binding);
     }
     invariant(binding.value);
     return binding.value;
@@ -584,7 +622,7 @@ export class FunctionEnvironmentRecord extends DeclarativeEnvironmentRecord {
   }
 
   // ECMA262 8.1.1.3.5
-  GetSuperBase(): ObjectValue | NullValue | UndefinedValue {
+  GetSuperBase(): ObjectValue | AbstractObjectValue | NullValue | UndefinedValue {
     // 1. Let envRec be the function Environment Record for which the method was invoked.
     let envRec = this;
 
@@ -1071,13 +1109,6 @@ export class LexicalEnvironment {
     try {
       return this.evaluate(ast, strictCode, metadata);
     } catch (err) {
-      if (
-        (err instanceof JoinedAbruptCompletions || err instanceof PossiblyNormalCompletion) &&
-        err.containsBreakOrContinue()
-      ) {
-        AbstractValue.reportIntrospectionError(err.joinCondition);
-        throw new FatalError();
-      }
       if (err instanceof AbruptCompletion) return err;
       if (err instanceof Error)
         // rethrowing Error should preserve stack trace
@@ -1110,10 +1141,19 @@ export class LexicalEnvironment {
     let directives = [];
     for (let source of sources) {
       try {
-        let node = parse(this.realm, source.fileContents, source.filePath, sourceType);
-        if (source.sourceMapContents && source.sourceMapContents.length > 0)
-          this.fixup_source_locations(node, source.sourceMapContents);
-        this.fixup_filenames(node);
+        let node = this.realm.statistics.parsing.measure(() =>
+          parse(this.realm, source.fileContents, source.filePath, sourceType)
+        );
+
+        let sourceMapContents = source.sourceMapContents;
+        if (sourceMapContents && sourceMapContents.length > 0) {
+          this.realm.statistics.fixupSourceLocations.measure(() =>
+            this.fixup_source_locations(node, sourceMapContents)
+          );
+        }
+
+        this.realm.statistics.fixupFilenames.measure(() => this.fixup_filenames(node));
+
         asts = asts.concat(node.program.body);
         code[source.filePath] = source.fileContents;
         directives = directives.concat(node.program.directives);
@@ -1121,16 +1161,18 @@ export class LexicalEnvironment {
         if (e instanceof ThrowCompletion) {
           let error = e.value;
           if (error instanceof ObjectValue) {
-            let message = error.$Get("message", error);
-            message.value = `Syntax error: ${message.value}`;
-            e.location.source = source.filePath;
-            // the position was not located properly on the
-            // syntax errors happen on one given position, so start position = end position
-            e.location.start = { line: e.location.line, column: e.location.column };
-            e.location.end = { line: e.location.line, column: e.location.column };
-            let diagnostic = new CompilerDiagnostic(message.value, e.location, "PP1004", "FatalError");
-            this.realm.handleError(diagnostic);
-            throw new FatalError(message.value);
+            let message = error._SafeGetDataPropertyValue("message");
+            if (message instanceof StringValue) {
+              message.value = `Syntax error: ${message.value}`;
+              e.location.source = source.filePath;
+              // the position was not located properly on the
+              // syntax errors happen on one given position, so start position = end position
+              e.location.start = { line: e.location.line, column: e.location.column };
+              e.location.end = { line: e.location.line, column: e.location.column };
+              let diagnostic = new CompilerDiagnostic(message.value, e.location, "PP1004", "FatalError");
+              this.realm.handleError(diagnostic);
+              throw new FatalError(message.value);
+            }
           }
         }
         throw e;
@@ -1154,12 +1196,15 @@ export class LexicalEnvironment {
       let ast;
       [ast, code] = this.concatenateAndParse(sources, sourceType);
       if (onParse) onParse(ast);
-      res = this.evaluateCompletion(ast, false);
+      res = this.realm.statistics.evaluation.measure(() => this.evaluateCompletion(ast, false));
     } finally {
       this.realm.popContext(context);
       this.realm.onDestroyScope(context.lexicalEnvironment);
       if (!this.destroyed) this.realm.onDestroyScope(this);
-      invariant(this.realm.activeLexicalEnvironments.size === 0);
+      invariant(
+        this.realm.activeLexicalEnvironments.size === 0,
+        `expected 0 active lexical environments, got ${this.realm.activeLexicalEnvironments.size}`
+      );
     }
     if (res instanceof AbruptCompletion) return [res, code];
 
@@ -1184,7 +1229,10 @@ export class LexicalEnvironment {
       this.realm.popContext(context);
       this.realm.onDestroyScope(context.lexicalEnvironment);
       if (!this.destroyed) this.realm.onDestroyScope(this);
-      invariant(this.realm.activeLexicalEnvironments.size === 0);
+      invariant(
+        this.realm.activeLexicalEnvironments.size === 0,
+        `expected 0 active lexical environments, got ${this.realm.activeLexicalEnvironments.size}`
+      );
     }
     invariant(partialAST.type === "File");
     let fileAst = ((partialAST: any): BabelNodeFile);
@@ -1224,7 +1272,10 @@ export class LexicalEnvironment {
       this.realm.popContext(context);
       // Avoid destroying "this" scope as execute may be called many times.
       if (context.lexicalEnvironment !== this) this.realm.onDestroyScope(context.lexicalEnvironment);
-      invariant(this.realm.activeLexicalEnvironments.size === 1);
+      invariant(
+        this.realm.activeLexicalEnvironments.size === 1,
+        `expected 1 active lexical environment, got ${this.realm.activeLexicalEnvironments.size}`
+      );
     }
     if (res instanceof AbruptCompletion) return res;
 
@@ -1307,11 +1358,18 @@ export class LexicalEnvironment {
 
     let evaluator = this.realm.evaluators[(ast.type: string)];
     if (evaluator) {
+      this.realm.statistics.evaluatedNodes++;
       let result = evaluator(ast, strictCode, this, this.realm, metadata);
       return result;
     }
 
     throw new TypeError(`Unsupported node type ${ast.type}`);
+  }
+
+  evaluateDeref(ast: BabelNode, strictCode: boolean, metadata?: any): Value {
+    let result = this.evaluate(ast, strictCode, metadata);
+    if (result instanceof Reference) result = Environment.GetValue(this.realm, result);
+    return result;
   }
 
   partiallyEvaluate(
@@ -1383,14 +1441,8 @@ export class Reference {
     this.referencedName = refName;
     invariant(
       !(refName instanceof AbstractValue) ||
-        !(
-          refName.mightNotBeString() &&
-          refName.mightNotBeNumber() &&
-          !refName.isSimpleObject() &&
-          // if the base is a simple abstract object but
-          // the refName is not simple, this is also okay
-          (base instanceof AbstractValue && !base.isSimpleObject())
-        )
+        !(refName.mightNotBeString() && refName.mightNotBeNumber() && !refName.isSimpleObject()) ||
+        refName.$Realm.isInPureScope()
     );
     this.strict = strict;
     this.thisValue = thisValue;

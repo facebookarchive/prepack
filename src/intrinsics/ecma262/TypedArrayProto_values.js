@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
@@ -18,12 +18,12 @@ export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 22.1.3.30
   return new NativeFunctionValue(realm, "Array.prototype.values", "values", 0, context => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Return CreateArrayIterator(O, "value").
-    return Create.CreateArrayIterator(realm, O, "value");
+    return Create.CreateArrayIterator(realm, O.throwIfNotConcreteObject(), "value");
   });
 }

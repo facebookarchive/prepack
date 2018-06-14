@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { FatalError } from "../../errors.js";
@@ -338,7 +338,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 20.3.4.23
-  obj.defineNativeMethod("setMilliseconds", 1, (context, [ms]) => {
+  obj.defineNativeMethod("setMilliseconds", 1, (context, [_ms]) => {
+    let ms = _ms;
     // 1. Let t be LocalTime(? thisTimeValue(this value)).
     let t = LocalTime(realm, thisTimeValue(realm, context).throwIfNotConcreteNumber().value);
     invariant(context instanceof ObjectValue);
@@ -690,10 +691,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 20.3.4.37
   obj.defineNativeMethod("toJSON", 1, (context, [key]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let tv be ? ToPrimitive(O, hint Number).
-    let tv = To.ToPrimitive(realm, O, "number");
+    let tv = To.ToPrimitive(realm, O.throwIfNotConcreteObject(), "number");
 
     // 3. If Type(tv) is Number and tv is not finite, return null.
     if (tv instanceof NumberValue && !isFinite(tv.value)) {
@@ -759,7 +760,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   obj.defineNativeMethod(
     realm.intrinsics.SymbolToPrimitive,
     1,
-    (context, [hint]) => {
+    (context, [_hint]) => {
+      let hint = _hint;
       // 1. Let O be the this value.
       let O = context.throwIfNotConcrete();
 

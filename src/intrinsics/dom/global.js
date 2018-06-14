@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 
@@ -21,7 +21,7 @@ import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
 
-  if (!realm.isCompatibleWith("mobile"))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     global.$DefineOwnProperty("console", {
       value: initializeConsole(realm),
       writable: true,

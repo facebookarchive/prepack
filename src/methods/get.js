@@ -10,18 +10,22 @@
 /* @flow */
 
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
-import { construct_empty_effects, type Realm } from "../realm.js";
+import { InfeasiblePathError } from "../errors.js";
+import { construct_empty_effects, type Realm, Effects } from "../realm.js";
 import type { PropertyKeyValue, CallableObjectValue } from "../types.js";
 import {
   AbstractObjectValue,
   AbstractValue,
+  ArrayValue,
   BoundFunctionValue,
   EmptyValue,
+  NativeFunctionValue,
   NullValue,
   NumberValue,
   ObjectValue,
   ProxyValue,
   StringValue,
+  SymbolValue,
   UndefinedValue,
   Value,
 } from "../values/index.js";
@@ -39,6 +43,7 @@ import {
 import { Create, Environment, Join, Path, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeTemplateLiteral } from "babel-types";
+import * as t from "babel-types";
 
 // ECMA262 7.3.22
 export function GetFunctionRealm(realm: Realm, obj: ObjectValue): Realm {
@@ -95,57 +100,99 @@ export function OrdinaryGet(
 
   // 2. Let desc be ? O.[[GetOwnProperty]](P).
   let desc = O.$GetOwnProperty(P);
-  if (desc !== undefined && desc.joinCondition !== undefined) {
-    // joined descriptors need special treatment
-    let joinCondition = desc.joinCondition;
-    if (joinCondition !== undefined) {
-      let descriptor2 = desc.descriptor2;
-      desc = desc.descriptor1;
-      let [compl1, gen1, bindings1, properties1, createdObj1] = Path.withCondition(joinCondition, () => {
-        return desc !== undefined
-          ? realm.evaluateForEffects(() => OrdinaryGetHelper(), undefined, "OrdinaryGet/1")
-          : construct_empty_effects(realm);
-      });
+  if (desc === undefined || desc.joinCondition === undefined) return OrdinaryGetHelper();
+
+  // joined descriptors need special treatment
+  let joinCondition = desc.joinCondition;
+  let descriptor1 = desc.descriptor1;
+  let descriptor2 = desc.descriptor2;
+  joinCondition = realm.simplifyAndRefineAbstractCondition(joinCondition);
+  if (!joinCondition.mightNotBeTrue()) {
+    desc = descriptor1;
+    return OrdinaryGetHelper();
+  }
+  if (!joinCondition.mightNotBeFalse()) {
+    desc = desc.descriptor2;
+    return OrdinaryGetHelper();
+  }
+  invariant(joinCondition instanceof AbstractValue);
+  let result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1;
+  try {
+    desc = descriptor1;
+    ({
+      result: result1,
+      generator: generator1,
+      modifiedBindings: modifiedBindings1,
+      modifiedProperties: modifiedProperties1,
+      createdObjects: createdObjects1,
+    } = Path.withCondition(joinCondition, () => {
+      return desc !== undefined
+        ? realm.evaluateForEffects(() => OrdinaryGetHelper(), undefined, "OrdinaryGet/1")
+        : construct_empty_effects(realm);
+    }));
+  } catch (e) {
+    if (e instanceof InfeasiblePathError) {
+      // The joinCondition cannot be true in the current path, after all
       desc = descriptor2;
-      let [compl2, gen2, bindings2, properties2, createdObj2] = Path.withInverseCondition(joinCondition, () => {
-        return desc !== undefined
-          ? realm.evaluateForEffects(() => OrdinaryGetHelper(), undefined, "OrdinaryGet/2")
-          : construct_empty_effects(realm);
-      });
-
-      // Join the effects, creating an abstract view of what happened, regardless
-      // of the actual value of ownDesc.joinCondition.
-      let joinedEffects = Join.joinEffects(
-        realm,
-        joinCondition,
-        [compl1, gen1, bindings1, properties1, createdObj1],
-        [compl2, gen2, bindings2, properties2, createdObj2]
-      );
-      let completion = joinedEffects[0];
-      if (completion instanceof PossiblyNormalCompletion) {
-        // in this case one of the branches may complete abruptly, which means that
-        // not all control flow branches join into one flow at this point.
-        // Consequently we have to continue tracking changes until the point where
-        // all the branches come together into one.
-        completion = realm.composeWithSavedCompletion(completion);
-      }
-      // Note that the effects of (non joining) abrupt branches are not included
-      // in joinedEffects, but are tracked separately inside completion.
-      realm.applyEffects(joinedEffects);
-
-      // return or throw completion
-      if (completion instanceof AbruptCompletion) throw completion;
-      invariant(completion instanceof Value);
-      return completion;
+      return OrdinaryGetHelper();
+    } else {
+      throw e;
     }
   }
+  let result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2;
+  try {
+    desc = descriptor2;
+    ({
+      result: result2,
+      generator: generator2,
+      modifiedBindings: modifiedBindings2,
+      modifiedProperties: modifiedProperties2,
+      createdObjects: createdObjects2,
+    } = Path.withInverseCondition(joinCondition, () => {
+      return desc !== undefined
+        ? realm.evaluateForEffects(() => OrdinaryGetHelper(), undefined, "OrdinaryGet/2")
+        : construct_empty_effects(realm);
+    }));
+  } catch (e) {
+    if (e instanceof InfeasiblePathError) {
+      // The joinCondition cannot be false in the current path, after all
+      desc = descriptor1;
+      return OrdinaryGetHelper();
+    } else {
+      throw e;
+    }
+  }
+  // Join the effects, creating an abstract view of what happened, regardless
+  // of the actual value of ownDesc.joinCondition.
+  let joinedEffects = Join.joinForkOrChoose(
+    realm,
+    joinCondition,
+    new Effects(result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
+    new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
+  );
+  let completion = joinedEffects.result;
+  if (completion instanceof PossiblyNormalCompletion) {
+    // in this case one of the branches may complete abruptly, which means that
+    // not all control flow branches join into one flow at this point.
+    // Consequently we have to continue tracking changes until the point where
+    // all the branches come together into one.
+    completion = realm.composeWithSavedCompletion(completion);
+  }
+  // Note that the effects of (non joining) abrupt branches are not included
+  // in joinedEffects, but are tracked separately inside completion.
+  realm.applyEffects(joinedEffects);
 
-  return OrdinaryGetHelper();
+  // return or throw completion
+  if (completion instanceof AbruptCompletion) throw completion;
+  invariant(completion instanceof Value);
+  return completion;
 
   function OrdinaryGetHelper() {
     let descValue = !desc
       ? realm.intrinsics.undefined
-      : desc.value === undefined ? realm.intrinsics.undefined : desc.value;
+      : desc.value === undefined
+        ? realm.intrinsics.undefined
+        : desc.value;
     invariant(descValue instanceof Value);
 
     // 3. If desc is undefined, then
@@ -163,7 +210,7 @@ export function OrdinaryGet(
       // c. Return ? parent.[[Get]](P, Receiver).
       if (descValue.mightHaveBeenDeleted() && descValue instanceof AbstractValue) {
         // We don't know for sure that O.P does not exist.
-        let parentVal = OrdinaryGet(realm, parent, P, descValue, true);
+        let parentVal = OrdinaryGet(realm, parent.throwIfNotConcreteObject(), P, descValue, true);
         if (parentVal instanceof UndefinedValue)
           // even O.P returns undefined it is still the right value.
           return descValue;
@@ -172,7 +219,7 @@ export function OrdinaryGet(
         // Only get the parent value if it does not involve a getter call.
         // Use a property get for the joined value since it does the check for empty.
         let cond = AbstractValue.createFromBinaryOp(realm, "!==", descValue, realm.intrinsics.empty);
-        return Join.joinValuesAsConditional(realm, cond, descValue, parentVal);
+        return AbstractValue.createFromConditionalOp(realm, cond, descValue, parentVal);
       }
       invariant(!desc || descValue instanceof EmptyValue);
       return parent.$Get(P, Receiver);
@@ -325,7 +372,7 @@ export function GetPrototypeFromConstructor(
   realm: Realm,
   constructor: ObjectValue,
   intrinsicDefaultProto: string
-): ObjectValue {
+): ObjectValue | AbstractObjectValue {
   // 1. Assert: intrinsicDefaultProto is a String value that is this specification's name of an intrinsic
   //   object. The corresponding object must be an intrinsic that is intended to be used as the [[Prototype]]
   //   value of an object.
@@ -338,7 +385,7 @@ export function GetPrototypeFromConstructor(
   let proto = Get(realm, constructor, new StringValue(realm, "prototype"));
 
   // 4. If Type(proto) is not Object, then
-  if (!(proto instanceof ObjectValue)) {
+  if (!(proto instanceof ObjectValue) && !(proto instanceof AbstractObjectValue)) {
     // a. Let realm be ? GetFunctionRealm(constructor).
     realm = GetFunctionRealm(realm, constructor);
 
@@ -368,7 +415,7 @@ export function GetV(realm: Realm, V: Value, P: PropertyKeyValue): Value {
   invariant(IsPropertyKey(realm, P), "Not a valid property key");
 
   // 2. Let O be ? ToObject(V).
-  let O = To.ToObjectPartial(realm, V);
+  let O = To.ToObject(realm, V);
 
   // 3. Return ? O.[[Get]](P, V).
   return O.$Get(P, V);
@@ -505,4 +552,39 @@ export function GetTemplateObject(realm: Realm, templateLiteral: BabelNodeTempla
 
   // 15. Return template.
   return template;
+}
+
+export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayValue, P: string | SymbolValue): Value {
+  let proto = arr.$GetPrototypeOf();
+  invariant(proto instanceof ObjectValue && proto === realm.intrinsics.ArrayPrototype);
+  if (typeof P === "string") {
+    if (P === "length") {
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        NumberValue,
+        [arr],
+        ([o]) => t.memberExpression(o, t.identifier("length"), false),
+        { skipInvariant: true, isPure: true }
+      );
+    }
+    let prototypeBinding = proto.properties.get(P);
+    if (prototypeBinding !== undefined) {
+      let descriptor = prototypeBinding.descriptor;
+      // ensure we are accessing a built-in native function
+      if (descriptor !== undefined && descriptor.value instanceof NativeFunctionValue) {
+        return descriptor.value;
+      }
+    }
+  }
+  let prop = typeof P === "string" ? new StringValue(realm, P) : P;
+  return AbstractValue.createTemporalFromBuildFunction(
+    realm,
+    Value,
+    [arr, prop],
+    ([o, p]) => t.memberExpression(o, p, true),
+    {
+      skipInvariant: true,
+      isPure: true,
+    }
+  );
 }

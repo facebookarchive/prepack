@@ -10,41 +10,144 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ObjectValue, NativeFunctionValue, FunctionValue } from "../../values/index.js";
-import { Create } from "../../singletons.js";
+import { ObjectValue, FunctionValue, AbstractValue, ECMAScriptSourceFunctionValue } from "../../values/index.js";
+import { Create, Environment } from "../../singletons.js";
 import { createAbstract } from "../prepack/utils.js";
+import { Get } from "../../methods/index.js";
 import * as t from "babel-types";
-import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import invariant from "../../invariant";
 import { createReactHintObject } from "../../react/utils.js";
+import { parseExpression } from "babylon";
+import { addMockFunctionToObject } from "./utils.js";
 
-function createReactRelayContainer(realm: Realm, reactRelay: ObjectValue, containerName: string) {
+let reactRelayCode = `
+  function createReactRelay(React) {
+
+   function mapObject(obj, func) {
+     var newObj = {};
+
+      Object.keys(obj).forEach(function(key) {
+        newObj[key] = func(obj[key]);
+      });
+
+      return newObj;
+   }
+
+    function isReactComponent(component) {
+      return !!(
+        component &&
+        typeof component.prototype === 'object' &&
+        component.prototype &&
+        component.prototype.isReactComponent
+      );
+    }
+
+    function getReactComponent(Component) {
+      if (isReactComponent(Component)) {
+        return Component;
+      } else {
+        return null;
+      }
+    }
+
+    function getComponentName(Component) {
+      let name;
+      const ComponentClass = getReactComponent(Component);
+      if (ComponentClass) {
+        name = ComponentClass.displayName || ComponentClass.name;
+      } else if (typeof Component === 'function') {
+        name = Component.displayName || Component.name || 'StatelessComponent';
+      } else {
+        name = 'ReactElement';
+      }
+      return String(name);
+    }
+
+    function createFragmentContainer(Component, fragmentSpec) {
+      var componentName = getComponentName(Component);
+      var containerName = \`Relay(\${componentName})\`;
+
+      return function(props, context) {
+        var relay = context.relay;
+        var {
+          createFragmentSpecResolver,
+          getFragment: getFragmentFromTag,
+        } = relay.environment.unstable_internal;
+        var fragments = mapObject(fragmentSpec, getFragmentFromTag);
+        var resolver = createFragmentSpecResolver(
+          relay,
+          containerName,
+          fragments,
+          props,
+        );
+        var relayProp = {
+          isLoading: resolver.isLoading(),
+          environment: relay.environment,
+        };
+        var newProps = Object.assign({}, props, resolver.resolve(), {
+          relay: relayProp,
+        });
+        return React.createElement(Component, newProps);
+      };
+    }
+
+    return {
+      createFragmentContainer,
+    };
+  }
+`;
+let reactRelayAst = parseExpression(reactRelayCode, { plugins: ["flow"] });
+
+function createReactRelayContainer(
+  realm: Realm,
+  reactRelay: ObjectValue,
+  containerName: string,
+  reactRelayFirstRenderValue: ObjectValue,
+  relayRequireName: string
+) {
   // we create a ReactRelay container function that returns an abstract object
   // allowing us to reconstruct this ReactReact.createSomeContainer(...) again
   // we also pass a reactHint so the reconciler can properly deal with this
-  reactRelay.$DefineOwnProperty(containerName, {
-    value: new NativeFunctionValue(realm, undefined, containerName, 0, (context, args) => {
-      let types = new TypesDomain(FunctionValue);
-      let values = new ValuesDomain();
-      invariant(context.$Realm.generator);
-      let value = context.$Realm.generator.derive(types, values, [reactRelay, ...args], _args => {
+  addMockFunctionToObject(realm, reactRelay, relayRequireName, containerName, (funcValue, args) => {
+    let value = AbstractValue.createTemporalFromBuildFunction(
+      realm,
+      FunctionValue,
+      [reactRelay, ...args],
+      _args => {
         let [reactRelayIdent, ...otherArgs] = _args;
 
         return t.callExpression(
           t.memberExpression(reactRelayIdent, t.identifier(containerName)),
           ((otherArgs: any): Array<any>)
         );
-      });
-      realm.react.abstractHints.set(value, createReactHintObject(reactRelay, containerName, args));
-      return value;
-    }),
-    writable: false,
-    enumerable: false,
-    configurable: true,
+      },
+      { skipInvariant: true, isPure: true }
+    );
+    invariant(value instanceof AbstractValue);
+    let firstRenderContainerValue = Get(realm, reactRelayFirstRenderValue, containerName);
+    let firstRenderValue = realm.intrinsics.undefined;
+
+    if (firstRenderContainerValue instanceof ECMAScriptSourceFunctionValue) {
+      let firstRenderContainerValueCall = firstRenderContainerValue.$Call;
+      invariant(firstRenderContainerValueCall !== undefined);
+      firstRenderValue = firstRenderContainerValueCall(realm.intrinsics.undefined, args);
+      invariant(firstRenderValue instanceof ECMAScriptSourceFunctionValue);
+    }
+
+    realm.react.abstractHints.set(value, createReactHintObject(reactRelay, containerName, args, firstRenderValue));
+    return value;
   });
 }
 
 export function createMockReactRelay(realm: Realm, relayRequireName: string): ObjectValue {
+  let reactRelayFirstRenderFactory = Environment.GetValue(realm, realm.$GlobalEnv.evaluate(reactRelayAst, false));
+  invariant(reactRelayFirstRenderFactory instanceof ECMAScriptSourceFunctionValue);
+  let factory = reactRelayFirstRenderFactory.$Call;
+  invariant(factory !== undefined);
+  invariant(realm.fbLibraries.react instanceof ObjectValue, "mock ReactRelay cannot be required before mock React");
+  let reactRelayFirstRenderValue = factory(realm.intrinsics.undefined, [realm.fbLibraries.react]);
+  invariant(reactRelayFirstRenderValue instanceof ObjectValue);
+
   // we set refuseSerialization to true so we don't serialize the below properties straight away
   let reactRelay = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, `require("${relayRequireName}")`, true);
   // for QueryRenderer, we want to leave the component alone but process it's "render" prop
@@ -56,7 +159,7 @@ export function createMockReactRelay(realm: Realm, relayRequireName: string): Ob
 
   let reactRelayContainers = ["createFragmentContainer", "createPaginationContainer", "createRefetchContainer"];
   for (let reactRelayContainer of reactRelayContainers) {
-    createReactRelayContainer(realm, reactRelay, reactRelayContainer);
+    createReactRelayContainer(realm, reactRelay, reactRelayContainer, reactRelayFirstRenderValue, relayRequireName);
   }
 
   let commitLocalUpdate = createAbstract(realm, "function", `require("${relayRequireName}").commitLocalUpdate`);
@@ -73,5 +176,6 @@ export function createMockReactRelay(realm: Realm, relayRequireName: string): Ob
 
   // we set refuseSerialization back to false
   reactRelay.refuseSerialization = false;
+  reactRelay.makeFinal();
   return reactRelay;
 }

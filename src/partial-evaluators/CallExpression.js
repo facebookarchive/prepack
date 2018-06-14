@@ -11,6 +11,7 @@
 
 import type { BabelNodeCallExpression, BabelNodeExpression, BabelNodeStatement } from "babel-types";
 import type { Realm } from "../realm.js";
+import { Effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 
 import { AbruptCompletion, Completion, PossiblyNormalCompletion } from "../completions.js";
@@ -101,25 +102,25 @@ function callBothFunctionsAndJoinTheirEffects(
   invariant(Value.isTypeCompatibleWith(func1.getType(), FunctionValue));
   invariant(Value.isTypeCompatibleWith(func2.getType(), FunctionValue));
 
-  let [compl1, gen1, bindings1, properties1, createdObj1] = realm.evaluateForEffects(
+  const e1 = realm.evaluateForEffects(
     () => EvaluateCall(func1, func1, ast, argVals, strictCode, env, realm),
     undefined,
     "callBothFunctionsAndJoinTheirEffects/1"
   );
 
-  let [compl2, gen2, bindings2, properties2, createdObj2] = realm.evaluateForEffects(
+  const e2 = realm.evaluateForEffects(
     () => EvaluateCall(func2, func2, ast, argVals, strictCode, env, realm),
     undefined,
     "callBothFunctionsAndJoinTheirEffects/2"
   );
 
-  let joinedEffects = Join.joinEffects(
+  let joinedEffects = Join.joinForkOrChoose(
     realm,
     cond,
-    [compl1, gen1, bindings1, properties1, createdObj1],
-    [compl2, gen2, bindings2, properties2, createdObj2]
+    new Effects(e1.result, e1.generator, e1.modifiedBindings, e1.modifiedProperties, e1.createdObjects),
+    new Effects(e2.result, e2.generator, e2.modifiedBindings, e2.modifiedProperties, e2.createdObjects)
   );
-  let joinedCompletion = joinedEffects[0];
+  let joinedCompletion = joinedEffects.result;
   if (joinedCompletion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.

@@ -7,7 +7,10 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
+
+import { type ReactEvaluatedNode } from "../serializer/types.js";
+import { FatalError } from "../errors.js";
 
 // ExpectedBailOut is like an error, that gets thrown during the reconcilation phase
 // allowing the reconcilation to continue on other branches of the tree, the message
@@ -21,6 +24,36 @@ export class ExpectedBailOut extends Error {}
 // and an alternative complex class component route being used
 export class SimpleClassBailOut extends Error {}
 
+// When the reconciler detectes a side-effect in pure evaluation, it throws one
+// of these errors. This will fall straight through the the wrapping React
+// component render try/catch, which will then throw an appropiate
+// ReconcilerFatalError along with information on the React component stack
+export class UnsupportedSideEffect extends Error {}
+
 // NewComponentTreeBranch only occur when a complex class is found in a
 // component tree and the reconciler can no longer fold the component of that branch
-export class NewComponentTreeBranch extends Error {}
+export class NewComponentTreeBranch extends Error {
+  constructor(evaluatedNode: ReactEvaluatedNode) {
+    super();
+    this.evaluatedNode = evaluatedNode;
+  }
+  evaluatedNode: ReactEvaluatedNode;
+}
+
+export class DoNotOptimize extends Error {}
+
+// Used when an entire React component tree has failed to optimize
+// this means there is a programming bug in the application that is
+// being Prepacked
+export class ReconcilerFatalError extends FatalError {
+  constructor(message: string, evaluatedNode: ReactEvaluatedNode) {
+    super(message);
+    evaluatedNode.status = "FATAL";
+    evaluatedNode.message = message;
+    this.evaluatedNode = evaluatedNode;
+    // used for assertions in tests
+    this.__isReconcilerFatalError = true;
+  }
+  evaluatedNode: ReactEvaluatedNode;
+  __isReconcilerFatalError: boolean;
+}

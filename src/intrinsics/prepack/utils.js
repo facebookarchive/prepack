@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import {
@@ -26,7 +26,6 @@ import { To } from "../../singletons.js";
 import AbstractObjectValue from "../../values/AbstractObjectValue";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
 import { Utils } from "../../singletons";
-import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "../../invariant.js";
 
 const throwTemplateSrc = "(function(){throw new global.Error('abstract value defined at ' + A);})()";
@@ -64,21 +63,6 @@ export function parseTypeNameOrTemplate(
   }
 }
 
-export function createAbstractArgument(realm: Realm, name: string, location: ?BabelNodeSourceLocation) {
-  if (!realm.useAbstractInterpretation) {
-    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
-  }
-
-  let locString;
-  if (location) locString = describeLocation(realm, undefined, undefined, location);
-  let locVal = new StringValue(realm, locString || "(unknown location)");
-  let kind = "__abstract_" + realm.objectCount++; // need not be an object, but must be unique
-  let result = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), Value, [locVal], kind);
-  result.intrinsicName = name;
-
-  return result;
-}
-
 export function createAbstract(
   realm: Realm,
   typeNameOrTemplate?: Value | string,
@@ -105,12 +89,12 @@ export function createAbstract(
     );
     if (locString !== undefined) break;
   }
-  if (!name) {
-    let locVal = new StringValue(realm, locString || "(unknown location)");
-    let kind = "__abstract_" + realm.objectCount++; // need not be an object, but must be unique
+  if (name === undefined) {
+    let locVal = new StringValue(realm, locString !== undefined ? locString : "(unknown location)");
+    let kind = AbstractValue.makeKind("abstractCounted", (realm.objectCount++).toString()); // need not be an object, but must be unique
     result = AbstractValue.createFromTemplate(realm, throwTemplate, type, [locVal], kind);
   } else {
-    let kind = "__abstract_" + name;
+    let kind = AbstractValue.makeKind("abstract", name);
     if (!realm.isNameStringUnique(name)) {
       let error = new CompilerDiagnostic("An abstract value with the same name exists", loc, "PP0019", "FatalError");
       realm.handleError(error);
@@ -126,7 +110,7 @@ export function createAbstract(
   if (template && !(template instanceof FunctionValue)) {
     // why exclude functions?
     template.makePartial();
-    if (name) realm.rebuildNestedProperties(result, name);
+    if (name !== undefined) realm.rebuildNestedProperties(result, name);
   }
   if (functionResultType) {
     invariant(result instanceof AbstractObjectValue);

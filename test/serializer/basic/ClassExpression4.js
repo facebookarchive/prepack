@@ -1,5 +1,5 @@
-method1 = Symbol();
-y = Symbol();
+global.method1 = Symbol();
+global.y = Symbol();
 
 class Foo {
   constructor(x) {
@@ -10,22 +10,22 @@ class Foo {
   }
 }
 
-class Bar extends Foo {
+global.Bar = class extends Foo {
   constructor() {
     super(10);
   }
-  [method1](z) {
-    return this.x + this[y] + z;
+  [global.method1](z) {
+    return this.x + this[global.y] + z;
   }
-  get [y]() {
+  get [global.y]() {
     return 10;
   }
-  set [y](x) {
+  set [global.y](x) {
     // NO-OP
   }
 }
 
 inspect = function() { 
-  var foo = new Bar(); 
-  return [foo, foo[method1](10)]
+  var foo = new global.Bar(); 
+  return [foo, foo[global.method1](10)]
 }

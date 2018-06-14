@@ -14,7 +14,7 @@ import child_process from "child_process";
 import * as DebugProtocol from "vscode-debugprotocol";
 import { DataHandler } from "./DataHandler.js";
 import { DebuggerConstants } from "./../common/DebuggerConstants";
-import { LaunchRequestArguments } from "./../common/types.js";
+import type { LaunchRequestArguments } from "./../common/types.js";
 
 export type DebuggerCLIArguments = {
   adapterPath: string,
@@ -49,7 +49,6 @@ export class UISession {
   _adapterPath: string;
   // the child (i.e. adapter) process
   _adapterProcess: child_process.ChildProcess;
-
   // id number for each message sent
   _sequenceNum: number;
   // interface to read in input from the CLI client
@@ -287,6 +286,13 @@ export class UISession {
         };
         this._sendStepOverRequest(stepOverArgs);
         break;
+      case "stepOut":
+        if (parts.length !== 1) return false;
+        let stepOutArgs: DebugProtocol.StepOutArguments = {
+          threadId: DebuggerConstants.PREPACK_THREAD_ID,
+        };
+        this._sendStepOutRequest(stepOutArgs);
+        break;
       case "eval":
         if (parts.length < 2) return false;
         let evalFrameId = parseInt(parts[1], 10);
@@ -465,6 +471,17 @@ export class UISession {
       type: "request",
       seq: this._sequenceNum,
       command: "next",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
+  _sendStepOutRequest(args: DebugProtocol.StepOutArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "stepOut",
       arguments: args,
     };
     let json = JSON.stringify(message);

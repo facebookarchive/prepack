@@ -7,10 +7,10 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { Realm } from "../realm.js";
-import { AbstractValue, FunctionValue, Value, ObjectValue } from "../values/index.js";
+import { AbstractValue, ConcreteValue, FunctionValue, Value, ObjectValue } from "../values/index.js";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,
@@ -24,17 +24,15 @@ import type {
   FunctionInfo,
   FunctionInstance,
   AdditionalFunctionInfo,
-  ReactSerializerState,
   ClassMethodInstance,
   AdditionalFunctionEffects,
   ResidualFunctionBinding,
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
 import invariant from "../invariant.js";
-import { SerializerStatistics } from "./types.js";
 import { Logger } from "../utils/logger.js";
 import { Modules } from "../utils/modules.js";
-import { ResidualHeapInspector } from "./ResidualHeapInspector.js";
+import { HeapInspector } from "../utils/HeapInspector.js";
 import type { Scope } from "./ResidualHeapVisitor.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
@@ -42,6 +40,7 @@ import { getOrDefault } from "./utils.js";
 import type { DeclarativeEnvironmentRecord } from "../environment.js";
 import type { Referentializer } from "./Referentializer.js";
 import { Generator } from "../utils/generator.js";
+import { GeneratorDAG } from "./GeneratorDAG.js";
 
 const LAZY_OBJECTS_SERIALIZER_BODY_TYPE = "LazyObjectInitializer";
 
@@ -61,20 +60,20 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     logger: Logger,
     modules: Modules,
     residualHeapValueIdentifiers: ResidualHeapValueIdentifiers,
-    residualHeapInspector: ResidualHeapInspector,
+    residualHeapInspector: HeapInspector,
     residualValues: Map<Value, Set<Scope>>,
     residualFunctionInstances: Map<FunctionValue, FunctionInstance>,
     residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     options: SerializerOptions,
-    referencedDeclaredValues: Map<AbstractValue, void | FunctionValue>,
+    referencedDeclaredValues: Map<AbstractValue | ConcreteValue, void | FunctionValue>,
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
-    statistics: SerializerStatistics,
-    react: ReactSerializerState,
     referentializer: Referentializer,
-    generatorParents: Map<Generator, Generator>
+    generatorDAG: GeneratorDAG,
+    conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>,
+    additionalGeneratorRoots: Map<Generator, Set<ObjectValue>>
   ) {
     super(
       realm,
@@ -91,10 +90,10 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
       additionalFunctionValuesAndEffects,
       additionalFunctionValueInfos,
       declarativeEnvironmentRecordsBindings,
-      statistics,
-      react,
       referentializer,
-      generatorParents
+      generatorDAG,
+      conditionalFeasibility,
+      additionalGeneratorRoots
     );
     this._lazyObjectIdSeed = 1;
     this._valueLazyIds = new Map();
@@ -120,7 +119,10 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
   }
 
   // TODO: change to use _getTarget() to get the lazy objects initializer body.
-  _serializeLazyObjectInitializer(obj: ObjectValue): SerializedBody {
+  _serializeLazyObjectInitializer(
+    obj: ObjectValue,
+    emitIntegrityCommand: void | (SerializedBody => void)
+  ): SerializedBody {
     const initializerBody = {
       type: LAZY_OBJECTS_SERIALIZER_BODY_TYPE,
       parentBody: undefined,
@@ -129,6 +131,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     };
     let oldBody = this.emitter.beginEmitting(LAZY_OBJECTS_SERIALIZER_BODY_TYPE, initializerBody);
     this._emitObjectProperties(obj);
+    if (emitIntegrityCommand !== undefined) emitIntegrityCommand(this.emitter.getBody());
     this.emitter.endEmitting(LAZY_OBJECTS_SERIALIZER_BODY_TYPE, oldBody);
     return initializerBody;
   }
@@ -204,9 +207,13 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
   }
 
   // Override default serializer with lazy mode.
-  serializeValueRawObject(obj: ObjectValue, skipPrototype: boolean): BabelNodeExpression {
-    if (obj.temporalAlias !== undefined) return super.serializeValueRawObject(obj, skipPrototype);
-    this._lazyObjectInitializers.set(obj, this._serializeLazyObjectInitializer(obj));
+  serializeValueRawObject(
+    obj: ObjectValue,
+    skipPrototype: boolean,
+    emitIntegrityCommand: void | (SerializedBody => void)
+  ): BabelNodeExpression {
+    if (obj.temporalAlias !== undefined) return super.serializeValueRawObject(obj, skipPrototype, emitIntegrityCommand);
+    this._lazyObjectInitializers.set(obj, this._serializeLazyObjectInitializer(obj, emitIntegrityCommand));
     return this._serializeCreateLazyObject(obj);
   }
 

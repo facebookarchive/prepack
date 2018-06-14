@@ -12,11 +12,18 @@
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
-import type { LexicalEnvironment } from "../environment.js";
+import { Effects } from "../realm.js";
+import { type LexicalEnvironment, type BaseValue, mightBecomeAnObject } from "../environment.js";
 import { EnvironmentRecord } from "../environment.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import { Value } from "../values/index.js";
-import { AbstractValue, AbstractObjectValue, BooleanValue, ConcreteValue, FunctionValue } from "../values/index.js";
+import {
+  AbstractValue,
+  AbstractObjectValue,
+  ConcreteValue,
+  FunctionValue,
+  ObjectValue,
+  Value,
+} from "../values/index.js";
 import { Reference } from "../environment.js";
 import { Environment, Functions, Havoc, Join } from "../singletons.js";
 import {
@@ -47,10 +54,101 @@ export default function(
   // 1. Let ref be the result of evaluating MemberExpression.
   let ref = env.evaluate(ast.callee, strictCode);
 
+  return evaluateReference(ref, ast, strictCode, env, realm);
+}
+
+function evaluateReference(
+  ref: Reference | Value,
+  ast: BabelNodeCallExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value {
+  if (
+    ref instanceof Reference &&
+    ref.base instanceof AbstractValue &&
+    // TODO: what about ref.base conditionals that mightBeObjects?
+    ref.base.mightNotBeObject() &&
+    realm.isInPureScope()
+  ) {
+    let base = ref.base;
+    if (base.kind === "conditional") {
+      return evaluateConditionalReferenceBase(ref, ast, strictCode, env, realm);
+    }
+    // avoid explicitly converting ref.base to an object because that will create a generator entry
+    // leading to two object allocations rather than one.
+    return realm.evaluateWithPossibleThrowCompletion(
+      () => generateRuntimeCall(ref, base, ast, strictCode, env, realm),
+      TypesDomain.topVal,
+      ValuesDomain.topVal
+    );
+  }
   // 2. Let func be ? GetValue(ref).
   let func = Environment.GetValue(realm, ref);
 
   return EvaluateCall(ref, func, ast, strictCode, env, realm);
+}
+
+function evaluateConditionalReferenceBase(
+  ref: Reference,
+  ast: BabelNodeCallExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value {
+  let base = ref.base;
+  invariant(base instanceof AbstractValue);
+  invariant(base.kind === "conditional", "evaluateConditionalReferenceBase expects an abstract conditional");
+  let [condValue, consequentVal, alternateVal] = base.args;
+  invariant(condValue instanceof AbstractValue);
+
+  return realm.evaluateWithAbstractConditional(
+    condValue,
+    () => {
+      return realm.evaluateForEffects(
+        () => {
+          if (
+            consequentVal instanceof AbstractObjectValue ||
+            consequentVal instanceof ObjectValue ||
+            mightBecomeAnObject(consequentVal)
+          ) {
+            let consequentRef = new Reference(
+              ((consequentVal: any): BaseValue),
+              ref.referencedName,
+              ref.strict,
+              ref.thisValue
+            );
+            return evaluateReference(consequentRef, ast, strictCode, env, realm);
+          }
+          return consequentVal;
+        },
+        null,
+        "evaluateConditionalReferenceBase consequent"
+      );
+    },
+    () => {
+      return realm.evaluateForEffects(
+        () => {
+          if (
+            alternateVal instanceof AbstractObjectValue ||
+            alternateVal instanceof ObjectValue ||
+            mightBecomeAnObject(alternateVal)
+          ) {
+            let alternateRef = new Reference(
+              ((alternateVal: any): BaseValue),
+              ref.referencedName,
+              ref.strict,
+              ref.thisValue
+            );
+            return evaluateReference(alternateRef, ast, strictCode, env, realm);
+          }
+          return alternateVal;
+        },
+        null,
+        "evaluateConditionalReferenceBase alternate"
+      );
+    }
+  );
 }
 
 function callBothFunctionsAndJoinTheirEffects(
@@ -61,29 +159,29 @@ function callBothFunctionsAndJoinTheirEffects(
   realm: Realm
 ): Value {
   let [cond, func1, func2] = args;
-  invariant(cond instanceof AbstractValue && cond.getType() === BooleanValue);
+  invariant(cond instanceof AbstractValue);
   invariant(Value.isTypeCompatibleWith(func1.getType(), FunctionValue));
   invariant(Value.isTypeCompatibleWith(func2.getType(), FunctionValue));
 
-  let [compl1, gen1, bindings1, properties1, createdObj1] = realm.evaluateForEffects(
+  const e1 = realm.evaluateForEffects(
     () => EvaluateCall(func1, func1, ast, strictCode, env, realm),
     undefined,
     "callBothFunctionsAndJoinTheirEffects/1"
   );
 
-  let [compl2, gen2, bindings2, properties2, createdObj2] = realm.evaluateForEffects(
+  const e2 = realm.evaluateForEffects(
     () => EvaluateCall(func2, func2, ast, strictCode, env, realm),
     undefined,
     "callBothFunctionsAndJoinTheirEffects/2"
   );
 
-  let joinedEffects = Join.joinEffects(
+  let joinedEffects = Join.joinForkOrChoose(
     realm,
     cond,
-    [compl1, gen1, bindings1, properties1, createdObj1],
-    [compl2, gen2, bindings2, properties2, createdObj2]
+    new Effects(e1.result, e1.generator, e1.modifiedBindings, e1.modifiedProperties, e1.createdObjects),
+    new Effects(e2.result, e2.generator, e2.modifiedBindings, e2.modifiedProperties, e2.createdObjects)
   );
-  let completion = joinedEffects[0];
+  let completion = joinedEffects.result;
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.
@@ -157,7 +255,9 @@ function tryToEvaluateCallOrLeaveAsAbstract(
   tailCall: boolean
 ): Value {
   let effects;
+  let savedSuppressDiagnostics = realm.suppressDiagnostics;
   try {
+    realm.suppressDiagnostics = true;
     effects = realm.evaluateForEffects(
       () => EvaluateDirectCall(realm, strictCode, env, ref, func, thisValue, ast.arguments, tailCall),
       undefined,
@@ -165,6 +265,7 @@ function tryToEvaluateCallOrLeaveAsAbstract(
     );
   } catch (error) {
     if (error instanceof FatalError) {
+      realm.suppressDiagnostics = savedSuppressDiagnostics;
       return realm.evaluateWithPossibleThrowCompletion(
         () => generateRuntimeCall(ref, func, ast, strictCode, env, realm),
         TypesDomain.topVal,
@@ -173,8 +274,13 @@ function tryToEvaluateCallOrLeaveAsAbstract(
     } else {
       throw error;
     }
+  } finally {
+    realm.suppressDiagnostics = savedSuppressDiagnostics;
   }
-  let completion = effects[0];
+  // Note that the effects of (non joining) abrupt branches are not included
+  // in effects, but are tracked separately inside completion.
+  realm.applyEffects(effects);
+  let completion = effects.result;
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.
@@ -182,9 +288,6 @@ function tryToEvaluateCallOrLeaveAsAbstract(
     // all the branches come together into one.
     completion = realm.composeWithSavedCompletion(completion);
   }
-  // Note that the effects of (non joining) abrupt branches are not included
-  // in effects, but are tracked separately inside completion.
-  realm.applyEffects(effects);
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
   invariant(completion instanceof Value);

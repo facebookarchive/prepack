@@ -9,37 +9,44 @@
 
 /* @flow */
 
-import { Realm, type Effects } from "../realm.js";
-import { Reference } from "../environment.js";
-import { Completion, PossiblyNormalCompletion, AbruptCompletion } from "../completions.js";
-import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
+import { Realm, Effects } from "../realm.js";
+import { ValuesDomain } from "../domains/index.js";
+import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
+import type { BabelNode, BabelNodeJSXIdentifier, BabelNodeExpression } from "babel-types";
+import { parseExpression } from "babylon";
 import {
   AbstractObjectValue,
-  Value,
+  AbstractValue,
+  ArrayValue,
+  BooleanValue,
+  BoundFunctionValue,
+  ECMAScriptFunctionValue,
+  ECMAScriptSourceFunctionValue,
+  FunctionValue,
   NumberValue,
   ObjectValue,
-  SymbolValue,
-  FunctionValue,
   StringValue,
-  ArrayValue,
-  ECMAScriptSourceFunctionValue,
-  BoundFunctionValue,
+  SymbolValue,
   UndefinedValue,
-  BooleanValue,
+  Value,
 } from "../values/index.js";
 import { Generator } from "../utils/generator.js";
-import type { Descriptor, ReactHint, PropertyBinding, ReactComponentTreeConfig } from "../types";
+import type {
+  Descriptor,
+  FunctionBodyAstNode,
+  ReactComponentTreeConfig,
+  ReactHint,
+  PropertyBinding,
+} from "../types.js";
 import { Get, cloneDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
-import type { ReactSerializerState, AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
+import type { AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
 import invariant from "../invariant.js";
-import { Create, Properties } from "../singletons.js";
+import { Create, Properties, To } from "../singletons.js";
 import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { To } from "../singletons.js";
-import AbstractValue from "../values/AbstractValue";
 
 export type ReactSymbolTypes =
   | "react.element"
@@ -61,23 +68,24 @@ export function isReactElement(val: Value): boolean {
   if (realm.react.reactElements.has(val)) {
     return true;
   }
-  if (val.properties.has("$$typeof")) {
-    let $$typeof = Get(realm, val, "$$typeof");
-    let globalObject = realm.$GlobalObject;
-    let globalSymbolValue = Get(realm, globalObject, "Symbol");
+  if (!val.properties.has("type") || !val.properties.has("props") || !val.properties.has("$$typeof")) {
+    return false;
+  }
+  let $$typeof = getProperty(realm, val, "$$typeof");
+  let globalObject = realm.$GlobalObject;
+  let globalSymbolValue = getProperty(realm, globalObject, "Symbol");
 
-    if (globalSymbolValue === realm.intrinsics.undefined) {
-      if ($$typeof instanceof NumberValue) {
-        return $$typeof.value === 0xeac7;
-      }
-    } else if ($$typeof instanceof SymbolValue) {
-      let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
-      let _isReactElement = symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
-      if (_isReactElement) {
-        // add to Set to speed up future lookups
-        realm.react.reactElements.add(val);
-        return true;
-      }
+  if (globalSymbolValue === realm.intrinsics.undefined) {
+    if ($$typeof instanceof NumberValue) {
+      return $$typeof.value === 0xeac7;
+    }
+  } else if ($$typeof instanceof SymbolValue) {
+    let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
+    let _isReactElement = symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
+    if (_isReactElement) {
+      // add to Set to speed up future lookups
+      realm.react.reactElements.add(val);
+      return true;
     }
   }
   return false;
@@ -182,19 +190,19 @@ export function valueIsFactoryClassComponent(realm: Realm, value: Value): boolea
   return false;
 }
 
-export function addKeyToReactElement(
-  realm: Realm,
-  reactSerializerState: ReactSerializerState,
-  reactElement: ObjectValue
-): void {
+export function addKeyToReactElement(realm: Realm, reactElement: ObjectValue): ObjectValue {
+  let typeValue = getProperty(realm, reactElement, "type");
+  let refValue = getProperty(realm, reactElement, "ref");
+  let propsValue = getProperty(realm, reactElement, "props");
   // we need to apply a key when we're branched
-  let currentKeyValue = Get(realm, reactElement, "key") || realm.intrinsics.null;
-  let uniqueKey = getUniqueReactElementKey("", reactSerializerState.usedReactElementKeys);
+  let currentKeyValue = getProperty(realm, reactElement, "key") || realm.intrinsics.null;
+  let uniqueKey = getUniqueReactElementKey("", realm.react.usedReactElementKeys);
   let newKeyValue = new StringValue(realm, uniqueKey);
   if (currentKeyValue !== realm.intrinsics.null) {
     newKeyValue = computeBinary(realm, "+", currentKeyValue, newKeyValue);
   }
-  setProperty(reactElement, "key", newKeyValue);
+  invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue);
+  return createInternalReactElement(realm, typeValue, newKeyValue, refValue, propsValue);
 }
 // we create a unique key for each JSXElement to prevent collisions
 // otherwise React will detect a missing/conflicting key at runtime and
@@ -202,7 +210,10 @@ export function addKeyToReactElement(
 export function getUniqueReactElementKey(index?: string, usedReactElementKeys: Set<string>) {
   let key;
   do {
-    key = Math.random().toString(36).replace(/[^a-z]+/g, "").substring(0, 2);
+    key = Math.random()
+      .toString(36)
+      .replace(/[^a-z]+/g, "")
+      .substring(0, 2);
   } while (usedReactElementKeys.has(key));
   usedReactElementKeys.add(key);
   if (index !== undefined) {
@@ -212,19 +223,54 @@ export function getUniqueReactElementKey(index?: string, usedReactElementKeys: S
 }
 
 // a helper function to loop over ArrayValues
-export function forEachArrayValue(realm: Realm, array: ObjectValue, mapFunc: Function): void {
+export function forEachArrayValue(
+  realm: Realm,
+  array: ArrayValue,
+  mapFunc: (element: Value, index: number) => void
+): void {
   let lengthValue = Get(realm, array, "length");
-  invariant(lengthValue instanceof NumberValue, "Invalid length on ArrayValue during reconcilation");
+  invariant(lengthValue instanceof NumberValue, "TODO: support non-numeric length on forEachArrayValue");
   let length = lengthValue.value;
   for (let i = 0; i < length; i++) {
     let elementProperty = array.properties.get("" + i);
     let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
-    invariant(elementPropertyDescriptor, `Invalid ArrayValue[${i}] descriptor`);
-    let elementValue = elementPropertyDescriptor.value;
-    if (elementValue instanceof Value) {
-      mapFunc(elementValue, elementPropertyDescriptor);
+    if (elementPropertyDescriptor) {
+      let elementValue = elementPropertyDescriptor.value;
+      if (elementValue instanceof Value) {
+        mapFunc(elementValue, i);
+      }
     }
   }
+}
+
+export function mapArrayValue(
+  realm: Realm,
+  array: ArrayValue,
+  mapFunc: (element: Value, descriptor: Descriptor) => Value
+): ArrayValue {
+  let lengthValue = Get(realm, array, "length");
+  invariant(lengthValue instanceof NumberValue, "TODO: support non-numeric length on mapArrayValue");
+  let length = lengthValue.value;
+  let newArray = Create.ArrayCreate(realm, length);
+  let returnTheNewArray = false;
+
+  for (let i = 0; i < length; i++) {
+    let elementProperty = array.properties.get("" + i);
+    let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
+    if (elementPropertyDescriptor) {
+      let elementValue = elementPropertyDescriptor.value;
+      if (elementValue instanceof Value) {
+        let newElement = mapFunc(elementValue, elementPropertyDescriptor);
+        if (newElement !== elementValue) {
+          returnTheNewArray = true;
+        }
+        Create.CreateDataPropertyOrThrow(realm, newArray, "" + i, newElement);
+        continue;
+      }
+    }
+    Create.CreateDataPropertyOrThrow(realm, newArray, "" + i, realm.intrinsics.undefined);
+  }
+  return returnTheNewArray ? newArray : array;
 }
 
 function GetDescriptorForProperty(value: ObjectValue, propertyName: string): ?Descriptor {
@@ -277,9 +323,10 @@ export function convertSimpleClassComponentToFunctionalComponent(
         },
       },
       undefined,
-      (undefined: any),
+      {},
       undefined
     );
+    traverse.clearCache();
   });
 }
 
@@ -431,11 +478,6 @@ export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFun
   lengthProperty.writable = false;
   lengthProperty.enumerable = false;
   lengthProperty.configurable = true;
-  // ensure the length value is set to the new value
-  let lengthValue = lengthProperty.value;
-  invariant(lengthValue instanceof NumberValue);
-  lengthValue.value = 2;
-
   func.$FormalParameters = func.$FormalParameters.map((param, i) => {
     if (i === 0) {
       return t.isIdentifier(param) ? param : t.identifier("props");
@@ -446,10 +488,21 @@ export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFun
   if (func.$FormalParameters.length === 1) {
     func.$FormalParameters.push(t.identifier("context"));
   }
+  // ensure the length value is set to the correct value after
+  // we've made mutations to the arguments of this function
+  let lengthValue = lengthProperty.value;
+  invariant(lengthValue instanceof NumberValue);
+  lengthValue.value = func.$FormalParameters.length;
 }
 
-export function createReactHintObject(object: ObjectValue, propertyName: string, args: Array<Value>): ReactHint {
+export function createReactHintObject(
+  object: ObjectValue,
+  propertyName: string,
+  args: Array<Value>,
+  firstRenderValue: Value
+): ReactHint {
   return {
+    firstRenderValue,
     object,
     propertyName,
     args,
@@ -483,6 +536,9 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
           );
       }
     }
+    if (reactHint.object === realm.fbLibraries.react && reactHint.propertyName === "forwardRef") {
+      return null;
+    }
     invariant(false, "unsupported known React abstraction");
   } else {
     invariant(value instanceof ECMAScriptSourceFunctionValue);
@@ -490,31 +546,43 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
   }
 }
 
-// props should never have "ref" or "key" properties, as they're part of ReactElement
-// object instead. to ensure that we can give this hint, we create them and then
-// delete them, so their descriptor is left undefined. we use this knowledge later
-// to ensure that when dealing with creating ReactElements with partial config,
-// we don't have to bail out becuase "config" may or may not have "key" or/and "ref"
-export function deleteRefAndKeyFromProps(realm: Realm, props: ObjectValue | AbstractObjectValue): void {
-  setProperty(props, "ref", realm.intrinsics.undefined);
-  deleteProperty(props, "ref");
-  setProperty(props, "key", realm.intrinsics.undefined);
-  deleteProperty(props, "key");
+export function flagPropsWithNoPartialKeyOrRef(realm: Realm, props: ObjectValue | AbstractObjectValue): void {
+  realm.react.propsWithNoPartialKeyOrRef.add(props);
 }
 
-export function objectHasNoPartialKeyAndRef(
-  realm: Realm,
-  object: ObjectValue | AbstractValue | AbstractObjectValue
-): boolean {
-  if (object instanceof AbstractValue) {
+export function hasNoPartialKeyOrRef(realm: Realm, props: ObjectValue | AbstractObjectValue): boolean {
+  if (realm.react.propsWithNoPartialKeyOrRef.has(props)) {
     return true;
   }
-  return !(Get(realm, object, "key") instanceof AbstractValue || Get(realm, object, "ref") instanceof AbstractValue);
+  if (props instanceof ObjectValue && !props.isPartialObject()) {
+    return true;
+  }
+  if (props instanceof AbstractObjectValue) {
+    if (props.values.isTop()) {
+      return false;
+    }
+    let elements = props.values.getElements();
+    if (elements.size === 1) {
+      props = Array.from(elements)[0];
+    } else {
+      for (let element of elements) {
+        let wasSafe = hasNoPartialKeyOrRef(realm, element);
+        if (!wasSafe) {
+          return false;
+        }
+      }
+      return true;
+    }
+  }
+  if (props instanceof ObjectValue && props.properties.has("key") && props.properties.has("ref")) {
+    return true;
+  }
+  return false;
 }
 
 function recursivelyFlattenArray(realm: Realm, array, targetArray): void {
   forEachArrayValue(realm, array, item => {
-    if (item instanceof ArrayValue) {
+    if (item instanceof ArrayValue && !item.intrinsicName) {
       recursivelyFlattenArray(realm, item, targetArray);
     } else {
       let lengthValue = Get(realm, targetArray, "length");
@@ -530,112 +598,41 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   return flattenedChildren;
 }
 
-export function evaluateWithNestedEffects(
-  realm: Realm,
-  nestedEffects: Array<Effects>,
-  f: (generator?: Generator, value?: Value | Reference | Completion) => Value
-) {
+export function evaluateWithNestedParentEffects(realm: Realm, nestedEffects: Array<Effects>, f: () => Effects) {
   let nextEffects = nestedEffects.slice();
-  let effects = nextEffects.shift();
-  let [
-    value,
-    generator,
-    modifiedBindings,
-    modifiedProperties: Map<PropertyBinding, void | Descriptor>,
-    createdObjects,
-  ] = effects;
-  realm.applyEffects([
-    value,
-    new Generator(realm, "evaluateWithNestedEffects"),
-    modifiedBindings,
-    modifiedProperties,
-    createdObjects,
-  ]);
+  let modifiedBindings;
+  let modifiedProperties;
+  let createdObjects;
+  let value;
+
+  if (nextEffects.length !== 0) {
+    let effects = nextEffects.shift();
+    value = effects.result;
+    createdObjects = effects.createdObjects;
+    modifiedBindings = effects.modifiedBindings;
+    modifiedProperties = effects.modifiedProperties;
+    realm.applyEffects(
+      new Effects(
+        value,
+        new Generator(realm, "evaluateWithNestedEffects"),
+        modifiedBindings,
+        modifiedProperties,
+        createdObjects
+      )
+    );
+  }
   try {
     if (nextEffects.length === 0) {
-      return f(generator, value);
+      return f();
     } else {
-      return evaluateWithNestedEffects(realm, nextEffects, f);
+      return evaluateWithNestedParentEffects(realm, nextEffects, f);
     }
   } finally {
-    realm.restoreBindings(modifiedBindings);
-    realm.restoreProperties(modifiedProperties);
-  }
-}
-
-// This function is mainly use to delete internal properties
-// on objects that we know are safe to access internally
-// such as ReactElements. Deleting here does not
-// emit change to modified bindings and is intended
-// for only internal usage – not for user-land code
-export function deleteProperty(object: ObjectValue | AbstractObjectValue, property: string | SymbolValue): void {
-  if (object instanceof AbstractObjectValue) {
-    let elements = object.values.getElements();
-    if (elements && elements.size > 0) {
-      object = Array.from(elements)[0];
-    }
-    invariant(object instanceof ObjectValue);
-  }
-  let binding;
-  if (typeof property === "string") {
-    binding = object.properties.get(property);
-  } else {
-    binding = object.symbols.get(property);
-  }
-  if (!binding) {
-    return;
-  }
-  binding.descriptor = undefined;
-}
-
-// This function is mainly use to set internal properties
-// on objects that we know are safe to access internally
-// such as ReactElements. Setting properties here does not
-// emit change to modified bindings and is intended
-// for only internal usage – not for user-land code
-export function setProperty(
-  object: ObjectValue | AbstractObjectValue,
-  property: string | SymbolValue,
-  value: Value
-): void {
-  if (object instanceof AbstractObjectValue) {
-    let elements = object.values.getElements();
-    if (elements && elements.size > 0) {
-      object = Array.from(elements)[0];
-    }
-    invariant(object instanceof ObjectValue);
-  }
-  let defaultBinding = {
-    descriptor: {
-      configurable: true,
-      enumerable: true,
-      writable: true,
-      value,
-    },
-    key: property,
-    object,
-  };
-  let binding;
-  if (typeof property === "string") {
-    binding = object.properties.get(property);
-    if (!binding) {
-      binding = defaultBinding;
-      object.properties.set(property, binding);
-    }
-  } else if (property instanceof SymbolValue) {
-    binding = object.symbols.get(property);
-    if (!binding) {
-      binding = defaultBinding;
-      object.symbols.set(property, binding);
+    if (modifiedBindings && modifiedProperties) {
+      realm.undoBindings(modifiedBindings);
+      realm.restoreProperties(modifiedProperties);
     }
   }
-  invariant(binding);
-  let descriptor = binding.descriptor;
-
-  if (!descriptor) {
-    return;
-  }
-  descriptor.value = value;
 }
 
 // This function is mainly use to get internal properties
@@ -649,9 +646,16 @@ export function getProperty(
   property: string | SymbolValue
 ): Value {
   if (object instanceof AbstractObjectValue) {
+    if (object.values.isTop()) {
+      return realm.intrinsics.undefined;
+    }
     let elements = object.values.getElements();
-    if (elements && elements.size > 0) {
+    invariant(elements);
+    if (elements.size > 0) {
       object = Array.from(elements)[0];
+    } else {
+      // intentionally left in
+      invariant(false, "TODO: should we hit this?");
     }
     invariant(object instanceof ObjectValue);
   }
@@ -662,7 +666,6 @@ export function getProperty(
     binding = object.symbols.get(property);
   }
   if (!binding) {
-    invariant(!object.isPartialObject(), "getProperty used on a partial object with no binding");
     return realm.intrinsics.undefined;
   }
   let descriptor = binding.descriptor;
@@ -670,10 +673,8 @@ export function getProperty(
   if (!descriptor) {
     return realm.intrinsics.undefined;
   }
-  let value;
-  if (descriptor.value) {
-    value = descriptor.value;
-  } else if (descriptor.get || descriptor.set) {
+  let value = descriptor.value;
+  if (value === undefined) {
     AbstractValue.reportIntrospectionError(object, `react/utils/getProperty unsupported getter/setter property`);
     throw new FatalError();
   }
@@ -687,10 +688,10 @@ export function createReactEvaluatedNode(
     | "NEW_TREE"
     | "INLINED"
     | "BAIL-OUT"
+    | "FATAL"
     | "UNKNOWN_TYPE"
     | "RENDER_PROPS"
-    | "UNSUPPORTED_COMPLETION"
-    | "ABRUPT_COMPLETION"
+    | "FORWARD_REF"
     | "NORMAL",
   name: string
 ): ReactEvaluatedNode {
@@ -703,11 +704,24 @@ export function createReactEvaluatedNode(
 }
 
 export function getComponentName(realm: Realm, componentType: Value): string {
+  if (componentType instanceof SymbolValue && componentType === getReactSymbol("react.fragment", realm)) {
+    return "React.Fragment";
+  } else if (componentType instanceof SymbolValue) {
+    return "unknown symbol";
+  }
+  // $FlowFixMe: this code is fine, Flow thinks that coponentType is bound to string...
+  if (isReactComponent(componentType)) {
+    return "ReactElement";
+  }
+  if (componentType === realm.intrinsics.undefined || componentType === realm.intrinsics.null) {
+    return "no name";
+  }
   invariant(
     componentType instanceof ECMAScriptSourceFunctionValue ||
       componentType instanceof BoundFunctionValue ||
       componentType instanceof AbstractObjectValue ||
-      componentType instanceof AbstractValue
+      componentType instanceof AbstractValue ||
+      componentType instanceof ObjectValue
   );
   let boundText = componentType instanceof BoundFunctionValue ? "bound " : "";
 
@@ -726,7 +740,18 @@ export function getComponentName(realm: Realm, componentType: Value): string {
       return boundText + name.value;
     }
   }
-  return boundText + "anonymous";
+  if (realm.react.abstractHints.has(componentType)) {
+    let reactHint = realm.react.abstractHints.get(componentType);
+
+    invariant(reactHint !== undefined);
+    if (reactHint.object === realm.fbLibraries.react && reactHint.propertyName === "forwardRef") {
+      return "forwarded ref";
+    }
+  }
+  if (componentType instanceof FunctionValue) {
+    return boundText + "anonymous";
+  }
+  return "unknown";
 }
 
 export function convertConfigObjectToReactComponentTreeConfig(
@@ -735,6 +760,7 @@ export function convertConfigObjectToReactComponentTreeConfig(
 ): ReactComponentTreeConfig {
   // defaults
   let firstRenderOnly = false;
+  let isRoot = false;
 
   if (!(config instanceof UndefinedValue)) {
     for (let [key] of config.properties) {
@@ -746,6 +772,8 @@ export function convertConfigObjectToReactComponentTreeConfig(
         if (typeof value === "boolean") {
           if (key === "firstRenderOnly") {
             firstRenderOnly = value;
+          } else if (key === "isRoot") {
+            isRoot = value;
           }
         }
       } else {
@@ -762,6 +790,7 @@ export function convertConfigObjectToReactComponentTreeConfig(
   }
   return {
     firstRenderOnly,
+    isRoot,
   };
 }
 
@@ -775,26 +804,21 @@ export function getValueFromFunctionCall(
   invariant(func.$Call, "Expected function to be a FunctionValue with $Call method");
   let funcCall = func.$Call;
   let newCall = func.$Construct;
-  let effects;
+  let completion;
   try {
-    effects = realm.evaluateForEffects(
-      () => {
-        invariant(func);
-        if (isConstructor) {
-          invariant(newCall);
-          return newCall(args, func);
-        } else {
-          return funcCall(funcThis, args);
-        }
-      },
-      null,
-      "getValueFromFunctionCall"
-    );
+    if (isConstructor) {
+      invariant(newCall);
+      completion = newCall(args, func);
+    } else {
+      completion = funcCall(funcThis, args);
+    }
   } catch (error) {
-    throw error;
+    if (error instanceof AbruptCompletion) {
+      completion = error;
+    } else {
+      throw error;
+    }
   }
-
-  let completion = effects[0];
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.
@@ -802,9 +826,6 @@ export function getValueFromFunctionCall(
     // all the branches come together into one.
     completion = realm.composeWithSavedCompletion(completion);
   }
-  // Note that the effects of (non joining) abrupt branches are not included
-  // in joinedEffects, but are tracked separately inside completion.
-  realm.applyEffects(effects);
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
   invariant(completion instanceof Value);
@@ -816,22 +837,271 @@ function isEventProp(name: string): boolean {
 }
 
 export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElement: ObjectValue): ObjectValue {
-  let typeValue = Get(realm, reactElement, "type");
+  let typeValue = getProperty(realm, reactElement, "type");
+  let keyValue = getProperty(realm, reactElement, "key");
+  let propsValue = getProperty(realm, reactElement, "props");
 
-  // ensure ref is null, as we don't use that on first render
-  setProperty(reactElement, "ref", realm.intrinsics.null);
-  // when dealing with host nodes, we want to sanitize them futher
-  if (typeValue instanceof StringValue) {
-    let propsValue = Get(realm, reactElement, "props");
-    if (propsValue instanceof ObjectValue) {
-      // remove all values apart from string/number/boolean
-      for (let [propName] of propsValue.properties) {
-        // check for onSomething prop event handlers, i.e. onClick
-        if (isEventProp(propName)) {
-          deleteProperty(reactElement, "ref");
+  invariant(propsValue instanceof ObjectValue);
+  return createInternalReactElement(
+    realm,
+    typeValue,
+    keyValue,
+    realm.intrinsics.null,
+    typeValue instanceof StringValue ? cloneProps(realm, propsValue, true) : propsValue
+  );
+}
+
+export function getLocationFromValue(expressionLocation: any) {
+  // if we can't get a value, then it's likely that the source file was not given
+  // (this happens in React tests) so instead don't print any location
+  return expressionLocation
+    ? ` at location: ${expressionLocation.start.line}:${expressionLocation.start.column} ` +
+        `- ${expressionLocation.end.line}:${expressionLocation.end.line}`
+    : "";
+}
+
+export function createNoopFunction(realm: Realm): ECMAScriptSourceFunctionValue {
+  if (realm.react.noopFunction !== undefined) {
+    return realm.react.noopFunction;
+  }
+  let noOpFunc = new ECMAScriptSourceFunctionValue(realm);
+  let body = t.blockStatement([]);
+  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
+  noOpFunc.$FormalParameters = [];
+  noOpFunc.$ECMAScriptCode = body;
+  realm.react.noopFunction = noOpFunc;
+  return noOpFunc;
+}
+
+export function doNotOptimizeComponent(realm: Realm, componentType: Value): boolean {
+  if (componentType instanceof ObjectValue) {
+    let doNotOptimize = Get(realm, componentType, "__reactCompilerDoNotOptimize");
+
+    if (doNotOptimize instanceof BooleanValue) {
+      return doNotOptimize.value;
+    }
+  }
+  return false;
+}
+
+export function createDefaultPropsHelper(realm: Realm): ECMAScriptSourceFunctionValue {
+  let defaultPropsHelper = `
+    function defaultPropsHelper(props, defaultProps) {
+      for (var propName in defaultProps) {
+        if (props[propName] === undefined) {
+          props[propName] = defaultProps[propName];
         }
+      }
+      return props;
+    }
+  `;
+
+  let escapeHelperAst = parseExpression(defaultPropsHelper, { plugins: ["flow"] });
+  let helper = new ECMAScriptSourceFunctionValue(realm);
+  let body = escapeHelperAst.body;
+  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
+  helper.$ECMAScriptCode = body;
+  helper.$FormalParameters = escapeHelperAst.params;
+  return helper;
+}
+
+export function createInternalReactElement(
+  realm: Realm,
+  type: Value,
+  key: Value,
+  ref: Value,
+  props: ObjectValue | AbstractObjectValue
+): ObjectValue {
+  let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+
+  // sanity checks
+  if (type instanceof AbstractValue && type.kind === "conditional") {
+    invariant(false, "createInternalReactElement should never encounter a conditional type");
+  }
+  if (props instanceof AbstractObjectValue && props.kind === "conditional") {
+    invariant(false, "createInternalReactElement should never encounter a conditional props");
+  }
+  Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactSymbol("react.element", realm));
+  Create.CreateDataPropertyOrThrow(realm, obj, "type", type);
+  Create.CreateDataPropertyOrThrow(realm, obj, "key", key);
+  Create.CreateDataPropertyOrThrow(realm, obj, "ref", ref);
+  Create.CreateDataPropertyOrThrow(realm, obj, "props", props);
+  Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
+  obj.makeFinal();
+  return obj;
+}
+
+function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps: ObjectValue): void {
+  let temporalAlias = props.temporalAlias;
+  invariant(temporalAlias !== undefined);
+  if (temporalAlias.kind === "conditional") {
+    // Leave in for now, we should deal with this later, but there might
+    // be a better option.
+    invariant(false, "TODO applyClonedTemporalAlias conditional");
+  }
+  let temporalArgs = realm.temporalAliasArgs.get(temporalAlias);
+  invariant(temporalArgs !== undefined);
+  // replace the original props with the cloned one
+  let newTemporalArgs = temporalArgs.map(arg => (arg === props ? clonedProps : arg));
+
+  let temporalTo = AbstractValue.createTemporalFromBuildFunction(
+    realm,
+    ObjectValue,
+    newTemporalArgs,
+    ([methodNode, targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
+      return t.callExpression(methodNode, [targetNode, ...sourceNodes]);
+    },
+    { skipInvariant: true }
+  );
+  invariant(temporalTo instanceof AbstractObjectValue);
+  invariant(clonedProps instanceof ObjectValue);
+  temporalTo.values = new ValuesDomain(clonedProps);
+  clonedProps.temporalAlias = temporalTo;
+  // Store the args for the temporal so we can easily clone
+  // and reconstruct the temporal at another point, rather than
+  // mutate the existing temporal
+  realm.temporalAliasArgs.set(temporalTo, newTemporalArgs);
+}
+
+export function cloneProps(
+  realm: Realm,
+  props: ObjectValue,
+  excludeEventProps: boolean,
+  newChildren?: Value
+): ObjectValue {
+  let clonedProps = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+
+  for (let [propName, binding] of props.properties) {
+    if (binding && binding.descriptor && binding.descriptor.enumerable) {
+      if (newChildren !== undefined && propName === "children") {
+        Properties.Set(realm, clonedProps, propName, newChildren, true);
+      } else if (!excludeEventProps || !isEventProp(propName)) {
+        Properties.Set(realm, clonedProps, propName, getProperty(realm, props, propName), true);
       }
     }
   }
-  return reactElement;
+
+  if (props.isPartialObject()) {
+    clonedProps.makePartial();
+  }
+  if (props.isSimpleObject()) {
+    clonedProps.makeSimple();
+  }
+  if (realm.react.propsWithNoPartialKeyOrRef.has(props)) {
+    flagPropsWithNoPartialKeyOrRef(realm, clonedProps);
+  }
+  if (props.temporalAlias !== undefined) {
+    applyClonedTemporalAlias(realm, props, clonedProps);
+  }
+  clonedProps.makeFinal();
+  return clonedProps;
+}
+
+export function applyObjectAssignConfigsForReactElement(realm: Realm, to: ObjectValue, sources: Array<Value>): void {
+  // get the global Object.assign
+  let globalObj = Get(realm, realm.$GlobalObject, "Object");
+  invariant(globalObj instanceof ObjectValue);
+  let objAssign = Get(realm, globalObj, "assign");
+  invariant(objAssign instanceof ECMAScriptFunctionValue);
+  let objectAssignCall = objAssign.$Call;
+  invariant(objectAssignCall !== undefined);
+
+  const tryToApplyObjectAssign = () => {
+    let effects;
+    let savedSuppressDiagnostics = realm.suppressDiagnostics;
+    try {
+      realm.suppressDiagnostics = true;
+      effects = realm.evaluateForEffects(
+        () => objectAssignCall(realm.intrinsics.undefined, [to, ...sources]),
+        undefined,
+        "tryToApplyObjectAssign"
+      );
+    } catch (error) {
+      if (error instanceof FatalError) {
+        // if the built-in Object.assign failed, we need to recover
+        realm.suppressDiagnostics = savedSuppressDiagnostics;
+        let delayedSources = [];
+
+        for (let obj of sources) {
+          // ignore null or undefined
+          if (obj === realm.intrinsics.null || obj === realm.intrinsics.undefined) {
+            continue;
+          }
+          let source = To.ToObject(realm, obj);
+          // the object is simple and partial so we can safely copy over properties
+          if (source instanceof ObjectValue && !source.isPartialObject()) {
+            for (let [propName, binding] of source.properties) {
+              if (binding.descriptor !== undefined) {
+                Properties.Set(realm, to, propName, Get(realm, source, propName), true);
+              }
+            }
+            let snapshot = source.getSnapshot();
+            delayedSources.push(snapshot);
+            source.temporalAlias = snapshot;
+          } else {
+            // if we are dealing with an abstract object or one that is partial, then
+            // we don't try and copy its properties over as there's no guarantee they are
+            // safe to copy
+            if (source instanceof AbstractObjectValue && source.kind === "explicit conversion to object") {
+              // Make it implicit again since it is getting delayed into an Object.assign call.
+              delayedSources.push(source.args[0]);
+            } else {
+              let snapshot = source.getSnapshot();
+              delayedSources.push(snapshot);
+              source.temporalAlias = snapshot;
+            }
+            // if to has properties, we better remove them because after the temporal call to Object.assign we don't know their values anymore
+            if (to.hasStringOrSymbolProperties()) {
+              // preserve them in a snapshot and add the snapshot to the sources
+              delayedSources.push(to.getSnapshot({ removeProperties: true }));
+            }
+          }
+        }
+        // prepare our temporal Object.assign fallback
+        to.makePartial();
+        to.makeSimple();
+        let temporalArgs = [objAssign, to, ...delayedSources];
+        let temporalTo = AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          ObjectValue,
+          temporalArgs,
+          ([methodNode, ..._args]) => {
+            return t.callExpression(methodNode, ((_args: any): Array<any>));
+          },
+          { skipInvariant: true }
+        );
+        invariant(temporalTo instanceof AbstractObjectValue);
+        temporalTo.values = new ValuesDomain(to);
+        to.temporalAlias = temporalTo;
+        // Store the args for the temporal so we can easily clone
+        // and reconstruct the temporal at another point, rather than
+        // mutate the existing temporal
+        realm.temporalAliasArgs.set(temporalTo, temporalArgs);
+        return;
+      } else {
+        throw error;
+      }
+    } finally {
+      realm.suppressDiagnostics = savedSuppressDiagnostics;
+    }
+    // Note that the effects of (non joining) abrupt branches are not included
+    // in effects, but are tracked separately inside completion.
+    realm.applyEffects(effects);
+    let completion = effects.result;
+    if (completion instanceof PossiblyNormalCompletion) {
+      // in this case one of the branches may complete abruptly, which means that
+      // not all control flow branches join into one flow at this point.
+      // Consequently we have to continue tracking changes until the point where
+      // all the branches come together into one.
+      completion = realm.composeWithSavedCompletion(completion);
+    }
+    // return or throw completion
+    if (completion instanceof AbruptCompletion) throw completion;
+  };
+
+  if (realm.isInPureScope()) {
+    tryToApplyObjectAssign();
+  } else {
+    objectAssignCall(realm.intrinsics.undefined, [to, ...sources]);
+  }
 }

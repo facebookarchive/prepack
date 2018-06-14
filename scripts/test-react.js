@@ -14,6 +14,8 @@ let path = require("path");
 let { prepackSources } = require("../lib/prepack-node.js");
 let babel = require("babel-core");
 let React = require("react");
+let ReactDOM = require("react-dom");
+let ReactDOMServer = require("react-dom/server");
 let PropTypes = require("prop-types");
 let ReactRelay = require("react-relay");
 let ReactTestRenderer = require("react-test-renderer");
@@ -61,12 +63,18 @@ MockURI.prototype.makeString = function() {
 };
 
 function runTestSuite(outputJsx, shouldTranspileSource) {
+  let checkForReconcilerFatalError = false;
+  let checkForPartialKeyOrRefError = false;
   let errorsCaptured = [];
   let reactTestRoot = path.join(__dirname, "../test/react/");
   let prepackOptions = {
     errorHandler: diag => {
       errorsCaptured.push(diag);
       if (diag.severity !== "Warning" && diag.severity !== "Information") {
+        if (diag.errorCode === "PP0025" && !checkForPartialKeyOrRefError) {
+          // recover from `unable to evaluate "key" and "ref" on a ReactElement
+          return "Recover";
+        }
         return "Fail";
       }
       return "Recover";
@@ -78,10 +86,35 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     maxStackDepth: 100,
     reactEnabled: true,
     reactOutput: outputJsx ? "jsx" : "create-element",
+    reactOptimizeNestedFunctions: true,
     inlineExpressions: true,
-    omitInvariants: true,
+    invariantLevel: 0,
     stripFlow: true,
   };
+
+  async function expectReconcilerFatalError(func) {
+    checkForReconcilerFatalError = true;
+    try {
+      await func();
+    } catch (e) {
+      expect(e.__isReconcilerFatalError).toBe(true);
+      expect(e.message).toMatchSnapshot();
+    } finally {
+      checkForReconcilerFatalError = false;
+    }
+  }
+
+  async function expectPartialKeyOrRefError(func) {
+    checkForPartialKeyOrRefError = true;
+    try {
+      await func();
+    } catch (e) {
+      expect(e.__isReconcilerFatalError).toBe(true);
+      expect(e.message).toMatchSnapshot();
+    } finally {
+      checkForPartialKeyOrRefError = false;
+    }
+  }
 
   function compileSourceWithPrepack(source) {
     let code = `(function(){${source}})()`;
@@ -90,6 +123,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     try {
       serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
     } catch (e) {
+      if (e.__isReconcilerFatalError && (checkForReconcilerFatalError || checkForPartialKeyOrRefError)) {
+        throw e;
+      }
       errorsCaptured.forEach(error => {
         console.error(error);
       });
@@ -121,6 +157,12 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         case "React":
         case "react":
           return React;
+        case "react-dom":
+        case "ReactDOM":
+          return ReactDOM;
+        case "react-dom/server":
+        case "ReactDOMServer":
+          return ReactDOMServer;
         case "PropTypes":
         case "prop-types":
           return PropTypes;
@@ -163,24 +205,34 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       return;
     }
 
-    let rendererA = ReactTestRenderer.create(null);
-    let rendererB = ReactTestRenderer.create(null);
+    let config = {
+      createNodeMock(x) {
+        return x;
+      },
+    };
+    let rendererA = ReactTestRenderer.create(null, config);
+    let rendererB = ReactTestRenderer.create(null, config);
     if (A == null || B == null) {
       throw new Error("React test runner issue");
     }
     // Use the original version of the test in case transforming messes it up.
-    let { getTrials } = A;
+    let { getTrials: getTrialsA, independent } = A;
+    let { getTrials: getTrialsB } = B;
     // Run tests that assert the rendered output matches.
-    let resultA = getTrials(rendererA, A, data);
-    let resultB = getTrials(rendererB, B, data);
+    let resultA = getTrialsA(rendererA, A, data);
+    let resultB = independent ? getTrialsB(rendererB, B, data) : getTrialsA(rendererB, B, data);
 
     // The test has returned many values for us to check
     for (let i = 0; i < resultA.length; i++) {
       let [nameA, valueA] = resultA[i];
       let [nameB, valueB] = resultB[i];
-      expect(mergeAdacentJSONTextNodes(valueB, firstRenderOnly)).toEqual(
-        mergeAdacentJSONTextNodes(valueA, firstRenderOnly)
-      );
+      if (typeof valueA === "string" && typeof valueB === "string") {
+        expect(valueA).toBe(valueB);
+      } else {
+        expect(mergeAdacentJSONTextNodes(valueB, firstRenderOnly)).toEqual(
+          mergeAdacentJSONTextNodes(valueA, firstRenderOnly)
+        );
+      }
       expect(nameB).toEqual(nameA);
     }
   }
@@ -226,9 +278,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     originalConsoleError.apply(this, args);
   };
 
-  describe(`Test React with ${shouldTranspileSource ? "create-element input" : "JSX input"}, ${outputJsx
-    ? "JSX output"
-    : "create-element output"}`, () => {
+  describe(`Test React with ${shouldTranspileSource ? "create-element input" : "JSX input"}, ${
+    outputJsx ? "JSX output" : "create-element output"
+  }`, () => {
     describe("Functional component folding", () => {
       let directory = "functional-components";
 
@@ -260,6 +312,115 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-7.js");
       });
 
+      it("Simple 8", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "simple-8.js");
+        });
+      });
+
+      it("Simple 9", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "simple-9.js");
+        });
+      });
+
+      it("Simple 10", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "simple-10.js");
+        });
+      });
+
+      it("Simple 11", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "simple-11.js");
+        });
+      });
+
+      it("Simple 12", async () => {
+        await runTest(directory, "simple-12.js");
+      });
+
+      // this should intentionally fail
+      it("Runtime error", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "runtime-error.js");
+        });
+      });
+
+      it("Simple 13", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "simple-13.js");
+        });
+      });
+
+      it("Simple 14", async () => {
+        await runTest(directory, "simple-14.js");
+      });
+
+      it("Simple 15", async () => {
+        await runTest(directory, "simple-15.js");
+      });
+
+      it("Simple 16", async () => {
+        await runTest(directory, "simple-16.js");
+      });
+
+      it("Simple 17", async () => {
+        await runTest(directory, "simple-17.js");
+      });
+
+      it("Simple 18", async () => {
+        await runTest(directory, "simple-18.js");
+      });
+
+      it("Simple 19", async () => {
+        await runTest(directory, "simple-19.js");
+      });
+
+      it("Simple 20", async () => {
+        await runTest(directory, "simple-20.js");
+      });
+
+      it("Simple 21", async () => {
+        await runTest(directory, "simple-21.js");
+      });
+
+      it("Havocing of ReactElements should not result in property assignments", async () => {
+        await runTest(directory, "react-element-havoc.js");
+      });
+
+      it("__reactCompilerDoNotOptimize", async () => {
+        await runTest(directory, "do-not-optimize.js");
+      });
+
+      it("Mutations - not-safe 1", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "not-safe.js");
+        });
+      });
+
+      it("Mutations - not-safe 2", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "not-safe2.js");
+        });
+      });
+
+      it("Mutations - safe 1", async () => {
+        await runTest(directory, "safe.js");
+      });
+
+      it("Mutations - safe 2", async () => {
+        await runTest(directory, "safe2.js");
+      });
+
+      it("Handle mapped arrays", async () => {
+        await runTest(directory, "array-map.js");
+      });
+
+      it("Handle mapped arrays 2", async () => {
+        await runTest(directory, "array-map2.js");
+      });
+
       it("Simple fragments", async () => {
         await runTest(directory, "simple-fragments.js");
       });
@@ -274,6 +435,28 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Simple refs", async () => {
         await runTest(directory, "simple-refs.js");
+      });
+
+      it("16.3 refs", async () => {
+        await runTest(directory, "refs.js");
+      });
+
+      it("16.3 refs 2", async () => {
+        await runTest(directory, "refs2.js");
+      });
+
+      it("16.3 refs 3", async () => {
+        await runTest(directory, "refs3.js");
+      });
+
+      it("defaultProps", async () => {
+        await runTest(directory, "default-props.js");
+      });
+
+      it("Unsafe spread", async () => {
+        await expectPartialKeyOrRefError(async () => {
+          await runTest(directory, "unsafe-spread.js");
+        });
       });
 
       it("Simple with abstract props", async () => {
@@ -306,6 +489,34 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Simple with multiple JSX spreads #6", async () => {
         await runTest(directory, "simple-with-jsx-spread6.js");
+      });
+
+      it("Simple with multiple JSX spreads #7", async () => {
+        await runTest(directory, "simple-with-jsx-spread7.js");
+      });
+
+      it("Simple with multiple JSX spreads #8", async () => {
+        await runTest(directory, "simple-with-jsx-spread8.js");
+      });
+
+      it("Simple with multiple JSX spreads #9", async () => {
+        await runTest(directory, "simple-with-jsx-spread9.js");
+      });
+
+      it("Simple with multiple JSX spreads #10", async () => {
+        await runTest(directory, "simple-with-jsx-spread10.js");
+      });
+
+      it("Simple with multiple JSX spreads #11", async () => {
+        await runTest(directory, "simple-with-jsx-spread11.js");
+      });
+
+      it("Simple with multiple JSX spreads #12", async () => {
+        await runTest(directory, "simple-with-jsx-spread12.js");
+      });
+
+      it("Simple with multiple JSX spreads #13", async () => {
+        await runTest(directory, "simple-with-jsx-spread13.js");
       });
 
       it("Simple with Object.assign", async () => {
@@ -352,6 +563,29 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "key-change.js");
       });
 
+      it("Equivalence", async () => {
+        let createElement = React.createElement;
+        let count = 0;
+        // For this test we want to also check how React.createElement
+        // calls occur so we can validate that we are correctly using
+        // lazy branched elements. To do this, we override the createElement
+        // call and increment a counter for ever call.
+
+        // $FlowFixMe: intentional for this test
+        React.createElement = (type, config) => {
+          count++;
+          return createElement(type, config);
+        };
+        try {
+          await runTest(directory, "equivalence.js");
+        } finally {
+          // $FlowFixMe: intentional for this test
+          React.createElement = createElement;
+        }
+        // The non-compiled version has 20 calls, the compiled should have 8 calls
+        expect(count).toEqual(28);
+      });
+
       it("Delete element prop key", async () => {
         await runTest(directory, "delete-element-prop-key.js");
       });
@@ -366,6 +600,46 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Component type change", async () => {
         await runTest(directory, "type-change.js");
+      });
+
+      it("Component type change 2", async () => {
+        await runTest(directory, "type-change2.js");
+      });
+
+      it("Component type change 3", async () => {
+        await runTest(directory, "type-change3.js");
+      });
+
+      it("Component type change 4", async () => {
+        await runTest(directory, "type-change4.js");
+      });
+
+      it("Component type change 5", async () => {
+        await runTest(directory, "type-change5.js");
+      });
+
+      it("Component type change 6", async () => {
+        await runTest(directory, "type-change6.js");
+      });
+
+      it("Component type change 7", async () => {
+        await runTest(directory, "type-change7.js");
+      });
+
+      it("Component type change 8", async () => {
+        await runTest(directory, "type-change8.js");
+      });
+
+      it("Component type change 9", async () => {
+        await runTest(directory, "type-change9.js");
+      });
+
+      it("Component type change 10", async () => {
+        await runTest(directory, "type-change10.js");
+      });
+
+      it("Component type change 11", async () => {
+        await runTest(directory, "type-change11.js");
       });
 
       it("Component type same", async () => {
@@ -398,6 +672,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Return undefined", async () => {
         await runTest(directory, "return-undefined.js");
+      });
+
+      it("Null or undefined props", async () => {
+        await runTest(directory, "null-or-undefined-props.js");
       });
 
       it("Event handlers", async () => {
@@ -443,6 +721,61 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("Dynamic ReactElement type #2", async () => {
         await runTest(directory, "dynamic-type2.js");
       });
+
+      it("Dynamic ReactElement type #3", async () => {
+        await runTest(directory, "dynamic-type3.js");
+      });
+
+      it("Dynamic ReactElement type #4", async () => {
+        await runTest(directory, "dynamic-type4.js");
+      });
+
+      it("Lazy branched elements", async () => {
+        let createElement = React.createElement;
+        let count = 0;
+        // For this test we want to also check how React.createElement
+        // calls occur so we can validate that we are correctly using
+        // lazy branched elements. To do this, we override the createElement
+        // call and increment a counter for ever call.
+
+        // $FlowFixMe: intentional for this test
+        React.createElement = (type, config) => {
+          count++;
+          return createElement(type, config);
+        };
+        try {
+          await runTest(directory, "lazy-branched-elements.js");
+        } finally {
+          // $FlowFixMe: intentional for this test
+          React.createElement = createElement;
+        }
+        // The non-compiled version has 4 calls, the compiled should have 4 calls
+        expect(count).toEqual(8);
+      });
+
+      it("Lazy branched elements 2", async () => {
+        let createElement = React.createElement;
+        let count = 0;
+        // For this test we want to also check how React.createElement
+        // calls occur so we can validate that we are correctly using
+        // lazy branched elements. To do this, we override the createElement
+        // call and increment a counter for ever call.
+
+        // $FlowFixMe: intentional for this test
+        React.createElement = (type, config) => {
+          count++;
+          return createElement(type, config);
+        };
+        try {
+          await runTest(directory, "lazy-branched-elements2.js");
+        } finally {
+          // $FlowFixMe: intentional for this test
+          React.createElement = createElement;
+        }
+        // The non-compiled version has 4 calls, the compiled should have 3 calls
+        // (3 because one of the calls has been removing by inlining)
+        expect(count).toEqual(7);
+      });
     });
 
     describe("Class component folding", () => {
@@ -462,6 +795,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Simple classes #3", async () => {
         await runTest(directory, "simple-classes-3.js");
+      });
+
+      it("Simple classes with Array.from", async () => {
+        await runTest(directory, "array-from.js");
+      });
+
+      it("Simple classes with Array.from 2", async () => {
+        await runTest(directory, "array-from2.js");
       });
 
       it("Inheritance chaining", async () => {
@@ -539,6 +880,30 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       it("React Context 5", async () => {
         await runTest(directory, "react-context5.js");
       });
+
+      it("React Context 6", async () => {
+        await runTest(directory, "react-context6.js");
+      });
+
+      it("React Context 7", async () => {
+        await runTest(directory, "react-context7.js");
+      });
+
+      it("React Context from root tree", async () => {
+        await runTest(directory, "react-root-context.js");
+      });
+
+      it("React Context from root tree 2", async () => {
+        await runTest(directory, "react-root-context2.js");
+      });
+
+      it("React Context from root tree 3", async () => {
+        await runTest(directory, "react-root-context3.js");
+      });
+
+      it("React Context from root tree 4", async () => {
+        await runTest(directory, "react-root-context4.js");
+      });
     });
 
     describe("First render only", () => {
@@ -552,12 +917,28 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-2.js", true);
       });
 
-      it("Class component as root with refs", async () => {
-        await runTest(directory, "class-root-with-refs.js", true);
-      });
-
       it("componentWillMount", async () => {
         await runTest(directory, "will-mount.js", true);
+      });
+
+      it("getDerivedStateFromProps", async () => {
+        await runTest(directory, "get-derived-state-from-props.js", true);
+      });
+
+      it("getDerivedStateFromProps 2", async () => {
+        await runTest(directory, "get-derived-state-from-props2.js", true);
+      });
+
+      it("getDerivedStateFromProps 3", async () => {
+        await runTest(directory, "get-derived-state-from-props3.js", true);
+      });
+
+      it("getDerivedStateFromProps 4", async () => {
+        await runTest(directory, "get-derived-state-from-props4.js", true);
+      });
+
+      it("getDerivedStateFromProps 5", async () => {
+        await runTest(directory, "get-derived-state-from-props5.js", true);
       });
 
       it("React Context", async () => {
@@ -578,6 +959,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("React Context 5", async () => {
         await runTest(directory, "react-context5.js");
+      });
+
+      it("React Context 6", async () => {
+        await runTest(directory, "react-context6.js");
       });
 
       it.skip("Replace this in callbacks", async () => {
@@ -646,6 +1031,67 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "fb11.js");
       });
 
+      it("fb-www 12", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "fb12.js");
+        });
+      });
+
+      it("fb-www 13", async () => {
+        await runTest(directory, "fb13.js");
+      });
+
+      it("fb-www 14", async () => {
+        await runTest(directory, "fb14.js");
+      });
+
+      it("fb-www 15", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "fb15.js");
+        });
+      });
+
+      it("fb-www 16", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "fb16.js");
+        });
+      });
+
+      it("fb-www 17", async () => {
+        await runTest(directory, "fb17.js");
+      });
+
+      // Test fails for two reasons:
+      // - "uri.foo" on abstract string does not exist
+      // - unused.bar() does not exist (even if in try/catch)
+      it("fb-www 18", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "fb18.js");
+        });
+      });
+
+      it("fb-www 19", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "fb19.js");
+        });
+      });
+
+      it("fb-www 20", async () => {
+        await runTest(directory, "fb20.js");
+      });
+
+      it("fb-www 21", async () => {
+        await runTest(directory, "fb21.js");
+      });
+
+      it("fb-www 22", async () => {
+        await runTest(directory, "fb22.js");
+      });
+
+      it("fb-www 23", async () => {
+        await runTest(directory, "fb23.js");
+      });
+
       it("repl example", async () => {
         await runTest(directory, "repl-example.js");
       });
@@ -655,9 +1101,25 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "hacker-news.js", false, data);
       });
 
-      // awaiting more work on nested optimized functions
       it("Function bind", async () => {
         await runTest(directory, "function-bind.js");
+      });
+    });
+
+    describe("react-dom server rendering", () => {
+      let directory = "server-rendering";
+
+      it("Hacker News app", async () => {
+        let data = JSON.parse(getDataFile(directory, "hacker-news.json"));
+        await runTest(directory, "hacker-news.js", false, data);
+      });
+    });
+
+    describe("react-dom", () => {
+      let directory = "react-dom";
+
+      it("createPortal", async () => {
+        await runTest(directory, "create-portal.js", false);
       });
     });
   });

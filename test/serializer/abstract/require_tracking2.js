@@ -25,7 +25,7 @@ function define(factory, moduleId, dependencyMap) {
   var _verboseName = arguments[3];
   if (_verboseName) {
     modules[moduleId].verboseName = _verboseName;
-    verboseNamesToModuleIds[_verboseName] = moduleId;
+    global.verboseNamesToModuleIds[_verboseName] = moduleId;
   }
 }
 
@@ -95,15 +95,15 @@ function moduleThrewError(id) {
 // === End require code ===
 
 define(function(global, require, module, exports) {
-  let condition = global.__abstract ? __abstract("boolean", "true") : true;
-  let obj1 = global.__abstract ? __abstract("object", "({ foo: 5 })") : { foo: 5 };
-  let obj2 = global.__abstract ? __abstract("object", "({ foo: 8 })") : { foo: 8 };
+  let condition = global.__abstract ? global.__abstract("boolean", "true") : true;
+  let obj1 = global.__abstract ? global.__abstract("object", "({ foo: 5 })") : { foo: 5 };
+  let obj2 = global.__abstract ? global.__abstract("object", "({ foo: 8 })") : { foo: 8 };
   module.exports = condition ? obj1 : obj2;
 }, 0, null);
 
 define(function(global, require, module, exports) {
   //let condition = global.__abstract ? __abstract("boolean", "true") : true;
-  let topNum = global.__abstract ? __abstract("number", "5") : 5;
+  let topNum = global.__abstract ? global.__abstract("number", "5") : 5;
   module.exports = topNum;
 }, 4, null);
 

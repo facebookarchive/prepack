@@ -188,7 +188,11 @@ export function ClassDefinitionEvaluation(
         constructorFile = parse(realm, "class NeedClassForParsing { constructor( ){ } }", "");
       }
 
-      let { program: { body: [classDeclaration] } } = constructorFile;
+      let {
+        program: {
+          body: [classDeclaration],
+        },
+      } = constructorFile;
       invariant(classDeclaration.type === "ClassDeclaration");
       let { body } = ((classDeclaration: any): BabelNodeClassDeclaration);
       invariant(body.body[0].type === "ClassMethod");

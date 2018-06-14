@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { NumberValue, Value, ObjectValue } from "../values/index.js";
 import type { Realm } from "../realm.js";
@@ -165,11 +165,12 @@ export function LocalTime(realm: Realm, t: number): number {
 }
 
 // ECMA262 20.3.1.10
-export function UTC(realm: Realm, t: number | Value): NumberValue {
+export function UTC(realm: Realm, _t: number | Value): NumberValue {
+  let t = _t;
   if (t instanceof Value) t = t.throwIfNotConcreteNumber().value;
 
   // 1. Return t - LocalTZA - DaylightSavingTA(t - LocalTZA).
-  return new NumberValue(realm, t - LocalTZA - DaylightSavingTA(realm, t - LocalTZA));
+  return new NumberValue(realm, (t: number) - LocalTZA - DaylightSavingTA(realm, (t: number) - LocalTZA));
 }
 
 // ECMA262 20.3.1.11
@@ -235,7 +236,7 @@ export function MakeDay(realm: Realm, year: number, month: number, date: number)
   let ym = y + Math.floor(m / 12);
 
   // 6. Let mn be m modulo 12.
-  let mn = m < 0 ? m % 12 + 12 : m % 12;
+  let mn = m < 0 ? (m % 12) + 12 : m % 12;
 
   // 7. Find a value t such that YearFromTime(t) is ym and MonthFromTime(t) is mn and DateFromTime(t) is 1;
   //    but if this is not possible (because some argument is out of range), return NaN.
@@ -276,18 +277,19 @@ export function MakeDate(realm: Realm, day: number, time: number): number {
 }
 
 // ECMA262 20.3.1.15
-export function TimeClip(realm: Realm, time: number | Value): NumberValue {
+export function TimeClip(realm: Realm, _time: number | Value): NumberValue {
+  let time = _time;
   if (time instanceof Value) time = time.throwIfNotConcreteNumber().value;
   // 1. If time is not finite, return NaN.
   if (!isFinite(time)) return realm.intrinsics.NaN;
 
   // 2. If abs(time) > 8.64 × 10^15, return NaN.
-  if (Math.abs(time) > 8640000000000000) {
+  if (Math.abs((time: number)) > 8640000000000000) {
     return realm.intrinsics.NaN;
   }
 
   // 3. Let clippedTime be ToInteger(time).
-  let clippedTime = To.ToInteger(realm, new NumberValue(realm, time));
+  let clippedTime = To.ToInteger(realm, new NumberValue(realm, (time: number)));
 
   // 4. If clippedTime is -0, let clippedTime be +0.
   if (Object.is(clippedTime, -0)) clippedTime = +0;

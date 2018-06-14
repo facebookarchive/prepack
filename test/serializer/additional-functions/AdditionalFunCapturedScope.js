@@ -8,7 +8,7 @@ var f = function(x) {
     return i;
   }
   if (global.__optimize)
-    __optimize(fun);
+    global.__optimize(fun);
   addit_funs.push(fun);
   return fun;
 }

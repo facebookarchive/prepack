@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import type { ElementType } from "../../types.js";
@@ -134,13 +134,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.5
   obj.defineNativeMethod("copyWithin", 2, (context, [target, start, end]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. Let relativeTarget be ? ToInteger(target).
@@ -201,7 +201,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       } else {
         // e. Else fromPresent is false,
         // i. Perform ? DeletePropertyOrThrow(O, toKey).
-        Properties.DeletePropertyOrThrow(realm, O, toKey);
+        Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), toKey);
       }
 
       // f. Let from be from + direction.
@@ -234,13 +234,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.7
   obj.defineNativeMethod("every", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
@@ -285,13 +285,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.8
   obj.defineNativeMethod("fill", 1, (context, [value, start, end]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. Let relativeStart be ? ToInteger(start).
@@ -398,13 +398,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.10
   obj.defineNativeMethod("find", 1, (context, [predicate, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If IsCallable(predicate) is false, throw a TypeError exception.
@@ -443,13 +443,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.11
   obj.defineNativeMethod("findIndex", 1, (context, [predicate, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If IsCallable(predicate) is false, throw a TypeError exception.
@@ -488,13 +488,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.12
   obj.defineNativeMethod("forEach", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
@@ -536,13 +536,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.14
   obj.defineNativeMethod("includes", 1, (context, [searchElement, fromIndex]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If len is 0, return false.
@@ -583,13 +583,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.14
   obj.defineNativeMethod("indexOf", 1, (context, [searchElement, fromIndex]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If len is 0, return -1.
@@ -641,15 +641,16 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.2.3.15
-  obj.defineNativeMethod("join", 1, (context, [separator]) => {
+  obj.defineNativeMethod("join", 1, (context, [_separator]) => {
+    let separator = _separator;
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If separator is undefined, let separator be the single-element String ",".
@@ -718,13 +719,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.17
   obj.defineNativeMethod("lastIndexOf", 1, (context, [searchElement, fromIndex]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If len is 0, return -1.
@@ -857,13 +858,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.20
   obj.defineNativeMethod("reduce", 1, (context, [callbackfn, initialValue]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
@@ -948,13 +949,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.21
   obj.defineNativeMethod("reduceRight", 1, (context, [callbackfn, initialValue]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
@@ -1037,13 +1038,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.21
   obj.defineNativeMethod("reverse", 0, context => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. Let middle be floor(len/2).
@@ -1101,13 +1102,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
         Properties.Set(realm, O, lowerP, upperValue, true);
 
         // ii. Perform ? DeletePropertyOrThrow(O, upperP).
-        Properties.DeletePropertyOrThrow(realm, O, upperP);
+        Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), upperP);
       } else if (lowerExists && !upperExists) {
         // j. Else if lowerExists is true and upperExists is false, then
         invariant(lowerValue, "expected lower value to exist");
 
         // i. Perform ? DeletePropertyOrThrow(O, lowerP).
-        Properties.DeletePropertyOrThrow(realm, O, lowerP);
+        Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), lowerP);
 
         // ii. Perform ? Set(O, upperP, lowerValue, true).
         Properties.Set(realm, O, upperP, lowerValue, true);
@@ -1187,7 +1188,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       invariant(typeof targetByteOffset === "number");
 
       // 15. Let src be ? ToObject(array).
-      let src = To.ToObjectPartial(realm, array);
+      let src = To.ToObject(realm, array);
 
       // 16. Let srcLength be ? ToLength(? Get(src, "length")).
       let srcLength = To.ToLength(realm, Get(realm, src, "length"));
@@ -1509,13 +1510,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.25
   obj.defineNativeMethod("some", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
@@ -1563,13 +1564,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.26
   obj.defineNativeMethod("sort", 1, (context, [comparefn]) => {
     // 1. Let obj be the this value.
-    let O = To.ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let buffer be ? ValidateTypedArray(obj).
     let buffer = ValidateTypedArray(realm, O);
 
     // 3. Let len be the value of obj's [[ArrayLength]] internal slot.
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 22.2.3.26 Runtime Semantics: SortCompare( x, y )#
@@ -1639,7 +1640,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
     let arr = [];
     for (let j = 0; j < len; j++) {
-      let val = IntegerIndexedElementGet(realm, O, j);
+      let val = IntegerIndexedElementGet(realm, O.throwIfNotConcreteObject(), j);
       arr[j] = val;
     }
 
@@ -1647,7 +1648,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
     //Apply the permutation back to the original array.
     for (let j = 0; j < len; j++) {
-      IntegerIndexedElementSet(realm, O, j, arr[j]);
+      IntegerIndexedElementSet(realm, O.throwIfNotConcreteObject(), j, arr[j]);
     }
 
     // 2. Return obj;
@@ -1722,13 +1723,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.28
   obj.defineNativeMethod("toLocaleString", 0, context => {
     // 1. Let array be ? ToObject(this value).
-    let array = To.ToObject(realm, context.throwIfNotConcrete());
+    let array = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(array).
     ValidateTypedArray(realm, array);
 
     // 3. Let len be array.[[ArrayLength]].
-    let len = array.$ArrayLength;
+    let len = array.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. Let separator be the String value for the list-separator String appropriate for the host environment's current locale (this is derived in an implementation-defined way).

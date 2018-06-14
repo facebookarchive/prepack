@@ -33,7 +33,8 @@ import minimist from "minimist";
 import process from "process";
 
 const EOL = os.EOL;
-const numCPUs = os.cpus().length;
+const cpus = os.cpus();
+const numCPUs = cpus ? cpus.length : 1;
 require("source-map-support").install();
 
 type HarnessMap = { [key: string]: string };
@@ -464,7 +465,7 @@ function masterRunMultiProcess(
   const granularity = Math.floor(tests.length / 10);
   const originalTestLength = tests.length;
   // Fork workers.
-  const numWorkers = Math.floor(numCPUs * args.cpuScale);
+  const numWorkers = Math.max(1, Math.floor(numCPUs * args.cpuScale));
   console.log(`Master starting up, forking ${numWorkers} workers`);
   for (let i = 0; i < numWorkers; i++) {
     cluster.fork();
@@ -636,7 +637,7 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 11738 || numPassedES6 < 3981 || numTimeouts > 0)) {
+  if (!args.filterString && (numPassedES5 < 11738 || numPassedES6 < 5406 || numTimeouts > 0)) {
     console.error(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -675,7 +676,7 @@ function toPercentage(x: number, total: number): number {
   if (total === 0) {
     return 100;
   }
-  return Math.floor(x / total * 100);
+  return Math.floor((x / total) * 100);
 }
 
 function create_test_message(name: string, success: boolean, err: ?Error, isES6: boolean, isStrict: boolean): string {
@@ -1161,7 +1162,6 @@ function filterFeatures(data: BannerData): boolean {
   if (features.includes("atomics")) return false;
   if (features.includes("u180e")) return false;
   if (features.includes("Symbol.isConcatSpreadable")) return false;
-  if (features.includes("destructuring-binding")) return false;
   if (features.includes("IsHTMLDDA")) return false;
   if (features.includes("regexp-unicode-property-escapes")) return false;
   if (features.includes("regexp-named-groups")) return false;

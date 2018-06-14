@@ -7,13 +7,14 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { Realm } from "./realm.js";
 import initializeSingletons from "./initialize-singletons.js";
 import { initialize as initializeIntrinsics } from "./intrinsics/index.js";
 import initializeGlobal from "./intrinsics/ecma262/global.js";
 import type { RealmOptions } from "./options.js";
+import { RealmStatistics } from "./statistics.js";
 import * as evaluators from "./evaluators/index.js";
 import * as partialEvaluators from "./partial-evaluators/index.js";
 import { Environment } from "./singletons.js";
@@ -21,14 +22,20 @@ import { ObjectValue } from "./values/index.js";
 import { DebugServer } from "./debugger/server/Debugger.js";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
 import simplifyAndRefineAbstractValue from "./utils/simplifier.js";
+import invariant from "./invariant.js";
 
-export default function(opts: RealmOptions = {}, debugChannel: void | DebugChannel = undefined): Realm {
+export default function(
+  opts: RealmOptions = {},
+  debugChannel: void | DebugChannel = undefined,
+  statistics: void | RealmStatistics = undefined
+): Realm {
   initializeSingletons();
-  let r = new Realm(opts);
+  let r = new Realm(opts, statistics || new RealmStatistics());
+  // Presence of debugChannel indicates we wish to use debugger.
   if (debugChannel) {
-    if (debugChannel.debuggerIsAttached()) {
-      r.debuggerInstance = new DebugServer(debugChannel, r);
-    }
+    invariant(debugChannel.debuggerIsAttached(), "Debugger intends to be used but is not attached.");
+    invariant(opts.debuggerConfigArgs !== undefined, "Debugger intends to be used but does not have launch arguments.");
+    r.debuggerInstance = new DebugServer(debugChannel, r, opts.debuggerConfigArgs);
   }
 
   let i = r.intrinsics;

@@ -42,7 +42,6 @@ import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import {
   GetV,
   GetThisValue,
-  RequireObjectCoercible,
   HasSomeCompatibleType,
   GetIterator,
   IteratorStep,
@@ -50,6 +49,7 @@ import {
   IteratorClose,
   IsAnonymousFunctionDefinition,
   HasOwnProperty,
+  RequireObjectCoercible,
 } from "./index.js";
 import { Create, Functions, Properties, To } from "../singletons.js";
 import type {
@@ -57,6 +57,8 @@ import type {
   BabelNodeVariableDeclaration,
   BabelNodeIdentifier,
   BabelNodeRestElement,
+  BabelNodeRestProperty,
+  BabelNodeObjectProperty,
   BabelNodeObjectPattern,
   BabelNodeArrayPattern,
   BabelNodeStatement,
@@ -65,6 +67,96 @@ import type {
 } from "babel-types";
 
 export class EnvironmentImplementation {
+  // 2.6 RestBindingInitialization (please suggest an appropriate section name)
+  RestBindingInitialization(
+    realm: Realm,
+    property: BabelNodeRestProperty,
+    value: Value,
+    excludedNames: Array<PropertyKeyValue>,
+    strictCode: boolean,
+    environment: ?LexicalEnvironment
+  ) {
+    let BindingIdentifier = ((property.argument: any): BabelNodeIdentifier);
+
+    // 1. Let restObj be ObjectCreate(%ObjectPrototype%).
+    let restObj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+
+    // 2. Let assignStatus be CopyDataProperties(restObj, value, excludedNames).
+    /* let assignStatus = */ Create.CopyDataProperties(realm, restObj, value, excludedNames);
+
+    // 3. ReturnIfAbrupt(assignStatus).
+
+    // 4. Let bindingId be StringValue of BindingIdentifier.
+    let bindingId = BindingIdentifier.name;
+
+    // 5. Let lhs be ResolveBinding(bindingId, environment).
+    let lhs = this.ResolveBinding(realm, bindingId, strictCode, environment);
+
+    // 6. ReturnIfAbrupt(lhs).
+
+    // 7. If environment is undefined, return PutValue(lhs, restObj).
+    if (environment === undefined) {
+      return Properties.PutValue(realm, lhs, restObj);
+    }
+
+    // 8. Return InitializeReferencedBinding(lhs, restObj).
+    return this.InitializeReferencedBinding(realm, lhs, restObj);
+  }
+
+  // 2.5  PropertyBindingInitialization (please suggest an appropriate section name)
+  PropertyBindingInitialization(
+    realm: Realm,
+    properties: Array<BabelNodeObjectProperty>,
+    value: Value,
+    strictCode: boolean,
+    environment: ?LexicalEnvironment
+  ) {
+    // Base condition for recursive call below
+    if (properties.length === 0) {
+      return [];
+    }
+
+    let BindingProperty = properties.slice(-1)[0];
+    let BindingPropertyList = properties.slice(0, -1);
+
+    // 1. Let boundNames be the result of performing PropertyBindingInitialization for BindingPropertyList using value and environment as arguments.
+    let boundNames = this.PropertyBindingInitialization(realm, BindingPropertyList, value, strictCode, environment);
+
+    // 2. ReturnIfAbrupt(status boundNames).
+
+    // 3. Let nextNames be the result of performing PropertyBindingInitialization for BindingProperty using value and environment as arguments.
+    let nextNames;
+
+    // SingleNameBinding
+    // PropertyName : BindingElement
+    // 1. Let P be the result of evaluating PropertyName.
+    let env = environment ? environment : realm.getRunningContext().lexicalEnvironment;
+    let P = EvalPropertyName(BindingProperty, env, realm, strictCode);
+    // 2. ReturnIfAbrupt(P).
+
+    // 3. Let status be the result of performing KeyedBindingInitialization of BindingElement with value, environment, and P as the arguments.
+    /* let status = */ this.KeyedBindingInitialization(
+      realm,
+      ((BindingProperty.value: any): BabelNodeIdentifier | BabelNodePattern),
+      value,
+      strictCode,
+      environment,
+      P
+    );
+
+    // 4. ReturnIfAbrupt(status).
+
+    // 5. Return a new List containing P.
+    nextNames = [P];
+
+    // 4. ReturnIfAbrupt(nextNames).
+
+    // 5. Append each item in nextNames to the end of boundNames.
+    boundNames = boundNames.concat(nextNames);
+
+    return boundNames;
+  }
+
   // ECMA262 6.2.3
   // IsSuperReference(V). Returns true if this reference has a thisValue component.
   IsSuperReference(realm: Realm, V: Reference): boolean {
@@ -137,7 +229,7 @@ export class EnvironmentImplementation {
       if (base instanceof AbstractValue) {
         // Ensure that abstract values are coerced to objects. This might yield
         // an operation that might throw.
-        base = To.ToObjectPartial(realm, base);
+        base = To.ToObject(realm, base);
       }
       // a. If HasPrimitiveBase(V) is true, then
       if (this.HasPrimitiveBase(realm, V)) {
@@ -145,7 +237,7 @@ export class EnvironmentImplementation {
         invariant(base instanceof Value && !HasSomeCompatibleType(base, UndefinedValue, NullValue));
 
         // ii. Let base be To.ToObject(base).
-        base = To.ToObjectPartial(realm, base);
+        base = To.ToObject(realm, base);
       }
       invariant(base instanceof ObjectValue || base instanceof AbstractObjectValue);
 
@@ -576,23 +668,76 @@ export class EnvironmentImplementation {
       // 5. Return result.
       return result;
     } else if (node.type === "ObjectPattern") {
-      // ECMA262 13.3.3.5
-      // BindingPattern : ObjectBindingPattern
-
-      // 1. Perform ? RequireObjectCoercible(value).
       RequireObjectCoercible(realm, value);
 
-      // 2. Return the result of performing BindingInitialization for ObjectBindingPattern using value and environment as arguments.
+      let BindingPropertyList = [],
+        BindingRestProperty = null;
+
       for (let property of node.properties) {
-        let env = environment ? environment : realm.getRunningContext().lexicalEnvironment;
+        if (property.type === "RestProperty") {
+          BindingRestProperty = property;
+        } else {
+          BindingPropertyList.push(property);
+        }
+      }
 
-        // 1. Let P be the result of evaluating PropertyName.
-        let P = EvalPropertyName(property, env, realm, strictCode);
+      // ObjectBindingPattern:
+      //   { BindingPropertyList }
+      //   { BindingPropertyList, }
 
-        // 2. ReturnIfAbrupt(P).
+      if (!BindingRestProperty) {
+        // 1. Let excludedNames be the result of performing PropertyBindingInitialization for BindingPropertyList using value and environment as the argument.
+        /* let excludedNames = */ this.PropertyBindingInitialization(
+          realm,
+          BindingPropertyList,
+          value,
+          strictCode,
+          environment
+        );
 
-        // 3. Return the result of performing KeyedBindingInitialization for BindingElement using value, environment, and P as arguments.
-        this.KeyedBindingInitialization(realm, property.value, value, strictCode, environment, P);
+        // 2. ReturnIfAbrupt(excludedNames).
+
+        // 3. Return NormalCompletion(empty).
+        return realm.intrinsics.empty;
+      }
+
+      // ObjectBindingPattern : { BindingRestProperty }
+      if (BindingPropertyList.length === 0) {
+        // 1. Let excludedNames be a new empty List.
+        let excludedNames = [];
+
+        // 2. Return the result of performing RestBindingInitialization of BindingRestProperty with value, environment and excludedNames as the arguments.
+        return this.RestBindingInitialization(
+          realm,
+          BindingRestProperty,
+          value,
+          excludedNames,
+          strictCode,
+          environment
+        );
+      } else {
+        // ObjectBindingPattern : { BindingPropertyList, BindingRestProperty }
+
+        // 1. Let excludedNames be the result of performing PropertyBindingInitialization of BindingPropertyList using value and environment as arguments.
+        let excludedNames = this.PropertyBindingInitialization(
+          realm,
+          BindingPropertyList,
+          value,
+          strictCode,
+          environment
+        );
+
+        // 2. ReturnIfAbrupt(excludedNames).
+
+        // 3. Return the result of performing RestBindingInitialization of BindingRestProperty with value, environment and excludedNames as the arguments.
+        return this.RestBindingInitialization(
+          realm,
+          BindingRestProperty,
+          value,
+          excludedNames,
+          strictCode,
+          environment
+        );
       }
     } else if (node.type === "Identifier") {
       // ECMA262 12.1.5
@@ -1060,7 +1205,6 @@ export class EnvironmentImplementation {
         if (IsAnonymousFunctionDefinition(realm, Initializer) && v instanceof ObjectValue) {
           // i. Let hasNameProperty be ? HasOwnProperty(v, "name").
           let hasNameProperty = HasOwnProperty(realm, v, "name");
-
           // ii. If hasNameProperty is false, perform SetFunctionName(v, bindingId).
           if (hasNameProperty === false) {
             Functions.SetFunctionName(realm, v, bindingId);

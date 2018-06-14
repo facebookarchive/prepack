@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <title>Prepack &middot; Partial evaluator for JavaScript</title>
     <script src="js/prism.js"></script>
@@ -48,7 +48,7 @@
           <h2>Why do I get a <code>ReferenceError</code> when trying to prepack my code?</h2>
 
           <p class="align-left">
-            Trying to prepack a seemlingly simple program such as <code>global.result = UnknownProperty;</code> will cause a
+            Trying to prepack a seemingly simple program such as <code>global.result = UnknownProperty;</code> will cause a
             <code>ReferenceError</code>. The reason is that Prepack actually runs the global code, not knowing anything else
             about the environment. And the semantics of JavaScript is that an unknown identifier that cannot be resolved
             causes a <code>ReferenceError</code>. You might want to invest into modeling your environment.
@@ -64,7 +64,7 @@
             Check out the section <i>The Environment matters!</i> on the landing page.
           </p>
 
-          <h2>What is an <code>__IntrospectionError</code>?</h2>
+          <h2>What is an <code>__IntrospectionError</code> or a PPxxxx error code?</h2>
 
           <p class="align-left">
             Prepack actually runs the global code.
@@ -73,19 +73,22 @@
             when the resulting prepacked code will run again later in the real run-time environment.
             (You can also directly inject such non-deterministic values using Prepack's <code>__abstract</code> built-in, or
             other modeling built-ins described in the section <i>The Environment matters!</i> on the landing page.)
-          </o>
+          </p>
           <p class="align-left">
             When the global code branches over such values,
             it is not clear at prepack-time which branch will be taken later in the real run-time environment.
             Therefore, Prepack tries to explore all possible behaviors, and summarize them.
             However, Prepack is still limited in its abilities, and sometimes it just won't ever make sense to explore all possible behaviors.
-            In those cases, Prepack throws a <code>__IntrospectionError</code>.
+            In those cases, Prepack either throws a generic <code>__IntrospectionError</code>, or reports a specialized PPxxxx error.
             This is not a user error, but a Prepack limitation.
             It is sometimes possible to work around these limitations by changing your code. The easiest way to work around the limitation is to move the problematic code out of the global code path into a callback that's only invoked later, or by making the problematic part of the initialization phase lazy.
           </p>
           <p class="align-left">
             If you get such an error while using <code>Math.random</code>,
             consider setting the <code>mathRandomSeed</code> option to make all random numbers queries along the global code path deterministic.
+          </p>
+          <p class="align-left">
+            All PPxxxx error code are <a href="https://github.com/facebook/prepack/wiki/Prepack-diagnostics">documented on the Prepack wiki</a>.
           </p>
 
           <h2>When will Prepack understand all DOM objects?</h2>
@@ -98,7 +101,8 @@
 
           <p class="align-left">
             Prepack only optimizes code that gets executed along the global code path, the initialization phase.
-            Any code that sits behind callbacks is not optimized at this time.
+            Any code that sits behind callbacks is not optimized by default.
+            Check out the <i>Optimize More Code!</i> section on the landing page for information on how to optimize functions.
           </p>
 
           <h2>When is Prepack ready to be used in production?</h2>
@@ -133,6 +137,7 @@
               <a href="https://www.npmjs.com/package/babel-plugin-flow-prepack">A babel plugin which transforms Flow annotations into prepack model declarations.</a>
             </li>
           </ul>
+
         </div>
       </div>
     </div>
@@ -141,7 +146,7 @@
       <div class="content-container">
         <div class="footer">
           <div>
-            Copyright &copy; 2017 Facebook Inc.
+            Copyright &copy; 2018 Facebook Inc.
           </div>
           <div>
             <a href="https://code.facebook.com/projects/" target="_blank">

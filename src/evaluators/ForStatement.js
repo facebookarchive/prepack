@@ -12,10 +12,20 @@
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 import { Value, EmptyValue } from "../values/index.js";
-import { AbruptCompletion, BreakCompletion } from "../completions.js";
+import {
+  AbruptCompletion,
+  BreakCompletion,
+  Completion,
+  ContinueCompletion,
+  ForkedAbruptCompletion,
+  PossiblyNormalCompletion,
+  ReturnCompletion,
+  ThrowCompletion,
+} from "../completions.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { UpdateEmpty } from "../methods/index.js";
-import { LoopContinues, InternalGetResultValue } from "./ForOfStatement.js";
-import { Environment, To } from "../singletons.js";
+import { LoopContinues, InternalGetResultValue, TryToApplyEffectsOfJoiningBranches } from "./ForOfStatement.js";
+import { Environment, Functions, Join, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeForStatement } from "babel-types";
 
@@ -59,7 +69,7 @@ function ForBodyEvaluation(
   increment,
   stmt,
   perIterationBindings: Array<string>,
-  labelSet,
+  labelSet: ?Array<string>,
   strictCode: boolean
 ): Value {
   // 1. Let V be undefined.
@@ -80,21 +90,37 @@ function ForBodyEvaluation(
       let testValue = Environment.GetValue(realm, testRef);
 
       // iii. If ToBoolean(testValue) is false, return NormalCompletion(V).
-      if (!To.ToBooleanPartial(realm, testValue)) return V;
+      if (!To.ToBooleanPartial(realm, testValue)) {
+        // joinAllLoopExits does not handle labeled break/continue, so only use it when doing AI
+        if (realm.useAbstractInterpretation) return joinAllLoopExits(V);
+        return V;
+      }
     }
 
     // b. Let result be the result of evaluating stmt.
     let result = env.evaluateCompletion(stmt, strictCode);
     invariant(result instanceof Value || result instanceof AbruptCompletion);
+    if (result instanceof ForkedAbruptCompletion) result = TryToApplyEffectsOfJoiningBranches(realm, result);
 
     // c. If LoopContinues(result, labelSet) is false, return Completion(UpdateEmpty(result, V)).
     if (!LoopContinues(realm, result, labelSet)) {
       invariant(result instanceof AbruptCompletion);
+      // joinAllLoopExits does not handle labeled break/continue, so only use it when doing AI
+      if (realm.useAbstractInterpretation) {
+        result = UpdateEmpty(realm, result, V);
+        invariant(result instanceof AbruptCompletion);
+        return joinAllLoopExits(result);
+      }
       // ECMA262 13.1.7
       if (result instanceof BreakCompletion) {
         if (!result.target) return (UpdateEmpty(realm, result, V): any).value;
       }
       throw UpdateEmpty(realm, result, V);
+    } else if (realm.useAbstractInterpretation) {
+      // This is a join point for conditional continue completions lurking in realm.savedCompletion
+      if (containsContinueCompletion(realm.savedCompletion)) {
+        result = joinAllLoopContinues(result);
+      }
     }
 
     // d. If result.[[Value]] is not empty, let V be result.[[Value]].
@@ -114,8 +140,132 @@ function ForBodyEvaluation(
       Environment.GetValue(realm, incRef);
     }
   }
-
   invariant(false);
+
+  function failIfContainsBreakOrContinueCompletionWithNonLocalTarget(c: void | Completion | Value) {
+    if (c === undefined) return;
+    if (c instanceof ContinueCompletion || c instanceof BreakCompletion) {
+      if (!c.target) return;
+      if (labelSet && labelSet.indexOf(c.target) >= 0) {
+        c.target = null;
+        return;
+      }
+      let diagnostic = new CompilerDiagnostic(
+        "break or continue with target cannot be guarded by abstract condition",
+        c.location,
+        "PP0034",
+        "FatalError"
+      );
+      realm.handleError(diagnostic);
+      throw new FatalError();
+    }
+    if (c instanceof PossiblyNormalCompletion || c instanceof ForkedAbruptCompletion) {
+      failIfContainsBreakOrContinueCompletionWithNonLocalTarget(c.consequent);
+      failIfContainsBreakOrContinueCompletionWithNonLocalTarget(c.alternate);
+    }
+  }
+
+  function containsContinueCompletion(c: void | Completion | Value) {
+    if (c === undefined) return false;
+    if (c instanceof ContinueCompletion) {
+      if (!c.target) return true;
+      if (labelSet && labelSet.indexOf(c.target) >= 0) {
+        c.target = null;
+        return true;
+      }
+      return false;
+    }
+    if (c instanceof PossiblyNormalCompletion || c instanceof ForkedAbruptCompletion)
+      return containsContinueCompletion(c.consequent) || containsContinueCompletion(c.alternate);
+    return false;
+  }
+
+  function joinAllLoopContinues(
+    valueOrCompletionAtLoopContinuePoint: Value | AbruptCompletion
+  ): Value | AbruptCompletion {
+    // We are about start the next loop iteration and this presents a join point where all non loop breaking abrupt
+    // control flows converge into a single flow using their joined effects as the new state.
+    failIfContainsBreakOrContinueCompletionWithNonLocalTarget(realm.savedCompletion);
+
+    // Incorporate the savedCompletion (we should only get called if there is one).
+    invariant(realm.savedCompletion !== undefined);
+    if (valueOrCompletionAtLoopContinuePoint instanceof Value)
+      valueOrCompletionAtLoopContinuePoint = new ContinueCompletion(valueOrCompletionAtLoopContinuePoint);
+    let abruptCompletion = Functions.incorporateSavedCompletion(realm, valueOrCompletionAtLoopContinuePoint);
+    invariant(abruptCompletion instanceof AbruptCompletion);
+
+    // If there is now a single completion, we don't need to join
+    if (!(abruptCompletion instanceof ForkedAbruptCompletion)) return abruptCompletion;
+    invariant(containsContinueCompletion(abruptCompletion));
+
+    // Apply the joined effects of continue completions to the current state since these now join the normal path
+    let joinedContinueEffects = Join.extractAndJoinCompletionsOfType(ContinueCompletion, realm, abruptCompletion);
+    realm.applyEffects(joinedContinueEffects);
+    let c = joinedContinueEffects.result;
+    invariant(c instanceof ContinueCompletion);
+
+    // We now make a PossiblyNormalCompletion out of abruptCompletion.
+    // extractAndJoinCompletionsOfType helped with this by cheating and turning all of its nested completions
+    // that contain continue completions into PossiblyNormalCompletions.
+    let remainingCompletions = abruptCompletion.transferChildrenToPossiblyNormalCompletion();
+
+    // At this stage there can still be other kinds of abrupt completions left inside abruptCompletion. If not just return.
+    let stillAbrupt =
+      remainingCompletions.containsCompletion(BreakCompletion) ||
+      remainingCompletions.containsCompletion(ReturnCompletion) ||
+      remainingCompletions.containsCompletion(ThrowCompletion);
+    if (!stillAbrupt) return c;
+
+    // Stash the remaining completions in the realm start tracking the effects that need to be appended
+    // to the normal branch at the next join point.
+    realm.savedCompletion = remainingCompletions;
+    realm.captureEffects(remainingCompletions); // so that we can join the normal path wtih them later on
+    return c;
+  }
+
+  function joinAllLoopExits(valueOrCompletionAtUnconditionalExit: Value | AbruptCompletion): Value {
+    // We are about the leave this loop and this presents a join point where all loop breaking control flows
+    // converge into a single flow using their joined effects as the new state.
+    failIfContainsBreakOrContinueCompletionWithNonLocalTarget(realm.savedCompletion);
+
+    // Incorporate the savedCompletion if there is one.
+    if (valueOrCompletionAtUnconditionalExit instanceof Value)
+      valueOrCompletionAtUnconditionalExit = new BreakCompletion(valueOrCompletionAtUnconditionalExit);
+    let abruptCompletion = Functions.incorporateSavedCompletion(realm, valueOrCompletionAtUnconditionalExit);
+    invariant(abruptCompletion instanceof AbruptCompletion);
+
+    // If there is now a single completion, we don't need to join
+    if (abruptCompletion instanceof BreakCompletion) return (UpdateEmpty(realm, abruptCompletion, V): any).value;
+    if (!(abruptCompletion instanceof ForkedAbruptCompletion)) throw abruptCompletion;
+
+    // If there are no breaks, we don't need to join
+    if (!abruptCompletion.containsCompletion(BreakCompletion)) throw abruptCompletion;
+
+    // Apply the joined effects of break completions to the current state since these now join the normal path
+    let joinedBreakEffects = Join.extractAndJoinCompletionsOfType(BreakCompletion, realm, abruptCompletion);
+    realm.applyEffects(joinedBreakEffects);
+    let c = joinedBreakEffects.result;
+    invariant(c instanceof BreakCompletion);
+
+    // We now make a PossiblyNormalCompletion out of abruptCompletion.
+    // extractAndJoinCompletionsOfType helped with this by cheating and turning all of its nested completions
+    // that contain continue completions into PossiblyNormalCompletions.
+    let remainingCompletions = abruptCompletion.transferChildrenToPossiblyNormalCompletion();
+
+    // At this stage there can still be other kinds of abrupt completions left inside abruptCompletion. If not just return.
+    let stillAbrupt =
+      remainingCompletions.containsCompletion(ReturnCompletion) ||
+      remainingCompletions.containsCompletion(ThrowCompletion);
+    if (!stillAbrupt) return (UpdateEmpty(realm, c, V): any).value;
+
+    // Stash the remaining completions in the realm start tracking the effects that need to be appended
+    // to the normal branch at the next join point.
+    realm.savedCompletion = remainingCompletions;
+    realm.captureEffects(remainingCompletions); // so that we can join the normal path wtih them later on
+
+    // ECMA262 13.1.7
+    return (UpdateEmpty(realm, c, V): any).value;
+  }
 }
 
 // ECMA262 13.7.4.7

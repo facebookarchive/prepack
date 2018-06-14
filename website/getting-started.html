@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <title>Prepack &middot; Partial evaluator for JavaScript</title>
     <script src="js/prism.js"></script>
@@ -73,7 +73,7 @@
             For advanced uses <a href="#options">see the API options</a> or <code>prepack --help</code>.
           </p>
           <div class="code-block language-sh">
-            <pre><code>prepack [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ --speculate ] [ --trace ] [ -- | input.js ] [ --singlePass ] [ --debugNames ] [ --logStatistics ]</code></pre>
+            <pre><code>prepack [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ -- | input.js ]</code></pre>
           </div>
 
           <h3>REPL</h3>
@@ -107,14 +107,8 @@ import * as Prepack from 'prepack';</code></pre>
 
           <h3>String</h3>
           <div class="code-block language-js">
-            <pre><code>Prepack.prepack(codeString, options) // returns { code: string, map: SourceMap }</code></pre>
+            <pre><code>Prepack.prepackSources([{filePath, fileContents, sourceMapContents}], options) // returns { code: string, map: SourceMap }</code></pre>
           </div>
-
-          <h3>Babel AST</h3>
-          <div class="code-block language-js">
-            <pre><code>Prepack.prepackFromAst(babelAstNode, code, options) // returns { code: string, map: SourceMap }</code></pre>
-          </div>
-          <p class="align-left">Note: Currently, the source code still has to be provided for <code>Function.prototype.toString</code> and error messages.</p>
 
           <h3>File Async</h3>
           <div class="code-block language-js">
@@ -123,7 +117,7 @@ import * as Prepack from 'prepack';</code></pre>
 
           <h3>File Sync</h3>
           <div class="code-block language-js">
-            <pre><code>Prepack.prepackFileSync(filename, options) // returns { code: string, map: SourceMap }</code></pre>
+            <pre><code>Prepack.prepackFileSync(filenames, options) // returns { code: string, map: SourceMap }</code></pre>
           </div>
 
           <h3 id="options">Options</h3>
@@ -168,12 +162,6 @@ import * as Prepack from 'prepack';</code></pre>
                 <td>If a seed string is provided, <code>Math.random()</code> can be relied on and used in concrete code paths.</td>
               </tr>
               <tr>
-                <td><code>speculate</code></td>
-                <td><code>boolean</code></td>
-                <td>false</td>
-                <td>Speculatively pre-execute more `require(...)` calls if they're part of the residual program.</td>
-              </tr>
-              <tr>
                 <td><code>trace</code></td>
                 <td><code>boolean</code></td>
                 <td><code>false</code></td>
@@ -186,22 +174,16 @@ import * as Prepack from 'prepack';</code></pre>
                 <td>If true, try to retain original variable and function names as part of the generated code.</td>
               </tr>
               <tr>
-                <td><code>singlePass</code></td>
+                <td><code>inlineExpressions</code></td>
                 <td><code>boolean</code></td>
                 <td><code>false</code></td>
-                <td>Currently, the serializer makes two passes to optimize the variable naming in the output but this is slow so this lets you opt for a single pass. This option is expected to be unnecessary in the future.</td>
+                <td>Enables two passes in the serializer to improve code quality by avoiding intermediate variables.</td>
               </tr>
               <tr>
                 <td><code>logStatistics</code></td>
                 <td><code>boolean</code></td>
                 <td><code>false</code></td>
                 <td>If true, logs statistics about the number of objects, functions and ids generated.</td>
-              </tr>
-              <tr>
-                <td><code>logModules</code></td>
-                <td><code>boolean</code></td>
-                <td><code>false</code></td>
-                <td>If true, logs modules evaluated.</td>
               </tr>
               <tr>
                 <td><code>delayUnsupportedRequires</code></td>
@@ -216,22 +198,10 @@ import * as Prepack from 'prepack';</code></pre>
                 <td>If true, prints the JS stack inside of Prepack along with the stack in the Prepacked program. Useful for debugging Prepack itself.</td>
               </tr>
               <tr>
-                <td><code>uniqueSuffix</code></td>
-                <td><code>string</code></td>
-                <td><code>null</code></td>
-                <td>If adds a unique suffix to generated IDs so that they don't risk colliding with anything else in the program. Expected to be automatic in the future.</td>
-              </tr>
-              <tr>
                 <td><code>timeout</code></td>
                 <td><code>number</code></td>
                 <td><code>Infinity</code></td>
                 <td>Number of milliseconds to run a program before it times out. Useful to avoid infinite loops in the Prepacked program.</td>
-              </tr>
-              <tr>
-                <td><code>strictlyMonotonicDateNow</code></td>
-                <td><code>boolean</code></td>
-                <td><code>false</code></td>
-                <td>Currently only used to run the Test262 test suite which requires reading Date.now() in increasing order.</td>
               </tr>
             </tbody>
           </table>
@@ -243,7 +213,7 @@ import * as Prepack from 'prepack';</code></pre>
       <div class="content-container">
         <div class="footer">
           <div>
-            Copyright &copy; 2017 Facebook Inc.
+            Copyright &copy; 2018 Facebook Inc.
           </div>
           <div>
             <a href="https://code.facebook.com/projects/" target="_blank">

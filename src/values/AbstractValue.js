@@ -17,7 +17,7 @@ import type {
   BabelNodeSourceLocation,
   BabelUnaryOperator,
 } from "babel-types";
-import { FatalError, CompilerDiagnostic } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
 import { PreludeGenerator } from "../utils/generator.js";
@@ -36,13 +36,61 @@ import {
   UndefinedValue,
   Value,
 } from "./index.js";
-import { hashBinary, hashCall, hashString, hashTernary, hashUnary } from "../methods/index.js";
+import { hashString, hashBinary, hashCall, hashTernary, hashUnary } from "../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 
 import * as t from "babel-types";
 
 export type AbstractValueBuildNodeFunction = (Array<BabelNodeExpression>) => BabelNodeExpression;
+
+// In addition to the explicitly listed kinds,
+// all strings that start with `AbstractValueKindPrefix` are also legal kinds.
+export type AbstractValueKind =
+  | "||"
+  | "!"
+  | "==="
+  | "!=="
+  | "rebuiltProperty"
+  | "abstractConcreteUnion"
+  | "build function"
+  | "widened property"
+  | "widened return result"
+  | "widened numeric property"
+  | "conditional"
+  | "resolved"
+  | "dummy parameter"
+  | "explicit conversion to object"
+  | "check for known property"
+  | "sentinel member expression"
+  | "template for property name condition"
+  | "template for prototype member expression"
+  | "this"
+  | "this.refs"
+  | "module"
+  | "module.exports"
+  | "JSResource"
+  | "Bootloader"
+  | "(A).length"
+  | "(A).toString()"
+  | "(A).slice(B,C)"
+  | "(A).split(B,C)"
+  | "global.JSON.stringify(A)"
+  | "global.JSON.parse(A)"
+  | "JSON.stringify(...)"
+  | "JSON.parse(...)"
+  | "global.Math.imul(A, B)";
+
+// Use AbstractValue.makeKind to make a kind from one of these prefices.
+type AbstractValueKindPrefix =
+  | "abstract"
+  | "props"
+  | "context"
+  | "property"
+  | "process"
+  | "template"
+  | "abstractCounted"
+  | "magicGlobalObject";
 
 export default class AbstractValue extends Value {
   constructor(
@@ -52,11 +100,10 @@ export default class AbstractValue extends Value {
     hashValue: number,
     args: Array<Value>,
     buildNode?: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: string, intrinsicName?: string |}
+    optionalArgs?: {| kind?: AbstractValueKind, intrinsicName?: string |}
   ) {
     invariant(realm.useAbstractInterpretation);
     super(realm, optionalArgs ? optionalArgs.intrinsicName : undefined);
-    invariant(buildNode instanceof Function || args.length === 0);
     invariant(!Value.isTypeCompatibleWith(types.getType(), ObjectValue) || this instanceof AbstractObjectValue);
     invariant(types.getType() !== NullValue && types.getType() !== UndefinedValue);
     this.types = types;
@@ -69,7 +116,7 @@ export default class AbstractValue extends Value {
   }
 
   hashValue: number;
-  kind: ?string;
+  kind: void | AbstractValueKind;
   types: TypesDomain;
   values: ValuesDomain;
   mightBeEmpty: boolean;
@@ -87,7 +134,9 @@ export default class AbstractValue extends Value {
     }
   }
 
-  addSourceNamesTo(names: Array<string>) {
+  addSourceNamesTo(names: Array<string>, visited: Set<AbstractValue> = new Set()) {
+    if (visited.has(this)) return;
+    visited.add(this);
     let gen = this.$Realm.preludeGenerator;
     function add_intrinsic(name: string) {
       if (name.startsWith("_$")) {
@@ -103,7 +152,7 @@ export default class AbstractValue extends Value {
         if (val.intrinsicName) {
           add_intrinsic(val.intrinsicName);
         } else if (val instanceof AbstractValue) {
-          val.addSourceNamesTo(names);
+          val.addSourceNamesTo(names, visited);
         } else if (val instanceof StringValue) {
           if (val.value.startsWith("__")) {
             names.push(val.value.slice(2));
@@ -245,10 +294,10 @@ export default class AbstractValue extends Value {
           }
         }
 
-        // (c ? x : (c || false)) => c (if c were false this value could not be true)
-        if (y instanceof AbstractValue && y.kind === "||") {
-          let [yx, yy] = y.args;
-          return c.equals(yx) && !yy.mightNotBeFalse() && c.equals(val);
+        // (c ? x : false) => c && x (if c or x were falsy, (c ? x : false) could not be true)
+        if (!y.mightNotBeFalse()) {
+          if (c.implies(val)) return true;
+          if (x.implies(val)) return true;
         }
       }
       // (0 !== x) => x since undefined, null, false, 0, NaN and "" are excluded by the !== and all other values are thruthy
@@ -256,6 +305,26 @@ export default class AbstractValue extends Value {
         let [x, y] = this.args;
         if (x instanceof NumberValue && x.value === 0) return y.equals(val);
         if (y instanceof NumberValue && y.value === 0) return x.equals(val);
+      }
+      if (this.kind === "===" && val.kind === "==") {
+        // x === undefined/null => y == undefined/null
+        let [x, y] = val.args;
+        if (
+          x instanceof NullValue ||
+          x instanceof UndefinedValue ||
+          y instanceof NullValue ||
+          y instanceof UndefinedValue
+        ) {
+          let [vx, vy] = val.args;
+          if (
+            vx instanceof NullValue ||
+            vx instanceof UndefinedValue ||
+            vy instanceof NullValue ||
+            vy instanceof UndefinedValue
+          ) {
+            return true;
+          }
+        }
       }
     }
     return false;
@@ -278,6 +347,7 @@ export default class AbstractValue extends Value {
           invariant(xx instanceof AbstractValue);
           return xx.impliesNot(val);
         }
+        if (x.kind === "abstractConcreteUnion") return false; // can't use two valued logic for this.
         return val.implies(x);
       }
       if (this.kind === "conditional") {
@@ -500,8 +570,10 @@ export default class AbstractValue extends Value {
     left: Value,
     right: Value,
     loc?: ?BabelNodeSourceLocation,
-    kind?: string
-  ): AbstractValue {
+    kind?: AbstractValueKind,
+    isCondition?: boolean,
+    doNotSimplify?: boolean
+  ): Value {
     let leftTypes, leftValues;
     if (left instanceof AbstractValue) {
       leftTypes = left.types;
@@ -533,7 +605,10 @@ export default class AbstractValue extends Value {
     );
     result.kind = kind || op;
     result.expressionLocation = loc;
-    return result;
+    if (doNotSimplify) return result;
+    return isCondition
+      ? realm.simplifyAndRefineAbstractCondition(result)
+      : realm.simplifyAndRefineAbstractValue(result);
   }
 
   static createFromLogicalOp(
@@ -542,7 +617,8 @@ export default class AbstractValue extends Value {
     left: Value,
     right: Value,
     loc?: ?BabelNodeSourceLocation,
-    isCondition?: boolean
+    isCondition?: boolean,
+    doNotSimplify?: boolean
   ): Value {
     let leftTypes, leftValues;
     if (left instanceof AbstractValue) {
@@ -575,6 +651,7 @@ export default class AbstractValue extends Value {
     );
     result.kind = op;
     result.expressionLocation = loc;
+    if (doNotSimplify) return result;
     return isCondition
       ? realm.simplifyAndRefineAbstractCondition(result)
       : realm.simplifyAndRefineAbstractValue(result);
@@ -582,12 +659,19 @@ export default class AbstractValue extends Value {
 
   static createFromConditionalOp(
     realm: Realm,
-    condition: AbstractValue,
+    condition: Value,
     left: void | Value,
     right: void | Value,
     loc?: ?BabelNodeSourceLocation,
-    isCondition?: boolean
+    isCondition?: boolean,
+    doNotSimplify?: boolean
   ): Value {
+    if (left === right) {
+      return left || realm.intrinsics.undefined;
+    }
+    if (!condition.mightNotBeTrue()) return left || realm.intrinsics.undefined;
+    if (!condition.mightNotBeFalse()) return right || realm.intrinsics.undefined;
+
     let types = TypesDomain.joinValues(left, right);
     if (types.getType() === NullValue) return realm.intrinsics.null;
     if (types.getType() === UndefinedValue) return realm.intrinsics.undefined;
@@ -600,7 +684,7 @@ export default class AbstractValue extends Value {
     result.expressionLocation = loc;
     if (left) result.mightBeEmpty = left.mightHaveBeenDeleted();
     if (right && !result.mightBeEmpty) result.mightBeEmpty = right.mightHaveBeenDeleted();
-    if (result.mightBeEmpty) return result;
+    if (doNotSimplify || result.mightBeEmpty) return result;
     return isCondition
       ? realm.simplifyAndRefineAbstractCondition(result)
       : realm.simplifyAndRefineAbstractValue(result);
@@ -612,7 +696,8 @@ export default class AbstractValue extends Value {
     operand: AbstractValue,
     prefix?: boolean,
     loc?: ?BabelNodeSourceLocation,
-    isCondition?: boolean
+    isCondition?: boolean,
+    doNotSimplify?: boolean
   ): Value {
     invariant(op !== "delete" && op !== "++" && op !== "--"); // The operation must be pure
     let resultTypes = TypesDomain.unaryOp(op, new TypesDomain(operand.getType()));
@@ -622,6 +707,7 @@ export default class AbstractValue extends Value {
     );
     result.kind = op;
     result.expressionLocation = loc;
+    if (doNotSimplify) return result;
     return isCondition
       ? realm.simplifyAndRefineAbstractCondition(result)
       : realm.simplifyAndRefineAbstractValue(result);
@@ -636,9 +722,10 @@ export default class AbstractValue extends Value {
     template: PreludeGenerator => ({}) => BabelNodeExpression,
     resultType: typeof Value,
     operands: Array<Value>,
-    kind: string,
+    kindSuffix: string,
     loc?: ?BabelNodeSourceLocation
   ): AbstractValue {
+    let kind = AbstractValue.makeKind("template", kindSuffix);
     let resultTypes = new TypesDomain(resultType);
     let resultValues = ValuesDomain.topVal;
     let hash;
@@ -658,11 +745,17 @@ export default class AbstractValue extends Value {
     return result;
   }
 
-  static createFromType(realm: Realm, resultType: typeof Value, kind?: string): AbstractValue {
+  static createFromType(
+    realm: Realm,
+    resultType: typeof Value,
+    kind?: AbstractValueKind,
+    operands?: Array<Value>
+  ): AbstractValue {
     let types = new TypesDomain(resultType);
     let Constructor = Value.isTypeCompatibleWith(resultType, ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let hash = hashString(resultType.name + (kind || ""));
-    let result = new Constructor(realm, types, ValuesDomain.topVal, hash, []);
+    let [hash, args] = hashCall(resultType.name + (kind || ""), ...(operands || []));
+    if (resultType === ObjectValue) hash = ++realm.objectCount;
+    let result = new Constructor(realm, types, ValuesDomain.topVal, hash, args);
     if (kind) result.kind = kind;
     result.expressionLocation = realm.currentLocation;
     return result;
@@ -679,7 +772,7 @@ export default class AbstractValue extends Value {
     template: PreludeGenerator => ({}) => BabelNodeExpression,
     resultType: typeof Value,
     operands: Array<Value>,
-    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {| kind?: AbstractValueKind, isPure?: boolean, skipInvariant?: boolean |}
   ): AbstractValue {
     invariant(resultType !== UndefinedValue);
     let temp = AbstractValue.createFromTemplate(realm, template, resultType, operands, "");
@@ -688,7 +781,7 @@ export default class AbstractValue extends Value {
     let args = temp.args;
     let buildNode_ = temp.getBuildNode();
     invariant(realm.generator !== undefined);
-    return realm.generator.derive(types, values, args, buildNode_, optionalArgs);
+    return realm.generator.deriveAbstract(types, values, args, buildNode_, optionalArgs);
   }
 
   static createFromBuildFunction(
@@ -696,7 +789,7 @@ export default class AbstractValue extends Value {
     resultType: typeof Value,
     args: Array<Value>,
     buildFunction: AbstractValueBuildNodeFunction,
-    optionalArgs?: {| kind?: string |}
+    optionalArgs?: {| kind?: AbstractValueKind |}
   ): AbstractValue | UndefinedValue {
     let types = new TypesDomain(resultType);
     let values = ValuesDomain.topVal;
@@ -714,7 +807,7 @@ export default class AbstractValue extends Value {
     resultType: typeof Value,
     args: Array<Value>,
     buildFunction: AbstractValueBuildNodeFunction,
-    optionalArgs?: {| kind?: string, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {| kind?: AbstractValueKind, isPure?: boolean, skipInvariant?: boolean |}
   ): AbstractValue | UndefinedValue {
     let types = new TypesDomain(resultType);
     let values = ValuesDomain.topVal;
@@ -722,7 +815,7 @@ export default class AbstractValue extends Value {
     if (resultType === UndefinedValue) {
       return realm.generator.emitVoidExpression(types, values, args, buildFunction);
     } else {
-      return realm.generator.derive(types, values, args, buildFunction, optionalArgs);
+      return realm.generator.deriveAbstract(types, values, args, buildFunction, optionalArgs);
     }
   }
 
@@ -781,12 +874,31 @@ export default class AbstractValue extends Value {
     return result;
   }
 
+  static createAbstractArgument(
+    realm: Realm,
+    name: string,
+    location: ?BabelNodeSourceLocation,
+    type: typeof Value = Value
+  ) {
+    if (!realm.useAbstractInterpretation) {
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
+    }
+
+    let realmPreludeGenerator = realm.preludeGenerator;
+    invariant(realmPreludeGenerator);
+    let id = t.identifier(name);
+    let types = new TypesDomain(type);
+    let values = ValuesDomain.topVal;
+    let Constructor = Value.isTypeCompatibleWith(type, ObjectValue) ? AbstractObjectValue : AbstractValue;
+    let result = new Constructor(realm, types, values, 943586754858 + hashString(name), [], id);
+    result.kind = AbstractValue.makeKind("abstractCounted", (realm.objectCount++).toString()); // need not be an object, but must be unique
+    result.expressionLocation = location;
+    return result;
+  }
+
   static generateErrorInformationForAbstractVal(val: AbstractValue): string {
     let names = [];
     val.addSourceNamesTo(names);
-    if (names.length === 0) {
-      val.addSourceNamesTo(names);
-    }
     return `abstract value${names.length > 1 ? "s" : ""} ${names.join(" and ")}`;
   }
 
@@ -818,7 +930,9 @@ export default class AbstractValue extends Value {
   }
 
   static reportIntrospectionError(val: Value, propertyName: void | PropertyKeyValue) {
-    let message = `This operation is not yet supported on ${AbstractValue.describe(val, propertyName)}`;
+    let message = "";
+    if (!val.$Realm.suppressDiagnostics)
+      message = `This operation is not yet supported on ${AbstractValue.describe(val, propertyName)}`;
 
     let realm = val.$Realm;
     return realm.reportIntrospectionError(message);
@@ -837,5 +951,9 @@ export default class AbstractValue extends Value {
     realm.rebuildNestedProperties(value, name);
     invariant(value instanceof AbstractObjectValue);
     return value;
+  }
+
+  static makeKind(prefix: AbstractValueKindPrefix, suffix: string): AbstractValueKind {
+    return ((`${prefix}:${suffix}`: any): AbstractValueKind);
   }
 }

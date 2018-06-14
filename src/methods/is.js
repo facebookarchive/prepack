@@ -34,7 +34,8 @@ import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeLVal, Babel
 import { BabelNode } from "babel-types";
 
 // ECMA262 22.1.3.1.1
-export function IsConcatSpreadable(realm: Realm, O: Value): boolean {
+export function IsConcatSpreadable(realm: Realm, _O: Value): boolean {
+  let O = _O;
   // 1. If Type(O) is not Object, return false.
   if (!O.mightBeObject()) return false;
   O = O.throwIfNotObject();
@@ -101,7 +102,8 @@ export function IsExtensible(realm: Realm, O: ObjectValue | AbstractObjectValue)
 }
 
 // ECMA262 7.2.3
-export function IsCallable(realm: Realm, func: Value): boolean {
+export function IsCallable(realm: Realm, _func: Value): boolean {
+  let func = _func;
   // 1. If Type(argument) is not Object, return false.
   if (!func.mightBeObject()) return false;
   if (HasCompatibleType(func, FunctionValue)) return true;
@@ -116,7 +118,8 @@ export function IsCallable(realm: Realm, func: Value): boolean {
 }
 
 // ECMA262 7.2.4
-export function IsConstructor(realm: Realm, argument: Value): boolean {
+export function IsConstructor(realm: Realm, _argument: Value): boolean {
+  let argument = _argument;
   // 1. If Type(argument) is not Object, return false.
   if (!argument.mightBeObject()) return false;
 
@@ -186,7 +189,7 @@ export function IsArray(realm: Realm, argument: Value): boolean {
   }
 
   // 4. Return false.
-  if (!argument.isSimpleObject()) argument.throwIfNotConcrete();
+  if (argument instanceof AbstractValue && !argument.isSimpleObject()) argument.throwIfNotConcrete();
   return false;
 }
 
@@ -197,7 +200,8 @@ export function IsInTailPosition(realm: Realm, node: BabelNodeCallExpression): b
 }
 
 // ECMA262 7.2.8
-export function IsRegExp(realm: Realm, argument: Value): boolean {
+export function IsRegExp(realm: Realm, _argument: Value): boolean {
+  let argument = _argument;
   // 1. If Type(argument) is not Object, return false.
   if (!argument.mightBeObject()) return false;
   argument = argument.throwIfNotObject();
@@ -209,7 +213,7 @@ export function IsRegExp(realm: Realm, argument: Value): boolean {
   if (isRegExp !== undefined) return To.ToBooleanPartial(realm, isRegExp) === true;
 
   // 4. If argument has a [[RegExpMatcher]] internal slot, return true.
-  if (argument.$RegExpMatcher) return true;
+  if (argument.$RegExpMatcher !== undefined) return true;
 
   // 5. Return false.
   return false;
@@ -318,13 +322,14 @@ export function IsArrayIndex(realm: Realm, P: PropertyKeyValue): boolean {
 }
 
 // ECMA262 25.4.1.6
-export function IsPromise(realm: Realm, x: Value): boolean {
+export function IsPromise(realm: Realm, _x: Value): boolean {
+  let x = _x;
   // 1. If Type(x) is not Object, return false.
   if (!x.mightBeObject()) return false;
 
   // 2. If x does not have a [[PromiseState]] internal slot, return false.
   x = x.throwIfNotConcreteObject();
-  if (!x.$PromiseState) return false;
+  if (x.$PromiseState === undefined) return false;
 
   // 3. Return true.
   return true;
@@ -342,7 +347,8 @@ export function IsDetachedBuffer(realm: Realm, arrayBuffer: ObjectValue): boolea
   return false;
 }
 
-export function IsIntrospectionError(realm: Realm, value: Value): boolean {
+export function IsIntrospectionError(realm: Realm, _value: Value): boolean {
+  let value = _value;
   if (!value.mightBeObject()) return false;
   value = value.throwIfNotConcreteObject();
   return value.$GetPrototypeOf() === realm.intrinsics.__IntrospectionErrorPrototype;

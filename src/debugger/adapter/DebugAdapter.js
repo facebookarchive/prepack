@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { DebugSession, InitializedEvent, OutputEvent, TerminatedEvent, StoppedEvent } from "vscode-debugadapter";
 import * as DebugProtocol from "vscode-debugprotocol";
@@ -53,12 +53,12 @@ class PrepackDebugSession extends DebugSession {
     this._adapterChannel.registerChannelEvent(DebugMessage.STOPPED_RESPONSE, (response: DebuggerResponse) => {
       let result = response.result;
       invariant(result.kind === "stopped");
-      this.sendEvent(
-        new StoppedEvent(
-          `${result.reason}: ${result.filePath} ${result.line}:${result.column}`,
-          DebuggerConstants.PREPACK_THREAD_ID
-        )
-      );
+      let message = `${result.reason}: ${result.filePath} ${result.line}:${result.column}`;
+      // Append message if there exists one (for PP errors)
+      if (result.message !== undefined) {
+        message += `. ${result.message}`;
+      }
+      this.sendEvent(new StoppedEvent(message, DebuggerConstants.PREPACK_THREAD_ID));
     });
     this._adapterChannel.registerChannelEvent(DebugMessage.STEPINTO_RESPONSE, (response: DebuggerResponse) => {
       let result = response.result;
@@ -133,7 +133,7 @@ class PrepackDebugSession extends DebugSession {
 
   /**
    * Request Prepack to continue running when it is stopped
-  */
+   */
   // Override
   continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
     // send a Run request to Prepack and try to send the next request
@@ -286,6 +286,13 @@ class PrepackDebugSession extends DebugSession {
   // Override
   nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments): void {
     this._adapterChannel.stepOver(response.request_seq, (dbgResponse: DebuggerResponse) => {
+      this.sendResponse(response);
+    });
+  }
+
+  // Override
+  stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): void {
+    this._adapterChannel.stepOut(response.request_seq, (dbgResponse: DebuggerResponse) => {
       this.sendResponse(response);
     });
   }

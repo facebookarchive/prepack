@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import invariant from "../invariant.js";
 import type { SourceType } from "../types.js";
@@ -27,7 +27,7 @@ export default function(
   startLine: number = 1
 ): BabelNodeFile {
   try {
-    let plugins = [];
+    let plugins = ["objectRestSpread"];
     if (realm.react.enabled) {
       plugins.push("jsx");
     }

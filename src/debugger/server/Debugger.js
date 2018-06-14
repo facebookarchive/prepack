@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { BreakpointManager } from "./BreakpointManager.js";
 import type { BabelNode, BabelNodeSourceLocation } from "babel-types";
@@ -24,6 +24,7 @@ import type {
   VariablesArguments,
   EvaluateArguments,
   SourceData,
+  DebuggerConfigArguments,
 } from "./../common/types.js";
 import type { Realm } from "./../../realm.js";
 import { ExecutionContext } from "./../../realm.js";
@@ -38,9 +39,11 @@ import {
   DeclarativeEnvironmentRecord,
   ObjectEnvironmentRecord,
 } from "./../../environment.js";
+import { CompilerDiagnostic } from "../../errors.js";
+import type { Severity } from "../../errors.js";
 
 export class DebugServer {
-  constructor(channel: DebugChannel, realm: Realm) {
+  constructor(channel: DebugChannel, realm: Realm, configArgs: DebuggerConfigArguments) {
     this._channel = channel;
     this._realm = realm;
     this._breakpointManager = new BreakpointManager();
@@ -48,6 +51,7 @@ export class DebugServer {
     this._stepManager = new SteppingManager(this._realm, /* default discard old steppers */ false);
     this._stopEventManager = new StopEventManager();
     this.waitForRun(undefined);
+    this._diagnosticSeverity = configArgs.diagnosticSeverity || "FatalError";
   }
   // the collection of breakpoints
   _breakpointManager: BreakpointManager;
@@ -58,6 +62,8 @@ export class DebugServer {
   _stepManager: SteppingManager;
   _stopEventManager: StopEventManager;
   _lastExecuted: SourceData;
+  // Severity at which debugger will break when CompilerDiagnostics are generated. Default is Fatal.
+  _diagnosticSeverity: Severity;
 
   /* Block until adapter says to run
   /* ast: the current ast node we are stopped on
@@ -138,6 +144,11 @@ export class DebugServer {
       case DebugMessage.STEPOVER_COMMAND:
         invariant(ast !== undefined);
         this._stepManager.processStepCommand("over", ast);
+        this._onDebuggeeResume();
+        return true;
+      case DebugMessage.STEPOUT_COMMAND:
+        invariant(ast !== undefined);
+        this._stepManager.processStepCommand("out", ast);
         this._onDebuggeeResume();
         return true;
       case DebugMessage.EVALUATE_COMMAND:
@@ -256,17 +267,22 @@ export class DebugServer {
     this._variableManager.clean();
   }
 
+  /*
+    Returns whether there are more nodes in the ast.
+  */
   _checkAndUpdateLastExecuted(ast: BabelNode): boolean {
     if (ast.loc && ast.loc.source) {
       let filePath = ast.loc.source;
       let line = ast.loc.start.line;
       let column = ast.loc.start.column;
+      let stackSize = this._realm.contextStack.length;
       // check if the current location is same as the last one
       if (
         this._lastExecuted &&
         filePath === this._lastExecuted.filePath &&
         line === this._lastExecuted.line &&
-        column === this._lastExecuted.column
+        column === this._lastExecuted.column &&
+        stackSize === this._lastExecuted.stackSize
       ) {
         return false;
       }
@@ -274,10 +290,46 @@ export class DebugServer {
         filePath: filePath,
         line: line,
         column: column,
+        stackSize: this._realm.contextStack.length,
       };
       return true;
     }
     return false;
+  }
+
+  /*
+    Displays PP error message, then waits for user to run the program to
+    continue (similar to a breakpoint).
+  */
+  handlePrepackError(diagnostic: CompilerDiagnostic) {
+    invariant(diagnostic.location && diagnostic.location.source);
+    let location = diagnostic.location;
+    let message = `${diagnostic.severity} ${diagnostic.errorCode}: ${diagnostic.message}`;
+    this._channel.sendStoppedResponse(
+      "Diagnostic",
+      location.source || "",
+      location.start.line,
+      location.start.column,
+      message
+    );
+    // No ast parameter b/c you cannot stepInto/Over a line that's causing an exception
+    this.waitForRun();
+  }
+
+  // Return whether the debugger should stop on a CompilerDiagnostic of a given severity.
+  shouldStopForSeverity(severity: Severity): boolean {
+    switch (this._diagnosticSeverity) {
+      case "Information":
+        return true;
+      case "Warning":
+        return severity !== "Information";
+      case "RecoverableError":
+        return severity === "RecoverableError" || severity === "FatalError";
+      case "FatalError":
+        return severity === "FatalError";
+      default:
+        invariant(false, "Unexpected severity type");
+    }
   }
 
   shutdown() {

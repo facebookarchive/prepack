@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { Value } from "../values/index.js";
 import type { BabelNodeIdentifier } from "babel-types";
@@ -56,6 +56,10 @@ export class ResidualHeapValueIdentifiers {
   _setIdentifier(val: Value, id: BabelNodeIdentifier) {
     invariant(!this.refs.has(val));
     this.refs.set(val, id);
+  }
+
+  hasIdentifier(val: Value): boolean {
+    return this.refs.has(val);
   }
 
   getIdentifier(val: Value): BabelNodeIdentifier {

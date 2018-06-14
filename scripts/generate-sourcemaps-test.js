@@ -77,7 +77,7 @@ function generateTest(name: string, test_path: string, code: string): boolean {
       process.exit(1);
       invariant(false);
     }
-    newCode2 = s.code + "\nf();\n\n//# sourceMappingURL=" + name + ".new2.js.map\n";
+    newCode2 = s.code + "\nthis.f();\n\n//# sourceMappingURL=" + name + ".new2.js.map\n";
     fs.writeFileSync(name + ".new2.js", newCode2);
     newMap2 = s.map;
     fs.writeFileSync(name + ".new2.js.map", JSON.stringify(newMap2));
@@ -114,7 +114,7 @@ function run() {
     else failed++;
   }
 
-  console.log("Generated:", `${passed}/${total}`, (Math.floor(passed / total * 100) || 0) + "%");
+  console.log("Generated:", `${passed}/${total}`, (Math.floor((passed / total) * 100) || 0) + "%");
   return failed === 0;
 }
 

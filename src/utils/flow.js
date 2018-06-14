@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict */
 
 import traverse from "babel-traverse";
 import { BabelNode } from "babel-types";
@@ -72,7 +72,8 @@ export function stripFlowTypeAnnotations(ast: BabelNode): void {
       },
     },
     undefined,
-    (undefined: any),
+    {},
     undefined
   );
+  traverse.clearCache();
 }

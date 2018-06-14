@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Compatibility } from "./options.js";
 import Serializer from "./serializer/index.js";
@@ -21,13 +21,27 @@ let zlib = require("zlib");
 let fs = require("fs");
 let vm = require("vm");
 
+type Sandbox = {
+  setTimeout: (func: () => mixed, timeout?: number, ...args?: Array<mixed>) => TimeoutID,
+  setInterval: (func: () => mixed, timeout?: number, ...args?: Array<mixed>) => IntervalID,
+  console: {
+    error: (msg: string | {}) => void,
+    log: (msg: string | {}) => void,
+  },
+  window?: {},
+  document?: {},
+  navigator?: {},
+  location?: {},
+};
+
 function getTime() {
   let stamp = process.hrtime();
   return (stamp[0] * 1e9 + stamp[1]) / 1e6;
 }
 
-function exec(code: string, compatibility: Compatibility) {
-  let sandbox: any = {
+function exec(_code: string, compatibility: Compatibility) {
+  let code = _code;
+  let sandbox: Sandbox = {
     setTimeout: setTimeout,
     setInterval: setInterval,
     console: {
@@ -156,8 +170,9 @@ function dump(
   let code = serialized.code;
   let total = Date.now() - start;
 
-  if (code.length >= 1000 || outputFilename) {
-    let filename = outputFilename || name + "-processed.js";
+  const isValidOutputFilename = outputFilename !== undefined && outputFilename !== "";
+  if (code.length >= 1000 || isValidOutputFilename) {
+    let filename = outputFilename !== undefined ? outputFilename : name + "-processed.js";
     console.log(`Prepacked source code written to ${filename}.`);
     fs.writeFileSync(filename, code);
   }
@@ -172,7 +187,7 @@ function dump(
     beforeStats
   );
 
-  if (code.length <= 1000 && !outputFilename) {
+  if (code.length <= 1000 && !isValidOutputFilename) {
     console.log("+++++++++++++++++ Prepacked source code");
     console.log(code);
     console.log("=================");

@@ -45,6 +45,7 @@ The following are a few plugins to other tools. They have been created and are m
 
 - [A Rollup plugin for Prepack](https://www.npmjs.com/package/rollup-plugin-prepack)
 - [A Webpack plugin for Prepack](https://www.npmjs.com/package/prepack-webpack-plugin)
+- [A Parcel plugin for Prepack](https://www.npmjs.com/package/parcel-plugin-prepack)
 - [A Visual Studio code plugin for Prepack](https://marketplace.visualstudio.com/items?itemName=RobinMalfait.prepack-vscode)
 - [A babel plugin which transforms Flow annotations into prepack model declarations](https://www.npmjs.com/package/babel-plugin-flow-prepack).
 
@@ -98,7 +99,7 @@ You can run individual test suites as follows:
 2. Have a JavaScript file handy that you want to prepack, for example:  
    `echo "function hello() { return 'hello'; } function world() { return 'world'; } s = hello() + ' ' + world();" >/tmp/sample.js`
 
-3. `cat /tmp/sample.js | yarn prepack`  
+3. `cat /tmp/sample.js | yarn prepack-cli`  
    Try `--help` for more options.
 
 ## How to validate changes
@@ -115,6 +116,8 @@ In order to run the website locally at [localhost:8000](http://localhost:8000):
 2. Run `python -m SimpleHTTPServer` (Python 2) or `python -m http.server` (Python 3) from the `website/` directory
 
 ## How to contribute
+
+To read more about the project, check out this [suggested reading wiki](https://github.com/facebook/prepack/wiki/Suggested-reading)
 
 For more information about contributing pull requests and issues, see our [Contribution Guidelines](./CONTRIBUTING.md).
 

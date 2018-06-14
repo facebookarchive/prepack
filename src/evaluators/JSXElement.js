@@ -29,16 +29,18 @@ import {
   Value,
   NumberValue,
   ObjectValue,
-  FunctionValue,
   AbstractValue,
 } from "../values/index.js";
 import { convertJSXExpressionToIdentifier } from "../react/jsx.js";
-import * as t from "babel-types";
 import { Get } from "../methods/index.js";
-import { Create, Environment, Properties } from "../singletons.js";
+import { Create, Environment, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import { createReactElement } from "../react/elements.js";
-import { objectHasNoPartialKeyAndRef, deleteRefAndKeyFromProps } from "../react/utils.js";
+import {
+  applyObjectAssignConfigsForReactElement,
+  flagPropsWithNoPartialKeyOrRef,
+  hasNoPartialKeyOrRef,
+} from "../react/utils.js";
 
 // taken from Babel
 function cleanJSXElementLiteralChild(child: string): null | string {
@@ -149,9 +151,9 @@ function evaluateJSXChildren(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): ArrayValue | Value {
+): ArrayValue | Value | void {
   if (children.length === 0) {
-    return realm.intrinsics.undefined;
+    return undefined;
   }
   if (children.length === 1) {
     let singleChild = evaluateJSXValue(children[0], strictCode, env, realm);
@@ -208,23 +210,16 @@ function evaluateJSXAttributes(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): ObjectValue | AbstractValue {
+): ObjectValue | AbstractObjectValue {
   let config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  // start by having key and ref deleted, if they actually exist, they will be added later
-  deleteRefAndKeyFromProps(realm, config);
   let abstractPropsArgs = [];
-  let containsAbstractSpreadAttribute = false;
-  let mayContainRefOrKey = false;
-  let attributesAssigned = 0;
+  let abstractSpreadCount = 0;
+  let safeAbstractSpreadCount = 0;
   let spreadValue;
 
   const setConfigProperty = (name: string, value: Value): void => {
     invariant(config instanceof ObjectValue);
-    if (name === "key" || name === "ref") {
-      mayContainRefOrKey = true;
-    }
     Properties.Set(realm, config, name, value, true);
-    attributesAssigned++;
   };
 
   for (let astAttribute of astAttributes) {
@@ -245,18 +240,20 @@ function evaluateJSXAttributes(
             }
           }
         } else {
-          containsAbstractSpreadAttribute = true;
-          invariant(spreadValue instanceof AbstractValue || spreadValue instanceof ObjectValue);
+          abstractSpreadCount++;
+          if (spreadValue instanceof AbstractValue && !(spreadValue instanceof AbstractObjectValue)) {
+            spreadValue = To.ToObject(realm, spreadValue);
+          }
+          invariant(spreadValue instanceof AbstractObjectValue || spreadValue instanceof ObjectValue);
 
-          if (!objectHasNoPartialKeyAndRef(realm, spreadValue)) {
-            mayContainRefOrKey = true;
+          if (hasNoPartialKeyOrRef(realm, spreadValue)) {
+            safeAbstractSpreadCount++;
           }
           if (!isObjectEmpty(config)) {
             abstractPropsArgs.push(config);
           }
           abstractPropsArgs.push(spreadValue);
           config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-          deleteRefAndKeyFromProps(realm, config);
         }
         break;
       default:
@@ -264,63 +261,35 @@ function evaluateJSXAttributes(
     }
   }
 
-  if (containsAbstractSpreadAttribute) {
-    // if we haven't assigned any attributes and we are dealing with a single
-    // spread attribute, we can just make the spread object the props
+  if (abstractSpreadCount > 0) {
+    // if we only have a single spread config, then use that,
+    // i.e. <div {...something} />  -->  React.createElement("div", something)
     if (
-      attributesAssigned === 0 &&
-      ((spreadValue instanceof ObjectValue && spreadValue.isPartialObject()) || spreadValue instanceof AbstractValue)
+      abstractSpreadCount === 1 &&
+      astAttributes.length === 1 &&
+      (spreadValue instanceof ObjectValue || spreadValue instanceof AbstractObjectValue)
     ) {
-      // the spread is partial, so we can re-use that value
-      config = spreadValue;
-      if (config instanceof ObjectValue || config instanceof AbstractObjectValue) {
-        // as we're applying a spread, the config needs to be simple/partial
-        config.makePartial();
-        config.makeSimple();
-      }
-    } else {
-      // we create an abstract Object.assign() to deal with the fact that we don't what
-      // the props are because they contain abstract spread attributes that we can't
-      // evaluate ahead of time
-      // push the current config
-      if (config.properties.size > 0) {
-        abstractPropsArgs.push(config);
-      }
-      // create a new config object that will be the target of the Object.assign
-      config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-      // as this is "config that is abstract, we need to make it partial and simple
-      config.makePartial();
-      config.makeSimple();
-      // get the global Object.assign
-      let globalObj = Get(realm, realm.$GlobalObject, "Object");
-      invariant(globalObj instanceof ObjectValue);
-      let objAssign = Get(realm, globalObj, "assign");
-      invariant(realm.generator);
+      return spreadValue;
+    }
+    // we create an abstract Object.assign() to deal with the fact that we don't what
+    // the props are because they contain abstract spread attributes that we can't
+    // evaluate ahead of time
+    // push the current config
+    abstractPropsArgs.push(config);
 
-      invariant(realm.generator);
-      AbstractValue.createTemporalFromBuildFunction(
-        realm,
-        FunctionValue,
-        [objAssign, config, ...abstractPropsArgs],
-        ([methodNode, ..._args]) => {
-          return t.callExpression(methodNode, ((_args: any): Array<any>));
-        }
-      );
-      if (!mayContainRefOrKey) {
-        deleteRefAndKeyFromProps(realm, config);
-      }
+    // create a new config object that will be the target of the Object.assign
+    config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+
+    applyObjectAssignConfigsForReactElement(realm, config, abstractPropsArgs);
+    if (safeAbstractSpreadCount === abstractSpreadCount) {
+      flagPropsWithNoPartialKeyOrRef(realm, config);
     }
   }
-  invariant(config instanceof ObjectValue || config instanceof AbstractValue);
+  invariant(config instanceof ObjectValue || config instanceof AbstractObjectValue);
   return config;
 }
 
-export default function(
-  ast: BabelNodeJSXElement,
-  strictCode: boolean,
-  env: LexicalEnvironment,
-  realm: Realm
-): ObjectValue {
+export default function(ast: BabelNodeJSXElement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
   invariant(realm.react.enabled, "JSXElements can only be evaluated with the reactEnabled option");
   let openingElement = ast.openingElement;
   let type = evaluateJSXIdentifier(openingElement.name, strictCode, env, realm);

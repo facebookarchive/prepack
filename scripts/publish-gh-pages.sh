@@ -18,7 +18,7 @@ DEST_CLONE_DIR="$TMP_DIR/gh-pages"
 SCRIPT_NAME=`basename "$0"`
 COMMIT_MESSAGE="Website published using $SCRIPT_NAME"
 
-BUILD_COMMAND="yarn install && mv prepack.min.js $SRC_DIR/js/"
+BUILD_COMMAND="yarn install && yarn build && mv prepack.min.js $SRC_DIR/js/"
 
 # Utils
 RED='\033[0;31m'

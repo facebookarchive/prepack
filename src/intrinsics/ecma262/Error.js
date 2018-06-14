@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import type { LexicalEnvironment } from "../../environment.js";
@@ -29,22 +29,25 @@ export function describeLocation(
 ): void | string {
   let locString = "";
   let displayName = "";
+  let key = loc || callerFn;
 
   // check if we've already encountered the callFn and if so
   // re-use that described location. plus we may get stuck trying
   // to get the location by recursively checking the same fun
   // so this also prevents a stack overflow
-  if (callerFn) {
-    if (realm.alreadyDescribedLocations.has(callerFn)) {
-      return realm.alreadyDescribedLocations.get(callerFn);
+  if (key) {
+    if (realm.alreadyDescribedLocations.has(key)) {
+      return realm.alreadyDescribedLocations.get(key);
     }
-    realm.alreadyDescribedLocations.set(callerFn, undefined);
+    realm.alreadyDescribedLocations.set(key, undefined);
+  }
 
+  if (callerFn) {
     if (callerFn instanceof NativeFunctionValue) {
       locString = "native";
     }
 
-    let name = callerFn.$Get("name", callerFn);
+    let name = callerFn._SafeGetDataPropertyValue("name");
     if (!name.mightBeUndefined()) displayName = To.ToStringPartial(realm, name);
     else name.throwIfNotConcrete();
 
@@ -67,8 +70,8 @@ export function describeLocation(
   } else {
     location = `at ${locString}`;
   }
-  if (callerFn) {
-    realm.alreadyDescribedLocations.set(callerFn, location);
+  if (key) {
+    realm.alreadyDescribedLocations.set(key, location);
   }
   return location;
 }

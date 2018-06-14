@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { UISession } from "./UISession.js";
 import type { DebuggerCLIArguments } from "./UISession.js";
@@ -50,6 +50,12 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
       prepackArguments = args.shift().split(" ");
     } else if (arg === "sourceFile") {
       sourceFile = args.shift();
+    } else if (arg === "diagnosticSeverity") {
+      arg = args.shift();
+      if (arg !== "FatalError" && arg !== "RecoverableError" && arg !== "Warning" && arg !== "Information") {
+        console.error("Invalid debugger diagnostic severity level");
+      }
+      prepackArguments = prepackArguments.concat(["--debugDiagnosticSeverity", `${arg}`]);
     } else {
       console.error("Unknown argument: " + arg);
       process.exit(1);

@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { hashString } from "../methods/index.js";
 import { PrimitiveValue, Value } from "../values/index.js";
@@ -42,6 +42,7 @@ export default class StringValue extends PrimitiveValue {
   }
 
   toDisplayString(): string {
+    // TODO: proper escaping
     return `"${this.value}"`;
   }
 }

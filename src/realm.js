@@ -10,17 +10,27 @@
 /* @flow */
 
 import type {
+  ClassComponentMetadata,
+  ConsoleMethodTypes,
+  DebugServerType,
+  Descriptor,
   Intrinsics,
   PropertyBinding,
-  Descriptor,
-  DebugServerType,
-  ClassComponentMetadata,
   ReactHint,
 } from "./types.js";
-import { CompilerDiagnostic, type ErrorHandlerResult, type ErrorHandler, FatalError } from "./errors.js";
+import { RealmStatistics } from "./statistics.js";
+import {
+  CompilerDiagnostic,
+  type ErrorHandlerResult,
+  type ErrorHandler,
+  FatalError,
+  InfeasiblePathError,
+} from "./errors.js";
 import {
   AbstractObjectValue,
   AbstractValue,
+  ArrayValue,
+  BoundFunctionValue,
   ConcreteValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
@@ -45,11 +55,11 @@ import { cloneDescriptor, Construct } from "./methods/index.js";
 import {
   AbruptCompletion,
   Completion,
-  JoinedAbruptCompletions,
+  ForkedAbruptCompletion,
   PossiblyNormalCompletion,
   ThrowCompletion,
 } from "./completions.js";
-import type { Compatibility, RealmOptions, ReactOutputTypes } from "./options.js";
+import type { Compatibility, RealmOptions, ReactOutputTypes, InvariantModeTypes } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
@@ -59,13 +69,50 @@ import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
 
-export type BindingEntry = { hasLeaked: boolean, value: void | Value };
+export type BindingEntry = {
+  leakedImmutableValue: void | Value,
+  hasLeaked: void | boolean,
+  value: void | Value,
+  previousLeakedImmutableValue: void | Value,
+  previousHasLeaked: void | boolean,
+  previousValue: void | Value,
+};
 export type Bindings = Map<Binding, BindingEntry>;
 export type EvaluationResult = Completion | Reference | Value;
 export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 
 export type CreatedObjects = Set<ObjectValue>;
-export type Effects = [EvaluationResult, Generator, Bindings, PropertyBindings, CreatedObjects];
+
+export type SideEffectType = "MODIFIED_BINDING" | "MODIFIED_PROPERTY" | "EXCEPTION_THROWN" | "MODIFIED_GLOBAL";
+
+let effects_uid = 0;
+
+export class Effects {
+  constructor(
+    result: EvaluationResult,
+    generator: Generator,
+    bindings: Bindings,
+    propertyBindings: PropertyBindings,
+    createdObjects: CreatedObjects
+  ) {
+    this.result = result;
+    this.generator = generator;
+    this.modifiedBindings = bindings;
+    this.modifiedProperties = propertyBindings;
+    this.createdObjects = createdObjects;
+
+    this.canBeApplied = true;
+    this._id = effects_uid++;
+  }
+
+  result: EvaluationResult;
+  generator: Generator;
+  modifiedBindings: Bindings;
+  modifiedProperties: PropertyBindings;
+  createdObjects: CreatedObjects;
+  canBeApplied: boolean;
+  _id: number;
+}
 
 export class Tracer {
   beginEvaluateForEffects(state: any) {}
@@ -144,14 +191,15 @@ export class ExecutionContext {
   }
 }
 
-export function construct_empty_effects(realm: Realm): Effects {
-  return [realm.intrinsics.empty, new Generator(realm, "construct_empty_effects"), new Map(), new Map(), new Set()];
+export function construct_empty_effects(realm: Realm, c: Completion | Value = realm.intrinsics.empty): Effects {
+  return new Effects(c, new Generator(realm, "construct_empty_effects"), new Map(), new Map(), new Set());
 }
 
 export class Realm {
-  constructor(opts: RealmOptions) {
+  constructor(opts: RealmOptions, statistics: RealmStatistics) {
+    this.statistics = statistics;
     this.isReadOnly = false;
-    this.useAbstractInterpretation = !!opts.serialize || !!opts.residual || !!opts.check;
+    this.useAbstractInterpretation = opts.serialize === true || opts.residual === true || Array.isArray(opts.check);
     this.ignoreLeakLogic = false;
     this.isInPureTryStatement = false;
     if (opts.mathRandomSeed !== undefined) {
@@ -160,21 +208,22 @@ export class Realm {
     this.strictlyMonotonicDateNow = !!opts.strictlyMonotonicDateNow;
 
     // 0 = disabled
-    this.abstractValueImpliesMax = opts.abstractValueImpliesMax || 0;
+    this.abstractValueImpliesMax = opts.abstractValueImpliesMax !== undefined ? opts.abstractValueImpliesMax : 0;
     this.abstractValueImpliesCounter = 0;
     this.inSimplificationPath = false;
 
     this.timeout = opts.timeout;
-    if (this.timeout) {
+    if (this.timeout !== undefined) {
       // We'll call Date.now for every this.timeoutCounterThreshold'th AST node.
       // The threshold is there to reduce the cost of the surprisingly expensive Date.now call.
       this.timeoutCounter = this.timeoutCounterThreshold = 1024;
     }
 
     this.start = Date.now();
-    this.compatibility = opts.compatibility || "browser";
+    this.compatibility = opts.compatibility !== undefined ? opts.compatibility : "browser";
     this.maxStackDepth = opts.maxStackDepth || 225;
-    this.omitInvariants = !!opts.omitInvariants;
+    this.invariantLevel = opts.invariantLevel || 0;
+    this.invariantMode = opts.invariantMode || "throw";
     this.emitConcreteModel = !!opts.emitConcreteModel;
 
     this.$TemplateMap = [];
@@ -195,17 +244,25 @@ export class Realm {
     this.evaluators = (Object.create(null): any);
     this.partialEvaluators = (Object.create(null): any);
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
+    this.temporalAliasArgs = new WeakMap();
 
     this.react = {
       abstractHints: new WeakMap(),
+      arrayHints: new WeakMap(),
       classComponentMetadata: new Map(),
       currentOwner: undefined,
+      defaultPropsHelper: undefined,
       enabled: opts.reactEnabled || false,
-      output: opts.reactOutput || "create-element",
       hoistableFunctions: new WeakMap(),
       hoistableReactElements: new WeakMap(),
+      noopFunction: undefined,
+      optimizedNestedClosuresToWrite: [],
+      optimizeNestedFunctions: opts.reactOptimizeNestedFunctions || false,
+      output: opts.reactOutput || "create-element",
+      propsWithNoPartialKeyOrRef: new WeakSet(),
       reactElements: new WeakSet(),
       symbols: new Map(),
+      usedReactElementKeys: new Set(),
       verbose: opts.reactVerbose || false,
     };
 
@@ -215,6 +272,8 @@ export class Realm {
     this.fbLibraries = {
       other: new Map(),
       react: undefined,
+      reactDom: undefined,
+      reactDomServer: undefined,
       reactRelay: undefined,
     };
 
@@ -224,8 +283,10 @@ export class Realm {
     this.activeLexicalEnvironments = new Set();
     this._abstractValuesDefined = new Set(); // A set of nameStrings to ensure abstract values have unique names
     this.debugNames = opts.debugNames;
+    this._checkedObjectIds = new Map();
   }
 
+  statistics: RealmStatistics;
   start: number;
   isReadOnly: boolean;
   isStrict: boolean;
@@ -236,7 +297,8 @@ export class Realm {
   mathRandomGenerator: void | (() => number);
   strictlyMonotonicDateNow: boolean;
   maxStackDepth: number;
-  omitInvariants: boolean;
+  invariantLevel: number;
+  invariantMode: InvariantModeTypes;
   ignoreLeakLogic: boolean;
   emitConcreteModel: boolean;
 
@@ -249,6 +311,9 @@ export class Realm {
   createdObjects: void | CreatedObjects;
   createdObjectsTrackedForLeaks: void | CreatedObjects;
   reportObjectGetOwnProperties: void | (ObjectValue => void);
+  reportSideEffectCallback:
+    | void
+    | ((sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, expressionLocation: any) => void);
   reportPropertyAccess: void | (PropertyBinding => void);
   savedCompletion: void | PossiblyNormalCompletion;
 
@@ -264,6 +329,12 @@ export class Realm {
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
 
+  // temporalAliasArgs is used to map a temporal abstract object value
+  // to its respective temporal args used to originally create the temporal.
+  // This is used to "clone" immutable objects where they have a dependency
+  // on a temporal alias (for example, Object.assign) when used with snapshotting
+  temporalAliasArgs: WeakMap<AbstractObjectValue | ObjectValue, Array<Value>>;
+
   react: {
     // reactHints are generated to help improve the effeciency of the React reconciler when
     // operating on a tree of React components. We can use reactHint to mark AbstractValues
@@ -271,22 +342,34 @@ export class Realm {
     // (for example, when we use Relay's React containers with "fb-www" – which are AbstractObjectValues,
     // we need to know what React component was passed to this AbstractObjectValue so we can visit it next)
     abstractHints: WeakMap<AbstractValue | ObjectValue, ReactHint>,
+    arrayHints: WeakMap<ArrayValue, { func: Value, thisVal: Value }>,
     classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
     currentOwner?: ObjectValue,
+    defaultPropsHelper?: ECMAScriptSourceFunctionValue,
     enabled: boolean,
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,
+    noopFunction: void | ECMAScriptSourceFunctionValue,
+    optimizedNestedClosuresToWrite: Array<{
+      effects: Effects,
+      func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
+    }>,
+    optimizeNestedFunctions: boolean,
     output?: ReactOutputTypes,
+    propsWithNoPartialKeyOrRef: WeakSet<ObjectValue | AbstractObjectValue>,
     reactElements: WeakSet<ObjectValue>,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
+    usedReactElementKeys: Set<string>,
     verbose: boolean,
   };
-  alreadyDescribedLocations: WeakMap<FunctionValue, string | void>;
+  alreadyDescribedLocations: WeakMap<FunctionValue | BabelNodeSourceLocation, string | void>;
   stripFlow: boolean;
 
   fbLibraries: {
     other: Map<string, AbstractValue>,
     react: void | ObjectValue,
+    reactDom: void | ObjectValue,
+    reactDomServer: void | ObjectValue,
     reactRelay: void | ObjectValue,
   };
 
@@ -325,6 +408,7 @@ export class Realm {
   MOBILE_JSC_VERSION = "jsc-600-1-4-17";
 
   errorHandler: ?ErrorHandler;
+  suppressDiagnostics = false;
   objectCount = 0;
   symbolCount = 867501803871088;
   // Unique tag for identifying function body ast node. It is neeeded
@@ -338,6 +422,7 @@ export class Realm {
 
   nextGeneratorId: number = 0;
   _abstractValuesDefined: Set<string>;
+  _checkedObjectIds: Map<ObjectValue | AbstractObjectValue, number>;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
@@ -378,11 +463,18 @@ export class Realm {
 
   testTimeout() {
     let timeout = this.timeout;
-    if (timeout && !--this.timeoutCounter) {
+    if (timeout !== undefined && !--this.timeoutCounter) {
       this.timeoutCounter = this.timeoutCounterThreshold;
       let total = Date.now() - this.start;
       if (total > timeout) {
-        throw new FatalError("Timed out");
+        let error = new CompilerDiagnostic(
+          `total time has exceeded the timeout time: ${timeout}`,
+          this.currentLocation,
+          "PP0036",
+          "FatalError"
+        );
+        this.handleError(error);
+        throw new FatalError();
       }
     }
   }
@@ -405,16 +497,17 @@ export class Realm {
 
   clearBlockBindingsFromCompletion(completion: Completion, environmentRecord: DeclarativeEnvironmentRecord) {
     if (completion instanceof PossiblyNormalCompletion) {
-      this.clearBlockBindings(completion.alternateEffects[2], environmentRecord);
-      this.clearBlockBindings(completion.consequentEffects[2], environmentRecord);
-      if (completion.savedEffects !== undefined) this.clearBlockBindings(completion.savedEffects[2], environmentRecord);
+      this.clearBlockBindings(completion.alternateEffects.modifiedBindings, environmentRecord);
+      this.clearBlockBindings(completion.consequentEffects.modifiedBindings, environmentRecord);
+      if (completion.savedEffects !== undefined)
+        this.clearBlockBindings(completion.savedEffects.modifiedBindings, environmentRecord);
       if (completion.alternate instanceof Completion)
         this.clearBlockBindingsFromCompletion(completion.alternate, environmentRecord);
       if (completion.consequent instanceof Completion)
         this.clearBlockBindingsFromCompletion(completion.consequent, environmentRecord);
-    } else if (completion instanceof JoinedAbruptCompletions) {
-      this.clearBlockBindings(completion.alternateEffects[2], environmentRecord);
-      this.clearBlockBindings(completion.consequentEffects[2], environmentRecord);
+    } else if (completion instanceof ForkedAbruptCompletion) {
+      this.clearBlockBindings(completion.alternateEffects.modifiedBindings, environmentRecord);
+      this.clearBlockBindings(completion.consequentEffects.modifiedBindings, environmentRecord);
       if (completion.alternate instanceof Completion)
         this.clearBlockBindingsFromCompletion(completion.alternate, environmentRecord);
       if (completion.consequent instanceof Completion)
@@ -459,16 +552,17 @@ export class Realm {
 
   clearFunctionBindingsFromCompletion(completion: Completion, funcVal: FunctionValue) {
     if (completion instanceof PossiblyNormalCompletion) {
-      this.clearFunctionBindings(completion.alternateEffects[2], funcVal);
-      this.clearFunctionBindings(completion.consequentEffects[2], funcVal);
-      if (completion.savedEffects !== undefined) this.clearFunctionBindings(completion.savedEffects[2], funcVal);
+      this.clearFunctionBindings(completion.alternateEffects.modifiedBindings, funcVal);
+      this.clearFunctionBindings(completion.consequentEffects.modifiedBindings, funcVal);
+      if (completion.savedEffects !== undefined)
+        this.clearFunctionBindings(completion.savedEffects.modifiedBindings, funcVal);
       if (completion.alternate instanceof Completion)
         this.clearFunctionBindingsFromCompletion(completion.alternate, funcVal);
       if (completion.consequent instanceof Completion)
         this.clearFunctionBindingsFromCompletion(completion.consequent, funcVal);
-    } else if (completion instanceof JoinedAbruptCompletions) {
-      this.clearFunctionBindings(completion.alternateEffects[2], funcVal);
-      this.clearFunctionBindings(completion.consequentEffects[2], funcVal);
+    } else if (completion instanceof ForkedAbruptCompletion) {
+      this.clearFunctionBindings(completion.alternateEffects.modifiedBindings, funcVal);
+      this.clearFunctionBindings(completion.consequentEffects.modifiedBindings, funcVal);
       if (completion.alternate instanceof Completion)
         this.clearFunctionBindingsFromCompletion(completion.alternate, funcVal);
       if (completion.consequent instanceof Completion)
@@ -509,21 +603,69 @@ export class Realm {
     this.$GlobalEnv.environmentRecord.DeleteBinding(name);
   }
 
+  neverCheckProperty(object: ObjectValue | AbstractObjectValue, P: string) {
+    return (
+      P.startsWith("__") ||
+      (object === this.$GlobalObject && P === "global") ||
+      (object.intrinsicName !== undefined && object.intrinsicName.startsWith("__"))
+    );
+  }
+
+  _getCheckedBindings(): ObjectValue {
+    let globalObject = this.$GlobalObject;
+    invariant(globalObject instanceof ObjectValue);
+    let binding = globalObject.properties.get("__checkedBindings");
+    invariant(binding !== undefined);
+    let checkedBindingsObject = binding.descriptor && binding.descriptor.value;
+    invariant(checkedBindingsObject instanceof ObjectValue);
+    return checkedBindingsObject;
+  }
+
+  markPropertyAsChecked(object: ObjectValue | AbstractObjectValue, P: string) {
+    invariant(!this.neverCheckProperty(object, P));
+    let objectId = this._checkedObjectIds.get(object);
+    if (objectId === undefined) this._checkedObjectIds.set(object, (objectId = this._checkedObjectIds.size));
+    let id = `__${objectId}:${P}`;
+    let checkedBindings = this._getCheckedBindings();
+    checkedBindings.$Set(id, this.intrinsics.true, checkedBindings);
+  }
+
+  hasBindingBeenChecked(object: ObjectValue | AbstractObjectValue, P: string): void | boolean {
+    if (this.neverCheckProperty(object, P)) return true;
+    let objectId = this._checkedObjectIds.get(object);
+    if (objectId === undefined) return false;
+    let id = `__${objectId}:${P}`;
+    let binding = this._getCheckedBindings().properties.get(id);
+    if (binding === undefined) return false;
+    let value = binding.descriptor && binding.descriptor.value;
+    return value instanceof Value && !value.mightNotBeTrue();
+  }
+
   // Evaluate a context as if it won't have any side-effects outside of any objects
   // that it created itself. This promises that any abstract functions inside of it
   // also won't have effects on any objects or bindings that weren't created in this
   // call.
-  evaluatePure<T>(f: () => T) {
+  evaluatePure<T>(
+    f: () => T,
+    reportSideEffectFunc?: (
+      sideEffectType: SideEffectType,
+      binding: void | Binding | PropertyBinding,
+      value: void | Value
+    ) => void
+  ) {
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
+    let saved_reportSideEffectCallback = this.reportSideEffectCallback;
     // Track all objects (including function closures) created during
     // this call. This will be used to make the assumption that every
     // *other* object is unchanged (pure). These objects are marked
     // as leaked if they're passed to abstract functions.
     this.createdObjectsTrackedForLeaks = new Set();
+    this.reportSideEffectCallback = reportSideEffectFunc;
     try {
       return f();
     } finally {
       this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
+      this.reportSideEffectCallback = saved_reportSideEffectCallback;
     }
   }
 
@@ -576,19 +718,17 @@ export class Realm {
     strictCode: boolean,
     env: LexicalEnvironment,
     state?: any,
-    generatorName?: string
+    generatorName?: string = "evaluateNodeForEffects"
   ): Effects {
-    return this.evaluateForEffects(
-      () => env.evaluateCompletionDeref(ast, strictCode),
-      state,
-      generatorName || "evaluateNodeForEffects"
-    );
+    return this.evaluateForEffects(() => env.evaluateCompletionDeref(ast, strictCode), state, generatorName);
   }
 
-  evaluateForEffectsInGlobalEnv(func: () => Value, state?: any, generatorName?: string): Effects {
-    return this.wrapInGlobalEnv(() =>
-      this.evaluateForEffects(func, state, generatorName || "evaluateForEffectsInGlobalEnv")
-    );
+  evaluateForEffectsInGlobalEnv(
+    func: () => Value,
+    state?: any,
+    generatorName?: string = "evaluateForEffectsInGlobalEnv"
+  ): Effects {
+    return this.wrapInGlobalEnv(() => this.evaluateForEffects(func, state, generatorName));
   }
 
   // NB: does not apply generators because there's no way to cleanly revert them.
@@ -597,12 +737,14 @@ export class Realm {
     let result: T;
     this.evaluateForEffectsInGlobalEnv(() => {
       try {
-        this.applyEffects(effects);
+        this.applyEffects(effects, "", false);
         result = func(effects);
         return this.intrinsics.undefined;
       } finally {
-        this.restoreBindings(effects[2]);
-        this.restoreProperties(effects[3]);
+        this.undoBindings(effects.modifiedBindings);
+        this.restoreProperties(effects.modifiedProperties);
+        invariant(!effects.canBeApplied);
+        effects.canBeApplied = true;
       }
     });
     invariant(result !== undefined, "If we get here, func must have returned undefined.");
@@ -658,8 +800,7 @@ export class Realm {
         if (c instanceof PossiblyNormalCompletion) {
           // The current state may have advanced since the time control forked into the various paths recorded in c.
           // Update the normal path and restore the global state to what it was at the time of the fork.
-          let subsequentEffects = this.getCapturedEffects(c, c.value);
-          invariant(subsequentEffects !== undefined);
+          let subsequentEffects = this.getCapturedEffects(c.value);
           this.stopEffectCaptureAndUndoEffects(c);
           Join.updatePossiblyNormalCompletionWithSubsequentEffects(this, c, subsequentEffects);
           this.savedCompletion = undefined;
@@ -684,16 +825,16 @@ export class Realm {
         */
 
         // Return the captured state changes and evaluation result
-        result = [c, astGenerator, astBindings, astProperties, astCreatedObjects];
+        result = new Effects(c, astGenerator, astBindings, astProperties, astCreatedObjects);
         return result;
       } finally {
         // Roll back the state changes
         if (this.savedCompletion !== undefined) this.stopEffectCaptureAndUndoEffects(this.savedCompletion);
         if (result !== undefined) {
-          this.restoreBindings(result[2]);
-          this.restoreProperties(result[3]);
+          this.undoBindings(result.modifiedBindings);
+          this.restoreProperties(result.modifiedProperties);
         } else {
-          this.restoreBindings(this.modifiedBindings);
+          this.undoBindings(this.modifiedBindings);
           this.restoreProperties(this.modifiedProperties);
         }
         this.generator = saved_generator;
@@ -732,7 +873,7 @@ export class Realm {
         undefined,
         "evaluateWithUndo"
       );
-      return effects[0] instanceof Value ? effects[0] : defaultValue;
+      return effects.result instanceof Value ? effects.result : defaultValue;
     } finally {
       this.errorHandler = oldErrorHandler;
     }
@@ -749,7 +890,7 @@ export class Realm {
       };
       let effects = this.evaluateForEffects(f, undefined, "evaluateWithUndoForDiagnostic");
       this.applyEffects(effects);
-      let resultVal = effects[0];
+      let resultVal = effects.result;
       if (resultVal instanceof AbruptCompletion) throw resultVal;
       if (resultVal instanceof PossiblyNormalCompletion) {
         // in this case one of the branches may complete abruptly, which means that
@@ -768,41 +909,96 @@ export class Realm {
     }
   }
 
-  evaluateForFixpointEffects(
-    loopContinueTest: () => Value,
-    loopBody: () => EvaluationResult
-  ): void | [Effects, Effects] {
+  evaluateForFixpointEffects(iteration: () => [Value, EvaluationResult]): void | [Effects, Effects, AbstractValue] {
     try {
-      let effects1 = this.evaluateForEffects((loopBody: any), undefined, "evaluateForFixpointEffects/1");
+      let test;
+      let f = () => {
+        let result;
+        [test, result] = iteration();
+        if (!(test instanceof AbstractValue)) throw new FatalError("loop terminates before fixed point");
+        invariant(result instanceof Completion || result instanceof Value);
+        return result;
+      };
+      let effects1 = this.evaluateForEffects(f, undefined, "evaluateForFixpointEffects/1");
       while (true) {
-        this.restoreBindings(effects1[2]);
-        this.restoreProperties(effects1[3]);
-        let effects2 = this.evaluateForEffects(
-          () => {
-            let test = loopContinueTest();
-            if (!(test instanceof AbstractValue)) throw new FatalError("loop terminates before fixed point");
-            return (loopBody(): any);
-          },
-          undefined,
-          "evaluateForFixpointEffects/2"
-        );
-        this.restoreBindings(effects1[2]);
-        this.restoreProperties(effects1[3]);
+        this.redoBindings(effects1.modifiedBindings);
+        this.restoreProperties(effects1.modifiedProperties);
+        let effects2 = this.evaluateForEffects(f, undefined, "evaluateForFixpointEffects/2");
+        this.undoBindings(effects1.modifiedBindings);
+        this.restoreProperties(effects1.modifiedProperties);
         if (Widen.containsEffects(effects1, effects2)) {
           // effects1 includes every value present in effects2, so doing another iteration using effects2 will not
           // result in any more values being added to abstract domains and hence a fixpoint has been reached.
           // Generate code using effects2 because its expressions have not been widened away.
-          let [, gen, bindings2, pbindings2, createdObjects2] = effects2;
-          this._applyPropertiesToNewlyCreatedObjects(pbindings2, createdObjects2);
-          this._emitPropertAssignments(gen, pbindings2, createdObjects2);
-          this._emitLocalAssignments(gen, bindings2, createdObjects2);
-          return [effects1, effects2];
+          const e2 = effects2;
+          this._applyPropertiesToNewlyCreatedObjects(e2.modifiedProperties, e2.createdObjects);
+          this._emitPropertAssignments(e2.generator, e2.modifiedProperties, e2.createdObjects);
+          this._emitLocalAssignments(e2.generator, e2.modifiedBindings, e2.createdObjects);
+          invariant(test instanceof AbstractValue);
+          let cond = e2.generator.deriveAbstract(test.types, test.values, [test], ([n]) => n, {
+            skipInvariant: true,
+          });
+          return [effects1, effects2, cond];
         }
         effects1 = Widen.widenEffects(this, effects1, effects2);
       }
     } catch (e) {
       return undefined;
     }
+  }
+
+  evaluateWithAbstractConditional(
+    condValue: AbstractValue,
+    consequentEffectsFunc: () => Effects,
+    alternateEffectsFunc: () => Effects
+  ): Value {
+    // Evaluate consequent and alternate in sandboxes and get their effects.
+    let effects1;
+    try {
+      effects1 = Path.withCondition(condValue, consequentEffectsFunc);
+    } catch (e) {
+      if (!(e instanceof InfeasiblePathError)) throw e;
+    }
+
+    let effects2;
+    try {
+      effects2 = Path.withInverseCondition(condValue, alternateEffectsFunc);
+    } catch (e) {
+      if (!(e instanceof InfeasiblePathError)) throw e;
+    }
+
+    let joinedEffects, completion;
+    if (effects1 === undefined || effects2 === undefined) {
+      if (effects1 === undefined && effects2 === undefined) throw new InfeasiblePathError();
+      joinedEffects = effects1 || effects2;
+      invariant(joinedEffects !== undefined);
+      completion = joinedEffects.result;
+      this.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
+    } else {
+      // Join the effects, creating an abstract view of what happened, regardless
+      // of the actual value of condValue.
+      joinedEffects = Join.joinForkOrChoose(this, condValue, effects1, effects2);
+      completion = joinedEffects.result;
+      if (completion instanceof ForkedAbruptCompletion) {
+        // Note that the effects are tracked separately inside completion and will be applied later.
+        throw completion;
+      }
+      if (completion instanceof PossiblyNormalCompletion) {
+        // in this case one of the branches may complete abruptly, which means that
+        // not all control flow branches join into one flow at this point.
+        // Consequently we have to continue tracking changes until the point where
+        // all the branches come together into one.
+        completion = this.composeWithSavedCompletion(completion);
+        this.applyEffects(joinedEffects, "evaluateWithAbstractConditional", false);
+      } else {
+        this.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
+      }
+    }
+
+    // return or throw completion
+    if (completion instanceof AbruptCompletion) throw completion;
+    invariant(completion instanceof Value);
+    return completion;
   }
 
   _applyPropertiesToNewlyCreatedObjects(
@@ -824,7 +1020,7 @@ export class Realm {
       let val = binding.value;
       if (val instanceof AbstractValue) {
         invariant(val._buildNode !== undefined);
-        let tval = gen.derive(val.types, val.values, [val], ([n]) => n, {
+        let tval = gen.deriveAbstract(val.types, val.values, [val], ([n]) => n, {
           skipInvariant: true,
         });
         tvalFor.set(key, tval);
@@ -868,13 +1064,16 @@ export class Realm {
 
     let tvalFor: Map<any, AbstractValue> = new Map();
     pbindings.forEach((val, key, map) => {
-      if (key.object instanceof ObjectValue && newlyCreatedObjects.has(key.object)) {
+      if (
+        key.object instanceof ObjectValue &&
+        (newlyCreatedObjects.has(key.object) || key.object.refuseSerialization)
+      ) {
         return;
       }
       let value = val && val.value;
       if (value instanceof AbstractValue) {
         invariant(value._buildNode !== undefined);
-        let tval = gen.derive(
+        let tval = gen.deriveAbstract(
           value.types,
           value.values,
           [key.object, value],
@@ -895,7 +1094,10 @@ export class Realm {
       }
     });
     pbindings.forEach((val, key, map) => {
-      if (key.object instanceof ObjectValue && newlyCreatedObjects.has(key.object)) {
+      if (
+        key.object instanceof ObjectValue &&
+        (newlyCreatedObjects.has(key.object) || key.object.refuseSerialization)
+      ) {
         return;
       }
       let path = key.pathNode;
@@ -905,16 +1107,18 @@ export class Realm {
       invariant(value instanceof Value);
       let mightHaveBeenDeleted = value.mightHaveBeenDeleted();
       let mightBeUndefined = value.mightBeUndefined();
-      if (typeof key.key === "string") {
+      let keyKey = key.key;
+      if (typeof keyKey === "string") {
         gen.emitStatement([key.object, tval || value, this.intrinsics.empty], ([o, v, e]) => {
           invariant(path !== undefined);
-          let lh = path.buildNode([o, t.identifier(key.key)]);
+          invariant(typeof keyKey === "string");
+          let lh = path.buildNode([o, t.identifier(keyKey)]);
           let r = t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
           if (mightHaveBeenDeleted) {
             // If v === __empty || (v === undefined  && !(key.key in o))  then delete it
             let emptyTest = t.binaryExpression("===", v, e);
             let undefinedTest = t.binaryExpression("===", v, voidExpression);
-            let inTest = t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(key.key), o));
+            let inTest = t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(keyKey), o));
             let guard = t.logicalExpression("||", emptyTest, t.logicalExpression("&&", undefinedTest, inTest));
             let deleteIt = t.expressionStatement(t.unaryExpression("delete", (lh: any)));
             return t.ifStatement(mightBeUndefined ? emptyTest : guard, deleteIt, r);
@@ -922,7 +1126,9 @@ export class Realm {
           return r;
         });
       } else {
-        gen.emitStatement([key.object, key.key, tval || value, this.intrinsics.empty], ([o, p, v, e]) => {
+        // TODO: What if keyKey is undefined?
+        invariant(keyKey instanceof Value);
+        gen.emitStatement([key.object, keyKey, tval || value, this.intrinsics.empty], ([o, p, v, e]) => {
           invariant(path !== undefined);
           let lh = path.buildNode([o, p]);
           return t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
@@ -932,29 +1138,32 @@ export class Realm {
   }
 
   composeEffects(priorEffects: Effects, subsequentEffects: Effects): Effects {
-    let [, pg, pb, pp, po] = priorEffects;
-    let [sc, sg, sb, sp, so] = subsequentEffects;
     let result = construct_empty_effects(this);
-    let [, , rb, rp, ro] = result;
 
-    result[0] = sc;
+    result.result = subsequentEffects.result;
 
-    result[1] = Join.composeGenerators(this, pg || result[1], sg);
+    result.generator = Join.composeGenerators(
+      this,
+      priorEffects.generator || result.generator,
+      subsequentEffects.generator
+    );
 
-    if (pb) {
-      pb.forEach((val, key, m) => rb.set(key, val));
+    if (priorEffects.modifiedBindings) {
+      priorEffects.modifiedBindings.forEach((val, key, m) => result.modifiedBindings.set(key, val));
     }
-    sb.forEach((val, key, m) => rb.set(key, val));
+    subsequentEffects.modifiedBindings.forEach((val, key, m) => result.modifiedBindings.set(key, val));
 
-    if (pp) {
-      pp.forEach((desc, propertyBinding, m) => rp.set(propertyBinding, desc));
+    if (priorEffects.modifiedProperties) {
+      priorEffects.modifiedProperties.forEach((desc, propertyBinding, m) =>
+        result.modifiedProperties.set(propertyBinding, desc)
+      );
     }
-    sp.forEach((val, key, m) => rp.set(key, val));
+    subsequentEffects.modifiedProperties.forEach((val, key, m) => result.modifiedProperties.set(key, val));
 
-    if (po) {
-      po.forEach((ob, a) => ro.add(ob));
+    if (priorEffects.createdObjects) {
+      priorEffects.createdObjects.forEach((ob, a) => result.createdObjects.add(ob));
     }
-    so.forEach((ob, a) => ro.add(ob));
+    subsequentEffects.createdObjects.forEach((ob, a) => result.createdObjects.add(ob));
 
     return result;
   }
@@ -972,6 +1181,20 @@ export class Realm {
     }
   }
 
+  wrapSavedCompletion(completion: PossiblyNormalCompletion) {
+    if (this.savedCompletion !== undefined) {
+      if (completion.consequent instanceof AbruptCompletion) {
+        completion.alternate = this.savedCompletion;
+      } else {
+        completion.consequent = this.savedCompletion;
+      }
+      completion.savedEffects = this.savedCompletion.savedEffects;
+    } else {
+      this.captureEffects(completion);
+    }
+    this.savedCompletion = completion;
+  }
+
   composeWithSavedCompletion(completion: PossiblyNormalCompletion): Value {
     if (this.savedCompletion === undefined) {
       this.savedCompletion = completion;
@@ -979,12 +1202,13 @@ export class Realm {
       this.pathConditions = [].concat(this.pathConditions);
       this.captureEffects(completion);
     } else {
-      invariant(this.savedCompletion.savedEffects !== undefined);
-      invariant(this.generator !== undefined);
-      this.savedCompletion.savedEffects[1].appendGenerator(this.generator, "composeWithSavedCompletion");
-      this.generator = new Generator(this, "composeWithSavedCompletion");
-      invariant(this.savedCompletion !== undefined);
-      this.savedCompletion = Join.composePossiblyNormalCompletions(this, this.savedCompletion, completion);
+      let savedCompletion = this.savedCompletion;
+      let e = this.getCapturedEffects();
+      this.stopEffectCaptureAndUndoEffects(savedCompletion);
+      savedCompletion = Join.composePossiblyNormalCompletions(this, savedCompletion, completion, e);
+      this.applyEffects(e);
+      this.captureEffects(savedCompletion);
+      this.savedCompletion = savedCompletion;
     }
     pushPathConditionsLeadingToNormalCompletion(completion);
     return completion.value;
@@ -1002,18 +1226,24 @@ export class Realm {
 
   incorporatePriorSavedCompletion(priorCompletion: void | PossiblyNormalCompletion) {
     if (priorCompletion === undefined) return;
+    // A completion that has been saved and that is still active, will always have savedEffects.
+    invariant(priorCompletion.savedEffects !== undefined);
     if (this.savedCompletion === undefined) {
+      // priorCompletion must be a previous savedCompletion, so the corresponding tracking maps would have been
+      // captured in priorCompletion.savedEffects and restored to the realm when clearing out this.savedCompletion.
+      // Since there is curently no savedCompletion, all the forks subsequent to the last normal fork in
+      // priorCompletion will have joined up again and their effects will have been applied to the current
+      // tracking maps.
+      invariant(this.modifiedBindings !== undefined);
       this.savedCompletion = priorCompletion;
-      this.captureEffects(priorCompletion);
     } else {
-      invariant(priorCompletion.savedEffects !== undefined);
       let savedEffects = this.savedCompletion.savedEffects;
       invariant(savedEffects !== undefined);
-      this.restoreBindings(savedEffects[2]);
-      this.restoreProperties(savedEffects[3]);
+      this.redoBindings(savedEffects.modifiedBindings);
+      this.restoreProperties(savedEffects.modifiedProperties);
       Join.updatePossiblyNormalCompletionWithSubsequentEffects(this, priorCompletion, savedEffects);
-      this.restoreBindings(savedEffects[2]);
-      this.restoreProperties(savedEffects[3]);
+      this.undoBindings(savedEffects.modifiedBindings);
+      this.restoreProperties(savedEffects.modifiedProperties);
       invariant(this.savedCompletion !== undefined);
       this.savedCompletion.savedEffects = undefined;
       this.savedCompletion = Join.composePossiblyNormalCompletions(this, priorCompletion, this.savedCompletion);
@@ -1021,75 +1251,66 @@ export class Realm {
   }
 
   captureEffects(completion: PossiblyNormalCompletion) {
-    if (completion.savedEffects !== undefined) {
-      // Already called captureEffects, just carry on
-      return;
-    }
-    completion.savedEffects = [
+    invariant(completion.savedEffects === undefined);
+    completion.savedEffects = new Effects(
       this.intrinsics.undefined,
       (this.generator: any),
       (this.modifiedBindings: any),
       (this.modifiedProperties: any),
-      (this.createdObjects: any),
-    ];
+      (this.createdObjects: any)
+    );
     this.generator = new Generator(this, "captured");
     this.modifiedBindings = new Map();
     this.modifiedProperties = new Map();
     this.createdObjects = new Set();
   }
 
-  getCapturedEffects(completion: PossiblyNormalCompletion, v?: Value): void | Effects {
-    if (completion.savedEffects === undefined) return undefined;
-    if (v === undefined) v = this.intrinsics.undefined;
+  getCapturedEffects(v?: Value = this.intrinsics.undefined): Effects {
     invariant(this.generator !== undefined);
     invariant(this.modifiedBindings !== undefined);
     invariant(this.modifiedProperties !== undefined);
     invariant(this.createdObjects !== undefined);
-    return [v, this.generator, this.modifiedBindings, this.modifiedProperties, this.createdObjects];
-  }
-
-  stopEffectCapture(completion: PossiblyNormalCompletion) {
-    let e = this.getCapturedEffects(completion);
-    if (e !== undefined) {
-      this.stopEffectCaptureAndUndoEffects(completion);
-      this.applyEffects(e);
-    }
+    return new Effects(v, this.generator, this.modifiedBindings, this.modifiedProperties, this.createdObjects);
   }
 
   stopEffectCaptureAndUndoEffects(completion: PossiblyNormalCompletion) {
     // Roll back the state changes
-    this.restoreBindings(this.modifiedBindings);
+    this.undoBindings(this.modifiedBindings);
     this.restoreProperties(this.modifiedProperties);
 
     // Restore saved state
     if (completion.savedEffects !== undefined) {
-      let [c, g, b, p, o] = completion.savedEffects;
-      c;
+      const savedEffects = completion.savedEffects;
       completion.savedEffects = undefined;
-      this.generator = g;
-      this.modifiedBindings = b;
-      this.modifiedProperties = p;
-      this.createdObjects = o;
+      this.generator = savedEffects.generator;
+      this.modifiedBindings = savedEffects.modifiedBindings;
+      this.modifiedProperties = savedEffects.modifiedProperties;
+      this.createdObjects = savedEffects.createdObjects;
     } else {
       invariant(false);
     }
   }
 
   // Apply the given effects to the global state
-  applyEffects(effects: Effects, leadingComment: string = "") {
-    let [, generator, bindings, properties, createdObjects] = effects;
+  applyEffects(effects: Effects, leadingComment: string = "", appendGenerator: boolean = true) {
+    invariant(
+      effects.canBeApplied,
+      "Effects have been applied and not properly reverted. It is not safe to apply them a second time."
+    );
+    effects.canBeApplied = false;
+    let { generator, modifiedBindings, modifiedProperties, createdObjects } = effects;
 
     // Add generated code for property modifications
-    this.appendGenerator(generator, leadingComment);
+    if (appendGenerator) this.appendGenerator(generator, leadingComment);
 
-    // Restore bindings
-    this.restoreBindings(bindings);
-    this.restoreProperties(properties);
+    // Restore modifiedBindings
+    this.redoBindings(modifiedBindings);
+    this.restoreProperties(modifiedProperties);
 
-    // track bindings
+    // track modifiedBindings
     let realmModifiedBindings = this.modifiedBindings;
     if (realmModifiedBindings !== undefined) {
-      bindings.forEach((val, key, m) => {
+      modifiedBindings.forEach((val, key, m) => {
         invariant(realmModifiedBindings !== undefined);
         if (!realmModifiedBindings.has(key)) {
           realmModifiedBindings.set(key, val);
@@ -1098,7 +1319,7 @@ export class Realm {
     }
     let realmModifiedProperties = this.modifiedProperties;
     if (realmModifiedProperties !== undefined) {
-      properties.forEach((desc, propertyBinding, m) => {
+      modifiedProperties.forEach((desc, propertyBinding, m) => {
         invariant(realmModifiedProperties !== undefined);
         if (!realmModifiedProperties.has(propertyBinding)) {
           realmModifiedProperties.set(propertyBinding, desc);
@@ -1119,7 +1340,7 @@ export class Realm {
     }
   }
 
-  outputToConsole(method: "log" | "warn" | "error", args: Array<string | ConcreteValue>): void {
+  outputToConsole(method: ConsoleMethodTypes, args: Array<string | ConcreteValue>): void {
     if (this.isReadOnly) {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to create console output in read-only realm");
@@ -1128,6 +1349,7 @@ export class Realm {
       invariant(this.generator !== undefined);
       this.generator.emitConsoleLog(method, args);
     } else {
+      // $FlowFixMe: Flow doesn't have type data for all the console methods yet
       console[method](getString(this, args));
     }
 
@@ -1144,16 +1366,60 @@ export class Realm {
 
   // Record the current value of binding in this.modifiedBindings unless
   // there is already an entry for binding.
-  recordModifiedBinding(binding: Binding): Binding {
+  recordModifiedBinding(binding: Binding, value?: Value): Binding {
+    const isDefinedInsidePureFn = root => {
+      let context = this.getRunningContext();
+      let { lexicalEnvironment: env, function: func } = context;
+
+      invariant(func instanceof FunctionValue);
+      if (root instanceof FunctionEnvironmentRecord && func === root.$FunctionObject) {
+        return true;
+      }
+      if (this.createdObjectsTrackedForLeaks !== undefined && !this.createdObjectsTrackedForLeaks.has(func)) {
+        return false;
+      }
+      env = env.parent;
+      while (env) {
+        if (env.environmentRecord === root) {
+          return true;
+        }
+        env = env.parent;
+      }
+      return false;
+    };
+
+    if (
+      this.modifiedBindings !== undefined &&
+      !this.modifiedBindings.has(binding) &&
+      value !== undefined &&
+      this.isInPureScope() &&
+      this.reportSideEffectCallback !== undefined
+    ) {
+      let env = binding.environment;
+
+      if (
+        !(env instanceof DeclarativeEnvironmentRecord) ||
+        (env instanceof DeclarativeEnvironmentRecord && !isDefinedInsidePureFn(env))
+      ) {
+        this.reportSideEffectCallback("MODIFIED_BINDING", binding, value.expressionLocation);
+      }
+    }
+
     if (binding.environment.isReadOnly) {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to modify a binding in read-only realm");
     }
-    if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding))
+
+    if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding)) {
       this.modifiedBindings.set(binding, {
-        hasLeaked: binding.hasLeaked,
-        value: binding.value,
+        leakedImmutableValue: undefined,
+        hasLeaked: undefined,
+        value: undefined,
+        previousLeakedImmutableValue: binding.leakedImmutableValue,
+        previousHasLeaked: binding.hasLeaked,
+        previousValue: binding.value,
       });
+    }
     return binding;
   }
 
@@ -1173,6 +1439,21 @@ export class Realm {
   // there is already an entry for binding.
   recordModifiedProperty(binding: void | PropertyBinding): void {
     if (binding === undefined) return;
+    if (this.isInPureScope()) {
+      let object = binding.object;
+      invariant(object instanceof ObjectValue);
+      const createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
+
+      if (createdObjectsTrackedForLeaks !== undefined && !createdObjectsTrackedForLeaks.has(object)) {
+        if (binding.object === this.$GlobalObject) {
+          this.reportSideEffectCallback &&
+            this.reportSideEffectCallback("MODIFIED_GLOBAL", binding, object.expressionLocation);
+        } else {
+          this.reportSideEffectCallback &&
+            this.reportSideEffectCallback("MODIFIED_PROPERTY", binding, object.expressionLocation);
+        }
+      }
+    }
     if (this.isReadOnly && (this.getRunningContext().isReadOnly || !this.isNewObject(binding.object))) {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to modify a property in read-only realm");
@@ -1206,20 +1487,24 @@ export class Realm {
     return result;
   }
 
-  // Restores each Binding in the given map to the value it
-  // had when it was entered into the map and updates the map to record
-  // the value the Binding had just before the call to this method.
-  restoreBindings(modifiedBindings: void | Bindings) {
+  redoBindings(modifiedBindings: void | Bindings) {
     if (modifiedBindings === undefined) return;
-    modifiedBindings.forEach(({ hasLeaked, value }, binding, m) => {
-      let l = binding.hasLeaked;
-      let v = binding.value;
-      binding.hasLeaked = hasLeaked;
+    modifiedBindings.forEach(({ leakedImmutableValue, hasLeaked, value }, binding, m) => {
+      binding.leakedImmutableValue = leakedImmutableValue;
+      binding.hasLeaked = hasLeaked || false;
       binding.value = value;
-      m.set(binding, {
-        hasLeaked: l,
-        value: v,
-      });
+    });
+  }
+
+  undoBindings(modifiedBindings: void | Bindings) {
+    if (modifiedBindings === undefined) return;
+    modifiedBindings.forEach((entry, binding, m) => {
+      if (entry.leakedImmutableValue === undefined) entry.leakedImmutableValue = binding.leakedImmutableValue;
+      if (entry.hasLeaked === undefined) entry.hasLeaked = binding.hasLeaked;
+      if (entry.value === undefined) entry.value = binding.value;
+      binding.leakedImmutableValue = entry.previousLeakedImmutableValue;
+      binding.hasLeaked = entry.previousHasLeaked || false;
+      binding.value = entry.previousValue;
     });
   }
 
@@ -1253,7 +1538,10 @@ export class Realm {
       propertyValue.intrinsicName = `${path}.${key}`;
       propertyValue.kind = "rebuiltProperty";
       propertyValue.args = [object];
-      propertyValue._buildNode = ([node]) => t.memberExpression(node, t.identifier(key));
+      propertyValue._buildNode = ([node]) =>
+        t.isValidIdentifier(key)
+          ? t.memberExpression(node, t.identifier(key), false)
+          : t.memberExpression(node, t.stringLiteral(key), true);
       this.rebuildNestedProperties(propertyValue, propertyValue.intrinsicName);
     }
   }
@@ -1330,14 +1618,47 @@ export class Realm {
     realmGenerator.appendGenerator(generator, leadingComment);
   }
 
+  // This function gets the evaluated effects with a collection of
+  // prior nested affects applied (and their canBeApplied flag reset)
+  // We can safely do this as we've wrapped the effects in evaluated
+  // effects, meaning all the effects applied to Realm get restored
+  evaluateForEffectsWithPriorEffects(
+    priorEffects: Array<Effects>,
+    f: () => AbruptCompletion | Value,
+    generatorName: string
+  ): Effects {
+    return this.evaluateForEffects(
+      () => {
+        for (let priorEffect of priorEffects) this.applyEffects(priorEffect);
+        try {
+          return f();
+        } finally {
+          for (let priorEffect of priorEffects) {
+            invariant(!priorEffect.canBeApplied);
+            priorEffect.canBeApplied = true;
+          }
+        }
+      },
+      undefined,
+      generatorName
+    );
+  }
+
   // Pass the error to the realm's error-handler
   // Return value indicates whether the caller should try to recover from the error or not.
   handleError(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
     if (!diagnostic.callStack && this.contextStack.length > 0) {
       let error = Construct(this, this.intrinsics.Error);
-      let stack = error.$Get("stack", error);
+      let stack = error._SafeGetDataPropertyValue("stack");
       if (stack instanceof StringValue) diagnostic.callStack = stack.value;
     }
+
+    // If debugger is attached, give it a first crack so that it can
+    // stop execution for debugging before PP exits.
+    if (this.debuggerInstance && this.debuggerInstance.shouldStopForSeverity(diagnostic.severity)) {
+      this.debuggerInstance.handlePrepackError(diagnostic);
+    }
+
     // Default behaviour is to bail on the first error
     let errorHandler = this.errorHandler;
     if (!errorHandler) {

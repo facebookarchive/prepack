@@ -1,3 +1,4 @@
+// skip
 let b = global.__abstract ? __abstract("boolean", "true") : true;
 
 let y = 1;

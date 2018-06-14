@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { PrimitiveValue, Value } from "./index.js";
 import type { Realm } from "../realm.js";
@@ -22,7 +22,7 @@ export class NumberValue extends PrimitiveValue {
   value: number;
 
   equals(x: Value): boolean {
-    return x instanceof NumberValue && this.value === x.value;
+    return x instanceof NumberValue && Object.is(this.value, x.value);
   }
 
   getHash(): number {

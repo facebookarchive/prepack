@@ -16,12 +16,14 @@ import { NativeFunctionValue } from "../../values/index.js";
 import {
   AbstractValue,
   AbstractObjectValue,
+  ArrayValue,
   ObjectValue,
   NullValue,
   UndefinedValue,
   StringValue,
   BooleanValue,
   SymbolValue,
+  Value,
 } from "../../values/index.js";
 import {
   IsExtensible,
@@ -54,128 +56,140 @@ export default function(realm: Realm): NativeFunctionValue {
     }
 
     // 3. Return ToObject(value).
-    return To.ToObjectPartial(realm, value);
+    return To.ToObject(realm, value);
   });
 
   // ECMA262 19.1.2.1
-  let ObjectAssign = func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
-    // 1. Let to be ? ToObject(target).
-    let to = To.ToObjectPartial(realm, target);
-    let to_must_be_partial = false;
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
+    let ObjectAssign = func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
+      // 1. Let to be ? ToObject(target).
+      let to = To.ToObject(realm, target);
+      let to_must_be_partial = false;
 
-    // 2. If only one argument was passed, return to.
-    if (!sources.length) return to;
+      // 2. If only one argument was passed, return to.
+      if (!sources.length) return to;
 
-    // 3. Let sources be the List of argument values starting with the second argument.
-    sources;
-    let delayedSources = [];
+      // 3. Let sources be the List of argument values starting with the second argument.
+      sources;
+      let delayedSources = [];
 
-    // 4. For each element nextSource of sources, in ascending index order,
-    for (let nextSource of sources) {
-      let keys, frm, frmSnapshot;
+      // 4. For each element nextSource of sources, in ascending index order,
+      for (let nextSource of sources) {
+        let keys, frm, frmSnapshot;
 
-      // a. If nextSource is undefined or null, let keys be a new empty List.
-      if (HasSomeCompatibleType(nextSource, NullValue, UndefinedValue)) continue;
+        // a. If nextSource is undefined or null, let keys be a new empty List.
+        if (HasSomeCompatibleType(nextSource, NullValue, UndefinedValue)) continue;
 
-      // b. Else,
-      // i. Let from be ToObject(nextSource).
-      frm = To.ToObjectPartial(realm, nextSource);
+        // b. Else,
+        // i. Let from be ToObject(nextSource).
+        frm = To.ToObject(realm, nextSource);
 
-      // ii. Let keys be ? from.[[OwnPropertyKeys]]().
-      let frm_was_partial = frm.isPartialObject();
-      if (frm_was_partial) {
-        if (!to.isSimpleObject() || !frm.isSimpleObject()) {
-          // If an object is not a simple object, it may have getters on it that can
-          // mutate any state as a result. We don't yet support this.
-          AbstractValue.reportIntrospectionError(nextSource);
-          throw new FatalError();
+        // ii. Let keys be ? from.[[OwnPropertyKeys]]().
+        let frm_was_partial = frm.isPartialObject();
+        if (frm_was_partial) {
+          if (!to.isSimpleObject() || !frm.isSimpleObject()) {
+            // If an object is not a simple object, it may have getters on it that can
+            // mutate any state as a result. We don't yet support this.
+            AbstractValue.reportIntrospectionError(nextSource);
+            throw new FatalError();
+          }
+
+          to_must_be_partial = true;
+          // Make this temporarily not partial
+          // so that we can call frm.$OwnPropertyKeys below.
+          frm.makeNotPartial();
+        }
+        keys = frm.$OwnPropertyKeys();
+
+        if (to_must_be_partial) {
+          if (to instanceof AbstractObjectValue && to.values.isTop()) {
+            // We don't know which objects to make partial and making all objects partial is failure in itself
+            AbstractValue.reportIntrospectionError(to);
+            throw new FatalError();
+          } else {
+            // if to has properties, we better remove them because after the temporal call to Object.assign we don't know their values anymore
+            if (to.hasStringOrSymbolProperties()) {
+              // preserve them in a snapshot and add the snapshot to the sources
+              delayedSources.push(to.getSnapshot({ removeProperties: true }));
+            }
+
+            if (frm_was_partial) {
+              if (frm instanceof AbstractObjectValue && frm.kind === "explicit conversion to object") {
+                // Make it implicit again since it is getting delayed into an Object.assign call.
+                delayedSources.push(frm.args[0]);
+              } else {
+                frmSnapshot = frm.getSnapshot();
+                frm.temporalAlias = frmSnapshot;
+                frm.makePartial();
+                delayedSources.push(frmSnapshot);
+              }
+            }
+          }
         }
 
-        to_must_be_partial = true;
-        // Make this temporarily not partial
-        // so that we can call frm.$OwnPropertyKeys below.
-        frm.makeNotPartial();
+        // c. Repeat for each element nextKey of keys in List order,
+        invariant(frm, "from required");
+        invariant(keys, "keys required");
+        copyKeys(keys, frm, to);
       }
-      keys = frm.$OwnPropertyKeys();
 
+      // 5. Return to.
       if (to_must_be_partial) {
-        if (to instanceof AbstractObjectValue && to.values.isTop()) {
-          // We don't know which objects to make partial and making all objects partial is failure in itself
-          AbstractValue.reportIntrospectionError(to);
-          throw new FatalError();
-        } else {
-          // if to has properties, we better remove them because after the temporal call to Object.assign we don't know their values anymore
-          if (to.hasStringOrSymbolProperties()) {
-            // preserve them in a snapshot and add the snapshot to the sources
-            delayedSources.push(to.getSnapshot({ removeProperties: true }));
-          }
-
-          if (frm_was_partial) {
-            frmSnapshot = frm.getSnapshot();
-            frm.temporalAlias = frmSnapshot;
-            frm.makePartial();
-            delayedSources.push(frmSnapshot);
-          }
+        // if to has properties, we copy and delay them (at this stage we do not need to remove them)
+        if (to.hasStringOrSymbolProperties()) {
+          let toSnapshot = to.getSnapshot();
+          delayedSources.push(toSnapshot);
         }
-      }
 
+        to.makePartial();
+
+        // We already established above that to is simple,
+        // but now that it is partial we need to set the _isSimple flag.
+        to.makeSimple();
+
+        // Tell serializer that it may add properties to to only after temporalTo has been emitted
+        let temporalArgs = [ObjectAssign, to, ...delayedSources];
+        let temporalTo = AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          ObjectValue,
+          temporalArgs,
+          ([methodNode, targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
+            return t.callExpression(methodNode, [targetNode, ...sourceNodes]);
+          },
+          { skipInvariant: true }
+        );
+        invariant(temporalTo instanceof AbstractObjectValue);
+        if (to instanceof AbstractObjectValue) {
+          temporalTo.values = to.values;
+        } else {
+          invariant(to instanceof ObjectValue);
+          temporalTo.values = new ValuesDomain(to);
+        }
+        to.temporalAlias = temporalTo;
+        // Store the args for the temporal so we can easily clone
+        // and reconstruct the temporal at another point, rather than
+        // mutate the existing temporal
+        realm.temporalAliasArgs.set(temporalTo, temporalArgs);
+      }
+      return to;
+    });
+
+    function copyKeys(keys, from, to) {
       // c. Repeat for each element nextKey of keys in List order,
-      invariant(frm, "from required");
-      invariant(keys, "keys required");
-      copyKeys(keys, frm, to);
-    }
+      for (let nextKey of keys) {
+        // i. Let desc be ? from.[[GetOwnProperty]](nextKey).
+        let desc = from.$GetOwnProperty(nextKey);
 
-    // 5. Return to.
-    if (to_must_be_partial) {
-      // if to has properties, we copy and delay them (at this stage we do not need to remove them)
-      if (to.hasStringOrSymbolProperties()) {
-        let toSnapshot = to.getSnapshot();
-        delayedSources.push(toSnapshot);
-      }
+        // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
+        if (desc && desc.enumerable) {
+          Props.ThrowIfMightHaveBeenDeleted(desc.value);
 
-      to.makePartial();
+          // 1. Let propValue be ? Get(from, nextKey).
+          let propValue = Get(realm, from, nextKey);
 
-      // We already established above that to is simple,
-      // but now that it is partial we need to set the _isSimple flag.
-      to.makeSimple();
-
-      // Tell serializer that it may add properties to to only after temporalTo has been emitted
-      let temporalTo = AbstractValue.createTemporalFromBuildFunction(
-        realm,
-        ObjectValue,
-        [ObjectAssign, to, ...delayedSources],
-        ([methodNode, targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
-          return t.callExpression(methodNode, [targetNode, ...sourceNodes]);
-        },
-        { skipInvariant: true }
-      );
-      invariant(temporalTo instanceof AbstractObjectValue);
-      if (to instanceof AbstractObjectValue) {
-        temporalTo.values = to.values;
-      } else {
-        invariant(to instanceof ObjectValue);
-        temporalTo.values = new ValuesDomain(to);
-      }
-      to.temporalAlias = temporalTo;
-    }
-    return to;
-  });
-
-  function copyKeys(keys, from, to) {
-    // c. Repeat for each element nextKey of keys in List order,
-    for (let nextKey of keys) {
-      // i. Let desc be ? from.[[GetOwnProperty]](nextKey).
-      let desc = from.$GetOwnProperty(nextKey);
-
-      // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
-      if (desc && desc.enumerable) {
-        Props.ThrowIfMightHaveBeenDeleted(desc.value);
-
-        // 1. Let propValue be ? Get(from, nextKey).
-        let propValue = Get(realm, from, nextKey);
-
-        // 2. Perform ? Set(to, nextKey, propValue, true).
-        Props.Set(realm, to, nextKey, propValue, true);
+          // 2. Perform ? Set(to, nextKey, propValue, true).
+          Props.Set(realm, to, nextKey, propValue, true);
+        }
       }
     }
   }
@@ -247,9 +261,9 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.6
-  func.defineNativeMethod("getOwnPropertyDescriptor", 2, (context, [O, P]) => {
+  let getOwnPropertyDescriptor = func.defineNativeMethod("getOwnPropertyDescriptor", 2, (context, [O, P]) => {
     // 1. Let obj be ? ToObject(O).
-    let obj = To.ToObjectPartial(realm, O);
+    let obj = To.ToObject(realm, O);
 
     // 2. Let key be ? ToPropertyKey(P).
     let key = To.ToPropertyKey(realm, P.throwIfNotConcrete());
@@ -257,8 +271,41 @@ export default function(realm: Realm): NativeFunctionValue {
     // 3. Let desc be ? obj.[[GetOwnProperty]](key).
     let desc = obj.$GetOwnProperty(key);
 
+    let getterFunc = desc && desc.get;
+    // If we are returning a descriptor with a NativeFunctionValue
+    // and it has no intrinsic name, then we create a temporal as this
+    // can only be done at runtime
+    if (
+      getterFunc instanceof NativeFunctionValue &&
+      getterFunc.intrinsicName === undefined &&
+      realm.useAbstractInterpretation
+    ) {
+      invariant(P instanceof Value);
+      // this will create a property descriptor at runtime
+      let result = AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        ObjectValue,
+        [getOwnPropertyDescriptor, obj, P],
+        ([methodNode, objNode, keyNode]) => t.callExpression(methodNode, [objNode, keyNode])
+      );
+      invariant(result instanceof AbstractObjectValue);
+      result.makeSimple();
+      let get = Get(realm, result, "get");
+      let set = Get(realm, result, "set");
+      invariant(get instanceof AbstractValue);
+      invariant(set instanceof AbstractValue);
+      desc = {
+        get,
+        set,
+        enumerable: false,
+        configurable: true,
+      };
+    }
+
     // 4. Return FromPropertyDescriptor(desc).
-    return Props.FromPropertyDescriptor(realm, desc);
+    let propDesc = Props.FromPropertyDescriptor(realm, desc);
+
+    return propDesc;
   });
 
   // ECMA262 19.1.2.7
@@ -270,7 +317,7 @@ export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.1.2.8
   func.defineNativeMethod("getOwnPropertyDescriptors", 1, (context, [O]) => {
     // 1. Let obj be ? ToObject(O).
-    let obj = To.ToObject(realm, O.throwIfNotConcrete());
+    let obj = To.ToObject(realm, O);
 
     // 2. Let ownKeys be ? obj.[[OwnPropertyKeys]]().
     let ownKeys = obj.$OwnPropertyKeys();
@@ -296,15 +343,16 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.9
-  func.defineNativeMethod("getOwnPropertySymbols", 1, (context, [O]) => {
-    // Return ? GetOwnPropertyKeys(O, Symbol).
-    return GetOwnPropertyKeys(realm, O, SymbolValue);
-  });
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
+    func.defineNativeMethod("getOwnPropertySymbols", 1, (context, [O]) => {
+      // Return ? GetOwnPropertyKeys(O, Symbol).
+      return GetOwnPropertyKeys(realm, O, SymbolValue);
+    });
 
   // ECMA262 19.1.2.10
   func.defineNativeMethod("getPrototypeOf", 1, (context, [O]) => {
     // 1. Let obj be ? ToObject(O).
-    let obj = To.ToObject(realm, O.throwIfNotConcrete());
+    let obj = To.ToObject(realm, O);
 
     // 2. Return ? obj.[[GetPrototypeOf]]().
     return obj.$GetPrototypeOf();
@@ -347,41 +395,95 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.15
-  func.defineNativeMethod("keys", 1, (context, [O]) => {
+  let objectKeys = func.defineNativeMethod("keys", 1, (context, [O]) => {
     // 1. Let obj be ? ToObject(O).
-    let obj = To.ToObject(realm, O.throwIfNotConcrete());
+    let obj = To.ToObject(realm, O);
+
+    // If we're in pure scope and the items are completely abstract,
+    // then create an abstract temporal with an array kind
+    if (realm.isInPureScope() && obj instanceof AbstractObjectValue) {
+      let array = ArrayValue.createTemporalWithWidenedNumericProperty(
+        realm,
+        [objectKeys, obj],
+        ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+      );
+      return array;
+    } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
+      return ArrayValue.createTemporalWithWidenedNumericProperty(realm, [objectKeys, obj], ([methodNode, objNode]) =>
+        t.callExpression(methodNode, [objNode])
+      );
+    }
 
     // 2. Let nameList be ? EnumerableOwnProperties(obj, "key").
-    let nameList = EnumerableOwnProperties(realm, obj, "key");
+    let nameList = EnumerableOwnProperties(realm, obj.throwIfNotConcreteObject(), "key");
 
     // 3. Return CreateArrayFromList(nameList).
     return Create.CreateArrayFromList(realm, nameList);
   });
 
   // ECMA262 9.1.2.16
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
-    func.defineNativeMethod("values", 1, (context, [O]) => {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
+    let objectValues = func.defineNativeMethod("values", 1, (context, [O]) => {
       // 1. Let obj be ? ToObject(O).
-      let obj = To.ToObject(realm, O.throwIfNotConcrete());
+      let obj = To.ToObject(realm, O);
+
+      if (realm.isInPureScope()) {
+        // If we're in pure scope and the items are completely abstract,
+        // then create an abstract temporal with an array kind
+        if (obj instanceof AbstractObjectValue) {
+          let array = ArrayValue.createTemporalWithWidenedNumericProperty(
+            realm,
+            [objectValues, obj],
+            ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+          );
+          return array;
+        } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
+          return ArrayValue.createTemporalWithWidenedNumericProperty(
+            realm,
+            [objectValues, obj],
+            ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+          );
+        }
+      }
 
       // 2. Let nameList be ? EnumerableOwnProperties(obj, "value").
-      let nameList = EnumerableOwnProperties(realm, obj, "value");
+      let nameList = EnumerableOwnProperties(realm, obj.throwIfNotConcreteObject(), "value");
 
       // 3. Return CreateArrayFromList(nameList).
       return Create.CreateArrayFromList(realm, nameList);
     });
+  }
 
   // ECMA262 19.1.2.17
-  func.defineNativeMethod("entries", 1, (context, [O]) => {
-    // 1. Let obj be ? ToObject(O).
-    let obj = To.ToObject(realm, O.throwIfNotConcrete());
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
+    let objectEntries = func.defineNativeMethod("entries", 1, (context, [O]) => {
+      // 1. Let obj be ? ToObject(O).
+      let obj = To.ToObject(realm, O);
 
-    // 2. Let nameList be ? EnumerableOwnProperties(obj, "key+value").
-    let nameList = EnumerableOwnProperties(realm, obj, "key+value");
+      // If we're in pure scope and the items are completely abstract,
+      // then create an abstract temporal with an array kind
+      if (realm.isInPureScope() && obj instanceof AbstractObjectValue) {
+        let array = ArrayValue.createTemporalWithWidenedNumericProperty(
+          realm,
+          [objectEntries, obj],
+          ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+        );
+        return array;
+      } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
+        return ArrayValue.createTemporalWithWidenedNumericProperty(
+          realm,
+          [objectEntries, obj],
+          ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+        );
+      }
 
-    // 3. Return CreateArrayFromList(nameList).
-    return Create.CreateArrayFromList(realm, nameList);
-  });
+      // 2. Let nameList be ? EnumerableOwnProperties(obj, "key+value").
+      let nameList = EnumerableOwnProperties(realm, obj.throwIfNotConcreteObject(), "key+value");
+
+      // 3. Return CreateArrayFromList(nameList).
+      return Create.CreateArrayFromList(realm, nameList);
+    });
+  }
 
   // ECMA262 19.1.2.18
   func.defineNativeMethod("preventExtensions", 1, (context, [O]) => {

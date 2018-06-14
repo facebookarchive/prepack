@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { CompilerDiagnostic } from "../errors.js";
+import { CompilerDiagnostic, InfeasiblePathError } from "../errors.js";
 import { Reference } from "../environment.js";
 import { computeBinary } from "./BinaryExpression.js";
 import { AbruptCompletion, BreakCompletion, PossiblyNormalCompletion, Completion } from "../completions.js";
@@ -120,40 +120,59 @@ function AbstractCaseBlockEvaluation(
     let selector = CaseSelectorEvaluation(test, strictCode, env, realm);
     let selectionResult = computeBinary(realm, "===", input, selector);
 
-    if (!selectionResult.mightNotBeTrue()) {
+    if (Path.implies(selectionResult)) {
       //  we have a winning result for the switch case, bubble it back up!
       return DefiniteCaseEvaluation(caseIndex);
-    } else if (!selectionResult.mightNotBeFalse()) {
+    } else if (Path.impliesNot(selectionResult)) {
       // we have a case that is definitely *not* taken
       // so we go and look at the next one in the hope of finding a match
       return AbstractCaseEvaluation(caseIndex + 1);
     } else {
-      invariant(selectionResult instanceof AbstractValue);
       // we can't be sure whether the case selector evaluates true or not
       // so we evaluate the case in the abstract as an if-else with the else
       // leading to the next case statement
-      let trueEffects = Path.withCondition(selectionResult, () => {
-        return realm.evaluateForEffects(
-          () => {
-            return DefiniteCaseEvaluation(caseIndex);
-          },
-          undefined,
-          "AbstractCaseEvaluation/1"
-        );
-      });
+      let trueEffects;
+      try {
+        trueEffects = Path.withCondition(selectionResult, () => {
+          return realm.evaluateForEffects(
+            () => {
+              return DefiniteCaseEvaluation(caseIndex);
+            },
+            undefined,
+            "AbstractCaseEvaluation/1"
+          );
+        });
+      } catch (e) {
+        if (e instanceof InfeasiblePathError) {
+          // selectionResult cannot be true in this path, after all.
+          return AbstractCaseEvaluation(caseIndex + 1);
+        }
+        throw e;
+      }
 
-      let falseEffects = Path.withInverseCondition(selectionResult, () => {
-        return realm.evaluateForEffects(
-          () => {
-            return AbstractCaseEvaluation(caseIndex + 1);
-          },
-          undefined,
-          "AbstractCaseEvaluation/2"
-        );
-      });
+      let falseEffects;
+      try {
+        falseEffects = Path.withInverseCondition(selectionResult, () => {
+          return realm.evaluateForEffects(
+            () => {
+              return AbstractCaseEvaluation(caseIndex + 1);
+            },
+            undefined,
+            "AbstractCaseEvaluation/2"
+          );
+        });
+      } catch (e) {
+        if (e instanceof InfeasiblePathError) {
+          // selectionResult cannot be false in this path, after all.
+          return DefiniteCaseEvaluation(caseIndex);
+        }
+        throw e;
+      }
 
-      let joinedEffects = Join.joinEffects(realm, selectionResult, trueEffects, falseEffects);
-      let completion = joinedEffects[0];
+      invariant(trueEffects !== undefined);
+      invariant(falseEffects !== undefined);
+      let joinedEffects = Join.joinForkOrChoose(realm, selectionResult, trueEffects, falseEffects);
+      let completion = joinedEffects.result;
       if (completion instanceof PossiblyNormalCompletion) {
         // in this case one of the branches may complete abruptly, which means that
         // not all control flow branches join into one flow at this point.
@@ -314,13 +333,59 @@ export default function(
   labelSet: Array<string>
 ): Value {
   let expression = ast.discriminant;
-  let cases: Array<BabelNodeSwitchCase> = ast.cases;
 
   // 1. Let exprRef be the result of evaluating Expression.
   let exprRef = env.evaluate(expression, strictCode);
 
   // 2. Let switchValue be ? GetValue(exprRef).
   let switchValue = Environment.GetValue(realm, exprRef);
+  if (switchValue instanceof AbstractValue && !switchValue.values.isTop()) {
+    let elems = switchValue.values.getElements();
+    let n = elems.size;
+    if (n > 1 && n < 10) {
+      let joinedEffects;
+      for (let concreteSwitchValue of elems) {
+        let condition = AbstractValue.createFromBinaryOp(realm, "===", switchValue, concreteSwitchValue);
+        let effects = realm.evaluateForEffects(
+          () => {
+            return Path.withCondition(condition, () => {
+              return evaluationHelper(ast, concreteSwitchValue, strictCode, env, realm, labelSet);
+            });
+          },
+          undefined,
+          "specialized switch"
+        );
+        joinedEffects =
+          joinedEffects === undefined ? effects : Join.joinForkOrChoose(realm, condition, effects, joinedEffects);
+      }
+      invariant(joinedEffects !== undefined);
+      realm.applyEffects(joinedEffects, "joined specialized switch");
+      let { result } = joinedEffects;
+      if (result instanceof AbruptCompletion) throw result;
+      if (result instanceof PossiblyNormalCompletion) {
+        // in this case one of the branches may complete abruptly, which means that
+        // not all control flow branches join into one flow at this point.
+        // Consequently we have to continue tracking changes until the point where
+        // all the branches come together into one.
+        result = realm.composeWithSavedCompletion(result);
+      }
+      invariant(result instanceof Value); // since evaluationHelper returns a value in non abrupt cases
+      return result;
+    }
+  }
+
+  return evaluationHelper(ast, switchValue, strictCode, env, realm, labelSet);
+}
+
+function evaluationHelper(
+  ast: BabelNodeSwitchStatement,
+  switchValue: Value,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  labelSet: Array<string>
+): Value {
+  let cases: Array<BabelNodeSwitchCase> = ast.cases;
 
   // 3. Let oldEnv be the running execution context's LexicalEnvironment.
   let oldEnv = realm.getRunningContext().lexicalEnvironment;

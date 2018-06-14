@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <title>Prepack &middot; Partial evaluator for JavaScript</title>
     <script src="js/prism.js"></script>
@@ -87,9 +87,7 @@
             </div>
             <div class="example-output">
               <div class="example-code">
-                <pre><code class="language-js">(function () {
-  s = "hello world";
-})();</code></pre>
+                <pre><code class="language-js">s = "hello world";</code></pre>
               </div>
             </div>
           </div>
@@ -110,11 +108,9 @@
             </div>
             <div class="example-output">
               <div class="example-code">
-                <pre><code class="language-js">(function () {
-  _a = "A";
-  _b = "B";
-  _4 = 42;
-})();</code></pre>
+                <pre><code class="language-js">_a = "A";
+_b = "B";
+_4 = 42;</code></pre>
               </div>
             </div>
           </div>
@@ -128,15 +124,13 @@
   function fibonacci(x) {
     return x <= 1 ? x : fibonacci(x - 1) + fibonacci(x - 2);
   }
-  global.x = fibonacci(23);
+  global.x = fibonacci(15);
 })();</code></pre>
               </div>
             </div>
             <div class="example-output">
               <div class="example-code">
-                <pre><code class="language-js">(function () {
-  x = 28657;
-})();</code></pre>
+                <pre><code class="language-js">x = 610;</code></pre>
               </div>
             </div>
           </div>
@@ -164,22 +158,21 @@ three = require("three");</code></pre>
             <div class="example-output">
               <div class="example-code">
                 <pre><code class="language-js">(function () {
-  function _2() {
-    return 3 + 1;
-  }
+  var _0 = function (id) {
+    let x = _1[id];
+    return x instanceof Function ? _1[id] = x() : x;
+  };
+
+  var _5 = function () {
+    return _0("three") + _0("one");
+  };
 
   var _1 = {
     one: 1,
     two: 2,
     three: 3,
-    four: _2
+    four: _5
   };
-
-  function _0(id) {
-    let x = _1[id];
-    return x instanceof Function ? _1[id] = x() : x;
-  }
-
   require = _0;
   three = 3;
 })();</code></pre>
@@ -206,11 +199,11 @@ three = require("three");</code></pre>
             <div class="example-output">
               <div class="example-code">
               <pre><code class="language-js">(function () {
-  var _0 = Date.now();
-  if (typeof _0 !== "number") {
-    throw new Error("Prepack model invariant violation");
-  }
-  result = _0 === 0 ? 55 : _0;
+  var _$1 = this;
+  var _$0 = _$1.Date.now();
+  var _1 = 0 === _$0;
+  var _0 = _1 ? 55 : _$0;
+  result = _0;
 })();</code></pre>
             </div>
           </div>
@@ -298,6 +291,32 @@ __residual("object", function(delay) {
   return global.pushSelfDestructButton(delay);
 }, "5 minutes");
 </code></pre>
+</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="content-container">
+            <h2>Optimize More Code!</h2>
+            <div class="align-left">
+              <p>
+                Out of the box, Prepack only optimizes code that gets executed along the global code path, the initialization phase.
+                You can explicitly instruct Prepack to optimize particular functions as shown in the following example.
+              </p>
+              <pre><code class="language-js">global.f = function() {
+  var res = 0;
+  for (var i = 0; i < 100; i++) res += i;
+  return res;
+}
+
+// A call to __optimize along the global code instructs Prepack to optimize the given function.
+__optimize(global.f);
+</code></pre>
+              <p>
+                <b>Note:</b> Prepack makes a significant assumption:
+                The optimized function (and all other functions it might transitively call) does not depend on any state that is mutated after the global code finished executing. Also, Prepack does check and reject two different optimized functions that mutate the same state.
+              </p>
             </div>
           </div>
         </div>
@@ -365,6 +384,18 @@ __residual("object", function(delay) {
             </div>
           </div>
         </div>
+
+        <div class="section">
+          <div class="content-container">
+            <h2>Contributing</h2>
+            <div class="align-left">
+
+              <p>
+                You can follow the <a href="https://github.com/facebook/prepack/blob/master/CONTRIBUTING.md">contributing guidelines</a>. There is also a <a href="https://github.com/facebook/prepack/wiki/Suggested-reading">suggested reading list </a> to learn more about the internals of the project.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -372,7 +403,7 @@ __residual("object", function(delay) {
       <div class="content-container">
         <div class="footer">
           <div>
-            Copyright &copy; 2017 Facebook Inc.
+            Copyright &copy; 2018 Facebook Inc.
           </div>
           <div>
             <a href="https://code.facebook.com/projects/" target="_blank">
@@ -386,7 +417,7 @@ __residual("object", function(delay) {
         </div>
       </div>
     </div>
-
+</div>
     <script src="js/toggle_menu.js"></script>
   </body>
 </html>

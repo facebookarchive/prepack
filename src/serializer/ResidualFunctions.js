@@ -27,11 +27,17 @@ import type {
 } from "babel-types";
 import type { FunctionBodyAstNode } from "../types.js";
 import type { NameGenerator } from "../utils/generator.js";
-import traverse from "babel-traverse";
 import invariant from "../invariant.js";
-import type { FunctionInfo, FactoryFunctionInfo, FunctionInstance, AdditionalFunctionInfo } from "./types.js";
-import { BodyReference, AreSameResidualBinding, SerializerStatistics } from "./types.js";
-import { ClosureRefReplacer } from "./visitors.js";
+import type {
+  ResidualFunctionBinding,
+  FunctionInfo,
+  FactoryFunctionInfo,
+  FunctionInstance,
+  AdditionalFunctionInfo,
+} from "./types.js";
+import { BodyReference, AreSameResidualBinding } from "./types.js";
+import { SerializerStatistics } from "./statistics.js";
+import { ResidualFunctionInstantiator, type Replacement, getReplacement } from "./ResidualFunctionInstantiator.js";
 import { Modules } from "../utils/modules.js";
 import { ResidualFunctionInitializers } from "./ResidualFunctionInitializers.js";
 import { nullExpression } from "../utils/internalizer.js";
@@ -46,19 +52,16 @@ type ResidualFunctionsResult = {
   strictFunctionBodies: Array<
     BabelNodeFunctionExpression | BabelNodeClassExpression | BabelNodeArrowFunctionExpression
   >,
-  requireStatistics: { replaced: number, count: number },
 };
 
 export class ResidualFunctions {
   constructor(
     realm: Realm,
-    statistics: SerializerStatistics,
     options: SerializerOptions,
     modules: Modules,
-    requireReturns: Map<number | string, BabelNodeExpression>,
+    requireReturns: Map<number | string, Replacement>,
     locationService: LocationService,
     prelude: Array<BabelNodeStatement>,
-    initializerNameGenerator: NameGenerator,
     factoryNameGenerator: NameGenerator,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     residualFunctionInstances: Map<FunctionValue, FunctionInstance>,
@@ -68,7 +71,6 @@ export class ResidualFunctions {
     referentializer: Referentializer
   ) {
     this.realm = realm;
-    this.statistics = statistics;
     this.modules = modules;
     this.requireReturns = requireReturns;
     this.locationService = locationService;
@@ -79,11 +81,7 @@ export class ResidualFunctions {
     this.functions = new Map();
     this.classes = new Map();
     this.functionInstances = [];
-    this.residualFunctionInitializers = new ResidualFunctionInitializers(
-      locationService,
-      prelude,
-      initializerNameGenerator
-    );
+    this.residualFunctionInitializers = new ResidualFunctionInitializers(locationService);
     this.residualFunctionInfos = residualFunctionInfos;
     this.residualFunctionInstances = residualFunctionInstances;
     this.residualClassMethodInstances = residualClassMethodInstances;
@@ -94,13 +92,15 @@ export class ResidualFunctions {
       if (!additionalFunctionValueInfos.has(instance.functionValue)) this.addFunctionInstance(instance);
     }
     this.additionalFunctionValueNestedFunctions = additionalFunctionValueNestedFunctions;
-    this.simpleClosures = !!options.simpleClosures;
+    this.additionalFunctionPreludes = new Map();
+    for (let functionValue of additionalFunctionValueInfos.keys()) {
+      this.additionalFunctionPreludes.set(functionValue, []);
+    }
   }
 
   realm: Realm;
   modules: Modules;
-  statistics: SerializerStatistics;
-  requireReturns: Map<number | string, BabelNodeExpression>;
+  requireReturns: Map<number | string, Replacement>;
   locationService: LocationService;
   prelude: Array<BabelNodeStatement>;
   factoryNameGenerator: NameGenerator;
@@ -116,7 +116,12 @@ export class ResidualFunctions {
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   additionalFunctionValueNestedFunctions: Set<FunctionValue>;
   referentializer: Referentializer;
-  simpleClosures: boolean;
+  additionalFunctionPreludes: Map<FunctionValue, Array<BabelNodeStatement>>;
+
+  getStatistics() {
+    invariant(this.realm.statistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
+    return this.realm.statistics;
+  }
 
   addFunctionInstance(instance: FunctionInstance) {
     this.functionInstances.push(instance);
@@ -134,7 +139,9 @@ export class ResidualFunctions {
   }
 
   _shouldUseFactoryFunction(funcBody: BabelNodeBlockStatement, instances: Array<FunctionInstance>) {
+    invariant(instances.length > 0);
     function shouldInlineFunction(): boolean {
+      if (instances[0].scopeInstances.size > 0) return false;
       let shouldInline = true;
       if (funcBody.start && funcBody.end) {
         let bodySize = funcBody.end - funcBody.start;
@@ -145,7 +152,58 @@ export class ResidualFunctions {
     let functionInfo = this.residualFunctionInfos.get(funcBody);
     invariant(functionInfo);
     let { usesArguments } = functionInfo;
-    return !shouldInlineFunction() && instances.length > 1 && !usesArguments && !this.simpleClosures;
+    return !shouldInlineFunction() && instances.length > 1 && !usesArguments;
+  }
+
+  _getIdentifierReplacements(
+    funcBody: BabelNodeBlockStatement,
+    residualFunctionBindings: Map<string, ResidualFunctionBinding>
+  ): Map<BabelNodeIdentifier, Replacement> {
+    let functionInfo = this.residualFunctionInfos.get(funcBody);
+    invariant(functionInfo);
+    let { unbound } = functionInfo;
+    let res = new Map();
+    for (let [name, nodes] of unbound) {
+      let residualFunctionBinding = residualFunctionBindings.get(name);
+      if (residualFunctionBinding === undefined) continue;
+
+      // Let's skip bindings that are referring to
+      // 1) something global (without an environment record), and
+      // 2) have not been assigned a value (which would mean that they have a var/let binding and Prepack will take the liberty to rename them).
+      if (
+        residualFunctionBinding.declarativeEnvironmentRecord === null &&
+        residualFunctionBinding.value === undefined
+      ) {
+        continue;
+      }
+
+      let serializedValue = residualFunctionBinding.serializedValue;
+      invariant(serializedValue !== undefined);
+      let replacement = getReplacement(
+        serializedValue,
+        residualFunctionBinding.referentialized ? undefined : residualFunctionBinding.value
+      );
+      for (let node of nodes) res.set(node, replacement);
+    }
+    return res;
+  }
+
+  _getCallReplacements(funcBody: BabelNodeBlockStatement): Map<BabelNode, Replacement> {
+    let functionInfo = this.residualFunctionInfos.get(funcBody);
+    invariant(functionInfo);
+    let { requireCalls, modified } = functionInfo;
+    let res = new Map();
+    for (let [callNode, moduleId] of requireCalls) {
+      this.getStatistics().requireCalls++;
+      if (modified.has(callNode.callee.name)) continue;
+
+      let replacement = this.requireReturns.get("" + moduleId);
+      if (replacement !== undefined) {
+        this.getStatistics().requireCallsReplaced++;
+        res.set(callNode, replacement);
+      }
+    }
+    return res;
   }
 
   // Note: this function takes linear time. Please do not call it inside loop.
@@ -200,6 +258,12 @@ export class ResidualFunctions {
     });
   }
 
+  _createFunctionExpression(params: Array<BabelNodeLVal>, body: BabelNodeBlockStatement, isLexical: boolean) {
+    // Additional statements might be inserted at the beginning of the body, so we clone it.
+    body = ((Object.assign({}, body): any): BabelNodeBlockStatement);
+    return isLexical ? t.arrowFunctionExpression(params, body) : t.functionExpression(null, params, body);
+  }
+
   spliceFunctions(
     rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>>
   ): ResidualFunctionsResult {
@@ -207,31 +271,28 @@ export class ResidualFunctions {
 
     let functionBodies = new Map();
     // these need to get spliced in at the end
-    let additionalFunctionPreludes = new Map();
     let additionalFunctionModifiedBindingsSegment: Map<FunctionValue, Array<BabelNodeStatement>> = new Map();
     let getModifiedBindingsSegment = additionalFunction =>
       getOrDefault(additionalFunctionModifiedBindingsSegment, additionalFunction, () => []);
     let getFunctionBody = (instance: FunctionInstance): Array<BabelNodeStatement> =>
       getOrDefault(functionBodies, instance, () => []);
-    let globalPrelude = this.prelude;
-    function getPrelude(instance: FunctionInstance): Array<BabelNodeStatement> {
+    let getPrelude = (instance: FunctionInstance): Array<BabelNodeStatement> => {
       let additionalFunction = instance.containingAdditionalFunction;
       let b;
-      if (additionalFunction) {
-        b = getOrDefault(additionalFunctionPreludes, additionalFunction, () => []);
+      if (additionalFunction !== undefined) {
+        b = this.additionalFunctionPreludes.get(additionalFunction);
+        invariant(b !== undefined);
       } else {
-        b = globalPrelude;
+        b = this.prelude;
       }
       return b;
-    }
-
-    let requireStatistics = { replaced: 0, count: 0 };
+    };
 
     let functionEntries: Array<[BabelNodeBlockStatement, Array<FunctionInstance>]> = Array.from(
       this.functions.entries()
     );
     this._sortFunctionByOriginalOrdering(functionEntries);
-    this.statistics.functions = functionEntries.length;
+    this.getStatistics().functions = functionEntries.length;
     let unstrictFunctionBodies = [];
     let strictFunctionBodies = [];
     let funcNodes: Map<FunctionValue, BabelNodeFunctionExpression> = new Map();
@@ -272,14 +333,13 @@ export class ResidualFunctions {
 
     // Emit code for ModifiedBindings for additional functions
     for (let [funcValue, funcInfo] of this.additionalFunctionValueInfos) {
+      let scopes = new Set();
       for (let [, residualBinding] of funcInfo.modifiedBindings) {
         let scope = residualBinding.scope;
-        if (scope === undefined) continue;
+        if (scope === undefined || scopes.has(scope)) continue;
+        scopes.add(scope);
 
-        // TODO #989: This should probably be an invariant once captures work properly
-        // Currently we don't referentialize bindings in additional functions (but we
-        // do for bindings nested in additional functions)
-        if (!residualBinding.referentialized) continue;
+        invariant(residualBinding.referentialized);
 
         // Find the proper prelude to emit to (global vs additional function's prelude)
         let bodySegment = getModifiedBindingsSegment(funcValue);
@@ -287,11 +347,7 @@ export class ResidualFunctions {
         // binding has been referentialized, so setup the scope to be able to
         // access bindings from other __captured_scopes initializers
         if (scope.referentializationScope !== funcValue) {
-          let decl = t.variableDeclaration("var", [
-            t.variableDeclarator(t.identifier(scope.name), t.numericLiteral(scope.id)),
-          ]);
-          let init = this.referentializer.getReferentializedScopeInitialization(scope);
-          bodySegment.push(decl);
+          let init = this.referentializer.getReferentializedScopeInitialization(scope, t.numericLiteral(scope.id));
           // flow forces me to do this
           Array.prototype.push.apply(bodySegment, init);
         }
@@ -311,7 +367,6 @@ export class ResidualFunctions {
       // rewritten functions shouldn't have references fixed up because the body,
       // consists of serialized code. For simplicity we emit their instances in a naive way
       let functionBody = t.blockStatement(rewrittenBody);
-      let funcParams = params.slice();
       let funcOrClassNode;
 
       if (this.residualClassMethodInstances.has(funcValue)) {
@@ -334,7 +389,7 @@ export class ResidualFunctions {
         let classMethod = t.classMethod(
           methodType,
           classMethodKeyNode,
-          funcParams,
+          params,
           functionBody,
           classMethodComputed,
           classMethodIsStatic
@@ -354,7 +409,7 @@ export class ResidualFunctions {
           funcOrClassNode.superClass = classSuperNode;
         }
       } else {
-        funcOrClassNode = t.functionExpression(null, funcParams, functionBody);
+        funcOrClassNode = t.functionExpression(null, params, functionBody);
       }
       let id = this.locationService.getLocation(funcValue);
       invariant(id !== undefined);
@@ -372,7 +427,7 @@ export class ResidualFunctions {
     for (let [funcBody, instances] of functionEntries) {
       let functionInfo = this.residualFunctionInfos.get(funcBody);
       invariant(functionInfo);
-      let { unbound, modified, usesThis } = functionInfo;
+      let { unbound, usesThis } = functionInfo;
       let params = instances[0].functionValue.$FormalParameters;
       invariant(params !== undefined);
 
@@ -386,7 +441,7 @@ export class ResidualFunctions {
       }
 
       let naiveProcessInstances = instancesToSplice => {
-        this.statistics.functionClones += instancesToSplice.length - 1;
+        this.getStatistics().functionClones += instancesToSplice.length;
 
         for (let instance of instancesToSplice) {
           let { functionValue, residualFunctionBindings, scopeInstances } = instance;
@@ -415,34 +470,20 @@ export class ResidualFunctions {
             let hasEmptyConstructor = !!functionValue.$HasEmptyConstructor;
             if (!isConstructor || (isConstructor && !hasEmptyConstructor)) {
               let methodParams = params.slice();
-              let methodBody = ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement);
-              // create the class method AST
-              let classMethod = t.classMethod(
-                methodType,
-                classMethodKeyNode,
-                methodParams,
-                methodBody,
-                classMethodComputed,
-                classMethodIsStatic
-              );
-              // traverse and replace refs in the class method
-              traverse(
-                t.file(
-                  t.program([t.expressionStatement(t.classExpression(null, null, t.classBody([classMethod]), []))])
-                ),
-                ClosureRefReplacer,
-                null,
-                {
-                  residualFunctionBindings,
-                  modified,
-                  requireReturns: this.requireReturns,
-                  requireStatistics,
-                  getModuleIdIfNodeIsRequireFunction: this.modules.getGetModuleIdIfNodeIsRequireFunction(methodParams, [
-                    functionValue,
-                  ]),
-                  factoryFunctionInfos,
-                }
-              );
+              let classMethod = new ResidualFunctionInstantiator(
+                factoryFunctionInfos,
+                this._getIdentifierReplacements(funcBody, residualFunctionBindings),
+                this._getCallReplacements(funcBody),
+                t.classMethod(
+                  methodType,
+                  classMethodKeyNode,
+                  methodParams,
+                  funcBody,
+                  classMethodComputed,
+                  classMethodIsStatic
+                )
+              ).instantiate();
+
               // add the class method to the class expression node body
               if (isConstructor) {
                 funcOrClassNode.body.body.unshift(classMethod);
@@ -459,44 +500,26 @@ export class ResidualFunctions {
               funcOrClassNode.superClass = classSuperNode;
             }
           } else {
-            let funcParams = params.slice();
-            if (instance.functionValue.$ThisMode === "lexical") {
-              funcOrClassNode = t.arrowFunctionExpression(
-                funcParams,
-                ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
-              );
-            } else {
-              funcOrClassNode = t.functionExpression(
-                null,
-                funcParams,
-                ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
-              );
-            }
-            let scopeInitialization = [];
-            for (let [scopeName, scope] of scopeInstances) {
-              scopeInitialization.push(
-                t.variableDeclaration("var", [
-                  t.variableDeclarator(t.identifier(scopeName), t.numericLiteral(scope.id)),
-                ])
-              );
-              scopeInitialization = scopeInitialization.concat(
-                this.referentializer.getReferentializedScopeInitialization(scope)
-              );
-            }
-            let funcOrClassNodeBody = ((funcOrClassNode.body: any): BabelNodeBlockStatement);
-            invariant(t.isBlockStatement(funcOrClassNodeBody));
-            funcOrClassNodeBody.body = scopeInitialization.concat(funcOrClassNodeBody.body);
-
-            traverse(t.file(t.program([t.expressionStatement(funcOrClassNode)])), ClosureRefReplacer, null, {
-              residualFunctionBindings,
-              modified,
-              requireReturns: this.requireReturns,
-              requireStatistics,
-              getModuleIdIfNodeIsRequireFunction: this.modules.getGetModuleIdIfNodeIsRequireFunction(funcParams, [
-                functionValue,
-              ]),
+            let isLexical = instance.functionValue.$ThisMode === "lexical";
+            funcOrClassNode = new ResidualFunctionInstantiator(
               factoryFunctionInfos,
-            });
+              this._getIdentifierReplacements(funcBody, residualFunctionBindings),
+              this._getCallReplacements(funcBody),
+              this._createFunctionExpression(params, funcBody, isLexical)
+            ).instantiate();
+
+            let scopeInitialization = [];
+            for (let scope of scopeInstances.values()) {
+              scopeInitialization = scopeInitialization.concat(
+                this.referentializer.getReferentializedScopeInitialization(scope, t.numericLiteral(scope.id))
+              );
+            }
+
+            if (scopeInitialization.length > 0) {
+              let funcOrClassNodeBody = ((funcOrClassNode.body: any): BabelNodeBlockStatement);
+              invariant(t.isBlockStatement(funcOrClassNodeBody));
+              funcOrClassNodeBody.body = scopeInitialization.concat(funcOrClassNodeBody.body);
+            }
           }
           let id = this.locationService.getLocation(functionValue);
           invariant(id !== undefined);
@@ -513,8 +536,9 @@ export class ResidualFunctions {
       };
 
       if (additionalFunctionNestedInstances.length > 0) naiveProcessInstances(additionalFunctionNestedInstances);
-      if (!this._shouldUseFactoryFunction(funcBody, normalInstances)) {
+      if (normalInstances.length > 0 && !this._shouldUseFactoryFunction(funcBody, normalInstances)) {
         naiveProcessInstances(normalInstances);
+        this.getStatistics().functionClones--;
       } else if (normalInstances.length > 0) {
         const functionUniqueTag = ((funcBody: any): FunctionBodyAstNode).uniqueOrderedTag;
         invariant(functionUniqueTag);
@@ -525,7 +549,7 @@ export class ResidualFunctions {
         // filter included variables to only include those that are different
         let factoryNames: Array<string> = [];
         let sameResidualBindings = new Map();
-        for (let name of unbound) {
+        for (let name of unbound.keys()) {
           let isDifferent = false;
           let lastBinding;
 
@@ -565,45 +589,36 @@ export class ResidualFunctions {
 
         let scopeInitialization = [];
         for (let [scopeName, scope] of normalInstances[0].scopeInstances) {
-          factoryParams.push(t.identifier(scopeName));
+          let scopeNameId = t.identifier(scopeName);
+          factoryParams.push(scopeNameId);
           scopeInitialization = scopeInitialization.concat(
-            this.referentializer.getReferentializedScopeInitialization(scope)
+            this.referentializer.getReferentializedScopeInitialization(scope, scopeNameId)
           );
         }
 
         factoryParams = factoryParams.concat(params).slice();
+        let factoryNode = new ResidualFunctionInstantiator(
+          factoryFunctionInfos,
+          this._getIdentifierReplacements(funcBody, sameResidualBindings),
+          this._getCallReplacements(funcBody),
+          this._createFunctionExpression(factoryParams, funcBody, false)
+        ).instantiate();
 
-        // The Replacer below mutates the AST while the original AST may still be referenced
-        // by another outer residual function so let's clone the original AST to avoid modifying it.
-        let factoryNode = t.functionExpression(
-          null,
-          factoryParams,
-          ((t.cloneDeep(funcBody): any): BabelNodeBlockStatement)
-        );
+        if (scopeInitialization.length > 0) {
+          let factoryNodeBody = ((factoryNode.body: any): BabelNodeBlockStatement);
+          invariant(t.isBlockStatement(factoryNodeBody));
+          factoryNodeBody.body = scopeInitialization.concat(factoryNodeBody.body);
+        }
+
+        // factory functions do not depend on any nested generator scope, so they go to the prelude
+        let factoryDeclaration = t.variableDeclaration("var", [t.variableDeclarator(factoryId, factoryNode)]);
+        this.prelude.push(factoryDeclaration);
 
         if (normalInstances[0].functionValue.$Strict) {
           strictFunctionBodies.push(factoryNode);
         } else {
           unstrictFunctionBodies.push(factoryNode);
         }
-
-        factoryNode.body.body = scopeInitialization.concat(factoryNode.body.body);
-
-        // factory functions do not depend on any nested generator scope, so they go to the prelude
-        let factoryDeclaration = t.variableDeclaration("var", [t.variableDeclarator(factoryId, factoryNode)]);
-        this.prelude.push(factoryDeclaration);
-
-        traverse(t.file(t.program([t.expressionStatement(factoryNode)])), ClosureRefReplacer, null, {
-          residualFunctionBindings: sameResidualBindings,
-          modified,
-          requireReturns: this.requireReturns,
-          requireStatistics,
-          getModuleIdIfNodeIsRequireFunction: this.modules.getGetModuleIdIfNodeIsRequireFunction(
-            factoryParams,
-            normalInstances.map(instance => instance.functionValue)
-          ),
-          factoryFunctionInfos,
-        });
 
         for (let instance of normalInstances) {
           let { functionValue, residualFunctionBindings, insertionPoint } = instance;
@@ -632,8 +647,7 @@ export class ResidualFunctions {
             usesThis ||
             hasFunctionArg ||
             (firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint)) ||
-            this.functionPrototypes.get(functionValue) !== undefined ||
-            this.simpleClosures
+            this.functionPrototypes.get(functionValue) !== undefined
           ) {
             let callArgs: Array<BabelNodeExpression | BabelNodeSpreadElement> = [t.thisExpression()];
             for (let flatArg of flatArgs) callArgs.push(flatArg);
@@ -667,11 +681,14 @@ export class ResidualFunctions {
     }
 
     for (let referentializationScope of this.referentializer.referentializationState.keys()) {
-      let prelude = this.prelude;
+      let prelude;
       // Get the prelude for this additional function value
       if (referentializationScope !== "GLOBAL") {
         let additionalFunction = referentializationScope;
-        prelude = getOrDefault(additionalFunctionPreludes, additionalFunction, () => []);
+        prelude = this.additionalFunctionPreludes.get(additionalFunction);
+        invariant(prelude !== undefined);
+      } else {
+        prelude = this.prelude;
       }
       prelude.unshift(this.referentializer.createCaptureScopeAccessFunction(referentializationScope));
       prelude.unshift(this.referentializer.createCapturedScopesArrayInitialization(referentializationScope));
@@ -688,22 +705,6 @@ export class ResidualFunctions {
       }
     }
 
-    for (let [additionalFunction, body] of Array.from(rewrittenAdditionalFunctions.entries()).reverse()) {
-      let additionalFunctionInfo = this.additionalFunctionValueInfos.get(additionalFunction);
-      invariant(additionalFunctionInfo);
-      // Modified bindings initializers of optimized function
-      let bodySegment = additionalFunctionModifiedBindingsSegment.get(additionalFunction);
-      // initializers from Referentialization
-      let initializationStatements = getFunctionBody(additionalFunctionInfo.instance);
-      let prelude = additionalFunctionPreludes.get(additionalFunction);
-      let insertionPoint = additionalFunctionInfo.instance.insertionPoint;
-      invariant(insertionPoint);
-      // TODO: I think this inserts things in the wrong place
-      insertionPoint.body.entries.splice(insertionPoint.index, 0, ...initializationStatements);
-      if (bodySegment) body.unshift(...bodySegment);
-      if (prelude) body.unshift(...prelude);
-    }
-
     // Inject initializer code for indexed vars into functions (for delay initializations)
     for (let [functionValue, funcNode] of funcNodes) {
       let initializerStatement = this.residualFunctionInitializers.getInitializerStatement(functionValue);
@@ -714,7 +715,24 @@ export class ResidualFunctions {
       }
     }
 
-    return { unstrictFunctionBodies, strictFunctionBodies, requireStatistics };
+    for (let [additionalFunction, body] of Array.from(rewrittenAdditionalFunctions.entries()).reverse()) {
+      let additionalFunctionInfo = this.additionalFunctionValueInfos.get(additionalFunction);
+      invariant(additionalFunctionInfo);
+      // Modified bindings initializers of optimized function
+      let bodySegment = additionalFunctionModifiedBindingsSegment.get(additionalFunction);
+      // initializers from Referentialization
+      let initializationStatements = getFunctionBody(additionalFunctionInfo.instance);
+      let prelude = this.additionalFunctionPreludes.get(additionalFunction);
+      invariant(prelude !== undefined);
+      let insertionPoint = additionalFunctionInfo.instance.insertionPoint;
+      invariant(insertionPoint);
+      // TODO: I think this inserts things in the wrong place
+      insertionPoint.body.entries.splice(insertionPoint.index, 0, ...initializationStatements);
+      if (bodySegment) body.unshift(...bodySegment);
+      body.unshift(...prelude);
+    }
+
+    return { unstrictFunctionBodies, strictFunctionBodies };
   }
   _getOrCreateClassNode(classPrototype: ObjectValue): BabelNodeClassExpression {
     if (!this.classes.has(classPrototype)) {

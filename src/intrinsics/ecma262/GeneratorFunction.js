@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
@@ -20,7 +20,8 @@ export default function(realm: Realm): NativeFunctionValue {
     "GeneratorFunction",
     "GeneratorFunction",
     1,
-    (context, args, argCount, NewTarget) => {
+    (context, _args, argCount, NewTarget) => {
+      let args = _args;
       // 1. Let C be the active function object.
       let C = func;
 

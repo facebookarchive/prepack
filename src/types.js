@@ -31,7 +31,7 @@ import { Value } from "./values/index.js";
 import {
   AbruptCompletion,
   Completion,
-  JoinedAbruptCompletions,
+  ForkedAbruptCompletion,
   NormalCompletion,
   PossiblyNormalCompletion,
 } from "./completions.js";
@@ -49,6 +49,8 @@ import type {
   BabelNodeSourceLocation,
 } from "babel-types";
 import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "./realm.js";
+import { CompilerDiagnostic } from "./errors.js";
+import type { Severity } from "./errors.js";
 
 export const ElementSize = {
   Float32: 4,
@@ -61,6 +63,24 @@ export const ElementSize = {
   Uint32: 4,
   Uint8Clamped: 1,
 };
+
+export type ConsoleMethodTypes =
+  | "assert"
+  | "clear"
+  | "count"
+  | "dir"
+  | "dirxml"
+  | "error"
+  | "group"
+  | "groupCollapsed"
+  | "groupEnd"
+  | "info"
+  | "log"
+  | "table"
+  | "time"
+  | "timeEnd"
+  | "trace"
+  | "warn";
 
 export type IterationKind = "key+value" | "value" | "key";
 
@@ -95,7 +115,7 @@ export type ElementType =
 //
 
 declare class _CallableObjectValue extends ObjectValue {
-  $Call: void | ((thisArgument: Value, argsList: Array<Value>) => Value),
+  $Call: void | ((thisArgument: Value, argsList: Array<Value>) => Value);
 }
 export type CallableObjectValue = _CallableObjectValue | FunctionValue | NativeFunctionValue;
 
@@ -110,9 +130,9 @@ export type Descriptor = {
   enumerable?: boolean,
   configurable?: boolean,
 
-  // If value.IsEmpty is true then this descriptor indicates that the
+  // If value instanceof EmptyValue, then this descriptor indicates that the
   // corresponding property has been deleted.
-  // Only internal properties (those starting with $) will ever have array values.
+  // Only internal properties (those starting with $ / where internalSlot of owning property binding is true) will ever have array values.
   value?: Value | Array<any>,
 
   get?: UndefinedValue | CallableObjectValue | AbstractValue,
@@ -135,9 +155,10 @@ export type FunctionBodyAstNode = {
 export type PropertyBinding = {
   descriptor?: Descriptor,
   object: ObjectValue | AbstractObjectValue,
-  key: any,
+  key: void | string | SymbolValue | AbstractValue, // where an abstract value must be of type String or Number or Symbol
   // contains a build node that produces a member expression that resolves to this property binding (location)
   pathNode?: AbstractValue,
+  internalSlot?: boolean,
 };
 
 export type LexicalEnvironmentTypes = "global" | "module" | "script" | "function" | "block" | "catch" | "loop" | "with";
@@ -324,24 +345,27 @@ export type ClassComponentMetadata = {
   instanceSymbols: Set<SymbolValue>,
 };
 
-export type ReactHint = {| object: ObjectValue, propertyName: string, args: Array<Value> |};
+export type ReactHint = {| firstRenderValue: Value, object: ObjectValue, propertyName: string, args: Array<Value> |};
 
 export type ReactComponentTreeConfig = {
   firstRenderOnly: boolean,
+  isRoot: boolean,
 };
 
 export type DebugServerType = {
   checkForActions: BabelNode => void,
+  handlePrepackError: CompilerDiagnostic => void,
+  shouldStopForSeverity: Severity => boolean,
   shutdown: () => void,
 };
 
 export type PathType = {
-  implies(condition: AbstractValue): boolean,
-  impliesNot(condition: AbstractValue): boolean,
-  withCondition<T>(condition: AbstractValue, evaluate: () => T): T,
-  withInverseCondition<T>(condition: AbstractValue, evaluate: () => T): T,
-  pushAndRefine(condition: AbstractValue): void,
-  pushInverseAndRefine(condition: AbstractValue): void,
+  implies(condition: Value): boolean,
+  impliesNot(condition: Value): boolean,
+  withCondition<T>(condition: Value, evaluate: () => T): T,
+  withInverseCondition<T>(condition: Value, evaluate: () => T): T,
+  pushAndRefine(condition: Value): void,
+  pushInverseAndRefine(condition: Value): void,
 };
 
 export type HavocType = {
@@ -476,7 +500,7 @@ export type FunctionType = {
   // ECMA262 9.2.3
   FunctionAllocate(
     realm: Realm,
-    functionPrototype: ObjectValue,
+    functionPrototype: ObjectValue | AbstractObjectValue,
     strict: boolean,
     functionKind: "normal" | "non-constructor" | "generator"
   ): ECMAScriptSourceFunctionValue,
@@ -493,7 +517,7 @@ export type FunctionType = {
   PerformEval(realm: Realm, x: Value, evalRealm: Realm, strictCaller: boolean, direct: boolean): Value,
 
   // If c is an abrupt completion and realm.savedCompletion is defined, the result is an instance of
-  // JoinedAbruptCompletions and the effects that have been captured since the PossiblyNormalCompletion instance
+  // ForkedAbruptCompletion and the effects that have been captured since the PossiblyNormalCompletion instance
   // in realm.savedCompletion has been created, becomes the effects of the branch that terminates in c.
   // If c is a normal completion, the result is realm.savedCompletion, with its value updated to c.
   // If c is undefined, the result is just realm.savedCompletion.
@@ -677,7 +701,7 @@ export type JoinType = {
     c1: PossiblyNormalCompletion,
     c2: AbruptCompletion,
     realm: Realm
-  ): AbruptCompletion,
+  ): ForkedAbruptCompletion,
 
   unbundleNormalCompletion(
     completionOrValue: Completion | Value | Reference
@@ -693,7 +717,8 @@ export type JoinType = {
   composePossiblyNormalCompletions(
     realm: Realm,
     pnc: PossiblyNormalCompletion,
-    c: PossiblyNormalCompletion
+    c: PossiblyNormalCompletion,
+    priorEffects?: Effects
   ): PossiblyNormalCompletion,
 
   updatePossiblyNormalCompletionWithSubsequentEffects(
@@ -704,10 +729,7 @@ export type JoinType = {
 
   updatePossiblyNormalCompletionWithValue(realm: Realm, pnc: PossiblyNormalCompletion, v: Value): void,
 
-  // Returns the joined effects of all of the paths in pnc.
-  // The normal path in pnc is modified to become terminated by ac,
-  // so the overall completion will always be an instance of JoinedAbruptCompletions
-  joinPossiblyNormalCompletionWithAbruptCompletion(
+  replacePossiblyNormalCompletionWithForkedAbruptCompletion(
     realm: Realm,
     // a forked path with a non abrupt (normal) component
     pnc: PossiblyNormalCompletion,
@@ -715,36 +737,41 @@ export type JoinType = {
     ac: AbruptCompletion,
     // effects collected after pnc was constructed
     e: Effects
-  ): Effects,
+  ): ForkedAbruptCompletion,
 
-  joinPossiblyNormalCompletionWithValue(
+  updatePossiblyNormalCompletionWithConditionalValue(
     realm: Realm,
     joinCondition: AbstractValue,
     pnc: PossiblyNormalCompletion,
     v: Value
   ): void,
 
-  joinValueWithPossiblyNormalCompletion(
+  updatePossiblyNormalCompletionWithInverseConditionalValue(
     realm: Realm,
     joinCondition: AbstractValue,
     pnc: PossiblyNormalCompletion,
     v: Value
   ): void,
 
-  joinEffectsAndPromoteNestedReturnCompletions(
+  extractAndJoinCompletionsOfType(
+    CompletionType: typeof AbruptCompletion,
     realm: Realm,
-    c: Completion | Value,
-    e: Effects,
-    nested_effects?: Effects
+    c: AbruptCompletion,
+    convertToPNC?: boolean
   ): Effects,
 
-  unbundleReturnCompletion(realm: Realm, c: JoinedAbruptCompletions): [Effects, PossiblyNormalCompletion],
+  joinForkOrChoose(realm: Realm, joinCondition: Value, e1: Effects, e2: Effects): Effects,
 
-  removeNormalEffects(realm: Realm, c: PossiblyNormalCompletion): Effects,
+  joinNestedEffects(realm: Realm, c: Completion, precedingEffects?: Effects): Effects,
 
-  joinEffects(realm: Realm, joinCondition: AbstractValue, e1: Effects, e2: Effects): Effects,
+  collapseResults(
+    realm: Realm,
+    joinCondition: AbstractValue,
+    result1: EvaluationResult,
+    result2: EvaluationResult
+  ): AbruptCompletion | PossiblyNormalCompletion | Value,
 
-  joinResults(
+  joinOrForkResults(
     realm: Realm,
     joinCondition: AbstractValue,
     result1: EvaluationResult,
@@ -775,8 +802,6 @@ export type JoinType = {
     getAbstractValue: (void | Value, void | Value) => Value
   ): Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
 
-  joinValuesAsConditional(realm: Realm, condition: AbstractValue, v1: void | Value, v2: void | Value): Value,
-
   joinPropertyBindings(
     realm: Realm,
     joinCondition: AbstractValue,
@@ -798,7 +823,7 @@ export type JoinType = {
 
 export type CreateType = {
   // ECMA262 9.4.3.3
-  StringCreate(realm: Realm, value: StringValue, prototype: ObjectValue): ObjectValue,
+  StringCreate(realm: Realm, value: StringValue, prototype: ObjectValue | AbstractObjectValue): ObjectValue,
 
   // B.2.3.2.1
   CreateHTML(realm: Realm, string: Value, tag: string, attribute: string, value: string | Value): StringValue,
@@ -822,7 +847,7 @@ export type CreateType = {
   CreateArrayIterator(realm: Realm, array: ObjectValue, kind: IterationKind): ObjectValue,
 
   // ECMA262 9.4.2.2
-  ArrayCreate(realm: Realm, length: number, proto?: ObjectValue): ArrayValue,
+  ArrayCreate(realm: Realm, length: number, proto?: ObjectValue | AbstractObjectValue): ArrayValue,
 
   // ECMA262 7.3.16
   CreateArrayFromList(realm: Realm, elems: Array<Value>): ArrayValue,
@@ -839,6 +864,9 @@ export type CreateType = {
     env: EnvironmentRecord
   ): ObjectValue,
 
+  // ECMA262 7.3.23 (sec-copydataproperties)
+  CopyDataProperties(realm: Realm, target: ObjectValue, source: Value, excluded: Array<PropertyKeyValue>): ObjectValue,
+
   // ECMA262 7.3.4
   CreateDataProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value): boolean,
 
@@ -849,7 +877,11 @@ export type CreateType = {
   CreateDataPropertyOrThrow(realm: Realm, O: Value, P: PropertyKeyValue, V: Value): boolean,
 
   // ECMA262 9.1.12
-  ObjectCreate(realm: Realm, proto: ObjectValue | NullValue, internalSlotsList?: { [key: string]: void }): ObjectValue,
+  ObjectCreate(
+    realm: Realm,
+    proto: ObjectValue | AbstractObjectValue | NullValue,
+    internalSlotsList?: { [key: string]: void }
+  ): ObjectValue,
 
   // ECMA262 9.1.13
   OrdinaryCreateFromConstructor(
@@ -879,8 +911,8 @@ export type WidenType = {
   // Returns an abstract value that includes both v1 and v2 as potential values.
   widenValues(
     realm: Realm,
-    v1: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
-    v2: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
+    v1: Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
+    v2: Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
   ): Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
 
   containsArraysOfValue(realm: Realm, a1: void | Array<Value>, a2: void | Array<Value>): boolean,
@@ -940,9 +972,7 @@ export type ToType = {
   ToPropertyDescriptor(realm: Realm, Obj: Value): Descriptor,
 
   // ECMA262 7.1.13
-  ToObject(realm: Realm, arg: ConcreteValue): ObjectValue,
-
-  ToObjectPartial(realm: Realm, arg: Value): ObjectValue | AbstractObjectValue,
+  ToObject(realm: Realm, arg: Value): ObjectValue | AbstractObjectValue,
 
   // ECMA262 7.1.15
   ToLength(realm: Realm, argument: numberOrValue): number,
@@ -992,6 +1022,8 @@ export type ToType = {
 
   ToStringValue(realm: Realm, val: Value): Value,
 
+  ToStringAbstract(realm: Realm, val: AbstractValue): AbstractValue,
+
   // ECMA262 7.1.2
   ToBoolean(realm: Realm, val: ConcreteValue): boolean,
 
@@ -1011,4 +1043,5 @@ export type ConcretizeType = (realm: Realm, val: Value) => ConcreteValue;
 export type UtilsType = {|
   typeToString: (typeof Value) => void | string,
   getTypeFromName: string => void | typeof Value,
+  describeValue: Value => string,
 |};

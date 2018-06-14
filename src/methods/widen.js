@@ -11,15 +11,8 @@
 
 import type { Binding } from "../environment.js";
 import { FatalError } from "../errors.js";
-import type {
-  Bindings,
-  BindingEntry,
-  Effects,
-  EvaluationResult,
-  PropertyBindings,
-  CreatedObjects,
-  Realm,
-} from "../realm.js";
+import type { Bindings, BindingEntry, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
+import { Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
@@ -34,43 +27,57 @@ import * as t from "babel-types";
 export class WidenImplementation {
   _widenArrays(
     realm: Realm,
-    v1: void | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
-    v2: void | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
+    v1: Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
+    v2: Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
   ): Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }> {
-    let e = (v1 && v1[0]) || (v2 && v2[0]);
-    if (e instanceof Value) return this._widenArraysOfValues(realm, (v1: any), (v2: any));
-    else return this._widenArrayOfsMapEntries(realm, (v1: any), (v2: any));
+    if (v1[0] instanceof Value) {
+      invariant(v2[0] instanceof Value);
+      return this._widenArraysOfValues(realm, (v1: any), (v2: any));
+    }
+    invariant(!(v2[0] instanceof Value));
+    return this._widenArrayOfsMapEntries(realm, (v1: any), (v2: any));
   }
 
   _widenArrayOfsMapEntries(
     realm: Realm,
-    a1: void | Array<{ $Key: void | Value, $Value: void | Value }>,
-    a2: void | Array<{ $Key: void | Value, $Value: void | Value }>
+    a1: Array<{ $Key: void | Value, $Value: void | Value }>,
+    a2: Array<{ $Key: void | Value, $Value: void | Value }>
   ): Array<{ $Key: void | Value, $Value: void | Value }> {
-    let empty = realm.intrinsics.empty;
     let n = Math.max((a1 && a1.length) || 0, (a2 && a2.length) || 0);
     let result: Array<{ $Key: void | Value, $Value: void | Value }> = [];
     for (let i = 0; i < n; i++) {
-      let { $Key: key1, $Value: val1 } = (a1 && a1[i]) || { $Key: empty, $Value: empty };
-      let { $Key: key2, $Value: val2 } = (a2 && a2[i]) || { $Key: empty, $Value: empty };
+      let { $Key: key1, $Value: val1 } = a1[i] || { $Key: undefined, $Value: undefined };
+      let { $Key: key2, $Value: val2 } = a2[i] || { $Key: undefined, $Value: undefined };
       if (key1 === undefined && key2 === undefined) {
         result[i] = { $Key: undefined, $Value: undefined };
       } else {
+        if (key1 === undefined) key1 = key2;
+        else if (key2 === undefined) key2 = key1;
+        invariant(key1 !== undefined);
+        invariant(key2 !== undefined);
         let key3 = this.widenValues(realm, key1, key2);
         invariant(key3 instanceof Value);
-        let val3 = this.widenValues(realm, val1, val2);
-        invariant(val3 === undefined || val3 instanceof Value);
-        result[i] = { $Key: key3, $Value: val3 };
+        if (val1 === undefined && val2 === undefined) {
+          result[i] = { $Key: key3, $Value: undefined };
+        } else {
+          if (val1 === undefined) val1 = val2;
+          else if (val2 === undefined) val2 = val1;
+          invariant(val1 !== undefined);
+          invariant(val2 !== undefined);
+          let val3 = this.widenValues(realm, val1, val2);
+          invariant(val3 === undefined || val3 instanceof Value);
+          result[i] = { $Key: key3, $Value: val3 };
+        }
       }
     }
     return result;
   }
 
-  _widenArraysOfValues(realm: Realm, a1: void | Array<Value>, a2: void | Array<Value>): Array<Value> {
+  _widenArraysOfValues(realm: Realm, a1: Array<Value>, a2: Array<Value>): Array<Value> {
     let n = Math.max((a1 && a1.length) || 0, (a2 && a2.length) || 0);
     let result = [];
     for (let i = 0; i < n; i++) {
-      let wv = this.widenValues(realm, (a1 && a1[i]) || undefined, (a2 && a2[i]) || undefined);
+      let wv = this.widenValues(realm, a1[i], a2[i]);
       invariant(wv === undefined || wv instanceof Value);
       result[i] = wv;
     }
@@ -79,15 +86,18 @@ export class WidenImplementation {
 
   // Returns a new effects summary that includes both e1 and e2.
   widenEffects(realm: Realm, e1: Effects, e2: Effects): Effects {
-    let [result1, , bindings1, properties1, createdObj1] = e1;
-    let [result2, , bindings2, properties2, createdObj2] = e2;
-
-    let result = this.widenResults(realm, result1, result2);
-    let bindings = this.widenBindings(realm, bindings1, bindings2);
-    let properties = this.widenPropertyBindings(realm, properties1, properties2, createdObj1, createdObj2);
+    let result = this.widenResults(realm, e1.result, e2.result);
+    let bindings = this.widenBindings(realm, e1.modifiedBindings, e2.modifiedBindings);
+    let properties = this.widenPropertyBindings(
+      realm,
+      e1.modifiedProperties,
+      e2.modifiedProperties,
+      e1.createdObjects,
+      e2.createdObjects
+    );
     let createdObjects = new Set(); // Top, since the empty set knows nothing. There is no other choice for widen.
     let generator = new Generator(realm, "widen"); // code subject to widening will be generated somewhere else
-    return [result, generator, bindings, properties, createdObjects];
+    return new Effects(result, generator, bindings, properties, createdObjects);
   }
 
   widenResults(realm: Realm, result1: EvaluationResult, result2: EvaluationResult): PossiblyNormalCompletion | Value {
@@ -128,23 +138,24 @@ export class WidenImplementation {
 
   widenBindings(realm: Realm, m1: Bindings, m2: Bindings): Bindings {
     let widen = (b: Binding, b1: void | BindingEntry, b2: void | BindingEntry) => {
-      let l1 = b1 === undefined ? b.hasLeaked : b1.hasLeaked;
-      let l2 = b2 === undefined ? b.hasLeaked : b2.hasLeaked;
-      let hasLeaked = l1 || l2; // If either has leaked, then this binding has leaked.
       let v1 = b1 === undefined || b1.value === undefined ? b.value : b1.value;
       invariant(b2 !== undefined); // Local variables are not going to get deleted as a result of widening
       let v2 = b2.value;
       invariant(v2 !== undefined);
-      let result = this.widenValues(realm, v1, v2);
+      let result = this.widenValues(realm, v1 || realm.intrinsics.undefined, v2);
       if (result instanceof AbstractValue && result.kind === "widened") {
         let phiNode = b.phiNode;
         if (phiNode === undefined) {
           // Create a temporal location for binding
           let generator = realm.generator;
           invariant(generator !== undefined);
-          phiNode = generator.derive(result.types, result.values, [b.value || realm.intrinsics.undefined], ([n]) => n, {
-            skipInvariant: true,
-          });
+          phiNode = generator.deriveAbstract(
+            result.types,
+            result.values,
+            [b.value || realm.intrinsics.undefined],
+            ([n]) => n,
+            { skipInvariant: true }
+          );
           b.phiNode = phiNode;
         }
         // Let the widened value be a reference to the phiNode of the binding
@@ -154,7 +165,17 @@ export class WidenImplementation {
         result._buildNode = args => t.identifier(phiName);
       }
       invariant(result instanceof Value);
-      return { hasLeaked, value: result };
+      let previousLeakedImmutableValue = b2.previousLeakedImmutableValue;
+      let previousHasLeaked = b2.previousHasLeaked;
+      let previousValue = b2.previousValue;
+      return {
+        leakedImmutableValue: previousLeakedImmutableValue,
+        hasLeaked: previousHasLeaked,
+        value: result,
+        previousLeakedImmutableValue,
+        previousHasLeaked,
+        previousValue,
+      };
     };
     return this.widenMaps(m1, m2, widen);
   }
@@ -162,26 +183,25 @@ export class WidenImplementation {
   // Returns an abstract value that includes both v1 and v2 as potential values.
   widenValues(
     realm: Realm,
-    v1: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
-    v2: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
+    v1: Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
+    v2: Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
   ): Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }> {
     if (Array.isArray(v1) || Array.isArray(v2)) {
-      invariant(v1 === undefined || Array.isArray(v1));
-      invariant(v2 === undefined || Array.isArray(v2));
-      return this._widenArrays(realm, ((v1: any): void | Array<Value>), ((v2: any): void | Array<Value>));
+      invariant(Array.isArray(v1));
+      invariant(Array.isArray(v2));
+      return this._widenArrays(realm, ((v1: any): Array<Value>), ((v2: any): Array<Value>));
     }
-    invariant(v1 === undefined || v1 instanceof Value);
-    invariant(v2 === undefined || v2 instanceof Value);
+    invariant(v1 instanceof Value);
+    invariant(v2 instanceof Value);
     if (
-      v1 !== undefined &&
-      v2 !== undefined &&
       !(v1 instanceof AbstractValue) &&
       !(v2 instanceof AbstractValue) &&
       StrictEqualityComparison(realm, v1.throwIfNotConcrete(), v2.throwIfNotConcrete())
     ) {
       return v1; // no need to widen a loop invariant value
     } else {
-      return AbstractValue.createFromWidening(realm, v1 || realm.intrinsics.empty, v2 || realm.intrinsics.undefined);
+      invariant(v1 && v2);
+      return AbstractValue.createFromWidening(realm, v1, v2);
     }
   }
 
@@ -237,12 +257,16 @@ export class WidenImplementation {
           // For now, we only handle loop invariant properties
           //i.e. properties where the member expresssion does not involve any values written to inside the loop.
           let key = b.key;
-          if (typeof key === "string" || !(key.mightNotBeString() && key.mightNotBeNumber())) {
+          if (
+            typeof key === "string" ||
+            (key instanceof AbstractValue && !(key.mightNotBeString() && key.mightNotBeNumber()))
+          ) {
             if (typeof key === "string") {
               pathNode = AbstractValue.createFromWidenedProperty(realm, rval, [b.object], ([o]) =>
                 t.memberExpression(o, t.identifier(key))
               );
             } else {
+              invariant(key instanceof AbstractValue);
               pathNode = AbstractValue.createFromWidenedProperty(realm, rval, [b.object, key], ([o, p]) => {
                 return t.memberExpression(o, p, true);
               });
@@ -257,11 +281,13 @@ export class WidenImplementation {
               if (key === "length" && b.object instanceof ArrayValue) {
                 // do nothing, the array length will already be initialized
               } else if (typeof key === "string") {
-                generator.emitVoidExpression(rval.types, rval.values, [b.object, initVal], ([o, v]) =>
-                  t.assignmentExpression("=", t.memberExpression(o, t.identifier(key)), v)
-                );
+                generator.emitVoidExpression(rval.types, rval.values, [b.object, initVal], ([o, v]) => {
+                  invariant(typeof key === "string");
+                  return t.assignmentExpression("=", t.memberExpression(o, t.identifier(key)), v);
+                });
               } else {
-                generator.emitVoidExpression(rval.types, rval.values, [b.object, b.key, initVal], ([o, p, v]) =>
+                invariant(key instanceof AbstractValue);
+                generator.emitVoidExpression(rval.types, rval.values, [b.object, key, initVal], ([o, p, v]) =>
                   t.assignmentExpression("=", t.memberExpression(o, p, true), v)
                 );
               }
@@ -284,14 +310,21 @@ export class WidenImplementation {
       if (!IsDataDescriptor(realm, d2)) return d2; // accessor properties need not be widened.
       let dc = cloneDescriptor(d2);
       invariant(dc !== undefined);
-      dc.value = this.widenValues(realm, d2.value, d2.value);
+      let d2value = dc.value;
+      invariant(d2value !== undefined); // because IsDataDescriptor is true for d2/dc
+      dc.value = this.widenValues(realm, d2value, d2value);
       return dc;
     } else {
       if (equalDescriptors(d1, d2)) {
         if (!IsDataDescriptor(realm, d1)) return d1; // identical accessor properties need not be widened.
+        // equalDescriptors plus IsDataDescriptor guarantee that both have value props and if you have a value prop is value is defined.
         let dc = cloneDescriptor(d1);
         invariant(dc !== undefined);
-        dc.value = this.widenValues(realm, d1.value, d2.value);
+        let d1value = d1.value;
+        invariant(d1value !== undefined);
+        let d2value = d2.value;
+        invariant(d2value !== undefined);
+        dc.value = this.widenValues(realm, d1value, d2value);
         return dc;
       }
       //todo: #1174 if we get here, the loop body contains a call to create a property and different iterations
@@ -305,12 +338,12 @@ export class WidenImplementation {
   // then we have reached a fixed point and no further calls to widen are needed. e1/e2 represent a general
   // summary of the loop, regardless of how many iterations will be performed at runtime.
   containsEffects(e1: Effects, e2: Effects): boolean {
-    let [result1, , bindings1, properties1, createdObj1] = e1;
-    let [result2, , bindings2, properties2, createdObj2] = e2;
-
-    if (!this.containsResults(result1, result2)) return false;
-    if (!this.containsBindings(bindings1, bindings2)) return false;
-    if (!this.containsPropertyBindings(properties1, properties2, createdObj1, createdObj2)) return false;
+    if (!this.containsResults(e1.result, e2.result)) return false;
+    if (!this.containsBindings(e1.modifiedBindings, e2.modifiedBindings)) return false;
+    if (
+      !this.containsPropertyBindings(e1.modifiedProperties, e2.modifiedProperties, e1.createdObjects, e2.createdObjects)
+    )
+      return false;
     return true;
   }
 
@@ -340,7 +373,8 @@ export class WidenImplementation {
         b1.value === undefined ||
         b2.value === undefined ||
         !this._containsValues(b1.value, b2.value) ||
-        b1.hasLeaked !== b2.hasLeaked
+        b1.hasLeaked !== b2.hasLeaked ||
+        b1.leakedImmutableValue !== b2.leakedImmutableValue
       ) {
         return false;
       }

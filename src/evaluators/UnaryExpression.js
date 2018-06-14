@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
@@ -69,7 +69,7 @@ function evaluateDeleteOperation(expr: Value | Reference, realm: Realm) {
     let base = Environment.GetBase(realm, ref);
     // Constructing the reference checks that base is coercible to an object hence
     invariant(base instanceof ConcreteValue || base instanceof AbstractObjectValue);
-    let baseObj = base instanceof ConcreteValue ? To.ToObject(realm, base) : base;
+    let baseObj = To.ToObject(realm, base);
 
     // c. Let deleteStatus be ? baseObj.[[Delete]](GetReferencedName(ref)).
     let deleteStatus = baseObj.$Delete(Environment.GetReferencedName(realm, ref));
@@ -129,7 +129,10 @@ function tryToEvaluateOperationOrLeaveAsAbstract(
       throw error;
     }
   }
-  let completion = effects[0];
+  // Note that the effects of (non joining) abrupt branches are not included
+  // in joinedEffects, but are tracked separately inside completion.
+  realm.applyEffects(effects);
+  let completion = effects.result;
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.
@@ -138,9 +141,6 @@ function tryToEvaluateOperationOrLeaveAsAbstract(
     completion = realm.composeWithSavedCompletion(completion);
   }
 
-  // Note that the effects of (non joining) abrupt branches are not included
-  // in joinedEffects, but are tracked separately inside completion.
-  realm.applyEffects(effects);
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
   invariant(completion instanceof Value);
@@ -224,7 +224,7 @@ function evaluateOperation(
     expr;
 
     // 2. Let oldValue be ToBoolean(? GetValue(expr)).
-    let value = Environment.GetValue(realm, expr);
+    let value = Environment.GetConditionValue(realm, expr);
     if (value instanceof AbstractValue) return AbstractValue.createFromUnaryOp(realm, "!", value);
     invariant(value instanceof ConcreteValue);
     let oldValue = To.ToBoolean(realm, value);

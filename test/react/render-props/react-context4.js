@@ -2,36 +2,38 @@ var React = require('React');
 // the JSX transform converts to React, so we need to add it back in
 this['React'] = React;
 
-var { Provider, Consumer } = React.createContext(null);
-// this is done otherwise the test fails
-this['_Consumer'] = Consumer;
+var Ctx = React.createContext(null);
 
 function Child(props) {
   return (
     <div>
-      <Consumer>
+      <Ctx.Consumer>
         {value => {
           return <span>{value}</span>
         }}
-      </Consumer>
+      </Ctx.Consumer>
     </div>
   )
 }
 
 function App(props) {
   return (
-    <Provider value="a">
-      <Provider value="b">
+    <Ctx.Provider value="a">
+      <Ctx.Provider value="b">
         <Child />
-      </Provider>
+      </Ctx.Provider>
       <Child />
-    </Provider>
+    </Ctx.Provider>
   );
 }
 
 App.getTrials = function(renderer, Root) {
+  let results = [];
   renderer.update(<Root />);
-  return [['render props context', renderer.toJSON()]];
+  results.push(['render props context', renderer.toJSON()]);
+  renderer.update(<Root />);
+  results.push(['render props context', renderer.toJSON()]);
+  return results;
 };
 
 if (this.__optimizeReactComponentTree) {

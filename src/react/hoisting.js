@@ -11,20 +11,20 @@
 
 import { Realm } from "../realm.js";
 import {
-  Value,
+  AbstractValue,
+  ArrayValue,
+  BooleanValue,
+  ECMAScriptSourceFunctionValue,
+  FunctionValue,
   NumberValue,
   ObjectValue,
   SymbolValue,
-  FunctionValue,
   StringValue,
-  ArrayValue,
-  BooleanValue,
-  AbstractValue,
-  ECMAScriptSourceFunctionValue,
+  Value,
 } from "../values/index.js";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
-import { isReactElement } from "./utils.js";
+import { isReactElement, getProperty } from "./utils.js";
 import { ResidualHeapVisitor } from "../serializer/ResidualHeapVisitor.js";
 
 // a nested object of a React Element should be hoisted where all its properties are known
@@ -59,6 +59,7 @@ function canHoistArray(
   residualHeapVisitor: ResidualHeapVisitor,
   visitedValues: Set<Value>
 ): boolean {
+  if (array.intrinsicName) return false;
   let lengthValue = Get(realm, array, "length");
   invariant(lengthValue instanceof NumberValue);
   let length = lengthValue.value;
@@ -95,6 +96,9 @@ export function canHoistFunction(
       // if declarativeEnvironmentRecord is null, it's likely a global binding
       // so we can assume that we can still hoist this function
       if (declarativeEnvironmentRecord !== null) {
+        if (value === undefined) {
+          return false;
+        }
         invariant(value instanceof Value);
         if (!canHoistValue(realm, value, residualHeapVisitor, visitedValues)) {
           return false;
@@ -116,19 +120,7 @@ export function canHoistFunction(
 }
 
 function canHoistAbstract(realm: Realm, abstract: AbstractValue, residualHeapVisitor: ResidualHeapVisitor): boolean {
-  // get the scopes for this abstract value
-  let scopes = residualHeapVisitor.values.get(abstract);
-  // we can safely hoist abstracts that are created in the common scope
-  if (scopes !== undefined) {
-    for (let scope of scopes) {
-      const currentAdditionalFunction = residualHeapVisitor.commonScope;
-      invariant(currentAdditionalFunction instanceof FunctionValue);
-      // $FlowFixMe: there is no such property
-      if (scope === currentAdditionalFunction.parent) {
-        return true;
-      }
-    }
-  }
+  // TODO #1687: add abstract value hoisting
   return false;
 }
 
@@ -156,12 +148,19 @@ function canHoistValue(
     return false;
   }
   visitedValues.add(value);
-  const canHoist =
-    (value instanceof ArrayValue && canHoistArray(realm, value, residualHeapVisitor, visitedValues)) ||
-    (value instanceof FunctionValue && canHoistFunction(realm, value, residualHeapVisitor, visitedValues)) ||
-    (value instanceof ObjectValue && canHoistObject(realm, value, residualHeapVisitor, visitedValues)) ||
-    (value instanceof AbstractValue && canHoistAbstract(realm, value, residualHeapVisitor)) ||
-    isPrimitive(realm, value);
+  let canHoist = false;
+
+  if (value instanceof ArrayValue) {
+    canHoist = canHoistArray(realm, value, residualHeapVisitor, visitedValues);
+  } else if (value instanceof FunctionValue) {
+    canHoist = canHoistFunction(realm, value, residualHeapVisitor, visitedValues);
+  } else if (value instanceof ObjectValue) {
+    canHoist = canHoistObject(realm, value, residualHeapVisitor, visitedValues);
+  } else if (value instanceof AbstractValue) {
+    canHoist = canHoistAbstract(realm, value, residualHeapVisitor);
+  } else if (isPrimitive) {
+    canHoist = true;
+  }
   visitedValues.delete(value);
   return canHoist;
 }
@@ -170,7 +169,7 @@ export function canHoistReactElement(
   realm: Realm,
   reactElement: ObjectValue,
   residualHeapVisitor?: ResidualHeapVisitor,
-  visitedValues: Set<Value> | void
+  visitedValues?: Set<Value> | void
 ): boolean {
   if (realm.react.hoistableReactElements.has(reactElement)) {
     // cast because Flow thinks that we may have set a value to be something other than a boolean?
@@ -179,10 +178,10 @@ export function canHoistReactElement(
   if (residualHeapVisitor === undefined) {
     return false;
   }
-  let type = Get(realm, reactElement, "type");
-  let ref = Get(realm, reactElement, "ref");
-  let key = Get(realm, reactElement, "key");
-  let props = Get(realm, reactElement, "props");
+  let type = getProperty(realm, reactElement, "type");
+  let ref = getProperty(realm, reactElement, "ref");
+  let key = getProperty(realm, reactElement, "key");
+  let props = getProperty(realm, reactElement, "props");
 
   if (visitedValues === undefined) {
     visitedValues = new Set();
@@ -202,4 +201,12 @@ export function canHoistReactElement(
   }
   realm.react.hoistableReactElements.set(reactElement, false);
   return false;
+}
+
+export function determineIfReactElementCanBeHoisted(
+  realm: Realm,
+  reactElement: ObjectValue,
+  residualHeapVisitor: ResidualHeapVisitor
+): void {
+  canHoistReactElement(realm, reactElement, residualHeapVisitor);
 }

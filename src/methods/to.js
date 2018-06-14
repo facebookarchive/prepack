@@ -11,6 +11,7 @@
 
 import type { Descriptor, CallableObjectValue } from "../types.js";
 import type { Realm } from "../realm.js";
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { GetMethod, Get } from "./get.js";
 import { Create } from "../singletons.js";
 import { HasProperty } from "./has.js";
@@ -34,6 +35,7 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
+import * as t from "babel-types";
 
 type ElementConvType = {
   Int8: (Realm, numberOrValue) => number,
@@ -47,7 +49,7 @@ type ElementConvType = {
 type numberOrValue = number | Value;
 
 function modulo(x: number, y: number): number {
-  return x < 0 ? x % y + y : x % y;
+  return x < 0 ? (x % y) + y : x % y;
 }
 
 export class ToImplementation {
@@ -375,7 +377,11 @@ export class ToImplementation {
   }
 
   // ECMA262 7.1.13
-  ToObject(realm: Realm, arg: ConcreteValue): ObjectValue {
+  ToObject(realm: Realm, arg: Value): ObjectValue | AbstractObjectValue {
+    if (arg instanceof AbstractObjectValue) return arg;
+    if (arg instanceof AbstractValue) {
+      return this._WrapAbstractInObject(realm, arg);
+    }
     if (arg instanceof UndefinedValue) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
     } else if (arg instanceof NullValue) {
@@ -403,7 +409,7 @@ export class ToImplementation {
 
   _WrapAbstractInObject(realm: Realm, arg: AbstractValue): ObjectValue | AbstractObjectValue {
     let obj;
-    switch (arg.types.getType()) {
+    switch (arg.getType()) {
       case IntegralValue:
       case NumberValue:
         obj = new ObjectValue(realm, realm.intrinsics.NumberPrototype);
@@ -427,31 +433,23 @@ export class ToImplementation {
 
       case UndefinedValue:
       case NullValue:
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+      case PrimitiveValue:
+        if (arg.mightBeNull() || arg.mightHaveBeenDeleted() || arg.mightBeUndefined())
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
 
+      /*eslint-disable */
       default:
+        /*eslint-enable */
         if (realm.isInPureScope()) {
-          // Create a placeholder value to represent the ObjectValue that we would've
-          // received, but this object should never leak so as an optimization we will
-          // let operations on top of this object force the ToObject operations instead.
-          obj = AbstractValue.createFromType(realm, ObjectValue, "implicit conversion to object");
+          // will be serialized as Object.assign(serialized_arg)
+          obj = AbstractValue.createFromType(realm, ObjectValue, "explicit conversion to object", [arg]);
           invariant(obj instanceof AbstractObjectValue);
-          obj.args = [arg];
         } else {
           obj = arg.throwIfNotConcreteObject();
         }
         break;
     }
     return obj;
-  }
-
-  ToObjectPartial(realm: Realm, arg: Value): ObjectValue | AbstractObjectValue {
-    if (arg instanceof AbstractObjectValue) return arg;
-    if (arg instanceof AbstractValue) {
-      return this._WrapAbstractInObject(realm, arg);
-    }
-    arg = arg.throwIfNotConcrete();
-    return this.ToObject(realm, arg);
   }
 
   // ECMA262 7.1.15
@@ -738,10 +736,38 @@ export class ToImplementation {
       let primValue = this.ToPrimitiveOrAbstract(realm, val, "string");
       if (primValue.getType() === StringValue) return primValue;
       str = this.ToStringPartial(realm, primValue);
+    } else if (val instanceof AbstractValue) {
+      return this.ToStringAbstract(realm, val);
     } else {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "unknown value type, can't coerce to string");
+      invariant(false, "unknown value type, can't coerce to string");
     }
     return new StringValue(realm, str);
+  }
+
+  ToStringAbstract(realm: Realm, value: AbstractValue): AbstractValue {
+    if (value.mightNotBeString()) {
+      // If the property is not a string we need to coerce it.
+      let coerceToString = ([p]) => t.binaryExpression("+", t.stringLiteral(""), p);
+      let result;
+      if (value.mightNotBeNumber() && !value.isSimpleObject()) {
+        // If this might be a non-simple object, we need to coerce this at a
+        // temporal point since it can have side-effects.
+        // We can't rely on comparison to do it later, even if
+        // it is non-strict comparison since we'll do multiple
+        // comparisons. So we have to be explicit about when this
+        // happens.
+        result = realm.evaluateWithPossibleThrowCompletion(
+          () => AbstractValue.createTemporalFromBuildFunction(realm, StringValue, [value], coerceToString),
+          TypesDomain.topVal,
+          ValuesDomain.topVal
+        );
+      } else {
+        result = AbstractValue.createFromBuildFunction(realm, StringValue, [value], coerceToString);
+      }
+      invariant(result instanceof AbstractValue);
+      return result;
+    }
+    return value;
   }
 
   // ECMA262 7.1.2
