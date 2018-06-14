@@ -32,7 +32,7 @@ import { Environment, Functions, Havoc, Join, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import * as t from "babel-types";
 import type { FunctionBodyAstNode } from "../types.js";
-import type { BabelNodeForStatement } from "babel-types";
+import type { BabelNodeExpression, BabelNodeForStatement, BabelNodeBlockStatement } from "babel-types";
 
 type BailOutWrapperInfo = {
   usesArguments: boolean,
@@ -40,6 +40,7 @@ type BailOutWrapperInfo = {
   usesReturn: boolean,
   usesGotoToLabel: boolean,
   usesThrow: boolean,
+  varPatternUnsupported: boolean,
 };
 
 // ECMA262 13.7.4.9
@@ -291,7 +292,7 @@ let BailOutWrapperClosureRefVisitor = {
     state.usesThis = true;
   },
   "BreakStatement|ContinueStatement"(path: BabelTraversePath, state: BailOutWrapperInfo) {
-    if (path.node.label !== undefined) {
+    if (path.node.label !== null) {
       state.usesGotoToLabel = true;
     }
   },
@@ -300,6 +301,53 @@ let BailOutWrapperClosureRefVisitor = {
   },
   ThrowStatement(path: BabelTraversePath, state: BailOutWrapperInfo) {
     state.usesThrow = true;
+  },
+  VariableDeclaration(path: BabelTraversePath, state: BailOutWrapperInfo) {
+    let node = path.node;
+    // If our parent is a for loop (there are 3 kinds) we do not need a wrapper
+    // i.e. for (var x of y) for (var x in y) for (var x; x < y; x++)
+    let needsExpressionWrapper =
+      !t.isForStatement(path.parentPath.node) &&
+      !t.isForOfStatement(path.parentPath.node) &&
+      !t.isForInStatement(path.parentPath.node);
+
+    const getConvertedDeclarator = index => {
+      let { id, init } = node.declarations[index];
+
+      if (t.isIdentifier(id)) {
+        return t.assignmentExpression("=", id, init);
+      } else {
+        // We do not currently support ObjectPattern, SpreadPattern and ArrayPattern
+        // see: https://github.com/babel/babylon/blob/master/ast/spec.md#patterns
+        state.varPatternUnsupported = true;
+      }
+    };
+
+    if (node.kind === "var") {
+      if (node.declarations.length === 1) {
+        let convertedNodeOrUndefined = getConvertedDeclarator(0);
+        if (convertedNodeOrUndefined === undefined) {
+          // Do not continue as we don't support this
+          return;
+        }
+        path.replaceWith(
+          needsExpressionWrapper ? t.expressionStatement(convertedNodeOrUndefined) : convertedNodeOrUndefined
+        );
+      } else {
+        // convert to sequence, so: `var x = 1, y = 2;` becomes `x = 1, y = 2;`
+        let expressions = [];
+        for (let i = 0; i < node.declarations.length; i++) {
+          let convertedNodeOrUndefined = getConvertedDeclarator(i);
+          if (convertedNodeOrUndefined === undefined) {
+            // Do not continue as we don't support this
+            return;
+          }
+          expressions.push(convertedNodeOrUndefined);
+        }
+        let sequenceExpression = t.sequenceExpression(((expressions: any): Array<BabelNodeExpression>));
+        path.replaceWith(needsExpressionWrapper ? t.expressionStatement(sequenceExpression) : sequenceExpression);
+      }
+    }
   },
 };
 
@@ -311,7 +359,7 @@ function generateRuntimeForStatement(
   labelSet: ?Array<string>
 ): AbstractValue {
   let wrapperFunction = new ECMAScriptSourceFunctionValue(realm);
-  let body = t.blockStatement([ast]);
+  let body = ((t.cloneDeep(t.blockStatement([ast])): any): BabelNodeBlockStatement);
   ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
   wrapperFunction.$ECMAScriptCode = body;
   wrapperFunction.$FormalParameters = [];
@@ -323,6 +371,7 @@ function generateRuntimeForStatement(
     usesReturn: false,
     usesGotoToLabel: false,
     usesThrow: false,
+    varPatternUnsupported: false,
   };
 
   traverse(
@@ -332,8 +381,9 @@ function generateRuntimeForStatement(
     functionInfo
   );
   traverse.clearCache();
+  let { usesReturn, usesThrow, usesArguments, usesGotoToLabel, varPatternUnsupported, usesThis } = functionInfo;
 
-  if (functionInfo.usesReturn || functionInfo.usesThrow || functionInfo.usesArguments || functionInfo.usesGotoToLabel) {
+  if (usesReturn || usesThrow || usesArguments || usesGotoToLabel || varPatternUnsupported) {
     // We do not have support for these yet
     let diagnostic = new CompilerDiagnostic(
       `failed to recover from a for/while loop bail-out due to unsupported logic in loop body`,
@@ -346,7 +396,7 @@ function generateRuntimeForStatement(
   }
   let args = [wrapperFunction];
 
-  if (functionInfo.usesThis) {
+  if (usesThis) {
     let thisRef = env.evaluate(t.thisExpression(), strictCode);
     let thisVal = Environment.GetValue(realm, thisRef);
     Havoc.value(realm, thisVal);
@@ -364,7 +414,7 @@ function generateRuntimeForStatement(
     Value,
     args,
     ([func, thisExpr]) =>
-      functionInfo.usesThis
+      usesThis
         ? t.callExpression(t.memberExpression(func, t.identifier("call")), [thisExpr])
         : t.callExpression(func, [])
   );

@@ -3,8 +3,9 @@ function fn(x, counter) {
   for (; i !== x;) {
     counter.x++;
     i++;
+    var val1 = counter.x, val2 = val1 + 1;
   }
-  return counter.x;
+  return val2;
 }
 
 global.__optimize && __optimize(fn);
