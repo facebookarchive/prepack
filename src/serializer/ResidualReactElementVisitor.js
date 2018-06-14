@@ -10,16 +10,7 @@
 /* @flow strict-local */
 
 import { Realm } from "../realm.js";
-import {
-  AbstractObjectValue,
-  AbstractValue,
-  FunctionValue,
-  NativeFunctionValue,
-  ObjectValue,
-  SymbolValue,
-  Value,
-  StringValue,
-} from "../values/index.js";
+import { AbstractValue, FunctionValue, ObjectValue, StringValue, SymbolValue, Value } from "../values/index.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { determineIfReactElementCanBeHoisted } from "../react/hoisting.js";
 import { traverseReactElement } from "../react/elements.js";
@@ -71,8 +62,6 @@ export class ResidualReactElementVisitor {
         }
       },
       visitAbstractOrPartialProps: (propsValue: AbstractValue | ObjectValue) => {
-          recursivelyVisitObjectsForFirstRender(this.realm, propsValue, objectVisitCallback);
-        }
         this.residualHeapVisitor.visitValue(propsValue);
       },
       visitConcreteProps: (propsValue: ObjectValue) => {
