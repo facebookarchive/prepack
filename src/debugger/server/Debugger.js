@@ -43,7 +43,12 @@ import {
 import { CompilerDiagnostic } from "../../errors.js";
 import type { Severity } from "../../errors.js";
 import type { SourceFile } from "./../../types.js";
-import { getAbsoluteSourcePath, findCommonPrefix } from "./PathNormalizer.js";
+import {
+  getAbsoluteSourcePath,
+  findCommonPrefix,
+  findMapDifference,
+  stripEmptyStringBookends,
+} from "./PathNormalizer.js";
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm, configArgs: DebuggerConfigArguments) {
@@ -54,7 +59,7 @@ export class DebugServer {
     this._stepManager = new SteppingManager(this._realm, /* default discard old steppers */ false);
     this._stopEventManager = new StopEventManager();
     this._diagnosticSeverity = configArgs.diagnosticSeverity || "FatalError";
-    this._findSourcemapPrefix(configArgs.sourceMaps);
+    this._findSourcemapPrefixes(configArgs.sourceMaps);
     this.waitForRun(undefined);
   }
   // the collection of breakpoints
@@ -66,8 +71,9 @@ export class DebugServer {
   _stepManager: SteppingManager;
   _stopEventManager: StopEventManager;
   _lastExecuted: SourceData;
-  // Prefix used to translate relative paths stored in AST nodes into absolute paths given to IDE.
-  _sourcemapPrefix: string;
+  // Prefixes used to translate between relative paths stored in AST nodes and absolute paths given to IDE.
+  _sourcemapCommonPrefix: string;
+  _sourcemapMapDifference: string;
   // Severity at which debugger will break when CompilerDiagnostics are generated. Default is Fatal.
   _diagnosticSeverity: Severity;
 
@@ -108,8 +114,9 @@ export class DebugServer {
     let requestID = request.id;
     let command = request.command;
     let args = request.arguments;
+    console.log("incoming request: ", command);
     // Convert incoming location sources to relative paths in order to match internal representation of filenames.
-    if (loc && loc.source) loc.source = this._absoluteToRelative(loc.source);
+    // if (loc && loc.source) loc.source = this._absoluteToRelative(loc.source);
     if (args.kind === "breakpoint") {
       for (let bp of args.breakpoints) {
         bp.filePath = this._absoluteToRelative(bp.filePath);
@@ -314,35 +321,64 @@ export class DebugServer {
     return false;
   }
 
-  _findSourcemapPrefix(sourceMaps: Array<SourceFile> | void) {
+  _findSourcemapPrefixes(sourceMaps: Array<SourceFile> | void) {
+    // If sourcemaps don't exist, set prefix to empty string and break.
     if (sourceMaps) {
-      // Extract paths to all original source files
-      let sourcePaths = [];
       for (let map of sourceMaps) {
-        if (map.sourceMapContents) {
-          let sources = JSON.parse(map.sourceMapContents).sources;
-          for (let source of sources) {
-            sourcePaths.push(getAbsoluteSourcePath(map.filePath, source));
-          }
-        } else {
-          // Should probably break out of everything and not attempt to infer a shared prefix if missing some sourcemaps.
+        if (map.sourceMapContents === undefined || map.sourceMapContents === "") {
+          this._sourcemapCommonPrefix = "";
+          this._sourcemapMapDifference = "";
+          return;
         }
       }
-
-      this._sourcemapPrefix = findCommonPrefix(sourcePaths);
     } else {
-      this._sourcemapPrefix = "";
+      this._sourcemapCommonPrefix = "";
+      this._sourcemapMapDifference = "";
+      return;
     }
 
-    console.log("Prefix", this._sourcemapPrefix);
+    // Extract common prefix of all original source files
+    let originalSourcePaths = [];
+    for (let map of sourceMaps) {
+      invariant(map.sourceMapContents); // Checked above.
+      let sources = JSON.parse(map.sourceMapContents).sources;
+      for (let source of sources) {
+        originalSourcePaths.push(getAbsoluteSourcePath(map.filePath, source));
+      }
+    }
+    let originalSourceCommonPrefix = findCommonPrefix(originalSourcePaths);
+    let originalSourceCPElements = stripEmptyStringBookends(originalSourceCommonPrefix.split("/"));
+
+    // Extract common prefix of all map files
+    let mapPaths = [];
+    for (let map of sourceMaps) {
+      let path = stripEmptyStringBookends(map.filePath.split("/"));
+      mapPaths.push(path);
+    }
+    let mapCommonPrefix = findCommonPrefix(mapPaths);
+    let mapCPElements = stripEmptyStringBookends(mapCommonPrefix.split("/"));
+
+    let commonPrefix = findCommonPrefix([originalSourceCPElements, mapCPElements]);
+    this._sourcemapCommonPrefix = commonPrefix;
+    this._sourcemapMapDifference = findMapDifference(commonPrefix, mapCommonPrefix);
+    console.log(`Common prefix: ${this._sourcemapCommonPrefix}`);
+    console.log(`Map difference: ${this._sourcemapMapDifference}`);
   }
 
   _relativeToAbsolute(path: string): string {
-    return `${this._sourcemapPrefix}${path}`;
+    console.log("rel to abs input: ", path);
+    let absolute = path.replace(this._sourcemapMapDifference, "");
+    absolute = this._sourcemapCommonPrefix + absolute;
+    console.log("rel to abs: ", absolute);
+    return absolute;
   }
 
   _absoluteToRelative(path: string): string {
-    return path.replace(this._sourcemapPrefix, "");
+    console.log("abs to rel input: ", path);
+    let relative = path.replace(this._sourcemapCommonPrefix, "");
+    relative = this._sourcemapMapDifference + relative;
+    console.log("abs to rel: ", relative);
+    return relative;
   }
 
   /*

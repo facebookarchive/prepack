@@ -16,10 +16,7 @@
  */
 export function getAbsoluteSourcePath(pathToInput: string, pathToSource: string): Array<string> {
   // pathToInput is an absolute path to the file being prepacked.
-  let fullPath = pathToInput.split("/");
-  // Remove entires for leading/trailing slashes.
-  if (fullPath[0] === "") fullPath.shift();
-  if (fullPath[fullPath.length - 1] === "") fullPath.pop();
+  let fullPath = stripEmptyStringBookends(pathToInput.split("/"));
   // Remove last entry because it is the filename, while we want the parent directory of the input file.
   fullPath.pop();
 
@@ -42,23 +39,42 @@ export function getAbsoluteSourcePath(pathToInput: string, pathToSource: string)
 
 export function findCommonPrefix(paths: Array<Array<string>>): string {
   // Find the point at which the paths diverge.
-  let index = 0;
+  let divergenceIndex = 0;
   let allPathsMatch = true;
-  let maxIndex = Math.max(...paths.map(path => path.length));
+  let maxDivergenceIndex = Math.max(...paths.map(path => path.length));
 
-  while (allPathsMatch && index < maxIndex) {
-    let entry = paths[0][index]; // Arbitrary choice of 0th path, since we're checking if all entires match.
+  while (allPathsMatch && divergenceIndex < maxDivergenceIndex) {
+    let entry = paths[0][divergenceIndex]; // Arbitrary choice of 0th path, since we're checking if all entires match.
     for (let path of paths) {
-      if (path[index] !== entry) {
+      if (path[divergenceIndex] !== entry) {
         allPathsMatch = false;
         break;
       }
     }
-    if (allPathsMatch) index += 1;
+    if (allPathsMatch) divergenceIndex += 1;
   }
   // Heuristic: if only one path, it will match itself, including the filename at the end.
-  if (paths.length === 1) index -= 1;
+  if (paths.length === 1) divergenceIndex -= 1;
 
   // Concatenate prefix into string that's bookended by slashes for use as an absolute path prefix.
-  return `/${paths[0].slice(0, index).join("/")}/`;
+  return `/${paths[0].slice(0, divergenceIndex).join("/")}/`;
+}
+
+export function findMapDifference(commonPrefix: string, mapPrefix: string): string {
+  let mapPrefixUniqueElements = stripEmptyStringBookends(mapPrefix.replace(commonPrefix, "").split("/"));
+  let mapDifference = "";
+  for (let _ of mapPrefixUniqueElements) {
+    mapDifference = mapDifference.concat("../");
+  }
+
+  return mapDifference;
+}
+
+/**
+ *  Takes in ["", "foo", "bar", ""] and returns ["foo", "bar"]
+ */
+export function stripEmptyStringBookends(path: Array<string>): Array<string> {
+  if (path[0] === "") path.shift();
+  if (path[path.length - 1] === "") path.pop();
+  return path;
 }
