@@ -1,7 +1,7 @@
 var React = require('react');
 // the JSX transform converts to React, so we need to add it back in
 this['React'] = React;
-var checkRef = false;
+var isOptimizedForFirstRender = false;
 
 function App(props) {
   function fn() {
@@ -31,14 +31,14 @@ App.getTrials = function(renderer, Root) {
   renderer.update(<Root bar={func} />);
   let results = [];
   results.push(['simple render', renderer.toJSON()]);
-  if (checkRef === true && val !== undefined) {
+  if (isOptimizedForFirstRender === true && val !== undefined) {
     throw new Error("Ref was found! :(");
   }
   return results;
 };
 
 if (this.__optimizeReactComponentTree) {
-  checkRef = true;
+  isOptimizedForFirstRender = true;
   __optimizeReactComponentTree(App, {
     firstRenderOnly: true,
   });
