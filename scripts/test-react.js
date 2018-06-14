@@ -926,6 +926,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-3.js", true);
       });
 
+      // Should be refined in a follow up PR to check for
+      // functions and keys on deep referenced objects linking
+      // to host components
       it("Simple #4", async () => {
         await runTest(directory, "simple-4.js", true);
       });

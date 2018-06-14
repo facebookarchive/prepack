@@ -830,7 +830,7 @@ export function getValueFromFunctionCall(
   return completion;
 }
 
-export function isEventProp(name: string): boolean {
+function isEventProp(name: string): boolean {
   return name.length > 2 && name[0].toLowerCase() === "o" && name[1].toLowerCase() === "n";
 }
 
@@ -1088,4 +1088,19 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
   } else {
     objectAssignCall(realm.intrinsics.undefined, [to, ...sources]);
   }
+}
+
+// In firstRenderOnly mode, we strip off onEventHanlders and any props
+// that are functions as they are not required for init render.
+export function canExcludeReactElementObjectProperty(
+  realm: Realm,
+  reactElement: ObjectValue,
+  name: string,
+  value: Value
+): boolean {
+  let reactElementData = realm.react.reactElements.get(reactElement);
+  invariant(reactElementData !== undefined);
+  let { firstRenderOnly } = reactElementData;
+  let isHostComponent = getProperty(realm, reactElement, "type") instanceof StringValue;
+  return firstRenderOnly && isHostComponent && (isEventProp(name) || value instanceof FunctionValue);
 }

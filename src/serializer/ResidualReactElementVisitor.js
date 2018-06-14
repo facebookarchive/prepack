@@ -10,11 +10,11 @@
 /* @flow strict-local */
 
 import { Realm } from "../realm.js";
-import { AbstractValue, FunctionValue, ObjectValue, StringValue, SymbolValue, Value } from "../values/index.js";
+import { AbstractValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { determineIfReactElementCanBeHoisted } from "../react/hoisting.js";
 import { traverseReactElement } from "../react/elements.js";
-import { getProperty, getReactSymbol, isEventProp } from "../react/utils.js";
+import { canExcludeReactElementObjectProperty, getProperty, getReactSymbol } from "../react/utils.js";
 import invariant from "../invariant.js";
 import ReactElementSet from "../react/ReactElementSet.js";
 import type { ReactOutputTypes } from "../options.js";
@@ -39,7 +39,6 @@ export class ResidualReactElementVisitor {
     invariant(reactElementData !== undefined);
     let { firstRenderOnly } = reactElementData;
     let isReactFragment = false;
-    let isHostComponent = false;
 
     traverseReactElement(this.realm, reactElement, {
       visitType: (typeValue: Value) => {
@@ -48,9 +47,6 @@ export class ResidualReactElementVisitor {
         // we don't want to visit fragments as they are internal values
         if (!isReactFragment) {
           this.residualHeapVisitor.visitValue(typeValue);
-        }
-        if (typeValue instanceof StringValue) {
-          isHostComponent = true;
         }
       },
       visitKey: (keyValue: Value) => {
@@ -71,10 +67,7 @@ export class ResidualReactElementVisitor {
             continue;
           }
           let propValue = getProperty(this.realm, propsValue, propName);
-
-          // In firstRenderOnly mode, we strip off onEventHanlders and any props
-          // that are functions as they are not required for init render.
-          if (firstRenderOnly && isHostComponent && (isEventProp(propName) || propValue instanceof FunctionValue)) {
+          if (canExcludeReactElementObjectProperty(this.realm, reactElement, propName, propValue)) {
             continue;
           }
           this.residualHeapVisitor.visitValue(propValue);

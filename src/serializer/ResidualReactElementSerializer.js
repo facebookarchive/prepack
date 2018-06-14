@@ -14,13 +14,13 @@ import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { canHoistReactElement } from "../react/hoisting.js";
 import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression } from "babel-types";
-import { AbstractValue, FunctionValue, ObjectValue, StringValue, SymbolValue, Value } from "../values/index.js";
+import { AbstractValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
 import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
 import { Logger } from "../utils/logger.js";
 import invariant from "../invariant.js";
 import { FatalError } from "../errors";
 import { traverseReactElement } from "../react/elements.js";
-import { getReactSymbol, getProperty, isEventProp } from "../react/utils.js";
+import { canExcludeReactElementObjectProperty, getReactSymbol, getProperty } from "../react/utils.js";
 import type { ReactOutputTypes } from "../options.js";
 import type { LazilyHoistedNodes } from "./types.js";
 
@@ -245,7 +245,6 @@ export class ResidualReactElementSerializer {
     let reactElementData = this.realm.react.reactElements.get(val);
     invariant(reactElementData !== undefined);
     let { firstRenderOnly } = reactElementData;
-    let isHostComponent = false;
     let reactElement = this._createReactElement(val);
 
     traverseReactElement(this.realm, reactElement.value, {
@@ -256,9 +255,6 @@ export class ResidualReactElementSerializer {
           if (typeValue instanceof SymbolValue && typeValue === getReactSymbol("react.fragment", this.realm)) {
             expr = this._serializeReactFragmentType(typeValue);
           } else {
-            if (typeValue instanceof StringValue) {
-              isHostComponent = true;
-            }
             expr = this.residualHeapSerializer.serializeValue(typeValue);
             // Increment ref count one more time to ensure that this object will be assigned a unique id.
             // Abstract values that are emitted as first argument to JSX elements needs a proper id.
@@ -304,10 +300,7 @@ export class ResidualReactElementSerializer {
             continue;
           }
           let propValue = getProperty(this.realm, propsValue, propName);
-
-          // In firstRenderOnly mode, we strip off onEventHanlders and any props
-          // that are functions as they are not required for init render.
-          if (firstRenderOnly && isHostComponent && (isEventProp(propName) || propValue instanceof FunctionValue)) {
+          if (canExcludeReactElementObjectProperty(this.realm, val, propName, propValue)) {
             continue;
           }
           let reactElementAttribute = this._createReactElementAttribute();
