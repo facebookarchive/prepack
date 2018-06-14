@@ -214,8 +214,7 @@ export class Serializer {
               referentializer,
               residualHeapVisitor.generatorDAG,
               residualHeapVisitor.conditionalFeasibility,
-              residualHeapVisitor.additionalGeneratorRoots,
-              residualHeapVisitor.skipValues
+              residualHeapVisitor.additionalGeneratorRoots
             ).serialize();
           });
           if (this.logger.hasErrors()) return undefined;
@@ -245,8 +244,7 @@ export class Serializer {
             referentializer,
             residualHeapVisitor.generatorDAG,
             residualHeapVisitor.conditionalFeasibility,
-            residualHeapVisitor.additionalGeneratorRoots,
-            residualHeapVisitor.skipValues
+            residualHeapVisitor.additionalGeneratorRoots
           ).serialize()
         );
       })();
