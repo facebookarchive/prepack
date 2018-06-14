@@ -248,6 +248,7 @@ export class Realm {
 
     this.react = {
       abstractHints: new WeakMap(),
+      activeReconciler: undefined,
       arrayHints: new WeakMap(),
       classComponentMetadata: new Map(),
       currentOwner: undefined,
