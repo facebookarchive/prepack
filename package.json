@@ -1,6 +1,6 @@
 {
   "name": "prepack",
-  "version": "0.2.39-alpha.0",
+  "version": "0.2.40-alpha.0",
   "description": "Execute a JS bundle, serialize global state and side effects to a snapshot that can be quickly restored.",
   "homepage": "https://github.com/facebook/prepack",
   "repository": {
@@ -100,7 +100,6 @@
     "jest": "^22.2.1",
     "js-yaml": "^3.6.1",
     "jsdom": "^9.2.1",
-    "kcheck": "^2.0.0",
     "madge": "^1.6.0",
     "minimist": "^1.2.0",
     "prettier": "1.13.4",

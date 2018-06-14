@@ -12,7 +12,7 @@
 import { Realm, Effects } from "../realm.js";
 import { ValuesDomain } from "../domains/index.js";
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
-import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
+import type { BabelNode, BabelNodeJSXIdentifier, BabelNodeExpression } from "babel-types";
 import { parseExpression } from "babylon";
 import {
   AbstractObjectValue,
@@ -629,7 +629,7 @@ export function evaluateWithNestedParentEffects(realm: Realm, nestedEffects: Arr
     }
   } finally {
     if (modifiedBindings && modifiedProperties) {
-      realm.restoreBindings(modifiedBindings);
+      realm.undoBindings(modifiedBindings);
       realm.restoreProperties(modifiedProperties);
     }
   }
@@ -760,6 +760,7 @@ export function convertConfigObjectToReactComponentTreeConfig(
 ): ReactComponentTreeConfig {
   // defaults
   let firstRenderOnly = false;
+  let isRoot = false;
 
   if (!(config instanceof UndefinedValue)) {
     for (let [key] of config.properties) {
@@ -771,6 +772,8 @@ export function convertConfigObjectToReactComponentTreeConfig(
         if (typeof value === "boolean") {
           if (key === "firstRenderOnly") {
             firstRenderOnly = value;
+          } else if (key === "isRoot") {
+            isRoot = value;
           }
         }
       } else {
@@ -787,6 +790,7 @@ export function convertConfigObjectToReactComponentTreeConfig(
   }
   return {
     firstRenderOnly,
+    isRoot,
   };
 }
 
@@ -927,6 +931,38 @@ export function createInternalReactElement(
   return obj;
 }
 
+function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps: ObjectValue): void {
+  let temporalAlias = props.temporalAlias;
+  invariant(temporalAlias !== undefined);
+  if (temporalAlias.kind === "conditional") {
+    // Leave in for now, we should deal with this later, but there might
+    // be a better option.
+    invariant(false, "TODO applyClonedTemporalAlias conditional");
+  }
+  let temporalArgs = realm.temporalAliasArgs.get(temporalAlias);
+  invariant(temporalArgs !== undefined);
+  // replace the original props with the cloned one
+  let newTemporalArgs = temporalArgs.map(arg => (arg === props ? clonedProps : arg));
+
+  let temporalTo = AbstractValue.createTemporalFromBuildFunction(
+    realm,
+    ObjectValue,
+    newTemporalArgs,
+    ([methodNode, targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
+      return t.callExpression(methodNode, [targetNode, ...sourceNodes]);
+    },
+    { skipInvariant: true }
+  );
+  invariant(temporalTo instanceof AbstractObjectValue);
+  invariant(clonedProps instanceof ObjectValue);
+  temporalTo.values = new ValuesDomain(clonedProps);
+  clonedProps.temporalAlias = temporalTo;
+  // Store the args for the temporal so we can easily clone
+  // and reconstruct the temporal at another point, rather than
+  // mutate the existing temporal
+  realm.temporalAliasArgs.set(temporalTo, newTemporalArgs);
+}
+
 export function cloneProps(
   realm: Realm,
   props: ObjectValue,
@@ -955,7 +991,7 @@ export function cloneProps(
     flagPropsWithNoPartialKeyOrRef(realm, clonedProps);
   }
   if (props.temporalAlias !== undefined) {
-    clonedProps.temporalAlias = props.temporalAlias;
+    applyClonedTemporalAlias(realm, props, clonedProps);
   }
   clonedProps.makeFinal();
   return clonedProps;
@@ -999,7 +1035,9 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
                 Properties.Set(realm, to, propName, Get(realm, source, propName), true);
               }
             }
-            delayedSources.push(source.getSnapshot());
+            let snapshot = source.getSnapshot();
+            delayedSources.push(snapshot);
+            source.temporalAlias = snapshot;
           } else {
             // if we are dealing with an abstract object or one that is partial, then
             // we don't try and copy its properties over as there's no guarantee they are
@@ -1008,7 +1046,9 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
               // Make it implicit again since it is getting delayed into an Object.assign call.
               delayedSources.push(source.args[0]);
             } else {
-              delayedSources.push(source.getSnapshot());
+              let snapshot = source.getSnapshot();
+              delayedSources.push(snapshot);
+              source.temporalAlias = snapshot;
             }
             // if to has properties, we better remove them because after the temporal call to Object.assign we don't know their values anymore
             if (to.hasStringOrSymbolProperties()) {
@@ -1020,10 +1060,11 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
         // prepare our temporal Object.assign fallback
         to.makePartial();
         to.makeSimple();
+        let temporalArgs = [objAssign, to, ...delayedSources];
         let temporalTo = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,
-          [objAssign, to, ...delayedSources],
+          temporalArgs,
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           },
@@ -1032,6 +1073,10 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
         invariant(temporalTo instanceof AbstractObjectValue);
         temporalTo.values = new ValuesDomain(to);
         to.temporalAlias = temporalTo;
+        // Store the args for the temporal so we can easily clone
+        // and reconstruct the temporal at another point, rather than
+        // mutate the existing temporal
+        realm.temporalAliasArgs.set(temporalTo, temporalArgs);
         return;
       } else {
         throw error;
