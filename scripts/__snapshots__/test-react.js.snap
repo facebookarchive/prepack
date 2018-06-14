@@ -2139,6 +2139,23 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output Functional component folding Handle mapped arrays from Array.from 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, JSX output Functional component folding Havocing of ReactElements should not result in property assignments 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -7072,6 +7089,23 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, create-element output Functional component folding Handle mapped arrays from Array.from 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Test React with JSX input, create-element output Functional component folding Havocing of ReactElements should not result in property assignments 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -12000,6 +12034,23 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, JSX output Functional component folding Handle mapped arrays from Array.from 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
   "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
@@ -16948,6 +16999,23 @@ ReactStatistics {
     },
   ],
   "inlinedComponents": 1,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Functional component folding Handle mapped arrays from Array.from 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
   "optimizedNestedClosures": 1,
   "optimizedTrees": 1,
 }
