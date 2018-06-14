@@ -10,7 +10,16 @@
 /* @flow strict-local */
 
 import { Realm } from "../realm.js";
-import { AbstractValue, FunctionValue, ObjectValue, SymbolValue, Value, StringValue } from "../values/index.js";
+import {
+  AbstractObjectValue,
+  AbstractValue,
+  FunctionValue,
+  NativeFunctionValue,
+  ObjectValue,
+  SymbolValue,
+  Value,
+  StringValue,
+} from "../values/index.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { determineIfReactElementCanBeHoisted } from "../react/hoisting.js";
 import { traverseReactElement } from "../react/elements.js";
@@ -18,6 +27,44 @@ import { getProperty, getReactSymbol, isEventProp } from "../react/utils.js";
 import invariant from "../invariant.js";
 import ReactElementSet from "../react/ReactElementSet.js";
 import type { ReactOutputTypes } from "../options.js";
+
+function recursivelyVisitObjectsForFirstRender(
+  realm: Realm,
+  obj: ObjectValue | AbstractObjectValue,
+  objectVisitCallback: (obj: ObjectValue | AbstractObjectValue) => void,
+  alreadyVisited?: Set<ObjectValue | AbstractObjectValue> = new Set()
+): void {
+  if (alreadyVisited.has(obj)) {
+    return;
+  }
+  alreadyVisited.add(obj);
+  if (obj.temporalAlias === undefined) {
+    if (obj instanceof AbstractObjectValue && !obj.values.isTop()) {
+      for (let element of obj.values.getElements()) {
+        recursivelyVisitObjectsForFirstRender(realm, element, objectVisitCallback, alreadyVisited);
+      }
+    } else if (obj instanceof ObjectValue) {
+      objectVisitCallback(obj);
+    }
+  } else {
+    let temporalArgs = realm.temporalAliasArgs.get(obj.temporalAlias);
+    if (temporalArgs === undefined) {
+      if (obj instanceof ObjectValue) {
+        objectVisitCallback(obj);
+      }
+      return;
+    }
+    for (let temporalArg of temporalArgs) {
+      if (
+        temporalArg instanceof AbstractObjectValue ||
+        (temporalArg instanceof ObjectValue &&
+          !(temporalArg instanceof FunctionValue || temporalArg instanceof NativeFunctionValue))
+      ) {
+        recursivelyVisitObjectsForFirstRender(realm, temporalArg, objectVisitCallback, alreadyVisited);
+      }
+    }
+  }
+}
 
 export class ResidualReactElementVisitor {
   constructor(realm: Realm, residualHeapVisitor: ResidualHeapVisitor) {
@@ -62,6 +109,22 @@ export class ResidualReactElementVisitor {
         }
       },
       visitAbstractOrPartialProps: (propsValue: AbstractValue | ObjectValue) => {
+        if (firstRenderOnly) {
+          let objectVisitCallback = (object: ObjectValue) => {
+            for (let [propName, binding] of object.properties) {
+              if (binding && binding.descriptor && binding.descriptor.enumerable) {
+                let propValue = getProperty(this.realm, object, propName);
+
+                if (isHostComponent && (isEventProp(propName) || propValue instanceof FunctionValue)) {
+                  // we should check how many times this object is visited
+                  // as another object might be visiting it and require it
+                  this.residualHeapVisitor.skipValues.add(propValue);
+                }
+              }
+            }
+          };
+          recursivelyVisitObjectsForFirstRender(this.realm, propsValue, objectVisitCallback);
+        }
         this.residualHeapVisitor.visitValue(propsValue);
       },
       visitConcreteProps: (propsValue: ObjectValue) => {

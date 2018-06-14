@@ -126,7 +126,8 @@ export class ResidualHeapSerializer {
     referentializer: Referentializer,
     generatorDAG: GeneratorDAG,
     conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>,
-    additionalGeneratorRoots: Map<Generator, Set<ObjectValue>>
+    additionalGeneratorRoots: Map<Generator, Set<ObjectValue>>,
+    skipValues: Set<Value>
   ) {
     this.realm = realm;
     this.logger = logger;
@@ -216,6 +217,7 @@ export class ResidualHeapSerializer {
     this.declaredGlobalLets = new Map();
     this._objectSemaphores = new Map();
     this.additionalGeneratorRoots = additionalGeneratorRoots;
+    this.skipValues = skipValues;
   }
 
   emitter: Emitter;
@@ -258,6 +260,7 @@ export class ResidualHeapSerializer {
   residualReactElementSerializer: ResidualReactElementSerializer;
   referentializer: Referentializer;
   additionalFunctionGenerators: Map<FunctionValue, Generator>;
+  skipValues: Set<Value>;
 
   // function values nested in additional functions can't delay initializations
   // TODO: revisit this and fix additional functions to be capable of delaying initializations
@@ -975,6 +978,9 @@ export class ResidualHeapSerializer {
 
   serializeValue(val: Value, referenceOnly?: boolean, bindingType?: BabelVariableKind): BabelNodeExpression {
     invariant(!(val instanceof ObjectValue && val.refuseSerialization));
+    if (this.skipValues.has(val)) {
+      return;
+    }
     if (val instanceof AbstractValue) {
       if (val.kind === "widened") {
         this.serializedValues.add(val);
@@ -1643,7 +1649,9 @@ export class ResidualHeapSerializer {
             remainingProperties.delete(key);
             serializedValue = this.serializeValue(propValue);
           }
-          props.push(t.objectProperty(serializedKey, serializedValue));
+          if (serializedValue !== undefined) {
+            props.push(t.objectProperty(serializedKey, serializedValue));
+          }
         } else if (descriptor.value instanceof Value && descriptor.value.mightHaveBeenDeleted()) {
           dummyProperties.add(key);
           let serializedKey = this.generator.getAsPropertyNameExpression(key);

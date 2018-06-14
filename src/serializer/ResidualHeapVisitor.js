@@ -116,6 +116,7 @@ export class ResidualHeapVisitor {
     this.additionalGeneratorRoots = new Map();
     this.residualReactElementVisitor = new ResidualReactElementVisitor(this.realm, this);
     this.generatorDAG = new GeneratorDAG();
+    this.skipValues = new Set();
   }
 
   realm: Realm;
@@ -123,6 +124,7 @@ export class ResidualHeapVisitor {
   modules: Modules;
   referentializer: Referentializer | void;
   globalGenerator: Generator;
+  skipValues: Set<Value>;
 
   // Caches that ensure one ResidualFunctionBinding exists per (record, name) pair
   declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>;
@@ -1009,6 +1011,9 @@ export class ResidualHeapVisitor {
 
   visitValue(val: Value): void {
     invariant(val !== undefined);
+    if (this.skipValues.has(val)) {
+      return;
+    }
     invariant(!(val instanceof ObjectValue && val.refuseSerialization));
     if (val instanceof AbstractValue) {
       if (this.preProcessValue(val)) this.visitAbstractValue(val);
