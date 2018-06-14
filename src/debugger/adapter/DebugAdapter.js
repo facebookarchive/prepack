@@ -22,13 +22,6 @@ import type {
 } from "./../common/types.js";
 import { DebuggerConstants } from "./../common/DebuggerConstants.js";
 
-// Breakpoint requests send before Prepack was launched.
-// Buffered here, re-sent to Prepack after Prepack is launched.
-export type PrematureBP = {
-  breakpointArgs: DebugProtocol.SetBreakpointsArguments,
-  response: DebugProtocol.SetBreakpointsResponse,
-};
-
 /* An implementation of an debugger adapter adhering to the VSCode Debug protocol
  * The adapter is responsible for communication between the UI and Prepack
 */
