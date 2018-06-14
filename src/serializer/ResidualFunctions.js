@@ -359,6 +359,7 @@ export class ResidualFunctions {
       let { instance } = additionalFunctionInfo;
       let functionValue = ((funcValue: any): ECMAScriptSourceFunctionValue);
       let params = functionValue.$FormalParameters;
+      let isLexical = funcValue.$ThisMode === "lexical";
       invariant(params !== undefined);
 
       let rewrittenBody = rewrittenAdditionalFunctions.get(funcValue);
@@ -409,7 +410,9 @@ export class ResidualFunctions {
           funcOrClassNode.superClass = classSuperNode;
         }
       } else {
-        funcOrClassNode = t.functionExpression(null, params, functionBody);
+        funcOrClassNode = isLexical
+          ? t.arrowFunctionExpression(params, functionBody)
+          : t.functionExpression(null, params, functionBody);
       }
       let id = this.locationService.getLocation(funcValue);
       invariant(id !== undefined);
