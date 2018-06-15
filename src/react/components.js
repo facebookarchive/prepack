@@ -67,6 +67,7 @@ export function getInitialProps(
   invariant(value instanceof AbstractObjectValue);
   flagPropsWithNoPartialKeyOrRef(realm, value);
   value.makeFinal();
+  realm.react.intrinsicAbstractObjects.add(value);
   return value;
 }
 
@@ -90,6 +91,7 @@ export function getInitialContext(realm: Realm, componentType: ECMAScriptSourceF
     }
   }
   let value = AbstractValue.createAbstractObject(realm, contextName || "context");
+  realm.react.intrinsicAbstractObjects.add(value);
   return value;
 }
 
@@ -266,6 +268,7 @@ export function createClassInstance(
   // return the instance in an abstract object
   let value = AbstractValue.createAbstractObject(realm, "this", instance);
   invariant(value instanceof AbstractObjectValue);
+  realm.react.intrinsicAbstractObjects.add(value);
   return value;
 }
 

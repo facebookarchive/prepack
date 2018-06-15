@@ -255,6 +255,7 @@ export class Realm {
       enabled: opts.reactEnabled || false,
       hoistableFunctions: new WeakMap(),
       hoistableReactElements: new WeakMap(),
+      intrinsicAbstractObjects: new WeakSet(),
       noopFunction: undefined,
       optimizedNestedClosuresToWrite: [],
       optimizeNestedFunctions: opts.reactOptimizeNestedFunctions || false,
@@ -349,6 +350,7 @@ export class Realm {
     enabled: boolean,
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,
+    intrinsicAbstractObjects: WeakSet<AbstractObjectValue>,
     noopFunction: void | ECMAScriptSourceFunctionValue,
     optimizedNestedClosuresToWrite: Array<{
       effects: Effects,

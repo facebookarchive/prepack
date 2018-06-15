@@ -190,14 +190,25 @@ export default class AbstractValue extends Value {
       }
       return true;
     };
+    let intrinsicNamesMatch =
+      this.intrinsicName && this.intrinsicName.length > 0 && this.intrinsicName === x.intrinsicName;
+
+    if (intrinsicNamesMatch && x instanceof AbstractObjectValue && this instanceof AbstractObjectValue) {
+      let realm = this.$Realm;
+
+      // If both values are intrinsic abstract object values created by the React reconciler,
+      // then if they do not match then they are definitely not equal, even if they share the same name.
+      if (realm.react.intrinsicAbstractObjects.has(x) && realm.react.intrinsicAbstractObjects.has(this) && x !== this) {
+        return false;
+      }
+    }
 
     return (
       this === x ||
       (x instanceof AbstractValue &&
         this.kind === x.kind &&
         this.hashValue === x.hashValue &&
-        ((this.intrinsicName && this.intrinsicName.length > 0 && this.intrinsicName === x.intrinsicName) ||
-          (n > 0 && argsAreEqual())))
+        (intrinsicNamesMatch || (n > 0 && argsAreEqual())))
     );
   }
 
