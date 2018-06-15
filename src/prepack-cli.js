@@ -80,6 +80,7 @@ function run(
     --repro                  Create a zip file with all information needed to reproduce a Prepack run"
     --cpuprofile             Create a CPU profile file for the run that can be loaded into the Chrome JavaScript CPU Profile viewer",
     --debugDiagnosticSeverity      FatalError | RecoverableError | Warning | Information (default = FatalError). Diagnostic level at which debugger will stop
+    --debugSourcemapDirectoryRoot  ...
   `;
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -269,6 +270,9 @@ function run(
             `Invalid debugger diagnostic severity: ${arg}`
           );
           debuggerConfigArgs.diagnosticSeverity = arg;
+          break;
+        case "debugSourcemapDirectoryRoot":
+          debuggerConfigArgs.sourcemapDirectoryRoot = args.shift();
           break;
         case "help":
           const options = [

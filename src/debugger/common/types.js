@@ -43,7 +43,8 @@ export type PrepackLaunchArguments = {
 
 export type DebuggerConfigArguments = {
   diagnosticSeverity?: Severity,
-  sourceMaps?: Array<SourceFile>,
+  sourcemaps?: Array<SourceFile>,
+  sourcemapDirectoryRoot?: string,
 };
 
 export type Breakpoint = {

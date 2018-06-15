@@ -149,7 +149,7 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     let debugOptions = getDebuggerOptions(options);
     let ioWrapper = new FileIOWrapper(false, debugOptions.inFilePath, debugOptions.outFilePath);
     debugChannel = new DebugChannel(ioWrapper);
-    if (options.debuggerConfigArgs) options.debuggerConfigArgs.sourceMaps = sourceFiles;
+    if (options.debuggerConfigArgs) options.debuggerConfigArgs.sourcemaps = sourceFiles;
   }
   return prepackSources(sourceFiles, options, debugChannel, createStatistics(options));
 }

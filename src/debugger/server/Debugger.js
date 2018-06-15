@@ -59,7 +59,19 @@ export class DebugServer {
     this._stepManager = new SteppingManager(this._realm, /* default discard old steppers */ false);
     this._stopEventManager = new StopEventManager();
     this._diagnosticSeverity = configArgs.diagnosticSeverity || "FatalError";
-    this._findSourcemapPrefixes(configArgs.sourceMaps);
+    if (configArgs.sourcemapDirectoryRoot !== undefined) {
+      if (configArgs.sourcemaps === undefined) {
+        throw new DebuggerError(
+          "Invalid input",
+          "Can't provide a sourcemap directory root without having sourcemaps present"
+        );
+      }
+      this._sourcemapDirectoryRoot = configArgs.sourcemapDirectoryRoot;
+      this._useRootPrefix = true;
+    } else {
+      this._findSourcemapPrefixes(configArgs.sourcemaps);
+      this._useRootPrefix = false;
+    }
     this.waitForRun(undefined);
   }
   // the collection of breakpoints
@@ -72,8 +84,10 @@ export class DebugServer {
   _stopEventManager: StopEventManager;
   _lastExecuted: SourceData;
   // Prefixes used to translate between relative paths stored in AST nodes and absolute paths given to IDE.
-  _sourcemapCommonPrefix: string;
-  _sourcemapMapDifference: string;
+  _sourcemapCommonPrefix: void | string; // Used for paths relative to map location.
+  _sourcemapMapDifference: void | string; // Used for paths relative to map location.
+  _sourcemapDirectoryRoot: void | string; // Used for paths relative to directory root.
+  _useRootPrefix: boolean; // If true, use _sourcemapDirectoryRoot, else use _sourceMap[CP/MD].
   // Severity at which debugger will break when CompilerDiagnostics are generated. Default is Fatal.
   _diagnosticSeverity: Severity;
 
@@ -116,7 +130,6 @@ export class DebugServer {
     let args = request.arguments;
     console.log("incoming request: ", command);
     // Convert incoming location sources to relative paths in order to match internal representation of filenames.
-    // if (loc && loc.source) loc.source = this._absoluteToRelative(loc.source);
     if (args.kind === "breakpoint") {
       for (let bp of args.breakpoints) {
         bp.filePath = this._absoluteToRelative(bp.filePath);
@@ -322,7 +335,7 @@ export class DebugServer {
   }
 
   _findSourcemapPrefixes(sourceMaps: Array<SourceFile> | void) {
-    // If sourcemaps don't exist, set prefix to empty string and break.
+    // If sourcemaps don't exist, set prefixes to empty string and break.
     if (sourceMaps) {
       for (let map of sourceMaps) {
         if (map.sourceMapContents === undefined || map.sourceMapContents === "") {
@@ -337,46 +350,62 @@ export class DebugServer {
       return;
     }
 
-    // Extract common prefix of all original source files
+    // Extract common prefix and map difference
     let originalSourcePaths = [];
-    for (let map of sourceMaps) {
-      invariant(map.sourceMapContents); // Checked above.
-      let sources = JSON.parse(map.sourceMapContents).sources;
-      for (let source of sources) {
-        originalSourcePaths.push(getAbsoluteSourcePath(map.filePath, source));
-      }
-    }
-    let originalSourceCommonPrefix = findCommonPrefix(originalSourcePaths);
-    let originalSourceCPElements = stripEmptyStringBookends(originalSourceCommonPrefix.split("/"));
-
-    // Extract common prefix of all map files
     let mapPaths = [];
     for (let map of sourceMaps) {
-      let path = stripEmptyStringBookends(map.filePath.split("/"));
-      mapPaths.push(path);
+      invariant(map.sourceMapContents); // Checked above.
+      let parsed = JSON.parse(map.sourceMapContents);
+      // Two formats for sourcemaps exist.
+      if ("sections" in parsed) {
+        for (let section of parsed.sections) {
+          // ASSUMPTION: each section only has one source (from fb4a).
+          originalSourcePaths.push(getAbsoluteSourcePath(map.filePath, section.map.sources[0]));
+        }
+      } else {
+        for (let source of parsed.sources) {
+          // ASSUMPTION: all sources are put into this array.
+          originalSourcePaths.push(getAbsoluteSourcePath(map.filePath, source));
+        }
+      }
+      mapPaths.push(stripEmptyStringBookends(map.filePath.split("/")));
     }
+
+    let originalSourceCommonPrefix = findCommonPrefix(originalSourcePaths);
+    let originalSourceCPElements = stripEmptyStringBookends(originalSourceCommonPrefix.split("/"));
     let mapCommonPrefix = findCommonPrefix(mapPaths);
     let mapCPElements = stripEmptyStringBookends(mapCommonPrefix.split("/"));
 
-    let commonPrefix = findCommonPrefix([originalSourceCPElements, mapCPElements]);
-    this._sourcemapCommonPrefix = commonPrefix;
-    this._sourcemapMapDifference = findMapDifference(commonPrefix, mapCommonPrefix);
+    this._sourcemapCommonPrefix = findCommonPrefix([originalSourceCPElements, mapCPElements]);
+    this._sourcemapMapDifference = findMapDifference(this._sourcemapCommonPrefix, mapCommonPrefix);
     console.log(`Common prefix: ${this._sourcemapCommonPrefix}`);
     console.log(`Map difference: ${this._sourcemapMapDifference}`);
   }
 
   _relativeToAbsolute(path: string): string {
     console.log("rel to abs input: ", path);
-    let absolute = path.replace(this._sourcemapMapDifference, "");
-    absolute = this._sourcemapCommonPrefix + absolute;
+    let absolute;
+    if (this._useRootPrefix) {
+      // Should address flow here (and below) use invariants or if's?
+      // Technically is runtime dependent, but there should not be a code path that fails an invariant.
+      absolute = this._sourcemapDirectoryRoot + path;
+    } else {
+      absolute = path.replace(this._sourcemapMapDifference, "");
+      absolute = this._sourcemapCommonPrefix + absolute;
+    }
     console.log("rel to abs: ", absolute);
     return absolute;
   }
 
   _absoluteToRelative(path: string): string {
     console.log("abs to rel input: ", path);
-    let relative = path.replace(this._sourcemapCommonPrefix, "");
-    relative = this._sourcemapMapDifference + relative;
+    let relative;
+    if (this._useRootPrefix) {
+      relative = path.replace(this._sourcemapDirectoryRoot, "");
+    } else {
+      relative = path.replace(this._sourcemapCommonPrefix, "");
+      relative = this._sourcemapMapDifference + relative;
+    }
     console.log("abs to rel: ", relative);
     return relative;
   }
