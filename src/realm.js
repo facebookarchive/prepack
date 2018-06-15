@@ -350,7 +350,7 @@ export class Realm {
     enabled: boolean,
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,
-    intrinsicAbstractObjects: WeakSet<AbstractObjectValue>,
+    intrinsicAbstractObjects: WeakSet<AbstractValue>,
     noopFunction: void | ECMAScriptSourceFunctionValue,
     optimizedNestedClosuresToWrite: Array<{
       effects: Effects,
