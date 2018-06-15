@@ -1643,9 +1643,7 @@ export class ResidualHeapSerializer {
             remainingProperties.delete(key);
             serializedValue = this.serializeValue(propValue);
           }
-          if (serializedValue !== undefined) {
-            props.push(t.objectProperty(serializedKey, serializedValue));
-          }
+          props.push(t.objectProperty(serializedKey, serializedValue));
         } else if (descriptor.value instanceof Value && descriptor.value.mightHaveBeenDeleted()) {
           dummyProperties.add(key);
           let serializedKey = this.generator.getAsPropertyNameExpression(key);
