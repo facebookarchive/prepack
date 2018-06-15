@@ -792,7 +792,14 @@ export type JoinType = {
   // sets of m1 and m2. The value of a pair is the join of m1[key] and m2[key]
   // where the join is defined to be just m1[key] if m1[key] === m2[key] and
   // and abstract value with expression "joinCondition ? m1[key] : m2[key]" if not.
-  joinBindings(realm: Realm, joinCondition: AbstractValue, m1: Bindings, m2: Bindings): Bindings,
+  joinBindings(
+    realm: Realm,
+    joinCondition: AbstractValue,
+    g1: Generator,
+    m1: Bindings,
+    g2: Generator,
+    m2: Bindings
+  ): [Generator, Generator, Bindings],
 
   // If v1 is known and defined and v1 === v2 return v1,
   // otherwise return getAbstractValue(v1, v2)

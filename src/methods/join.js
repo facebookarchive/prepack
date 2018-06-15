@@ -511,7 +511,14 @@ export class JoinImplementation {
       return new Effects(result, generator1, modifiedBindings1, modifiedProperties1, createdObject1);
     }
 
-    let bindings = this.joinBindings(realm, joinCondition, modifiedBindings1, modifiedBindings2);
+    let [modifiedGenerator1, modifiedGenerator2, bindings] = this.joinBindings(
+      realm,
+      joinCondition,
+      generator1,
+      modifiedBindings1,
+      generator2,
+      modifiedBindings2
+    );
     let properties = this.joinPropertyBindings(
       realm,
       joinCondition,
@@ -528,7 +535,7 @@ export class JoinImplementation {
       createdObjects.add(o);
     });
 
-    let generator = joinGenerators(realm, joinCondition, generator1, generator2);
+    let generator = joinGenerators(realm, joinCondition, modifiedGenerator1, modifiedGenerator2);
 
     return new Effects(result, generator, bindings, properties, createdObjects);
   }
@@ -706,42 +713,63 @@ export class JoinImplementation {
   // sets of m1 and m2. The value of a pair is the join of m1[key] and m2[key]
   // where the join is defined to be just m1[key] if m1[key] === m2[key] and
   // and abstract value with expression "joinCondition ? m1[key] : m2[key]" if not.
-  joinBindings(realm: Realm, joinCondition: AbstractValue, m1: Bindings, m2: Bindings): Bindings {
+  joinBindings(
+    realm: Realm,
+    joinCondition: AbstractValue,
+    g1: Generator,
+    m1: Bindings,
+    g2: Generator,
+    m2: Bindings
+  ): [Generator, Generator, Bindings] {
     let getAbstractValue = (v1: void | Value, v2: void | Value) => {
       return AbstractValue.createFromConditionalOp(realm, joinCondition, v1, v2);
     };
+    let rewritten1 = false;
+    let rewritten2 = false;
+    let leak = (b: Binding, g: Generator, v: void | Value, rewritten: boolean) => {
+      // just like to what happens in havocBinding, we are going to append a
+      // binding-assignment generator entry; however, we play it safe and don't
+      // mutate the generator; instead, we create a new one that wraps around the old one.
+      if (!rewritten) {
+        let h = new Generator(realm, "RewrittenToAppendBindingAssignments");
+        if (!g.empty()) h.appendGenerator(g, "");
+        g = h;
+        rewritten = true;
+      }
+      g.emitBindingAssignment(b, v || realm.intrinsics.undefined);
+      return [g, rewritten];
+    };
     let join = (b: Binding, b1: void | BindingEntry, b2: void | BindingEntry) => {
+      // cannot join two const bindings
+      invariant(b.mutable === true);
+
       let l1 = b1 === undefined ? b.hasLeaked : b1.hasLeaked;
       let l2 = b2 === undefined ? b.hasLeaked : b2.hasLeaked;
       let v1 = b1 === undefined ? b.value : b1.value;
       let v2 = b2 === undefined ? b.value : b2.value;
-      let liv1 = b1 === undefined ? b.leakedImmutableValue : b1.leakedImmutableValue;
-      let liv2 = b2 === undefined ? b.leakedImmutableValue : b2.leakedImmutableValue;
-      let hasLeaked = l1 || l2; // If either has leaked, then this binding has leaked.
-      let value = this.joinValues(realm, v1, v2, getAbstractValue);
-      let leakedImmutableValue =
-        liv1 === undefined && liv2 === undefined ? undefined : this.joinValues(realm, liv1, liv2, getAbstractValue);
-      invariant(value instanceof Value);
-      invariant(leakedImmutableValue === undefined || leakedImmutableValue instanceof Value);
-      let previousLeakedImmutableValue, previousHasLeaked, previousValue;
+      // ensure that if either none or both sides have leaked
+      if (!l1 && l2) [g1, rewritten1] = leak(b, g1, v1, rewritten1);
+      else if (l1 && !l2) [g2, rewritten2] = leak(b, g2, v2, rewritten2);
+      let hasLeaked = l1 || l2;
+      // For leaked (and mutable) bindings, the actual value is no longer directly available.
+      // In that case, we reset the value to undefined to prevent any use of the last known value.
+      let value = hasLeaked ? undefined : this.joinValues(realm, v1, v2, getAbstractValue);
+      invariant(value === undefined || value instanceof Value);
+      let previousHasLeaked, previousValue;
       if (b1 !== undefined) {
-        previousLeakedImmutableValue = b1.previousLeakedImmutableValue;
         previousHasLeaked = b1.previousHasLeaked;
         previousValue = b1.previousValue;
         invariant(
-          b2 === undefined ||
-            (previousLeakedImmutableValue === b2.previousLeakedImmutableValue &&
-              previousHasLeaked === b2.previousHasLeaked &&
-              previousValue === b2.previousValue)
+          b2 === undefined || (previousHasLeaked === b2.previousHasLeaked && previousValue === b2.previousValue)
         );
       } else if (b2 !== undefined) {
-        previousLeakedImmutableValue = b2.previousLeakedImmutableValue;
         previousHasLeaked = b2.previousHasLeaked;
         previousValue = b2.previousValue;
       }
-      return { leakedImmutableValue, hasLeaked, value, previousLeakedImmutableValue, previousHasLeaked, previousValue };
+      return { hasLeaked, value, previousHasLeaked, previousValue };
     };
-    return this.joinMaps(m1, m2, join);
+    let joinedBindings = this.joinMaps(m1, m2, join);
+    return [g1, g2, joinedBindings];
   }
 
   // If v1 is known and defined and v1 === v2 return v1,

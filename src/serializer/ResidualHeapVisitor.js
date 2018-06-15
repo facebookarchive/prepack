@@ -690,6 +690,7 @@ export class ResidualHeapVisitor {
           name,
           value: undefined,
           modified: true,
+          hasLeaked: false,
           declarativeEnvironmentRecord: null,
           potentialReferentializationScopes: new Set(),
         };
@@ -717,6 +718,7 @@ export class ResidualHeapVisitor {
             name,
             value: undefined,
             modified: false,
+            hasLeaked: false,
             declarativeEnvironmentRecord: environment,
             potentialReferentializationScopes: new Set(),
           };
@@ -1149,6 +1151,7 @@ export class ResidualHeapVisitor {
       visitBindingAssignment: (binding: Binding, value: Value) => {
         let residualBinding = this.getBinding(binding.environment, binding.name);
         residualBinding.modified = true;
+        residualBinding.hasLeaked = true;
         return this.visitEquivalentValue(value);
       },
     };
