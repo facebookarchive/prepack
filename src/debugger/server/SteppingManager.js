@@ -9,7 +9,7 @@
 
 /* @flow strict-local */
 
-import { BabelNode } from "babel-types";
+import { BabelNodeSourceLocation } from "babel-types";
 import invariant from "./../common/invariant.js";
 import { Stepper, StepIntoStepper, StepOverStepper, StepOutStepper } from "./Stepper.js";
 import type { Realm } from "./../../realm.js";
@@ -26,45 +26,45 @@ export class SteppingManager {
   _keepOldSteppers: boolean;
   _steppers: Array<Stepper>;
 
-  processStepCommand(kind: "in" | "over" | "out", currentNode: BabelNode) {
+  processStepCommand(kind: "in" | "over" | "out", currentNodeLocation: BabelNodeSourceLocation) {
     if (kind === "in") {
-      this._processStepIn(currentNode);
+      this._processStepIn(currentNodeLocation);
     } else if (kind === "over") {
-      this._processStepOver(currentNode);
+      this._processStepOver(currentNodeLocation);
     } else if (kind === "out") {
-      this._processStepOut(currentNode);
+      this._processStepOut(currentNodeLocation);
     } else {
       invariant(false, `Invalid step type: ${kind}`);
     }
   }
 
-  _processStepIn(ast: BabelNode) {
-    invariant(ast.loc && ast.loc.source);
+  _processStepIn(loc: BabelNodeSourceLocation) {
+    invariant(loc && loc.source);
     if (!this._keepOldSteppers) {
       this._steppers = [];
     }
     this._steppers.push(
-      new StepIntoStepper(ast.loc.source, ast.loc.start.line, ast.loc.start.column, this._realm.contextStack.length)
+      new StepIntoStepper(loc.source, loc.start.line, loc.start.column, this._realm.contextStack.length)
     );
   }
 
-  _processStepOver(ast: BabelNode) {
-    invariant(ast.loc && ast.loc.source);
+  _processStepOver(loc: BabelNodeSourceLocation) {
+    invariant(loc && loc.source);
     if (!this._keepOldSteppers) {
       this._steppers = [];
     }
     this._steppers.push(
-      new StepOverStepper(ast.loc.source, ast.loc.start.line, ast.loc.start.column, this._realm.contextStack.length)
+      new StepOverStepper(loc.source, loc.start.line, loc.start.column, this._realm.contextStack.length)
     );
   }
 
-  _processStepOut(ast: BabelNode) {
-    invariant(ast.loc && ast.loc.source);
+  _processStepOut(loc: BabelNodeSourceLocation) {
+    invariant(loc && loc.source);
     if (!this._keepOldSteppers) {
       this._steppers = [];
     }
     this._steppers.push(
-      new StepOutStepper(ast.loc.source, ast.loc.start.line, ast.loc.start.column, this._realm.contextStack.length)
+      new StepOutStepper(loc.source, loc.start.line, loc.start.column, this._realm.contextStack.length)
     );
   }
 
