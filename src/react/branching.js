@@ -24,7 +24,14 @@ import {
 } from "../values/index.js";
 import invariant from "../invariant.js";
 import { ValuesDomain } from "../domains/index.js";
-import { isReactElement, addKeyToReactElement, forEachArrayValue, getProperty, mapArrayValue } from "./utils";
+import {
+  createInternalReactElement,
+  isReactElement,
+  addKeyToReactElement,
+  forEachArrayValue,
+  getProperty,
+  mapArrayValue,
+} from "./utils";
 import { ExpectedBailOut } from "./errors.js";
 
 // Branch status is used for when Prepack returns an abstract value from a render
@@ -184,21 +191,19 @@ function applyBranchedLogicValue(realm: Realm, value: Value): Value {
 // return the original value
 export function wrapReactElementInBranchOrReturnValue(realm: Realm, value: Value): Value {
   if (value instanceof ObjectValue && isReactElement(value)) {
-    let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
-    value.copyKeys(value.$OwnPropertyKeys(), value, obj);
-    let temporal = AbstractValue.createTemporalFromBuildFunction(realm, ObjectValue, [obj], ([node]) => node, {
+    let typeValue = getProperty(realm, value, "type");
+    let keyValue = getProperty(realm, value, "key");
+    let refValue = getProperty(realm, value, "ref");
+    let propsValue = getProperty(realm, value, "props");
+
+    let clonedObject = createInternalReactElement(realm, typeValue, keyValue, refValue, propsValue);
+    let temporal = AbstractValue.createTemporalFromBuildFunction(realm, ObjectValue, [clonedObject], ([node]) => node, {
       isPure: true,
       skipInvariant: true,
     });
     invariant(temporal instanceof AbstractObjectValue);
     temporal.values = new ValuesDomain(value);
     value.temporalAlias = temporal;
-    // If we're in "rendering" a React component tree, we should have an active reconciler
-    let activeReconciler = realm.react.activeReconciler;
-    let createdDuringReconcilation = activeReconciler !== undefined;
-    let firstRenderOnly = createdDuringReconcilation ? activeReconciler.componentTreeConfig.firstRenderOnly : false;
-
-    realm.react.reactElements.set(obj, { createdDuringReconcilation, firstRenderOnly });
   }
   return value;
 }
