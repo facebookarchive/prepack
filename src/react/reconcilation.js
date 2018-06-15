@@ -30,7 +30,6 @@ import { ReactStatistics, type ReactEvaluatedNode } from "../serializer/types.js
 import {
   cloneReactElement,
   cloneProps,
-  createInternalReactElement,
   createReactEvaluatedNode,
   doNotOptimizeComponent,
   evaluateWithNestedParentEffects,
