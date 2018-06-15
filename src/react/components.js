@@ -65,6 +65,7 @@ export function getInitialProps(
   }
   let value = AbstractValue.createAbstractObject(realm, propsName || "props");
   invariant(value instanceof AbstractObjectValue);
+  flagPropsWithNoPartialKeyOrRef(realm, value);
   value.makeFinal();
   return value;
 }
