@@ -946,6 +946,11 @@ export default class AbstractValue extends Value {
     template.makePartial();
     template.makeSimple();
     value = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), ObjectValue, [], name);
+    if (!realm.isNameStringUnique(name)) {
+      value.hashValue = ++realm.objectCount;
+    } else {
+      realm.saveNameString(name);
+    }
     value.intrinsicName = name;
     value.values = new ValuesDomain(new Set([template]));
     realm.rebuildNestedProperties(value, name);
