@@ -11,7 +11,7 @@
 
 import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
-import { FunctionValue, ECMAScriptFunctionValue, ECMAScriptSourceFunctionValue, ObjectValue } from "../values/index.js";
+import { FunctionValue, ECMAScriptSourceFunctionValue, ObjectValue } from "../values/index.js";
 import type { SerializerOptions } from "../options.js";
 import * as t from "babel-types";
 import type {
