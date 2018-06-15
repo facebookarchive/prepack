@@ -34,7 +34,7 @@ export default function(
   // Presence of debugChannel indicates we wish to use debugger.
   if (debugChannel) {
     invariant(debugChannel.debuggerIsAttached(), "Debugger intends to be used but is not attached.");
-    invariant(opts.debuggerConfigArgs !== undefined, "Debugger intends to be used but does not have launch arguments.");
+    invariant(opts.debuggerConfigArgs !== undefined, "Debugger intends to be used but does not have config arguments.");
     r.debuggerInstance = new DebugServer(debugChannel, r, opts.debuggerConfigArgs);
   }
 
