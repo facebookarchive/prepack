@@ -196,6 +196,7 @@ export function wrapReactElementInBranchOrReturnValue(realm: Realm, value: Value
     let refValue = getProperty(realm, value, "ref");
     let propsValue = getProperty(realm, value, "props");
 
+    invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue);
     let clonedObject = createInternalReactElement(realm, typeValue, keyValue, refValue, propsValue);
     let temporal = AbstractValue.createTemporalFromBuildFunction(realm, ObjectValue, [clonedObject], ([node]) => node, {
       isPure: true,
