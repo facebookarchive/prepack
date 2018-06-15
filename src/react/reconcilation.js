@@ -28,6 +28,7 @@ import {
 } from "../values/index.js";
 import { ReactStatistics, type ReactEvaluatedNode } from "../serializer/types.js";
 import {
+  cloneReactElement,
   cloneProps,
   createInternalReactElement,
   createReactEvaluatedNode,
@@ -1068,10 +1069,7 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     evaluatedNode: ReactEvaluatedNode
   ) {
-    let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
-    let keyValue = getProperty(this.realm, reactElement, "key");
-    let refValue = getProperty(this.realm, reactElement, "ref");
     // terminal host component. Start evaluating its children.
     if (propsValue instanceof ObjectValue && propsValue.properties.has("children")) {
       let childrenValue = Get(this.realm, propsValue, "children");
@@ -1085,7 +1083,9 @@ export class Reconciler {
         if (resolvedChildren !== childrenValue) {
           let newProps = cloneProps(this.realm, propsValue, resolvedChildren);
 
-          return createInternalReactElement(this.realm, typeValue, keyValue, refValue, newProps);
+          reactElement.makeNotFinal();
+          Properties.Set(this.realm, reactElement, "props", newProps, true);
+          reactElement.makeFinal();
         }
       }
     }
@@ -1132,7 +1132,12 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     evaluatedNode: ReactEvaluatedNode
   ) {
-    // We used to sanitize out props for firstRender here, we now do this during serialization
+    // We create a clone of the ReactElement to be safe. This is because the same
+    // ReactElement might be a temporal referenced in other effects and also it allows us to
+    // easily mutate and swap the props of the ReactElement with the optimized version with
+    // resolved/inlined children.
+    // Note: We used to sanitize out props for firstRender here, we now do this during serialization.
+    reactElement = cloneReactElement(this.realm, reactElement, false);
     let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
     let refValue = getProperty(this.realm, reactElement, "ref");

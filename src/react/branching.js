@@ -25,7 +25,7 @@ import {
 import invariant from "../invariant.js";
 import { ValuesDomain } from "../domains/index.js";
 import {
-  createInternalReactElement,
+  cloneReactElement,
   isReactElement,
   addKeyToReactElement,
   forEachArrayValue,
@@ -191,17 +191,13 @@ function applyBranchedLogicValue(realm: Realm, value: Value): Value {
 // return the original value
 export function wrapReactElementInBranchOrReturnValue(realm: Realm, value: Value): Value {
   if (value instanceof ObjectValue && isReactElement(value)) {
-    let typeValue = getProperty(realm, value, "type");
-    let keyValue = getProperty(realm, value, "key");
-    let refValue = getProperty(realm, value, "ref");
-    let propsValue = getProperty(realm, value, "props");
-
-    invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue);
-    let clonedObject = createInternalReactElement(realm, typeValue, keyValue, refValue, propsValue);
-    let temporal = AbstractValue.createTemporalFromBuildFunction(realm, ObjectValue, [clonedObject], ([node]) => node, {
-      isPure: true,
-      skipInvariant: true,
-    });
+    let temporal = AbstractValue.createTemporalFromBuildFunction(
+      realm,
+      ObjectValue,
+      [cloneReactElement(realm, value, false)],
+      ([node]) => node,
+      { isPure: true, skipInvariant: true }
+    );
     invariant(temporal instanceof AbstractObjectValue);
     temporal.values = new ValuesDomain(value);
     value.temporalAlias = temporal;

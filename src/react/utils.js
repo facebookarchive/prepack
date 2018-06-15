@@ -1106,3 +1106,16 @@ export function canExcludeReactElementObjectProperty(
   let isHostComponent = getProperty(realm, reactElement, "type") instanceof StringValue;
   return firstRenderOnly && isHostComponent && (isEventProp(name) || value instanceof FunctionValue);
 }
+
+export function cloneReactElement(realm: Realm, reactElement: ObjectValue, shouldCloneProps: boolean): ObjectValue {
+  let typeValue = getProperty(realm, reactElement, "type");
+  let keyValue = getProperty(realm, reactElement, "key");
+  let refValue = getProperty(realm, reactElement, "ref");
+  let propsValue = getProperty(realm, reactElement, "props");
+
+  invariant(propsValue instanceof ObjectValue);
+  if (shouldCloneProps) {
+    propsValue = cloneProps(realm, propsValue);
+  }
+  return createInternalReactElement(realm, typeValue, keyValue, refValue, propsValue);
+}
