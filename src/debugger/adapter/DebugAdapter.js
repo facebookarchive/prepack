@@ -52,7 +52,9 @@ class PrepackDebugSession extends DebugSession {
   _registerMessageCallbacks() {
     this._ensureAdapterChannelCreated("registerMessageCallbacks");
     invariant(this._adapterChannel !== undefined, "Adapter Channel used before it was created, in debugger.");
-    this._adapterChannel.registerChannelEvent(DebugMessage.STOPPED_RESPONSE, (response: DebuggerResponse) => {
+    // Create local copy to ensure external functions don't modify the adapterChannel, satisfy flow.
+    let localCopyAdapterChannel = this._adapterChannel;
+    localCopyAdapterChannel.registerChannelEvent(DebugMessage.STOPPED_RESPONSE, (response: DebuggerResponse) => {
       let result = response.result;
       invariant(result.kind === "stopped");
       let message = `${result.reason}: ${result.filePath} ${result.line}:${result.column}`;
@@ -62,9 +64,7 @@ class PrepackDebugSession extends DebugSession {
       }
       this.sendEvent(new StoppedEvent(message, DebuggerConstants.PREPACK_THREAD_ID));
     });
-    this._ensureAdapterChannelCreated("registerMessageCallbacks");
-    invariant(this._adapterChannel !== undefined, "Adapter Channel used before it was created, in debugger.");
-    this._adapterChannel.registerChannelEvent(DebugMessage.STEPINTO_RESPONSE, (response: DebuggerResponse) => {
+    localCopyAdapterChannel.registerChannelEvent(DebugMessage.STEPINTO_RESPONSE, (response: DebuggerResponse) => {
       let result = response.result;
       invariant(result.kind === "stepInto");
       this.sendEvent(
@@ -129,15 +129,15 @@ class PrepackDebugSession extends DebugSession {
       },
     };
 
-    this._ensureAdapterChannelCreated("launchRequest");
     invariant(this._adapterChannel !== undefined, "Adapter Channel used before it was created, in debugger.");
     this._adapterChannel.launch(response.request_seq, launchArgs, (dbgResponse: DebuggerResponse) => {
       this.sendResponse(response);
     });
 
-    // The UI will end the configuration sequence by calling 'configurationDone' request.
-    // Sending this during the initializeResponse caused non-determinism in request ordering
-    // that would prevent the debugger from starting.
+    // Important: InitializedEvent indicates to the protocol that further requests (e.g. breakpoints, execution control)
+    // are ready to be received. Prepack debugger is not ready to receive these requests until the Adapter Channel
+    // has been created and Prepack has been launched. Thus, the InitializedEvent is sent after Prepack launch and
+    // the creation of the Adapter Channel.
     this.sendEvent(new InitializedEvent());
   }
 
