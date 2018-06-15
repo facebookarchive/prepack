@@ -109,8 +109,9 @@ class PrepackDebugSession extends DebugSession {
   launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments): void {
     let inFilePath = this._generateDebugFilePath("in");
     let outFilePath = this._generateDebugFilePath("out");
-    // set up the communication channel
-    this._adapterChannel = new AdapterChannel(inFilePath, outFilePath);
+    // Set up the communication channel to the debugger.
+    let adapterChannel = new AdapterChannel(inFilePath, outFilePath);
+    this._adapterChannel = adapterChannel;
     this._registerMessageCallbacks();
     let launchArgs: PrepackLaunchArguments = {
       kind: "launch",
@@ -129,8 +130,7 @@ class PrepackDebugSession extends DebugSession {
       },
     };
 
-    invariant(this._adapterChannel !== undefined, "Adapter Channel used before it was created, in debugger.");
-    this._adapterChannel.launch(response.request_seq, launchArgs, (dbgResponse: DebuggerResponse) => {
+    adapterChannel.launch(response.request_seq, launchArgs, (dbgResponse: DebuggerResponse) => {
       this.sendResponse(response);
     });
 
