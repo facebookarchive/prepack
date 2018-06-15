@@ -1159,7 +1159,9 @@ export class Reconciler {
     let componentResolutionStrategy = this._getComponentResolutionStrategy(typeValue);
 
     // We do not support "ref" on <Component /> ReactElements, unless it's a forwarded ref
+    // or we are firstRenderOnly mode (in which case, we ignore the ref)
     if (
+      !this.componentTreeConfig.firstRenderOnly &&
       !(refValue instanceof NullValue) &&
       componentResolutionStrategy !== "FORWARD_REF" &&
       // If we have an abstract value, it might mean a bad ref, but we will have
