@@ -748,8 +748,9 @@ export class JoinImplementation {
       let v1 = b1 === undefined ? b.value : b1.value;
       let v2 = b2 === undefined ? b.value : b2.value;
       // ensure that if either none or both sides have leaked
-      if (!l1 && l2) [g1, rewritten1] = leak(b, g1, v1, rewritten1);
-      else if (l1 && !l2) [g2, rewritten2] = leak(b, g2, v2, rewritten2);
+      // note that if one side didn't have a binding entry yet, then there's nothing to actively leak
+      if (b1 !== undefined && !l1 && l2) [g1, rewritten1] = leak(b, g1, v1, rewritten1);
+      else if (l1 && b2 !== undefined && !l2) [g2, rewritten2] = leak(b, g2, v2, rewritten2);
       let hasLeaked = l1 || l2;
       // For leaked (and mutable) bindings, the actual value is no longer directly available.
       // In that case, we reset the value to undefined to prevent any use of the last known value.
