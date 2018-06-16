@@ -489,7 +489,7 @@ export class JoinImplementation {
       generator: generator1,
       modifiedBindings: modifiedBindings1,
       modifiedProperties: modifiedProperties1,
-      createdObjects: createdObject1,
+      createdObjects: createdObjects1,
     } = e1;
 
     let {
@@ -508,7 +508,7 @@ export class JoinImplementation {
       }
     } else if (result2 instanceof AbruptCompletion) {
       invariant(result instanceof PossiblyNormalCompletion);
-      return new Effects(result, generator1, modifiedBindings1, modifiedProperties1, createdObject1);
+      return new Effects(result, generator1, modifiedBindings1, modifiedProperties1, createdObjects1);
     }
 
     let [modifiedGenerator1, modifiedGenerator2, bindings] = this.joinBindings(
@@ -524,11 +524,11 @@ export class JoinImplementation {
       joinCondition,
       modifiedProperties1,
       modifiedProperties2,
-      createdObject1,
+      createdObjects1,
       createdObjects2
     );
     let createdObjects = new Set();
-    createdObject1.forEach(o => {
+    createdObjects1.forEach(o => {
       createdObjects.add(o);
     });
     createdObjects2.forEach(o => {
@@ -749,8 +749,8 @@ export class JoinImplementation {
       let v2 = b2 === undefined ? b.value : b2.value;
       // ensure that if either none or both sides have leaked
       // note that if one side didn't have a binding entry yet, then there's nothing to actively leak
-      if (b1 !== undefined && !l1 && l2) [g1, rewritten1] = leak(b, g1, v1, rewritten1);
-      else if (l1 && b2 !== undefined && !l2) [g2, rewritten2] = leak(b, g2, v2, rewritten2);
+      if (!l1 && l2) [g1, rewritten1] = leak(b, g1, v1, rewritten1);
+      else if (l1 && !l2) [g2, rewritten2] = leak(b, g2, v2, rewritten2);
       let hasLeaked = l1 || l2;
       // For leaked (and mutable) bindings, the actual value is no longer directly available.
       // In that case, we reset the value to undefined to prevent any use of the last known value.
