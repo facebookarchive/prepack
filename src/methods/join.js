@@ -736,7 +736,7 @@ export class JoinImplementation {
         g = h;
         rewritten = true;
       }
-      g.emitBindingAssignment(b, v || realm.intrinsics.undefined);
+      if (v !== undefined && v !== realm.intrinsics.undefined) g.emitBindingAssignment(b, v);
       return [g, rewritten];
     };
     let join = (b: Binding, b1: void | BindingEntry, b2: void | BindingEntry) => {

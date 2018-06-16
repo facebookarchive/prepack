@@ -66,7 +66,8 @@ export function havocBinding(binding: Binding) {
     realm.recordModifiedBinding(binding).hasLeaked = true;
     if (value !== undefined) {
       let realmGenerator = realm.generator;
-      if (realmGenerator !== undefined) realmGenerator.emitBindingAssignment(binding, value);
+      if (realmGenerator !== undefined && value !== realm.intrinsics.undefined)
+        realmGenerator.emitBindingAssignment(binding, value);
       if (binding.mutable === true) {
         // For mutable, i.e. non-const bindings, the actual value is no longer directly available.
         // Thus, we reset the value to undefined to prevent any use of the last known value.
