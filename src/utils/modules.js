@@ -626,6 +626,7 @@ export class Modules {
       invariant(modifiedBindings);
 
       if (result instanceof AbruptCompletion) return undefined;
+      if (result instanceof SimpleNormalCompletion) result = result.value;
       invariant(result instanceof Value);
 
       if (!generator.empty() || (result instanceof ObjectValue && createdObjects.has(result))) return undefined;
