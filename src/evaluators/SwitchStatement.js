@@ -14,7 +14,13 @@ import type { LexicalEnvironment } from "../environment.js";
 import { CompilerDiagnostic, InfeasiblePathError } from "../errors.js";
 import { Reference } from "../environment.js";
 import { computeBinary } from "./BinaryExpression.js";
-import { AbruptCompletion, BreakCompletion, PossiblyNormalCompletion, Completion } from "../completions.js";
+import {
+  AbruptCompletion,
+  BreakCompletion,
+  SimpleNormalCompletion,
+  PossiblyNormalCompletion,
+  Completion,
+} from "../completions.js";
 import { InternalGetResultValue } from "./ForOfStatement.js";
 import { EmptyValue, AbstractValue, Value } from "../values/index.js";
 import { StrictEqualityComparisonPartial, UpdateEmpty } from "../methods/index.js";
@@ -186,6 +192,9 @@ function AbstractCaseBlockEvaluation(
 
       // return or throw completion
       if (completion instanceof AbruptCompletion) throw completion;
+      if (completion instanceof SimpleNormalCompletion) {
+        completion = completion.value;
+      }
       invariant(completion instanceof Value);
       return completion;
     }
@@ -368,6 +377,9 @@ export default function(
         // Consequently we have to continue tracking changes until the point where
         // all the branches come together into one.
         result = realm.composeWithSavedCompletion(result);
+      }
+      if (result instanceof SimpleNormalCompletion) {
+        result = result.value;
       }
       invariant(result instanceof Value); // since evaluationHelper returns a value in non abrupt cases
       return result;

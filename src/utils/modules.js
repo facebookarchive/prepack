@@ -14,7 +14,7 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Realm, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
 import { Get } from "../methods/index.js";
-import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { Environment } from "../singletons.js";
 import {
   AbstractValue,
@@ -251,9 +251,9 @@ export class ModuleTracer extends Tracer {
             );
           } else {
             result = effects.result;
-            if (result instanceof Value) {
+            if (result instanceof SimpleNormalCompletion) {
               realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
-              this.modules.recordModuleInitialized(moduleIdValue, result);
+              this.modules.recordModuleInitialized(moduleIdValue, result.value);
             } else if (result instanceof PossiblyNormalCompletion) {
               let warning = new CompilerDiagnostic(
                 "Module import may fail with an exception",
@@ -273,6 +273,7 @@ export class ModuleTracer extends Tracer {
           invariant(popped === moduleIdValue);
           this.log(`<require(${moduleIdValue})`);
         }
+        if (result instanceof SimpleNormalCompletion) result = result.value;
         invariant(result instanceof Value);
         return result;
       });
@@ -625,6 +626,7 @@ export class Modules {
       invariant(modifiedBindings);
 
       if (result instanceof AbruptCompletion) return undefined;
+      if (result instanceof SimpleNormalCompletion) result = result.value;
       invariant(result instanceof Value);
 
       if (!generator.empty() || (result instanceof ObjectValue && createdObjects.has(result))) return undefined;

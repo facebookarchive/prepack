@@ -34,6 +34,12 @@ export default class Value {
   // Name from original source if existant
   __originalName: void | string;
 
+  toDisplayString(): string {
+    return (
+      "[" + this.constructor.name + " originally; " + (this.__originalName ? this.__originalName : "undefined") + "]"
+    );
+  }
+
   equals(x: Value): boolean {
     invariant(false, "abstract method; please override");
   }

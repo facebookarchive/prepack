@@ -123,6 +123,10 @@ export default class AbstractValue extends Value {
   args: Array<Value>;
   _buildNode: void | AbstractValueBuildNodeFunction | BabelNodeExpression;
 
+  toDisplayString(): string {
+    return "[Abstract " + this.hashValue.toString() + "]";
+  }
+
   addSourceLocationsTo(locations: Array<BabelNodeSourceLocation>, seenValues?: Set<AbstractValue> = new Set()) {
     if (seenValues.has(this)) return;
     seenValues.add(this);

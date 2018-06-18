@@ -25,7 +25,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { Environment, Havoc, To } from "../singletons.js";
 import type {
   BabelBinaryOperator,
@@ -227,6 +227,8 @@ export function computeBinary(
         // Consequently we have to continue tracking changes until the point where
         // all the branches come together into one.
         completion = realm.composeWithSavedCompletion(completion);
+      } else if (completion instanceof SimpleNormalCompletion) {
+        completion = completion.value;
       }
       // return or throw completion
       if (completion instanceof AbruptCompletion) throw completion;
