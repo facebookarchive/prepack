@@ -10,7 +10,7 @@
 /* @flow */
 
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
 import { Effects } from "../realm.js";
 import { type LexicalEnvironment, type BaseValue, mightBecomeAnObject } from "../environment.js";
@@ -182,6 +182,7 @@ function callBothFunctionsAndJoinTheirEffects(
     new Effects(e2.result, e2.generator, e2.modifiedBindings, e2.modifiedProperties, e2.createdObjects)
   );
   let completion = joinedEffects.result;
+  if (completion instanceof SimpleNormalCompletion) completion = completion.value;
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.
@@ -290,6 +291,7 @@ function tryToEvaluateCallOrLeaveAsAbstract(
   }
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
+  if (completion instanceof SimpleNormalCompletion) completion = completion.value;
   invariant(completion instanceof Value);
   return completion;
 }

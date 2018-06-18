@@ -32,8 +32,9 @@ import {
   AbruptCompletion,
   Completion,
   ForkedAbruptCompletion,
-  NormalCompletion,
+  SimpleNormalCompletion,
   PossiblyNormalCompletion,
+  NormalCompletion,
 } from "./completions.js";
 import { EnvironmentRecord, LexicalEnvironment, Reference } from "./environment.js";
 import { Generator } from "./utils/generator.js";
@@ -739,18 +740,18 @@ export type JoinType = {
     e: Effects
   ): ForkedAbruptCompletion,
 
-  updatePossiblyNormalCompletionWithConditionalValue(
+  updatePossiblyNormalCompletionWithConditionalSimpleNormalCompletion(
     realm: Realm,
     joinCondition: AbstractValue,
     pnc: PossiblyNormalCompletion,
-    v: Value
+    nc: SimpleNormalCompletion
   ): void,
 
-  updatePossiblyNormalCompletionWithInverseConditionalValue(
+  updatePossiblyNormalCompletionWithInverseConditionalSimpleNormalCompletion(
     realm: Realm,
     joinCondition: AbstractValue,
     pnc: PossiblyNormalCompletion,
-    v: Value
+    nc: SimpleNormalCompletion
   ): void,
 
   extractAndJoinCompletionsOfType(
@@ -769,7 +770,7 @@ export type JoinType = {
     joinCondition: AbstractValue,
     result1: EvaluationResult,
     result2: EvaluationResult
-  ): AbruptCompletion | PossiblyNormalCompletion | Value,
+  ): Completion,
 
   joinOrForkResults(
     realm: Realm,
@@ -778,7 +779,7 @@ export type JoinType = {
     result2: EvaluationResult,
     e1: Effects,
     e2: Effects
-  ): AbruptCompletion | PossiblyNormalCompletion | Value,
+  ): Completion,
 
   composeGenerators(realm: Realm, generator1: Generator, generator2: Generator): Generator,
 

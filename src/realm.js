@@ -55,6 +55,7 @@ import { cloneDescriptor, Construct } from "./methods/index.js";
 import {
   AbruptCompletion,
   Completion,
+  SimpleNormalCompletion,
   ForkedAbruptCompletion,
   PossiblyNormalCompletion,
   ThrowCompletion,
@@ -78,7 +79,7 @@ export type BindingEntry = {
   previousValue: void | Value,
 };
 export type Bindings = Map<Binding, BindingEntry>;
-export type EvaluationResult = Completion | Reference | Value;
+export type EvaluationResult = Completion | Reference;
 export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 
 export type CreatedObjects = Set<ObjectValue>;
@@ -191,7 +192,10 @@ export class ExecutionContext {
   }
 }
 
-export function construct_empty_effects(realm: Realm, c: Completion | Value = realm.intrinsics.empty): Effects {
+export function construct_empty_effects(
+  realm: Realm,
+  c: Completion = new SimpleNormalCompletion(realm.intrinsics.empty)
+): Effects {
   return new Effects(c, new Generator(realm, "construct_empty_effects"), new Map(), new Map(), new Set());
 }
 
@@ -827,6 +831,7 @@ export class Realm {
         */
 
         // Return the captured state changes and evaluation result
+        if (c instanceof Value) c = new SimpleNormalCompletion(c);
         result = new Effects(c, astGenerator, astBindings, astProperties, astCreatedObjects);
         return result;
       } finally {
@@ -875,7 +880,7 @@ export class Realm {
         undefined,
         "evaluateWithUndo"
       );
-      return effects.result instanceof Value ? effects.result : defaultValue;
+      return effects.result instanceof SimpleNormalCompletion ? effects.result.value : defaultValue;
     } finally {
       this.errorHandler = oldErrorHandler;
     }
@@ -901,8 +906,8 @@ export class Realm {
         // all the branches come together into one.
         resultVal = this.composeWithSavedCompletion(resultVal);
       }
-      invariant(resultVal instanceof Value);
-      return resultVal;
+      invariant(resultVal instanceof SimpleNormalCompletion);
+      return resultVal.value;
     } catch (e) {
       if (diagnostic !== undefined) return diagnostic;
       throw e;
@@ -918,7 +923,7 @@ export class Realm {
         let result;
         [test, result] = iteration();
         if (!(test instanceof AbstractValue)) throw new FatalError("loop terminates before fixed point");
-        invariant(result instanceof Completion || result instanceof Value);
+        invariant(result instanceof Completion);
         return result;
       };
       let effects1 = this.evaluateForEffects(f, undefined, "evaluateForFixpointEffects/1");
@@ -999,6 +1004,7 @@ export class Realm {
 
     // return or throw completion
     if (completion instanceof AbruptCompletion) throw completion;
+    if (completion instanceof SimpleNormalCompletion) completion = completion.value;
     invariant(completion instanceof Value);
     return completion;
   }
@@ -1255,7 +1261,7 @@ export class Realm {
   captureEffects(completion: PossiblyNormalCompletion) {
     invariant(completion.savedEffects === undefined);
     completion.savedEffects = new Effects(
-      this.intrinsics.undefined,
+      new SimpleNormalCompletion(this.intrinsics.undefined),
       (this.generator: any),
       (this.modifiedBindings: any),
       (this.modifiedProperties: any),
@@ -1272,7 +1278,13 @@ export class Realm {
     invariant(this.modifiedBindings !== undefined);
     invariant(this.modifiedProperties !== undefined);
     invariant(this.createdObjects !== undefined);
-    return new Effects(v, this.generator, this.modifiedBindings, this.modifiedProperties, this.createdObjects);
+    return new Effects(
+      new SimpleNormalCompletion(v),
+      this.generator,
+      this.modifiedBindings,
+      this.modifiedProperties,
+      this.createdObjects
+    );
   }
 
   stopEffectCaptureAndUndoEffects(completion: PossiblyNormalCompletion) {
