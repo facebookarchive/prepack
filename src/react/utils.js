@@ -12,7 +12,7 @@
 import { Realm, Effects } from "../realm.js";
 import { ValuesDomain } from "../domains/index.js";
 import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
-import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
+import type { BabelNode, BabelNodeJSXIdentifier, BabelNodeExpression } from "babel-types";
 import { parseExpression } from "babylon";
 import {
   AbstractObjectValue,
@@ -83,8 +83,8 @@ export function isReactElement(val: Value): boolean {
     let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
     let _isReactElement = symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
     if (_isReactElement) {
-      // add to Set to speed up future lookups
-      realm.react.reactElements.add(val);
+      // If we get there, it means the ReactElement was created in manual user-space
+      realm.react.reactElements.set(val, { createdDuringReconcilation: false, firstRenderOnly: false });
       return true;
     }
   }
@@ -836,21 +836,6 @@ function isEventProp(name: string): boolean {
   return name.length > 2 && name[0].toLowerCase() === "o" && name[1].toLowerCase() === "n";
 }
 
-export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElement: ObjectValue): ObjectValue {
-  let typeValue = getProperty(realm, reactElement, "type");
-  let keyValue = getProperty(realm, reactElement, "key");
-  let propsValue = getProperty(realm, reactElement, "props");
-
-  invariant(propsValue instanceof ObjectValue);
-  return createInternalReactElement(
-    realm,
-    typeValue,
-    keyValue,
-    realm.intrinsics.null,
-    typeValue instanceof StringValue ? cloneProps(realm, propsValue, true) : propsValue
-  );
-}
-
 export function getLocationFromValue(expressionLocation: any) {
   // if we can't get a value, then it's likely that the source file was not given
   // (this happens in React tests) so instead don't print any location
@@ -928,22 +913,55 @@ export function createInternalReactElement(
   Create.CreateDataPropertyOrThrow(realm, obj, "props", props);
   Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
   obj.makeFinal();
+  // If we're in "rendering" a React component tree, we should have an active reconciler
+  let activeReconciler = realm.react.activeReconciler;
+  let createdDuringReconcilation = activeReconciler !== undefined;
+  let firstRenderOnly = createdDuringReconcilation ? activeReconciler.componentTreeConfig.firstRenderOnly : false;
+
+  realm.react.reactElements.set(obj, { createdDuringReconcilation, firstRenderOnly });
   return obj;
 }
 
-export function cloneProps(
-  realm: Realm,
-  props: ObjectValue,
-  excludeEventProps: boolean,
-  newChildren?: Value
-): ObjectValue {
+function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps: ObjectValue): void {
+  let temporalAlias = props.temporalAlias;
+  invariant(temporalAlias !== undefined);
+  if (temporalAlias.kind === "conditional") {
+    // Leave in for now, we should deal with this later, but there might
+    // be a better option.
+    invariant(false, "TODO applyClonedTemporalAlias conditional");
+  }
+  let temporalArgs = realm.temporalAliasArgs.get(temporalAlias);
+  invariant(temporalArgs !== undefined);
+  // replace the original props with the cloned one
+  let newTemporalArgs = temporalArgs.map(arg => (arg === props ? clonedProps : arg));
+
+  let temporalTo = AbstractValue.createTemporalFromBuildFunction(
+    realm,
+    ObjectValue,
+    newTemporalArgs,
+    ([methodNode, targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
+      return t.callExpression(methodNode, [targetNode, ...sourceNodes]);
+    },
+    { skipInvariant: true }
+  );
+  invariant(temporalTo instanceof AbstractObjectValue);
+  invariant(clonedProps instanceof ObjectValue);
+  temporalTo.values = new ValuesDomain(clonedProps);
+  clonedProps.temporalAlias = temporalTo;
+  // Store the args for the temporal so we can easily clone
+  // and reconstruct the temporal at another point, rather than
+  // mutate the existing temporal
+  realm.temporalAliasArgs.set(temporalTo, newTemporalArgs);
+}
+
+export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value): ObjectValue {
   let clonedProps = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
 
   for (let [propName, binding] of props.properties) {
     if (binding && binding.descriptor && binding.descriptor.enumerable) {
       if (newChildren !== undefined && propName === "children") {
         Properties.Set(realm, clonedProps, propName, newChildren, true);
-      } else if (!excludeEventProps || !isEventProp(propName)) {
+      } else {
         Properties.Set(realm, clonedProps, propName, getProperty(realm, props, propName), true);
       }
     }
@@ -959,7 +977,7 @@ export function cloneProps(
     flagPropsWithNoPartialKeyOrRef(realm, clonedProps);
   }
   if (props.temporalAlias !== undefined) {
-    clonedProps.temporalAlias = props.temporalAlias;
+    applyClonedTemporalAlias(realm, props, clonedProps);
   }
   clonedProps.makeFinal();
   return clonedProps;
@@ -1003,7 +1021,9 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
                 Properties.Set(realm, to, propName, Get(realm, source, propName), true);
               }
             }
-            delayedSources.push(source.getSnapshot());
+            let snapshot = source.getSnapshot();
+            delayedSources.push(snapshot);
+            source.temporalAlias = snapshot;
           } else {
             // if we are dealing with an abstract object or one that is partial, then
             // we don't try and copy its properties over as there's no guarantee they are
@@ -1012,7 +1032,9 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
               // Make it implicit again since it is getting delayed into an Object.assign call.
               delayedSources.push(source.args[0]);
             } else {
-              delayedSources.push(source.getSnapshot());
+              let snapshot = source.getSnapshot();
+              delayedSources.push(snapshot);
+              source.temporalAlias = snapshot;
             }
             // if to has properties, we better remove them because after the temporal call to Object.assign we don't know their values anymore
             if (to.hasStringOrSymbolProperties()) {
@@ -1024,10 +1046,11 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
         // prepare our temporal Object.assign fallback
         to.makePartial();
         to.makeSimple();
+        let temporalArgs = [objAssign, to, ...delayedSources];
         let temporalTo = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,
-          [objAssign, to, ...delayedSources],
+          temporalArgs,
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           },
@@ -1036,6 +1059,10 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
         invariant(temporalTo instanceof AbstractObjectValue);
         temporalTo.values = new ValuesDomain(to);
         to.temporalAlias = temporalTo;
+        // Store the args for the temporal so we can easily clone
+        // and reconstruct the temporal at another point, rather than
+        // mutate the existing temporal
+        realm.temporalAliasArgs.set(temporalTo, temporalArgs);
         return;
       } else {
         throw error;
@@ -1063,4 +1090,32 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
   } else {
     objectAssignCall(realm.intrinsics.undefined, [to, ...sources]);
   }
+}
+
+// In firstRenderOnly mode, we strip off onEventHanlders and any props
+// that are functions as they are not required for init render.
+export function canExcludeReactElementObjectProperty(
+  realm: Realm,
+  reactElement: ObjectValue,
+  name: string,
+  value: Value
+): boolean {
+  let reactElementData = realm.react.reactElements.get(reactElement);
+  invariant(reactElementData !== undefined);
+  let { firstRenderOnly } = reactElementData;
+  let isHostComponent = getProperty(realm, reactElement, "type") instanceof StringValue;
+  return firstRenderOnly && isHostComponent && (isEventProp(name) || value instanceof FunctionValue);
+}
+
+export function cloneReactElement(realm: Realm, reactElement: ObjectValue, shouldCloneProps: boolean): ObjectValue {
+  let typeValue = getProperty(realm, reactElement, "type");
+  let keyValue = getProperty(realm, reactElement, "key");
+  let refValue = getProperty(realm, reactElement, "ref");
+  let propsValue = getProperty(realm, reactElement, "props");
+
+  invariant(propsValue instanceof ObjectValue);
+  if (shouldCloneProps) {
+    propsValue = cloneProps(realm, propsValue);
+  }
+  return createInternalReactElement(realm, typeValue, keyValue, refValue, propsValue);
 }

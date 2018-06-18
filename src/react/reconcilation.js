@@ -28,8 +28,8 @@ import {
 } from "../values/index.js";
 import { ReactStatistics, type ReactEvaluatedNode } from "../serializer/types.js";
 import {
+  cloneReactElement,
   cloneProps,
-  createInternalReactElement,
   createReactEvaluatedNode,
   doNotOptimizeComponent,
   evaluateWithNestedParentEffects,
@@ -42,7 +42,6 @@ import {
   getValueFromFunctionCall,
   isReactElement,
   mapArrayValue,
-  sanitizeReactElementForFirstRenderOnly,
   valueIsClassComponent,
   valueIsFactoryClassComponent,
   valueIsKnownReactAbstraction,
@@ -52,7 +51,11 @@ import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { Properties } from "../singletons.js";
 import { FatalError, CompilerDiagnostic } from "../errors.js";
-import { getValueWithBranchingLogicApplied, type BranchStatusEnum } from "./branching.js";
+import {
+  type BranchStatusEnum,
+  getValueWithBranchingLogicApplied,
+  wrapReactElementInBranchOrReturnValue,
+} from "./branching.js";
 import * as t from "babel-types";
 import { Completion } from "../completions.js";
 import {
@@ -179,19 +182,24 @@ export class Reconciler {
       }
     };
 
-    let effects = this.realm.wrapInGlobalEnv(() =>
-      this.realm.evaluatePure(
-        () =>
-          this.realm.evaluateForEffects(
-            resolveComponentTree,
-            /*state*/ null,
-            `react component: ${getComponentName(this.realm, componentType)}`
-          ),
-        this._handleReportedSideEffect
-      )
-    );
-    this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
-    return effects;
+    try {
+      this.realm.react.activeReconciler = this;
+      let effects = this.realm.wrapInGlobalEnv(() =>
+        this.realm.evaluatePure(
+          () =>
+            this.realm.evaluateForEffects(
+              resolveComponentTree,
+              /*state*/ null,
+              `react component: ${getComponentName(this.realm, componentType)}`
+            ),
+          this._handleReportedSideEffect
+        )
+      );
+      this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
+      return effects;
+    } finally {
+      this.realm.react.activeReconciler = undefined;
+    }
   }
 
   _handleNestedOptimizedClosuresFromEffects(effects: Effects, evaluatedNode: ReactEvaluatedNode) {
@@ -271,15 +279,20 @@ export class Reconciler {
       }
     };
 
-    let effects = this.realm.wrapInGlobalEnv(() =>
-      this.realm.evaluatePure(() =>
-        evaluateWithNestedParentEffects(this.realm, nestedEffects, () =>
-          this.realm.evaluateForEffects(resolveOptimizedClosure, /*state*/ null, `react nested optimized closure`)
+    try {
+      this.realm.react.activeReconciler = this;
+      let effects = this.realm.wrapInGlobalEnv(() =>
+        this.realm.evaluatePure(() =>
+          evaluateWithNestedParentEffects(this.realm, nestedEffects, () =>
+            this.realm.evaluateForEffects(resolveOptimizedClosure, /*state*/ null, `react nested optimized closure`)
+          )
         )
-      )
-    );
-    this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);
-    return effects;
+      );
+      this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);
+      return effects;
+    } finally {
+      this.realm.react.activeReconciler = undefined;
+    }
   }
 
   clearComponentTreeState(): void {
@@ -876,7 +889,8 @@ export class Reconciler {
         [reactDomPortalFunc, resolvedReactPortalValue, domNodeValue],
         ([renderNode, ..._args]) => {
           return t.callExpression(renderNode, ((_args: any): Array<any>));
-        }
+        },
+        { skipInvariant: true, isPure: true }
       );
     }
     return createPortalNode;
@@ -894,14 +908,22 @@ export class Reconciler {
       condValue,
       () => {
         return this.realm.evaluateForEffects(
-          () => this._resolveDeeply(componentType, consequentVal, context, "NEW_BRANCH", evaluatedNode),
+          () =>
+            wrapReactElementInBranchOrReturnValue(
+              this.realm,
+              this._resolveDeeply(componentType, consequentVal, context, "NEW_BRANCH", evaluatedNode)
+            ),
           null,
           "_resolveAbstractConditionalValue consequent"
         );
       },
       () => {
         return this.realm.evaluateForEffects(
-          () => this._resolveDeeply(componentType, alternateVal, context, "NEW_BRANCH", evaluatedNode),
+          () =>
+            wrapReactElementInBranchOrReturnValue(
+              this.realm,
+              this._resolveDeeply(componentType, alternateVal, context, "NEW_BRANCH", evaluatedNode)
+            ),
           null,
           "_resolveAbstractConditionalValue alternate"
         );
@@ -911,6 +933,37 @@ export class Reconciler {
       return getValueWithBranchingLogicApplied(this.realm, consequentVal, alternateVal, value);
     }
     return value;
+  }
+
+  _resolveAbstractLogicalValue(
+    componentType: Value,
+    value: AbstractValue,
+    context: ObjectValue | AbstractObjectValue,
+    evaluatedNode: ReactEvaluatedNode
+  ) {
+    let [leftValue, rightValue] = value.args;
+    let operator = value.kind;
+
+    invariant(leftValue instanceof AbstractValue);
+    if (operator === "||") {
+      return this._resolveAbstractConditionalValue(
+        componentType,
+        leftValue,
+        leftValue,
+        rightValue,
+        context,
+        evaluatedNode
+      );
+    } else {
+      return this._resolveAbstractConditionalValue(
+        componentType,
+        leftValue,
+        rightValue,
+        leftValue,
+        context,
+        evaluatedNode
+      );
+    }
   }
 
   _resolveAbstractValue(
@@ -933,6 +986,8 @@ export class Reconciler {
         context,
         evaluatedNode
       );
+    } else if (value.kind === "||" || value.kind === "&&") {
+      return this._resolveAbstractLogicalValue(componentType, value, context, evaluatedNode);
     } else {
       if (value instanceof AbstractValue && this.realm.react.abstractHints.has(value)) {
         let reactHint = this.realm.react.abstractHints.get(value);
@@ -1013,10 +1068,7 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     evaluatedNode: ReactEvaluatedNode
   ) {
-    let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
-    let keyValue = getProperty(this.realm, reactElement, "key");
-    let refValue = getProperty(this.realm, reactElement, "ref");
     // terminal host component. Start evaluating its children.
     if (propsValue instanceof ObjectValue && propsValue.properties.has("children")) {
       let childrenValue = Get(this.realm, propsValue, "children");
@@ -1028,9 +1080,11 @@ export class Reconciler {
           resolvedChildren = flattenChildren(this.realm, resolvedChildren);
         }
         if (resolvedChildren !== childrenValue) {
-          let newProps = cloneProps(this.realm, propsValue, false, resolvedChildren);
+          let newProps = cloneProps(this.realm, propsValue, resolvedChildren);
 
-          return createInternalReactElement(this.realm, typeValue, keyValue, refValue, newProps);
+          reactElement.makeNotFinal();
+          Properties.Set(this.realm, reactElement, "props", newProps, true);
+          reactElement.makeFinal();
         }
       }
     }
@@ -1077,10 +1131,12 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     evaluatedNode: ReactEvaluatedNode
   ) {
-    reactElement = this.componentTreeConfig.firstRenderOnly
-      ? sanitizeReactElementForFirstRenderOnly(this.realm, reactElement)
-      : reactElement;
-
+    // We create a clone of the ReactElement to be safe. This is because the same
+    // ReactElement might be a temporal referenced in other effects and also it allows us to
+    // easily mutate and swap the props of the ReactElement with the optimized version with
+    // resolved/inlined children.
+    // Note: We used to sanitize out props for firstRender here, we now do this during serialization.
+    reactElement = cloneReactElement(this.realm, reactElement, false);
     let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
     let refValue = getProperty(this.realm, reactElement, "ref");
@@ -1107,7 +1163,9 @@ export class Reconciler {
     let componentResolutionStrategy = this._getComponentResolutionStrategy(typeValue);
 
     // We do not support "ref" on <Component /> ReactElements, unless it's a forwarded ref
+    // or we are firstRenderOnly mode (in which case, we ignore the ref)
     if (
+      !this.componentTreeConfig.firstRenderOnly &&
       !(refValue instanceof NullValue) &&
       componentResolutionStrategy !== "FORWARD_REF" &&
       // If we have an abstract value, it might mean a bad ref, but we will have
@@ -1313,12 +1371,10 @@ export class Reconciler {
     );
     if (value instanceof AbstractValue) {
       return this._resolveAbstractValue(componentType, value, context, branchStatus, evaluatedNode);
-    }
-    // TODO investigate what about other iterables type objects
-    if (value instanceof ArrayValue) {
+    } else if (value instanceof ArrayValue) {
+      // TODO investigate what about other iterables type objects
       return this._resolveArray(componentType, value, context, branchStatus, evaluatedNode);
-    }
-    if (value instanceof ObjectValue && isReactElement(value)) {
+    } else if (value instanceof ObjectValue && isReactElement(value)) {
       return this._resolveReactElement(componentType, value, context, branchStatus, evaluatedNode);
     } else {
       let location = getLocationFromValue(value.expressionLocation);

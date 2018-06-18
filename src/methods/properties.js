@@ -1178,8 +1178,12 @@ export class PropertiesImplementation {
 
       invariant(realm.generator);
       let pname = realm.generator.getAsPropertyNameExpression(StringKey(P));
-      let absVal = AbstractValue.createTemporalFromBuildFunction(realm, Value, [O._templateFor || O], ([node]) =>
-        t.memberExpression(node, pname, !t.isIdentifier(pname))
+      let absVal = AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        [O._templateFor || O],
+        ([node]) => t.memberExpression(node, pname, !t.isIdentifier(pname)),
+        { isPure: true }
       );
       // TODO: We can't be sure what the descriptor will be, but the value will be abstract.
       return { configurable: true, enumerable: true, value: absVal, writable: true };
@@ -1220,7 +1224,7 @@ export class PropertiesImplementation {
                   ([node]) => {
                     return t.memberExpression(node, pname, !t.isIdentifier(pname));
                   },
-                  { skipInvariant: true }
+                  { skipInvariant: true, isPure: true }
                 );
               }
             }

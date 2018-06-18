@@ -248,10 +248,11 @@ export class Realm {
     this.evaluators = (Object.create(null): any);
     this.partialEvaluators = (Object.create(null): any);
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
+    this.temporalAliasArgs = new WeakMap();
 
     this.react = {
       abstractHints: new WeakMap(),
-      optimizedNestedClosuresToWrite: [],
+      activeReconciler: undefined,
       arrayHints: new WeakMap(),
       classComponentMetadata: new Map(),
       currentOwner: undefined,
@@ -260,10 +261,11 @@ export class Realm {
       hoistableFunctions: new WeakMap(),
       hoistableReactElements: new WeakMap(),
       noopFunction: undefined,
+      optimizedNestedClosuresToWrite: [],
       optimizeNestedFunctions: opts.reactOptimizeNestedFunctions || false,
       output: opts.reactOutput || "create-element",
       propsWithNoPartialKeyOrRef: new WeakSet(),
-      reactElements: new WeakSet(),
+      reactElements: new WeakMap(),
       symbols: new Map(),
       usedReactElementKeys: new Set(),
       verbose: opts.reactVerbose || false,
@@ -332,6 +334,12 @@ export class Realm {
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
 
+  // temporalAliasArgs is used to map a temporal abstract object value
+  // to its respective temporal args used to originally create the temporal.
+  // This is used to "clone" immutable objects where they have a dependency
+  // on a temporal alias (for example, Object.assign) when used with snapshotting
+  temporalAliasArgs: WeakMap<AbstractObjectValue | ObjectValue, Array<Value>>;
+
   react: {
     // reactHints are generated to help improve the effeciency of the React reconciler when
     // operating on a tree of React components. We can use reactHint to mark AbstractValues
@@ -339,10 +347,7 @@ export class Realm {
     // (for example, when we use Relay's React containers with "fb-www" – which are AbstractObjectValues,
     // we need to know what React component was passed to this AbstractObjectValue so we can visit it next)
     abstractHints: WeakMap<AbstractValue | ObjectValue, ReactHint>,
-    optimizedNestedClosuresToWrite: Array<{
-      effects: Effects,
-      func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
-    }>,
+    activeReconciler: any, // inentionally "any", importing the React reconciler class increases Flow's cylic count
     arrayHints: WeakMap<ArrayValue, { func: Value, thisVal: Value }>,
     classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
     currentOwner?: ObjectValue,
@@ -351,10 +356,14 @@ export class Realm {
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,
     noopFunction: void | ECMAScriptSourceFunctionValue,
+    optimizedNestedClosuresToWrite: Array<{
+      effects: Effects,
+      func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
+    }>,
     optimizeNestedFunctions: boolean,
     output?: ReactOutputTypes,
     propsWithNoPartialKeyOrRef: WeakSet<ObjectValue | AbstractObjectValue>,
-    reactElements: WeakSet<ObjectValue>,
+    reactElements: WeakMap<ObjectValue, { createdDuringReconcilation: boolean, firstRenderOnly: boolean }>,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
     usedReactElementKeys: Set<string>,
     verbose: boolean,

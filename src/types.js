@@ -866,7 +866,7 @@ export type CreateType = {
   ): ObjectValue,
 
   // ECMA262 7.3.23 (sec-copydataproperties)
-  CopyDataProperties(realm: Realm, target: ObjectValue, source: Value, excluded: Array<StringValue>): ObjectValue,
+  CopyDataProperties(realm: Realm, target: ObjectValue, source: Value, excluded: Array<PropertyKeyValue>): ObjectValue,
 
   // ECMA262 7.3.4
   CreateDataProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value): boolean,

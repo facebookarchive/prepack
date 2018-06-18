@@ -11,6 +11,7 @@
 
 import { Realm } from "../realm.js";
 import {
+  AbstractObjectValue,
   AbstractValue,
   ArrayValue,
   BooleanValue,
@@ -22,7 +23,15 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
-import { isReactElement, addKeyToReactElement, forEachArrayValue, getProperty, mapArrayValue } from "./utils";
+import { ValuesDomain } from "../domains/index.js";
+import {
+  cloneReactElement,
+  isReactElement,
+  addKeyToReactElement,
+  forEachArrayValue,
+  getProperty,
+  mapArrayValue,
+} from "./utils";
 import { ExpectedBailOut } from "./errors.js";
 
 // Branch status is used for when Prepack returns an abstract value from a render
@@ -152,21 +161,46 @@ function applyBranchedLogicValue(realm: Realm, value: Value): Value {
       condValue,
       () => {
         return realm.evaluateForEffects(
-          () => applyBranchedLogicValue(realm, consequentVal),
+          () => wrapReactElementInBranchOrReturnValue(realm, applyBranchedLogicValue(realm, consequentVal)),
           null,
           "applyBranchedLogicValue consequent"
         );
       },
       () => {
         return realm.evaluateForEffects(
-          () => applyBranchedLogicValue(realm, alternateVal),
+          () => wrapReactElementInBranchOrReturnValue(realm, applyBranchedLogicValue(realm, alternateVal)),
           null,
           "applyBranchedLogicValue alternate"
         );
       }
     );
+  } else if (value instanceof AbstractValue && (value.kind === "||" || value.kind === "&&")) {
+    invariant(false, "applyBranchedLogicValue encounterted a logical expression (|| or &&), this should never occur");
   } else {
     throw new ExpectedBailOut("Unsupported value encountered when applying branched logic to values");
+  }
+  return value;
+}
+
+// when a ReactElement is resolved in a conditional branch we
+// can improve runtime performance by ensuring that the ReactElement
+// is only created lazily in that specific branch and referenced
+// from then on. To do this we create a temporal abstract value
+// and set its kind to "branched ReactElement" so we properly track
+// the original ReactElement. If we don't have a ReactElement,
+// return the original value
+export function wrapReactElementInBranchOrReturnValue(realm: Realm, value: Value): Value {
+  if (value instanceof ObjectValue && isReactElement(value)) {
+    let temporal = AbstractValue.createTemporalFromBuildFunction(
+      realm,
+      ObjectValue,
+      [cloneReactElement(realm, value, false)],
+      ([node]) => node,
+      { isPure: true, skipInvariant: true }
+    );
+    invariant(temporal instanceof AbstractObjectValue);
+    temporal.values = new ValuesDomain(value);
+    value.temporalAlias = temporal;
   }
   return value;
 }
