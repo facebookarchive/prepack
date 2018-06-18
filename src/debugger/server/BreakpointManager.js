@@ -47,7 +47,6 @@ export class BreakpointManager {
   }
 
   addBreakpointMulti(breakpoints: Array<BreakpointType>) {
-    // TODO: refactor in to .forEach
     this._doBreakpointsAction(breakpoints, this._addBreakpoint.bind(this));
   }
 
