@@ -56,7 +56,6 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
         if (args.length === 0) break;
         arg = args[0];
       }
-      sourceFile = args.shift();
     } else if (arg === "diagnosticSeverity") {
       arg = args.shift();
       if (arg !== "FatalError" && arg !== "RecoverableError" && arg !== "Warning" && arg !== "Information") {
