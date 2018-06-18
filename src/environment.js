@@ -1147,6 +1147,7 @@ export class LexicalEnvironment {
 
         let sourceMapContents = source.sourceMapContents;
         if (sourceMapContents && sourceMapContents.length > 0) {
+          console.log("fixing up source locations");
           this.realm.statistics.fixupSourceLocations.measure(() =>
             this.fixup_source_locations(node, sourceMapContents)
           );
@@ -1186,6 +1187,7 @@ export class LexicalEnvironment {
     sourceType: SourceType = "script",
     onParse: void | (BabelNodeFile => void) = undefined
   ): [AbruptCompletion | Value, { [string]: string }] {
+    console.log("Executing sources");
     let context = new ExecutionContext();
     context.lexicalEnvironment = this;
     context.variableEnvironment = this;
@@ -1283,6 +1285,7 @@ export class LexicalEnvironment {
   }
 
   fixup_source_locations(ast: BabelNode, map: string) {
+    console.log(`fixing source locations for ${ast.loc.source}`);
     const smc = new sourceMap.SourceMapConsumer(map);
     traverseFast(ast, node => {
       let loc = node.loc;
@@ -1296,6 +1299,11 @@ export class LexicalEnvironment {
 
       function fixup(new_loc: BabelNodeSourceLocation, new_pos: BabelNodePosition) {
         let old_pos = smc.originalPositionFor({ line: new_pos.line, column: new_pos.column });
+        // if (!`${old_pos.source}`.includes("node_modules") && !`${old_pos.source}`.includes("react-native")) {
+        //   console.log(
+        //     `${old_pos.source}: Transforming ${new_pos.line}, ${new_pos.column} into ${old_pos.line}, ${old_pos.column}`
+        //   );
+        // }
         if (old_pos.source === null) return;
         new_pos.line = old_pos.line;
         new_pos.column = old_pos.column;

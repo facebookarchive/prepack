@@ -26,7 +26,8 @@ export class BreakpointManager {
     if (!IsStatement(ast)) return;
     if (ast.loc && ast.loc.source) {
       let location = ast.loc;
-      console.log(`Checking ${location.source}: ${location.start.line} ${location.start.column}`);
+      if (!location.source.includes("node_modules"))
+        console.log(`Checking ${location.source}: ${location.start.line} ${location.start.column}`);
       let filePath = location.source;
       if (filePath === null) return;
       let lineNum = location.start.line;

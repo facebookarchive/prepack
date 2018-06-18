@@ -68,6 +68,7 @@ export class DebugServer {
       }
       this._sourcemapDirectoryRoot = configArgs.sourcemapDirectoryRoot;
       this._useRootPrefix = true;
+      this._findSourcemapPrefixes(configArgs.sourcemaps);
     } else {
       this._findSourcemapPrefixes(configArgs.sourcemaps);
       this._useRootPrefix = false;
@@ -358,6 +359,7 @@ export class DebugServer {
       let parsed = JSON.parse(map.sourceMapContents);
       // Two formats for sourcemaps exist.
       if ("sections" in parsed) {
+        console.log(`there are ${parsed.sections.length} sections`);
         for (let section of parsed.sections) {
           // ASSUMPTION: each section only has one source (from fb4a).
           originalSourcePaths.push(getAbsoluteSourcePath(map.filePath, section.map.sources[0]));

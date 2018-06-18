@@ -133,8 +133,11 @@ function run(
   while (args.length) {
     let arg = args.shift();
     if (!arg.startsWith("--")) {
-      inputFilenames.push(arg);
-      reproArguments.push(inputFile(arg));
+      let inputArgs = arg.split(" ");
+      for (arg of inputArgs) {
+        inputFilenames.push(arg);
+        reproArguments.push(inputFile(arg));
+      }
     } else {
       arg = arg.slice(2);
       switch (arg) {
@@ -311,6 +314,8 @@ function run(
       }
     }
   }
+
+  console.log(`Input files: ${inputFilenames.length}`);
 
   if (reproFilePath !== undefined) {
     const zip = zipFactory();
