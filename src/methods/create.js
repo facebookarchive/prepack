@@ -561,7 +561,7 @@ export class CreateImplementation {
     return O.$DefineOwnProperty(P, newDesc);
   }
 
-  CopyDataProperties(realm: Realm, target: ObjectValue, source: Value, excluded: Array<StringValue>) {
+  CopyDataProperties(realm: Realm, target: ObjectValue, source: Value, excluded: Array<PropertyKeyValue>) {
     // Assert: Type(target) is Object.
     invariant(target instanceof ObjectValue, "Not an object value");
 

@@ -10,7 +10,8 @@
 /* @flow strict-local */
 
 import { BreakpointManager } from "./BreakpointManager.js";
-import type { BabelNode, BabelNodeSourceLocation } from "babel-types";
+import { BabelNode } from "babel-types";
+import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "../common/invariant.js";
 import type { DebugChannel } from "./channel/DebugChannel.js";
 import { DebugMessage } from "./../common/channel/DebugMessage.js";
@@ -24,6 +25,7 @@ import type {
   VariablesArguments,
   EvaluateArguments,
   SourceData,
+  DebuggerConfigArguments,
 } from "./../common/types.js";
 import type { Realm } from "./../../realm.js";
 import { ExecutionContext } from "./../../realm.js";
@@ -38,15 +40,18 @@ import {
   DeclarativeEnvironmentRecord,
   ObjectEnvironmentRecord,
 } from "./../../environment.js";
+import { CompilerDiagnostic } from "../../errors.js";
+import type { Severity } from "../../errors.js";
 
 export class DebugServer {
-  constructor(channel: DebugChannel, realm: Realm) {
+  constructor(channel: DebugChannel, realm: Realm, configArgs: DebuggerConfigArguments) {
     this._channel = channel;
     this._realm = realm;
     this._breakpointManager = new BreakpointManager();
     this._variableManager = new VariableManager(realm);
     this._stepManager = new SteppingManager(this._realm, /* default discard old steppers */ false);
     this._stopEventManager = new StopEventManager();
+    this._diagnosticSeverity = configArgs.diagnosticSeverity || "FatalError";
     this.waitForRun(undefined);
   }
   // the collection of breakpoints
@@ -58,17 +63,19 @@ export class DebugServer {
   _stepManager: SteppingManager;
   _stopEventManager: StopEventManager;
   _lastExecuted: SourceData;
+  // Severity at which debugger will break when CompilerDiagnostics are generated. Default is Fatal.
+  _diagnosticSeverity: Severity;
 
   /* Block until adapter says to run
   /* ast: the current ast node we are stopped on
   /* reason: the reason the debuggee is stopping
   */
-  waitForRun(ast: void | BabelNode) {
+  waitForRun(loc: void | BabelNodeSourceLocation) {
     let keepRunning = false;
     let request;
     while (!keepRunning) {
       request = this._channel.readIn();
-      keepRunning = this.processDebuggerCommand(request, ast);
+      keepRunning = this.processDebuggerCommand(request, loc);
     }
   }
 
@@ -82,14 +89,15 @@ export class DebugServer {
       if (reason) {
         invariant(ast.loc && ast.loc.source);
         this._channel.sendStoppedResponse(reason, ast.loc.source, ast.loc.start.line, ast.loc.start.column);
-        this.waitForRun(ast);
+        invariant(ast.loc && ast.loc !== null);
+        this.waitForRun(ast.loc);
       }
     }
   }
 
   // Process a command from a debugger. Returns whether Prepack should unblock
   // if it is blocked
-  processDebuggerCommand(request: DebuggerRequest, ast: void | BabelNode) {
+  processDebuggerCommand(request: DebuggerRequest, loc: void | BabelNodeSourceLocation) {
     let requestID = request.id;
     let command = request.command;
     let args = request.arguments;
@@ -120,7 +128,7 @@ export class DebugServer {
         return true;
       case DebugMessage.STACKFRAMES_COMMAND:
         invariant(args.kind === "stackframe");
-        this.processStackframesCommand(requestID, args, ast);
+        this.processStackframesCommand(requestID, args, loc);
         break;
       case DebugMessage.SCOPES_COMMAND:
         invariant(args.kind === "scopes");
@@ -131,13 +139,18 @@ export class DebugServer {
         this.processVariablesCommand(requestID, args);
         break;
       case DebugMessage.STEPINTO_COMMAND:
-        invariant(ast !== undefined);
-        this._stepManager.processStepCommand("in", ast);
+        invariant(loc !== undefined);
+        this._stepManager.processStepCommand("in", loc);
         this._onDebuggeeResume();
         return true;
       case DebugMessage.STEPOVER_COMMAND:
-        invariant(ast !== undefined);
-        this._stepManager.processStepCommand("over", ast);
+        invariant(loc !== undefined);
+        this._stepManager.processStepCommand("over", loc);
+        this._onDebuggeeResume();
+        return true;
+      case DebugMessage.STEPOUT_COMMAND:
+        invariant(loc !== undefined);
+        this._stepManager.processStepCommand("out", loc);
         this._onDebuggeeResume();
         return true;
       case DebugMessage.EVALUATE_COMMAND:
@@ -150,9 +163,9 @@ export class DebugServer {
     return false;
   }
 
-  processStackframesCommand(requestID: number, args: StackframeArguments, ast: void | BabelNode) {
+  processStackframesCommand(requestID: number, args: StackframeArguments, astLoc: void | BabelNodeSourceLocation) {
     let frameInfos: Array<Stackframe> = [];
-    let loc = this._getFrameLocation(ast ? ast.loc : null);
+    let loc = this._getFrameLocation(astLoc ? astLoc : null);
     let fileName = loc.fileName;
     let line = loc.line;
     let column = loc.column;
@@ -256,17 +269,22 @@ export class DebugServer {
     this._variableManager.clean();
   }
 
+  /*
+    Returns whether there are more nodes in the ast.
+  */
   _checkAndUpdateLastExecuted(ast: BabelNode): boolean {
     if (ast.loc && ast.loc.source) {
       let filePath = ast.loc.source;
       let line = ast.loc.start.line;
       let column = ast.loc.start.column;
+      let stackSize = this._realm.contextStack.length;
       // check if the current location is same as the last one
       if (
         this._lastExecuted &&
         filePath === this._lastExecuted.filePath &&
         line === this._lastExecuted.line &&
-        column === this._lastExecuted.column
+        column === this._lastExecuted.column &&
+        stackSize === this._lastExecuted.stackSize
       ) {
         return false;
       }
@@ -274,10 +292,47 @@ export class DebugServer {
         filePath: filePath,
         line: line,
         column: column,
+        stackSize: this._realm.contextStack.length,
       };
       return true;
     }
     return false;
+  }
+
+  /*
+    Displays PP error message, then waits for user to run the program to
+    continue (similar to a breakpoint).
+  */
+  handlePrepackError(diagnostic: CompilerDiagnostic) {
+    invariant(diagnostic.location && diagnostic.location.source);
+    // The following constructs the message and stop-instruction that is sent to the UI to actually stop the execution.
+    let location = diagnostic.location;
+    let message = `${diagnostic.severity} ${diagnostic.errorCode}: ${diagnostic.message}`;
+    this._channel.sendStoppedResponse(
+      "Diagnostic",
+      location.source || "",
+      location.start.line,
+      location.start.column,
+      message
+    );
+
+    // The AST Node's location is needed to satisfy the subsequent stackTrace request.
+    this.waitForRun(location);
+  }
+  // Return whether the debugger should stop on a CompilerDiagnostic of a given severity.
+  shouldStopForSeverity(severity: Severity): boolean {
+    switch (this._diagnosticSeverity) {
+      case "Information":
+        return true;
+      case "Warning":
+        return severity !== "Information";
+      case "RecoverableError":
+        return severity === "RecoverableError" || severity === "FatalError";
+      case "FatalError":
+        return severity === "FatalError";
+      default:
+        invariant(false, "Unexpected severity type");
+    }
   }
 
   shutdown() {

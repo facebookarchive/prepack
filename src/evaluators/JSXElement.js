@@ -25,7 +25,6 @@ import type {
 import {
   AbstractObjectValue,
   ArrayValue,
-  ECMAScriptFunctionValue,
   StringValue,
   Value,
   NumberValue,
@@ -33,13 +32,15 @@ import {
   AbstractValue,
 } from "../values/index.js";
 import { convertJSXExpressionToIdentifier } from "../react/jsx.js";
-import * as t from "babel-types";
 import { Get } from "../methods/index.js";
 import { Create, Environment, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import { createReactElement } from "../react/elements.js";
-import { flagPropsWithNoPartialKeyOrRef, hasNoPartialKeyOrRef } from "../react/utils.js";
-import { FatalError } from "../errors.js";
+import {
+  applyObjectAssignConfigsForReactElement,
+  flagPropsWithNoPartialKeyOrRef,
+  hasNoPartialKeyOrRef,
+} from "../react/utils.js";
 
 // taken from Babel
 function cleanJSXElementLiteralChild(child: string): null | string {
@@ -261,6 +262,15 @@ function evaluateJSXAttributes(
   }
 
   if (abstractSpreadCount > 0) {
+    // if we only have a single spread config, then use that,
+    // i.e. <div {...something} />  -->  React.createElement("div", something)
+    if (
+      abstractSpreadCount === 1 &&
+      astAttributes.length === 1 &&
+      (spreadValue instanceof ObjectValue || spreadValue instanceof AbstractObjectValue)
+    ) {
+      return spreadValue;
+    }
     // we create an abstract Object.assign() to deal with the fact that we don't what
     // the props are because they contain abstract spread attributes that we can't
     // evaluate ahead of time
@@ -269,39 +279,10 @@ function evaluateJSXAttributes(
 
     // create a new config object that will be the target of the Object.assign
     config = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-    // ensure the config partial
-    config.makePartial();
 
-    // get the global Object.assign
-    let globalObj = Get(realm, realm.$GlobalObject, "Object");
-    invariant(globalObj instanceof ObjectValue);
-    let objAssign = Get(realm, globalObj, "assign");
-    invariant(objAssign instanceof ECMAScriptFunctionValue);
-    let objectAssignCall = objAssign.$Call;
-    invariant(objectAssignCall !== undefined);
-
-    try {
-      objectAssignCall(realm.intrinsics.undefined, [config, ...abstractPropsArgs]);
-      if (safeAbstractSpreadCount === abstractSpreadCount) {
-        flagPropsWithNoPartialKeyOrRef(realm, config);
-      }
-    } catch (e) {
-      if (realm.isInPureScope() && e instanceof FatalError) {
-        let flagProps = hasNoPartialKeyOrRef(realm, config);
-
-        config = AbstractValue.createTemporalFromBuildFunction(
-          realm,
-          ObjectValue,
-          [objAssign, config, ...abstractPropsArgs],
-          ([methodNode, ..._args]) => {
-            return t.callExpression(methodNode, ((_args: any): Array<any>));
-          }
-        );
-        invariant(config instanceof AbstractObjectValue);
-        if (flagProps) {
-          flagPropsWithNoPartialKeyOrRef(realm, config);
-        }
-      }
+    applyObjectAssignConfigsForReactElement(realm, config, abstractPropsArgs);
+    if (safeAbstractSpreadCount === abstractSpreadCount) {
+      flagPropsWithNoPartialKeyOrRef(realm, config);
     }
   }
   invariant(config instanceof ObjectValue || config instanceof AbstractObjectValue);

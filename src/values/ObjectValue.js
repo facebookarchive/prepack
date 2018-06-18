@@ -51,7 +51,7 @@ import {
   OrdinaryPreventExtensions,
   HasCompatibleType,
 } from "../methods/index.js";
-import { Havoc, Join, Properties, To } from "../singletons.js";
+import { Havoc, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { typeAnnotation } from "babel-types";
 import * as t from "babel-types";
@@ -387,6 +387,10 @@ export default class ObjectValue extends ConcreteValue {
     this._isFinal = this.$Realm.intrinsics.true;
   }
 
+  makeNotFinal(): void {
+    this._isFinal = this.$Realm.intrinsics.false;
+  }
+
   isPartialObject(): boolean {
     return this._isPartial.mightBeTrue();
   }
@@ -559,6 +563,7 @@ export default class ObjectValue extends ConcreteValue {
       this.copyKeys(this.$OwnPropertyKeys(), this, template);
       let result = AbstractValue.createTemporalFromBuildFunction(this.$Realm, ObjectValue, [template], ([x]) => x, {
         skipInvariant: true,
+        isPure: true,
       });
       invariant(result instanceof AbstractObjectValue);
       result.values = new ValuesDomain(template);
@@ -750,8 +755,12 @@ export default class ObjectValue extends ConcreteValue {
         // this name on other parts of the prototype chain.
         // TODO #1675: A fix to 1675 needs to take this into account.
         Havoc.value(this.$Realm, Receiver);
-        return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [Receiver, P], ([o, p]) =>
-          t.memberExpression(o, p, true)
+        return AbstractValue.createTemporalFromBuildFunction(
+          this.$Realm,
+          Value,
+          [Receiver, P],
+          ([o, p]) => t.memberExpression(o, p, true),
+          { skipInvariant: true, isPure: true }
         );
       } else {
         let error = new CompilerDiagnostic(
@@ -774,14 +783,22 @@ export default class ObjectValue extends ConcreteValue {
     if (this.isPartialObject()) {
       if (isWidenedValue(P)) {
         // TODO #1678: Use a snapshot or havoc this object.
-        return AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [this, P], ([o, p]) =>
-          t.memberExpression(o, p, true)
+        return AbstractValue.createTemporalFromBuildFunction(
+          this.$Realm,
+          Value,
+          [this, P],
+          ([o, p]) => t.memberExpression(o, p, true),
+          { skipInvariant: true, isPure: true }
         );
       }
       result = AbstractValue.createFromType(this.$Realm, Value, "sentinel member expression", [this, P]);
     } else {
-      result = AbstractValue.createTemporalFromBuildFunction(this.$Realm, Value, [this, P], ([o, p]) =>
-        t.memberExpression(o, p, true)
+      result = AbstractValue.createTemporalFromBuildFunction(
+        this.$Realm,
+        Value,
+        [this, P],
+        ([o, p]) => t.memberExpression(o, p, true),
+        { skipInvariant: true, isPure: true }
       );
     }
 
@@ -812,7 +829,7 @@ export default class ObjectValue extends ConcreteValue {
         undefined,
         "check for known property"
       );
-      result = Join.joinValuesAsConditional(this.$Realm, cond, val, result);
+      result = AbstractValue.createFromConditionalOp(this.$Realm, cond, val, result);
     }
     return result;
   }
@@ -825,9 +842,13 @@ export default class ObjectValue extends ConcreteValue {
         let pNumber = +pName;
         if (pName === pNumber + "") propName = new NumberValue(this.$Realm, pNumber);
       }
-      return AbstractValue.createTemporalFromBuildFunction(this.$Realm, absVal.getType(), [ob, propName], ([o, p]) => {
-        return t.memberExpression(o, p, true);
-      });
+      return AbstractValue.createTemporalFromBuildFunction(
+        this.$Realm,
+        absVal.getType(),
+        [ob, propName],
+        ([o, p]) => t.memberExpression(o, p, true),
+        { skipInvariant: true, isPure: true }
+      );
     }
     invariant(absVal.args.length === 3 && absVal.kind === "conditional");
     let generic_cond = absVal.args[0];
@@ -839,8 +860,12 @@ export default class ObjectValue extends ConcreteValue {
     if (arg2 instanceof AbstractValue) {
       if (arg2.kind === "template for prototype member expression") {
         let ob = arg2.args[0];
-        arg2 = AbstractValue.createTemporalFromBuildFunction(this.$Realm, absVal.getType(), [ob, propName], ([o, p]) =>
-          t.memberExpression(o, p, true)
+        arg2 = AbstractValue.createTemporalFromBuildFunction(
+          this.$Realm,
+          absVal.getType(),
+          [ob, propName],
+          ([o, p]) => t.memberExpression(o, p, true),
+          { skipInvariant: true, isPure: true }
         );
       } else if (arg2.args.length === 3) {
         arg2 = this.specializeJoin(arg2, propName);
@@ -970,7 +995,7 @@ export default class ObjectValue extends ConcreteValue {
           Receiver,
           P,
         ]);
-        newVal = Join.joinValuesAsConditional(this.$Realm, cond, V, sentinel);
+        newVal = AbstractValue.createFromConditionalOp(this.$Realm, cond, V, sentinel);
       }
       prop.descriptor = {
         writable: true,
@@ -988,7 +1013,7 @@ export default class ObjectValue extends ConcreteValue {
           newVal = V; // It will be widened later on
         } else {
           let cond = createTemplate(this.$Realm, P);
-          newVal = Join.joinValuesAsConditional(this.$Realm, cond, V, oldVal);
+          newVal = AbstractValue.createFromConditionalOp(this.$Realm, cond, V, oldVal);
         }
       }
       desc.value = newVal;
@@ -1012,7 +1037,7 @@ export default class ObjectValue extends ConcreteValue {
         invariant(oldVal instanceof Value); // otherwise this is not simple
       }
       let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", P, new StringValue(this.$Realm, key));
-      let newVal = Join.joinValuesAsConditional(this.$Realm, cond, V, oldVal);
+      let newVal = AbstractValue.createFromConditionalOp(this.$Realm, cond, V, oldVal);
       Properties.OrdinarySet(this.$Realm, this, key, newVal, Receiver);
     }
     this.unknownProperty = savedUnknownProperty;

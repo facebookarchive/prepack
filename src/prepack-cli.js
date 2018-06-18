@@ -30,6 +30,7 @@ import invariant from "./invariant";
 import zipFactory from "node-zip";
 import path from "path";
 import JSONTokenizer from "./utils/JSONTokenizer.js";
+import type { DebuggerConfigArguments } from "./debugger/common/types";
 
 // Prepack helper
 declare var __residual: any;
@@ -78,6 +79,7 @@ function run(
     --version                Output the version number.
     --repro                  Create a zip file with all information needed to reproduce a Prepack run"
     --cpuprofile             Create a CPU profile file for the run that can be loaded into the Chrome JavaScript CPU Profile viewer",
+    --debugDiagnosticSeverity      FatalError | RecoverableError | Warning | Information (default = FatalError). Diagnostic level at which debugger will stop
   `;
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -126,6 +128,7 @@ function run(
     reproFileNames.push(fileName);
     return path.basename(fileName);
   };
+  let debuggerConfigArgs: DebuggerConfigArguments = {};
   while (args.length) {
     let arg = args.shift();
     if (!arg.startsWith("--")) {
@@ -262,6 +265,14 @@ function run(
           invariantLevel = parseInt(invariantLevelString, 10);
           reproArguments.push("--invariantLevel", invariantLevel.toString());
           break;
+        case "debugDiagnosticSeverity":
+          arg = args.shift();
+          invariant(
+            arg === "FatalError" || arg === "RecoverableError" || arg === "Warning" || arg === "Information",
+            `Invalid debugger diagnostic severity: ${arg}`
+          );
+          debuggerConfigArgs.diagnosticSeverity = arg;
+          break;
         case "help":
           const options = [
             "-- | input.js",
@@ -344,6 +355,7 @@ fi
       reactOutput,
       invariantMode,
       invariantLevel,
+      debuggerConfigArgs,
     },
     flags
   );
@@ -353,55 +365,92 @@ fi
     process.exit(1);
   }
 
-  let errors: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
-  let errorList: Array<CompilerDiagnostic> = [];
-  function errorHandler(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
-    if (diagnostic.location) errors.set(diagnostic.location, diagnostic);
-    else errorList.push(diagnostic);
+  let compilerDiagnostics: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
+  let compilerDiagnosticsList: Array<CompilerDiagnostic> = [];
+  function errorHandler(compilerDiagnostic: CompilerDiagnostic): ErrorHandlerResult {
+    if (compilerDiagnostic.location) compilerDiagnostics.set(compilerDiagnostic.location, compilerDiagnostic);
+    else compilerDiagnosticsList.push(compilerDiagnostic);
     return "Recover";
   }
 
-  function printDiagnostics(): boolean {
-    let foundFatal = false;
-    if (errors.size > 0 || errorList.length > 0) {
-      console.error("Errors found while prepacking");
-      let printError = (error: CompilerDiagnostic, locString?: string = "At an unknown location") => {
-        foundFatal = foundFatal || error.severity === "FatalError";
-        console.error(
-          `${locString} ${error.severity} ${error.errorCode}: ${error.message}` +
-            ` (https://github.com/facebook/prepack/wiki/${error.errorCode})`
-        );
-        let callStack = error.callStack;
-        if (callStack !== undefined) {
-          let eolPos = callStack.indexOf("\n");
-          if (eolPos > 0) console.error(callStack.substring(eolPos + 1));
-        }
-      };
-      for (let [loc, error] of errors) {
-        let sourceMessage = "";
-        switch (loc.source) {
-          case null:
-          case "":
-            sourceMessage = "In an unknown source file";
-            break;
-          case "no-filename-specified":
-            sourceMessage = "In stdin";
-            break;
-          default:
-            invariant(loc !== null && loc.source !== null);
-            sourceMessage = `In input file ${loc.source}`;
-            break;
-        }
-
-        let locString = `${sourceMessage}(${loc.start.line}:${loc.start.column + 1})`;
-        printError(error, locString);
-      }
-      for (let error of errorList) printError(error);
+  function printDiagnostics(caughtFatalError: boolean): boolean {
+    if (compilerDiagnostics.size === 0 && compilerDiagnosticsList.length === 0) {
+      // FatalErrors must have generated at least one CompilerDiagnostic.
+      invariant(!caughtFatalError, "FatalError must generate at least one CompilerDiagnostic");
+      return true;
     }
-    return foundFatal;
+
+    let informations = 0;
+    let warnings = 0;
+    let recoverableErrors = 0;
+    let fatalErrors = 0;
+    let printCompilerDiagnostic = (
+      compilerDiagnostic: CompilerDiagnostic,
+      locString?: string = "At an unknown location"
+    ) => {
+      switch (compilerDiagnostic.severity) {
+        case "Information":
+          informations++;
+          break;
+        case "Warning":
+          warnings++;
+          break;
+        case "RecoverableError":
+          recoverableErrors++;
+          break;
+        default:
+          invariant(compilerDiagnostic.severity === "FatalError");
+          fatalErrors++;
+          break;
+      }
+      console.error(
+        `${locString} ${compilerDiagnostic.severity} ${compilerDiagnostic.errorCode}: ${compilerDiagnostic.message}` +
+          ` (https://github.com/facebook/prepack/wiki/${compilerDiagnostic.errorCode})`
+      );
+      let callStack = compilerDiagnostic.callStack;
+      if (callStack !== undefined) {
+        let eolPos = callStack.indexOf("\n");
+        if (eolPos > 0) console.error(callStack.substring(eolPos + 1));
+      }
+    };
+    for (let [loc, compilerDiagnostic] of compilerDiagnostics) {
+      let sourceMessage = "";
+      switch (loc.source) {
+        case null:
+        case "":
+          sourceMessage = "In an unknown source file";
+          break;
+        case "no-filename-specified":
+          sourceMessage = "In stdin";
+          break;
+        default:
+          invariant(loc !== null && loc.source !== null);
+          sourceMessage = `In input file ${loc.source}`;
+          break;
+      }
+
+      let locString = `${sourceMessage}(${loc.start.line}:${loc.start.column + 1})`;
+      printCompilerDiagnostic(compilerDiagnostic, locString);
+    }
+    for (let compilerDiagnostic of compilerDiagnosticsList) printCompilerDiagnostic(compilerDiagnostic);
+    invariant(informations + warnings + recoverableErrors + fatalErrors > 0);
+    let plural = (count, word) => (count === 1 ? word : `${word}s`);
+    console.error(
+      `Prepack ${fatalErrors > 0 ? "failed" : "succeeded"}, reporting ${[
+        fatalErrors > 0 ? `${fatalErrors} ${plural(fatalErrors, "fatal error")}` : undefined,
+        recoverableErrors > 0 ? `${recoverableErrors} ${plural(recoverableErrors, "recoverable error")}` : undefined,
+        warnings > 0 ? `${warnings} ${plural(warnings, "warning")}` : undefined,
+        informations > 0 ? `${informations} ${plural(informations, "informational message")}` : undefined,
+      ]
+        .filter(s => s !== undefined)
+        .join(", ")}.`
+    );
+
+    return fatalErrors === 0;
   }
 
   let profiler;
+  let success;
   try {
     if (cpuprofilePath !== undefined) {
       try {
@@ -421,18 +470,15 @@ fi
         return;
       }
       let serialized = prepackFileSync(inputFilenames, resolvedOptions);
-      printDiagnostics();
+      success = printDiagnostics(false);
       if (resolvedOptions.serialize && serialized) processSerializedCode(serialized);
     } catch (err) {
-      printDiagnostics();
-      //FatalErrors must have generated at least one CompilerDiagnostic.
-      if (err instanceof FatalError) {
-        invariant(errors.size > 0 || errorList.length > 0, "FatalError must generate at least one CompilerDiagnostic");
-      } else {
+      printDiagnostics(err instanceof FatalError);
+      if (!(err instanceof FatalError)) {
         // if it is not a FatalError, it means prepack failed, and we should display the Prepack stack trace.
         console.error(err.stack);
-        process.exit(1);
       }
+      success = false;
     }
   } finally {
     if (profiler !== undefined) {
@@ -490,7 +536,7 @@ fi
     }
   }
 
-  return true;
+  if (!success) process.exit(1);
 }
 
 if (typeof __residual === "function") {

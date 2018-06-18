@@ -286,6 +286,13 @@ export class UISession {
         };
         this._sendStepOverRequest(stepOverArgs);
         break;
+      case "stepOut":
+        if (parts.length !== 1) return false;
+        let stepOutArgs: DebugProtocol.StepOutArguments = {
+          threadId: DebuggerConstants.PREPACK_THREAD_ID,
+        };
+        this._sendStepOutRequest(stepOutArgs);
+        break;
       case "eval":
         if (parts.length < 2) return false;
         let evalFrameId = parseInt(parts[1], 10);
@@ -470,6 +477,17 @@ export class UISession {
     this._packageAndSend(json);
   }
 
+  _sendStepOutRequest(args: DebugProtocol.StepOutArguments) {
+    let message = {
+      type: "request",
+      seq: this._sequenceNum,
+      command: "stepOut",
+      arguments: args,
+    };
+    let json = JSON.stringify(message);
+    this._packageAndSend(json);
+  }
+
   _sendEvaluateRequest(args: DebugProtocol.EvaluateArguments) {
     let message = {
       type: "request",
@@ -506,8 +524,6 @@ export class UISession {
       clientID: DebuggerConstants.CLI_CLIENTID,
       // a unique name for each adapter
       adapterID: "Prepack-Debugger-Adapter",
-      linesStartAt1: true,
-      columnsStartAt1: true,
       supportsVariableType: true,
       supportsVariablePaging: false,
       supportsRunInTerminalRequest: false,

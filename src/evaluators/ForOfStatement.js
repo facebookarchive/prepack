@@ -14,7 +14,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { Reference } from "../environment.js";
-import { BreakCompletion, AbruptCompletion, ContinueCompletion, JoinedAbruptCompletions } from "../completions.js";
+import { BreakCompletion, AbruptCompletion, ContinueCompletion, ForkedAbruptCompletion } from "../completions.js";
 import {
   AbstractObjectValue,
   AbstractValue,
@@ -53,14 +53,14 @@ export function InternalGetResultValue(realm: Realm, result: Value | AbruptCompl
   }
 }
 
-export function TryToApplyEffectsOfJoiningBranches(realm: Realm, c: JoinedAbruptCompletions): AbruptCompletion {
+export function TryToApplyEffectsOfJoiningBranches(realm: Realm, c: ForkedAbruptCompletion): AbruptCompletion {
   let joinedEffects = Join.joinNestedEffects(realm, c);
   let jr = joinedEffects.result;
   invariant(jr instanceof AbruptCompletion);
   if (jr instanceof ContinueCompletion || jr instanceof BreakCompletion) {
     // The end of a loop body is join point for these.
     realm.applyEffects(joinedEffects, "end of loop body");
-  } else if (jr instanceof JoinedAbruptCompletions) {
+  } else if (jr instanceof ForkedAbruptCompletion) {
     if (jr.containsBreakOrContinue()) {
       // todo: extract the continue completions, apply those while stashing the other comletions
       // in realm.savedCompletion. This may need customization depending on the caller.
@@ -346,7 +346,7 @@ export function ForInOfBodyEvaluation(
     // i. Let result be the result of evaluating stmt.
     let result = env.evaluateCompletion(stmt, strictCode);
     invariant(result instanceof Value || result instanceof AbruptCompletion);
-    if (result instanceof JoinedAbruptCompletions) result = TryToApplyEffectsOfJoiningBranches(realm, result);
+    if (result instanceof ForkedAbruptCompletion) result = TryToApplyEffectsOfJoiningBranches(realm, result);
 
     // j. Set the running execution context's LexicalEnvironment to oldEnv.
 

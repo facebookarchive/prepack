@@ -19,6 +19,7 @@ import {
   type AbstractValueKind,
   BooleanValue,
   ConcreteValue,
+  EmptyValue,
   FunctionValue,
   NullValue,
   NumberValue,
@@ -35,9 +36,8 @@ import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import * as t from "babel-types";
 import invariant from "../invariant.js";
 import {
-  Completion,
   AbruptCompletion,
-  JoinedAbruptCompletions,
+  ForkedAbruptCompletion,
   ThrowCompletion,
   ReturnCompletion,
   PossiblyNormalCompletion,
@@ -59,6 +59,12 @@ import type { SerializerOptions } from "../options.js";
 export type SerializationContext = {|
   serializeValue: Value => BabelNodeExpression,
   serializeBinding: Binding => BabelNodeIdentifier | BabelNodeMemberExpression,
+  getPropertyAssignmentStatement: (
+    location: BabelNodeLVal,
+    value: BabelNodeExpression,
+    mightHaveBeenDeleted: boolean,
+    deleteIfMightHaveBeenDeleted: boolean
+  ) => BabelNodeStatement,
   serializeGenerator: (Generator, Set<AbstractValue | ConcreteValue>) => Array<BabelNodeStatement>,
   initGenerator: Generator => void,
   finalizeGenerator: Generator => void,
@@ -254,9 +260,15 @@ class ModifiedBindingEntry extends GeneratorEntry {
       containingGenerator === this.containingGenerator,
       "This entry requires effects to be applied and may not be moved"
     );
-    invariant(this.modifiedBinding.value === this.newValue);
+    invariant(
+      this.modifiedBinding.value === this.newValue,
+      "ModifiedBinding's value has been changed since last visit."
+    );
     let [residualBinding, newValue] = context.visitModifiedBinding(this.modifiedBinding);
-    invariant(this.residualFunctionBinding === undefined || this.residualFunctionBinding === residualBinding);
+    invariant(
+      this.residualFunctionBinding === undefined || this.residualFunctionBinding === residualBinding,
+      "ResidualFunctionBinding has been changed since last visit."
+    );
     this.residualFunctionBinding = residualBinding;
     this.newValue = newValue;
     return true;
@@ -297,7 +309,7 @@ class ReturnValueEntry extends GeneratorEntry {
 }
 
 class IfThenElseEntry extends GeneratorEntry {
-  constructor(generator: Generator, completion: PossiblyNormalCompletion | JoinedAbruptCompletions, realm: Realm) {
+  constructor(generator: Generator, completion: PossiblyNormalCompletion | ForkedAbruptCompletion, realm: Realm) {
     super();
     this.completion = completion;
     this.containingGenerator = generator;
@@ -307,7 +319,7 @@ class IfThenElseEntry extends GeneratorEntry {
     this.alternateGenerator = Generator.fromEffects(completion.alternateEffects, realm, "AlternateEffects");
   }
 
-  completion: PossiblyNormalCompletion | JoinedAbruptCompletions;
+  completion: PossiblyNormalCompletion | ForkedAbruptCompletion;
   containingGenerator: Generator;
 
   condition: Value;
@@ -428,7 +440,7 @@ export class Generator {
       output.emitReturnValue(result);
     } else if (result instanceof ReturnCompletion) {
       output.emitReturnValue(result.value);
-    } else if (result instanceof PossiblyNormalCompletion || result instanceof JoinedAbruptCompletions) {
+    } else if (result instanceof PossiblyNormalCompletion || result instanceof ForkedAbruptCompletion) {
       output.emitIfThenElse(result, realm);
     } else if (result instanceof ThrowCompletion) {
       output.emitThrow(result.value);
@@ -502,7 +514,7 @@ export class Generator {
     this._entries.push(new ReturnValueEntry(this, result));
   }
 
-  emitIfThenElse(result: PossiblyNormalCompletion | JoinedAbruptCompletions, realm: Realm) {
+  emitIfThenElse(result: PossiblyNormalCompletion | ForkedAbruptCompletion, realm: Realm) {
     this._entries.push(new IfThenElseEntry(this, result, realm));
   }
 
@@ -572,9 +584,12 @@ export class Generator {
     let propName = this.getAsPropertyNameExpression(key);
     this._addEntry({
       args: [object, value],
-      buildNode: ([objectNode, valueNode]) =>
-        t.expressionStatement(
-          t.assignmentExpression("=", t.memberExpression(objectNode, propName, !t.isIdentifier(propName)), valueNode)
+      buildNode: ([objectNode, valueNode], context) =>
+        context.getPropertyAssignmentStatement(
+          t.memberExpression(objectNode, propName, !t.isIdentifier(propName)),
+          valueNode,
+          value.mightHaveBeenDeleted(),
+          /* deleteIfMightHaveBeenDeleted */ true
         ),
     });
   }
@@ -642,24 +657,26 @@ export class Generator {
     });
   }
 
-  emitConditionalThrow(condition: AbstractValue, trueBranch: Completion | Value, falseBranch: Completion | Value) {
-    const branchToGenerator = (name: string, branch: Completion | Value): Generator => {
-      const result = new Generator(this.realm, name);
-      if (branch instanceof JoinedAbruptCompletions || branch instanceof PossiblyNormalCompletion) {
-        result.emitConditionalThrow(branch.joinCondition, branch.consequent, branch.alternate);
-      } else if (branch instanceof ThrowCompletion) {
-        result.emitThrow(branch.value);
-      } else {
-        invariant(branch instanceof ReturnCompletion || branch instanceof Value);
+  emitConditionalThrow(value: Value) {
+    function createStatement(val: Value, context: SerializationContext) {
+      if (!(val instanceof AbstractValue) || val.kind !== "conditional") {
+        return t.throwStatement(context.serializeValue(val));
       }
-      return result;
-    };
-
-    this.joinGenerators(
-      condition,
-      branchToGenerator("TrueBranch", trueBranch),
-      branchToGenerator("FalseBranch", falseBranch)
-    );
+      let [cond, trueVal, falseVal] = val.args;
+      let condVal = context.serializeValue(cond);
+      let trueStat, falseStat;
+      if (trueVal instanceof EmptyValue) trueStat = t.blockStatement([]);
+      else trueStat = createStatement(trueVal, context);
+      if (falseVal instanceof EmptyValue) falseStat = t.blockStatement([]);
+      else falseStat = createStatement(falseVal, context);
+      return t.ifStatement(condVal, trueStat, falseStat);
+    }
+    this._addEntry({
+      args: [value],
+      buildNode: function([argument], context: SerializationContext) {
+        return createStatement(value, context);
+      },
+    });
   }
 
   _issueThrowCompilerDiagnostic(value: Value) {

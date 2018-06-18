@@ -21,7 +21,7 @@ module.exports = {
     "no-use-before-define": ["error", { variables: false, functions: false }],
   },
   parserOptions: {
-    ecmaVersion: 7,
+    ecmaVersion: 2018,
     ecmaFeatures: {
       jsx: true,
     },

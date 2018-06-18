@@ -78,7 +78,7 @@ import { canHoistFunction } from "../react/hoisting.js";
 import { To } from "../singletons.js";
 import { ResidualReactElementSerializer } from "./ResidualReactElementSerializer.js";
 import type { Binding } from "../environment.js";
-import { DeclarativeEnvironmentRecord } from "../environment.js";
+import { DeclarativeEnvironmentRecord, FunctionEnvironmentRecord } from "../environment.js";
 import type { Referentializer } from "./Referentializer.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
 import { type Replacement, getReplacement } from "./ResidualFunctionInstantiator";
@@ -595,12 +595,9 @@ export class ResidualHeapSerializer {
       invariant(!this.emitter.getReasonToWaitForDependencies([descValue, val]), "precondition of _emitProperty");
       let mightHaveBeenDeleted = descValue.mightHaveBeenDeleted();
       // The only case we do not need to remove the dummy property is array index property.
-      return this._getPropertyAssignment(
-        locationFunction,
-        () => {
-          invariant(descValue instanceof Value);
-          return this.serializeValue(descValue);
-        },
+      return this._getPropertyAssignmentStatement(
+        locationFunction(),
+        this.serializeValue(descValue),
         mightHaveBeenDeleted,
         deleteIfMightHaveBeenDeleted
       );
@@ -698,10 +695,12 @@ export class ResidualHeapSerializer {
     let result = new Set(initialGenerators);
     let activeFunctions = functionValues.slice();
     let visitedFunctions = new Set();
+
     while (activeFunctions.length > 0) {
       let f = activeFunctions.pop();
       if (visitedFunctions.has(f)) continue;
       visitedFunctions.add(f);
+
       if (f === referencingOnlyOptimizedFunction) {
         let g = this.additionalFunctionGenerators.get(f);
         invariant(g !== undefined);
@@ -721,11 +720,29 @@ export class ResidualHeapSerializer {
     return Array.from(result);
   }
 
-  // Determine if a value is effectively referenced by a single additional function.
-  isReferencedOnlyByOptimizedFunction(val: Value): void | FunctionValue {
+  isDefinedInsideFunction(childFunction: FunctionValue, maybeParentFunctions: Set<FunctionValue>): boolean {
+    for (let maybeParentFunction of maybeParentFunctions) {
+      if (childFunction === maybeParentFunction) {
+        continue;
+      }
+      let env = childFunction.$Environment;
+      while (env.parent !== null) {
+        let envRecord = env.environmentRecord;
+        if (envRecord instanceof FunctionEnvironmentRecord && envRecord.$FunctionObject === maybeParentFunction) {
+          return true;
+        }
+        env = env.parent;
+      }
+    }
+    return false;
+  }
+
+  // Try and get the root optimized function when passed in an optimized function
+  // that may or may not be nested in the tree of said root, or is the root optimized function
+  tryGetOptimizedFunctionRoot(val: Value): void | FunctionValue {
     let scopes = this.residualValues.get(val);
+    let functionValues = new Set();
     invariant(scopes !== undefined);
-    let additionalFunction;
     for (let scope of scopes) {
       let s = scope;
       while (s instanceof Generator) {
@@ -733,11 +750,21 @@ export class ResidualHeapSerializer {
       }
       if (s === "GLOBAL") return undefined;
       invariant(s instanceof FunctionValue);
-      if (this.additionalFunctionGenerators.has(s)) {
-        if (additionalFunction !== undefined && additionalFunction !== s) return undefined;
-        additionalFunction = s;
+      functionValues.add(s);
+    }
+    let additionalFunction;
+
+    for (let functionValue of functionValues) {
+      if (this.additionalFunctionGenerators.has(functionValue)) {
+        if (this.isDefinedInsideFunction(functionValue, functionValues)) {
+          continue;
+        }
+        if (additionalFunction !== undefined && additionalFunction !== functionValue) {
+          return undefined;
+        }
+        additionalFunction = functionValue;
       } else {
-        let f = this.isReferencedOnlyByOptimizedFunction(s);
+        let f = this.tryGetOptimizedFunctionRoot(functionValue);
         if (f === undefined) return undefined;
         if (additionalFunction !== undefined && additionalFunction !== f) return undefined;
         additionalFunction = f;
@@ -783,7 +810,7 @@ export class ResidualHeapSerializer {
       }
     }
 
-    let referencingOnlyOptimizedFunction = this.isReferencedOnlyByOptimizedFunction(val);
+    let referencingOnlyOptimizedFunction = this.tryGetOptimizedFunctionRoot(val);
     if (generators.length === 0) {
       // This value is only referenced from residual functions.
       if (
@@ -842,6 +869,11 @@ export class ResidualHeapSerializer {
       (x, y) => commonAncestorOf(x, y, getGeneratorParent),
       generators[0]
     );
+    // In the case where we have no common ancestor but we have an optimized function reference,
+    // we can attempt to use the generator of the single optimized function
+    if (commonAncestor === undefined && referencingOnlyOptimizedFunction !== undefined) {
+      commonAncestor = this.additionalFunctionGenerators.get(referencingOnlyOptimizedFunction);
+    }
     invariant(commonAncestor !== undefined, "there must always be a common generator ancestor");
     if (trace) console.log(`  common ancestor: ${commonAncestor.getName()}`);
 
@@ -1104,24 +1136,22 @@ export class ResidualHeapSerializer {
   }
 
   _assignProperty(
-    locationFn: () => BabelNodeLVal,
-    valueFn: () => BabelNodeExpression,
+    location: BabelNodeLVal,
+    value: BabelNodeExpression,
     mightHaveBeenDeleted: boolean,
     deleteIfMightHaveBeenDeleted: boolean = false
-  ) {
+  ): void {
     this.emitter.emit(
-      this._getPropertyAssignment(locationFn, valueFn, mightHaveBeenDeleted, deleteIfMightHaveBeenDeleted)
+      this._getPropertyAssignmentStatement(location, value, mightHaveBeenDeleted, deleteIfMightHaveBeenDeleted)
     );
   }
 
-  _getPropertyAssignment(
-    locationFn: () => BabelNodeLVal,
-    valueFn: () => BabelNodeExpression,
+  _getPropertyAssignmentStatement(
+    location: BabelNodeLVal,
+    value: BabelNodeExpression,
     mightHaveBeenDeleted: boolean,
     deleteIfMightHaveBeenDeleted: boolean = false
-  ) {
-    let location = locationFn();
-    let value = valueFn();
+  ): BabelNodeStatement {
     let assignment = t.expressionStatement(t.assignmentExpression("=", location, value));
     if (mightHaveBeenDeleted) {
       let condition = t.binaryExpression("!==", value, this._serializeEmptyValue());
@@ -1197,8 +1227,8 @@ export class ResidualHeapSerializer {
           [val, lenProperty],
           () => {
             this._assignProperty(
-              () => t.memberExpression(this.getSerializeObjectIdentifier(val), t.identifier("length")),
-              () => this.serializeValue(lenProperty),
+              t.memberExpression(this.getSerializeObjectIdentifier(val), t.identifier("length")),
+              this.serializeValue(lenProperty),
               false /*mightHaveBeenDeleted*/
             );
             if (semaphore !== undefined) semaphore.releaseOne();
@@ -1398,7 +1428,7 @@ export class ResidualHeapSerializer {
     invariant(instance !== undefined);
     let residualBindings = instance.residualFunctionBindings;
 
-    let inOptimizedFunction = this.isReferencedOnlyByOptimizedFunction(val);
+    let inOptimizedFunction = this.tryGetOptimizedFunctionRoot(val);
     if (inOptimizedFunction !== undefined) instance.containingAdditionalFunction = inOptimizedFunction;
     let bindingsEmittedSemaphore = new CountingSemaphore(() => {
       invariant(instance);
@@ -1866,7 +1896,6 @@ export class ResidualHeapSerializer {
       else if (!cf.t && cf.f) return this.serializeValue(val.args[2]);
       else invariant(cf.t && cf.f);
     }
-
     if (val.hasIdentifier()) {
       return this._serializeAbstractValueHelper(val);
     } else {
@@ -2080,6 +2109,7 @@ export class ResidualHeapSerializer {
       processValues: (valuesToProcess: Set<AbstractValue | ConcreteValue>) => {
         this.emitter.processValues(valuesToProcess);
       },
+      getPropertyAssignmentStatement: this._getPropertyAssignmentStatement.bind(this),
       emitDefinePropertyBody: this.emitDefinePropertyBody.bind(this, false, undefined),
       canOmit: (value: AbstractValue | ConcreteValue) => {
         return !this.referencedDeclaredValues.has(value);
@@ -2146,7 +2176,7 @@ export class ResidualHeapSerializer {
     functionValue: FunctionValue,
     additionalEffects: AdditionalFunctionEffects
   ) {
-    let inAdditionalFunction = this.isReferencedOnlyByOptimizedFunction(functionValue);
+    let inAdditionalFunction = this.tryGetOptimizedFunctionRoot(functionValue);
     return this._withGeneratorScope(
       "AdditionalFunction",
       generator,
