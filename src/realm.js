@@ -1178,12 +1178,12 @@ export class Realm {
 
   updateAbruptCompletions(priorEffects: Effects, c: PossiblyNormalCompletion) {
     if (c.consequent instanceof AbruptCompletion) {
-      c.consequentEffects = this.composeEffects(priorEffects, c.consequentEffects);
+      c.consequent.effects = this.composeEffects(priorEffects, c.consequentEffects);
       let alternate = c.alternate;
       if (alternate instanceof PossiblyNormalCompletion) this.updateAbruptCompletions(priorEffects, alternate);
     } else {
       invariant(c.alternate instanceof AbruptCompletion);
-      c.alternateEffects = this.composeEffects(priorEffects, c.alternateEffects);
+      c.alternate.effects = this.composeEffects(priorEffects, c.alternateEffects);
       let consequent = c.consequent;
       if (consequent instanceof PossiblyNormalCompletion) this.updateAbruptCompletions(priorEffects, consequent);
     }

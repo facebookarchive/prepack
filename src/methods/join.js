@@ -464,7 +464,7 @@ export class JoinImplementation {
           ? new SimpleNormalCompletion(realm.intrinsics.empty)
           : dummyCompletion);
       } else if (convertToPNC && c.alternate instanceof ForkedAbruptCompletion) {
-        c.updateAlternateKeepingCurrentEffects(c.alternate.transferChildrenToPossiblyNormalCompletion(): any);
+        c.updateAlternateKeepingCurrentEffects((c.alternate.transferChildrenToPossiblyNormalCompletion(): any));
       }
     } else {
       ae.result = new CompletionType(realm.intrinsics.empty);

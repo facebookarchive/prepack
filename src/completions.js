@@ -101,22 +101,22 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
 
   joinCondition: AbstractValue;
   _consequent: AbruptCompletion;
-  updateConsequentKeepingCurrentEffects(newConsequent) {
+  updateConsequentKeepingCurrentEffects(newConsequent: AbruptCompletion) {
     let effects = this.consequentEffects;
     newConsequent.effects = effects;
     newConsequent.effects.result = newConsequent;
     this.consequent = newConsequent;
     return newConsequent;
   }
-  updateAlternateKeepingCurrentEffects(newAlternate) {
+  updateAlternateKeepingCurrentEffects(newAlternate: AbruptCompletion) {
     let effects = this.alternateEffects;
     newAlternate.effects = effects;
     newAlternate.effects.result = newAlternate;
     this.alternate = newAlternate;
     return newAlternate;
   }
-  get consequent() { return this._consequent; }
-  set consequent(newConsequent) {
+  get consequent(): AbruptCompletion { return this._consequent; }
+  set consequent(newConsequent: AbruptCompletion) {
     //invariant(newConsequent instanceof AbruptCompletion);
     invariant(newConsequent);
     invariant(newConsequent.effects);
@@ -129,30 +129,17 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
     return this.consequent.effects;
   }
 
-  /*set consequentEffects(newEffects: Effects): Effects {
-    invariant(newEffects);
-    this.consequent.effects = newEffects;
-    return this.consequent.effects;
-  }*/
   _alternate: AbruptCompletion;
-  get alternate() { return this._alternate; }
-  set alternate(newConsequent) {
-    //invariant(newConsequent instanceof AbruptCompletion);
+  get alternate(): AbruptCompletion { return this._alternate; }
+  set alternate(newConsequent: AbruptCompletion) {
     invariant(newConsequent.effects);
     this._alternate = newConsequent;
     return newConsequent;
   }
-  //alternateEffects: Effects;
   get alternateEffects(): Effects {
     invariant(this.alternate.effects);
     return this.alternate.effects;
   }
-
-  /*set alternateEffects(newEffects: Effects): Effects {
-    invariant(newEffects);
-    this.alternate.effects = newEffects;
-    return this.alternate.effects;
-  }*/
 
   toDisplayString(): string {
     let superString = super.toDisplayString().slice(0, -1);
@@ -240,60 +227,41 @@ export class PossiblyNormalCompletion extends NormalCompletion {
 
   joinCondition: AbstractValue;
   _consequent: Completion;
-  get consequent() { return this._consequent; }
-  set consequent(newConsequent) {
-    //invariant(newConsequent instanceof AbruptCompletion);
+  get consequent(): Completion { return this._consequent; }
+  set consequent(newConsequent: Completion) {
     invariant(newConsequent);
     invariant(newConsequent.effects);
     this._consequent = newConsequent;
     return newConsequent;
   }
-  //consequentEffects: Effects;
   get consequentEffects(): Effects {
     invariant(this.consequent.effects);
     return this.consequent.effects;
   }
-
-  /*set consequentEffects(newEffects: Effects): Effects {
-    invariant(newEffects);
-    this.consequent.effects = newEffects;
-    return this.consequent.effects;
-  }*/
   _alternate: Completion;
-  get alternate() { return this._alternate; }
-  set alternate(newConsequent) {
-    //invariant(newConsequent instanceof AbruptCompletion);
+  get alternate(): Completion { return this._alternate; }
+  set alternate(newConsequent: Completion) {
     invariant(newConsequent.effects);
     this._alternate = newConsequent;
     return newConsequent;
   }
-  //alternateEffects: Effects;
   get alternateEffects(): Effects {
     invariant(this.alternate.effects);
     return this.alternate.effects;
   }
 
-  /*set alternateEffects(newEffects: Effects): Effects {
-    invariant(newEffects);
-    this.alternate.effects = newEffects;
-    return this.alternate.effects;
-  }*/
-  /*consequent: Completion;
-  consequentEffects: Effects;
-  alternate: Completion;
-  alternateEffects: Effects;*/
   savedEffects: void | Effects;
   // The path conditions that applied at the time of the oldest fork that caused this completion to arise.
   savedPathConditions: Array<AbstractValue>;
 
-  updateConsequentKeepingCurrentEffects(newConsequent) {
+  updateConsequentKeepingCurrentEffects(newConsequent: Completion) {
     let effects = this.consequentEffects;
     newConsequent.effects = effects;
     newConsequent.effects.result = newConsequent;
     this.consequent = newConsequent;
     return newConsequent;
   }
-  updateAlternateKeepingCurrentEffects(newAlternate) {
+  updateAlternateKeepingCurrentEffects(newAlternate: Completion) {
     let effects = this.alternateEffects;
     newAlternate.effects = effects;
     newAlternate.effects.result = newAlternate;
