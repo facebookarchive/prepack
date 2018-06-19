@@ -96,6 +96,8 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
   consequent: AbruptCompletion;
   alternate: AbruptCompletion;
 
+  // For convenience, this.consequent.effects should always be defined, but accessing it directly requires
+  // verifying that with an invariant.
   get consequentEffects(): Effects {
     invariant(this.consequent.effects);
     return this.consequent.effects;
@@ -215,6 +217,8 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   // The path conditions that applied at the time of the oldest fork that caused this completion to arise.
   savedPathConditions: Array<AbstractValue>;
 
+  // For convenience, this.consequent.effects should always be defined, but accessing it directly requires
+  // verifying that with an invariant.
   get consequentEffects(): Effects {
     invariant(this.consequent.effects);
     return this.consequent.effects;
