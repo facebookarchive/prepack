@@ -47,7 +47,7 @@ function handleObjectAssignSnapshot(
   frm: ObjectValue | AbstractObjectValue,
   frm_was_partial: boolean,
   delayedSources: Array<Value>
-): void {
+): boolean {
   if (to instanceof AbstractObjectValue && to.values.isTop()) {
     // We don't know which objects to make partial and making all objects partial is failure in itself
     AbstractValue.reportIntrospectionError(to);
@@ -72,8 +72,11 @@ function handleObjectAssignSnapshot(
         frm.makePartial();
         delayedSources.push(frmSnapshot);
       }
+    } else {
+      return false;
     }
   }
+  return true;
 }
 
 function copyKeys(realm: Realm, keys, from, to): void {
@@ -173,13 +176,8 @@ function tryAndApplySourceOrRecover(
     if (e instanceof FatalError && to.isSimpleObject()) {
       to_must_be_partial = true;
       let frm_was_partial = frm.isPartialObject();
-      handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
-      if (
-        frm instanceof ObjectValue &&
-        !frm_was_partial &&
-        !frm.mightBeHavocedObject() &&
-        frm.mightNotBeHavocedObject()
-      ) {
+      let didSnapshot = handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
+      if (!didSnapshot) {
         delayedSources.push(frm);
       }
       // Havoc the frm value because it can have getters on it
