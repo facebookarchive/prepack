@@ -59,7 +59,7 @@ function handleObjectAssignSnapshot(
       delayedSources.push(to.getSnapshot({ removeProperties: true }));
     }
 
-    if (frm instanceof ObjectValue && frm.mightBeHavocedObject()) {
+    if (frm instanceof ObjectValue && frm.mightBeHavocedObject() && !frm.mightNotBeHavocedObject()) {
       // it's not safe to trust any of its values
       delayedSources.push(frm);
     } else if (frm_was_partial) {
@@ -72,8 +72,6 @@ function handleObjectAssignSnapshot(
         frm.makePartial();
         delayedSources.push(frmSnapshot);
       }
-    } else {
-      delayedSources.push(frm);
     }
   }
 }
@@ -174,7 +172,16 @@ function tryAndApplySourceOrRecover(
 
     if (e instanceof FatalError && to.isSimpleObject()) {
       to_must_be_partial = true;
-      handleObjectAssignSnapshot(to, frm, frm.isPartialObject(), delayedSources);
+      let frm_was_partial = frm.isPartialObject();
+      handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
+      if (
+        frm instanceof ObjectValue &&
+        !frm_was_partial &&
+        !frm.mightBeHavocedObject() &&
+        frm.mightNotBeHavocedObject()
+      ) {
+        delayedSources.push(frm);
+      }
       // Havoc the frm value because it can have getters on it
       Havoc.value(realm, frm);
       return to_must_be_partial;
