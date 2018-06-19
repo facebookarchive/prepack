@@ -127,20 +127,16 @@ function applyObjectAssignSource(
     // Make this temporarily not partial
     // so that we can call frm.$OwnPropertyKeys below.
     frm.makeNotPartial();
-    try {
-      keys = frm.$OwnPropertyKeys();
+  }
 
-      if (to_must_be_partial) {
-        handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
-      }
-    } finally {
-      frm.makePartial();
-    }
-  } else {
+  try {
     keys = frm.$OwnPropertyKeys();
-
     if (to_must_be_partial) {
       handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
+    }
+  } finally {
+    if (frm_was_partial) {
+      frm.makePartial();
     }
   }
 
