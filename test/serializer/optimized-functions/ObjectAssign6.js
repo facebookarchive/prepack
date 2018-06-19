@@ -1,4 +1,4 @@
-// does not contain:return 1
+// does contain:.x;
 
 function fn(abstract) {
   var a = Object.assign({}, {x: 1}, abstract);
