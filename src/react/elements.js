@@ -11,20 +11,108 @@
 
 import type { Realm } from "../realm.js";
 import { ValuesDomain } from "../domains/index.js";
-import { AbstractValue, AbstractObjectValue, ArrayValue, NumberValue, ObjectValue, Value } from "../values/index.js";
+import {
+  AbstractValue,
+  AbstractObjectValue,
+  ArrayValue,
+  FunctionValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
+  Value,
+} from "../values/index.js";
 import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
 import {
   applyObjectAssignConfigsForReactElement,
+  cloneObject,
   createInternalReactElement,
   flagPropsWithNoPartialKeyOrRef,
   getProperty,
+  isEventProp,
   hasNoPartialKeyOrRef,
 } from "./utils.js";
 import * as t from "babel-types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
+
+function deepTraverseAndFindOrDeleteFirstRenderProperties(
+  realm: Realm,
+  obj: ObjectValue | AbstractObjectValue,
+  shouldDelete: boolean,
+  alreadyVisited?: Set<AbstractObjectValue | ObjectValue> = new Set()
+): void | boolean {
+  if (obj instanceof FunctionValue || alreadyVisited.has(obj) || obj.isIntrinsic()) {
+    return;
+  }
+  alreadyVisited.add(obj);
+  if (obj.constructor === ObjectValue) {
+    let temporalAlias = obj.temporalAlias;
+
+    for (let [propName, binding] of obj.properties) {
+      if (binding.descriptor === undefined) {
+        continue;
+      }
+      let propValue = getProperty(realm, obj, propName);
+
+      if (propName === "ref" || isEventProp(propName) || propValue instanceof FunctionValue) {
+        if (shouldDelete) {
+          let isFinal = obj.mightBeFinalObject();
+          if (isFinal) {
+            obj.makeNotFinal();
+          }
+          Properties.DeletePropertyOrThrow(realm, obj, propName);
+          if (isFinal) {
+            obj.makeFinal();
+          }
+        } else {
+          return true; // We found first render properties
+        }
+      }
+    }
+
+    if (temporalAlias !== undefined) {
+      let temporalArgs = realm.temporalAliasArgs.get(temporalAlias);
+
+      if (temporalArgs !== undefined) {
+        for (let temporalArg of temporalArgs) {
+          let foundFirstRenderProperties = deepTraverseAndFindOrDeleteFirstRenderProperties(
+            realm,
+            temporalArg,
+            shouldDelete,
+            alreadyVisited
+          );
+          if (foundFirstRenderProperties) {
+            return true;
+          }
+        }
+      }
+    }
+  } else if (obj instanceof AbstractObjectValue && !obj.values.isTop()) {
+    for (let element of obj.values.getElements()) {
+      let foundFirstRenderProperties = deepTraverseAndFindOrDeleteFirstRenderProperties(
+        realm,
+        element,
+        shouldDelete,
+        alreadyVisited
+      );
+      if (foundFirstRenderProperties) {
+        return true;
+      }
+    }
+  }
+}
+
+function sanitizeConfigObjectForFirstRender(
+  realm: Realm,
+  config: ObjectValue | AbstractObjectValue
+): ObjectValue | AbstractObjectValue {
+  let needToCloneAndDelete = deepTraverseAndFindOrDeleteFirstRenderProperties(realm, config, false);
+  let clonedConfig = cloneObject(realm, config);
+  debugger;
+  return config;
+}
 
 function createPropsObject(
   realm: Realm,
@@ -32,6 +120,15 @@ function createPropsObject(
   config: ObjectValue | AbstractObjectValue,
   children: void | Value
 ): { key: Value, ref: Value, props: ObjectValue } {
+  // If we're in "rendering" a React component tree, we should have an active reconciler
+  let activeReconciler = realm.react.activeReconciler;
+  let firstRenderOnly = activeReconciler !== undefined ? activeReconciler.componentTreeConfig.firstRenderOnly : false;
+  let isHostComponent = type instanceof StringValue;
+
+  if (firstRenderOnly && isHostComponent) {
+    config = sanitizeConfigObjectForFirstRender(realm, config);
+  }
+
   let defaultProps =
     type instanceof ObjectValue || type instanceof AbstractObjectValue
       ? Get(realm, type, "defaultProps")
@@ -70,7 +167,7 @@ function createPropsObject(
   }
 
   let possibleRef = Get(realm, config, "ref");
-  if (possibleRef !== realm.intrinsics.null && possibleRef !== realm.intrinsics.undefined) {
+  if (possibleRef !== realm.intrinsics.null && possibleRef !== realm.intrinsics.undefined && !firstRenderOnly) {
     // if the config has been marked as having no partial key or ref and the possible ref
     // is abstract, yet the config doesn't have a ref property, then the ref can remain null
     let refNotNeeded =

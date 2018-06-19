@@ -194,7 +194,7 @@ export function wrapReactElementInBranchOrReturnValue(realm: Realm, value: Value
     let temporal = AbstractValue.createTemporalFromBuildFunction(
       realm,
       ObjectValue,
-      [cloneReactElement(realm, value, false)],
+      [cloneReactElement(realm, value)],
       ([node]) => node,
       { isPure: true, skipInvariant: true }
     );

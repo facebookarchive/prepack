@@ -14,7 +14,7 @@ import { AbstractValue, ObjectValue, SymbolValue, Value } from "../values/index.
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { determineIfReactElementCanBeHoisted } from "../react/hoisting.js";
 import { traverseReactElement } from "../react/elements.js";
-import { canExcludeReactElementObjectProperty, getProperty, getReactSymbol } from "../react/utils.js";
+import { getProperty, getReactSymbol } from "../react/utils.js";
 import invariant from "../invariant.js";
 import ReactElementSet from "../react/ReactElementSet.js";
 import type { ReactOutputTypes } from "../options.js";
@@ -35,9 +35,6 @@ export class ResidualReactElementVisitor {
   equivalenceSet: ReactElementSet;
 
   visitReactElement(reactElement: ObjectValue): void {
-    let reactElementData = this.realm.react.reactElements.get(reactElement);
-    invariant(reactElementData !== undefined);
-    let { firstRenderOnly } = reactElementData;
     let isReactFragment = false;
 
     traverseReactElement(this.realm, reactElement, {
@@ -53,9 +50,7 @@ export class ResidualReactElementVisitor {
         this.residualHeapVisitor.visitValue(keyValue);
       },
       visitRef: (refValue: Value) => {
-        if (!firstRenderOnly) {
-          this.residualHeapVisitor.visitValue(refValue);
-        }
+        this.residualHeapVisitor.visitValue(refValue);
       },
       visitAbstractOrPartialProps: (propsValue: AbstractValue | ObjectValue) => {
         this.residualHeapVisitor.visitValue(propsValue);
@@ -67,9 +62,6 @@ export class ResidualReactElementVisitor {
             continue;
           }
           let propValue = getProperty(this.realm, propsValue, propName);
-          if (canExcludeReactElementObjectProperty(this.realm, reactElement, propName, propValue)) {
-            continue;
-          }
           this.residualHeapVisitor.visitValue(propValue);
         }
       },
