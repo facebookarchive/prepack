@@ -48,7 +48,7 @@ export function objectAssignTemporalPurityCheck(
   declared: void | Value,
   args: Array<Value>
 ): boolean {
-  let [to, ...sources] = args;
+  let [, to, ...sources] = args;
   // First we check that all the "source" values are simple.
   // If they are simple, that means they don't have getters on them
   // that might possibly throw at runtime.
