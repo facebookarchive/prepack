@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { AbstractObjectValue, AbstractValue, ConcreteValue, ObjectValue } from "../values/index.js";
+import { AbstractObjectValue, AbstractValue, ConcreteValue, ObjectValue, Value } from "../values/index.js";
 import { type VisitEntryCallbacks } from "./generator.js";
 
 export function objectAssignTemporalPurityCheck(
