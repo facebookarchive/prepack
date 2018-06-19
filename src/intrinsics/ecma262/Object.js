@@ -129,15 +129,19 @@ function applyObjectAssignSource(
     frm.makeNotPartial();
     try {
       keys = frm.$OwnPropertyKeys();
+
+      if (to_must_be_partial) {
+        handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
+      }
     } finally {
       frm.makePartial();
     }
   } else {
     keys = frm.$OwnPropertyKeys();
-  }
 
-  if (to_must_be_partial) {
-    handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
+    if (to_must_be_partial) {
+      handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
+    }
   }
 
   // c. Repeat for each element nextKey of keys in List order,
