@@ -83,8 +83,8 @@ export function isReactElement(val: Value): boolean {
     let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
     let _isReactElement = symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
     if (_isReactElement) {
-      // add to Set to speed up future lookups
-      realm.react.reactElements.add(val);
+      // If we get there, it means the ReactElement was created in manual user-space
+      realm.react.reactElements.set(val, { createdDuringReconcilation: false, firstRenderOnly: false });
       return true;
     }
   }
@@ -836,21 +836,6 @@ function isEventProp(name: string): boolean {
   return name.length > 2 && name[0].toLowerCase() === "o" && name[1].toLowerCase() === "n";
 }
 
-export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElement: ObjectValue): ObjectValue {
-  let typeValue = getProperty(realm, reactElement, "type");
-  let keyValue = getProperty(realm, reactElement, "key");
-  let propsValue = getProperty(realm, reactElement, "props");
-
-  invariant(propsValue instanceof ObjectValue);
-  return createInternalReactElement(
-    realm,
-    typeValue,
-    keyValue,
-    realm.intrinsics.null,
-    typeValue instanceof StringValue ? cloneProps(realm, propsValue, true) : propsValue
-  );
-}
-
 export function getLocationFromValue(expressionLocation: any) {
   // if we can't get a value, then it's likely that the source file was not given
   // (this happens in React tests) so instead don't print any location
@@ -928,6 +913,12 @@ export function createInternalReactElement(
   Create.CreateDataPropertyOrThrow(realm, obj, "props", props);
   Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
   obj.makeFinal();
+  // If we're in "rendering" a React component tree, we should have an active reconciler
+  let activeReconciler = realm.react.activeReconciler;
+  let createdDuringReconcilation = activeReconciler !== undefined;
+  let firstRenderOnly = createdDuringReconcilation ? activeReconciler.componentTreeConfig.firstRenderOnly : false;
+
+  realm.react.reactElements.set(obj, { createdDuringReconcilation, firstRenderOnly });
   return obj;
 }
 
@@ -963,19 +954,14 @@ function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps:
   realm.temporalAliasArgs.set(temporalTo, newTemporalArgs);
 }
 
-export function cloneProps(
-  realm: Realm,
-  props: ObjectValue,
-  excludeEventProps: boolean,
-  newChildren?: Value
-): ObjectValue {
+export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value): ObjectValue {
   let clonedProps = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
 
   for (let [propName, binding] of props.properties) {
     if (binding && binding.descriptor && binding.descriptor.enumerable) {
       if (newChildren !== undefined && propName === "children") {
         Properties.Set(realm, clonedProps, propName, newChildren, true);
-      } else if (!excludeEventProps || !isEventProp(propName)) {
+      } else {
         Properties.Set(realm, clonedProps, propName, getProperty(realm, props, propName), true);
       }
     }
@@ -1104,4 +1090,32 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
   } else {
     objectAssignCall(realm.intrinsics.undefined, [to, ...sources]);
   }
+}
+
+// In firstRenderOnly mode, we strip off onEventHanlders and any props
+// that are functions as they are not required for init render.
+export function canExcludeReactElementObjectProperty(
+  realm: Realm,
+  reactElement: ObjectValue,
+  name: string,
+  value: Value
+): boolean {
+  let reactElementData = realm.react.reactElements.get(reactElement);
+  invariant(reactElementData !== undefined);
+  let { firstRenderOnly } = reactElementData;
+  let isHostComponent = getProperty(realm, reactElement, "type") instanceof StringValue;
+  return firstRenderOnly && isHostComponent && (isEventProp(name) || value instanceof FunctionValue);
+}
+
+export function cloneReactElement(realm: Realm, reactElement: ObjectValue, shouldCloneProps: boolean): ObjectValue {
+  let typeValue = getProperty(realm, reactElement, "type");
+  let keyValue = getProperty(realm, reactElement, "key");
+  let refValue = getProperty(realm, reactElement, "ref");
+  let propsValue = getProperty(realm, reactElement, "props");
+
+  invariant(propsValue instanceof ObjectValue);
+  if (shouldCloneProps) {
+    propsValue = cloneProps(realm, propsValue);
+  }
+  return createInternalReactElement(realm, typeValue, keyValue, refValue, propsValue);
 }

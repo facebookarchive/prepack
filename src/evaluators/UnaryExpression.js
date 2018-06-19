@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import {
@@ -143,6 +143,7 @@ function tryToEvaluateOperationOrLeaveAsAbstract(
 
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
+  if (completion instanceof SimpleNormalCompletion) completion = completion.value;
   invariant(completion instanceof Value);
   return completion;
 }

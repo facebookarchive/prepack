@@ -24,10 +24,18 @@ export class Completion {
   value: Value;
   target: ?string;
   location: ?BabelNodeSourceLocation;
+
+  toDisplayString(): string {
+    return "[" + this.constructor.name + " value " + (this.value ? this.value.toDisplayString() : "undefined") + "]";
+  }
 }
 
 // Normal completions are returned just like spec completions
 export class NormalCompletion extends Completion {}
+
+// SimpleNormalCompletions are returned just like spec completions. This class exists as the parallel for
+// PossiblyNormalCompletion to make comparisons easier.
+export class SimpleNormalCompletion extends NormalCompletion {}
 
 // Abrupt completions are thrown as exeptions, to make it a easier
 // to quickly get to the matching high level construct.
@@ -86,6 +94,13 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
   alternate: AbruptCompletion;
   alternateEffects: Effects;
 
+  toDisplayString(): string {
+    let superString = super.toDisplayString().slice(0, -1);
+    return (
+      superString + " c: [" + this.consequent.toDisplayString() + "] a: [" + this.alternate.toDisplayString() + "]]"
+    );
+  }
+
   containsCompletion(CompletionType: typeof Completion): boolean {
     if (this.consequent instanceof CompletionType) return true;
     if (this.alternate instanceof CompletionType) return true;
@@ -130,31 +145,22 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   constructor(
     value: Value,
     joinCondition: AbstractValue,
-    consequent: Completion | Value,
+    consequent: Completion,
     consequentEffects: Effects,
-    alternate: Completion | Value,
+    alternate: Completion,
     alternateEffects: Effects,
     savedPathConditions: Array<AbstractValue>,
     savedEffects: void | Effects = undefined
   ) {
     invariant(consequent === consequentEffects.result);
     invariant(alternate === alternateEffects.result);
-    invariant(
-      consequent instanceof NormalCompletion ||
-        consequent instanceof Value ||
-        alternate instanceof NormalCompletion ||
-        alternate instanceof Value
-    );
+    invariant(consequent instanceof NormalCompletion || alternate instanceof NormalCompletion);
     invariant(consequent instanceof AbruptCompletion || alternate instanceof AbruptCompletion);
     invariant(
-      value === consequent ||
-        consequent instanceof AbruptCompletion ||
-        (consequent instanceof NormalCompletion && value === consequent.value)
+      consequent instanceof AbruptCompletion || (consequent instanceof NormalCompletion && value === consequent.value)
     );
     invariant(
-      value === alternate ||
-        alternate instanceof AbruptCompletion ||
-        (alternate instanceof NormalCompletion && value === alternate.value)
+      alternate instanceof AbruptCompletion || (alternate instanceof NormalCompletion && value === alternate.value)
     );
     let loc =
       consequent instanceof AbruptCompletion
@@ -173,13 +179,38 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   }
 
   joinCondition: AbstractValue;
-  consequent: Completion | Value;
+  consequent: Completion;
   consequentEffects: Effects;
-  alternate: Completion | Value;
+  alternate: Completion;
   alternateEffects: Effects;
   savedEffects: void | Effects;
   // The path conditions that applied at the time of the oldest fork that caused this completion to arise.
   savedPathConditions: Array<AbstractValue>;
+
+  toDisplayString(): string {
+    let superString = super.toDisplayString().slice(0, -1);
+    return (
+      superString + " c: [" + this.consequent.toDisplayString() + "] a: [" + this.alternate.toDisplayString() + "]]"
+    );
+  }
+
+  getNormalCompletion(): SimpleNormalCompletion {
+    let result;
+    if (this.alternate instanceof SimpleNormalCompletion) {
+      result = this.alternate;
+    } else if (this.consequent instanceof SimpleNormalCompletion) {
+      result = this.consequent;
+    } else {
+      if (this.alternate instanceof PossiblyNormalCompletion) {
+        result = this.alternate.getNormalCompletion();
+      } else {
+        invariant(this.consequent instanceof PossiblyNormalCompletion);
+        result = this.consequent.getNormalCompletion();
+      }
+    }
+    invariant(result.value === this.value);
+    return result;
+  }
 
   containsCompletion(CompletionType: typeof Completion): boolean {
     if (this.consequent instanceof CompletionType) return true;
