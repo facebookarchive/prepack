@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { ValuesDomain } from "../../domains/index.js";
+import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import { FatalError } from "../../errors.js";
 import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
@@ -37,10 +37,165 @@ import {
   SetIntegrityLevel,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
-import { Create, Properties as Props, To } from "../../singletons.js";
+import { Create, Havoc, Properties as Props, To } from "../../singletons.js";
 import type { BabelNodeExpression } from "babel-types";
 import * as t from "babel-types";
 import invariant from "../../invariant.js";
+
+function handleObjectAssignSnapshot(
+  to: ObjectValue | AbstractObjectValue,
+  frm: ObjectValue | AbstractObjectValue,
+  frm_was_partial: boolean,
+  delayedSources: Array<Value>
+): void {
+  if (to instanceof AbstractObjectValue && to.values.isTop()) {
+    // We don't know which objects to make partial and making all objects partial is failure in itself
+    AbstractValue.reportIntrospectionError(to);
+    throw new FatalError();
+  } else {
+    // if to has properties, we better remove them because after the temporal call to Object.assign we don't know their values anymore
+    if (to.hasStringOrSymbolProperties()) {
+      // preserve them in a snapshot and add the snapshot to the sources
+      delayedSources.push(to.getSnapshot({ removeProperties: true }));
+    }
+
+    if (frm instanceof ObjectValue && frm.mightBeHavocedObject()) {
+      // it's not safe to trust any of its values
+      delayedSources.push(frm);
+    } else if (frm_was_partial) {
+      if (frm instanceof AbstractObjectValue && frm.kind === "explicit conversion to object") {
+        // Make it implicit again since it is getting delayed into an Object.assign call.
+        delayedSources.push(frm.args[0]);
+      } else {
+        let frmSnapshot = frm.getSnapshot();
+        frm.temporalAlias = frmSnapshot;
+        frm.makePartial();
+        delayedSources.push(frmSnapshot);
+      }
+    }
+  }
+}
+
+function copyKeys(realm: Realm, keys, from, to): void {
+  // c. Repeat for each element nextKey of keys in List order,
+  for (let nextKey of keys) {
+    // i. Let desc be ? from.[[GetOwnProperty]](nextKey).
+    let desc = from.$GetOwnProperty(nextKey);
+
+    // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
+    if (desc && desc.enumerable) {
+      Props.ThrowIfMightHaveBeenDeleted(desc.value);
+
+      // 1. Let propValue be ? Get(from, nextKey).
+      let propValue = Get(realm, from, nextKey);
+
+      // 2. Perform ? Set(to, nextKey, propValue, true).
+      Props.Set(realm, to, nextKey, propValue, true);
+    }
+  }
+}
+
+function applyObjectAssignSource(
+  realm: Realm,
+  nextSource: ObjectValue | AbstractObjectValue,
+  to: ObjectValue | AbstractObjectValue,
+  delayedSources: Array<Value>,
+  to_must_be_partial: boolean
+): boolean {
+  let keys, frm;
+
+  // a. If nextSource is undefined or null, let keys be a new empty List.
+  if (HasSomeCompatibleType(nextSource, NullValue, UndefinedValue)) {
+    return to_must_be_partial;
+  }
+
+  // b. Else,
+  // i. Let from be ToObject(nextSource).
+  frm = To.ToObject(realm, nextSource);
+
+  // ii. Let keys be ? from.[[OwnPropertyKeys]]().
+  let frm_was_partial = frm.isPartialObject();
+  if (frm_was_partial) {
+    if (!to.isSimpleObject() || !frm.isSimpleObject()) {
+      // If an object is not a simple object, it may have getters on it that can
+      // mutate any state as a result. We don't yet support this.
+      AbstractValue.reportIntrospectionError(nextSource);
+      throw new FatalError();
+    }
+
+    to_must_be_partial = true;
+    // Make this temporarily not partial
+    // so that we can call frm.$OwnPropertyKeys below.
+    frm.makeNotPartial();
+    try {
+      keys = frm.$OwnPropertyKeys();
+    } finally {
+      frm.makeNotPartial();
+    }
+  } else {
+    keys = frm.$OwnPropertyKeys();
+  }
+
+  if (to_must_be_partial) {
+    handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
+  }
+
+  // c. Repeat for each element nextKey of keys in List order,
+  invariant(frm, "from required");
+  invariant(keys, "keys required");
+  copyKeys(realm, keys, frm, to);
+  return to_must_be_partial;
+}
+
+function tryAndApplySourceOrRecover(
+  realm: Realm,
+  nextSource: ObjectValue | AbstractObjectValue,
+  to: ObjectValue | AbstractObjectValue,
+  delayedSources: Array<Value>,
+  to_must_be_partial: boolean
+): boolean {
+  let effects;
+  let savedSuppressDiagnostics = realm.suppressDiagnostics;
+  try {
+    realm.suppressDiagnostics = true;
+    effects = realm.evaluateForEffects(
+      () => {
+        to_must_be_partial = applyObjectAssignSource(realm, nextSource, to, delayedSources, to_must_be_partial);
+        return realm.intrinsics.undefined;
+      },
+      undefined,
+      "tryAndApplySourceOrRecover"
+    );
+  } catch (e) {
+    invariant(nextSource !== realm.intrinsics.null && nextSource !== realm.intrinsics.undefined);
+    let frm = To.ToObject(realm, nextSource);
+
+    if (e instanceof FatalError && to.isSimpleObject()) {
+      to_must_be_partial = true;
+      handleObjectAssignSnapshot(to, frm, frm.isPartialObject(), delayedSources);
+      // Havoc the frm value because it can have getters on it
+      Havoc.value(realm, frm);
+      return to_must_be_partial;
+    }
+    throw e;
+  } finally {
+    realm.suppressDiagnostics = savedSuppressDiagnostics;
+  }
+  // Note that the effects of (non joining) abrupt branches are not included
+  // in effects, but are tracked separately inside completion.
+  realm.applyEffects(effects);
+  let completion = effects.result;
+  if (completion instanceof PossiblyNormalCompletion) {
+    // in this case one of the branches may complete abruptly, which means that
+    // not all control flow branches join into one flow at this point.
+    // Consequently we have to continue tracking changes until the point where
+    // all the branches come together into one.
+    completion = realm.composeWithSavedCompletion(completion);
+  }
+  // return or throw completion
+  if (completion instanceof AbruptCompletion) throw completion;
+  return to_must_be_partial;
+}
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.1.1.1
@@ -74,130 +229,25 @@ export default function(realm: Realm): NativeFunctionValue {
       sources;
       let delayedSources = [];
 
-      const handleSnapshot = (frm, frm_was_partial) => {
-        if (to_must_be_partial) {
-          if (to instanceof AbstractObjectValue && to.values.isTop()) {
-            // We don't know which objects to make partial and making all objects partial is failure in itself
-            AbstractValue.reportIntrospectionError(to);
-            throw new FatalError();
-          } else {
-            // if to has properties, we better remove them because after the temporal call to Object.assign we don't know their values anymore
-            if (to.hasStringOrSymbolProperties()) {
-              // preserve them in a snapshot and add the snapshot to the sources
-              delayedSources.push(to.getSnapshot({ removeProperties: true }));
-            }
-
-            if (frm instanceof ObjectValue && frm.mightBeHavocedObject()) {
-              // it's not safe to trust any of its values
-              let temporal = AbstractValue.createTemporalFromBuildFunction(realm, ObjectValue, [frm], ([x]) => x, {
-                skipInvariant: true,
-              });
-              invariant(temporal instanceof AbstractObjectValue);
-              delayedSources.push(temporal);
-            } else if (frm_was_partial) {
-              if (frm instanceof AbstractObjectValue && frm.kind === "explicit conversion to object") {
-                // Make it implicit again since it is getting delayed into an Object.assign call.
-                delayedSources.push(frm.args[0]);
-              } else {
-                let frmSnapshot = frm.getSnapshot();
-                frm.temporalAlias = frmSnapshot;
-                frm.makePartial();
-                delayedSources.push(frmSnapshot);
-              }
-            }
-          }
-        }
-      };
-
-      const applySource = nextSource => {
-        let keys, frm;
-
-        // a. If nextSource is undefined or null, let keys be a new empty List.
-        if (HasSomeCompatibleType(nextSource, NullValue, UndefinedValue)) return;
-
-        // b. Else,
-        // i. Let from be ToObject(nextSource).
-        frm = To.ToObject(realm, nextSource);
-
-        // ii. Let keys be ? from.[[OwnPropertyKeys]]().
-        let frm_was_partial = frm.isPartialObject();
-        if (frm_was_partial) {
-          if (!to.isSimpleObject() || !frm.isSimpleObject()) {
-            // If an object is not a simple object, it may have getters on it that can
-            // mutate any state as a result. We don't yet support this.
-            AbstractValue.reportIntrospectionError(nextSource);
-            throw new FatalError();
-          }
-
-          to_must_be_partial = true;
-          // Make this temporarily not partial
-          // so that we can call frm.$OwnPropertyKeys below.
-          frm.makeNotPartial();
-        }
-        keys = frm.$OwnPropertyKeys();
-
-        handleSnapshot(frm, frm_was_partial);
-
-        // c. Repeat for each element nextKey of keys in List order,
-        invariant(frm, "from required");
-        invariant(keys, "keys required");
-        copyKeys(keys, frm, to);
-      };
-
-      const tryAndApplySourceOrRecover = nextSource => {
-        let effects;
-        let savedSuppressDiagnostics = realm.suppressDiagnostics;
-        try {
-          realm.suppressDiagnostics = true;
-          effects = realm.evaluateForEffects(
-            () => {
-              applySource(nextSource);
-              return realm.intrinsics.undefined;
-            },
-            undefined,
-            "tryAndApplySourceOrRecover"
-          );
-        } catch (e) {
-          // ignore null or undefined
-          if (nextSource === realm.intrinsics.null || nextSource === realm.intrinsics.undefined) {
-            return;
-          }
-          let frm = To.ToObject(realm, nextSource);
-
-          if (e instanceof FatalError && to.isSimpleObject()) {
-            let frm_was_partial = frm.isPartialObject();
-
-            if (frm_was_partial) {
-              to_must_be_partial = true;
-            }
-            handleSnapshot(frm, frm_was_partial);
-            return;
-          }
-          throw e;
-        } finally {
-          realm.suppressDiagnostics = savedSuppressDiagnostics;
-        }
-        // Note that the effects of (non joining) abrupt branches are not included
-        // in effects, but are tracked separately inside completion.
-        realm.applyEffects(effects);
-        let completion = effects.result;
-        if (completion instanceof PossiblyNormalCompletion) {
-          // in this case one of the branches may complete abruptly, which means that
-          // not all control flow branches join into one flow at this point.
-          // Consequently we have to continue tracking changes until the point where
-          // all the branches come together into one.
-          completion = realm.composeWithSavedCompletion(completion);
-        }
-        // return or throw completion
-        if (completion instanceof AbruptCompletion) throw completion;
-      };
-
       // 4. For each element nextSource of sources, in ascending index order,
       for (let nextSource of sources) {
         if (realm.isInPureScope()) {
-          tryAndApplySourceOrRecover(nextSource);
+          realm.evaluateWithPossibleThrowCompletion(
+            () => {
+              to_must_be_partial = tryAndApplySourceOrRecover(
+                realm,
+                nextSource,
+                to,
+                delayedSources,
+                to_must_be_partial
+              );
+              return realm.intrinsics.undefined;
+            },
+            TypesDomain.topVal,
+            ValuesDomain.topVal
+          );
         } else {
-          applySource(nextSource);
+          to_must_be_partial = applyObjectAssignSource(realm, nextSource, to, delayedSources, to_must_be_partial);
         }
       }
 
@@ -241,25 +291,6 @@ export default function(realm: Realm): NativeFunctionValue {
       }
       return to;
     });
-
-    function copyKeys(keys, from, to) {
-      // c. Repeat for each element nextKey of keys in List order,
-      for (let nextKey of keys) {
-        // i. Let desc be ? from.[[GetOwnProperty]](nextKey).
-        let desc = from.$GetOwnProperty(nextKey);
-
-        // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
-        if (desc && desc.enumerable) {
-          Props.ThrowIfMightHaveBeenDeleted(desc.value);
-
-          // 1. Let propValue be ? Get(from, nextKey).
-          let propValue = Get(realm, from, nextKey);
-
-          // 2. Perform ? Set(to, nextKey, propValue, true).
-          Props.Set(realm, to, nextKey, propValue, true);
-        }
-      }
-    }
   }
 
   // ECMA262 19.1.2.2

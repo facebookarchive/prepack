@@ -1,4 +1,4 @@
-// does contain:return 25
+// does not contain:Object.assign
 
 function fn(abstract) {
   var a = Object.assign({}, {x: 1}, abstract, {x: 25});
