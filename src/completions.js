@@ -12,7 +12,7 @@
 import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "./invariant.js";
 import type { Effects, Realm } from "./realm.js";
-import { AbstractValue, Value } from "./values/index.js";
+import { AbstractValue, Value, EmptyValue } from "./values/index.js";
 
 export class Completion {
   constructor(value: Value, location: ?BabelNodeSourceLocation, target?: ?string) {
@@ -24,6 +24,15 @@ export class Completion {
   value: Value;
   target: ?string;
   location: ?BabelNodeSourceLocation;
+  _effects: ?Effects;
+  get effects() {
+    return this._effects;
+  }
+  set effects(newEffects: Effects): Effects {
+    invariant(newEffects);
+    this._effects = newEffects;
+    return newEffects;
+  }
 
   toDisplayString(): string {
     return "[" + this.constructor.name + " value " + (this.value ? this.value.toDisplayString() : "undefined") + "]";
@@ -81,18 +90,69 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
     alternateEffects: Effects
   ) {
     super(realm.intrinsics.empty, consequent.location);
+    invariant(consequentEffects);
+    invariant(alternateEffects);
     this.joinCondition = joinCondition;
+    consequent.effects = consequentEffects;
     this.consequent = consequent;
-    this.consequentEffects = consequentEffects;
+    alternate.effects = alternateEffects;
     this.alternate = alternate;
-    this.alternateEffects = alternateEffects;
   }
 
   joinCondition: AbstractValue;
-  consequent: AbruptCompletion;
-  consequentEffects: Effects;
-  alternate: AbruptCompletion;
-  alternateEffects: Effects;
+  _consequent: AbruptCompletion;
+  updateConsequentKeepingCurrentEffects(newConsequent) {
+    let effects = this.consequentEffects;
+    newConsequent.effects = effects;
+    newConsequent.effects.result = newConsequent;
+    this.consequent = newConsequent;
+    return newConsequent;
+  }
+  updateAlternateKeepingCurrentEffects(newAlternate) {
+    let effects = this.alternateEffects;
+    newAlternate.effects = effects;
+    newAlternate.effects.result = newAlternate;
+    this.alternate = newAlternate;
+    return newAlternate;
+  }
+  get consequent() { return this._consequent; }
+  set consequent(newConsequent) {
+    //invariant(newConsequent instanceof AbruptCompletion);
+    invariant(newConsequent);
+    invariant(newConsequent.effects);
+    this._consequent = newConsequent;
+    return newConsequent;
+  }
+  //consequentEffects: Effects;
+  get consequentEffects(): Effects {
+    invariant(this.consequent.effects);
+    return this.consequent.effects;
+  }
+
+  /*set consequentEffects(newEffects: Effects): Effects {
+    invariant(newEffects);
+    this.consequent.effects = newEffects;
+    return this.consequent.effects;
+  }*/
+  _alternate: AbruptCompletion;
+  get alternate() { return this._alternate; }
+  set alternate(newConsequent) {
+    //invariant(newConsequent instanceof AbruptCompletion);
+    invariant(newConsequent.effects);
+    this._alternate = newConsequent;
+    return newConsequent;
+  }
+  //alternateEffects: Effects;
+  get alternateEffects(): Effects {
+    invariant(this.alternate.effects);
+    return this.alternate.effects;
+  }
+
+  /*set alternateEffects(newEffects: Effects): Effects {
+    invariant(newEffects);
+    this.alternate.effects = newEffects;
+    return this.alternate.effects;
+  }*/
 
   toDisplayString(): string {
     let superString = super.toDisplayString().slice(0, -1);
@@ -170,23 +230,76 @@ export class PossiblyNormalCompletion extends NormalCompletion {
           : alternate.expressionLocation;
     super(value, loc);
     this.joinCondition = joinCondition;
+    consequent.effects = consequentEffects;
+    alternate.effects = alternateEffects;
     this.consequent = consequent;
-    this.consequentEffects = consequentEffects;
     this.alternate = alternate;
-    this.alternateEffects = alternateEffects;
     this.savedEffects = savedEffects;
     this.savedPathConditions = savedPathConditions;
   }
 
   joinCondition: AbstractValue;
-  consequent: Completion;
+  _consequent: Completion;
+  get consequent() { return this._consequent; }
+  set consequent(newConsequent) {
+    //invariant(newConsequent instanceof AbruptCompletion);
+    invariant(newConsequent);
+    invariant(newConsequent.effects);
+    this._consequent = newConsequent;
+    return newConsequent;
+  }
+  //consequentEffects: Effects;
+  get consequentEffects(): Effects {
+    invariant(this.consequent.effects);
+    return this.consequent.effects;
+  }
+
+  /*set consequentEffects(newEffects: Effects): Effects {
+    invariant(newEffects);
+    this.consequent.effects = newEffects;
+    return this.consequent.effects;
+  }*/
+  _alternate: Completion;
+  get alternate() { return this._alternate; }
+  set alternate(newConsequent) {
+    //invariant(newConsequent instanceof AbruptCompletion);
+    invariant(newConsequent.effects);
+    this._alternate = newConsequent;
+    return newConsequent;
+  }
+  //alternateEffects: Effects;
+  get alternateEffects(): Effects {
+    invariant(this.alternate.effects);
+    return this.alternate.effects;
+  }
+
+  /*set alternateEffects(newEffects: Effects): Effects {
+    invariant(newEffects);
+    this.alternate.effects = newEffects;
+    return this.alternate.effects;
+  }*/
+  /*consequent: Completion;
   consequentEffects: Effects;
   alternate: Completion;
-  alternateEffects: Effects;
+  alternateEffects: Effects;*/
   savedEffects: void | Effects;
   // The path conditions that applied at the time of the oldest fork that caused this completion to arise.
   savedPathConditions: Array<AbstractValue>;
 
+  updateConsequentKeepingCurrentEffects(newConsequent) {
+    let effects = this.consequentEffects;
+    newConsequent.effects = effects;
+    newConsequent.effects.result = newConsequent;
+    this.consequent = newConsequent;
+    return newConsequent;
+  }
+  updateAlternateKeepingCurrentEffects(newAlternate) {
+    let effects = this.alternateEffects;
+    newAlternate.effects = effects;
+    newAlternate.effects.result = newAlternate;
+    this.alternate = newAlternate;
+    return newAlternate;
+  }
   toDisplayString(): string {
     let superString = super.toDisplayString().slice(0, -1);
     return (
