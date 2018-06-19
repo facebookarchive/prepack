@@ -11,7 +11,15 @@
 
 import type { Realm } from "../realm.js";
 import { ValuesDomain } from "../domains/index.js";
-import { AbstractValue, AbstractObjectValue, ArrayValue, NumberValue, ObjectValue, Value } from "../values/index.js";
+import {
+  AbstractValue,
+  AbstractObjectValue,
+  ArrayValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
+  Value,
+} from "../values/index.js";
 import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
@@ -26,12 +34,28 @@ import * as t from "babel-types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 
+function sanitizeConfigObjectForFirstRender(
+  realm: Realm,
+  config: ObjectValue | AbstractObjectValue
+): ObjectValue | AbstractObjectValue {
+  return config;
+}
+
 function createPropsObject(
   realm: Realm,
   type: Value,
   config: ObjectValue | AbstractObjectValue,
   children: void | Value
 ): { key: Value, ref: Value, props: ObjectValue } {
+  // If we're in "rendering" a React component tree, we should have an active reconciler
+  let activeReconciler = realm.react.activeReconciler;
+  let firstRenderOnly = activeReconciler !== undefined ? activeReconciler.componentTreeConfig.firstRenderOnly : false;
+  let isHostComponent = type instanceof StringValue;
+
+  if (firstRenderOnly && isHostComponent) {
+    config = sanitizeConfigObjectForFirstRender(realm, config);
+  }
+
   let defaultProps =
     type instanceof ObjectValue || type instanceof AbstractObjectValue
       ? Get(realm, type, "defaultProps")
@@ -70,7 +94,7 @@ function createPropsObject(
   }
 
   let possibleRef = Get(realm, config, "ref");
-  if (possibleRef !== realm.intrinsics.null && possibleRef !== realm.intrinsics.undefined) {
+  if (possibleRef !== realm.intrinsics.null && possibleRef !== realm.intrinsics.undefined && !firstRenderOnly) {
     // if the config has been marked as having no partial key or ref and the possible ref
     // is abstract, yet the config doesn't have a ref property, then the ref can remain null
     let refNotNeeded =

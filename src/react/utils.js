@@ -84,7 +84,7 @@ export function isReactElement(val: Value): boolean {
     let _isReactElement = symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
     if (_isReactElement) {
       // If we get there, it means the ReactElement was created in manual user-space
-      realm.react.reactElements.set(val, { createdDuringReconcilation: false, firstRenderOnly: false });
+      realm.react.reactElements.add(val);
       return true;
     }
   }
@@ -913,12 +913,8 @@ export function createInternalReactElement(
   Create.CreateDataPropertyOrThrow(realm, obj, "props", props);
   Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
   obj.makeFinal();
-  // If we're in "rendering" a React component tree, we should have an active reconciler
-  let activeReconciler = realm.react.activeReconciler;
-  let createdDuringReconcilation = activeReconciler !== undefined;
-  let firstRenderOnly = createdDuringReconcilation ? activeReconciler.componentTreeConfig.firstRenderOnly : false;
 
-  realm.react.reactElements.set(obj, { createdDuringReconcilation, firstRenderOnly });
+  realm.react.reactElements.add(obj);
   return obj;
 }
 
@@ -1107,15 +1103,12 @@ export function canExcludeReactElementObjectProperty(
   return firstRenderOnly && isHostComponent && (isEventProp(name) || value instanceof FunctionValue);
 }
 
-export function cloneReactElement(realm: Realm, reactElement: ObjectValue, shouldCloneProps: boolean): ObjectValue {
+export function cloneReactElement(realm: Realm, reactElement: ObjectValue): ObjectValue {
   let typeValue = getProperty(realm, reactElement, "type");
   let keyValue = getProperty(realm, reactElement, "key");
   let refValue = getProperty(realm, reactElement, "ref");
   let propsValue = getProperty(realm, reactElement, "props");
 
   invariant(propsValue instanceof ObjectValue);
-  if (shouldCloneProps) {
-    propsValue = cloneProps(realm, propsValue);
-  }
   return createInternalReactElement(realm, typeValue, keyValue, refValue, propsValue);
 }
