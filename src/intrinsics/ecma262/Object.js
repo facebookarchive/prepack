@@ -12,13 +12,11 @@
 import { ValuesDomain } from "../../domains/index.js";
 import { FatalError } from "../../errors.js";
 import { Realm } from "../../realm.js";
-import { type VisitEntryCallbacks } from "../../utils/generator.js";
 import { NativeFunctionValue } from "../../values/index.js";
 import {
   AbstractValue,
   AbstractObjectValue,
   ArrayValue,
-  ConcreteValue,
   ObjectValue,
   NullValue,
   UndefinedValue,
@@ -42,30 +40,7 @@ import { Create, Properties as Props, To } from "../../singletons.js";
 import type { BabelNodeExpression } from "babel-types";
 import * as t from "babel-types";
 import invariant from "../../invariant.js";
-
-export function objectAssignTemporalPurityCheck(
-  callbacks: VisitEntryCallbacks,
-  declared: void | Value,
-  args: Array<Value>
-): boolean {
-  let [, to, ...sources] = args;
-  // First we check that all the "source" values are simple.
-  // If they are simple, that means they don't have getters on them
-  // that might possibly throw at runtime.
-  // If they are, then we can proceed to checking the "to" value
-  for (let source of sources) {
-    if ((source instanceof AbstractObjectValue || source instanceof ObjectValue) && !source.isSimpleObject()) {
-      return false;
-    }
-  }
-  // If the "to" value in the temporal Object.assign call is
-  // not used as reference and it is conrete/abstract, we can safely
-  // remove the Object.assign temporal altogether
-  if (to instanceof ConcreteValue || to instanceof AbstractValue) {
-    return callbacks.canSkip(to);
-  }
-  return false;
-}
+import { objectAssignTemporalPurityCheck } from "../../utils/dce.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.1.1.1

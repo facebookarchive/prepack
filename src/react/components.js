@@ -32,7 +32,7 @@ import traverse from "babel-traverse";
 import type { ClassComponentMetadata } from "../types.js";
 import type { ReactEvaluatedNode } from "../serializer/types.js";
 import { FatalError } from "../errors.js";
-import { objectAssignTemporalPurityCheck } from "../intrinsics/ecma262/Object.js";
+import { objectAssignTemporalPurityCheck } from "../utils/dce.js";
 
 const lifecycleMethods = new Set([
   "componentWillUnmount",

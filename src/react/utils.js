@@ -47,7 +47,7 @@ import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { objectAssignTemporalPurityCheck } from "../intrinsics/ecma262/Object.js";
+import { objectAssignTemporalPurityCheck } from "../utils/dce.js";
 
 export type ReactSymbolTypes =
   | "react.element"
