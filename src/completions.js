@@ -25,6 +25,8 @@ export class Completion {
   target: ?string;
   location: ?BabelNodeSourceLocation;
 
+  effects: ?Effects;
+
   toDisplayString(): string {
     return "[" + this.constructor.name + " value " + (this.value ? this.value.toDisplayString() : "undefined") + "]";
   }
@@ -81,18 +83,48 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
     alternateEffects: Effects
   ) {
     super(realm.intrinsics.empty, consequent.location);
+    invariant(consequentEffects);
+    invariant(alternateEffects);
     this.joinCondition = joinCondition;
+    consequent.effects = consequentEffects;
     this.consequent = consequent;
-    this.consequentEffects = consequentEffects;
+    alternate.effects = alternateEffects;
     this.alternate = alternate;
-    this.alternateEffects = alternateEffects;
   }
 
   joinCondition: AbstractValue;
   consequent: AbruptCompletion;
-  consequentEffects: Effects;
   alternate: AbruptCompletion;
-  alternateEffects: Effects;
+
+  // For convenience, this.consequent.effects should always be defined, but accessing it directly requires
+  // verifying that with an invariant.
+  get consequentEffects(): Effects {
+    invariant(this.consequent.effects);
+    return this.consequent.effects;
+  }
+
+  get alternateEffects(): Effects {
+    invariant(this.alternate.effects);
+    return this.alternate.effects;
+  }
+
+  updateConsequentKeepingCurrentEffects(newConsequent: AbruptCompletion) {
+    let effects = this.consequent.effects;
+    invariant(effects);
+    newConsequent.effects = effects;
+    newConsequent.effects.result = newConsequent;
+    this.consequent = newConsequent;
+    return newConsequent;
+  }
+
+  updateAlternateKeepingCurrentEffects(newAlternate: AbruptCompletion) {
+    let effects = this.alternate.effects;
+    invariant(effects);
+    newAlternate.effects = effects;
+    newAlternate.effects.result = newAlternate;
+    this.alternate = newAlternate;
+    return newAlternate;
+  }
 
   toDisplayString(): string {
     let superString = super.toDisplayString().slice(0, -1);
@@ -170,22 +202,50 @@ export class PossiblyNormalCompletion extends NormalCompletion {
           : alternate.expressionLocation;
     super(value, loc);
     this.joinCondition = joinCondition;
+    consequent.effects = consequentEffects;
+    alternate.effects = alternateEffects;
     this.consequent = consequent;
-    this.consequentEffects = consequentEffects;
     this.alternate = alternate;
-    this.alternateEffects = alternateEffects;
     this.savedEffects = savedEffects;
     this.savedPathConditions = savedPathConditions;
   }
 
   joinCondition: AbstractValue;
   consequent: Completion;
-  consequentEffects: Effects;
   alternate: Completion;
-  alternateEffects: Effects;
   savedEffects: void | Effects;
   // The path conditions that applied at the time of the oldest fork that caused this completion to arise.
   savedPathConditions: Array<AbstractValue>;
+
+  // For convenience, this.consequent.effects should always be defined, but accessing it directly requires
+  // verifying that with an invariant.
+  get consequentEffects(): Effects {
+    invariant(this.consequent.effects);
+    return this.consequent.effects;
+  }
+
+  get alternateEffects(): Effects {
+    invariant(this.alternate.effects);
+    return this.alternate.effects;
+  }
+
+  // TODO blappert: these functions are a copy of those in ForkedAbruptCompletion, but the two classes will be unified
+  // soon
+  updateConsequentKeepingCurrentEffects(newConsequent: Completion) {
+    let effects = this.consequentEffects;
+    newConsequent.effects = effects;
+    newConsequent.effects.result = newConsequent;
+    this.consequent = newConsequent;
+    return newConsequent;
+  }
+
+  updateAlternateKeepingCurrentEffects(newAlternate: Completion) {
+    let effects = this.alternateEffects;
+    newAlternate.effects = effects;
+    newAlternate.effects.result = newAlternate;
+    this.alternate = newAlternate;
+    return newAlternate;
+  }
 
   toDisplayString(): string {
     let superString = super.toDisplayString().slice(0, -1);

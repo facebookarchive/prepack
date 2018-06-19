@@ -112,7 +112,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
         },
         "composeNestedThrowEffectsWithHandler/1"
       );
-      c.consequentEffects.result = c.consequent = new AbruptCompletion(realm.intrinsics.empty);
+      c.updateConsequentKeepingCurrentEffects(new AbruptCompletion(realm.intrinsics.empty));
     }
     priorEffects.pop();
     let alternate = c.alternate;
@@ -129,7 +129,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
         },
         "composeNestedThrowEffectsWithHandler/2"
       );
-      c.alternateEffects.result = c.alternate = new AbruptCompletion(realm.intrinsics.empty);
+      c.updateAlternateKeepingCurrentEffects(new AbruptCompletion(realm.intrinsics.empty));
     }
     priorEffects.pop();
     return Join.joinForkOrChoose(realm, c.joinCondition, consequentEffects, alternateEffects);
