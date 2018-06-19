@@ -375,7 +375,7 @@ export class JoinImplementation {
     } else {
       if (pnc.consequent instanceof SimpleNormalCompletion) {
         nc.value = AbstractValue.createFromConditionalOp(realm, joinCondition, v, pnc.consequent.value);
-        pnc.updateConsequentKeepingCurrentEffects(nc)
+        pnc.updateConsequentKeepingCurrentEffects(nc);
       } else {
         invariant(pnc.consequent instanceof PossiblyNormalCompletion);
         this.updatePossiblyNormalCompletionWithInverseConditionalSimpleNormalCompletion(
@@ -440,9 +440,9 @@ export class JoinImplementation {
     if (ce.result instanceof CompletionType) {
       // Erase completions of type CompletionType and prepare for transformation of c to a possibly normal completion
       if (c.consequent instanceof CompletionType) {
-        c.updateConsequentKeepingCurrentEffects(convertToPNC
-          ? new SimpleNormalCompletion(realm.intrinsics.empty)
-          : dummyCompletion);
+        c.updateConsequentKeepingCurrentEffects(
+          convertToPNC ? new SimpleNormalCompletion(realm.intrinsics.empty) : dummyCompletion
+        );
         convertToPNC = false;
       } else if (convertToPNC && c.consequent instanceof ForkedAbruptCompletion) {
         c.updateConsequentKeepingCurrentEffects((c.consequent.transferChildrenToPossiblyNormalCompletion(): any));
@@ -460,9 +460,9 @@ export class JoinImplementation {
     if (ae.result instanceof CompletionType) {
       // Erase completions of type CompletionType and prepare for transformation of c to a possibly normal completion
       if (c.alternate instanceof CompletionType) {
-        c.updateAlternateKeepingCurrentEffects(convertToPNC
-          ? new SimpleNormalCompletion(realm.intrinsics.empty)
-          : dummyCompletion);
+        c.updateAlternateKeepingCurrentEffects(
+          convertToPNC ? new SimpleNormalCompletion(realm.intrinsics.empty) : dummyCompletion
+        );
       } else if (convertToPNC && c.alternate instanceof ForkedAbruptCompletion) {
         c.updateAlternateKeepingCurrentEffects((c.alternate.transferChildrenToPossiblyNormalCompletion(): any));
       }

@@ -12,7 +12,7 @@
 import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "./invariant.js";
 import type { Effects, Realm } from "./realm.js";
-import { AbstractValue, Value, EmptyValue } from "./values/index.js";
+import { AbstractValue, Value } from "./values/index.js";
 
 export class Completion {
   constructor(value: Value, location: ?BabelNodeSourceLocation, target?: ?string) {
@@ -24,15 +24,8 @@ export class Completion {
   value: Value;
   target: ?string;
   location: ?BabelNodeSourceLocation;
-  _effects: ?Effects;
-  get effects() {
-    return this._effects;
-  }
-  set effects(newEffects: Effects): Effects {
-    invariant(newEffects);
-    this._effects = newEffects;
-    return newEffects;
-  }
+
+  effects: ?Effects;
 
   toDisplayString(): string {
     return "[" + this.constructor.name + " value " + (this.value ? this.value.toDisplayString() : "undefined") + "]";
@@ -100,45 +93,35 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
   }
 
   joinCondition: AbstractValue;
-  _consequent: AbruptCompletion;
-  updateConsequentKeepingCurrentEffects(newConsequent: AbruptCompletion) {
-    let effects = this.consequentEffects;
-    newConsequent.effects = effects;
-    newConsequent.effects.result = newConsequent;
-    this.consequent = newConsequent;
-    return newConsequent;
-  }
-  updateAlternateKeepingCurrentEffects(newAlternate: AbruptCompletion) {
-    let effects = this.alternateEffects;
-    newAlternate.effects = effects;
-    newAlternate.effects.result = newAlternate;
-    this.alternate = newAlternate;
-    return newAlternate;
-  }
-  get consequent(): AbruptCompletion { return this._consequent; }
-  set consequent(newConsequent: AbruptCompletion) {
-    //invariant(newConsequent instanceof AbruptCompletion);
-    invariant(newConsequent);
-    invariant(newConsequent.effects);
-    this._consequent = newConsequent;
-    return newConsequent;
-  }
-  //consequentEffects: Effects;
+  consequent: AbruptCompletion;
+  alternate: AbruptCompletion;
+
   get consequentEffects(): Effects {
     invariant(this.consequent.effects);
     return this.consequent.effects;
   }
 
-  _alternate: AbruptCompletion;
-  get alternate(): AbruptCompletion { return this._alternate; }
-  set alternate(newConsequent: AbruptCompletion) {
-    invariant(newConsequent.effects);
-    this._alternate = newConsequent;
-    return newConsequent;
-  }
   get alternateEffects(): Effects {
     invariant(this.alternate.effects);
     return this.alternate.effects;
+  }
+
+  updateConsequentKeepingCurrentEffects(newConsequent: AbruptCompletion) {
+    let effects = this.consequent.effects;
+    invariant(effects);
+    newConsequent.effects = effects;
+    newConsequent.effects.result = newConsequent;
+    this.consequent = newConsequent;
+    return newConsequent;
+  }
+
+  updateAlternateKeepingCurrentEffects(newAlternate: AbruptCompletion) {
+    let effects = this.alternate.effects;
+    invariant(effects);
+    newAlternate.effects = effects;
+    newAlternate.effects.result = newAlternate;
+    this.alternate = newAlternate;
+    return newAlternate;
   }
 
   toDisplayString(): string {
@@ -226,34 +209,24 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   }
 
   joinCondition: AbstractValue;
-  _consequent: Completion;
-  get consequent(): Completion { return this._consequent; }
-  set consequent(newConsequent: Completion) {
-    invariant(newConsequent);
-    invariant(newConsequent.effects);
-    this._consequent = newConsequent;
-    return newConsequent;
-  }
+  consequent: Completion;
+  alternate: Completion;
+  savedEffects: void | Effects;
+  // The path conditions that applied at the time of the oldest fork that caused this completion to arise.
+  savedPathConditions: Array<AbstractValue>;
+
   get consequentEffects(): Effects {
     invariant(this.consequent.effects);
     return this.consequent.effects;
   }
-  _alternate: Completion;
-  get alternate(): Completion { return this._alternate; }
-  set alternate(newConsequent: Completion) {
-    invariant(newConsequent.effects);
-    this._alternate = newConsequent;
-    return newConsequent;
-  }
+
   get alternateEffects(): Effects {
     invariant(this.alternate.effects);
     return this.alternate.effects;
   }
 
-  savedEffects: void | Effects;
-  // The path conditions that applied at the time of the oldest fork that caused this completion to arise.
-  savedPathConditions: Array<AbstractValue>;
-
+  // TODO blappert: these functions are a copy of those in ForkedAbruptCompletion, but the two classes will be unified
+  // soon
   updateConsequentKeepingCurrentEffects(newConsequent: Completion) {
     let effects = this.consequentEffects;
     newConsequent.effects = effects;
@@ -261,6 +234,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     this.consequent = newConsequent;
     return newConsequent;
   }
+
   updateAlternateKeepingCurrentEffects(newAlternate: Completion) {
     let effects = this.alternateEffects;
     newAlternate.effects = effects;
@@ -268,6 +242,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     this.alternate = newAlternate;
     return newAlternate;
   }
+
   toDisplayString(): string {
     let superString = super.toDisplayString().slice(0, -1);
     return (
