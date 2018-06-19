@@ -26,13 +26,12 @@ import type { BabelNodeIdentifier } from "babel-types";
 import { flagPropsWithNoPartialKeyOrRef, getProperty, getValueFromFunctionCall, valueIsClassComponent } from "./utils";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get, Construct } from "../methods/index.js";
-import { Properties } from "../singletons.js";
+import { Properties, Purity } from "../singletons.js";
 import invariant from "../invariant.js";
 import traverse from "babel-traverse";
 import type { ClassComponentMetadata } from "../types.js";
 import type { ReactEvaluatedNode } from "../serializer/types.js";
 import { FatalError } from "../errors.js";
-import { objectAssignTemporalPurityCheck } from "../utils/dce.js";
 
 const lifecycleMethods = new Set([
   "componentWillUnmount",
@@ -395,7 +394,7 @@ export function applyGetDerivedStateFromProps(
             ([methodNode, ..._args]) => {
               return t.callExpression(methodNode, ((_args: any): Array<any>));
             },
-            { skipInvariant: true, purityCheck: objectAssignTemporalPurityCheck }
+            { skipInvariant: true, purityCheck: Purity.objectAssignTemporalPurityCheck }
           );
           newState.makeSimple();
           newState.makePartial();

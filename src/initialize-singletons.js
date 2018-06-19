@@ -21,6 +21,7 @@ import { ToImplementation } from "./methods/to.js";
 import { WidenImplementation } from "./methods/widen.js";
 import { concretize } from "./utils/ConcreteModelConverter.js";
 import * as utils from "./utils.js";
+import { PurityImplementation } from "./utils/purity.js";
 
 export default function() {
   Singletons.setCreate(new CreateImplementation());
@@ -34,4 +35,5 @@ export default function() {
   Singletons.setWiden((new WidenImplementation(): any));
   Singletons.setConcretize(concretize);
   Singletons.setUtils(utils);
+  Singletons.setPurity(new PurityImplementation());
 }

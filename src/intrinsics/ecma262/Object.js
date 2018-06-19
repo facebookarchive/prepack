@@ -36,11 +36,10 @@ import {
   SetIntegrityLevel,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
-import { Create, Properties as Props, To } from "../../singletons.js";
+import { Create, Properties as Props, Purity, To } from "../../singletons.js";
 import type { BabelNodeExpression } from "babel-types";
 import * as t from "babel-types";
 import invariant from "../../invariant.js";
-import { objectAssignTemporalPurityCheck } from "../../utils/dce.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.1.1.1
@@ -159,7 +158,7 @@ export default function(realm: Realm): NativeFunctionValue {
           },
           {
             skipInvariant: true,
-            purityCheck: objectAssignTemporalPurityCheck,
+            purityCheck: Purity.objectAssignTemporalPurityCheck,
           }
         );
         invariant(temporalTo instanceof AbstractObjectValue);

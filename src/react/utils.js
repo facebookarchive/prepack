@@ -42,12 +42,11 @@ import { Get, cloneDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import type { AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
 import invariant from "../invariant.js";
-import { Create, Properties, To } from "../singletons.js";
+import { Create, Properties, Purity, To } from "../singletons.js";
 import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { objectAssignTemporalPurityCheck } from "../utils/dce.js";
 
 export type ReactSymbolTypes =
   | "react.element"
@@ -1055,7 +1054,7 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           },
-          { skipInvariant: true, purityCheck: objectAssignTemporalPurityCheck }
+          { skipInvariant: true, purityCheck: Purity.objectAssignTemporalPurityCheck }
         );
         invariant(temporalTo instanceof AbstractObjectValue);
         temporalTo.values = new ValuesDomain(to);

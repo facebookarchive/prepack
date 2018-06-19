@@ -37,7 +37,7 @@ import {
   NormalCompletion,
 } from "./completions.js";
 import { EnvironmentRecord, LexicalEnvironment, Reference } from "./environment.js";
-import { Generator } from "./utils/generator.js";
+import { type VisitEntryCallbacks, Generator } from "./utils/generator.js";
 import { ObjectValue } from "./values/index.js";
 import type {
   BabelNode,
@@ -371,6 +371,10 @@ export type PathType = {
 
 export type HavocType = {
   value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation): void,
+};
+
+export type PurityType = {
+  objectAssignTemporalPurityCheck(callbacks: VisitEntryCallbacks, declared: void | Value, args: Array<Value>): boolean,
 };
 
 export type PropertiesType = {
