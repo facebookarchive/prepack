@@ -72,6 +72,8 @@ function handleObjectAssignSnapshot(
         frm.makePartial();
         delayedSources.push(frmSnapshot);
       }
+    } else {
+      delayedSources.push(frm);
     }
   }
 }
