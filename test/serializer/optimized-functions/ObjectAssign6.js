@@ -1,5 +1,3 @@
-// does contain:.x;
-
 function fn(abstract) {
   var a = Object.assign({}, {x: 1}, abstract);
   return a.x;
