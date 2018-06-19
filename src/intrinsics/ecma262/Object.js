@@ -130,7 +130,7 @@ function applyObjectAssignSource(
     try {
       keys = frm.$OwnPropertyKeys();
     } finally {
-      frm.makeNotPartial();
+      frm.makePartial();
     }
   } else {
     keys = frm.$OwnPropertyKeys();
