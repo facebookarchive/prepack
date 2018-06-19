@@ -47,6 +47,7 @@ import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
+import { objectAssignTemporalPurityCheck } from "../intrinsics/ecma262/Object.js";
 
 export type ReactSymbolTypes =
   | "react.element"
@@ -1054,7 +1055,7 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           },
-          { skipInvariant: true }
+          { skipInvariant: true, purityCheck: objectAssignTemporalPurityCheck }
         );
         invariant(temporalTo instanceof AbstractObjectValue);
         temporalTo.values = new ValuesDomain(to);

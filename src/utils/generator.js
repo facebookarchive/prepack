@@ -122,6 +122,7 @@ type TemporalBuildNodeEntryArgs = {
   buildNode?: GeneratorBuildNodeFunction,
   dependencies?: Array<Generator>,
   isPure?: boolean,
+  purityCheck?: (callbacks: VisitEntryCallbacks, declared: void | Value, args: Array<Value>) => boolean,
 };
 
 class TemporalBuildNodeEntry extends GeneratorEntry {
@@ -136,8 +137,12 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
   buildNode: void | GeneratorBuildNodeFunction;
   dependencies: void | Array<Generator>;
   isPure: void | boolean;
+  purityCheck: void | ((callbacks: VisitEntryCallbacks, declared: void | Value, args: Array<Value>) => boolean);
 
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
+    if (this.purityCheck) {
+      this.isPure = this.purityCheck(callbacks, this.declared, this.args);
+    }
     if (this.isPure && this.declared && callbacks.canSkip(this.declared)) {
       callbacks.recordDelayedEntry(containingGenerator, this);
       return false;
@@ -952,7 +957,12 @@ export class Generator {
     values: ValuesDomain,
     args: Array<Value>,
     buildNode_: DerivedExpressionBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: AbstractValueKind, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {|
+      kind?: AbstractValueKind,
+      isPure?: boolean,
+      skipInvariant?: boolean,
+      purityCheck?: (callbacks: VisitEntryCallbacks, declared: void | Value, args: Array<Value>) => boolean,
+    |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
@@ -983,6 +993,7 @@ export class Generator {
           ),
         ]);
       },
+      purityCheck: optionalArgs ? optionalArgs.purityCheck : undefined,
     });
     let type = types.getType();
     res.intrinsicName = id.name;

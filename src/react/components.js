@@ -32,6 +32,7 @@ import traverse from "babel-traverse";
 import type { ClassComponentMetadata } from "../types.js";
 import type { ReactEvaluatedNode } from "../serializer/types.js";
 import { FatalError } from "../errors.js";
+import { objectAssignTemporalPurityCheck } from "../intrinsics/ecma262/Object.js";
 
 const lifecycleMethods = new Set([
   "componentWillUnmount",
@@ -394,7 +395,7 @@ export function applyGetDerivedStateFromProps(
             ([methodNode, ..._args]) => {
               return t.callExpression(methodNode, ((_args: any): Array<any>));
             },
-            { skipInvariant: true }
+            { skipInvariant: true, purityCheck: objectAssignTemporalPurityCheck }
           );
           newState.makeSimple();
           newState.makePartial();

@@ -20,7 +20,7 @@ import type {
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
-import { PreludeGenerator } from "../utils/generator.js";
+import { type VisitEntryCallbacks, PreludeGenerator } from "../utils/generator.js";
 import buildExpressionTemplate from "../utils/builder.js";
 
 import {
@@ -776,7 +776,12 @@ export default class AbstractValue extends Value {
     template: PreludeGenerator => ({}) => BabelNodeExpression,
     resultType: typeof Value,
     operands: Array<Value>,
-    optionalArgs?: {| kind?: AbstractValueKind, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {|
+      kind?: AbstractValueKind,
+      isPure?: boolean,
+      skipInvariant?: boolean,
+      purityCheck?: (callbacks: VisitEntryCallbacks, declared: void | Value, args: Array<Value>) => boolean,
+    |}
   ): AbstractValue {
     invariant(resultType !== UndefinedValue);
     let temp = AbstractValue.createFromTemplate(realm, template, resultType, operands, "");
@@ -811,7 +816,12 @@ export default class AbstractValue extends Value {
     resultType: typeof Value,
     args: Array<Value>,
     buildFunction: AbstractValueBuildNodeFunction,
-    optionalArgs?: {| kind?: AbstractValueKind, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {|
+      kind?: AbstractValueKind,
+      isPure?: boolean,
+      skipInvariant?: boolean,
+      purityCheck?: (callbacks: VisitEntryCallbacks, declared: void | Value, args: Array<Value>) => boolean,
+    |}
   ): AbstractValue | UndefinedValue {
     let types = new TypesDomain(resultType);
     let values = ValuesDomain.topVal;
