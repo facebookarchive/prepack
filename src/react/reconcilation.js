@@ -34,6 +34,7 @@ import {
   doNotOptimizeComponent,
   evaluateWithNestedParentEffects,
   flattenChildren,
+  hardModifyReactObjectPropertyBinding,
   getComponentName,
   getComponentTypeFromRootValue,
   getLocationFromValue,
@@ -1082,9 +1083,11 @@ export class Reconciler {
         if (resolvedChildren !== childrenValue) {
           let newProps = cloneProps(this.realm, propsValue, resolvedChildren);
 
-          reactElement.makeNotFinal();
-          Properties.Set(this.realm, reactElement, "props", newProps, true);
-          reactElement.makeFinal();
+          // This is safe to do as we clone a new ReactElement as part of reconcilation
+          // so we will never be mutating an object used by something else. Furthermore,
+          // the ReactElement is "immutable" so it can never change and only React controls
+          // this object.
+          hardModifyReactObjectPropertyBinding(this.realm, reactElement, "props", newProps);
         }
       }
     }
@@ -1415,9 +1418,11 @@ export class Reconciler {
       }
       return arrayValue;
     }
-    return mapArrayValue(this.realm, arrayValue, elementValue =>
+    let children = mapArrayValue(this.realm, arrayValue, elementValue =>
       this._resolveDeeply(componentType, elementValue, context, "NEW_BRANCH", evaluatedNode)
     );
+    children.makeFinal();
+    return children;
   }
 
   hasEvaluatedRootNode(componentType: ECMAScriptSourceFunctionValue, evaluateNode: ReactEvaluatedNode): boolean {
