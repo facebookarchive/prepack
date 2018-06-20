@@ -110,8 +110,8 @@ export class DebugServer {
   checkForActions(ast: BabelNode) {
     // console.log(`Checking ${ast.loc.source}: ${ast.loc.start.line} ${ast.loc.start.column}`);
     if (this._checkAndUpdateLastExecuted(ast)) {
-      if (ast.loc.source.includes("InitializeCore.js"))
-        console.log(`Checking ${ast.loc.source}: ${ast.loc.start.line} ${ast.loc.start.column} -- is of type ${ast.type} and ${IsStatement(ast)} statement`);
+      // if (ast.loc.source.includes("InitializeCore.js"))
+        // console.log(`Checking ${ast.loc.source}: ${ast.loc.start.line} ${ast.loc.start.column} -- is of type ${ast.type} and ${IsStatement(ast)} statement`);
       let stoppables: Array<StoppableObject> = this._stepManager.getAndDeleteCompletedSteppers(ast);
       let breakpoint = this._breakpointManager.getStoppableBreakpoint(ast);
       if (breakpoint) stoppables.push(breakpoint);

@@ -33,10 +33,10 @@ export class Stepper {
   // will not be detected. Check the stackSize (via realm) in those cases.
   isAstLocationChanged(ast: BabelNode, verbose?: boolean) {
     // we should only step to statements
-    // if (!IsStatement(ast)) {
-    //   if (verbose) console.log(`\t${ast.type} is not statement`);
-    //   return false;
-    // }
+    if (!IsStatement(ast)) {
+      if (verbose) console.log(`\t\t${ast.type} is not statement`);
+      return false;
+    }
     let loc = ast.loc;
     if (!loc) return false;
     let filePath = loc.source;
@@ -77,12 +77,18 @@ export class StepOverStepper extends Stepper {
   }
 
   isComplete(ast: BabelNode, currentStackSize: number): boolean {
-    // console.log(
-    //   `Testing if stepover is complete at ${this._stepStartData.filePath}: ${this._stepStartData.line}, ${
-    //     this._stepStartData.column
-    //   } for node type ${ast.type}`
-    // );
-    // console.log(`\tNew Location: ${ast.loc.source}: ${ast.loc.start.line}, ${ast.loc.start.column}`);
+    if (ast.loc.source.includes("InitializeCore")) {
+      console.log(
+        `Testing if stepover is complete at ${this._stepStartData.filePath}: ${this._stepStartData.line}, ${
+          this._stepStartData.column
+        }`
+      );
+      console.log(
+        `\tNew Location: ${ast.loc.source}: ${ast.loc.start.line}, ${ast.loc.start.column} of node type ${
+          ast.type
+        } which ${IsStatement(ast)} statement`
+      );
+    }
     // // console.log(`\tHas AST changed?: ${this.isAstLocationChanged(ast, true)}`);
     // // console.log(`\tStart stack: ${this._stepStartData.stackSize}  current stack: ${currentStackSize}`);
     // console.log(
