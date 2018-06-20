@@ -159,24 +159,25 @@ export class ReactSet {
 
   _getEquivalentPropertyValue(object: ObjectValue, propName: string): Value {
     let prop = getProperty(this.realm, object, propName);
+    let isFinal = object.mightBeFinalObject();
     let equivalentProp;
 
     if (prop instanceof ObjectValue && isReactElement(prop)) {
       equivalentProp = this.residualReactElementVisitor.reactElementEquivalenceSet.add(prop);
 
-      if (prop !== equivalentProp) {
+      if (prop !== equivalentProp && isFinal) {
         hardModifyReactObjectPropertyBinding(this.realm, object, propName, equivalentProp);
       }
     } else if (prop instanceof ObjectValue && isReactProps(prop)) {
       equivalentProp = this.residualReactElementVisitor.reactPropsEquivalenceSet.add(prop);
 
-      if (prop !== equivalentProp) {
+      if (prop !== equivalentProp && isFinal) {
         hardModifyReactObjectPropertyBinding(this.realm, object, propName, equivalentProp);
       }
     } else if (prop instanceof AbstractValue) {
       equivalentProp = this.residualReactElementVisitor.residualHeapVisitor.equivalenceSet.add(prop);
 
-      if (prop !== equivalentProp) {
+      if (prop !== equivalentProp && isFinal) {
         hardModifyReactObjectPropertyBinding(this.realm, object, propName, equivalentProp);
       }
     }
