@@ -21,6 +21,7 @@ import type {
   PrepackLaunchArguments,
 } from "./../common/types.js";
 import { DebuggerConstants } from "./../common/DebuggerConstants.js";
+import { DebuggerError } from "./../common/DebuggerError.js";
 
 /* An implementation of an debugger adapter adhering to the VSCode Debug protocol
  * The adapter is responsible for communication between the UI and Prepack
@@ -350,7 +351,10 @@ class PrepackDebugSession extends DebugSession {
     // after the channel has been created. If this ordering is perturbed,
     // there was likely a change in the protocol implementation by Nuclide.
     if (this._adapterChannel === undefined) {
-      throw Error(`Adapter Channel in Debugger is being used before it has been created. Caused by ${callingRequest}.`);
+      throw new DebuggerError(
+        "Startup Error",
+        `Adapter Channel in Debugger is being used before it has been created. Caused by ${callingRequest}.`
+      );
     }
   }
 }
