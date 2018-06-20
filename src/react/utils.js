@@ -91,6 +91,20 @@ export function isReactElement(val: Value): boolean {
   return false;
 }
 
+export function isReactProps(val: Value): boolean {
+  if (!(val instanceof ObjectValue)) {
+    return false;
+  }
+  let realm = val.$Realm;
+  if (!realm.react.enabled) {
+    return false;
+  }
+  if (realm.react.reactProps.has(val)) {
+    return true;
+  }
+  return false;
+}
+
 export function getReactSymbol(symbolKey: ReactSymbolTypes, realm: Realm): SymbolValue {
   let reactSymbol = realm.react.symbols.get(symbolKey);
   if (reactSymbol !== undefined) {
@@ -980,6 +994,7 @@ export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value
     applyClonedTemporalAlias(realm, props, clonedProps);
   }
   clonedProps.makeFinal();
+  realm.react.reactProps.add(clonedProps);
   return clonedProps;
 }
 

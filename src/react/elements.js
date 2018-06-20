@@ -297,6 +297,7 @@ export function createReactElement(
     return splitReactElementsByConditionalConfig(realm, condValue, consequentVal, alternateVal, type, children);
   }
   let { key, props, ref } = createPropsObject(realm, type, config, children);
+  realm.react.reactProps.add(props);
   return createInternalReactElement(realm, type, key, ref, props);
 }
 
@@ -306,7 +307,7 @@ type ElementTraversalVisitor = {
   visitRef: (keyValue: Value) => void,
   visitAbstractOrPartialProps: (propsValue: AbstractValue | ObjectValue) => void,
   visitConcreteProps: (propsValue: ObjectValue) => void,
-  visitChildNode: (childValue: Value) => void | Value,
+  visitChildNode: (childValue: Value) => void,
 };
 
 export function traverseReactElement(
@@ -340,35 +341,11 @@ export function traverseReactElement(
             childrenLengthValue = childrenLength.value;
             for (let i = 0; i < childrenLengthValue; i++) {
               let child = getProperty(realm, childrenValue, "" + i);
-              invariant(
-                child instanceof Value,
-                `ReactElement "props.children[${i}]" failed to visit due to a non-value`
-              );
-              let equivalentChild = traversalVisitor.visitChildNode(child);
-              // If the visitor returns an equivalentChild that is of different
-              // value then we should update our ReactElement children with the
-              // new value. This is because we've already visisted the same
-              // child before (ReactElement or abstract value)
-              if (equivalentChild !== undefined && equivalentChild !== child) {
-                Properties.Set(realm, childrenValue, "" + i, equivalentChild, true);
-              }
+              traversalVisitor.visitChildNode(child);
             }
           }
         } else {
-          let equivalentChildren = traversalVisitor.visitChildNode(childrenValue);
-          // If the visitor returns an equivalentChild that is of different
-          // value then we should update our ReactElement children with the
-          // new value. This is because we've already visisted the same
-          // child before (ReactElement or abstract value)
-          if (equivalentChildren !== undefined && equivalentChildren !== childrenValue) {
-            // "props" are immutable objects, but need to mutate them in this instance
-            // so we need to temporarily make them not final so we can do so. Given
-            // we're in the visitor/serialization stage, this shouldn't have any
-            // affect on the application, it's simply to improve optimization
-            propsValue.makeNotFinal();
-            Properties.Set(realm, propsValue, "children", equivalentChildren, true);
-            propsValue.makeFinal();
-          }
+          traversalVisitor.visitChildNode(childrenValue);
         }
       }
     }

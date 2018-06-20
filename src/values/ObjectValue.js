@@ -155,8 +155,10 @@ export default class ObjectValue extends ConcreteValue {
           invariant(
             // We're still initializing so we can set a property.
             this.$IsClassPrototype === undefined ||
-              // It's not havoced so we can set a property.
-              this.mightNotBeHavocedObject() ||
+              // It's not havoced so we can set a property. Unless we are unhavocing, then we allow that
+              // for cases where we need to temporarily unhavoc to change something in the serialization
+              // phase. We should always set the object value to be havoced again after.
+              (this.mightNotBeHavocedObject() || propBindingName === "_isHavoced_binding") ||
               // Object.assign() implementation needs to temporarily
               // make potentially havoced objects non-partial and back.
               // We don't gain anything from checking whether it's havoced
@@ -405,6 +407,10 @@ export default class ObjectValue extends ConcreteValue {
 
   havoc(): void {
     this._isHavoced = this.$Realm.intrinsics.true;
+  }
+
+  unhavoc(): void {
+    this._isHavoced = this.$Realm.intrinsics.false;
   }
 
   mightBeHavocedObject(): boolean {
