@@ -1153,7 +1153,18 @@ export function hardModifyReactObjectPropertyBinding(
     "hardModifyReactObjectPropertyBinding can only be used on final objects!"
   );
   let binding = object.properties.get(propName);
-  invariant(binding !== undefined);
+  if (binding === undefined) {
+    binding = {
+      object,
+      descriptor: {
+        configurable: true,
+        enumerable: true,
+        value: undefined,
+        writable: true,
+      },
+      key: propName,
+    };
+  }
   let descriptor = binding.descriptor;
   invariant(descriptor !== undefined);
   let newDescriptor = Object.assign({}, descriptor, {

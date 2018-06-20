@@ -11,7 +11,15 @@
 
 import type { Realm } from "../realm.js";
 import { ValuesDomain } from "../domains/index.js";
-import { AbstractValue, AbstractObjectValue, ArrayValue, NumberValue, ObjectValue, Value } from "../values/index.js";
+import {
+  AbstractValue,
+  AbstractObjectValue,
+  ArrayValue,
+  NullValue,
+  NumberValue,
+  ObjectValue,
+  Value,
+} from "../values/index.js";
 import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
@@ -19,6 +27,7 @@ import {
   applyObjectAssignConfigsForReactElement,
   createInternalReactElement,
   flagPropsWithNoPartialKeyOrRef,
+  hardModifyReactObjectPropertyBinding,
   getProperty,
   hasNoPartialKeyOrRef,
 } from "./utils.js";
@@ -111,9 +120,10 @@ function createPropsObject(
     props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
     applyObjectAssignConfigsForReactElement(realm, props, args);
+    props.makeFinal();
 
     if (children !== undefined) {
-      Properties.Set(realm, props, "children", children, true);
+      hardModifyReactObjectPropertyBinding(realm, props, "children", children);
     }
 
     // handle default props on a partial/abstract config
@@ -135,7 +145,7 @@ function createPropsObject(
               defaultPropsEvaluated++;
               // if the value we have is undefined, we can apply the defaultProp
               if (propBinding.descriptor && propBinding.descriptor.value === realm.intrinsics.undefined) {
-                Properties.Set(realm, props, propName, Get(realm, defaultProps, propName), true);
+                hardModifyReactObjectPropertyBinding(realm, props, propName, Get(realm, defaultProps, propName));
               }
             }
           }
@@ -154,7 +164,7 @@ function createPropsObject(
         // exist
         for (let [propName, binding] of props.properties) {
           if (binding.descriptor !== undefined && binding.descriptor.value === realm.intrinsics.undefined) {
-            Properties.Set(realm, props, propName, AbstractValue.createFromType(realm, Value), true);
+            hardModifyReactObjectPropertyBinding(realm, props, propName, AbstractValue.createFromType(realm, Value));
           }
         }
         // if we have children and they are abstract, they might be undefined at runtime
@@ -168,7 +178,7 @@ function createPropsObject(
             Get(realm, defaultProps, "children"),
             children
           );
-          Properties.Set(realm, props, "children", conditionalChildren, true);
+          hardModifyReactObjectPropertyBinding(realm, props, "children", conditionalChildren);
         }
         let defaultPropsHelper = realm.react.defaultPropsHelper;
         invariant(defaultPropsHelper !== undefined);
@@ -277,6 +287,88 @@ function splitReactElementsByConditionalConfig(
       );
     }
   );
+}
+
+export function cloneElement(
+  realm: Realm,
+  reactElement: ObjectValue,
+  config: ObjectValue | AbstractObjectValue | NullValue,
+  children: void | Value
+): ObjectValue {
+  let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+
+  const setProp = (name: string, value: Value): void => {
+    if (name !== "__self" && name !== "__source" && name !== "key" && name !== "ref") {
+      invariant(props instanceof ObjectValue || props instanceof AbstractObjectValue);
+      hardModifyReactObjectPropertyBinding(realm, props, name, value);
+    }
+  };
+
+  applyObjectAssignConfigsForReactElement(realm, props, [config]);
+  props.makeFinal();
+
+  let key = getProperty(realm, reactElement, "key");
+  let ref = getProperty(realm, reactElement, "ref");
+  let type = getProperty(realm, reactElement, "type");
+
+  if (config !== realm.intrinsics.null) {
+    let possibleKey = Get(realm, config, "key");
+    if (possibleKey !== realm.intrinsics.null && possibleKey !== realm.intrinsics.undefined) {
+      // if the config has been marked as having no partial key or ref and the possible key
+      // is abstract, yet the config doesn't have a key property, then the key can remain null
+      let keyNotNeeded =
+        hasNoPartialKeyOrRef(realm, config) &&
+        possibleKey instanceof AbstractValue &&
+        config instanceof ObjectValue &&
+        !config.properties.has("key");
+
+      if (!keyNotNeeded) {
+        key = computeBinary(realm, "+", realm.intrinsics.emptyString, possibleKey);
+      }
+    }
+
+    let possibleRef = Get(realm, config, "ref");
+    if (possibleRef !== realm.intrinsics.null && possibleRef !== realm.intrinsics.undefined) {
+      // if the config has been marked as having no partial key or ref and the possible ref
+      // is abstract, yet the config doesn't have a ref property, then the ref can remain null
+      let refNotNeeded =
+        hasNoPartialKeyOrRef(realm, config) &&
+        possibleRef instanceof AbstractValue &&
+        config instanceof ObjectValue &&
+        !config.properties.has("ref");
+
+      if (!refNotNeeded) {
+        ref = possibleRef;
+      }
+    }
+    let defaultProps =
+      type instanceof ObjectValue || type instanceof AbstractObjectValue
+        ? Get(realm, type, "defaultProps")
+        : realm.intrinsics.undefined;
+
+    if (defaultProps instanceof ObjectValue) {
+      for (let [propKey, binding] of defaultProps.properties) {
+        if (binding && binding.descriptor && binding.descriptor.enumerable) {
+          if (Get(realm, props, propKey) === realm.intrinsics.undefined) {
+            setProp(propKey, Get(realm, defaultProps, propKey));
+          }
+        }
+      }
+    } else if (defaultProps instanceof AbstractObjectValue) {
+      invariant(false, "TODO: we need to eventually support this");
+    }
+  }
+
+  if (children !== undefined) {
+    hardModifyReactObjectPropertyBinding(realm, props, "children", children);
+  } else {
+    let elementProps = getProperty(realm, reactElement, "props");
+    invariant(elementProps instanceof ObjectValue);
+    let elementChildren = getProperty(realm, elementProps, "children");
+    hardModifyReactObjectPropertyBinding(realm, props, "children", elementChildren);
+  }
+
+  return createInternalReactElement(realm, type, key, ref, props);
 }
 
 export function createReactElement(
