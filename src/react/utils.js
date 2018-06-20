@@ -937,9 +937,7 @@ function applyClonedTemporalAlias(
   let newTemporalArgs = temporalArgs.map(arg => {
     if (arg === props) {
       return clonedObj;
-    } else if (arg instanceof FunctionValue || arg instanceof ArrayValue) {
-      return arg;
-    } else if (arg instanceof ObjectValue) {
+    } else if ((arg.constructor === ObjectValue || arg instanceof AbstractObjectValue) && !arg.isIntrinsic()) {
       debugger;
       return cloneObject(realm, arg, alreadyCloned);
     } else {
@@ -977,7 +975,7 @@ export function cloneObject(
   if (obj instanceof ObjectValue) {
     let clonedObj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
     alreadyCloned.set(obj, clonedObj);
-  
+
     for (let [propName, binding] of obj.properties) {
       if (binding && binding.descriptor && binding.descriptor.enumerable) {
         Properties.Set(realm, clonedObj, propName, getProperty(realm, obj, propName), true);

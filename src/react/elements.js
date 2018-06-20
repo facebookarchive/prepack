@@ -43,11 +43,11 @@ function deepTraverseAndFindOrDeleteFirstRenderProperties(
   shouldDelete: boolean,
   alreadyVisited?: Set<AbstractObjectValue | ObjectValue> = new Set()
 ): void | boolean {
-  if (obj instanceof FunctionValue || alreadyVisited.has(obj)) {
+  if (obj instanceof FunctionValue || alreadyVisited.has(obj) || obj.isIntrinsic()) {
     return;
   }
   alreadyVisited.add(obj);
-  if (obj instanceof ObjectValue) {
+  if (obj.constructor === ObjectValue) {
     let temporalAlias = obj.temporalAlias;
 
     for (let [propName, binding] of obj.properties) {
