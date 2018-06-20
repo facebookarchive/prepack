@@ -48,7 +48,7 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
       prepackRuntime = args.shift();
     } else if (arg === "prepackArguments") {
       prepackArguments = args.shift().split(" ");
-    } else if (arg === "sourceFile") {
+    } else if (arg === "sourceFiles") {
       // Support multiple source files.
       // Assumes everything between --sourceFile and the next --[flag] is a source file.
       while (!arg.startsWith("--")) {
