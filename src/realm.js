@@ -491,46 +491,10 @@ export class Realm {
     return context;
   }
 
-  clearBlockBindings(modifiedBindings: void | Bindings, environmentRecord: DeclarativeEnvironmentRecord) {
-    if (modifiedBindings === undefined) return;
-    for (let b of modifiedBindings.keys())
-      if (environmentRecord.bindings[b.name] && environmentRecord.bindings[b.name] === b) modifiedBindings.delete(b);
-  }
-
-  clearBlockBindingsFromCompletion(completion: Completion, environmentRecord: DeclarativeEnvironmentRecord) {
-    if (completion instanceof PossiblyNormalCompletion) {
-      this.clearBlockBindings(completion.alternateEffects.modifiedBindings, environmentRecord);
-      this.clearBlockBindings(completion.consequentEffects.modifiedBindings, environmentRecord);
-      if (completion.savedEffects !== undefined)
-        this.clearBlockBindings(completion.savedEffects.modifiedBindings, environmentRecord);
-      if (completion.alternate instanceof Completion)
-        this.clearBlockBindingsFromCompletion(completion.alternate, environmentRecord);
-      if (completion.consequent instanceof Completion)
-        this.clearBlockBindingsFromCompletion(completion.consequent, environmentRecord);
-    } else if (completion instanceof ForkedAbruptCompletion) {
-      this.clearBlockBindings(completion.alternateEffects.modifiedBindings, environmentRecord);
-      this.clearBlockBindings(completion.consequentEffects.modifiedBindings, environmentRecord);
-      if (completion.alternate instanceof Completion)
-        this.clearBlockBindingsFromCompletion(completion.alternate, environmentRecord);
-      if (completion.consequent instanceof Completion)
-        this.clearBlockBindingsFromCompletion(completion.consequent, environmentRecord);
-    }
-  }
-
   // Call when a scope falls out of scope and should be destroyed.
   // Clears the Bindings corresponding to the disappearing Scope from ModifiedBindings
   onDestroyScope(lexicalEnvironment: LexicalEnvironment) {
     invariant(this.activeLexicalEnvironments.has(lexicalEnvironment));
-    let modifiedBindings = this.modifiedBindings;
-    if (modifiedBindings) {
-      // Don't undo things to global scope because it's needed past its destruction point (for serialization)
-      let environmentRecord = lexicalEnvironment.environmentRecord;
-      if (environmentRecord instanceof DeclarativeEnvironmentRecord) {
-        this.clearBlockBindings(modifiedBindings, environmentRecord);
-        if (this.savedCompletion !== undefined)
-          this.clearBlockBindingsFromCompletion(this.savedCompletion, environmentRecord);
-      }
-    }
 
     // Ensures if we call onDestroyScope too early, there will be a failure.
     this.activeLexicalEnvironments.delete(lexicalEnvironment);
@@ -544,40 +508,7 @@ export class Realm {
     this.contextStack.push(context);
   }
 
-  clearFunctionBindings(modifiedBindings: void | Bindings, funcVal: FunctionValue) {
-    if (modifiedBindings === undefined) return;
-    for (let b of modifiedBindings.keys()) {
-      if (b.environment instanceof FunctionEnvironmentRecord && b.environment.$FunctionObject === funcVal)
-        modifiedBindings.delete(b);
-    }
-  }
-
-  clearFunctionBindingsFromCompletion(completion: Completion, funcVal: FunctionValue) {
-    if (completion instanceof PossiblyNormalCompletion) {
-      this.clearFunctionBindings(completion.alternateEffects.modifiedBindings, funcVal);
-      this.clearFunctionBindings(completion.consequentEffects.modifiedBindings, funcVal);
-      if (completion.savedEffects !== undefined)
-        this.clearFunctionBindings(completion.savedEffects.modifiedBindings, funcVal);
-      if (completion.alternate instanceof Completion)
-        this.clearFunctionBindingsFromCompletion(completion.alternate, funcVal);
-      if (completion.consequent instanceof Completion)
-        this.clearFunctionBindingsFromCompletion(completion.consequent, funcVal);
-    } else if (completion instanceof ForkedAbruptCompletion) {
-      this.clearFunctionBindings(completion.alternateEffects.modifiedBindings, funcVal);
-      this.clearFunctionBindings(completion.consequentEffects.modifiedBindings, funcVal);
-      if (completion.alternate instanceof Completion)
-        this.clearFunctionBindingsFromCompletion(completion.alternate, funcVal);
-      if (completion.consequent instanceof Completion)
-        this.clearFunctionBindingsFromCompletion(completion.consequent, funcVal);
-    }
-  }
-
   popContext(context: ExecutionContext): void {
-    let funcVal = context.function;
-    if (funcVal) {
-      this.clearFunctionBindings(this.modifiedBindings, funcVal);
-      if (this.savedCompletion !== undefined) this.clearFunctionBindingsFromCompletion(this.savedCompletion, funcVal);
-    }
     let c = this.contextStack.pop();
     invariant(c === context);
   }
