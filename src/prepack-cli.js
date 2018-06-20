@@ -315,8 +315,6 @@ function run(
     }
   }
 
-  console.log(`Input files: ${inputFilenames.length}`);
-
   if (reproFilePath !== undefined) {
     const zip = zipFactory();
     for (let fileName of reproFileNames) {

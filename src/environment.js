@@ -1153,12 +1153,20 @@ export class LexicalEnvironment {
           );
         }
 
+        // for (let n of node.program.body) {
+        //   if (n.loc.source.includes("AdsManagerLoadingIndicator")) {
+        //     console.log(`CONFIRMING ${n.loc.source}: ${n.loc.start.line}, ${n.loc.start.column}`);
+        //   }
+        // }
+
+        console.log("Fixing up file names");
         this.realm.statistics.fixupFilenames.measure(() => this.fixup_filenames(node));
 
         asts = asts.concat(node.program.body);
         code[source.filePath] = source.fileContents;
         directives = directives.concat(node.program.directives);
       } catch (e) {
+        console.log("ERROR while concate+parsing");
         if (e instanceof ThrowCompletion) {
           let error = e.value;
           if (error instanceof ObjectValue) {
@@ -1196,6 +1204,7 @@ export class LexicalEnvironment {
     let res, code;
     try {
       let ast;
+      console.log("Concat and Parse in executeSources");
       [ast, code] = this.concatenateAndParse(sources, sourceType);
       if (onParse) onParse(ast);
       res = this.realm.statistics.evaluation.measure(() => this.evaluateCompletion(ast, false));
@@ -1209,7 +1218,7 @@ export class LexicalEnvironment {
       );
     }
     if (res instanceof AbruptCompletion) return [res, code];
-
+    console.log(`Evaluated ${this._numEvaluations} times`);
     return [Environment.GetValue(this.realm, res), code];
   }
 
@@ -1287,7 +1296,10 @@ export class LexicalEnvironment {
   fixup_source_locations(ast: BabelNode, map: string) {
     console.log(`fixing source locations for ${ast.loc.source}`);
     const smc = new sourceMap.SourceMapConsumer(map);
+    let r1Counter = 0;
+    let r1TotalNodes = 0;
     traverseFast(ast, node => {
+      r1TotalNodes = r1TotalNodes + 1;
       let loc = node.loc;
       if (!loc) return false;
       fixup(loc, loc.start);
@@ -1295,19 +1307,36 @@ export class LexicalEnvironment {
       fixup_comments(node.leadingComments);
       fixup_comments(node.innerComments);
       fixup_comments(node.trailingComments);
+      if (`${loc.source}`.includes("AdsManagerLoadingIndicator.js")) {
+        r1Counter = r1Counter + 1;
+        // console.log(`1st TIME: ${loc.source}: start: ${loc.start.line}, ${loc.start.column} --> end: ${loc.end.line}, ${loc.end.column}`);
+      }
       return false;
 
       function fixup(new_loc: BabelNodeSourceLocation, new_pos: BabelNodePosition) {
         let old_pos = smc.originalPositionFor({ line: new_pos.line, column: new_pos.column });
         // if (!`${old_pos.source}`.includes("node_modules") && !`${old_pos.source}`.includes("react-native")) {
+        // if (`${old_pos.source}`.includes("AdsManagerLoadingIndicator.js")) {
         //   console.log(
-        //     `${old_pos.source}: Transforming ${new_pos.line}, ${new_pos.column} into ${old_pos.line}, ${old_pos.column}`
+        //     `FixupSourceLoc -- ${old_pos.source}: Transforming ${new_pos.line}, ${new_pos.column} into ${old_pos.line}, ${old_pos.column}`
         //   );
         // }
-        if (old_pos.source === null) return;
+        if (old_pos.source === null) {
+          // if (new_pos.line === 414) {
+          //   console.log(`FixupSourceLoc -- FAILED TO MAP ${new_pos.line}, ${new_pos.column}`);
+          // }
+          return;
+        }
+
+        // if (`${old_pos.source}`.includes("InitializeCore.js")) {
+        //   console.log(`FixupSourceLoc -- SUCCESS ${old_pos.source}: Transformed ${new_pos.line}, ${new_pos.column} into ${old_pos.line}, ${old_pos.column}`);
+        // }
         new_pos.line = old_pos.line;
         new_pos.column = old_pos.column;
         new_loc.source = old_pos.source;
+        // if (`${old_pos.source}`.includes("AdsManagerLoadingIndicator.js")) {
+        //   console.log(`FixupSourceLoc -- ${new_loc.source}: Transformed ${new_pos.line}, ${new_pos.column}`);
+        // }
       }
 
       function fixup_comments(comments: ?Array<BabelNodeComment>) {
@@ -1320,6 +1349,24 @@ export class LexicalEnvironment {
         }
       }
     });
+    //
+    // let r2Counter = 0;
+    // let r2TotalNodes = 0;
+
+    // traverseFast(ast, node => {
+    //   let loc = node.loc;
+    //   // r2TotalNodes = r2TotalNodes + 1;
+    //   if (`${loc.source}`.includes("InitializeCore.js")) {
+    //     // r2Counter = r2Counter + 1;
+    //     console.log(`${loc.source}: Fixup output start: ${loc.start.line}, ${loc.start.column} --> end: ${loc.end.line}, ${loc.end.column}`);
+    //   }
+    //   return false;
+    // });
+    //
+    // console.log(`Round one found ${r1Counter} instances of AdsManagerLoadingINdicator`);
+    console.log(`Round one found ${r1TotalNodes} total nodes`);
+    // console.log(`Round two found ${r2Counter} instances of AdsManagerLoadingINdicator`);
+    // console.log(`Round two found ${r2TotalNodes} total nodes`);
   }
 
   fixup_filenames(ast: BabelNode) {
@@ -1343,6 +1390,7 @@ export class LexicalEnvironment {
         if (!comments) return;
         for (let c of comments) {
           if (c.loc) {
+            // console.log(`FIXFILENAMES: Old name: ${(c.loc: any).filename} --> New name: ${filename}`);
             (c.loc: any).filename = filename;
             c.loc.source = filename;
           }
@@ -1351,8 +1399,22 @@ export class LexicalEnvironment {
     });
   }
 
+  _numEvaluations = 0;
+
   evaluate(ast: BabelNode, strictCode: boolean, metadata?: any): Value | Reference {
+    this._numEvaluations += 1;
     if (this.realm.debuggerInstance) {
+      if (ast.loc && ast.loc.source) {
+        // if (!ast.loc.source.includes("node_modules"))
+        //   console.log(`Checking ${ast.loc.source}: ${ast.loc.start.line} ${ast.loc.start.column}`);
+      } else {
+        // console.log(`No location! but type is ${ast.type}`);
+        // if (ast.type === "File") {
+        //   console.log(`There are ${ast.program.body.length} elements in the file.`);
+        // } else if (ast.type === "Program") {
+        //   console.log(`There are ${ast.body.length} elements in the program.`);
+        // }
+      }
       this.realm.debuggerInstance.checkForActions(ast);
     }
     let res = this.evaluateAbstract(ast, strictCode, metadata);

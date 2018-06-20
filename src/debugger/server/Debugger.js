@@ -49,6 +49,7 @@ import {
   findMapDifference,
   stripEmptyStringBookends,
 } from "./PathNormalizer.js";
+import { IsStatement } from "./../../methods/is.js";
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm, configArgs: DebuggerConfigArguments) {
@@ -107,7 +108,10 @@ export class DebugServer {
 
   // Checking if the debugger needs to take any action on reaching this ast node
   checkForActions(ast: BabelNode) {
+    // console.log(`Checking ${ast.loc.source}: ${ast.loc.start.line} ${ast.loc.start.column}`);
     if (this._checkAndUpdateLastExecuted(ast)) {
+      if (ast.loc.source.includes("InitializeCore.js"))
+        console.log(`Checking ${ast.loc.source}: ${ast.loc.start.line} ${ast.loc.start.column} -- is of type ${ast.type} and ${IsStatement(ast)} statement`);
       let stoppables: Array<StoppableObject> = this._stepManager.getAndDeleteCompletedSteppers(ast);
       let breakpoint = this._breakpointManager.getStoppableBreakpoint(ast);
       if (breakpoint) stoppables.push(breakpoint);
@@ -385,7 +389,7 @@ export class DebugServer {
   }
 
   _relativeToAbsolute(path: string): string {
-    console.log("rel to abs input: ", path);
+    // console.log("rel to abs input: ", path);
     let absolute;
     if (this._useRootPrefix) {
       // Should address flow here (and below) use invariants or if's?
@@ -395,12 +399,12 @@ export class DebugServer {
       absolute = path.replace(this._sourcemapMapDifference, "");
       absolute = this._sourcemapCommonPrefix + absolute;
     }
-    console.log("rel to abs: ", absolute);
+    // console.log("rel to abs: ", absolute);
     return absolute;
   }
 
   _absoluteToRelative(path: string): string {
-    console.log("abs to rel input: ", path);
+    // console.log("abs to rel input: ", path);
     let relative;
     if (this._useRootPrefix) {
       relative = path.replace(this._sourcemapDirectoryRoot, "");
@@ -408,7 +412,7 @@ export class DebugServer {
       relative = path.replace(this._sourcemapCommonPrefix, "");
       relative = this._sourcemapMapDifference + relative;
     }
-    console.log("abs to rel: ", relative);
+    // console.log("abs to rel: ", relative);
     return relative;
   }
 

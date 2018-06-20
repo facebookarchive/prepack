@@ -26,7 +26,7 @@ export class BreakpointManager {
     if (!IsStatement(ast)) return;
     if (ast.loc && ast.loc.source) {
       let location = ast.loc;
-      if (!location.source.includes("node_modules"))
+      if (location.source.includes("InitializeCore.js"))
         console.log(`Checking ${location.source}: ${location.start.line} ${location.start.column}`);
       let filePath = location.source;
       if (filePath === null) return;
@@ -36,6 +36,8 @@ export class BreakpointManager {
       let breakpoint = this._findStoppableBreakpoint(filePath, lineNum, colNum);
       if (breakpoint === null) return;
       return breakpoint;
+    } else {
+      console.log("ack! ast doesn't have a location");
     }
   }
 
