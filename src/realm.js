@@ -71,10 +71,8 @@ import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatem
 import * as t from "babel-types";
 
 export type BindingEntry = {
-  leakedImmutableValue: void | Value,
   hasLeaked: void | boolean,
   value: void | Value,
-  previousLeakedImmutableValue: void | Value,
   previousHasLeaked: void | boolean,
   previousValue: void | Value,
 };
@@ -1363,10 +1361,8 @@ export class Realm {
 
     if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding)) {
       this.modifiedBindings.set(binding, {
-        leakedImmutableValue: undefined,
         hasLeaked: undefined,
         value: undefined,
-        previousLeakedImmutableValue: binding.leakedImmutableValue,
         previousHasLeaked: binding.hasLeaked,
         previousValue: binding.value,
       });
@@ -1440,8 +1436,7 @@ export class Realm {
 
   redoBindings(modifiedBindings: void | Bindings) {
     if (modifiedBindings === undefined) return;
-    modifiedBindings.forEach(({ leakedImmutableValue, hasLeaked, value }, binding, m) => {
-      binding.leakedImmutableValue = leakedImmutableValue;
+    modifiedBindings.forEach(({ hasLeaked, value }, binding, m) => {
       binding.hasLeaked = hasLeaked || false;
       binding.value = value;
     });
@@ -1450,10 +1445,8 @@ export class Realm {
   undoBindings(modifiedBindings: void | Bindings) {
     if (modifiedBindings === undefined) return;
     modifiedBindings.forEach((entry, binding, m) => {
-      if (entry.leakedImmutableValue === undefined) entry.leakedImmutableValue = binding.leakedImmutableValue;
       if (entry.hasLeaked === undefined) entry.hasLeaked = binding.hasLeaked;
       if (entry.value === undefined) entry.value = binding.value;
-      binding.leakedImmutableValue = entry.previousLeakedImmutableValue;
       binding.hasLeaked = entry.previousHasLeaked || false;
       binding.value = entry.previousValue;
     });
