@@ -609,6 +609,7 @@ function recursivelyFlattenArray(realm: Realm, array, targetArray): void {
 export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   let flattenedChildren = Create.ArrayCreate(realm, 0);
   recursivelyFlattenArray(realm, array, flattenedChildren);
+  flattenedChildren.makeFinal();
   return flattenedChildren;
 }
 
@@ -1133,4 +1134,33 @@ export function cloneReactElement(realm: Realm, reactElement: ObjectValue, shoul
     propsValue = cloneProps(realm, propsValue);
   }
   return createInternalReactElement(realm, typeValue, keyValue, refValue, propsValue);
+}
+
+// This function changes an object's property value by changing it's binding
+// and descriptor, thus bypassing the binding detection system. This is a
+// dangerous function and should only be used on objects created by React.
+// It's primary use is to update ReactElement / React props properties
+// during the visitor equivalence stage as an optimization feature.
+// It will invariant if used on objects that are not final.
+export function hardModifyReactObjectPropertyBinding(
+  realm: Realm,
+  object: ObjectValue,
+  propName: string,
+  value: Value
+): void {
+  invariant(
+    object.mightBeFinalObject() && !object.mightNotBeFinalObject(),
+    "hardModifyReactObjectPropertyBinding can only be used on final objects!"
+  );
+  let binding = object.properties.get(propName);
+  invariant(binding !== undefined);
+  let descriptor = binding.descriptor;
+  invariant(descriptor !== undefined);
+  let newDescriptor = Object.assign({}, descriptor, {
+    value,
+  });
+  let newBinding = Object.assign({}, binding, {
+    descriptor: newDescriptor,
+  });
+  object.properties.set(propName, newBinding);
 }

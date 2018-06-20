@@ -21,8 +21,7 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
-import { isReactElement, isReactProps, getProperty } from "./utils";
-import { Properties } from "../singletons.js";
+import { hardModifyReactObjectPropertyBinding, isReactElement, isReactProps, getProperty } from "./utils";
 import { ResidualReactElementVisitor } from "../serializer/ResidualReactElementVisitor.js";
 
 export type ReactSetValueMapKey = Value | number | string;
@@ -45,22 +44,17 @@ export type ReactSetNode = {
 // each property key as a map, and then from that map, each value as a map. The value
 // then links to the subsequent property/symbol in the object. This approach ensures insertion
 // is maintained through all objects.
-
 export class ReactSet {
   constructor(realm: Realm, residualReactElementVisitor: ResidualReactElementVisitor) {
     this.realm = realm;
     this.residualReactElementVisitor = residualReactElementVisitor;
     this.objectRoot = new Map();
     this.arrayRoot = new Map();
-    this.emptyArray = new ArrayValue(realm);
-    this.emptyObject = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
   }
   realm: Realm;
   objectRoot: ReactSetKeyMap;
   arrayRoot: ReactSetKeyMap;
   residualReactElementVisitor: ResidualReactElementVisitor;
-  emptyArray: ArrayValue;
-  emptyObject: ObjectValue;
 
   _createNode(): ReactSetNode {
     return {
@@ -115,17 +109,18 @@ export class ReactSet {
       result = this._getValue(prop, currentMap, visitedValues);
       currentMap = result.map;
     }
+    let temporalAlias = object.temporalAlias;
 
-    if (object.temporalAlias !== undefined) {
+    if (temporalAlias !== undefined) {
       currentMap = this._getKey("temporalAlias", currentMap, visitedValues);
-      result = this._getValue(object.temporalAlias, currentMap, visitedValues);
+      result = this._getValue(temporalAlias, currentMap, visitedValues);
     }
 
     if (result === undefined) {
-      if (object.temporalAlias === undefined) {
-        return object;
+      if (temporalAlias === undefined && this.realm.react.emptyObject !== undefined) {
+        return this.realm.react.emptyObject;
       }
-      return this.emptyObject;
+      return object;
     }
     if (result.value === null) {
       result.value = object;
@@ -151,7 +146,10 @@ export class ReactSet {
       currentMap = result.map;
     }
     if (result === undefined) {
-      return this.emptyArray;
+      if (this.realm.react.emptyArray !== undefined) {
+        return this.realm.react.emptyArray;
+      }
+      return array;
     }
     if (result.value === null) {
       result.value = array;
@@ -161,42 +159,26 @@ export class ReactSet {
 
   _getEquivalentPropertyValue(object: ObjectValue, propName: string): Value {
     let prop = getProperty(this.realm, object, propName);
-    let isFinalObject = object.mightBeFinalObject();
-    let isHavoedObject = object.mightBeHavocedObject();
     let equivalentProp;
 
-    // We can unhavoc and make not final here because we're in the visitor/serialization
-    // stage and we're dealing with objects that React created and we know are immutable
-    if (isHavoedObject) {
-      object.unhavoc();
-    }
-    if (isFinalObject) {
-      object.makeNotFinal();
-    }
     if (prop instanceof ObjectValue && isReactElement(prop)) {
       equivalentProp = this.residualReactElementVisitor.reactElementEquivalenceSet.add(prop);
 
       if (prop !== equivalentProp) {
-        Properties.Set(this.realm, object, propName, equivalentProp, true);
+        hardModifyReactObjectPropertyBinding(this.realm, object, propName, equivalentProp);
       }
     } else if (prop instanceof ObjectValue && isReactProps(prop)) {
       equivalentProp = this.residualReactElementVisitor.reactPropsEquivalenceSet.add(prop);
 
       if (prop !== equivalentProp) {
-        Properties.Set(this.realm, object, propName, equivalentProp, true);
+        hardModifyReactObjectPropertyBinding(this.realm, object, propName, equivalentProp);
       }
     } else if (prop instanceof AbstractValue) {
       equivalentProp = this.residualReactElementVisitor.residualHeapVisitor.equivalenceSet.add(prop);
 
       if (prop !== equivalentProp) {
-        Properties.Set(this.realm, object, propName, equivalentProp, true);
+        hardModifyReactObjectPropertyBinding(this.realm, object, propName, equivalentProp);
       }
-    }
-    if (isFinalObject) {
-      object.makeFinal();
-    }
-    if (isHavoedObject) {
-      object.havoc();
     }
     return equivalentProp || prop;
   }
