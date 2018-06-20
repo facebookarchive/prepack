@@ -21,7 +21,7 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
-import { hardModifyReactObjectPropertyBinding, isReactElement, isReactProps, getProperty } from "./utils";
+import { hardModifyReactObjectPropertyBinding, isReactElement, isReactPropsObject, getProperty } from "./utils";
 import { ResidualReactElementVisitor } from "../serializer/ResidualReactElementVisitor.js";
 
 export type ReactSetValueMapKey = Value | number | string;
@@ -177,7 +177,7 @@ export class ReactEquivalenceSet {
       if (prop !== equivalentProp && isFinal) {
         hardModifyReactObjectPropertyBinding(this.realm, object, propName, equivalentProp);
       }
-    } else if (prop instanceof ObjectValue && isReactProps(prop)) {
+    } else if (prop instanceof ObjectValue && isReactPropsObject(prop)) {
       equivalentProp = this.residualReactElementVisitor.reactPropsEquivalenceSet.add(prop);
 
       if (prop !== equivalentProp && isFinal) {

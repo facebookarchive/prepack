@@ -62,7 +62,7 @@ import {
   withDescriptorValue,
 } from "./utils.js";
 import { Environment, To } from "../singletons.js";
-import { isReactElement, isReactProps, valueIsReactLibraryObject } from "../react/utils.js";
+import { isReactElement, isReactPropsObject, valueIsReactLibraryObject } from "../react/utils.js";
 import { ResidualReactElementVisitor } from "./ResidualReactElementVisitor.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
 
@@ -1002,7 +1002,7 @@ export class ResidualHeapVisitor {
       let equivalentReactElementValue = this.residualReactElementVisitor.reactElementEquivalenceSet.add(val);
       if (this._mark(equivalentReactElementValue)) this.visitValueObject(equivalentReactElementValue);
       return (equivalentReactElementValue: any);
-    } else if (val instanceof ObjectValue && isReactProps(val)) {
+    } else if (val instanceof ObjectValue && isReactPropsObject(val)) {
       let equivalentReactPropsValue = this.residualReactElementVisitor.reactPropsEquivalenceSet.add(val);
       if (this._mark(equivalentReactPropsValue)) this.visitValueObject(equivalentReactPropsValue);
       return (equivalentReactPropsValue: any);

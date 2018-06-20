@@ -91,7 +91,7 @@ export function isReactElement(val: Value): boolean {
   return false;
 }
 
-export function isReactProps(val: Value): boolean {
+export function isReactPropsObject(val: Value): boolean {
   if (!(val instanceof ObjectValue)) {
     return false;
   }

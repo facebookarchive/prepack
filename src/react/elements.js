@@ -299,7 +299,7 @@ export function cloneElement(
 
   const setProp = (name: string, value: Value): void => {
     if (name !== "__self" && name !== "__source" && name !== "key" && name !== "ref") {
-      invariant(props instanceof ObjectValue || props instanceof AbstractObjectValue);
+      invariant(props instanceof ObjectValue);
       hardModifyReactObjectPropertyBinding(realm, props, name, value);
     }
   };
@@ -311,7 +311,7 @@ export function cloneElement(
   let ref = getProperty(realm, reactElement, "ref");
   let type = getProperty(realm, reactElement, "type");
 
-  if (config !== realm.intrinsics.null) {
+  if (!(config instanceof NullValue)) {
     let possibleKey = Get(realm, config, "key");
     if (possibleKey !== realm.intrinsics.null && possibleKey !== realm.intrinsics.undefined) {
       // if the config has been marked as having no partial key or ref and the possible key
