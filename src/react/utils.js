@@ -832,7 +832,7 @@ export function getValueFromFunctionCall(
   return completion;
 }
 
-function isEventProp(name: string): boolean {
+export function isEventProp(name: string): boolean {
   return name.length > 2 && name[0].toLowerCase() === "o" && name[1].toLowerCase() === "n";
 }
 
@@ -918,7 +918,12 @@ export function createInternalReactElement(
   return obj;
 }
 
-function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps: ObjectValue): void {
+function applyClonedTemporalAlias(
+  realm: Realm,
+  props: ObjectValue,
+  clonedObj: ObjectValue,
+  alreadyCloned?: Map<ObjectValue | AbstractObjectValue, ObjectValue | AbstractObjectValue> = new Map()
+): void {
   let temporalAlias = props.temporalAlias;
   invariant(temporalAlias !== undefined);
   if (temporalAlias.kind === "conditional") {
@@ -929,7 +934,18 @@ function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps:
   let temporalArgs = realm.temporalAliasArgs.get(temporalAlias);
   invariant(temporalArgs !== undefined);
   // replace the original props with the cloned one
-  let newTemporalArgs = temporalArgs.map(arg => (arg === props ? clonedProps : arg));
+  let newTemporalArgs = temporalArgs.map(arg => {
+    if (arg === props) {
+      return clonedObj;
+    } else if (arg instanceof FunctionValue || arg instanceof ArrayValue) {
+      return arg;
+    } else if (arg instanceof ObjectValue) {
+      debugger;
+      return cloneObject(realm, arg, alreadyCloned);
+    } else {
+      return arg;
+    }
+  });
 
   let temporalTo = AbstractValue.createTemporalFromBuildFunction(
     realm,
@@ -941,41 +957,61 @@ function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps:
     { skipInvariant: true }
   );
   invariant(temporalTo instanceof AbstractObjectValue);
-  invariant(clonedProps instanceof ObjectValue);
-  temporalTo.values = new ValuesDomain(clonedProps);
-  clonedProps.temporalAlias = temporalTo;
+  invariant(clonedObj instanceof ObjectValue);
+  temporalTo.values = new ValuesDomain(clonedObj);
+  clonedObj.temporalAlias = temporalTo;
   // Store the args for the temporal so we can easily clone
   // and reconstruct the temporal at another point, rather than
   // mutate the existing temporal
   realm.temporalAliasArgs.set(temporalTo, newTemporalArgs);
 }
 
-export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value): ObjectValue {
-  let clonedProps = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
-
-  for (let [propName, binding] of props.properties) {
-    if (binding && binding.descriptor && binding.descriptor.enumerable) {
-      if (newChildren !== undefined && propName === "children") {
-        Properties.Set(realm, clonedProps, propName, newChildren, true);
-      } else {
-        Properties.Set(realm, clonedProps, propName, getProperty(realm, props, propName), true);
+export function cloneObject(
+  realm: Realm,
+  obj: ObjectValue | AbstractObjectValue,
+  alreadyCloned?: Map<ObjectValue | AbstractObjectValue, ObjectValue | AbstractObjectValue> = new Map()
+): ObjectValue | AbstractObjectValue {
+  if (alreadyCloned.has(obj)) {
+    return alreadyCloned.get(obj);
+  }
+  if (obj instanceof ObjectValue) {
+    let clonedObj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+    alreadyCloned.set(obj, clonedObj);
+  
+    for (let [propName, binding] of obj.properties) {
+      if (binding && binding.descriptor && binding.descriptor.enumerable) {
+        Properties.Set(realm, clonedObj, propName, getProperty(realm, obj, propName), true);
       }
     }
+    if (obj.isPartialObject()) {
+      clonedObj.makePartial();
+    }
+    if (obj.isSimpleObject()) {
+      clonedObj.makeSimple();
+    }
+    if (obj.mightBeFinalObject()) {
+      obj.makeFinal();
+    }
+    if (obj.temporalAlias !== undefined) {
+      applyClonedTemporalAlias(realm, obj, clonedObj, alreadyCloned);
+    }
+    if (realm.react.propsWithNoPartialKeyOrRef.has(obj)) {
+      flagPropsWithNoPartialKeyOrRef(realm, clonedObj);
+    }
+    return clonedObj;
+  } else {
+    debugger;
   }
+}
 
-  if (props.isPartialObject()) {
-    clonedProps.makePartial();
+export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value): ObjectValue {
+  let clonedProps = cloneObject(realm, props);
+
+  if (newChildren) {
+    clonedProps.makeNotFinal();
+    Properties.Set(realm, clonedProps, "children", newChildren, true);
+    clonedProps.makeFinal();
   }
-  if (props.isSimpleObject()) {
-    clonedProps.makeSimple();
-  }
-  if (realm.react.propsWithNoPartialKeyOrRef.has(props)) {
-    flagPropsWithNoPartialKeyOrRef(realm, clonedProps);
-  }
-  if (props.temporalAlias !== undefined) {
-    applyClonedTemporalAlias(realm, props, clonedProps);
-  }
-  clonedProps.makeFinal();
   return clonedProps;
 }
 

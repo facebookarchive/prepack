@@ -15,6 +15,7 @@ import {
   AbstractValue,
   AbstractObjectValue,
   ArrayValue,
+  FunctionValue,
   NumberValue,
   ObjectValue,
   StringValue,
@@ -25,19 +26,91 @@ import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
 import {
   applyObjectAssignConfigsForReactElement,
+  cloneObject,
   createInternalReactElement,
   flagPropsWithNoPartialKeyOrRef,
   getProperty,
+  isEventProp,
   hasNoPartialKeyOrRef,
 } from "./utils.js";
 import * as t from "babel-types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 
+function deepTraverseAndFindOrDeleteFirstRenderProperties(
+  realm: Realm,
+  obj: ObjectValue | AbstractObjectValue,
+  shouldDelete: boolean,
+  alreadyVisited?: Set<AbstractObjectValue | ObjectValue> = new Set()
+): void | boolean {
+  if (obj instanceof FunctionValue || alreadyVisited.has(obj)) {
+    return;
+  }
+  alreadyVisited.add(obj);
+  if (obj instanceof ObjectValue) {
+    let temporalAlias = obj.temporalAlias;
+
+    for (let [propName, binding] of obj.properties) {
+      if (binding.descriptor === undefined) {
+        continue;
+      }
+      let propValue = getProperty(realm, obj, propName);
+
+      if (propName === "ref" || isEventProp(propName) || propValue instanceof FunctionValue) {
+        if (shouldDelete) {
+          let isFinal = obj.mightBeFinalObject();
+          if (isFinal) {
+            obj.makeNotFinal();
+          }
+          Properties.DeletePropertyOrThrow(realm, obj, propName);
+          if (isFinal) {
+            obj.makeFinal();
+          }
+        } else {
+          return true; // We found first render properties
+        }
+      }
+    }
+
+    if (temporalAlias !== undefined) {
+      let temporalArgs = realm.temporalAliasArgs.get(temporalAlias);
+
+      if (temporalArgs !== undefined) {
+        for (let temporalArg of temporalArgs) {
+          let foundFirstRenderProperties = deepTraverseAndFindOrDeleteFirstRenderProperties(
+            realm,
+            temporalArg,
+            shouldDelete,
+            alreadyVisited
+          );
+          if (foundFirstRenderProperties) {
+            return true;
+          }
+        }
+      }
+    }
+  } else if (obj instanceof AbstractObjectValue && !obj.values.isTop()) {
+    for (let element of obj.values.getElements()) {
+      let foundFirstRenderProperties = deepTraverseAndFindOrDeleteFirstRenderProperties(
+        realm,
+        element,
+        shouldDelete,
+        alreadyVisited
+      );
+      if (foundFirstRenderProperties) {
+        return true;
+      }
+    }
+  }
+}
+
 function sanitizeConfigObjectForFirstRender(
   realm: Realm,
   config: ObjectValue | AbstractObjectValue
 ): ObjectValue | AbstractObjectValue {
+  let needToCloneAndDelete = deepTraverseAndFindOrDeleteFirstRenderProperties(realm, config, false);
+  let clonedConfig = cloneObject(realm, config);
+  debugger;
   return config;
 }
 
