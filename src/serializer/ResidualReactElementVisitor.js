@@ -16,8 +16,9 @@ import { determineIfReactElementCanBeHoisted } from "../react/hoisting.js";
 import { traverseReactElement } from "../react/elements.js";
 import { canExcludeReactElementObjectProperty, getProperty, getReactSymbol } from "../react/utils.js";
 import invariant from "../invariant.js";
+import { ReactElementSet } from "../react/ReactElementSet.js";
+import { ReactPropsSet } from "../react/ReactPropsSet.js";
 import type { ReactOutputTypes } from "../options.js";
-import type { ReactSetKeyMap } from "../react/equivalence.js";
 
 export class ResidualReactElementVisitor {
   constructor(realm: Realm, residualHeapVisitor: ResidualHeapVisitor) {
@@ -25,20 +26,16 @@ export class ResidualReactElementVisitor {
     this.residualHeapVisitor = residualHeapVisitor;
     this.reactOutput = realm.react.output || "create-element";
     this.someReactElement = undefined;
-    this.reactElementRoot = new Map();
-    this.reactPropsRoot = new Map();
-    this.objectRoot = new Map();
-    this.arrayRoot = new Map();
+    this.reactElementEquivalenceSet = new ReactElementSet(realm, this);
+    this.reactPropsEquivalenceSet = new ReactPropsSet(realm, this);
   }
 
   realm: Realm;
   residualHeapVisitor: ResidualHeapVisitor;
   reactOutput: ReactOutputTypes;
   someReactElement: void | ObjectValue;
-  reactElementRoot: ReactSetKeyMap;
-  reactPropsRoot: ReactSetKeyMap;
-  objectRoot: ReactSetKeyMap;
-  arrayRoot: ReactSetKeyMap;
+  reactElementEquivalenceSet: ReactElementSet;
+  reactPropsEquivalenceSet: ReactPropsSet;
 
   visitReactElement(reactElement: ObjectValue): void {
     let reactElementData = this.realm.react.reactElements.get(reactElement);
@@ -92,19 +89,13 @@ export class ResidualReactElementVisitor {
   }
 
   withCleanEquivalenceSet(func: () => void) {
-    let reactElementRoot = this.reactElementRoot;
-    let reactPropsRoot = this.reactPropsRoot;
-    let objectRoot = this.objectRoot;
-    let arrayRoot = this.arrayRoot;
-    this.reactElementRoot = new Map();
-    this.reactPropsRoot = new Map();
-    this.objectRoot = new Map();
-    this.arrayRoot = new Map();
+    let oldReactElementEquivalenceSet = this.reactElementEquivalenceSet;
+    let oldReactPropsEquivalenceSet = this.reactPropsEquivalenceSet;
+    this.reactElementEquivalenceSet = new ReactElementSet(this.realm, this);
+    this.reactPropsEquivalenceSet = new ReactPropsSet(this.realm, this);
     func();
     // Cleanup
-    this.reactElementRoot = reactElementRoot;
-    this.reactPropsRoot = reactPropsRoot;
-    this.objectRoot = objectRoot;
-    this.arrayRoot = arrayRoot;
+    this.reactElementEquivalenceSet = oldReactElementEquivalenceSet;
+    this.reactPropsEquivalenceSet = oldReactPropsEquivalenceSet;
   }
 }

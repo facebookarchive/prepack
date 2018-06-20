@@ -65,7 +65,6 @@ import { Environment, To } from "../singletons.js";
 import { isReactElement, isReactProps, valueIsReactLibraryObject } from "../react/utils.js";
 import { ResidualReactElementVisitor } from "./ResidualReactElementVisitor.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
-import { addReactElement, addReactProps } from "../react/equivalence.js";
 
 export type Scope = FunctionValue | Generator;
 type BindingState = {|
@@ -996,32 +995,15 @@ export class ResidualHeapVisitor {
       this.postProcessValue(equivalentValue);
       return (equivalentValue: any);
     }
-    let { reactElementRoot, reactPropsRoot, objectRoot, arrayRoot } = this.residualReactElementVisitor;
     if (val instanceof ObjectValue && isReactElement(val)) {
       if (val.temporalAlias !== undefined) {
         return this.visitEquivalentValue(val.temporalAlias);
       }
-      let equivalentReactElementValue = addReactElement(
-        this.realm,
-        val,
-        this.equivalenceSet,
-        reactElementRoot,
-        reactPropsRoot,
-        objectRoot,
-        arrayRoot
-      );
+      let equivalentReactElementValue = this.residualReactElementVisitor.reactElementEquivalenceSet.add(val);
       if (this._mark(equivalentReactElementValue)) this.visitValueObject(equivalentReactElementValue);
       return (equivalentReactElementValue: any);
     } else if (val instanceof ObjectValue && isReactProps(val)) {
-      let equivalentReactPropsValue = addReactProps(
-        this.realm,
-        val,
-        this.equivalenceSet,
-        reactElementRoot,
-        reactPropsRoot,
-        objectRoot,
-        arrayRoot
-      );
+      let equivalentReactPropsValue = this.residualReactElementVisitor.reactPropsEquivalenceSet.add(val);
       if (this._mark(equivalentReactPropsValue)) this.visitValueObject(equivalentReactPropsValue);
       return (equivalentReactPropsValue: any);
     }
