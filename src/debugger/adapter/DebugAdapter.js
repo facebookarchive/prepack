@@ -116,7 +116,7 @@ class PrepackDebugSession extends DebugSession {
     this._registerMessageCallbacks();
     let launchArgs: PrepackLaunchArguments = {
       kind: "launch",
-      sourceFile: args.sourceFile,
+      sourceFiles: args.sourceFiles,
       prepackRuntime: args.prepackRuntime,
       prepackArguments: args.prepackArguments,
       debugInFilePath: inFilePath,
