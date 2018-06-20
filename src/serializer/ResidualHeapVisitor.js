@@ -602,6 +602,7 @@ export class ResidualHeapVisitor {
   }
 
   _visitBindingHelper(residualFunctionBinding: ResidualFunctionBinding) {
+    if (residualFunctionBinding.hasLeaked) return;
     let environment = residualFunctionBinding.declarativeEnvironmentRecord;
     invariant(environment !== null);
     if (residualFunctionBinding.value === undefined) {

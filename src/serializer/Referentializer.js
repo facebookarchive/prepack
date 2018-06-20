@@ -217,8 +217,6 @@ export class Referentializer {
     invariant(residualBinding.hasLeaked);
     // When simpleClosures is enabled, then space for captured mutable bindings is allocated upfront.
     let serializedBindingId = t.identifier(this._leakedNameGenerator.generate(residualBinding.name));
-    let serializedValue = residualBinding.serializedValue;
-    invariant(serializedValue);
     let scope = this._getSerializedBindingScopeInstance(residualBinding);
     scope.leakedIds.push(serializedBindingId);
     residualBinding.serializedValue = residualBinding.serializedUnscopedLocation = serializedBindingId;

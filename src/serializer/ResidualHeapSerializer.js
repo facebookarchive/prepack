@@ -673,12 +673,15 @@ export class ResidualHeapSerializer {
       let value = residualFunctionBinding.value;
       invariant(residualFunctionBinding.declarativeEnvironmentRecord);
 
-      residualFunctionBinding.serializedValue = value !== undefined ? this.serializeValue(value) : voidExpression;
       if (residualFunctionBinding.hasLeaked) {
         this.referentializer.referentializeLeakedBinding(residualFunctionBinding);
-      } else if (residualFunctionBinding.modified) {
-        this.referentializer.referentializeModifiedBinding(residualFunctionBinding);
+      } else {
+        residualFunctionBinding.serializedValue = value !== undefined ? this.serializeValue(value) : voidExpression;
+        if (residualFunctionBinding.modified) {
+          this.referentializer.referentializeModifiedBinding(residualFunctionBinding);
+        }
       }
+
       if (value !== undefined && value.mightBeObject()) {
         // Increment ref count one more time to ensure that this object will be assigned a unique id.
         // This ensures that only once instance is created across all possible residual function invocations.
