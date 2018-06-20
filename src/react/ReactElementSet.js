@@ -45,7 +45,6 @@ export class ReactElementSet extends ReactSet {
     currentMap = this._getKey("props", currentMap, visitedValues);
     let props = this._getEquivalentPropertyValue(reactElement, "props");
     result = this._getValue(props, currentMap, visitedValues);
-    currentMap = result.map;
 
     if (result.value === null) {
       result.value = reactElement;

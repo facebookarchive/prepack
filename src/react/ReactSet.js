@@ -115,6 +115,12 @@ export class ReactSet {
       result = this._getValue(prop, currentMap, visitedValues);
       currentMap = result.map;
     }
+
+    if (object.temporalAlias !== undefined) {
+      currentMap = this._getKey("temporalAlias", currentMap, visitedValues);
+      result = this._getValue(object.temporalAlias, currentMap, visitedValues);
+    }
+
     if (result === undefined) {
       if (object.temporalAlias === undefined) {
         return object;

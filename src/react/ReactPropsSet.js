@@ -34,6 +34,11 @@ export class ReactPropsSet extends ReactSet {
       currentMap = result.map;
     }
 
+    if (props.temporalAlias !== undefined) {
+      currentMap = this._getKey("temporalAlias", currentMap, visitedValues);
+      result = this._getValue(props.temporalAlias, currentMap, visitedValues);
+    }
+
     if (result === undefined) {
       if (props.temporalAlias === undefined) {
         return this.emptyObject;
