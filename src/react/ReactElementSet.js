@@ -12,39 +12,40 @@
 import { Realm } from "../realm.js";
 import { ObjectValue, Value } from "../values/index.js";
 import invariant from "../invariant.js";
-import { type ReactSetKeyMap, ReactSet } from "./ReactSet.js";
-import { ResidualReactElementVisitor } from "../serializer/ResidualReactElementVisitor.js";
+import { ReactEquivalenceSet } from "./ReactEquivalenceSet.js";
 
-export class ReactElementSet extends ReactSet {
-  constructor(realm: Realm, residualReactElementVisitor: ResidualReactElementVisitor) {
-    super(realm, residualReactElementVisitor);
-    this.reactElementRoot = new Map();
+export class ReactElementSet {
+  constructor(realm: Realm, reactEquivalenceSet: ReactEquivalenceSet) {
+    this.realm = realm;
+    this.reactEquivalenceSet = reactEquivalenceSet;
   }
-  reactElementRoot: ReactSetKeyMap;
+  realm: Realm;
+  reactEquivalenceSet: ReactEquivalenceSet;
 
   add(reactElement: ObjectValue, visitedValues: Set<Value> | void): ObjectValue {
     if (!visitedValues) visitedValues = new Set();
-    let currentMap = this.reactElementRoot;
+    let reactEquivalenceSet = this.reactEquivalenceSet;
+    let currentMap = reactEquivalenceSet.reactElementRoot;
 
     // type
-    currentMap = this._getKey("type", currentMap, visitedValues);
-    let type = this._getEquivalentPropertyValue(reactElement, "type");
-    let result = this._getValue(type, currentMap, visitedValues);
+    currentMap = reactEquivalenceSet.getKey("type", currentMap, visitedValues);
+    let type = reactEquivalenceSet.getEquivalentPropertyValue(reactElement, "type");
+    let result = reactEquivalenceSet.getValue(type, currentMap, visitedValues);
     currentMap = result.map;
     // key
-    currentMap = this._getKey("key", currentMap, visitedValues);
-    let key = this._getEquivalentPropertyValue(reactElement, "key");
-    result = this._getValue(key, currentMap, visitedValues);
+    currentMap = reactEquivalenceSet.getKey("key", currentMap, visitedValues);
+    let key = reactEquivalenceSet.getEquivalentPropertyValue(reactElement, "key");
+    result = reactEquivalenceSet.getValue(key, currentMap, visitedValues);
     currentMap = result.map;
     // ref
-    currentMap = this._getKey("ref", currentMap, visitedValues);
-    let ref = this._getEquivalentPropertyValue(reactElement, "ref");
-    result = this._getValue(ref, currentMap, visitedValues);
+    currentMap = reactEquivalenceSet.getKey("ref", currentMap, visitedValues);
+    let ref = reactEquivalenceSet.getEquivalentPropertyValue(reactElement, "ref");
+    result = reactEquivalenceSet.getValue(ref, currentMap, visitedValues);
     currentMap = result.map;
     // props
-    currentMap = this._getKey("props", currentMap, visitedValues);
-    let props = this._getEquivalentPropertyValue(reactElement, "props");
-    result = this._getValue(props, currentMap, visitedValues);
+    currentMap = reactEquivalenceSet.getKey("props", currentMap, visitedValues);
+    let props = reactEquivalenceSet.getEquivalentPropertyValue(reactElement, "props");
+    result = reactEquivalenceSet.getValue(props, currentMap, visitedValues);
 
     if (result.value === null) {
       result.value = reactElement;

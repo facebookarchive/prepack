@@ -12,35 +12,39 @@
 import { Realm } from "../realm.js";
 import { ObjectValue, Value } from "../values/index.js";
 import invariant from "../invariant.js";
-import { type ReactSetKeyMap, ReactSet } from "./ReactSet.js";
-import { ResidualReactElementVisitor } from "../serializer/ResidualReactElementVisitor.js";
+import { ReactEquivalenceSet, temporalAliasSymbol } from "./ReactEquivalenceSet.js";
 
-export class ReactPropsSet extends ReactSet {
-  constructor(realm: Realm, residualReactElementVisitor: ResidualReactElementVisitor) {
-    super(realm, residualReactElementVisitor);
-    this.reactPropsRoot = new Map();
+export class ReactPropsSet {
+  constructor(realm: Realm, reactEquivalenceSet: ReactEquivalenceSet) {
+    this.realm = realm;
+    this.reactEquivalenceSet = reactEquivalenceSet;
   }
-  reactPropsRoot: ReactSetKeyMap;
+  realm: Realm;
+  reactEquivalenceSet: ReactEquivalenceSet;
 
   add(props: ObjectValue, visitedValues: Set<Value> | void): ObjectValue {
     if (!visitedValues) visitedValues = new Set();
-    let currentMap = this.reactPropsRoot;
+    let reactEquivalenceSet = this.reactEquivalenceSet;
+    let currentMap = reactEquivalenceSet.reactPropsRoot;
     let result;
 
     for (let [propName] of props.properties) {
-      currentMap = this._getKey(propName, currentMap, visitedValues);
-      let prop = this._getEquivalentPropertyValue(props, propName);
-      result = this._getValue(prop, currentMap, visitedValues);
+      currentMap = reactEquivalenceSet.getKey(propName, currentMap, visitedValues);
+      let prop = reactEquivalenceSet.getEquivalentPropertyValue(props, propName);
+      result = reactEquivalenceSet.getValue(prop, currentMap, visitedValues);
       currentMap = result.map;
     }
     let temporalAlias = props.temporalAlias;
 
     if (temporalAlias !== undefined) {
-      currentMap = this._getKey("temporalAlias", currentMap, visitedValues);
-      result = this._getValue(temporalAlias, currentMap, visitedValues);
+      // Snapshotting uses temporalAlias to on ObjectValues, so if
+      // they have a temporalAlias then we need to treat it as a field
+      currentMap = reactEquivalenceSet.getKey(temporalAliasSymbol, currentMap, visitedValues);
+      result = reactEquivalenceSet.getValue(temporalAlias, currentMap, visitedValues);
     }
 
     if (result === undefined) {
+      // If we have a temporalAlias, we can never return an empty object
       if (temporalAlias === undefined && this.realm.react.emptyObject !== undefined) {
         return this.realm.react.emptyObject;
       }

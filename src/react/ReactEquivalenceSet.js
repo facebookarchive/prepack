@@ -27,7 +27,7 @@ import { ResidualReactElementVisitor } from "../serializer/ResidualReactElementV
 export type ReactSetValueMapKey = Value | number | string;
 export type ReactSetValueMap = Map<ReactSetValueMapKey, ReactSetNode>;
 
-export type ReactSetKeyMapKey = string | number | SymbolValue;
+export type ReactSetKeyMapKey = string | number | Symbol | SymbolValue;
 export type ReactSetKeyMap = Map<ReactSetKeyMapKey, ReactSetValueMap>;
 
 export type ReactSetNode = {
@@ -35,7 +35,9 @@ export type ReactSetNode = {
   value: ObjectValue | ArrayValue | null,
 };
 
-// ReactSet keeps records around of the values
+export const temporalAliasSymbol = Symbol("temporalAlias");
+
+// ReactEquivalenceSet keeps records around of the values
 // of ReactElement/JSX nodes so we can return the same immutable values
 // where possible, i.e. <div /> === <div />
 //
@@ -44,16 +46,20 @@ export type ReactSetNode = {
 // each property key as a map, and then from that map, each value as a map. The value
 // then links to the subsequent property/symbol in the object. This approach ensures insertion
 // is maintained through all objects.
-export class ReactSet {
+export class ReactEquivalenceSet {
   constructor(realm: Realm, residualReactElementVisitor: ResidualReactElementVisitor) {
     this.realm = realm;
     this.residualReactElementVisitor = residualReactElementVisitor;
     this.objectRoot = new Map();
     this.arrayRoot = new Map();
+    this.reactElementRoot = new Map();
+    this.reactPropsRoot = new Map();
   }
   realm: Realm;
   objectRoot: ReactSetKeyMap;
   arrayRoot: ReactSetKeyMap;
+  reactElementRoot: ReactSetKeyMap;
+  reactPropsRoot: ReactSetKeyMap;
   residualReactElementVisitor: ResidualReactElementVisitor;
 
   _createNode(): ReactSetNode {
@@ -63,14 +69,14 @@ export class ReactSet {
     };
   }
 
-  _getKey(key: ReactSetKeyMapKey, map: ReactSetKeyMap, visitedValues: Set<Value>): ReactSetValueMap {
+  getKey(key: ReactSetKeyMapKey, map: ReactSetKeyMap, visitedValues: Set<Value>): ReactSetValueMap {
     if (!map.has(key)) {
       map.set(key, new Map());
     }
     return ((map.get(key): any): ReactSetValueMap);
   }
 
-  _getValue(val: ReactSetValueMapKey, map: ReactSetValueMap, visitedValues: Set<Value>): ReactSetNode {
+  getValue(val: ReactSetValueMapKey, map: ReactSetValueMap, visitedValues: Set<Value>): ReactSetNode {
     if (val instanceof StringValue || val instanceof NumberValue) {
       val = val.value;
     } else if (val instanceof AbstractValue) {
@@ -98,25 +104,28 @@ export class ReactSet {
     let result;
 
     for (let [propName] of object.properties) {
-      currentMap = this._getKey(propName, currentMap, visitedValues);
-      let prop = this._getEquivalentPropertyValue(object, propName);
-      result = this._getValue(prop, currentMap, visitedValues);
+      currentMap = this.getKey(propName, currentMap, visitedValues);
+      let prop = this.getEquivalentPropertyValue(object, propName);
+      result = this.getValue(prop, currentMap, visitedValues);
       currentMap = result.map;
     }
     for (let [symbol] of object.symbols) {
-      currentMap = this._getKey(symbol, currentMap, visitedValues);
+      currentMap = this.getKey(symbol, currentMap, visitedValues);
       let prop = getProperty(this.realm, object, symbol);
-      result = this._getValue(prop, currentMap, visitedValues);
+      result = this.getValue(prop, currentMap, visitedValues);
       currentMap = result.map;
     }
     let temporalAlias = object.temporalAlias;
 
     if (temporalAlias !== undefined) {
-      currentMap = this._getKey("temporalAlias", currentMap, visitedValues);
-      result = this._getValue(temporalAlias, currentMap, visitedValues);
+      // Snapshotting uses temporalAlias to on ObjectValues, so if
+      // they have a temporalAlias then we need to treat it as a field
+      currentMap = this.getKey(temporalAliasSymbol, currentMap, visitedValues);
+      result = this.getValue(temporalAlias, currentMap, visitedValues);
     }
 
     if (result === undefined) {
+      // If we have a temporalAlias, we can never return an empty object
       if (temporalAlias === undefined && this.realm.react.emptyObject !== undefined) {
         return this.realm.react.emptyObject;
       }
@@ -140,9 +149,9 @@ export class ReactSet {
     let result;
 
     for (let i = 0; i < length; i++) {
-      currentMap = this._getKey(i, currentMap, visitedValues);
-      let element = this._getEquivalentPropertyValue(array, "" + i);
-      result = this._getValue(element, currentMap, visitedValues);
+      currentMap = this.getKey(i, currentMap, visitedValues);
+      let element = this.getEquivalentPropertyValue(array, "" + i);
+      result = this.getValue(element, currentMap, visitedValues);
       currentMap = result.map;
     }
     if (result === undefined) {
@@ -157,7 +166,7 @@ export class ReactSet {
     return result.value;
   }
 
-  _getEquivalentPropertyValue(object: ObjectValue, propName: string): Value {
+  getEquivalentPropertyValue(object: ObjectValue, propName: string): Value {
     let prop = getProperty(this.realm, object, propName);
     let isFinal = object.mightBeFinalObject();
     let equivalentProp;
