@@ -349,7 +349,7 @@ class PrepackDebugSession extends DebugSession {
     // All responses that involve the Adapter Channel should only be invoked
     // after the channel has been created. If this ordering is perturbed,
     // there was likely a change in the protocol implementation by Nuclide.
-    if (this._adapterChannel !== undefined) {
+    if (this._adapterChannel === undefined) {
       throw Error(`Adapter Channel in Debugger is being used before it has been created. Caused by ${callingRequest}.`);
     }
   }
