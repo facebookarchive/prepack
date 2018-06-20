@@ -740,9 +740,6 @@ export class JoinImplementation {
       return [g, rewritten];
     };
     let join = (b: Binding, b1: void | BindingEntry, b2: void | BindingEntry) => {
-      // cannot join two const bindings
-      invariant(b.mutable === true);
-
       let l1 = b1 === undefined ? b.hasLeaked : b1.hasLeaked;
       let l2 = b2 === undefined ? b.hasLeaked : b2.hasLeaked;
       let v1 = b1 === undefined ? b.value : b1.value;
