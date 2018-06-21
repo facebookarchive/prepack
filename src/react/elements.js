@@ -34,13 +34,13 @@ import {
   hardModifyReactObjectPropertyBinding,
   hasNoPartialKeyOrRef,
   isEventProp,
-  transferSafePropertiesToReomveFromObjectsToProps,
+  transferSafePropertiesToRemoveFromObjectsToProps,
 } from "./utils.js";
 import * as t from "babel-types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 
-function canSafelyRemovePropertyDuringSerialization(realm: Realm, obj: ObjectValue, propName: string): void {
+function markToSafelyRemovePropertyDuringSerialization(realm: Realm, obj: ObjectValue, propName: string): void {
   let propsToRemove = realm.react.objectsWithPropsToRemove.get(obj);
 
   if (propsToRemove === undefined) {
@@ -74,7 +74,7 @@ function deepTraverseAndFindOrDeleteFirstRenderProperties(
         if (shouldRemoveProps) {
           // We can do this, because we created the object as a fresh clone
           invariant(obj instanceof ObjectValue); // Make Flow happy
-          canSafelyRemovePropertyDuringSerialization(realm, obj, propName);
+          markToSafelyRemovePropertyDuringSerialization(realm, obj, propName);
         } else {
           return true; // We found first render properties
         }
@@ -153,7 +153,7 @@ function createPropsObject(
   }
 
   let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  transferSafePropertiesToReomveFromObjectsToProps(
+  transferSafePropertiesToRemoveFromObjectsToProps(
     realm,
     defaultProps !== realm.intrinsics.undefined ? [config, defaultProps] : [config],
     props
@@ -232,7 +232,7 @@ function createPropsObject(
     args.push(config);
     // create a new props object that will be the target of the Object.assign
     props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-    transferSafePropertiesToReomveFromObjectsToProps(
+    transferSafePropertiesToRemoveFromObjectsToProps(
       realm,
       defaultProps !== realm.intrinsics.undefined ? [config, defaultProps] : [config],
       props
@@ -415,7 +415,7 @@ export function cloneReactElement(
   children: void | Value
 ): ObjectValue {
   let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  transferSafePropertiesToReomveFromObjectsToProps(realm, [config], props);
+  transferSafePropertiesToRemoveFromObjectsToProps(realm, [config], props);
   realm.react.reactProps.add(props);
 
   const setProp = (name: string, value: Value): void => {

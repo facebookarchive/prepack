@@ -1003,7 +1003,7 @@ export function cloneObject(
       clonedObj.makeFinal();
     }
     if (realm.react.reactProps.has(obj)) {
-      transferSafePropertiesToReomveFromObjectsToProps(realm, [obj], clonedObj);
+      transferSafePropertiesToRemoveFromObjectsToProps(realm, [obj], clonedObj);
       realm.react.reactProps.add(clonedObj);
     }
     for (let [propName, binding] of obj.properties) {
@@ -1058,7 +1058,7 @@ export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value
   if (newChildren) {
     hardModifyReactObjectPropertyBinding(realm, clonedProps, "children", newChildren);
   }
-  transferSafePropertiesToReomveFromObjectsToProps(realm, [props], clonedProps);
+  transferSafePropertiesToRemoveFromObjectsToProps(realm, [props], clonedProps);
   clonedProps.makeFinal();
   realm.react.reactProps.add(clonedProps);
   return clonedProps;
@@ -1223,7 +1223,7 @@ export function hardModifyReactObjectPropertyBinding(
   object.properties.set(propName, newBinding);
 }
 
-export function transferSafePropertiesToReomveFromObjectsToProps(
+export function transferSafePropertiesToRemoveFromObjectsToProps(
   realm: Realm,
   objs: Array<ObjectValue>,
   props: ObjectValue
