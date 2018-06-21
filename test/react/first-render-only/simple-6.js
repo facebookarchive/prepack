@@ -2,6 +2,14 @@ var React = require('react');
 // the JSX transform converts to React, so we need to add it back in
 this['React'] = React;
 
+class Foo extends React.Component {
+  render() {
+    return null;
+  }
+}
+
+Foo.__reactCompilerDoNotOptimize = true;
+
 function App(props) {
   function fn() {
     // should not be here
@@ -10,15 +18,16 @@ function App(props) {
     return props.bar(fn);
   }
   var data = Object.assign({}, {x: 1}, props, {
+    lol: true,
     onClick: fn,
     ref: fn2,
-    someAbstractThing: function() {
+    someFunc: function() {
       // do something
     }
   });
-  data.someAbstractThing();
+  data.someFunc();
   return (
-    <div {...data} />
+    <div {...data}><Foo {...data}/></div>
   );
 }
 
@@ -30,8 +39,8 @@ App.getTrials = function(renderer, Root, data, isCompiled) {
   renderer.update(<Root bar={func} />);
   let results = [];
   results.push(['simple render', renderer.toJSON()]);
-  if (isCompiled === true && val !== undefined) {
-    throw new Error("Ref was found on <div> node");
+  if (isCompiled === true && val === undefined) {
+    throw new Error("Ref was not found on <Foo> node");
   }
   return results;
 };

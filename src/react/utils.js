@@ -926,11 +926,11 @@ export function createInternalReactElement(
   Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
   obj.makeFinal();
 
-  realm.react.reactElements.add(obj); 
+  realm.react.reactElements.add(obj);
   // Sanity check to ensure no bugs have crept in
   invariant(
     realm.react.reactProps.has(props) && props.mightBeFinalObject(),
-    "React props object is not correctly setup"
+    "React props object as not correctly setup"
   );
   return obj;
 }
@@ -954,9 +954,10 @@ function applyClonedTemporalAlias(
   let newTemporalArgs = temporalArgs.map(arg => {
     if (arg === props) {
       return clonedObj;
-    } else if ((arg.constructor === ObjectValue || arg instanceof AbstractObjectValue) && !arg.isIntrinsic()) {
-      debugger;
-      return cloneObject(realm, arg, alreadyCloned);
+    } else if (arg.constructor === ObjectValue && !arg.isIntrinsic()) {
+      return cloneObject(realm, arg, true, alreadyCloned);
+    } else if (arg instanceof AbstractObjectValue && !arg.values.isTop()) {
+      return cloneObject(realm, arg, true, alreadyCloned);
     } else {
       return arg;
     }
@@ -984,6 +985,7 @@ function applyClonedTemporalAlias(
 export function cloneObject(
   realm: Realm,
   obj: ObjectValue | AbstractObjectValue,
+  cloneTemporalAlias: boolean,
   alreadyCloned?: Map<ObjectValue | AbstractObjectValue, ObjectValue | AbstractObjectValue> = new Map()
 ): ObjectValue | AbstractObjectValue {
   if (alreadyCloned.has(obj)) {
@@ -1015,7 +1017,7 @@ export function cloneObject(
     if (obj.isSimpleObject()) {
       clonedObj.makeSimple();
     }
-    if (obj.temporalAlias !== undefined) {
+    if (cloneTemporalAlias && obj.temporalAlias !== undefined) {
       applyClonedTemporalAlias(realm, obj, clonedObj, alreadyCloned);
     }
     if (realm.react.propsWithNoPartialKeyOrRef.has(obj)) {
@@ -1023,12 +1025,28 @@ export function cloneObject(
     }
     return clonedObj;
   } else {
-    debugger;
+    // Clone a snapshot form Object.assign
+    if (realm.temporalAliasArgs.has(obj)) {
+      let temporalArgs = realm.temporalAliasArgs.get(obj);
+      if (temporalArgs !== undefined) {
+        // Clone a snapshot
+        if (temporalArgs.length === 1) {
+          let clonedTemplate = cloneObject(realm, temporalArgs[0], false, alreadyCloned);
+          let clonedAbstractObject = clonedTemplate.getSnapshot();
+          return clonedAbstractObject;
+        } else {
+          return obj;
+        }
+      }
+    } else if (obj.isIntrinsic() && obj.kind !== undefined) {
+      return obj;
+    }
+    invariant(false, "TODO: handle cloning of more abstract object value types");
   }
 }
 
 export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value): ObjectValue {
-  let clonedProps = cloneObject(realm, props);
+  let clonedProps = cloneObject(realm, props, true);
 
   if (newChildren) {
     hardModifyReactObjectPropertyBinding(realm, clonedProps, "children", newChildren);
@@ -1076,9 +1094,7 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
                 Properties.Set(realm, to, propName, Get(realm, source, propName), true);
               }
             }
-            let snapshot = source.getSnapshot();
-            delayedSources.push(snapshot);
-            source.temporalAlias = snapshot;
+            delayedSources.push(source.getSnapshot());
           } else {
             // if we are dealing with an abstract object or one that is partial, then
             // we don't try and copy its properties over as there's no guarantee they are
@@ -1088,8 +1104,8 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
               delayedSources.push(source.args[0]);
             } else {
               let snapshot = source.getSnapshot();
-              delayedSources.push(snapshot);
               source.temporalAlias = snapshot;
+              delayedSources.push(snapshot);
             }
             // if to has properties, we better remove them because after the temporal call to Object.assign we don't know their values anymore
             if (to.hasStringOrSymbolProperties()) {

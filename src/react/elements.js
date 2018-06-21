@@ -45,11 +45,11 @@ function deepTraverseAndFindOrDeleteFirstRenderProperties(
   shouldDelete: boolean,
   alreadyVisited?: Set<AbstractObjectValue | ObjectValue> = new Set()
 ): boolean {
-  if (obj instanceof FunctionValue || alreadyVisited.has(obj) || obj.isIntrinsic()) {
+  if (obj instanceof FunctionValue || alreadyVisited.has(obj)) {
     return false;
   }
   alreadyVisited.add(obj);
-  if (obj.constructor === ObjectValue) {
+  if (obj.constructor === ObjectValue && !obj.isIntrinsic()) {
     let temporalAlias = obj.temporalAlias;
 
     for (let [propName, binding] of obj.properties) {
@@ -114,7 +114,7 @@ function sanitizeReactElementConfigObjectForFirstRender(
 ): ObjectValue | AbstractObjectValue {
   let needToCloneAndDelete = deepTraverseAndFindOrDeleteFirstRenderProperties(realm, config, false);
   if (needToCloneAndDelete) {
-    let clonedConfig = cloneObject(realm, config);
+    let clonedConfig = cloneObject(realm, config, true);
     deepTraverseAndFindOrDeleteFirstRenderProperties(realm, clonedConfig, true);
     return clonedConfig;
   }

@@ -10,28 +10,37 @@ function App(props) {
     return props.bar(fn);
   }
   var data = Object.assign({}, {x: 1}, props, {
+    lol: true,
     onClick: fn,
     ref: fn2,
-    someAbstractThing: function() {
-      // do something
-    }
   });
-  data.someAbstractThing();
+  props.abstractFunc(data);
   return (
     <div {...data} />
   );
 }
 
 App.getTrials = function(renderer, Root, data, isCompiled) {
+  let passed = false;
+  function abstractFunc(_val) {
+    if (_val && _val.lol === true && _val.onClick !== undefined && _val.ref !== undefined) {
+      passed = true;
+    }
+  }
   let val;
   function func(_val) {
     val = _val;
   }
-  renderer.update(<Root bar={func} />);
+  renderer.update(<Root abstractFunc={abstractFunc} bar={func} />);
   let results = [];
   results.push(['simple render', renderer.toJSON()]);
-  if (isCompiled === true && val !== undefined) {
-    throw new Error("Ref was found on <div> node");
+  if (isCompiled === true) {
+    if (val !== undefined) {
+      throw new Error("Ref was found on <div> node");
+    }
+    if (!passed) {
+      throw new Error("The object with lol, onClick and ref was stripped on the wrong object");
+    }
   }
   return results;
 };

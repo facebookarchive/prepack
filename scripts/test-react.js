@@ -219,8 +219,8 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     let { getTrials: getTrialsA, independent } = A;
     let { getTrials: getTrialsB } = B;
     // Run tests that assert the rendered output matches.
-    let resultA = getTrialsA(rendererA, A, data);
-    let resultB = independent ? getTrialsB(rendererB, B, data) : getTrialsA(rendererB, B, data);
+    let resultA = getTrialsA(rendererA, A, data, false);
+    let resultB = independent ? getTrialsB(rendererB, B, data) : getTrialsA(rendererB, B, data, true);
 
     // The test has returned many values for us to check
     for (let i = 0; i < resultA.length; i++) {
@@ -925,19 +925,24 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-2.js", true);
       });
 
-      it.only("Simple #3", async () => {
+      it("Simple #3", async () => {
         await runTest(directory, "simple-3.js", true);
       });
 
-      // Should be refined in a follow up PR to check for
-      // functions and keys on deep referenced objects linking
-      // to host components
-      it.only("Simple #4", async () => {
+      it("Simple #4", async () => {
         await runTest(directory, "simple-4.js", true);
       });
 
-      it.only("Simple #5", async () => {
+      it("Simple #5", async () => {
         await runTest(directory, "simple-5.js", true);
+      });
+
+      it("Simple #6", async () => {
+        await runTest(directory, "simple-6.js", true);
+      });
+
+      it("Simple #7", async () => {
+        await runTest(directory, "simple-7.js", true);
       });
 
       it("componentWillMount", async () => {

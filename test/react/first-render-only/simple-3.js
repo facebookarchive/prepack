@@ -1,7 +1,6 @@
 var React = require('react');
 // the JSX transform converts to React, so we need to add it back in
 this['React'] = React;
-window.isOptimizedForFirstRender = false;
 
 function App(props) {
   function fn() {
@@ -15,7 +14,7 @@ function App(props) {
   );
 }
 
-App.getTrials = function(renderer, Root) {
+App.getTrials = function(renderer, Root, data, isCompiled) {
   let val;
   function func(_val) {
     val = _val;
@@ -23,15 +22,14 @@ App.getTrials = function(renderer, Root) {
   renderer.update(<Root bar={func} />);
   let results = [];
   results.push(['simple render', renderer.toJSON()]);
-  if (window.isOptimizedForFirstRender === true && val !== undefined) {
-    throw new Error("Ref was found! :(");
+  if (isCompiled === true && val !== undefined) {
+    throw new Error("Ref was found on <div> node");
   }
   return results;
 };
 
 
 if (this.__optimizeReactComponentTree) {
-  window.isOptimizedForFirstRender = true;
   __optimizeReactComponentTree(App, {
     firstRenderOnly: true,
   });
