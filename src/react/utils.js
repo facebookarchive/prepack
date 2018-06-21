@@ -934,7 +934,7 @@ export function createInternalReactElement(
   // Sanity check to ensure no bugs have crept in
   invariant(
     realm.react.reactProps.has(props) && props.mightBeFinalObject(),
-    "React props object as not correctly setup"
+    "React props object are not correctly setup"
   );
   return obj;
 }
