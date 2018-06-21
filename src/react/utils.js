@@ -1007,7 +1007,7 @@ export function clonePropsOrConfigLikeObject(
   if (obj instanceof ObjectValue) {
     let clonedObj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
     alreadyCloned.set(obj, clonedObj);
-    let isFinalObject = obj.mightBeFinalObject() && !obj.mightBeFinalObject();
+    let isFinalObject = obj.mightBeFinalObject() && !obj.mightNotBeFinalObject();
 
     if (isFinalObject) {
       clonedObj.makeFinal();
@@ -1080,6 +1080,10 @@ export function clonePropsOrConfigLikeObject(
         }
       }
     } else if (obj.isIntrinsic() && obj.kind !== undefined) {
+      return obj;
+    } else if (obj.kind === "conditional") {
+      // TODO: This hasn't been cloned properly, need to deal in a follow up PR
+      // as it might be a slightly complex task
       return obj;
     }
     invariant(false, "TODO: handle cloning of more abstract object value types");
