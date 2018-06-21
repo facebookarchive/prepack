@@ -934,6 +934,11 @@ export function createInternalReactElement(
   let firstRenderOnly = createdDuringReconcilation ? activeReconciler.componentTreeConfig.firstRenderOnly : false;
 
   realm.react.reactElements.set(obj, { createdDuringReconcilation, firstRenderOnly });
+  // Sanity check to ensure no bugs have crept in
+  invariant(
+    realm.react.reactProps.has(props) && props.mightBeFinalObject(),
+    "React props object as not correctly setup"
+  );
   return obj;
 }
 
