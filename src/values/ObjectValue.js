@@ -567,6 +567,9 @@ export default class ObjectValue extends ConcreteValue {
       // The original object might be a React props object, thus
       // if it is, we need to ensure we mark it with the same rules
       if (realm.react.enabled && realm.react.reactProps.has(this)) {
+        // This object might have been a snapshot from a props object.
+        // In which case, it might have some safe properties we can remove
+        // in first render mode
         transferSafePropertiesToRemoveFromObjectsToProps(realm, [this], template);
         realm.react.reactProps.add(template);
       }
