@@ -930,7 +930,7 @@ export function createInternalReactElement(
   // Sanity check to ensure no bugs have crept in
   invariant(
     realm.react.reactProps.has(props) && props.mightBeFinalObject(),
-    "React props object as not correctly setup"
+    "React props object is not correctly setup"
   );
   return obj;
 }
@@ -955,6 +955,7 @@ function applyClonedTemporalAlias(
     if (arg === props) {
       return clonedObj;
     } else if (arg.constructor === ObjectValue && !arg.isIntrinsic()) {
+      invariant(arg instanceof ObjectValue); // Make Flow happy
       return cloneObject(realm, arg, true, alreadyCloned);
     } else if (arg instanceof AbstractObjectValue && !arg.values.isTop()) {
       return cloneObject(realm, arg, true, alreadyCloned);
@@ -989,7 +990,9 @@ export function cloneObject(
   alreadyCloned?: Map<ObjectValue | AbstractObjectValue, ObjectValue | AbstractObjectValue> = new Map()
 ): ObjectValue | AbstractObjectValue {
   if (alreadyCloned.has(obj)) {
-    return alreadyCloned.get(obj);
+    let _obj = alreadyCloned.get(obj);
+    invariant(_obj instanceof ObjectValue || _obj instanceof AbstractObjectValue);
+    return _obj;
   }
   if (obj instanceof ObjectValue) {
     let clonedObj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
@@ -1031,7 +1034,9 @@ export function cloneObject(
       if (temporalArgs !== undefined) {
         // Clone a snapshot
         if (temporalArgs.length === 1) {
-          let clonedTemplate = cloneObject(realm, temporalArgs[0], false, alreadyCloned);
+          let temporalArg = temporalArgs[0];
+          invariant(temporalArg instanceof ObjectValue);
+          let clonedTemplate = cloneObject(realm, temporalArg, false, alreadyCloned);
           let clonedAbstractObject = clonedTemplate.getSnapshot();
           return clonedAbstractObject;
         } else {
@@ -1047,6 +1052,7 @@ export function cloneObject(
 
 export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value): ObjectValue {
   let clonedProps = cloneObject(realm, props, true);
+  invariant(clonedProps instanceof ObjectValue);
 
   if (newChildren) {
     hardModifyReactObjectPropertyBinding(realm, clonedProps, "children", newChildren);
@@ -1094,7 +1100,9 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
                 Properties.Set(realm, to, propName, Get(realm, source, propName), true);
               }
             }
-            delayedSources.push(source.getSnapshot());
+            let snapshot = source.getSnapshot();
+            delayedSources.push(snapshot);
+            source.temporalAlias = snapshot;
           } else {
             // if we are dealing with an abstract object or one that is partial, then
             // we don't try and copy its properties over as there's no guarantee they are
@@ -1104,8 +1112,8 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
               delayedSources.push(source.args[0]);
             } else {
               let snapshot = source.getSnapshot();
-              source.temporalAlias = snapshot;
               delayedSources.push(snapshot);
+              source.temporalAlias = snapshot;
             }
             // if to has properties, we better remove them because after the temporal call to Object.assign we don't know their values anymore
             if (to.hasStringOrSymbolProperties()) {
@@ -1161,21 +1169,6 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
   } else {
     objectAssignCall(realm.intrinsics.undefined, [to, ...sources]);
   }
-}
-
-// In firstRenderOnly mode, we strip off onEventHanlders and any props
-// that are functions as they are not required for init render.
-export function canExcludeReactElementObjectProperty(
-  realm: Realm,
-  reactElement: ObjectValue,
-  name: string,
-  value: Value
-): boolean {
-  let reactElementData = realm.react.reactElements.get(reactElement);
-  invariant(reactElementData !== undefined);
-  let { firstRenderOnly } = reactElementData;
-  let isHostComponent = getProperty(realm, reactElement, "type") instanceof StringValue;
-  return firstRenderOnly && isHostComponent && (isEventProp(name) || value instanceof FunctionValue);
 }
 
 export function cloneReactElement(realm: Realm, reactElement: ObjectValue): ObjectValue {

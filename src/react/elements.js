@@ -50,6 +50,7 @@ function deepTraverseAndFindOrDeleteFirstRenderProperties(
   }
   alreadyVisited.add(obj);
   if (obj.constructor === ObjectValue && !obj.isIntrinsic()) {
+    invariant(obj instanceof ObjectValue); // Make Flow happy
     let temporalAlias = obj.temporalAlias;
 
     for (let [propName, binding] of obj.properties) {
@@ -60,15 +61,9 @@ function deepTraverseAndFindOrDeleteFirstRenderProperties(
 
       if (propName === "ref" || isEventProp(propName) || propValue instanceof FunctionValue) {
         if (shouldDelete) {
-          let isFinal = obj.mightBeFinalObject();
-          if (isFinal) {
-            obj.makeNotFinal();
-          }
           // We can do this, because we created the object as a fresh clone
+          invariant(obj instanceof ObjectValue); // Make Flow happy
           obj.properties.delete(propName);
-          if (isFinal) {
-            obj.makeFinal();
-          }
         } else {
           return true; // We found first render properties
         }
@@ -80,14 +75,16 @@ function deepTraverseAndFindOrDeleteFirstRenderProperties(
 
       if (temporalArgs !== undefined) {
         for (let temporalArg of temporalArgs) {
-          let foundFirstRenderProperties = deepTraverseAndFindOrDeleteFirstRenderProperties(
-            realm,
-            temporalArg,
-            shouldDelete,
-            alreadyVisited
-          );
-          if (foundFirstRenderProperties) {
-            return true;
+          if (temporalArg instanceof ObjectValue || temporalArg instanceof AbstractObjectValue) {
+            let foundFirstRenderProperties = deepTraverseAndFindOrDeleteFirstRenderProperties(
+              realm,
+              temporalArg,
+              shouldDelete,
+              alreadyVisited
+            );
+            if (foundFirstRenderProperties) {
+              return true;
+            }
           }
         }
       }
