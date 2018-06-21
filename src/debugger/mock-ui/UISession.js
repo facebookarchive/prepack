@@ -19,7 +19,7 @@ import type { LaunchRequestArguments } from "./../common/types.js";
 export type DebuggerCLIArguments = {
   adapterPath: string,
   prepackRuntime: string,
-  sourceFile: string,
+  sourceFiles: Array<string>,
   prepackArguments: Array<string>,
 };
 
@@ -35,7 +35,7 @@ export class UISession {
     this._proc = proc;
     this._adapterPath = args.adapterPath;
     this._prepackRuntime = args.prepackRuntime;
-    this._sourceFile = args.sourceFile;
+    this._sourceFiles = args.sourceFiles;
     this._prepackArguments = args.prepackArguments;
     this._sequenceNum = 1;
     this._invalidCount = 0;
@@ -57,8 +57,8 @@ export class UISession {
   _invalidCount: number;
   // Prepack runtime command (e.g. lib/prepack-cli.js)
   _prepackRuntime: string;
-  // input source file to Prepack
-  _sourceFile: string;
+  // Array of input source files to Prepack
+  _sourceFiles: Array<string>;
   // arguments to start Prepack with
   _prepackArguments: Array<string>;
   // handler for any received messages
@@ -157,7 +157,7 @@ export class UISession {
   _processInitializeResponse(response: DebugProtocol.InitializeResponse) {
     let launchArgs: LaunchRequestArguments = {
       prepackRuntime: this._prepackRuntime,
-      sourceFile: this._sourceFile,
+      sourceFiles: this._sourceFiles,
       prepackArguments: this._prepackArguments,
     };
     this._sendLaunchRequest(launchArgs);
@@ -524,8 +524,6 @@ export class UISession {
       clientID: DebuggerConstants.CLI_CLIENTID,
       // a unique name for each adapter
       adapterID: "Prepack-Debugger-Adapter",
-      linesStartAt1: true,
-      columnsStartAt1: true,
       supportsVariableType: true,
       supportsVariablePaging: false,
       supportsRunInTerminalRequest: false,

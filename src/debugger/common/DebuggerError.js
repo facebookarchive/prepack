@@ -10,10 +10,11 @@
 /* @flow strict */
 
 // More error types will be added as needed
-export type DebuggerErrorType = "Invalid command" | "Invalid response";
+export type DebuggerErrorType = "Invalid command" | "Invalid response" | "Startup Error";
 
-export class DebuggerError {
+export class DebuggerError extends Error {
   constructor(errorType: DebuggerErrorType, message: string) {
+    super(`${errorType}: ${message}`);
     this.errorType = errorType;
     this.message = message;
   }

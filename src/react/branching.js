@@ -24,7 +24,14 @@ import {
 } from "../values/index.js";
 import invariant from "../invariant.js";
 import { ValuesDomain } from "../domains/index.js";
-import { isReactElement, addKeyToReactElement, forEachArrayValue, getProperty, mapArrayValue } from "./utils";
+import {
+  cloneReactElement,
+  isReactElement,
+  addKeyToReactElement,
+  forEachArrayValue,
+  getProperty,
+  mapArrayValue,
+} from "./utils";
 import { ExpectedBailOut } from "./errors.js";
 
 // Branch status is used for when Prepack returns an abstract value from a render
@@ -145,7 +152,9 @@ function applyBranchedLogicValue(realm: Realm, value: Value): Value {
   } else if (value instanceof ObjectValue && isReactElement(value)) {
     return addKeyToReactElement(realm, value);
   } else if (value instanceof ArrayValue) {
-    return mapArrayValue(realm, value, elementValue => applyBranchedLogicValue(realm, elementValue));
+    let newArray = mapArrayValue(realm, value, elementValue => applyBranchedLogicValue(realm, elementValue));
+    newArray.makeFinal();
+    return newArray;
   } else if (value instanceof AbstractValue && value.kind === "conditional") {
     let [condValue, consequentVal, alternateVal] = value.args;
     invariant(condValue instanceof AbstractValue);
@@ -184,12 +193,13 @@ function applyBranchedLogicValue(realm: Realm, value: Value): Value {
 // return the original value
 export function wrapReactElementInBranchOrReturnValue(realm: Realm, value: Value): Value {
   if (value instanceof ObjectValue && isReactElement(value)) {
-    let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
-    value.copyKeys(value.$OwnPropertyKeys(), value, obj);
-    let temporal = AbstractValue.createTemporalFromBuildFunction(realm, ObjectValue, [obj], ([node]) => node, {
-      isPure: true,
-      skipInvariant: true,
-    });
+    let temporal = AbstractValue.createTemporalFromBuildFunction(
+      realm,
+      ObjectValue,
+      [cloneReactElement(realm, value, false)],
+      ([node]) => node,
+      { isPure: true, skipInvariant: true }
+    );
     invariant(temporal instanceof AbstractObjectValue);
     temporal.values = new ValuesDomain(value);
     value.temporalAlias = temporal;

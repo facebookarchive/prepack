@@ -30,7 +30,7 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
   let adapterPath = "";
   let prepackRuntime = "";
   let prepackArguments = [];
-  let sourceFile = "";
+  let sourceFiles = [];
 
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -41,15 +41,21 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
       console.error("Invalid argument: " + arg);
       process.exit(1);
     }
-    arg = arg.slice(2);
+    arg = arg.slice(2); // Slice off the -- prefix
     if (arg === "adapterPath") {
       adapterPath = args.shift();
     } else if (arg === "prepackRuntime") {
       prepackRuntime = args.shift();
     } else if (arg === "prepackArguments") {
       prepackArguments = args.shift().split(" ");
-    } else if (arg === "sourceFile") {
-      sourceFile = args.shift();
+    } else if (arg === "sourceFiles") {
+      // Support multiple source files.
+      // Assumes everything between --sourceFile and the next --[flag] is a source file.
+      while (!arg.startsWith("--")) {
+        sourceFiles.push(args.shift());
+        if (args.length === 0) break;
+        arg = args[0];
+      }
     } else if (arg === "diagnosticSeverity") {
       arg = args.shift();
       if (arg !== "FatalError" && arg !== "RecoverableError" && arg !== "Warning" && arg !== "Information") {
@@ -70,14 +76,14 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
     console.error("No Prepack runtime given to start Prepack");
     process.exit(1);
   }
-  if (sourceFile.length === 0) {
+  if (sourceFiles.length === 0) {
     console.error("No source code input file provided");
   }
   let result: DebuggerCLIArguments = {
     adapterPath: adapterPath,
     prepackRuntime: prepackRuntime,
     prepackArguments: prepackArguments,
-    sourceFile: sourceFile,
+    sourceFiles: sourceFiles,
   };
   return result;
 }

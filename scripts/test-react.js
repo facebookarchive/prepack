@@ -385,6 +385,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-21.js");
       });
 
+      it("Two roots", async () => {
+        await runTest(directory, "two-roots.js");
+      });
+
       it("Havocing of ReactElements should not result in property assignments", async () => {
         await runTest(directory, "react-element-havoc.js");
       });
@@ -419,6 +423,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Handle mapped arrays 2", async () => {
         await runTest(directory, "array-map2.js");
+      });
+
+      it("Handle mapped arrays from Array.from", async () => {
+        await runTest(directory, "array-from.js");
       });
 
       it("Simple fragments", async () => {
@@ -915,6 +923,17 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Simple #2", async () => {
         await runTest(directory, "simple-2.js", true);
+      });
+
+      it("Simple #3", async () => {
+        await runTest(directory, "simple-3.js", true);
+      });
+
+      // Should be refined in a follow up PR to check for
+      // functions and keys on deep referenced objects linking
+      // to host components
+      it("Simple #4", async () => {
+        await runTest(directory, "simple-4.js", true);
       });
 
       it("componentWillMount", async () => {
