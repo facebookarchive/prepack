@@ -224,8 +224,8 @@ export function createClassInstanceForFirstRenderOnly(
     }
     if (stateToUpdate instanceof ObjectValue) {
       let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
-      newState.makeFinal();
       objectAssignCall(realm.intrinsics.undefined, [newState, prevState]);
+      newState.makeFinal();
 
       for (let [key, binding] of stateToUpdate.properties) {
         if (binding && binding.descriptor && binding.descriptor.enumerable) {
