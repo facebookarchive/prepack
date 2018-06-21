@@ -91,19 +91,23 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
       invariant(obj instanceof ObjectValue || obj instanceof AbstractObjectValue || obj instanceof AbstractValue);
       invariant(keys instanceof ArrayValue);
       if (obj.isPartialObject() || obj instanceof AbstractObjectValue || obj instanceof AbstractValue) {
+        let temporalArgs = [objectWithoutPropertiesValue, obj, keys];
         let value = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,
-          [objectWithoutPropertiesValue, obj, keys],
+          temporalArgs,
           ([methodNode, objNode, propRemoveNode]) => {
             return t.callExpression(methodNode, [objNode, propRemoveNode]);
           },
           { skipInvariant: true, isPure: true }
         );
-        if (value instanceof AbstractObjectValue) {
-          // as we are returning an abstract object, we mark it as simple
-          value.makeSimple();
-        }
+        invariant(value instanceof AbstractObjectValue);
+        // Store the args for the temporal so we can easily clone
+        // and reconstruct the temporal at another point, rather than
+        // mutate the existing temporal
+        realm.temporalAliasArgs.set(value, temporalArgs);
+        // as we are returning an abstract object, we mark it as simple
+        value.makeSimple();
         return value;
       } else {
         let removeKeys = new Set();

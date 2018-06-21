@@ -60,7 +60,7 @@ function deepTraverseAndFindOrDeleteFirstRenderProperties(
     return false;
   }
   alreadyVisited.add(obj);
-  if (obj.constructor === ObjectValue && !obj.isIntrinsic()) {
+  if (obj.constructor === ObjectValue) {
     invariant(obj instanceof ObjectValue); // Make Flow happy
     let temporalAlias = obj.temporalAlias;
 
@@ -70,7 +70,13 @@ function deepTraverseAndFindOrDeleteFirstRenderProperties(
       }
       let propValue = getProperty(realm, obj, propName);
 
-      if (propName === "ref" || isEventProp(propName) || propValue instanceof FunctionValue) {
+      if (propName === "ref") {
+        if (shouldRemoveProps) {
+          obj.properties.delete("ref");
+        } else {
+          return true; // We found first render properties
+        }
+      } else if (isEventProp(propName) || propValue instanceof FunctionValue) {
         if (shouldRemoveProps) {
           // We can do this, because we created the object as a fresh clone
           invariant(obj instanceof ObjectValue); // Make Flow happy

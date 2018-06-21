@@ -949,6 +949,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-8.js", true);
       });
 
+      it("Simple #9", async () => {
+        await runTest(directory, "simple-9.js", true);
+      });
+
       it("componentWillMount", async () => {
         await runTest(directory, "will-mount.js", true);
       });

@@ -935,6 +935,27 @@ export function createInternalReactElement(
   return obj;
 }
 
+function cloneTemporalArgsArray(
+  realm: Realm,
+  temporalArgs: Array<Value>,
+  alreadyCloned: Map<ObjectValue | AbstractObjectValue, ObjectValue | AbstractObjectValue>,
+  objectToFind?: ObjectValue | AbstractObjectValue,
+  objectToReplaceWith?: ObjectValue | AbstractObjectValue
+): Array<Value> {
+  return temporalArgs.map(arg => {
+    if (arg === objectToFind && objectToFind !== undefined && objectToReplaceWith !== undefined) {
+      return objectToReplaceWith;
+    } else if (arg.constructor === ObjectValue) {
+      invariant(arg instanceof ObjectValue); // Make Flow happy
+      return cloneObject(realm, arg, true, alreadyCloned);
+    } else if (arg instanceof AbstractObjectValue && !arg.values.isTop()) {
+      return cloneObject(realm, arg, true, alreadyCloned);
+    } else {
+      return arg;
+    }
+  });
+}
+
 function applyClonedTemporalAlias(
   realm: Realm,
   props: ObjectValue,
@@ -951,18 +972,7 @@ function applyClonedTemporalAlias(
   let temporalArgs = realm.temporalAliasArgs.get(temporalAlias);
   invariant(temporalArgs !== undefined);
   // replace the original props with the cloned one
-  let newTemporalArgs = temporalArgs.map(arg => {
-    if (arg === props) {
-      return clonedObj;
-    } else if (arg.constructor === ObjectValue && !arg.isIntrinsic()) {
-      invariant(arg instanceof ObjectValue); // Make Flow happy
-      return cloneObject(realm, arg, true, alreadyCloned);
-    } else if (arg instanceof AbstractObjectValue && !arg.values.isTop()) {
-      return cloneObject(realm, arg, true, alreadyCloned);
-    } else {
-      return arg;
-    }
-  });
+  let newTemporalArgs = cloneTemporalArgsArray(realm, temporalArgs, alreadyCloned, props, clonedObj);
 
   let temporalTo = AbstractValue.createTemporalFromBuildFunction(
     realm,
@@ -1041,7 +1051,31 @@ export function cloneObject(
           let clonedAbstractObject = clonedTemplate.getSnapshot();
           return clonedAbstractObject;
         } else {
-          return obj;
+          // Some other temporal abstract object
+          let clonedTemporalArgs = cloneTemporalArgsArray(realm, temporalArgs, alreadyCloned);
+          let clonedTemplate = AbstractValue.createTemporalFromBuildFunction(
+            realm,
+            obj.getType(),
+            clonedTemporalArgs,
+            ([funcNode, ...otherNodes]) => t.callExpression(funcNode, otherNodes)
+          );
+          invariant(clonedTemplate instanceof AbstractObjectValue);
+          if (!obj.values.isTop()) {
+            let values = [];
+            for (let element of obj.values.getElements()) {
+              let clonedElement = cloneObject(realm, element, false, alreadyCloned);
+              values.push(clonedElement);
+              if (element.temporalAlias === obj) {
+                clonedElement.temporalAlias = clonedTemplate;
+              }
+            }
+            clonedTemplate.values = new ValuesDomain(values);
+          }
+          // Store the args for the temporal so we can easily clone
+          // and reconstruct the temporal at another point, rather than
+          // mutate the existing temporal
+          realm.temporalAliasArgs.set(clonedTemplate, clonedTemporalArgs);
+          return clonedTemplate;
         }
       }
     } else if (obj.isIntrinsic() && obj.kind !== undefined) {
