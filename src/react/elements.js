@@ -20,7 +20,7 @@ import {
   ObjectValue,
   Value,
 } from "../values/index.js";
-import { Create, Properties } from "../singletons.js";
+import { Create } from "../singletons.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
 import {
@@ -47,6 +47,9 @@ function createPropsObject(
       : realm.intrinsics.undefined;
 
   let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  props.makeFinal();
+  realm.react.reactProps.add(props);
+
   let key = realm.intrinsics.null;
   let ref = realm.intrinsics.null;
 
@@ -95,8 +98,8 @@ function createPropsObject(
 
   const setProp = (name: string, value: Value): void => {
     if (name !== "__self" && name !== "__source" && name !== "key" && name !== "ref") {
-      invariant(props instanceof ObjectValue || props instanceof AbstractObjectValue);
-      Properties.Set(realm, props, name, value, true);
+      invariant(props instanceof ObjectValue);
+      hardModifyReactObjectPropertyBinding(realm, props, name, value);
     }
   };
 
@@ -118,6 +121,7 @@ function createPropsObject(
     args.push(config);
     // create a new props object that will be the target of the Object.assign
     props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+    realm.react.reactProps.add(props);
 
     applyObjectAssignConfigsForReactElement(realm, props, args);
     props.makeFinal();
@@ -231,7 +235,6 @@ function createPropsObject(
   // We know the props has no keys because if it did it would have thrown above
   // so we can remove them the props we create.
   flagPropsWithNoPartialKeyOrRef(realm, props);
-  props.makeFinal();
   return { key, props, ref };
 }
 
@@ -289,13 +292,14 @@ function splitReactElementsByConditionalConfig(
   );
 }
 
-export function cloneElement(
+export function cloneReactElement(
   realm: Realm,
   reactElement: ObjectValue,
   config: ObjectValue | AbstractObjectValue | NullValue,
   children: void | Value
 ): ObjectValue {
   let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  realm.react.reactProps.add(props);
 
   const setProp = (name: string, value: Value): void => {
     if (name !== "__self" && name !== "__source" && name !== "key" && name !== "ref") {
@@ -389,7 +393,6 @@ export function createReactElement(
     return splitReactElementsByConditionalConfig(realm, condValue, consequentVal, alternateVal, type, children);
   }
   let { key, props, ref } = createPropsObject(realm, type, config, children);
-  realm.react.reactProps.add(props);
   return createInternalReactElement(realm, type, key, ref, props);
 }
 

@@ -24,7 +24,7 @@ import {
 } from "../../values/index.js";
 import { Environment } from "../../singletons.js";
 import { createReactHintObject, getReactSymbol, isReactElement } from "../../react/utils.js";
-import { cloneElement, createReactElement } from "../../react/elements.js";
+import { cloneReactElement, createReactElement } from "../../react/elements.js";
 import { Properties, Create, To } from "../../singletons.js";
 import { renderToString } from "../../react/experimental-server-rendering/rendering.js";
 import * as t from "babel-types";
@@ -473,7 +473,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
           children.makeFinal();
         }
       }
-      return cloneElement(realm, element, config, children);
+      return cloneReactElement(realm, element, config, children);
     }
   );
 

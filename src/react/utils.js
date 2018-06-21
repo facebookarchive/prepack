@@ -215,7 +215,7 @@ export function addKeyToReactElement(realm: Realm, reactElement: ObjectValue): O
   if (currentKeyValue !== realm.intrinsics.null) {
     newKeyValue = computeBinary(realm, "+", currentKeyValue, newKeyValue);
   }
-  invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue);
+  invariant(propsValue instanceof ObjectValue);
   return createInternalReactElement(realm, typeValue, newKeyValue, refValue, propsValue);
 }
 // we create a unique key for each JSXElement to prevent collisions
@@ -910,16 +910,13 @@ export function createInternalReactElement(
   type: Value,
   key: Value,
   ref: Value,
-  props: ObjectValue | AbstractObjectValue
+  props: ObjectValue
 ): ObjectValue {
   let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
-  // sanity checks
+  // Sanity check the type is not conditional
   if (type instanceof AbstractValue && type.kind === "conditional") {
     invariant(false, "createInternalReactElement should never encounter a conditional type");
-  }
-  if (props instanceof AbstractObjectValue && props.kind === "conditional") {
-    invariant(false, "createInternalReactElement should never encounter a conditional props");
   }
   Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactSymbol("react.element", realm));
   Create.CreateDataPropertyOrThrow(realm, obj, "type", type);
@@ -934,6 +931,11 @@ export function createInternalReactElement(
   let firstRenderOnly = createdDuringReconcilation ? activeReconciler.componentTreeConfig.firstRenderOnly : false;
 
   realm.react.reactElements.set(obj, { createdDuringReconcilation, firstRenderOnly });
+  // Sanity check to ensure no bugs have crept in
+  invariant(
+    realm.react.reactProps.has(props) && props.mightBeFinalObject(),
+    "React props object is not correctly setup"
+  );
   return obj;
 }
 
