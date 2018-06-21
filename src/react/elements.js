@@ -61,7 +61,19 @@ function deepTraverseAndFindOrDeleteFirstRenderProperties(
     return false;
   }
   alreadyVisited.add(propsOrConfigObj);
-  if (propsOrConfigObj.constructor === ObjectValue) {
+  if (propsOrConfigObj instanceof AbstractObjectValue && !propsOrConfigObj.values.isTop()) {
+    for (let element of propsOrConfigObj.values.getElements()) {
+      let foundFirstRenderProperties = deepTraverseAndFindOrDeleteFirstRenderProperties(
+        realm,
+        element,
+        shouldRemoveProps,
+        alreadyVisited
+      );
+      if (foundFirstRenderProperties) {
+        return true;
+      }
+    }
+  } else if (propsOrConfigObj.constructor === ObjectValue) {
     invariant(propsOrConfigObj instanceof ObjectValue); // Make Flow happy
     let temporalAlias = propsOrConfigObj.temporalAlias;
 
@@ -106,18 +118,6 @@ function deepTraverseAndFindOrDeleteFirstRenderProperties(
             }
           }
         }
-      }
-    }
-  } else if (propsOrConfigObj instanceof AbstractObjectValue && !propsOrConfigObj.values.isTop()) {
-    for (let element of propsOrConfigObj.values.getElements()) {
-      let foundFirstRenderProperties = deepTraverseAndFindOrDeleteFirstRenderProperties(
-        realm,
-        element,
-        shouldRemoveProps,
-        alreadyVisited
-      );
-      if (foundFirstRenderProperties) {
-        return true;
       }
     }
   }
