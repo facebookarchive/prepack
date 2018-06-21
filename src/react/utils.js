@@ -1099,11 +1099,10 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
       // Consequently we have to continue tracking changes until the point where
       // all the branches come together into one.
       completion = realm.composeWithSavedCompletion(completion);
-    } else if (completion instanceof SimpleNormalCompletion) {
-      completion = completion.value;
     }
     // return or throw completion
     if (completion instanceof AbruptCompletion) throw completion;
+    if (completion instanceof SimpleNormalCompletion) completion = completion.value;
   };
 
   if (realm.isInPureScope()) {
