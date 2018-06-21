@@ -132,8 +132,11 @@ function run(
   while (args.length) {
     let arg = args.shift();
     if (!arg.startsWith("--")) {
-      inputFilenames.push(arg);
-      reproArguments.push(inputFile(arg));
+      let inputs = arg.trim().split(/\s+/g); // Split on all whitespace
+      for (let input of inputs) {
+        inputFilenames.push(input);
+        reproArguments.push(inputFile(input));
+      }
     } else {
       arg = arg.slice(2);
       switch (arg) {

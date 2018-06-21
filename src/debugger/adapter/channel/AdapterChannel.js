@@ -86,7 +86,7 @@ export class AdapterChannel {
   launch(requestID: number, args: PrepackLaunchArguments, callback: DebuggerResponse => void) {
     this.sendDebuggerStart(requestID);
     this.listenOnFile(this._processPrepackMessage.bind(this));
-    let prepackCommand = [args.sourceFile].concat(args.prepackArguments);
+    let prepackCommand = args.sourceFiles.concat(args.prepackArguments);
     // Note: here the input file for the adapter is the output file for Prepack, and vice versa.
     prepackCommand = prepackCommand.concat([
       "--debugInFilePath",
