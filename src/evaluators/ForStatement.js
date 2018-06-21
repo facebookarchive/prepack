@@ -20,6 +20,7 @@ import {
   ForkedAbruptCompletion,
   PossiblyNormalCompletion,
   ReturnCompletion,
+  SimpleNormalCompletion,
   ThrowCompletion,
 } from "../completions.js";
 import traverse from "babel-traverse";
@@ -465,6 +466,7 @@ function tryToEvaluateForStatementOrLeaveAsAbstract(
   }
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
+  if (completion instanceof SimpleNormalCompletion) completion = completion.value;
   invariant(completion instanceof Value);
   return completion;
 }
