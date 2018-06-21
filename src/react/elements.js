@@ -299,7 +299,7 @@ export function cloneReactElement(
   children: void | Value
 ): ObjectValue {
   let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  realm.react.reactProps.has(props);
+  realm.react.reactProps.add(props);
 
   const setProp = (name: string, value: Value): void => {
     if (name !== "__self" && name !== "__source" && name !== "key" && name !== "ref") {
