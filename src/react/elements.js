@@ -292,13 +292,14 @@ function splitReactElementsByConditionalConfig(
   );
 }
 
-export function cloneElement(
+export function cloneReactElement(
   realm: Realm,
   reactElement: ObjectValue,
   config: ObjectValue | AbstractObjectValue | NullValue,
   children: void | Value
 ): ObjectValue {
   let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  realm.react.reactProps.has(props);
 
   const setProp = (name: string, value: Value): void => {
     if (name !== "__self" && name !== "__source" && name !== "key" && name !== "ref") {
