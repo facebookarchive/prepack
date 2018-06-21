@@ -37,7 +37,7 @@ import {
   Value,
   PrimitiveValue,
 } from "./index.js";
-import { isReactElement } from "../react/utils.js";
+import { isReactElement, transferSafePropertiesToReomveFromObjectsToProps } from "../react/utils.js";
 import buildExpressionTemplate from "../utils/builder.js";
 import { ECMAScriptSourceFunctionValue, type NativeFunctionCallback } from "./index.js";
 import {
@@ -567,6 +567,7 @@ export default class ObjectValue extends ConcreteValue {
       // The original object might be a React props object, thus
       // if it is, we need to ensure we mark it with the same rules
       if (realm.react.enabled && realm.react.reactProps.has(this)) {
+        transferSafePropertiesToReomveFromObjectsToProps(realm, [this], template);
         realm.react.reactProps.add(template);
       }
       let temporalArgs = [template];

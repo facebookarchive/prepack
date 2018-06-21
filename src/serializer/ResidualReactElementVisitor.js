@@ -64,7 +64,11 @@ export class ResidualReactElementVisitor {
       visitConcreteProps: (propsValue: ObjectValue) => {
         for (let [propName, binding] of propsValue.properties) {
           invariant(propName !== "key" && propName !== "ref", `"${propName}" is a reserved prop name`);
-          if (binding.descriptor === undefined || propName === "children") {
+          if (
+            binding.descriptor === undefined ||
+            propName === "children" ||
+            this.residualHeapVisitor.inspector.canIgnoreProperty(propsValue, propName)
+          ) {
             continue;
           }
           let propValue = getProperty(this.realm, propsValue, propName);

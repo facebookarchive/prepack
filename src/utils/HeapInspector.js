@@ -126,6 +126,14 @@ export class HeapInspector {
   _canIgnoreProperty(val: ObjectValue, key: string, desc: Descriptor) {
     let targetDescriptor = this.getTargetIntegrityDescriptor(val);
 
+    if (this.realm.react.enabled && this.realm.react.objectsWithPropsToRemove.has(val)) {
+      let propsToRemove = this.realm.react.objectsWithPropsToRemove.get(val);
+
+      if (propsToRemove.has(key)) {
+        return true;
+      }
+    }
+
     if (IsArray(this.realm, val)) {
       if (key === "length" && desc.writable === targetDescriptor.writable && !desc.enumerable && !desc.configurable) {
         // length property has the correct descriptor values

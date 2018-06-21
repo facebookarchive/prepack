@@ -30,19 +30,30 @@ import {
   cloneObject,
   createInternalReactElement,
   flagPropsWithNoPartialKeyOrRef,
-  hardModifyReactObjectPropertyBinding,
   getProperty,
-  isEventProp,
+  hardModifyReactObjectPropertyBinding,
   hasNoPartialKeyOrRef,
+  isEventProp,
+  transferSafePropertiesToReomveFromObjectsToProps,
 } from "./utils.js";
 import * as t from "babel-types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 
+function canSafelyRemovePropertyDuringSerialization(realm: Realm, obj: ObjectValue, propName: string): void {
+  let propsToRemove = realm.react.objectsWithPropsToRemove.get(obj);
+
+  if (propsToRemove === undefined) {
+    propsToRemove = new Set();
+    realm.react.objectsWithPropsToRemove.set(obj, propsToRemove);
+  }
+  propsToRemove.add(propName);
+}
+
 function deepTraverseAndFindOrDeleteFirstRenderProperties(
   realm: Realm,
   obj: ObjectValue | AbstractObjectValue,
-  shouldDelete: boolean,
+  shouldRemoveProps: boolean,
   alreadyVisited?: Set<AbstractObjectValue | ObjectValue> = new Set()
 ): boolean {
   if (obj instanceof FunctionValue || alreadyVisited.has(obj)) {
@@ -60,10 +71,10 @@ function deepTraverseAndFindOrDeleteFirstRenderProperties(
       let propValue = getProperty(realm, obj, propName);
 
       if (propName === "ref" || isEventProp(propName) || propValue instanceof FunctionValue) {
-        if (shouldDelete) {
+        if (shouldRemoveProps) {
           // We can do this, because we created the object as a fresh clone
           invariant(obj instanceof ObjectValue); // Make Flow happy
-          obj.properties.delete(propName);
+          canSafelyRemovePropertyDuringSerialization(realm, obj, propName);
         } else {
           return true; // We found first render properties
         }
@@ -79,7 +90,7 @@ function deepTraverseAndFindOrDeleteFirstRenderProperties(
             let foundFirstRenderProperties = deepTraverseAndFindOrDeleteFirstRenderProperties(
               realm,
               temporalArg,
-              shouldDelete,
+              shouldRemoveProps,
               alreadyVisited
             );
             if (foundFirstRenderProperties) {
@@ -94,7 +105,7 @@ function deepTraverseAndFindOrDeleteFirstRenderProperties(
       let foundFirstRenderProperties = deepTraverseAndFindOrDeleteFirstRenderProperties(
         realm,
         element,
-        shouldDelete,
+        shouldRemoveProps,
         alreadyVisited
       );
       if (foundFirstRenderProperties) {
@@ -142,6 +153,11 @@ function createPropsObject(
   }
 
   let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  transferSafePropertiesToReomveFromObjectsToProps(
+    realm,
+    defaultProps !== realm.intrinsics.undefined ? [config, defaultProps] : [config],
+    props
+  );
   props.makeFinal();
   realm.react.reactProps.add(props);
 
@@ -216,6 +232,11 @@ function createPropsObject(
     args.push(config);
     // create a new props object that will be the target of the Object.assign
     props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+    transferSafePropertiesToReomveFromObjectsToProps(
+      realm,
+      defaultProps !== realm.intrinsics.undefined ? [config, defaultProps] : [config],
+      props
+    );
     realm.react.reactProps.add(props);
 
     applyObjectAssignConfigsForReactElement(realm, props, args);
@@ -394,6 +415,7 @@ export function cloneReactElement(
   children: void | Value
 ): ObjectValue {
   let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  transferSafePropertiesToReomveFromObjectsToProps(realm, [config], props);
   realm.react.reactProps.add(props);
 
   const setProp = (name: string, value: Value): void => {

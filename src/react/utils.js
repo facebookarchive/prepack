@@ -1003,6 +1003,7 @@ export function cloneObject(
       clonedObj.makeFinal();
     }
     if (realm.react.reactProps.has(obj)) {
+      transferSafePropertiesToReomveFromObjectsToProps(realm, [obj], clonedObj);
       realm.react.reactProps.add(clonedObj);
     }
     for (let [propName, binding] of obj.properties) {
@@ -1057,6 +1058,7 @@ export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value
   if (newChildren) {
     hardModifyReactObjectPropertyBinding(realm, clonedProps, "children", newChildren);
   }
+  transferSafePropertiesToReomveFromObjectsToProps(realm, [props], clonedProps);
   clonedProps.makeFinal();
   realm.react.reactProps.add(clonedProps);
   return clonedProps;
@@ -1219,4 +1221,25 @@ export function hardModifyReactObjectPropertyBinding(
     descriptor: newDescriptor,
   });
   object.properties.set(propName, newBinding);
+}
+
+export function transferSafePropertiesToReomveFromObjectsToProps(
+  realm: Realm,
+  objs: Array<ObjectValue>,
+  props: ObjectValue
+): void {
+  for (let obj of objs) {
+    let propsToRemove = realm.react.objectsWithPropsToRemove.get(obj);
+
+    if (propsToRemove !== undefined) {
+      if (realm.react.objectsWithPropsToRemove.has(props)) {
+        let otherPropsToRemove = realm.react.objectsWithPropsToRemove.get(obj);
+        for (let prop of propsToRemove) {
+          otherPropsToRemove.add(prop);
+        }
+      } else {
+        propsToRemove.add(realm.react.objectsWithPropsToRemove.set(props, propsToRemove));
+      }
+    }
+  }
 }

@@ -261,6 +261,7 @@ export class Realm {
       hoistableFunctions: new WeakMap(),
       hoistableReactElements: new WeakMap(),
       noopFunction: undefined,
+      objectsWithPropsToRemove: new WeakMap(),
       optimizedNestedClosuresToWrite: [],
       optimizeNestedFunctions: opts.reactOptimizeNestedFunctions || false,
       output: opts.reactOutput || "create-element",
@@ -359,6 +360,7 @@ export class Realm {
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,
     noopFunction: void | ECMAScriptSourceFunctionValue,
+    objectsWithPropsToRemove: WeakMap<ObjectValue, Set<string>>,
     optimizedNestedClosuresToWrite: Array<{
       effects: Effects,
       func: ECMAScriptSourceFunctionValue | BoundFunctionValue,

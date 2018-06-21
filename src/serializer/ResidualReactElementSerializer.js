@@ -291,7 +291,11 @@ export class ResidualReactElementSerializer {
       },
       visitConcreteProps: (propsValue: ObjectValue) => {
         for (let [propName, binding] of propsValue.properties) {
-          if (binding.descriptor === undefined || propName === "children") {
+          if (
+            binding.descriptor === undefined ||
+            propName === "children" ||
+            this.residualHeapSerializer.residualHeapInspector.canIgnoreProperty(propsValue, propName)
+          ) {
             continue;
           }
           let propValue = getProperty(this.realm, propsValue, propName);
