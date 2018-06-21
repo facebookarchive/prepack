@@ -72,6 +72,7 @@ function deepTraverseAndFindOrDeleteFirstRenderProperties(
 
       if (propName === "ref") {
         if (shouldRemoveProps) {
+          invariant(obj instanceof ObjectValue); // Make Flow happy
           obj.properties.delete("ref");
         } else {
           return true; // We found first render properties
@@ -161,7 +162,9 @@ function createPropsObject(
   let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
   transferSafePropertiesToRemoveFromObjectsToProps(
     realm,
-    defaultProps !== realm.intrinsics.undefined ? [config, defaultProps] : [config],
+    defaultProps instanceof ObjectValue && defaultProps instanceof AbstractObjectValue
+      ? [config, defaultProps]
+      : [config],
     props
   );
   props.makeFinal();
@@ -240,7 +243,9 @@ function createPropsObject(
     props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
     transferSafePropertiesToRemoveFromObjectsToProps(
       realm,
-      defaultProps !== realm.intrinsics.undefined ? [config, defaultProps] : [config],
+      defaultProps instanceof ObjectValue && defaultProps instanceof AbstractObjectValue
+        ? [config, defaultProps]
+        : [config],
       props
     );
     realm.react.reactProps.add(props);
@@ -421,7 +426,9 @@ export function cloneReactElement(
   children: void | Value
 ): ObjectValue {
   let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  transferSafePropertiesToRemoveFromObjectsToProps(realm, [config], props);
+  if (config instanceof ObjectValue || config instanceof AbstractObjectValue) {
+    transferSafePropertiesToRemoveFromObjectsToProps(realm, [config], props);
+  }
   realm.react.reactProps.add(props);
 
   const setProp = (name: string, value: Value): void => {

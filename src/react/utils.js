@@ -20,6 +20,7 @@ import {
   ArrayValue,
   BooleanValue,
   BoundFunctionValue,
+  ConcreteValue,
   ECMAScriptFunctionValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
@@ -1057,19 +1058,20 @@ export function cloneObject(
             realm,
             obj.getType(),
             clonedTemporalArgs,
-            ([funcNode, ...otherNodes]) => t.callExpression(funcNode, otherNodes)
+            ([funcNode, ...otherNodes]) => t.callExpression(funcNode, ((otherNodes: any): Array<any>))
           );
           invariant(clonedTemplate instanceof AbstractObjectValue);
           if (!obj.values.isTop()) {
             let values = [];
             for (let element of obj.values.getElements()) {
               let clonedElement = cloneObject(realm, element, false, alreadyCloned);
+              invariant(clonedElement instanceof ObjectValue);
               values.push(clonedElement);
               if (element.temporalAlias === obj) {
                 clonedElement.temporalAlias = clonedTemplate;
               }
             }
-            clonedTemplate.values = new ValuesDomain(values);
+            clonedTemplate.values = new ValuesDomain(new Set(values));
           }
           // Store the args for the temporal so we can easily clone
           // and reconstruct the temporal at another point, rather than
@@ -1259,20 +1261,26 @@ export function hardModifyReactObjectPropertyBinding(
 
 export function transferSafePropertiesToRemoveFromObjectsToProps(
   realm: Realm,
-  objs: Array<ObjectValue>,
+  objs: Array<ObjectValue | AbstractObjectValue>,
   props: ObjectValue
 ): void {
   for (let obj of objs) {
+    if (obj instanceof AbstractObjectValue) {
+      continue;
+    }
     let propsToRemove = realm.react.objectsWithPropsToRemove.get(obj);
 
     if (propsToRemove !== undefined) {
       if (realm.react.objectsWithPropsToRemove.has(props)) {
         let otherPropsToRemove = realm.react.objectsWithPropsToRemove.get(obj);
+        if (otherPropsToRemove === undefined) {
+          continue;
+        }
         for (let prop of propsToRemove) {
           otherPropsToRemove.add(prop);
         }
       } else {
-        propsToRemove.add(realm.react.objectsWithPropsToRemove.set(props, propsToRemove));
+        realm.react.objectsWithPropsToRemove.set(props, propsToRemove);
       }
     }
   }

@@ -129,7 +129,7 @@ export class HeapInspector {
     if (this.realm.react.enabled && this.realm.react.objectsWithPropsToRemove.has(val)) {
       let propsToRemove = this.realm.react.objectsWithPropsToRemove.get(val);
 
-      if (propsToRemove.has(key)) {
+      if (propsToRemove !== undefined && propsToRemove.has(key)) {
         return true;
       }
     }
