@@ -1998,16 +1998,23 @@ ReactStatistics {
 
 exports[`Test React with JSX input, JSX output Functional component folding Dynamic ReactElement type #4 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 1,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
-      "children": Array [],
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+      ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
+  "inlinedComponents": 1,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -7005,16 +7012,23 @@ ReactStatistics {
 
 exports[`Test React with JSX input, create-element output Functional component folding Dynamic ReactElement type #4 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 1,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
-      "children": Array [],
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+      ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
+  "inlinedComponents": 1,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -12012,16 +12026,23 @@ ReactStatistics {
 
 exports[`Test React with create-element input, JSX output Functional component folding Dynamic ReactElement type #4 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 1,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
-      "children": Array [],
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+      ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
+  "inlinedComponents": 1,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
@@ -17034,16 +17055,23 @@ ReactStatistics {
 
 exports[`Test React with create-element input, create-element output Functional component folding Dynamic ReactElement type #4 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 1,
+  "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
     Object {
-      "children": Array [],
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+      ],
       "message": "",
       "name": "App",
       "status": "ROOT",
     },
   ],
-  "inlinedComponents": 0,
+  "inlinedComponents": 1,
   "optimizedNestedClosures": 0,
   "optimizedTrees": 1,
 }
