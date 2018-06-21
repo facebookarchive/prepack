@@ -27,7 +27,8 @@ import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
 import {
   applyObjectAssignConfigsForReactElement,
-  cloneObject,
+  clonePropsOrConfigLikeObject,
+  createEmptyReactPropsObject,
   createInternalReactElement,
   flagPropsWithNoPartialKeyOrRef,
   getProperty,
@@ -52,36 +53,36 @@ function markToSafelyRemovePropertyDuringSerialization(realm: Realm, obj: Object
 
 function deepTraverseAndFindOrDeleteFirstRenderProperties(
   realm: Realm,
-  obj: ObjectValue | AbstractObjectValue,
+  propsOrConfigObj: ObjectValue | AbstractObjectValue,
   shouldRemoveProps: boolean,
   alreadyVisited?: Set<AbstractObjectValue | ObjectValue> = new Set()
 ): boolean {
-  if (obj instanceof FunctionValue || alreadyVisited.has(obj)) {
+  if (propsOrConfigObj instanceof FunctionValue || alreadyVisited.has(propsOrConfigObj)) {
     return false;
   }
-  alreadyVisited.add(obj);
-  if (obj.constructor === ObjectValue) {
-    invariant(obj instanceof ObjectValue); // Make Flow happy
-    let temporalAlias = obj.temporalAlias;
+  alreadyVisited.add(propsOrConfigObj);
+  if (propsOrConfigObj.constructor === ObjectValue) {
+    invariant(propsOrConfigObj instanceof ObjectValue); // Make Flow happy
+    let temporalAlias = propsOrConfigObj.temporalAlias;
 
-    for (let [propName, binding] of obj.properties) {
+    for (let [propName, binding] of propsOrConfigObj.properties) {
       if (binding.descriptor === undefined) {
         continue;
       }
-      let propValue = getProperty(realm, obj, propName);
+      let propValue = getProperty(realm, propsOrConfigObj, propName);
 
       if (propName === "ref") {
         if (shouldRemoveProps) {
-          invariant(obj instanceof ObjectValue); // Make Flow happy
-          obj.properties.delete("ref");
+          invariant(propsOrConfigObj instanceof ObjectValue); // Make Flow happy
+          propsOrConfigObj.properties.delete("ref");
         } else {
           return true; // We found first render properties
         }
       } else if (isEventProp(propName) || propValue instanceof FunctionValue) {
         if (shouldRemoveProps) {
           // We can do this, because we created the object as a fresh clone
-          invariant(obj instanceof ObjectValue); // Make Flow happy
-          markToSafelyRemovePropertyDuringSerialization(realm, obj, propName);
+          invariant(propsOrConfigObj instanceof ObjectValue); // Make Flow happy
+          markToSafelyRemovePropertyDuringSerialization(realm, propsOrConfigObj, propName);
         } else {
           return true; // We found first render properties
         }
@@ -107,8 +108,8 @@ function deepTraverseAndFindOrDeleteFirstRenderProperties(
         }
       }
     }
-  } else if (obj instanceof AbstractObjectValue && !obj.values.isTop()) {
-    for (let element of obj.values.getElements()) {
+  } else if (propsOrConfigObj instanceof AbstractObjectValue && !propsOrConfigObj.values.isTop()) {
+    for (let element of propsOrConfigObj.values.getElements()) {
       let foundFirstRenderProperties = deepTraverseAndFindOrDeleteFirstRenderProperties(
         realm,
         element,
@@ -129,7 +130,7 @@ function sanitizeReactElementConfigObjectForFirstRender(
 ): ObjectValue | AbstractObjectValue {
   let needToCloneAndDelete = deepTraverseAndFindOrDeleteFirstRenderProperties(realm, config, false);
   if (needToCloneAndDelete) {
-    let clonedConfig = cloneObject(realm, config, true);
+    let clonedConfig = clonePropsOrConfigLikeObject(realm, config, true);
     deepTraverseAndFindOrDeleteFirstRenderProperties(realm, clonedConfig, true);
     return clonedConfig;
   }
@@ -159,16 +160,13 @@ function createPropsObject(
     }
   }
 
-  let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  transferSafePropertiesToRemoveFromObjectsToProps(
+  let props = createEmptyReactPropsObject(
     realm,
     defaultProps instanceof ObjectValue && defaultProps instanceof AbstractObjectValue
       ? [config, defaultProps]
-      : [config],
-    props
+      : [config]
   );
   props.makeFinal();
-  realm.react.reactProps.add(props);
 
   let key = realm.intrinsics.null;
   let ref = realm.intrinsics.null;
@@ -240,13 +238,11 @@ function createPropsObject(
     let args = [];
     args.push(config);
     // create a new props object that will be the target of the Object.assign
-    props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-    transferSafePropertiesToRemoveFromObjectsToProps(
+    props = createEmptyReactPropsObject(
       realm,
       defaultProps instanceof ObjectValue && defaultProps instanceof AbstractObjectValue
         ? [config, defaultProps]
-        : [config],
-      props
+        : [config]
     );
     realm.react.reactProps.add(props);
 

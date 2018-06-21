@@ -947,9 +947,9 @@ function cloneTemporalArgsArray(
       return objectToReplaceWith;
     } else if (arg.constructor === ObjectValue) {
       invariant(arg instanceof ObjectValue); // Make Flow happy
-      return cloneObject(realm, arg, true, alreadyCloned);
+      return clonePropsOrConfigLikeObject(realm, arg, true, alreadyCloned);
     } else if (arg instanceof AbstractObjectValue && !arg.values.isTop()) {
-      return cloneObject(realm, arg, true, alreadyCloned);
+      return clonePropsOrConfigLikeObject(realm, arg, true, alreadyCloned);
     } else {
       return arg;
     }
@@ -993,7 +993,7 @@ function applyClonedTemporalAlias(
   realm.temporalAliasArgs.set(temporalTo, newTemporalArgs);
 }
 
-export function cloneObject(
+export function clonePropsOrConfigLikeObject(
   realm: Realm,
   obj: ObjectValue | AbstractObjectValue,
   cloneTemporalAlias: boolean,
@@ -1007,7 +1007,7 @@ export function cloneObject(
   if (obj instanceof ObjectValue) {
     let clonedObj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
     alreadyCloned.set(obj, clonedObj);
-    let isFinalObject = obj.mightBeFinalObject();
+    let isFinalObject = obj.mightBeFinalObject() && !obj.mightBeFinalObject();
 
     if (isFinalObject) {
       clonedObj.makeFinal();
@@ -1047,7 +1047,7 @@ export function cloneObject(
         if (temporalArgs.length === 1) {
           let temporalArg = temporalArgs[0];
           invariant(temporalArg instanceof ObjectValue);
-          let clonedTemplate = cloneObject(realm, temporalArg, false, alreadyCloned);
+          let clonedTemplate = clonePropsOrConfigLikeObject(realm, temporalArg, false, alreadyCloned);
           let clonedAbstractObject = clonedTemplate.getSnapshot();
           return clonedAbstractObject;
         } else {
@@ -1063,7 +1063,7 @@ export function cloneObject(
           if (!obj.values.isTop()) {
             let values = [];
             for (let element of obj.values.getElements()) {
-              let clonedElement = cloneObject(realm, element, false, alreadyCloned);
+              let clonedElement = clonePropsOrConfigLikeObject(realm, element, false, alreadyCloned);
               invariant(clonedElement instanceof ObjectValue);
               values.push(clonedElement);
               if (element.temporalAlias === obj) {
@@ -1087,13 +1087,12 @@ export function cloneObject(
 }
 
 export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value): ObjectValue {
-  let clonedProps = cloneObject(realm, props, true);
+  let clonedProps = clonePropsOrConfigLikeObject(realm, props, true);
   invariant(clonedProps instanceof ObjectValue);
 
   if (newChildren) {
     hardModifyReactObjectPropertyBinding(realm, clonedProps, "children", newChildren);
   }
-  transferSafePropertiesToRemoveFromObjectsToProps(realm, [props], clonedProps);
   clonedProps.makeFinal();
   realm.react.reactProps.add(clonedProps);
   return clonedProps;
@@ -1283,4 +1282,14 @@ export function transferSafePropertiesToRemoveFromObjectsToProps(
       }
     }
   }
+}
+
+export function createEmptyReactPropsObject(
+  realm: Realm,
+  transferSafePropertyObjects: Array<ObjectValue | AbstractObjectValue>
+): ObjectValue {
+  let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  transferSafePropertiesToRemoveFromObjectsToProps(realm, transferSafePropertyObjects, props);
+  realm.react.reactProps.add(props);
+  return props;
 }
