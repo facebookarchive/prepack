@@ -28,12 +28,13 @@ import {
 } from "../values/index.js";
 import { ReactStatistics, type ReactEvaluatedNode } from "../serializer/types.js";
 import {
+  cloneReactElement,
   cloneProps,
-  createInternalReactElement,
   createReactEvaluatedNode,
   doNotOptimizeComponent,
   evaluateWithNestedParentEffects,
   flattenChildren,
+  hardModifyReactObjectPropertyBinding,
   getComponentName,
   getComponentTypeFromRootValue,
   getLocationFromValue,
@@ -42,7 +43,6 @@ import {
   getValueFromFunctionCall,
   isReactElement,
   mapArrayValue,
-  sanitizeReactElementForFirstRenderOnly,
   valueIsClassComponent,
   valueIsFactoryClassComponent,
   valueIsKnownReactAbstraction,
@@ -183,19 +183,24 @@ export class Reconciler {
       }
     };
 
-    let effects = this.realm.wrapInGlobalEnv(() =>
-      this.realm.evaluatePure(
-        () =>
-          this.realm.evaluateForEffects(
-            resolveComponentTree,
-            /*state*/ null,
-            `react component: ${getComponentName(this.realm, componentType)}`
-          ),
-        this._handleReportedSideEffect
-      )
-    );
-    this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
-    return effects;
+    try {
+      this.realm.react.activeReconciler = this;
+      let effects = this.realm.wrapInGlobalEnv(() =>
+        this.realm.evaluatePure(
+          () =>
+            this.realm.evaluateForEffects(
+              resolveComponentTree,
+              /*state*/ null,
+              `react component: ${getComponentName(this.realm, componentType)}`
+            ),
+          this._handleReportedSideEffect
+        )
+      );
+      this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
+      return effects;
+    } finally {
+      this.realm.react.activeReconciler = undefined;
+    }
   }
 
   _handleNestedOptimizedClosuresFromEffects(effects: Effects, evaluatedNode: ReactEvaluatedNode) {
@@ -275,15 +280,20 @@ export class Reconciler {
       }
     };
 
-    let effects = this.realm.wrapInGlobalEnv(() =>
-      this.realm.evaluatePure(() =>
-        evaluateWithNestedParentEffects(this.realm, nestedEffects, () =>
-          this.realm.evaluateForEffects(resolveOptimizedClosure, /*state*/ null, `react nested optimized closure`)
+    try {
+      this.realm.react.activeReconciler = this;
+      let effects = this.realm.wrapInGlobalEnv(() =>
+        this.realm.evaluatePure(() =>
+          evaluateWithNestedParentEffects(this.realm, nestedEffects, () =>
+            this.realm.evaluateForEffects(resolveOptimizedClosure, /*state*/ null, `react nested optimized closure`)
+          )
         )
-      )
-    );
-    this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);
-    return effects;
+      );
+      this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);
+      return effects;
+    } finally {
+      this.realm.react.activeReconciler = undefined;
+    }
   }
 
   clearComponentTreeState(): void {
@@ -880,7 +890,8 @@ export class Reconciler {
         [reactDomPortalFunc, resolvedReactPortalValue, domNodeValue],
         ([renderNode, ..._args]) => {
           return t.callExpression(renderNode, ((_args: any): Array<any>));
-        }
+        },
+        { skipInvariant: true, isPure: true }
       );
     }
     return createPortalNode;
@@ -925,6 +936,37 @@ export class Reconciler {
     return value;
   }
 
+  _resolveAbstractLogicalValue(
+    componentType: Value,
+    value: AbstractValue,
+    context: ObjectValue | AbstractObjectValue,
+    evaluatedNode: ReactEvaluatedNode
+  ) {
+    let [leftValue, rightValue] = value.args;
+    let operator = value.kind;
+
+    invariant(leftValue instanceof AbstractValue);
+    if (operator === "||") {
+      return this._resolveAbstractConditionalValue(
+        componentType,
+        leftValue,
+        leftValue,
+        rightValue,
+        context,
+        evaluatedNode
+      );
+    } else {
+      return this._resolveAbstractConditionalValue(
+        componentType,
+        leftValue,
+        rightValue,
+        leftValue,
+        context,
+        evaluatedNode
+      );
+    }
+  }
+
   _resolveAbstractValue(
     componentType: Value,
     value: AbstractValue,
@@ -945,6 +987,8 @@ export class Reconciler {
         context,
         evaluatedNode
       );
+    } else if (value.kind === "||" || value.kind === "&&") {
+      return this._resolveAbstractLogicalValue(componentType, value, context, evaluatedNode);
     } else {
       if (value instanceof AbstractValue && this.realm.react.abstractHints.has(value)) {
         let reactHint = this.realm.react.abstractHints.get(value);
@@ -1025,10 +1069,7 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     evaluatedNode: ReactEvaluatedNode
   ) {
-    let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
-    let keyValue = getProperty(this.realm, reactElement, "key");
-    let refValue = getProperty(this.realm, reactElement, "ref");
     // terminal host component. Start evaluating its children.
     if (propsValue instanceof ObjectValue && propsValue.properties.has("children")) {
       let childrenValue = Get(this.realm, propsValue, "children");
@@ -1040,9 +1081,13 @@ export class Reconciler {
           resolvedChildren = flattenChildren(this.realm, resolvedChildren);
         }
         if (resolvedChildren !== childrenValue) {
-          let newProps = cloneProps(this.realm, propsValue, false, resolvedChildren);
+          let newProps = cloneProps(this.realm, propsValue, resolvedChildren);
 
-          return createInternalReactElement(this.realm, typeValue, keyValue, refValue, newProps);
+          // This is safe to do as we clone a new ReactElement as part of reconcilation
+          // so we will never be mutating an object used by something else. Furthermore,
+          // the ReactElement is "immutable" so it can never change and only React controls
+          // this object.
+          hardModifyReactObjectPropertyBinding(this.realm, reactElement, "props", newProps);
         }
       }
     }
@@ -1089,10 +1134,12 @@ export class Reconciler {
     branchStatus: BranchStatusEnum,
     evaluatedNode: ReactEvaluatedNode
   ) {
-    reactElement = this.componentTreeConfig.firstRenderOnly
-      ? sanitizeReactElementForFirstRenderOnly(this.realm, reactElement)
-      : reactElement;
-
+    // We create a clone of the ReactElement to be safe. This is because the same
+    // ReactElement might be a temporal referenced in other effects and also it allows us to
+    // easily mutate and swap the props of the ReactElement with the optimized version with
+    // resolved/inlined children.
+    // Note: We used to sanitize out props for firstRender here, we now do this during serialization.
+    reactElement = cloneReactElement(this.realm, reactElement, false);
     let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
     let refValue = getProperty(this.realm, reactElement, "ref");
@@ -1119,7 +1166,9 @@ export class Reconciler {
     let componentResolutionStrategy = this._getComponentResolutionStrategy(typeValue);
 
     // We do not support "ref" on <Component /> ReactElements, unless it's a forwarded ref
+    // or we are firstRenderOnly mode (in which case, we ignore the ref)
     if (
+      !this.componentTreeConfig.firstRenderOnly &&
       !(refValue instanceof NullValue) &&
       componentResolutionStrategy !== "FORWARD_REF" &&
       // If we have an abstract value, it might mean a bad ref, but we will have
@@ -1369,9 +1418,11 @@ export class Reconciler {
       }
       return arrayValue;
     }
-    return mapArrayValue(this.realm, arrayValue, elementValue =>
+    let children = mapArrayValue(this.realm, arrayValue, elementValue =>
       this._resolveDeeply(componentType, elementValue, context, "NEW_BRANCH", evaluatedNode)
     );
+    children.makeFinal();
+    return children;
   }
 
   hasEvaluatedRootNode(componentType: ECMAScriptSourceFunctionValue, evaluateNode: ReactEvaluatedNode): boolean {

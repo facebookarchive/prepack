@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { construct_empty_effects, type Realm, Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding, PropertyKeyValue } from "../types.js";
 import {
@@ -341,6 +341,7 @@ export class PropertiesImplementation {
 
       // return or throw completion
       if (completion instanceof AbruptCompletion) throw completion;
+      if (completion instanceof SimpleNormalCompletion) completion = completion.value;
       invariant(completion instanceof Value);
       return To.ToBooleanPartial(realm, completion);
     }
@@ -1177,8 +1178,12 @@ export class PropertiesImplementation {
 
       invariant(realm.generator);
       let pname = realm.generator.getAsPropertyNameExpression(StringKey(P));
-      let absVal = AbstractValue.createTemporalFromBuildFunction(realm, Value, [O._templateFor || O], ([node]) =>
-        t.memberExpression(node, pname, !t.isIdentifier(pname))
+      let absVal = AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        [O._templateFor || O],
+        ([node]) => t.memberExpression(node, pname, !t.isIdentifier(pname)),
+        { isPure: true }
       );
       // TODO: We can't be sure what the descriptor will be, but the value will be abstract.
       return { configurable: true, enumerable: true, value: absVal, writable: true };
@@ -1219,7 +1224,7 @@ export class PropertiesImplementation {
                   ([node]) => {
                     return t.memberExpression(node, pname, !t.isIdentifier(pname));
                   },
-                  { skipInvariant: true }
+                  { skipInvariant: true, isPure: true }
                 );
               }
             }

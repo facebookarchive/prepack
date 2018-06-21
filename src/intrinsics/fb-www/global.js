@@ -10,7 +10,7 @@
 /* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
-import { AbstractValue, NativeFunctionValue, StringValue, ObjectValue } from "../../values/index.js";
+import { AbstractValue, ArrayValue, NativeFunctionValue, StringValue, ObjectValue } from "../../values/index.js";
 import { createMockReact } from "./react-mocks.js";
 import { createMockReactDOM, createMockReactDOMServer } from "./react-dom-mocks.js";
 import { createMockReactNative } from "./react-native-mocks.js";
@@ -28,6 +28,12 @@ export default function(realm: Realm): void {
   if (realm.react.enabled) {
     // Create it eagerly so it's created outside effect branches
     realm.react.defaultPropsHelper = createDefaultPropsHelper(realm);
+    let emptyArray = new ArrayValue(realm);
+    emptyArray.makeFinal();
+    realm.react.emptyArray = emptyArray;
+    let emptyObject = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+    emptyObject.makeFinal();
+    realm.react.emptyObject = emptyObject;
   }
 
   // module.exports support

@@ -78,7 +78,7 @@ import { canHoistFunction } from "../react/hoisting.js";
 import { To } from "../singletons.js";
 import { ResidualReactElementSerializer } from "./ResidualReactElementSerializer.js";
 import type { Binding } from "../environment.js";
-import { DeclarativeEnvironmentRecord } from "../environment.js";
+import { DeclarativeEnvironmentRecord, FunctionEnvironmentRecord } from "../environment.js";
 import type { Referentializer } from "./Referentializer.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
 import { type Replacement, getReplacement } from "./ResidualFunctionInstantiator";
@@ -673,10 +673,15 @@ export class ResidualHeapSerializer {
       let value = residualFunctionBinding.value;
       invariant(residualFunctionBinding.declarativeEnvironmentRecord);
 
-      residualFunctionBinding.serializedValue = value !== undefined ? this.serializeValue(value) : voidExpression;
-      if (residualFunctionBinding.modified) {
-        this.referentializer.referentializeBinding(residualFunctionBinding);
+      if (residualFunctionBinding.hasLeaked) {
+        this.referentializer.referentializeLeakedBinding(residualFunctionBinding);
+      } else {
+        residualFunctionBinding.serializedValue = value !== undefined ? this.serializeValue(value) : voidExpression;
+        if (residualFunctionBinding.modified) {
+          this.referentializer.referentializeModifiedBinding(residualFunctionBinding);
+        }
       }
+
       if (value !== undefined && value.mightBeObject()) {
         // Increment ref count one more time to ensure that this object will be assigned a unique id.
         // This ensures that only once instance is created across all possible residual function invocations.
@@ -695,10 +700,12 @@ export class ResidualHeapSerializer {
     let result = new Set(initialGenerators);
     let activeFunctions = functionValues.slice();
     let visitedFunctions = new Set();
+
     while (activeFunctions.length > 0) {
       let f = activeFunctions.pop();
       if (visitedFunctions.has(f)) continue;
       visitedFunctions.add(f);
+
       if (f === referencingOnlyOptimizedFunction) {
         let g = this.additionalFunctionGenerators.get(f);
         invariant(g !== undefined);
@@ -718,11 +725,29 @@ export class ResidualHeapSerializer {
     return Array.from(result);
   }
 
-  // Determine if a value is effectively referenced by a single additional function.
-  isReferencedOnlyByOptimizedFunction(val: Value): void | FunctionValue {
+  isDefinedInsideFunction(childFunction: FunctionValue, maybeParentFunctions: Set<FunctionValue>): boolean {
+    for (let maybeParentFunction of maybeParentFunctions) {
+      if (childFunction === maybeParentFunction) {
+        continue;
+      }
+      let env = childFunction.$Environment;
+      while (env.parent !== null) {
+        let envRecord = env.environmentRecord;
+        if (envRecord instanceof FunctionEnvironmentRecord && envRecord.$FunctionObject === maybeParentFunction) {
+          return true;
+        }
+        env = env.parent;
+      }
+    }
+    return false;
+  }
+
+  // Try and get the root optimized function when passed in an optimized function
+  // that may or may not be nested in the tree of said root, or is the root optimized function
+  tryGetOptimizedFunctionRoot(val: Value): void | FunctionValue {
     let scopes = this.residualValues.get(val);
+    let functionValues = new Set();
     invariant(scopes !== undefined);
-    let additionalFunction;
     for (let scope of scopes) {
       let s = scope;
       while (s instanceof Generator) {
@@ -730,11 +755,21 @@ export class ResidualHeapSerializer {
       }
       if (s === "GLOBAL") return undefined;
       invariant(s instanceof FunctionValue);
-      if (this.additionalFunctionGenerators.has(s)) {
-        if (additionalFunction !== undefined && additionalFunction !== s) return undefined;
-        additionalFunction = s;
+      functionValues.add(s);
+    }
+    let additionalFunction;
+
+    for (let functionValue of functionValues) {
+      if (this.additionalFunctionGenerators.has(functionValue)) {
+        if (this.isDefinedInsideFunction(functionValue, functionValues)) {
+          continue;
+        }
+        if (additionalFunction !== undefined && additionalFunction !== functionValue) {
+          return undefined;
+        }
+        additionalFunction = functionValue;
       } else {
-        let f = this.isReferencedOnlyByOptimizedFunction(s);
+        let f = this.tryGetOptimizedFunctionRoot(functionValue);
         if (f === undefined) return undefined;
         if (additionalFunction !== undefined && additionalFunction !== f) return undefined;
         additionalFunction = f;
@@ -780,7 +815,7 @@ export class ResidualHeapSerializer {
       }
     }
 
-    let referencingOnlyOptimizedFunction = this.isReferencedOnlyByOptimizedFunction(val);
+    let referencingOnlyOptimizedFunction = this.tryGetOptimizedFunctionRoot(val);
     if (generators.length === 0) {
       // This value is only referenced from residual functions.
       if (
@@ -839,6 +874,11 @@ export class ResidualHeapSerializer {
       (x, y) => commonAncestorOf(x, y, getGeneratorParent),
       generators[0]
     );
+    // In the case where we have no common ancestor but we have an optimized function reference,
+    // we can attempt to use the generator of the single optimized function
+    if (commonAncestor === undefined && referencingOnlyOptimizedFunction !== undefined) {
+      commonAncestor = this.additionalFunctionGenerators.get(referencingOnlyOptimizedFunction);
+    }
     invariant(commonAncestor !== undefined, "there must always be a common generator ancestor");
     if (trace) console.log(`  common ancestor: ${commonAncestor.getName()}`);
 
@@ -1393,7 +1433,7 @@ export class ResidualHeapSerializer {
     invariant(instance !== undefined);
     let residualBindings = instance.residualFunctionBindings;
 
-    let inOptimizedFunction = this.isReferencedOnlyByOptimizedFunction(val);
+    let inOptimizedFunction = this.tryGetOptimizedFunctionRoot(val);
     if (inOptimizedFunction !== undefined) instance.containingAdditionalFunction = inOptimizedFunction;
     let bindingsEmittedSemaphore = new CountingSemaphore(() => {
       invariant(instance);
@@ -2141,7 +2181,7 @@ export class ResidualHeapSerializer {
     functionValue: FunctionValue,
     additionalEffects: AdditionalFunctionEffects
   ) {
-    let inAdditionalFunction = this.isReferencedOnlyByOptimizedFunction(functionValue);
+    let inAdditionalFunction = this.tryGetOptimizedFunctionRoot(functionValue);
     return this._withGeneratorScope(
       "AdditionalFunction",
       generator,

@@ -141,7 +141,8 @@ export class Serializer {
           this.realm,
           this.options,
           preludeGenerator.createNameGenerator("__scope_"),
-          preludeGenerator.createNameGenerator("__get_scope_binding_")
+          preludeGenerator.createNameGenerator("__get_scope_binding_"),
+          preludeGenerator.createNameGenerator("__leaked_")
         );
         if (this.realm.react.verbose) {
           this.logger.logInformation(`Visiting evaluated nodes...`);

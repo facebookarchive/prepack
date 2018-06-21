@@ -32,8 +32,9 @@ import {
   AbruptCompletion,
   Completion,
   ForkedAbruptCompletion,
-  NormalCompletion,
+  SimpleNormalCompletion,
   PossiblyNormalCompletion,
+  NormalCompletion,
 } from "./completions.js";
 import { EnvironmentRecord, LexicalEnvironment, Reference } from "./environment.js";
 import { Generator } from "./utils/generator.js";
@@ -739,18 +740,18 @@ export type JoinType = {
     e: Effects
   ): ForkedAbruptCompletion,
 
-  updatePossiblyNormalCompletionWithConditionalValue(
+  updatePossiblyNormalCompletionWithConditionalSimpleNormalCompletion(
     realm: Realm,
     joinCondition: AbstractValue,
     pnc: PossiblyNormalCompletion,
-    v: Value
+    nc: SimpleNormalCompletion
   ): void,
 
-  updatePossiblyNormalCompletionWithInverseConditionalValue(
+  updatePossiblyNormalCompletionWithInverseConditionalSimpleNormalCompletion(
     realm: Realm,
     joinCondition: AbstractValue,
     pnc: PossiblyNormalCompletion,
-    v: Value
+    nc: SimpleNormalCompletion
   ): void,
 
   extractAndJoinCompletionsOfType(
@@ -769,7 +770,7 @@ export type JoinType = {
     joinCondition: AbstractValue,
     result1: EvaluationResult,
     result2: EvaluationResult
-  ): AbruptCompletion | PossiblyNormalCompletion | Value,
+  ): Completion,
 
   joinOrForkResults(
     realm: Realm,
@@ -778,7 +779,7 @@ export type JoinType = {
     result2: EvaluationResult,
     e1: Effects,
     e2: Effects
-  ): AbruptCompletion | PossiblyNormalCompletion | Value,
+  ): Completion,
 
   composeGenerators(realm: Realm, generator1: Generator, generator2: Generator): Generator,
 
@@ -791,7 +792,14 @@ export type JoinType = {
   // sets of m1 and m2. The value of a pair is the join of m1[key] and m2[key]
   // where the join is defined to be just m1[key] if m1[key] === m2[key] and
   // and abstract value with expression "joinCondition ? m1[key] : m2[key]" if not.
-  joinBindings(realm: Realm, joinCondition: AbstractValue, m1: Bindings, m2: Bindings): Bindings,
+  joinBindings(
+    realm: Realm,
+    joinCondition: AbstractValue,
+    g1: Generator,
+    m1: Bindings,
+    g2: Generator,
+    m2: Bindings
+  ): [Generator, Generator, Bindings],
 
   // If v1 is known and defined and v1 === v2 return v1,
   // otherwise return getAbstractValue(v1, v2)
@@ -865,7 +873,7 @@ export type CreateType = {
   ): ObjectValue,
 
   // ECMA262 7.3.23 (sec-copydataproperties)
-  CopyDataProperties(realm: Realm, target: ObjectValue, source: Value, excluded: Array<StringValue>): ObjectValue,
+  CopyDataProperties(realm: Realm, target: ObjectValue, source: Value, excluded: Array<PropertyKeyValue>): ObjectValue,
 
   // ECMA262 7.3.4
   CreateDataProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value): boolean,

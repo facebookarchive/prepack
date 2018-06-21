@@ -83,10 +83,24 @@ export function isReactElement(val: Value): boolean {
     let symbolFromRegistry = realm.globalSymbolRegistry.find(e => e.$Symbol === $$typeof);
     let _isReactElement = symbolFromRegistry !== undefined && symbolFromRegistry.$Key === "react.element";
     if (_isReactElement) {
-      // add to Set to speed up future lookups
-      realm.react.reactElements.add(val);
+      // If we get there, it means the ReactElement was created in manual user-space
+      realm.react.reactElements.set(val, { createdDuringReconcilation: false, firstRenderOnly: false });
       return true;
     }
+  }
+  return false;
+}
+
+export function isReactPropsObject(val: Value): boolean {
+  if (!(val instanceof ObjectValue)) {
+    return false;
+  }
+  let realm = val.$Realm;
+  if (!realm.react.enabled) {
+    return false;
+  }
+  if (realm.react.reactProps.has(val)) {
+    return true;
   }
   return false;
 }
@@ -201,7 +215,7 @@ export function addKeyToReactElement(realm: Realm, reactElement: ObjectValue): O
   if (currentKeyValue !== realm.intrinsics.null) {
     newKeyValue = computeBinary(realm, "+", currentKeyValue, newKeyValue);
   }
-  invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue);
+  invariant(propsValue instanceof ObjectValue);
   return createInternalReactElement(realm, typeValue, newKeyValue, refValue, propsValue);
 }
 // we create a unique key for each JSXElement to prevent collisions
@@ -595,6 +609,7 @@ function recursivelyFlattenArray(realm: Realm, array, targetArray): void {
 export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   let flattenedChildren = Create.ArrayCreate(realm, 0);
   recursivelyFlattenArray(realm, array, flattenedChildren);
+  flattenedChildren.makeFinal();
   return flattenedChildren;
 }
 
@@ -836,21 +851,6 @@ function isEventProp(name: string): boolean {
   return name.length > 2 && name[0].toLowerCase() === "o" && name[1].toLowerCase() === "n";
 }
 
-export function sanitizeReactElementForFirstRenderOnly(realm: Realm, reactElement: ObjectValue): ObjectValue {
-  let typeValue = getProperty(realm, reactElement, "type");
-  let keyValue = getProperty(realm, reactElement, "key");
-  let propsValue = getProperty(realm, reactElement, "props");
-
-  invariant(propsValue instanceof ObjectValue);
-  return createInternalReactElement(
-    realm,
-    typeValue,
-    keyValue,
-    realm.intrinsics.null,
-    typeValue instanceof StringValue ? cloneProps(realm, propsValue, true) : propsValue
-  );
-}
-
 export function getLocationFromValue(expressionLocation: any) {
   // if we can't get a value, then it's likely that the source file was not given
   // (this happens in React tests) so instead don't print any location
@@ -910,16 +910,13 @@ export function createInternalReactElement(
   type: Value,
   key: Value,
   ref: Value,
-  props: ObjectValue | AbstractObjectValue
+  props: ObjectValue
 ): ObjectValue {
   let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
-  // sanity checks
+  // Sanity check the type is not conditional
   if (type instanceof AbstractValue && type.kind === "conditional") {
     invariant(false, "createInternalReactElement should never encounter a conditional type");
-  }
-  if (props instanceof AbstractObjectValue && props.kind === "conditional") {
-    invariant(false, "createInternalReactElement should never encounter a conditional props");
   }
   Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactSymbol("react.element", realm));
   Create.CreateDataPropertyOrThrow(realm, obj, "type", type);
@@ -928,6 +925,17 @@ export function createInternalReactElement(
   Create.CreateDataPropertyOrThrow(realm, obj, "props", props);
   Create.CreateDataPropertyOrThrow(realm, obj, "_owner", realm.intrinsics.null);
   obj.makeFinal();
+  // If we're in "rendering" a React component tree, we should have an active reconciler
+  let activeReconciler = realm.react.activeReconciler;
+  let createdDuringReconcilation = activeReconciler !== undefined;
+  let firstRenderOnly = createdDuringReconcilation ? activeReconciler.componentTreeConfig.firstRenderOnly : false;
+
+  realm.react.reactElements.set(obj, { createdDuringReconcilation, firstRenderOnly });
+  // Sanity check to ensure no bugs have crept in
+  invariant(
+    realm.react.reactProps.has(props) && props.mightBeFinalObject(),
+    "React props object is not correctly setup"
+  );
   return obj;
 }
 
@@ -963,19 +971,14 @@ function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps:
   realm.temporalAliasArgs.set(temporalTo, newTemporalArgs);
 }
 
-export function cloneProps(
-  realm: Realm,
-  props: ObjectValue,
-  excludeEventProps: boolean,
-  newChildren?: Value
-): ObjectValue {
+export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value): ObjectValue {
   let clonedProps = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
 
   for (let [propName, binding] of props.properties) {
     if (binding && binding.descriptor && binding.descriptor.enumerable) {
       if (newChildren !== undefined && propName === "children") {
         Properties.Set(realm, clonedProps, propName, newChildren, true);
-      } else if (!excludeEventProps || !isEventProp(propName)) {
+      } else {
         Properties.Set(realm, clonedProps, propName, getProperty(realm, props, propName), true);
       }
     }
@@ -994,6 +997,7 @@ export function cloneProps(
     applyClonedTemporalAlias(realm, props, clonedProps);
   }
   clonedProps.makeFinal();
+  realm.react.reactProps.add(clonedProps);
   return clonedProps;
 }
 
@@ -1104,4 +1108,72 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
   } else {
     objectAssignCall(realm.intrinsics.undefined, [to, ...sources]);
   }
+}
+
+// In firstRenderOnly mode, we strip off onEventHanlders and any props
+// that are functions as they are not required for init render.
+export function canExcludeReactElementObjectProperty(
+  realm: Realm,
+  reactElement: ObjectValue,
+  name: string,
+  value: Value
+): boolean {
+  let reactElementData = realm.react.reactElements.get(reactElement);
+  invariant(reactElementData !== undefined);
+  let { firstRenderOnly } = reactElementData;
+  let isHostComponent = getProperty(realm, reactElement, "type") instanceof StringValue;
+  return firstRenderOnly && isHostComponent && (isEventProp(name) || value instanceof FunctionValue);
+}
+
+export function cloneReactElement(realm: Realm, reactElement: ObjectValue, shouldCloneProps: boolean): ObjectValue {
+  let typeValue = getProperty(realm, reactElement, "type");
+  let keyValue = getProperty(realm, reactElement, "key");
+  let refValue = getProperty(realm, reactElement, "ref");
+  let propsValue = getProperty(realm, reactElement, "props");
+
+  invariant(propsValue instanceof ObjectValue);
+  if (shouldCloneProps) {
+    propsValue = cloneProps(realm, propsValue);
+  }
+  return createInternalReactElement(realm, typeValue, keyValue, refValue, propsValue);
+}
+
+// This function changes an object's property value by changing it's binding
+// and descriptor, thus bypassing the binding detection system. This is a
+// dangerous function and should only be used on objects created by React.
+// It's primary use is to update ReactElement / React props properties
+// during the visitor equivalence stage as an optimization feature.
+// It will invariant if used on objects that are not final.
+export function hardModifyReactObjectPropertyBinding(
+  realm: Realm,
+  object: ObjectValue,
+  propName: string,
+  value: Value
+): void {
+  invariant(
+    object.mightBeFinalObject() && !object.mightNotBeFinalObject(),
+    "hardModifyReactObjectPropertyBinding can only be used on final objects!"
+  );
+  let binding = object.properties.get(propName);
+  if (binding === undefined) {
+    binding = {
+      object,
+      descriptor: {
+        configurable: true,
+        enumerable: true,
+        value: undefined,
+        writable: true,
+      },
+      key: propName,
+    };
+  }
+  let descriptor = binding.descriptor;
+  invariant(descriptor !== undefined);
+  let newDescriptor = Object.assign({}, descriptor, {
+    value,
+  });
+  let newBinding = Object.assign({}, binding, {
+    descriptor: newDescriptor,
+  });
+  object.properties.set(propName, newBinding);
 }

@@ -14,8 +14,11 @@ import { AbstractValue, ObjectValue, SymbolValue, Value } from "../values/index.
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { determineIfReactElementCanBeHoisted } from "../react/hoisting.js";
 import { traverseReactElement } from "../react/elements.js";
-import { getProperty, getReactSymbol } from "../react/utils.js";
-import ReactElementSet from "../react/ReactElementSet.js";
+import { canExcludeReactElementObjectProperty, getProperty, getReactSymbol } from "../react/utils.js";
+import invariant from "../invariant.js";
+import { ReactEquivalenceSet } from "../react/ReactEquivalenceSet.js";
+import { ReactElementSet } from "../react/ReactElementSet.js";
+import { ReactPropsSet } from "../react/ReactPropsSet.js";
 import type { ReactOutputTypes } from "../options.js";
 
 export class ResidualReactElementVisitor {
@@ -24,16 +27,23 @@ export class ResidualReactElementVisitor {
     this.residualHeapVisitor = residualHeapVisitor;
     this.reactOutput = realm.react.output || "create-element";
     this.someReactElement = undefined;
-    this.equivalenceSet = new ReactElementSet(realm, residualHeapVisitor.equivalenceSet);
+    this.reactEquivalenceSet = new ReactEquivalenceSet(realm, this);
+    this.reactElementEquivalenceSet = new ReactElementSet(realm, this.reactEquivalenceSet);
+    this.reactPropsEquivalenceSet = new ReactPropsSet(realm, this.reactEquivalenceSet);
   }
 
   realm: Realm;
   residualHeapVisitor: ResidualHeapVisitor;
   reactOutput: ReactOutputTypes;
   someReactElement: void | ObjectValue;
-  equivalenceSet: ReactElementSet;
+  reactEquivalenceSet: ReactEquivalenceSet;
+  reactElementEquivalenceSet: ReactElementSet;
+  reactPropsEquivalenceSet: ReactPropsSet;
 
   visitReactElement(reactElement: ObjectValue): void {
+    let reactElementData = this.realm.react.reactElements.get(reactElement);
+    invariant(reactElementData !== undefined);
+    let { firstRenderOnly } = reactElementData;
     let isReactFragment = false;
 
     traverseReactElement(this.realm, reactElement, {
@@ -49,21 +59,28 @@ export class ResidualReactElementVisitor {
         this.residualHeapVisitor.visitValue(keyValue);
       },
       visitRef: (refValue: Value) => {
-        this.residualHeapVisitor.visitValue(refValue);
+        if (!firstRenderOnly) {
+          this.residualHeapVisitor.visitValue(refValue);
+        }
       },
       visitAbstractOrPartialProps: (propsValue: AbstractValue | ObjectValue) => {
         this.residualHeapVisitor.visitValue(propsValue);
       },
       visitConcreteProps: (propsValue: ObjectValue) => {
         for (let [propName, binding] of propsValue.properties) {
-          if (binding.descriptor !== undefined && propName !== "children") {
-            let propValue = getProperty(this.realm, propsValue, propName);
-            this.residualHeapVisitor.visitValue(propValue);
+          invariant(propName !== "key" && propName !== "ref", `"${propName}" is a reserved prop name`);
+          if (binding.descriptor === undefined || propName === "children") {
+            continue;
           }
+          let propValue = getProperty(this.realm, propsValue, propName);
+          if (canExcludeReactElementObjectProperty(this.realm, reactElement, propName, propValue)) {
+            continue;
+          }
+          this.residualHeapVisitor.visitValue(propValue);
         }
       },
       visitChildNode: (childValue: Value) => {
-        return this.residualHeapVisitor.visitEquivalentValue(childValue);
+        this.residualHeapVisitor.visitValue(childValue);
       },
     });
 
@@ -75,10 +92,16 @@ export class ResidualReactElementVisitor {
   }
 
   withCleanEquivalenceSet(func: () => void) {
-    let oldReactElementEquivalenceSet = this.equivalenceSet;
-    this.equivalenceSet = new ReactElementSet(this.realm, this.residualHeapVisitor.equivalenceSet);
+    let reactEquivalenceSet = this.reactEquivalenceSet;
+    let reactElementEquivalenceSet = this.reactElementEquivalenceSet;
+    let reactPropsEquivalenceSet = this.reactPropsEquivalenceSet;
+    this.reactEquivalenceSet = new ReactEquivalenceSet(this.realm, this);
+    this.reactElementEquivalenceSet = new ReactElementSet(this.realm, this.reactEquivalenceSet);
+    this.reactPropsEquivalenceSet = new ReactPropsSet(this.realm, this.reactEquivalenceSet);
     func();
     // Cleanup
-    this.equivalenceSet = oldReactElementEquivalenceSet;
+    this.reactEquivalenceSet = reactEquivalenceSet;
+    this.reactElementEquivalenceSet = reactElementEquivalenceSet;
+    this.reactPropsEquivalenceSet = reactPropsEquivalenceSet;
   }
 }
