@@ -62,7 +62,7 @@ import {
   withDescriptorValue,
 } from "./utils.js";
 import { Environment, To } from "../singletons.js";
-import { isReactElement, valueIsReactLibraryObject } from "../react/utils.js";
+import { isReactElement, isReactPropsObject, valueIsReactLibraryObject } from "../react/utils.js";
 import { ResidualReactElementVisitor } from "./ResidualReactElementVisitor.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
 
@@ -602,6 +602,7 @@ export class ResidualHeapVisitor {
   }
 
   _visitBindingHelper(residualFunctionBinding: ResidualFunctionBinding) {
+    if (residualFunctionBinding.hasLeaked) return;
     let environment = residualFunctionBinding.declarativeEnvironmentRecord;
     invariant(environment !== null);
     if (residualFunctionBinding.value === undefined) {
@@ -690,6 +691,7 @@ export class ResidualHeapVisitor {
           name,
           value: undefined,
           modified: true,
+          hasLeaked: false,
           declarativeEnvironmentRecord: null,
           potentialReferentializationScopes: new Set(),
         };
@@ -717,6 +719,7 @@ export class ResidualHeapVisitor {
             name,
             value: undefined,
             modified: false,
+            hasLeaked: false,
             declarativeEnvironmentRecord: environment,
             potentialReferentializationScopes: new Set(),
           };
@@ -999,9 +1002,13 @@ export class ResidualHeapVisitor {
       if (val.temporalAlias !== undefined) {
         return this.visitEquivalentValue(val.temporalAlias);
       }
-      let equivalentReactElementValue = this.residualReactElementVisitor.equivalenceSet.add(val);
+      let equivalentReactElementValue = this.residualReactElementVisitor.reactElementEquivalenceSet.add(val);
       if (this._mark(equivalentReactElementValue)) this.visitValueObject(equivalentReactElementValue);
       return (equivalentReactElementValue: any);
+    } else if (val instanceof ObjectValue && isReactPropsObject(val)) {
+      let equivalentReactPropsValue = this.residualReactElementVisitor.reactPropsEquivalenceSet.add(val);
+      if (this._mark(equivalentReactPropsValue)) this.visitValueObject(equivalentReactPropsValue);
+      return (equivalentReactPropsValue: any);
     }
     this.visitValue(val);
     return val;
@@ -1149,6 +1156,7 @@ export class ResidualHeapVisitor {
       visitBindingAssignment: (binding: Binding, value: Value) => {
         let residualBinding = this.getBinding(binding.environment, binding.name);
         residualBinding.modified = true;
+        residualBinding.hasLeaked = true;
         return this.visitEquivalentValue(value);
       },
     };

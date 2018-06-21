@@ -41,13 +41,15 @@ export class Referentializer {
     realm: Realm,
     options: SerializerOptions,
     scopeNameGenerator: NameGenerator,
-    scopeBindingNameGenerator: NameGenerator
+    scopeBindingNameGenerator: NameGenerator,
+    leakedNameGenerator: NameGenerator
   ) {
     this._options = options;
     this.scopeNameGenerator = scopeNameGenerator;
     this.scopeBindingNameGenerator = scopeBindingNameGenerator;
 
     this.referentializationState = new Map();
+    this._leakedNameGenerator = leakedNameGenerator;
     this.realm = realm;
   }
 
@@ -58,6 +60,7 @@ export class Referentializer {
 
   _newCapturedScopeInstanceIdx: number;
   referentializationState: Map<ReferentializationScope, ReferentializationState>;
+  _leakedNameGenerator: NameGenerator;
 
   getStatistics(): SerializerStatistics {
     invariant(this.realm.statistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
@@ -81,15 +84,23 @@ export class Referentializer {
     );
   }
 
+  createLeakedIds(referentializationScope: ReferentializationScope): Array<BabelNodeStatement> {
+    const leakedIds = [];
+    const serializedScopes = this._getReferentializationState(referentializationScope).serializedScopes;
+    for (const scopeBinding of serializedScopes.values()) leakedIds.push(...scopeBinding.leakedIds);
+    if (leakedIds.length === 0) return [];
+    return [t.variableDeclaration("var", leakedIds.map(id => t.variableDeclarator(id)))];
+  }
+
+  createCapturedScopesPrelude(referentializationScope: ReferentializationScope): Array<BabelNodeStatement> {
+    let accessFunctionDeclaration = this._createCaptureScopeAccessFunction(referentializationScope);
+    if (accessFunctionDeclaration === undefined) return [];
+    return [accessFunctionDeclaration, this._createCapturedScopesArrayInitialization(referentializationScope)];
+  }
+
   // Generate a shared function for accessing captured scope bindings.
   // TODO: skip generating this function if the captured scope is not shared by multiple residual functions.
-  createCaptureScopeAccessFunction(referentializationScope: ReferentializationScope): BabelNodeStatement {
-    const body = [];
-    const selectorParam = t.identifier("__selector");
-    const captured = t.identifier("__captured");
-    const capturedScopesArray = this._getReferentializationState(referentializationScope).capturedScopesArray;
-    const selectorExpression = t.memberExpression(capturedScopesArray, selectorParam, /*Indexer syntax*/ true);
-
+  _createCaptureScopeAccessFunction(referentializationScope: ReferentializationScope): void | BabelNodeStatement {
     // One switch case for one scope.
     const cases = [];
     const serializedScopes = this._getReferentializationState(referentializationScope).serializedScopes;
@@ -99,6 +110,7 @@ export class Referentializer {
     |};
     const initializationCases: Map<string, InitializationCase> = new Map();
     for (const scopeBinding of serializedScopes.values()) {
+      if (scopeBinding.initializationValues.length === 0) continue;
       const expr = t.arrayExpression((scopeBinding.initializationValues: any));
       const key = generate(expr, {}, "").code;
       if (!initializationCases.has(key)) {
@@ -112,6 +124,13 @@ export class Referentializer {
         ic.scopeIDs.push(scopeBinding.id);
       }
     }
+    if (initializationCases.size === 0) return undefined;
+
+    const body = [];
+    const selectorParam = t.identifier("__selector");
+    const captured = t.identifier("__captured");
+    const capturedScopesArray = this._getReferentializationState(referentializationScope).capturedScopesArray;
+    const selectorExpression = t.memberExpression(capturedScopesArray, selectorParam, /*Indexer syntax*/ true);
     for (const ic of initializationCases.values()) {
       ic.scopeIDs.forEach((id, i) => {
         let consequent: Array<BabelNodeStatement> = [];
@@ -163,6 +182,7 @@ export class Referentializer {
         name: this.scopeNameGenerator.generate(),
         id: refState.capturedScopeInstanceIdx++,
         initializationValues: [],
+        leakedIds: [],
         referentializationScope,
       };
       refState.serializedScopes.set(declarativeEnvironmentRecord, scope);
@@ -193,7 +213,20 @@ export class Referentializer {
     return [t.variableDeclaration("var", [t.variableDeclarator(t.identifier(capturedScope), init)])];
   }
 
-  referentializeBinding(residualBinding: ResidualFunctionBinding): void {
+  referentializeLeakedBinding(residualBinding: ResidualFunctionBinding): void {
+    invariant(residualBinding.hasLeaked);
+    // When simpleClosures is enabled, then space for captured mutable bindings is allocated upfront.
+    let serializedBindingId = t.identifier(this._leakedNameGenerator.generate(residualBinding.name));
+    let scope = this._getSerializedBindingScopeInstance(residualBinding);
+    scope.leakedIds.push(serializedBindingId);
+    residualBinding.serializedValue = residualBinding.serializedUnscopedLocation = serializedBindingId;
+
+    this.getStatistics().referentialized++;
+  }
+
+  referentializeModifiedBinding(residualBinding: ResidualFunctionBinding): void {
+    invariant(residualBinding.modified);
+
     // Space for captured mutable bindings is allocated lazily.
     let scope = this._getSerializedBindingScopeInstance(residualBinding);
     let capturedScope = "__captured" + scope.name;
@@ -258,6 +291,7 @@ export class Referentializer {
           let scope = refState.serializedScopes.get(declarativeEnvironmentRecord);
           if (scope) {
             scope.initializationValues = [];
+            scope.leakedIds = [];
           }
         }
       }
@@ -274,7 +308,7 @@ export class Referentializer {
         // Initialize captured scope at function call instead of globally
         if (!residualBinding.declarativeEnvironmentRecord) residualBinding.referentialized = true;
         if (!residualBinding.referentialized) {
-          this._getSerializedBindingScopeInstance(residualBinding);
+          if (!residualBinding.hasLeaked) this._getSerializedBindingScopeInstance(residualBinding);
           residualBinding.referentialized = true;
         }
 
@@ -286,7 +320,7 @@ export class Referentializer {
     }
   }
 
-  createCapturedScopesArrayInitialization(referentializationScope: ReferentializationScope): BabelNodeStatement {
+  _createCapturedScopesArrayInitialization(referentializationScope: ReferentializationScope): BabelNodeStatement {
     return t.variableDeclaration("var", [
       t.variableDeclarator(
         this._getReferentializationState(referentializationScope).capturedScopesArray,

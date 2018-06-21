@@ -152,7 +152,9 @@ function applyBranchedLogicValue(realm: Realm, value: Value): Value {
   } else if (value instanceof ObjectValue && isReactElement(value)) {
     return addKeyToReactElement(realm, value);
   } else if (value instanceof ArrayValue) {
-    return mapArrayValue(realm, value, elementValue => applyBranchedLogicValue(realm, elementValue));
+    let newArray = mapArrayValue(realm, value, elementValue => applyBranchedLogicValue(realm, elementValue));
+    newArray.makeFinal();
+    return newArray;
   } else if (value instanceof AbstractValue && value.kind === "conditional") {
     let [condValue, consequentVal, alternateVal] = value.args;
     invariant(condValue instanceof AbstractValue);

@@ -16,12 +16,13 @@ import {
   AbstractObjectValue,
   ArrayValue,
   FunctionValue,
+  NullValue,
   NumberValue,
   ObjectValue,
   StringValue,
   Value,
 } from "../values/index.js";
-import { Create, Properties } from "../singletons.js";
+import { Create } from "../singletons.js";
 import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
 import {
@@ -29,6 +30,7 @@ import {
   cloneObject,
   createInternalReactElement,
   flagPropsWithNoPartialKeyOrRef,
+  hardModifyReactObjectPropertyBinding,
   getProperty,
   isEventProp,
   hasNoPartialKeyOrRef,
@@ -42,9 +44,9 @@ function deepTraverseAndFindOrDeleteFirstRenderProperties(
   obj: ObjectValue | AbstractObjectValue,
   shouldDelete: boolean,
   alreadyVisited?: Set<AbstractObjectValue | ObjectValue> = new Set()
-): void | boolean {
+): boolean {
   if (obj instanceof FunctionValue || alreadyVisited.has(obj) || obj.isIntrinsic()) {
-    return;
+    return false;
   }
   alreadyVisited.add(obj);
   if (obj.constructor === ObjectValue) {
@@ -62,7 +64,8 @@ function deepTraverseAndFindOrDeleteFirstRenderProperties(
           if (isFinal) {
             obj.makeNotFinal();
           }
-          Properties.DeletePropertyOrThrow(realm, obj, propName);
+          // We can do this, because we created the object as a fresh clone
+          obj.properties.delete(propName);
           if (isFinal) {
             obj.makeFinal();
           }
@@ -102,15 +105,19 @@ function deepTraverseAndFindOrDeleteFirstRenderProperties(
       }
     }
   }
+  return false;
 }
 
-function sanitizeConfigObjectForFirstRender(
+function sanitizeReactElementConfigObjectForFirstRender(
   realm: Realm,
   config: ObjectValue | AbstractObjectValue
 ): ObjectValue | AbstractObjectValue {
   let needToCloneAndDelete = deepTraverseAndFindOrDeleteFirstRenderProperties(realm, config, false);
-  let clonedConfig = cloneObject(realm, config);
-  debugger;
+  if (needToCloneAndDelete) {
+    let clonedConfig = cloneObject(realm, config);
+    deepTraverseAndFindOrDeleteFirstRenderProperties(realm, clonedConfig, true);
+    return clonedConfig;
+  }
   return config;
 }
 
@@ -125,16 +132,22 @@ function createPropsObject(
   let firstRenderOnly = activeReconciler !== undefined ? activeReconciler.componentTreeConfig.firstRenderOnly : false;
   let isHostComponent = type instanceof StringValue;
 
-  if (firstRenderOnly && isHostComponent) {
-    config = sanitizeConfigObjectForFirstRender(realm, config);
-  }
-
   let defaultProps =
     type instanceof ObjectValue || type instanceof AbstractObjectValue
       ? Get(realm, type, "defaultProps")
       : realm.intrinsics.undefined;
 
+  if (firstRenderOnly && isHostComponent) {
+    config = sanitizeReactElementConfigObjectForFirstRender(realm, config);
+    if (defaultProps instanceof ObjectValue || defaultProps instanceof AbstractObjectValue) {
+      defaultProps = sanitizeReactElementConfigObjectForFirstRender(realm, defaultProps);
+    }
+  }
+
   let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  props.makeFinal();
+  realm.react.reactProps.add(props);
+
   let key = realm.intrinsics.null;
   let ref = realm.intrinsics.null;
 
@@ -183,8 +196,8 @@ function createPropsObject(
 
   const setProp = (name: string, value: Value): void => {
     if (name !== "__self" && name !== "__source" && name !== "key" && name !== "ref") {
-      invariant(props instanceof ObjectValue || props instanceof AbstractObjectValue);
-      Properties.Set(realm, props, name, value, true);
+      invariant(props instanceof ObjectValue);
+      hardModifyReactObjectPropertyBinding(realm, props, name, value);
     }
   };
 
@@ -206,11 +219,13 @@ function createPropsObject(
     args.push(config);
     // create a new props object that will be the target of the Object.assign
     props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+    realm.react.reactProps.add(props);
 
     applyObjectAssignConfigsForReactElement(realm, props, args);
+    props.makeFinal();
 
     if (children !== undefined) {
-      Properties.Set(realm, props, "children", children, true);
+      hardModifyReactObjectPropertyBinding(realm, props, "children", children);
     }
 
     // handle default props on a partial/abstract config
@@ -232,7 +247,7 @@ function createPropsObject(
               defaultPropsEvaluated++;
               // if the value we have is undefined, we can apply the defaultProp
               if (propBinding.descriptor && propBinding.descriptor.value === realm.intrinsics.undefined) {
-                Properties.Set(realm, props, propName, Get(realm, defaultProps, propName), true);
+                hardModifyReactObjectPropertyBinding(realm, props, propName, Get(realm, defaultProps, propName));
               }
             }
           }
@@ -251,7 +266,7 @@ function createPropsObject(
         // exist
         for (let [propName, binding] of props.properties) {
           if (binding.descriptor !== undefined && binding.descriptor.value === realm.intrinsics.undefined) {
-            Properties.Set(realm, props, propName, AbstractValue.createFromType(realm, Value), true);
+            hardModifyReactObjectPropertyBinding(realm, props, propName, AbstractValue.createFromType(realm, Value));
           }
         }
         // if we have children and they are abstract, they might be undefined at runtime
@@ -265,7 +280,7 @@ function createPropsObject(
             Get(realm, defaultProps, "children"),
             children
           );
-          Properties.Set(realm, props, "children", conditionalChildren, true);
+          hardModifyReactObjectPropertyBinding(realm, props, "children", conditionalChildren);
         }
         let defaultPropsHelper = realm.react.defaultPropsHelper;
         invariant(defaultPropsHelper !== undefined);
@@ -318,7 +333,6 @@ function createPropsObject(
   // We know the props has no keys because if it did it would have thrown above
   // so we can remove them the props we create.
   flagPropsWithNoPartialKeyOrRef(realm, props);
-  props.makeFinal();
   return { key, props, ref };
 }
 
@@ -376,6 +390,89 @@ function splitReactElementsByConditionalConfig(
   );
 }
 
+export function cloneReactElement(
+  realm: Realm,
+  reactElement: ObjectValue,
+  config: ObjectValue | AbstractObjectValue | NullValue,
+  children: void | Value
+): ObjectValue {
+  let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  realm.react.reactProps.add(props);
+
+  const setProp = (name: string, value: Value): void => {
+    if (name !== "__self" && name !== "__source" && name !== "key" && name !== "ref") {
+      invariant(props instanceof ObjectValue);
+      hardModifyReactObjectPropertyBinding(realm, props, name, value);
+    }
+  };
+
+  applyObjectAssignConfigsForReactElement(realm, props, [config]);
+  props.makeFinal();
+
+  let key = getProperty(realm, reactElement, "key");
+  let ref = getProperty(realm, reactElement, "ref");
+  let type = getProperty(realm, reactElement, "type");
+
+  if (!(config instanceof NullValue)) {
+    let possibleKey = Get(realm, config, "key");
+    if (possibleKey !== realm.intrinsics.null && possibleKey !== realm.intrinsics.undefined) {
+      // if the config has been marked as having no partial key or ref and the possible key
+      // is abstract, yet the config doesn't have a key property, then the key can remain null
+      let keyNotNeeded =
+        hasNoPartialKeyOrRef(realm, config) &&
+        possibleKey instanceof AbstractValue &&
+        config instanceof ObjectValue &&
+        !config.properties.has("key");
+
+      if (!keyNotNeeded) {
+        key = computeBinary(realm, "+", realm.intrinsics.emptyString, possibleKey);
+      }
+    }
+
+    let possibleRef = Get(realm, config, "ref");
+    if (possibleRef !== realm.intrinsics.null && possibleRef !== realm.intrinsics.undefined) {
+      // if the config has been marked as having no partial key or ref and the possible ref
+      // is abstract, yet the config doesn't have a ref property, then the ref can remain null
+      let refNotNeeded =
+        hasNoPartialKeyOrRef(realm, config) &&
+        possibleRef instanceof AbstractValue &&
+        config instanceof ObjectValue &&
+        !config.properties.has("ref");
+
+      if (!refNotNeeded) {
+        ref = possibleRef;
+      }
+    }
+    let defaultProps =
+      type instanceof ObjectValue || type instanceof AbstractObjectValue
+        ? Get(realm, type, "defaultProps")
+        : realm.intrinsics.undefined;
+
+    if (defaultProps instanceof ObjectValue) {
+      for (let [propKey, binding] of defaultProps.properties) {
+        if (binding && binding.descriptor && binding.descriptor.enumerable) {
+          if (Get(realm, props, propKey) === realm.intrinsics.undefined) {
+            setProp(propKey, Get(realm, defaultProps, propKey));
+          }
+        }
+      }
+    } else if (defaultProps instanceof AbstractObjectValue) {
+      invariant(false, "TODO: we need to eventually support this");
+    }
+  }
+
+  if (children !== undefined) {
+    hardModifyReactObjectPropertyBinding(realm, props, "children", children);
+  } else {
+    let elementProps = getProperty(realm, reactElement, "props");
+    invariant(elementProps instanceof ObjectValue);
+    let elementChildren = getProperty(realm, elementProps, "children");
+    hardModifyReactObjectPropertyBinding(realm, props, "children", elementChildren);
+  }
+
+  return createInternalReactElement(realm, type, key, ref, props);
+}
+
 export function createReactElement(
   realm: Realm,
   type: Value,
@@ -403,7 +500,7 @@ type ElementTraversalVisitor = {
   visitRef: (keyValue: Value) => void,
   visitAbstractOrPartialProps: (propsValue: AbstractValue | ObjectValue) => void,
   visitConcreteProps: (propsValue: ObjectValue) => void,
-  visitChildNode: (childValue: Value) => void | Value,
+  visitChildNode: (childValue: Value) => void,
 };
 
 export function traverseReactElement(
@@ -437,35 +534,11 @@ export function traverseReactElement(
             childrenLengthValue = childrenLength.value;
             for (let i = 0; i < childrenLengthValue; i++) {
               let child = getProperty(realm, childrenValue, "" + i);
-              invariant(
-                child instanceof Value,
-                `ReactElement "props.children[${i}]" failed to visit due to a non-value`
-              );
-              let equivalentChild = traversalVisitor.visitChildNode(child);
-              // If the visitor returns an equivalentChild that is of different
-              // value then we should update our ReactElement children with the
-              // new value. This is because we've already visisted the same
-              // child before (ReactElement or abstract value)
-              if (equivalentChild !== undefined && equivalentChild !== child) {
-                Properties.Set(realm, childrenValue, "" + i, equivalentChild, true);
-              }
+              traversalVisitor.visitChildNode(child);
             }
           }
         } else {
-          let equivalentChildren = traversalVisitor.visitChildNode(childrenValue);
-          // If the visitor returns an equivalentChild that is of different
-          // value then we should update our ReactElement children with the
-          // new value. This is because we've already visisted the same
-          // child before (ReactElement or abstract value)
-          if (equivalentChildren !== undefined && equivalentChildren !== childrenValue) {
-            // "props" are immutable objects, but need to mutate them in this instance
-            // so we need to temporarily make them not final so we can do so. Given
-            // we're in the visitor/serialization stage, this shouldn't have any
-            // affect on the application, it's simply to improve optimization
-            propsValue.makeNotFinal();
-            Properties.Set(realm, propsValue, "children", equivalentChildren, true);
-            propsValue.makeFinal();
-          }
+          traversalVisitor.visitChildNode(childrenValue);
         }
       }
     }

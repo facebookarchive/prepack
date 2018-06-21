@@ -71,10 +71,8 @@ import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatem
 import * as t from "babel-types";
 
 export type BindingEntry = {
-  leakedImmutableValue: void | Value,
   hasLeaked: void | boolean,
   value: void | Value,
-  previousLeakedImmutableValue: void | Value,
   previousHasLeaked: void | boolean,
   previousValue: void | Value,
 };
@@ -257,6 +255,8 @@ export class Realm {
       classComponentMetadata: new Map(),
       currentOwner: undefined,
       defaultPropsHelper: undefined,
+      emptyArray: undefined,
+      emptyObject: undefined,
       enabled: opts.reactEnabled || false,
       hoistableFunctions: new WeakMap(),
       hoistableReactElements: new WeakMap(),
@@ -266,6 +266,7 @@ export class Realm {
       output: opts.reactOutput || "create-element",
       propsWithNoPartialKeyOrRef: new WeakSet(),
       reactElements: new WeakSet(),
+      reactProps: new WeakSet(),
       symbols: new Map(),
       usedReactElementKeys: new Set(),
       verbose: opts.reactVerbose || false,
@@ -352,6 +353,8 @@ export class Realm {
     classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
     currentOwner?: ObjectValue,
     defaultPropsHelper?: ECMAScriptSourceFunctionValue,
+    emptyArray: void | ArrayValue,
+    emptyObject: void | ObjectValue,
     enabled: boolean,
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,
@@ -364,6 +367,7 @@ export class Realm {
     output?: ReactOutputTypes,
     propsWithNoPartialKeyOrRef: WeakSet<ObjectValue | AbstractObjectValue>,
     reactElements: WeakSet<ObjectValue>,
+    reactProps: WeakSet<ObjectValue>,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
     usedReactElementKeys: Set<string>,
     verbose: boolean,
@@ -495,46 +499,10 @@ export class Realm {
     return context;
   }
 
-  clearBlockBindings(modifiedBindings: void | Bindings, environmentRecord: DeclarativeEnvironmentRecord) {
-    if (modifiedBindings === undefined) return;
-    for (let b of modifiedBindings.keys())
-      if (environmentRecord.bindings[b.name] && environmentRecord.bindings[b.name] === b) modifiedBindings.delete(b);
-  }
-
-  clearBlockBindingsFromCompletion(completion: Completion, environmentRecord: DeclarativeEnvironmentRecord) {
-    if (completion instanceof PossiblyNormalCompletion) {
-      this.clearBlockBindings(completion.alternateEffects.modifiedBindings, environmentRecord);
-      this.clearBlockBindings(completion.consequentEffects.modifiedBindings, environmentRecord);
-      if (completion.savedEffects !== undefined)
-        this.clearBlockBindings(completion.savedEffects.modifiedBindings, environmentRecord);
-      if (completion.alternate instanceof Completion)
-        this.clearBlockBindingsFromCompletion(completion.alternate, environmentRecord);
-      if (completion.consequent instanceof Completion)
-        this.clearBlockBindingsFromCompletion(completion.consequent, environmentRecord);
-    } else if (completion instanceof ForkedAbruptCompletion) {
-      this.clearBlockBindings(completion.alternateEffects.modifiedBindings, environmentRecord);
-      this.clearBlockBindings(completion.consequentEffects.modifiedBindings, environmentRecord);
-      if (completion.alternate instanceof Completion)
-        this.clearBlockBindingsFromCompletion(completion.alternate, environmentRecord);
-      if (completion.consequent instanceof Completion)
-        this.clearBlockBindingsFromCompletion(completion.consequent, environmentRecord);
-    }
-  }
-
   // Call when a scope falls out of scope and should be destroyed.
   // Clears the Bindings corresponding to the disappearing Scope from ModifiedBindings
   onDestroyScope(lexicalEnvironment: LexicalEnvironment) {
     invariant(this.activeLexicalEnvironments.has(lexicalEnvironment));
-    let modifiedBindings = this.modifiedBindings;
-    if (modifiedBindings) {
-      // Don't undo things to global scope because it's needed past its destruction point (for serialization)
-      let environmentRecord = lexicalEnvironment.environmentRecord;
-      if (environmentRecord instanceof DeclarativeEnvironmentRecord) {
-        this.clearBlockBindings(modifiedBindings, environmentRecord);
-        if (this.savedCompletion !== undefined)
-          this.clearBlockBindingsFromCompletion(this.savedCompletion, environmentRecord);
-      }
-    }
 
     // Ensures if we call onDestroyScope too early, there will be a failure.
     this.activeLexicalEnvironments.delete(lexicalEnvironment);
@@ -548,40 +516,7 @@ export class Realm {
     this.contextStack.push(context);
   }
 
-  clearFunctionBindings(modifiedBindings: void | Bindings, funcVal: FunctionValue) {
-    if (modifiedBindings === undefined) return;
-    for (let b of modifiedBindings.keys()) {
-      if (b.environment instanceof FunctionEnvironmentRecord && b.environment.$FunctionObject === funcVal)
-        modifiedBindings.delete(b);
-    }
-  }
-
-  clearFunctionBindingsFromCompletion(completion: Completion, funcVal: FunctionValue) {
-    if (completion instanceof PossiblyNormalCompletion) {
-      this.clearFunctionBindings(completion.alternateEffects.modifiedBindings, funcVal);
-      this.clearFunctionBindings(completion.consequentEffects.modifiedBindings, funcVal);
-      if (completion.savedEffects !== undefined)
-        this.clearFunctionBindings(completion.savedEffects.modifiedBindings, funcVal);
-      if (completion.alternate instanceof Completion)
-        this.clearFunctionBindingsFromCompletion(completion.alternate, funcVal);
-      if (completion.consequent instanceof Completion)
-        this.clearFunctionBindingsFromCompletion(completion.consequent, funcVal);
-    } else if (completion instanceof ForkedAbruptCompletion) {
-      this.clearFunctionBindings(completion.alternateEffects.modifiedBindings, funcVal);
-      this.clearFunctionBindings(completion.consequentEffects.modifiedBindings, funcVal);
-      if (completion.alternate instanceof Completion)
-        this.clearFunctionBindingsFromCompletion(completion.alternate, funcVal);
-      if (completion.consequent instanceof Completion)
-        this.clearFunctionBindingsFromCompletion(completion.consequent, funcVal);
-    }
-  }
-
   popContext(context: ExecutionContext): void {
-    let funcVal = context.function;
-    if (funcVal) {
-      this.clearFunctionBindings(this.modifiedBindings, funcVal);
-      if (this.savedCompletion !== undefined) this.clearFunctionBindingsFromCompletion(this.savedCompletion, funcVal);
-    }
     let c = this.contextStack.pop();
     invariant(c === context);
   }
@@ -1178,12 +1113,12 @@ export class Realm {
 
   updateAbruptCompletions(priorEffects: Effects, c: PossiblyNormalCompletion) {
     if (c.consequent instanceof AbruptCompletion) {
-      c.consequentEffects = this.composeEffects(priorEffects, c.consequentEffects);
+      c.consequent.effects = this.composeEffects(priorEffects, c.consequentEffects);
       let alternate = c.alternate;
       if (alternate instanceof PossiblyNormalCompletion) this.updateAbruptCompletions(priorEffects, alternate);
     } else {
       invariant(c.alternate instanceof AbruptCompletion);
-      c.alternateEffects = this.composeEffects(priorEffects, c.alternateEffects);
+      c.alternate.effects = this.composeEffects(priorEffects, c.alternateEffects);
       let consequent = c.consequent;
       if (consequent instanceof PossiblyNormalCompletion) this.updateAbruptCompletions(priorEffects, consequent);
     }
@@ -1426,10 +1361,8 @@ export class Realm {
 
     if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding)) {
       this.modifiedBindings.set(binding, {
-        leakedImmutableValue: undefined,
         hasLeaked: undefined,
         value: undefined,
-        previousLeakedImmutableValue: binding.leakedImmutableValue,
         previousHasLeaked: binding.hasLeaked,
         previousValue: binding.value,
       });
@@ -1503,8 +1436,7 @@ export class Realm {
 
   redoBindings(modifiedBindings: void | Bindings) {
     if (modifiedBindings === undefined) return;
-    modifiedBindings.forEach(({ leakedImmutableValue, hasLeaked, value }, binding, m) => {
-      binding.leakedImmutableValue = leakedImmutableValue;
+    modifiedBindings.forEach(({ hasLeaked, value }, binding, m) => {
       binding.hasLeaked = hasLeaked || false;
       binding.value = value;
     });
@@ -1513,10 +1445,8 @@ export class Realm {
   undoBindings(modifiedBindings: void | Bindings) {
     if (modifiedBindings === undefined) return;
     modifiedBindings.forEach((entry, binding, m) => {
-      if (entry.leakedImmutableValue === undefined) entry.leakedImmutableValue = binding.leakedImmutableValue;
       if (entry.hasLeaked === undefined) entry.hasLeaked = binding.hasLeaked;
       if (entry.value === undefined) entry.value = binding.value;
-      binding.leakedImmutableValue = entry.previousLeakedImmutableValue;
       binding.hasLeaked = entry.previousHasLeaked || false;
       binding.value = entry.previousValue;
     });
