@@ -59,7 +59,7 @@ function handleObjectAssignSnapshot(
       delayedSources.push(to.getSnapshot({ removeProperties: true }));
     }
 
-    if (frm instanceof ObjectValue && frm.mightBeHavocedObject() && !frm.mightNotBeHavocedObject()) {
+    if (frm instanceof ObjectValue && frm.mightBeHavocedObject()) {
       // it's not safe to trust any of its values
       delayedSources.push(frm);
     } else if (frm_was_partial) {
