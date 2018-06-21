@@ -98,7 +98,7 @@ function createPropsObject(
 
   const setProp = (name: string, value: Value): void => {
     if (name !== "__self" && name !== "__source" && name !== "key" && name !== "ref") {
-      invariant(props instanceof ObjectValue || props instanceof AbstractObjectValue);
+      invariant(props instanceof ObjectValue);
       hardModifyReactObjectPropertyBinding(realm, props, name, value);
     }
   };
