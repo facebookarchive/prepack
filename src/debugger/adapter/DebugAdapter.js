@@ -23,13 +23,6 @@ import type {
 import { DebuggerConstants } from "./../common/DebuggerConstants.js";
 import { DebuggerError } from "./../common/DebuggerError.js";
 
-// Breakpoint requests send before PP was launched.
-// Buffered here, resent to PP after PP is launched.
-export type PrematureBP = {
-  breakpointArgs: DebugProtocol.SetBreakpointsArguments,
-  response: DebugProtocol.SetBreakpointsResponse,
-};
-
 /* An implementation of an debugger adapter adhering to the VSCode Debug protocol
  * The adapter is responsible for communication between the UI and Prepack
 */
@@ -202,13 +195,13 @@ class PrepackDebugSession extends DebugSession {
           line: breakpointInfo.line,
           column: breakpointInfo.column,
         };
-        this.sendResponse(response);
-      });
-    } else {
-      // If adapterChannel hasn't been created yet, the breakpoint won't be communicated
-      // to the debug server. Buffer it here and send it after channel is created in LaunchRequest.
-      this._bufferedBreakpointRequests.push({ response: response, breakpointArgs: args });
-    }
+        breakpoints.push(breakpoint);
+      }
+      response.body = {
+        breakpoints: breakpoints,
+      };
+      this.sendResponse(response);
+    });
   }
 
   // Override
