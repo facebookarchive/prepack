@@ -60,7 +60,7 @@ export class BreakpointManager {
       breakpointMap = new PerFileBreakpointMap(bp.filePath);
       this._breakpointMaps.set(bp.filePath, breakpointMap);
     }
-    // We don't support column debugging, so set every breakpoint
+    // Nuclide doesn't support column debugging, so set every breakpoint
     // to column 0 for consistency.
     breakpointMap.addBreakpoint(bp.line, 0);
   }

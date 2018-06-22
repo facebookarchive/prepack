@@ -15,7 +15,7 @@ import type { Bindings, BindingEntry, EvaluationResult, PropertyBindings, Create
 import { Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 
-import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { Reference } from "../environment.js";
 import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
 import { Generator } from "../utils/generator.js";
@@ -100,16 +100,20 @@ export class WidenImplementation {
     return new Effects(result, generator, bindings, properties, createdObjects);
   }
 
-  widenResults(realm: Realm, result1: EvaluationResult, result2: EvaluationResult): PossiblyNormalCompletion | Value {
+  widenResults(
+    realm: Realm,
+    result1: EvaluationResult,
+    result2: EvaluationResult
+  ): PossiblyNormalCompletion | SimpleNormalCompletion {
     invariant(!(result1 instanceof Reference || result2 instanceof Reference), "loop bodies should not result in refs");
     invariant(
       !(result1 instanceof AbruptCompletion || result2 instanceof AbruptCompletion),
       "if a loop iteration ends abruptly, there is no need for fixed point computation"
     );
-    if (result1 instanceof Value && result2 instanceof Value) {
-      let val = this.widenValues(realm, result1, result2);
+    if (result1 instanceof SimpleNormalCompletion && result2 instanceof SimpleNormalCompletion) {
+      let val = this.widenValues(realm, result1.value, result2.value);
       invariant(val instanceof Value);
-      return val;
+      return new SimpleNormalCompletion(val);
     }
     if (result1 instanceof PossiblyNormalCompletion || result2 instanceof PossiblyNormalCompletion) {
       //todo: #1174 figure out how to deal with loops that have embedded conditional exits
@@ -165,14 +169,11 @@ export class WidenImplementation {
         result._buildNode = args => t.identifier(phiName);
       }
       invariant(result instanceof Value);
-      let previousLeakedImmutableValue = b2.previousLeakedImmutableValue;
       let previousHasLeaked = b2.previousHasLeaked;
       let previousValue = b2.previousValue;
       return {
-        leakedImmutableValue: previousLeakedImmutableValue,
         hasLeaked: previousHasLeaked,
         value: result,
-        previousLeakedImmutableValue,
         previousHasLeaked,
         previousValue,
       };
@@ -348,7 +349,8 @@ export class WidenImplementation {
   }
 
   containsResults(result1: EvaluationResult, result2: EvaluationResult): boolean {
-    if (result1 instanceof Value && result2 instanceof Value) return this._containsValues(result1, result2);
+    if (result1 instanceof SimpleNormalCompletion && result2 instanceof SimpleNormalCompletion)
+      return this._containsValues(result1.value, result2.value);
     return false;
   }
 
@@ -373,8 +375,7 @@ export class WidenImplementation {
         b1.value === undefined ||
         b2.value === undefined ||
         !this._containsValues(b1.value, b2.value) ||
-        b1.hasLeaked !== b2.hasLeaked ||
-        b1.leakedImmutableValue !== b2.leakedImmutableValue
+        b1.hasLeaked !== b2.hasLeaked
       ) {
         return false;
       }

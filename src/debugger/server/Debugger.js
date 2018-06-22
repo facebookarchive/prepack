@@ -421,9 +421,8 @@ export class DebugServer {
     continue (similar to a breakpoint).
   */
   handlePrepackError(diagnostic: CompilerDiagnostic) {
-    invariant(diagnostic.location);
-    // The following constructs the message and stop instruction
-    // that is sent to the UI to actually execution.
+    invariant(diagnostic.location && diagnostic.location.source);
+    // The following constructs the message and stop-instruction that is sent to the UI to actually stop the execution.
     let location = diagnostic.location;
     let absoluteSource = "";
     if (location.source !== null) absoluteSource = this._relativeToAbsolute(location.source);
@@ -439,7 +438,6 @@ export class DebugServer {
     // The AST Node's location is needed to satisfy the subsequent stackTrace request.
     this.waitForRun(location);
   }
-
   // Return whether the debugger should stop on a CompilerDiagnostic of a given severity.
   shouldStopForSeverity(severity: Severity): boolean {
     switch (this._diagnosticSeverity) {

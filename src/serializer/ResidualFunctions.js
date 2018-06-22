@@ -147,7 +147,10 @@ export class ResidualFunctions {
     let functionInfo = this.residualFunctionInfos.get(funcBody);
     invariant(functionInfo);
     let { usesArguments } = functionInfo;
-    return !shouldInlineFunction() && instances.length > 1 && !usesArguments;
+    let hasAnyLeakedIds = false;
+    for (const instance of instances)
+      for (const scope of instance.scopeInstances.values()) if (scope.leakedIds.length > 0) hasAnyLeakedIds = true;
+    return !shouldInlineFunction() && instances.length > 1 && !usesArguments && !hasAnyLeakedIds;
   }
 
   _getIdentifierReplacements(
@@ -617,8 +620,10 @@ export class ResidualFunctions {
             invariant(serializedValue);
             return serializedValue;
           });
-          for (let entry of instance.scopeInstances) {
-            flatArgs.push(t.numericLiteral(entry[1].id));
+          let hasAnyLeakedIds = false;
+          for (const scope of instance.scopeInstances.values()) {
+            flatArgs.push(t.numericLiteral(scope.id));
+            if (scope.leakedIds.length > 0) hasAnyLeakedIds = true;
           }
           let funcNode;
           let firstUsage = this.firstFunctionUsages.get(functionValue);
@@ -630,7 +635,8 @@ export class ResidualFunctions {
             usesThis ||
             hasFunctionArg ||
             (firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint)) ||
-            this.functionPrototypes.get(functionValue) !== undefined
+            this.functionPrototypes.get(functionValue) !== undefined ||
+            hasAnyLeakedIds
           ) {
             let callArgs: Array<BabelNodeExpression | BabelNodeSpreadElement> = [t.thisExpression()];
             for (let flatArg of flatArgs) callArgs.push(flatArg);
@@ -673,8 +679,10 @@ export class ResidualFunctions {
       } else {
         prelude = this.prelude;
       }
-      prelude.unshift(this.referentializer.createCaptureScopeAccessFunction(referentializationScope));
-      prelude.unshift(this.referentializer.createCapturedScopesArrayInitialization(referentializationScope));
+      prelude.unshift(
+        ...this.referentializer.createCapturedScopesPrelude(referentializationScope),
+        ...this.referentializer.createLeakedIds(referentializationScope)
+      );
     }
 
     for (let instance of this.functionInstances.reverse()) {

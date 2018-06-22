@@ -561,6 +561,14 @@ export default class ObjectValue extends ConcreteValue {
       invariant(!this.isPartialObject());
       let template = new ObjectValue(this.$Realm, this.$Realm.intrinsics.ObjectPrototype);
       this.copyKeys(this.$OwnPropertyKeys(), this, template);
+      let realm = this.$Realm;
+      // The snapshot is an immutable object snapshot
+      template.makeFinal();
+      // The original object might be a React props object, thus
+      // if it is, we need to ensure we mark it with the same rules
+      if (realm.react.enabled && realm.react.reactProps.has(this)) {
+        realm.react.reactProps.add(template);
+      }
       let result = AbstractValue.createTemporalFromBuildFunction(this.$Realm, ObjectValue, [template], ([x]) => x, {
         skipInvariant: true,
         isPure: true,

@@ -34,7 +34,7 @@ export type PrepackLaunchArguments = {
   kind: "launch",
   prepackRuntime: string,
   prepackArguments: Array<string>,
-  sourceFile: string,
+  sourceFiles: Array<string>,
   debugInFilePath: string,
   debugOutFilePath: string,
   outputCallback: Buffer => void,
@@ -170,7 +170,7 @@ export type EvaluateResult = {
 export type LaunchRequestArguments = {
   ...DebugProtocol.LaunchRequestArguments,
   noDebug?: boolean,
-  sourceFile: string,
+  sourceFiles: Array<string>,
   prepackRuntime: string,
   prepackArguments: Array<string>,
 };

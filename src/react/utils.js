@@ -91,6 +91,20 @@ export function isReactElement(val: Value): boolean {
   return false;
 }
 
+export function isReactPropsObject(val: Value): boolean {
+  if (!(val instanceof ObjectValue)) {
+    return false;
+  }
+  let realm = val.$Realm;
+  if (!realm.react.enabled) {
+    return false;
+  }
+  if (realm.react.reactProps.has(val)) {
+    return true;
+  }
+  return false;
+}
+
 export function getReactSymbol(symbolKey: ReactSymbolTypes, realm: Realm): SymbolValue {
   let reactSymbol = realm.react.symbols.get(symbolKey);
   if (reactSymbol !== undefined) {
@@ -201,7 +215,7 @@ export function addKeyToReactElement(realm: Realm, reactElement: ObjectValue): O
   if (currentKeyValue !== realm.intrinsics.null) {
     newKeyValue = computeBinary(realm, "+", currentKeyValue, newKeyValue);
   }
-  invariant(propsValue instanceof ObjectValue || propsValue instanceof AbstractObjectValue);
+  invariant(propsValue instanceof ObjectValue);
   return createInternalReactElement(realm, typeValue, newKeyValue, refValue, propsValue);
 }
 // we create a unique key for each JSXElement to prevent collisions
@@ -595,6 +609,7 @@ function recursivelyFlattenArray(realm: Realm, array, targetArray): void {
 export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   let flattenedChildren = Create.ArrayCreate(realm, 0);
   recursivelyFlattenArray(realm, array, flattenedChildren);
+  flattenedChildren.makeFinal();
   return flattenedChildren;
 }
 
@@ -895,16 +910,13 @@ export function createInternalReactElement(
   type: Value,
   key: Value,
   ref: Value,
-  props: ObjectValue | AbstractObjectValue
+  props: ObjectValue
 ): ObjectValue {
   let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
-  // sanity checks
+  // Sanity check the type is not conditional
   if (type instanceof AbstractValue && type.kind === "conditional") {
     invariant(false, "createInternalReactElement should never encounter a conditional type");
-  }
-  if (props instanceof AbstractObjectValue && props.kind === "conditional") {
-    invariant(false, "createInternalReactElement should never encounter a conditional props");
   }
   Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactSymbol("react.element", realm));
   Create.CreateDataPropertyOrThrow(realm, obj, "type", type);
@@ -919,6 +931,11 @@ export function createInternalReactElement(
   let firstRenderOnly = createdDuringReconcilation ? activeReconciler.componentTreeConfig.firstRenderOnly : false;
 
   realm.react.reactElements.set(obj, { createdDuringReconcilation, firstRenderOnly });
+  // Sanity check to ensure no bugs have crept in
+  invariant(
+    realm.react.reactProps.has(props) && props.mightBeFinalObject(),
+    "React props object is not correctly setup"
+  );
   return obj;
 }
 
@@ -980,6 +997,7 @@ export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value
     applyClonedTemporalAlias(realm, props, clonedProps);
   }
   clonedProps.makeFinal();
+  realm.react.reactProps.add(clonedProps);
   return clonedProps;
 }
 
@@ -1118,4 +1136,44 @@ export function cloneReactElement(realm: Realm, reactElement: ObjectValue, shoul
     propsValue = cloneProps(realm, propsValue);
   }
   return createInternalReactElement(realm, typeValue, keyValue, refValue, propsValue);
+}
+
+// This function changes an object's property value by changing it's binding
+// and descriptor, thus bypassing the binding detection system. This is a
+// dangerous function and should only be used on objects created by React.
+// It's primary use is to update ReactElement / React props properties
+// during the visitor equivalence stage as an optimization feature.
+// It will invariant if used on objects that are not final.
+export function hardModifyReactObjectPropertyBinding(
+  realm: Realm,
+  object: ObjectValue,
+  propName: string,
+  value: Value
+): void {
+  invariant(
+    object.mightBeFinalObject() && !object.mightNotBeFinalObject(),
+    "hardModifyReactObjectPropertyBinding can only be used on final objects!"
+  );
+  let binding = object.properties.get(propName);
+  if (binding === undefined) {
+    binding = {
+      object,
+      descriptor: {
+        configurable: true,
+        enumerable: true,
+        value: undefined,
+        writable: true,
+      },
+      key: propName,
+    };
+  }
+  let descriptor = binding.descriptor;
+  invariant(descriptor !== undefined);
+  let newDescriptor = Object.assign({}, descriptor, {
+    value,
+  });
+  let newBinding = Object.assign({}, binding, {
+    descriptor: newDescriptor,
+  });
+  object.properties.set(propName, newBinding);
 }

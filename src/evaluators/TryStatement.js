@@ -11,7 +11,14 @@
 
 import type { Effects, Realm } from "../realm.js";
 import { type LexicalEnvironment } from "../environment.js";
-import { AbruptCompletion, ForkedAbruptCompletion, PossiblyNormalCompletion, ThrowCompletion } from "../completions.js";
+import {
+  AbruptCompletion,
+  ForkedAbruptCompletion,
+  PossiblyNormalCompletion,
+  ThrowCompletion,
+  SimpleNormalCompletion,
+  NormalCompletion,
+} from "../completions.js";
 import { UpdateEmpty } from "../methods/index.js";
 import { Functions, Join } from "../singletons.js";
 import { Value } from "../values/index.js";
@@ -69,7 +76,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
       let finalizerEffects = composeNestedEffectsWithFinalizer(blockRes);
       finalizerRes = finalizerEffects.result;
       // The result may become abrupt because of the finalizer, but it cannot become normal.
-      invariant(!(finalizerRes instanceof Value));
+      invariant(!(finalizerRes instanceof SimpleNormalCompletion));
     } else {
       // A single thread of control has produced a normal blockRes and the global state is up to date.
       finalizerRes = env.evaluateCompletion(ast.finalizer, strictCode);
@@ -78,7 +85,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
 
   if (finalizerRes instanceof AbruptCompletion) throw finalizerRes;
   if (finalizerRes instanceof PossiblyNormalCompletion) realm.composeWithSavedCompletion(finalizerRes);
-  if (handlerRes instanceof PossiblyNormalCompletion) handlerRes = handlerRes.value;
+  if (handlerRes instanceof NormalCompletion) handlerRes = handlerRes.value;
   if (handlerRes instanceof Value) return (UpdateEmpty(realm, handlerRes, realm.intrinsics.undefined): any);
   throw handlerRes;
 
@@ -105,7 +112,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
         },
         "composeNestedThrowEffectsWithHandler/1"
       );
-      c.consequentEffects.result = c.consequent = new AbruptCompletion(realm.intrinsics.empty);
+      c.updateConsequentKeepingCurrentEffects(new AbruptCompletion(realm.intrinsics.empty));
     }
     priorEffects.pop();
     let alternate = c.alternate;
@@ -122,7 +129,7 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
         },
         "composeNestedThrowEffectsWithHandler/2"
       );
-      c.alternateEffects.result = c.alternate = new AbruptCompletion(realm.intrinsics.empty);
+      c.updateAlternateKeepingCurrentEffects(new AbruptCompletion(realm.intrinsics.empty));
     }
     priorEffects.pop();
     return Join.joinForkOrChoose(realm, c.joinCondition, consequentEffects, alternateEffects);
