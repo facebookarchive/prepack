@@ -53,7 +53,8 @@ export function findCommonPrefix(paths: Array<Array<string>>): string {
     }
     if (allPathsMatch) divergenceIndex += 1;
   }
-  // Heuristic: if only one path, it will match itself, including the filename at the end.
+  // Edge case: if there's only one path, it will match itself, including the filename at the end.
+  // For 2+ paths, even if they all share a prefix, the filenames will not match, so this is not needed.
   if (paths.length === 1) divergenceIndex -= 1;
 
   // Concatenate prefix into string that's bookended by slashes for use as an absolute path prefix.
@@ -61,12 +62,12 @@ export function findCommonPrefix(paths: Array<Array<string>>): string {
 }
 
 export function findMapDifference(commonPrefix: string, mapPrefix: string): string {
+  // Find difference in path between the map's location and the common prefix.
   let mapPrefixUniqueElements = stripEmptyStringBookends(mapPrefix.replace(commonPrefix, "").split("/"));
   let mapDifference = "";
-  for (let _ of mapPrefixUniqueElements) {
+  for (let i = 0; i < mapPrefixUniqueElements.length; i++) {
     mapDifference = mapDifference.concat("../");
   }
-
   return mapDifference;
 }
 

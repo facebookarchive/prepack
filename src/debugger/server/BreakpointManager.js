@@ -13,7 +13,6 @@ import { PerFileBreakpointMap } from "./PerFileBreakpointMap.js";
 import { Breakpoint } from "./Breakpoint.js";
 import type { Breakpoint as BreakpointType } from "./../common/types.js";
 import { BabelNode } from "babel-types";
-// import { IsStatement } from "./../../methods/is.js";
 
 // Storing BreakpointStores for all source files
 export class BreakpointManager {
@@ -23,11 +22,8 @@ export class BreakpointManager {
   _breakpointMaps: Map<string, PerFileBreakpointMap>;
 
   getStoppableBreakpoint(ast: BabelNode): void | Breakpoint {
-    // if (!IsStatement(ast)) return;
     if (ast.loc && ast.loc.source) {
       let location = ast.loc;
-      // if (location.source.includes("InitializeCore.js"))
-      //   console.log(`Checking ${location.source}: ${location.start.line} ${location.start.column}`);
       let filePath = location.source;
       if (filePath === null) return;
       let lineNum = location.start.line;
@@ -43,7 +39,6 @@ export class BreakpointManager {
   _findStoppableBreakpoint(filePath: string, lineNum: number, colNum: number): null | Breakpoint {
     let breakpoint = this.getBreakpoint(filePath, lineNum, colNum);
     if (breakpoint && breakpoint.enabled) {
-      console.log(`Found bp: ${filePath}: ${lineNum}:${colNum}`);
       return breakpoint;
     }
     return null;
@@ -54,7 +49,6 @@ export class BreakpointManager {
   }
 
   _addBreakpoint(bp: BreakpointType) {
-    console.log(`Adding BP: ${bp.filePath}: ${bp.line}`);
     let breakpointMap = this._breakpointMaps.get(bp.filePath);
     if (!breakpointMap) {
       breakpointMap = new PerFileBreakpointMap(bp.filePath);
@@ -68,7 +62,6 @@ export class BreakpointManager {
   getBreakpoint(filePath: string, lineNum: number, columnNum: number = 0): void | Breakpoint {
     let breakpointMap = this._breakpointMaps.get(filePath);
     if (breakpointMap) {
-      console.log(`Looking for ${filePath}: ${lineNum}, ${columnNum}`);
       return breakpointMap.getBreakpoint(lineNum, columnNum);
     }
     return undefined;

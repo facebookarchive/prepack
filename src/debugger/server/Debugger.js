@@ -49,7 +49,6 @@ import {
   findMapDifference,
   stripEmptyStringBookends,
 } from "./PathNormalizer.js";
-import { IsStatement } from "./../../methods/is.js";
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm, configArgs: DebuggerConfigArguments) {
@@ -60,6 +59,7 @@ export class DebugServer {
     this._stepManager = new SteppingManager(this._realm, /* default discard old steppers */ false);
     this._stopEventManager = new StopEventManager();
     this._diagnosticSeverity = configArgs.diagnosticSeverity || "FatalError";
+    // Determine sourcemap prefixes.
     if (configArgs.sourcemapDirectoryRoot !== undefined) {
       if (configArgs.sourcemaps === undefined) {
         throw new DebuggerError(
@@ -69,7 +69,6 @@ export class DebugServer {
       }
       this._sourcemapDirectoryRoot = configArgs.sourcemapDirectoryRoot;
       this._useRootPrefix = true;
-      this._findSourcemapPrefixes(configArgs.sourcemaps);
     } else {
       this._findSourcemapPrefixes(configArgs.sourcemaps);
       this._useRootPrefix = false;
@@ -108,21 +107,17 @@ export class DebugServer {
 
   // Checking if the debugger needs to take any action on reaching this ast node
   checkForActions(ast: BabelNode) {
-    // console.log(`Checking ${ast.loc.source}: ${ast.loc.start.line} ${ast.loc.start.column}`);
     if (this._checkAndUpdateLastExecuted(ast)) {
-      // if (ast.loc.source.includes("InitializeCore.js"))
-        // console.log(`Checking ${ast.loc.source}: ${ast.loc.start.line} ${ast.loc.start.column} -- is of type ${ast.type} and ${IsStatement(ast)} statement`);
       let stoppables: Array<StoppableObject> = this._stepManager.getAndDeleteCompletedSteppers(ast);
       let breakpoint = this._breakpointManager.getStoppableBreakpoint(ast);
       if (breakpoint) stoppables.push(breakpoint);
       let reason = this._stopEventManager.getDebuggeeStopReason(ast, stoppables);
       if (reason) {
         invariant(ast.loc && ast.loc.source);
-        let absolutePath = this._relativeToAbsolute(ast.loc.source);
-        invariant(ast.loc); // To appease flow
-        this._channel.sendStoppedResponse(reason, absolutePath, ast.loc.start.line, ast.loc.start.column);
-        invariant(ast.loc && ast.loc !== null);
-        this.waitForRun(ast.loc);
+        let location = ast.loc;
+        let absolutePath = this._relativeToAbsolute(location.source);
+        this._channel.sendStoppedResponse(reason, absolutePath, location.start.line, location.start.column);
+        this.waitForRun(location);
       }
     }
   }
@@ -133,7 +128,6 @@ export class DebugServer {
     let requestID = request.id;
     let command = request.command;
     let args = request.arguments;
-    console.log("incoming request: ", command);
     // Convert incoming location sources to relative paths in order to match internal representation of filenames.
     if (args.kind === "breakpoint") {
       for (let bp of args.breakpoints) {
@@ -339,6 +333,11 @@ export class DebugServer {
     return false;
   }
 
+  /**
+   * This function is only used if the original source locations in the
+   * sourcemaps are _relative_. This will discover the correct prefixes
+   * to use when converting the relative path to absolute paths.
+   */
   _findSourcemapPrefixes(sourceMaps: Array<SourceFile> | void) {
     // If sourcemaps don't exist, set prefixes to empty string and break.
     if (sourceMaps) {
@@ -384,27 +383,20 @@ export class DebugServer {
 
     this._sourcemapCommonPrefix = findCommonPrefix([originalSourceCPElements, mapCPElements]);
     this._sourcemapMapDifference = findMapDifference(this._sourcemapCommonPrefix, mapCommonPrefix);
-    console.log(`Common prefix: ${this._sourcemapCommonPrefix}`);
-    console.log(`Map difference: ${this._sourcemapMapDifference}`);
   }
 
   _relativeToAbsolute(path: string): string {
-    // console.log("rel to abs input: ", path);
     let absolute;
     if (this._useRootPrefix) {
-      // Should address flow here (and below) use invariants or if's?
-      // Technically is runtime dependent, but there should not be a code path that fails an invariant.
       absolute = this._sourcemapDirectoryRoot + path;
     } else {
       absolute = path.replace(this._sourcemapMapDifference, "");
       absolute = this._sourcemapCommonPrefix + absolute;
     }
-    // console.log("rel to abs: ", absolute);
     return absolute;
   }
 
   _absoluteToRelative(path: string): string {
-    // console.log("abs to rel input: ", path);
     let relative;
     if (this._useRootPrefix) {
       relative = path.replace(this._sourcemapDirectoryRoot, "");
@@ -412,12 +404,11 @@ export class DebugServer {
       relative = path.replace(this._sourcemapCommonPrefix, "");
       relative = this._sourcemapMapDifference + relative;
     }
-    // console.log("abs to rel: ", relative);
     return relative;
   }
 
   /*
-    Displays PP error message, then waits for user to run the program to
+    Displays Prepack error message, then waits for user to run the program to
     continue (similar to a breakpoint).
   */
   handlePrepackError(diagnostic: CompilerDiagnostic) {

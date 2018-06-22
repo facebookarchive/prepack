@@ -9,7 +9,6 @@
 
 /* @flow strict-local */
 import type { SourceData } from "./../common/types.js";
-import { IsStatement } from "./../../methods/is.js";
 import { BabelNode } from "babel-types";
 import invariant from "./../common/invariant.js";
 
@@ -31,7 +30,7 @@ export class Stepper {
   // NOTE: Only checks if a node has changed within the same callstack.
   // The same node in two different excutions contexts (e.g. recursive call)
   // will not be detected. Check the stackSize (via realm) in those cases.
-  isAstLocationChanged(ast: BabelNode, verbose?: boolean) {
+  isAstLocationChanged(ast: BabelNode) {
     // we should only step to statements
     // if (!IsStatement(ast)) {
     //   if (verbose) console.log(`\t\t${ast.type} is not statement`);
@@ -77,24 +76,6 @@ export class StepOverStepper extends Stepper {
   }
 
   isComplete(ast: BabelNode, currentStackSize: number): boolean {
-    // if (ast.loc.source.includes("InitializeCore")) {
-    //   console.log(
-    //     `Testing if stepover is complete at ${this._stepStartData.filePath}: ${this._stepStartData.line}, ${
-    //       this._stepStartData.column
-    //     }`
-    //   );
-    //   console.log(
-    //     `\tNew Location: ${ast.loc.source}: ${ast.loc.start.line}, ${ast.loc.start.column} of node type ${
-    //       ast.type
-    //     } which ${IsStatement(ast)} statement`
-    //   );
-    // }
-    // // console.log(`\tHas AST changed?: ${this.isAstLocationChanged(ast, true)}`);
-    // // console.log(`\tStart stack: ${this._stepStartData.stackSize}  current stack: ${currentStackSize}`);
-    // console.log(
-    //   `\tVerdict: ${currentStackSize < this._stepStartData.stackSize ||
-    //     (currentStackSize === this._stepStartData.stackSize && this.isAstLocationChanged(ast))}`
-    // );
     return (
       // If current stack length < starting stack length, the program either
       // hit an exception so this stepper is no longer relevant. Or, the program
