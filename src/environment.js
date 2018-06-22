@@ -1210,6 +1210,7 @@ export class LexicalEnvironment {
       );
     }
     if (res instanceof AbruptCompletion) return [res, code];
+
     return [Environment.GetValue(this.realm, res), code];
   }
 
@@ -1285,7 +1286,6 @@ export class LexicalEnvironment {
   }
 
   fixup_source_locations(ast: BabelNode, map: string) {
-    console.log(`fixing source locations for ${ast.loc.source}`);
     const smc = new sourceMap.SourceMapConsumer(map);
     traverseFast(ast, node => {
       let loc = node.loc;

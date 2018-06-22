@@ -61,9 +61,7 @@ export class BreakpointManager {
 
   getBreakpoint(filePath: string, lineNum: number, columnNum: number = 0): void | Breakpoint {
     let breakpointMap = this._breakpointMaps.get(filePath);
-    if (breakpointMap) {
-      return breakpointMap.getBreakpoint(lineNum, columnNum);
-    }
+    if (breakpointMap) return breakpointMap.getBreakpoint(lineNum, columnNum);
     return undefined;
   }
 

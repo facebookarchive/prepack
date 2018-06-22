@@ -31,11 +31,6 @@ export class Stepper {
   // The same node in two different excutions contexts (e.g. recursive call)
   // will not be detected. Check the stackSize (via realm) in those cases.
   isAstLocationChanged(ast: BabelNode) {
-    // we should only step to statements
-    // if (!IsStatement(ast)) {
-    //   if (verbose) console.log(`\t\t${ast.type} is not statement`);
-    //   return false;
-    // }
     let loc = ast.loc;
     if (!loc) return false;
     let filePath = loc.source;

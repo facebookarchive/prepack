@@ -312,12 +312,14 @@ export class DebugServer {
       let line = ast.loc.start.line;
       let column = ast.loc.start.column;
       let stackSize = this._realm.contextStack.length;
-      // check if the current location is same as the last one
+      // Check if the current location is same as the last one.
+      // Does not check columns since column debugging is not supported.
+      // This prevents lines with multiple AST nodes from triggering the same breakpoint more than once.
+      // This prevents step-out from completing in the same line that it was set in.
       if (
         this._lastExecuted &&
         filePath === this._lastExecuted.filePath &&
         line === this._lastExecuted.line &&
-        // column === this._lastExecuted.column &&
         stackSize === this._lastExecuted.stackSize
       ) {
         return false;
