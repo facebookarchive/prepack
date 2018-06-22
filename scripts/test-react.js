@@ -385,6 +385,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-21.js");
       });
 
+      it("Two roots", async () => {
+        await runTest(directory, "two-roots.js");
+      });
+
       it("Havocing of ReactElements should not result in property assignments", async () => {
         await runTest(directory, "react-element-havoc.js");
       });
@@ -419,6 +423,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Handle mapped arrays 2", async () => {
         await runTest(directory, "array-map2.js");
+      });
+
+      it("Handle mapped arrays from Array.from", async () => {
+        await runTest(directory, "array-from.js");
       });
 
       it("Simple fragments", async () => {
@@ -797,16 +805,11 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-classes-3.js");
       });
 
-      // awaiting PR on nested additional support #1626,
-      // issues is that both the parent and child additional
-      // function share the same variable, so the serializer
-      // incorrectly emits it in the MainGenerator scope
-      it.skip("Simple classes with Array.from", async () => {
+      it("Simple classes with Array.from", async () => {
         await runTest(directory, "array-from.js");
       });
 
-      // same issue as last test
-      it.skip("Simple classes with Array.from 2", async () => {
+      it("Simple classes with Array.from 2", async () => {
         await runTest(directory, "array-from2.js");
       });
 
@@ -920,6 +923,17 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Simple #2", async () => {
         await runTest(directory, "simple-2.js", true);
+      });
+
+      it("Simple #3", async () => {
+        await runTest(directory, "simple-3.js", true);
+      });
+
+      // Should be refined in a follow up PR to check for
+      // functions and keys on deep referenced objects linking
+      // to host components
+      it("Simple #4", async () => {
+        await runTest(directory, "simple-4.js", true);
       });
 
       it("componentWillMount", async () => {
