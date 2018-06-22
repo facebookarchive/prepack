@@ -151,11 +151,11 @@ function emitResidualLoopIfSafe(
       invariant(createdObjects.size === 0); // or there will be more than one property
       let targetObject;
       let sourceObject;
-      modifiedProperties.forEach((desc, key, map) => {
+      modifiedProperties.forEach(({ descriptor }, key, map) => {
         if (key.object.unknownProperty === key) {
           targetObject = key.object;
-          invariant(desc !== undefined);
-          let sourceValue = desc.value;
+          invariant(descriptor !== undefined);
+          let sourceValue = descriptor.value;
           if (sourceValue instanceof AbstractValue) {
             // because sourceValue was written to key.object.unknownProperty it must be that
             let cond = sourceValue.args[0];

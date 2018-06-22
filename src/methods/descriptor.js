@@ -37,6 +37,9 @@ export function copyDescriptor(from: Descriptor, to: Descriptor) {
   }
   if (from.hasOwnProperty("get")) to.get = from.get;
   if (from.hasOwnProperty("set")) to.set = from.set;
+  if (from.hasOwnProperty("joinCondition")) to.joinCondition = from.joinCondition;
+  if (from.hasOwnProperty("descriptor1")) to.descriptor1 = from.descriptor1;
+  if (from.hasOwnProperty("descriptor2")) to.descriptor2 = from.descriptor2;
 }
 
 // does not check if the contents of value properties are the same

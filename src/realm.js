@@ -78,7 +78,12 @@ export type BindingEntry = {
 };
 export type Bindings = Map<Binding, BindingEntry>;
 export type EvaluationResult = Completion | Reference;
-export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
+export type PropertyBindingEntry = {
+  descriptor: void | Descriptor,
+  isDeleted: void | boolean,
+  previousDescriptor: void | Descriptor,
+};
+export type PropertyBindings = Map<PropertyBinding, PropertyBindingEntry>;
 
 export type CreatedObjects = Set<ObjectValue>;
 
@@ -314,6 +319,7 @@ export class Realm {
 
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
+  capturePreState: boolean;
   createdObjects: void | CreatedObjects;
   createdObjectsTrackedForLeaks: void | CreatedObjects;
   reportObjectGetOwnProperties: void | (ObjectValue => void);
@@ -683,7 +689,7 @@ export class Realm {
         return this.intrinsics.undefined;
       } finally {
         this.undoBindings(effects.modifiedBindings);
-        this.restoreProperties(effects.modifiedProperties);
+        this.undoProperties(effects.modifiedProperties);
         invariant(!effects.canBeApplied);
         effects.canBeApplied = true;
       }
@@ -774,10 +780,10 @@ export class Realm {
         if (this.savedCompletion !== undefined) this.stopEffectCaptureAndUndoEffects(this.savedCompletion);
         if (result !== undefined) {
           this.undoBindings(result.modifiedBindings);
-          this.restoreProperties(result.modifiedProperties);
+          this.undoProperties(result.modifiedProperties);
         } else {
           this.undoBindings(this.modifiedBindings);
-          this.restoreProperties(this.modifiedProperties);
+          this.undoProperties(this.modifiedProperties);
         }
         this.generator = saved_generator;
         this.modifiedBindings = savedBindings;
@@ -864,10 +870,10 @@ export class Realm {
       let effects1 = this.evaluateForEffects(f, undefined, "evaluateForFixpointEffects/1");
       while (true) {
         this.redoBindings(effects1.modifiedBindings);
-        this.restoreProperties(effects1.modifiedProperties);
+        this.redoProperties(effects1.modifiedProperties);
         let effects2 = this.evaluateForEffects(f, undefined, "evaluateForFixpointEffects/2");
         this.undoBindings(effects1.modifiedBindings);
-        this.restoreProperties(effects1.modifiedProperties);
+        this.undoProperties(effects1.modifiedProperties);
         if (Widen.containsEffects(effects1, effects2)) {
           // effects1 includes every value present in effects2, so doing another iteration using effects2 will not
           // result in any more values being added to abstract domains and hence a fixpoint has been reached.
@@ -949,9 +955,9 @@ export class Realm {
     newlyCreatedObjects: CreatedObjects
   ) {
     if (modifiedProperties === undefined) return;
-    modifiedProperties.forEach((desc, propertyBinding, m) => {
+    modifiedProperties.forEach(({ descriptor }, propertyBinding, m) => {
       if (propertyBinding.object instanceof ObjectValue && newlyCreatedObjects.has(propertyBinding.object)) {
-        propertyBinding.descriptor = desc;
+        propertyBinding.descriptor = descriptor;
       }
     });
   }
@@ -1006,14 +1012,14 @@ export class Realm {
     }
 
     let tvalFor: Map<any, AbstractValue> = new Map();
-    pbindings.forEach((val, key, map) => {
+    pbindings.forEach(({ descriptor }, key, map) => {
       if (
         key.object instanceof ObjectValue &&
         (newlyCreatedObjects.has(key.object) || key.object.refuseSerialization)
       ) {
         return;
       }
-      let value = val && val.value;
+      let value = descriptor && descriptor.value;
       if (value instanceof AbstractValue) {
         invariant(value._buildNode !== undefined);
         let tval = gen.deriveAbstract(
@@ -1036,7 +1042,7 @@ export class Realm {
         tvalFor.set(key, tval);
       }
     });
-    pbindings.forEach((val, key, map) => {
+    pbindings.forEach(({ descriptor }, key, map) => {
       if (
         key.object instanceof ObjectValue &&
         (newlyCreatedObjects.has(key.object) || key.object.refuseSerialization)
@@ -1045,8 +1051,8 @@ export class Realm {
       }
       let path = key.pathNode;
       let tval = tvalFor.get(key);
-      invariant(val !== undefined);
-      let value = val.value;
+      invariant(descriptor !== undefined);
+      let value = descriptor.value;
       invariant(value instanceof Value);
       let mightHaveBeenDeleted = value.mightHaveBeenDeleted();
       let mightBeUndefined = value.mightBeUndefined();
@@ -1097,9 +1103,7 @@ export class Realm {
     subsequentEffects.modifiedBindings.forEach((val, key, m) => result.modifiedBindings.set(key, val));
 
     if (priorEffects.modifiedProperties) {
-      priorEffects.modifiedProperties.forEach((desc, propertyBinding, m) =>
-        result.modifiedProperties.set(propertyBinding, desc)
-      );
+      priorEffects.modifiedProperties.forEach((val, key, m) => result.modifiedProperties.set(key, val));
     }
     subsequentEffects.modifiedProperties.forEach((val, key, m) => result.modifiedProperties.set(key, val));
 
@@ -1183,10 +1187,10 @@ export class Realm {
       let savedEffects = this.savedCompletion.savedEffects;
       invariant(savedEffects !== undefined);
       this.redoBindings(savedEffects.modifiedBindings);
-      this.restoreProperties(savedEffects.modifiedProperties);
+      this.redoProperties(savedEffects.modifiedProperties);
       Join.updatePossiblyNormalCompletionWithSubsequentEffects(this, priorCompletion, savedEffects);
       this.undoBindings(savedEffects.modifiedBindings);
-      this.restoreProperties(savedEffects.modifiedProperties);
+      this.undoProperties(savedEffects.modifiedProperties);
       invariant(this.savedCompletion !== undefined);
       this.savedCompletion.savedEffects = undefined;
       this.savedCompletion = Join.composePossiblyNormalCompletions(this, priorCompletion, this.savedCompletion);
@@ -1225,7 +1229,7 @@ export class Realm {
   stopEffectCaptureAndUndoEffects(completion: PossiblyNormalCompletion) {
     // Roll back the state changes
     this.undoBindings(this.modifiedBindings);
-    this.restoreProperties(this.modifiedProperties);
+    this.undoProperties(this.modifiedProperties);
 
     // Restore saved state
     if (completion.savedEffects !== undefined) {
@@ -1254,7 +1258,7 @@ export class Realm {
 
     // Restore modifiedBindings
     this.redoBindings(modifiedBindings);
-    this.restoreProperties(modifiedProperties);
+    this.redoProperties(modifiedProperties);
 
     // track modifiedBindings
     let realmModifiedBindings = this.modifiedBindings;
@@ -1407,7 +1411,11 @@ export class Realm {
     }
     this.callReportPropertyAccess(binding);
     if (this.modifiedProperties !== undefined && !this.modifiedProperties.has(binding)) {
-      this.modifiedProperties.set(binding, cloneDescriptor(binding.descriptor));
+      this.modifiedProperties.set(binding, {
+        descriptor: undefined,
+        isDeleted: false,
+        previousDescriptor: cloneDescriptor(binding.descriptor),
+      });
     }
   }
 
@@ -1436,9 +1444,13 @@ export class Realm {
 
   redoBindings(modifiedBindings: void | Bindings) {
     if (modifiedBindings === undefined) return;
-    modifiedBindings.forEach(({ hasLeaked, value }, binding, m) => {
-      binding.hasLeaked = hasLeaked || false;
-      binding.value = value;
+    modifiedBindings.forEach((entry, binding, m) => {
+      if (this.capturePreState) {
+        entry.previousHasLeaked = binding.hasLeaked;
+        entry.previousValue = binding.value;
+      }
+      binding.hasLeaked = entry.hasLeaked || false;
+      binding.value = entry.value;
     });
   }
 
@@ -1452,15 +1464,24 @@ export class Realm {
     });
   }
 
-  // Restores each PropertyBinding in the given map to the value it
-  // had when it was entered into the map and updates the map to record
-  // the value the Binding had just before the call to this method.
-  restoreProperties(modifiedProperties: void | PropertyBindings) {
+  redoProperties(modifiedProperties: void | PropertyBindings) {
     if (modifiedProperties === undefined) return;
-    modifiedProperties.forEach((desc, propertyBinding, m) => {
-      let d = propertyBinding.descriptor;
-      propertyBinding.descriptor = desc;
-      m.set(propertyBinding, d);
+    modifiedProperties.forEach((entry, propertyBinding, m) => {
+      if (this.capturePreState) {
+        entry.previousDescriptor = cloneDescriptor(propertyBinding.descriptor);
+      }
+      propertyBinding.descriptor = entry.descriptor && cloneDescriptor(entry.descriptor);
+    });
+  }
+
+  undoProperties(modifiedProperties: void | PropertyBindings) {
+    if (modifiedProperties === undefined) return;
+    modifiedProperties.forEach((entry, propertyBinding, m) => {
+      if (entry.descriptor === undefined && !entry.isDeleted) {
+        if (propertyBinding.descriptor === undefined) entry.isDeleted = true;
+        else entry.descriptor = cloneDescriptor(propertyBinding.descriptor);
+      }
+      propertyBinding.descriptor = entry.previousDescriptor && cloneDescriptor(entry.previousDescriptor);
     });
   }
 

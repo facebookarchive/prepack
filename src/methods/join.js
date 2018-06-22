@@ -11,7 +11,15 @@
 
 import type { Binding } from "../environment.js";
 import { FatalError } from "../errors.js";
-import type { Bindings, BindingEntry, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
+import type {
+  BindingEntry,
+  Bindings,
+  CreatedObjects,
+  EvaluationResult,
+  PropertyBindingEntry,
+  PropertyBindings,
+  Realm,
+} from "../realm.js";
 import { Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 
@@ -806,10 +814,21 @@ export class JoinImplementation {
     c1: CreatedObjects,
     c2: CreatedObjects
   ): PropertyBindings {
-    let join = (b: PropertyBinding, d1: void | Descriptor, d2: void | Descriptor) => {
-      // If the PropertyBinding object has been freshly allocated do not join
+    let join = (b: PropertyBinding, be1: void | PropertyBindingEntry, be2: void | PropertyBindingEntry) => {
+      invariant(be1 !== undefined || be2 !== undefined);
+      if (be1 === undefined) {
+        invariant(be2 !== undefined);
+        be1 = { descriptor: undefined, isDeleted: false, previousDescriptor: cloneDescriptor(b.descriptor) };
+      }
+      if (be2 === undefined) {
+        invariant(be1 !== undefined);
+        be2 = { descriptor: undefined, isDeleted: false, previousDescriptor: cloneDescriptor(b.descriptor) };
+      }
+      let d1 = be1.descriptor;
+      let d2 = be2.descriptor;
       if (d1 === undefined) {
-        if (b.object instanceof ObjectValue && c2.has(b.object)) return d2; // no join
+        // If the PropertyBinding object has been freshly allocated do not join
+        if (b.object instanceof ObjectValue && c2.has(b.object)) return be2;
         if (b.descriptor !== undefined && m1.has(b)) {
           // property was deleted
           d1 = cloneDescriptor(b.descriptor);
@@ -821,7 +840,8 @@ export class JoinImplementation {
         }
       }
       if (d2 === undefined) {
-        if (b.object instanceof ObjectValue && c1.has(b.object)) return d1; // no join
+        // If the PropertyBinding object has been freshly allocated do not join
+        if (b.object instanceof ObjectValue && c1.has(b.object)) return be1;
         if (b.descriptor !== undefined && m2.has(b)) {
           // property was deleted
           d2 = cloneDescriptor(b.descriptor);
@@ -832,9 +852,29 @@ export class JoinImplementation {
           d2 = b.descriptor; //Get value of property before the split
         }
       }
-      return this.joinDescriptors(realm, joinCondition, d1, d2);
+      be1.descriptor = d1;
+      be2.descriptor = d2;
+      return this.joinBindingEntries(realm, joinCondition, be1, be2);
     };
     return this.joinMaps(m1, m2, join);
+  }
+
+  joinBindingEntries(
+    realm: Realm,
+    joinCondition: AbstractValue,
+    be1: PropertyBindingEntry,
+    be2: PropertyBindingEntry
+  ): PropertyBindingEntry {
+    return {
+      descriptor: this.joinDescriptors(realm, joinCondition, be1.descriptor, be2.descriptor),
+      isDeleted: false,
+      previousDescriptor:
+        be1.previousDescriptor !== undefined &&
+        be2.previousDescriptor !== undefined &&
+        equalDescriptors(be1.previousDescriptor, be2.previousDescriptor)
+          ? cloneDescriptor(be1.previousDescriptor)
+          : undefined,
+    };
   }
 
   joinDescriptors(
