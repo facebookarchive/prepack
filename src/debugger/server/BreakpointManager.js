@@ -13,7 +13,7 @@ import { PerFileBreakpointMap } from "./PerFileBreakpointMap.js";
 import { Breakpoint } from "./Breakpoint.js";
 import type { Breakpoint as BreakpointType } from "./../common/types.js";
 import { BabelNode } from "babel-types";
-import { IsStatement } from "./../../methods/is.js";
+// import { IsStatement } from "./../../methods/is.js";
 
 // Storing BreakpointStores for all source files
 export class BreakpointManager {
@@ -23,7 +23,7 @@ export class BreakpointManager {
   _breakpointMaps: Map<string, PerFileBreakpointMap>;
 
   getStoppableBreakpoint(ast: BabelNode): void | Breakpoint {
-    if (!IsStatement(ast)) return;
+    // if (!IsStatement(ast)) return;
     if (ast.loc && ast.loc.source) {
       let location = ast.loc;
       // if (location.source.includes("InitializeCore.js"))
@@ -36,8 +36,6 @@ export class BreakpointManager {
       let breakpoint = this._findStoppableBreakpoint(filePath, lineNum, colNum);
       if (breakpoint === null) return;
       return breakpoint;
-    } else {
-      console.log("ack! ast doesn't have a location");
     }
   }
 
@@ -45,6 +43,7 @@ export class BreakpointManager {
   _findStoppableBreakpoint(filePath: string, lineNum: number, colNum: number): null | Breakpoint {
     let breakpoint = this.getBreakpoint(filePath, lineNum, colNum);
     if (breakpoint && breakpoint.enabled) {
+      console.log(`Found bp: ${filePath}: ${lineNum}:${colNum}`);
       return breakpoint;
     }
     return null;
@@ -68,7 +67,10 @@ export class BreakpointManager {
 
   getBreakpoint(filePath: string, lineNum: number, columnNum: number = 0): void | Breakpoint {
     let breakpointMap = this._breakpointMaps.get(filePath);
-    if (breakpointMap) return breakpointMap.getBreakpoint(lineNum, columnNum);
+    if (breakpointMap) {
+      console.log(`Looking for ${filePath}: ${lineNum}, ${columnNum}`);
+      return breakpointMap.getBreakpoint(lineNum, columnNum);
+    }
     return undefined;
   }
 

@@ -1147,19 +1147,11 @@ export class LexicalEnvironment {
 
         let sourceMapContents = source.sourceMapContents;
         if (sourceMapContents && sourceMapContents.length > 0) {
-          console.log("fixing up source locations");
           this.realm.statistics.fixupSourceLocations.measure(() =>
             this.fixup_source_locations(node, sourceMapContents)
           );
         }
 
-        // for (let n of node.program.body) {
-        //   if (n.loc.source.includes("AdsManagerLoadingIndicator")) {
-        //     console.log(`CONFIRMING ${n.loc.source}: ${n.loc.start.line}, ${n.loc.start.column}`);
-        //   }
-        // }
-
-        console.log("Fixing up file names");
         this.realm.statistics.fixupFilenames.measure(() => this.fixup_filenames(node));
 
         asts = asts.concat(node.program.body);
@@ -1307,8 +1299,8 @@ export class LexicalEnvironment {
       fixup_comments(node.leadingComments);
       fixup_comments(node.innerComments);
       fixup_comments(node.trailingComments);
-      if (`${loc.source}`.includes("AdsManagerLoadingIndicator.js")) {
-        r1Counter = r1Counter + 1;
+      // if (`${loc.source}`.includes("AdsManagerLoadingIndicator.js")) {
+        // r1Counter = r1Counter + 1;
         // console.log(`1st TIME: ${loc.source}: start: ${loc.start.line}, ${loc.start.column} --> end: ${loc.end.line}, ${loc.end.column}`);
       }
       return false;
@@ -1364,7 +1356,7 @@ export class LexicalEnvironment {
     // });
     //
     // console.log(`Round one found ${r1Counter} instances of AdsManagerLoadingINdicator`);
-    console.log(`Round one found ${r1TotalNodes} total nodes`);
+    // console.log(`Round one found ${r1TotalNodes} total nodes`);
     // console.log(`Round two found ${r2Counter} instances of AdsManagerLoadingINdicator`);
     // console.log(`Round two found ${r2TotalNodes} total nodes`);
   }

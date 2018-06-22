@@ -323,7 +323,7 @@ export class DebugServer {
         this._lastExecuted &&
         filePath === this._lastExecuted.filePath &&
         line === this._lastExecuted.line &&
-        column === this._lastExecuted.column &&
+        // column === this._lastExecuted.column &&
         stackSize === this._lastExecuted.stackSize
       ) {
         return false;
