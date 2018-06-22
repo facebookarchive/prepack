@@ -144,7 +144,7 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
   let debugChannel;
   // The existence of debug[In/Out]FilePath represents the desire to use the debugger.
   if (options.debugInFilePath !== undefined && options.debugOutFilePath !== undefined) {
-    let ioWrapper = new FileIOWrapper(false, options.inFilePath, options.outFilePath);
+    let ioWrapper = new FileIOWrapper(false, options.debugInFilePath, options.debugOutFilePath);
     debugChannel = new DebugChannel(ioWrapper);
     if (options.debuggerConfigArgs) options.debuggerConfigArgs.sourcemaps = sourceFiles;
   }

@@ -420,6 +420,7 @@ export class DebugServer {
     let absoluteSource = "";
     if (location.source !== null) absoluteSource = this._relativeToAbsolute(location.source);
     let message = `${diagnostic.severity} ${diagnostic.errorCode}: ${diagnostic.message}`;
+    console.log(message);
     this._channel.sendStoppedResponse(
       "Diagnostic",
       absoluteSource,
