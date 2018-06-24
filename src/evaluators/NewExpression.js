@@ -80,7 +80,7 @@ function tryToEvaluateConstructOrLeaveAsAbstract(
   let effects;
   try {
     effects = realm.evaluateForEffects(
-      () => createConstruct(constructor, argsList, realm),
+      () => createConstruct(constructor, argsList.slice(), realm),
       undefined,
       "tryToEvaluateConstructOrLeaveAsAbstract"
     );
