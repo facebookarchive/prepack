@@ -113,8 +113,8 @@ export class DebugServer {
       if (breakpoint) stoppables.push(breakpoint);
       let reason = this._stopEventManager.getDebuggeeStopReason(ast, stoppables);
       if (reason) {
-        invariant(ast.loc && ast.loc.source);
         let location = ast.loc;
+        invariant(location && location.source);
         let absolutePath = this._relativeToAbsolute(location.source);
         this._channel.sendStoppedResponse(reason, absolutePath, location.start.line, location.start.column);
         this.waitForRun(location);
@@ -390,10 +390,19 @@ export class DebugServer {
   _relativeToAbsolute(path: string): string {
     let absolute;
     if (this._useRootPrefix) {
-      absolute = this._sourcemapDirectoryRoot + path;
+      if (this._sourcemapDirectoryRoot !== undefined) {
+        absolute = this._sourcemapDirectoryRoot + path;
+      } else {
+        throw new DebuggerError("Invalid input", "Debugger does not have directory root.");
+      }
     } else {
-      absolute = path.replace(this._sourcemapMapDifference, "");
-      absolute = this._sourcemapCommonPrefix + absolute;
+      if (this._sourcemapCommonPrefix !== undefined && this._sourcemapMapDifference !== undefined) {
+        absolute = path.replace(this._sourcemapMapDifference, "");
+        invariant(this._sourcemapCommonPrefix !== undefined);
+        absolute = this._sourcemapCommonPrefix + absolute;
+      } else {
+        throw new DebuggerError("Invalid input", "Debugger does not have SM common prefix or map difference.");
+      }
     }
     return absolute;
   }
@@ -401,10 +410,19 @@ export class DebugServer {
   _absoluteToRelative(path: string): string {
     let relative;
     if (this._useRootPrefix) {
-      relative = path.replace(this._sourcemapDirectoryRoot, "");
+      if (this._sourcemapDirectoryRoot !== undefined) {
+        relative = path.replace(this._sourcemapDirectoryRoot, "");
+      } else {
+        throw new DebuggerError("Invalid input", "Debugger does not have directory root.");
+      }
     } else {
-      relative = path.replace(this._sourcemapCommonPrefix, "");
-      relative = this._sourcemapMapDifference + relative;
+      if (this._sourcemapCommonPrefix !== undefined && this._sourcemapMapDifference !== undefined) {
+        relative = path.replace(this._sourcemapCommonPrefix, "");
+        invariant(this._sourcemapMapDifference !== undefined);
+        relative = this._sourcemapMapDifference + relative;
+      } else {
+        throw new DebuggerError("Invalid input", "Debugger does not have SM common prefix or map difference.");
+      }
     }
     return relative;
   }

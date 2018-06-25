@@ -170,7 +170,7 @@ export type EvaluateResult = {
 export type LaunchRequestArguments = {
   ...DebugProtocol.LaunchRequestArguments,
   noDebug?: boolean,
-  sourceFiles: Array<string>,
+  sourceFile: string,
   prepackRuntime: string,
   prepackArguments: Array<string>,
 };
