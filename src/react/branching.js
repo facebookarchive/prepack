@@ -59,8 +59,7 @@ export function getValueWithBranchingLogicApplied(
   let needsKeys = false;
 
   // we check the inlined value and see if the component types match
-  const searchAndFlagMatchingComponentTypes = (xTypeParent, yTypeParent) => {
-    let [, x, y] = value.args;
+  const searchAndFlagMatchingComponentTypes = (x, y, xTypeParent, yTypeParent) => {
     if (x instanceof ObjectValue && isReactElement(x) && y instanceof ObjectValue && isReactElement(y)) {
       let xType = getProperty(realm, x, "type");
       let yType = getProperty(realm, y, "type");
@@ -68,6 +67,26 @@ export function getValueWithBranchingLogicApplied(
       if (xType.equals(yType) && !xTypeParent.equals(xType) && !yTypeParent.equals(yType)) {
         needsKeys = true;
       }
+    } else if (x instanceof ArrayValue) {
+      forEachArrayValue(realm, x, (xElem, index) => {
+        let yElem;
+        if (y instanceof ArrayValue) {
+          yElem = getProperty(realm, y, index + "");
+        } else if (index === 0) {
+          yElem = y;
+        }
+        searchAndFlagMatchingComponentTypes(xElem, yElem, xTypeParent, yTypeParent);
+      });
+    } else if (y instanceof ArrayValue) {
+      forEachArrayValue(realm, y, (yElem, index) => {
+        let xElem;
+        if (x instanceof ArrayValue) {
+          xElem = getProperty(realm, x, index + "");
+        } else if (index === 0) {
+          xElem = x;
+        }
+        searchAndFlagMatchingComponentTypes(xElem, yElem, xTypeParent, yTypeParent);
+      });
     }
   };
 
@@ -89,7 +108,8 @@ export function getValueWithBranchingLogicApplied(
           }
         }
       } else if (!xType.equals(yType)) {
-        searchAndFlagMatchingComponentTypes(xType, yType);
+        let [, xVal, yVal] = value.args;
+        searchAndFlagMatchingComponentTypes(xVal, yVal, xType, yType);
       }
     } else if (
       ArrayValue.isIntrinsicAndHasWidenedNumericProperty(x) ||
