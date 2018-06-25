@@ -19,11 +19,6 @@ let ReactDOMServer = require("react-dom/server");
 let PropTypes = require("prop-types");
 let ReactRelay = require("react-relay");
 let ReactTestRenderer = require("react-test-renderer");
-<<<<<<< HEAD
-// $FlowFixMe: react-native is a devDependency
-let ReactNative = require("react-native");
-=======
->>>>>>> tidy-up
 let { mergeAdjacentJSONTextNodes } = require("../lib/utils/json.js");
 /* eslint-disable no-undef */
 let { expect, describe, it } = global;
