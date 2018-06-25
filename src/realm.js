@@ -599,32 +599,28 @@ export class Realm {
     ) => void
   ) {
     let saved_reportSideEffectCallback = this.reportSideEffectCallback;
-    // If we're already tracking the objects in a set (a nested evaluatePure call),
-    // then continue to use that, otherwise create a new set
-    if (saved_reportSideEffectCallback === undefined) {
+    let shouldClearCreatedObjectsTrackedForLeaks = false;
+    if (this.createdObjectsTrackedForLeaks === undefined) {
+      // Track all objects (including function closures) created during
+      // this call. This will be used to make the assumption that every
+      // *other* object is unchanged (pure). These objects are marked
+      // as leaked if they're passed to abstract functions.
       this.createdObjectsTrackedForLeaks = new Set();
+      shouldClearCreatedObjectsTrackedForLeaks = true;
     }
-    // Track all objects (including function closures) created during
-    // this call. This will be used to make the assumption that every
-    // *other* object is unchanged (pure). These objects are marked
-    // as leaked if they're passed to abstract functions.
-    if (saved_reportSideEffectCallback) {
-      this.reportSideEffectCallback = (a, b, c) => {
-        if (reportSideEffectFunc) {
-          reportSideEffectFunc(a, b, c);
-        }
-        saved_reportSideEffectCallback(a, b, c);
-      };
-    } else {
-      this.reportSideEffectCallback = reportSideEffectFunc;
-    }
+    this.reportSideEffectCallback = (...args) => {
+      if (reportSideEffectFunc !== undefined) {
+        reportSideEffectFunc(...args);
+      }
+      if (saved_reportSideEffectCallback !== undefined) {
+        saved_reportSideEffectCallback(...args);
+      }
+    };
     try {
       return f();
     } finally {
       this.reportSideEffectCallback = saved_reportSideEffectCallback;
-      // If we are are exiting the root of a nested evalutePure call, then set
-      // our tracked objects to undefined
-      if (saved_reportSideEffectCallback === undefined) {
+      if (shouldClearCreatedObjectsTrackedForLeaks) {
         this.createdObjectsTrackedForLeaks = undefined;
       }
     }
