@@ -69,21 +69,17 @@ export function getValueWithBranchingLogicApplied(
       }
     } else if (x instanceof ArrayValue) {
       forEachArrayValue(realm, x, (xElem, index) => {
-        let yElem;
+        let yElem = y;
         if (y instanceof ArrayValue) {
           yElem = getProperty(realm, y, index + "");
-        } else if (index === 0) {
-          yElem = y;
         }
         searchAndFlagMatchingComponentTypes(xElem, yElem, xTypeParent, yTypeParent);
       });
     } else if (y instanceof ArrayValue) {
       forEachArrayValue(realm, y, (yElem, index) => {
-        let xElem;
+        let xElem = x;
         if (x instanceof ArrayValue) {
           xElem = getProperty(realm, x, index + "");
-        } else if (index === 0) {
-          xElem = x;
         }
         searchAndFlagMatchingComponentTypes(xElem, yElem, xTypeParent, yTypeParent);
       });
