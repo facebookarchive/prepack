@@ -594,13 +594,16 @@ export class Realm {
       value: void | Value
     ) => void
   ) {
-    let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
     let saved_reportSideEffectCallback = this.reportSideEffectCallback;
+    // If we're already tracking the objects in a set (a nested evaluatePure call),
+    // then continue to use that, otherwise create a new set
+    if (saved_reportSideEffectCallback === undefined) {
+      this.createdObjectsTrackedForLeaks = new Set();
+    }
     // Track all objects (including function closures) created during
     // this call. This will be used to make the assumption that every
     // *other* object is unchanged (pure). These objects are marked
     // as leaked if they're passed to abstract functions.
-    this.createdObjectsTrackedForLeaks = new Set(saved_createdObjectsTrackedForLeaks);
     if (saved_reportSideEffectCallback) {
       this.reportSideEffectCallback = (a, b, c) => {
         if (reportSideEffectFunc) {
@@ -614,13 +617,12 @@ export class Realm {
     try {
       return f();
     } finally {
-      if (saved_createdObjectsTrackedForLeaks) {
-        for (let obj of this.createdObjectsTrackedForLeaks) {
-          saved_createdObjectsTrackedForLeaks.add(obj);
-        }
-      }
-      this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
       this.reportSideEffectCallback = saved_reportSideEffectCallback;
+      // If we are are exiting the root of a nested evalutePure call, then set
+      // our tracked objects to undefined
+      if (saved_reportSideEffectCallback === undefined) {
+        this.createdObjectsTrackedForLeaks = undefined;
+      }
     }
   }
 
