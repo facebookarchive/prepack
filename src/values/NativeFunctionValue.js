@@ -109,16 +109,21 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
 
   callCallback(
     context: UndefinedValue | NullValue | ObjectValue | AbstractObjectValue,
-    argsList: Array<Value>,
+    originalArgsList: Array<Value>,
     newTarget?: void | ObjectValue
   ): ReturnCompletion {
-    let originalLength = argsList.length;
-    let newArgsList = [];
-    for (let i = 0; i < this.length; i++) {
-      newArgsList.push(argsList[i] || this.$Realm.intrinsics.undefined);
+    let originalLength = originalArgsList.length;
+    let argsList = originalArgsList;
+    if (this.length > 0) {
+      // Rather than mutate the original args list, we create a new array
+      // and mutate that array instead
+      argsList = [];
+      for (let i = 0; i < this.length; i++) {
+        argsList.push(originalArgsList[i] || this.$Realm.intrinsics.undefined);
+      }
     }
     return new ReturnCompletion(
-      this.callback(context, newArgsList, originalLength, newTarget),
+      this.callback(context, argsList, originalLength, newTarget),
       this.$Realm.currentLocation
     );
   }
