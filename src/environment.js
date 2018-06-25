@@ -155,6 +155,7 @@ export type Binding = {
   environment: EnvironmentRecord,
   name: string,
   isGlobal: boolean,
+  mightHaveBeenCaptured: boolean,
   // bindings that are assigned to inside loops with abstract termination conditions need temporal locations
   phiNode?: AbstractValue,
   hasLeaked: boolean,
@@ -203,6 +204,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       environment: envRec,
       name: N,
       isGlobal: isGlobal,
+      mightHaveBeenCaptured: false,
       hasLeaked: false,
     });
 
@@ -229,6 +231,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       environment: envRec,
       name: N,
       isGlobal: isGlobal,
+      mightHaveBeenCaptured: false,
       hasLeaked: false,
     };
     this.bindings[N] = skipRecord ? binding : realm.recordModifiedBinding(binding);

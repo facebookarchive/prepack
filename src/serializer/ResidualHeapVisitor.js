@@ -546,6 +546,7 @@ export class ResidualHeapVisitor {
     if (!functionInfo) {
       functionInfo = {
         depth: 0,
+        lexicalDepth: 0,
         unbound: new Map(),
         requireCalls: new Map(),
         modified: new Set(),

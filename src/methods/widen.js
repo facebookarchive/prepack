@@ -23,6 +23,7 @@ import { AbstractValue, ArrayValue, EmptyValue, ObjectValue, Value } from "../va
 
 import invariant from "../invariant.js";
 import * as t from "babel-types";
+import { memberExpressionHelper } from "../utils/babelhelpers.js";
 
 export class WidenImplementation {
   _widenArrays(
@@ -264,12 +265,12 @@ export class WidenImplementation {
           ) {
             if (typeof key === "string") {
               pathNode = AbstractValue.createFromWidenedProperty(realm, rval, [b.object], ([o]) =>
-                t.memberExpression(o, t.identifier(key))
+                memberExpressionHelper(o, key)
               );
             } else {
               invariant(key instanceof AbstractValue);
               pathNode = AbstractValue.createFromWidenedProperty(realm, rval, [b.object, key], ([o, p]) => {
-                return t.memberExpression(o, p, true);
+                return memberExpressionHelper(o, p);
               });
             }
             // The value of the property at the start of the loop needs to be written to the property
@@ -284,12 +285,12 @@ export class WidenImplementation {
               } else if (typeof key === "string") {
                 generator.emitVoidExpression(rval.types, rval.values, [b.object, initVal], ([o, v]) => {
                   invariant(typeof key === "string");
-                  return t.assignmentExpression("=", t.memberExpression(o, t.identifier(key)), v);
+                  return t.assignmentExpression("=", memberExpressionHelper(o, key), v);
                 });
               } else {
                 invariant(key instanceof AbstractValue);
                 generator.emitVoidExpression(rval.types, rval.values, [b.object, key, initVal], ([o, p, v]) =>
-                  t.assignmentExpression("=", t.memberExpression(o, p, true), v)
+                  t.assignmentExpression("=", memberExpressionHelper(o, p), v)
                 );
               }
             }

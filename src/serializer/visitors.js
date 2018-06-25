@@ -42,12 +42,23 @@ function ignorePath(path: BabelTraversePath) {
 }
 
 export let ClosureRefVisitor = {
-  "FunctionDeclaration|FunctionExpression": {
+  "FunctionDeclaration|ArrowFunctionExpression|FunctionExpression": {
     enter(path: BabelTraversePath, state: ClosureRefVisitorState) {
       state.functionInfo.depth++;
     },
     exit(path: BabelTraversePath, state: ClosureRefVisitorState) {
       state.functionInfo.depth--;
+    },
+  },
+
+  ArrowFunctionExpression: {
+    enter(path: BabelTraversePath, state: ClosureRefVisitorState) {
+      state.functionInfo.depth++;
+      state.functionInfo.lexicalDepth++;
+    },
+    exit(path: BabelTraversePath, state: ClosureRefVisitorState) {
+      state.functionInfo.depth--;
+      state.functionInfo.lexicalDepth--;
     },
   },
 
@@ -75,7 +86,7 @@ export let ClosureRefVisitor = {
   },
 
   ThisExpression(path: BabelTraversePath, state: ClosureRefVisitorState) {
-    if (state.functionInfo.depth === 1) {
+    if (state.functionInfo.depth - state.functionInfo.lexicalDepth === 1) {
       state.functionInfo.usesThis = true;
     }
   },

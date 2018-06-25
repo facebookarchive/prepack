@@ -84,6 +84,7 @@ export type FunctionInstance = {
 
 export type FunctionInfo = {
   depth: number,
+  lexicalDepth: number,
   unbound: Map<string, Array<BabelNodeIdentifier>>,
   requireCalls: Map<BabelNode, number | string>,
   modified: Set<string>,
