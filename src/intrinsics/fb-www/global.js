@@ -13,7 +13,10 @@ import type { Realm } from "../../realm.js";
 import { AbstractValue, ArrayValue, NativeFunctionValue, StringValue, ObjectValue } from "../../values/index.js";
 import { createMockReact } from "./react-mocks.js";
 import { createMockReactDOM, createMockReactDOMServer } from "./react-dom-mocks.js";
+<<<<<<< HEAD
 import { createMockReactNative } from "./react-native-mocks.js";
+=======
+>>>>>>> tidy-up
 import { createMockReactRelay } from "./relay-mocks.js";
 import { createAbstract } from "../prepack/utils.js";
 import { createFbMocks } from "./fb-mocks.js";
