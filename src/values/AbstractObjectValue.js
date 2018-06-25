@@ -23,7 +23,7 @@ import {
   StringValue,
   Value,
 } from "./index.js";
-import { protoExpression } from "../utils/internalizer.js";
+import { protoExpression, memberExpressionHelper } from "../utils/babelhelpers.js";
 import type { AbstractValueBuildNodeFunction } from "./AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import {
@@ -506,9 +506,7 @@ export default class AbstractObjectValue extends AbstractValue {
           [ob],
           ([o]) => {
             invariant(typeof P === "string");
-            return t.isValidIdentifier(P)
-              ? t.memberExpression(o, t.identifier(P), false)
-              : t.memberExpression(o, t.stringLiteral(P), true);
+            return memberExpressionHelper(o, P);
           },
           {
             skipInvariant: true,
@@ -611,7 +609,7 @@ export default class AbstractObjectValue extends AbstractValue {
           this.$Realm,
           Value,
           [this, P],
-          ([o, p]) => t.memberExpression(o, p, true),
+          ([o, p]) => memberExpressionHelper(o, p),
           { skipInvariant: true, isPure: true }
         );
       }
@@ -631,7 +629,7 @@ export default class AbstractObjectValue extends AbstractValue {
           this.$Realm,
           Value,
           [Receiver, P],
-          ([o, p]) => t.memberExpression(o, p, true),
+          ([o, p]) => memberExpressionHelper(o, p),
           { skipInvariant: true, isPure: true }
         );
       }
@@ -727,22 +725,18 @@ export default class AbstractObjectValue extends AbstractValue {
               P = P.value;
             }
             if (typeof P === "string") {
-              let propName = generator.getAsPropertyNameExpression(P);
-              generator.emitStatement([Receiver, V], ([objectNode, valueNode]) =>
-                t.expressionStatement(
-                  t.assignmentExpression(
-                    "=",
-                    t.memberExpression(objectNode, propName, !t.isIdentifier(propName)),
-                    valueNode
-                  )
-                )
-              );
+              generator.emitStatement([Receiver, V], ([objectNode, valueNode]) => {
+                invariant(typeof P === "string");
+                return t.expressionStatement(
+                  t.assignmentExpression("=", memberExpressionHelper(objectNode, P), valueNode)
+                );
+              });
             } else {
               // Coercion can only have effects on anything reachable from the key.
               Havoc.value(this.$Realm, P);
               generator.emitStatement([Receiver, P, V], ([objectNode, keyNode, valueNode]) =>
                 t.expressionStatement(
-                  t.assignmentExpression("=", t.memberExpression(objectNode, keyNode, true), valueNode)
+                  t.assignmentExpression("=", memberExpressionHelper(objectNode, keyNode), valueNode)
                 )
               );
             }

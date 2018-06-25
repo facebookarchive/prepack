@@ -36,7 +36,7 @@ import type {
 } from "babel-types";
 import type { FunctionBodyAstNode } from "../types.js";
 import type { FactoryFunctionInfo } from "./types.js";
-import { nullExpression } from "../utils/internalizer.js";
+import { nullExpression } from "../utils/babelhelpers.js";
 
 function canShareFunctionBody(duplicateFunctionInfo: FactoryFunctionInfo): boolean {
   if (duplicateFunctionInfo.anyContainingAdditionalFunction) {
