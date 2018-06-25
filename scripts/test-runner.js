@@ -680,7 +680,7 @@ function run(args) {
 
         let flagPermutations = [
           [false, false, undefined, false],
-          [true, true, undefined, true],
+          [true, true, undefined, false],
           [false, false, args.lazyObjectsRuntime, false],
         ];
         if (isAdditionalFunctionTest || isCaptureTest) {
