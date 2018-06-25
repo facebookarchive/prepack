@@ -40,7 +40,7 @@ import { SerializerStatistics } from "./statistics.js";
 import { ResidualFunctionInstantiator, type Replacement, getReplacement } from "./ResidualFunctionInstantiator.js";
 import { Modules } from "../utils/modules.js";
 import { ResidualFunctionInitializers } from "./ResidualFunctionInitializers.js";
-import { nullExpression } from "../utils/internalizer.js";
+import { nullExpression } from "../utils/babelhelpers.js";
 import type { LocationService, ClassMethodInstance } from "./types.js";
 import { Referentializer } from "./Referentializer.js";
 import { getOrDefault } from "./utils.js";
