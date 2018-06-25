@@ -345,6 +345,8 @@ export class Realm {
   // on a temporal alias (for example, Object.assign) when used with snapshotting
   temporalAliasArgs: WeakMap<AbstractObjectValue | ObjectValue, Array<Value>>;
 
+  selectivelyInlineFunctions: boolean;
+
   react: {
     // reactHints are generated to help improve the effeciency of the React reconciler when
     // operating on a tree of React components. We can use reactHint to mark AbstractValues
