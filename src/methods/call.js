@@ -33,11 +33,19 @@ import {
 } from "../values/index.js";
 import { GetIterator, HasSomeCompatibleType, IsCallable, IsPropertyKey, IteratorStep, IteratorValue } from "./index.js";
 import { GeneratorStart } from "../methods/generator.js";
-import { ReturnCompletion, AbruptCompletion, ThrowCompletion, ForkedAbruptCompletion } from "../completions.js";
+import {
+  AbruptCompletion,
+  ForkedAbruptCompletion,
+  PossiblyNormalCompletion,
+  ReturnCompletion,
+  SimpleNormalCompletion,
+  ThrowCompletion,
+} from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
 import { Create, Environment, Functions, Join, Havoc, To, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "babel-types";
+import { shouldEffectsFromFunctionCallBeInlined } from "../utils/inlining.js";
 import * as t from "babel-types";
 
 // ECMA262 12.3.6.1
@@ -385,7 +393,11 @@ export function OrdinaryCallEvaluateBody(
       // (as observed in large internal tests).
       const abstractRecursionSummarization = false;
       if (!realm.useAbstractInterpretation || realm.pathConditions.length === 0 || !abstractRecursionSummarization)
-        return normalCall();
+        if (realm.useAbstractInterpretation && realm.isInPureScope()) {
+          return selectivelyInlineNormalCall();
+        } else {
+          return normalCall();
+        }
       let savedIsSelfRecursive = F.isSelfRecursive;
       try {
         F.isSelfRecursive = false;
@@ -431,6 +443,53 @@ export function OrdinaryCallEvaluateBody(
         } finally {
           F.activeArguments.delete(currentLocation);
         }
+      }
+
+      function selectivelyInlineNormalCall() {
+        let isPure = true;
+
+        function handleReportedSideEffect(sideEffectType) {
+          isPure = false;
+        }
+        let effects = realm.evaluatePure(
+          () => realm.evaluateForEffects(normalCall, null, "selectivelyInlineNormalCall"),
+          handleReportedSideEffect
+        );
+        let completion = effects.result;
+
+        if (completion instanceof ReturnCompletion && !shouldEffectsFromFunctionCallBeInlined(realm, effects)) {
+          // We need to havoc the bindings if the function call wasn't pure
+          if (!isPure) {
+            Havoc.value(realm, F);
+            for (let arg of argumentsList) {
+              Havoc.value(realm, arg);
+            }
+          }
+          // Create a temporal of the original function call
+          let result = AbstractValue.createTemporalFromBuildFunction(
+            realm,
+            Value,
+            [F, ...argumentsList],
+            ([funcNode, ...argNodes]) => t.callExpression(funcNode, ((argNodes: any): Array<any>))
+          );
+          return new ReturnCompletion(result, completion.location);
+        }
+        // Note that the effects of (non joining) abrupt branches are not included
+        // in effects, but are tracked separately inside completion.
+        realm.applyEffects(effects);
+        if (completion instanceof PossiblyNormalCompletion) {
+          // in this case one of the branches may complete abruptly, which means that
+          // not all control flow branches join into one flow at this point.
+          // Consequently we have to continue tracking changes until the point where
+          // all the branches come together into one.
+          completion = realm.composeWithSavedCompletion(completion);
+        }
+        // return or throw completion
+        if (completion instanceof ReturnCompletion) return completion;
+        if (completion instanceof AbruptCompletion) throw completion;
+        if (completion instanceof SimpleNormalCompletion) completion = completion.value;
+        invariant(completion instanceof Value);
+        return completion;
       }
 
       function normalCall() {

@@ -600,11 +600,25 @@ export class Realm {
     // this call. This will be used to make the assumption that every
     // *other* object is unchanged (pure). These objects are marked
     // as leaked if they're passed to abstract functions.
-    this.createdObjectsTrackedForLeaks = new Set();
-    this.reportSideEffectCallback = reportSideEffectFunc;
+    this.createdObjectsTrackedForLeaks = new Set(saved_createdObjectsTrackedForLeaks);
+    if (saved_reportSideEffectCallback) {
+      this.reportSideEffectCallback = (a, b, c) => {
+        if (reportSideEffectFunc) {
+          reportSideEffectFunc(a, b, c);
+        }
+        saved_reportSideEffectCallback(a, b, c);
+      };
+    } else {
+      this.reportSideEffectCallback = reportSideEffectFunc;
+    }
     try {
       return f();
     } finally {
+      if (saved_createdObjectsTrackedForLeaks) {
+        for (let obj of this.createdObjectsTrackedForLeaks) {
+          saved_createdObjectsTrackedForLeaks.add(obj);
+        }
+      }
       this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
       this.reportSideEffectCallback = saved_reportSideEffectCallback;
     }
