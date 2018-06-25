@@ -286,7 +286,8 @@ function parseFunctionOrderings(code: string): Array<number> {
   const functionOrderPattern = /Function ordering: (\d+)/g;
   let match;
   while ((match = functionOrderPattern.exec(code)) != null) {
-    orders.push(match[1]);
+    invariant(match !== null);
+    orders.push(+match[1]);
   }
   return orders;
 }
