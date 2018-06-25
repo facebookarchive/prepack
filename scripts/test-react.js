@@ -87,6 +87,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     reactEnabled: true,
     reactOutput: outputJsx ? "jsx" : "create-element",
     reactOptimizeNestedFunctions: true,
+    selectivelyInlineFunctions: true,
     inlineExpressions: true,
     invariantLevel: 0,
     stripFlow: true,

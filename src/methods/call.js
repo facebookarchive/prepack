@@ -464,6 +464,7 @@ export function OrdinaryCallEvaluateBody(
         if (
           isPure &&
           completion instanceof ReturnCompletion &&
+          realm.selectivelyInlineFunctions &&
           !shouldEffectsFromFunctionCallBeInlined(realm, effects)
         ) {
           // Create a temporal of the original function call

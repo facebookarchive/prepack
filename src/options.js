@@ -72,6 +72,7 @@ export type RealmOptions = {
   reactOutput?: ReactOutputTypes,
   reactVerbose?: boolean,
   reactOptimizeNestedFunctions?: boolean,
+  selectivelyInlineFunctions?: boolean,
   stripFlow?: boolean,
   abstractValueImpliesMax?: number,
   debuggerConfigArgs?: DebuggerConfigArguments,

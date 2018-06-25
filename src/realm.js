@@ -248,6 +248,8 @@ export class Realm {
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
     this.temporalAliasArgs = new WeakMap();
 
+    this.selectivelyInlineFunctions = opts.selectivelyInlineFunctions || false;
+
     this.react = {
       abstractHints: new WeakMap(),
       activeReconciler: undefined,
@@ -334,6 +336,8 @@ export class Realm {
   contextStack: Array<ExecutionContext> = [];
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
+
+  selectivelyInlineFunctionCalls: boolean;
 
   // temporalAliasArgs is used to map a temporal abstract object value
   // to its respective temporal args used to originally create the temporal.
