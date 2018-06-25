@@ -323,7 +323,7 @@ export class FunctionImplementation {
           break;
         case "SwitchStatement":
           for (let switchCase of ((ast: any): BabelNodeSwitchStatement).cases) {
-            statements = statements.concat(switchCase.consequent);
+            Array.prototype.push.apply(statements, switchCase.consequent);
           }
           break;
         case "TryStatement":

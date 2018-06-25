@@ -67,13 +67,7 @@ import { Generator, PreludeGenerator } from "./utils/generator.js";
 import { emptyExpression, voidExpression } from "./utils/internalizer.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
-import type {
-  BabelNode,
-  BabelNodeSourceLocation,
-  BabelNodeLVal,
-  BabelNodeStatement,
-  BabelNodeSwitchStatement,
-} from "babel-types";
+import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
 
 export type BindingEntry = {
@@ -251,7 +245,6 @@ export class Realm {
     this.$GlobalObject = (({}: any): ObjectValue);
     this.evaluators = (Object.create(null): any);
     this.partialEvaluators = (Object.create(null): any);
-    this.caseBlockCache = new Map();
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
     this.temporalAliasArgs = new WeakMap();
 
@@ -408,7 +401,6 @@ export class Realm {
       metadata?: any
     ) => Value | Reference,
   };
-  caseBlockCache: Map<BabelNodeSwitchStatement, Array<BabelNodeStatement>>;
   partialEvaluators: {
     [key: string]: (
       ast: BabelNode,
