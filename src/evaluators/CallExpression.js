@@ -311,7 +311,6 @@ function EvaluateCall(
         // If this is not a function, this call might throw which can change the state of the program.
         // If this is called from a pure function we handle it using evaluateWithPossiblyAbruptCompletion.
         let error = new CompilerDiagnostic("might not be a function", loc, "PP0005", "RecoverableError");
-        debugger;
         if (realm.handleError(error) === "Fail") throw new FatalError();
       }
     } else if (func.kind === "conditional") {
