@@ -575,6 +575,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "key-nesting-5.js");
       });
 
+      it("Key nesting 6", async () => {
+        await runTest(directory, "key-nesting-6.js");
+      });
+
+      it("Key nesting 7", async () => {
+        await runTest(directory, "key-nesting-7.js");
+      });
+
       it("Key change", async () => {
         await runTest(directory, "key-change.js");
       });
