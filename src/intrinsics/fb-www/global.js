@@ -11,7 +11,8 @@
 
 import type { Realm } from "../../realm.js";
 import { AbstractValue, ArrayValue, NativeFunctionValue, StringValue, ObjectValue } from "../../values/index.js";
-import { createMockReact, createMockReactDOM, createMockReactDOMServer } from "./react-mocks.js";
+import { createMockReact } from "./react-mocks.js";
+import { createMockReactDOM, createMockReactDOMServer } from "./react-dom-mocks.js";
 import { createMockReactRelay } from "./relay-mocks.js";
 import { createAbstract } from "../prepack/utils.js";
 import { createFbMocks } from "./fb-mocks.js";
