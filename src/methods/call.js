@@ -469,7 +469,8 @@ export function OrdinaryCallEvaluateBody(
               realm,
               Value,
               [F, ...argumentsList],
-              ([funcNode, ...argNodes]) => t.callExpression(funcNode, ((argNodes: any): Array<any>))
+              ([funcNode, ...argNodes]) => t.callExpression(funcNode, ((argNodes: any): Array<any>)),
+              { isPure: true, skipInvariant: true }
             );
             return new ReturnCompletion(result, completion.location);
           }
@@ -692,8 +693,9 @@ function isValueAnUnknownAbstractValue(val: Value): boolean {
     return false;
   }
   let res;
+  let op = val.kind;
 
-  if (val instanceof AbstractValue && val.kind === "conditional") {
+  if (val instanceof AbstractValue && op === "conditional") {
     res = isValueAnUnknownAbstractValue(val.args[1]);
     if (res) {
       return true;
@@ -703,7 +705,7 @@ function isValueAnUnknownAbstractValue(val: Value): boolean {
       return true;
     }
     return false;
-  } else if (val instanceof AbstractValue && (val.kind === "||" || val.kind === "&&")) {
+  } else if (val instanceof AbstractValue && (op === "||" || op === "&&")) {
     res = isValueAnUnknownAbstractValue(val.args[0]);
     if (res) {
       return true;
@@ -713,6 +715,10 @@ function isValueAnUnknownAbstractValue(val: Value): boolean {
       return true;
     }
     return false;
+  } else if (val instanceof AbstractValue && (op === "==" || op === "===" || op === "!=" || op === "!==")) {
+    return isValueAnUnknownAbstractValue(val.args[1]);
+  } else if (val instanceof AbstractValue && op === "!") {
+    return isValueAnUnknownAbstractValue(val.args[0]);
   } else if (val instanceof AbstractObjectValue && !val.values.isTop()) {
     return false;
   }

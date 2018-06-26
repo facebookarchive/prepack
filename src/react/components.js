@@ -319,7 +319,7 @@ export function applyGetDerivedStateFromProps(
   let prevState = Get(realm, instance, "state");
   let getDerivedStateFromPropsCall = getDerivedStateFromProps.$Call;
   invariant(getDerivedStateFromPropsCall !== undefined);
-  let partialState = getDerivedStateFromPropsCall(realm.intrinsics.null, [props, prevState]);
+  let partialState = getDerivedStateFromPropsCall(realm.intrinsics.null, [props, prevState], true);
 
   const deriveState = state => {
     let objectAssign = Get(realm, realm.intrinsics.Object, "assign");
