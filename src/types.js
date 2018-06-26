@@ -1053,3 +1053,9 @@ export type UtilsType = {|
   getTypeFromName: string => void | typeof Value,
   describeValue: Value => string,
 |};
+
+export type DebuggerConfigArguments = {
+  diagnosticSeverity?: Severity,
+  sourcemaps?: Array<SourceFile>,
+  sourcemapDirectoryRoot?: string,
+};

@@ -30,7 +30,7 @@ import invariant from "./invariant";
 import zipFactory from "node-zip";
 import path from "path";
 import JSONTokenizer from "./utils/JSONTokenizer.js";
-import type { DebuggerConfigArguments } from "./debugger/common/types";
+import type { DebuggerConfigArguments } from "./types";
 
 // Prepack helper
 declare var __residual: any;

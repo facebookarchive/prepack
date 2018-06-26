@@ -12,7 +12,7 @@
 import type { ErrorHandler } from "./errors.js";
 import type { SerializerOptions, RealmOptions, Compatibility, ReactOutputTypes, InvariantModeTypes } from "./options";
 import { Realm } from "./realm.js";
-import type { DebuggerConfigArguments } from "./debugger/common/types";
+import type { DebuggerConfigArguments } from "./types";
 
 export type PrepackOptions = {|
   additionalGlobals?: Realm => void,

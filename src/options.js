@@ -10,7 +10,7 @@
 /* @flow strict-local */
 
 import type { ErrorHandler } from "./errors.js";
-import type { DebuggerConfigArguments } from "./debugger/common/types";
+import type { DebuggerConfigArguments } from "./types";
 
 export type Compatibility =
   | "browser"

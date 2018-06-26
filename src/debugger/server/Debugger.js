@@ -25,7 +25,6 @@ import type {
   VariablesArguments,
   EvaluateArguments,
   SourceData,
-  DebuggerConfigArguments,
 } from "./../common/types.js";
 import type { Realm } from "./../../realm.js";
 import { ExecutionContext } from "./../../realm.js";
@@ -49,6 +48,7 @@ import {
   findMapDifference,
   stripEmptyStringBookends,
 } from "./PathNormalizer.js";
+import type { DebuggerConfigArguments } from "../../types";
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm, configArgs: DebuggerConfigArguments) {
@@ -395,10 +395,15 @@ export class DebugServer {
     if (this._useRootPrefix) {
       if (this._sourcemapDirectoryRoot !== undefined) {
         let dirRoot = this._sourcemapDirectoryRoot;
-        if (path.includes(dirRoot)) {
+        if (
+          // If the "relative" path is actually absolute, then don't prepend anything.
+          stripEmptyStringBookends(path.split("/"))[0] ===
+          stripEmptyStringBookends(this._sourcemapDirectoryRoot.split("/"))[0]
+        ) {
           absolute = path;
         } else {
-          absolute = dirRoot + path;
+          let separator = path[0] === "/" ? "" : "/";
+          absolute = dirRoot + separator + path;
         }
       } else {
         throw new DebuggerError("Invalid input", "Debugger does not have directory root.");
