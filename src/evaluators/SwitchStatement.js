@@ -352,37 +352,12 @@ export default function(
     let elems = switchValue.values.getElements();
     let n = elems.size;
     if (n > 1 && n < 10) {
-      let joinedEffects;
-      for (let concreteSwitchValue of elems) {
-        let condition = AbstractValue.createFromBinaryOp(realm, "===", switchValue, concreteSwitchValue);
-        let effects = realm.evaluateForEffects(
-          () => {
-            return Path.withCondition(condition, () => {
-              return evaluationHelper(ast, concreteSwitchValue, strictCode, env, realm, labelSet);
-            });
-          },
-          undefined,
-          "specialized switch"
-        );
-        joinedEffects =
-          joinedEffects === undefined ? effects : Join.joinForkOrChoose(realm, condition, effects, joinedEffects);
-      }
-      invariant(joinedEffects !== undefined);
-      realm.applyEffects(joinedEffects, "joined specialized switch");
-      let { result } = joinedEffects;
-      if (result instanceof AbruptCompletion) throw result;
-      if (result instanceof PossiblyNormalCompletion) {
-        // in this case one of the branches may complete abruptly, which means that
-        // not all control flow branches join into one flow at this point.
-        // Consequently we have to continue tracking changes until the point where
-        // all the branches come together into one.
-        result = realm.composeWithSavedCompletion(result);
-      }
-      if (result instanceof SimpleNormalCompletion) {
-        result = result.value;
-      }
-      invariant(result instanceof Value); // since evaluationHelper returns a value in non abrupt cases
-      return result;
+      return Join.mapAndJoin(
+        realm,
+        elems,
+        concreteSwitchValue => AbstractValue.createFromBinaryOp(realm, "===", switchValue, concreteSwitchValue),
+        concreteSwitchValue => evaluationHelper(ast, concreteSwitchValue, strictCode, env, realm, labelSet)
+      );
     }
   }
 
