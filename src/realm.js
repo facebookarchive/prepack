@@ -683,19 +683,37 @@ export class Realm {
       value: void | Value
     ) => void
   ) {
-    let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
     let saved_reportSideEffectCallback = this.reportSideEffectCallback;
-    // Track all objects (including function closures) created during
-    // this call. This will be used to make the assumption that every
-    // *other* object is unchanged (pure). These objects are marked
-    // as leaked if they're passed to abstract functions.
-    this.createdObjectsTrackedForLeaks = new Set();
-    this.reportSideEffectCallback = reportSideEffectFunc;
+    let shouldClearCreatedObjectsTrackedForLeaks = false;
+    // Only create a tracked objects set if we haven't already got one
+    // otherwise, we'll end up creating a new set for nested evalautePure
+    // calls.
+    if (this.createdObjectsTrackedForLeaks === undefined) {
+      // Track all objects (including function closures) created during
+      // this call. This will be used to make the assumption that every
+      // *other* object is unchanged (pure). These objects are marked
+      // as leaked if they're passed to abstract functions.
+      this.createdObjectsTrackedForLeaks = new Set();
+      // Ensure we set this flag so we clear the set once finished with
+      // this root evalutePure call
+      shouldClearCreatedObjectsTrackedForLeaks = true;
+    }
+    this.reportSideEffectCallback = (...args) => {
+      if (reportSideEffectFunc !== undefined) {
+        reportSideEffectFunc(...args);
+      }
+      // Ensure we call any previously nested side-effect callbacks
+      if (saved_reportSideEffectCallback !== undefined) {
+        saved_reportSideEffectCallback(...args);
+      }
+    };
     try {
       return f();
     } finally {
-      this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
       this.reportSideEffectCallback = saved_reportSideEffectCallback;
+      if (shouldClearCreatedObjectsTrackedForLeaks) {
+        this.createdObjectsTrackedForLeaks = undefined;
+      }
     }
   }
 
