@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow strict-local */
+/* @flow strict */
 
 /**
  * Assumes that input file and sourcemap are in the same directory.

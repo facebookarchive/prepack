@@ -59,7 +59,7 @@ export class DebugServer {
     this._stepManager = new SteppingManager(this._realm, /* default discard old steppers */ false);
     this._stopEventManager = new StopEventManager();
     this._diagnosticSeverity = configArgs.diagnosticSeverity || "FatalError";
-    // Determine sourcemap prefixes.
+    // Use presence of directory root to indicate which path format sourcemap prefixes take on.
     if (configArgs.sourcemapDirectoryRoot !== undefined) {
       if (configArgs.sourcemaps === undefined) {
         throw new DebuggerError(
@@ -68,6 +68,10 @@ export class DebugServer {
         );
       }
       this._sourcemapDirectoryRoot = configArgs.sourcemapDirectoryRoot;
+      if (this._sourcemapDirectoryRoot[this._sourcemapDirectoryRoot.length - 1] === "/") {
+        // Remove trailing slash to prepare for prepending to internal paths.
+        this._sourcemapDirectoryRoot = this._sourcemapDirectoryRoot.slice(0, -1);
+      }
       this._useRootPrefix = true;
     } else {
       this._findSourcemapPrefixes(configArgs.sourcemaps);
@@ -88,7 +92,7 @@ export class DebugServer {
   _sourcemapCommonPrefix: void | string; // Used for paths relative to map location.
   _sourcemapMapDifference: void | string; // Used for paths relative to map location.
   _sourcemapDirectoryRoot: void | string; // Used for paths relative to directory root.
-  _useRootPrefix: boolean; // If true, use _sourcemapDirectoryRoot, else use _sourceMap[CP/MD].
+  _useRootPrefix: boolean; // If true, use _sourcemapDirectoryRoot, else use _sourceMap[CommonPrefix/MapDifference].
   // Severity at which debugger will break when CompilerDiagnostics are generated. Default is Fatal.
   _diagnosticSeverity: Severity;
 
@@ -337,7 +341,7 @@ export class DebugServer {
 
   /**
    * This function is only used if the original source locations in the
-   * sourcemaps are _relative_. This will discover the correct prefixes
+   * sourcemaps are relative. This will discover the correct prefixes
    * to use when converting the relative path to absolute paths.
    */
   _findSourcemapPrefixes(sourceMaps: Array<SourceFile> | void) {
@@ -364,14 +368,13 @@ export class DebugServer {
       let parsed = JSON.parse(map.sourceMapContents);
       // Two formats for sourcemaps exist.
       if ("sections" in parsed) {
-        console.log(`there are ${parsed.sections.length} sections`);
         for (let section of parsed.sections) {
-          // ASSUMPTION: each section only has one source (from fb4a).
-          originalSourcePaths.push(getAbsoluteSourcePath(map.filePath, section.map.sources[0]));
+          for (let source of section.map.sources) {
+            originalSourcePaths.push(getAbsoluteSourcePath(map.filePath, source));
+          }
         }
       } else {
         for (let source of parsed.sources) {
-          // ASSUMPTION: all sources are put into this array.
           originalSourcePaths.push(getAbsoluteSourcePath(map.filePath, source));
         }
       }
@@ -392,10 +395,10 @@ export class DebugServer {
     if (this._useRootPrefix) {
       if (this._sourcemapDirectoryRoot !== undefined) {
         let dirRoot = this._sourcemapDirectoryRoot;
-        if (!path.includes(dirRoot)) {
-          absolute = dirRoot + path;
-        } else {
+        if (path.includes(dirRoot)) {
           absolute = path;
+        } else {
+          absolute = dirRoot + path;
         }
       } else {
         throw new DebuggerError("Invalid input", "Debugger does not have directory root.");
@@ -432,10 +435,7 @@ export class DebugServer {
     return relative;
   }
 
-  /*
-    Displays Prepack error message, then waits for user to run the program to
-    continue (similar to a breakpoint).
-  */
+  //  Displays Prepack error message, then waits for user to run the program to continue (similar to a breakpoint).
   handlePrepackError(diagnostic: CompilerDiagnostic) {
     invariant(diagnostic.location && diagnostic.location.source);
     // The following constructs the message and stop-instruction that is sent to the UI to actually stop the execution.
