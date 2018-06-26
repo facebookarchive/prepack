@@ -693,34 +693,37 @@ function isValueAnUnknownAbstractValue(val: Value): boolean {
     return false;
   }
   let res;
-  let op = val.kind;
 
-  if (val instanceof AbstractValue && op === "conditional") {
-    res = isValueAnUnknownAbstractValue(val.args[1]);
-    if (res) {
-      return true;
+  if (val instanceof AbstractValue) {
+    let op = val.kind;
+
+    if (op === "conditional") {
+      res = isValueAnUnknownAbstractValue(val.args[1]);
+      if (res) {
+        return true;
+      }
+      res = isValueAnUnknownAbstractValue(val.args[2]);
+      if (res) {
+        return true;
+      }
+      return false;
+    } else if (op === "||" || op === "&&") {
+      res = isValueAnUnknownAbstractValue(val.args[0]);
+      if (res) {
+        return true;
+      }
+      res = isValueAnUnknownAbstractValue(val.args[1]);
+      if (res) {
+        return true;
+      }
+      return false;
+    } else if (op === "==" || op === "===" || op === "!=" || op === "!==") {
+      return isValueAnUnknownAbstractValue(val.args[1]);
+    } else if (op === "!") {
+      return isValueAnUnknownAbstractValue(val.args[0]);
+    } else if (val instanceof AbstractObjectValue && !val.values.isTop()) {
+      return false;
     }
-    res = isValueAnUnknownAbstractValue(val.args[2]);
-    if (res) {
-      return true;
-    }
-    return false;
-  } else if (val instanceof AbstractValue && (op === "||" || op === "&&")) {
-    res = isValueAnUnknownAbstractValue(val.args[0]);
-    if (res) {
-      return true;
-    }
-    res = isValueAnUnknownAbstractValue(val.args[1]);
-    if (res) {
-      return true;
-    }
-    return false;
-  } else if (val instanceof AbstractValue && (op === "==" || op === "===" || op === "!=" || op === "!==")) {
-    return isValueAnUnknownAbstractValue(val.args[1]);
-  } else if (val instanceof AbstractValue && op === "!") {
-    return isValueAnUnknownAbstractValue(val.args[0]);
-  } else if (val instanceof AbstractObjectValue && !val.values.isTop()) {
-    return false;
   }
   return true;
 }
