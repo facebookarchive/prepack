@@ -357,7 +357,8 @@ function callNativeFunctionValue(
 export function OrdinaryCallEvaluateBody(
   realm: Realm,
   f: ECMAScriptFunctionValue,
-  argumentsList: Array<Value>
+  argumentsList: Array<Value>,
+  alwaysInlineCall?: boolean = false
 ): Reference | Value | AbruptCompletion {
   if (f instanceof NativeFunctionValue) {
     return callNativeFunctionValue(realm, f, argumentsList);
@@ -386,7 +387,7 @@ export function OrdinaryCallEvaluateBody(
       // (as observed in large internal tests).
       const abstractRecursionSummarization = false;
       if (!realm.useAbstractInterpretation || realm.pathConditions.length === 0 || !abstractRecursionSummarization)
-        if (realm.useAbstractInterpretation && realm.isInPureScope()) {
+        if (realm.useAbstractInterpretation && realm.isInPureScope() && !alwaysInlineCall) {
           return selectivelyInlineNormalCall();
         } else {
           return normalCall();
@@ -701,6 +702,7 @@ function isValueAnUnknownAbstractValue(val: Value): boolean {
     if (res) {
       return true;
     }
+    return false;
   } else if (val instanceof AbstractValue && (val.kind === "||" || val.kind === "&&")) {
     res = isValueAnUnknownAbstractValue(val.args[0]);
     if (res) {
@@ -710,6 +712,7 @@ function isValueAnUnknownAbstractValue(val: Value): boolean {
     if (res) {
       return true;
     }
+    return false;
   } else if (val instanceof AbstractObjectValue && !val.values.isTop()) {
     return false;
   }
@@ -733,7 +736,7 @@ export function shouldEffectsFromFunctionCallBeInlined(realm: Realm, effects: Ef
   // Otherwise, we find out if the result's value leads to unknown
   // abstract values that give us no additional value
   if (result.value instanceof AbstractValue) {
-    return isValueAnUnknownAbstractValue(result.value);
+    return !isValueAnUnknownAbstractValue(result.value);
   }
   return true;
 }
