@@ -407,7 +407,7 @@ function evaluationHelper(
 
   // 5. Perform BlockDeclarationInstantiation(CaseBlock, blockEnv).
   let CaseBlock = [];
-  cases.forEach(c => Array.prototype.push.apply(CaseBlock, c.consequent));
+  cases.forEach(c => CaseBlock.push(...c.consequent));
   Environment.BlockDeclarationInstantiation(realm, strictCode, CaseBlock, blockEnv);
 
   // 6. Set the running execution context's LexicalEnvironment to blockEnv.
