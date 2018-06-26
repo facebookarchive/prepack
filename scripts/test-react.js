@@ -87,6 +87,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     reactEnabled: true,
     reactOutput: outputJsx ? "jsx" : "create-element",
     reactOptimizeNestedFunctions: true,
+    selectivelyInlineFunctions: true,
     inlineExpressions: true,
     invariantLevel: 0,
     stripFlow: true,
@@ -707,7 +708,9 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("Class component as root with refs", async () => {
-        await runTest(directory, "class-root-with-refs.js");
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "class-root-with-refs.js");
+        });
       });
 
       it("Class component as root with instance variables", async () => {

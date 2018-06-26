@@ -248,6 +248,8 @@ export class Realm {
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
     this.temporalAliasArgs = new WeakMap();
 
+    this.selectivelyInlineFunctions = opts.selectivelyInlineFunctions || false;
+
     this.react = {
       abstractHints: new WeakMap(),
       activeReconciler: undefined,
@@ -335,11 +337,15 @@ export class Realm {
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
 
+  selectivelyInlineFunctionCalls: boolean;
+
   // temporalAliasArgs is used to map a temporal abstract object value
   // to its respective temporal args used to originally create the temporal.
   // This is used to "clone" immutable objects where they have a dependency
   // on a temporal alias (for example, Object.assign) when used with snapshotting
   temporalAliasArgs: WeakMap<AbstractObjectValue | ObjectValue, Array<Value>>;
+
+  selectivelyInlineFunctions: boolean;
 
   react: {
     // reactHints are generated to help improve the effeciency of the React reconciler when
@@ -683,33 +689,31 @@ export class Realm {
       value: void | Value
     ) => void
   ) {
-    let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
     let saved_reportSideEffectCallback = this.reportSideEffectCallback;
-    // Track all objects (including function closures) created during
-    // this call. This will be used to make the assumption that every
-    // *other* object is unchanged (pure). These objects are marked
-    // as leaked if they're passed to abstract functions.
-    this.createdObjectsTrackedForLeaks = new Set(saved_createdObjectsTrackedForLeaks);
-    if (saved_reportSideEffectCallback) {
-      this.reportSideEffectCallback = (a, b, c) => {
-        if (reportSideEffectFunc) {
-          reportSideEffectFunc(a, b, c);
-        }
-        saved_reportSideEffectCallback(a, b, c);
-      };
-    } else {
-      this.reportSideEffectCallback = reportSideEffectFunc;
+    let shouldClearCreatedObjectsTrackedForLeaks = false;
+    if (this.createdObjectsTrackedForLeaks === undefined) {
+      // Track all objects (including function closures) created during
+      // this call. This will be used to make the assumption that every
+      // *other* object is unchanged (pure). These objects are marked
+      // as leaked if they're passed to abstract functions.
+      this.createdObjectsTrackedForLeaks = new Set();
+      shouldClearCreatedObjectsTrackedForLeaks = true;
     }
+    this.reportSideEffectCallback = (...args) => {
+      if (reportSideEffectFunc !== undefined) {
+        reportSideEffectFunc(...args);
+      }
+      if (saved_reportSideEffectCallback !== undefined) {
+        saved_reportSideEffectCallback(...args);
+      }
+    };
     try {
       return f();
     } finally {
-      if (saved_createdObjectsTrackedForLeaks) {
-        for (let obj of this.createdObjectsTrackedForLeaks) {
-          saved_createdObjectsTrackedForLeaks.add(obj);
-        }
-      }
-      this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
       this.reportSideEffectCallback = saved_reportSideEffectCallback;
+      if (shouldClearCreatedObjectsTrackedForLeaks) {
+        this.createdObjectsTrackedForLeaks = undefined;
+      }
     }
   }
 

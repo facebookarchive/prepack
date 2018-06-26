@@ -19,17 +19,18 @@ import {
   Reference,
 } from "../environment.js";
 import { FatalError } from "../errors.js";
-import { Realm, ExecutionContext } from "../realm.js";
+import { Effects, ExecutionContext, Realm } from "../realm.js";
 import Value from "../values/Value.js";
 import {
-  FunctionValue,
-  ECMAScriptSourceFunctionValue,
-  ObjectValue,
-  NullValue,
-  UndefinedValue,
-  NativeFunctionValue,
   AbstractObjectValue,
   AbstractValue,
+  ConcreteValue,
+  ECMAScriptSourceFunctionValue,
+  FunctionValue,
+  NativeFunctionValue,
+  NullValue,
+  ObjectValue,
+  UndefinedValue,
 } from "../values/index.js";
 import { GetIterator, HasSomeCompatibleType, IsCallable, IsPropertyKey, IteratorStep, IteratorValue } from "./index.js";
 import { GeneratorStart } from "../methods/generator.js";
@@ -45,7 +46,6 @@ import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
 import { Create, Environment, Functions, Join, Havoc, To, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "babel-types";
-import { shouldEffectsFromFunctionCallBeInlined } from "../utils/inlining.js";
 import * as t from "babel-types";
 
 // ECMA262 12.3.6.1
@@ -446,50 +446,70 @@ export function OrdinaryCallEvaluateBody(
       }
 
       function selectivelyInlineNormalCall() {
-        let isPure = true;
+        let priorSavedCompletion = realm.savedCompletion;
+        try {
+          realm.savedCompletion = undefined;
+          let isPure = true;
 
-        function handleReportedSideEffect(sideEffectType) {
-          isPure = false;
-        }
-        let effects = realm.evaluatePure(
-          () => realm.evaluateForEffects(normalCall, null, "selectivelyInlineNormalCall"),
-          handleReportedSideEffect
-        );
-        let completion = effects.result;
-
-        if (completion instanceof ReturnCompletion && !shouldEffectsFromFunctionCallBeInlined(realm, effects)) {
-          // We need to havoc the bindings if the function call wasn't pure
-          if (!isPure) {
-            Havoc.value(realm, F);
-            for (let arg of argumentsList) {
-              Havoc.value(realm, arg);
-            }
+          function handleReportedSideEffect(sideEffectType) {
+            isPure = false;
           }
-          // Create a temporal of the original function call
-          let result = AbstractValue.createTemporalFromBuildFunction(
-            realm,
-            Value,
-            [F, ...argumentsList],
-            ([funcNode, ...argNodes]) => t.callExpression(funcNode, ((argNodes: any): Array<any>))
+          let effects = realm.evaluatePure(
+            () => realm.evaluateForEffects(normalCall, null, "selectivelyInlineNormalCall"),
+            handleReportedSideEffect
           );
-          return new ReturnCompletion(result, completion.location);
+          let completion = effects.result;
+
+          // For now we only deal with the cases where the function call was pure
+          // and had no obserable side-effects. This means we don't need to havoc
+          // the temporal function call we create as we know that no side-effects
+          // occured when calling the original function.
+          if (
+            isPure &&
+            completion instanceof ReturnCompletion &&
+            realm.selectivelyInlineFunctions &&
+            !shouldEffectsFromFunctionCallBeInlined(realm, effects)
+          ) {
+            // Create a temporal of the original function call
+            let result = AbstractValue.createTemporalFromBuildFunction(
+              realm,
+              Value,
+              [F, ...argumentsList],
+              ([funcNode, ...argNodes]) => t.callExpression(funcNode, ((argNodes: any): Array<any>))
+            );
+            return new ReturnCompletion(result, completion.location);
+          }
+          // Note that the effects of (non joining) abrupt branches are not included
+          // in effects, but are tracked separately inside completion.
+          realm.applyEffects(effects);
+          // If there is single completion, we don't need to join
+          if (!(completion instanceof ForkedAbruptCompletion)) return completion;
+
+          // If none of the completions are return completions, there is no need to join either
+          if (!completion.containsCompletion(ReturnCompletion)) return completion;
+
+          // Apply the joined effects of return completions to the current state since these now join the normal path
+          let joinedReturnEffects = Join.extractAndJoinCompletionsOfType(ReturnCompletion, realm, completion);
+          realm.applyEffects(joinedReturnEffects);
+          let c = joinedReturnEffects.result;
+          invariant(c instanceof ReturnCompletion);
+
+          // We now make a PossiblyNormalCompletion out of abruptCompletion.
+          // extractAndJoinCompletionsOfType helped with this by cheating and turning all of its nested completions
+          // that contain return completions into PossiblyNormalCompletions.
+          let remainingCompletions = completion.transferChildrenToPossiblyNormalCompletion();
+
+          // If there are no throw completions left inside remainingCompletions, just return.
+          if (!remainingCompletions.containsCompletion(ThrowCompletion)) return c;
+
+          // Stash the remaining completions in the realm start tracking the effects that need to be appended
+          // to the normal branch at the next join point.
+          realm.savedCompletion = remainingCompletions;
+          realm.captureEffects(remainingCompletions); // so that we can join the normal path with them later on
+          return c;
+        } finally {
+          realm.incorporatePriorSavedCompletion(priorSavedCompletion);
         }
-        // Note that the effects of (non joining) abrupt branches are not included
-        // in effects, but are tracked separately inside completion.
-        realm.applyEffects(effects);
-        if (completion instanceof PossiblyNormalCompletion) {
-          // in this case one of the branches may complete abruptly, which means that
-          // not all control flow branches join into one flow at this point.
-          // Consequently we have to continue tracking changes until the point where
-          // all the branches come together into one.
-          completion = realm.composeWithSavedCompletion(completion);
-        }
-        // return or throw completion
-        if (completion instanceof ReturnCompletion) return completion;
-        if (completion instanceof AbruptCompletion) throw completion;
-        if (completion instanceof SimpleNormalCompletion) completion = completion.value;
-        invariant(completion instanceof Value);
-        return completion;
       }
 
       function normalCall() {
@@ -671,4 +691,56 @@ export function Call(realm: Realm, F: Value, V: Value, argsList?: Array<Value>):
   // 3. Return ? F.[[Call]](V, argumentsList).
   invariant(F.$Call, "no call method on this value");
   return F.$Call(V, argsList);
+}
+
+function isValueAnUnknownAbstractValue(val: Value): boolean {
+  if (val instanceof ConcreteValue) {
+    return false;
+  }
+  let res;
+
+  if (val instanceof AbstractValue && val.kind === "conditional") {
+    res = isValueAnUnknownAbstractValue(val.args[1]);
+    if (res) {
+      return true;
+    }
+    res = isValueAnUnknownAbstractValue(val.args[2]);
+    if (res) {
+      return true;
+    }
+  } else if (val instanceof AbstractValue && (val.kind === "||" || val.kind === "&&")) {
+    res = isValueAnUnknownAbstractValue(val.args[0]);
+    if (res) {
+      return true;
+    }
+    res = isValueAnUnknownAbstractValue(val.args[1]);
+    if (res) {
+      return true;
+    }
+  } else if (val instanceof AbstractObjectValue && !val.values.isTop()) {
+    return false;
+  }
+  return true;
+}
+
+// This function determines if a function call should be inlined.
+// It checks the number of generator entries is more than 3 entries,
+// which indicates that we might be "bloating" the output. If
+// there are more than 3 entries and the value returned from the
+// function call has any completely unknown abstract values then
+// we determine that we don't need to inline the function.
+export function shouldEffectsFromFunctionCallBeInlined(realm: Realm, effects: Effects): boolean {
+  let { result, generator } = effects;
+
+  invariant(result instanceof ReturnCompletion);
+  // If we create 3 lines or less, inline the function regardless
+  if (generator._entries.length < 4) {
+    return true;
+  }
+  // Otherwise, we find out if the result's value leads to unknown
+  // abstract values that give us no additional value
+  if (result.value instanceof AbstractValue) {
+    return isValueAnUnknownAbstractValue(result.value);
+  }
+  return true;
 }
