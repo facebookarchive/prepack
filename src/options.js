@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow strict */
+/* @flow strict-local */
 
 import type { ErrorHandler } from "./errors.js";
 import type { DebuggerConfigArguments } from "./debugger/common/types";

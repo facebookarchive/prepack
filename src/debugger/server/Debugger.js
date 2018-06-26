@@ -391,7 +391,12 @@ export class DebugServer {
     let absolute;
     if (this._useRootPrefix) {
       if (this._sourcemapDirectoryRoot !== undefined) {
-        absolute = this._sourcemapDirectoryRoot + path;
+        let dirRoot = this._sourcemapDirectoryRoot;
+        if (!path.includes(dirRoot)) {
+          absolute = dirRoot + path;
+        } else {
+          absolute = path;
+        }
       } else {
         throw new DebuggerError("Invalid input", "Debugger does not have directory root.");
       }

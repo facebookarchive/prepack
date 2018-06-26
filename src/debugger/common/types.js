@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow strict */
+/* @flow strict-local */
 
 import * as DebugProtocol from "vscode-debugprotocol";
 import type { Severity } from "./../../errors.js";
