@@ -64,7 +64,7 @@ import type { Compatibility, RealmOptions, ReactOutputTypes, InvariantModeTypes 
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
-import { emptyExpression, voidExpression } from "./utils/internalizer.js";
+import { emptyExpression, voidExpression } from "./utils/babelhelpers.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
@@ -499,10 +499,48 @@ export class Realm {
     return context;
   }
 
+  clearBlockBindings(modifiedBindings: void | Bindings, environmentRecord: DeclarativeEnvironmentRecord) {
+    if (modifiedBindings === undefined) return;
+    for (let b of modifiedBindings.keys()) {
+      if (b.mightHaveBeenCaptured) continue;
+      if (environmentRecord.bindings[b.name] && environmentRecord.bindings[b.name] === b) modifiedBindings.delete(b);
+    }
+  }
+
+  clearBlockBindingsFromCompletion(completion: Completion, environmentRecord: DeclarativeEnvironmentRecord) {
+    if (completion instanceof PossiblyNormalCompletion) {
+      this.clearBlockBindings(completion.alternateEffects.modifiedBindings, environmentRecord);
+      this.clearBlockBindings(completion.consequentEffects.modifiedBindings, environmentRecord);
+      if (completion.savedEffects !== undefined)
+        this.clearBlockBindings(completion.savedEffects.modifiedBindings, environmentRecord);
+      if (completion.alternate instanceof Completion)
+        this.clearBlockBindingsFromCompletion(completion.alternate, environmentRecord);
+      if (completion.consequent instanceof Completion)
+        this.clearBlockBindingsFromCompletion(completion.consequent, environmentRecord);
+    } else if (completion instanceof ForkedAbruptCompletion) {
+      this.clearBlockBindings(completion.alternateEffects.modifiedBindings, environmentRecord);
+      this.clearBlockBindings(completion.consequentEffects.modifiedBindings, environmentRecord);
+      if (completion.alternate instanceof Completion)
+        this.clearBlockBindingsFromCompletion(completion.alternate, environmentRecord);
+      if (completion.consequent instanceof Completion)
+        this.clearBlockBindingsFromCompletion(completion.consequent, environmentRecord);
+    }
+  }
+
   // Call when a scope falls out of scope and should be destroyed.
   // Clears the Bindings corresponding to the disappearing Scope from ModifiedBindings
   onDestroyScope(lexicalEnvironment: LexicalEnvironment) {
     invariant(this.activeLexicalEnvironments.has(lexicalEnvironment));
+    let modifiedBindings = this.modifiedBindings;
+    if (modifiedBindings) {
+      // Don't undo things to global scope because it's needed past its destruction point (for serialization)
+      let environmentRecord = lexicalEnvironment.environmentRecord;
+      if (environmentRecord instanceof DeclarativeEnvironmentRecord) {
+        this.clearBlockBindings(modifiedBindings, environmentRecord);
+        if (this.savedCompletion !== undefined)
+          this.clearBlockBindingsFromCompletion(this.savedCompletion, environmentRecord);
+      }
+    }
 
     // Ensures if we call onDestroyScope too early, there will be a failure.
     this.activeLexicalEnvironments.delete(lexicalEnvironment);
@@ -516,7 +554,58 @@ export class Realm {
     this.contextStack.push(context);
   }
 
+  markVisibleLocalBindingsAsPotentiallyCaptured() {
+    let context = this.getRunningContext();
+    if (context.function === undefined) return;
+    let lexEnv = context.lexicalEnvironment;
+    while (lexEnv != null) {
+      let envRec = lexEnv.environmentRecord;
+      if (envRec instanceof DeclarativeEnvironmentRecord) {
+        let bindings = envRec.bindings;
+        for (let name in bindings) {
+          let binding = bindings[name];
+          binding.mightHaveBeenCaptured = true;
+        }
+      }
+      lexEnv = lexEnv.parent;
+    }
+  }
+
+  clearFunctionBindings(modifiedBindings: void | Bindings, funcVal: FunctionValue) {
+    if (modifiedBindings === undefined) return;
+    for (let b of modifiedBindings.keys()) {
+      if (b.mightHaveBeenCaptured) continue;
+      if (b.environment instanceof FunctionEnvironmentRecord && b.environment.$FunctionObject === funcVal)
+        modifiedBindings.delete(b);
+    }
+  }
+
+  clearFunctionBindingsFromCompletion(completion: Completion, funcVal: FunctionValue) {
+    if (completion instanceof PossiblyNormalCompletion) {
+      this.clearFunctionBindings(completion.alternateEffects.modifiedBindings, funcVal);
+      this.clearFunctionBindings(completion.consequentEffects.modifiedBindings, funcVal);
+      if (completion.savedEffects !== undefined)
+        this.clearFunctionBindings(completion.savedEffects.modifiedBindings, funcVal);
+      if (completion.alternate instanceof Completion)
+        this.clearFunctionBindingsFromCompletion(completion.alternate, funcVal);
+      if (completion.consequent instanceof Completion)
+        this.clearFunctionBindingsFromCompletion(completion.consequent, funcVal);
+    } else if (completion instanceof ForkedAbruptCompletion) {
+      this.clearFunctionBindings(completion.alternateEffects.modifiedBindings, funcVal);
+      this.clearFunctionBindings(completion.consequentEffects.modifiedBindings, funcVal);
+      if (completion.alternate instanceof Completion)
+        this.clearFunctionBindingsFromCompletion(completion.alternate, funcVal);
+      if (completion.consequent instanceof Completion)
+        this.clearFunctionBindingsFromCompletion(completion.consequent, funcVal);
+    }
+  }
+
   popContext(context: ExecutionContext): void {
+    let funcVal = context.function;
+    if (funcVal) {
+      this.clearFunctionBindings(this.modifiedBindings, funcVal);
+      if (this.savedCompletion !== undefined) this.clearFunctionBindingsFromCompletion(this.savedCompletion, funcVal);
+    }
     let c = this.contextStack.pop();
     invariant(c === context);
   }
@@ -745,6 +834,7 @@ export class Realm {
         try {
           c = f();
           if (c instanceof Reference) c = Environment.GetValue(this, c);
+          else if (c instanceof SimpleNormalCompletion) c = c.value;
         } catch (e) {
           if (e instanceof AbruptCompletion) c = e;
           else throw e;
@@ -899,7 +989,8 @@ export class Realm {
         effects1 = Widen.widenEffects(this, effects1, effects2);
       }
     } catch (e) {
-      return undefined;
+      if (e instanceof FatalError) return undefined;
+      throw e;
     }
   }
 
