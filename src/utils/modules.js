@@ -337,8 +337,17 @@ export class ModuleTracer extends Tracer {
       let factoryFunction = argumentsList[0];
       if (factoryFunction instanceof FunctionValue) {
         let dependencies = this._tryExtractDependencies(argumentsList[2]);
-        if (dependencies !== undefined) this.modules.factoryFunctionDependencies.set(factoryFunction, dependencies);
-        else
+        if (dependencies !== undefined) {
+          let previousDependencies = this.modules.factoryFunctionDependencies.get(factoryFunction);
+          if (previousDependencies) {
+            // Verify that they are the same
+            invariant(previousDependencies.length === dependencies.length);
+            let previousDependenciesSet = new Set(...previousDependencies);
+            dependencies.forEach(dependency => invariant(previousDependenciesSet.has(dependency)));
+          } else {
+            this.modules.factoryFunctionDependencies.set(factoryFunction, dependencies);
+          }
+        } else
           this.modules.logger.logError(
             argumentsList[2],
             "Third argument to define function is present but not a concrete array."
