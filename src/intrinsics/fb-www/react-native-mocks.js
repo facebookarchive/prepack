@@ -29,6 +29,8 @@ let reactNativeCode = `
         ViewManagerNames: __abstract(),
         __takeSnapshot: undefined,
         takeSnapshot: undefined,
+        // This was added in to make RCTVirtualText inline
+        RCTVirtualText: {},
       }),
       DeviceInfo: __abstract({
         Dimensions: __abstract({
@@ -1031,24 +1033,15 @@ let reactNativeCode = `
       function () { return viewConfig }
     );
 
-    // TODO, for now use android
-    const RCTVirtualText = createReactNativeComponentClass('RCTVirtualText', () => ({
-      validAttributes: Object.assign({},
-        ReactNativeViewAttributes.UIView,
-        { isHighlighted: true }
-      ),
-      uiViewClassName: 'RCTVirtualText',
-    }));
-
-    // UIManager.RCTVirtualText == null
-    //   ? RCTText
-    //   : createReactNativeComponentClass('RCTVirtualText', () => ({
-    //         validAttributes: Object.assign({},
-    //           ReactNativeViewAttributes.UIView,
-    //           { isHighlighted: true }
-    //         ),
-    //         uiViewClassName: 'RCTVirtualText',
-    //       }));
+    const RCTVirtualText = UIManager.RCTVirtualText == null
+      ? RCTText
+      : createReactNativeComponentClass('RCTVirtualText', () => ({
+            validAttributes: Object.assign({},
+              ReactNativeViewAttributes.UIView,
+              { isHighlighted: true }
+            ),
+            uiViewClassName: 'RCTVirtualText',
+          }));
 
     function normalizeColor(color) {
       const matchers = getMatchers();

@@ -16,6 +16,8 @@ let babel = require("babel-core");
 let React = require("react");
 let ReactDOM = require("react-dom");
 let ReactDOMServer = require("react-dom/server");
+// $FlowFixMe: react-native is a dev dependency
+let ReactNative = require("react-native");
 let PropTypes = require("prop-types");
 let ReactRelay = require("react-relay");
 let ReactTestRenderer = require("react-test-renderer");
@@ -1145,7 +1147,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
     });
 
-    describe.skip("react-native", () => {
+    describe("react-native", () => {
       let directory = "react-native";
 
       it("Simple", async () => {

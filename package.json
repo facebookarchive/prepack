@@ -127,7 +127,7 @@
   "license": "BSD-3-Clause",
   "author": "Facebook",
   "jest": {
-    "preset": "react-native",
+    "preset": "./jest/preset.json",
     "testEnvironment": "jsdom",
     "testMatch": [
       "**/scripts/test-react.js"

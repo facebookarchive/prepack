@@ -14,7 +14,7 @@ import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { canHoistReactElement } from "../react/hoisting.js";
 import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression } from "babel-types";
-import { AbstractValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
+import { AbstractValue, ObjectValue, StringValue, SymbolValue, Value } from "../values/index.js";
 import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
 import { Logger } from "../utils/logger.js";
 import invariant from "../invariant.js";
@@ -141,7 +141,18 @@ export class ResidualReactElementSerializer {
     let dependencies = [typeValue, keyValue, refValue, propsValue, value];
     let createElement;
 
-    if (this.reactOutput === "create-element") {
+    // If we have a host component with an uppercase name, like RCTText,
+    // we cannot use JSX, so use createElement instead
+    let outputMode = this.reactOutput;
+    if (
+      outputMode === "jsx" &&
+      typeValue instanceof StringValue &&
+      typeValue.value[0] === typeValue.value[0].toUpperCase()
+    ) {
+      outputMode = "create-element";
+    }
+
+    if (outputMode === "create-element") {
       createElement = this._getReactCreateElementValue();
       dependencies.push(createElement);
     }
@@ -149,9 +160,9 @@ export class ResidualReactElementSerializer {
     this.residualHeapSerializer.emitter.emitNowOrAfterWaitingForDependencies(
       dependencies,
       () => {
-        if (this.reactOutput === "jsx") {
+        if (outputMode === "jsx") {
           reactElementAstNode = this._serializeReactElementToJSXElement(value, reactElement);
-        } else if (this.reactOutput === "create-element") {
+        } else if (outputMode === "create-element") {
           originalCreateElementIdentifier = this.residualHeapSerializer.serializeValue(createElement);
 
           if (shouldHoist) {
