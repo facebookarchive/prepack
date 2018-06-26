@@ -34,14 +34,7 @@ import {
 } from "../values/index.js";
 import { GetIterator, HasSomeCompatibleType, IsCallable, IsPropertyKey, IteratorStep, IteratorValue } from "./index.js";
 import { GeneratorStart } from "../methods/generator.js";
-import {
-  AbruptCompletion,
-  ForkedAbruptCompletion,
-  PossiblyNormalCompletion,
-  ReturnCompletion,
-  SimpleNormalCompletion,
-  ThrowCompletion,
-} from "../completions.js";
+import { AbruptCompletion, ForkedAbruptCompletion, ReturnCompletion, ThrowCompletion } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
 import { Create, Environment, Functions, Join, Havoc, To, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
