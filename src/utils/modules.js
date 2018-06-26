@@ -342,7 +342,7 @@ export class ModuleTracer extends Tracer {
           if (previousDependencies) {
             // Verify that they are the same
             invariant(previousDependencies.length === dependencies.length);
-            let previousDependenciesSet = new Set(...previousDependencies);
+            let previousDependenciesSet = new Set(previousDependencies);
             dependencies.forEach(dependency => invariant(previousDependenciesSet.has(dependency)));
           } else {
             this.modules.factoryFunctionDependencies.set(factoryFunction, dependencies);
