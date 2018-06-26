@@ -822,6 +822,7 @@ export class Realm {
         try {
           c = f();
           if (c instanceof Reference) c = Environment.GetValue(this, c);
+          else if (c instanceof SimpleNormalCompletion) c = c.value;
         } catch (e) {
           if (e instanceof AbruptCompletion) c = e;
           else throw e;
@@ -976,7 +977,8 @@ export class Realm {
         effects1 = Widen.widenEffects(this, effects1, effects2);
       }
     } catch (e) {
-      return undefined;
+      if (e instanceof FatalError) return undefined;
+      throw e;
     }
   }
 
