@@ -970,17 +970,18 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let values = lenVal.values.getElements();
       let n = values.size;
       if (n > 1 && n < 10) {
+        let a = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), 0);
         return Join.mapAndJoin(
           realm,
           values,
           v => AbstractValue.createFromBinaryOp(realm, "===", v, lenVal, lenVal.expressionLocation),
-          v => doMap(v)
+          v => doMap(v, a)
         );
       }
     }
     return doMap(lenVal.throwIfNotConcrete());
 
-    function doMap(val: ConcreteValue) {
+    function doMap(val: ConcreteValue, resultArray?: ObjectValue) {
       let len = To.ToLength(realm, val);
 
       // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
@@ -992,7 +993,12 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let T = thisArg || realm.intrinsics.undefined;
 
       // 5. Let A be ? ArraySpeciesCreate(O, len).
-      let A = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), len);
+      let A;
+      if (resultArray === undefined) A = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), len);
+      else {
+        A = resultArray;
+        Properties.Set(realm, A, "length", val, true);
+      }
 
       // 6. Let k be 0.
       let k = 0;

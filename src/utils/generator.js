@@ -62,7 +62,7 @@ export type SerializationContext = {|
   serializeBinding: Binding => BabelNodeIdentifier | BabelNodeMemberExpression,
   getPropertyAssignmentStatement: (
     location: BabelNodeLVal,
-    value: BabelNodeExpression,
+    value: Value,
     mightHaveBeenDeleted: boolean,
     deleteIfMightHaveBeenDeleted: boolean
   ) => BabelNodeStatement,
@@ -597,7 +597,7 @@ export class Generator {
       buildNode: ([objectNode, valueNode], context) =>
         context.getPropertyAssignmentStatement(
           memberExpressionHelper(objectNode, key),
-          valueNode,
+          value,
           value.mightHaveBeenDeleted(),
           /* deleteIfMightHaveBeenDeleted */ true
         ),
