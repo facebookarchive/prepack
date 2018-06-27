@@ -369,10 +369,6 @@ export class Emitter {
       switch (kind) {
         case "Object":
           let proto = val.$Prototype;
-          if (val.temporalAlias !== undefined && !val.isIntrinsic()) {
-            result = recurse(val.temporalAlias);
-            if (result !== undefined) return result;
-          }
           if (
             proto instanceof ObjectValue &&
             // if this is falsy, prototype chain might be cyclic

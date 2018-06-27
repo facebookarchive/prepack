@@ -2117,7 +2117,15 @@ export class ResidualHeapSerializer {
       getPropertyAssignmentStatement: this._getPropertyAssignmentStatement.bind(this),
       emitDefinePropertyBody: this.emitDefinePropertyBody.bind(this, false, undefined),
       canOmit: (value: Value) => {
-        return !this.referencedDeclaredValues.has(value) && !this.residualValues.has(value);
+        let canOmit = !this.referencedDeclaredValues.has(value) && !this.residualValues.has(value);
+        if (!canOmit) {
+          return false;
+        }
+        if (value instanceof ObjectValue && value.temporalAlias !== undefined) {
+          let temporalAlias = value.temporalAlias;
+          return !this.referencedDeclaredValues.has(temporalAlias) && !this.residualValues.has(temporalAlias);
+        }
+        return canOmit;
       },
       declare: (value: AbstractValue | ConcreteValue) => {
         this.emitter.declare(value);

@@ -20,7 +20,6 @@ import {
   AbstractObjectValue,
   AbstractValue,
   BoundFunctionValue,
-  ConcreteValue,
   ECMAScriptFunctionValue,
   ECMAScriptSourceFunctionValue,
   EmptyValue,
@@ -1083,8 +1082,16 @@ export class ResidualHeapVisitor {
         invariant(this.generatorDAG.isParent(parent, generator));
         this.visitGenerator(generator, additionalFunctionInfo);
       },
-      mightBeSkippable: (value: Value): boolean => {
-        return !this.referencedDeclaredValues.has(value) && !this.values.has(value);
+      canOmit: (value: Value): boolean => {
+        let canOmit = !this.referencedDeclaredValues.has(value) && !this.values.has(value);
+        if (!canOmit) {
+          return false;
+        }
+        if (value instanceof ObjectValue && value.temporalAlias !== undefined) {
+          let temporalAlias = value.temporalAlias;
+          return !this.referencedDeclaredValues.has(temporalAlias) && !this.values.has(temporalAlias);
+        }
+        return canOmit;
       },
       recordDeclaration: (value: Value) => {
         this.referencedDeclaredValues.set(value, this._getAdditionalFunctionOfScope());

@@ -10,7 +10,7 @@
 /* @flow strict-local */
 
 import { Realm } from "../realm.js";
-import { AbstractValue, ConcreteValue, FunctionValue, Value, ObjectValue } from "../values/index.js";
+import { AbstractValue, FunctionValue, Value, ObjectValue } from "../values/index.js";
 import * as t from "babel-types";
 import type {
   BabelNodeExpression,

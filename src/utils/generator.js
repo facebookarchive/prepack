@@ -81,7 +81,7 @@ export type SerializationContext = {|
 export type VisitEntryCallbacks = {|
   visitEquivalentValue: Value => Value,
   visitGenerator: (Generator, Generator) => void,
-  mightBeSkippable: Value => boolean,
+  canOmit: Value => boolean,
   recordDeclaration: (AbstractValue | ConcreteValue) => void,
   recordDelayedEntry: (Generator, GeneratorEntry) => void,
   visitModifiedObjectProperty: PropertyBinding => void,
@@ -129,6 +129,12 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
   constructor(args: TemporalBuildNodeEntryArgs) {
     super();
     Object.assign(this, args);
+    if (this.mutatesOnly !== undefined) {
+      invariant(!this.isPure);
+      for (let arg of this.mutatesOnly) {
+        invariant(this.args.includes(arg));
+      }
+    }
   }
 
   declared: void | AbstractValue | ConcreteValue;
@@ -140,17 +146,17 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
   mutatesOnly: void | Array<Value>;
 
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
-    let mightBeSkippable = this.isPure && this.declared && callbacks.mightBeSkippable(this.declared);
+    let omit = this.isPure && this.declared && callbacks.canOmit(this.declared);
 
-    if (!mightBeSkippable && this.declared && this.mutatesOnly !== undefined) {
-      mightBeSkippable = true;
+    if (!omit && this.declared && this.mutatesOnly !== undefined) {
+      omit = true;
       for (let arg of this.mutatesOnly) {
-        if (!callbacks.mightBeSkippable(arg)) {
-          mightBeSkippable = false;
+        if (!callbacks.canOmit(arg)) {
+          omit = false;
         }
       }
     }
-    if (mightBeSkippable) {
+    if (omit) {
       callbacks.recordDelayedEntry(containingGenerator, this);
       return false;
     } else {
@@ -163,17 +169,17 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
   }
 
   serialize(context: SerializationContext) {
-    let mightBeSkippable = this.isPure && this.declared && context.canOmit(this.declared);
+    let omit = this.isPure && this.declared && context.canOmit(this.declared);
 
-    if (!mightBeSkippable && this.declared && this.mutatesOnly !== undefined) {
-      mightBeSkippable = true;
+    if (!omit && this.declared && this.mutatesOnly !== undefined) {
+      omit = true;
       for (let arg of this.mutatesOnly) {
         if (!context.canOmit(arg)) {
-          mightBeSkippable = false;
+          omit = false;
         }
       }
     }
-    if (!mightBeSkippable) {
+    if (!omit) {
       let nodes = this.args.map((boundArg, i) => context.serializeValue(boundArg));
       if (this.buildNode) {
         let valuesToProcess = new Set();
