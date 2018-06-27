@@ -681,7 +681,8 @@ export class Realm {
       sideEffectType: SideEffectType,
       binding: void | Binding | PropertyBinding,
       value: void | Value
-    ) => void
+    ) => void,
+    thisObject?: ObjectValue
   ) {
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
     let saved_reportSideEffectCallback = this.reportSideEffectCallback;
@@ -690,6 +691,11 @@ export class Realm {
     // *other* object is unchanged (pure). These objects are marked
     // as leaked if they're passed to abstract functions.
     this.createdObjectsTrackedForLeaks = new Set();
+    // If evalautePure is called within the lexical context of another
+    // function, then ensure we add this same object to our tracked objects
+    if (thisObject !== undefined) {
+      this.createdObjectsTrackedForLeaks.add(thisObject);
+    }
     this.reportSideEffectCallback = (...args) => {
       if (reportSideEffectFunc !== undefined) {
         reportSideEffectFunc(...args);
