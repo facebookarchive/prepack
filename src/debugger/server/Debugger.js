@@ -111,7 +111,6 @@ export class DebugServer {
         bp.filePath = this._sourceMapManager.absoluteToRelative(bp.filePath);
       }
     }
-    console.log(`command: ${command}`);
 
     switch (command) {
       case DebugMessage.BREAKPOINT_ADD_COMMAND:
