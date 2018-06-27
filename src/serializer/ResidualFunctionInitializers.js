@@ -15,7 +15,7 @@ import type { BabelNodeStatement } from "babel-types";
 import { NameGenerator } from "../utils/generator.js";
 import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
-import { voidExpression, nullExpression } from "../utils/internalizer.js";
+import { voidExpression, nullExpression } from "../utils/babelhelpers.js";
 import type { LocationService, SerializedBody } from "./types.js";
 import { factorifyObjects } from "./factorify.js";
 

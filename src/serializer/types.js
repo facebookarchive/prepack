@@ -84,6 +84,7 @@ export type FunctionInstance = {
 
 export type FunctionInfo = {
   depth: number,
+  lexicalDepth: number,
   unbound: Map<string, Array<BabelNodeIdentifier>>,
   requireCalls: Map<BabelNode, number | string>,
   modified: Set<string>,
@@ -107,6 +108,7 @@ export type ResidualFunctionBinding = {
   name: string,
   value: void | Value,
   modified: boolean,
+  hasLeaked: boolean,
   // null means a global binding
   declarativeEnvironmentRecord: null | DeclarativeEnvironmentRecord,
   // The serializedValue is only not yet present during the initialization of a binding that involves recursive dependencies.
@@ -127,6 +129,7 @@ export type ScopeBinding = {
   name: string,
   id: number,
   initializationValues: Array<BabelNodeExpression>,
+  leakedIds: Array<BabelNodeIdentifier>,
   capturedScope?: string,
   referentializationScope: ReferentializationScope,
 };

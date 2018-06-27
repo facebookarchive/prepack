@@ -64,17 +64,15 @@ import type { Compatibility, RealmOptions, ReactOutputTypes, InvariantModeTypes 
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator } from "./utils/generator.js";
-import { emptyExpression, voidExpression } from "./utils/internalizer.js";
+import { emptyExpression, voidExpression } from "./utils/babelhelpers.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
 import * as t from "babel-types";
 
 export type BindingEntry = {
-  leakedImmutableValue: void | Value,
   hasLeaked: void | boolean,
   value: void | Value,
-  previousLeakedImmutableValue: void | Value,
   previousHasLeaked: void | boolean,
   previousValue: void | Value,
 };
@@ -257,6 +255,8 @@ export class Realm {
       classComponentMetadata: new Map(),
       currentOwner: undefined,
       defaultPropsHelper: undefined,
+      emptyArray: undefined,
+      emptyObject: undefined,
       enabled: opts.reactEnabled || false,
       hoistableFunctions: new WeakMap(),
       hoistableReactElements: new WeakMap(),
@@ -266,6 +266,7 @@ export class Realm {
       output: opts.reactOutput || "create-element",
       propsWithNoPartialKeyOrRef: new WeakSet(),
       reactElements: new WeakMap(),
+      reactProps: new WeakSet(),
       symbols: new Map(),
       usedReactElementKeys: new Set(),
       verbose: opts.reactVerbose || false,
@@ -352,6 +353,8 @@ export class Realm {
     classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
     currentOwner?: ObjectValue,
     defaultPropsHelper?: ECMAScriptSourceFunctionValue,
+    emptyArray: void | ArrayValue,
+    emptyObject: void | ObjectValue,
     enabled: boolean,
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,
@@ -364,6 +367,7 @@ export class Realm {
     output?: ReactOutputTypes,
     propsWithNoPartialKeyOrRef: WeakSet<ObjectValue | AbstractObjectValue>,
     reactElements: WeakMap<ObjectValue, { createdDuringReconcilation: boolean, firstRenderOnly: boolean }>,
+    reactProps: WeakSet<ObjectValue>,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
     usedReactElementKeys: Set<string>,
     verbose: boolean,
@@ -497,8 +501,10 @@ export class Realm {
 
   clearBlockBindings(modifiedBindings: void | Bindings, environmentRecord: DeclarativeEnvironmentRecord) {
     if (modifiedBindings === undefined) return;
-    for (let b of modifiedBindings.keys())
+    for (let b of modifiedBindings.keys()) {
+      if (b.mightHaveBeenCaptured) continue;
       if (environmentRecord.bindings[b.name] && environmentRecord.bindings[b.name] === b) modifiedBindings.delete(b);
+    }
   }
 
   clearBlockBindingsFromCompletion(completion: Completion, environmentRecord: DeclarativeEnvironmentRecord) {
@@ -548,9 +554,27 @@ export class Realm {
     this.contextStack.push(context);
   }
 
+  markVisibleLocalBindingsAsPotentiallyCaptured() {
+    let context = this.getRunningContext();
+    if (context.function === undefined) return;
+    let lexEnv = context.lexicalEnvironment;
+    while (lexEnv != null) {
+      let envRec = lexEnv.environmentRecord;
+      if (envRec instanceof DeclarativeEnvironmentRecord) {
+        let bindings = envRec.bindings;
+        for (let name in bindings) {
+          let binding = bindings[name];
+          binding.mightHaveBeenCaptured = true;
+        }
+      }
+      lexEnv = lexEnv.parent;
+    }
+  }
+
   clearFunctionBindings(modifiedBindings: void | Bindings, funcVal: FunctionValue) {
     if (modifiedBindings === undefined) return;
     for (let b of modifiedBindings.keys()) {
+      if (b.mightHaveBeenCaptured) continue;
       if (b.environment instanceof FunctionEnvironmentRecord && b.environment.$FunctionObject === funcVal)
         modifiedBindings.delete(b);
     }
@@ -796,6 +820,7 @@ export class Realm {
         try {
           c = f();
           if (c instanceof Reference) c = Environment.GetValue(this, c);
+          else if (c instanceof SimpleNormalCompletion) c = c.value;
         } catch (e) {
           if (e instanceof AbruptCompletion) c = e;
           else throw e;
@@ -950,7 +975,8 @@ export class Realm {
         effects1 = Widen.widenEffects(this, effects1, effects2);
       }
     } catch (e) {
-      return undefined;
+      if (e instanceof FatalError) return undefined;
+      throw e;
     }
   }
 
@@ -1178,12 +1204,12 @@ export class Realm {
 
   updateAbruptCompletions(priorEffects: Effects, c: PossiblyNormalCompletion) {
     if (c.consequent instanceof AbruptCompletion) {
-      c.consequentEffects = this.composeEffects(priorEffects, c.consequentEffects);
+      c.consequent.effects = this.composeEffects(priorEffects, c.consequentEffects);
       let alternate = c.alternate;
       if (alternate instanceof PossiblyNormalCompletion) this.updateAbruptCompletions(priorEffects, alternate);
     } else {
       invariant(c.alternate instanceof AbruptCompletion);
-      c.alternateEffects = this.composeEffects(priorEffects, c.alternateEffects);
+      c.alternate.effects = this.composeEffects(priorEffects, c.alternateEffects);
       let consequent = c.consequent;
       if (consequent instanceof PossiblyNormalCompletion) this.updateAbruptCompletions(priorEffects, consequent);
     }
@@ -1426,10 +1452,8 @@ export class Realm {
 
     if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding)) {
       this.modifiedBindings.set(binding, {
-        leakedImmutableValue: undefined,
         hasLeaked: undefined,
         value: undefined,
-        previousLeakedImmutableValue: binding.leakedImmutableValue,
         previousHasLeaked: binding.hasLeaked,
         previousValue: binding.value,
       });
@@ -1503,8 +1527,7 @@ export class Realm {
 
   redoBindings(modifiedBindings: void | Bindings) {
     if (modifiedBindings === undefined) return;
-    modifiedBindings.forEach(({ leakedImmutableValue, hasLeaked, value }, binding, m) => {
-      binding.leakedImmutableValue = leakedImmutableValue;
+    modifiedBindings.forEach(({ hasLeaked, value }, binding, m) => {
       binding.hasLeaked = hasLeaked || false;
       binding.value = value;
     });
@@ -1513,10 +1536,8 @@ export class Realm {
   undoBindings(modifiedBindings: void | Bindings) {
     if (modifiedBindings === undefined) return;
     modifiedBindings.forEach((entry, binding, m) => {
-      if (entry.leakedImmutableValue === undefined) entry.leakedImmutableValue = binding.leakedImmutableValue;
       if (entry.hasLeaked === undefined) entry.hasLeaked = binding.hasLeaked;
       if (entry.value === undefined) entry.value = binding.value;
-      binding.leakedImmutableValue = entry.previousLeakedImmutableValue;
       binding.hasLeaked = entry.previousHasLeaked || false;
       binding.value = entry.previousValue;
     });

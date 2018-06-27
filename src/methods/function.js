@@ -323,7 +323,7 @@ export class FunctionImplementation {
           break;
         case "SwitchStatement":
           for (let switchCase of ((ast: any): BabelNodeSwitchStatement).cases) {
-            statements = statements.concat(switchCase.consequent);
+            statements.push(...switchCase.consequent);
           }
           break;
         case "TryStatement":
@@ -746,6 +746,9 @@ export class FunctionImplementation {
     Body: BabelNodeBlockStatement,
     Scope: LexicalEnvironment
   ): ECMAScriptSourceFunctionValue {
+    // Tell the realm to mark any local bindings that are visible to this function as being potentially captured by it.
+    realm.markVisibleLocalBindingsAsPotentiallyCaptured();
+
     // Note that F is a new object, and we can thus write to internal slots
     invariant(realm.isNewObject(F));
 

@@ -66,9 +66,13 @@ export function havocBinding(binding: Binding) {
     realm.recordModifiedBinding(binding).hasLeaked = true;
     if (value !== undefined) {
       let realmGenerator = realm.generator;
-      if (realmGenerator !== undefined) realmGenerator.emitBindingAssignment(binding, value);
-      if (binding.mutable !== true) binding.leakedImmutableValue = value;
-      binding.value = realm.intrinsics.undefined;
+      if (realmGenerator !== undefined && value !== realm.intrinsics.undefined)
+        realmGenerator.emitBindingAssignment(binding, value);
+      if (binding.mutable === true) {
+        // For mutable, i.e. non-const bindings, the actual value is no longer directly available.
+        // Thus, we reset the value to undefined to prevent any use of the last known value.
+        binding.value = undefined;
+      }
     }
   }
 }
@@ -151,10 +155,10 @@ export type Binding = {
   environment: EnvironmentRecord,
   name: string,
   isGlobal: boolean,
+  mightHaveBeenCaptured: boolean,
   // bindings that are assigned to inside loops with abstract termination conditions need temporal locations
   phiNode?: AbstractValue,
   hasLeaked: boolean,
-  leakedImmutableValue?: Value,
 };
 
 // ECMA262 8.1.1.1
@@ -200,6 +204,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       environment: envRec,
       name: N,
       isGlobal: isGlobal,
+      mightHaveBeenCaptured: false,
       hasLeaked: false,
     });
 
@@ -226,6 +231,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       environment: envRec,
       name: N,
       isGlobal: isGlobal,
+      mightHaveBeenCaptured: false,
       hasLeaked: false,
     };
     this.bindings[N] = skipRecord ? binding : realm.recordModifiedBinding(binding);
@@ -330,8 +336,8 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     }
 
     // 4. Return the value currently bound to N in envRec.
-    if (binding.hasLeaked) {
-      return binding.leakedImmutableValue || deriveGetBinding(realm, binding);
+    if (binding.hasLeaked && binding.mutable) {
+      return deriveGetBinding(realm, binding);
     }
     invariant(binding.value);
     return binding.value;

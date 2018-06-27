@@ -23,10 +23,16 @@ import {
 } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
-import { flagPropsWithNoPartialKeyOrRef, getProperty, getValueFromFunctionCall, valueIsClassComponent } from "./utils";
+import {
+  flagPropsWithNoPartialKeyOrRef,
+  getProperty,
+  getValueFromFunctionCall,
+  hardModifyReactObjectPropertyBinding,
+  valueIsClassComponent,
+} from "./utils";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get, Construct } from "../methods/index.js";
-import { Properties, Purity } from "../singletons.js";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import traverse from "babel-traverse";
 import type { ClassComponentMetadata } from "../types.js";
@@ -219,15 +225,15 @@ export function createClassInstanceForFirstRenderOnly(
     if (stateToUpdate instanceof ObjectValue) {
       let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
       objectAssignCall(realm.intrinsics.undefined, [newState, prevState]);
+      newState.makeFinal();
 
       for (let [key, binding] of stateToUpdate.properties) {
         if (binding && binding.descriptor && binding.descriptor.enumerable) {
           let value = getProperty(realm, stateToUpdate, key);
-          Properties.Set(realm, newState, key, value, true);
+          hardModifyReactObjectPropertyBinding(realm, newState, key, value);
         }
       }
 
-      newState.makeFinal();
       Properties.Set(realm, instance, "state", newState, true);
     }
     if (callback instanceof ECMAScriptSourceFunctionValue && callback.$Call) {
@@ -394,7 +400,7 @@ export function applyGetDerivedStateFromProps(
             ([methodNode, ..._args]) => {
               return t.callExpression(methodNode, ((_args: any): Array<any>));
             },
-            { skipInvariant: true, purityCheck: Purity.objectAssignTemporalPurityCheck }
+            { skipInvariant: true, mutatesOnly: [newState] }
           );
           newState.makeSimple();
           newState.makePartial();

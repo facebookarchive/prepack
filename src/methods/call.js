@@ -451,7 +451,7 @@ export function OrdinaryCallEvaluateBody(
           realm.savedCompletion = undefined;
           let c = getCompletion();
 
-          // We are about the leave this function and this presents a join point where all non exeptional control flows
+          // We are about the leave this function and this presents a join point where all non exceptional control flows
           // converge into a single flow using their joint effects to update the post join point state.
           if (!(c instanceof ReturnCompletion)) {
             if (!(c instanceof AbruptCompletion)) {

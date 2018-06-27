@@ -23,6 +23,7 @@ import type {
   BabelNodeSpreadElement,
   BabelNodeFunctionExpression,
   BabelNodeClassExpression,
+  BabelNodeArrowFunctionExpression,
 } from "babel-types";
 import type { FunctionBodyAstNode } from "../types.js";
 import type { NameGenerator } from "../utils/generator.js";
@@ -39,14 +40,18 @@ import { SerializerStatistics } from "./statistics.js";
 import { ResidualFunctionInstantiator, type Replacement, getReplacement } from "./ResidualFunctionInstantiator.js";
 import { Modules } from "../utils/modules.js";
 import { ResidualFunctionInitializers } from "./ResidualFunctionInitializers.js";
-import { nullExpression } from "../utils/internalizer.js";
+import { nullExpression } from "../utils/babelhelpers.js";
 import type { LocationService, ClassMethodInstance } from "./types.js";
 import { Referentializer } from "./Referentializer.js";
 import { getOrDefault } from "./utils.js";
 
 type ResidualFunctionsResult = {
-  unstrictFunctionBodies: Array<BabelNodeFunctionExpression | BabelNodeClassExpression>,
-  strictFunctionBodies: Array<BabelNodeFunctionExpression | BabelNodeClassExpression>,
+  unstrictFunctionBodies: Array<
+    BabelNodeFunctionExpression | BabelNodeClassExpression | BabelNodeArrowFunctionExpression
+  >,
+  strictFunctionBodies: Array<
+    BabelNodeFunctionExpression | BabelNodeClassExpression | BabelNodeArrowFunctionExpression
+  >,
 };
 
 export class ResidualFunctions {
@@ -147,7 +152,10 @@ export class ResidualFunctions {
     let functionInfo = this.residualFunctionInfos.get(funcBody);
     invariant(functionInfo);
     let { usesArguments } = functionInfo;
-    return !shouldInlineFunction() && instances.length > 1 && !usesArguments;
+    let hasAnyLeakedIds = false;
+    for (const instance of instances)
+      for (const scope of instance.scopeInstances.values()) if (scope.leakedIds.length > 0) hasAnyLeakedIds = true;
+    return !shouldInlineFunction() && instances.length > 1 && !usesArguments && !hasAnyLeakedIds;
   }
 
   _getIdentifierReplacements(
@@ -253,10 +261,10 @@ export class ResidualFunctions {
     });
   }
 
-  _createFunctionExpression(params: Array<BabelNodeLVal>, body: BabelNodeBlockStatement) {
+  _createFunctionExpression(params: Array<BabelNodeLVal>, body: BabelNodeBlockStatement, isLexical: boolean) {
     // Additional statements might be inserted at the beginning of the body, so we clone it.
     body = ((Object.assign({}, body): any): BabelNodeBlockStatement);
-    return t.functionExpression(null, params, body);
+    return isLexical ? t.arrowFunctionExpression(params, body) : t.functionExpression(null, params, body);
   }
 
   spliceFunctions(
@@ -306,7 +314,11 @@ export class ResidualFunctions {
         funcNodes.set(functionValue, ((funcOrClassNode: any): BabelNodeFunctionExpression));
         body = getPrelude(instance);
       } else {
-        invariant(t.isCallExpression(funcOrClassNode) || t.isClassExpression(funcOrClassNode)); // .bind call
+        invariant(
+          t.isCallExpression(funcOrClassNode) ||
+            t.isClassExpression(funcOrClassNode) ||
+            t.isArrowFunctionExpression(funcOrClassNode)
+        ); // .bind call
         body = getFunctionBody(instance);
       }
       body.push(t.variableDeclaration("var", [t.variableDeclarator(funcId, funcOrClassNode)]));
@@ -350,6 +362,7 @@ export class ResidualFunctions {
       let { instance } = additionalFunctionInfo;
       let functionValue = ((funcValue: any): ECMAScriptSourceFunctionValue);
       let params = functionValue.$FormalParameters;
+      let isLexical = functionValue.$ThisMode === "lexical";
       invariant(params !== undefined);
 
       let rewrittenBody = rewrittenAdditionalFunctions.get(funcValue);
@@ -400,7 +413,9 @@ export class ResidualFunctions {
           funcOrClassNode.superClass = classSuperNode;
         }
       } else {
-        funcOrClassNode = t.functionExpression(null, params, functionBody);
+        funcOrClassNode = isLexical
+          ? t.arrowFunctionExpression(params, functionBody)
+          : t.functionExpression(null, params, functionBody);
       }
       let id = this.locationService.getLocation(funcValue);
       invariant(id !== undefined);
@@ -491,11 +506,12 @@ export class ResidualFunctions {
               funcOrClassNode.superClass = classSuperNode;
             }
           } else {
+            let isLexical = instance.functionValue.$ThisMode === "lexical";
             funcOrClassNode = new ResidualFunctionInstantiator(
               factoryFunctionInfos,
               this._getIdentifierReplacements(funcBody, residualFunctionBindings),
               this._getCallReplacements(funcBody),
-              this._createFunctionExpression(params, funcBody)
+              this._createFunctionExpression(params, funcBody, isLexical)
             ).instantiate();
 
             let scopeInitialization = [];
@@ -505,8 +521,11 @@ export class ResidualFunctions {
               );
             }
 
-            if (scopeInitialization.length > 0)
-              funcOrClassNode.body.body = scopeInitialization.concat(funcOrClassNode.body.body);
+            if (scopeInitialization.length > 0) {
+              let funcOrClassNodeBody = ((funcOrClassNode.body: any): BabelNodeBlockStatement);
+              invariant(t.isBlockStatement(funcOrClassNodeBody));
+              funcOrClassNodeBody.body = scopeInitialization.concat(funcOrClassNodeBody.body);
+            }
           }
           let id = this.locationService.getLocation(functionValue);
           invariant(id !== undefined);
@@ -588,10 +607,14 @@ export class ResidualFunctions {
           factoryFunctionInfos,
           this._getIdentifierReplacements(funcBody, sameResidualBindings),
           this._getCallReplacements(funcBody),
-          this._createFunctionExpression(factoryParams, funcBody)
+          this._createFunctionExpression(factoryParams, funcBody, false)
         ).instantiate();
 
-        if (scopeInitialization.length > 0) factoryNode.body.body = scopeInitialization.concat(factoryNode.body.body);
+        if (scopeInitialization.length > 0) {
+          let factoryNodeBody = ((factoryNode.body: any): BabelNodeBlockStatement);
+          invariant(t.isBlockStatement(factoryNodeBody));
+          factoryNodeBody.body = scopeInitialization.concat(factoryNodeBody.body);
+        }
 
         // factory functions do not depend on any nested generator scope, so they go to the prelude
         let factoryDeclaration = t.variableDeclaration("var", [t.variableDeclarator(factoryId, factoryNode)]);
@@ -617,8 +640,10 @@ export class ResidualFunctions {
             invariant(serializedValue);
             return serializedValue;
           });
-          for (let entry of instance.scopeInstances) {
-            flatArgs.push(t.numericLiteral(entry[1].id));
+          let hasAnyLeakedIds = false;
+          for (const scope of instance.scopeInstances.values()) {
+            flatArgs.push(t.numericLiteral(scope.id));
+            if (scope.leakedIds.length > 0) hasAnyLeakedIds = true;
           }
           let funcNode;
           let firstUsage = this.firstFunctionUsages.get(functionValue);
@@ -630,7 +655,8 @@ export class ResidualFunctions {
             usesThis ||
             hasFunctionArg ||
             (firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint)) ||
-            this.functionPrototypes.get(functionValue) !== undefined
+            this.functionPrototypes.get(functionValue) !== undefined ||
+            hasAnyLeakedIds
           ) {
             let callArgs: Array<BabelNodeExpression | BabelNodeSpreadElement> = [t.thisExpression()];
             for (let flatArg of flatArgs) callArgs.push(flatArg);
@@ -673,8 +699,10 @@ export class ResidualFunctions {
       } else {
         prelude = this.prelude;
       }
-      prelude.unshift(this.referentializer.createCaptureScopeAccessFunction(referentializationScope));
-      prelude.unshift(this.referentializer.createCapturedScopesArrayInitialization(referentializationScope));
+      prelude.unshift(
+        ...this.referentializer.createCapturedScopesPrelude(referentializationScope),
+        ...this.referentializer.createLeakedIds(referentializationScope)
+      );
     }
 
     for (let instance of this.functionInstances.reverse()) {

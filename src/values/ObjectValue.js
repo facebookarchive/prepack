@@ -55,6 +55,7 @@ import { Havoc, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { typeAnnotation } from "babel-types";
 import * as t from "babel-types";
+import { memberExpressionHelper } from "../utils/babelhelpers.js";
 
 function isWidenedValue(v: void | Value) {
   if (!(v instanceof AbstractValue)) return false;
@@ -561,6 +562,14 @@ export default class ObjectValue extends ConcreteValue {
       invariant(!this.isPartialObject());
       let template = new ObjectValue(this.$Realm, this.$Realm.intrinsics.ObjectPrototype);
       this.copyKeys(this.$OwnPropertyKeys(), this, template);
+      let realm = this.$Realm;
+      // The snapshot is an immutable object snapshot
+      template.makeFinal();
+      // The original object might be a React props object, thus
+      // if it is, we need to ensure we mark it with the same rules
+      if (realm.react.enabled && realm.react.reactProps.has(this)) {
+        realm.react.reactProps.add(template);
+      }
       let result = AbstractValue.createTemporalFromBuildFunction(this.$Realm, ObjectValue, [template], ([x]) => x, {
         skipInvariant: true,
         isPure: true,
@@ -759,7 +768,7 @@ export default class ObjectValue extends ConcreteValue {
           this.$Realm,
           Value,
           [Receiver, P],
-          ([o, p]) => t.memberExpression(o, p, true),
+          ([o, p]) => memberExpressionHelper(o, p),
           { skipInvariant: true, isPure: true }
         );
       } else {
@@ -787,7 +796,7 @@ export default class ObjectValue extends ConcreteValue {
           this.$Realm,
           Value,
           [this, P],
-          ([o, p]) => t.memberExpression(o, p, true),
+          ([o, p]) => memberExpressionHelper(o, p),
           { skipInvariant: true, isPure: true }
         );
       }
@@ -797,7 +806,7 @@ export default class ObjectValue extends ConcreteValue {
         this.$Realm,
         Value,
         [this, P],
-        ([o, p]) => t.memberExpression(o, p, true),
+        ([o, p]) => memberExpressionHelper(o, p),
         { skipInvariant: true, isPure: true }
       );
     }
@@ -846,7 +855,7 @@ export default class ObjectValue extends ConcreteValue {
         this.$Realm,
         absVal.getType(),
         [ob, propName],
-        ([o, p]) => t.memberExpression(o, p, true),
+        ([o, p]) => memberExpressionHelper(o, p),
         { skipInvariant: true, isPure: true }
       );
     }
@@ -864,7 +873,7 @@ export default class ObjectValue extends ConcreteValue {
           this.$Realm,
           absVal.getType(),
           [ob, propName],
-          ([o, p]) => t.memberExpression(o, p, true),
+          ([o, p]) => memberExpressionHelper(o, p),
           { skipInvariant: true, isPure: true }
         );
       } else if (arg2.args.length === 3) {
@@ -927,9 +936,7 @@ export default class ObjectValue extends ConcreteValue {
             invariant(generator);
             invariant(P instanceof AbstractValue);
             generator.emitStatement([Receiver, P, V], ([objectNode, keyNode, valueNode]) =>
-              t.expressionStatement(
-                t.assignmentExpression("=", t.memberExpression(objectNode, keyNode, true), valueNode)
-              )
+              t.expressionStatement(t.assignmentExpression("=", memberExpressionHelper(objectNode, keyNode), valueNode))
             );
             return this.$Realm.intrinsics.undefined;
           },

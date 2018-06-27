@@ -14,6 +14,20 @@ let FatalError = require("../lib/errors.js").FatalError;
 let prepackSources = require("../lib/prepack-node.js").prepackSources;
 import type { PrepackOptions } from "../lib/prepack-options";
 
+function serialRun(promises: Array<() => Promise<void>>, i: number) {
+  if (promises[i] instanceof Function) {
+    return promises[i]().then(function() {
+      return serialRun(promises, i + 1);
+    });
+  } else {
+    return Promise.resolve();
+  }
+}
+
+function SerialPromises(promises: Array<() => Promise<void>>) {
+  return serialRun(promises, 0);
+}
+
 let Serializer = require("../lib/serializer/index.js").default;
 let SerializerStatistics = require("../lib/serializer/statistics.js").SerializerStatistics;
 let construct_realm = require("../lib/construct_realm.js").default;
@@ -110,7 +124,14 @@ function execExternal(externalSpec, code) {
     };
   try {
     ${code}
-    cachePrint(inspect() + _logOutput);
+    let inspectResult = inspect();
+    if (inspectResult && typeof inspectResult.then === 'function') {
+      return inspectResult.then(function (resultOutput) {
+        cachePrint(resultOutput + _logOutput);
+      });
+    } else {
+      cachePrint(inspectResult + _logOutput);
+    }
   } catch (e) {
     cachePrint(e);
   }`;
@@ -119,7 +140,7 @@ function execExternal(externalSpec, code) {
 
   let output = String(child.stdout);
 
-  return String(output.trim());
+  return Promise.resolve(String(output.trim()));
 }
 
 function augmentCodeWithLazyObjectSupport(code, lazyRuntimeName) {
@@ -214,40 +235,50 @@ function augmentCodeWithLazyObjectSupport(code, lazyRuntimeName) {
 
 // run code in a seperate context
 function execInContext(code) {
-  let script = new vm.Script(
-    `var global = this;
-    var self = this;
-    ${code}
-    report(inspect());`,
-    { cachedDataProduced: false }
-  );
   let result = "";
   let logOutput = "";
 
   function write(prefix, values) {
     logOutput += "\n" + prefix + values.join("");
   }
-  script.runInNewContext({
-    setTimeout: setTimeout,
-    setInterval: setInterval,
-    clearTimeout: clearTimeout,
-    clearInterval: clearInterval,
-    report: function(s) {
-      result = s;
-    },
-    console: {
-      log(...s) {
-        write("", s);
+
+  try {
+    new vm.Script(
+      `var global = this;
+      var self = this;
+      ${code}
+      report(inspect());`,
+      { cachedDataProduced: false }
+    ).runInNewContext({
+      setTimeout: setTimeout,
+      setInterval: setInterval,
+      clearTimeout: clearTimeout,
+      clearInterval: clearInterval,
+      report: function(s) {
+        result = s;
       },
-      warn(...s) {
-        write("WARN:", s);
+      console: {
+        log(...s) {
+          write("", s);
+        },
+        warn(...s) {
+          write("WARN:", s);
+        },
+        error(...s) {
+          write("ERROR:", s);
+        },
       },
-      error(...s) {
-        write("ERROR:", s);
-      },
-    },
-  });
-  return (result + logOutput).trim();
+    });
+  } catch (e) {
+    return Promise.reject(e);
+  }
+  if (result && typeof result.then === "function") {
+    return result.then(function(resultOutput) {
+      return (resultOutput + logOutput).trim();
+    });
+  } else {
+    return Promise.resolve((result + logOutput).trim());
+  }
 }
 
 function parseFunctionOrderings(code: string): Array<number> {
@@ -255,7 +286,8 @@ function parseFunctionOrderings(code: string): Array<number> {
   const functionOrderPattern = /Function ordering: (\d+)/g;
   let match;
   while ((match = functionOrderPattern.exec(code)) != null) {
-    orders.push(match[1]);
+    invariant(match !== null);
+    orders.push(+match[1]);
   }
   return orders;
 }
@@ -329,33 +361,33 @@ function runTest(name, code, options: PrepackOptions, args) {
         console.error(chalk.red("Test should have caused introspection error!"));
       }
     } catch (err) {
-      if (err instanceof FatalError) return true;
+      if (err instanceof FatalError) return Promise.resolve(true);
       console.error("Test should have caused introspection error, but instead caused a different internal error!");
       console.error(err);
       console.error(err.stack);
     }
-    return false;
+    return Promise.resolve(false);
   } else if (code.includes("// cannot serialize")) {
     try {
       prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
     } catch (err) {
       if (err instanceof FatalError) {
-        return true;
+        return Promise.resolve(true);
       }
       console.error(err);
       console.error(err.stack);
     }
     console.error(chalk.red("Test should have caused error during serialization!"));
-    return false;
+    return Promise.resolve(false);
   } else if (code.includes("// no effect")) {
     try {
       let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
       if (!serialized) {
         console.error(chalk.red("Error during serialization!"));
-        return false;
+        return Promise.resolve(false);
       }
       if (!serialized.code.trim()) {
-        return true;
+        return Promise.resolve(true);
       }
       console.error(chalk.red("Generated code should be empty but isn't!"));
       console.error(chalk.underline("original code"));
@@ -366,9 +398,8 @@ function runTest(name, code, options: PrepackOptions, args) {
       console.error(err);
       console.error(err.stack);
     }
-    return false;
+    return Promise.resolve(false);
   } else {
-    let expected, actual;
     let codeIterations = [];
     let markersToFind = [];
     for (let [positive, marker] of [[true, "// does contain:"], [false, "// does not contain:"]]) {
@@ -407,136 +438,161 @@ function runTest(name, code, options: PrepackOptions, args) {
     if (compileJSXWithBabel) {
       expectedCode = transformWithBabel(expectedCode, ["transform-react-jsx"]);
     }
-    try {
-      try {
-        expected = execInContext(`${addedCode}\n(function () {${expectedCode} // keep newline here as code may end with comment
-  }).call(this);`);
-      } catch (e) {
-        expected = "" + e;
-      }
 
-      let i = 0;
-      const singleIterationOnly = addedCode || copiesToFind.size > 0 || args.fast;
-      let max = singleIterationOnly ? 1 : 4;
-      let oldCode = code;
-      let anyDelayedValues = false;
-      for (; i < max; i++) {
-        let newUniqueSuffix = `_unique${unique++}`;
-        if (!singleIterationOnly) options.uniqueSuffix = newUniqueSuffix;
-        let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
-        if (serialized.statistics && serialized.statistics.delayedValues > 0) anyDelayedValues = true;
-        if (!serialized) {
-          console.error(chalk.red("Error during serialization!"));
-          break;
-        }
-        let newCode = serialized.code;
-        if (compileJSXWithBabel) {
-          newCode = transformWithBabel(newCode, ["transform-react-jsx"]);
-        }
-        let markersIssue = false;
-        for (let { positive, value } of markersToFind) {
-          let found = newCode.includes(value);
-          if (found !== positive) {
-            console.error(
-              chalk.red(`Output ${positive ? "does not contain required" : "contains forbidden"} string: ${value}`)
-            );
-            markersIssue = true;
-            console.error(newCode);
-          }
-        }
-        let matchesIssue = false;
-        for (let [pattern, count] of copiesToFind) {
-          let matches = serialized.code.match(pattern);
-          if ((!matches && count > 0) || (matches && matches.length !== count)) {
-            matchesIssue = true;
-            console.error(
-              chalk.red(
-                `Wrong number of occurrances of ${pattern.toString()} got ${
-                  matches ? matches.length : 0
-                } instead of ${count}`
-              )
-            );
-            console.error(newCode);
-          }
-        }
-        if (markersIssue || matchesIssue) break;
-        let codeToRun = addedCode + newCode;
-        if (!execSpec && options.lazyObjectsRuntime !== undefined) {
-          codeToRun = augmentCodeWithLazyObjectSupport(codeToRun, args.lazyObjectsRuntime);
-        }
-        if (args.verbose) console.log(codeToRun);
-        codeIterations.push(unescapleUniqueSuffix(codeToRun, options.uniqueSuffix));
-        if (args.es5) {
-          codeToRun = transformWithBabel(codeToRun, [], [["env", { forceAllTransforms: true, modules: false }]]);
-        }
-        // lint output
-        lintCompiledSource(codeToRun);
-        try {
-          if (execSpec) {
-            actual = execExternal(execSpec, codeToRun);
+    return execInContext(
+      `${addedCode}\n(function () {${expectedCode} // keep newline here as code may end with comment
+  }).call(this);`
+    )
+      .catch(e => "" + e)
+      .then(function(expected) {
+        let i = 0;
+        const singleIterationOnly = addedCode || copiesToFind.size > 0 || args.fast;
+        let max = singleIterationOnly ? 1 : 4;
+        let oldCode = code;
+        let anyDelayedValues = false;
+
+        let actual;
+        return SerialPromises(
+          new Array(singleIterationOnly ? 1 : max).fill(0).map(function() {
+            let newUniqueSuffix = `_unique${unique++}`;
+            if (!singleIterationOnly) options.uniqueSuffix = newUniqueSuffix;
+            let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
+            if (serialized.statistics && serialized.statistics.delayedValues > 0) anyDelayedValues = true;
+            if (!serialized) {
+              console.error(chalk.red("Error during serialization!"));
+              return () => Promise.reject();
+            }
+            let newCode = serialized.code;
+            if (compileJSXWithBabel) {
+              newCode = transformWithBabel(newCode, ["transform-react-jsx"]);
+            }
+            let markersIssue = false;
+            for (let { positive, value } of markersToFind) {
+              let found = newCode.includes(value);
+              if (found !== positive) {
+                console.error(
+                  chalk.red(`Output ${positive ? "does not contain required" : "contains forbidden"} string: ${value}`)
+                );
+                markersIssue = true;
+                console.error(newCode);
+              }
+            }
+            let matchesIssue = false;
+            for (let [pattern, count] of copiesToFind) {
+              let matches = serialized.code.match(pattern);
+              if ((!matches && count > 0) || (matches && matches.length !== count)) {
+                matchesIssue = true;
+                console.error(
+                  chalk.red(
+                    `Wrong number of occurrances of ${pattern.toString()} got ${
+                      matches ? matches.length : 0
+                    } instead of ${count}`
+                  )
+                );
+                console.error(newCode);
+              }
+            }
+            if (markersIssue || matchesIssue) return () => Promise.reject({ type: "MARKER" });
+            let codeToRun = addedCode + newCode;
+            if (!execSpec && options.lazyObjectsRuntime !== undefined) {
+              codeToRun = augmentCodeWithLazyObjectSupport(codeToRun, args.lazyObjectsRuntime);
+            }
+            if (args.verbose) console.log(codeToRun);
+            codeIterations.push(unescapleUniqueSuffix(codeToRun, options.uniqueSuffix));
+            if (args.es5) {
+              codeToRun = transformWithBabel(codeToRun, [], [["env", { forceAllTransforms: true, modules: false }]]);
+            }
+            // lint output
+            lintCompiledSource(codeToRun);
+            let actualPromise;
+            if (execSpec) {
+              actualPromise = execExternal(execSpec, codeToRun);
+            } else {
+              actualPromise = execInContext(codeToRun);
+            }
+            return () =>
+              actualPromise
+                .catch(function(execError) {
+                  // execInContext/execExternal failed
+                  // always compare strings.
+                  actual = "" + execError;
+                  actualStack = execError.stack;
+                  return Promise.resolve("" + execError);
+                })
+                .then(function(_actual) {
+                  actual = _actual;
+                  if (expected !== actual) {
+                    console.error(chalk.red("Output mismatch!"));
+                    return Promise.reject({ type: "BREAK" });
+                  }
+                  if (!verifyFunctionOrderings(codeToRun)) {
+                    return Promise.reject({ type: "BREAK" });
+                  }
+                  // Test the number of clone functions generated with the inital prepack call
+                  if (i === 0 && functionCloneCountMatch) {
+                    let functionCount = parseInt(functionCloneCountMatch[1], 10);
+                    if (serialized.statistics && functionCount !== serialized.statistics.functionClones) {
+                      console.error(
+                        chalk.red(
+                          `Code generation serialized an unexpected number of clone functions. Expected: ${functionCount}, Got: ${
+                            serialized.statistics.functionClones
+                          }`
+                        )
+                      );
+                      return Promise.reject({ type: "BREAK" });
+                    }
+                  }
+                  if (singleIterationOnly) return Promise.reject({ type: "RETURN", value: true });
+                  if (
+                    unescapleUniqueSuffix(oldCode, oldUniqueSuffix) ===
+                      unescapleUniqueSuffix(newCode, newUniqueSuffix) ||
+                    delayUnsupportedRequires
+                  ) {
+                    // The generated code reached a fixed point!
+                    return Promise.reject({ type: "RETURN", value: true });
+                  }
+                  oldCode = newCode;
+                  oldUniqueSuffix = newUniqueSuffix;
+                  i++;
+                });
+          })
+        ).catch(function(err) {
+          const { type, value } = err;
+          if (type === "BREAK") {
+            if (i === max) {
+              if (anyDelayedValues) {
+                // TODO #835: Make delayed initializations logic more sophisticated in order to still reach a fixed point.
+                return Promise.resolve(true);
+              }
+              console.error(chalk.red(`Code generation did not reach fixed point after ${max} iterations!`));
+            }
+
+            console.log(chalk.underline("original code"));
+            console.log(code);
+            console.log(chalk.underline("output of inspect() on original code"));
+            console.log(expected);
+            for (let ii = 0; ii < codeIterations.length; ii++) {
+              console.log(chalk.underline(`generated code in iteration ${ii}`));
+              console.log(codeIterations[ii]);
+            }
+            console.log(chalk.underline("output of inspect() on last generated code iteration"));
+            console.log(actual);
+            if (actualStack) console.log(actualStack);
+            return Promise.resolve(false);
+          } else if (type === "RETURN") {
+            return value;
+          } else if (type === "MARKER") {
+            return undefined;
           } else {
-            actual = execInContext(codeToRun);
+            console.error(err);
+            console.error(err.stack);
           }
-        } catch (e) {
-          // always compare strings.
-          actual = "" + e;
-          actualStack = e.stack;
-        }
-        if (expected !== actual) {
-          console.error(chalk.red("Output mismatch!"));
-          break;
-        }
-        if (!verifyFunctionOrderings(codeToRun)) {
-          break;
-        }
-        // Test the number of clone functions generated with the inital prepack call
-        if (i === 0 && functionCloneCountMatch) {
-          let functionCount = parseInt(functionCloneCountMatch[1], 10);
-          if (serialized.statistics && functionCount !== serialized.statistics.functionClones) {
-            console.error(
-              chalk.red(
-                `Code generation serialized an unexpected number of clone functions. Expected: ${functionCount}, Got: ${
-                  serialized.statistics.functionClones
-                }`
-              )
-            );
-            break;
-          }
-        }
-        if (singleIterationOnly) return true;
-        if (
-          unescapleUniqueSuffix(oldCode, oldUniqueSuffix) === unescapleUniqueSuffix(newCode, newUniqueSuffix) ||
-          delayUnsupportedRequires
-        ) {
-          // The generated code reached a fixed point!
-          return true;
-        }
-        oldCode = newCode;
-        oldUniqueSuffix = newUniqueSuffix;
-      }
-      if (i === max) {
-        if (anyDelayedValues) {
-          // TODO #835: Make delayed initializations logic more sophisticated in order to still reach a fixed point.
-          return true;
-        }
-        console.error(chalk.red(`Code generation did not reach fixed point after ${max} iterations!`));
-      }
-    } catch (err) {
-      console.error(err);
-      console.error(err.stack);
-    }
-    console.log(chalk.underline("original code"));
-    console.log(code);
-    console.log(chalk.underline("output of inspect() on original code"));
-    console.log(expected);
-    for (let i = 0; i < codeIterations.length; i++) {
-      console.log(chalk.underline(`generated code in iteration ${i}`));
-      console.log(codeIterations[i]);
-    }
-    console.log(chalk.underline("output of inspect() on last generated code iteration"));
-    console.log(actual);
-    if (actualStack) console.log(actualStack);
-    return false;
+        });
+      })
+      .catch(function(err) {
+        console.error(err);
+        console.error(err.stack);
+      });
   }
 }
 
@@ -599,62 +655,79 @@ function run(args) {
   }
 
   let failedTests = [];
-  for (let test of tests) {
+
+  return SerialPromises(
     // filter hidden files
-    if (path.basename(test.name)[0] === ".") continue;
-    if (test.name.endsWith("~")) continue;
-    if (test.file.includes("// skip this test for now")) continue;
-    if (args.es5 && test.file.includes("// es6")) continue;
-    //only run specific tests if desired
-    if (!test.name.includes(args.filter)) continue;
-    const isAdditionalFunctionTest = test.file.includes("__optimize");
-    const isPureFunctionTest = test.name.includes("pure-functions");
-    const isCaptureTest = test.name.includes("Closure") || test.name.includes("Capture");
-    const isSimpleClosureTest = test.file.includes("// simple closures");
-    // Skip lazy objects mode for certain known incompatible tests, react compiler and additional-functions tests.
-    const skipLazyObjects =
-      test.file.includes("// skip lazy objects") ||
-      isAdditionalFunctionTest ||
-      isPureFunctionTest ||
-      test.name.includes("react");
+    tests
+      .filter(test => {
+        return (
+          path.basename(test.name)[0] !== "." &&
+          !test.name.endsWith("~") &&
+          !test.file.includes("// skip this test for now") &&
+          !(args.es5 && test.file.includes("// es6")) &&
+          //only run specific tests if desired
+          test.name.includes(args.filter)
+        );
+      })
+      .map(function(test) {
+        const isAdditionalFunctionTest = test.file.includes("__optimize");
+        const isPureFunctionTest = test.name.includes("pure-functions");
+        const isCaptureTest = test.name.includes("Closure") || test.name.includes("Capture");
+        const isSimpleClosureTest = test.file.includes("// simple closures");
+        // Skip lazy objects mode for certain known incompatible tests, react compiler and additional-functions tests.
+        const skipLazyObjects =
+          test.file.includes("// skip lazy objects") ||
+          isAdditionalFunctionTest ||
+          isPureFunctionTest ||
+          test.name.includes("react");
 
-    let flagPermutations = [
-      [false, false, undefined, isSimpleClosureTest],
-      [true, true, undefined, isSimpleClosureTest],
-      [false, false, args.lazyObjectsRuntime, isSimpleClosureTest],
-    ];
-    if (isAdditionalFunctionTest || isCaptureTest) {
-      flagPermutations.push([false, false, undefined, true]);
-      flagPermutations.push([false, true, undefined, true]);
-    }
-    if (args.fast) flagPermutations = [[false, false, undefined, isSimpleClosureTest]];
-    let lastFailed = failed;
-    for (let [delayInitializations, inlineExpressions, lazyObjectsRuntime] of flagPermutations) {
-      if ((skipLazyObjects || args.noLazySupport) && lazyObjectsRuntime) {
-        continue;
+        let flagPermutations = [
+          [false, false, undefined, isSimpleClosureTest],
+          [true, true, undefined, isSimpleClosureTest],
+          [false, false, args.lazyObjectsRuntime, isSimpleClosureTest],
+        ];
+        if (isAdditionalFunctionTest || isCaptureTest) {
+          flagPermutations.push([false, false, undefined, true]);
+          flagPermutations.push([false, true, undefined, true]);
+        }
+        if (args.fast) flagPermutations = [[false, false, undefined, isSimpleClosureTest]];
+        return () =>
+          SerialPromises(
+            flagPermutations
+              .filter(function([delayInitializations, inlineExpressions, lazyObjectsRuntime]) {
+                return !(skipLazyObjects || args.noLazySupport) || !lazyObjectsRuntime;
+              })
+              .map(function([delayInitializations, inlineExpressions, lazyObjectsRuntime]) {
+                total++;
+                let options = {
+                  delayInitializations,
+                  inlineExpressions,
+                  lazyObjectsRuntime,
+                  residual: args && args.residual,
+                };
+                return () =>
+                  runTest(test.name, test.file, options, args).then(testResult => {
+                    if (testResult) {
+                      passed++;
+                    } else {
+                      failed++;
+                      failedTests.push(test);
+                    }
+                  });
+              })
+          );
+      })
+  ).then(function() {
+    failedTests.sort((x, y) => y.file.length - x.file.length);
+    if (failedTests.length > 0) {
+      console.log("Summary of failed tests:");
+      for (let ft of failedTests) {
+        console.log(`  ${ft.name} (${ft.file.length} bytes)`);
       }
-      total++;
-      let options = {
-        delayInitializations,
-        inlineExpressions,
-        lazyObjectsRuntime,
-        residual: args.residual,
-      };
-      if (runTest(test.name, test.file, options, args)) passed++;
-      else failed++;
     }
-    if (failed !== lastFailed) failedTests.push(test);
-  }
-
-  failedTests.sort((x, y) => y.file.length - x.file.length);
-  if (failedTests.length > 0) {
-    console.log("Summary of failed tests:");
-    for (let ft of failedTests) {
-      console.log(`  ${ft.name} (${ft.file.length} bytes)`);
-    }
-  }
-  console.log("Passed:", `${passed}/${total}`, (Math.floor((passed / total) * 100) || 0) + "%");
-  return failed === 0;
+    console.log("Passed:", `${passed}/${total}`, (Math.floor((passed / total) * 100) || 0) + "%");
+    return failed === 0;
+  });
 }
 
 // Object to store all command line arguments
@@ -698,23 +771,28 @@ class ProgramArgs {
 }
 
 // Execution of tests begins here
-function main(): number {
+function main(): void {
+  let args = {};
   try {
-    let args = argsParse();
-    if (!(args.cpuprofilePath ? runWithCpuProfiler : run)(args)) {
-      process.exit(1);
-    } else {
-      return 0;
-    }
+    args = argsParse();
   } catch (e) {
     if (e instanceof ArgsParseError) {
       console.error("Illegal argument: %s.\n%s", e.message, usage());
-    } else {
-      console.error(e);
     }
-    return 1;
+    process.exit(1);
   }
-  return 0;
+  (args && args.cpuprofilePath ? runWithCpuProfiler : run)(args)
+    .then(function(result) {
+      if (!result) {
+        process.exit(1);
+      } else {
+        process.exit(0);
+      }
+    })
+    .catch(function(e) {
+      console.error(e);
+      process.exit(1);
+    });
 }
 
 // Helper function to provide correct usage information to the user

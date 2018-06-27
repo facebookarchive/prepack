@@ -37,7 +37,7 @@ import {
   NormalCompletion,
 } from "./completions.js";
 import { EnvironmentRecord, LexicalEnvironment, Reference } from "./environment.js";
-import { type VisitEntryCallbacks, Generator } from "./utils/generator.js";
+import { Generator } from "./utils/generator.js";
 import { ObjectValue } from "./values/index.js";
 import type {
   BabelNode,
@@ -371,10 +371,6 @@ export type PathType = {
 
 export type HavocType = {
   value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation): void,
-};
-
-export type PurityType = {
-  objectAssignTemporalPurityCheck(callbacks: VisitEntryCallbacks, declared: void | Value, args: Array<Value>): boolean,
 };
 
 export type PropertiesType = {
@@ -796,7 +792,14 @@ export type JoinType = {
   // sets of m1 and m2. The value of a pair is the join of m1[key] and m2[key]
   // where the join is defined to be just m1[key] if m1[key] === m2[key] and
   // and abstract value with expression "joinCondition ? m1[key] : m2[key]" if not.
-  joinBindings(realm: Realm, joinCondition: AbstractValue, m1: Bindings, m2: Bindings): Bindings,
+  joinBindings(
+    realm: Realm,
+    joinCondition: AbstractValue,
+    g1: Generator,
+    m1: Bindings,
+    g2: Generator,
+    m2: Bindings
+  ): [Generator, Generator, Bindings],
 
   // If v1 is known and defined and v1 === v2 return v1,
   // otherwise return getAbstractValue(v1, v2)

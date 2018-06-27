@@ -20,7 +20,7 @@ import type {
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
-import { type VisitEntryCallbacks, PreludeGenerator } from "../utils/generator.js";
+import { PreludeGenerator } from "../utils/generator.js";
 import buildExpressionTemplate from "../utils/builder.js";
 
 import {
@@ -780,7 +780,7 @@ export default class AbstractValue extends Value {
       kind?: AbstractValueKind,
       isPure?: boolean,
       skipInvariant?: boolean,
-      purityCheck?: (callbacks: VisitEntryCallbacks, declared: void | Value, args: Array<Value>) => boolean,
+      mutatesOnly?: Array<Value>,
     |}
   ): AbstractValue {
     invariant(resultType !== UndefinedValue);
@@ -820,7 +820,7 @@ export default class AbstractValue extends Value {
       kind?: AbstractValueKind,
       isPure?: boolean,
       skipInvariant?: boolean,
-      purityCheck?: (callbacks: VisitEntryCallbacks, declared: void | Value, args: Array<Value>) => boolean,
+      mutatesOnly?: Array<Value>,
     |}
   ): AbstractValue | UndefinedValue {
     let types = new TypesDomain(resultType);

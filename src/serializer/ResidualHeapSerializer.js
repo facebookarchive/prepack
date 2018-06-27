@@ -62,7 +62,7 @@ import { HeapInspector } from "../utils/HeapInspector.js";
 import { ResidualFunctions } from "./ResidualFunctions.js";
 import type { Scope } from "./ResidualHeapVisitor.js";
 import { factorifyObjects } from "./factorify.js";
-import { voidExpression, emptyExpression, constructorExpression, protoExpression } from "../utils/internalizer.js";
+import { voidExpression, emptyExpression, constructorExpression, protoExpression } from "../utils/babelhelpers.js";
 import { Emitter } from "./Emitter.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import {
@@ -83,6 +83,7 @@ import type { Referentializer } from "./Referentializer.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
 import { type Replacement, getReplacement } from "./ResidualFunctionInstantiator";
 import { describeValue } from "../utils.js";
+import { getAsPropertyNameExpression } from "../utils/babelhelpers.js";
 
 function commentStatement(text: string) {
   let s = t.emptyStatement();
@@ -119,7 +120,7 @@ export class ResidualHeapSerializer {
     residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     options: SerializerOptions,
-    referencedDeclaredValues: Map<AbstractValue | ConcreteValue, void | FunctionValue>,
+    referencedDeclaredValues: Map<Value, void | FunctionValue>,
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
@@ -249,7 +250,7 @@ export class ResidualHeapSerializer {
   _serializedValueWithIdentifiers: Set<Value>;
   residualFunctions: ResidualFunctions;
   _options: SerializerOptions;
-  referencedDeclaredValues: Map<AbstractValue | ConcreteValue, void | FunctionValue>;
+  referencedDeclaredValues: Map<Value, void | FunctionValue>;
   activeGeneratorBodies: Map<Generator, SerializedBody>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
@@ -545,7 +546,7 @@ export class ResidualHeapSerializer {
       let serializedKey =
         key instanceof SymbolValue || key instanceof AbstractValue
           ? this.serializeValue(key)
-          : this.generator.getAsPropertyNameExpression(key);
+          : getAsPropertyNameExpression(key);
       let computed = key instanceof SymbolValue || key instanceof AbstractValue || !t.isIdentifier(serializedKey);
       return t.memberExpression(this.getSerializeObjectIdentifier(val), serializedKey, computed);
     };
@@ -656,7 +657,7 @@ export class ResidualHeapSerializer {
     let serializedKey =
       key instanceof SymbolValue || key instanceof AbstractValue
         ? this.serializeValue(key)
-        : this.generator.getAsPropertyNameExpression(key, /*canBeIdentifier*/ false);
+        : getAsPropertyNameExpression(key, /*canBeIdentifier*/ false);
     invariant(!this.emitter.getReasonToWaitForDependencies([val]), "precondition of _emitProperty");
     body.push(
       t.callExpression(this.preludeGenerator.memoizeReference("Object.defineProperty"), [
@@ -673,10 +674,15 @@ export class ResidualHeapSerializer {
       let value = residualFunctionBinding.value;
       invariant(residualFunctionBinding.declarativeEnvironmentRecord);
 
-      residualFunctionBinding.serializedValue = value !== undefined ? this.serializeValue(value) : voidExpression;
-      if (residualFunctionBinding.modified) {
-        this.referentializer.referentializeBinding(residualFunctionBinding);
+      if (residualFunctionBinding.hasLeaked) {
+        this.referentializer.referentializeLeakedBinding(residualFunctionBinding);
+      } else {
+        residualFunctionBinding.serializedValue = value !== undefined ? this.serializeValue(value) : voidExpression;
+        if (residualFunctionBinding.modified) {
+          this.referentializer.referentializeModifiedBinding(residualFunctionBinding);
+        }
       }
+
       if (value !== undefined && value.mightBeObject()) {
         // Increment ref count one more time to ensure that this object will be assigned a unique id.
         // This ensures that only once instance is created across all possible residual function invocations.
@@ -1659,12 +1665,12 @@ export class ResidualHeapSerializer {
         if (propertyBinding.pathNode !== undefined) continue; // written to inside loop
         let descriptor = propertyBinding.descriptor;
         if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
+        let serializedKey = getAsPropertyNameExpression(key);
         if (this._canEmbedProperty(val, key, descriptor)) {
           let propValue = descriptor.value;
           invariant(propValue instanceof Value);
           if (this.residualHeapInspector.canIgnoreProperty(val, key)) continue;
           let mightHaveBeenDeleted = propValue.mightHaveBeenDeleted();
-          let serializedKey = this.generator.getAsPropertyNameExpression(key);
           let delayReason =
             this.emitter.getReasonToWaitForDependencies(propValue) ||
             this.emitter.getReasonToWaitForActiveValue(val, mightHaveBeenDeleted);
@@ -1681,7 +1687,6 @@ export class ResidualHeapSerializer {
           props.push(t.objectProperty(serializedKey, serializedValue));
         } else if (descriptor.value instanceof Value && descriptor.value.mightHaveBeenDeleted()) {
           dummyProperties.add(key);
-          let serializedKey = this.generator.getAsPropertyNameExpression(key);
           props.push(t.objectProperty(serializedKey, voidExpression));
         }
       }
@@ -2111,8 +2116,8 @@ export class ResidualHeapSerializer {
       },
       getPropertyAssignmentStatement: this._getPropertyAssignmentStatement.bind(this),
       emitDefinePropertyBody: this.emitDefinePropertyBody.bind(this, false, undefined),
-      canOmit: (value: AbstractValue | ConcreteValue) => {
-        return !this.referencedDeclaredValues.has(value);
+      canOmit: (value: Value) => {
+        return !this.referencedDeclaredValues.has(value) && !this.residualValues.has(value);
       },
       declare: (value: AbstractValue | ConcreteValue) => {
         this.emitter.declare(value);

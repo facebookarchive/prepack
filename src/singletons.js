@@ -18,7 +18,6 @@ import type {
   JoinType,
   PathType,
   PropertiesType,
-  PurityType,
   ToType,
   UtilsType,
   WidenType,
@@ -35,7 +34,6 @@ export let To: ToType = (null: any);
 export let Widen: WidenType = (null: any);
 export let concretize: ConcretizeType = (null: any);
 export let Utils: UtilsType = (null: any);
-export let Purity: PurityType = (null: any);
 
 export function setCreate(singleton: CreateType) {
   Create = singleton;
@@ -79,8 +77,4 @@ export function setConcretize(singleton: ConcretizeType) {
 
 export function setUtils(singleton: UtilsType) {
   Utils = singleton;
-}
-
-export function setPurity(singleton: PurityType) {
-  Purity = singleton;
 }
