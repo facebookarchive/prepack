@@ -32,6 +32,7 @@ import { ReactStatistics } from "./types";
 import type { AdditionalFunctionEffects, WriteEffects } from "./types";
 import { convertConfigObjectToReactComponentTreeConfig, valueIsKnownReactAbstraction } from "../react/utils.js";
 import { applyOptimizedReactComponents, optimizeReactComponentTreeRoot } from "../react/optimizing.js";
+import { handleReportedSideEffect } from "../react/reconcilation.js";
 import * as t from "babel-types";
 
 type AdditionalFunctionEntry = {
@@ -199,8 +200,13 @@ export class Functions {
       additionalFunctionStack.push(functionValue);
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
       let call = this._callOfFunction(functionValue);
-      let effects: Effects = this.realm.evaluatePure(() =>
-        this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
+      let realm = this.realm;
+      let effects: Effects = realm.evaluatePure(
+        () => realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
+        handleReportedSideEffect.bind(null, (msg: string) => {
+          let error = new CompilerDiagnostic(msg, undefined, "PP1007", "Warning");
+          realm.handleError(error);
+        })
       );
       invariant(effects);
       let additionalFunctionEffects = createAdditionalEffects(

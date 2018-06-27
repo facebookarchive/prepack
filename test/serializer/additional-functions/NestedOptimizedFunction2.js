@@ -1,3 +1,4 @@
+// expected Warning: PP1007
 // does not contain:1 + 2
 (function () {
     function f() {

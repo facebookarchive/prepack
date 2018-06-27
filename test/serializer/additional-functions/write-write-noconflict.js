@@ -1,5 +1,6 @@
 // does not contain:x = 5;
 // does not contain:y = 10;
+// expected Warning: PP1007
 
 global.a = "";
 global.b = "";

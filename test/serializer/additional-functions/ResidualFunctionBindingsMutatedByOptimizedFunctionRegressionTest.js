@@ -1,3 +1,5 @@
+// expected Warning: PP1007
+// expected FatalError: PP0013
 (function() {
     let x = 23;
     function g() { return x; }

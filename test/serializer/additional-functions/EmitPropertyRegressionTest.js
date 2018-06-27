@@ -1,3 +1,5 @@
+// expected Warning: PP1007, PP0023
+// expected FatalError: PP0013
 (function() {
     function URI(other) {
         if (other.foo) {

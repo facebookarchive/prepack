@@ -13,6 +13,7 @@ import invariant from "../lib/invariant.js";
 let FatalError = require("../lib/errors.js").FatalError;
 let prepackSources = require("../lib/prepack-node.js").prepackSources;
 import type { PrepackOptions } from "../lib/prepack-options";
+import type { ErrorHandler, Severity, CompilerDiagnostic } from "../lib/errors.js";
 
 function serialRun(promises: Array<() => Promise<void>>, i: number) {
   if (promises[i] instanceof Function) {
@@ -308,6 +309,44 @@ function unescapleUniqueSuffix(code: string, uniqueSuffix?: string) {
   return uniqueSuffix != null ? code.replace(new RegExp(uniqueSuffix, "g"), "") : code;
 }
 
+// handler will record a list of map of warning level to error code produced in diagnosticOutput
+function getErrorHandlerWithWarningCapture(
+  diagnosticOutput: Map<Severity, Set<string>>,
+  verbose: boolean
+): ErrorHandler {
+  return (diagnostic: CompilerDiagnostic) => {
+    let msg = `${diagnostic.errorCode}: ${diagnostic.message}`;
+    if (verbose && diagnostic.location) {
+      let loc_start = diagnostic.location.start;
+      let loc_end = diagnostic.location.end;
+      msg += ` at ${loc_start.line}:${loc_start.column} to ${loc_end.line}:${loc_end.column}`;
+    }
+    let errorCodeSet = diagnosticOutput.get(diagnostic.severity);
+    if (!errorCodeSet) diagnosticOutput.set(diagnostic.severity, (errorCodeSet = new Set()));
+    errorCodeSet.add(diagnostic.errorCode);
+    try {
+      switch (diagnostic.severity) {
+        case "Information":
+          if (verbose) console.log(`Info: ${msg}`);
+          return "Recover";
+        case "Warning":
+          if (verbose) console.warn(`Warn: ${msg}`);
+          return "Recover";
+        case "RecoverableError":
+          if (verbose) console.error(`Error: ${msg}`);
+          return "Recover";
+        case "FatalError":
+          if (verbose) console.error(`Fatal Error: ${msg}`);
+          return "Fail";
+        default:
+          invariant(false, "Unexpected error type");
+      }
+    } finally {
+      if (verbose) console.log(diagnostic.callStack);
+    }
+  };
+}
+
 function runTest(name, code, options: PrepackOptions, args) {
   console.log(chalk.inverse(name) + " " + JSON.stringify(options));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
@@ -456,12 +495,54 @@ function runTest(name, code, options: PrepackOptions, args) {
           new Array(singleIterationOnly ? 1 : max).fill(0).map(function() {
             let newUniqueSuffix = `_unique${unique++}`;
             if (!singleIterationOnly) options.uniqueSuffix = newUniqueSuffix;
+
+            let expectedDiagnostics = new Map();
+            // Expected diagnostics comment: "// expected [FatalError | RecoverableError | Warning | Information]: PP0001, PP0002, ..."
+            let diagnosticOutput = new Map();
+            for (let severity of ["FatalError", "RecoverableError", "Warning", "Information"]) {
+              let diagnosticExpectedComment = `// expected ${severity}:`;
+              if (code.includes(diagnosticExpectedComment)) {
+                let idx = code.indexOf(diagnosticExpectedComment);
+                let errorCodeString = code.substring(idx + diagnosticExpectedComment.length, code.indexOf("\n", idx));
+                let errorCodeSet = new Set();
+                expectedDiagnostics.set(severity, errorCodeSet);
+                errorCodeString.split(",").forEach(errorCode => errorCodeSet.add(errorCode.trim()));
+                options.residual = false;
+                options.errorHandler = getErrorHandlerWithWarningCapture(diagnosticOutput, args.verbose);
+              }
+            }
+
             let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
             if (serialized.statistics && serialized.statistics.delayedValues > 0) anyDelayedValues = true;
             if (!serialized) {
               console.error(chalk.red("Error during serialization!"));
               return () => Promise.reject();
             }
+
+            function setEquals(set1, set2) {
+              if (!set1 || !set2 || set1.size !== set2.size) return false;
+              for (let x of set1) if (!set2.has(x)) return false;
+              return true;
+            }
+            let diagnosticIssue = false;
+            if (diagnosticOutput.size > 0) {
+              for (let [severity, diagnostics] of diagnosticOutput) {
+                let expectedErrorCodes = expectedDiagnostics.get(severity);
+                if (!setEquals(expectedErrorCodes, diagnostics)) {
+                  diagnosticIssue = true;
+                  console.error(
+                    chalk.red(
+                      `Output Diagnostics Severity:${severity} ${[
+                        ...diagnostics,
+                      ].toString()} don't match expected diagnostics ${
+                        expectedErrorCodes ? [...expectedErrorCodes].toString() : "None"
+                      }`
+                    )
+                  );
+                }
+              }
+            }
+
             let newCode = serialized.code;
             if (compileJSXWithBabel) {
               newCode = transformWithBabel(newCode, ["transform-react-jsx"]);
@@ -492,7 +573,7 @@ function runTest(name, code, options: PrepackOptions, args) {
                 console.error(newCode);
               }
             }
-            if (markersIssue || matchesIssue) return () => Promise.reject({ type: "MARKER" });
+            if (markersIssue || matchesIssue || diagnosticIssue) return () => Promise.reject({ type: "MARKER" });
             let codeToRun = addedCode + newCode;
             if (!execSpec && options.lazyObjectsRuntime !== undefined) {
               codeToRun = augmentCodeWithLazyObjectSupport(codeToRun, args.lazyObjectsRuntime);

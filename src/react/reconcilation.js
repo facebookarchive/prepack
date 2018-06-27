@@ -133,6 +133,35 @@ function setContextCurrentValue(contextObject: ObjectValue | AbstractObjectValue
   }
 }
 
+export function handleReportedSideEffect(
+  exceptionHandler: string => void,
+  sideEffectType: SideEffectType,
+  binding: void | Binding | PropertyBinding,
+  expressionLocation: any
+): void {
+  // This causes an infinite recursion because creating a callstack causes internal-only side effects
+  if (binding && binding.object && binding.object.intrinsicName === "__checkedBindings") return;
+  let location = getLocationFromValue(expressionLocation);
+
+  if (sideEffectType === "MODIFIED_BINDING") {
+    let name = binding ? `"${((binding: any): Binding).name}"` : "unknown";
+    exceptionHandler(`side-effects from mutating the binding ${name}${location}`);
+  } else if (sideEffectType === "MODIFIED_PROPERTY" || sideEffectType === "MODIFIED_GLOBAL") {
+    let name = "";
+    let key = ((binding: any): PropertyBinding).key;
+    if (typeof key === "string") {
+      name = `"${key}"`;
+    }
+    if (sideEffectType === "MODIFIED_PROPERTY") {
+      exceptionHandler(`side-effects from mutating a property ${name}${location}`);
+    } else {
+      exceptionHandler(`side-effects from mutating the global object property ${name}${location}`);
+    }
+  } else if (sideEffectType === "EXCEPTION_THROWN") {
+    exceptionHandler(`side-effects from throwing exception${location}`);
+  }
+}
+
 export class Reconciler {
   constructor(
     realm: Realm,
@@ -193,7 +222,9 @@ export class Reconciler {
               /*state*/ null,
               `react component: ${getComponentName(this.realm, componentType)}`
             ),
-          this._handleReportedSideEffect
+          handleReportedSideEffect.bind(null, (msg: string) => {
+            throw new UnsupportedSideEffect(msg);
+          })
         )
       );
       this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
@@ -1495,32 +1526,6 @@ export class Reconciler {
           }
         }
       }
-    }
-  }
-
-  _handleReportedSideEffect(
-    sideEffectType: SideEffectType,
-    binding: void | Binding | PropertyBinding,
-    expressionLocation: any
-  ): void {
-    let location = getLocationFromValue(expressionLocation);
-
-    if (sideEffectType === "MODIFIED_BINDING") {
-      let name = binding ? `"${((binding: any): Binding).name}"` : "unknown";
-      throw new UnsupportedSideEffect(`side-effects from mutating the binding ${name}${location}`);
-    } else if (sideEffectType === "MODIFIED_PROPERTY" || sideEffectType === "MODIFIED_GLOBAL") {
-      let name = "";
-      let key = ((binding: any): PropertyBinding).key;
-      if (typeof key === "string") {
-        name = `"${key}"`;
-      }
-      if (sideEffectType === "MODIFIED_PROPERTY") {
-        throw new UnsupportedSideEffect(`side-effects from mutating a property ${name}${location}`);
-      } else {
-        throw new UnsupportedSideEffect(`side-effects from mutating the global object property ${name}${location}`);
-      }
-    } else if (sideEffectType === "EXCEPTION_THROWN") {
-      throw new UnsupportedSideEffect(`side-effects from throwing exception${location}`);
     }
   }
 }

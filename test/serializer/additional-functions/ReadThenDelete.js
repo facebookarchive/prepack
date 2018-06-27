@@ -1,3 +1,4 @@
+// expected Warning: PP1007
 
 var AGlobalObject = {};
 var AGlobalValue = 5;

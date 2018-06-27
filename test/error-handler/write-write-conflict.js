@@ -1,5 +1,5 @@
 // recover-from-errors
-// expected errors: [{"location":{"start":{"line":11,"column":13},"end":{"line":11,"column":18},"source":"test/error-handler/write-write-conflict.js"},"severity":"FatalError","errorCode":"PP1003"},{"location":{"start":{"line":7,"column":13},"end":{"line":7,"column":18},"source":"test/error-handler/write-write-conflict.js"},"severity":"FatalError","errorCode":"PP1003"}]
+// expected errors: [{"severity":"Warning","errorCode":"PP1007","callStack":"Error\n    at additional1 (unknown)"},{"severity":"Warning","errorCode":"PP1007","callStack":"Error\n    at additional2 (unknown)"},{"location":{"start":{"line":11,"column":13},"end":{"line":11,"column":18},"source":"test/error-handler/write-write-conflict.js"},"severity":"FatalError","errorCode":"PP1003"},{"location":{"start":{"line":7,"column":13},"end":{"line":7,"column":18},"source":"test/error-handler/write-write-conflict.js"},"severity":"FatalError","errorCode":"PP1003"}]
 
 global.a = "";
 

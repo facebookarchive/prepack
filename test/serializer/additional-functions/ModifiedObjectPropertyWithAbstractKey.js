@@ -1,3 +1,4 @@
+// expected Warning: PP1007
 (function() {
     var cache = {};
     function fn(args) {
