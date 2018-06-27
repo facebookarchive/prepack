@@ -72,7 +72,7 @@ export type SerializationContext = {|
   emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
   processValues: (Set<AbstractValue | ConcreteValue>) => void,
-  canOmit: (AbstractValue | ConcreteValue) => boolean,
+  canOmit: Value => boolean,
   declare: (AbstractValue | ConcreteValue) => void,
   emitPropertyModification: PropertyBinding => void,
   options: SerializerOptions,
@@ -81,7 +81,7 @@ export type SerializationContext = {|
 export type VisitEntryCallbacks = {|
   visitEquivalentValue: Value => Value,
   visitGenerator: (Generator, Generator) => void,
-  canSkip: (AbstractValue | ConcreteValue) => boolean,
+  canOmit: Value => boolean,
   recordDeclaration: (AbstractValue | ConcreteValue) => void,
   recordDelayedEntry: (Generator, GeneratorEntry) => void,
   visitModifiedObjectProperty: PropertyBinding => void,
@@ -122,12 +122,19 @@ type TemporalBuildNodeEntryArgs = {
   buildNode?: GeneratorBuildNodeFunction,
   dependencies?: Array<Generator>,
   isPure?: boolean,
+  mutatesOnly?: Array<Value>,
 };
 
 class TemporalBuildNodeEntry extends GeneratorEntry {
   constructor(args: TemporalBuildNodeEntryArgs) {
     super();
     Object.assign(this, args);
+    if (this.mutatesOnly !== undefined) {
+      invariant(!this.isPure);
+      for (let arg of this.mutatesOnly) {
+        invariant(this.args.includes(arg));
+      }
+    }
   }
 
   declared: void | AbstractValue | ConcreteValue;
@@ -136,9 +143,20 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
   buildNode: void | GeneratorBuildNodeFunction;
   dependencies: void | Array<Generator>;
   isPure: void | boolean;
+  mutatesOnly: void | Array<Value>;
 
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
-    if (this.isPure && this.declared && callbacks.canSkip(this.declared)) {
+    let omit = this.isPure && this.declared && callbacks.canOmit(this.declared);
+
+    if (!omit && this.declared && this.mutatesOnly !== undefined) {
+      omit = true;
+      for (let arg of this.mutatesOnly) {
+        if (!callbacks.canOmit(arg)) {
+          omit = false;
+        }
+      }
+    }
+    if (omit) {
       callbacks.recordDelayedEntry(containingGenerator, this);
       return false;
     } else {
@@ -151,7 +169,17 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
   }
 
   serialize(context: SerializationContext) {
-    if (!this.isPure || !this.declared || !context.canOmit(this.declared)) {
+    let omit = this.isPure && this.declared && context.canOmit(this.declared);
+
+    if (!omit && this.declared && this.mutatesOnly !== undefined) {
+      omit = true;
+      for (let arg of this.mutatesOnly) {
+        if (!context.canOmit(arg)) {
+          omit = false;
+        }
+      }
+    }
+    if (!omit) {
       let nodes = this.args.map((boundArg, i) => context.serializeValue(boundArg));
       if (this.buildNode) {
         let valuesToProcess = new Set();
@@ -927,7 +955,12 @@ export class Generator {
     values: ValuesDomain,
     args: Array<Value>,
     buildNode_: DerivedExpressionBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: AbstractValueKind, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {|
+      kind?: AbstractValueKind,
+      isPure?: boolean,
+      skipInvariant?: boolean,
+      mutatesOnly?: Array<Value>,
+    |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
@@ -958,6 +991,7 @@ export class Generator {
           ),
         ]);
       },
+      mutatesOnly: optionalArgs ? optionalArgs.mutatesOnly : undefined,
     });
     let type = types.getType();
     res.intrinsicName = id.name;
