@@ -19,7 +19,7 @@ import type { LaunchRequestArguments } from "./../common/types.js";
 export type DebuggerCLIArguments = {
   adapterPath: string,
   prepackRuntime: string,
-  sourceFiles: string,
+  sourceFiles: Array<string>,
   prepackArguments: Array<string>,
 };
 
@@ -57,8 +57,8 @@ export class UISession {
   _invalidCount: number;
   // Prepack runtime command (e.g. lib/prepack-cli.js)
   _prepackRuntime: string;
-  // Space-separated string of input source files to Prepack
-  _sourceFiles: string;
+  // Array of input source files to Prepack
+  _sourceFiles: Array<string>;
   // arguments to start Prepack with
   _prepackArguments: Array<string>;
   // handler for any received messages
@@ -157,7 +157,7 @@ export class UISession {
   _processInitializeResponse(response: DebugProtocol.InitializeResponse) {
     let launchArgs: LaunchRequestArguments = {
       prepackRuntime: this._prepackRuntime,
-      sourceFile: this._sourceFiles,
+      sourceFile: this._sourceFiles.join(" "),
       prepackArguments: this._prepackArguments,
     };
     this._sendLaunchRequest(launchArgs);

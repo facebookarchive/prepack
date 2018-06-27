@@ -41,13 +41,7 @@ import {
 } from "./../../environment.js";
 import { CompilerDiagnostic } from "../../errors.js";
 import type { Severity } from "../../errors.js";
-import type { SourceFile } from "./../../types.js";
-import {
-  getAbsoluteSourcePath,
-  findCommonPrefix,
-  findMapDifference,
-  stripEmptyStringBookends,
-} from "./PathNormalizer.js";
+import { SourceMapManager } from "./SourceMapManager.js";
 import type { DebuggerConfigArguments } from "../../types";
 
 export class DebugServer {
@@ -59,24 +53,7 @@ export class DebugServer {
     this._stepManager = new SteppingManager(this._realm, /* default discard old steppers */ false);
     this._stopEventManager = new StopEventManager();
     this._diagnosticSeverity = configArgs.diagnosticSeverity || "FatalError";
-    // Use presence of directory root to indicate which path format sourcemap prefixes take on.
-    if (configArgs.sourcemapDirectoryRoot !== undefined) {
-      if (configArgs.sourcemaps === undefined) {
-        throw new DebuggerError(
-          "Invalid input",
-          "Can't provide a sourcemap directory root without having sourcemaps present"
-        );
-      }
-      this._sourcemapDirectoryRoot = configArgs.sourcemapDirectoryRoot;
-      if (this._sourcemapDirectoryRoot[this._sourcemapDirectoryRoot.length - 1] === "/") {
-        // Remove trailing slash to prepare for prepending to internal paths.
-        this._sourcemapDirectoryRoot = this._sourcemapDirectoryRoot.slice(0, -1);
-      }
-      this._useRootPrefix = true;
-    } else {
-      this._findSourcemapPrefixes(configArgs.sourcemaps);
-      this._useRootPrefix = false;
-    }
+    this._sourceMapManager = new SourceMapManager(configArgs.sourcemapDirectoryRoot, configArgs.sourcemaps);
     this.waitForRun(undefined);
   }
   // the collection of breakpoints
@@ -88,13 +65,9 @@ export class DebugServer {
   _stepManager: SteppingManager;
   _stopEventManager: StopEventManager;
   _lastExecuted: SourceData;
-  // Prefixes used to translate between relative paths stored in AST nodes and absolute paths given to IDE.
-  _sourcemapCommonPrefix: void | string; // Used for paths relative to map location.
-  _sourcemapMapDifference: void | string; // Used for paths relative to map location.
-  _sourcemapDirectoryRoot: void | string; // Used for paths relative to directory root.
-  _useRootPrefix: boolean; // If true, use _sourcemapDirectoryRoot, else use _sourceMap[CommonPrefix/MapDifference].
   // Severity at which debugger will break when CompilerDiagnostics are generated. Default is Fatal.
   _diagnosticSeverity: Severity;
+  _sourceMapManager: SourceMapManager;
 
   /* Block until adapter says to run
   /* ast: the current ast node we are stopped on
@@ -119,7 +92,7 @@ export class DebugServer {
       if (reason) {
         let location = ast.loc;
         invariant(location && location.source);
-        let absolutePath = this._relativeToAbsolute(location.source);
+        let absolutePath = this._sourceMapManager.relativeToAbsolute(location.source);
         this._channel.sendStoppedResponse(reason, absolutePath, location.start.line, location.start.column);
         this.waitForRun(location);
       }
@@ -135,9 +108,10 @@ export class DebugServer {
     // Convert incoming location sources to relative paths in order to match internal representation of filenames.
     if (args.kind === "breakpoint") {
       for (let bp of args.breakpoints) {
-        bp.filePath = this._absoluteToRelative(bp.filePath);
+        bp.filePath = this._sourceMapManager.absoluteToRelative(bp.filePath);
       }
     }
+    console.log(`command: ${command}`);
 
     switch (command) {
       case DebugMessage.BREAKPOINT_ADD_COMMAND:
@@ -220,7 +194,7 @@ export class DebugServer {
       let frameInfo: Stackframe = {
         id: this._realm.contextStack.length - 1 - i,
         functionName: functionName,
-        fileName: this._relativeToAbsolute(fileName), // Outward facing paths must be absolute.
+        fileName: this._sourceMapManager.relativeToAbsolute(fileName), // Outward facing paths must be absolute.
         line: line,
         column: column,
       };
@@ -318,8 +292,10 @@ export class DebugServer {
       let stackSize = this._realm.contextStack.length;
       // Check if the current location is same as the last one.
       // Does not check columns since column debugging is not supported.
-      // This prevents lines with multiple AST nodes from triggering the same breakpoint more than once.
-      // This prevents step-out from completing in the same line that it was set in.
+      // Column support is unnecessary because these nodes will have been sourcemap-translated.
+      // Ignoring columns prevents:
+      //     - Lines with multiple AST nodes from triggering the same breakpoint more than once.
+      //     - Step-out from completing in the same line that it was set in.
       if (
         this._lastExecuted &&
         filePath === this._lastExecuted.filePath &&
@@ -339,114 +315,13 @@ export class DebugServer {
     return false;
   }
 
-  /**
-   * This function is only used if the original source locations in the
-   * sourcemaps are relative. This will discover the correct prefixes
-   * to use when converting the relative path to absolute paths.
-   */
-  _findSourcemapPrefixes(sourceMaps: Array<SourceFile> | void) {
-    // If sourcemaps don't exist, set prefixes to empty string and break.
-    if (sourceMaps) {
-      for (let map of sourceMaps) {
-        if (map.sourceMapContents === undefined || map.sourceMapContents === "") {
-          this._sourcemapCommonPrefix = "";
-          this._sourcemapMapDifference = "";
-          return;
-        }
-      }
-    } else {
-      this._sourcemapCommonPrefix = "";
-      this._sourcemapMapDifference = "";
-      return;
-    }
-
-    // Extract common prefix and map difference
-    let originalSourcePaths = [];
-    let mapPaths = [];
-    for (let map of sourceMaps) {
-      invariant(map.sourceMapContents); // Checked above.
-      let parsed = JSON.parse(map.sourceMapContents);
-      // Two formats for sourcemaps exist.
-      if ("sections" in parsed) {
-        for (let section of parsed.sections) {
-          for (let source of section.map.sources) {
-            originalSourcePaths.push(getAbsoluteSourcePath(map.filePath, source));
-          }
-        }
-      } else {
-        for (let source of parsed.sources) {
-          originalSourcePaths.push(getAbsoluteSourcePath(map.filePath, source));
-        }
-      }
-      mapPaths.push(stripEmptyStringBookends(map.filePath.split("/")));
-    }
-
-    let originalSourceCommonPrefix = findCommonPrefix(originalSourcePaths);
-    let originalSourceCPElements = stripEmptyStringBookends(originalSourceCommonPrefix.split("/"));
-    let mapCommonPrefix = findCommonPrefix(mapPaths);
-    let mapCPElements = stripEmptyStringBookends(mapCommonPrefix.split("/"));
-
-    this._sourcemapCommonPrefix = findCommonPrefix([originalSourceCPElements, mapCPElements]);
-    this._sourcemapMapDifference = findMapDifference(this._sourcemapCommonPrefix, mapCommonPrefix);
-  }
-
-  _relativeToAbsolute(path: string): string {
-    let absolute;
-    if (this._useRootPrefix) {
-      if (this._sourcemapDirectoryRoot !== undefined) {
-        let dirRoot = this._sourcemapDirectoryRoot;
-        if (
-          // If the "relative" path is actually absolute, then don't prepend anything.
-          stripEmptyStringBookends(path.split("/"))[0] ===
-          stripEmptyStringBookends(this._sourcemapDirectoryRoot.split("/"))[0]
-        ) {
-          absolute = path;
-        } else {
-          let separator = path[0] === "/" ? "" : "/";
-          absolute = dirRoot + separator + path;
-        }
-      } else {
-        throw new DebuggerError("Invalid input", "Debugger does not have directory root.");
-      }
-    } else {
-      if (this._sourcemapCommonPrefix !== undefined && this._sourcemapMapDifference !== undefined) {
-        absolute = path.replace(this._sourcemapMapDifference, "");
-        invariant(this._sourcemapCommonPrefix !== undefined);
-        absolute = this._sourcemapCommonPrefix + absolute;
-      } else {
-        throw new DebuggerError("Invalid input", "Debugger does not have SM common prefix or map difference.");
-      }
-    }
-    return absolute;
-  }
-
-  _absoluteToRelative(path: string): string {
-    let relative;
-    if (this._useRootPrefix) {
-      if (this._sourcemapDirectoryRoot !== undefined) {
-        relative = path.replace(this._sourcemapDirectoryRoot, "");
-      } else {
-        throw new DebuggerError("Invalid input", "Debugger does not have directory root.");
-      }
-    } else {
-      if (this._sourcemapCommonPrefix !== undefined && this._sourcemapMapDifference !== undefined) {
-        relative = path.replace(this._sourcemapCommonPrefix, "");
-        invariant(this._sourcemapMapDifference !== undefined);
-        relative = this._sourcemapMapDifference + relative;
-      } else {
-        throw new DebuggerError("Invalid input", "Debugger does not have SM common prefix or map difference.");
-      }
-    }
-    return relative;
-  }
-
   //  Displays Prepack error message, then waits for user to run the program to continue (similar to a breakpoint).
   handlePrepackError(diagnostic: CompilerDiagnostic) {
     invariant(diagnostic.location && diagnostic.location.source);
     // The following constructs the message and stop-instruction that is sent to the UI to actually stop the execution.
     let location = diagnostic.location;
     let absoluteSource = "";
-    if (location.source !== null) absoluteSource = this._relativeToAbsolute(location.source);
+    if (location.source !== null) absoluteSource = this._sourceMapManager.relativeToAbsolute(location.source);
     let message = `${diagnostic.severity} ${diagnostic.errorCode}: ${diagnostic.message}`;
     console.log(message);
     this._channel.sendStoppedResponse(

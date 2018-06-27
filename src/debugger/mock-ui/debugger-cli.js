@@ -83,8 +83,7 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
     adapterPath: adapterPath,
     prepackRuntime: prepackRuntime,
     prepackArguments: prepackArguments,
-    // DebugAdapter expects sourcefiles to be sent as a single, whitespace-separated string
-    sourceFiles: sourceFiles.join(" "),
+    sourceFiles: sourceFiles,
   };
   return result;
 }
