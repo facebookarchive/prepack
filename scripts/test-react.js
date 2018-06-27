@@ -707,9 +707,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       });
 
       it("Class component as root with refs", async () => {
-        await expectReconcilerFatalError(async () => {
-          await runTest(directory, "class-root-with-refs.js");
-        });
+        await runTest(directory, "class-root-with-refs.js");
       });
 
       it("Class component as root with instance variables", async () => {
