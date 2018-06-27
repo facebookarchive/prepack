@@ -52,6 +52,7 @@ import type {
 import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "./realm.js";
 import { CompilerDiagnostic } from "./errors.js";
 import type { Severity } from "./errors.js";
+import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
 
 export const ElementSize = {
   Float32: 4,
@@ -1058,4 +1059,5 @@ export type DebuggerConfigArguments = {
   diagnosticSeverity?: Severity,
   sourcemaps?: Array<SourceFile>,
   sourcemapDirectoryRoot?: string,
+  debugChannel?: DebugChannel,
 };

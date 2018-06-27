@@ -141,12 +141,14 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     }
     return { filePath: filename, fileContents: code, sourceMapContents: sourceMap };
   });
-  let debugChannel;
+
   // The existence of debug[In/Out]FilePath represents the desire to use the debugger.
   if (options.debugInFilePath !== undefined && options.debugOutFilePath !== undefined) {
+    if (options.debuggerConfigArgs === undefined) options.debuggerConfigArgs = {};
+
     let ioWrapper = new FileIOWrapper(false, options.debugInFilePath, options.debugOutFilePath);
-    debugChannel = new DebugChannel(ioWrapper);
-    if (options.debuggerConfigArgs) options.debuggerConfigArgs.sourcemaps = sourceFiles;
+    options.debuggerConfigArgs.debugChannel = new DebugChannel(ioWrapper);
+    options.debuggerConfigArgs.sourcemaps = sourceFiles;
   }
-  return prepackSources(sourceFiles, options, debugChannel, createStatistics(options));
+  return prepackSources(sourceFiles, options, options.debuggerConfigArgs, createStatistics(options));
 }
