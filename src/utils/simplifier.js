@@ -16,6 +16,7 @@ import invariant from "../invariant.js";
 import { Realm } from "../realm.js";
 import { AbstractValue, BooleanValue, ConcreteValue, Value } from "../values/index.js";
 import { Path, To } from "../singletons.js";
+import EmptyValue from "../values/EmptyValue";
 
 export default function simplifyAndRefineAbstractValue(
   realm: Realm,
@@ -257,24 +258,42 @@ function simplifyEquality(realm: Realm, equality: AbstractValue): Value {
   let loc = equality.expressionLocation;
   let op = equality.kind;
   let [x, y] = equality.args;
+  if (y instanceof EmptyValue) return equality;
   if (x instanceof ConcreteValue) [x, y] = [y, x];
   if (x instanceof AbstractValue && x.kind === "conditional" && (!y.mightNotBeUndefined() || !y.mightNotBeNull())) {
+    function simplified(v: Value) {
+      return v instanceof AbstractValue ? v.kind !== op : true;
+    }
     // try to simplify "(cond ? xx : xy) op undefined/null" to just "cond" or "!cond"
     let [cond, xx, xy] = x.args;
     invariant(cond instanceof AbstractValue); // otherwise the the conditional should not have been created
     if (op === "===" || op === "!==") {
-      // if xx === undefined && xy !== undefined then cond <=> x === undefined
-      if (!y.mightNotBeUndefined() && !xx.mightNotBeUndefined() && !xy.mightBeUndefined())
-        return op === "===" ? makeBoolean(realm, cond, loc) : negate(realm, cond, loc);
-      // if xx !== undefined && xy === undefined then !cond <=> x === undefined
-      if (!y.mightNotBeUndefined() && !xx.mightBeUndefined() && !xy.mightNotBeUndefined())
-        return op === "===" ? negate(realm, cond, loc) : makeBoolean(realm, cond, loc);
-      // if xx === null && xy !== null then cond <=> x === null
-      if (!y.mightNotBeNull() && !xx.mightNotBeNull() && !xy.mightBeNull())
-        return op === "===" ? makeBoolean(realm, cond, loc) : negate(realm, cond, loc);
-      // if xx !== null && xy === null then !cond <=> x === null
-      if (!y.mightNotBeNull() && !xx.mightBeNull() && !xy.mightNotBeNull())
-        return op === "===" ? negate(realm, cond, loc) : makeBoolean(realm, cond, loc);
+      if (!y.mightNotBeUndefined()) {
+        // if xx === undefined && xy !== undefined then cond <=> x === undefined
+        if (!xx.mightNotBeUndefined() && !xy.mightBeUndefined())
+          return op === "===" ? makeBoolean(realm, cond, loc) : negate(realm, cond, loc);
+        // if xx !== undefined && xy === undefined then !cond <=> x === undefined
+        if (!xx.mightBeUndefined() && !xy.mightNotBeUndefined())
+          return op === "===" ? negate(realm, cond, loc) : makeBoolean(realm, cond, loc);
+        // distribute equality test, creating more simplication opportunities
+        let sxx = AbstractValue.createFromBinaryOp(realm, op, xx, realm.intrinsics.undefined, xx.expressionLocation);
+        let sxy = AbstractValue.createFromBinaryOp(realm, op, xy, realm.intrinsics.undefined, xy.expressionLocation);
+        if (simplified(sxx) || simplified(sxy))
+          return AbstractValue.createFromConditionalOp(realm, cond, sxx, sxy, equality.expressionLocation, true);
+      }
+      if (!y.mightNotBeNull()) {
+        // if xx === null && xy !== null then cond <=> x === null
+        if (!xx.mightNotBeNull() && !xy.mightBeNull())
+          return op === "===" ? makeBoolean(realm, cond, loc) : negate(realm, cond, loc);
+        // if xx !== null && xy === null then !cond <=> x === null
+        if (!xx.mightBeNull() && !xy.mightNotBeNull())
+          return op === "===" ? negate(realm, cond, loc) : makeBoolean(realm, cond, loc);
+        // distribute equality test, creating more simplication opportunities
+        let sxx = AbstractValue.createFromBinaryOp(realm, op, xx, realm.intrinsics.null, xx.expressionLocation);
+        let sxy = AbstractValue.createFromBinaryOp(realm, op, xy, realm.intrinsics.null, xy.expressionLocation);
+        if (simplified(sxx) || simplified(sxy))
+          return AbstractValue.createFromConditionalOp(realm, cond, sxx, sxy, equality.expressionLocation, true);
+      }
     } else {
       invariant(op === "==" || op === "!=");
       // if xx cannot be undefined/null and xy is undefined/null then !cond <=> x == undefined/null
@@ -283,6 +302,11 @@ function simplifyEquality(realm: Realm, equality: AbstractValue): Value {
       // if xx is undefined/null and xy cannot be undefined/null then cond <=> x == undefined/null
       if ((!xx.mightNotBeUndefined() || !xx.mightNotBeNull()) && !xy.mightBeUndefined() && !xy.mightBeNull())
         return op === "==" ? makeBoolean(realm, cond, loc) : negate(realm, cond, loc);
+      // distribute equality test, creating more simplication opportunities
+      let sxx = AbstractValue.createFromBinaryOp(realm, op, xx, y, xx.expressionLocation);
+      let sxy = AbstractValue.createFromBinaryOp(realm, op, xy, y, xy.expressionLocation);
+      if (simplified(sxx) || simplified(sxy))
+        return AbstractValue.createFromConditionalOp(realm, cond, sxx, sxy, equality.expressionLocation, true);
     }
   }
   return equality;
