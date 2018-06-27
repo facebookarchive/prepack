@@ -281,7 +281,10 @@ export default function(realm: Realm): NativeFunctionValue {
           ([methodNode, targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
             return t.callExpression(methodNode, [targetNode, ...sourceNodes]);
           },
-          { skipInvariant: true }
+          {
+            skipInvariant: true,
+            mutatesOnly: [to],
+          }
         );
         invariant(temporalTo instanceof AbstractObjectValue);
         if (to instanceof AbstractObjectValue) {

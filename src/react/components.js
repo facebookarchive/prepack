@@ -400,7 +400,7 @@ export function applyGetDerivedStateFromProps(
             ([methodNode, ..._args]) => {
               return t.callExpression(methodNode, ((_args: any): Array<any>));
             },
-            { skipInvariant: true }
+            { skipInvariant: true, mutatesOnly: [newState] }
           );
           newState.makeSimple();
           newState.makePartial();

@@ -20,7 +20,6 @@ import {
   AbstractObjectValue,
   AbstractValue,
   BoundFunctionValue,
-  ConcreteValue,
   ECMAScriptFunctionValue,
   ECMAScriptSourceFunctionValue,
   EmptyValue,
@@ -136,7 +135,7 @@ export class ResidualHeapVisitor {
   // For every abstract value of kind "conditional", this map keeps track of whether the consequent and/or alternate is feasible in any scope
   conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>;
   inspector: HeapInspector;
-  referencedDeclaredValues: Map<AbstractValue | ConcreteValue, void | FunctionValue>;
+  referencedDeclaredValues: Map<Value, void | FunctionValue>;
   delayedActions: Array<{| scope: Scope, action: () => void | boolean |}>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>;
   functionInstances: Map<FunctionValue, FunctionInstance>;
@@ -1083,10 +1082,18 @@ export class ResidualHeapVisitor {
         invariant(this.generatorDAG.isParent(parent, generator));
         this.visitGenerator(generator, additionalFunctionInfo);
       },
-      canSkip: (value: AbstractValue | ConcreteValue): boolean => {
-        return !this.referencedDeclaredValues.has(value) && !this.values.has(value);
+      canOmit: (value: Value): boolean => {
+        let canOmit = !this.referencedDeclaredValues.has(value) && !this.values.has(value);
+        if (!canOmit) {
+          return false;
+        }
+        if (value instanceof ObjectValue && value.temporalAlias !== undefined) {
+          let temporalAlias = value.temporalAlias;
+          return !this.referencedDeclaredValues.has(temporalAlias) && !this.values.has(temporalAlias);
+        }
+        return canOmit;
       },
-      recordDeclaration: (value: AbstractValue | ConcreteValue) => {
+      recordDeclaration: (value: Value) => {
         this.referencedDeclaredValues.set(value, this._getAdditionalFunctionOfScope());
       },
       recordDelayedEntry: (generator, entry: GeneratorEntry) => {

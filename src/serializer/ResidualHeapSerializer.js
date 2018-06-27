@@ -120,7 +120,7 @@ export class ResidualHeapSerializer {
     residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>,
     residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
     options: SerializerOptions,
-    referencedDeclaredValues: Map<AbstractValue | ConcreteValue, void | FunctionValue>,
+    referencedDeclaredValues: Map<Value, void | FunctionValue>,
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
@@ -250,7 +250,7 @@ export class ResidualHeapSerializer {
   _serializedValueWithIdentifiers: Set<Value>;
   residualFunctions: ResidualFunctions;
   _options: SerializerOptions;
-  referencedDeclaredValues: Map<AbstractValue | ConcreteValue, void | FunctionValue>;
+  referencedDeclaredValues: Map<Value, void | FunctionValue>;
   activeGeneratorBodies: Map<Generator, SerializedBody>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
@@ -2116,8 +2116,16 @@ export class ResidualHeapSerializer {
       },
       getPropertyAssignmentStatement: this._getPropertyAssignmentStatement.bind(this),
       emitDefinePropertyBody: this.emitDefinePropertyBody.bind(this, false, undefined),
-      canOmit: (value: AbstractValue | ConcreteValue) => {
-        return !this.referencedDeclaredValues.has(value);
+      canOmit: (value: Value) => {
+        let canOmit = !this.referencedDeclaredValues.has(value) && !this.residualValues.has(value);
+        if (!canOmit) {
+          return false;
+        }
+        if (value instanceof ObjectValue && value.temporalAlias !== undefined) {
+          let temporalAlias = value.temporalAlias;
+          return !this.referencedDeclaredValues.has(temporalAlias) && !this.residualValues.has(temporalAlias);
+        }
+        return canOmit;
       },
       declare: (value: AbstractValue | ConcreteValue) => {
         this.emitter.declare(value);
