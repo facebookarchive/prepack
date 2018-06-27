@@ -248,6 +248,10 @@ export class Realm {
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
     this.temporalAliasArgs = new WeakMap();
 
+    this.instantRender = {
+      enabled: opts.instantRender || false,
+    };
+
     this.react = {
       abstractHints: new WeakMap(),
       activeReconciler: undefined,
@@ -341,6 +345,9 @@ export class Realm {
   // on a temporal alias (for example, Object.assign) when used with snapshotting
   temporalAliasArgs: WeakMap<AbstractObjectValue | ObjectValue, Array<Value>>;
 
+  instantRender: {
+    enabled: boolean,
+  };
   react: {
     // reactHints are generated to help improve the effeciency of the React reconciler when
     // operating on a tree of React components. We can use reactHint to mark AbstractValues

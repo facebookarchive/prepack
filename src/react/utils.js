@@ -1012,6 +1012,7 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
   invariant(objectAssignCall !== undefined);
 
   const tryToApplyObjectAssign = () => {
+    invariant(!realm.instantRender.enabled);
     let effects;
     let savedSuppressDiagnostics = realm.suppressDiagnostics;
     try {
@@ -1105,7 +1106,7 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
     if (completion instanceof SimpleNormalCompletion) completion = completion.value;
   };
 
-  if (realm.isInPureScope()) {
+  if (realm.isInPureScope() && !realm.instantRender.enabled) {
     tryToApplyObjectAssign();
   } else {
     objectAssignCall(realm.intrinsics.undefined, [to, ...sources]);

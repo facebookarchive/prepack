@@ -44,7 +44,7 @@ export class ResidualHeapRefCounter extends ResidualHeapVisitor {
   }
 
   _shouldIgnore(val: Value): boolean {
-    return val instanceof EmptyValue || val.isIntrinsic() || HeapInspector.isLeaf(val);
+    return val instanceof EmptyValue || val.isIntrinsic() || HeapInspector.isLeaf(this.realm, val);
   }
 
   preProcessValue(val: Value): boolean {

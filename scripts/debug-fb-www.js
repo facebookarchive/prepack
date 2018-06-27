@@ -69,6 +69,7 @@ let prepackOptions = {
   serialize: true,
   uniqueSuffix: "",
   maxStackDepth: 100,
+  instantRender: false,
   reactEnabled: true,
   reactOutput: "jsx",
   reactVerbose: true,

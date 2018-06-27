@@ -430,6 +430,7 @@ function tryToEvaluateForStatementOrLeaveAsAbstract(
   realm: Realm,
   labelSet: ?Array<string>
 ): Value {
+  invariant(!realm.instantRender.enabled);
   let effects;
   let savedSuppressDiagnostics = realm.suppressDiagnostics;
   try {
@@ -479,7 +480,7 @@ export default function(
   realm: Realm,
   labelSet: ?Array<string>
 ): Value {
-  if (realm.isInPureScope()) {
+  if (realm.isInPureScope() && !realm.instantRender.enabled) {
     return tryToEvaluateForStatementOrLeaveAsAbstract(ast, strictCode, env, realm, labelSet);
   } else {
     return evaluateForStatement(ast, strictCode, env, realm, labelSet);

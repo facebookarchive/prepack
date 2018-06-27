@@ -1035,7 +1035,7 @@ export class ResidualHeapVisitor {
     } else if (val instanceof EmptyValue) {
       this.preProcessValue(val);
       this.postProcessValue(val);
-    } else if (HeapInspector.isLeaf(val)) {
+    } else if (HeapInspector.isLeaf(this.realm, val)) {
       this.preProcessValue(val);
       this.postProcessValue(val);
     } else if (IsArray(this.realm, val)) {
