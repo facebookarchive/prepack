@@ -2482,6 +2482,8 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, JSX output Functional component folding Mutations - not-safe 3 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
+
 exports[`Test React with JSX input, JSX output Functional component folding Mutations - safe 1 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -2507,6 +2509,23 @@ ReactStatistics {
       "children": Array [],
       "message": "",
       "name": "Bar",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, JSX output Functional component folding Mutations - safe 3 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -7496,6 +7515,8 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with JSX input, create-element output Functional component folding Mutations - not-safe 3 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
+
 exports[`Test React with JSX input, create-element output Functional component folding Mutations - safe 1 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -7521,6 +7542,23 @@ ReactStatistics {
       "children": Array [],
       "message": "",
       "name": "Bar",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with JSX input, create-element output Functional component folding Mutations - safe 3 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -12510,6 +12548,8 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, JSX output Functional component folding Mutations - not-safe 3 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
+
 exports[`Test React with create-element input, JSX output Functional component folding Mutations - safe 1 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -12535,6 +12575,23 @@ ReactStatistics {
       "children": Array [],
       "message": "",
       "name": "Bar",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, JSX output Functional component folding Mutations - safe 3 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
       "status": "ROOT",
     },
   ],
@@ -17539,6 +17596,8 @@ ReactStatistics {
 }
 `;
 
+exports[`Test React with create-element input, create-element output Functional component folding Mutations - not-safe 3 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
+
 exports[`Test React with create-element input, create-element output Functional component folding Mutations - safe 1 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -17564,6 +17623,23 @@ ReactStatistics {
       "children": Array [],
       "message": "",
       "name": "Bar",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Test React with create-element input, create-element output Functional component folding Mutations - safe 3 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
       "status": "ROOT",
     },
   ],

@@ -677,11 +677,9 @@ export class Realm {
   // call.
   evaluatePure<T>(
     f: () => T,
-    reportSideEffectFunc?: (
-      sideEffectType: SideEffectType,
-      binding: void | Binding | PropertyBinding,
-      value: void | Value
-    ) => void
+    reportSideEffectFunc:
+      | null
+      | ((sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, value: void | Value) => void)
   ) {
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
     let saved_reportSideEffectCallback = this.reportSideEffectCallback;
@@ -690,7 +688,15 @@ export class Realm {
     // *other* object is unchanged (pure). These objects are marked
     // as leaked if they're passed to abstract functions.
     this.createdObjectsTrackedForLeaks = new Set();
-    this.reportSideEffectCallback = reportSideEffectFunc;
+    this.reportSideEffectCallback = (...args) => {
+      if (reportSideEffectFunc != null) {
+        reportSideEffectFunc(...args);
+      }
+      // Ensure we call any previously nested side-effect callbacks
+      if (saved_reportSideEffectCallback != null) {
+        saved_reportSideEffectCallback(...args);
+      }
+    };
     try {
       return f();
     } finally {
