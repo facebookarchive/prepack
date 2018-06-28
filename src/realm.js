@@ -28,6 +28,7 @@ import {
 } from "./errors.js";
 import {
   AbstractObjectValue,
+  type AbstractValueKind,
   AbstractValue,
   ArrayValue,
   BoundFunctionValue,

@@ -567,12 +567,14 @@ export default class ObjectValue extends ConcreteValue {
       template.makeFinal();
       // The original object might be a React props object, thus
       // if it is, we need to ensure we mark it with the same rules
-      if (realm.react.enabled && realm.react.reactProps.has(this)) {
+      if (realm.react.enabled) {
         // This object might have been a snapshot from a props object.
         // In which case, it might have some safe properties we can remove
         // in first render mode
         transferSafePropertiesToRemoveFromObjectsToProps(realm, [this], template);
-        realm.react.reactProps.add(template);
+        if (realm.react.reactProps.has(this)) {
+          realm.react.reactProps.add(template);
+        }
       }
       let temporalArgs = [template];
       let temporalConfig = {

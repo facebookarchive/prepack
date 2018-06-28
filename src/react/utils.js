@@ -16,6 +16,7 @@ import type { BabelNode, BabelNodeJSXIdentifier, BabelNodeExpression } from "bab
 import { parseExpression } from "babylon";
 import {
   AbstractObjectValue,
+  type AbstractValueKind,
   AbstractValue,
   ArrayValue,
   BooleanValue,
@@ -939,11 +940,19 @@ export function createInternalReactElement(
 function cloneTemporalArgsArray(
   realm: Realm,
   temporalArgs: Array<Value>,
-  alreadyCloned: Map<ObjectValue | AbstractObjectValue, ObjectValue | AbstractObjectValue>,
+  alreadyCloned: Map<
+    ObjectValue | AbstractObjectValue | Array<Value>,
+    ObjectValue | AbstractObjectValue | Array<Value>
+  >,
   objectToFind?: ObjectValue | AbstractObjectValue,
   objectToReplaceWith?: ObjectValue | AbstractObjectValue
 ): Array<Value> {
-  return temporalArgs.map(arg => {
+  if (alreadyCloned.has(temporalArgs)) {
+    let clonedTemporalArgs = alreadyCloned.get(temporalArgs);
+    invariant(clonedTemporalArgs !== undefined && Array.isArray(clonedTemporalArgs));
+    return clonedTemporalArgs;
+  }
+  let clonedTemporalArgs = temporalArgs.map(arg => {
     if (arg === objectToFind && objectToFind !== undefined && objectToReplaceWith !== undefined) {
       return objectToReplaceWith;
     } else if (arg.constructor === ObjectValue) {
@@ -955,23 +964,36 @@ function cloneTemporalArgsArray(
       return arg;
     }
   });
+  alreadyCloned.set(temporalArgs, clonedTemporalArgs);
+  return clonedTemporalArgs;
 }
 
 function cloneTemporalConfig(
   realm: Realm,
-  temporalConfig: any,
+  temporalConfig: {|
+    kind?: AbstractValueKind,
+    isPure?: boolean,
+    skipInvariant?: boolean,
+    mutatesOnly?: Array<Value>,
+  |},
   temporalArgs: Array<Value>,
   clonedTemporalArgs: Array<Value>
-): object {
+): {|
+  kind?: AbstractValueKind,
+  isPure?: boolean,
+  skipInvariant?: boolean,
+  mutatesOnly?: Array<Value>,
+|} {
   let clonedObject = Object.assign({}, temporalConfig);
   if (clonedObject.mutatesOnly !== undefined) {
     let newMutatesOnly = [];
-    for (let arg of temporalConfig.mutatesOnly) {
+    for (let arg of clonedObject.mutatesOnly) {
       let index = temporalArgs.indexOf(arg);
       newMutatesOnly.push(clonedTemporalArgs[index]);
     }
     clonedObject.mutatesOnly = newMutatesOnly;
   }
+  // $FlowFixMe: Flow doesn't understand Object.assign
   return clonedObject;
 }
 
@@ -979,7 +1001,10 @@ function applyClonedTemporalAlias(
   realm: Realm,
   props: ObjectValue,
   clonedObj: ObjectValue,
-  alreadyCloned?: Map<ObjectValue | AbstractObjectValue, ObjectValue | AbstractObjectValue> = new Map()
+  alreadyCloned?: Map<
+    ObjectValue | AbstractObjectValue | Array<Value>,
+    ObjectValue | AbstractObjectValue | Array<Value>
+  > = new Map()
 ): void {
   let temporalAlias = props.temporalAlias;
   invariant(temporalAlias !== undefined);
@@ -1019,7 +1044,10 @@ export function clonePropsOrConfigLikeObject(
   realm: Realm,
   obj: ObjectValue | AbstractObjectValue,
   cloneTemporalAlias: boolean,
-  alreadyCloned?: Map<ObjectValue | AbstractObjectValue, ObjectValue | AbstractObjectValue> = new Map()
+  alreadyCloned?: Map<
+    ObjectValue | AbstractObjectValue | Array<Value>,
+    ObjectValue | AbstractObjectValue | Array<Value>
+  > = new Map()
 ): ObjectValue | AbstractObjectValue {
   if (alreadyCloned.has(obj)) {
     let _obj = alreadyCloned.get(obj);
@@ -1034,8 +1062,8 @@ export function clonePropsOrConfigLikeObject(
     if (isFinalObject) {
       clonedObj.makeFinal();
     }
+    transferSafePropertiesToRemoveFromObjectsToProps(realm, [obj], clonedObj);
     if (realm.react.reactProps.has(obj)) {
-      transferSafePropertiesToRemoveFromObjectsToProps(realm, [obj], clonedObj);
       realm.react.reactProps.add(clonedObj);
     }
     for (let [propName, binding] of obj.properties) {
@@ -1076,6 +1104,7 @@ export function clonePropsOrConfigLikeObject(
         } else {
           // Some other temporal abstract object
           let clonedTemporalArgs = cloneTemporalArgsArray(realm, temporalArgs, alreadyCloned);
+          // $FlowFixMe: temporalConfig confuses Flow with the Object.assign
           let newTemporalConfig = cloneTemporalConfig(realm, temporalConfig, temporalArgs, clonedTemporalArgs);
           let clonedTemplate = AbstractValue.createTemporalFromBuildFunction(
             realm,
