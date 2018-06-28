@@ -284,24 +284,28 @@ export function evaluateClassConstructor(
   let instanceProperties = new Set();
   let instanceSymbols = new Set();
 
-  realm.evaluatePure(() =>
-    realm.evaluateForEffects(
-      () => {
-        let instance = Construct(realm, constructorFunc, [props, context]);
-        invariant(instance instanceof ObjectValue);
-        for (let [propertyName] of instance.properties) {
-          if (!whitelistedProperties.has(propertyName)) {
-            instanceProperties.add(propertyName);
+  realm.evaluatePure(
+    () =>
+      realm.evaluateForEffects(
+        () => {
+          let instance = Construct(realm, constructorFunc, [props, context]);
+          invariant(instance instanceof ObjectValue);
+          for (let [propertyName] of instance.properties) {
+            if (!whitelistedProperties.has(propertyName)) {
+              instanceProperties.add(propertyName);
+            }
           }
-        }
-        for (let [symbol] of instance.symbols) {
-          instanceSymbols.add(symbol);
-        }
-        return instance;
-      },
-      /*state*/ null,
-      `react component constructor: ${constructorFunc.getName()}`
-    )
+          for (let [symbol] of instance.symbols) {
+            instanceSymbols.add(symbol);
+          }
+          return instance;
+        },
+        /*state*/ null,
+        `react component constructor: ${constructorFunc.getName()}`
+      ),
+    // We don't want to track mutations on "this" but of the outside
+    // context of the constructor
+    true
   );
 
   return {
@@ -319,7 +323,7 @@ export function applyGetDerivedStateFromProps(
   let prevState = Get(realm, instance, "state");
   let getDerivedStateFromPropsCall = getDerivedStateFromProps.$Call;
   invariant(getDerivedStateFromPropsCall !== undefined);
-  let partialState = getDerivedStateFromPropsCall(realm.intrinsics.null, [props, prevState]);
+  let partialState = getDerivedStateFromPropsCall(realm.intrinsics.null, [props, prevState], true);
 
   const deriveState = state => {
     let objectAssign = Get(realm, realm.intrinsics.Object, "assign");

@@ -10,15 +10,12 @@ function Child() {
   return <span><SubChild /></span>;
 }
 
-let instance = null;
-
 // we can't use ES2015 classes in Prepack yet (they don't serialize)
 // so we have to use ES5 instead
 var App = (function (superclass) {
   function App () {
     superclass.apply(this, arguments);
     this.divRefWorked = null;
-    instance = this;
   }
 
   if ( superclass ) {
@@ -39,7 +36,7 @@ var App = (function (superclass) {
     renderer.update(<Root />);
     let results = [];
     results.push(['render with class root', renderer.toJSON()]);
-    results.push(['get the ref', instance.divRefWorked]);
+    results.push(['get the ref', renderer.getInstance().divRefWorked]);
     return results;
   };
 

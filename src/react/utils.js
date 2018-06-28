@@ -825,7 +825,7 @@ export function getValueFromFunctionCall(
       invariant(newCall);
       completion = newCall(args, func);
     } else {
-      completion = funcCall(funcThis, args);
+      completion = funcCall(funcThis, args, true);
     }
   } catch (error) {
     if (error instanceof AbruptCompletion) {

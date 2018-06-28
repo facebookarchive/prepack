@@ -248,6 +248,8 @@ export class Realm {
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
     this.temporalAliasArgs = new WeakMap();
 
+    this.selectivelyInlineFunctions = opts.selectivelyInlineFunctions || false;
+
     this.react = {
       abstractHints: new WeakMap(),
       activeReconciler: undefined,
@@ -335,11 +337,15 @@ export class Realm {
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
 
+  selectivelyInlineFunctionCalls: boolean;
+
   // temporalAliasArgs is used to map a temporal abstract object value
   // to its respective temporal args used to originally create the temporal.
   // This is used to "clone" immutable objects where they have a dependency
   // on a temporal alias (for example, Object.assign) when used with snapshotting
   temporalAliasArgs: WeakMap<AbstractObjectValue | ObjectValue, Array<Value>>;
+
+  selectivelyInlineFunctions: boolean;
 
   react: {
     // reactHints are generated to help improve the effeciency of the React reconciler when
@@ -677,24 +683,44 @@ export class Realm {
   // call.
   evaluatePure<T>(
     f: () => T,
+    mergeWithParentEvaluatePures?: boolean = false,
     reportSideEffectFunc?: (
       sideEffectType: SideEffectType,
       binding: void | Binding | PropertyBinding,
       value: void | Value
     ) => void
   ) {
+    // mergeWithParentEvaluatePures flag is used for when we don't want to create
+    // a new pure object set for tracked leaks, this is ideal for when we eventually
+    // want to side-effect tracking on a scope but not want any havocing logic to
+    // remain (for example if we want to track side-effects inside a class constructor
+    // where mutations on "this" are fine, but mutations on objects outside the constructor
+    // are not okay).
+    let isRootEvalautePure = this.createdObjectsTrackedForLeaks === undefined;
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
     let saved_reportSideEffectCallback = this.reportSideEffectCallback;
     // Track all objects (including function closures) created during
     // this call. This will be used to make the assumption that every
     // *other* object is unchanged (pure). These objects are marked
     // as leaked if they're passed to abstract functions.
-    this.createdObjectsTrackedForLeaks = new Set();
-    this.reportSideEffectCallback = reportSideEffectFunc;
+    if (!mergeWithParentEvaluatePures || isRootEvalautePure) {
+      this.createdObjectsTrackedForLeaks = new Set();
+    }
+    this.reportSideEffectCallback = (...args) => {
+      if (reportSideEffectFunc !== undefined) {
+        reportSideEffectFunc(...args);
+      }
+      // Ensure we call any previously nested side-effect callbacks
+      if (saved_reportSideEffectCallback !== undefined) {
+        saved_reportSideEffectCallback(...args);
+      }
+    };
     try {
       return f();
     } finally {
-      this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
+      if (!mergeWithParentEvaluatePures || isRootEvalautePure) {
+        this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
+      }
       this.reportSideEffectCallback = saved_reportSideEffectCallback;
     }
   }

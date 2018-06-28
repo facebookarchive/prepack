@@ -69,7 +69,8 @@ function InternalCall(
   F: ECMAScriptFunctionValue,
   thisArgument: Value,
   argsList: Array<Value>,
-  tracerIndex: number
+  tracerIndex: number,
+  alwaysInlineCall?: boolean = false
 ): Value {
   // 1. Assert: F is an ECMAScript function object.
   invariant(F instanceof FunctionValue, "expected function value");
@@ -106,7 +107,7 @@ function InternalCall(
     OrdinaryCallBindThis(realm, F, calleeContext, thisArgument);
 
     // 7. Let result be OrdinaryCallEvaluateBody(F, argumentsList).
-    result = OrdinaryCallEvaluateBody(realm, F, argsList);
+    result = OrdinaryCallEvaluateBody(realm, F, argsList, alwaysInlineCall);
   } finally {
     // 8. Remove calleeContext from the execution context stack and restore callerContext as the running execution context.
     realm.popContext(calleeContext);
@@ -850,8 +851,14 @@ export class FunctionImplementation {
   }
 
   // ECMA262 9.2.1
-  $Call(realm: Realm, F: ECMAScriptFunctionValue, thisArgument: Value, argsList: Array<Value>): Value {
-    return InternalCall(realm, F, thisArgument, argsList, 0);
+  $Call(
+    realm: Realm,
+    F: ECMAScriptFunctionValue,
+    thisArgument: Value,
+    argsList: Array<Value>,
+    alwaysInlineCall?: boolean = false
+  ): Value {
+    return InternalCall(realm, F, thisArgument, argsList, 0, alwaysInlineCall);
   }
 
   // ECMA262 9.2.2
@@ -900,8 +907,8 @@ export class FunctionImplementation {
     // 7. Set F's essential internal methods to the default ordinary object definitions specified in 9.1.
 
     // 8. Set F's [[Call]] internal method to the definition specified in 9.2.1.
-    F.$Call = (thisArgument, argsList) => {
-      return this.$Call(realm, F, thisArgument, argsList);
+    F.$Call = (thisArgument, argsList, alwaysInlineCall?: boolean = false) => {
+      return this.$Call(realm, F, thisArgument, argsList, alwaysInlineCall);
     };
 
     // 9. If needsConstruct is true, then
