@@ -50,7 +50,7 @@ import { type BabelNodeObjectMethod, type BabelNodeClassMethod, isValidIdentifie
 import type { LexicalEnvironment } from "../environment.js";
 import { Create, Environment, Functions, Havoc, Join, Path, To } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
-import * as t from "babel-types";
+import { memberExpressionHelper } from "../utils/babelhelpers.js";
 
 function StringKey(key: PropertyKeyValue): string {
   if (key instanceof StringValue) key = key.value;
@@ -1177,12 +1177,11 @@ export class PropertiesImplementation {
       }
 
       invariant(realm.generator);
-      let pname = realm.generator.getAsPropertyNameExpression(StringKey(P));
       let absVal = AbstractValue.createTemporalFromBuildFunction(
         realm,
         Value,
         [O._templateFor || O],
-        ([node]) => t.memberExpression(node, pname, !t.isIdentifier(pname)),
+        ([node]) => memberExpressionHelper(node, StringKey(P)),
         { isPure: true }
       );
       // TODO: We can't be sure what the descriptor will be, but the value will be abstract.
@@ -1202,7 +1201,6 @@ export class PropertiesImplementation {
           if (typeof P === "string") {
             // In this case it is safe to defer the property access to runtime (at this point in time)
             invariant(realm.generator);
-            let pname = realm.generator.getAsPropertyNameExpression(P);
             let absVal;
             function createAbstractPropertyValue(type: typeof Value) {
               if (O.isTransitivelySimple()) {
@@ -1212,7 +1210,8 @@ export class PropertiesImplementation {
                   type,
                   [O._templateFor || O],
                   ([node]) => {
-                    return t.memberExpression(node, pname, !t.isIdentifier(pname));
+                    invariant(typeof P === "string");
+                    return memberExpressionHelper(node, P);
                   },
                   { kind: AbstractValue.makeKind("property", P) }
                 );
@@ -1222,7 +1221,8 @@ export class PropertiesImplementation {
                   type,
                   [O._templateFor || O],
                   ([node]) => {
-                    return t.memberExpression(node, pname, !t.isIdentifier(pname));
+                    invariant(typeof P === "string");
+                    return memberExpressionHelper(node, P);
                   },
                   { skipInvariant: true, isPure: true }
                 );
@@ -1318,6 +1318,7 @@ export class PropertiesImplementation {
             let realmGenerator = realm.generator;
             invariant(realmGenerator);
             value = realmGenerator.deriveAbstract(value.types, value.values, value.args, value.getBuildNode(), {
+              isPure: true,
               kind: "resolved",
               // We can't emit the invariant here otherwise it'll assume the AbstractValue's type not the union type
               skipInvariant: true,

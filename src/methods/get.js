@@ -44,6 +44,7 @@ import { Create, Environment, Join, Path, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeTemplateLiteral } from "babel-types";
 import * as t from "babel-types";
+import { memberExpressionHelper } from "../utils/babelhelpers.js";
 
 // ECMA262 7.3.22
 export function GetFunctionRealm(realm: Realm, obj: ObjectValue): Realm {
@@ -581,7 +582,7 @@ export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayV
     realm,
     Value,
     [arr, prop],
-    ([o, p]) => t.memberExpression(o, p, true),
+    ([o, p]) => memberExpressionHelper(o, p),
     {
       skipInvariant: true,
       isPure: true,

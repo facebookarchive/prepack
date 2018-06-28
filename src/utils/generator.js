@@ -53,7 +53,7 @@ import type {
   BabelNodeBlockStatement,
   BabelNodeLVal,
 } from "babel-types";
-import { nullExpression } from "./internalizer.js";
+import { nullExpression, memberExpressionHelper } from "./babelhelpers.js";
 import { Utils, concretize } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";
 
@@ -72,7 +72,7 @@ export type SerializationContext = {|
   emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
   processValues: (Set<AbstractValue | ConcreteValue>) => void,
-  canOmit: (AbstractValue | ConcreteValue) => boolean,
+  canOmit: Value => boolean,
   declare: (AbstractValue | ConcreteValue) => void,
   emitPropertyModification: PropertyBinding => void,
   options: SerializerOptions,
@@ -81,7 +81,7 @@ export type SerializationContext = {|
 export type VisitEntryCallbacks = {|
   visitEquivalentValue: Value => Value,
   visitGenerator: (Generator, Generator) => void,
-  canSkip: (AbstractValue | ConcreteValue) => boolean,
+  canOmit: Value => boolean,
   recordDeclaration: (AbstractValue | ConcreteValue) => void,
   recordDelayedEntry: (Generator, GeneratorEntry) => void,
   visitModifiedObjectProperty: PropertyBinding => void,
@@ -122,12 +122,19 @@ type TemporalBuildNodeEntryArgs = {
   buildNode?: GeneratorBuildNodeFunction,
   dependencies?: Array<Generator>,
   isPure?: boolean,
+  mutatesOnly?: Array<Value>,
 };
 
 class TemporalBuildNodeEntry extends GeneratorEntry {
   constructor(args: TemporalBuildNodeEntryArgs) {
     super();
     Object.assign(this, args);
+    if (this.mutatesOnly !== undefined) {
+      invariant(!this.isPure);
+      for (let arg of this.mutatesOnly) {
+        invariant(this.args.includes(arg));
+      }
+    }
   }
 
   declared: void | AbstractValue | ConcreteValue;
@@ -136,9 +143,20 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
   buildNode: void | GeneratorBuildNodeFunction;
   dependencies: void | Array<Generator>;
   isPure: void | boolean;
+  mutatesOnly: void | Array<Value>;
 
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
-    if (this.isPure && this.declared && callbacks.canSkip(this.declared)) {
+    let omit = this.isPure && this.declared && callbacks.canOmit(this.declared);
+
+    if (!omit && this.declared && this.mutatesOnly !== undefined) {
+      omit = true;
+      for (let arg of this.mutatesOnly) {
+        if (!callbacks.canOmit(arg)) {
+          omit = false;
+        }
+      }
+    }
+    if (omit) {
       callbacks.recordDelayedEntry(containingGenerator, this);
       return false;
     } else {
@@ -151,7 +169,17 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
   }
 
   serialize(context: SerializationContext) {
-    if (!this.isPure || !this.declared || !context.canOmit(this.declared)) {
+    let omit = this.isPure && this.declared && context.canOmit(this.declared);
+
+    if (!omit && this.declared && this.mutatesOnly !== undefined) {
+      omit = true;
+      for (let arg of this.mutatesOnly) {
+        if (!context.canOmit(arg)) {
+          omit = false;
+        }
+      }
+    }
+    if (!omit) {
       let nodes = this.args.map((boundArg, i) => context.serializeValue(boundArg));
       if (this.buildNode) {
         let valuesToProcess = new Set();
@@ -521,22 +549,6 @@ export class Generator {
     return `${this._name}(#${this.id})`;
   }
 
-  getAsPropertyNameExpression(key: string, canBeIdentifier: boolean = true): BabelNodeExpression {
-    // If key is a non-negative numeric string literal, parse it and set it as a numeric index instead.
-    let index = Number.parseInt(key, 10);
-    if (index >= 0 && index.toString() === key) {
-      return t.numericLiteral(index);
-    }
-
-    if (canBeIdentifier) {
-      // TODO #1020: revert this when Unicode identifiers are supported by all targetted JavaScript engines
-      let keyIsAscii = /^[\u0000-\u007f]*$/.test(key);
-      if (t.isValidIdentifier(key) && keyIsAscii) return t.identifier(key);
-    }
-
-    return t.stringLiteral(key);
-  }
-
   empty() {
     return this._entries.length === 0;
   }
@@ -580,12 +592,11 @@ export class Generator {
 
   emitPropertyAssignment(object: ObjectValue, key: string, value: Value) {
     if (object.refuseSerialization) return;
-    let propName = this.getAsPropertyNameExpression(key);
     this._addEntry({
       args: [object, value],
       buildNode: ([objectNode, valueNode], context) =>
         context.getPropertyAssignmentStatement(
-          t.memberExpression(objectNode, propName, !t.isIdentifier(propName)),
+          memberExpressionHelper(objectNode, key),
           valueNode,
           value.mightHaveBeenDeleted(),
           /* deleteIfMightHaveBeenDeleted */ true
@@ -617,13 +628,10 @@ export class Generator {
 
   emitPropertyDelete(object: ObjectValue, key: string) {
     if (object.refuseSerialization) return;
-    let propName = this.getAsPropertyNameExpression(key);
     this._addEntry({
       args: [object],
       buildNode: ([objectNode]) =>
-        t.expressionStatement(
-          t.unaryExpression("delete", t.memberExpression(objectNode, propName, !t.isIdentifier(propName)))
-        ),
+        t.expressionStatement(t.unaryExpression("delete", memberExpressionHelper(objectNode, key))),
     });
   }
 
@@ -704,9 +712,7 @@ export class Generator {
   // NB: if the type of the AbstractValue is top, skips the invariant
   emitFullInvariant(object: ObjectValue | AbstractObjectValue, key: string, value: Value) {
     if (object.refuseSerialization) return;
-    let propertyIdentifier = this.getAsPropertyNameExpression(key);
-    let computed = !t.isIdentifier(propertyIdentifier);
-    let accessedPropertyOf = objectNode => t.memberExpression(objectNode, propertyIdentifier, computed);
+    let accessedPropertyOf = objectNode => memberExpressionHelper(objectNode, key);
     let condition;
     if (value instanceof AbstractValue) {
       let isTop = false;
@@ -797,10 +803,7 @@ export class Generator {
     state: "MISSING" | "PRESENT" | "DEFINED"
   ) {
     if (object.refuseSerialization) return;
-    let propertyIdentifier = this.getAsPropertyNameExpression(key);
-    let computed = !t.isIdentifier(propertyIdentifier);
-    let accessedPropertyOf = (objectNode: BabelNodeExpression) =>
-      t.memberExpression(objectNode, propertyIdentifier, computed);
+    let accessedPropertyOf = (objectNode: BabelNodeExpression) => memberExpressionHelper(objectNode, key);
     let condition = ([objectNode: BabelNodeExpression]) => {
       let n = t.callExpression(
         t.memberExpression(
@@ -905,8 +908,8 @@ export class Generator {
             t.expressionStatement(
               t.assignmentExpression(
                 "=",
-                t.memberExpression(tgt, boundName, true),
-                t.memberExpression(src, boundName, true)
+                memberExpressionHelper(tgt, boundName),
+                memberExpressionHelper(src, boundName)
               )
             ),
           ])
@@ -952,7 +955,12 @@ export class Generator {
     values: ValuesDomain,
     args: Array<Value>,
     buildNode_: DerivedExpressionBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: AbstractValueKind, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {|
+      kind?: AbstractValueKind,
+      isPure?: boolean,
+      skipInvariant?: boolean,
+      mutatesOnly?: Array<Value>,
+    |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
@@ -983,6 +991,7 @@ export class Generator {
           ),
         ]);
       },
+      mutatesOnly: optionalArgs ? optionalArgs.mutatesOnly : undefined,
     });
     let type = types.getType();
     res.intrinsicName = id.name;
@@ -1206,8 +1215,7 @@ export class PreludeGenerator {
 
   globalReference(key: string, globalScope: boolean = false) {
     if (globalScope && t.isValidIdentifier(key)) return t.identifier(key);
-    let keyNode = t.isValidIdentifier(key) ? t.identifier(key) : t.stringLiteral(key);
-    return t.memberExpression(this.memoizeReference("global"), keyNode, !t.isIdentifier(keyNode));
+    return memberExpressionHelper(this.memoizeReference("global"), key);
   }
 
   memoizeReference(key: string): BabelNodeIdentifier {

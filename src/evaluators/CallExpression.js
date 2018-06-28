@@ -37,6 +37,7 @@ import type { BabelNodeCallExpression, BabelNodeExpression, BabelNodeSpreadEleme
 import invariant from "../invariant.js";
 import * as t from "babel-types";
 import SuperCall from "./SuperCall";
+import { memberExpressionHelper } from "../utils/babelhelpers.js";
 
 export default function(
   ast: BabelNodeCallExpression,
@@ -230,11 +231,9 @@ function generateRuntimeCall(
     let argStart = 1;
     if (thisArg instanceof Value) {
       if (typeof propName === "string") {
-        callFunc = t.isValidIdentifier(propName)
-          ? t.memberExpression(nodes[0], t.identifier(propName), false)
-          : t.memberExpression(nodes[0], t.stringLiteral(propName), true);
+        callFunc = memberExpressionHelper(nodes[0], propName);
       } else {
-        callFunc = t.memberExpression(nodes[0], nodes[1], true);
+        callFunc = memberExpressionHelper(nodes[0], nodes[1]);
         argStart = 2;
       }
     } else {

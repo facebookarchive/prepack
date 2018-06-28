@@ -18,6 +18,7 @@ import type {
   BabelNodeFunctionExpression,
   BabelNodeExpression,
   BabelNodeClassMethod,
+  BabelNodeArrowFunctionExpression,
   BabelNodeWhileStatement,
   BabelNodeJSXIdentifier,
   BabelNodeJSXMemberExpression,
@@ -36,7 +37,7 @@ import type {
 } from "babel-types";
 import type { FunctionBodyAstNode } from "../types.js";
 import type { FactoryFunctionInfo } from "./types.js";
-import { nullExpression } from "../utils/internalizer.js";
+import { nullExpression } from "../utils/babelhelpers.js";
 
 function canShareFunctionBody(duplicateFunctionInfo: FactoryFunctionInfo): boolean {
   if (duplicateFunctionInfo.anyContainingAdditionalFunction) {
@@ -94,7 +95,9 @@ export function isPure(node: BabelNodeExpression | BabelNodeSpreadElement): bool
 // i.e. bindings to captured scopes that need to get renamed to variable ids.
 // The original nodes are never mutated; instead, nodes are cloned as needed.
 // Along the way, some trivial code optimizations are performed as well.
-export class ResidualFunctionInstantiator<T: BabelNodeClassMethod | BabelNodeFunctionExpression> {
+export class ResidualFunctionInstantiator<
+  T: BabelNodeClassMethod | BabelNodeFunctionExpression | BabelNodeArrowFunctionExpression
+> {
   factoryFunctionInfos: Map<number, FactoryFunctionInfo>;
   identifierReplacements: Map<BabelNodeIdentifier, Replacement>;
   callReplacements: Map<BabelNodeCallExpression, Replacement>;

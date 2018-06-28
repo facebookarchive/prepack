@@ -19,7 +19,7 @@ let ReactDOMServer = require("react-dom/server");
 let PropTypes = require("prop-types");
 let ReactRelay = require("react-relay");
 let ReactTestRenderer = require("react-test-renderer");
-let { mergeAdacentJSONTextNodes } = require("../lib/utils/json.js");
+let { mergeAdjacentJSONTextNodes } = require("../lib/utils/json.js");
 /* eslint-disable no-undef */
 let { expect, describe, it } = global;
 
@@ -229,8 +229,8 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       if (typeof valueA === "string" && typeof valueB === "string") {
         expect(valueA).toBe(valueB);
       } else {
-        expect(mergeAdacentJSONTextNodes(valueB, firstRenderOnly)).toEqual(
-          mergeAdacentJSONTextNodes(valueA, firstRenderOnly)
+        expect(mergeAdjacentJSONTextNodes(valueB, firstRenderOnly)).toEqual(
+          mergeAdjacentJSONTextNodes(valueA, firstRenderOnly)
         );
       }
       expect(nameB).toEqual(nameA);
