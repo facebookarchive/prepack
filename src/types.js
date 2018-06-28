@@ -832,8 +832,8 @@ export type JoinType = {
   mapAndJoin(
     realm: Realm,
     values: Set<ConcreteValue>,
-    c: (ConcreteValue) => Value,
-    f: (ConcreteValue) => Completion | Value
+    joinConditionFactory: (ConcreteValue) => Value,
+    functionToMap: (ConcreteValue) => Completion | Value
   ): Value,
 };
 

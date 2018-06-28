@@ -918,18 +918,18 @@ export class JoinImplementation {
   mapAndJoin(
     realm: Realm,
     values: Set<ConcreteValue>,
-    c: ConcreteValue => Value,
-    f: ConcreteValue => Completion | Value
+    joinConditionFactory: ConcreteValue => Value,
+    functionToMap: ConcreteValue => Completion | Value
   ): Value {
     invariant(values.size > 1);
     let joinedEffects;
     for (let val of values) {
-      let condition = c(val);
+      let condition = joinConditionFactory(val);
       let effects = realm.evaluateForEffects(
         () => {
           invariant(condition instanceof AbstractValue);
           return Path.withCondition(condition, () => {
-            return f(val);
+            return functionToMap(val);
           });
         },
         undefined,

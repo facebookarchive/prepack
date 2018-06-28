@@ -15,10 +15,8 @@ import {
   EmptyValue,
   FunctionValue,
   IntegralValue,
-  NumberValue,
   ObjectValue,
   SymbolValue,
-  Value,
 } from "../values/index.js";
 import type { Effects, Realm } from "../realm.js";
 
