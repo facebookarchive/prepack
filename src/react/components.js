@@ -305,7 +305,8 @@ export function evaluateClassConstructor(
       ),
     // We don't want to track mutations on "this" but of the outside
     // context of the constructor
-    true
+    true,
+    null
   );
 
   return {

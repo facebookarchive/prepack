@@ -677,12 +677,10 @@ export class Realm {
   // call.
   evaluatePure<T>(
     f: () => T,
-    mergeWithParentEvaluatePures?: boolean = false,
-    reportSideEffectFunc?: (
-      sideEffectType: SideEffectType,
-      binding: void | Binding | PropertyBinding,
-      value: void | Value
-    ) => void
+    mergeWithParentEvaluatePures: boolean = false,
+    reportSideEffectFunc:
+      | null
+      | ((sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, value: void | Value) => void)
   ) {
     // mergeWithParentEvaluatePures flag is used for when we don't want to create
     // a new pure object set for tracked leaks, this is ideal for when we eventually
@@ -701,11 +699,11 @@ export class Realm {
       this.createdObjectsTrackedForLeaks = new Set();
     }
     this.reportSideEffectCallback = (...args) => {
-      if (reportSideEffectFunc !== undefined) {
+      if (reportSideEffectFunc != null) {
         reportSideEffectFunc(...args);
       }
       // Ensure we call any previously nested side-effect callbacks
-      if (saved_reportSideEffectCallback !== undefined) {
+      if (saved_reportSideEffectCallback != null) {
         saved_reportSideEffectCallback(...args);
       }
     };
