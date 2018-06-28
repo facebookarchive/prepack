@@ -957,6 +957,24 @@ function cloneTemporalArgsArray(
   });
 }
 
+function cloneTemporalConfig(
+  realm: Realm,
+  temporalConfig: any,
+  temporalArgs: Array<Value>,
+  clonedTemporalArgs: Array<Value>
+): object {
+  let clonedObject = Object.assign({}, temporalConfig);
+  if (clonedObject.mutatesOnly !== undefined) {
+    let newMutatesOnly = [];
+    for (let arg of temporalConfig.mutatesOnly) {
+      let index = temporalArgs.indexOf(arg);
+      newMutatesOnly.push(clonedTemporalArgs[index]);
+    }
+    clonedObject.mutatesOnly = newMutatesOnly;
+  }
+  return clonedObject;
+}
+
 function applyClonedTemporalAlias(
   realm: Realm,
   props: ObjectValue,
@@ -971,10 +989,12 @@ function applyClonedTemporalAlias(
     invariant(false, "TODO applyClonedTemporalAlias conditional");
   }
   let temporalArgs = realm.temporalAliasArgs.get(temporalAlias);
+  let temporalConfig = realm.temporalAliasConfig.get(temporalAlias);
   invariant(temporalArgs !== undefined);
+  invariant(temporalConfig !== undefined);
   // replace the original props with the cloned one
   let newTemporalArgs = cloneTemporalArgsArray(realm, temporalArgs, alreadyCloned, props, clonedObj);
-
+  let newTemporalConfig = cloneTemporalConfig(realm, temporalConfig, temporalArgs, newTemporalArgs);
   let temporalTo = AbstractValue.createTemporalFromBuildFunction(
     realm,
     ObjectValue,
@@ -982,7 +1002,7 @@ function applyClonedTemporalAlias(
     ([methodNode, targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
       return t.callExpression(methodNode, [targetNode, ...sourceNodes]);
     },
-    { skipInvariant: true }
+    newTemporalConfig
   );
   invariant(temporalTo instanceof AbstractObjectValue);
   invariant(clonedObj instanceof ObjectValue);
@@ -992,6 +1012,7 @@ function applyClonedTemporalAlias(
   // and reconstruct the temporal at another point, rather than
   // mutate the existing temporal
   realm.temporalAliasArgs.set(temporalTo, newTemporalArgs);
+  realm.temporalAliasConfig.set(temporalTo, newTemporalConfig);
 }
 
 export function clonePropsOrConfigLikeObject(
@@ -1043,6 +1064,7 @@ export function clonePropsOrConfigLikeObject(
     // Clone a snapshot form Object.assign
     if (realm.temporalAliasArgs.has(obj)) {
       let temporalArgs = realm.temporalAliasArgs.get(obj);
+      let temporalConfig = realm.temporalAliasConfig.get(obj);
       if (temporalArgs !== undefined) {
         // Clone a snapshot
         if (temporalArgs.length === 1) {
@@ -1054,11 +1076,13 @@ export function clonePropsOrConfigLikeObject(
         } else {
           // Some other temporal abstract object
           let clonedTemporalArgs = cloneTemporalArgsArray(realm, temporalArgs, alreadyCloned);
+          let newTemporalConfig = cloneTemporalConfig(realm, temporalConfig, temporalArgs, clonedTemporalArgs);
           let clonedTemplate = AbstractValue.createTemporalFromBuildFunction(
             realm,
             obj.getType(),
             clonedTemporalArgs,
-            ([funcNode, ...otherNodes]) => t.callExpression(funcNode, ((otherNodes: any): Array<any>))
+            ([funcNode, ...otherNodes]) => t.callExpression(funcNode, ((otherNodes: any): Array<any>)),
+            newTemporalConfig
           );
           invariant(clonedTemplate instanceof AbstractObjectValue);
           if (!obj.values.isTop()) {
@@ -1077,6 +1101,8 @@ export function clonePropsOrConfigLikeObject(
           // and reconstruct the temporal at another point, rather than
           // mutate the existing temporal
           realm.temporalAliasArgs.set(clonedTemplate, clonedTemporalArgs);
+          invariant(temporalConfig !== undefined);
+          realm.temporalAliasConfig.set(clonedTemplate, newTemporalConfig);
           return clonedTemplate;
         }
       }
@@ -1167,6 +1193,7 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
         to.makePartial();
         to.makeSimple();
         let temporalArgs = [objAssign, to, ...delayedSources];
+        let temporalConfig = { skipInvariant: true, mutatesOnly: [to] };
         let temporalTo = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,
@@ -1174,7 +1201,7 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           },
-          { skipInvariant: true, mutatesOnly: [to] }
+          temporalConfig
         );
         invariant(temporalTo instanceof AbstractObjectValue);
         temporalTo.values = new ValuesDomain(to);
@@ -1183,6 +1210,7 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
         // and reconstruct the temporal at another point, rather than
         // mutate the existing temporal
         realm.temporalAliasArgs.set(temporalTo, temporalArgs);
+        realm.temporalAliasConfig.set(temporalTo, temporalConfig);
         return;
       } else {
         throw error;

@@ -575,16 +575,24 @@ export default class ObjectValue extends ConcreteValue {
         realm.react.reactProps.add(template);
       }
       let temporalArgs = [template];
-      let result = AbstractValue.createTemporalFromBuildFunction(this.$Realm, ObjectValue, temporalArgs, ([x]) => x, {
+      let temporalConfig = {
         skipInvariant: true,
         isPure: true,
-      });
+      };
+      let result = AbstractValue.createTemporalFromBuildFunction(
+        this.$Realm,
+        ObjectValue,
+        temporalArgs,
+        ([x]) => x,
+        temporalConfig
+      );
       invariant(result instanceof AbstractObjectValue);
       result.values = new ValuesDomain(template);
       // Store the args for the temporal so we can easily clone
       // and reconstruct the temporal at another point, rather than
       // mutate the existing temporal
       realm.temporalAliasArgs.set(result, temporalArgs);
+      realm.temporalAliasConfig.set(result, temporalConfig);
       return result;
     } finally {
       if (options && options.removeProperties) {

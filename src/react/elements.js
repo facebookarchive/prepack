@@ -312,6 +312,7 @@ function createPropsObject(
         let snapshot = props.getSnapshot();
         props.temporalAlias = snapshot;
         let temporalArgs = [defaultPropsHelper, snapshot, defaultProps];
+        let temporalConfig = { skipInvariant: true };
         let temporalTo = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,
@@ -319,7 +320,7 @@ function createPropsObject(
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           },
-          { skipInvariant: true }
+          temporalConfig
         );
         invariant(temporalTo instanceof AbstractObjectValue);
         if (props instanceof AbstractObjectValue) {
@@ -333,6 +334,7 @@ function createPropsObject(
         // and reconstruct the temporal at another point, rather than
         // mutate the existing temporal
         realm.temporalAliasArgs.set(temporalTo, temporalArgs);
+        realm.temporalAliasConfig.set(temporalTo, temporalConfig);
       }
     }
   } else {
