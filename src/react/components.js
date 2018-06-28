@@ -304,7 +304,7 @@ export function evaluateClassConstructor(
         `react component constructor: ${constructorFunc.getName()}`
       ),
     false,
-    null
+    /*reportSideEffectFunc*/ null
   );
 
   return {

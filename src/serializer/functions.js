@@ -202,7 +202,7 @@ export class Functions {
       let effects: Effects = this.realm.evaluatePure(
         () => this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
         false,
-        null
+        /*reportSideEffectFunc*/ null
       );
       invariant(effects);
       let additionalFunctionEffects = createAdditionalEffects(

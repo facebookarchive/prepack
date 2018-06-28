@@ -203,7 +203,11 @@ export default function(realm: Realm): void {
         invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
         invariant(typeof functionValue.$Call === "function");
         let functionCall: Function = functionValue.$Call;
-        return realm.evaluatePure(() => functionCall(realm.intrinsics.undefined, []), false, null);
+        return realm.evaluatePure(
+          () => functionCall(realm.intrinsics.undefined, []),
+          false,
+          /*reportSideEffectFunc*/ null
+        );
       }
     ),
     writable: true,
