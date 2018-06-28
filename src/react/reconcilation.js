@@ -193,6 +193,7 @@ export class Reconciler {
               /*state*/ null,
               `react component: ${getComponentName(this.realm, componentType)}`
             ),
+          false,
           this._handleReportedSideEffect
         )
       );
@@ -288,6 +289,7 @@ export class Reconciler {
             evaluateWithNestedParentEffects(this.realm, nestedEffects, () =>
               this.realm.evaluateForEffects(resolveOptimizedClosure, /*state*/ null, `react nested optimized closure`)
             ),
+          false,
           this._handleReportedSideEffect
         )
       );
