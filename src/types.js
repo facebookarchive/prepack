@@ -47,8 +47,16 @@ import type {
   BabelNodePattern,
   BabelNodeVariableDeclaration,
   BabelNodeSourceLocation,
-} from "@babel/types";
-import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "./realm.js";
+} from "babel-types";
+import type {
+  Bindings,
+  CreatedObjects,
+  Effects,
+  EvaluationResult,
+  LeakedObjects,
+  PropertyBindings,
+  Realm,
+} from "./realm.js";
 import { CompilerDiagnostic } from "./errors.js";
 import type { Severity } from "./errors.js";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
@@ -161,6 +169,16 @@ export type PropertyBinding = {
   pathNode?: AbstractValue,
   internalSlot?: boolean,
 };
+
+/* A leaked object is one that is accessed by code that Prepack is not able to analyze because
+Prepack does not have access to this code, or possibly because it contains unsupported constructs that prevent Prepack
+from interpreting it into a heap representation. When an object is leaked, two distinct operations kick in, namely,
+havocing, which coarsens the information hitherto inferred about the object, and materialization, which commits the
+contents of the object at this point to the timeline.
+*/
+
+/* Pairs a leaked object with the generator in which it must be materialized into the timeline. */
+export type LeakedObject = {| object: ObjectValue, generator: Generator |};
 
 export type LexicalEnvironmentTypes = "global" | "module" | "script" | "function" | "block" | "catch" | "loop" | "with";
 
@@ -371,6 +389,10 @@ export type PathType = {
 
 export type HavocType = {
   value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation): void,
+};
+
+export type MaterializeType = {
+  materialize(realm: Realm, leakedObject: LeakedObject): void,
 };
 
 export type PropertiesType = {
@@ -798,8 +820,10 @@ export type JoinType = {
     m1: PropertyBindings,
     m2: PropertyBindings,
     c1: CreatedObjects,
-    c2: CreatedObjects
-  ): PropertyBindings,
+    c2: CreatedObjects,
+    g1: Generator,
+    g2: Generator
+  ): [PropertyBindings, LeakedObjects],
 
   // Returns a field by field join of two descriptors.
   // Descriptors with get/set are not yet supported.

@@ -63,7 +63,7 @@ function handleObjectAssignSnapshot(
     AbstractValue.reportIntrospectionError(to);
     throw new FatalError();
   } else {
-    if (frm instanceof ObjectValue && frm.mightBeHavocedObject()) {
+    if (frm instanceof ObjectValue && frm.isLeakedObject()) {
       // "frm" is havoced, so it might contain properties that potentially overwrite
       // properties already on the "to" object.
       snapshotToObjectAndRemoveProperties(to, delayedSources);

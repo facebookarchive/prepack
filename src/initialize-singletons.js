@@ -13,13 +13,14 @@ import * as Singletons from "./singletons.js";
 import { CreateImplementation } from "./methods/create.js";
 import { EnvironmentImplementation } from "./methods/environment.js";
 import { FunctionImplementation } from "./methods/function.js";
-import { HavocImplementation } from "./utils/havoc.js";
+import { HavocImplementation, MaterializeImplementation } from "./utils/havoc.js";
 import { JoinImplementation } from "./methods/join.js";
 import { PathImplementation } from "./utils/paths.js";
 import { PropertiesImplementation } from "./methods/properties.js";
 import { ToImplementation } from "./methods/to.js";
 import { WidenImplementation } from "./methods/widen.js";
 import { concretize } from "./utils/ConcreteModelConverter.js";
+
 import * as utils from "./utils.js";
 
 export default function() {
@@ -27,6 +28,7 @@ export default function() {
   Singletons.setEnvironment(new EnvironmentImplementation());
   Singletons.setFunctions(new FunctionImplementation());
   Singletons.setHavoc(new HavocImplementation());
+  Singletons.setMaterialize(new MaterializeImplementation());
   Singletons.setJoin(new JoinImplementation());
   Singletons.setPath(new PathImplementation());
   Singletons.setProperties((new PropertiesImplementation(): any));

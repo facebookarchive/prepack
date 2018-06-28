@@ -1233,7 +1233,7 @@ export class ResidualHeapSerializer {
   ): void {
     const realm = this.realm;
     let lenProperty;
-    if (val.mightBeHavocedObject()) {
+    if (val.isLeakedObject()) {
       lenProperty = this.realm.evaluateWithoutLeakLogic(() => Get(realm, val, "length"));
     } else {
       lenProperty = Get(realm, val, "length");
@@ -1674,13 +1674,26 @@ export class ResidualHeapSerializer {
     let remainingProperties = new Map(val.properties);
     const dummyProperties = new Set();
     let props = [];
+    let isFunction = f => f instanceof ECMAScriptSourceFunctionValue;
+    let isLeaked = val.isLeakedObject();
+
+    // TODO #2259: Make deduplication in the face of leaking work for custom accessors
+    let shouldDropAsAssignedProp = (descriptor: Descriptor) =>
+      isLeaked && !(isFunction(descriptor.get) || isFunction(descriptor.set));
+
     if (val.temporalAlias !== undefined) {
       return t.objectExpression(props);
     } else {
       for (let [key, propertyBinding] of val.properties) {
+        if (propertyBinding.descriptor !== undefined && shouldDropAsAssignedProp(propertyBinding.descriptor)) {
+          remainingProperties.delete(key);
+          continue;
+        }
+
         if (propertyBinding.pathNode !== undefined) continue; // written to inside loop
         let descriptor = propertyBinding.descriptor;
         if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
+
         let serializedKey = getAsPropertyNameExpression(key);
         if (this._canEmbedProperty(val, key, descriptor)) {
           let propValue = descriptor.value;
@@ -1707,6 +1720,7 @@ export class ResidualHeapSerializer {
         }
       }
     }
+
     this._emitObjectProperties(
       val,
       remainingProperties,
@@ -1714,6 +1728,7 @@ export class ResidualHeapSerializer {
       dummyProperties,
       skipPrototype
     );
+
     return t.objectExpression(props);
   }
 

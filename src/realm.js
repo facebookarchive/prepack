@@ -14,6 +14,7 @@ import type {
   ConsoleMethodTypes,
   DebugServerType,
   Descriptor,
+  LeakedObject,
   Intrinsics,
   PropertyBinding,
   ReactHint,
@@ -65,7 +66,7 @@ import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator, type TemporalBuildNodeEntry } from "./utils/generator.js";
 import { emptyExpression, voidExpression } from "./utils/babelhelpers.js";
-import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
+import { Environment, Functions, Join, Materialize, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "@babel/types";
 import * as t from "@babel/types";
@@ -79,6 +80,7 @@ export type BindingEntry = {
 export type Bindings = Map<Binding, BindingEntry>;
 export type EvaluationResult = Completion | Reference;
 export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
+export type LeakedObjects = Set<LeakedObject>;
 
 export type CreatedObjects = Set<ObjectValue>;
 
@@ -92,13 +94,15 @@ export class Effects {
     generator: Generator,
     bindings: Bindings,
     propertyBindings: PropertyBindings,
-    createdObjects: CreatedObjects
+    createdObjects: CreatedObjects,
+    leakedObjects?: LeakedObjects
   ) {
     this._result = result;
     this.generator = generator;
     this.modifiedBindings = bindings;
     this.modifiedProperties = propertyBindings;
     this.createdObjects = createdObjects;
+    this.leakedObjects = leakedObjects;
 
     this.canBeApplied = true;
     this._id = effects_uid++;
@@ -120,6 +124,7 @@ export class Effects {
   modifiedBindings: Bindings;
   modifiedProperties: PropertyBindings;
   createdObjects: CreatedObjects;
+  leakedObjects: LeakedObjects | void;
   canBeApplied: boolean;
   _id: number;
 }
@@ -1450,7 +1455,7 @@ export class Realm {
       "Effects have been applied and not properly reverted. It is not safe to apply them a second time."
     );
     effects.canBeApplied = false;
-    let { generator, modifiedBindings, modifiedProperties, createdObjects } = effects;
+    let { generator, modifiedBindings, modifiedProperties, createdObjects, leakedObjects } = effects;
 
     // Add generated code for property modifications
     if (appendGenerator) this.appendGenerator(generator, leadingComment);
@@ -1488,6 +1493,20 @@ export class Realm {
           invariant(realmCreatedObjects !== undefined);
           realmCreatedObjects.add(ob);
         });
+      }
+    }
+
+    // Materialize leaked objects
+    // Leaked objects are materialized in the generators captured
+    // at the points at which they leaked. The invariant must
+    // hold that such generators lie in the dependency tree
+    // of the joined generator at the final join point.
+    // This is the point at which other accesses to the leaked
+    // object have been accounted for and generator entries have been
+    // created for them.
+    if (appendGenerator && leakedObjects !== undefined && leakedObjects.size !== 0) {
+      for (let lo of leakedObjects) {
+        Materialize.materialize(this, lo);
       }
     }
   }

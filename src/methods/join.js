@@ -11,9 +11,17 @@
 
 import type { Binding } from "../environment.js";
 import { FatalError } from "../errors.js";
-import type { Bindings, BindingEntry, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
+import type {
+  Bindings,
+  BindingEntry,
+  CreatedObjects,
+  EvaluationResult,
+  LeakedObjects,
+  PropertyBindings,
+  Realm,
+} from "../realm.js";
 import { Effects } from "../realm.js";
-import type { Descriptor, PropertyBinding } from "../types.js";
+import type { Descriptor, LeakedObject, PropertyBinding } from "../types.js";
 
 import {
   AbruptCompletion,
@@ -32,9 +40,10 @@ import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComp
 import { construct_empty_effects } from "../realm.js";
 import { Path } from "../singletons.js";
 import { Generator } from "../utils/generator.js";
-import { AbstractValue, ConcreteValue, EmptyValue, Value } from "../values/index.js";
+import { AbstractValue, BooleanValue, ConcreteValue, EmptyValue, ObjectValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
+type MapAndOptionalSet<K, V, O> = { map: Map<K, V>, set: void | Set<O> };
 
 function joinGenerators(
   realm: Realm,
@@ -467,6 +476,7 @@ export class JoinImplementation {
   joinForkOrChoose(realm: Realm, joinCondition: Value, e1: Effects, e2: Effects): Effects {
     if (!joinCondition.mightNotBeTrue()) return e1;
     if (!joinCondition.mightNotBeFalse()) return e2;
+
     invariant(joinCondition instanceof AbstractValue);
 
     let {
@@ -510,25 +520,30 @@ export class JoinImplementation {
       generator2,
       modifiedBindings2
     );
-    let properties = this.joinPropertyBindings(
+
+    let [properties, leakedObjects] = this.joinPropertyBindings(
       realm,
       joinCondition,
       modifiedProperties1,
       modifiedProperties2,
       createdObjects1,
-      createdObjects2
+      createdObjects2,
+      modifiedGenerator1,
+      modifiedGenerator2
     );
+
     let createdObjects = new Set();
     createdObjects1.forEach(o => {
       createdObjects.add(o);
     });
+
     createdObjects2.forEach(o => {
       createdObjects.add(o);
     });
 
     let generator = joinGenerators(realm, joinCondition, modifiedGenerator1, modifiedGenerator2);
 
-    return new Effects(result, generator, bindings, properties, createdObjects);
+    return new Effects(result, generator, bindings, properties, createdObjects, leakedObjects);
   }
 
   joinNestedEffects(realm: Realm, c: Completion, precedingEffects?: Effects): Effects {
@@ -682,22 +697,38 @@ export class JoinImplementation {
     return result;
   }
 
+  // Folds two maps into a map and a set, based on an operator that joins map entries (e.g. bindings)
+  // but also spills some values to be dealt with later (e.g. objects)
+  foldMaps<K, V, O>(
+    acc: MapAndOptionalSet<K, V, O>,
+    m1: Map<K, V>,
+    m2: Map<K, V>,
+    fold: (K, void | V, void | V) => [V, O | void]
+  ): MapAndOptionalSet<K, V, O> {
+    m1.forEach((aVal1, key, map1) => {
+      let aVal2 = m2.get(key);
+      let [aVal3, bVal] = fold(key, aVal1, aVal2);
+      acc.map.set(key, aVal3);
+      if (acc.set !== undefined && bVal !== undefined) acc.set.add(bVal);
+    });
+    m2.forEach((aVal2, key, map2) => {
+      if (!m1.has(key)) {
+        let [aVal3, bVal] = fold(key, undefined, aVal2);
+        acc.map.set(key, aVal3);
+        if (acc.set !== undefined && bVal !== undefined) acc.set.add(bVal);
+      }
+    });
+    return acc;
+  }
+
   // Creates a single map that joins together maps m1 and m2 using the given join
   // operator. If an entry is present in one map but not the other, the missing
   // entry is treated as if it were there and its value were undefined.
   joinMaps<K, V>(m1: Map<K, V>, m2: Map<K, V>, join: (K, void | V, void | V) => V): Map<K, V> {
-    let m3: Map<K, V> = new Map();
-    m1.forEach((val1, key, map1) => {
-      let val2 = m2.get(key);
-      let val3 = join(key, val1, val2);
-      m3.set(key, val3);
-    });
-    m2.forEach((val2, key, map2) => {
-      if (!m1.has(key)) {
-        m3.set(key, join(key, undefined, val2));
-      }
-    });
-    return m3;
+    let initial = { map: new Map(), set: undefined };
+    let fold = (k, v1, v2) => [join(k, v1, v2), undefined];
+    let result = this.foldMaps(initial, m1, m2, fold);
+    return result.map;
   }
 
   // Creates a single map that has an key, value pair for the union of the key
@@ -789,18 +820,70 @@ export class JoinImplementation {
     }
   }
 
+  // Joins property bindings at a join point. Returns joined bindings and a set of leaked
+  // objects, based on the binding for the property "_isLeaked", which marks objects as
+  // leaked.
   joinPropertyBindings(
     realm: Realm,
     joinCondition: AbstractValue,
     m1: PropertyBindings,
     m2: PropertyBindings,
     c1: CreatedObjects,
-    c2: CreatedObjects
-  ): PropertyBindings {
-    let join = (b: PropertyBinding, d1: void | Descriptor, d2: void | Descriptor) => {
+    c2: CreatedObjects,
+    g1: Generator,
+    g2: Generator
+  ): [PropertyBindings, LeakedObjects] {
+    // Joins two property bindings of type "_isLeaked". If an object is leaked
+    // on one side, it is caused to also be leaked on the other side. Returns [x, y] where
+    // x is the joined descriptor, and y is set to a LeakedObject
+    // consisting of generator and object, if the object leaked.
+    let computeJoinedLeakedPropertyAndLeakedObject = (
+      b: PropertyBinding,
+      d1: void | Descriptor,
+      d2: void | Descriptor
+    ): [Descriptor | void, LeakedObject | void] => {
+      if (d1 === undefined) {
+        if (c2.has(b.object)) return [d2, undefined]; // no join, no leaked object
+
+        invariant(m2.has(b)); // The alternative path must be the source of leaking
+        return [d2, { object: b.object, generator: g1 }];
+      } else if (d2 === undefined) {
+        if (c1.has(b.object)) return [d1, undefined]; // no join, no leaked object
+
+        invariant(m1.has(b)); // The consequent path must be the source of leaking
+        return [d1, { object: b.object, generator: g2 }];
+      } else {
+        // Make the leak unconditional
+        let d1ValueIsTrue = d1.value instanceof BooleanValue && d1.value;
+        let d2ValueIsTrue = d2.value instanceof BooleanValue && d2.value;
+
+        if (d1ValueIsTrue && d2ValueIsTrue) {
+          // Already leaked on both sides, no join, no leaked object
+          return [d1, undefined];
+        } else if (d1ValueIsTrue) {
+          return [d1, { object: b.object, generator: g2 }];
+        } else if (d2ValueIsTrue) {
+          return [d2, { object: b.object, generator: g1 }];
+        } else {
+          invariant(c1.has(b.object) && c2.has(b.object), "Evidence of object leaked, but _isLeaked is false");
+          return [d1, undefined];
+        }
+      }
+    };
+
+    let fold = (
+      b: PropertyBinding,
+      d1: void | Descriptor,
+      d2: void | Descriptor
+    ): [Descriptor | void, LeakedObject | void] => {
+      if (b.key === "_isLeaked") {
+        invariant(ObjectValue.trackedPropertyBindingNames.has("_isLeaked"));
+        return computeJoinedLeakedPropertyAndLeakedObject(b, d1, d2);
+      }
+
       // If the PropertyBinding object has been freshly allocated do not join
       if (d1 === undefined) {
-        if (c2.has(b.object)) return d2; // no join
+        if (c2.has(b.object)) return [d2, undefined]; // no join
         if (b.descriptor !== undefined && m1.has(b)) {
           // property was deleted
           d1 = cloneDescriptor(b.descriptor);
@@ -812,7 +895,7 @@ export class JoinImplementation {
         }
       }
       if (d2 === undefined) {
-        if (c1.has(b.object)) return d1; // no join
+        if (c1.has(b.object)) return [d1, undefined]; // no join
         if (b.descriptor !== undefined && m2.has(b)) {
           // property was deleted
           d2 = cloneDescriptor(b.descriptor);
@@ -823,9 +906,17 @@ export class JoinImplementation {
           d2 = b.descriptor; //Get value of property before the split
         }
       }
-      return this.joinDescriptors(realm, joinCondition, d1, d2);
+      return [this.joinDescriptors(realm, joinCondition, d1, d2), undefined];
     };
-    return this.joinMaps(m1, m2, join);
+
+    let initial = { map: new Map(), set: new Set() };
+    let result = this.foldMaps(initial, m1, m2, fold);
+
+    // We expect a valid set, empty if no objects are leaked
+    // Suppresses a flow warning
+    invariant(result.set !== undefined);
+
+    return [result.map, result.set];
   }
 
   joinDescriptors(
