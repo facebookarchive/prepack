@@ -691,7 +691,7 @@ export class Realm {
     // *other* object is unchanged (pure). These objects are marked
     // as leaked if they're passed to abstract functions.
     this.createdObjectsTrackedForLeaks = new Set();
-    // If evalautePure is called within the lexical context of another
+    // If evaluatePure is called within the lexical context of another
     // function, then ensure we add this same object to our tracked objects
     if (thisObject !== undefined) {
       this.createdObjectsTrackedForLeaks.add(thisObject);
