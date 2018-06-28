@@ -201,7 +201,6 @@ export class Functions {
       let call = this._callOfFunction(functionValue);
       let effects: Effects = this.realm.evaluatePure(
         () => this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
-        false,
         /*reportSideEffectFunc*/ null
       );
       invariant(effects);

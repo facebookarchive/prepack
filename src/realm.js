@@ -677,27 +677,17 @@ export class Realm {
   // call.
   evaluatePure<T>(
     f: () => T,
-    mergeWithParentEvaluatePures: boolean = false,
     reportSideEffectFunc:
       | null
       | ((sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, value: void | Value) => void)
   ) {
-    // mergeWithParentEvaluatePures flag is used for when we don't want to create
-    // a new pure object set for tracked leaks, this is ideal for when we eventually
-    // want to side-effect tracking on a scope but not want any havocing logic to
-    // remain (for example if we want to track side-effects inside a class constructor
-    // where mutations on "this" are fine, but mutations on objects outside the constructor
-    // are not okay).
-    let isRootEvalautePure = this.createdObjectsTrackedForLeaks === undefined;
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
     let saved_reportSideEffectCallback = this.reportSideEffectCallback;
     // Track all objects (including function closures) created during
     // this call. This will be used to make the assumption that every
     // *other* object is unchanged (pure). These objects are marked
     // as leaked if they're passed to abstract functions.
-    if (!mergeWithParentEvaluatePures || isRootEvalautePure) {
-      this.createdObjectsTrackedForLeaks = new Set();
-    }
+    this.createdObjectsTrackedForLeaks = new Set();
     this.reportSideEffectCallback = (...args) => {
       if (reportSideEffectFunc != null) {
         reportSideEffectFunc(...args);
@@ -710,9 +700,7 @@ export class Realm {
     try {
       return f();
     } finally {
-      if (!mergeWithParentEvaluatePures || isRootEvalautePure) {
-        this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
-      }
+      this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
       this.reportSideEffectCallback = saved_reportSideEffectCallback;
     }
   }
