@@ -284,24 +284,26 @@ export function evaluateClassConstructor(
   let instanceProperties = new Set();
   let instanceSymbols = new Set();
 
-  realm.evaluatePure(() =>
-    realm.evaluateForEffects(
-      () => {
-        let instance = Construct(realm, constructorFunc, [props, context]);
-        invariant(instance instanceof ObjectValue);
-        for (let [propertyName] of instance.properties) {
-          if (!whitelistedProperties.has(propertyName)) {
-            instanceProperties.add(propertyName);
+  realm.evaluatePure(
+    () =>
+      realm.evaluateForEffects(
+        () => {
+          let instance = Construct(realm, constructorFunc, [props, context]);
+          invariant(instance instanceof ObjectValue);
+          for (let [propertyName] of instance.properties) {
+            if (!whitelistedProperties.has(propertyName)) {
+              instanceProperties.add(propertyName);
+            }
           }
-        }
-        for (let [symbol] of instance.symbols) {
-          instanceSymbols.add(symbol);
-        }
-        return instance;
-      },
-      /*state*/ null,
-      `react component constructor: ${constructorFunc.getName()}`
-    )
+          for (let [symbol] of instance.symbols) {
+            instanceSymbols.add(symbol);
+          }
+          return instance;
+        },
+        /*state*/ null,
+        `react component constructor: ${constructorFunc.getName()}`
+      ),
+    /*reportSideEffectFunc*/ null
   );
 
   return {
