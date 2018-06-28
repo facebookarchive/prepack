@@ -683,24 +683,28 @@ export class Realm {
   // call.
   evaluatePure<T>(
     f: () => T,
+    mergeWithParentEvaluatePures?: boolean = false,
     reportSideEffectFunc?: (
       sideEffectType: SideEffectType,
       binding: void | Binding | PropertyBinding,
       value: void | Value
-    ) => void,
-    thisObject?: ObjectValue
+    ) => void
   ) {
+    // mergeWithParentEvaluatePures flag is used for when we don't want to create
+    // a new pure object set for tracked leaks, this is ideal for when we eventually
+    // want to side-effect tracking on a scope but not want any havocing logic to
+    // remain (for example if we want to track side-effects inside a class constructor
+    // where mutations on "this" are fine, but mutations on objects outside the constructor
+    // are not okay).
+    let isRootEvalautePure = this.createdObjectsTrackedForLeaks === undefined;
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
     let saved_reportSideEffectCallback = this.reportSideEffectCallback;
     // Track all objects (including function closures) created during
     // this call. This will be used to make the assumption that every
     // *other* object is unchanged (pure). These objects are marked
     // as leaked if they're passed to abstract functions.
-    this.createdObjectsTrackedForLeaks = new Set();
-    // If evaluatePure is called within the lexical context of another
-    // function, then ensure we add this same object to our tracked objects
-    if (thisObject !== undefined) {
-      this.createdObjectsTrackedForLeaks.add(thisObject);
+    if (!mergeWithParentEvaluatePures || isRootEvalautePure) {
+      this.createdObjectsTrackedForLeaks = new Set();
     }
     this.reportSideEffectCallback = (...args) => {
       if (reportSideEffectFunc !== undefined) {
@@ -714,7 +718,9 @@ export class Realm {
     try {
       return f();
     } finally {
-      this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
+      if (!mergeWithParentEvaluatePures || isRootEvalautePure) {
+        this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
+      }
       this.reportSideEffectCallback = saved_reportSideEffectCallback;
     }
   }
