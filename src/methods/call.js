@@ -450,6 +450,7 @@ export function OrdinaryCallEvaluateBody(
           }
           let effects = realm.evaluatePure(
             () => realm.evaluateForEffects(normalCall, null, "selectivelyInlineNormalCall"),
+            true,
             handleReportedSideEffect
           );
           let completion = effects.result;
