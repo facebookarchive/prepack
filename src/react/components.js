@@ -303,9 +303,7 @@ export function evaluateClassConstructor(
         /*state*/ null,
         `react component constructor: ${constructorFunc.getName()}`
       ),
-    // We don't want to track mutations on "this" but of the outside
-    // context of the constructor
-    true,
+    false,
     null
   );
 
