@@ -341,9 +341,23 @@ export class ModuleTracer extends Tracer {
           let previousDependencies = this.modules.factoryFunctionDependencies.get(factoryFunction);
           if (previousDependencies) {
             // Verify that they are the same
-            invariant(previousDependencies.length === dependencies.length);
-            let previousDependenciesSet = new Set(previousDependencies);
-            dependencies.forEach(dependency => invariant(previousDependenciesSet.has(dependency)));
+            let logError = () => {
+              let moduleId = argumentsList[1];
+              let moduleString =
+                moduleId instanceof StringValue || moduleId instanceof NumberValue ? moduleId.value : "unknown";
+              this.modules.logger.logError(
+                factoryFunction,
+                `Called define on the same module ${moduleString} twice with different dependencies each time.`
+              );
+            };
+            if (previousDependencies.length !== dependencies.length) {
+              logError();
+            } else {
+              let previousDependenciesSet = new Set(previousDependencies);
+              dependencies.forEach(dependency => {
+                if (!previousDependenciesSet.has(dependency)) logError();
+              });
+            }
           } else {
             this.modules.factoryFunctionDependencies.set(factoryFunction, dependencies);
           }
