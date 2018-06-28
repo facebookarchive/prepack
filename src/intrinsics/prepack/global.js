@@ -129,15 +129,19 @@ export default function(realm: Realm): void {
   //     that is not subsequently applied, the function will not be registered
   //     (because prepack won't have a correct value for the FunctionValue itself)
   global.$DefineOwnProperty("__optimize", {
-    value: new NativeFunctionValue(realm, "global.__optimize", "__optimize", 1, (context, [value, config]) => {
+    value: new NativeFunctionValue(realm, "global.__optimize", "__optimize", 1, (context, [argModelString]) => {
       // only optimize functions for now
       if (value instanceof ECMAScriptSourceFunctionValue || value instanceof AbstractValue) {
+        let functionToOptimize = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+        functionToOptimize.$Set("funcValue", value, functionToOptimize);
+        functionToOptimize.$Set("argModelString", argModelString || realm.intrinsics.undefined, functionToOptimize);
+        // add to the todo list
         realm.assignToGlobal(
           t.memberExpression(
             t.memberExpression(t.identifier("global"), t.identifier("__optimizedFunctions")),
             t.identifier("" + additionalFunctionUid++)
           ),
-          value
+          functionToOptimize
         );
       } else {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Called __optimize on an invalid type");

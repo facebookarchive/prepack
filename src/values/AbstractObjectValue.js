@@ -24,6 +24,7 @@ import {
   Value,
 } from "./index.js";
 import { protoExpression, memberExpressionHelper } from "../utils/babelhelpers.js";
+import { ShapeInformation } from "../utils/ShapeInformation.js";
 import type { AbstractValueBuildNodeFunction } from "./AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import {
@@ -45,7 +46,7 @@ export default class AbstractObjectValue extends AbstractValue {
     hashValue: number,
     args: Array<Value>,
     buildNode?: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: AbstractValueKind, intrinsicName?: string |}
+    optionalArgs?: {| kind?: AbstractValueKind, intrinsicName?: string, shape?: ShapeInformation |}
   ) {
     super(realm, types, values, hashValue, args, buildNode, optionalArgs);
     if (!values.isTop()) {
@@ -119,6 +120,7 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   mightBeFinalObject(): boolean {
+    if (this.shape.isKnown()) return this.shape.isReadOnly();
     if (this.values.isTop()) return false;
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
@@ -128,6 +130,7 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   mightNotBeFinalObject(): boolean {
+    if (this.shape.isKnown()) return !this.shape.isReadOnly();
     if (this.values.isTop()) return false;
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
@@ -500,21 +503,31 @@ export default class AbstractObjectValue extends AbstractValue {
       let generateAbstractGet = () => {
         let ob = Receiver;
         if (this.kind === "explicit conversion to object") ob = this.args[0];
+        invariant(ob instanceof AbstractValue);
         let type = Value;
         if (P === "length" && Value.isTypeCompatibleWith(this.getType(), ArrayValue)) type = NumberValue;
-        return AbstractValue.createTemporalFromBuildFunction(
+        invariant(typeof P === "string");
+        let propertyShape = ob.shape.getMemberAccessShapeInformation(P);
+        if (propertyShape.isKnown()) type = propertyShape.getValueTypeForAbstract();
+        let propAbsVal = AbstractValue.createTemporalFromBuildFunction(
           this.$Realm,
           type,
           [ob],
           ([o]) => {
             invariant(typeof P === "string");
-            return memberExpressionHelper(o, P);
+            return propertyShape.isKnown()
+              ? t.callExpression(t.identifier("prop_" + propertyShape.getDescription().type), [o, t.stringLiteral(P)])
+              : memberExpressionHelper(o, P);
           },
           {
             skipInvariant: true,
             isPure: true,
           }
         );
+        if (propAbsVal instanceof AbstractValue) {
+          propAbsVal.shape = propertyShape;
+        }
+        return propAbsVal;
       };
       if (this.isSimpleObject() && this.isIntrinsic()) {
         return generateAbstractGet();
