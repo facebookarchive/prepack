@@ -10,6 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
+import { ValuesDomain } from "../../domains/index.js";
 import {
   ArrayValue,
   AbstractValue,
@@ -81,6 +82,25 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
   });
   inheritsValue.intrinsicName = `babelHelpers.inherits`;
 
+  const createObjectWithoutProperties = (obj: ObjectValue, keys: ArrayValue) => {
+    let removeKeys = new Set();
+    forEachArrayValue(realm, keys, key => {
+      if (key instanceof StringValue || key instanceof NumberValue) {
+        removeKeys.add(key.value);
+      }
+    });
+    let newObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+    for (let [propName, binding] of obj.properties) {
+      if (!removeKeys.has(propName)) {
+        if (binding && binding.descriptor && binding.descriptor.enumerable) {
+          let value = Get(realm, obj, propName);
+          Properties.Set(realm, newObject, propName, value, true);
+        }
+      }
+    }
+    return newObject;
+  };
+
   //babelHelpers.objectWithoutProperties
   let objectWithoutPropertiesValue = new NativeFunctionValue(
     realm,
@@ -103,6 +123,10 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
           temporalConfig
         );
         invariant(value instanceof AbstractObjectValue);
+        if (obj instanceof ObjectValue) {
+          let template = createObjectWithoutProperties(obj, keys);
+          value.values = new ValuesDomain(template);
+        }
         // Store the args for the temporal so we can easily clone
         // and reconstruct the temporal at another point, rather than
         // mutate the existing temporal
@@ -112,22 +136,7 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
         value.makeSimple();
         return value;
       } else {
-        let removeKeys = new Set();
-        forEachArrayValue(realm, keys, key => {
-          if (key instanceof StringValue || key instanceof NumberValue) {
-            removeKeys.add(key.value);
-          }
-        });
-        let newObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-        for (let [propName, binding] of obj.properties) {
-          if (!removeKeys.has(propName)) {
-            if (binding && binding.descriptor && binding.descriptor.enumerable) {
-              let value = Get(realm, obj, propName);
-              Properties.Set(realm, newObject, propName, value, true);
-            }
-          }
-        }
-        return newObject;
+        return createObjectWithoutProperties(obj, keys);
       }
     }
   );
