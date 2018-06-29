@@ -250,6 +250,10 @@ export class Realm {
     this.temporalAliasArgs = new WeakMap();
     this.temporalAliasConfig = new WeakMap();
 
+    this.instantRender = {
+      enabled: opts.instantRender || false,
+    };
+
     this.react = {
       abstractHints: new WeakMap(),
       activeReconciler: undefined,
@@ -353,6 +357,9 @@ export class Realm {
     |}
   >;
 
+  instantRender: {
+    enabled: boolean,
+  };
   react: {
     // reactHints are generated to help improve the effeciency of the React reconciler when
     // operating on a tree of React components. We can use reactHint to mark AbstractValues
@@ -690,11 +697,9 @@ export class Realm {
   // call.
   evaluatePure<T>(
     f: () => T,
-    reportSideEffectFunc?: (
-      sideEffectType: SideEffectType,
-      binding: void | Binding | PropertyBinding,
-      value: void | Value
-    ) => void
+    reportSideEffectFunc:
+      | null
+      | ((sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, value: void | Value) => void)
   ) {
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
     let saved_reportSideEffectCallback = this.reportSideEffectCallback;
@@ -703,7 +708,15 @@ export class Realm {
     // *other* object is unchanged (pure). These objects are marked
     // as leaked if they're passed to abstract functions.
     this.createdObjectsTrackedForLeaks = new Set();
-    this.reportSideEffectCallback = reportSideEffectFunc;
+    this.reportSideEffectCallback = (...args) => {
+      if (reportSideEffectFunc != null) {
+        reportSideEffectFunc(...args);
+      }
+      // Ensure we call any previously nested side-effect callbacks
+      if (saved_reportSideEffectCallback != null) {
+        saved_reportSideEffectCallback(...args);
+      }
+    };
     try {
       return f();
     } finally {

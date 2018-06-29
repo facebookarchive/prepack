@@ -84,6 +84,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     serialize: true,
     uniqueSuffix: "",
     maxStackDepth: 100,
+    instantRender: false,
     reactEnabled: true,
     reactOutput: outputJsx ? "jsx" : "create-element",
     reactOptimizeNestedFunctions: true,
@@ -409,12 +410,22 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         });
       });
 
+      it("Mutations - not-safe 3", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "not-safe3.js");
+        });
+      });
+
       it("Mutations - safe 1", async () => {
         await runTest(directory, "safe.js");
       });
 
       it("Mutations - safe 2", async () => {
         await runTest(directory, "safe2.js");
+      });
+
+      it("Mutations - safe 3", async () => {
+        await runTest(directory, "safe3.js");
       });
 
       it("Handle mapped arrays", async () => {

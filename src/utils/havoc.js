@@ -495,6 +495,16 @@ function ensureFrozenValue(realm, value, loc) {
 // and all reachable bindings to abstract values.
 export class HavocImplementation {
   value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation) {
+    if (realm.instantRender.enabled) {
+      // TODO: For InstantRender...
+      // - For declarative bindings, we do want proper materialization/leaking/havocing
+      // - For object properties, we conceptually want materialization
+      //   (however, not via statements that mutate the objects,
+      //   but only as part of the initial object literals),
+      //   but actual no leaking or havocing as there should be a way to annotate/enforce
+      //   that external/abstract functions are pure with regards to heap objects
+      return;
+    }
     let objectsTrackedForHavoc = realm.createdObjectsTrackedForLeaks;
     if (objectsTrackedForHavoc === undefined) {
       // We're not tracking a pure function. That means that we would track

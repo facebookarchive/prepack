@@ -254,6 +254,7 @@ function tryToEvaluateCallOrLeaveAsAbstract(
   thisValue: Value,
   tailCall: boolean
 ): Value {
+  invariant(!realm.instantRender.enabled);
   let effects;
   let savedSuppressDiagnostics = realm.suppressDiagnostics;
   try {
@@ -389,7 +390,7 @@ function EvaluateCall(
   let tailCall = IsInTailPosition(realm, thisCall);
 
   // 8. Return ? EvaluateDirectCall(func, thisValue, Arguments, tailCall).
-  if (realm.isInPureScope()) {
+  if (realm.isInPureScope() && !realm.instantRender.enabled) {
     return tryToEvaluateCallOrLeaveAsAbstract(ref, func, ast, strictCode, env, realm, thisValue, tailCall);
   } else {
     return EvaluateDirectCall(realm, strictCode, env, ref, func, thisValue, ast.arguments, tailCall);
