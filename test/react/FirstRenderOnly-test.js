@@ -82,6 +82,7 @@ it("React Context 6", () => {
   runTest(__dirname + "/FirstRenderOnly/react-context6.js");
 });
 
+// Known to be broken due to incomplete arrow function support.
 it.skip("Replace this in callbacks", () => {
   runTest(__dirname + "/FirstRenderOnly/replace-this-in-callbacks.js");
 });
