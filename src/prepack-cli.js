@@ -119,6 +119,7 @@ function run(
     serialize: false,
     residual: false,
     profile: false,
+    instantRender: false,
     reactEnabled: false,
   };
 
