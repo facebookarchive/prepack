@@ -455,6 +455,13 @@ class ObjectValueHavocingVisitor {
       // then it might be one of the arguments that created
       // this value. See #2179.
 
+      if (val.kind === "conditional") {
+        // For a conditional, we only have to visit each case. Not the condition itself.
+        this.visitValue(val.args[1]);
+        this.visitValue(val.args[2]);
+        return;
+      }
+
       // To ensure that we don't forget to provide arguments
       // that can be havoced, we require at least one argument.
       let whitelistedKind =
@@ -466,6 +473,9 @@ class ObjectValueHavocingVisitor {
         "Havoced unknown object requires havocable arguments"
       );
 
+      // TODO: This is overly conservative. We recursively havoc all the inputs
+      // to this operation whether or not they can possible be part of the
+      // result value or not.
       for (let i = 0, n = val.args.length; i < n; i++) {
         this.visitValue(val.args[i]);
       }
