@@ -1030,6 +1030,7 @@ function applyClonedTemporalAlias(
     newTemporalConfig
   );
   invariant(temporalTo instanceof AbstractObjectValue);
+  alreadyCloned.set(temporalAlias, temporalTo);
   invariant(clonedObj instanceof ObjectValue);
   temporalTo.values = new ValuesDomain(clonedObj);
   clonedObj.temporalAlias = temporalTo;
@@ -1100,12 +1101,17 @@ export function clonePropsOrConfigLikeObject(
           invariant(temporalArg instanceof ObjectValue);
           let clonedTemplate = clonePropsOrConfigLikeObject(realm, temporalArg, false, alreadyCloned);
           let clonedAbstractObject = clonedTemplate.getSnapshot();
+          alreadyCloned.set(obj, clonedAbstractObject);
           return clonedAbstractObject;
         } else {
-          // Some other temporal abstract object
+          invariant(temporalConfig !== undefined);
           let clonedTemporalArgs = cloneTemporalArgsArray(realm, temporalArgs, alreadyCloned);
-          // $FlowFixMe: temporalConfig confuses Flow with the Object.assign
           let newTemporalConfig = cloneTemporalConfig(realm, temporalConfig, temporalArgs, clonedTemporalArgs);
+          if (alreadyCloned.has(obj)) {
+            let _obj = alreadyCloned.get(obj);
+            invariant(_obj instanceof AbstractObjectValue);
+            return _obj;
+          }
           let clonedTemplate = AbstractValue.createTemporalFromBuildFunction(
             realm,
             obj.getType(),
@@ -1114,6 +1120,7 @@ export function clonePropsOrConfigLikeObject(
             newTemporalConfig
           );
           invariant(clonedTemplate instanceof AbstractObjectValue);
+          alreadyCloned.set(obj, clonedTemplate);
           if (!obj.values.isTop()) {
             let values = [];
             for (let element of obj.values.getElements()) {
