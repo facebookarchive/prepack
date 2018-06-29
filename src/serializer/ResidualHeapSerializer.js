@@ -1051,7 +1051,7 @@ export class ResidualHeapSerializer {
     }
 
     this.serializedValues.add(val);
-    if (!referenceOnly && HeapInspector.isLeaf(this.realm, val)) {
+    if (!referenceOnly && HeapInspector.isLeaf(val)) {
       let res = this._serializeValue(val);
       invariant(res !== undefined);
       return res;
@@ -1938,7 +1938,7 @@ export class ResidualHeapSerializer {
       return this._serializeEmptyValue();
     } else if (val instanceof UndefinedValue) {
       return voidExpression;
-    } else if (HeapInspector.isLeaf(this.realm, val)) {
+    } else if (HeapInspector.isLeaf(val)) {
       return t.valueToNode(val.serialize());
     } else if (val instanceof ObjectValue) {
       return this._serializeValueObjectBase(val);

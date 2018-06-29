@@ -98,7 +98,7 @@ export class ResidualHeapGraphGenerator extends ResidualHeapVisitor {
   }
 
   _shouldIgnore(val: Value): boolean {
-    return val instanceof EmptyValue || val.isIntrinsic() || HeapInspector.isLeaf(this.realm, val);
+    return val instanceof EmptyValue || val.isIntrinsic() || HeapInspector.isLeaf(val);
   }
 
   _updateEdge(val: Value) {

@@ -87,7 +87,7 @@ export class HeapInspector {
     return HeapInspector._integrityDescriptors[this.getTargetIntegrityCommand(val)];
   }
 
-  static isLeaf(realm: Realm, val: Value): boolean {
+  static isLeaf(val: Value): boolean {
     if (val instanceof SymbolValue) {
       return false;
     }
@@ -97,7 +97,11 @@ export class HeapInspector {
         return true;
       }
 
-      if (realm.instantRender.enabled && val.intrinsicName !== undefined && val.intrinsicName.startsWith("__native")) {
+      if (
+        val.$Realm.instantRender.enabled &&
+        val.intrinsicName !== undefined &&
+        val.intrinsicName.startsWith("__native")
+      ) {
         // Never factor out multiple occurrences of InstantRender's __native... abstract functions.
         return true;
       }
