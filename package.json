@@ -97,7 +97,7 @@
     "graceful-fs": "^4.1.11",
     "invariant": "^2.2.0",
     "istanbul": "^0.4.5",
-    "jest": "^22.2.1",
+    "jest": "^23.2.0",
     "js-yaml": "^3.6.1",
     "jsdom": "^9.2.1",
     "madge": "^1.6.0",
