@@ -53,7 +53,7 @@ export class DebugServer {
     this._stepManager = new SteppingManager(this._realm, /* default discard old steppers */ false);
     this._stopEventManager = new StopEventManager();
     this._diagnosticSeverity = configArgs.diagnosticSeverity || "FatalError";
-    this._sourceMapManager = new SourceMapManager(configArgs.sourcemapDirectoryRoot, configArgs.sourcemaps);
+    this._sourceMapManager = new SourceMapManager(configArgs.buckRoot, configArgs.sourcemaps);
     this.waitForRun(undefined);
   }
   // the collection of breakpoints

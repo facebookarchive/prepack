@@ -1058,6 +1058,6 @@ export type UtilsType = {|
 export type DebuggerConfigArguments = {
   diagnosticSeverity?: Severity,
   sourcemaps?: Array<SourceFile>,
-  sourcemapDirectoryRoot?: string,
+  buckRoot?: string,
   debugChannel?: DebugChannel,
 };

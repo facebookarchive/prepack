@@ -14,19 +14,35 @@ import { DebuggerError } from "./../common/DebuggerError.js";
 import invariant from "../common/invariant.js";
 
 export class SourceMapManager {
-  constructor(directoryRoot?: string, sourceMaps?: Array<SourceFile>) {
-    // Use presence of directory root to indicate which path format sourcemap prefixes take on.
-    if (directoryRoot !== undefined) {
+  constructor(buckRoot?: string, sourceMaps?: Array<SourceFile>) {
+    // Use presence of buck root argument to indicate which path format sourcemap prefixes take on.
+
+    /**
+     * Sourcemap paths can come in one of two formats:
+     *     - Relative: The paths include `../` and can be followed from the sourcemap's location
+     *         to arrive at the original source's location. In this format, path conversion
+     *         requires two different prefixes (MapDifference and CommonPrefix) that must be
+     *         discovered from the input paths.
+     *     - Common Directory: The paths take the format of an absolute path (`/foo/bar`) and
+     *         assume there is a common prefix to the path that, when added, will make the path an
+     *         valid absolute path. This prefix is passed in as the `buckRoot` argument.
+     *     Example:
+     *         In a directory structure with /A/B/map.js and /A/C/original.js,
+     *         the sourcemaps would have the following path structures:
+     *           - Relative: ../C/original.js, with `CP` = /A and 'MD' = ../
+     *           - Common Directory: /C/original.js, with `buckRoot` = /A
+     */
+    if (buckRoot !== undefined) {
       if (sourceMaps === undefined) {
         throw new DebuggerError(
           "Invalid input",
           "Can't provide a sourcemap directory root without having sourcemaps present"
         );
       }
-      this._sourcemapDirectoryRoot = directoryRoot;
-      if (this._sourcemapDirectoryRoot[this._sourcemapDirectoryRoot.length - 1] === "/") {
+      this._buckRoot = buckRoot;
+      if (this._buckRoot[this._buckRoot.length - 1] === "/") {
         // Remove trailing slash to prepare for prepending to internal paths.
-        this._sourcemapDirectoryRoot = this._sourcemapDirectoryRoot.slice(0, -1);
+        this._buckRoot = this._buckRoot.slice(0, -1);
       }
     } else {
       // If sourcemaps don't exist, set prefixes to undefined and break.
@@ -76,9 +92,9 @@ export class SourceMapManager {
   }
 
   // Prefixes used to translate between relative paths stored in AST nodes and absolute paths given to IDE.
-  _sourcemapCommonPrefix: void | string; // For paths relative to map location.
-  _sourcemapMapDifference: void | string; // For paths relative to map location.
-  _sourcemapDirectoryRoot: void | string; // For paths relative to directory root.
+  _sourcemapCommonPrefix: void | string; // For paths relative to map location. (Used in Babel format)
+  _sourcemapMapDifference: void | string; // For paths relative to map location. (Used in Babel format)
+  _buckRoot: void | string; // For paths relative to directory root. (Used in Buck format)
 
   /**
    * Assumes that input file and sourcemap are in the same directory.
@@ -160,14 +176,18 @@ export class SourceMapManager {
     return path;
   }
 
+  /**
+   * Used by DebugAdapter to convert relative paths (used internally in debugging/Prepack engine)
+   * into absolute paths (used by debugging UI/IDE).
+   */
   relativeToAbsolute(path: string): string {
     let absolute;
-    if (this._sourcemapDirectoryRoot !== undefined) {
-      let dirRoot = this._sourcemapDirectoryRoot;
+    if (this._buckRoot !== undefined) {
+      let dirRoot = this._buckRoot;
       if (
         // If the "relative" path is actually absolute, then don't prepend anything.
         this._stripEmptyStringBookends(path.split("/"))[0] ===
-        this._stripEmptyStringBookends(this._sourcemapDirectoryRoot.split("/"))[0]
+        this._stripEmptyStringBookends(this._buckRoot.split("/"))[0]
       ) {
         absolute = path;
       } else {
@@ -186,10 +206,14 @@ export class SourceMapManager {
     return absolute;
   }
 
+  /**
+   * Used by DebugAdapter to convert absolute paths (used by debugging UI/IDE)
+   * into relative paths (used internally in debugging/Prepack engine).
+   */
   absoluteToRelative(path: string): string {
     let relative;
-    if (this._sourcemapDirectoryRoot !== undefined) {
-      relative = path.replace(this._sourcemapDirectoryRoot, "");
+    if (this._buckRoot !== undefined) {
+      relative = path.replace(this._buckRoot, "");
     } else {
       if (this._sourcemapCommonPrefix !== undefined && this._sourcemapMapDifference !== undefined) {
         relative = path.replace(this._sourcemapCommonPrefix, "");
