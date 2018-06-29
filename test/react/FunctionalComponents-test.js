@@ -296,22 +296,6 @@ it("Conditional", async () => {
   await runTest(__dirname + "/FunctionalComponents/conditional.js");
 });
 
-it("Key nesting", async () => {
-  await runTest(__dirname + "/FunctionalComponents/key-nesting.js");
-});
-
-it("Key nesting 2", async () => {
-  await runTest(__dirname + "/FunctionalComponents/key-nesting-2.js");
-});
-
-it("Key nesting 3", async () => {
-  await runTest(__dirname + "/FunctionalComponents/key-nesting-3.js");
-});
-
-it("Key change", async () => {
-  await runTest(__dirname + "/FunctionalComponents/key-change.js");
-});
-
 it("Equivalence", async () => {
   let createElement = React.createElement;
   let count = 0;
@@ -338,62 +322,6 @@ it("Equivalence", async () => {
 
 it("Delete element prop key", async () => {
   await runTest(__dirname + "/FunctionalComponents/delete-element-prop-key.js");
-});
-
-it("Key change with fragments", async () => {
-  await runTest(__dirname + "/FunctionalComponents/key-change-fragments.js");
-});
-
-it("Key not changing with fragments", async () => {
-  await runTest(__dirname + "/FunctionalComponents/key-not-change-fragments.js");
-});
-
-it("Component type change", async () => {
-  await runTest(__dirname + "/FunctionalComponents/type-change.js");
-});
-
-it("Component type change 2", async () => {
-  await runTest(__dirname + "/FunctionalComponents/type-change2.js");
-});
-
-it("Component type change 3", async () => {
-  await runTest(__dirname + "/FunctionalComponents/type-change3.js");
-});
-
-it("Component type change 4", async () => {
-  await runTest(__dirname + "/FunctionalComponents/type-change4.js");
-});
-
-it("Component type change 5", async () => {
-  await runTest(__dirname + "/FunctionalComponents/type-change5.js");
-});
-
-it("Component type change 6", async () => {
-  await runTest(__dirname + "/FunctionalComponents/type-change6.js");
-});
-
-it("Component type change 7", async () => {
-  await runTest(__dirname + "/FunctionalComponents/type-change7.js");
-});
-
-it("Component type change 8", async () => {
-  await runTest(__dirname + "/FunctionalComponents/type-change8.js");
-});
-
-it("Component type change 9", async () => {
-  await runTest(__dirname + "/FunctionalComponents/type-change9.js");
-});
-
-it("Component type change 10", async () => {
-  await runTest(__dirname + "/FunctionalComponents/type-change10.js");
-});
-
-it("Component type change 11", async () => {
-  await runTest(__dirname + "/FunctionalComponents/type-change11.js");
-});
-
-it("Component type same", async () => {
-  await runTest(__dirname + "/FunctionalComponents/type-same.js");
 });
 
 it("Dynamic props", async () => {
@@ -478,53 +406,4 @@ it("Dynamic ReactElement type #3", async () => {
 
 it("Dynamic ReactElement type #4", async () => {
   await runTest(__dirname + "/FunctionalComponents/dynamic-type4.js");
-});
-
-it("Lazy branched elements", async () => {
-  let createElement = React.createElement;
-  let count = 0;
-  // For this test we want to also check how React.createElement
-  // calls occur so we can validate that we are correctly using
-  // lazy branched elements. To do this, we override the createElement
-  // call and increment a counter for ever call.
-
-  // $FlowFixMe: intentional for this test
-  React.createElement = (type, config) => {
-    count++;
-    return createElement(type, config);
-  };
-  try {
-    await runTest(__dirname + "/FunctionalComponents/lazy-branched-elements.js");
-  } finally {
-    // $FlowFixMe: intentional for this test
-    React.createElement = createElement;
-  }
-  // The non-Prepacked version has 4 calls, the Prepacked one should have 4 calls.
-  // Multiplied by 4 because every test runs in four modes (JSX/createElement input and output).
-  expect(count).toEqual(8 * 4);
-});
-
-it("Lazy branched elements 2", async () => {
-  let createElement = React.createElement;
-  let count = 0;
-  // For this test we want to also check how React.createElement
-  // calls occur so we can validate that we are correctly using
-  // lazy branched elements. To do this, we override the createElement
-  // call and increment a counter for ever call.
-
-  // $FlowFixMe: intentional for this test
-  React.createElement = (type, config) => {
-    count++;
-    return createElement(type, config);
-  };
-  try {
-    await runTest(__dirname + "/FunctionalComponents/lazy-branched-elements2.js");
-  } finally {
-    // $FlowFixMe: intentional for this test
-    React.createElement = createElement;
-  }
-  // The non-Prepacked version has 4 calls, the Prepacked one should have 3 calls
-  // (3 because one of the calls has been removing by inlining).
-  // Multiplied by 4 because every test runs in four modes (JSX/createElement input and output).
-  expect(count).toEqual(7 * 4);
 });
