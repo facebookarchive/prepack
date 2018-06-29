@@ -97,6 +97,7 @@ function buildStack(realm: Realm, context: ObjectValue) {
 
   for (let executionContext of stack.reverse()) {
     let caller = executionContext.caller;
+    if (!executionContext.loc) continue; // compiler generated helper for destructuring arguments
     let locString = describeLocation(
       realm,
       caller ? caller.function : undefined,

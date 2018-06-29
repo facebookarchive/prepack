@@ -30,8 +30,6 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm
 ): [Completion | Value, BabelNodeExpression, Array<BabelNodeStatement>] {
-  realm.setNextExecutionContextLocation(ast.loc);
-
   // 1. Let ref be the result of evaluating MemberExpression.
   let [ref, calleeAst, calleeIO] = env.partiallyEvaluateCompletion(ast.callee, strictCode);
   if (ref instanceof AbruptCompletion) return [ref, (calleeAst: any), calleeIO];
@@ -70,23 +68,28 @@ export default function(
     }
   }
 
-  let callResult = EvaluateCall(ref, func, ast, argVals, strictCode, env, realm);
-  if (callResult instanceof AbruptCompletion) {
-    if (completion instanceof PossiblyNormalCompletion)
-      completion = Join.stopEffectCaptureJoinApplyAndReturnCompletion(completion, callResult, realm);
-    else completion = callResult;
-    let resultAst = t.callExpression((calleeAst: any), partialArgs);
-    return [completion, resultAst, io];
+  let previousLoc = realm.setNextExecutionContextLocation(ast.loc);
+  try {
+    let callResult = EvaluateCall(ref, func, ast, argVals, strictCode, env, realm);
+    if (callResult instanceof AbruptCompletion) {
+      if (completion instanceof PossiblyNormalCompletion)
+        completion = Join.stopEffectCaptureJoinApplyAndReturnCompletion(completion, callResult, realm);
+      else completion = callResult;
+      let resultAst = t.callExpression((calleeAst: any), partialArgs);
+      return [completion, resultAst, io];
+    }
+    let callCompletion;
+    [callCompletion, callResult] = Join.unbundleNormalCompletion(callResult);
+    invariant(callResult instanceof Value);
+    invariant(completion === undefined || completion instanceof PossiblyNormalCompletion);
+    completion = Join.composeNormalCompletions(completion, callCompletion, callResult, realm);
+    if (completion instanceof PossiblyNormalCompletion) {
+      realm.captureEffects(completion);
+    }
+    return [completion, t.callExpression((calleeAst: any), partialArgs), io];
+  } finally {
+    realm.setNextExecutionContextLocation(previousLoc);
   }
-  let callCompletion;
-  [callCompletion, callResult] = Join.unbundleNormalCompletion(callResult);
-  invariant(callResult instanceof Value);
-  invariant(completion === undefined || completion instanceof PossiblyNormalCompletion);
-  completion = Join.composeNormalCompletions(completion, callCompletion, callResult, realm);
-  if (completion instanceof PossiblyNormalCompletion) {
-    realm.captureEffects(completion);
-  }
-  return [completion, t.callExpression((calleeAst: any), partialArgs), io];
 }
 
 function callBothFunctionsAndJoinTheirEffects(
