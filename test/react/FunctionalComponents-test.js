@@ -202,90 +202,12 @@ it("defaultProps", async () => {
   await runTest(__dirname + "/FunctionalComponents/default-props.js");
 });
 
-it("Unsafe spread", async () => {
-  await expectPartialKeyOrRefError(async () => {
-    await runTest(__dirname + "/FunctionalComponents/unsafe-spread.js");
-  });
-});
-
 it("Simple with abstract props", async () => {
   await runTest(__dirname + "/FunctionalComponents/simple-with-abstract-props.js");
 });
 
 it("Simple with unary expressions", async () => {
   await runTest(__dirname + "/FunctionalComponents/simple-with-unary.js");
-});
-
-it("Simple with multiple JSX spreads", async () => {
-  await runTest(__dirname + "/FunctionalComponents/simple-with-jsx-spread.js");
-});
-
-it("Simple with multiple JSX spreads #2", async () => {
-  await runTest(__dirname + "/FunctionalComponents/simple-with-jsx-spread2.js");
-});
-
-it("Simple with multiple JSX spreads #3", async () => {
-  await runTest(__dirname + "/FunctionalComponents/simple-with-jsx-spread3.js");
-});
-
-it("Simple with multiple JSX spreads #4", async () => {
-  await runTest(__dirname + "/FunctionalComponents/simple-with-jsx-spread4.js");
-});
-
-it("Simple with multiple JSX spreads #5", async () => {
-  await runTest(__dirname + "/FunctionalComponents/simple-with-jsx-spread5.js");
-});
-
-it("Simple with multiple JSX spreads #6", async () => {
-  await runTest(__dirname + "/FunctionalComponents/simple-with-jsx-spread6.js");
-});
-
-it("Simple with multiple JSX spreads #7", async () => {
-  await runTest(__dirname + "/FunctionalComponents/simple-with-jsx-spread7.js");
-});
-
-it("Simple with multiple JSX spreads #8", async () => {
-  await runTest(__dirname + "/FunctionalComponents/simple-with-jsx-spread8.js");
-});
-
-it("Simple with multiple JSX spreads #9", async () => {
-  await runTest(__dirname + "/FunctionalComponents/simple-with-jsx-spread9.js");
-});
-
-it("Simple with multiple JSX spreads #10", async () => {
-  await runTest(__dirname + "/FunctionalComponents/simple-with-jsx-spread10.js");
-});
-
-it("Simple with multiple JSX spreads #11", async () => {
-  await runTest(__dirname + "/FunctionalComponents/simple-with-jsx-spread11.js");
-});
-
-it("Simple with multiple JSX spreads #12", async () => {
-  await runTest(__dirname + "/FunctionalComponents/simple-with-jsx-spread12.js");
-});
-
-it("Simple with multiple JSX spreads #13", async () => {
-  await runTest(__dirname + "/FunctionalComponents/simple-with-jsx-spread13.js");
-});
-
-it("Simple with Object.assign", async () => {
-  await runTest(__dirname + "/FunctionalComponents/simple-assign.js");
-});
-
-it("Simple with Object.assign #2", async () => {
-  await runTest(__dirname + "/FunctionalComponents/simple-assign2.js");
-});
-
-it("Simple with Object.assign #3", async () => {
-  await runTest(__dirname + "/FunctionalComponents/simple-assign3.js");
-});
-
-it("Simple with Object.assign #4", async () => {
-  await runTest(__dirname + "/FunctionalComponents/simple-assign4.js");
-});
-
-it("Simple with Object.assign #5", async () => {
-  await runTest(__dirname + "/FunctionalComponents/simple-assign5.js");
 });
 
 it("Circular reference", async () => {
