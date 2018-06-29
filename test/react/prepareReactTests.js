@@ -219,11 +219,7 @@ function prepareReactTests() {
     }
   }
 
-  function runTestWithOptions(fixturePath, firstRenderOnly, data, useJSXInput, useJSXOutput) {
-    let source = fs.readFileSync(fixturePath).toString();
-    if (useJSXInput) {
-      source = transpileSource(source);
-    }
+  function runTestWithOptions(source, firstRenderOnly, data, useJSXOutput) {
     let { compiledSource, statistics } = compileSourceWithPrepack(source);
 
     expect(statistics).toMatchSnapshot();
@@ -269,10 +265,12 @@ function prepareReactTests() {
   }
 
   function runTest(fixturePath: string, firstRenderOnly?: boolean = false, data?: mixed) {
-    runTestWithOptions(fixturePath, firstRenderOnly, data, true, false);
-    runTestWithOptions(fixturePath, firstRenderOnly, data, false, false);
-    runTestWithOptions(fixturePath, firstRenderOnly, data, true, true);
-    runTestWithOptions(fixturePath, firstRenderOnly, data, false, true);
+    let source = fs.readFileSync(fixturePath).toString();
+    let jsxSource = transpileSource(source);
+    runTestWithOptions(jsxSource, firstRenderOnly, data, false);
+    runTestWithOptions(source, firstRenderOnly, data, false);
+    runTestWithOptions(jsxSource, firstRenderOnly, data, true);
+    runTestWithOptions(source, firstRenderOnly, data, true);
   }
 
   return {
