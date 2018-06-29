@@ -1107,6 +1107,8 @@ export function clonePropsOrConfigLikeObject(
           invariant(temporalConfig !== undefined);
           let clonedTemporalArgs = cloneTemporalArgsArray(realm, temporalArgs, alreadyCloned);
           let newTemporalConfig = cloneTemporalConfig(realm, temporalConfig, temporalArgs, clonedTemporalArgs);
+          // It's possible that we've already cloned the current object via one of its temporal args
+          // In this case, we should use that cloned object rather than create another
           if (alreadyCloned.has(obj)) {
             let _obj = alreadyCloned.get(obj);
             invariant(_obj instanceof AbstractObjectValue);
