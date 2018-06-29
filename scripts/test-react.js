@@ -84,6 +84,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     serialize: true,
     uniqueSuffix: "",
     maxStackDepth: 100,
+    instantRender: false,
     reactEnabled: true,
     reactOutput: outputJsx ? "jsx" : "create-element",
     reactOptimizeNestedFunctions: true,
