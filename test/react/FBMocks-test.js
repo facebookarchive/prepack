@@ -16,126 +16,126 @@ const { runTest, expectReconcilerFatalError, stubReactRelay } = prepareReactTest
 /* eslint-disable no-undef */
 const { it } = global;
 
-it("fb-www", async () => {
-  await stubReactRelay(async () => {
-    await runTest(__dirname + "/FBMocks/fb1.js");
+it("fb-www", () => {
+  stubReactRelay(() => {
+    runTest(__dirname + "/FBMocks/fb1.js");
   });
 });
 
-it("fb-www 2", async () => {
-  await runTest(__dirname + "/FBMocks/fb2.js");
+it("fb-www 2", () => {
+  runTest(__dirname + "/FBMocks/fb2.js");
 });
 
-it("fb-www 3", async () => {
-  await stubReactRelay(async () => {
-    await runTest(__dirname + "/FBMocks/fb3.js");
+it("fb-www 3", () => {
+  stubReactRelay(() => {
+    runTest(__dirname + "/FBMocks/fb3.js");
   });
 });
 
-it("fb-www 4", async () => {
-  await stubReactRelay(async () => {
-    await runTest(__dirname + "/FBMocks/fb4.js");
+it("fb-www 4", () => {
+  stubReactRelay(() => {
+    runTest(__dirname + "/FBMocks/fb4.js");
   });
 });
 
-it("fb-www 5", async () => {
-  await runTest(__dirname + "/FBMocks/fb5.js");
+it("fb-www 5", () => {
+  runTest(__dirname + "/FBMocks/fb5.js");
 });
 
-it("fb-www 6", async () => {
-  await runTest(__dirname + "/FBMocks/fb6.js");
+it("fb-www 6", () => {
+  runTest(__dirname + "/FBMocks/fb6.js");
 });
 
-it("fb-www 7", async () => {
-  await runTest(__dirname + "/FBMocks/fb7.js");
+it("fb-www 7", () => {
+  runTest(__dirname + "/FBMocks/fb7.js");
 });
 
-it("fb-www 8", async () => {
-  await runTest(__dirname + "/FBMocks/fb8.js");
+it("fb-www 8", () => {
+  runTest(__dirname + "/FBMocks/fb8.js");
 });
 
-it("fb-www 9", async () => {
-  await runTest(__dirname + "/FBMocks/fb9.js");
+it("fb-www 9", () => {
+  runTest(__dirname + "/FBMocks/fb9.js");
 });
 
-it("fb-www 10", async () => {
-  await runTest(__dirname + "/FBMocks/fb10.js");
+it("fb-www 10", () => {
+  runTest(__dirname + "/FBMocks/fb10.js");
 });
 
-it("fb-www 11", async () => {
-  await runTest(__dirname + "/FBMocks/fb11.js");
+it("fb-www 11", () => {
+  runTest(__dirname + "/FBMocks/fb11.js");
 });
 
-it("fb-www 12", async () => {
-  await expectReconcilerFatalError(async () => {
-    await runTest(__dirname + "/FBMocks/fb12.js");
+it("fb-www 12", () => {
+  expectReconcilerFatalError(() => {
+    runTest(__dirname + "/FBMocks/fb12.js");
   });
 });
 
-it("fb-www 13", async () => {
-  await runTest(__dirname + "/FBMocks/fb13.js");
+it("fb-www 13", () => {
+  runTest(__dirname + "/FBMocks/fb13.js");
 });
 
-it("fb-www 14", async () => {
-  await runTest(__dirname + "/FBMocks/fb14.js");
+it("fb-www 14", () => {
+  runTest(__dirname + "/FBMocks/fb14.js");
 });
 
-it("fb-www 15", async () => {
-  await expectReconcilerFatalError(async () => {
-    await runTest(__dirname + "/FBMocks/fb15.js");
+it("fb-www 15", () => {
+  expectReconcilerFatalError(() => {
+    runTest(__dirname + "/FBMocks/fb15.js");
   });
 });
 
-it("fb-www 16", async () => {
-  await expectReconcilerFatalError(async () => {
-    await runTest(__dirname + "/FBMocks/fb16.js");
+it("fb-www 16", () => {
+  expectReconcilerFatalError(() => {
+    runTest(__dirname + "/FBMocks/fb16.js");
   });
 });
 
-it("fb-www 17", async () => {
-  await runTest(__dirname + "/FBMocks/fb17.js");
+it("fb-www 17", () => {
+  runTest(__dirname + "/FBMocks/fb17.js");
 });
 
 // Test fails for two reasons:
 // - "uri.foo" on abstract string does not exist
 // - unused.bar() does not exist (even if in try/catch)
-it("fb-www 18", async () => {
-  await expectReconcilerFatalError(async () => {
-    await runTest(__dirname + "/FBMocks/fb18.js");
+it("fb-www 18", () => {
+  expectReconcilerFatalError(() => {
+    runTest(__dirname + "/FBMocks/fb18.js");
   });
 });
 
-it("fb-www 19", async () => {
-  await expectReconcilerFatalError(async () => {
-    await runTest(__dirname + "/FBMocks/fb19.js");
+it("fb-www 19", () => {
+  expectReconcilerFatalError(() => {
+    runTest(__dirname + "/FBMocks/fb19.js");
   });
 });
 
-it("fb-www 20", async () => {
-  await runTest(__dirname + "/FBMocks/fb20.js");
+it("fb-www 20", () => {
+  runTest(__dirname + "/FBMocks/fb20.js");
 });
 
-it("fb-www 21", async () => {
-  await runTest(__dirname + "/FBMocks/fb21.js");
+it("fb-www 21", () => {
+  runTest(__dirname + "/FBMocks/fb21.js");
 });
 
-it("fb-www 22", async () => {
-  await runTest(__dirname + "/FBMocks/fb22.js");
+it("fb-www 22", () => {
+  runTest(__dirname + "/FBMocks/fb22.js");
 });
 
-it("fb-www 23", async () => {
-  await runTest(__dirname + "/FBMocks/fb23.js");
+it("fb-www 23", () => {
+  runTest(__dirname + "/FBMocks/fb23.js");
 });
 
-it("repl example", async () => {
-  await runTest(__dirname + "/FBMocks/repl-example.js");
+it("repl example", () => {
+  runTest(__dirname + "/FBMocks/repl-example.js");
 });
 
-it("Hacker News app", async () => {
+it("Hacker News app", () => {
   let data = JSON.parse(fs.readFileSync(__dirname + "/FBMocks/hacker-news.json").toString());
-  await runTest(__dirname + "/FBMocks/hacker-news.js", false, data);
+  runTest(__dirname + "/FBMocks/hacker-news.js", false, data);
 });
 
-it("Function bind", async () => {
-  await runTest(__dirname + "/FBMocks/function-bind.js");
+it("Function bind", () => {
+  runTest(__dirname + "/FBMocks/function-bind.js");
 });

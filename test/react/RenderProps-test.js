@@ -15,58 +15,58 @@ const { runTest } = prepareReactTests();
 /* eslint-disable no-undef */
 const { it } = global;
 
-it("Relay QueryRenderer", async () => {
-  await runTest(__dirname + "/RenderProps/relay-query-renderer.js");
+it("Relay QueryRenderer", () => {
+  runTest(__dirname + "/RenderProps/relay-query-renderer.js");
 });
 
-it("Relay QueryRenderer 2", async () => {
-  await runTest(__dirname + "/RenderProps/relay-query-renderer2.js");
+it("Relay QueryRenderer 2", () => {
+  runTest(__dirname + "/RenderProps/relay-query-renderer2.js");
 });
 
-it("Relay QueryRenderer 3", async () => {
-  await runTest(__dirname + "/RenderProps/relay-query-renderer3.js");
+it("Relay QueryRenderer 3", () => {
+  runTest(__dirname + "/RenderProps/relay-query-renderer3.js");
 });
 
-it("React Context", async () => {
-  await runTest(__dirname + "/RenderProps/react-context.js");
+it("React Context", () => {
+  runTest(__dirname + "/RenderProps/react-context.js");
 });
 
-it("React Context 2", async () => {
-  await runTest(__dirname + "/RenderProps/react-context2.js");
+it("React Context 2", () => {
+  runTest(__dirname + "/RenderProps/react-context2.js");
 });
 
-it("React Context 3", async () => {
-  await runTest(__dirname + "/RenderProps/react-context3.js");
+it("React Context 3", () => {
+  runTest(__dirname + "/RenderProps/react-context3.js");
 });
 
-it("React Context 4", async () => {
-  await runTest(__dirname + "/RenderProps/react-context4.js");
+it("React Context 4", () => {
+  runTest(__dirname + "/RenderProps/react-context4.js");
 });
 
-it("React Context 5", async () => {
-  await runTest(__dirname + "/RenderProps/react-context5.js");
+it("React Context 5", () => {
+  runTest(__dirname + "/RenderProps/react-context5.js");
 });
 
-it("React Context 6", async () => {
-  await runTest(__dirname + "/RenderProps/react-context6.js");
+it("React Context 6", () => {
+  runTest(__dirname + "/RenderProps/react-context6.js");
 });
 
-it("React Context 7", async () => {
-  await runTest(__dirname + "/RenderProps/react-context7.js");
+it("React Context 7", () => {
+  runTest(__dirname + "/RenderProps/react-context7.js");
 });
 
-it("React Context from root tree", async () => {
-  await runTest(__dirname + "/RenderProps/react-root-context.js");
+it("React Context from root tree", () => {
+  runTest(__dirname + "/RenderProps/react-root-context.js");
 });
 
-it("React Context from root tree 2", async () => {
-  await runTest(__dirname + "/RenderProps/react-root-context2.js");
+it("React Context from root tree 2", () => {
+  runTest(__dirname + "/RenderProps/react-root-context2.js");
 });
 
-it("React Context from root tree 3", async () => {
-  await runTest(__dirname + "/RenderProps/react-root-context3.js");
+it("React Context from root tree 3", () => {
+  runTest(__dirname + "/RenderProps/react-root-context3.js");
 });
 
-it("React Context from root tree 4", async () => {
-  await runTest(__dirname + "/RenderProps/react-root-context4.js");
+it("React Context from root tree 4", () => {
+  runTest(__dirname + "/RenderProps/react-root-context4.js");
 });

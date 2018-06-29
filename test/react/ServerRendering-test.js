@@ -16,7 +16,7 @@ const { runTest } = prepareReactTests();
 /* eslint-disable no-undef */
 const { it } = global;
 
-it("Hacker News app", async () => {
+it("Hacker News app", () => {
   let data = JSON.parse(fs.readFileSync(__dirname + "/ServerRendering/hacker-news.json").toString());
-  await runTest(__dirname + "/ServerRendering/hacker-news.js", false, data);
+  runTest(__dirname + "/ServerRendering/hacker-news.js", false, data);
 });

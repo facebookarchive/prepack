@@ -15,10 +15,10 @@ const { runTest } = prepareReactTests();
 /* eslint-disable no-undef */
 const { it } = global;
 
-it("Simple factory classes", async () => {
-  await runTest(__dirname + "/FactoryComponents/simple.js");
+it("Simple factory classes", () => {
+  runTest(__dirname + "/FactoryComponents/simple.js");
 });
 
-it("Simple factory classes 2", async () => {
-  await runTest(__dirname + "/FactoryComponents/simple2.js");
+it("Simple factory classes 2", () => {
+  runTest(__dirname + "/FactoryComponents/simple2.js");
 });

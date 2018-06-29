@@ -15,6 +15,6 @@ const { runTest } = prepareReactTests();
 /* eslint-disable no-undef */
 const { it } = global;
 
-it("createPortal", async () => {
-  await runTest(__dirname + "/ReactDOM/create-portal.js", false);
+it("createPortal", () => {
+  runTest(__dirname + "/ReactDOM/create-portal.js", false);
 });

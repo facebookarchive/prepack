@@ -78,10 +78,10 @@ function prepareReactTests() {
   let errorsCaptured = [];
   let reactTestRoot = path.join(__dirname, "../test/react/");
 
-  async function expectReconcilerFatalError(func: Function) {
+  function expectReconcilerFatalError(func: Function) {
     checkForReconcilerFatalError = true;
     try {
-      await func();
+      return func();
     } catch (e) {
       expect(e.__isReconcilerFatalError).toBe(true);
       expect(e.message).toMatchSnapshot();
@@ -90,10 +90,10 @@ function prepareReactTests() {
     }
   }
 
-  async function expectPartialKeyOrRefError(func: Function) {
+  function expectPartialKeyOrRefError(func: Function) {
     checkForPartialKeyOrRefError = true;
     try {
-      await func();
+      return func();
     } catch (e) {
       expect(e.__isReconcilerFatalError).toBe(true);
       expect(e.message).toMatchSnapshot();
@@ -199,7 +199,7 @@ function prepareReactTests() {
     return moduleShim.exports;
   }
 
-  async function stubReactRelay(f: Function) {
+  function stubReactRelay(f: Function) {
     let oldReactRelay = ReactRelay;
     ReactRelay = {
       QueryRenderer(props) {
@@ -213,13 +213,13 @@ function prepareReactTests() {
       },
     };
     try {
-      await f();
+      return f();
     } finally {
       ReactRelay = oldReactRelay;
     }
   }
 
-  async function runTestWithOptions(fixturePath, firstRenderOnly, data, useJSXInput, useJSXOutput) {
+  function runTestWithOptions(fixturePath, firstRenderOnly, data, useJSXInput, useJSXOutput) {
     let source = fs.readFileSync(fixturePath).toString();
     if (useJSXInput) {
       source = transpileSource(source);
@@ -268,11 +268,11 @@ function prepareReactTests() {
     }
   }
 
-  async function runTest(fixturePath: string, firstRenderOnly?: boolean = false, data?: mixed) {
-    await runTestWithOptions(fixturePath, firstRenderOnly, data, true, false);
-    await runTestWithOptions(fixturePath, firstRenderOnly, data, false, false);
-    await runTestWithOptions(fixturePath, firstRenderOnly, data, true, true);
-    await runTestWithOptions(fixturePath, firstRenderOnly, data, false, true);
+  function runTest(fixturePath: string, firstRenderOnly?: boolean = false, data?: mixed) {
+    runTestWithOptions(fixturePath, firstRenderOnly, data, true, false);
+    runTestWithOptions(fixturePath, firstRenderOnly, data, false, false);
+    runTestWithOptions(fixturePath, firstRenderOnly, data, true, true);
+    runTestWithOptions(fixturePath, firstRenderOnly, data, false, true);
   }
 
   return {

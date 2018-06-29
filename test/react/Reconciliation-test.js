@@ -16,79 +16,79 @@ const { runTest, expectReconcilerFatalError, expectPartialKeyOrRefError } = prep
 /* eslint-disable no-undef */
 const { expect, it } = global;
 
-it("Key nesting", async () => {
-  await runTest(__dirname + "/Reconciliation/key-nesting.js");
+it("Key nesting", () => {
+  runTest(__dirname + "/Reconciliation/key-nesting.js");
 });
 
-it("Key nesting 2", async () => {
-  await runTest(__dirname + "/Reconciliation/key-nesting-2.js");
+it("Key nesting 2", () => {
+  runTest(__dirname + "/Reconciliation/key-nesting-2.js");
 });
 
-it("Key nesting 3", async () => {
-  await runTest(__dirname + "/Reconciliation/key-nesting-3.js");
+it("Key nesting 3", () => {
+  runTest(__dirname + "/Reconciliation/key-nesting-3.js");
 });
 
-it("Key change", async () => {
-  await runTest(__dirname + "/Reconciliation/key-change.js");
+it("Key change", () => {
+  runTest(__dirname + "/Reconciliation/key-change.js");
 });
 
-it("Key change with fragments", async () => {
-  await runTest(__dirname + "/Reconciliation/key-change-fragments.js");
+it("Key change with fragments", () => {
+  runTest(__dirname + "/Reconciliation/key-change-fragments.js");
 });
 
-it("Key not changing with fragments", async () => {
-  await runTest(__dirname + "/Reconciliation/key-not-change-fragments.js");
+it("Key not changing with fragments", () => {
+  runTest(__dirname + "/Reconciliation/key-not-change-fragments.js");
 });
 
-it("Component type change", async () => {
-  await runTest(__dirname + "/Reconciliation/type-change.js");
+it("Component type change", () => {
+  runTest(__dirname + "/Reconciliation/type-change.js");
 });
 
-it("Component type change 2", async () => {
-  await runTest(__dirname + "/Reconciliation/type-change2.js");
+it("Component type change 2", () => {
+  runTest(__dirname + "/Reconciliation/type-change2.js");
 });
 
-it("Component type change 3", async () => {
-  await runTest(__dirname + "/Reconciliation/type-change3.js");
+it("Component type change 3", () => {
+  runTest(__dirname + "/Reconciliation/type-change3.js");
 });
 
-it("Component type change 4", async () => {
-  await runTest(__dirname + "/Reconciliation/type-change4.js");
+it("Component type change 4", () => {
+  runTest(__dirname + "/Reconciliation/type-change4.js");
 });
 
-it("Component type change 5", async () => {
-  await runTest(__dirname + "/Reconciliation/type-change5.js");
+it("Component type change 5", () => {
+  runTest(__dirname + "/Reconciliation/type-change5.js");
 });
 
-it("Component type change 6", async () => {
-  await runTest(__dirname + "/Reconciliation/type-change6.js");
+it("Component type change 6", () => {
+  runTest(__dirname + "/Reconciliation/type-change6.js");
 });
 
-it("Component type change 7", async () => {
-  await runTest(__dirname + "/Reconciliation/type-change7.js");
+it("Component type change 7", () => {
+  runTest(__dirname + "/Reconciliation/type-change7.js");
 });
 
-it("Component type change 8", async () => {
-  await runTest(__dirname + "/Reconciliation/type-change8.js");
+it("Component type change 8", () => {
+  runTest(__dirname + "/Reconciliation/type-change8.js");
 });
 
-it("Component type change 9", async () => {
-  await runTest(__dirname + "/Reconciliation/type-change9.js");
+it("Component type change 9", () => {
+  runTest(__dirname + "/Reconciliation/type-change9.js");
 });
 
-it("Component type change 10", async () => {
-  await runTest(__dirname + "/Reconciliation/type-change10.js");
+it("Component type change 10", () => {
+  runTest(__dirname + "/Reconciliation/type-change10.js");
 });
 
-it("Component type change 11", async () => {
-  await runTest(__dirname + "/Reconciliation/type-change11.js");
+it("Component type change 11", () => {
+  runTest(__dirname + "/Reconciliation/type-change11.js");
 });
 
-it("Component type same", async () => {
-  await runTest(__dirname + "/Reconciliation/type-same.js");
+it("Component type same", () => {
+  runTest(__dirname + "/Reconciliation/type-same.js");
 });
 
-it("Lazy branched elements", async () => {
+it("Lazy branched elements", () => {
   let createElement = React.createElement;
   let count = 0;
   // For this test we want to also check how React.createElement
@@ -102,7 +102,7 @@ it("Lazy branched elements", async () => {
     return createElement(type, config);
   };
   try {
-    await runTest(__dirname + "/Reconciliation/lazy-branched-elements.js");
+    runTest(__dirname + "/Reconciliation/lazy-branched-elements.js");
   } finally {
     // $FlowFixMe: intentional for this test
     React.createElement = createElement;
@@ -112,7 +112,7 @@ it("Lazy branched elements", async () => {
   expect(count).toEqual(8 * 4);
 });
 
-it("Lazy branched elements 2", async () => {
+it("Lazy branched elements 2", () => {
   let createElement = React.createElement;
   let count = 0;
   // For this test we want to also check how React.createElement
@@ -126,7 +126,7 @@ it("Lazy branched elements 2", async () => {
     return createElement(type, config);
   };
   try {
-    await runTest(__dirname + "/Reconciliation/lazy-branched-elements2.js");
+    runTest(__dirname + "/Reconciliation/lazy-branched-elements2.js");
   } finally {
     // $FlowFixMe: intentional for this test
     React.createElement = createElement;
