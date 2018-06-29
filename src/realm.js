@@ -1610,26 +1610,18 @@ export class Realm {
 
   createExecutionContext(): ExecutionContext {
     let context = new ExecutionContext();
-
     let loc = this.nextContextLocation;
     if (loc) {
       context.setLocation(loc);
       this.nextContextLocation = null;
     }
-
     return context;
   }
 
-  setNextExecutionContextLocation(loc: ?BabelNodeSourceLocation) {
-    if (!loc) return;
-
-    //if (this.nextContextLocation) {
-    //  throw new ThrowCompletion(
-    //    Construct(this, this.intrinsics.TypeError, [new StringValue(this, "Already have a context location that we haven't used yet")])
-    //  );
-    //} else {
+  setNextExecutionContextLocation(loc: ?BabelNodeSourceLocation): ?BabelNodeSourceLocation {
+    let previousValue = this.nextContextLocation;
     this.nextContextLocation = loc;
-    //}
+    return previousValue;
   }
 
   reportIntrospectionError(message?: void | string | StringValue) {
