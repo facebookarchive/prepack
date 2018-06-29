@@ -10,15 +10,17 @@
 /* @flow */
 
 import { ECMAScriptSourceFunctionValue, FunctionValue, ObjectValue, SymbolValue } from "../values/index.js";
-import type { Effects, Realm } from "../realm.js";
+import type { Effects, Realm, SideEffectType } from "../realm.js";
 
 import { FatalError } from "../errors.js";
-import type { Descriptor } from "../types.js";
+import type { PropertyBinding, Descriptor } from "../types.js";
 import invariant from "../invariant.js";
 import { IsArray, IsArrayIndex } from "../methods/index.js";
 import { Logger } from "../utils/logger.js";
 import { Generator } from "../utils/generator.js";
 import type { AdditionalFunctionEffects } from "./types";
+import { Binding } from "../environment.js";
+import { getLocationFromValue } from '../react/utils';
 
 /**
  * Get index property list length by searching array properties list for the max index key value plus 1.
@@ -166,4 +168,33 @@ export function createAdditionalEffects(
     additionalRoots: new Set(),
   };
   return retValue;
+}
+
+export function handleReportedSideEffect(
+  exceptionHandler: string => void,
+  sideEffectType: SideEffectType,
+  binding: void | Binding | PropertyBinding,
+  expressionLocation: any
+): void {
+  // This causes an infinite recursion because creating a callstack causes internal-only side effects
+  if (binding && binding.object && binding.object.intrinsicName === "__checkedBindings") return;
+  let location = getLocationFromValue(expressionLocation);
+
+  if (sideEffectType === "MODIFIED_BINDING") {
+    let name = binding ? `"${((binding: any): Binding).name}"` : "unknown";
+    exceptionHandler(`side-effects from mutating the binding ${name}${location}`);
+  } else if (sideEffectType === "MODIFIED_PROPERTY" || sideEffectType === "MODIFIED_GLOBAL") {
+    let name = "";
+    let key = ((binding: any): PropertyBinding).key;
+    if (typeof key === "string") {
+      name = `"${key}"`;
+    }
+    if (sideEffectType === "MODIFIED_PROPERTY") {
+      exceptionHandler(`side-effects from mutating a property ${name}${location}`);
+    } else {
+      exceptionHandler(`side-effects from mutating the global object property ${name}${location}`);
+    }
+  } else if (sideEffectType === "EXCEPTION_THROWN") {
+    exceptionHandler(`side-effects from throwing exception${location}`);
+  }
 }

@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { Realm, type Effects, type SideEffectType } from "../realm.js";
+import { Realm, type Effects } from "../realm.js";
 import {
   AbstractObjectValue,
   AbstractValue,
@@ -77,8 +77,8 @@ import {
   UnsupportedSideEffect,
 } from "./errors.js";
 import { Logger } from "../utils/logger.js";
-import type { ClassComponentMetadata, PropertyBinding, ReactComponentTreeConfig, ReactHint } from "../types.js";
-import type { Binding } from "../environment.js";
+import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
+import { handleReportedSideEffect } from "../serializer/utils.js";
 
 type ComponentResolutionStrategy =
   | "NORMAL"
@@ -130,35 +130,6 @@ function setContextCurrentValue(contextObject: ObjectValue | AbstractObjectValue
     binding.descriptor.value = value;
   } else {
     invariant(false, "setContextCurrentValue failed to set the currentValue");
-  }
-}
-
-export function handleReportedSideEffect(
-  exceptionHandler: string => void,
-  sideEffectType: SideEffectType,
-  binding: void | Binding | PropertyBinding,
-  expressionLocation: any
-): void {
-  // This causes an infinite recursion because creating a callstack causes internal-only side effects
-  if (binding && binding.object && binding.object.intrinsicName === "__checkedBindings") return;
-  let location = getLocationFromValue(expressionLocation);
-
-  if (sideEffectType === "MODIFIED_BINDING") {
-    let name = binding ? `"${((binding: any): Binding).name}"` : "unknown";
-    exceptionHandler(`side-effects from mutating the binding ${name}${location}`);
-  } else if (sideEffectType === "MODIFIED_PROPERTY" || sideEffectType === "MODIFIED_GLOBAL") {
-    let name = "";
-    let key = ((binding: any): PropertyBinding).key;
-    if (typeof key === "string") {
-      name = `"${key}"`;
-    }
-    if (sideEffectType === "MODIFIED_PROPERTY") {
-      exceptionHandler(`side-effects from mutating a property ${name}${location}`);
-    } else {
-      exceptionHandler(`side-effects from mutating the global object property ${name}${location}`);
-    }
-  } else if (sideEffectType === "EXCEPTION_THROWN") {
-    exceptionHandler(`side-effects from throwing exception${location}`);
   }
 }
 
@@ -214,6 +185,9 @@ export class Reconciler {
 
     try {
       this.realm.react.activeReconciler = this;
+      let throwUnsupportedSideEffectError = (msg: string) => {
+        throw new UnsupportedSideEffect(msg);
+      };
       let effects = this.realm.wrapInGlobalEnv(() =>
         this.realm.evaluatePure(
           () =>
@@ -222,9 +196,8 @@ export class Reconciler {
               /*state*/ null,
               `react component: ${getComponentName(this.realm, componentType)}`
             ),
-          handleReportedSideEffect.bind(null, (msg: string) => {
-            throw new UnsupportedSideEffect(msg);
-          })
+          (sideEffectType, binding, expressionLocation) =>
+            handleReportedSideEffect(throwUnsupportedSideEffectError, sideEffectType, binding, expressionLocation)
         )
       );
       this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);

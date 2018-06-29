@@ -32,7 +32,7 @@ import { ReactStatistics } from "./types";
 import type { AdditionalFunctionEffects, WriteEffects } from "./types";
 import { convertConfigObjectToReactComponentTreeConfig, valueIsKnownReactAbstraction } from "../react/utils.js";
 import { applyOptimizedReactComponents, optimizeReactComponentTreeRoot } from "../react/optimizing.js";
-import { handleReportedSideEffect } from "../react/reconcilation.js";
+import { handleReportedSideEffect } from "./utils.js";
 import * as t from "babel-types";
 
 type AdditionalFunctionEntry = {
@@ -199,14 +199,16 @@ export class Functions {
     let getEffectsFromAdditionalFunctionAndNestedFunctions = functionValue => {
       additionalFunctionStack.push(functionValue);
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+      let logCompilerDiagnostic = (msg: string) => {
+        let error = new CompilerDiagnostic(msg, undefined, "PP1007", "Warning");
+        realm.handleError(error);
+      };
       let call = this._callOfFunction(functionValue);
       let realm = this.realm;
       let effects: Effects = realm.evaluatePure(
         () => realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
-        handleReportedSideEffect.bind(null, (msg: string) => {
-          let error = new CompilerDiagnostic(msg, undefined, "PP1007", "Warning");
-          realm.handleError(error);
-        })
+        (sideEffectType, binding, expressionLocation) =>
+          handleReportedSideEffect(logCompilerDiagnostic, sideEffectType, binding, expressionLocation)
       );
       invariant(effects);
       let additionalFunctionEffects = createAdditionalEffects(
