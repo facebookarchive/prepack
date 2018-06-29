@@ -35,6 +35,9 @@ const config = {
   scripts: {
     patterns: ["scripts/**/*.js"],
   },
+  jest: {
+    patterns: ["test/react/**/*-test.js"],
+  },
 };
 
 function exec(command, args, options = {}) {
