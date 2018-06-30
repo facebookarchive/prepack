@@ -14,20 +14,20 @@ import { DebuggerError } from "./../common/DebuggerError.js";
 import invariant from "../common/invariant.js";
 
 /**
-  * Sourcemap paths can come in one of two formats:
-  *     - Relative: The paths include `../` and can be followed from the sourcemap's location
-  *         to arrive at the original source's location. In this format, path conversion
-  *         requires two different prefixes (MapDifference and CommonPrefix) that must be
-  *         discovered from the input paths.
-  *     - Common Directory: The paths take the format of an absolute path (`/foo/bar`) and
-  *         assume there is a common prefix to the path that, when added, will make the path an
-  *         valid absolute path. This prefix is passed in as the `buckRoot` argument.
-  *     Example:
-  *         In a directory structure with /A/B/map.js and /A/C/original.js,
-  *         the sourcemaps would have the following path structures:
-  *           - Relative: ../C/original.js, with `CP` = /A and 'MD' = ../
-  *           - Common Directory: /C/original.js, with `buckRoot` = /A
-  */
+ * Sourcemap paths can come in one of two formats:
+ *     - Relative: The paths include `../` and can be followed from the sourcemap's location
+ *         to arrive at the original source's location. In this format, path conversion
+ *         requires two different prefixes (MapDifference and CommonPrefix) that must be
+ *         discovered from the input paths.
+ *     - Common Directory: The paths take the format of an absolute path (`/foo/bar`) and
+ *         assume there is a common prefix to the path that, when added, will make the path an
+ *         valid absolute path. This prefix is passed in as the `buckRoot` argument.
+ *     Example:
+ *         In a directory structure with /A/B/map.js and /A/C/original.js,
+ *         the sourcemaps would have the following path structures:
+ *           - Relative: ../C/original.js, with `CP` = /A and 'MD' = ../
+ *           - Common Directory: /C/original.js, with `buckRoot` = /A
+ */
 export class SourceMapManager {
   constructor(buckRoot?: string, sourceMaps?: Array<SourceFile>) {
     // Use presence of buck root argument to indicate which path format sourcemap prefixes take on.
