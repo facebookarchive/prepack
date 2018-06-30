@@ -127,6 +127,10 @@
   "license": "BSD-3-Clause",
   "author": "Facebook",
   "jest": {
+    "roots": [
+      "<rootDir>/lib/",
+      "<rootDir>/test/react/"
+    ],
     "testMatch": [
       "**/test/react/*-test.js"
     ]
