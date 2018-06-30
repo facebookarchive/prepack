@@ -56,7 +56,7 @@ jobs:
           name: "Run Tests"
           command: |
             mkdir ~/artifacts
-            yarn test-react --maxWorkers=2
+            yarn test-react
             yarn test-sourcemaps
             yarn test-std-in
             yarn test-residual
