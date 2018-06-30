@@ -102,7 +102,7 @@ function prepareReactTests() {
     }
   }
 
-  function compileSourceWithPrepack(source, useJSXOutput) {
+  function compileSourceWithPrepack(source: string, useJSXOutput: boolean): string {
     let code = `(function(){${source}})()`;
     let prepackOptions = {
       errorHandler: diag => {
@@ -220,7 +220,7 @@ function prepareReactTests() {
   }
 
   function runTestWithOptions(source, firstRenderOnly, data, useJSXOutput) {
-    let { compiledSource, statistics } = compileSourceWithPrepack(source);
+    let { compiledSource, statistics } = compileSourceWithPrepack(source, useJSXOutput);
 
     expect(statistics).toMatchSnapshot();
     let A = runSource(source);
