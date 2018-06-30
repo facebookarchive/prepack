@@ -60,7 +60,7 @@
     "debug-fb-www": "node --stack_trace_limit=200 --stack_size=10000 --max_old_space_size=16384 ./scripts/debug-fb-www.js"
   },
   "dependencies": {
-    "babel-core": "^6.26.0",
+    "babel-core": "^6.26.3",
     "babel-generator": "^6.8.0",
     "babel-plugin-transform-react-jsx": "^6.24.1",
     "babel-template": "^6.9.0",
