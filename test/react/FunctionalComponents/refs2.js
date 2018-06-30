@@ -1,6 +1,6 @@
-var React = require('react');
+var React = require("react");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 function Child(props) {
   return <div ref={props.forwardedRef} />;
@@ -11,17 +11,15 @@ const WrappedComponent = React.forwardRef((props, ref) => {
 });
 
 function App(props) {
-  return (
-    <WrappedComponent ref={props.x} />
-  );
+  return <WrappedComponent ref={props.x} />;
 }
 
 App.getTrials = function(renderer, Root) {
   let results = [];
   var refValue = null;
-  renderer.update(<Root x={val => refValue = val} />);
-  results.push(['simple render with refs', renderer.toJSON()]);
-  results.push(['ref node is of div', refValue.type]);
+  renderer.update(<Root x={val => (refValue = val)} />);
+  results.push(["simple render with refs", renderer.toJSON()]);
+  results.push(["ref node is of div", refValue.type]);
   return results;
 };
 

@@ -1,22 +1,27 @@
-var React = require('react');
+var React = require("react");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 function Button(props) {
-  return <span>{props.name}{props.text}</span>
+  return (
+    <span>
+      {props.name}
+      {props.text}
+    </span>
+  );
 }
 
 Button.defaultProps = {
-	name: "Dominic",
+  name: "Dominic",
 };
 
 function App(props) {
-  return <Button {...props} name={undefined} />
+  return <Button {...props} name={undefined} />;
 }
 
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root text={"Hello world"} />);
-  return [['simple render with jsx spread 12', renderer.toJSON()]];
+  return [["simple render with jsx spread 12", renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

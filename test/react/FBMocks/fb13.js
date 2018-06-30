@@ -1,6 +1,6 @@
 function func(x) {
   if (x) {
-    Bootloader.loadModules(['Foo'], function() {}, "Bar");
+    Bootloader.loadModules(["Foo"], function() {}, "Bar");
   }
 }
 
@@ -9,8 +9,8 @@ if (window.__optimize) {
 }
 
 func.getTrials = function(_, fn) {
-  if (!fn.toString().includes('Bootloader.loadModules(')) {
-    throw new Error('Expected to find Bootloader.loadModules() call.');
+  if (!fn.toString().includes("Bootloader.loadModules(")) {
+    throw new Error("Expected to find Bootloader.loadModules() call.");
   }
   return [];
 };

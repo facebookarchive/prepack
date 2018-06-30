@@ -1,6 +1,6 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 var { Provider, Consumer } = React.createContext(null);
 
@@ -9,11 +9,11 @@ function Child(props) {
     <div>
       <Consumer>
         {context => {
-          return <span>123</span>
+          return <span>123</span>;
         }}
       </Consumer>
     </div>
-  )
+  );
 }
 
 function App(props) {
@@ -26,7 +26,7 @@ function App(props) {
 
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
-  return [['render props context', renderer.toJSON()]];
+  return [["render props context", renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

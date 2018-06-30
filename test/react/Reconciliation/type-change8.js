@@ -1,14 +1,10 @@
-var React = require('react');
+var React = require("react");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 function App(props) {
   if (props.foo) {
-    return (
-      <div>
-        {[<Bar callback={props.callback} />]}
-      </div>
-    );
+    return <div>{[<Bar callback={props.callback} />]}</div>;
   }
   return (
     <div>
@@ -40,11 +36,11 @@ App.getTrials = function(renderer, Root) {
   renderer.update(<Root callback={callback} foo={false} />);
 
   let results = [];
-  results.push(['ensure refs was called 3 times', counter === 3]);
-  results.push(['ensure refs at 0 is not null', nodes[0] !== null]);
-  results.push(['ensure refs at 1 is null', nodes[1] === null]);
-  results.push(['ensure refs at 2 is not null', nodes[2] !== null]);
-  results.push(['ensure refs at 2 is not null', nodes[0] !== nodes[2]]);
+  results.push(["ensure refs was called 3 times", counter === 3]);
+  results.push(["ensure refs at 0 is not null", nodes[0] !== null]);
+  results.push(["ensure refs at 1 is null", nodes[1] === null]);
+  results.push(["ensure refs at 2 is not null", nodes[2] !== null]);
+  results.push(["ensure refs at 2 is not null", nodes[0] !== nodes[2]]);
   return results;
 };
 

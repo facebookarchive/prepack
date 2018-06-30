@@ -1,33 +1,37 @@
-var React = require('react');
+var React = require("react");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 function SubChild(props, context) {
   return <span>The context title is: {context.title}</span>;
 }
 
 function Child(props, context) {
-  return <span><SubChild /></span>;
+  return (
+    <span>
+      <SubChild />
+    </span>
+  );
 }
 
 // we can't use ES2015 classes in Prepack yet (they don't serialize)
 // so we have to use ES5 instead
-var StatefulComponent = (function (superclass) {
-  function StatefulComponent () {
+var StatefulComponent = (function(superclass) {
+  function StatefulComponent() {
     superclass.apply(this, arguments);
   }
 
-  if ( superclass ) {
+  if (superclass) {
     StatefulComponent.__proto__ = superclass;
   }
-  StatefulComponent.prototype = Object.create( superclass && superclass.prototype );
+  StatefulComponent.prototype = Object.create(superclass && superclass.prototype);
   StatefulComponent.prototype.constructor = StatefulComponent;
-  StatefulComponent.prototype.getChildContext = function getChildContext () {
+  StatefulComponent.prototype.getChildContext = function getChildContext() {
     return {
       title: "Hello world!",
-    }
+    };
   };
-  StatefulComponent.prototype.render = function render () {
+  StatefulComponent.prototype.render = function render() {
     return <Child />;
   };
   StatefulComponent.childContextTypes = {
@@ -35,7 +39,7 @@ var StatefulComponent = (function (superclass) {
   };
 
   return StatefulComponent;
-}(React.Component));
+})(React.Component);
 
 function App() {
   return <StatefulComponent />;
@@ -43,7 +47,7 @@ function App() {
 
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
-  return [['render with dynamic context access', renderer.toJSON()]];
+  return [["render with dynamic context access", renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

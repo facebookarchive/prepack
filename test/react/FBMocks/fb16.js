@@ -1,6 +1,6 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 if (!this.__evaluatePureFunction) {
   this.__evaluatePureFunction = function(f) {
@@ -77,14 +77,14 @@ __evaluatePureFunction(function() {
       "div",
       fbt._({ "*": "{count} Views", _1: "{count} View" }, [
         fbt._param("count", props.feedback.viewCountReduced),
-        fbt._plural(props.feedback.viewCount)
+        fbt._plural(props.feedback.viewCount),
       ])
     );
   }
 
   ViewCount.getTrials = function(renderer, Root) {
-    renderer.update(<Root feedback={{viewCountReduced: 0, viewCount: 0}} />);
-    return [['fb16 mocks', renderer.toJSON()]];
+    renderer.update(<Root feedback={{ viewCountReduced: 0, viewCount: 0 }} />);
+    return [["fb16 mocks", renderer.toJSON()]];
   };
 
   if (this.__optimizeReactComponentTree) {

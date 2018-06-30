@@ -1,6 +1,6 @@
-var React = require('react');
+var React = require("react");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 class ClassComponent extends React.Component {
   constructor() {
@@ -24,9 +24,7 @@ const WrappedComponent = React.forwardRef((props, ref) => {
 });
 
 function App(props) {
-  return (
-    <WrappedComponent {...props} ref={props.x} />
-  );
+  return <WrappedComponent {...props} ref={props.x} />;
 }
 
 App.getTrials = function(renderer, Root) {
@@ -34,8 +32,8 @@ App.getTrials = function(renderer, Root) {
   var ref = React.createRef();
   var value = "Hello world!!!";
   renderer.update(<Root x={ref} value={value} />);
-  results.push(['simple render with refs', renderer.toJSON()]);
-  results.push(['ref node is a method of the class', ref.current.getValue()]);
+  results.push(["simple render with refs", renderer.toJSON()]);
+  results.push(["ref node is a method of the class", ref.current.getValue()]);
   return results;
 };
 

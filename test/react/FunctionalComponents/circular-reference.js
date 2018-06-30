@@ -1,6 +1,6 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 function App() {
   // A circular reference
@@ -10,8 +10,8 @@ function App() {
   // A cycle between two references
   let mutualRefA = {};
   let mutualRefB = {};
-  mutualRefA.indirect = {b: mutualRefB};
-  mutualRefB.indirect = {a: mutualRefA};
+  mutualRefA.indirect = { b: mutualRefB };
+  mutualRefB.indirect = { a: mutualRefA };
 
   return (
     <div
@@ -27,7 +27,7 @@ function App() {
 
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
-  return [['circular-reference', renderer.toJSON()]];
+  return [["circular-reference", renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

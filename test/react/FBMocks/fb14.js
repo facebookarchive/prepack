@@ -1,7 +1,7 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
-var {createFragmentContainer} = require('RelayModern');
+this["React"] = React;
+var { createFragmentContainer } = require("RelayModern");
 
 if (!this.__evaluatePureFunction) {
   this.__evaluatePureFunction = function(f) {
@@ -10,7 +10,6 @@ if (!this.__evaluatePureFunction) {
 }
 
 module.exports = this.__evaluatePureFunction(() => {
-
   function Child(props) {
     return <div className={props.className}>uid: {props.id}</div>;
   }
@@ -36,7 +35,7 @@ module.exports = this.__evaluatePureFunction(() => {
     foo: function foo() {
       return Node;
     },
-  })
+  });
 
   function App(props, context) {
     return <WrappedApp {...props} />;
@@ -54,7 +53,7 @@ module.exports = this.__evaluatePureFunction(() => {
       return {
         relay: {
           environment: {
-            ['@@RelayModernEnvironment']: true,
+            ["@@RelayModernEnvironment"]: true,
             check() {},
             lookup() {},
             retain() {},
@@ -62,9 +61,7 @@ module.exports = this.__evaluatePureFunction(() => {
             execute() {},
             subscribe() {},
             unstable_internal: {
-              getFragment() {
-                
-              },
+              getFragment() {},
               createFragmentSpecResolver() {
                 return {
                   resolve() {
@@ -77,7 +74,7 @@ module.exports = this.__evaluatePureFunction(() => {
                     return false;
                   },
                 };
-              }
+              },
             },
           },
           variables: {},
@@ -95,7 +92,7 @@ module.exports = this.__evaluatePureFunction(() => {
 
   RelayMock.getTrials = function(renderer, Root) {
     renderer.update(<Root />);
-    return [['fb14 mocks', renderer.toJSON()]];
+    return [["fb14 mocks", renderer.toJSON()]];
   };
 
   return RelayMock;

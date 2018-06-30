@@ -1,20 +1,19 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 function App(props) {
-  return <div {...props.foo}>{props.bar}</div>
+  return <div {...props.foo}>{props.bar}</div>;
 }
-
 
 App.getTrials = function(renderer, Root) {
   let results = [];
-  renderer.update(<Root foo={{children: undefined}} bar={undefined} />);
-  results.push(['jsx spread', renderer.toJSON()]);
-  renderer.update(<Root foo={{children: "prop children text"}} bar={undefined} />);
-  results.push(['jsx spread', renderer.toJSON()]);
-  renderer.update(<Root foo={{children: undefined}} bar={"children prop text"} />);
-  results.push(['jsx spread', renderer.toJSON()]);
+  renderer.update(<Root foo={{ children: undefined }} bar={undefined} />);
+  results.push(["jsx spread", renderer.toJSON()]);
+  renderer.update(<Root foo={{ children: "prop children text" }} bar={undefined} />);
+  results.push(["jsx spread", renderer.toJSON()]);
+  renderer.update(<Root foo={{ children: undefined }} bar={"children prop text"} />);
+  results.push(["jsx spread", renderer.toJSON()]);
   return results;
 };
 

@@ -1,22 +1,24 @@
-var React = require('react');
+var React = require("react");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 function Component2() {
-    // nothing here
+  // nothing here
 }
-  
+
 function App() {
-    return (
-            <div ref={() => {
-    var foo = <Component2 />
-                }} />
-            );
+  return (
+    <div
+      ref={() => {
+        var foo = <Component2 />;
+      }}
+    />
+  );
 }
-  
+
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
-  return [['simple render', renderer.toJSON()]];
+  return [["simple render", renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

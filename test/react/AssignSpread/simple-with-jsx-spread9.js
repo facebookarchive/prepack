@@ -1,8 +1,8 @@
-var React = require('react');
-this['React'] = React;
+var React = require("react");
+this["React"] = React;
 
 function Child2(props) {
-  return <span>{props.text}</span>
+  return <span>{props.text}</span>;
 }
 
 function Child(props) {
@@ -20,7 +20,7 @@ function App(props) {
 
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root item1="foo" item2="bar" />);
-  return [['simple render with jsx spread 9', renderer.toJSON()]];
+  return [["simple render with jsx spread 9", renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

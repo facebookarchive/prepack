@@ -6,9 +6,9 @@ if (!window.__evaluatePureFunction) {
 
 (function() {
   function App() {}
-  require('React');
+  require("React");
 
-  var ReactRelay = require('RelayModern');
+  var ReactRelay = require("RelayModern");
 
   window.__evaluatePureFunction(() => {
     ReactRelay.createFragmentContainer(App);

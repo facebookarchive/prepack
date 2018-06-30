@@ -77,7 +77,7 @@ function prepareReactTests() {
     source: string,
     useJSXOutput: boolean,
     diagnosticLog: mixed[],
-    shouldRecover: (errorCode: string) => boolean,
+    shouldRecover: (errorCode: string) => boolean
   ): {|
     compiledSource: string,
     statistics: Object,
@@ -190,9 +190,9 @@ function prepareReactTests() {
       firstRenderOnly = false,
       // By default, we recover from PP0025 even though it's technically unsafe.
       // We do the same in debug-fb-www script.
-      shouldRecover = (errorCode) => errorCode === 'PP0025',
+      shouldRecover = errorCode => errorCode === "PP0025",
       expectReconcilerError = false,
-      data
+      data,
     } = options;
     let diagnosticLog = [];
     let compiledSource, statistics;
@@ -251,7 +251,6 @@ function prepareReactTests() {
     }
   }
 
-
   type TestOptions = {
     firstRenderOnly?: boolean,
     data?: mixed,
@@ -262,11 +261,11 @@ function prepareReactTests() {
   function runTest(fixturePath: string, options: TestOptions = {}) {
     let source = fs.readFileSync(fixturePath).toString();
     // Run tests that don't need the transform first so they can fail early.
-    runTestWithOptions(source, false, options, '(createElement => createElement)');
-    runTestWithOptions(source, true, options, '(createElement => JSX)');
+    runTestWithOptions(source, false, options, "(createElement => createElement)");
+    runTestWithOptions(source, true, options, "(createElement => JSX)");
     let jsxSource = transpileSource(source);
-    runTestWithOptions(jsxSource, false, options, '(JSX => createElement)');
-    runTestWithOptions(jsxSource, true, options, '(JSX => JSX)');
+    runTestWithOptions(jsxSource, false, options, "(JSX => createElement)");
+    runTestWithOptions(jsxSource, true, options, "(JSX => JSX)");
   }
 
   return {

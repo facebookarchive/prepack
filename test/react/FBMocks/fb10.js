@@ -1,5 +1,5 @@
-var React = require('React');
-this['React'] = React;
+var React = require("React");
+this["React"] = React;
 
 // FB www polyfill
 if (!this.babelHelpers) {
@@ -38,11 +38,13 @@ if (!this.__evaluatePureFunction) {
   };
 }
 
-module.exports = this.__evaluatePureFunction(() => {  
+module.exports = this.__evaluatePureFunction(() => {
   function A(props) {
     return (
       <React.Fragment>
-        <div>Hello {props.x} {props.y}</div>
+        <div>
+          Hello {props.x} {props.y}
+        </div>
         <B />
         <C />
       </React.Fragment>
@@ -60,17 +62,12 @@ module.exports = this.__evaluatePureFunction(() => {
   function App(props) {
     const propsCopyWithDeletedProp = babelHelpers.extends({}, props);
     delete propsCopyWithDeletedProp.y;
-    return React.createElement('div', null,
-      React.createElement(
-        A,
-        propsCopyWithDeletedProp
-      )
-    );
+    return React.createElement("div", null, React.createElement(A, propsCopyWithDeletedProp));
   }
 
   App.getTrials = function(renderer, Root) {
     renderer.update(<Root x={10} y={20} />);
-    return [['simple render', renderer.toJSON()]];
+    return [["simple render", renderer.toJSON()]];
   };
 
   if (this.__optimizeReactComponentTree) {

@@ -1,7 +1,6 @@
-var React = require('react');
+var React = require("react");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
-
+this["React"] = React;
 
 if (!window.__evaluatePureFunction) {
   window.__evaluatePureFunction = function(f) {

@@ -1,7 +1,7 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
-var {QueryRenderer, graphql} = require('RelayModern');
+this["React"] = React;
+var { QueryRenderer, graphql } = require("RelayModern");
 
 if (!this.__evaluatePureFunction) {
   this.__evaluatePureFunction = function(f) {
@@ -10,7 +10,7 @@ if (!this.__evaluatePureFunction) {
 }
 
 module.exports = this.__evaluatePureFunction(() => {
-  var FBEnvironment = require('FBEnvironment');
+  var FBEnvironment = require("FBEnvironment");
 
   function App({ initialNumComments, someVariables, query, pageSize, onCommit }) {
     return (
@@ -21,7 +21,7 @@ module.exports = this.__evaluatePureFunction(() => {
         `}
         variables={someVariables}
         render={data => {
-          return <span>Hello world</span>
+          return <span>Hello world</span>;
         }}
       />
     );
@@ -29,7 +29,7 @@ module.exports = this.__evaluatePureFunction(() => {
 
   App.getTrials = function(renderer, Root) {
     renderer.update(<Root />);
-    return [['fb1 mocks', renderer.toJSON()]];
+    return [["fb1 mocks", renderer.toJSON()]];
   };
 
   if (this.__optimizeReactComponentTree) {

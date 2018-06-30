@@ -1,42 +1,45 @@
 var React = require("react");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 var ReactDOMServer = require("react-dom/server");
-var PropTypes = require('PropTypes');
+var PropTypes = require("PropTypes");
 
 function timeAge(time) {
   const now = new Date(2042, 1, 1).getTime() / 1000;
   const minutes = (now - time) / 60;
 
   if (minutes < 60) {
-    return Math.round(minutes) + ' minutes ago';
+    return Math.round(minutes) + " minutes ago";
   }
-  return Math.round(minutes / 60) + ' hours ago';
+  return Math.round(minutes / 60) + " hours ago";
 }
 
 function getHostUrl(url) {
-  return (url + '').replace('https://', '').replace('http://', '').split('/')[
-    0
-  ];
+  return (url + "")
+    .replace("https://", "")
+    .replace("http://", "")
+    .split("/")[0];
 }
 
-function Story({story, rank}) {
+function Story({ story, rank }) {
   return (
     <React.Fragment>
       <tr className="athing">
         <td
           style={{
-            verticalAlign: 'top',
-            textAlign: 'right',
+            verticalAlign: "top",
+            textAlign: "right",
           }}
-          className="title">
-          <span className="rank">{rank + '.'}</span>
+          className="title"
+        >
+          <span className="rank">{rank + "."}</span>
         </td>
         <td
           className="votelinks"
           style={{
-            verticalAlign: 'top',
-          }}>
+            verticalAlign: "top",
+          }}
+        >
           <center>
             <a href="#">
               <div className="votearrow" titl="upvote" />
@@ -44,28 +47,32 @@ function Story({story, rank}) {
           </center>
         </td>
         <td className="title">
-          <a href="#" className="storylink">{story.title}</a>
-          {story.url
-            ? <span className="sitebit comhead">
-                {' ('}<a href="#">{getHostUrl(story.url)}</a>)
-              </span>
-            : null}
+          <a href="#" className="storylink">
+            {story.title}
+          </a>
+          {story.url ? (
+            <span className="sitebit comhead">
+              {" ("}
+              <a href="#">{getHostUrl(story.url)}</a>)
+            </span>
+          ) : null}
         </td>
       </tr>
       <tr>
         <td colSpan="2" />
         <td className="subtext">
-          <span className="score">{story.score + ' points'}</span>
-          {' by '}
-          <a href="#" className="hnuser">{story.by}</a>
-          {' '}
+          <span className="score">{story.score + " points"}</span>
+          {" by "}
+          <a href="#" className="hnuser">
+            {story.by}
+          </a>{" "}
           <span className="age">
             <a href="#">{timeAge(story.time)}</a>
           </span>
-          {' | '}
+          {" | "}
           <a href="#">hide</a>
-          {' | '}
-          <a href="#">{(story.descendants || 0) + ' comments'}</a>
+          {" | "}
+          <a href="#">{(story.descendants || 0) + " comments"}</a>
         </td>
       </tr>
       <tr
@@ -90,19 +97,15 @@ Story.propTypes = {
   rank: PropTypes.number,
 };
 
-function StoryList({stories}) {
+function StoryList({ stories }) {
   return (
     <tr>
       <td>
         <table cellPadding="0" cellSpacing="0" className="itemlist">
           <tbody>
-            {
-              // we use Array.from to tell the compiler that this
-              // is definitely an array object
-              Array.from(stories).map((story, i) => (
-                <Story story={story} rank={++i} key={story.id} />
-              ))
-            }
+            {// we use Array.from to tell the compiler that this
+            // is definitely an array object
+            Array.from(stories).map((story, i) => <Story story={story} rank={++i} key={story.id} />)}
           </tbody>
         </table>
       </td>
@@ -112,41 +115,42 @@ function StoryList({stories}) {
 
 function HeaderBar(props) {
   return (
-    <tr style={{backgroundColor: '#222'}}>
+    <tr style={{ backgroundColor: "#222" }}>
       <table
         style={{
           padding: 4,
         }}
         width="100%"
         cellSpacing="0"
-        cellPadding="0">
+        cellPadding="0"
+      >
         <tbody>
           <tr>
-            <td style={{width: 18, paddingRight: 4}}>
+            <td style={{ width: 18, paddingRight: 4 }}>
               <a href="#">
                 <img
                   src="logo.png"
                   width="16"
                   height="16"
                   style={{
-                    border: '1px solid #00d8ff',
+                    border: "1px solid #00d8ff",
                   }}
                 />
               </a>
             </td>
-            <td style={{lineHeight: '12pt'}} height="10">
+            <td style={{ lineHeight: "12pt" }} height="10">
               <span className="pagetop">
                 <b className="hnname">{props.title}</b>
                 <a href="#">new</a>
-                {' | '}
+                {" | "}
                 <a href="#">comments</a>
-                {' | '}
+                {" | "}
                 <a href="#">show</a>
-                {' | '}
+                {" | "}
                 <a href="#">ask</a>
-                {' | '}
+                {" | "}
                 <a href="#">jobs</a>
-                {' | '}
+                {" | "}
                 <a href="#">submit</a>
               </span>
             </td>
@@ -158,7 +162,7 @@ function HeaderBar(props) {
 }
 
 HeaderBar.defaultProps = {
-  title: 'React HN Benchmark',
+  title: "React HN Benchmark",
 };
 
 class AppBody extends React.Component {
@@ -177,7 +181,7 @@ AppBody.defaultProps = {
   storyLimit: 10,
 };
 
-function App({stories}) {
+function App({ stories }) {
   return (
     <center>
       <table
@@ -187,11 +191,10 @@ function App({stories}) {
         cellSpacing="0"
         width="85%"
         style={{
-          backgroundColor: '#f6f6ef',
-        }}>
-        <tbody>
-          {stories.length > 0 ? <AppBody stories={stories} /> : null}
-        </tbody>
+          backgroundColor: "#f6f6ef",
+        }}
+      >
+        <tbody>{stories.length > 0 ? <AppBody stories={stories} /> : null}</tbody>
       </table>
     </center>
   );
@@ -202,11 +205,11 @@ App.propTypes = {
 };
 
 function runCompileVersion(renderer, Root, data) {
-  return [['server render', ReactDOMServer.renderToString(<App stories={data} />)]];
+  return [["server render", ReactDOMServer.renderToString(<App stories={data} />)]];
 }
 
 function runNonCompiledVersion(renderer, Root, data) {
-  return [['server render', ReactDOMServer.renderToString(<App stories={data} />)]];
+  return [["server render", ReactDOMServer.renderToString(<App stories={data} />)]];
 }
 
 function getTrialsA(renderer, Root, data) {
@@ -235,4 +238,3 @@ if (this.__optimize) {
 App.independent = true;
 
 module.exports = App;
-

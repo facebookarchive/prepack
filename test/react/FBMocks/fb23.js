@@ -1,7 +1,7 @@
-var React = require('react');
-var ReactDOMServer = require('react-dom/server');
+var React = require("react");
+var ReactDOMServer = require("react-dom/server");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 function A(props) {
   return <div>Hello {props.x}</div>;
@@ -30,15 +30,13 @@ var y = ReactDOMServer.renderToStaticMarkup(App);
 
 App.getTrials = function(renderer, Root) {
   let results = [];
-  renderer.update(<Root  />);
-  results.push(['fb23', renderer.toJSON()]);
-  results.push(['renderToString', x]);
-  results.push(['renderToStaticMarkup', y]);
+  renderer.update(<Root />);
+  results.push(["fb23", renderer.toJSON()]);
+  results.push(["renderToString", x]);
+  results.push(["renderToStaticMarkup", y]);
   return results;
 };
 
 if (this.__optimizeReactComponentTree) {
   __optimizeReactComponentTree(App);
 }
-
-

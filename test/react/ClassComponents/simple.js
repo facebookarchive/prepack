@@ -11,7 +11,7 @@ MyComponent.getTrials = function(renderer, Root) {
 };
 
 if (this.__optimizeReactComponentTree) {
-  __optimizeReactComponentTree(MyComponent)
+  __optimizeReactComponentTree(MyComponent);
 }
 
 module.exports = MyComponent;

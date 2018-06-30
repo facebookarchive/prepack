@@ -1,6 +1,6 @@
-var React = require('react');
+var React = require("react");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 class Child extends React.Component {
   constructor(props) {
@@ -15,12 +15,12 @@ class Child extends React.Component {
 }
 
 function App() {
-  return <Child />
+  return <Child />;
 }
 
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
-  return [['simple render 4', renderer.toJSON()]];
+  return [["simple render 4", renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

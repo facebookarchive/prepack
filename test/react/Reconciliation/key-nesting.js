@@ -1,40 +1,44 @@
-var React = require('react');
+var React = require("react");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 // we can't use ES2015 classes in Prepack yet (they don't serialize)
 // so we have to use ES5 instead
-var Stateful = (function (superclass) {
-  function Stateful () {
+var Stateful = (function(superclass) {
+  function Stateful() {
     superclass.apply(this, arguments);
     this.state = { updated: false };
   }
 
-  if ( superclass ) {
+  if (superclass) {
     Stateful.__proto__ = superclass;
   }
-  Stateful.prototype = Object.create( superclass && superclass.prototype );
+  Stateful.prototype = Object.create(superclass && superclass.prototype);
   Stateful.prototype.constructor = Stateful;
   Stateful.prototype.componentWillReceiveProps = function componentWillReceiveProps() {
     this.setState({ updated: true });
-  }
-  Stateful.prototype.render = function render () {
-    return (
-      <div>
-        (is update: {String(this.state.updated)})
-      </div>
-    );
+  };
+  Stateful.prototype.render = function render() {
+    return <div>(is update: {String(this.state.updated)})</div>;
   };
 
   return Stateful;
-}(React.Component));
+})(React.Component);
 
 function MessagePane(props) {
-  return <div key='ha'><Stateful x={props.x} /></div>;
+  return (
+    <div key="ha">
+      <Stateful x={props.x} />
+    </div>
+  );
 }
 
 function SettingsPane(props) {
-  return <div key='ha'><Stateful x={props.x} /></div>;
+  return (
+    <div key="ha">
+      <Stateful x={props.x} />
+    </div>
+  );
 }
 
 function App(props) {
@@ -55,19 +59,19 @@ function App(props) {
 App.getTrials = function(renderer, Root) {
   let results = [];
   renderer.update(<Root switch={false} />);
-  results.push(['mount', renderer.toJSON()]);
+  results.push(["mount", renderer.toJSON()]);
 
   renderer.update(<Root switch={false} />);
-  results.push(['update with same type', renderer.toJSON()]);
+  results.push(["update with same type", renderer.toJSON()]);
 
   renderer.update(<Root switch={true} />);
-  results.push(['update with different type', renderer.toJSON()]);
+  results.push(["update with different type", renderer.toJSON()]);
 
   renderer.update(<Root switch={true} />);
-  results.push(['update with same type (again)', renderer.toJSON()]);
+  results.push(["update with same type (again)", renderer.toJSON()]);
 
   renderer.update(<Root switch={false} />);
-  results.push(['update with different type (again)', renderer.toJSON()]);
+  results.push(["update with different type (again)", renderer.toJSON()]);
   return results;
 };
 

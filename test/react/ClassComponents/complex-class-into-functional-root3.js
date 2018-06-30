@@ -1,14 +1,12 @@
 const React = require("react");
-this['React'] = React;
+this["React"] = React;
 
 class Child2 extends React.Component {
   constructor() {
     super();
   }
   render() {
-    return (
-      <span>{this.props.state}</span>
-    );
+    return <span>{this.props.state}</span>;
   }
 }
 
@@ -21,34 +19,40 @@ class Child extends React.Component {
   }
   componentWillReceiveProps() {
     this.setState({
-      status: "componentWillReceiveProps"
+      status: "componentWillReceiveProps",
     });
   }
   componentDidMount() {
     this.setState({
-      status: "componentDidMount"
+      status: "componentDidMount",
     });
   }
   render() {
     return (
-      <div><Child2 {...this.state} /></div>
+      <div>
+        <Child2 {...this.state} />
+      </div>
     );
   }
 }
 
 function App(props) {
-  return <div><Child /></div>;
+  return (
+    <div>
+      <Child />
+    </div>
+  );
 }
 
 App.getTrials = function(renderer, Root) {
   let results = [];
 
   renderer.update(<Root />);
-  results.push(['render complex class component into functional component', renderer.toJSON()]);
+  results.push(["render complex class component into functional component", renderer.toJSON()]);
   renderer.update(<Root />);
-  results.push(['update complex class component into functional component', renderer.toJSON()]);
+  results.push(["update complex class component into functional component", renderer.toJSON()]);
   renderer.update(<Root />);
-  results.push(['update complex class component into functional component', renderer.toJSON()]);
+  results.push(["update complex class component into functional component", renderer.toJSON()]);
 
   return results;
 };

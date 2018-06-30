@@ -1,5 +1,5 @@
-var React = require('react');
-this['React'] = React;
+var React = require("react");
+this["React"] = React;
 
 class Wat extends React.Component {
   render() {
@@ -16,11 +16,8 @@ App.getTrials = function(renderer, Root) {
   function ref(inst) {
     obj = inst;
   }
-  renderer.update(<Root inner={{className: 'foo', ref}} />);
-  return [
-    ['simple render with jsx spread 6', renderer.toJSON()],
-    ['type', Object.keys(obj).join(',')]
-  ];
+  renderer.update(<Root inner={{ className: "foo", ref }} />);
+  return [["simple render with jsx spread 6", renderer.toJSON()], ["type", Object.keys(obj).join(",")]];
 };
 
 if (this.__optimizeReactComponentTree) {

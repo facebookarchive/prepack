@@ -1,6 +1,6 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 function Child3(props) {
   return <span>{props.data.text}</span>;
@@ -16,9 +16,7 @@ class Child2 extends React.Component {
   render() {
     return (
       <React.Fragment>
-        {Array.from(this.props.items).map(item =>
-          <Child3 data={item} key={item.id} />
-        )}
+        {Array.from(this.props.items).map(item => <Child3 data={item} key={item.id} />)}
         <span>{this.randomVar.text}</span>
       </React.Fragment>
     );
@@ -41,37 +39,30 @@ class Child1 extends React.Component {
   render() {
     return (
       <div onClick={this.handleClick}>
-        <Child2  items={this.props.items} />
+        <Child2 items={this.props.items} />
         <span>Counter is at: {this.state.counter}</span>
         <span>{this.state.title}</span>
       </div>
     );
   }
   static getDerivedStateFromProps(nextProps, prevState) {
-    return nextProps.a || Object.assign({},
-      prevState,
-      { title: "Hello world" }, 
-    );
+    return nextProps.a || Object.assign({}, prevState, { title: "Hello world" });
   }
 }
 
 function App(props) {
-  return <Child1 {...props} />
+  return <Child1 {...props} />;
 }
 
 App.getTrials = function(renderer, Root) {
-  var items = [
-    {id: 0, text: "Item 1"},
-    {id: 1, text: "Item 2"},
-    {id: 2, text: "Item 3"},
-  ];
+  var items = [{ id: 0, text: "Item 1" }, { id: 1, text: "Item 2" }, { id: 2, text: "Item 3" }];
   let results = [];
 
   // have to add keys so we don't update the same component (this is firstRenderOnly)
   renderer.update(<Root key="0" items={items} a={null} />);
-  results.push(['render simple first render only tree (null)', renderer.toJSON()]);
-  renderer.update(<Root key="1" items={items} a={{counter: 1}} />);
-  results.push(['render simple first render only tree ({counter: 1})', renderer.toJSON()]);
+  results.push(["render simple first render only tree (null)", renderer.toJSON()]);
+  renderer.update(<Root key="1" items={items} a={{ counter: 1 }} />);
+  results.push(["render simple first render only tree ({counter: 1})", renderer.toJSON()]);
 
   return results;
 };

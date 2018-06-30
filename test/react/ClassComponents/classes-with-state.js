@@ -1,6 +1,6 @@
-var React = require('react');
+var React = require("react");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 class App extends React.Component {
   constructor(props) {
@@ -16,7 +16,7 @@ class App extends React.Component {
 
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
-  return [['render with class with state', renderer.toJSON()]];
+  return [["render with class with state", renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

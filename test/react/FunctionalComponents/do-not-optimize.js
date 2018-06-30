@@ -1,9 +1,9 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 function Child() {
-  return <div>{[1,2,3]}</div>
+  return <div>{[1, 2, 3]}</div>;
 }
 
 Child.__reactCompilerDoNotOptimize = true;
@@ -15,7 +15,7 @@ function App() {
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
   var render = renderer.toJSON();
-  return [['do not optimize', render.children.length]];
+  return [["do not optimize", render.children.length]];
 };
 
 if (this.__optimizeReactComponentTree) {

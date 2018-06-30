@@ -1,6 +1,6 @@
-var React = require('react');
+var React = require("react");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 let refB = false;
 
@@ -8,12 +8,12 @@ function A(foo) {
   return (
     <div>
       <span className="findMe" ref={foo.rootRef} />,
-      <span ref={() => refB = true} />,
+      <span ref={() => (refB = true)} />,
     </div>
   );
 }
 
-function App({rootRef}) {
+function App({ rootRef }) {
   return (
     <div>
       <A rootRef={rootRef} />
@@ -28,9 +28,9 @@ App.getTrials = function(renderer, Root) {
   };
   renderer.update(<Root rootRef={rootRef} />);
   let results = [];
-  results.push(['simple refs', renderer.toJSON()]);
-  results.push(['ref A', refA]);
-  results.push(['ref B', refB]);
+  results.push(["simple refs", renderer.toJSON()]);
+  results.push(["ref A", refA]);
+  results.push(["ref B", refB]);
   return results;
 };
 

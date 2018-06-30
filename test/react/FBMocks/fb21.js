@@ -1,7 +1,7 @@
-var React = require('react');
-var ReactDOM = require('react-dom');
+var React = require("react");
+var ReactDOM = require("react-dom");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 function A(props) {
   return <div>Hello {props.x}</div>;
@@ -27,7 +27,7 @@ function App() {
 
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
-  return [['simple render', renderer.toJSON()]];
+  return [["simple render", renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

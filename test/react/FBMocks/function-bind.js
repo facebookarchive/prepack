@@ -1,5 +1,5 @@
-var React = require('react');
-this['React'] = React;
+var React = require("react");
+this["React"] = React;
 
 // FB www polyfill
 if (!this.babelHelpers) {
@@ -14,10 +14,7 @@ if (!this.babelHelpers) {
   };
 }
 
-var _React$Component = babelHelpers.inherits(
-  Middle,
-  React.Component
-);
+var _React$Component = babelHelpers.inherits(Middle, React.Component);
 _superProto = _React$Component && _React$Component.prototype;
 
 function Middle(props) {
@@ -38,17 +35,13 @@ function App(props) {
 }
 
 App.getTrials = function(renderer, Root) {
-  renderer.update(
-    <Root item={<span>Hi</span>}>
-      {obj => <h1>{obj.renderItem()}</h1>}
-    </Root>
-  );
-  return [['render with bound child function', renderer.toJSON()]];
+  renderer.update(<Root item={<span>Hi</span>}>{obj => <h1>{obj.renderItem()}</h1>}</Root>);
+  return [["render with bound child function", renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {
   __optimizeReactComponentTree(App, {
-    firstRenderOnly: true
+    firstRenderOnly: true,
   });
 }
 

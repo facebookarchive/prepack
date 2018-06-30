@@ -1,8 +1,8 @@
 const React = require("react");
-this['React'] = React;
+this["React"] = React;
 
 function Child2(props) {
-  return <span {...props}></span>;
+  return <span {...props} />;
 }
 
 class Child extends React.Component {
@@ -17,7 +17,9 @@ class Child extends React.Component {
   }
   render() {
     return (
-      <div><Child2 {...this.props} /></div>
+      <div>
+        <Child2 {...this.props} />
+      </div>
     );
   }
 }
@@ -27,18 +29,22 @@ Child.defaultProps = {
 };
 
 function App(props) {
-  return <div><Child {...props} /></div>;
+  return (
+    <div>
+      <Child {...props} />
+    </div>
+  );
 }
 
 App.getTrials = function(renderer, Root) {
   let results = [];
 
   renderer.update(<Root children={"Hello world"} />);
-  results.push(['render complex class component into functional component', renderer.toJSON()]);
+  results.push(["render complex class component into functional component", renderer.toJSON()]);
   renderer.update(<Root children={"Hello world"} />);
-  results.push(['update complex class component into functional component', renderer.toJSON()]);
+  results.push(["update complex class component into functional component", renderer.toJSON()]);
   renderer.update(<Root children={"Hello world"} />);
-  results.push(['update complex class component into functional component', renderer.toJSON()]);
+  results.push(["update complex class component into functional component", renderer.toJSON()]);
 
   return results;
 };

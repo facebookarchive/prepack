@@ -1,29 +1,33 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 function Yar(props) {
-  return <a href={props.href}><em>{props.name}</em></a>
+  return (
+    <a href={props.href}>
+      <em>{props.name}</em>
+    </a>
+  );
 }
 
 function Bar(props) {
-  return <div><span style={{color: "red"}}>Here's a link</span>: <Yar {...props} /></div>;
+  return (
+    <div>
+      <span style={{ color: "red" }}>Here's a link</span>: <Yar {...props} />
+    </div>
+  );
 }
 
 // for now, we require inline Flow type annotations on the root component
 // for its props (if it has any)
-function Foo(props: {href: string}) {
+function Foo(props: { href: string }) {
   var collection = [
     { href: props.href, name: "First Item" },
     { href: props.href, name: "Second Item" },
     { href: props.href, name: "Third Item" },
   ];
-  
-  return (
-    <div>
-      {collection.map(item => <Bar {...item} /> )}
-    </div>
-  );
+
+  return <div>{collection.map(item => <Bar {...item} />)}</div>;
 }
 
 // this is a special Prepack function hook

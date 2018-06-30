@@ -1,18 +1,14 @@
-var React = require('react');
-this['React'] = React;
+var React = require("react");
+this["React"] = React;
 
 function App(props) {
-  var obj = Object.assign({}, {x: 20}, props);
-  return (
-    <div>
-      {obj.x}
-    </div>
-  );
+  var obj = Object.assign({}, { x: 20 }, props);
+  return <div>{obj.x}</div>;
 }
 
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root x={10} />);
-  return [['simple render with object assign', renderer.toJSON()]];
+  return [["simple render with object assign", renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

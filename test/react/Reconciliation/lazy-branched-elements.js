@@ -1,19 +1,17 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 function App(props) {
-  return (
-    props.x ? <span a={props.a} /> : <div a={props.a} />
-  );
+  return props.x ? <span a={props.a} /> : <div a={props.a} />;
 }
 
 App.getTrials = function(renderer, Root) {
   let results = [];
   renderer.update(<Root x={true} a="1" />);
-  results.push(['lazy branched elements output', renderer.toJSON()]);
+  results.push(["lazy branched elements output", renderer.toJSON()]);
   renderer.update(<Root x={false} a="1" />);
-  results.push(['lazy branched elements output', renderer.toJSON()]);
+  results.push(["lazy branched elements output", renderer.toJSON()]);
   return results;
 };
 

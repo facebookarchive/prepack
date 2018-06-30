@@ -1,6 +1,6 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 if (!this.__evaluatePureFunction) {
   this.__evaluatePureFunction = function(f) {
@@ -22,7 +22,7 @@ __evaluatePureFunction(function() {
 
   if (this.__optimizeReactComponentTree) {
     __optimizeReactComponentTree(App, {
-      firstRenderOnly: true
+      firstRenderOnly: true,
     });
   }
 

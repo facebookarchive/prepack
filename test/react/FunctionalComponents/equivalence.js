@@ -1,39 +1,39 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 function App(props) {
-
   return React.createElement(
     "div",
     { className: "test" },
     React.createElement(
-      "div", {
+      "div",
+      {
         className: "foo/wrapper",
       },
       React.createElement("span", {
-        className: "public/foo/dot"
+        className: "public/foo/dot",
       }),
 
       React.createElement("span", {
-        className: "public/foo/dot"
+        className: "public/foo/dot",
       }),
 
       React.createElement("span", {
-        className: "public/foo/dot"
+        className: "public/foo/dot",
       })
     ),
     React.createElement("div", null, React.createElement("span")),
-    React.createElement("a", null, React.createElement("span")),
+    React.createElement("a", null, React.createElement("span"))
   );
 }
 
 App.getTrials = function(renderer, Root) {
   let results = [];
   renderer.update(<Root x={true} a="1" />);
-  results.push(['ReactElement children equivalence', renderer.toJSON()]);
+  results.push(["ReactElement children equivalence", renderer.toJSON()]);
   renderer.update(<Root x={false} a="1" />);
-  results.push(['ReactElement children equivalence update', renderer.toJSON()]);
+  results.push(["ReactElement children equivalence update", renderer.toJSON()]);
   return results;
 };
 

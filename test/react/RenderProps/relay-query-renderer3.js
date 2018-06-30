@@ -1,15 +1,15 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
-var {QueryRenderer} = require('RelayModern');
+this["React"] = React;
+var { QueryRenderer } = require("RelayModern");
 // this is needed otherwise QueryRenderer gets inlined
-this['QueryRenderer'] = QueryRenderer;
+this["QueryRenderer"] = QueryRenderer;
 
 class SomeClassThatShouldNotMakeRootAClass extends React.Component {
   constructor() {
     super();
     this.state = {
-      foo : 1,
+      foo: 1,
     };
   }
   render() {
@@ -29,7 +29,7 @@ function App(props) {
 
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
-  return [['render props relay', renderer.toJSON()]];
+  return [["render props relay", renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

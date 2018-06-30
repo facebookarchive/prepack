@@ -1,5 +1,5 @@
 const React = require("react");
-this['React'] = React;
+this["React"] = React;
 
 class Child extends React.Component {
   constructor() {
@@ -19,13 +19,17 @@ class Child extends React.Component {
 
 class App extends React.Component {
   render() {
-    return <div><Child x={10} /></div>;
+    return (
+      <div>
+        <Child x={10} />
+      </div>
+    );
   }
 }
 
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
-  return [['render simple classes', renderer.toJSON()]];
+  return [["render simple classes", renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

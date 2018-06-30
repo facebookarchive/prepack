@@ -1,16 +1,14 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
-var div = (
-  <div data-ft={'{"tn": "O"}'} />
-);
+var div = <div data-ft={'{"tn": "O"}'} />;
 
 function App(props) {
   return (
     <div className={cx("yar/Jar")}>
       <span className={cx("foo/bar", "foo/bar")}>
-        <a 
+        <a
           href="#"
           className={cx({
             "foo/bar1": true,
@@ -33,7 +31,7 @@ function assertMatchesInSource(fn, regex, expectedCount) {
   if (count !== expectedCount) {
     throw new Error(
       `Expected ${expectedCount} matches of ${regex} in the function ` +
-      `source but found ${count}:\n\n${fn.toString()}`
+        `source but found ${count}:\n\n${fn.toString()}`
     );
   }
 }
@@ -43,7 +41,7 @@ App.getTrials = function(renderer, Root) {
   assertMatchesInSource(Root, /[^\w]cx\(/g, 3);
 
   renderer.update(<Root val={10} />);
-  return [['fb6 mocks', renderer.toJSON()]];
+  return [["fb6 mocks", renderer.toJSON()]];
 };
 
 module.exports = App;

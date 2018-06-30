@@ -1,44 +1,44 @@
-var React = require('react');
+var React = require("react");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
-var Child = (function (superclass) {
-  function Child () {
+var Child = (function(superclass) {
+  function Child() {
     superclass.apply(this, arguments);
   }
 
-  if ( superclass ) {
+  if (superclass) {
     Child.__proto__ = superclass;
   }
-  Child.prototype = Object.create( superclass && superclass.prototype );
+  Child.prototype = Object.create(superclass && superclass.prototype);
   Child.prototype.constructor = Child;
-  Child.prototype.render = function render () {
+  Child.prototype.render = function render() {
     return <div>Hello world</div>;
   };
 
   return Child;
-}(React.Component));
+})(React.Component);
 
-var App = (function (superclass) {
-  function App () {
+var App = (function(superclass) {
+  function App() {
     superclass.apply(this, arguments);
   }
 
-  if ( superclass ) {
+  if (superclass) {
     App.__proto__ = superclass;
   }
-  App.prototype = Object.create( superclass && superclass.prototype );
+  App.prototype = Object.create(superclass && superclass.prototype);
   App.prototype.constructor = App;
-  App.prototype.render = function render () {
+  App.prototype.render = function render() {
     return <Child />;
   };
   App.getTrials = function(renderer, Root) {
     renderer.update(<Root />);
-    return [['render simple classes', renderer.toJSON()]];
+    return [["render simple classes", renderer.toJSON()]];
   };
 
   return App;
-}(React.Component));
+})(React.Component);
 
 if (this.__optimizeReactComponentTree) {
   __optimizeReactComponentTree(App);

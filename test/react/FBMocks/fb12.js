@@ -1,5 +1,5 @@
-var React = require('React');
-this['React'] = React;
+var React = require("React");
+this["React"] = React;
 
 if (!this.__evaluatePureFunction) {
   this.__evaluatePureFunction = function(f) {
@@ -9,7 +9,8 @@ if (!this.__evaluatePureFunction) {
 
 module.exports = this.__evaluatePureFunction(() => {
   function nullthrows(x) {
-    var message = arguments.length <= 1 || arguments[1] === undefined ? 'Got unexpected null or undefined' : arguments[1];
+    var message =
+      arguments.length <= 1 || arguments[1] === undefined ? "Got unexpected null or undefined" : arguments[1];
     if (x != null) {
       return x;
     }
@@ -17,12 +18,14 @@ module.exports = this.__evaluatePureFunction(() => {
 
     error.framesToPop = 1;
     throw error;
-  };
+  }
 
   function A(props) {
     return (
       <div className={props.className}>
-        <div>Hello {props.x} {props.y}</div>
+        <div>
+          Hello {props.x} {props.y}
+        </div>
         <B />
         <C />
       </div>
@@ -44,7 +47,7 @@ module.exports = this.__evaluatePureFunction(() => {
 
   App.getTrials = function(renderer, Root) {
     renderer.update(<Root className="Rooty McRootface" />);
-    return [['simple render', renderer.toJSON()]];
+    return [["simple render", renderer.toJSON()]];
   };
 
   if (this.__optimizeReactComponentTree) {

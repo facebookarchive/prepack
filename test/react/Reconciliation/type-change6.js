@@ -1,6 +1,6 @@
-var React = require('react');
+var React = require("react");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 function App(props) {
   if (props.foo) {
@@ -38,7 +38,7 @@ App.getTrials = function(renderer, Root) {
   renderer.update(<Root callback={callback} foo={false} />);
 
   let results = [];
-  results.push(['ensure refs was called 1 time', counter]);
+  results.push(["ensure refs was called 1 time", counter]);
   return results;
 };
 

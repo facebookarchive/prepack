@@ -1,6 +1,6 @@
-var React = require('react');
+var React = require("react");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 function Foo(props) {
   return <span>{props.name}</span>;
@@ -21,17 +21,17 @@ Bar.defaultProps = {
 function App(props) {
   let Type = props.switch ? Foo : Bar;
 
-  return <Type />
+  return <Type />;
 }
 
 App.getTrials = function(renderer, Root) {
   let results = [];
   renderer.update(<Root switch={false} />);
-  results.push(['render with dynamic type', renderer.toJSON()]);
+  results.push(["render with dynamic type", renderer.toJSON()]);
   renderer.update(<Root switch={true} />);
-  results.push(['render with dynamic type update', renderer.toJSON()]);
+  results.push(["render with dynamic type update", renderer.toJSON()]);
   renderer.update(<Root switch={false} />);
-  results.push(['render with dynamic type update', renderer.toJSON()]);
+  results.push(["render with dynamic type update", renderer.toJSON()]);
   return results;
 };
 

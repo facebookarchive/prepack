@@ -1,6 +1,6 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 // FB www polyfill
 if (!this.babelHelpers) {
@@ -33,7 +33,7 @@ if (!this.babelHelpers) {
   };
 }
 
-var obj = {a: 1, b: 2, c: 3};
+var obj = { a: 1, b: 2, c: 3 };
 
 // FB www class transform output
 const _React$Component = babelHelpers.inherits(Hello, React.Component);
@@ -44,7 +44,7 @@ Hello.prototype.render = function() {
   return React.createElement(
     "h1",
     // Regression test for bad serialization of computed properties
-     babelHelpers['extends']({}, this.__unknownAbstract),
+    babelHelpers["extends"]({}, this.__unknownAbstract),
     "Hello world",
     Object.keys(babelHelpers.objectWithoutProperties(obj, ["a", "c"]))
   );
@@ -52,10 +52,10 @@ Hello.prototype.render = function() {
 function Hello() {
   _React$Component.apply(this, arguments);
 }
-    
+
 Hello.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
-  return [['fb2 mocks', renderer.toJSON()]];
+  return [["fb2 mocks", renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

@@ -1,6 +1,6 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 if (!this.__evaluatePureFunction) {
   this.__evaluatePureFunction = function(f) {
@@ -25,7 +25,7 @@ __evaluatePureFunction(function() {
     return React.createElement(
       Middle,
       {
-        bar: props.foo
+        bar: props.foo,
       },
       function() {
         return React.createElement(Inner, props);
@@ -37,7 +37,7 @@ __evaluatePureFunction(function() {
     return React.createElement(
       Outer,
       {
-        foo: props.foo
+        foo: props.foo,
       },
       function() {
         return null;
@@ -47,7 +47,7 @@ __evaluatePureFunction(function() {
 
   App.getTrials = function(renderer, Root) {
     renderer.update(<Root foo={true} />);
-    return [['fb17 mocks', renderer.toJSON()]];
+    return [["fb17 mocks", renderer.toJSON()]];
   };
 
   if (this.__optimizeReactComponentTree) {

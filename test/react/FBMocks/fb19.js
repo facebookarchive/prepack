@@ -23,10 +23,7 @@ __evaluatePureFunction(function() {
   var React = require("react");
 
   function App(props) {
-    return React.createElement(
-      "div",
-      new FbtResult({}, [param(props.foo), plural(props.bar)])
-    );
+    return React.createElement("div", new FbtResult({}, [param(props.foo), plural(props.bar)]));
   }
 
   App.getTrials = function(renderer, Root) {
@@ -36,7 +33,7 @@ __evaluatePureFunction(function() {
 
   if (this.__optimizeReactComponentTree) {
     __optimizeReactComponentTree(App, {
-      firstRenderOnly: true
+      firstRenderOnly: true,
     });
   }
 

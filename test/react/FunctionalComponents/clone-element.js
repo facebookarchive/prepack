@@ -1,6 +1,6 @@
-var React = require('react');
+var React = require("react");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 function MaybeShow(props) {
   if (props.show) {
@@ -13,7 +13,7 @@ function Override(props) {
   var child = props.children;
   var shouldShow = props.overrideShow;
   return React.cloneElement(child, {
-    show: shouldShow
+    show: shouldShow,
   });
 }
 
@@ -30,10 +30,10 @@ function App(props) {
 App.getTrials = function(renderer, Root) {
   let results = [];
   renderer.update(<Root show={true} />);
-  results.push(['clone element (true)', renderer.toJSON()]);
+  results.push(["clone element (true)", renderer.toJSON()]);
 
   renderer.update(<Root show={false} />);
-  results.push(['clone element (false)', renderer.toJSON()]);
+  results.push(["clone element (false)", renderer.toJSON()]);
   return results;
 };
 

@@ -1,5 +1,5 @@
-var React = require('react');
-this['React'] = React;
+var React = require("react");
+this["React"] = React;
 
 function A(props) {
   return <div>Hello {props.x}</div>;
@@ -16,7 +16,7 @@ function App(props) {
 
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root x={10} />);
-  return [['simple render with object assign', renderer.toJSON()]];
+  return [["simple render with object assign", renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

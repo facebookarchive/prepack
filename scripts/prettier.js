@@ -36,7 +36,7 @@ const config = {
     patterns: ["scripts/**/*.js"],
   },
   jest: {
-    patterns: ["test/react/**/*-test.js"],
+    patterns: ["test/react/**/*.js"],
   },
 };
 

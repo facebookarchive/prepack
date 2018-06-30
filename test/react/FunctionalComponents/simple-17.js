@@ -1,6 +1,6 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 function App(props) {
   var externalFunc = props.externalFunc;
@@ -8,7 +8,7 @@ function App(props) {
   var x = <span a="1" b="2" />;
   externalFunc(x);
   externalFunc(x.props);
-  return <div>{x}</div>
+  return <div>{x}</div>;
 }
 
 App.getTrials = function(renderer, Root) {
@@ -16,7 +16,7 @@ App.getTrials = function(renderer, Root) {
     // NO-OP
   }
   renderer.update(<Root externalFunc={externalFunc} />);
-  return [['with havoc functions', renderer.toJSON()]];
+  return [["with havoc functions", renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

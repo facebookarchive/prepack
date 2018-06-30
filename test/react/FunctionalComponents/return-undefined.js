@@ -1,9 +1,8 @@
-var React = require('react');
+var React = require("react");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
-function A() {
-}
+function A() {}
 
 function App() {
   return (
@@ -20,7 +19,7 @@ App.getTrials = function(renderer, Root) {
   } catch (err) {
     didError = true;
   }
-  return [['error rendering', didError]];
+  return [["error rendering", didError]];
 };
 
 if (this.__optimizeReactComponentTree) {

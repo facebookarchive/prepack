@@ -1,10 +1,10 @@
 const React = require("react");
-this['React'] = React;
+this["React"] = React;
 
 class Parent extends React.Component {
   constructor() {
     super();
-    this.state ={
+    this.state = {
       a: 100,
     };
   }
@@ -17,7 +17,7 @@ class Parent extends React.Component {
   }
 }
 
-this['Parent'] = Parent;
+this["Parent"] = Parent;
 
 class Child extends Parent {
   constructor() {
@@ -27,13 +27,17 @@ class Child extends Parent {
 
 class App extends React.Component {
   render() {
-    return <div><Child x={10} /></div>;
+    return (
+      <div>
+        <Child x={10} />
+      </div>
+    );
   }
 }
 
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
-  return [['inheritance chain', renderer.toJSON()]];
+  return [["inheritance chain", renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

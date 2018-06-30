@@ -1,6 +1,6 @@
-var React = require('React');
+var React = require("React");
 // the JSX transform converts to React, so we need to add it back in
-this['React'] = React;
+this["React"] = React;
 
 // FB www polyfill
 if (!this.babelHelpers) {
@@ -64,11 +64,7 @@ module.exports = this.__evaluatePureFunction(() => {
   function Inner() {
     var _superProto$construct;
     var _temp;
-    for (
-      var _len = arguments.length, args = Array(_len), _key = 0;
-      _key < _len;
-      _key++
-    ) {
+    for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
       args[_key] = arguments[_key];
     }
     return (
@@ -94,7 +90,7 @@ module.exports = this.__evaluatePureFunction(() => {
 
   Outer.getTrials = function(renderer, Root) {
     renderer.update(<Root />);
-    return [['fb15 mocks', renderer.toJSON()]];
+    return [["fb15 mocks", renderer.toJSON()]];
   };
 
   if (this.__optimizeReactComponentTree) {
