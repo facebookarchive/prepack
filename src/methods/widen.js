@@ -11,7 +11,15 @@
 
 import type { Binding } from "../environment.js";
 import { FatalError } from "../errors.js";
-import type { Bindings, BindingEntry, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
+import type {
+  BindingEntry,
+  Bindings,
+  CreatedObjects,
+  EvaluationResult,
+  PropertyBindingEntry,
+  PropertyBindings,
+  Realm,
+} from "../realm.js";
 import { Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 
@@ -214,11 +222,21 @@ export class WidenImplementation {
     c1: CreatedObjects,
     c2: CreatedObjects
   ): PropertyBindings {
-    let widen = (b: PropertyBinding, d1: void | Descriptor, d2: void | Descriptor) => {
-      if (d1 === undefined && d2 === undefined) return undefined;
-      // If the PropertyBinding object has been freshly allocated do not widen (that happens in AbstractObjectValue)
+    let widen = (b: PropertyBinding, be1: void | PropertyBindingEntry, be2: void | PropertyBindingEntry) => {
+      invariant(be1 !== undefined || be2 !== undefined);
+      if (be1 === undefined) {
+        invariant(be2 !== undefined);
+        be1 = { descriptor: undefined, isDeleted: false, previousDescriptor: cloneDescriptor(b.descriptor) };
+      }
+      if (be2 === undefined) {
+        invariant(be1 !== undefined);
+        be2 = { descriptor: undefined, isDeleted: false, previousDescriptor: cloneDescriptor(b.descriptor) };
+      }
+      let d1 = be1.descriptor;
+      let d2 = be2.descriptor;
       if (d1 === undefined) {
-        if (b.object instanceof ObjectValue && c2.has(b.object)) return d2; // no widen
+        // If the PropertyBinding object has been freshly allocated do not widen (that happens in AbstractObjectValue)
+        if (b.object instanceof ObjectValue && c2.has(b.object)) return be2;
         if (b.descriptor !== undefined && m1.has(b)) {
           // property was present in (n-1)th iteration and deleted in nth iteration
           d1 = cloneDescriptor(b.descriptor);
@@ -235,7 +253,8 @@ export class WidenImplementation {
         }
       }
       if (d2 === undefined) {
-        if (b.object instanceof ObjectValue && c1.has(b.object)) return d1; // no widen
+        // If the PropertyBinding object has been freshly allocated do not widen (that happens in AbstractObjectValue)
+        if (b.object instanceof ObjectValue && c1.has(b.object)) return be1;
         if (m2.has(b)) {
           // property was present in nth iteration and deleted in (n+1)th iteration
           d2 = cloneDescriptor(d1);
@@ -247,7 +266,10 @@ export class WidenImplementation {
         }
         invariant(d2 !== undefined);
       }
-      let result = this.widenDescriptors(realm, d1, d2);
+      be1.descriptor = d1;
+      be2.descriptor = d2;
+      let resultEntry = this.widenPropertyBindingEntries(realm, be1, be2);
+      let result = resultEntry.descriptor;
       if (result && result.value instanceof AbstractValue && result.value.kind === "widened") {
         let rval = result.value;
         let pathNode = b.pathNode;
@@ -301,9 +323,22 @@ export class WidenImplementation {
         }
         result.value = pathNode;
       }
-      return result;
+      return resultEntry;
     };
     return this.widenMaps(m1, m2, widen);
+  }
+
+  widenPropertyBindingEntries(
+    realm: Realm,
+    be1: PropertyBindingEntry,
+    be2: PropertyBindingEntry
+  ): PropertyBindingEntry {
+    invariant(be2.descriptor !== undefined);
+    return {
+      descriptor: this.widenDescriptors(realm, be1.descriptor, be2.descriptor),
+      isDeleted: false,
+      previousDescriptor: be2.descriptor,
+    };
   }
 
   widenDescriptors(realm: Realm, d1: void | Descriptor, d2: Descriptor): void | Descriptor {
@@ -409,7 +444,7 @@ export class WidenImplementation {
       if (key1.object instanceof ObjectValue && c1.has(key1.object)) {
         continue;
       }
-      if (!containsPropertyBinding(val1, val2)) return false;
+      if (!containsPropertyBinding(val1 && val1.descriptor, val2 && val2.descriptor)) return false;
     }
     for (const key2 of m2.keys()) {
       if (key2.object instanceof ObjectValue && c2.has(key2.object)) {

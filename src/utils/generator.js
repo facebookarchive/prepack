@@ -212,7 +212,6 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
 
 type ModifiedPropertyEntryArgs = {|
   propertyBinding: PropertyBinding,
-  newDescriptor: void | Descriptor,
   containingGenerator: Generator,
 |};
 
@@ -224,11 +223,8 @@ class ModifiedPropertyEntry extends GeneratorEntry {
 
   containingGenerator: Generator;
   propertyBinding: PropertyBinding;
-  newDescriptor: void | Descriptor;
 
   serialize(context: SerializationContext) {
-    let desc = this.propertyBinding.descriptor;
-    invariant(desc === this.newDescriptor);
     context.emitPropertyModification(this.propertyBinding);
   }
 
@@ -237,8 +233,6 @@ class ModifiedPropertyEntry extends GeneratorEntry {
       containingGenerator === this.containingGenerator,
       "This entry requires effects to be applied and may not be moved"
     );
-    let desc = this.propertyBinding.descriptor;
-    invariant(desc === this.newDescriptor);
     context.visitModifiedObjectProperty(this.propertyBinding);
     return true;
   }
@@ -441,6 +435,8 @@ export class Generator {
   pathConditions: Array<AbstractValue>;
 
   static _generatorOfEffects(realm: Realm, name: string, environmentRecordIdAfterGlobalCode: number, effects: Effects) {
+    let savedCapturePreState = realm.capturePreState;
+    realm.capturePreState = true;
     let { result, generator, modifiedBindings, modifiedProperties, createdObjects } = effects;
 
     let output = new Generator(realm, name, effects);
@@ -452,6 +448,11 @@ export class Generator {
       if (object.refuseSerialization) continue; // modification to internal state
       // modifications to intrinsic objects are tracked in the generator
       if (object.isIntrinsic()) continue;
+      // internal properties not starting with $ have no runtime meaning
+      if (propertyBinding.internalSlot) {
+        invariant(typeof propertyBinding.key === "string");
+        if (propertyBinding.key[0] !== "$") continue;
+      }
       output.emitPropertyModification(propertyBinding);
     }
 
@@ -476,6 +477,7 @@ export class Generator {
     } else {
       invariant(false);
     }
+    realm.capturePreState = savedCapturePreState;
     return output;
   }
 
@@ -520,7 +522,6 @@ export class Generator {
     this._entries.push(
       new ModifiedPropertyEntry({
         propertyBinding,
-        newDescriptor: desc,
         containingGenerator: this,
       })
     );
