@@ -81,46 +81,32 @@ To enter a watching mode, run `yarn test-react --watch`. This will re-run them o
 
 If you’re debugging a specific test case, the easiest way to focus on it is to:
 
-* Open `scripts/test-react.js`.
+* Open `test/react/SomeTestFileName-test.js`.
 * Find the test in the code by searching for its filename.
 
   For example, you may find something like:
 
   ```js
-      it("fb-www 5", async () => {
-        await runTest(directory, "fb5.js");
+      it("fb-www 5", () => {
+        runTest(directory, "fb5.js");
       });
   ```
 
 * Change `it` to `fit` to “focus” on a specific test and skip all other tests.
 
   ```diff
-  -    it("fb-www 5", async () => {
-  +    fit("fb-www 5", async () => {
-        await runTest(directory, "fb5.js");
+  -    it("fb-www 5", () => {
+  +    fit("fb-www 5", () => {
+         runTest(directory, "fb5.js");
       });
   ```
-* Run the watch mode: `yarn test-react --watch`
+* Run the watch mode: `yarn test-react --watch SomeTestFileName`
 
 Now only this test alone will re-run on every change which should help debug problems faster.
 
-By default, tests run in four different input/output configurations. If too many runs are confusing when debugging a problem, you can comment out all modes except one [at the very bottom of the test file](https://github.com/facebook/prepack/blob/30876d5becade1dad7319682a075b6df252341a2/scripts/test-react.js#L748-L753).
+By default, tests run in four different input/output configurations. If too many runs are confusing when debugging a problem, you can run a subset with `yarn test-react-fast --watch SomeFileName`. Unlike `yarn test-react`, `yarn test-react-fast` skips checking that JSX syntax works. This mode is much faster but you will see some annoying messages about obsolete snapshots (which you should ignore in this mode).
 
-For example:
-
-```diff
-// pre non-transpiled
-runTestSuite(true, false);
--runTestSuite(false, false);
-+// runTestSuite(false, false);
-// pre transpiled
--runTestSuite(true, true);
-+ // runTestSuite(true, true);
--runTestSuite(false, true);
-+ // runTestSuite(false, true);
-``` 
-
-Finally, sometimes it’s helpful to see the code Prepack is emitting. Search for a [variable called `transformedSource`](https://github.com/facebook/prepack/blob/30876d5becade1dad7319682a075b6df252341a2/scripts/test-react.js#L115) in the test file.
+Finally, sometimes it’s helpful to see the code Prepack is emitting. Search for a variable called `transformedSource` a file called `setupReactTests.js`.
  If you add `console.log(transformedSource)` you will see the Prepack output during test runs.
 
  Don’t forget to revert any such changes before committing!

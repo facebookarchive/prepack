@@ -283,10 +283,13 @@ function setupReactTests() {
     let source = fs.readFileSync(fixturePath).toString();
     // Run tests that don't need the transform first so they can fail early.
     runTestWithOptions(source, false, options, "(createElement => createElement)");
-    runTestWithOptions(source, true, options, "(createElement => JSX)");
-    let jsxSource = transpileSource(source);
-    runTestWithOptions(jsxSource, false, options, "(JSX => createElement)");
-    runTestWithOptions(jsxSource, true, options, "(JSX => JSX)");
+
+    if (process.env.SKIP_REACT_JSX_TESTS !== "true") {
+      runTestWithOptions(source, true, options, "(createElement => JSX)");
+      let jsxSource = transpileSource(source);
+      runTestWithOptions(jsxSource, false, options, "(JSX => createElement)");
+      runTestWithOptions(jsxSource, true, options, "(JSX => JSX)");
+    }
   }
 
   return {
