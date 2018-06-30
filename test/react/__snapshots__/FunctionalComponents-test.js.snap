@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`__reactCompilerDoNotOptimize 1`] = `
+exports[`__reactCompilerDoNotOptimize: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -17,7 +17,7 @@ ReactStatistics {
 }
 `;
 
-exports[`__reactCompilerDoNotOptimize 2`] = `
+exports[`__reactCompilerDoNotOptimize: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -34,7 +34,7 @@ ReactStatistics {
 }
 `;
 
-exports[`__reactCompilerDoNotOptimize 3`] = `
+exports[`__reactCompilerDoNotOptimize: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -51,7 +51,7 @@ ReactStatistics {
 }
 `;
 
-exports[`__reactCompilerDoNotOptimize 4`] = `
+exports[`__reactCompilerDoNotOptimize: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -68,7 +68,7 @@ ReactStatistics {
 }
 `;
 
-exports[`16.3 refs 1`] = `
+exports[`16.3 refs 2: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -99,7 +99,7 @@ ReactStatistics {
 }
 `;
 
-exports[`16.3 refs 2`] = `
+exports[`16.3 refs 2: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -130,7 +130,7 @@ ReactStatistics {
 }
 `;
 
-exports[`16.3 refs 2 1`] = `
+exports[`16.3 refs 2: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -161,7 +161,7 @@ ReactStatistics {
 }
 `;
 
-exports[`16.3 refs 2 2`] = `
+exports[`16.3 refs 2: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -192,100 +192,7 @@ ReactStatistics {
 }
 `;
 
-exports[`16.3 refs 2 3`] = `
-ReactStatistics {
-  "componentsEvaluated": 2,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Child",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 1,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`16.3 refs 2 4`] = `
-ReactStatistics {
-  "componentsEvaluated": 2,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Child",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 1,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`16.3 refs 3`] = `
-ReactStatistics {
-  "componentsEvaluated": 2,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Child",
-              "status": "INLINED",
-            },
-          ],
-          "message": "",
-          "name": "",
-          "status": "FORWARD_REF",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 1,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`16.3 refs 3 1`] = `
+exports[`16.3 refs 3: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -323,7 +230,7 @@ ReactStatistics {
 }
 `;
 
-exports[`16.3 refs 3 2`] = `
+exports[`16.3 refs 3: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -361,7 +268,7 @@ ReactStatistics {
 }
 `;
 
-exports[`16.3 refs 3 3`] = `
+exports[`16.3 refs 3: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -399,7 +306,7 @@ ReactStatistics {
 }
 `;
 
-exports[`16.3 refs 3 4`] = `
+exports[`16.3 refs 3: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -437,7 +344,7 @@ ReactStatistics {
 }
 `;
 
-exports[`16.3 refs 4`] = `
+exports[`16.3 refs: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -468,7 +375,100 @@ ReactStatistics {
 }
 `;
 
-exports[`Additional functions closure scope capturing 1`] = `
+exports[`16.3 refs: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`16.3 refs: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`16.3 refs: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Additional functions closure scope capturing: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -485,7 +485,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Additional functions closure scope capturing 2`] = `
+exports[`Additional functions closure scope capturing: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -502,7 +502,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Additional functions closure scope capturing 3`] = `
+exports[`Additional functions closure scope capturing: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -519,7 +519,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Additional functions closure scope capturing 4`] = `
+exports[`Additional functions closure scope capturing: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -536,7 +536,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Circular reference 1`] = `
+exports[`Circular reference: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -553,7 +553,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Circular reference 2`] = `
+exports[`Circular reference: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -570,7 +570,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Circular reference 3`] = `
+exports[`Circular reference: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -587,7 +587,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Circular reference 4`] = `
+exports[`Circular reference: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -604,7 +604,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root 1`] = `
+exports[`Class component as root with instance variables #2: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -635,7 +635,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root 2`] = `
+exports[`Class component as root with instance variables #2: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -666,7 +666,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root 3`] = `
+exports[`Class component as root with instance variables #2: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -697,7 +697,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root 4`] = `
+exports[`Class component as root with instance variables #2: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -728,7 +728,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with instance variables #2 1`] = `
+exports[`Class component as root with instance variables: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -759,7 +759,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with instance variables #2 2`] = `
+exports[`Class component as root with instance variables: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -790,7 +790,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with instance variables #2 3`] = `
+exports[`Class component as root with instance variables: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -821,7 +821,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with instance variables #2 4`] = `
+exports[`Class component as root with instance variables: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -852,7 +852,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with instance variables 1`] = `
+exports[`Class component as root with multiple render methods: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -883,7 +883,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with instance variables 2`] = `
+exports[`Class component as root with multiple render methods: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -914,7 +914,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with instance variables 3`] = `
+exports[`Class component as root with multiple render methods: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -945,7 +945,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with instance variables 4`] = `
+exports[`Class component as root with multiple render methods: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -976,7 +976,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with multiple render methods 1`] = `
+exports[`Class component as root with props: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1007,7 +1007,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with multiple render methods 2`] = `
+exports[`Class component as root with props: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1038,7 +1038,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with multiple render methods 3`] = `
+exports[`Class component as root with props: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1069,7 +1069,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with multiple render methods 4`] = `
+exports[`Class component as root with props: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1100,7 +1100,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with props 1`] = `
+exports[`Class component as root with refs: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1131,7 +1131,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with props 2`] = `
+exports[`Class component as root with refs: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1162,7 +1162,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with props 3`] = `
+exports[`Class component as root with refs: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1193,7 +1193,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with props 4`] = `
+exports[`Class component as root with refs: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1224,7 +1224,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with refs 1`] = `
+exports[`Class component as root with state: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1255,7 +1255,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with refs 2`] = `
+exports[`Class component as root with state: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1286,7 +1286,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with refs 3`] = `
+exports[`Class component as root with state: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1317,7 +1317,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with refs 4`] = `
+exports[`Class component as root with state: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1348,7 +1348,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with state 1`] = `
+exports[`Class component as root: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1379,7 +1379,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with state 2`] = `
+exports[`Class component as root: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1410,7 +1410,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with state 3`] = `
+exports[`Class component as root: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1441,7 +1441,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Class component as root with state 4`] = `
+exports[`Class component as root: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1472,7 +1472,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Conditional 1`] = `
+exports[`Conditional: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -1496,7 +1496,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Conditional 2`] = `
+exports[`Conditional: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -1520,7 +1520,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Conditional 3`] = `
+exports[`Conditional: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -1544,7 +1544,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Conditional 4`] = `
+exports[`Conditional: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -1568,7 +1568,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Delete element prop key 1`] = `
+exports[`Delete element prop key: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -1604,7 +1604,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Delete element prop key 2`] = `
+exports[`Delete element prop key: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -1640,7 +1640,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Delete element prop key 3`] = `
+exports[`Delete element prop key: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -1676,7 +1676,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Delete element prop key 4`] = `
+exports[`Delete element prop key: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -1712,7 +1712,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic ReactElement type #2 1`] = `
+exports[`Dynamic ReactElement type #2: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -1748,7 +1748,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic ReactElement type #2 2`] = `
+exports[`Dynamic ReactElement type #2: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -1784,7 +1784,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic ReactElement type #2 3`] = `
+exports[`Dynamic ReactElement type #2: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -1820,7 +1820,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic ReactElement type #2 4`] = `
+exports[`Dynamic ReactElement type #2: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -1856,7 +1856,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic ReactElement type #3 1`] = `
+exports[`Dynamic ReactElement type #3: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1886,7 +1886,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic ReactElement type #3 2`] = `
+exports[`Dynamic ReactElement type #3: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1916,7 +1916,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic ReactElement type #3 3`] = `
+exports[`Dynamic ReactElement type #3: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1946,7 +1946,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic ReactElement type #3 4`] = `
+exports[`Dynamic ReactElement type #3: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -1976,7 +1976,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic ReactElement type #4 1`] = `
+exports[`Dynamic ReactElement type #4: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2000,7 +2000,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic ReactElement type #4 2`] = `
+exports[`Dynamic ReactElement type #4: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2024,7 +2024,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic ReactElement type #4 3`] = `
+exports[`Dynamic ReactElement type #4: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2048,7 +2048,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic ReactElement type #4 4`] = `
+exports[`Dynamic ReactElement type #4: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2072,7 +2072,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic ReactElement type 1`] = `
+exports[`Dynamic ReactElement type: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -2102,7 +2102,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic ReactElement type 2`] = `
+exports[`Dynamic ReactElement type: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -2132,7 +2132,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic ReactElement type 3`] = `
+exports[`Dynamic ReactElement type: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -2162,7 +2162,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic ReactElement type 4`] = `
+exports[`Dynamic ReactElement type: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -2192,7 +2192,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic context 1`] = `
+exports[`Dynamic context: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2216,7 +2216,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic context 2`] = `
+exports[`Dynamic context: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2240,7 +2240,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic context 3`] = `
+exports[`Dynamic context: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2264,7 +2264,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic context 4`] = `
+exports[`Dynamic context: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2288,7 +2288,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic props 1`] = `
+exports[`Dynamic props: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2312,7 +2312,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic props 2`] = `
+exports[`Dynamic props: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2336,7 +2336,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic props 3`] = `
+exports[`Dynamic props: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2360,7 +2360,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Dynamic props 4`] = `
+exports[`Dynamic props: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2384,7 +2384,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Equivalence 1`] = `
+exports[`Equivalence: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2401,7 +2401,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Equivalence 2`] = `
+exports[`Equivalence: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2418,7 +2418,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Equivalence 3`] = `
+exports[`Equivalence: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2435,7 +2435,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Equivalence 4`] = `
+exports[`Equivalence: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2452,7 +2452,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Event handlers 1`] = `
+exports[`Event handlers: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2469,7 +2469,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Event handlers 2`] = `
+exports[`Event handlers: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2486,7 +2486,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Event handlers 3`] = `
+exports[`Event handlers: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2503,7 +2503,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Event handlers 4`] = `
+exports[`Event handlers: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2520,7 +2520,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Handle mapped arrays 1`] = `
+exports[`Handle mapped arrays 2: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2544,7 +2544,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Handle mapped arrays 2`] = `
+exports[`Handle mapped arrays 2: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2568,7 +2568,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Handle mapped arrays 2 1`] = `
+exports[`Handle mapped arrays 2: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2592,7 +2592,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Handle mapped arrays 2 2`] = `
+exports[`Handle mapped arrays 2: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2616,7 +2616,75 @@ ReactStatistics {
 }
 `;
 
-exports[`Handle mapped arrays 2 3`] = `
+exports[`Handle mapped arrays from Array.from: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Handle mapped arrays from Array.from: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Handle mapped arrays from Array.from: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Handle mapped arrays from Array.from: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Handle mapped arrays: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2640,7 +2708,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Handle mapped arrays 2 4`] = `
+exports[`Handle mapped arrays: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2664,7 +2732,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Handle mapped arrays 3`] = `
+exports[`Handle mapped arrays: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2688,7 +2756,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Handle mapped arrays 4`] = `
+exports[`Handle mapped arrays: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2712,75 +2780,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Handle mapped arrays from Array.from 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 1,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Handle mapped arrays from Array.from 2`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 1,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Handle mapped arrays from Array.from 3`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 1,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Handle mapped arrays from Array.from 4`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 1,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Havocing of ReactElements should not result in property assignments 1`] = `
+exports[`Havocing of ReactElements should not result in property assignments: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2797,7 +2797,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Havocing of ReactElements should not result in property assignments 2`] = `
+exports[`Havocing of ReactElements should not result in property assignments: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2814,7 +2814,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Havocing of ReactElements should not result in property assignments 3`] = `
+exports[`Havocing of ReactElements should not result in property assignments: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2831,7 +2831,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Havocing of ReactElements should not result in property assignments 4`] = `
+exports[`Havocing of ReactElements should not result in property assignments: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2848,15 +2848,15 @@ ReactStatistics {
 }
 `;
 
-exports[`Mutations - not-safe 1 1`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
+exports[`Mutations - not-safe 1: (JSX => JSX) 1`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
 
-exports[`Mutations - not-safe 1 2`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
+exports[`Mutations - not-safe 1: (JSX => createElement) 1`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
 
-exports[`Mutations - not-safe 1 3`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
+exports[`Mutations - not-safe 1: (createElement => JSX) 1`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
 
-exports[`Mutations - not-safe 1 4`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
+exports[`Mutations - not-safe 1: (createElement => createElement) 1`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
 
-exports[`Mutations - not-safe 2 1`] = `
+exports[`Mutations - not-safe 2: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2873,7 +2873,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Mutations - not-safe 2 2`] = `
+exports[`Mutations - not-safe 2: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2890,7 +2890,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Mutations - not-safe 2 3`] = `
+exports[`Mutations - not-safe 2: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2907,7 +2907,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Mutations - not-safe 2 4`] = `
+exports[`Mutations - not-safe 2: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2924,15 +2924,15 @@ ReactStatistics {
 }
 `;
 
-exports[`Mutations - not-safe 3 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
+exports[`Mutations - not-safe 3: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
 
-exports[`Mutations - not-safe 3 2`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
+exports[`Mutations - not-safe 3: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
 
-exports[`Mutations - not-safe 3 3`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
+exports[`Mutations - not-safe 3: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
 
-exports[`Mutations - not-safe 3 4`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
+exports[`Mutations - not-safe 3: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
 
-exports[`Mutations - safe 1 1`] = `
+exports[`Mutations - safe 1: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2949,7 +2949,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Mutations - safe 1 2`] = `
+exports[`Mutations - safe 1: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2966,7 +2966,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Mutations - safe 1 3`] = `
+exports[`Mutations - safe 1: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -2983,7 +2983,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Mutations - safe 1 4`] = `
+exports[`Mutations - safe 1: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -3000,7 +3000,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Mutations - safe 2 1`] = `
+exports[`Mutations - safe 2: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -3017,7 +3017,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Mutations - safe 2 2`] = `
+exports[`Mutations - safe 2: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -3034,7 +3034,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Mutations - safe 2 3`] = `
+exports[`Mutations - safe 2: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -3051,7 +3051,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Mutations - safe 2 4`] = `
+exports[`Mutations - safe 2: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -3068,7 +3068,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Mutations - safe 3 1`] = `
+exports[`Mutations - safe 3: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -3085,7 +3085,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Mutations - safe 3 2`] = `
+exports[`Mutations - safe 3: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -3102,7 +3102,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Mutations - safe 3 3`] = `
+exports[`Mutations - safe 3: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -3119,7 +3119,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Mutations - safe 3 4`] = `
+exports[`Mutations - safe 3: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -3136,7 +3136,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Null or undefined props 1`] = `
+exports[`Null or undefined props: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -3153,7 +3153,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Null or undefined props 2`] = `
+exports[`Null or undefined props: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -3170,7 +3170,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Null or undefined props 3`] = `
+exports[`Null or undefined props: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -3187,7 +3187,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Null or undefined props 4`] = `
+exports[`Null or undefined props: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -3204,7 +3204,7 @@ ReactStatistics {
 }
 `;
 
-exports[`React.cloneElement 1`] = `
+exports[`React.cloneElement: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -3235,7 +3235,7 @@ ReactStatistics {
 }
 `;
 
-exports[`React.cloneElement 2`] = `
+exports[`React.cloneElement: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -3266,7 +3266,7 @@ ReactStatistics {
 }
 `;
 
-exports[`React.cloneElement 3`] = `
+exports[`React.cloneElement: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -3297,7 +3297,7 @@ ReactStatistics {
 }
 `;
 
-exports[`React.cloneElement 4`] = `
+exports[`React.cloneElement: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -3328,7 +3328,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Render array twice 1`] = `
+exports[`Render array twice: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -3352,7 +3352,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Render array twice 2`] = `
+exports[`Render array twice: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -3376,7 +3376,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Render array twice 3`] = `
+exports[`Render array twice: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -3400,7 +3400,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Render array twice 4`] = `
+exports[`Render array twice: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -3424,7 +3424,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Render nested array children 1`] = `
+exports[`Render nested array children: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -3448,7 +3448,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Render nested array children 2`] = `
+exports[`Render nested array children: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -3472,7 +3472,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Render nested array children 3`] = `
+exports[`Render nested array children: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -3496,7 +3496,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Render nested array children 4`] = `
+exports[`Render nested array children: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -3520,7 +3520,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Return text 1`] = `
+exports[`Return text: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -3550,7 +3550,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Return text 2`] = `
+exports[`Return text: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -3580,7 +3580,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Return text 3`] = `
+exports[`Return text: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -3610,7 +3610,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Return text 4`] = `
+exports[`Return text: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -3640,7 +3640,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Return undefined 1`] = `
+exports[`Return undefined: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -3670,7 +3670,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Return undefined 2`] = `
+exports[`Return undefined: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -3700,7 +3700,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Return undefined 3`] = `
+exports[`Return undefined: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -3730,7 +3730,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Return undefined 4`] = `
+exports[`Return undefined: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -3760,87 +3760,15 @@ ReactStatistics {
 }
 `;
 
-exports[`Runtime error 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Runtime error: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`Runtime error 2`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Runtime error: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`Runtime error 3`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Runtime error: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`Runtime error 4`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Runtime error: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`Simple 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "B",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "C",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Simple 2`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "B",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "C",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Simple 2 1`] = `
+exports[`Simple 2: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -3864,7 +3792,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 2 2`] = `
+exports[`Simple 2: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -3888,7 +3816,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 2 3`] = `
+exports[`Simple 2: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -3912,7 +3840,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 2 4`] = `
+exports[`Simple 2: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -3936,43 +3864,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 3`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "B",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "C",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Simple 3 1`] = `
+exports[`Simple 3: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -3996,7 +3888,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 3 2`] = `
+exports[`Simple 3: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -4020,7 +3912,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 3 3`] = `
+exports[`Simple 3: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -4044,7 +3936,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 3 4`] = `
+exports[`Simple 3: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -4068,43 +3960,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 4`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "B",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "C",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Simple 4 1`] = `
+exports[`Simple 4: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -4128,7 +3984,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 4 2`] = `
+exports[`Simple 4: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -4152,7 +4008,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 4 3`] = `
+exports[`Simple 4: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -4176,7 +4032,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 4 4`] = `
+exports[`Simple 4: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -4200,7 +4056,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 5 1`] = `
+exports[`Simple 5: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -4230,7 +4086,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 5 2`] = `
+exports[`Simple 5: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -4260,7 +4116,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 5 3`] = `
+exports[`Simple 5: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -4290,7 +4146,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 5 4`] = `
+exports[`Simple 5: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -4320,7 +4176,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 6 1`] = `
+exports[`Simple 6: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4337,7 +4193,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 6 2`] = `
+exports[`Simple 6: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4354,7 +4210,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 6 3`] = `
+exports[`Simple 6: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4371,7 +4227,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 6 4`] = `
+exports[`Simple 6: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4388,7 +4244,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 7 1`] = `
+exports[`Simple 7: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4405,7 +4261,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 7 2`] = `
+exports[`Simple 7: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4422,7 +4278,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 7 3`] = `
+exports[`Simple 7: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4439,7 +4295,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 7 4`] = `
+exports[`Simple 7: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4456,39 +4312,39 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 8 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 8: (JSX => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 8 2`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 8: (JSX => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 8 3`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 8: (createElement => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 8 4`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 8: (createElement => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 9 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 9: (JSX => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 9 2`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 9: (JSX => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 9 3`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 9: (createElement => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 9 4`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 9: (createElement => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 10 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 10: (JSX => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 10 2`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 10: (JSX => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 10 3`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 10: (createElement => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 10 4`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 10: (createElement => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 11 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Simple 11: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`Simple 11 2`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Simple 11: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`Simple 11 3`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Simple 11: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`Simple 11 4`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Simple 11: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`Simple 12 1`] = `
+exports[`Simple 12: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -4512,7 +4368,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 12 2`] = `
+exports[`Simple 12: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -4536,7 +4392,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 12 3`] = `
+exports[`Simple 12: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -4560,7 +4416,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 12 4`] = `
+exports[`Simple 12: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -4584,15 +4440,15 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 13 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Simple 13: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`Simple 13 2`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Simple 13: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`Simple 13 3`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Simple 13: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`Simple 13 4`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Simple 13: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`Simple 14 1`] = `
+exports[`Simple 14: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4609,7 +4465,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 14 2`] = `
+exports[`Simple 14: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4626,7 +4482,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 14 3`] = `
+exports[`Simple 14: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4643,7 +4499,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 14 4`] = `
+exports[`Simple 14: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4660,7 +4516,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 15 1`] = `
+exports[`Simple 15: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4677,7 +4533,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 15 2`] = `
+exports[`Simple 15: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4694,7 +4550,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 15 3`] = `
+exports[`Simple 15: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4711,7 +4567,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 15 4`] = `
+exports[`Simple 15: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4728,7 +4584,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 16 1`] = `
+exports[`Simple 16: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4745,7 +4601,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 16 2`] = `
+exports[`Simple 16: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4762,7 +4618,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 16 3`] = `
+exports[`Simple 16: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4779,7 +4635,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 16 4`] = `
+exports[`Simple 16: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4796,7 +4652,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 17 1`] = `
+exports[`Simple 17: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4813,7 +4669,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 17 2`] = `
+exports[`Simple 17: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4830,7 +4686,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 17 3`] = `
+exports[`Simple 17: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4847,7 +4703,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 17 4`] = `
+exports[`Simple 17: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4864,7 +4720,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 18 1`] = `
+exports[`Simple 18: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4881,7 +4737,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 18 2`] = `
+exports[`Simple 18: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4898,7 +4754,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 18 3`] = `
+exports[`Simple 18: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4915,7 +4771,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 18 4`] = `
+exports[`Simple 18: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -4932,7 +4788,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 19 1`] = `
+exports[`Simple 19: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -4962,7 +4818,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 19 2`] = `
+exports[`Simple 19: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -4992,7 +4848,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 19 3`] = `
+exports[`Simple 19: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -5022,7 +4878,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 19 4`] = `
+exports[`Simple 19: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -5052,7 +4908,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 20 1`] = `
+exports[`Simple 20: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -5082,7 +4938,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 20 2`] = `
+exports[`Simple 20: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -5112,7 +4968,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 20 3`] = `
+exports[`Simple 20: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -5142,7 +4998,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 20 4`] = `
+exports[`Simple 20: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -5172,7 +5028,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 21 1`] = `
+exports[`Simple 21: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -5196,7 +5052,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 21 2`] = `
+exports[`Simple 21: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -5220,7 +5076,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 21 3`] = `
+exports[`Simple 21: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -5244,7 +5100,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 21 4`] = `
+exports[`Simple 21: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -5268,7 +5124,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple children 1`] = `
+exports[`Simple children: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -5299,7 +5155,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple children 2`] = `
+exports[`Simple children: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -5330,7 +5186,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple children 3`] = `
+exports[`Simple children: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -5361,7 +5217,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple children 4`] = `
+exports[`Simple children: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -5392,7 +5248,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple fragments 1`] = `
+exports[`Simple fragments: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
@@ -5435,7 +5291,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple fragments 2`] = `
+exports[`Simple fragments: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
@@ -5478,7 +5334,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple fragments 3`] = `
+exports[`Simple fragments: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
@@ -5521,7 +5377,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple fragments 4`] = `
+exports[`Simple fragments: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
@@ -5564,7 +5420,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple refs 1`] = `
+exports[`Simple refs: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -5588,7 +5444,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple refs 2`] = `
+exports[`Simple refs: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -5612,7 +5468,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple refs 3`] = `
+exports[`Simple refs: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -5636,7 +5492,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple refs 4`] = `
+exports[`Simple refs: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -5660,7 +5516,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple with abstract props 1`] = `
+exports[`Simple with abstract props: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -5691,7 +5547,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple with abstract props 2`] = `
+exports[`Simple with abstract props: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -5722,7 +5578,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple with abstract props 3`] = `
+exports[`Simple with abstract props: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -5753,7 +5609,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple with abstract props 4`] = `
+exports[`Simple with abstract props: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -5784,7 +5640,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple with new expression 1`] = `
+exports[`Simple with new expression: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -5801,7 +5657,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple with new expression 2`] = `
+exports[`Simple with new expression: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -5818,7 +5674,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple with new expression 3`] = `
+exports[`Simple with new expression: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -5835,7 +5691,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple with new expression 4`] = `
+exports[`Simple with new expression: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -5852,7 +5708,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple with unary expressions 1`] = `
+exports[`Simple with unary expressions: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -5876,7 +5732,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple with unary expressions 2`] = `
+exports[`Simple with unary expressions: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -5900,7 +5756,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple with unary expressions 3`] = `
+exports[`Simple with unary expressions: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -5924,7 +5780,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple with unary expressions 4`] = `
+exports[`Simple with unary expressions: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -5948,7 +5804,151 @@ ReactStatistics {
 }
 `;
 
-exports[`Two roots 1`] = `
+exports[`Simple: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "B",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "C",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Simple: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "B",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "C",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Simple: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "B",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "C",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Simple: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "B",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "C",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Two roots: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -5971,7 +5971,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Two roots 2`] = `
+exports[`Two roots: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -5994,7 +5994,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Two roots 3`] = `
+exports[`Two roots: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -6017,7 +6017,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Two roots 4`] = `
+exports[`Two roots: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -6040,7 +6040,7 @@ ReactStatistics {
 }
 `;
 
-exports[`defaultProps 1`] = `
+exports[`defaultProps: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -6064,7 +6064,7 @@ ReactStatistics {
 }
 `;
 
-exports[`defaultProps 2`] = `
+exports[`defaultProps: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -6088,7 +6088,7 @@ ReactStatistics {
 }
 `;
 
-exports[`defaultProps 3`] = `
+exports[`defaultProps: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -6112,7 +6112,7 @@ ReactStatistics {
 }
 `;
 
-exports[`defaultProps 4`] = `
+exports[`defaultProps: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [

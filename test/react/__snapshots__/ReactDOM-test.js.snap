@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`createPortal 1`] = `
+exports[`createPortal: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -38,7 +38,7 @@ ReactStatistics {
 }
 `;
 
-exports[`createPortal 2`] = `
+exports[`createPortal: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -76,7 +76,7 @@ ReactStatistics {
 }
 `;
 
-exports[`createPortal 3`] = `
+exports[`createPortal: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -114,7 +114,7 @@ ReactStatistics {
 }
 `;
 
-exports[`createPortal 4`] = `
+exports[`createPortal: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [

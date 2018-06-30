@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Function bind 1`] = `
+exports[`Function bind: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -24,7 +24,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Function bind 2`] = `
+exports[`Function bind: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -48,7 +48,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Function bind 3`] = `
+exports[`Function bind: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -72,7 +72,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Function bind 4`] = `
+exports[`Function bind: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -96,7 +96,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Hacker News app 1`] = `
+exports[`Hacker News app: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 7,
   "evaluatedRootNodes": Array [
@@ -154,7 +154,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Hacker News app 2`] = `
+exports[`Hacker News app: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 7,
   "evaluatedRootNodes": Array [
@@ -212,7 +212,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Hacker News app 3`] = `
+exports[`Hacker News app: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 7,
   "evaluatedRootNodes": Array [
@@ -270,7 +270,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Hacker News app 4`] = `
+exports[`Hacker News app: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 7,
   "evaluatedRootNodes": Array [
@@ -328,55 +328,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "QueryRenderer",
-          "status": "RENDER_PROPS",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 1,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`fb-www 2`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "QueryRenderer",
-          "status": "RENDER_PROPS",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 1,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`fb-www 2 1`] = `
+exports[`fb-www 2: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -393,7 +345,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 2 2`] = `
+exports[`fb-www 2: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -410,7 +362,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 2 3`] = `
+exports[`fb-www 2: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -427,7 +379,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 2 4`] = `
+exports[`fb-www 2: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -444,31 +396,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 3`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "QueryRenderer",
-          "status": "RENDER_PROPS",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 1,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`fb-www 3 1`] = `
+exports[`fb-www 3: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -478,7 +406,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 3 2`] = `
+exports[`fb-www 3: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -488,7 +416,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 3 3`] = `
+exports[`fb-www 3: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -498,7 +426,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 3 4`] = `
+exports[`fb-www 3: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -508,31 +436,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 4`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "QueryRenderer",
-          "status": "RENDER_PROPS",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 1,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`fb-www 4 1`] = `
+exports[`fb-www 4: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -542,7 +446,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 4 2`] = `
+exports[`fb-www 4: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -552,7 +456,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 4 3`] = `
+exports[`fb-www 4: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -562,7 +466,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 4 4`] = `
+exports[`fb-www 4: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -572,7 +476,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 5 1`] = `
+exports[`fb-www 5: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -582,7 +486,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 5 2`] = `
+exports[`fb-www 5: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -592,7 +496,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 5 3`] = `
+exports[`fb-www 5: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -602,7 +506,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 5 4`] = `
+exports[`fb-www 5: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -612,7 +516,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 6 1`] = `
+exports[`fb-www 6: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -622,7 +526,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 6 2`] = `
+exports[`fb-www 6: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -632,7 +536,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 6 3`] = `
+exports[`fb-www 6: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -642,7 +546,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 6 4`] = `
+exports[`fb-www 6: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -652,7 +556,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 7 1`] = `
+exports[`fb-www 7: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -669,7 +573,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 7 2`] = `
+exports[`fb-www 7: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -686,7 +590,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 7 3`] = `
+exports[`fb-www 7: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -703,7 +607,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 7 4`] = `
+exports[`fb-www 7: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -720,7 +624,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 8 1`] = `
+exports[`fb-www 8: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -744,7 +648,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 8 2`] = `
+exports[`fb-www 8: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -768,7 +672,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 8 3`] = `
+exports[`fb-www 8: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -792,7 +696,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 8 4`] = `
+exports[`fb-www 8: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
@@ -816,7 +720,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 9 1`] = `
+exports[`fb-www 9: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 9,
   "evaluatedRootNodes": Array [
@@ -886,7 +790,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 9 2`] = `
+exports[`fb-www 9: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 9,
   "evaluatedRootNodes": Array [
@@ -956,7 +860,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 9 3`] = `
+exports[`fb-www 9: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 9,
   "evaluatedRootNodes": Array [
@@ -1026,7 +930,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 9 4`] = `
+exports[`fb-www 9: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 9,
   "evaluatedRootNodes": Array [
@@ -1096,7 +1000,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 10 1`] = `
+exports[`fb-www 10: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
@@ -1140,7 +1044,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 10 2`] = `
+exports[`fb-www 10: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
@@ -1184,7 +1088,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 10 3`] = `
+exports[`fb-www 10: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
@@ -1228,7 +1132,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 10 4`] = `
+exports[`fb-www 10: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 5,
   "evaluatedRootNodes": Array [
@@ -1272,7 +1176,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 11 1`] = `
+exports[`fb-www 11: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 13,
   "evaluatedRootNodes": Array [
@@ -1368,7 +1272,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 11 2`] = `
+exports[`fb-www 11: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 13,
   "evaluatedRootNodes": Array [
@@ -1464,7 +1368,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 11 3`] = `
+exports[`fb-www 11: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 13,
   "evaluatedRootNodes": Array [
@@ -1560,7 +1464,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 11 4`] = `
+exports[`fb-www 11: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 13,
   "evaluatedRootNodes": Array [
@@ -1656,15 +1560,15 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 12 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`fb-www 12: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`fb-www 12 2`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`fb-www 12: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`fb-www 12 3`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`fb-www 12: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`fb-www 12 4`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`fb-www 12: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`fb-www 13 1`] = `
+exports[`fb-www 13: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -1674,7 +1578,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 13 2`] = `
+exports[`fb-www 13: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -1684,7 +1588,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 13 3`] = `
+exports[`fb-www 13: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -1694,7 +1598,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 13 4`] = `
+exports[`fb-www 13: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
   "evaluatedRootNodes": Array [],
@@ -1704,7 +1608,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 14 1`] = `
+exports[`fb-www 14: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -1735,7 +1639,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 14 2`] = `
+exports[`fb-www 14: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -1766,7 +1670,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 14 3`] = `
+exports[`fb-www 14: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -1797,7 +1701,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 14 4`] = `
+exports[`fb-www 14: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -1828,23 +1732,23 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 15 1`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
+exports[`fb-www 15: (JSX => JSX) 1`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
 
-exports[`fb-www 15 2`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
+exports[`fb-www 15: (JSX => createElement) 1`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
 
-exports[`fb-www 15 3`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
+exports[`fb-www 15: (createElement => JSX) 1`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
 
-exports[`fb-www 15 4`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
+exports[`fb-www 15: (createElement => createElement) 1`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
 
-exports[`fb-www 16 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
+exports[`fb-www 16: (JSX => JSX) 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
 
-exports[`fb-www 16 2`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
+exports[`fb-www 16: (JSX => createElement) 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
 
-exports[`fb-www 16 3`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
+exports[`fb-www 16: (createElement => JSX) 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
 
-exports[`fb-www 16 4`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
+exports[`fb-www 16: (createElement => createElement) 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
 
-exports[`fb-www 17 1`] = `
+exports[`fb-www 17: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -1882,7 +1786,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 17 2`] = `
+exports[`fb-www 17: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -1920,7 +1824,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 17 3`] = `
+exports[`fb-www 17: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -1958,7 +1862,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 17 4`] = `
+exports[`fb-www 17: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -1996,23 +1900,23 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 18 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`fb-www 18: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`fb-www 18 2`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`fb-www 18: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`fb-www 18 3`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`fb-www 18: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`fb-www 18 4`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`fb-www 18: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`fb-www 19 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`fb-www 19: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`fb-www 19 2`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`fb-www 19: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`fb-www 19 3`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`fb-www 19: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`fb-www 19 4`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`fb-www 19: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
-exports[`fb-www 20 1`] = `
+exports[`fb-www 20: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2036,7 +1940,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 20 2`] = `
+exports[`fb-www 20: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2060,7 +1964,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 20 3`] = `
+exports[`fb-www 20: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2084,7 +1988,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 20 4`] = `
+exports[`fb-www 20: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2108,7 +2012,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 21 1`] = `
+exports[`fb-www 21: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -2144,7 +2048,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 21 2`] = `
+exports[`fb-www 21: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -2180,7 +2084,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 21 3`] = `
+exports[`fb-www 21: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -2216,7 +2120,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 21 4`] = `
+exports[`fb-www 21: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -2252,7 +2156,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 22 1`] = `
+exports[`fb-www 22: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2276,7 +2180,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 22 2`] = `
+exports[`fb-www 22: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2300,7 +2204,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 22 3`] = `
+exports[`fb-www 22: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2324,7 +2228,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 22 4`] = `
+exports[`fb-www 22: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -2348,7 +2252,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 23 1`] = `
+exports[`fb-www 23: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -2384,7 +2288,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 23 2`] = `
+exports[`fb-www 23: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -2420,7 +2324,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 23 3`] = `
+exports[`fb-www 23: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -2456,7 +2360,7 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 23 4`] = `
+exports[`fb-www 23: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
   "evaluatedRootNodes": Array [
@@ -2492,7 +2396,103 @@ ReactStatistics {
 }
 `;
 
-exports[`repl example 1`] = `
+exports[`fb-www: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`repl example: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 7,
   "evaluatedRootNodes": Array [
@@ -2549,7 +2549,7 @@ ReactStatistics {
 }
 `;
 
-exports[`repl example 2`] = `
+exports[`repl example: (JSX => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 7,
   "evaluatedRootNodes": Array [
@@ -2606,7 +2606,7 @@ ReactStatistics {
 }
 `;
 
-exports[`repl example 3`] = `
+exports[`repl example: (createElement => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 7,
   "evaluatedRootNodes": Array [
@@ -2663,7 +2663,7 @@ ReactStatistics {
 }
 `;
 
-exports[`repl example 4`] = `
+exports[`repl example: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 7,
   "evaluatedRootNodes": Array [

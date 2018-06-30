@@ -185,7 +185,7 @@ function prepareReactTests() {
     }
   }
 
-  function runTestWithOptions(source, useJSXOutput, options) {
+  function runTestWithOptions(source, useJSXOutput, options, snapshotName) {
     let {
       firstRenderOnly = false,
       // By default, we recover from PP0025 even though it's technically unsafe.
@@ -200,7 +200,7 @@ function prepareReactTests() {
       ({ compiledSource, statistics } = compileSourceWithPrepack(source, useJSXOutput, diagnosticLog, shouldRecover));
     } catch (err) {
       if (err.__isReconcilerFatalError && expectReconcilerError) {
-        expect(err.message).toMatchSnapshot();
+        expect(err.message).toMatchSnapshot(undefined, snapshotName);
         return;
       }
       diagnosticLog.forEach(diag => {
@@ -209,7 +209,7 @@ function prepareReactTests() {
       throw err;
     }
 
-    expect(statistics).toMatchSnapshot();
+    expect(statistics).toMatchSnapshot(undefined, snapshotName);
     let A = runSource(source);
     let B = runSource(compiledSource);
 
@@ -262,10 +262,10 @@ function prepareReactTests() {
   function runTest(fixturePath: string, options: TestOptions = {}) {
     let source = fs.readFileSync(fixturePath).toString();
     let jsxSource = transpileSource(source);
-    runTestWithOptions(jsxSource, false, options);
-    runTestWithOptions(source, false, options);
-    runTestWithOptions(jsxSource, true, options);
-    runTestWithOptions(source, true, options);
+    runTestWithOptions(jsxSource, false, options, '(JSX => createElement)');
+    runTestWithOptions(source, false, options, '(createElement => createElement)');
+    runTestWithOptions(jsxSource, true, options, '(JSX => JSX)');
+    runTestWithOptions(source, true, options, '(createElement => JSX)');
   }
 
   return {
