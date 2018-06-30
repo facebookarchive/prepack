@@ -13,7 +13,6 @@ import { PerFileBreakpointMap } from "./PerFileBreakpointMap.js";
 import { Breakpoint } from "./Breakpoint.js";
 import type { Breakpoint as BreakpointType } from "./../common/types.js";
 import { BabelNode } from "babel-types";
-import { IsStatement } from "./../../methods/is.js";
 
 // Storing BreakpointStores for all source files
 export class BreakpointManager {
@@ -23,7 +22,6 @@ export class BreakpointManager {
   _breakpointMaps: Map<string, PerFileBreakpointMap>;
 
   getStoppableBreakpoint(ast: BabelNode): void | Breakpoint {
-    if (!IsStatement(ast)) return;
     if (ast.loc && ast.loc.source) {
       let location = ast.loc;
       let filePath = location.source;
