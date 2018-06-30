@@ -89,50 +89,13 @@ it("Component type same", () => {
 });
 
 it("Lazy branched elements", () => {
-  let createElement = React.createElement;
-  let count = 0;
-  // For this test we want to also check how React.createElement
-  // calls occur so we can validate that we are correctly using
-  // lazy branched elements. To do this, we override the createElement
-  // call and increment a counter for ever call.
-
-  // $FlowFixMe: intentional for this test
-  React.createElement = (type, config) => {
-    count++;
-    return createElement(type, config);
-  };
-  try {
-    runTest(__dirname + "/Reconciliation/lazy-branched-elements.js");
-  } finally {
-    // $FlowFixMe: intentional for this test
-    React.createElement = createElement;
-  }
-  // The non-Prepacked version has 4 calls, the Prepacked one should have 4 calls.
-  // Multiplied by 4 because every test runs in four modes (JSX/createElement input and output).
-  expect(count).toEqual(8 * 4);
+  runTest(__dirname + "/Reconciliation/lazy-branched-elements.js", {
+    expectedCreateElementCalls: /* original */ 4 + /* prepacked */ 4,
+  });
 });
 
 it("Lazy branched elements 2", () => {
-  let createElement = React.createElement;
-  let count = 0;
-  // For this test we want to also check how React.createElement
-  // calls occur so we can validate that we are correctly using
-  // lazy branched elements. To do this, we override the createElement
-  // call and increment a counter for ever call.
-
-  // $FlowFixMe: intentional for this test
-  React.createElement = (type, config) => {
-    count++;
-    return createElement(type, config);
-  };
-  try {
-    runTest(__dirname + "/Reconciliation/lazy-branched-elements2.js");
-  } finally {
-    // $FlowFixMe: intentional for this test
-    React.createElement = createElement;
-  }
-  // The non-Prepacked version has 4 calls, the Prepacked one should have 3 calls
-  // (3 because one of the calls has been removing by inlining).
-  // Multiplied by 4 because every test runs in four modes (JSX/createElement input and output).
-  expect(count).toEqual(7 * 4);
+  runTest(__dirname + "/Reconciliation/lazy-branched-elements2.js", {
+    expectedCreateElementCalls: /* original */ 4 + /* prepacked: one removed by inlining */ 3,
+  });
 });

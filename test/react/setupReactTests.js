@@ -192,8 +192,10 @@ function setupReactTests() {
       // We do the same in debug-fb-www script.
       shouldRecover = errorCode => errorCode === "PP0025",
       expectReconcilerError = false,
+      expectedCreateElementCalls,
       data,
     } = options;
+
     let diagnosticLog = [];
     let compiledSource, statistics;
     try {
@@ -209,45 +211,63 @@ function setupReactTests() {
       throw err;
     }
 
-    expect(statistics).toMatchSnapshot(undefined, snapshotName);
-    let A = runSource(source);
-    let B = runSource(compiledSource);
-
-    expect(typeof A).toBe(typeof B);
-    if (typeof A !== "function") {
-      // Test without exports just verifies that the file compiles.
-      return;
-    }
-
-    let config = {
-      createNodeMock(x) {
-        return x;
-      },
+    let totalElementCount = 0;
+    let originalCreateElement = React.createElement;
+    // $FlowFixMe: intentional for this test
+    React.createElement = (...args) => {
+      totalElementCount++;
+      return originalCreateElement(...args);
     };
-    let rendererA = ReactTestRenderer.create(null, config);
-    let rendererB = ReactTestRenderer.create(null, config);
-    if (A == null || B == null) {
-      throw new Error("React test runner issue");
-    }
-    // Use the original version of the test in case transforming messes it up.
-    let { getTrials: getTrialsA, independent } = A;
-    let { getTrials: getTrialsB } = B;
-    // Run tests that assert the rendered output matches.
-    let resultA = getTrialsA(rendererA, A, data);
-    let resultB = independent ? getTrialsB(rendererB, B, data) : getTrialsA(rendererB, B, data);
+    try {
+      expect(statistics).toMatchSnapshot(undefined, snapshotName);
+      let A = runSource(source);
+      let B = runSource(compiledSource);
 
-    // The test has returned many values for us to check
-    for (let i = 0; i < resultA.length; i++) {
-      let [nameA, valueA] = resultA[i];
-      let [nameB, valueB] = resultB[i];
-      if (typeof valueA === "string" && typeof valueB === "string") {
-        expect(valueA).toBe(valueB);
-      } else {
-        expect(mergeAdjacentJSONTextNodes(valueB, firstRenderOnly)).toEqual(
-          mergeAdjacentJSONTextNodes(valueA, firstRenderOnly)
-        );
+      expect(typeof A).toBe(typeof B);
+      if (typeof A !== "function") {
+        // Test without exports just verifies that the file compiles.
+        return;
       }
-      expect(nameB).toEqual(nameA);
+
+      let config = {
+        createNodeMock(x) {
+          return x;
+        },
+      };
+      let rendererA = ReactTestRenderer.create(null, config);
+      let rendererB = ReactTestRenderer.create(null, config);
+      if (A == null || B == null) {
+        throw new Error("React test runner issue");
+      }
+
+      // Use the original version of the test in case transforming messes it up.
+      let { getTrials: getTrialsA, independent } = A;
+      let { getTrials: getTrialsB } = B;
+      // Run tests that assert the rendered output matches.
+      let resultA = getTrialsA(rendererA, A, data);
+      let resultB = independent ? getTrialsB(rendererB, B, data) : getTrialsA(rendererB, B, data);
+
+      // The test has returned many values for us to check
+      for (let i = 0; i < resultA.length; i++) {
+        let [nameA, valueA] = resultA[i];
+        let [nameB, valueB] = resultB[i];
+        if (typeof valueA === "string" && typeof valueB === "string") {
+          expect(valueA).toBe(valueB);
+        } else {
+          expect(mergeAdjacentJSONTextNodes(valueB, firstRenderOnly)).toEqual(
+            mergeAdjacentJSONTextNodes(valueA, firstRenderOnly)
+          );
+        }
+        expect(nameB).toEqual(nameA);
+      }
+    } finally {
+      // $FlowFixMe: intentional for this test
+      React.createElement = originalCreateElement;
+    }
+
+    if (typeof expectedCreateElementCalls === "number") {
+      // TODO: it would be nice to check original and prepacked ones separately.
+      expect(totalElementCount).toBe(expectedCreateElementCalls);
     }
   }
 
@@ -255,6 +275,7 @@ function setupReactTests() {
     firstRenderOnly?: boolean,
     data?: mixed,
     expectReconcilerError?: boolean,
+    expectedCreateElementCalls?: number,
     shouldRecover?: (errorCode: string) => boolean,
   };
 

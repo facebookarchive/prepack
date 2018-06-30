@@ -219,27 +219,9 @@ it("Conditional", () => {
 });
 
 it("Equivalence", () => {
-  let createElement = React.createElement;
-  let count = 0;
-  // For this test we want to also check how React.createElement
-  // calls occur so we can validate that we are correctly using
-  // lazy branched elements. To do this, we override the createElement
-  // call and increment a counter for ever call.
-
-  // $FlowFixMe: intentional for this test
-  React.createElement = (type, config) => {
-    count++;
-    return createElement(type, config);
-  };
-  try {
-    runTest(__dirname + "/FunctionalComponents/equivalence.js");
-  } finally {
-    // $FlowFixMe: intentional for this test
-    React.createElement = createElement;
-  }
-  // The non-Prepacked version has 20 calls, the Prepacked one should have 8 calls.
-  // Multiplied by 4 because every test runs in four modes (JSX/createElement input and output).
-  expect(count).toEqual(28 * 4);
+  runTest(__dirname + "/FunctionalComponents/equivalence.js", {
+    expectedCreateElementCalls: /* original */ 20 + /* prepacked: many deduplicated */ 8,
+  });
 });
 
 it("Delete element prop key", () => {
