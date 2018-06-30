@@ -18,5 +18,5 @@ const { it } = global;
 
 it("Hacker News app", () => {
   let data = JSON.parse(fs.readFileSync(__dirname + "/ServerRendering/hacker-news.json").toString());
-  runTest(__dirname + "/ServerRendering/hacker-news.js", false, data);
+  runTest(__dirname + "/ServerRendering/hacker-news.js", { data });
 });

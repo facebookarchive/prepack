@@ -133,7 +133,7 @@ it("repl example", () => {
 
 it("Hacker News app", () => {
   let data = JSON.parse(fs.readFileSync(__dirname + "/FBMocks/hacker-news.json").toString());
-  runTest(__dirname + "/FBMocks/hacker-news.js", false, data);
+  runTest(__dirname + "/FBMocks/hacker-news.js", { data });
 });
 
 it("Function bind", () => {

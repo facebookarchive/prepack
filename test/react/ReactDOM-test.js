@@ -16,5 +16,5 @@ const { runTest } = prepareReactTests();
 const { it } = global;
 
 it("createPortal", () => {
-  runTest(__dirname + "/ReactDOM/create-portal.js", false);
+  runTest(__dirname + "/ReactDOM/create-portal.js");
 });

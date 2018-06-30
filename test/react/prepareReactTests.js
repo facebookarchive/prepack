@@ -264,7 +264,14 @@ function prepareReactTests() {
     }
   }
 
-  function runTest(fixturePath: string, firstRenderOnly?: boolean = false, data?: mixed) {
+
+  type TestOptions = {
+    firstRenderOnly?: boolean,
+    data?: mixed,
+  };
+
+  function runTest(fixturePath: string, options: TestOptions = {}) {
+    let {firstRenderOnly = false, data} = options;
     let source = fs.readFileSync(fixturePath).toString();
     let jsxSource = transpileSource(source);
     runTestWithOptions(jsxSource, firstRenderOnly, data, false);
