@@ -10,8 +10,8 @@
 /* @flow */
 
 const fs = require("fs");
-const prepareReactTests = require("./prepareReactTests");
-const { runTest, stubReactRelay } = prepareReactTests();
+const setupReactTests = require("./setupReactTests");
+const { runTest, stubReactRelay } = setupReactTests();
 
 /* eslint-disable no-undef */
 const { it } = global;

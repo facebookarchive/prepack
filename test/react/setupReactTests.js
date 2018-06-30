@@ -72,7 +72,7 @@ MockURI.prototype.makeString = function() {
   return this.url;
 };
 
-function prepareReactTests() {
+function setupReactTests() {
   function compileSourceWithPrepack(
     source: string,
     useJSXOutput: boolean,
@@ -274,4 +274,4 @@ function prepareReactTests() {
   };
 }
 
-module.exports = prepareReactTests;
+module.exports = setupReactTests;

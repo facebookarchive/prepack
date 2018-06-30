@@ -9,8 +9,8 @@
 
 /* @flow */
 
-const prepareReactTests = require("./prepareReactTests");
-const { runTest } = prepareReactTests();
+const setupReactTests = require("./setupReactTests");
+const { runTest } = setupReactTests();
 
 /* eslint-disable no-undef */
 const { it } = global;
