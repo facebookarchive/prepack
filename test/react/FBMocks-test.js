@@ -11,7 +11,7 @@
 
 const fs = require("fs");
 const prepareReactTests = require("./prepareReactTests");
-const { runTest, expectReconcilerFatalError, stubReactRelay } = prepareReactTests();
+const { runTest, stubReactRelay } = prepareReactTests();
 
 /* eslint-disable no-undef */
 const { it } = global;
@@ -67,8 +67,8 @@ it("fb-www 11", () => {
 });
 
 it("fb-www 12", () => {
-  expectReconcilerFatalError(() => {
-    runTest(__dirname + "/FBMocks/fb12.js");
+  runTest(__dirname + "/FBMocks/fb12.js", {
+    expectReconcilerError: true,
   });
 });
 
@@ -81,14 +81,14 @@ it("fb-www 14", () => {
 });
 
 it("fb-www 15", () => {
-  expectReconcilerFatalError(() => {
-    runTest(__dirname + "/FBMocks/fb15.js");
+  runTest(__dirname + "/FBMocks/fb15.js", {
+    expectReconcilerError: true,
   });
 });
 
 it("fb-www 16", () => {
-  expectReconcilerFatalError(() => {
-    runTest(__dirname + "/FBMocks/fb16.js");
+  runTest(__dirname + "/FBMocks/fb16.js", {
+    expectReconcilerError: true,
   });
 });
 
@@ -100,14 +100,14 @@ it("fb-www 17", () => {
 // - "uri.foo" on abstract string does not exist
 // - unused.bar() does not exist (even if in try/catch)
 it("fb-www 18", () => {
-  expectReconcilerFatalError(() => {
-    runTest(__dirname + "/FBMocks/fb18.js");
+  runTest(__dirname + "/FBMocks/fb18.js", {
+    expectReconcilerError: true,
   });
 });
 
 it("fb-www 19", () => {
-  expectReconcilerFatalError(() => {
-    runTest(__dirname + "/FBMocks/fb19.js");
+  runTest(__dirname + "/FBMocks/fb19.js", {
+    expectReconcilerError: true,
   });
 });
 

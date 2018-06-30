@@ -11,7 +11,7 @@
 
 const React = require("react");
 const prepareReactTests = require("./prepareReactTests");
-const { runTest, expectReconcilerFatalError, expectPartialKeyOrRefError } = prepareReactTests();
+const { runTest } = prepareReactTests();
 
 /* eslint-disable no-undef */
 const { expect, it } = global;

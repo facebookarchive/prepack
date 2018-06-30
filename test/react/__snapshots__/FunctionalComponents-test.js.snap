@@ -2850,6 +2850,12 @@ ReactStatistics {
 
 exports[`Mutations - not-safe 1 1`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
 
+exports[`Mutations - not-safe 1 2`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
+
+exports[`Mutations - not-safe 1 3`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
+
+exports[`Mutations - not-safe 1 4`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
+
 exports[`Mutations - not-safe 2 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -2919,6 +2925,12 @@ ReactStatistics {
 `;
 
 exports[`Mutations - not-safe 3 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
+
+exports[`Mutations - not-safe 3 2`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
+
+exports[`Mutations - not-safe 3 3`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
+
+exports[`Mutations - not-safe 3 4`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
 
 exports[`Mutations - safe 1 1`] = `
 ReactStatistics {
@@ -3750,6 +3762,12 @@ ReactStatistics {
 
 exports[`Runtime error 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
+exports[`Runtime error 2`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`Runtime error 3`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`Runtime error 4`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
 exports[`Simple 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,
@@ -4440,11 +4458,35 @@ ReactStatistics {
 
 exports[`Simple 8 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
+exports[`Simple 8 2`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+
+exports[`Simple 8 3`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+
+exports[`Simple 8 4`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+
 exports[`Simple 9 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+
+exports[`Simple 9 2`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+
+exports[`Simple 9 3`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+
+exports[`Simple 9 4`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
 exports[`Simple 10 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
+exports[`Simple 10 2`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+
+exports[`Simple 10 3`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+
+exports[`Simple 10 4`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+
 exports[`Simple 11 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`Simple 11 2`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`Simple 11 3`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`Simple 11 4`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
 exports[`Simple 12 1`] = `
 ReactStatistics {
@@ -4543,6 +4585,12 @@ ReactStatistics {
 `;
 
 exports[`Simple 13 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`Simple 13 2`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`Simple 13 3`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`Simple 13 4`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
 exports[`Simple 14 1`] = `
 ReactStatistics {

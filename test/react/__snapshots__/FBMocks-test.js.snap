@@ -1658,6 +1658,12 @@ ReactStatistics {
 
 exports[`fb-www 12 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
+exports[`fb-www 12 2`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 12 3`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 12 4`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
 exports[`fb-www 13 1`] = `
 ReactStatistics {
   "componentsEvaluated": 0,
@@ -1824,7 +1830,19 @@ ReactStatistics {
 
 exports[`fb-www 15 1`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
 
+exports[`fb-www 15 2`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
+
+exports[`fb-www 15 3`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
+
+exports[`fb-www 15 4`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
+
 exports[`fb-www 16 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
+
+exports[`fb-www 16 2`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
+
+exports[`fb-www 16 3`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
+
+exports[`fb-www 16 4`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
 
 exports[`fb-www 17 1`] = `
 ReactStatistics {
@@ -1980,7 +1998,19 @@ ReactStatistics {
 
 exports[`fb-www 18 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
+exports[`fb-www 18 2`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 18 3`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 18 4`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
 exports[`fb-www 19 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 19 2`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 19 3`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 19 4`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
 
 exports[`fb-www 20 1`] = `
 ReactStatistics {

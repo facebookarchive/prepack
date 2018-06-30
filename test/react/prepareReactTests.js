@@ -73,43 +73,21 @@ MockURI.prototype.makeString = function() {
 };
 
 function prepareReactTests() {
-  let checkForReconcilerFatalError = false;
-  let checkForPartialKeyOrRefError = false;
-  let errorsCaptured = [];
-  let reactTestRoot = path.join(__dirname, "../test/react/");
-
-  function expectReconcilerFatalError(func: Function) {
-    checkForReconcilerFatalError = true;
-    try {
-      return func();
-    } catch (e) {
-      expect(e.__isReconcilerFatalError).toBe(true);
-      expect(e.message).toMatchSnapshot();
-    } finally {
-      checkForReconcilerFatalError = false;
-    }
-  }
-
-  function expectPartialKeyOrRefError(func: Function) {
-    checkForPartialKeyOrRefError = true;
-    try {
-      return func();
-    } catch (e) {
-      expect(e.__isReconcilerFatalError).toBe(true);
-      expect(e.message).toMatchSnapshot();
-    } finally {
-      checkForPartialKeyOrRefError = false;
-    }
-  }
-
-  function compileSourceWithPrepack(source: string, useJSXOutput: boolean): string {
+  function compileSourceWithPrepack(
+    source: string,
+    useJSXOutput: boolean,
+    diagnosticLog: mixed[],
+    shouldRecover: (errorCode: string) => boolean,
+  ): {|
+    compiledSource: string,
+    statistics: Object,
+  |} {
     let code = `(function(){${source}})()`;
     let prepackOptions = {
       errorHandler: diag => {
-        errorsCaptured.push(diag);
+        diagnosticLog.push(diag);
         if (diag.severity !== "Warning" && diag.severity !== "Information") {
-          if (diag.errorCode === "PP0025" && !checkForPartialKeyOrRefError) {
-            // recover from `unable to evaluate "key" and "ref" on a ReactElement
+          if (shouldRecover(diag.errorCode)) {
             return "Recover";
           }
           return "Fail";
@@ -128,19 +106,7 @@ function prepareReactTests() {
       invariantLevel: 0,
       stripFlow: true,
     };
-    let serialized;
-    errorsCaptured = [];
-    try {
-      serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
-    } catch (e) {
-      if (e.__isReconcilerFatalError && (checkForReconcilerFatalError || checkForPartialKeyOrRefError)) {
-        throw e;
-      }
-      errorsCaptured.forEach(error => {
-        console.error(error);
-      });
-      throw e;
-    }
+    const serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
     if (serialized == null || serialized.reactStatistics == null) {
       throw new Error("React test runner failed during serialization");
     }
@@ -219,8 +185,29 @@ function prepareReactTests() {
     }
   }
 
-  function runTestWithOptions(source, firstRenderOnly, data, useJSXOutput) {
-    let { compiledSource, statistics } = compileSourceWithPrepack(source, useJSXOutput);
+  function runTestWithOptions(source, useJSXOutput, options) {
+    let {
+      firstRenderOnly = false,
+      // By default, we recover from PP0025 even though it's technically unsafe.
+      // We do the same in debug-fb-www script.
+      shouldRecover = (errorCode) => errorCode === 'PP0025',
+      expectReconcilerError = false,
+      data
+    } = options;
+    let diagnosticLog = [];
+    let compiledSource, statistics;
+    try {
+      ({ compiledSource, statistics } = compileSourceWithPrepack(source, useJSXOutput, diagnosticLog, shouldRecover));
+    } catch (err) {
+      if (err.__isReconcilerFatalError && expectReconcilerError) {
+        expect(err.message).toMatchSnapshot();
+        return;
+      }
+      diagnosticLog.forEach(diag => {
+        console.error(diag);
+      });
+      throw err;
+    }
 
     expect(statistics).toMatchSnapshot();
     let A = runSource(source);
@@ -268,21 +255,20 @@ function prepareReactTests() {
   type TestOptions = {
     firstRenderOnly?: boolean,
     data?: mixed,
+    expectReconcilerError?: boolean,
+    shouldRecover?: (errorCode: string) => boolean,
   };
 
   function runTest(fixturePath: string, options: TestOptions = {}) {
-    let {firstRenderOnly = false, data} = options;
     let source = fs.readFileSync(fixturePath).toString();
     let jsxSource = transpileSource(source);
-    runTestWithOptions(jsxSource, firstRenderOnly, data, false);
-    runTestWithOptions(source, firstRenderOnly, data, false);
-    runTestWithOptions(jsxSource, firstRenderOnly, data, true);
-    runTestWithOptions(source, firstRenderOnly, data, true);
+    runTestWithOptions(jsxSource, false, options);
+    runTestWithOptions(source, false, options);
+    runTestWithOptions(jsxSource, true, options);
+    runTestWithOptions(source, true, options);
   }
 
   return {
-    expectReconcilerFatalError,
-    expectPartialKeyOrRefError,
     runTest,
     stubReactRelay,
   };

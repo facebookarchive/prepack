@@ -11,7 +11,7 @@
 
 const React = require("react");
 const prepareReactTests = require("./prepareReactTests");
-const { runTest, expectReconcilerFatalError, expectPartialKeyOrRefError } = prepareReactTests();
+const { runTest } = prepareReactTests();
 
 /* eslint-disable no-undef */
 const { expect, it } = global;
@@ -45,26 +45,26 @@ it("Simple 7", () => {
 });
 
 it("Simple 8", () => {
-  expectReconcilerFatalError(() => {
-    runTest(__dirname + "/FunctionalComponents/simple-8.js");
+  runTest(__dirname + "/FunctionalComponents/simple-8.js", {
+    expectReconcilerError: true,
   });
 });
 
 it("Simple 9", () => {
-  expectReconcilerFatalError(() => {
-    runTest(__dirname + "/FunctionalComponents/simple-9.js");
+  runTest(__dirname + "/FunctionalComponents/simple-9.js", {
+    expectReconcilerError: true,
   });
 });
 
 it("Simple 10", () => {
-  expectReconcilerFatalError(() => {
-    runTest(__dirname + "/FunctionalComponents/simple-10.js");
+  runTest(__dirname + "/FunctionalComponents/simple-10.js", {
+    expectReconcilerError: true,
   });
 });
 
 it("Simple 11", () => {
-  expectReconcilerFatalError(() => {
-    runTest(__dirname + "/FunctionalComponents/simple-11.js");
+  runTest(__dirname + "/FunctionalComponents/simple-11.js", {
+    expectReconcilerError: true,
   });
 });
 
@@ -73,14 +73,14 @@ it("Simple 12", () => {
 });
 
 it("Runtime error", () => {
-  expectReconcilerFatalError(() => {
-    runTest(__dirname + "/FunctionalComponents/runtime-error.js");
+  runTest(__dirname + "/FunctionalComponents/runtime-error.js", {
+    expectReconcilerError: true,
   });
 });
 
 it("Simple 13", () => {
-  expectReconcilerFatalError(() => {
-    runTest(__dirname + "/FunctionalComponents/simple-13.js");
+  runTest(__dirname + "/FunctionalComponents/simple-13.js", {
+    expectReconcilerError: true,
   });
 });
 
@@ -129,20 +129,20 @@ it("__reactCompilerDoNotOptimize", () => {
 });
 
 it("Mutations - not-safe 1", () => {
-  expectReconcilerFatalError(() => {
-    runTest(__dirname + "/FunctionalComponents/not-safe.js");
+  runTest(__dirname + "/FunctionalComponents/not-safe.js", {
+    expectReconcilerError: true,
   });
 });
 
 it("Mutations - not-safe 2", () => {
-  expectReconcilerFatalError(() => {
-    runTest(__dirname + "/FunctionalComponents/not-safe2.js");
+  runTest(__dirname + "/FunctionalComponents/not-safe2.js", {
+    expectReconcilerError: true,
   });
 });
 
 it("Mutations - not-safe 3", () => {
-  expectReconcilerFatalError(() => {
-    runTest(__dirname + "/FunctionalComponents/not-safe3.js");
+  runTest(__dirname + "/FunctionalComponents/not-safe3.js", {
+    expectReconcilerError: true,
   });
 });
 

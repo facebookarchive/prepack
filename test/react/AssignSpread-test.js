@@ -11,14 +11,16 @@
 
 const React = require("react");
 const prepareReactTests = require("./prepareReactTests");
-const { runTest, expectReconcilerFatalError, expectPartialKeyOrRefError } = prepareReactTests();
+const { runTest } = prepareReactTests();
 
 /* eslint-disable no-undef */
 const { expect, it } = global;
 
 it("Unsafe spread", () => {
-  expectPartialKeyOrRefError(() => {
-    runTest(__dirname + "/AssignSpread/unsafe-spread.js");
+  runTest(__dirname + "/AssignSpread/unsafe-spread.js", {
+    expectReconcilerError: true,
+    // Don't attempt to recover even from PP0025.
+    shouldRecover: () => false,
   });
 });
 
