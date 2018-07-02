@@ -220,8 +220,8 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     let { getTrials: getTrialsA, independent } = A;
     let { getTrials: getTrialsB } = B;
     // Run tests that assert the rendered output matches.
-    let resultA = getTrialsA(rendererA, A, data);
-    let resultB = independent ? getTrialsB(rendererB, B, data) : getTrialsA(rendererB, B, data);
+    let resultA = getTrialsA(rendererA, A, data, false);
+    let resultB = independent ? getTrialsB(rendererB, B, data, true) : getTrialsA(rendererB, B, data, false);
 
     // The test has returned many values for us to check
     for (let i = 0; i < resultA.length; i++) {
@@ -384,6 +384,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Simple 21", async () => {
         await runTest(directory, "simple-21.js");
+      });
+
+      it("Simple 22", async () => {
+        await runTest(directory, "simple-22.js");
       });
 
       it("Two roots", async () => {

@@ -131,7 +131,6 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
         // and reconstruct the temporal at another point, rather than
         // mutate the existing temporal
         realm.temporalAliasArgs.set(value, temporalArgs);
-        realm.temporalAliasConfig.set(value, temporalConfig);
         // as we are returning an abstract object, we mark it as simple
         value.makeSimple();
         return value;
