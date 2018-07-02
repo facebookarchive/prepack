@@ -1,6 +1,4 @@
 var React = require("react");
-// the JSX transform converts to React, so we need to add it back in
-this["React"] = React;
 
 // we can't use ES2015 classes in Prepack yet (they don't serialize)
 // so we have to use ES5 instead

@@ -1,6 +1,4 @@
 var React = require("React");
-// the JSX transform converts to React, so we need to add it back in
-this["React"] = React;
 
 function App(props) {
   // This being a named function is a regression test for a bug

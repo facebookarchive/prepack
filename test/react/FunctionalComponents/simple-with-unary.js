@@ -1,6 +1,4 @@
 var React = require("react");
-// the JSX transform converts to React, so we need to add it back in
-this["React"] = React;
 
 function Child({ targetNumCommentsToDisplay, pageSize, offset }) {
   return <span>{~targetNumCommentsToDisplay + +pageSize + -offset}</span>;

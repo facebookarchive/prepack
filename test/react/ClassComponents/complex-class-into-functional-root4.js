@@ -1,5 +1,4 @@
 const React = require("react");
-this["React"] = React;
 
 class Child extends React.Component {
   constructor() {

@@ -1,6 +1,4 @@
 var React = require("React");
-// the JSX transform converts to React, so we need to add it back in
-this["React"] = React;
 var { QueryRenderer } = require("RelayModern");
 // this is needed otherwise QueryRenderer gets inlined
 this["QueryRenderer"] = QueryRenderer;

@@ -1,5 +1,4 @@
 var React = require("react");
-this["React"] = React;
 
 function App(props) {
   var obj1 = {};

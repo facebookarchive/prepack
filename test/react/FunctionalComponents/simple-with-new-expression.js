@@ -1,5 +1,4 @@
 const React = require("react");
-this["React"] = React;
 
 if (!this.__evaluatePureFunction) {
   this.__evaluatePureFunction = function(f) {

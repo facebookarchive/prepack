@@ -1,6 +1,4 @@
 var React = require("React");
-// the JSX transform converts to React, so we need to add it back in
-this["React"] = React;
 
 function App(props) {
   return React.createElement(

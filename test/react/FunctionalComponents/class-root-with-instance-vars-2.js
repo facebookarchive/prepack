@@ -1,6 +1,4 @@
 var React = require("react");
-// the JSX transform converts to React, so we need to add it back in
-this["React"] = React;
 
 function SubChild(props) {
   return <span>{props.deepObject.foo.bar}</span>;

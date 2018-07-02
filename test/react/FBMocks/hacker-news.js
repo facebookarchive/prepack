@@ -1,7 +1,5 @@
 const React = require("React");
 const PropTypes = require("PropTypes");
-// the JSX transform converts to React, so we need to add it back in
-this["React"] = React;
 
 if (!this.__evaluatePureFunction) {
   this.__evaluatePureFunction = function(f) {

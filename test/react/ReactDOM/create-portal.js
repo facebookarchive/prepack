@@ -1,7 +1,5 @@
 var React = require("react");
 var ReactDOM = require("react-dom");
-// the JSX transform converts to React, so we need to add it back in
-this["React"] = React;
 
 var b = document.createElement("div");
 

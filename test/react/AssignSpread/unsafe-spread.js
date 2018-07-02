@@ -1,5 +1,4 @@
 var React = require("react");
-this["React"] = React;
 
 class Wat extends React.Component {
   render() {

@@ -1,5 +1,4 @@
 var React = require("react");
-this["React"] = React;
 
 function App(props) {
   return <div {...props.inner} />;

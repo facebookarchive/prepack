@@ -1,5 +1,4 @@
 const React = require("react");
-this["React"] = React;
 
 function Child2(props) {
   return <span {...props} />;

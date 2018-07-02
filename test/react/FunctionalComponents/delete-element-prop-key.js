@@ -1,6 +1,4 @@
 var React = require("react");
-// the JSX transform converts to React, so we need to add it back in
-this["React"] = React;
 
 function A(props) {
   return <div>Hello {props.x.b}</div>;

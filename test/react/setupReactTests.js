@@ -82,7 +82,13 @@ function setupReactTests() {
     compiledSource: string,
     statistics: Object,
   |} {
-    let code = `(function(){${source}})()`;
+    let code = `(function() {
+      // For some reason, the serializer fails if React is not
+      // reachable from a global in tests. This field isn't used.
+      // TODO: figure out why this is necessary in tests.
+      window.___unused_React = require('react');
+      ${source}
+    })()`;
     let prepackOptions = {
       errorHandler: diag => {
         diagnosticLog.push(diag);
@@ -124,7 +130,13 @@ function setupReactTests() {
   }
 
   function runSource(source) {
-    let transformedSource = transpileSource(source);
+    let transformedSource = `
+      // Inject React since compiled JSX would reference it.
+      let React = require('react');
+      (function() {
+        ${transpileSource(source)}
+      })();
+    `;
     /* eslint-disable no-new-func */
     let fn = new Function("require", "module", transformedSource);
     let moduleShim = { exports: null };

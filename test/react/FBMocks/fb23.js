@@ -1,7 +1,5 @@
 var React = require("react");
 var ReactDOMServer = require("react-dom/server");
-// the JSX transform converts to React, so we need to add it back in
-this["React"] = React;
 
 function A(props) {
   return <div>Hello {props.x}</div>;

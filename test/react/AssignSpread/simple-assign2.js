@@ -1,5 +1,4 @@
 var React = require("react");
-this["React"] = React;
 
 function A(props) {
   var copyOfProps = Object.assign({}, props.bag);

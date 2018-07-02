@@ -1,5 +1,4 @@
 var React = require("react");
-this["React"] = React;
 
 function URI(other) {
   if (!other) {

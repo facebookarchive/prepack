@@ -1,5 +1,4 @@
 var React = require("React");
-this["React"] = React;
 
 // FB www polyfill
 if (!this.babelHelpers) {
