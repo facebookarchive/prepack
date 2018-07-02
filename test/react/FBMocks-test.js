@@ -127,6 +127,14 @@ it("fb-www 23", () => {
   runTest(__dirname + "/FBMocks/fb23.js");
 });
 
+it("fb-www 24", () => {
+  runTest(__dirname + "/FBMocks/fb24.js");
+});
+
+it("fb-www 25", () => {
+  runTest(__dirname + "/FBMocks/fb25.js");
+});
+
 it("repl example", () => {
   runTest(__dirname + "/FBMocks/repl-example.js");
 });
