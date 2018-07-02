@@ -17,6 +17,7 @@ import { Realm } from "../realm.js";
 import { AbstractValue, BooleanValue, ConcreteValue, Value } from "../values/index.js";
 import { Path, To } from "../singletons.js";
 import EmptyValue from "../values/EmptyValue";
+import * as t from "babel-types";
 
 export default function simplifyAndRefineAbstractValue(
   realm: Realm,
@@ -110,6 +111,33 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
         !y.args[1].mightNotBeTrue()
       )
         return y;
+      if (realm.instantRender.enabled) {
+        if (op === "||" && x0 instanceof AbstractValue && y0 instanceof AbstractValue) {
+          if (x0.kind === "===" && y0.kind === "===") {
+            let [xa, xb] = x0.args;
+            let [ya, yb] = y0.args;
+            if (xa.equals(ya) && !xb.equals(yb) && nullOrUndefined(xb) && nullOrUndefined(yb)) return rewrite(xa);
+            else if (xb.equals(yb) && !xa.equals(ya) && nullOrUndefined(xa) && nullOrUndefined(ya)) return rewrite(xb);
+            else if (xa.equals(yb) && !xb.equals(ya) && nullOrUndefined(xb) && nullOrUndefined(ya)) return rewrite(xa);
+            else if (xb.equals(ya) && !xa.equals(yb) && nullOrUndefined(xa) && nullOrUndefined(yb)) return rewrite(xb);
+            function nullOrUndefined(z: Value) {
+              return !z.mightNotBeNull() || !z.mightNotBeUndefined();
+            }
+            function rewrite(z: Value) {
+              return AbstractValue.createFromBuildFunction(
+                realm,
+                BooleanValue,
+                [xa],
+                ([n]) => {
+                  let callFunc = t.identifier("global.__cannotBecomeObject");
+                  return t.callExpression(callFunc, [n]);
+                },
+                { kind: "global.__cannotBecomeObject(A)" }
+              );
+            }
+          }
+        }
+      }
       if (x.equals(x0) && y.equals(y0)) return value;
       return AbstractValue.createFromLogicalOp(realm, (value.kind: any), x, y, loc, isCondition, true);
     }
