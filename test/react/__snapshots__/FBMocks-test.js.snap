@@ -1,0 +1,2721 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Function bind: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Middle",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Function bind: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Middle",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Function bind: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Middle",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Function bind: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Middle",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Hacker News app: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 7,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "HeaderBar",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [
+                    Object {
+                      "children": Array [
+                        Object {
+                          "children": Array [],
+                          "message": "",
+                          "name": "React.Fragment",
+                          "status": "NORMAL",
+                        },
+                      ],
+                      "message": "",
+                      "name": "Story",
+                      "status": "INLINED",
+                    },
+                  ],
+                  "message": "",
+                  "name": "StoryList",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "AppBody",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 4,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Hacker News app: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 7,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "HeaderBar",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [
+                    Object {
+                      "children": Array [
+                        Object {
+                          "children": Array [],
+                          "message": "",
+                          "name": "React.Fragment",
+                          "status": "NORMAL",
+                        },
+                      ],
+                      "message": "",
+                      "name": "Story",
+                      "status": "INLINED",
+                    },
+                  ],
+                  "message": "",
+                  "name": "StoryList",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "AppBody",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 4,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Hacker News app: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 7,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "HeaderBar",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [
+                    Object {
+                      "children": Array [
+                        Object {
+                          "children": Array [],
+                          "message": "",
+                          "name": "React.Fragment",
+                          "status": "NORMAL",
+                        },
+                      ],
+                      "message": "",
+                      "name": "Story",
+                      "status": "INLINED",
+                    },
+                  ],
+                  "message": "",
+                  "name": "StoryList",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "AppBody",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 4,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Hacker News app: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 7,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "HeaderBar",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [
+                    Object {
+                      "children": Array [
+                        Object {
+                          "children": Array [],
+                          "message": "",
+                          "name": "React.Fragment",
+                          "status": "NORMAL",
+                        },
+                      ],
+                      "message": "",
+                      "name": "Story",
+                      "status": "INLINED",
+                    },
+                  ],
+                  "message": "",
+                  "name": "StoryList",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "AppBody",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 4,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 2: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "Hello",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 2: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "Hello",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 2: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "Hello",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 2: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "Hello",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 3: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 3: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 3: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 3: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 4: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 4: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 4: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 4: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 5: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 5: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 5: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 5: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 6: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 6: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 6: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 6: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 7: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 7: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 7: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 7: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 8: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "RelayContainer",
+          "name": "WrappedApp",
+          "status": "NEW_TREE",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`fb-www 8: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "RelayContainer",
+          "name": "WrappedApp",
+          "status": "NEW_TREE",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`fb-www 8: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "RelayContainer",
+          "name": "WrappedApp",
+          "status": "NEW_TREE",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`fb-www 8: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "RelayContainer",
+          "name": "WrappedApp",
+          "status": "NEW_TREE",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`fb-www 9: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 9,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 9: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 9,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 9: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 9,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 9: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 9,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 10: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 5,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 10: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 5,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 10: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 5,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 10: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 5,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 11: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 13,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 9,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 11: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 13,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 9,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 11: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 13,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 9,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 11: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 13,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "B",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "C",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 9,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 12: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 12: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 12: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 12: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 13: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 13: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 13: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 13: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`fb-www 14: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "RelayContainer",
+          "name": "WrappedApp",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 14: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "RelayContainer",
+          "name": "WrappedApp",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 14: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "RelayContainer",
+          "name": "WrappedApp",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 14: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Child",
+              "status": "INLINED",
+            },
+          ],
+          "message": "RelayContainer",
+          "name": "WrappedApp",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 15: (JSX => JSX) 1`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
+
+exports[`fb-www 15: (JSX => createElement) 1`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
+
+exports[`fb-www 15: (createElement => JSX) 1`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
+
+exports[`fb-www 15: (createElement => createElement) 1`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
+
+exports[`fb-www 16: (JSX => JSX) 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
+
+exports[`fb-www 16: (JSX => createElement) 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
+
+exports[`fb-www 16: (createElement => JSX) 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
+
+exports[`fb-www 16: (createElement => createElement) 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
+
+exports[`fb-www 17: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Inner",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Middle",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Outer",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 17: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Inner",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Middle",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Outer",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 17: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Inner",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Middle",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Outer",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 17: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Inner",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "Middle",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Outer",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 18: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 18: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 18: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 18: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 19: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 19: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 19: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 19: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+
+exports[`fb-www 20: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 20: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 20: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 20: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 21: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "B",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "C",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 21: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "B",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "C",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 21: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "B",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "C",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 21: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "B",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "C",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 22: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "React.Fragment",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 22: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "React.Fragment",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 22: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "React.Fragment",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 22: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "React.Fragment",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 23: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "B",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "C",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 23: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "B",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "C",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 23: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "B",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "C",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www 23: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "A",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "B",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "C",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 3,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`fb-www: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "QueryRenderer",
+          "status": "RENDER_PROPS",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`repl example: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 7,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Yar",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Bar",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Yar",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Bar",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Yar",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Bar",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "Foo",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`repl example: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 7,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Yar",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Bar",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Yar",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Bar",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Yar",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Bar",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "Foo",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`repl example: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 7,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Yar",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Bar",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Yar",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Bar",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Yar",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Bar",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "Foo",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`repl example: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 7,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Yar",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Bar",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Yar",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Bar",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Yar",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Bar",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "Foo",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
