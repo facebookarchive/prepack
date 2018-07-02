@@ -37,10 +37,9 @@ export class ReactPropsSet {
     let temporalAlias = props.temporalAlias;
 
     if (temporalAlias !== undefined) {
-      // Snapshotting uses temporalAlias to on ObjectValues, so if
-      // they have a temporalAlias then we need to treat it as a field
       currentMap = reactEquivalenceSet.getKey(temporalAliasSymbol, currentMap, visitedValues);
-      result = reactEquivalenceSet.getValue(temporalAlias, currentMap, visitedValues);
+      result = reactEquivalenceSet.getTemporalAliasValue(temporalAlias, currentMap, visitedValues);
+      currentMap = result.map;
     }
 
     if (result === undefined) {

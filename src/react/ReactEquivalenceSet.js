@@ -11,6 +11,7 @@
 
 import { Realm } from "../realm.js";
 import {
+  AbstractObjectValue,
   AbstractValue,
   ArrayValue,
   FunctionValue,
@@ -54,12 +55,14 @@ export class ReactEquivalenceSet {
     this.arrayRoot = new Map();
     this.reactElementRoot = new Map();
     this.reactPropsRoot = new Map();
+    this.temporalAliasRoot = new Map();
   }
   realm: Realm;
   objectRoot: ReactSetKeyMap;
   arrayRoot: ReactSetKeyMap;
   reactElementRoot: ReactSetKeyMap;
   reactPropsRoot: ReactSetKeyMap;
+  temporalAliasRoot: ReactSetKeyMap;
   residualReactElementVisitor: ResidualReactElementVisitor;
 
   _createNode(): ReactSetNode {
@@ -118,10 +121,8 @@ export class ReactEquivalenceSet {
     let temporalAlias = object.temporalAlias;
 
     if (temporalAlias !== undefined) {
-      // Snapshotting uses temporalAlias to on ObjectValues, so if
-      // they have a temporalAlias then we need to treat it as a field
       currentMap = this.getKey(temporalAliasSymbol, currentMap, visitedValues);
-      result = this.getValue(temporalAlias, currentMap, visitedValues);
+      result = this.getTemporalAliasValue(temporalAlias, currentMap, visitedValues);
     }
 
     if (result === undefined) {
@@ -135,6 +136,59 @@ export class ReactEquivalenceSet {
       result.value = object;
     }
     return result.value;
+  }
+
+  getTemporalAliasValue(
+    temporalAlias: AbstractObjectValue,
+    map: null | ReactSetValueMap,
+    visitedValues: Set<Value>
+  ): ReactSetNode | AbstractObjectValue {
+    let temporalArgs = this.realm.temporalAliasArgs.get(temporalAlias);
+
+    if (temporalArgs === undefined) {
+      return this.getValue(temporalAliasSymbol, map, visitedValues);
+    }
+    let currentMap = this.temporalAliasRoot;
+    let result;
+
+    for (let i = 0; i < temporalArgs.length; i++) {
+      let arg = temporalArgs[i];
+      let equivalenceArg;
+      if (arg instanceof ObjectValue && arg.temporalAlias === temporalAlias) {
+        continue;
+      }
+      if (arg instanceof ObjectValue && isReactElement(arg)) {
+        equivalenceArg = this.residualReactElementVisitor.reactElementEquivalenceSet.add(arg);
+
+        if (arg !== equivalenceArg) {
+          temporalArgs[i] = equivalenceArg;
+        }
+      } else if (arg instanceof AbstractObjectValue && !arg.values.isTop()) {
+        // Might be a temporal, so let's check
+        let temporalAliasArgs = this.realm.temporalAliasArgs.get(arg);
+
+        if (temporalAliasArgs !== undefined) {
+          equivalenceArg = this.getTemporalAliasValue(arg, null, visitedValues);
+
+          if (equivalenceArg !== arg) {
+            temporalArgs[i] = equivalenceArg;
+          }
+        }
+      }
+      currentMap = this.getKey(i, currentMap, visitedValues);
+      result = this.getValue(equivalenceArg || arg, currentMap, visitedValues);
+      currentMap = result.map;
+    }
+    if (result.value === null) {
+      result.value = temporalAlias;
+    }
+    if (map === null) {
+      return result.value;
+    }
+    if (!map.has(result.value)) {
+      map.set(result.value, this._createNode());
+    }
+    return ((map.get(result.value): any): ReactSetNode);
   }
 
   // for arrays: [0] -> [1] -> [2]... as nodes
