@@ -31,7 +31,6 @@ import { Value } from "../values/index.js";
 import invariant from "../invariant.js";
 import { HasName, HasCompatibleType } from "./has.js";
 import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeLVal, BabelNodeClassMethod } from "babel-types";
-import { BabelNode } from "babel-types";
 
 // ECMA262 22.1.3.1.1
 export function IsConcatSpreadable(realm: Realm, _O: Value): boolean {
@@ -357,47 +356,4 @@ export function IsIntrospectionError(realm: Realm, _value: Value): boolean {
 export function IsStatic(classElement: BabelNodeClassMethod): boolean {
   // $FlowFixMe need to backport static property to BabelNodeClassMethod
   return classElement.static;
-}
-
-export function IsStatement(node: BabelNode): boolean {
-  switch (node.type) {
-    case "BlockStatement":
-    case "BreakStatement":
-    case "ContinueStatement":
-    case "DebuggerStatement":
-    case "DoWhileStatement":
-    case "EmptyStatement":
-    case "ExpressionStatement":
-    case "ForInStatement":
-    case "ForStatement":
-    case "FunctionDeclaration":
-    case "IfStatement":
-    case "LabeledStatement":
-    case "ReturnStatement":
-    case "SwitchStatement":
-    case "ThrowStatement":
-    case "TryStatement":
-    case "VariableDeclaration":
-    case "WhileStatement":
-    case "WithStatement":
-    case "ClassDeclaration":
-    case "ExportAllDeclaration":
-    case "ExportDefaultDeclaration":
-    case "ExportNamedDeclaration":
-    case "ForOfStatement":
-    case "ImportDeclaration":
-    case "DeclareClass":
-    case "DeclareFunction":
-    case "DeclareInterface":
-    case "DeclareModule":
-    case "DeclareModuleExports":
-    case "DeclareTypeAlias":
-    case "DeclareVariable":
-    case "InterfaceDeclaration":
-    case "TypeAlias":
-    case "ForAwaitStatement":
-      return true;
-    default:
-      return false;
-  }
 }

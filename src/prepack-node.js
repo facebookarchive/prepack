@@ -15,7 +15,6 @@
 import { defaultOptions } from "./options";
 import { FatalError } from "./errors.js";
 import { type PrepackOptions } from "./prepack-options";
-import { getDebuggerOptions } from "./prepack-options";
 import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment.js";
 import { prepackSources } from "./prepack-standalone.js";
 import { type SourceMap } from "./types.js";
@@ -142,11 +141,14 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     }
     return { filePath: filename, fileContents: code, sourceMapContents: sourceMap };
   });
-  let debugChannel;
+
+  // The existence of debug[In/Out]FilePath represents the desire to use the debugger.
   if (options.debugInFilePath !== undefined && options.debugOutFilePath !== undefined) {
-    let debugOptions = getDebuggerOptions(options);
-    let ioWrapper = new FileIOWrapper(false, debugOptions.inFilePath, debugOptions.outFilePath);
-    debugChannel = new DebugChannel(ioWrapper);
+    if (options.debuggerConfigArgs === undefined) options.debuggerConfigArgs = {};
+
+    let ioWrapper = new FileIOWrapper(false, options.debugInFilePath, options.debugOutFilePath);
+    options.debuggerConfigArgs.debugChannel = new DebugChannel(ioWrapper);
+    options.debuggerConfigArgs.sourcemaps = sourceFiles;
   }
-  return prepackSources(sourceFiles, options, debugChannel, createStatistics(options));
+  return prepackSources(sourceFiles, options, options.debuggerConfigArgs, createStatistics(options));
 }
