@@ -202,7 +202,7 @@ function setupReactTests() {
       ({ compiledSource, statistics } = compileSourceWithPrepack(source, useJSXOutput, diagnosticLog, shouldRecover));
     } catch (err) {
       if (err.__isReconcilerFatalError && expectReconcilerError) {
-        expect(err.message).toMatchSnapshot(undefined, snapshotName);
+        expect(err.message).toMatchSnapshot(snapshotName);
         return;
       }
       diagnosticLog.forEach(diag => {
@@ -219,7 +219,7 @@ function setupReactTests() {
       return originalCreateElement(...args);
     };
     try {
-      expect(statistics).toMatchSnapshot(undefined, snapshotName);
+      expect(statistics).toMatchSnapshot(snapshotName);
       let A = runSource(source);
       let B = runSource(compiledSource);
 
