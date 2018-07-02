@@ -95,7 +95,6 @@ export class ResidualReactElementVisitor {
     let reactEquivalenceSet = this.reactEquivalenceSet;
     let reactElementEquivalenceSet = this.reactElementEquivalenceSet;
     let reactPropsEquivalenceSet = this.reactPropsEquivalenceSet;
-    let temporalAliasRoot = this.temporalAliasRoot;
     this.reactEquivalenceSet = new ReactEquivalenceSet(this.realm, this);
     this.reactElementEquivalenceSet = new ReactElementSet(this.realm, this.reactEquivalenceSet);
     this.reactPropsEquivalenceSet = new ReactPropsSet(this.realm, this.reactEquivalenceSet);
@@ -104,6 +103,5 @@ export class ResidualReactElementVisitor {
     this.reactEquivalenceSet = reactEquivalenceSet;
     this.reactElementEquivalenceSet = reactElementEquivalenceSet;
     this.reactPropsEquivalenceSet = reactPropsEquivalenceSet;
-    this.temporalAliasRoot = temporalAliasRoot;
   }
 }

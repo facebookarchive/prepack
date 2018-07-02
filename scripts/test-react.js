@@ -220,8 +220,8 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     let { getTrials: getTrialsA, independent } = A;
     let { getTrials: getTrialsB } = B;
     // Run tests that assert the rendered output matches.
-    let resultA = getTrialsA(rendererA, A, data);
-    let resultB = independent ? getTrialsB(rendererB, B, data) : getTrialsA(rendererB, B, data);
+    let resultA = getTrialsA(rendererA, A, data, false);
+    let resultB = independent ? getTrialsB(rendererB, B, data, true) : getTrialsA(rendererB, B, data, false);
 
     // The test has returned many values for us to check
     for (let i = 0; i < resultA.length; i++) {
@@ -1005,6 +1005,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("Replace this in callbacks 3", async () => {
         await runTest(directory, "replace-this-in-callbacks3.js");
+      });
+
+      it("Equivalence of snapshotted node", async () => {
+        await runTest(directory, "equivalence.js");
       });
     });
 
