@@ -1156,22 +1156,28 @@ export class Realm {
       let mightBeUndefined = value.mightBeUndefined();
       let keyKey = key.key;
       if (typeof keyKey === "string") {
-        gen.emitStatement([key.object, tval || value, this.intrinsics.empty], ([o, v, e]) => {
-          invariant(path !== undefined);
-          invariant(typeof keyKey === "string");
-          let lh = path.buildNode([o, t.identifier(keyKey)]);
-          let r = t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
-          if (mightHaveBeenDeleted) {
-            // If v === __empty || (v === undefined  && !(key.key in o))  then delete it
-            let emptyTest = t.binaryExpression("===", v, e);
-            let undefinedTest = t.binaryExpression("===", v, voidExpression);
-            let inTest = t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(keyKey), o));
-            let guard = t.logicalExpression("||", emptyTest, t.logicalExpression("&&", undefinedTest, inTest));
-            let deleteIt = t.expressionStatement(t.unaryExpression("delete", (lh: any)));
-            return t.ifStatement(mightBeUndefined ? emptyTest : guard, deleteIt, r);
-          }
-          return r;
-        });
+        if (path !== undefined) {
+          gen.emitStatement([key.object, tval || value, this.intrinsics.empty], ([o, v, e]) => {
+            invariant(path !== undefined);
+            invariant(typeof keyKey === "string");
+            let lh = path.buildNode([o, t.identifier(keyKey)]);
+            let r = t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
+            if (mightHaveBeenDeleted) {
+              // If v === __empty || (v === undefined  && !(key.key in o))  then delete it
+              let emptyTest = t.binaryExpression("===", v, e);
+              let undefinedTest = t.binaryExpression("===", v, voidExpression);
+              let inTest = t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(keyKey), o));
+              let guard = t.logicalExpression("||", emptyTest, t.logicalExpression("&&", undefinedTest, inTest));
+              let deleteIt = t.expressionStatement(t.unaryExpression("delete", (lh: any)));
+              return t.ifStatement(mightBeUndefined ? emptyTest : guard, deleteIt, r);
+            }
+            return r;
+          });
+        } else {
+          // RH value was not widened, so it must have been a constant. We don't need to assign that inside the loop.
+          // Note, however, that if the LH side is a property of an intrinsic object, then an assignment will
+          // have been emitted to the generator.
+        }
       } else {
         // TODO: What if keyKey is undefined?
         invariant(keyKey instanceof Value);

@@ -731,7 +731,8 @@ export class PropertiesImplementation {
       }
       if (!identical) break;
     }
-    if (identical) {
+    // Only return here if the assigment is not temporal.
+    if (identical && (O === realm.$GlobalObject || (O !== undefined && !O.isIntrinsic()))) {
       return true;
     }
 
