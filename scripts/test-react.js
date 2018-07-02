@@ -386,10 +386,6 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         await runTest(directory, "simple-21.js");
       });
 
-      it("Simple 22", async () => {
-        await runTest(directory, "simple-22.js");
-      });
-
       it("Two roots", async () => {
         await runTest(directory, "two-roots.js");
       });
@@ -1124,6 +1120,10 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("fb-www 23", async () => {
         await runTest(directory, "fb23.js");
+      });
+
+      it("fb-www 24", async () => {
+        await runTest(directory, "fb24.js");
       });
 
       it("repl example", async () => {
