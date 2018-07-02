@@ -37,7 +37,7 @@ import {
   Value,
   PrimitiveValue,
 } from "./index.js";
-import { isReactElement } from "../react/utils.js";
+import { isReactElement, transferSafePropertiesToRemoveFromObjectsToProps } from "../react/utils.js";
 import buildExpressionTemplate from "../utils/builder.js";
 import { ECMAScriptSourceFunctionValue, type NativeFunctionCallback } from "./index.js";
 import {
@@ -567,15 +567,34 @@ export default class ObjectValue extends ConcreteValue {
       template.makeFinal();
       // The original object might be a React props object, thus
       // if it is, we need to ensure we mark it with the same rules
-      if (realm.react.enabled && realm.react.reactProps.has(this)) {
-        realm.react.reactProps.add(template);
+      if (realm.react.enabled) {
+        // This object might have been a snapshot from a props object.
+        // In which case, it might have some safe properties we can remove
+        // in first render mode
+        transferSafePropertiesToRemoveFromObjectsToProps(realm, [this], template);
+        if (realm.react.reactProps.has(this)) {
+          realm.react.reactProps.add(template);
+        }
       }
-      let result = AbstractValue.createTemporalFromBuildFunction(this.$Realm, ObjectValue, [template], ([x]) => x, {
+      let temporalArgs = [template];
+      let temporalConfig = {
         skipInvariant: true,
         isPure: true,
-      });
+      };
+      let result = AbstractValue.createTemporalFromBuildFunction(
+        this.$Realm,
+        ObjectValue,
+        temporalArgs,
+        ([x]) => x,
+        temporalConfig
+      );
       invariant(result instanceof AbstractObjectValue);
       result.values = new ValuesDomain(template);
+      // Store the args for the temporal so we can easily clone
+      // and reconstruct the temporal at another point, rather than
+      // mutate the existing temporal
+      realm.temporalAliasArgs.set(result, temporalArgs);
+      realm.temporalAliasConfig.set(result, temporalConfig);
       return result;
     } finally {
       if (options && options.removeProperties) {

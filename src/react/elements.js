@@ -15,9 +15,11 @@ import {
   AbstractValue,
   AbstractObjectValue,
   ArrayValue,
+  FunctionValue,
   NullValue,
   NumberValue,
   ObjectValue,
+  StringValue,
   Value,
 } from "../values/index.js";
 import { Create } from "../singletons.js";
@@ -25,15 +27,115 @@ import invariant from "../invariant.js";
 import { Get } from "../methods/index.js";
 import {
   applyObjectAssignConfigsForReactElement,
+  clonePropsOrConfigLikeObject,
+  createEmptyReactPropsObject,
   createInternalReactElement,
   flagPropsWithNoPartialKeyOrRef,
-  hardModifyReactObjectPropertyBinding,
   getProperty,
+  hardModifyReactObjectPropertyBinding,
   hasNoPartialKeyOrRef,
+  isEventProp,
+  transferSafePropertiesToRemoveFromObjectsToProps,
 } from "./utils.js";
 import * as t from "babel-types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
+
+function markToSafelyRemovePropertyDuringSerialization(realm: Realm, obj: ObjectValue, propName: string): void {
+  let propsToRemove = realm.react.objectsWithPropsToRemove.get(obj);
+
+  if (propsToRemove === undefined) {
+    propsToRemove = new Set();
+    realm.react.objectsWithPropsToRemove.set(obj, propsToRemove);
+  }
+  propsToRemove.add(propName);
+}
+
+function deepTraverseAndFindOrDeleteFirstRenderProperties(
+  realm: Realm,
+  propsOrConfigObj: ObjectValue | AbstractObjectValue,
+  shouldRemoveProps: boolean,
+  alreadyVisited?: Set<AbstractObjectValue | ObjectValue> = new Set()
+): boolean {
+  if (propsOrConfigObj instanceof FunctionValue || alreadyVisited.has(propsOrConfigObj)) {
+    return false;
+  }
+  alreadyVisited.add(propsOrConfigObj);
+  if (propsOrConfigObj instanceof AbstractObjectValue && !propsOrConfigObj.values.isTop()) {
+    for (let element of propsOrConfigObj.values.getElements()) {
+      let foundFirstRenderProperties = deepTraverseAndFindOrDeleteFirstRenderProperties(
+        realm,
+        element,
+        shouldRemoveProps,
+        alreadyVisited
+      );
+      if (foundFirstRenderProperties) {
+        return true;
+      }
+    }
+  } else if (propsOrConfigObj.constructor === ObjectValue) {
+    invariant(propsOrConfigObj instanceof ObjectValue); // Make Flow happy
+    let temporalAlias = propsOrConfigObj.temporalAlias;
+
+    for (let [propName, binding] of propsOrConfigObj.properties) {
+      if (binding.descriptor === undefined) {
+        continue;
+      }
+      let propValue = getProperty(realm, propsOrConfigObj, propName);
+
+      if (propName === "ref") {
+        if (shouldRemoveProps) {
+          invariant(propsOrConfigObj instanceof ObjectValue); // Make Flow happy
+          propsOrConfigObj.properties.delete("ref");
+        } else {
+          return true; // We found first render properties
+        }
+      } else if (isEventProp(propName) || propValue instanceof FunctionValue) {
+        if (shouldRemoveProps) {
+          // We can do this, because we created the object as a fresh clone
+          invariant(propsOrConfigObj instanceof ObjectValue); // Make Flow happy
+          markToSafelyRemovePropertyDuringSerialization(realm, propsOrConfigObj, propName);
+        } else {
+          return true; // We found first render properties
+        }
+      }
+    }
+
+    if (temporalAlias !== undefined) {
+      let temporalArgs = realm.temporalAliasArgs.get(temporalAlias);
+
+      if (temporalArgs !== undefined) {
+        for (let temporalArg of temporalArgs) {
+          if (temporalArg instanceof ObjectValue || temporalArg instanceof AbstractObjectValue) {
+            let foundFirstRenderProperties = deepTraverseAndFindOrDeleteFirstRenderProperties(
+              realm,
+              temporalArg,
+              shouldRemoveProps,
+              alreadyVisited
+            );
+            if (foundFirstRenderProperties) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
+function sanitizeReactElementConfigObjectForFirstRender(
+  realm: Realm,
+  config: ObjectValue | AbstractObjectValue
+): ObjectValue | AbstractObjectValue {
+  let needToCloneAndDelete = deepTraverseAndFindOrDeleteFirstRenderProperties(realm, config, false);
+  if (needToCloneAndDelete) {
+    let clonedConfig = clonePropsOrConfigLikeObject(realm, config, true);
+    deepTraverseAndFindOrDeleteFirstRenderProperties(realm, clonedConfig, true);
+    return clonedConfig;
+  }
+  return config;
+}
 
 function createPropsObject(
   realm: Realm,
@@ -41,14 +143,30 @@ function createPropsObject(
   config: ObjectValue | AbstractObjectValue,
   children: void | Value
 ): { key: Value, ref: Value, props: ObjectValue } {
+  // If we're in "rendering" a React component tree, we should have an active reconciler
+  let activeReconciler = realm.react.activeReconciler;
+  let firstRenderOnly = activeReconciler !== undefined ? activeReconciler.componentTreeConfig.firstRenderOnly : false;
+  let isHostComponent = type instanceof StringValue;
+
   let defaultProps =
     type instanceof ObjectValue || type instanceof AbstractObjectValue
       ? Get(realm, type, "defaultProps")
       : realm.intrinsics.undefined;
 
-  let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  if (firstRenderOnly && isHostComponent) {
+    config = sanitizeReactElementConfigObjectForFirstRender(realm, config);
+    if (defaultProps instanceof ObjectValue || defaultProps instanceof AbstractObjectValue) {
+      defaultProps = sanitizeReactElementConfigObjectForFirstRender(realm, defaultProps);
+    }
+  }
+
+  let props = createEmptyReactPropsObject(
+    realm,
+    defaultProps instanceof ObjectValue && defaultProps instanceof AbstractObjectValue
+      ? [config, defaultProps]
+      : [config]
+  );
   props.makeFinal();
-  realm.react.reactProps.add(props);
 
   let key = realm.intrinsics.null;
   let ref = realm.intrinsics.null;
@@ -82,7 +200,7 @@ function createPropsObject(
   }
 
   let possibleRef = Get(realm, config, "ref");
-  if (possibleRef !== realm.intrinsics.null && possibleRef !== realm.intrinsics.undefined) {
+  if (possibleRef !== realm.intrinsics.null && possibleRef !== realm.intrinsics.undefined && !firstRenderOnly) {
     // if the config has been marked as having no partial key or ref and the possible ref
     // is abstract, yet the config doesn't have a ref property, then the ref can remain null
     let refNotNeeded =
@@ -120,7 +238,12 @@ function createPropsObject(
     let args = [];
     args.push(config);
     // create a new props object that will be the target of the Object.assign
-    props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+    props = createEmptyReactPropsObject(
+      realm,
+      defaultProps instanceof ObjectValue && defaultProps instanceof AbstractObjectValue
+        ? [config, defaultProps]
+        : [config]
+    );
     realm.react.reactProps.add(props);
 
     applyObjectAssignConfigsForReactElement(realm, props, args);
@@ -189,6 +312,7 @@ function createPropsObject(
         let snapshot = props.getSnapshot();
         props.temporalAlias = snapshot;
         let temporalArgs = [defaultPropsHelper, snapshot, defaultProps];
+        let temporalConfig = { skipInvariant: true };
         let temporalTo = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,
@@ -196,7 +320,7 @@ function createPropsObject(
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           },
-          { skipInvariant: true }
+          temporalConfig
         );
         invariant(temporalTo instanceof AbstractObjectValue);
         if (props instanceof AbstractObjectValue) {
@@ -210,6 +334,7 @@ function createPropsObject(
         // and reconstruct the temporal at another point, rather than
         // mutate the existing temporal
         realm.temporalAliasArgs.set(temporalTo, temporalArgs);
+        realm.temporalAliasConfig.set(temporalTo, temporalConfig);
       }
     }
   } else {
@@ -299,6 +424,9 @@ export function cloneReactElement(
   children: void | Value
 ): ObjectValue {
   let props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  if (config instanceof ObjectValue || config instanceof AbstractObjectValue) {
+    transferSafePropertiesToRemoveFromObjectsToProps(realm, [config], props);
+  }
   realm.react.reactProps.add(props);
 
   const setProp = (name: string, value: Value): void => {

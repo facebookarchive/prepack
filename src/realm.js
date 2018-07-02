@@ -28,6 +28,7 @@ import {
 } from "./errors.js";
 import {
   AbstractObjectValue,
+  type AbstractValueKind,
   AbstractValue,
   ArrayValue,
   BoundFunctionValue,
@@ -247,6 +248,7 @@ export class Realm {
     this.partialEvaluators = (Object.create(null): any);
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
     this.temporalAliasArgs = new WeakMap();
+    this.temporalAliasConfig = new WeakMap();
 
     this.instantRender = {
       enabled: opts.instantRender || false,
@@ -265,11 +267,12 @@ export class Realm {
       hoistableFunctions: new WeakMap(),
       hoistableReactElements: new WeakMap(),
       noopFunction: undefined,
+      objectsWithPropsToRemove: new WeakMap(),
       optimizedNestedClosuresToWrite: [],
       optimizeNestedFunctions: opts.reactOptimizeNestedFunctions || false,
       output: opts.reactOutput || "create-element",
       propsWithNoPartialKeyOrRef: new WeakSet(),
-      reactElements: new WeakMap(),
+      reactElements: new WeakSet(),
       reactProps: new WeakSet(),
       symbols: new Map(),
       usedReactElementKeys: new Set(),
@@ -344,6 +347,15 @@ export class Realm {
   // This is used to "clone" immutable objects where they have a dependency
   // on a temporal alias (for example, Object.assign) when used with snapshotting
   temporalAliasArgs: WeakMap<AbstractObjectValue | ObjectValue, Array<Value>>;
+  temporalAliasConfig: WeakMap<
+    AbstractObjectValue | ObjectValue,
+    {|
+      kind?: AbstractValueKind,
+      isPure?: boolean,
+      skipInvariant?: boolean,
+      mutatesOnly?: Array<Value>,
+    |}
+  >;
 
   instantRender: {
     enabled: boolean,
@@ -366,6 +378,7 @@ export class Realm {
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,
     noopFunction: void | ECMAScriptSourceFunctionValue,
+    objectsWithPropsToRemove: WeakMap<ObjectValue, Set<string>>,
     optimizedNestedClosuresToWrite: Array<{
       effects: Effects,
       func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
@@ -373,7 +386,7 @@ export class Realm {
     optimizeNestedFunctions: boolean,
     output?: ReactOutputTypes,
     propsWithNoPartialKeyOrRef: WeakSet<ObjectValue | AbstractObjectValue>,
-    reactElements: WeakMap<ObjectValue, { createdDuringReconcilation: boolean, firstRenderOnly: boolean }>,
+    reactElements: WeakSet<ObjectValue>,
     reactProps: WeakSet<ObjectValue>,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
     usedReactElementKeys: Set<string>,

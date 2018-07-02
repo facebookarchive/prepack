@@ -20,7 +20,7 @@ import { Logger } from "../utils/logger.js";
 import invariant from "../invariant.js";
 import { FatalError } from "../errors";
 import { traverseReactElement } from "../react/elements.js";
-import { canExcludeReactElementObjectProperty, getReactSymbol, getProperty } from "../react/utils.js";
+import { getReactSymbol, getProperty } from "../react/utils.js";
 import type { ReactOutputTypes } from "../options.js";
 import type { LazilyHoistedNodes } from "./types.js";
 
@@ -242,9 +242,6 @@ export class ResidualReactElementSerializer {
   }
 
   serializeReactElement(val: ObjectValue): BabelNodeExpression {
-    let reactElementData = this.realm.react.reactElements.get(val);
-    invariant(reactElementData !== undefined);
-    let { firstRenderOnly } = reactElementData;
     let reactElement = this._createReactElement(val);
 
     traverseReactElement(this.realm, reactElement.value, {
@@ -274,16 +271,14 @@ export class ResidualReactElementSerializer {
         reactElement.attributes.push(reactElementKey);
       },
       visitRef: (refValue: Value) => {
-        if (!firstRenderOnly) {
-          let reactElementRef = this._createReactElementAttribute();
-          this._serializeNowOrAfterWaitingForDependencies(refValue, reactElement, () => {
-            let expr = this.residualHeapSerializer.serializeValue(refValue);
-            reactElementRef.expr = expr;
-            reactElementRef.key = "ref";
-            reactElementRef.type = "PROPERTY";
-          });
-          reactElement.attributes.push(reactElementRef);
-        }
+        let reactElementRef = this._createReactElementAttribute();
+        this._serializeNowOrAfterWaitingForDependencies(refValue, reactElement, () => {
+          let expr = this.residualHeapSerializer.serializeValue(refValue);
+          reactElementRef.expr = expr;
+          reactElementRef.key = "ref";
+          reactElementRef.type = "PROPERTY";
+        });
+        reactElement.attributes.push(reactElementRef);
       },
       visitAbstractOrPartialProps: (propsValue: AbstractValue | ObjectValue) => {
         let reactElementSpread = this._createReactElementAttribute();
@@ -296,13 +291,14 @@ export class ResidualReactElementSerializer {
       },
       visitConcreteProps: (propsValue: ObjectValue) => {
         for (let [propName, binding] of propsValue.properties) {
-          if (binding.descriptor === undefined || propName === "children") {
+          if (
+            binding.descriptor === undefined ||
+            propName === "children" ||
+            this.residualHeapSerializer.residualHeapInspector.canIgnoreProperty(propsValue, propName)
+          ) {
             continue;
           }
           let propValue = getProperty(this.realm, propsValue, propName);
-          if (canExcludeReactElementObjectProperty(this.realm, val, propName, propValue)) {
-            continue;
-          }
           let reactElementAttribute = this._createReactElementAttribute();
 
           this._serializeNowOrAfterWaitingForDependencies(propValue, reactElement, () => {

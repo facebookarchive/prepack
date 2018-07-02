@@ -1140,8 +1140,7 @@ export class Reconciler {
     // ReactElement might be a temporal referenced in other effects and also it allows us to
     // easily mutate and swap the props of the ReactElement with the optimized version with
     // resolved/inlined children.
-    // Note: We used to sanitize out props for firstRender here, we now do this during serialization.
-    reactElement = cloneReactElement(this.realm, reactElement, false);
+    reactElement = cloneReactElement(this.realm, reactElement);
     let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
     let refValue = getProperty(this.realm, reactElement, "ref");

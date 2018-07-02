@@ -275,6 +275,10 @@ export default function(realm: Realm): NativeFunctionValue {
 
         // Tell serializer that it may add properties to to only after temporalTo has been emitted
         let temporalArgs = [ObjectAssign, to, ...delayedSources];
+        let temporalConfig = {
+          skipInvariant: true,
+          mutatesOnly: [to],
+        };
         let temporalTo = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,
@@ -282,10 +286,7 @@ export default function(realm: Realm): NativeFunctionValue {
           ([methodNode, targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
             return t.callExpression(methodNode, [targetNode, ...sourceNodes]);
           },
-          {
-            skipInvariant: true,
-            mutatesOnly: [to],
-          }
+          temporalConfig
         );
         invariant(temporalTo instanceof AbstractObjectValue);
         if (to instanceof AbstractObjectValue) {
@@ -299,6 +300,7 @@ export default function(realm: Realm): NativeFunctionValue {
         // and reconstruct the temporal at another point, rather than
         // mutate the existing temporal
         realm.temporalAliasArgs.set(temporalTo, temporalArgs);
+        realm.temporalAliasConfig.set(temporalTo, temporalConfig);
       }
       return to;
     });
