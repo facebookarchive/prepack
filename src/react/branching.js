@@ -60,6 +60,12 @@ export function getValueWithBranchingLogicApplied(
 
   // we check the inlined value and see if the component types match
   const searchAndFlagMatchingComponentTypes = (x, y, xTypeParent, yTypeParent) => {
+    // The returned value is the result of getting the "render" from a component.
+    // We need to search the value returned to see if the nodes need keys adding to them.
+
+    // 1. If we have <X? /> and <Y? />, then check if their
+    // types are the same, if they are the same and the parent types
+    // are not the same as then we need to add keys
     if (x instanceof ObjectValue && isReactElement(x) && y instanceof ObjectValue && isReactElement(y)) {
       let xType = getProperty(realm, x, "type");
       let yType = getProperty(realm, y, "type");
@@ -68,27 +74,41 @@ export function getValueWithBranchingLogicApplied(
         needsKeys = true;
       }
     } else if (x instanceof ArrayValue) {
+      // If we have x: []
+      // Go  through the elements of array x
       forEachArrayValue(realm, x, (xElem, index) => {
         let yElem = y;
+        // And if we also have y: [], with a given element from x
+        // search element of y at the same index from x.
+        // If y is not an array, then continue but use x: [] against y
         if (y instanceof ArrayValue) {
           yElem = getProperty(realm, y, index + "");
         }
         searchAndFlagMatchingComponentTypes(xElem, yElem, xTypeParent, yTypeParent);
       });
     } else if (y instanceof ArrayValue) {
+      // If we have y: []
+      // Go  through the elements of array y
       forEachArrayValue(realm, y, (yElem, index) => {
         let xElem = x;
+        // And if we also have x: [], with a given element from y
+        // search element of x at the same index from y.
+        // If x is not an array, then continue but use y: [] against x
         if (x instanceof ArrayValue) {
           xElem = getProperty(realm, x, index + "");
         }
         searchAndFlagMatchingComponentTypes(xElem, yElem, xTypeParent, yTypeParent);
       });
     } else if (x instanceof AbstractValue && x.kind === "conditional") {
+      // if x is a conditional value like "a ? b : c",
+      // then recusrively check b and c agaginst that y
       let [, consequentVal, alternateVal] = x.args;
 
       searchAndFlagMatchingComponentTypes(consequentVal, y, xTypeParent, yTypeParent);
       searchAndFlagMatchingComponentTypes(alternateVal, y, xTypeParent, yTypeParent);
     } else if (y instanceof AbstractValue && y.kind === "conditional") {
+      // if y is a conditional value like "a ? b : c",
+      // then recusrively check b and c agaginst that x
       let [, consequentVal, alternateVal] = y.args;
 
       searchAndFlagMatchingComponentTypes(x, consequentVal, xTypeParent, yTypeParent);
