@@ -10,11 +10,16 @@
 /* @flow strict-local */
 
 import { Realm } from "../realm.js";
-import { AbstractValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
+import { AbstractValue, ObjectValue, StringValue, SymbolValue, Value } from "../values/index.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { determineIfReactElementCanBeHoisted } from "../react/hoisting.js";
 import { traverseReactElement } from "../react/elements.js";
-import { canExcludeReactElementObjectProperty, getProperty, getReactSymbol } from "../react/utils.js";
+import {
+  canExcludeReactElementObjectProperty,
+  getProperty,
+  getReactSymbol,
+  hardModifyReactObjectPropertyBinding,
+} from "../react/utils.js";
 import invariant from "../invariant.js";
 import { ReactEquivalenceSet } from "../react/ReactEquivalenceSet.js";
 import { ReactElementSet } from "../react/ReactElementSet.js";
@@ -48,6 +53,19 @@ export class ResidualReactElementVisitor {
 
     traverseReactElement(this.realm, reactElement, {
       visitType: (typeValue: Value) => {
+        let reactElementStringTypeReferences = this.realm.react.reactElementStringTypeReferences;
+
+        // If the type is a text value, and we have a derived reference for it
+        // then use that derived reference instead of the string value. This is
+        // primarily designed around RCTView and RCTText, which are string values
+        // for RN apps, but are treated as special host components.
+        if (typeValue instanceof StringValue && reactElementStringTypeReferences.has(typeValue.value)) {
+          let reference = reactElementStringTypeReferences.get(typeValue.value);
+          invariant(reference instanceof AbstractValue);
+          hardModifyReactObjectPropertyBinding(this.realm, reactElement, "type", reference);
+          this.residualHeapVisitor.visitValue(reference);
+          return;
+        }
         isReactFragment =
           typeValue instanceof SymbolValue && typeValue === getReactSymbol("react.fragment", this.realm);
         // we don't want to visit fragments as they are internal values

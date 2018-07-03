@@ -269,6 +269,7 @@ export class Realm {
       output: opts.reactOutput || "create-element",
       propsWithNoPartialKeyOrRef: new WeakSet(),
       reactElements: new WeakMap(),
+      reactElementStringTypeReferences: new Map(),
       reactProps: new WeakSet(),
       symbols: new Map(),
       usedReactElementKeys: new Set(),
@@ -283,6 +284,7 @@ export class Realm {
       react: undefined,
       reactDom: undefined,
       reactDomServer: undefined,
+      reactNative: undefined,
       reactRelay: undefined,
     };
 
@@ -367,6 +369,7 @@ export class Realm {
     output?: ReactOutputTypes,
     propsWithNoPartialKeyOrRef: WeakSet<ObjectValue | AbstractObjectValue>,
     reactElements: WeakMap<ObjectValue, { createdDuringReconcilation: boolean, firstRenderOnly: boolean }>,
+    reactElementStringTypeReferences: Map<string, AbstractValue>,
     reactProps: WeakSet<ObjectValue>,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
     usedReactElementKeys: Set<string>,
@@ -380,6 +383,7 @@ export class Realm {
     react: void | ObjectValue,
     reactDom: void | ObjectValue,
     reactDomServer: void | ObjectValue,
+    reactNative: void | ObjectValue,
     reactRelay: void | ObjectValue,
   };
 

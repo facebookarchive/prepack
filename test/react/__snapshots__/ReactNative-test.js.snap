@@ -1,0 +1,645 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Simple 2: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 9,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [
+                    Object {
+                      "children": Array [
+                        Object {
+                          "children": Array [
+                            Object {
+                              "children": Array [],
+                              "message": "",
+                              "name": "Context.Consumer",
+                              "status": "INLINED",
+                            },
+                          ],
+                          "message": "",
+                          "name": "TouchableText",
+                          "status": "INLINED",
+                        },
+                      ],
+                      "message": "",
+                      "name": "",
+                      "status": "FORWARD_REF",
+                    },
+                  ],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 8,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Simple 2: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 9,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [
+                    Object {
+                      "children": Array [
+                        Object {
+                          "children": Array [
+                            Object {
+                              "children": Array [],
+                              "message": "",
+                              "name": "Context.Consumer",
+                              "status": "INLINED",
+                            },
+                          ],
+                          "message": "",
+                          "name": "TouchableText",
+                          "status": "INLINED",
+                        },
+                      ],
+                      "message": "",
+                      "name": "",
+                      "status": "FORWARD_REF",
+                    },
+                  ],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 8,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Simple 2: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 9,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [
+                    Object {
+                      "children": Array [
+                        Object {
+                          "children": Array [
+                            Object {
+                              "children": Array [],
+                              "message": "",
+                              "name": "Context.Consumer",
+                              "status": "INLINED",
+                            },
+                          ],
+                          "message": "",
+                          "name": "TouchableText",
+                          "status": "INLINED",
+                        },
+                      ],
+                      "message": "",
+                      "name": "",
+                      "status": "FORWARD_REF",
+                    },
+                  ],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 8,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Simple 2: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 9,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [
+                    Object {
+                      "children": Array [
+                        Object {
+                          "children": Array [
+                            Object {
+                              "children": Array [],
+                              "message": "",
+                              "name": "Context.Consumer",
+                              "status": "INLINED",
+                            },
+                          ],
+                          "message": "",
+                          "name": "TouchableText",
+                          "status": "INLINED",
+                        },
+                      ],
+                      "message": "",
+                      "name": "",
+                      "status": "FORWARD_REF",
+                    },
+                  ],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 8,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Simple: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 7,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Simple: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 7,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Simple: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 7,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Simple: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 7,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Consumer",
+                  "status": "INLINED",
+                },
+                Object {
+                  "children": Array [],
+                  "message": "",
+                  "name": "Context.Provider",
+                  "status": "INLINED",
+                },
+              ],
+              "message": "",
+              "name": "TouchableText",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "",
+          "status": "FORWARD_REF",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 6,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
