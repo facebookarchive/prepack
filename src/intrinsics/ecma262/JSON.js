@@ -522,8 +522,10 @@ export default function(realm: Realm): ObjectValue {
       // Enable cloning via JSON.parse(JSON.stringify(...)).
       let gen = realm.preludeGenerator;
       invariant(gen); // text is abstract, so we are doing abstract interpretation
-      let args = gen.derivedIds.get(text.intrinsicName);
-      invariant(args && args[0] instanceof Value); // since text.kind === "JSON.stringify(...)"
+      let temporalBuildNodeEntryArgs = gen.derivedIds.get(text.intrinsicName);
+      invariant(temporalBuildNodeEntryArgs !== undefined);
+      let args = temporalBuildNodeEntryArgs.args;
+      invariant(args[0] instanceof Value); // since text.kind === "JSON.stringify(...)"
       let inputClone = args[0]; // A temporal copy of the object that was the argument to stringify
       // Clone it so that every call to parse produces a different instance from stringify's clone
       let parseResult; // A clone of inputClone, because every call to parse produces a new object

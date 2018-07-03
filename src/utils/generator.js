@@ -931,7 +931,7 @@ export class Generator {
       value.intrinsicNameGenerated = true;
       value._isScopedTemplate = true; // because this object doesn't exist ahead of time, and the visitor would otherwise declare it in the common scope
     }
-    let temporalBuildNodeEntryArgs = {
+    this._addDerivedEntry(id.name, {
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: value,
       args,
@@ -945,9 +945,7 @@ export class Generator {
           ),
         ]);
       },
-    };
-    this.preludeGenerator.derivedIds.set(id.name, temporalBuildNodeEntryArgs);
-    this._addEntry(temporalBuildNodeEntryArgs);
+    });
     return value;
   }
 
@@ -977,7 +975,7 @@ export class Generator {
       id,
       options
     );
-    let temporalBuildNodeEntryArgs = {
+    this._addDerivedEntry(id.name, {
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: res,
       args,
@@ -992,9 +990,7 @@ export class Generator {
         ]);
       },
       mutatesOnly: optionalArgs ? optionalArgs.mutatesOnly : undefined,
-    };
-    this._addEntry(temporalBuildNodeEntryArgs);
-    this.preludeGenerator.derivedIds.set(id.name, temporalBuildNodeEntryArgs);
+    });
     let type = types.getType();
     res.intrinsicName = id.name;
     if (optionalArgs && optionalArgs.skipInvariant) return res;
@@ -1074,8 +1070,13 @@ export class Generator {
 
   // PITFALL Warning: adding a new kind of TemporalBuildNodeEntry that is not the result of a join or composition
   // will break this purgeEntriesWithGeneratorDepencies.
-  _addEntry(entry: TemporalBuildNodeEntryArgs) {
+  _addEntry(entry: TemporalBuildNodeEntryArgs): void {
     this._entries.push(new TemporalBuildNodeEntry(entry));
+  }
+
+  _addDerivedEntry(id: string, entry: TemporalBuildNodeEntryArgs): void {
+    this._addEntry(entry);
+    this.preludeGenerator.derivedIds.set(id, entry);
   }
 
   appendGenerator(other: Generator, leadingComment: string): void {

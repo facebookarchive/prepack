@@ -147,7 +147,7 @@ export default class AbstractValue extends Value {
       if (name.startsWith("_$")) {
         if (gen === undefined) return;
         let temporalBuildNodeEntryArgs = gen.derivedIds.get(name);
-        if (temporalBuildNodeEntryArgs === undefined) return;
+        invariant(temporalBuildNodeEntryArgs !== undefined);
         add_args(temporalBuildNodeEntryArgs.args);
       } else if (names.indexOf(name) < 0) {
         names.push(name);
