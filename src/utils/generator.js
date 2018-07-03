@@ -115,7 +115,7 @@ export class GeneratorEntry {
   }
 }
 
-type TemporalBuildNodeEntryArgs = {
+export type TemporalBuildNodeEntryArgs = {
   declared?: AbstractValue | ConcreteValue,
   args: Array<Value>,
   // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
@@ -926,13 +926,12 @@ export class Generator {
   ): ConcreteValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
-    this.preludeGenerator.derivedIds.set(id.name, args);
     let value = buildValue(id.name);
     if (value instanceof ObjectValue) {
       value.intrinsicNameGenerated = true;
       value._isScopedTemplate = true; // because this object doesn't exist ahead of time, and the visitor would otherwise declare it in the common scope
     }
-    this._addEntry({
+    let temporalBuildNodeEntryArgs = {
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: value,
       args,
@@ -946,7 +945,9 @@ export class Generator {
           ),
         ]);
       },
-    });
+    };
+    this.preludeGenerator.derivedIds.set(id.name, temporalBuildNodeEntryArgs);
+    this._addEntry(temporalBuildNodeEntryArgs);
     return value;
   }
 
@@ -964,7 +965,6 @@ export class Generator {
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
-    this.preludeGenerator.derivedIds.set(id.name, args);
     let options = {};
     if (optionalArgs && optionalArgs.kind) options.kind = optionalArgs.kind;
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
@@ -977,7 +977,7 @@ export class Generator {
       id,
       options
     );
-    this._addEntry({
+    let temporalBuildNodeEntryArgs = {
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: res,
       args,
@@ -992,7 +992,9 @@ export class Generator {
         ]);
       },
       mutatesOnly: optionalArgs ? optionalArgs.mutatesOnly : undefined,
-    });
+    };
+    this._addEntry(temporalBuildNodeEntryArgs);
+    this.preludeGenerator.derivedIds.set(id.name, temporalBuildNodeEntryArgs);
     let type = types.getType();
     res.intrinsicName = id.name;
     if (optionalArgs && optionalArgs.skipInvariant) return res;
@@ -1182,7 +1184,7 @@ export class PreludeGenerator {
   }
 
   prelude: Array<BabelNodeStatement>;
-  derivedIds: Map<string, Array<Value>>;
+  derivedIds: Map<string, TemporalBuildNodeEntryArgs>;
   memoizedRefs: Map<string, BabelNodeIdentifier>;
   nameGenerator: NameGenerator;
   usesThis: boolean;

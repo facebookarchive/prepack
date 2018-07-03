@@ -295,10 +295,6 @@ export default function(realm: Realm): NativeFunctionValue {
           temporalTo.values = new ValuesDomain(to);
         }
         to.temporalAlias = temporalTo;
-        // Store the args for the temporal so we can easily clone
-        // and reconstruct the temporal at another point, rather than
-        // mutate the existing temporal
-        realm.temporalAliasArgs.set(temporalTo, temporalArgs);
       }
       return to;
     });
