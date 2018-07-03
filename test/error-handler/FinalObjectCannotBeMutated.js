@@ -1,4 +1,4 @@
-// expected errors: [{"location":{"start":{"line":7,"column":16},"end":{"line":7,"column":18},"source":"test/error-handler/FinalObjectCannotBeMutated.js"},"severity":"FatalError","errorCode":"PP0026","callStack":"Error\n    at f (unknown)"}]
+// expected errors: [{"location":{"start":{"line":7,"column":16},"end":{"line":7,"column":18},"source":"test/error-handler/FinalObjectCannotBeMutated.js"},"severity":"FatalError","errorCode":"PP0026","callStack":"Error\n    "}]
 (function () {
     function f() {
         let o = {};

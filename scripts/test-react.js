@@ -19,7 +19,7 @@ let ReactDOMServer = require("react-dom/server");
 let PropTypes = require("prop-types");
 let ReactRelay = require("react-relay");
 let ReactTestRenderer = require("react-test-renderer");
-let { mergeAdacentJSONTextNodes } = require("../lib/utils/json.js");
+let { mergeAdjacentJSONTextNodes } = require("../lib/utils/json.js");
 /* eslint-disable no-undef */
 let { expect, describe, it } = global;
 
@@ -84,6 +84,7 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     serialize: true,
     uniqueSuffix: "",
     maxStackDepth: 100,
+    instantRender: false,
     reactEnabled: true,
     reactOutput: outputJsx ? "jsx" : "create-element",
     reactOptimizeNestedFunctions: true,
@@ -219,8 +220,8 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
     let { getTrials: getTrialsA, independent } = A;
     let { getTrials: getTrialsB } = B;
     // Run tests that assert the rendered output matches.
-    let resultA = getTrialsA(rendererA, A, data);
-    let resultB = independent ? getTrialsB(rendererB, B, data) : getTrialsA(rendererB, B, data);
+    let resultA = getTrialsA(rendererA, A, data, false);
+    let resultB = independent ? getTrialsB(rendererB, B, data, true) : getTrialsA(rendererB, B, data, false);
 
     // The test has returned many values for us to check
     for (let i = 0; i < resultA.length; i++) {
@@ -229,8 +230,8 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
       if (typeof valueA === "string" && typeof valueB === "string") {
         expect(valueA).toBe(valueB);
       } else {
-        expect(mergeAdacentJSONTextNodes(valueB, firstRenderOnly)).toEqual(
-          mergeAdacentJSONTextNodes(valueA, firstRenderOnly)
+        expect(mergeAdjacentJSONTextNodes(valueB, firstRenderOnly)).toEqual(
+          mergeAdjacentJSONTextNodes(valueA, firstRenderOnly)
         );
       }
       expect(nameB).toEqual(nameA);
@@ -409,12 +410,22 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
         });
       });
 
+      it("Mutations - not-safe 3", async () => {
+        await expectReconcilerFatalError(async () => {
+          await runTest(directory, "not-safe3.js");
+        });
+      });
+
       it("Mutations - safe 1", async () => {
         await runTest(directory, "safe.js");
       });
 
       it("Mutations - safe 2", async () => {
         await runTest(directory, "safe2.js");
+      });
+
+      it("Mutations - safe 3", async () => {
+        await runTest(directory, "safe3.js");
       });
 
       it("Handle mapped arrays", async () => {
@@ -1125,6 +1136,14 @@ function runTestSuite(outputJsx, shouldTranspileSource) {
 
       it("fb-www 23", async () => {
         await runTest(directory, "fb23.js");
+      });
+
+      it("fb-www 24", async () => {
+        await runTest(directory, "fb24.js");
+      });
+
+      it("fb-www 25", async () => {
+        await runTest(directory, "fb25.js");
       });
 
       it("repl example", async () => {

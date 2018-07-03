@@ -66,7 +66,7 @@ type EmitterDependenciesVisitorCallbacks<T> = {
 export class Emitter {
   constructor(
     residualFunctions: ResidualFunctions,
-    referencedDeclaredValues: Map<AbstractValue | ConcreteValue, void | FunctionValue>,
+    referencedDeclaredValues: Map<Value, void | FunctionValue>,
     conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>,
     derivedIds: Map<string, Array<Value>>
   ) {
@@ -369,10 +369,6 @@ export class Emitter {
       switch (kind) {
         case "Object":
           let proto = val.$Prototype;
-          if (val.temporalAlias !== undefined && !val.isIntrinsic()) {
-            result = recurse(val.temporalAlias);
-            if (result !== undefined) return result;
-          }
           if (
             proto instanceof ObjectValue &&
             // if this is falsy, prototype chain might be cyclic

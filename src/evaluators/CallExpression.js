@@ -37,6 +37,7 @@ import type { BabelNodeCallExpression, BabelNodeExpression, BabelNodeSpreadEleme
 import invariant from "../invariant.js";
 import * as t from "babel-types";
 import SuperCall from "./SuperCall";
+import { memberExpressionHelper } from "../utils/babelhelpers.js";
 
 export default function(
   ast: BabelNodeCallExpression,
@@ -49,12 +50,16 @@ export default function(
   }
 
   // ECMA262 12.3.4.1
-  realm.setNextExecutionContextLocation(ast.loc);
 
   // 1. Let ref be the result of evaluating MemberExpression.
   let ref = env.evaluate(ast.callee, strictCode);
 
-  return evaluateReference(ref, ast, strictCode, env, realm);
+  let previousLoc = realm.setNextExecutionContextLocation(ast.loc);
+  try {
+    return evaluateReference(ref, ast, strictCode, env, realm);
+  } finally {
+    realm.setNextExecutionContextLocation(previousLoc);
+  }
 }
 
 function evaluateReference(
@@ -230,11 +235,9 @@ function generateRuntimeCall(
     let argStart = 1;
     if (thisArg instanceof Value) {
       if (typeof propName === "string") {
-        callFunc = t.isValidIdentifier(propName)
-          ? t.memberExpression(nodes[0], t.identifier(propName), false)
-          : t.memberExpression(nodes[0], t.stringLiteral(propName), true);
+        callFunc = memberExpressionHelper(nodes[0], propName);
       } else {
-        callFunc = t.memberExpression(nodes[0], nodes[1], true);
+        callFunc = memberExpressionHelper(nodes[0], nodes[1]);
         argStart = 2;
       }
     } else {
@@ -255,6 +258,7 @@ function tryToEvaluateCallOrLeaveAsAbstract(
   thisValue: Value,
   tailCall: boolean
 ): Value {
+  invariant(!realm.instantRender.enabled);
   let effects;
   let savedSuppressDiagnostics = realm.suppressDiagnostics;
   try {
@@ -390,7 +394,7 @@ function EvaluateCall(
   let tailCall = IsInTailPosition(realm, thisCall);
 
   // 8. Return ? EvaluateDirectCall(func, thisValue, Arguments, tailCall).
-  if (realm.isInPureScope()) {
+  if (realm.isInPureScope() && !realm.instantRender.enabled) {
     return tryToEvaluateCallOrLeaveAsAbstract(ref, func, ast, strictCode, env, realm, thisValue, tailCall);
   } else {
     return EvaluateDirectCall(realm, strictCode, env, ref, func, thisValue, ast.arguments, tailCall);

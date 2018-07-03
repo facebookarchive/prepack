@@ -30,7 +30,7 @@ import invariant from "./invariant";
 import zipFactory from "node-zip";
 import path from "path";
 import JSONTokenizer from "./utils/JSONTokenizer.js";
-import type { DebuggerConfigArguments } from "./debugger/common/types";
+import type { DebuggerConfigArguments } from "./types";
 
 // Prepack helper
 declare var __residual: any;
@@ -80,6 +80,7 @@ function run(
     --repro                  Create a zip file with all information needed to reproduce a Prepack run"
     --cpuprofile             Create a CPU profile file for the run that can be loaded into the Chrome JavaScript CPU Profile viewer",
     --debugDiagnosticSeverity      FatalError | RecoverableError | Warning | Information (default = FatalError). Diagnostic level at which debugger will stop
+    --debugBuckRoot          Root directory that buck assumes when creating sourcemap paths.
   `;
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -119,6 +120,7 @@ function run(
     serialize: false,
     residual: false,
     profile: false,
+    instantRender: false,
     reactEnabled: false,
   };
 
@@ -272,6 +274,9 @@ function run(
             `Invalid debugger diagnostic severity: ${arg}`
           );
           debuggerConfigArgs.diagnosticSeverity = arg;
+          break;
+        case "debugBuckRoot":
+          debuggerConfigArgs.buckRoot = args.shift();
           break;
         case "help":
           const options = [

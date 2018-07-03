@@ -11,7 +11,7 @@
 
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
-import { Value, EmptyValue } from "../values/index.js";
+import { AbstractValue, Value, EmptyValue, ECMAScriptSourceFunctionValue } from "../values/index.js";
 import {
   AbruptCompletion,
   BreakCompletion,
@@ -20,14 +20,29 @@ import {
   ForkedAbruptCompletion,
   PossiblyNormalCompletion,
   ReturnCompletion,
+  SimpleNormalCompletion,
   ThrowCompletion,
 } from "../completions.js";
+import traverse from "babel-traverse";
+import type { BabelTraversePath } from "babel-traverse";
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { UpdateEmpty } from "../methods/index.js";
 import { LoopContinues, InternalGetResultValue, TryToApplyEffectsOfJoiningBranches } from "./ForOfStatement.js";
-import { Environment, Functions, Join, To } from "../singletons.js";
+import { Environment, Functions, Havoc, Join, To } from "../singletons.js";
 import invariant from "../invariant.js";
-import type { BabelNodeForStatement } from "babel-types";
+import * as t from "babel-types";
+import type { FunctionBodyAstNode } from "../types.js";
+import type { BabelNodeExpression, BabelNodeForStatement, BabelNodeBlockStatement } from "babel-types";
+
+type BailOutWrapperInfo = {
+  usesArguments: boolean,
+  usesThis: boolean,
+  usesReturn: boolean,
+  usesGotoToLabel: boolean,
+  usesThrow: boolean,
+  varPatternUnsupported: boolean,
+};
 
 // ECMA262 13.7.4.9
 export function CreatePerIterationEnvironment(realm: Realm, perIterationBindings: Array<string>) {
@@ -268,8 +283,211 @@ function ForBodyEvaluation(
   }
 }
 
+let BailOutWrapperClosureRefVisitor = {
+  ReferencedIdentifier(path: BabelTraversePath, state: BailOutWrapperInfo) {
+    if (path.node.name === "arguments") {
+      state.usesArguments = true;
+    }
+  },
+  ThisExpression(path: BabelTraversePath, state: BailOutWrapperInfo) {
+    state.usesThis = true;
+  },
+  "BreakStatement|ContinueStatement"(path: BabelTraversePath, state: BailOutWrapperInfo) {
+    if (path.node.label !== null) {
+      state.usesGotoToLabel = true;
+    }
+  },
+  ReturnStatement(path: BabelTraversePath, state: BailOutWrapperInfo) {
+    state.usesReturn = true;
+  },
+  ThrowStatement(path: BabelTraversePath, state: BailOutWrapperInfo) {
+    state.usesThrow = true;
+  },
+  VariableDeclaration(path: BabelTraversePath, state: BailOutWrapperInfo) {
+    let node = path.node;
+    // If our parent is a for loop (there are 3 kinds) we do not need a wrapper
+    // i.e. for (var x of y) for (var x in y) for (var x; x < y; x++)
+    let needsExpressionWrapper =
+      !t.isForStatement(path.parentPath.node) &&
+      !t.isForOfStatement(path.parentPath.node) &&
+      !t.isForInStatement(path.parentPath.node);
+
+    const getConvertedDeclarator = index => {
+      let { id, init } = node.declarations[index];
+
+      if (t.isIdentifier(id)) {
+        return t.assignmentExpression("=", id, init);
+      } else {
+        // We do not currently support ObjectPattern, SpreadPattern and ArrayPattern
+        // see: https://github.com/babel/babylon/blob/master/ast/spec.md#patterns
+        state.varPatternUnsupported = true;
+      }
+    };
+
+    if (node.kind === "var") {
+      if (node.declarations.length === 1) {
+        let convertedNodeOrUndefined = getConvertedDeclarator(0);
+        if (convertedNodeOrUndefined === undefined) {
+          // Do not continue as we don't support this
+          return;
+        }
+        path.replaceWith(
+          needsExpressionWrapper ? t.expressionStatement(convertedNodeOrUndefined) : convertedNodeOrUndefined
+        );
+      } else {
+        // convert to sequence, so: `var x = 1, y = 2;` becomes `x = 1, y = 2;`
+        let expressions = [];
+        for (let i = 0; i < node.declarations.length; i++) {
+          let convertedNodeOrUndefined = getConvertedDeclarator(i);
+          if (convertedNodeOrUndefined === undefined) {
+            // Do not continue as we don't support this
+            return;
+          }
+          expressions.push(convertedNodeOrUndefined);
+        }
+        let sequenceExpression = t.sequenceExpression(((expressions: any): Array<BabelNodeExpression>));
+        path.replaceWith(needsExpressionWrapper ? t.expressionStatement(sequenceExpression) : sequenceExpression);
+      }
+    }
+  },
+};
+
+function generateRuntimeForStatement(
+  ast: BabelNodeForStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  labelSet: ?Array<string>
+): AbstractValue {
+  let wrapperFunction = new ECMAScriptSourceFunctionValue(realm);
+  let body = ((t.cloneDeep(t.blockStatement([ast])): any): BabelNodeBlockStatement);
+  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
+  wrapperFunction.$ECMAScriptCode = body;
+  wrapperFunction.$FormalParameters = [];
+  wrapperFunction.$Environment = env;
+  // We need to scan to AST looking for "this", "return", "throw", labels and "arguments"
+  let functionInfo = {
+    usesArguments: false,
+    usesThis: false,
+    usesReturn: false,
+    usesGotoToLabel: false,
+    usesThrow: false,
+    varPatternUnsupported: false,
+  };
+
+  traverse(
+    t.file(t.program([t.expressionStatement(t.functionExpression(null, [], body))])),
+    BailOutWrapperClosureRefVisitor,
+    null,
+    functionInfo
+  );
+  traverse.clearCache();
+  let { usesReturn, usesThrow, usesArguments, usesGotoToLabel, varPatternUnsupported, usesThis } = functionInfo;
+
+  if (usesReturn || usesThrow || usesArguments || usesGotoToLabel || varPatternUnsupported) {
+    // We do not have support for these yet
+    let diagnostic = new CompilerDiagnostic(
+      `failed to recover from a for/while loop bail-out due to unsupported logic in loop body`,
+      realm.currentLocation,
+      "PP0037",
+      "FatalError"
+    );
+    realm.handleError(diagnostic);
+    throw new FatalError();
+  }
+  let args = [wrapperFunction];
+
+  if (usesThis) {
+    let thisRef = env.evaluate(t.thisExpression(), strictCode);
+    let thisVal = Environment.GetValue(realm, thisRef);
+    Havoc.value(realm, thisVal);
+    args.push(thisVal);
+  }
+
+  // We havoc the wrapping function value, which in turn invokes the havocing
+  // logic which is transitive. The havocing logic should recursively visit
+  // all bindings/objects in the loop and its body and mark the associated
+  // bindings/objects that do havoc appropiately.
+  Havoc.value(realm, wrapperFunction);
+
+  let wrapperValue = AbstractValue.createTemporalFromBuildFunction(
+    realm,
+    Value,
+    args,
+    ([func, thisExpr]) =>
+      usesThis
+        ? t.callExpression(t.memberExpression(func, t.identifier("call")), [thisExpr])
+        : t.callExpression(func, [])
+  );
+  invariant(wrapperValue instanceof AbstractValue);
+  return wrapperValue;
+}
+
+function tryToEvaluateForStatementOrLeaveAsAbstract(
+  ast: BabelNodeForStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  labelSet: ?Array<string>
+): Value {
+  invariant(!realm.instantRender.enabled);
+  let effects;
+  let savedSuppressDiagnostics = realm.suppressDiagnostics;
+  try {
+    realm.suppressDiagnostics = true;
+    effects = realm.evaluateForEffects(
+      () => evaluateForStatement(ast, strictCode, env, realm, labelSet),
+      undefined,
+      "tryToEvaluateForStatementOrLeaveAsAbstract"
+    );
+  } catch (error) {
+    if (error instanceof FatalError) {
+      realm.suppressDiagnostics = savedSuppressDiagnostics;
+      return realm.evaluateWithPossibleThrowCompletion(
+        () => generateRuntimeForStatement(ast, strictCode, env, realm, labelSet),
+        TypesDomain.topVal,
+        ValuesDomain.topVal
+      );
+    } else {
+      throw error;
+    }
+  } finally {
+    realm.suppressDiagnostics = savedSuppressDiagnostics;
+  }
+  // Note that the effects of (non joining) abrupt branches are not included
+  // in effects, but are tracked separately inside completion.
+  realm.applyEffects(effects);
+  let completion = effects.result;
+  if (completion instanceof PossiblyNormalCompletion) {
+    // in this case one of the branches may complete abruptly, which means that
+    // not all control flow branches join into one flow at this point.
+    // Consequently we have to continue tracking changes until the point where
+    // all the branches come together into one.
+    completion = realm.composeWithSavedCompletion(completion);
+  }
+  // return or throw completion
+  if (completion instanceof AbruptCompletion) throw completion;
+  if (completion instanceof SimpleNormalCompletion) completion = completion.value;
+  invariant(completion instanceof Value);
+  return completion;
+}
+
 // ECMA262 13.7.4.7
 export default function(
+  ast: BabelNodeForStatement,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  labelSet: ?Array<string>
+): Value {
+  if (realm.isInPureScope() && !realm.instantRender.enabled) {
+    return tryToEvaluateForStatementOrLeaveAsAbstract(ast, strictCode, env, realm, labelSet);
+  } else {
+    return evaluateForStatement(ast, strictCode, env, realm, labelSet);
+  }
+}
+
+function evaluateForStatement(
   ast: BabelNodeForStatement,
   strictCode: boolean,
   env: LexicalEnvironment,

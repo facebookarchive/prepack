@@ -84,7 +84,7 @@ export class Functions {
     realm.handleError(
       new CompilerDiagnostic(
         `Optimized Function Value ${location} is an not a function or react element`,
-        undefined,
+        realm.currentLocation,
         "PP0033",
         "FatalError"
       )
@@ -199,8 +199,9 @@ export class Functions {
       additionalFunctionStack.push(functionValue);
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
       let call = this._callOfFunction(functionValue);
-      let effects: Effects = this.realm.evaluatePure(() =>
-        this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function")
+      let effects: Effects = this.realm.evaluatePure(
+        () => this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
+        /*reportSideEffectFunc*/ null
       );
       invariant(effects);
       let additionalFunctionEffects = createAdditionalEffects(

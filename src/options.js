@@ -7,10 +7,9 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow strict */
+/* @flow strict-local */
 
 import type { ErrorHandler } from "./errors.js";
-import type { DebuggerConfigArguments } from "./debugger/common/types";
 
 export type Compatibility =
   | "browser"
@@ -68,13 +67,13 @@ export type RealmOptions = {
   strictlyMonotonicDateNow?: boolean,
   timeout?: number,
   maxStackDepth?: number,
+  instantRender?: boolean,
   reactEnabled?: boolean,
   reactOutput?: ReactOutputTypes,
   reactVerbose?: boolean,
   reactOptimizeNestedFunctions?: boolean,
   stripFlow?: boolean,
   abstractValueImpliesMax?: number,
-  debuggerConfigArgs?: DebuggerConfigArguments,
 };
 
 export type SerializerOptions = {
@@ -96,11 +95,6 @@ export type SerializerOptions = {
 
 export type PartialEvaluatorOptions = {
   sourceMaps?: boolean,
-};
-
-export type DebuggerOptions = {
-  inFilePath: string,
-  outFilePath: string,
 };
 
 export const defaultOptions = {};

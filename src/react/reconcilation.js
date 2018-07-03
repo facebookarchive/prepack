@@ -283,10 +283,12 @@ export class Reconciler {
     try {
       this.realm.react.activeReconciler = this;
       let effects = this.realm.wrapInGlobalEnv(() =>
-        this.realm.evaluatePure(() =>
-          evaluateWithNestedParentEffects(this.realm, nestedEffects, () =>
-            this.realm.evaluateForEffects(resolveOptimizedClosure, /*state*/ null, `react nested optimized closure`)
-          )
+        this.realm.evaluatePure(
+          () =>
+            evaluateWithNestedParentEffects(this.realm, nestedEffects, () =>
+              this.realm.evaluateForEffects(resolveOptimizedClosure, /*state*/ null, `react nested optimized closure`)
+            ),
+          this._handleReportedSideEffect
         )
       );
       this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);

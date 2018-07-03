@@ -109,12 +109,13 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
 
   callCallback(
     context: UndefinedValue | NullValue | ObjectValue | AbstractObjectValue,
-    argsList: Array<Value>,
+    originalArgsList: Array<Value>,
     newTarget?: void | ObjectValue
   ): ReturnCompletion {
-    let originalLength = argsList.length;
+    let originalLength = originalArgsList.length;
+    let argsList = originalArgsList.slice();
     for (let i = 0; i < this.length; i++) {
-      argsList[i] = argsList[i] || this.$Realm.intrinsics.undefined;
+      argsList[i] = originalArgsList[i] || this.$Realm.intrinsics.undefined;
     }
     return new ReturnCompletion(
       this.callback(context, argsList, originalLength, newTarget),

@@ -318,6 +318,7 @@ function runTest(name, code, options: PrepackOptions, args) {
   options.invariantLevel = code.includes("// omit invariants") || args.verbose ? 0 : 99;
   if (code.includes("// emit concrete model")) options.emitConcreteModel = true;
   if (code.includes("// exceeds stack limit")) options.maxStackDepth = 10;
+  if (code.includes("// instant render")) options.instantRender = true;
   if (code.includes("// react")) {
     options.reactEnabled = true;
     options.reactOutput = "jsx";
@@ -492,7 +493,7 @@ function runTest(name, code, options: PrepackOptions, args) {
                 console.error(newCode);
               }
             }
-            if (markersIssue || matchesIssue) return () => Promise.reject();
+            if (markersIssue || matchesIssue) return () => Promise.reject({ type: "MARKER" });
             let codeToRun = addedCode + newCode;
             if (!execSpec && options.lazyObjectsRuntime !== undefined) {
               codeToRun = augmentCodeWithLazyObjectSupport(codeToRun, args.lazyObjectsRuntime);
@@ -581,6 +582,8 @@ function runTest(name, code, options: PrepackOptions, args) {
             return Promise.resolve(false);
           } else if (type === "RETURN") {
             return value;
+          } else if (type === "MARKER") {
+            return undefined;
           } else {
             console.error(err);
             console.error(err.stack);
@@ -689,7 +692,6 @@ function run(args) {
           flagPermutations.push([false, true, undefined, true]);
         }
         if (args.fast) flagPermutations = [[false, false, undefined, isSimpleClosureTest]];
-        let lastFailed = failed;
         return () =>
           SerialPromises(
             flagPermutations
@@ -707,17 +709,14 @@ function run(args) {
                 return () =>
                   runTest(test.name, test.file, options, args).then(testResult => {
                     if (testResult) {
-                      // console.log("passed", test.name, testResult);
                       passed++;
                     } else {
-                      // console.log("failed", test.name, testResult);
                       failed++;
+                      failedTests.push(test);
                     }
                   });
               })
-          ).then(function() {
-            if (failed !== lastFailed) failedTests.push(test);
-          });
+          );
       })
   ).then(function() {
     failedTests.sort((x, y) => y.file.length - x.file.length);

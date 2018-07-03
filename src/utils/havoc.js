@@ -446,8 +446,44 @@ class ObjectValueHavocingVisitor {
   }
 
   visitAbstractValue(val: AbstractValue): void {
-    for (let i = 0, n = val.args.length; i < n; i++) {
-      this.visitValue(val.args[i]);
+    if (!val.mightBeObject()) {
+      // Only objects need to be havoced.
+      return;
+    }
+    if (val.values.isTop()) {
+      // If we don't know which object instances it might be,
+      // then it might be one of the arguments that created
+      // this value. See #2179.
+
+      if (val.kind === "conditional") {
+        // For a conditional, we only have to visit each case. Not the condition itself.
+        this.visitValue(val.args[1]);
+        this.visitValue(val.args[2]);
+        return;
+      }
+
+      // To ensure that we don't forget to provide arguments
+      // that can be havoced, we require at least one argument.
+      let whitelistedKind =
+        val.kind &&
+        (val.kind === "widened numeric property" || // TODO: Widened properties needs to be havocable.
+          val.kind.startsWith("abstractCounted"));
+      invariant(
+        whitelistedKind || val.intrinsicName || val.args.length > 0,
+        "Havoced unknown object requires havocable arguments"
+      );
+
+      // TODO: This is overly conservative. We recursively havoc all the inputs
+      // to this operation whether or not they can possible be part of the
+      // result value or not.
+      for (let i = 0, n = val.args.length; i < n; i++) {
+        this.visitValue(val.args[i]);
+      }
+      return;
+    }
+    // If we know which objects this might be, then havoc each of them.
+    for (let element of val.values.getElements()) {
+      this.visitValue(element);
     }
   }
 
@@ -495,6 +531,16 @@ function ensureFrozenValue(realm, value, loc) {
 // and all reachable bindings to abstract values.
 export class HavocImplementation {
   value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation) {
+    if (realm.instantRender.enabled) {
+      // TODO: For InstantRender...
+      // - For declarative bindings, we do want proper materialization/leaking/havocing
+      // - For object properties, we conceptually want materialization
+      //   (however, not via statements that mutate the objects,
+      //   but only as part of the initial object literals),
+      //   but actual no leaking or havocing as there should be a way to annotate/enforce
+      //   that external/abstract functions are pure with regards to heap objects
+      return;
+    }
     let objectsTrackedForHavoc = realm.createdObjectsTrackedForLeaks;
     if (objectsTrackedForHavoc === undefined) {
       // We're not tracking a pure function. That means that we would track

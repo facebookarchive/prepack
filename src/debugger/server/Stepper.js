@@ -9,7 +9,6 @@
 
 /* @flow strict-local */
 import type { SourceData } from "./../common/types.js";
-import { IsStatement } from "./../../methods/is.js";
 import { BabelNode } from "babel-types";
 import invariant from "./../common/invariant.js";
 
@@ -32,8 +31,6 @@ export class Stepper {
   // The same node in two different excutions contexts (e.g. recursive call)
   // will not be detected. Check the stackSize (via realm) in those cases.
   isAstLocationChanged(ast: BabelNode) {
-    // we should only step to statements
-    if (!IsStatement(ast)) return false;
     let loc = ast.loc;
     if (!loc) return false;
     let filePath = loc.source;

@@ -11,7 +11,7 @@
 
 import { Realm, Effects } from "../realm.js";
 import { ValuesDomain } from "../domains/index.js";
-import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier, BabelNodeExpression } from "babel-types";
 import { parseExpression } from "babylon";
 import {
@@ -843,6 +843,7 @@ export function getValueFromFunctionCall(
   }
   // return or throw completion
   if (completion instanceof AbruptCompletion) throw completion;
+  if (completion instanceof SimpleNormalCompletion) completion = completion.value;
   invariant(completion instanceof Value);
   return completion;
 }
@@ -1011,6 +1012,7 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
   invariant(objectAssignCall !== undefined);
 
   const tryToApplyObjectAssign = () => {
+    invariant(!realm.instantRender.enabled);
     let effects;
     let savedSuppressDiagnostics = realm.suppressDiagnostics;
     try {
@@ -1072,7 +1074,7 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
           ([methodNode, ..._args]) => {
             return t.callExpression(methodNode, ((_args: any): Array<any>));
           },
-          { skipInvariant: true }
+          { skipInvariant: true, mutatesOnly: [to] }
         );
         invariant(temporalTo instanceof AbstractObjectValue);
         temporalTo.values = new ValuesDomain(to);
@@ -1101,9 +1103,10 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
     }
     // return or throw completion
     if (completion instanceof AbruptCompletion) throw completion;
+    if (completion instanceof SimpleNormalCompletion) completion = completion.value;
   };
 
-  if (realm.isInPureScope()) {
+  if (realm.isInPureScope() && !realm.instantRender.enabled) {
     tryToApplyObjectAssign();
   } else {
     objectAssignCall(realm.intrinsics.undefined, [to, ...sources]);
