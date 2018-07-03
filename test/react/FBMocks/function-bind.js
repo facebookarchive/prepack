@@ -1,18 +1,5 @@
 var React = require("react");
 
-// FB www polyfill
-if (!this.babelHelpers) {
-  this.babelHelpers = {
-    inherits(subClass, superClass) {
-      Object.assign(subClass, superClass);
-      subClass.prototype = Object.create(superClass && superClass.prototype);
-      subClass.prototype.constructor = subClass;
-      subClass.__superConstructor__ = superClass;
-      return superClass;
-    },
-  };
-}
-
 var _React$Component = babelHelpers.inherits(Middle, React.Component);
 _superProto = _React$Component && _React$Component.prototype;
 

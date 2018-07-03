@@ -73,6 +73,34 @@ MockURI.prototype.makeString = function() {
   return this.url;
 };
 
+const babelHelpers = {
+  inherits(subClass, superClass) {
+    Object.assign(subClass, superClass);
+    subClass.prototype = Object.create(superClass && superClass.prototype);
+    subClass.prototype.constructor = subClass;
+    subClass.__superConstructor__ = superClass;
+    return superClass;
+  },
+  _extends: Object.assign,
+  extends: Object.assign,
+  objectWithoutProperties(obj, keys) {
+    var target = {};
+    var hasOwn = Object.prototype.hasOwnProperty;
+    for (var i in obj) {
+      if (!hasOwn.call(obj, i) || keys.indexOf(i) >= 0) {
+        continue;
+      }
+      target[i] = obj[i];
+    }
+    return target;
+  },
+  taggedTemplateLiteralLoose(strings, raw) {
+    strings.raw = raw;
+    return strings;
+  },
+  bind: Function.prototype.bind,
+};
+
 function setupReactTests() {
   function compileSourceWithPrepack(
     source: string,
@@ -139,7 +167,7 @@ function setupReactTests() {
       })();
     `;
     /* eslint-disable no-new-func */
-    let fn = new Function("require", "module", transformedSource);
+    let fn = new Function("require", "module", "babelHelpers", transformedSource);
     let moduleShim = { exports: null };
     let requireShim = name => {
       switch (name) {
@@ -173,7 +201,7 @@ function setupReactTests() {
 
     try {
       // $FlowFixMe flow doesn't new Function
-      fn(requireShim, moduleShim);
+      fn(requireShim, moduleShim, babelHelpers);
     } catch (e) {
       console.error(transformedSource);
       throw e;

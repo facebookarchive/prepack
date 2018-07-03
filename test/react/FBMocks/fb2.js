@@ -1,36 +1,5 @@
 var React = require("React");
 
-// FB www polyfill
-if (!this.babelHelpers) {
-  this.babelHelpers = {
-    inherits(subClass, superClass) {
-      Object.assign(subClass, superClass);
-      subClass.prototype = Object.create(superClass && superClass.prototype);
-      subClass.prototype.constructor = subClass;
-      subClass.__superConstructor__ = superClass;
-      return superClass;
-    },
-    _extends: Object.assign,
-    extends: Object.assign,
-    objectWithoutProperties(obj, keys) {
-      var hasOwn = Object.prototype.hasOwnProperty;
-      var target = {};
-      for (var i in obj) {
-        if (!hasOwn.call(obj, i) || keys.indexOf(i) >= 0) {
-          continue;
-        }
-        target[i] = obj[i];
-      }
-      return target;
-    },
-    taggedTemplateLiteralLoose(strings, raw) {
-      strings.raw = raw;
-      return strings;
-    },
-    bind: Function.prototype.bind,
-  };
-}
-
 var obj = { a: 1, b: 2, c: 3 };
 
 // FB www class transform output
