@@ -146,7 +146,9 @@ export default class AbstractValue extends Value {
     function add_intrinsic(name: string) {
       if (name.startsWith("_$")) {
         if (gen === undefined) return;
-        add_args(gen.derivedIds.get(name));
+        let temporalBuildNodeEntryArgs = gen.derivedIds.get(name);
+        invariant(temporalBuildNodeEntryArgs !== undefined);
+        add_args(temporalBuildNodeEntryArgs.args);
       } else if (names.indexOf(name) < 0) {
         names.push(name);
       }

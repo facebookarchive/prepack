@@ -63,7 +63,7 @@ import {
 import type { Compatibility, RealmOptions, ReactOutputTypes, InvariantModeTypes } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
-import { Generator, PreludeGenerator } from "./utils/generator.js";
+import { Generator, PreludeGenerator, type TemporalBuildNodeEntryArgs } from "./utils/generator.js";
 import { emptyExpression, voidExpression } from "./utils/babelhelpers.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
@@ -246,7 +246,6 @@ export class Realm {
     this.evaluators = (Object.create(null): any);
     this.partialEvaluators = (Object.create(null): any);
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
-    this.temporalAliasArgs = new WeakMap();
 
     this.instantRender = {
       enabled: opts.instantRender || false,
@@ -338,12 +337,6 @@ export class Realm {
   contextStack: Array<ExecutionContext> = [];
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
-
-  // temporalAliasArgs is used to map a temporal abstract object value
-  // to its respective temporal args used to originally create the temporal.
-  // This is used to "clone" immutable objects where they have a dependency
-  // on a temporal alias (for example, Object.assign) when used with snapshotting
-  temporalAliasArgs: WeakMap<AbstractObjectValue | ObjectValue, Array<Value>>;
 
   instantRender: {
     enabled: boolean,
@@ -1744,5 +1737,14 @@ export class Realm {
 
   isNameStringUnique(nameString: string): boolean {
     return !this._abstractValuesDefined.has(nameString);
+  }
+
+  getTemporalBuildNodeEntryArgsFromDerivedValue(value: Value): void | TemporalBuildNodeEntryArgs {
+    let name = value.intrinsicName;
+    invariant(name);
+    let preludeGenerator = this.preludeGenerator;
+    invariant(preludeGenerator !== undefined);
+    let temporalBuildNodeEntryArgs = preludeGenerator.derivedIds.get(name);
+    return temporalBuildNodeEntryArgs;
   }
 }
