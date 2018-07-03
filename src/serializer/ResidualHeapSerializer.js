@@ -1159,6 +1159,7 @@ export class ResidualHeapSerializer {
     deleteIfMightHaveBeenDeleted: boolean = false
   ): BabelNodeStatement {
     if (mightHaveBeenDeleted) {
+      // We always need to serialize this value in order to keep the invariants happy.
       let serializedValue = this.serializeValue(value);
       let condition;
       if (value instanceof AbstractValue && value.kind === "conditional") {

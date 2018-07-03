@@ -337,20 +337,19 @@ function simplifyEquality(realm: Realm, equality: AbstractValue): Value {
         return AbstractValue.createFromConditionalOp(realm, cond, sxx, sxy, equality.expressionLocation, true);
     }
   } else {
-    // !((c ? x : y) === x) && x !== y <=> !c
     if (op === "===") {
-      if (x instanceof AbstractValue && x.kind === "conditional" && y instanceof ConcreteValue) {
+      if (x instanceof AbstractValue && x.kind === "conditional") {
         let [cond, xx, xy] = x.args;
-        if (xx instanceof ConcreteValue && xy instanceof ConcreteValue) {
-          if (xx.equals(y) && !xy.equals(y)) return cond;
-          if (!xx.equals(y) && xy.equals(y)) return negate(realm, cond, loc);
-        }
-      } else if (x instanceof ConcreteValue && y instanceof AbstractValue && y.kind === "conditional") {
+        // ((cond ? xx : xy) === y) && xx === y && xy !== y <=> cond
+        if (xx.equals(y) && !xy.equals(y)) return cond;
+        // ((!cond ? xx : xy) === y) && xx !== y && xy === y <=> !cond
+        if (!xx.equals(y) && xy.equals(y)) return negate(realm, cond, loc);
+      } else if (y instanceof AbstractValue && y.kind === "conditional") {
         let [cond, yx, yy] = y.args;
-        if (yx instanceof ConcreteValue && yy instanceof ConcreteValue) {
-          if (yx.equals(x) && !yy.equals(x)) return cond;
-          if (!yx.equals(x) && yy.equals(x)) return negate(realm, cond, loc);
-        }
+        // (x === (cond ? yx : yy) === y) && x === yx && x !== yy <=> cond
+        if (yx.equals(x) && !yy.equals(x)) return cond;
+        // (x === (!cond ? yx : yy) === y) && x !== yx && x === yy <=> !cond
+        if (!x.equals(yx) && x.equals(yy)) return negate(realm, cond, loc);
       }
     }
   }
