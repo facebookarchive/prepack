@@ -919,6 +919,7 @@ export function createInternalReactElement(
   if (type instanceof AbstractValue && type.kind === "conditional") {
     invariant(false, "createInternalReactElement should never encounter a conditional type");
   }
+
   Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactSymbol("react.element", realm));
   Create.CreateDataPropertyOrThrow(realm, obj, "type", type);
   Create.CreateDataPropertyOrThrow(realm, obj, "key", key);

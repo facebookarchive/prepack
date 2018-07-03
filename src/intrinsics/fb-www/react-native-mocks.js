@@ -10,9 +10,10 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ECMAScriptSourceFunctionValue, ObjectValue, StringValue } from "../../values/index.js";
+import { AbstractValue, ECMAScriptSourceFunctionValue, ObjectValue, StringValue } from "../../values/index.js";
 import { Environment } from "../../singletons.js";
 import invariant from "../../invariant";
+import * as t from "babel-types";
 import { parseExpression } from "babylon";
 
 let reactNativeCode = `
@@ -1654,6 +1655,26 @@ export function createMockReactNative(realm: Realm, reactNativeRequireName: stri
   invariant(reactNativeFactory instanceof ECMAScriptSourceFunctionValue);
   let factory = reactNativeFactory.$Call;
   invariant(factory !== undefined);
+
+  let RCTViewDerivedReference = AbstractValue.createTemporalFromBuildFunction(
+    realm,
+    StringValue,
+    [],
+    () => t.stringLiteral("RCTView"),
+    { skipInvariant: true, isPure: true }
+  );
+  invariant(RCTViewDerivedReference instanceof AbstractValue);
+  realm.react.reactElementStringTypeReferences.set("RCTView", RCTViewDerivedReference);
+
+  let RCTTextDerivedReference = AbstractValue.createTemporalFromBuildFunction(
+    realm,
+    StringValue,
+    [],
+    () => t.stringLiteral("RCTText"),
+    { skipInvariant: true, isPure: true }
+  );
+  invariant(RCTTextDerivedReference instanceof AbstractValue);
+  realm.react.reactElementStringTypeReferences.set("RCTText", RCTTextDerivedReference);
 
   let reactLibrary = realm.fbLibraries.react;
   invariant(

@@ -16,6 +16,7 @@ let babel = require("babel-core");
 let React = require("react");
 let ReactDOM = require("react-dom");
 let ReactDOMServer = require("react-dom/server");
+// $FlowFixMe: we really do have react-native in the dependencies
 let ReactNative = require("react-native");
 let PropTypes = require("prop-types");
 let ReactRelay = require("react-relay");

@@ -14,7 +14,12 @@ import { AbstractValue, ObjectValue, StringValue, SymbolValue, Value } from "../
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { determineIfReactElementCanBeHoisted } from "../react/hoisting.js";
 import { traverseReactElement } from "../react/elements.js";
-import { canExcludeReactElementObjectProperty, getProperty, getReactSymbol } from "../react/utils.js";
+import {
+  canExcludeReactElementObjectProperty,
+  getProperty,
+  getReactSymbol,
+  hardModifyReactObjectPropertyBinding,
+} from "../react/utils.js";
 import invariant from "../invariant.js";
 import { ReactEquivalenceSet } from "../react/ReactEquivalenceSet.js";
 import { ReactElementSet } from "../react/ReactElementSet.js";
@@ -27,7 +32,6 @@ export class ResidualReactElementVisitor {
     this.residualHeapVisitor = residualHeapVisitor;
     this.reactOutput = realm.react.output || "create-element";
     this.someReactElement = undefined;
-    this.mustVisitReactElement = false;
     this.reactEquivalenceSet = new ReactEquivalenceSet(realm, this);
     this.reactElementEquivalenceSet = new ReactElementSet(realm, this.reactEquivalenceSet);
     this.reactPropsEquivalenceSet = new ReactPropsSet(realm, this.reactEquivalenceSet);
@@ -37,7 +41,6 @@ export class ResidualReactElementVisitor {
   residualHeapVisitor: ResidualHeapVisitor;
   reactOutput: ReactOutputTypes;
   someReactElement: void | ObjectValue;
-  mustVisitReactElement: boolean;
   reactEquivalenceSet: ReactEquivalenceSet;
   reactElementEquivalenceSet: ReactElementSet;
   reactPropsEquivalenceSet: ReactPropsSet;
@@ -50,6 +53,19 @@ export class ResidualReactElementVisitor {
 
     traverseReactElement(this.realm, reactElement, {
       visitType: (typeValue: Value) => {
+        let reactElementStringTypeReferences = this.realm.react.reactElementStringTypeReferences;
+
+        // If the type is a text value, and we have a derived reference for it
+        // then use that derived reference instead of the string value. This is
+        // primarily designed around RCTView and RCTText, which are string values
+        // for RN apps, but are treated as special host components.
+        if (typeValue instanceof StringValue && reactElementStringTypeReferences.has(typeValue.value)) {
+          let reference = reactElementStringTypeReferences.get(typeValue.value);
+          invariant(reference instanceof AbstractValue);
+          hardModifyReactObjectPropertyBinding(this.realm, reactElement, "type", reference);
+          this.residualHeapVisitor.visitValue(reference);
+          return;
+        }
         isReactFragment =
           typeValue instanceof SymbolValue && typeValue === getReactSymbol("react.fragment", this.realm);
         // we don't want to visit fragments as they are internal values
@@ -86,16 +102,9 @@ export class ResidualReactElementVisitor {
       },
     });
 
-    let typeValue = getProperty(this.realm, reactElement, "type");
-    let mustVisitReactElement =
-      this.realm.react.output === "jsx" &&
-      typeValue instanceof StringValue &&
-      typeValue.value[0] === typeValue.value[0].toUpperCase();
-
-    if (this.realm.react.output === "create-element" || isReactFragment || mustVisitReactElement) {
+    if (this.realm.react.output === "create-element" || isReactFragment) {
       this.someReactElement = reactElement;
     }
-    this.mustVisitReactElement = mustVisitReactElement;
     // determine if this ReactElement node tree is going to be hoistable
     determineIfReactElementCanBeHoisted(this.realm, reactElement, this.residualHeapVisitor);
   }

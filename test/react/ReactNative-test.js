@@ -12,7 +12,9 @@
 const setupReactTests = require("./setupReactTests");
 const { runTest } = setupReactTests();
 
+// $FlowFixMe: Jest is already defined globally
 jest.unmock("../../node_modules/react-native/Libraries/Components/View/View.js");
+// $FlowFixMe: Jest is already defined globally
 jest.unmock("../../node_modules/react-native/Libraries/Text/Text.js");
 
 /* eslint-disable no-undef */
