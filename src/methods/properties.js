@@ -1503,6 +1503,8 @@ export class PropertiesImplementation {
     if (!(value instanceof Value)) return;
     if (!value.mightHaveBeenDeleted()) return;
     invariant(value instanceof AbstractValue); // real empty values should never get here
+    let v = value.$Realm.simplifyAndRefineAbstractValue(value);
+    if (!v.mightHaveBeenDeleted()) return;
     AbstractValue.reportIntrospectionError(value);
     throw new FatalError();
   }

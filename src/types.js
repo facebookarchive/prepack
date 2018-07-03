@@ -828,6 +828,13 @@ export type JoinType = {
     d1: void | Descriptor,
     d2: void | Descriptor
   ): void | Descriptor,
+
+  mapAndJoin(
+    realm: Realm,
+    values: Set<ConcreteValue>,
+    joinConditionFactory: (ConcreteValue) => Value,
+    functionToMap: (ConcreteValue) => Completion | Value
+  ): Value,
 };
 
 export type CreateType = {

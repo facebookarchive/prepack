@@ -336,6 +336,22 @@ function simplifyEquality(realm: Realm, equality: AbstractValue): Value {
       if (simplified(sxx) || simplified(sxy))
         return AbstractValue.createFromConditionalOp(realm, cond, sxx, sxy, equality.expressionLocation, true);
     }
+  } else {
+    if (op === "===") {
+      if (x instanceof AbstractValue && x.kind === "conditional") {
+        let [cond, xx, xy] = x.args;
+        // ((cond ? xx : xy) === y) && xx === y && xy !== y <=> cond
+        if (xx.equals(y) && !xy.equals(y)) return cond;
+        // ((!cond ? xx : xy) === y) && xx !== y && xy === y <=> !cond
+        if (!xx.equals(y) && xy.equals(y)) return negate(realm, cond, loc);
+      } else if (y instanceof AbstractValue && y.kind === "conditional") {
+        let [cond, yx, yy] = y.args;
+        // (x === (cond ? yx : yy) === y) && x === yx && x !== yy <=> cond
+        if (yx.equals(x) && !yy.equals(x)) return cond;
+        // (x === (!cond ? yx : yy) === y) && x !== yx && x === yy <=> !cond
+        if (!x.equals(yx) && x.equals(yy)) return negate(realm, cond, loc);
+      }
+    }
   }
   return equality;
 }

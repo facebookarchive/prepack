@@ -598,7 +598,7 @@ export class ResidualHeapSerializer {
       // The only case we do not need to remove the dummy property is array index property.
       return this._getPropertyAssignmentStatement(
         locationFunction(),
-        this.serializeValue(descValue),
+        descValue,
         mightHaveBeenDeleted,
         deleteIfMightHaveBeenDeleted
       );
@@ -1143,7 +1143,7 @@ export class ResidualHeapSerializer {
 
   _assignProperty(
     location: BabelNodeLVal,
-    value: BabelNodeExpression,
+    value: Value,
     mightHaveBeenDeleted: boolean,
     deleteIfMightHaveBeenDeleted: boolean = false
   ): void {
@@ -1154,13 +1154,29 @@ export class ResidualHeapSerializer {
 
   _getPropertyAssignmentStatement(
     location: BabelNodeLVal,
-    value: BabelNodeExpression,
+    value: Value,
     mightHaveBeenDeleted: boolean,
     deleteIfMightHaveBeenDeleted: boolean = false
   ): BabelNodeStatement {
-    let assignment = t.expressionStatement(t.assignmentExpression("=", location, value));
     if (mightHaveBeenDeleted) {
-      let condition = t.binaryExpression("!==", value, this._serializeEmptyValue());
+      // We always need to serialize this value in order to keep the invariants happy.
+      let serializedValue = this.serializeValue(value);
+      let condition;
+      if (value instanceof AbstractValue && value.kind === "conditional") {
+        let [c, x, y] = value.args;
+        if (x instanceof EmptyValue) {
+          if (c instanceof AbstractValue && c.kind === "!") condition = this.serializeValue(c.args[0]);
+          else condition = t.unaryExpression("!", this.serializeValue(c));
+          serializedValue = this.serializeValue(y);
+        } else if (y instanceof EmptyValue) {
+          condition = this.serializeValue(c);
+          serializedValue = this.serializeValue(x);
+        }
+      }
+      if (condition === undefined) {
+        condition = t.binaryExpression("!==", this.serializeValue(value), this._serializeEmptyValue());
+      }
+      let assignment = t.expressionStatement(t.assignmentExpression("=", location, serializedValue));
       let deletion = null;
       if (deleteIfMightHaveBeenDeleted) {
         invariant(location.type === "MemberExpression");
@@ -1170,7 +1186,7 @@ export class ResidualHeapSerializer {
       }
       return t.ifStatement(condition, assignment, deletion);
     } else {
-      return assignment;
+      return t.expressionStatement(t.assignmentExpression("=", location, this.serializeValue(value)));
     }
   }
 
@@ -1234,7 +1250,7 @@ export class ResidualHeapSerializer {
           () => {
             this._assignProperty(
               t.memberExpression(this.getSerializeObjectIdentifier(val), t.identifier("length")),
-              this.serializeValue(lenProperty),
+              lenProperty,
               false /*mightHaveBeenDeleted*/
             );
             if (semaphore !== undefined) semaphore.releaseOne();
@@ -1249,10 +1265,10 @@ export class ResidualHeapSerializer {
   _serializeValueArray(val: ObjectValue): BabelNodeExpression {
     let remainingProperties = new Map(val.properties);
 
-    const indexPropertyLength = getSuggestedArrayLiteralLength(this.realm, val);
-    // Use the serialized index properties as array initialization list.
-    const initProperties = this._serializeArrayIndexProperties(val, indexPropertyLength, remainingProperties);
-    this._serializeArrayLengthIfNeeded(val, indexPropertyLength, remainingProperties);
+    let [unconditionalLength, assignmentNotNeeded] = getSuggestedArrayLiteralLength(this.realm, val);
+    // Use the unconditional serialized index properties as array initialization list.
+    const initProperties = this._serializeArrayIndexProperties(val, unconditionalLength, remainingProperties);
+    if (!assignmentNotNeeded) this._serializeArrayLengthIfNeeded(val, unconditionalLength, remainingProperties);
     this._emitObjectProperties(val, remainingProperties);
     return t.arrayExpression(initProperties);
   }
