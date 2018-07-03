@@ -10,7 +10,6 @@
 /* @flow strict */
 
 import * as DebugProtocol from "vscode-debugprotocol";
-import type { Severity } from "../../errors.js";
 
 export type DebuggerRequest = {
   id: number,
@@ -38,10 +37,6 @@ export type PrepackLaunchArguments = {
   debugOutFilePath: string,
   outputCallback: Buffer => void,
   exitCallback: () => void,
-};
-
-export type DebuggerConfigArguments = {
-  diagnosticSeverity?: Severity,
 };
 
 export type Breakpoint = {
@@ -167,7 +162,7 @@ export type EvaluateResult = {
 export type LaunchRequestArguments = {
   ...DebugProtocol.LaunchRequestArguments,
   noDebug?: boolean,
-  sourceFiles: Array<string>,
+  sourceFile: string,
   prepackRuntime: string,
   prepackArguments: Array<string>,
 };

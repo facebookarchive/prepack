@@ -248,6 +248,10 @@ export class Realm {
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
     this.temporalAliasArgs = new WeakMap();
 
+    this.instantRender = {
+      enabled: opts.instantRender || false,
+    };
+
     this.react = {
       abstractHints: new WeakMap(),
       activeReconciler: undefined,
@@ -342,6 +346,9 @@ export class Realm {
   // on a temporal alias (for example, Object.assign) when used with snapshotting
   temporalAliasArgs: WeakMap<AbstractObjectValue | ObjectValue, Array<Value>>;
 
+  instantRender: {
+    enabled: boolean,
+  };
   react: {
     // reactHints are generated to help improve the effeciency of the React reconciler when
     // operating on a tree of React components. We can use reactHint to mark AbstractValues
@@ -679,11 +686,9 @@ export class Realm {
   // call.
   evaluatePure<T>(
     f: () => T,
-    reportSideEffectFunc?: (
-      sideEffectType: SideEffectType,
-      binding: void | Binding | PropertyBinding,
-      value: void | Value
-    ) => void
+    reportSideEffectFunc:
+      | null
+      | ((sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, value: void | Value) => void)
   ) {
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
     let saved_reportSideEffectCallback = this.reportSideEffectCallback;
@@ -692,7 +697,15 @@ export class Realm {
     // *other* object is unchanged (pure). These objects are marked
     // as leaked if they're passed to abstract functions.
     this.createdObjectsTrackedForLeaks = new Set();
-    this.reportSideEffectCallback = reportSideEffectFunc;
+    this.reportSideEffectCallback = (...args) => {
+      if (reportSideEffectFunc != null) {
+        reportSideEffectFunc(...args);
+      }
+      // Ensure we call any previously nested side-effect callbacks
+      if (saved_reportSideEffectCallback != null) {
+        saved_reportSideEffectCallback(...args);
+      }
+    };
     try {
       return f();
     } finally {
@@ -1145,22 +1158,28 @@ export class Realm {
       let mightBeUndefined = value.mightBeUndefined();
       let keyKey = key.key;
       if (typeof keyKey === "string") {
-        gen.emitStatement([key.object, tval || value, this.intrinsics.empty], ([o, v, e]) => {
-          invariant(path !== undefined);
-          invariant(typeof keyKey === "string");
-          let lh = path.buildNode([o, t.identifier(keyKey)]);
-          let r = t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
-          if (mightHaveBeenDeleted) {
-            // If v === __empty || (v === undefined  && !(key.key in o))  then delete it
-            let emptyTest = t.binaryExpression("===", v, e);
-            let undefinedTest = t.binaryExpression("===", v, voidExpression);
-            let inTest = t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(keyKey), o));
-            let guard = t.logicalExpression("||", emptyTest, t.logicalExpression("&&", undefinedTest, inTest));
-            let deleteIt = t.expressionStatement(t.unaryExpression("delete", (lh: any)));
-            return t.ifStatement(mightBeUndefined ? emptyTest : guard, deleteIt, r);
-          }
-          return r;
-        });
+        if (path !== undefined) {
+          gen.emitStatement([key.object, tval || value, this.intrinsics.empty], ([o, v, e]) => {
+            invariant(path !== undefined);
+            invariant(typeof keyKey === "string");
+            let lh = path.buildNode([o, t.identifier(keyKey)]);
+            let r = t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
+            if (mightHaveBeenDeleted) {
+              // If v === __empty || (v === undefined  && !(key.key in o))  then delete it
+              let emptyTest = t.binaryExpression("===", v, e);
+              let undefinedTest = t.binaryExpression("===", v, voidExpression);
+              let inTest = t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(keyKey), o));
+              let guard = t.logicalExpression("||", emptyTest, t.logicalExpression("&&", undefinedTest, inTest));
+              let deleteIt = t.expressionStatement(t.unaryExpression("delete", (lh: any)));
+              return t.ifStatement(mightBeUndefined ? emptyTest : guard, deleteIt, r);
+            }
+            return r;
+          });
+        } else {
+          // RH value was not widened, so it must have been a constant. We don't need to assign that inside the loop.
+          // Note, however, that if the LH side is a property of an intrinsic object, then an assignment will
+          // have been emitted to the generator.
+        }
       } else {
         // TODO: What if keyKey is undefined?
         invariant(keyKey instanceof Value);
@@ -1606,26 +1625,18 @@ export class Realm {
 
   createExecutionContext(): ExecutionContext {
     let context = new ExecutionContext();
-
     let loc = this.nextContextLocation;
     if (loc) {
       context.setLocation(loc);
       this.nextContextLocation = null;
     }
-
     return context;
   }
 
-  setNextExecutionContextLocation(loc: ?BabelNodeSourceLocation) {
-    if (!loc) return;
-
-    //if (this.nextContextLocation) {
-    //  throw new ThrowCompletion(
-    //    Construct(this, this.intrinsics.TypeError, [new StringValue(this, "Already have a context location that we haven't used yet")])
-    //  );
-    //} else {
+  setNextExecutionContextLocation(loc: ?BabelNodeSourceLocation): ?BabelNodeSourceLocation {
+    let previousValue = this.nextContextLocation;
     this.nextContextLocation = loc;
-    //}
+    return previousValue;
   }
 
   reportIntrospectionError(message?: void | string | StringValue) {

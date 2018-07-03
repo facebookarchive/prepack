@@ -50,12 +50,16 @@ export default function(
   }
 
   // ECMA262 12.3.4.1
-  realm.setNextExecutionContextLocation(ast.loc);
 
   // 1. Let ref be the result of evaluating MemberExpression.
   let ref = env.evaluate(ast.callee, strictCode);
 
-  return evaluateReference(ref, ast, strictCode, env, realm);
+  let previousLoc = realm.setNextExecutionContextLocation(ast.loc);
+  try {
+    return evaluateReference(ref, ast, strictCode, env, realm);
+  } finally {
+    realm.setNextExecutionContextLocation(previousLoc);
+  }
 }
 
 function evaluateReference(
@@ -254,6 +258,7 @@ function tryToEvaluateCallOrLeaveAsAbstract(
   thisValue: Value,
   tailCall: boolean
 ): Value {
+  invariant(!realm.instantRender.enabled);
   let effects;
   let savedSuppressDiagnostics = realm.suppressDiagnostics;
   try {
@@ -389,7 +394,7 @@ function EvaluateCall(
   let tailCall = IsInTailPosition(realm, thisCall);
 
   // 8. Return ? EvaluateDirectCall(func, thisValue, Arguments, tailCall).
-  if (realm.isInPureScope()) {
+  if (realm.isInPureScope() && !realm.instantRender.enabled) {
     return tryToEvaluateCallOrLeaveAsAbstract(ref, func, ast, strictCode, env, realm, thisValue, tailCall);
   } else {
     return EvaluateDirectCall(realm, strictCode, env, ref, func, thisValue, ast.arguments, tailCall);

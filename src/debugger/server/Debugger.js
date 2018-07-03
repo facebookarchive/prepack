@@ -25,7 +25,6 @@ import type {
   VariablesArguments,
   EvaluateArguments,
   SourceData,
-  DebuggerConfigArguments,
 } from "./../common/types.js";
 import type { Realm } from "./../../realm.js";
 import { ExecutionContext } from "./../../realm.js";
@@ -42,6 +41,8 @@ import {
 } from "./../../environment.js";
 import { CompilerDiagnostic } from "../../errors.js";
 import type { Severity } from "../../errors.js";
+import { SourceMapManager } from "./SourceMapManager.js";
+import type { DebuggerConfigArguments } from "../../types";
 
 export class DebugServer {
   constructor(channel: DebugChannel, realm: Realm, configArgs: DebuggerConfigArguments) {
@@ -52,6 +53,7 @@ export class DebugServer {
     this._stepManager = new SteppingManager(this._realm, /* default discard old steppers */ false);
     this._stopEventManager = new StopEventManager();
     this._diagnosticSeverity = configArgs.diagnosticSeverity || "FatalError";
+    this._sourceMapManager = new SourceMapManager(configArgs.buckRoot, configArgs.sourcemaps);
     this.waitForRun(undefined);
   }
   // the collection of breakpoints
@@ -65,6 +67,7 @@ export class DebugServer {
   _lastExecuted: SourceData;
   // Severity at which debugger will break when CompilerDiagnostics are generated. Default is Fatal.
   _diagnosticSeverity: Severity;
+  _sourceMapManager: SourceMapManager;
 
   /* Block until adapter says to run
   /* ast: the current ast node we are stopped on
@@ -87,10 +90,11 @@ export class DebugServer {
       if (breakpoint) stoppables.push(breakpoint);
       let reason = this._stopEventManager.getDebuggeeStopReason(ast, stoppables);
       if (reason) {
-        invariant(ast.loc && ast.loc.source);
-        this._channel.sendStoppedResponse(reason, ast.loc.source, ast.loc.start.line, ast.loc.start.column);
-        invariant(ast.loc && ast.loc !== null);
-        this.waitForRun(ast.loc);
+        let location = ast.loc;
+        invariant(location && location.source);
+        let absolutePath = this._sourceMapManager.relativeToAbsolute(location.source);
+        this._channel.sendStoppedResponse(reason, absolutePath, location.start.line, location.start.column);
+        this.waitForRun(location);
       }
     }
   }
@@ -101,6 +105,13 @@ export class DebugServer {
     let requestID = request.id;
     let command = request.command;
     let args = request.arguments;
+    // Convert incoming location sources to relative paths in order to match internal representation of filenames.
+    if (args.kind === "breakpoint") {
+      for (let bp of args.breakpoints) {
+        bp.filePath = this._sourceMapManager.absoluteToRelative(bp.filePath);
+      }
+    }
+
     switch (command) {
       case DebugMessage.BREAKPOINT_ADD_COMMAND:
         invariant(args.kind === "breakpoint");
@@ -182,7 +193,7 @@ export class DebugServer {
       let frameInfo: Stackframe = {
         id: this._realm.contextStack.length - 1 - i,
         functionName: functionName,
-        fileName: fileName,
+        fileName: this._sourceMapManager.relativeToAbsolute(fileName), // Outward facing paths must be absolute.
         line: line,
         column: column,
       };
@@ -278,12 +289,16 @@ export class DebugServer {
       let line = ast.loc.start.line;
       let column = ast.loc.start.column;
       let stackSize = this._realm.contextStack.length;
-      // check if the current location is same as the last one
+      // Check if the current location is same as the last one.
+      // Does not check columns since column debugging is not supported.
+      // Column support is unnecessary because these nodes will have been sourcemap-translated.
+      // Ignoring columns prevents:
+      //     - Lines with multiple AST nodes from triggering the same breakpoint more than once.
+      //     - Step-out from completing in the same line that it was set in.
       if (
         this._lastExecuted &&
         filePath === this._lastExecuted.filePath &&
         line === this._lastExecuted.line &&
-        column === this._lastExecuted.column &&
         stackSize === this._lastExecuted.stackSize
       ) {
         return false;
@@ -299,18 +314,18 @@ export class DebugServer {
     return false;
   }
 
-  /*
-    Displays PP error message, then waits for user to run the program to
-    continue (similar to a breakpoint).
-  */
+  //  Displays Prepack error message, then waits for user to run the program to continue (similar to a breakpoint).
   handlePrepackError(diagnostic: CompilerDiagnostic) {
     invariant(diagnostic.location && diagnostic.location.source);
     // The following constructs the message and stop-instruction that is sent to the UI to actually stop the execution.
     let location = diagnostic.location;
+    let absoluteSource = "";
+    if (location.source !== null) absoluteSource = this._sourceMapManager.relativeToAbsolute(location.source);
     let message = `${diagnostic.severity} ${diagnostic.errorCode}: ${diagnostic.message}`;
+    console.log(message);
     this._channel.sendStoppedResponse(
       "Diagnostic",
-      location.source || "",
+      absoluteSource,
       location.start.line,
       location.start.column,
       message
