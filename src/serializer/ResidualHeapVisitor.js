@@ -410,10 +410,12 @@ export class ResidualHeapVisitor {
     } else {
       lenProperty = Get(realm, val, "length");
     }
+    let [initialLength, lengthAssignmentNotNeeded] = getSuggestedArrayLiteralLength(realm, val);
+    if (lengthAssignmentNotNeeded) return;
     if (
       lenProperty instanceof AbstractValue
         ? lenProperty.kind !== "widened property"
-        : To.ToLength(realm, lenProperty) !== getSuggestedArrayLiteralLength(realm, val)
+        : To.ToLength(realm, lenProperty) !== initialLength
     ) {
       this.visitValue(lenProperty);
     }
