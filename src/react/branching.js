@@ -83,6 +83,16 @@ export function getValueWithBranchingLogicApplied(
         }
         searchAndFlagMatchingComponentTypes(xElem, yElem, xTypeParent, yTypeParent);
       });
+    } else if (x instanceof AbstractValue && x.kind === "conditional") {
+      let [, consequentVal, alternateVal] = x.args;
+
+      searchAndFlagMatchingComponentTypes(consequentVal, y, xTypeParent, yTypeParent);
+      searchAndFlagMatchingComponentTypes(alternateVal, y, xTypeParent, yTypeParent);
+    } else if (y instanceof AbstractValue && y.kind === "conditional") {
+      let [, consequentVal, alternateVal] = y.args;
+
+      searchAndFlagMatchingComponentTypes(x, consequentVal, xTypeParent, yTypeParent);
+      searchAndFlagMatchingComponentTypes(x, alternateVal, xTypeParent, yTypeParent);
     }
   };
 
