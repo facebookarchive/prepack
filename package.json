@@ -130,9 +130,11 @@
   "jest": {
     "preset": "react-native",
     "roots": [
+      "<rootDir>/node_modules/react-native/",
       "<rootDir>/lib/",
       "<rootDir>/test/react/"
     ],
+    "testEnvironment": "jsdom",
     "testMatch": [
       "**/test/react/*-test.js"
     ]

@@ -29,8 +29,7 @@ let reactNativeCode = `
         ViewManagerNames: __abstract(),
         __takeSnapshot: undefined,
         takeSnapshot: undefined,
-        // This was added in to make RCTVirtualText inline
-        RCTVirtualText: {},
+        RCTVirtualText: null,
       }),
       DeviceInfo: __abstract({
         Dimensions: __abstract({

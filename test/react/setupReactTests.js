@@ -16,6 +16,7 @@ let babel = require("babel-core");
 let React = require("react");
 let ReactDOM = require("react-dom");
 let ReactDOMServer = require("react-dom/server");
+let ReactNative = require("react-native");
 let PropTypes = require("prop-types");
 let ReactRelay = require("react-relay");
 let ReactTestRenderer = require("react-test-renderer");
@@ -151,6 +152,9 @@ function setupReactTests() {
         case "react-dom/server":
         case "ReactDOMServer":
           return ReactDOMServer;
+        case "ReactNative":
+        case "react-native":
+          return ReactNative;
         case "PropTypes":
         case "prop-types":
           return PropTypes;

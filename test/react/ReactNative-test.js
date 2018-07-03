@@ -12,10 +12,13 @@
 const setupReactTests = require("./setupReactTests");
 const { runTest } = setupReactTests();
 
+jest.unmock("../../node_modules/react-native/Libraries/Components/View/View.js");
+jest.unmock("../../node_modules/react-native/Libraries/Text/Text.js");
+
 /* eslint-disable no-undef */
 const { it } = global;
 
-it.only("Simple", async () => {
+it("Simple", async () => {
   runTest(__dirname + "/ReactNative/simple.js");
 });
 
