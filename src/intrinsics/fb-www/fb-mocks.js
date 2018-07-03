@@ -127,10 +127,6 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
           let template = createObjectWithoutProperties(obj, keys);
           value.values = new ValuesDomain(template);
         }
-        // Store the args for the temporal so we can easily clone
-        // and reconstruct the temporal at another point, rather than
-        // mutate the existing temporal
-        realm.temporalAliasArgs.set(value, temporalArgs);
         // as we are returning an abstract object, we mark it as simple
         value.makeSimple();
         return value;

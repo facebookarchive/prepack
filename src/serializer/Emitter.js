@@ -22,7 +22,7 @@ import {
 } from "../values/index.js";
 import type { BabelNodeStatement } from "babel-types";
 import type { SerializedBody } from "./types.js";
-import { Generator } from "../utils/generator.js";
+import { Generator, type TemporalBuildNodeEntryArgs } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import { BodyReference } from "./types.js";
 import { ResidualFunctions } from "./ResidualFunctions.js";
@@ -68,7 +68,7 @@ export class Emitter {
     residualFunctions: ResidualFunctions,
     referencedDeclaredValues: Map<Value, void | FunctionValue>,
     conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>,
-    derivedIds: Map<string, Array<Value>>
+    derivedIds: Map<string, TemporalBuildNodeEntryArgs>
   ) {
     this._mainBody = { type: "MainGenerator", parentBody: undefined, entries: [], done: false };
     this._waitingForValues = new Map();
