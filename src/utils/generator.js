@@ -123,6 +123,8 @@ export type TemporalBuildNodeEntryArgs = {
   dependencies?: Array<Generator>,
   isPure?: boolean,
   mutatesOnly?: Array<Value>,
+  skipInvariant?: boolean,
+  kind?: AbstractValueKind,
 };
 
 class TemporalBuildNodeEntry extends GeneratorEntry {
@@ -144,6 +146,10 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
   dependencies: void | Array<Generator>;
   isPure: void | boolean;
   mutatesOnly: void | Array<Value>;
+  // We want skipInvariant and kind to exist on the derived entry
+  // so that we can optionally clone this derived abstract at a later point
+  skipInvariant: void | boolean;
+  kind: void | AbstractValueKind;
 
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     let omit = this.isPure && this.declared && callbacks.canOmit(this.declared);
@@ -990,6 +996,10 @@ export class Generator {
         ]);
       },
       mutatesOnly: optionalArgs ? optionalArgs.mutatesOnly : undefined,
+      // We want skipInvariant and kind to exist on the derived entry
+      // so that we can optionally clone this derived abstract at a later point
+      skipInvariant: optionalArgs ? optionalArgs.skipInvariant : undefined,
+      kind: optionalArgs ? optionalArgs.kind : undefined,
     });
     let type = types.getType();
     res.intrinsicName = id.name;
