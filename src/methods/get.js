@@ -25,7 +25,6 @@ import {
   ObjectValue,
   ProxyValue,
   StringValue,
-  SymbolValue,
   UndefinedValue,
   Value,
 } from "../values/index.js";
@@ -555,7 +554,7 @@ export function GetTemplateObject(realm: Realm, templateLiteral: BabelNodeTempla
   return template;
 }
 
-export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayValue, P: string | SymbolValue): Value {
+export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayValue, P: string | Value): Value {
   let proto = arr.$GetPrototypeOf();
   invariant(proto instanceof ObjectValue && proto === realm.intrinsics.ArrayPrototype);
   if (typeof P === "string") {
