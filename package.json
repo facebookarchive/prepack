@@ -99,6 +99,7 @@
     "invariant": "^2.2.0",
     "istanbul": "^0.4.5",
     "jest": "^23.2.0",
+    "js-beautify": "^1.7.5",
     "js-yaml": "^3.6.1",
     "jsdom": "^9.2.1",
     "madge": "^1.6.0",
@@ -132,11 +133,13 @@
     "roots": [
       "<rootDir>/node_modules/react-native/",
       "<rootDir>/lib/",
-      "<rootDir>/test/react/"
+      "<rootDir>/test/react/",
+      "<rootDir>/fb-www/"
     ],
     "testEnvironment": "jsdom",
     "testMatch": [
-      "**/test/react/*-test.js"
+      "**/test/react/*-test.js",
+      "**/fb-www/**/*-test.js"
     ]
   }
 }
