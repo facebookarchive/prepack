@@ -28,6 +28,26 @@ it("Key nesting 3", () => {
   runTest(__dirname + "/Reconciliation/key-nesting-3.js");
 });
 
+it("Key nesting 4", () => {
+  runTest(__dirname + "/Reconciliation/key-nesting-4.js");
+});
+
+it("Key nesting 5", () => {
+  runTest(__dirname + "/Reconciliation/key-nesting-5.js");
+});
+
+it("Key nesting 6", () => {
+  runTest(__dirname + "/Reconciliation/key-nesting-6.js");
+});
+
+it("Key nesting 7", () => {
+  runTest(__dirname + "/Reconciliation/key-nesting-7.js");
+});
+
+it("Key nesting 8", () => {
+  runTest(__dirname + "/Reconciliation/key-nesting-8.js");
+});
+
 it("Key change", () => {
   runTest(__dirname + "/Reconciliation/key-change.js");
 });
