@@ -1094,6 +1094,11 @@ export function clonePropsOrConfigLikeObject(
     }
     return clonedObj;
   } else {
+    if (obj.kind === "conditional") {
+      // TODO: This hasn't been cloned properly, need to deal in a follow up PR
+      // as it might be a slightly complex task
+      return obj;
+    }
     let temporalBuildNodeEntryArgs = realm.getTemporalBuildNodeEntryArgsFromDerivedValue(obj);
     // Clone a snapshot form Object.assign
     if (temporalBuildNodeEntryArgs !== undefined) {
@@ -1152,10 +1157,6 @@ export function clonePropsOrConfigLikeObject(
         }
       }
     } else if (obj.isIntrinsic() && obj.kind !== undefined) {
-      return obj;
-    } else if (obj.kind === "conditional") {
-      // TODO: This hasn't been cloned properly, need to deal in a follow up PR
-      // as it might be a slightly complex task
       return obj;
     }
     invariant(false, "TODO: handle cloning of more abstract object value types");
