@@ -16,7 +16,7 @@ function App(props) {
 
 App.getTrials = function(renderer, Root, data, isCompiled) {
   if (isCompiled) {
-    const [a, b] = App({ foo: false });
+    const [a, b] = renderer({ foo: false });
     if (a !== b) {
       throw new Error("Equivalence check failed");
     }
