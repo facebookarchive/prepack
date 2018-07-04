@@ -1,5 +1,73 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`Equivalence of snapshotted node 2: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Equivalence of snapshotted node 2: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Equivalence of snapshotted node 2: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Equivalence of snapshotted node 2: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Equivalence of snapshotted node: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -1308,55 +1376,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Replace this in callbacks 3: (JSX => JSX) 2`] = `
-ReactStatistics {
-  "componentsEvaluated": 2,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "Child1",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 1,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
 exports[`Replace this in callbacks 3: (JSX => createElement) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 2,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "Child1",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 1,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Replace this in callbacks 3: (JSX => createElement) 2`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [
@@ -1404,55 +1424,7 @@ ReactStatistics {
 }
 `;
 
-exports[`Replace this in callbacks 3: (createElement => JSX) 2`] = `
-ReactStatistics {
-  "componentsEvaluated": 2,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "Child1",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 1,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
 exports[`Replace this in callbacks 3: (createElement => createElement) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 2,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "Child1",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 1,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Replace this in callbacks 3: (createElement => createElement) 2`] = `
 ReactStatistics {
   "componentsEvaluated": 2,
   "evaluatedRootNodes": Array [

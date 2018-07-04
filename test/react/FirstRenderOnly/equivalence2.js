@@ -1,9 +1,10 @@
 var React = require("react");
 
 function App(props) {
-  var foo = Object.assign({}, props);
-  var a = <span {...foo} key={null} />;
-  var b = <span {...foo} key={null} />;
+  var foo = { children: <div /> };
+  var foo2 = Object.assign({}, props, foo);
+  var a = <span {...foo2} key={null} />;
+  var b = <span {...foo2} key={null} />;
   return [a, b];
 }
 
