@@ -819,6 +819,10 @@ export default class ObjectValue extends ConcreteValue {
       if (desc !== undefined) {
         let val = desc.value;
         invariant(val instanceof AbstractValue);
+        if (val.kind === "widened numeric property") {
+          invariant(Receiver instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(Receiver));
+          return GetFromArrayWithWidenedNumericProperty(this.$Realm, Receiver, P instanceof StringValue ? P.value : P);
+        }
         result = this.specializeJoin(val, P);
       }
     }
