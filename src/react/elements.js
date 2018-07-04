@@ -206,10 +206,6 @@ function createPropsObject(
           temporalTo.values = new ValuesDomain(props);
         }
         props.temporalAlias = temporalTo;
-        // Store the args for the temporal so we can easily clone
-        // and reconstruct the temporal at another point, rather than
-        // mutate the existing temporal
-        realm.temporalAliasArgs.set(temporalTo, temporalArgs);
       }
     }
   } else {
