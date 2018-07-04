@@ -919,6 +919,7 @@ export function createInternalReactElement(
   if (type instanceof AbstractValue && type.kind === "conditional") {
     invariant(false, "createInternalReactElement should never encounter a conditional type");
   }
+
   Create.CreateDataPropertyOrThrow(realm, obj, "$$typeof", getReactSymbol("react.element", realm));
   Create.CreateDataPropertyOrThrow(realm, obj, "type", type);
   Create.CreateDataPropertyOrThrow(realm, obj, "key", key);
@@ -948,8 +949,9 @@ function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps:
     // be a better option.
     invariant(false, "TODO applyClonedTemporalAlias conditional");
   }
-  let temporalArgs = realm.temporalAliasArgs.get(temporalAlias);
-  invariant(temporalArgs !== undefined);
+  let temporalBuildNodeEntryArgs = realm.getTemporalBuildNodeEntryArgsFromDerivedValue(temporalAlias);
+  invariant(temporalBuildNodeEntryArgs !== undefined);
+  let temporalArgs = temporalBuildNodeEntryArgs.args;
   // replace the original props with the cloned one
   let newTemporalArgs = temporalArgs.map(arg => (arg === props ? clonedProps : arg));
 
@@ -966,10 +968,6 @@ function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps:
   invariant(clonedProps instanceof ObjectValue);
   temporalTo.values = new ValuesDomain(clonedProps);
   clonedProps.temporalAlias = temporalTo;
-  // Store the args for the temporal so we can easily clone
-  // and reconstruct the temporal at another point, rather than
-  // mutate the existing temporal
-  realm.temporalAliasArgs.set(temporalTo, newTemporalArgs);
 }
 
 export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value): ObjectValue {
@@ -1079,10 +1077,6 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
         invariant(temporalTo instanceof AbstractObjectValue);
         temporalTo.values = new ValuesDomain(to);
         to.temporalAlias = temporalTo;
-        // Store the args for the temporal so we can easily clone
-        // and reconstruct the temporal at another point, rather than
-        // mutate the existing temporal
-        realm.temporalAliasArgs.set(temporalTo, temporalArgs);
         return;
       } else {
         throw error;

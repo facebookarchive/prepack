@@ -1,5 +1,7 @@
 # Prepack [![Circle CI](https://circleci.com/gh/facebook/prepack.png?style=shield&circle-token=1109197a81e634fd06e162c25d309a420585acd5)](https://circleci.com/gh/facebook/prepack)
 
+<img src="assets/PrepackLogo.png" width=150 align=right>
+
 Prepack is a partial evaluator for JavaScript. Prepack rewrites a JavaScript bundle, resulting in JavaScript code that executes more efficiently.
 For initialization-heavy code, Prepack works best in an environment where JavaScript parsing is effectively cached.
 
@@ -112,7 +114,7 @@ Instead of building, linting, type checking, testing separately, the following d
 The content for [prepack.io](https://prepack.io) resides in the [website directory](https://github.com/facebook/prepack/tree/master/website) of this repository. To make changes, submit a pull request, just like for any code changes.
 
 In order to run the website locally at [localhost:8000](http://localhost:8000):
-1. Build prepack into the website: `yarn build-bundle && mv prepack.min.js website/js`
+1. Build prepack into the website: `yarn build && mv prepack.min.js website/js`
 2. Run `python -m SimpleHTTPServer` (Python 2) or `python -m http.server` (Python 3) from the `website/` directory
 
 ## How to contribute

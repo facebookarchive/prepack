@@ -63,7 +63,7 @@ import {
 import type { Compatibility, RealmOptions, ReactOutputTypes, InvariantModeTypes } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
-import { Generator, PreludeGenerator } from "./utils/generator.js";
+import { Generator, PreludeGenerator, type TemporalBuildNodeEntryArgs } from "./utils/generator.js";
 import { emptyExpression, voidExpression } from "./utils/babelhelpers.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
@@ -246,7 +246,6 @@ export class Realm {
     this.evaluators = (Object.create(null): any);
     this.partialEvaluators = (Object.create(null): any);
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
-    this.temporalAliasArgs = new WeakMap();
 
     this.instantRender = {
       enabled: opts.instantRender || false,
@@ -270,6 +269,7 @@ export class Realm {
       output: opts.reactOutput || "create-element",
       propsWithNoPartialKeyOrRef: new WeakSet(),
       reactElements: new WeakMap(),
+      reactElementStringTypeReferences: new Map(),
       reactProps: new WeakSet(),
       symbols: new Map(),
       usedReactElementKeys: new Set(),
@@ -284,6 +284,7 @@ export class Realm {
       react: undefined,
       reactDom: undefined,
       reactDomServer: undefined,
+      reactNative: undefined,
       reactRelay: undefined,
     };
 
@@ -339,12 +340,6 @@ export class Realm {
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
 
-  // temporalAliasArgs is used to map a temporal abstract object value
-  // to its respective temporal args used to originally create the temporal.
-  // This is used to "clone" immutable objects where they have a dependency
-  // on a temporal alias (for example, Object.assign) when used with snapshotting
-  temporalAliasArgs: WeakMap<AbstractObjectValue | ObjectValue, Array<Value>>;
-
   instantRender: {
     enabled: boolean,
   };
@@ -374,6 +369,7 @@ export class Realm {
     output?: ReactOutputTypes,
     propsWithNoPartialKeyOrRef: WeakSet<ObjectValue | AbstractObjectValue>,
     reactElements: WeakMap<ObjectValue, { createdDuringReconcilation: boolean, firstRenderOnly: boolean }>,
+    reactElementStringTypeReferences: Map<string, AbstractValue>,
     reactProps: WeakSet<ObjectValue>,
     symbols: Map<ReactSymbolTypes, SymbolValue>,
     usedReactElementKeys: Set<string>,
@@ -387,6 +383,7 @@ export class Realm {
     react: void | ObjectValue,
     reactDom: void | ObjectValue,
     reactDomServer: void | ObjectValue,
+    reactNative: void | ObjectValue,
     reactRelay: void | ObjectValue,
   };
 
@@ -1156,22 +1153,28 @@ export class Realm {
       let mightBeUndefined = value.mightBeUndefined();
       let keyKey = key.key;
       if (typeof keyKey === "string") {
-        gen.emitStatement([key.object, tval || value, this.intrinsics.empty], ([o, v, e]) => {
-          invariant(path !== undefined);
-          invariant(typeof keyKey === "string");
-          let lh = path.buildNode([o, t.identifier(keyKey)]);
-          let r = t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
-          if (mightHaveBeenDeleted) {
-            // If v === __empty || (v === undefined  && !(key.key in o))  then delete it
-            let emptyTest = t.binaryExpression("===", v, e);
-            let undefinedTest = t.binaryExpression("===", v, voidExpression);
-            let inTest = t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(keyKey), o));
-            let guard = t.logicalExpression("||", emptyTest, t.logicalExpression("&&", undefinedTest, inTest));
-            let deleteIt = t.expressionStatement(t.unaryExpression("delete", (lh: any)));
-            return t.ifStatement(mightBeUndefined ? emptyTest : guard, deleteIt, r);
-          }
-          return r;
-        });
+        if (path !== undefined) {
+          gen.emitStatement([key.object, tval || value, this.intrinsics.empty], ([o, v, e]) => {
+            invariant(path !== undefined);
+            invariant(typeof keyKey === "string");
+            let lh = path.buildNode([o, t.identifier(keyKey)]);
+            let r = t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
+            if (mightHaveBeenDeleted) {
+              // If v === __empty || (v === undefined  && !(key.key in o))  then delete it
+              let emptyTest = t.binaryExpression("===", v, e);
+              let undefinedTest = t.binaryExpression("===", v, voidExpression);
+              let inTest = t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(keyKey), o));
+              let guard = t.logicalExpression("||", emptyTest, t.logicalExpression("&&", undefinedTest, inTest));
+              let deleteIt = t.expressionStatement(t.unaryExpression("delete", (lh: any)));
+              return t.ifStatement(mightBeUndefined ? emptyTest : guard, deleteIt, r);
+            }
+            return r;
+          });
+        } else {
+          // RH value was not widened, so it must have been a constant. We don't need to assign that inside the loop.
+          // Note, however, that if the LH side is a property of an intrinsic object, then an assignment will
+          // have been emitted to the generator.
+        }
       } else {
         // TODO: What if keyKey is undefined?
         invariant(keyKey instanceof Value);
@@ -1738,5 +1741,14 @@ export class Realm {
 
   isNameStringUnique(nameString: string): boolean {
     return !this._abstractValuesDefined.has(nameString);
+  }
+
+  getTemporalBuildNodeEntryArgsFromDerivedValue(value: Value): void | TemporalBuildNodeEntryArgs {
+    let name = value.intrinsicName;
+    invariant(name);
+    let preludeGenerator = this.preludeGenerator;
+    invariant(preludeGenerator !== undefined);
+    let temporalBuildNodeEntryArgs = preludeGenerator.derivedIds.get(name);
+    return temporalBuildNodeEntryArgs;
   }
 }
