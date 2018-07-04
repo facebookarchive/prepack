@@ -144,11 +144,12 @@ export class ReactEquivalenceSet {
     visitedValues: Set<Value>
   ): ReactSetNode {
     const getTemporalValue = temporalAlias => {
-      let temporalArgs = this.realm.temporalAliasArgs.get(temporalAlias);
+      let temporalBuildNodeEntryArgs = this.realm.getTemporalBuildNodeEntryArgsFromDerivedValue(temporalAlias);
 
-      if (temporalArgs === undefined) {
+      if (temporalBuildNodeEntryArgs === undefined) {
         return this.getValue(temporalAlias, map, visitedValues);
       }
+      let temporalArgs = temporalBuildNodeEntryArgs;
       let currentMap = this.temporalAliasRoot;
       let result;
 
@@ -166,9 +167,9 @@ export class ReactEquivalenceSet {
           }
         } else if (arg instanceof AbstractObjectValue && !arg.values.isTop()) {
           // Might be a temporal, so let's check
-          let temporalAliasArgs = this.realm.temporalAliasArgs.get(arg);
+          let childTemporalBuildNodeEntryArgs = this.realm.getTemporalBuildNodeEntryArgsFromDerivedValue(temporalAlias);
 
-          if (temporalAliasArgs !== undefined) {
+          if (childTemporalBuildNodeEntryArgs !== undefined) {
             equivalenceArg = getTemporalValue(arg);
             invariant(equivalenceArg instanceof AbstractObjectValue);
 
