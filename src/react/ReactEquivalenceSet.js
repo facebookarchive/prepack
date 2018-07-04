@@ -138,61 +138,68 @@ export class ReactEquivalenceSet {
     return result.value;
   }
 
+  _getTemporalValue(temporalAlias: AbstractObjectValue, visitedValues: Set<Value>): AbstractObjectValue {
+    let temporalBuildNodeEntryArgs = this.realm.getTemporalBuildNodeEntryArgsFromDerivedValue(temporalAlias);
+
+    if (temporalBuildNodeEntryArgs === undefined) {
+      return temporalAlias;
+    }
+    let temporalArgs = temporalBuildNodeEntryArgs.args;
+    if (temporalArgs.length === 0) {
+      return temporalAlias;
+    }
+    let currentMap = this.temporalAliasRoot;
+    let result;
+
+    for (let i = 0; i < temporalArgs.length; i++) {
+      let arg = temporalArgs[i];
+      let equivalenceArg;
+      if (arg instanceof ObjectValue && arg.temporalAlias === temporalAlias) {
+        continue;
+      }
+      if (arg instanceof ObjectValue && isReactElement(arg)) {
+        equivalenceArg = this.residualReactElementVisitor.reactElementEquivalenceSet.add(arg);
+
+        if (arg !== equivalenceArg) {
+          temporalArgs[i] = equivalenceArg;
+        }
+      } else if (arg instanceof AbstractObjectValue && !arg.values.isTop() && arg.kind !== "conditional") {
+        // Might be a temporal, so let's check
+        let childTemporalBuildNodeEntryArgs = this.realm.getTemporalBuildNodeEntryArgsFromDerivedValue(arg);
+
+        if (childTemporalBuildNodeEntryArgs !== undefined) {
+          equivalenceArg = this._getTemporalValue(arg, visitedValues);
+          invariant(equivalenceArg instanceof AbstractObjectValue);
+
+          if (equivalenceArg !== arg) {
+            temporalArgs[i] = equivalenceArg;
+          }
+        }
+      } else if (arg instanceof AbstractValue) {
+        equivalenceArg = this.residualReactElementVisitor.residualHeapVisitor.equivalenceSet.add(arg);
+
+        if (arg !== equivalenceArg) {
+          temporalArgs[i] = equivalenceArg;
+        }
+      }
+      currentMap = this.getKey(i, (currentMap: any), visitedValues);
+      invariant(arg instanceof Value && (equivalenceArg instanceof Value || equivalenceArg === undefined));
+      result = this.getValue(equivalenceArg || arg, currentMap, visitedValues);
+      currentMap = result.map;
+    }
+    invariant(result !== undefined);
+    if (result.value === null) {
+      result.value = temporalAlias;
+    }
+    return result.value;
+  }
+
   getTemporalAliasValue(
-    rootTemporalAlias: AbstractObjectValue,
+    temporalAlias: AbstractObjectValue,
     map: ReactSetValueMap,
     visitedValues: Set<Value>
   ): ReactSetNode {
-    const getTemporalValue = temporalAlias => {
-      let temporalBuildNodeEntryArgs = this.realm.getTemporalBuildNodeEntryArgsFromDerivedValue(temporalAlias);
-
-      if (temporalBuildNodeEntryArgs === undefined) {
-        return temporalAlias;
-      }
-      let temporalArgs = temporalBuildNodeEntryArgs.args;
-      if (temporalArgs.length === 0) {
-        return temporalAlias;
-      }
-      let currentMap = this.temporalAliasRoot;
-      let result;
-
-      for (let i = 0; i < temporalArgs.length; i++) {
-        let arg = temporalArgs[i];
-        let equivalenceArg;
-        if (arg instanceof ObjectValue && arg.temporalAlias === temporalAlias) {
-          continue;
-        }
-        if (arg instanceof ObjectValue && isReactElement(arg)) {
-          equivalenceArg = this.residualReactElementVisitor.reactElementEquivalenceSet.add(arg);
-
-          if (arg !== equivalenceArg) {
-            temporalArgs[i] = equivalenceArg;
-          }
-        } else if (arg instanceof AbstractObjectValue && !arg.values.isTop()) {
-          // Might be a temporal, so let's check
-          let childTemporalBuildNodeEntryArgs = this.realm.getTemporalBuildNodeEntryArgsFromDerivedValue(arg);
-
-          if (childTemporalBuildNodeEntryArgs !== undefined) {
-            equivalenceArg = getTemporalValue(arg);
-            invariant(equivalenceArg instanceof AbstractObjectValue);
-
-            if (equivalenceArg !== arg) {
-              temporalArgs[i] = equivalenceArg;
-            }
-          }
-        }
-        currentMap = this.getKey(i, (currentMap: any), visitedValues);
-        invariant(arg instanceof Value && (equivalenceArg instanceof Value || equivalenceArg === undefined));
-        result = this.getValue(equivalenceArg || arg, currentMap, visitedValues);
-        currentMap = result.map;
-      }
-      invariant(result !== undefined);
-      if (result.value === null) {
-        result.value = temporalAlias;
-      }
-      return result.value;
-    };
-    let result = getTemporalValue(rootTemporalAlias);
+    let result = this._getTemporalValue(temporalAlias, visitedValues);
 
     invariant(result instanceof AbstractObjectValue);
     if (!map.has(result)) {

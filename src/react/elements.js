@@ -120,13 +120,11 @@ function createPropsObject(
     (config instanceof AbstractObjectValue && config.isPartialObject()) ||
     (config instanceof ObjectValue && config.isPartialObject() && config.isSimpleObject())
   ) {
-    let args = [];
-    args.push(config);
     // create a new props object that will be the target of the Object.assign
     props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
     realm.react.reactProps.add(props);
 
-    applyObjectAssignConfigsForReactElement(realm, props, args);
+    applyObjectAssignConfigsForReactElement(realm, props, [config]);
     props.makeFinal();
 
     if (children !== undefined) {
