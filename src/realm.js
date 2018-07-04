@@ -42,7 +42,7 @@ import {
   UndefinedValue,
   Value,
 } from "./values/index.js";
-import type { TypesDomain, ValuesDomain } from "./domains/index.js";
+import { TypesDomain, ValuesDomain } from "./domains/index.js";
 import {
   LexicalEnvironment,
   Reference,
@@ -236,6 +236,14 @@ export class Realm {
       ObjectValue.setupTrackedPropertyAccessors(ObjectValue.trackedPropertyNames);
       ObjectValue.setupTrackedPropertyAccessors(NativeFunctionValue.trackedPropertyNames);
       ObjectValue.setupTrackedPropertyAccessors(ProxyValue.trackedPropertyNames);
+      this.topValue = new AbstractValue(this, TypesDomain.topVal, ValuesDomain.topVal, Number.MAX_SAFE_INTEGER, []);
+      this.bottomValue = new AbstractValue(
+        this,
+        TypesDomain.bottomVal,
+        ValuesDomain.bottomVal,
+        Number.MIN_SAFE_INTEGER,
+        []
+      );
     }
 
     this.tracers = [];
@@ -339,6 +347,8 @@ export class Realm {
   contextStack: Array<ExecutionContext> = [];
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
+  topValue: AbstractValue;
+  bottomValue: AbstractValue;
 
   instantRender: {
     enabled: boolean,
