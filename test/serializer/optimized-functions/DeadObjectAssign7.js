@@ -1,5 +1,5 @@
 // Copies of _7:2
-// _7 is the variable for Object.assign. So DeadObjectAssign4.js for
+// _7 is the variable for Object.assign. See DeadObjectAssign4.js for
 // a larger explanation.
 
 function f(foo) {
