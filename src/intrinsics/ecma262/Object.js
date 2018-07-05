@@ -41,8 +41,12 @@ import { Create, Havoc, Properties as Props, To } from "../../singletons.js";
 import type { BabelNodeExpression } from "babel-types";
 import * as t from "babel-types";
 import invariant from "../../invariant.js";
+import type { VisitEntryCallbacks } from "../../utils/generator.js";
 
-function attemptToMergeEquivalentObjectAssigns(callbacks: VisitEntryCallbacks, value: AbstractObjectValue): boolean {
+export function attemptToMergeEquivalentObjectAssigns(callbacks: VisitEntryCallbacks, value: Value): boolean {
+  if (!(value instanceof AbstractObjectValue)) {
+    return false;
+  }
   let realm = value.$Realm;
   let temporalBuildNodeEntry = realm.getTemporalBuildNodeEntryArgsFromDerivedValue(value);
   if (temporalBuildNodeEntry === undefined) {
@@ -75,23 +79,35 @@ function attemptToMergeEquivalentObjectAssigns(callbacks: VisitEntryCallbacks, v
         continue;
       }
       let otherArgs = otherTemporalBuildNodeEntry.args;
-      let objectAssingFunc = realm.intrinsics.Object.$Get("assign");
+      let objectAssingFunc = realm.intrinsics.Object.$Get("assign", realm.intrinsics.Object);
       // Object.assign has at least 2 args and the first is that of Object.assign native function
       if (otherArgs.length < 3 || otherArgs[0] !== objectAssingFunc) {
         continue;
       }
       let to = args[1];
+      // If we cannot omit the "to" value that means it's being used, so we shall not try to
+      // optimize this Object.assign.
       if (!callbacks.canOmit(to)) {
         let newArgs = [objectAssingFunc, to];
         for (let x = 2; x < otherArgs.length; x++) {
           newArgs.push(otherArgs[x]);
         }
+        for (let x = 2; x < args.length; x++) {
+          let arg = args[x];
+          // We don't want to add the "to" that we're merging with!
+          if (arg !== possibleOtherObjectAssignTo) {
+            newArgs.push(arg);
+          }
+        }
         // We now mutate the args in place with the above new args, clearing out the old args.
         // The end result should be a merged Object.assign and one less temporal entry.
+        // The previous Object.assign temporal's "to" is no longer being used anywhere and should
+        // now dead-code away nicely.
         args.length = 0;
         args.push(...newArgs);
-        // The previous Object.assign temporal's "to" is no longer being used anywhere and should
-        // now dead-code away nicely
+        // Lastly, because we want to possibly merge many Object.assigns, not only two, we do this
+        // process again from the start. Given we've mutated in place the args, this will work.
+        attemptToMergeEquivalentObjectAssigns(callbacks, value);
         return false;
       }
       return true;
@@ -158,7 +174,7 @@ function copyKeys(realm: Realm, keys, from, to): void {
 
 function applyObjectAssignSource(
   realm: Realm,
-  nextSource: ObjectValue | AbstractObjectValue,
+  nextSource: Value,
   to: ObjectValue | AbstractObjectValue,
   delayedSources: Array<Value>,
   to_must_be_partial: boolean
@@ -210,7 +226,7 @@ function applyObjectAssignSource(
 
 function tryAndApplySourceOrRecover(
   realm: Realm,
-  nextSource: ObjectValue | AbstractObjectValue,
+  nextSource: Value,
   to: ObjectValue | AbstractObjectValue,
   delayedSources: Array<Value>,
   to_must_be_partial: boolean

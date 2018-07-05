@@ -13,7 +13,6 @@ import {
   AbstractValue,
   ArrayValue,
   BoundFunctionValue,
-  ConcreteValue,
   FunctionValue,
   ObjectValue,
   ProxyValue,
@@ -164,7 +163,7 @@ export class Emitter {
   endEmitting(
     dependency: string | Generator | Value,
     oldBody: SerializedBody,
-    valuesToProcess: void | Set<AbstractValue | ConcreteValue>,
+    valuesToProcess: void | Set<Value>,
     isChild: boolean = false
   ) {
     invariant(!this._finalized);
@@ -207,7 +206,7 @@ export class Emitter {
 
     return lastBody;
   }
-  processValues(valuesToProcess: Set<AbstractValue | ConcreteValue>) {
+  processValues(valuesToProcess: Set<Value>) {
     for (let value of valuesToProcess) this._processValue(value);
   }
   finalize() {
@@ -468,10 +467,9 @@ export class Emitter {
   emitNowOrAfterWaitingForDependencies(dependencies: Array<Value>, func: () => void, targetBody: SerializedBody) {
     this.emitAfterWaiting(this.getReasonToWaitForDependencies(dependencies), dependencies, func, targetBody);
   }
-  declare(value: AbstractValue | ConcreteValue) {
+  declare(value: Value) {
     invariant(!this._finalized);
     invariant(!this._activeValues.has(value));
-    invariant(value instanceof ConcreteValue || value.hasIdentifier());
     invariant(this._isEmittingActiveGenerator());
     invariant(!this.cannotDeclare());
     invariant(!this._body.done);
@@ -488,10 +486,10 @@ export class Emitter {
     // Bodies of the following types will never contain any (temporal) abstract value declarations.
     return this._body.type === "DelayInitializations" || this._body.type === "LazyObjectInitializer";
   }
-  hasBeenDeclared(value: AbstractValue | ConcreteValue): boolean {
+  hasBeenDeclared(value: Value): boolean {
     return this.getDeclarationBody(value) !== undefined;
   }
-  getDeclarationBody(value: AbstractValue | ConcreteValue): void | SerializedBody {
+  getDeclarationBody(value: Value): void | SerializedBody {
     for (let b = this._body; b !== undefined; b = b.parentBody) {
       if (b.declaredValues !== undefined && b.declaredValues.has(value)) {
         return b;

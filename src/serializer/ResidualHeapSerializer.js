@@ -16,7 +16,6 @@ import {
   AbstractValue,
   BooleanValue,
   BoundFunctionValue,
-  ConcreteValue,
   ECMAScriptSourceFunctionValue,
   EmptyValue,
   FunctionValue,
@@ -2083,7 +2082,7 @@ export class ResidualHeapSerializer {
   _withGeneratorScope(
     type: "Generator" | "AdditionalFunction",
     generator: Generator,
-    valuesToProcess: void | Set<AbstractValue | ConcreteValue>,
+    valuesToProcess: void | Set<Value>,
     callback: SerializedBody => void,
     isChildOverride?: boolean
   ): Array<BabelNodeStatement> {
@@ -2108,10 +2107,7 @@ export class ResidualHeapSerializer {
     let context = {
       serializeValue: this.serializeValue.bind(this),
       serializeBinding: this.serializeBinding.bind(this),
-      serializeGenerator: (
-        generator: Generator,
-        valuesToProcess: Set<AbstractValue | ConcreteValue>
-      ): Array<BabelNodeStatement> =>
+      serializeGenerator: (generator: Generator, valuesToProcess: Set<Value>): Array<BabelNodeStatement> =>
         this._withGeneratorScope("Generator", generator, valuesToProcess, () => generator.serialize(context)),
       initGenerator: (generator: Generator) => {
         let activeGeneratorBody = this._getActiveBodyOfGenerator(generator);
@@ -2127,7 +2123,7 @@ export class ResidualHeapSerializer {
       emit: (statement: BabelNodeStatement) => {
         this.emitter.emit(statement);
       },
-      processValues: (valuesToProcess: Set<AbstractValue | ConcreteValue>) => {
+      processValues: (valuesToProcess: Set<Value>) => {
         this.emitter.processValues(valuesToProcess);
       },
       getPropertyAssignmentStatement: this._getPropertyAssignmentStatement.bind(this),
@@ -2143,7 +2139,7 @@ export class ResidualHeapSerializer {
         }
         return canOmit;
       },
-      declare: (value: AbstractValue | ConcreteValue) => {
+      declare: (value: Value) => {
         this.emitter.declare(value);
       },
       emitPropertyModification: (propertyBinding: PropertyBinding) => {

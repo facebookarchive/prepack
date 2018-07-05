@@ -66,14 +66,14 @@ export type SerializationContext = {|
     mightHaveBeenDeleted: boolean,
     deleteIfMightHaveBeenDeleted: boolean
   ) => BabelNodeStatement,
-  serializeGenerator: (Generator, Set<AbstractValue | ConcreteValue>) => Array<BabelNodeStatement>,
+  serializeGenerator: (Generator, Set<Value>) => Array<BabelNodeStatement>,
   initGenerator: Generator => void,
   finalizeGenerator: Generator => void,
   emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
-  processValues: (Set<AbstractValue | ConcreteValue>) => void,
+  processValues: (Set<Value>) => void,
   canOmit: Value => boolean,
-  declare: (AbstractValue | ConcreteValue) => void,
+  declare: Value => void,
   emitPropertyModification: PropertyBinding => void,
   options: SerializerOptions,
 |};
@@ -82,7 +82,7 @@ export type VisitEntryCallbacks = {|
   visitEquivalentValue: Value => Value,
   visitGenerator: (Generator, Generator) => void,
   canOmit: Value => boolean,
-  recordDeclaration: (AbstractValue | ConcreteValue) => void,
+  recordDeclaration: Value => void,
   recordDelayedEntry: (Generator, GeneratorEntry) => void,
   visitModifiedObjectProperty: PropertyBinding => void,
   visitModifiedBinding: Binding => [ResidualFunctionBinding, Value],
@@ -92,13 +92,13 @@ export type VisitEntryCallbacks = {|
 export type DerivedExpressionBuildNodeFunction = (
   Array<BabelNodeExpression>,
   SerializationContext,
-  Set<AbstractValue | ConcreteValue>
+  Set<Value>
 ) => BabelNodeExpression;
 
 export type GeneratorBuildNodeFunction = (
   Array<BabelNodeExpression>,
   SerializationContext,
-  Set<AbstractValue | ConcreteValue>
+  Set<Value>
 ) => BabelNodeStatement;
 
 export class GeneratorEntry {
@@ -116,14 +116,14 @@ export class GeneratorEntry {
 }
 
 export type TemporalBuildNodeEntryArgs = {
-  declared?: AbstractValue | ConcreteValue,
+  declared?: Value,
   args: Array<Value>,
   // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
   buildNode?: GeneratorBuildNodeFunction,
   dependencies?: Array<Generator>,
   isPure?: boolean,
   mutatesOnly?: Array<Value>,
-  customOptimizationFn?: (callbacks: VisitEntryCallbacks, value: AbstractObjectValue) => boolean,
+  customOptimizationFn?: (callbacks: VisitEntryCallbacks, value: Value) => boolean,
 };
 
 class TemporalBuildNodeEntry extends GeneratorEntry {
@@ -138,19 +138,19 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
     }
   }
 
-  declared: void | AbstractValue | ConcreteValue;
+  declared: void | Value;
   args: Array<Value>;
   // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
   buildNode: void | GeneratorBuildNodeFunction;
   dependencies: void | Array<Generator>;
   isPure: void | boolean;
   mutatesOnly: void | Array<Value>;
-  customOptimizationFn: void | ((callbacks: VisitEntryCallbacks, value: AbstractObjectValue) => boolean);
+  customOptimizationFn: void | ((callbacks: VisitEntryCallbacks, value: Value) => boolean);
 
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     let omit = this.isPure && this.declared && callbacks.canOmit(this.declared);
 
-    if (this.customOptimizationFn !== undefined) {
+    if (this.customOptimizationFn !== undefined && this.declared !== undefined) {
       omit = this.customOptimizationFn(callbacks, this.declared);
     }
     if (!omit && this.declared && this.mutatesOnly !== undefined) {
@@ -416,7 +416,7 @@ class BindingAssignmentEntry extends GeneratorEntry {
 function serializeBody(
   generator: Generator,
   context: SerializationContext,
-  valuesToProcess: Set<AbstractValue | ConcreteValue>
+  valuesToProcess: Set<Value>
 ): BabelNodeBlockStatement {
   let statements = context.serializeGenerator(generator, valuesToProcess);
   if (statements.length === 1 && statements[0].type === "BlockStatement") return (statements[0]: any);
@@ -964,7 +964,7 @@ export class Generator {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
-      customOptimizationFn?: (callbacks: VisitEntryCallbacks, value: AbstractObjectValue) => boolean,
+      customOptimizationFn?: (callbacks: VisitEntryCallbacks, value: Value) => boolean,
     |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
