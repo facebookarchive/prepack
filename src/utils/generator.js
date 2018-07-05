@@ -1142,6 +1142,10 @@ export class Generator {
     let index = this._entries.indexOf(entry);
     invariant(index !== -1);
     this._entries[index] = replacement;
+    if (replacement instanceof TemporalBuildNodeEntry && replacement.declared !== undefined) {
+      invariant(replacement.declared.intrinsicName);
+      this.preludeGenerator.derivedIds.set(replacement.declared.intrinsicName, replacement);
+    }
   }
 }
 
