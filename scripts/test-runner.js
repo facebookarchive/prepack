@@ -581,6 +581,12 @@ function runTest(name, code, options: PrepackOptions, args) {
             if (actualStack) console.log(actualStack);
             return Promise.resolve(false);
           } else if (type === "RETURN") {
+            if (args.verbose) {
+              console.log(chalk.underline("output of inspect() on original code"));
+              console.log(expected);
+              console.log(chalk.underline("output of inspect() on last generated code iteration"));
+              console.log(actual);
+            }
             return value;
           } else if (type === "MARKER") {
             return undefined;
