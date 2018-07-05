@@ -1748,6 +1748,9 @@ export class Realm {
     invariant(name);
     let preludeGenerator = this.preludeGenerator;
     invariant(preludeGenerator !== undefined);
+    if (value instanceof AbstractValue && value.kind === "conditional") {
+      return undefined;
+    }
     let temporalBuildNodeEntryArgs = preludeGenerator.derivedIds.get(name);
     return temporalBuildNodeEntryArgs;
   }

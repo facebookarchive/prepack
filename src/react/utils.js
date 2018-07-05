@@ -30,7 +30,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { Generator } from "../utils/generator.js";
+import { attemptToMergeEquivalentObjectAssigns, Generator } from "../utils/generator.js";
 import type {
   Descriptor,
   FunctionBodyAstNode,
@@ -47,7 +47,6 @@ import traverse from "babel-traverse";
 import * as t from "babel-types";
 import type { BabelNodeStatement } from "babel-types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { attemptToMergeEquivalentObjectAssigns } from "../intrinsics/ecma262/Object.js";
 
 export type ReactSymbolTypes =
   | "react.element"

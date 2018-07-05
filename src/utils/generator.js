@@ -1260,3 +1260,83 @@ export class PreludeGenerator {
     return ref;
   }
 }
+// This function attempts to optimize Object.assign calls, by merging mulitple
+// calls into one another where possible. For example:
+//
+// var a = Object.assign({}, someAbstact);
+// var b = Object.assign({}, a);
+//
+// Becomes:
+// var b = Object.assign({}, someAbstract, a);
+//
+// This is a recursive function, so it will attempt to do this multiple times
+// until it can no longer do so, or if a particular Object.assign is visited
+// and thus it is not possible to merge the Object.assign calls together.
+export function attemptToMergeEquivalentObjectAssigns(callbacks: VisitEntryCallbacks, value: Value): boolean {
+  if (!(value instanceof AbstractObjectValue)) {
+    return false;
+  }
+  let realm = value.$Realm;
+  let temporalBuildNodeEntry = realm.getTemporalBuildNodeEntryArgsFromDerivedValue(value);
+  if (temporalBuildNodeEntry === undefined) {
+    return false;
+  }
+  let args = temporalBuildNodeEntry.args;
+  // If we are Object.assigning 3 or more args
+  if (args.length < 3) {
+    return false;
+  }
+  let objectAssingFunc = args[0];
+  let to = args[1];
+  // Then scan through the args after the "to" of this Object.assign, to see if any
+  // other sources are the "to" of a previous Object.assign call
+  for (let i = 2; i < args.length; i++) {
+    let possibleOtherObjectAssignTo = args[i];
+    // Ensure that the "to" value can be omitted
+    if (!callbacks.canOmit(possibleOtherObjectAssignTo)) {
+      continue;
+    }
+    // Check if the "to" was definitely an Object.assign, it should
+    // be a snapshot AbstractObjectValue
+    if (possibleOtherObjectAssignTo instanceof AbstractObjectValue) {
+      let otherTemporalBuildNodeEntry = realm.getTemporalBuildNodeEntryArgsFromDerivedValue(
+        possibleOtherObjectAssignTo
+      );
+      if (otherTemporalBuildNodeEntry === undefined) {
+        continue;
+      }
+      let otherArgs = otherTemporalBuildNodeEntry.args;
+      // Object.assign has at least 2 args and the first is that of Object.assign native function
+      if (otherArgs.length < 3 || otherArgs[0] !== objectAssingFunc) {
+        continue;
+      }
+      // If we cannot omit the "to" value that means it's being used, so we shall not try to
+      // optimize this Object.assign.
+      if (!callbacks.canOmit(to)) {
+        let newArgs = [objectAssingFunc, to];
+        for (let x = 2; x < otherArgs.length; x++) {
+          newArgs.push(otherArgs[x]);
+        }
+        for (let x = 2; x < args.length; x++) {
+          let arg = args[x];
+          // We don't want to add the "to" that we're merging with!
+          if (arg !== possibleOtherObjectAssignTo) {
+            newArgs.push(arg);
+          }
+        }
+        // We now mutate the args in place with the above new args, clearing out the old args.
+        // The end result should be a merged Object.assign and one less temporal entry.
+        // The previous Object.assign temporal's "to" is no longer being used anywhere and should
+        // now dead-code away nicely.
+        args.length = 0;
+        args.push(...newArgs);
+        // Lastly, because we want to possibly merge many Object.assigns, not only two, we do this
+        // process again from the start. Given we've mutated in place the args, this will work.
+        attemptToMergeEquivalentObjectAssigns(callbacks, value);
+        return false;
+      }
+      return true;
+    }
+  }
+  return false;
+}
