@@ -139,6 +139,10 @@ export class ReactEquivalenceSet {
   }
 
   _getTemporalValue(temporalAlias: AbstractObjectValue, visitedValues: Set<Value>): AbstractObjectValue {
+    // Check to ensure the temporal alias is definitely declared in the current scope
+    if (!this.residualReactElementVisitor.wasTemporalAliasDeclaredInCurrentScope(temporalAlias)) {
+      return temporalAlias;
+    }
     let temporalBuildNodeEntryArgs = this.realm.getTemporalBuildNodeEntryArgsFromDerivedValue(temporalAlias);
 
     if (temporalBuildNodeEntryArgs === undefined) {
@@ -190,6 +194,11 @@ export class ReactEquivalenceSet {
     invariant(result !== undefined);
     if (result.value === null) {
       result.value = temporalAlias;
+    }
+    // Check to ensure the equivalent temporal alias is definitely declared in the current scope
+    if (!this.residualReactElementVisitor.wasTemporalAliasDeclaredInCurrentScope(result.value)) {
+      result.value = temporalAlias;
+      return temporalAlias;
     }
     return result.value;
   }
