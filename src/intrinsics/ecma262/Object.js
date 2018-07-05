@@ -43,6 +43,18 @@ import * as t from "babel-types";
 import invariant from "../../invariant.js";
 import type { VisitEntryCallbacks } from "../../utils/generator.js";
 
+// This function attempts to optimize Object.assign calls, by merging mulitple
+// calls into one another where possible. For example:
+//
+// var a = Object.assign({}, someAbstact);
+// var b = Object.assign({}, a);
+//
+// Becomes:
+// var b = Object.assign({}, someAbstract, a);
+//
+// This is a recursive function, so it will attempt to do this multiple times
+// until it can no longer do so, or if a particular Object.assign is visited
+// and thus it is not possible to merge the Object.assign calls together.
 export function attemptToMergeEquivalentObjectAssigns(callbacks: VisitEntryCallbacks, value: Value): boolean {
   if (!(value instanceof AbstractObjectValue)) {
     return false;
