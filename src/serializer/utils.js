@@ -19,8 +19,8 @@ import { IsArray, IsArrayIndex } from "../methods/index.js";
 import { Logger } from "../utils/logger.js";
 import { Generator } from "../utils/generator.js";
 import type { AdditionalFunctionEffects } from "./types";
-import { Binding } from "../environment.js";
-import { getLocationFromValue } from '../react/utils';
+import type { Binding } from "../environment.js";
+import { getLocationFromValue } from "../react/utils";
 
 /**
  * Get index property list length by searching array properties list for the max index key value plus 1.

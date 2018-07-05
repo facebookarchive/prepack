@@ -1,4 +1,3 @@
-// expected FatalError: PP0001
 function fn(arg) {
   var x = Array.from(arg).map(x => x);
   return ["start"].concat(x).concat(["end"]);

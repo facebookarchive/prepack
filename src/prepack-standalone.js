@@ -105,10 +105,10 @@ function checkResidualFunctions(modules: Modules, startFunc: number, totalToAnal
   let env = realm.$GlobalEnv;
   realm.$GlobalObject.makeSimple();
   let errorHandler = realm.errorHandler;
-  if (!errorHandler) errorHandler = diag => realm.handleError(diag);
-  realm.errorHandler = diag => {
+  if (!errorHandler) errorHandler = (diag, suppressDiagnostics) => realm.handleError(diag);
+  realm.errorHandler = (diag, suppressDiagnostics) => {
     invariant(errorHandler);
-    if (diag.severity === "FatalError") return errorHandler(diag);
+    if (diag.severity === "FatalError") return errorHandler(diag, realm.suppressDiagnostics);
     else return "Recover";
   };
   modules.resolveInitializedModules();

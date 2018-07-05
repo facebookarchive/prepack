@@ -309,40 +309,42 @@ function unescapleUniqueSuffix(code: string, uniqueSuffix?: string) {
   return uniqueSuffix != null ? code.replace(new RegExp(uniqueSuffix, "g"), "") : code;
 }
 
-// handler will record a list of map of warning level to error code produced in diagnosticOutput
 function getErrorHandlerWithWarningCapture(
   diagnosticOutput: Map<Severity, Set<string>>,
   verbose: boolean
 ): ErrorHandler {
-  return (diagnostic: CompilerDiagnostic) => {
-    let msg = `${diagnostic.errorCode}: ${diagnostic.message}`;
-    if (verbose && diagnostic.location) {
-      let loc_start = diagnostic.location.start;
-      let loc_end = diagnostic.location.end;
-      msg += ` at ${loc_start.line}:${loc_start.column} to ${loc_end.line}:${loc_end.column}`;
+  return (diagnostic: CompilerDiagnostic, suppressDiagnostics: boolean) => {
+    let msg = "";
+    if (!suppressDiagnostics) {
+      msg = `${diagnostic.errorCode}: ${diagnostic.message}`;
+      if (verbose && diagnostic.location) {
+        let loc_start = diagnostic.location.start;
+        let loc_end = diagnostic.location.end;
+        msg += ` at ${loc_start.line}:${loc_start.column} to ${loc_end.line}:${loc_end.column}`;
+      }
+      let errorCodeSet = diagnosticOutput.get(diagnostic.severity);
+      if (!errorCodeSet) diagnosticOutput.set(diagnostic.severity, (errorCodeSet = new Set()));
+      errorCodeSet.add(diagnostic.errorCode);
     }
-    let errorCodeSet = diagnosticOutput.get(diagnostic.severity);
-    if (!errorCodeSet) diagnosticOutput.set(diagnostic.severity, (errorCodeSet = new Set()));
-    errorCodeSet.add(diagnostic.errorCode);
     try {
       switch (diagnostic.severity) {
         case "Information":
-          if (verbose) console.log(`Info: ${msg}`);
+          if (verbose && !suppressDiagnostics) console.log(`Info: ${msg}`);
           return "Recover";
         case "Warning":
-          if (verbose) console.warn(`Warn: ${msg}`);
+          if (verbose && !suppressDiagnostics) console.warn(`Warn: ${msg}`);
           return "Recover";
         case "RecoverableError":
-          if (verbose) console.error(`Error: ${msg}`);
+          if (verbose && !suppressDiagnostics) console.error(`Error: ${msg}`);
           return "Recover";
         case "FatalError":
-          if (verbose) console.error(`Fatal Error: ${msg}`);
+          if (verbose && !suppressDiagnostics) console.error(`Fatal Error: ${msg}`);
           return "Fail";
         default:
           invariant(false, "Unexpected error type");
       }
     } finally {
-      if (verbose) console.log(diagnostic.callStack);
+      if (verbose && !suppressDiagnostics) console.log(diagnostic.callStack);
     }
   };
 }
@@ -525,7 +527,17 @@ function runTest(name, code, options: PrepackOptions, args) {
               return true;
             }
             let diagnosticIssue = false;
-            if (diagnosticOutput.size > 0) {
+            if (diagnosticOutput.size > 0 || expectedDiagnostics.size > 0) {
+              if (diagnosticOutput.size !== expectedDiagnostics.size) {
+                diagnosticIssue = true;
+                let diagnosticOutputKeys = [...diagnosticOutput.keys()];
+                let expectedOutputKeys = [...expectedDiagnostics.keys()];
+                console.error(
+                  chalk.red(
+                    `Expected [${expectedOutputKeys.toString()}] but found [${diagnosticOutputKeys.toString()}]`
+                  )
+                );
+              }
               for (let [severity, diagnostics] of diagnosticOutput) {
                 let expectedErrorCodes = expectedDiagnostics.get(severity);
                 if (!setEquals(expectedErrorCodes, diagnostics)) {

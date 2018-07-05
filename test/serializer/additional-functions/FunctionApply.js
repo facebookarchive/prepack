@@ -1,4 +1,3 @@
-// expected FatalError: PP0001
 function inner(a, b, c) {
   return {
     a,

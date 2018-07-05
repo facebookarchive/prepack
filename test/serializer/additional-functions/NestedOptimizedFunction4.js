@@ -1,4 +1,3 @@
-// expected Warning: PP1007
 (function () {
     function f() {
         var shared = {};
