@@ -125,7 +125,7 @@ export type TemporalBuildNodeEntryArgs = {
   mutatesOnly?: Array<Value>,
 };
 
-class TemporalBuildNodeEntry extends GeneratorEntry {
+export class TemporalBuildNodeEntry extends GeneratorEntry {
   constructor(args: TemporalBuildNodeEntryArgs) {
     super();
     Object.assign(this, args);

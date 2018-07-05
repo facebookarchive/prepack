@@ -10,7 +10,15 @@
 /* @flow strict-local */
 
 import { Realm } from "../realm.js";
-import { AbstractValue, ObjectValue, StringValue, SymbolValue, Value } from "../values/index.js";
+import {
+  AbstractObjectValue,
+  AbstractValue,
+  FunctionValue,
+  ObjectValue,
+  StringValue,
+  SymbolValue,
+  Value,
+} from "../values/index.js";
 import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { determineIfReactElementCanBeHoisted } from "../react/hoisting.js";
 import { traverseReactElement } from "../react/elements.js";
@@ -21,6 +29,7 @@ import {
   hardModifyReactObjectPropertyBinding,
 } from "../react/utils.js";
 import invariant from "../invariant.js";
+import { TemporalBuildNodeEntry } from "../utils/generator.js";
 import { ReactEquivalenceSet } from "../react/ReactEquivalenceSet.js";
 import { ReactElementSet } from "../react/ReactElementSet.js";
 import { ReactPropsSet } from "../react/ReactPropsSet.js";
@@ -121,5 +130,28 @@ export class ResidualReactElementVisitor {
     this.reactEquivalenceSet = reactEquivalenceSet;
     this.reactElementEquivalenceSet = reactElementEquivalenceSet;
     this.reactPropsEquivalenceSet = reactPropsEquivalenceSet;
+  }
+
+  wasTemporalAliasDeclaredInCurrentScope(temporalAlias: AbstractObjectValue): boolean {
+    let scope = this.residualHeapVisitor.scope;
+    if (scope instanceof FunctionValue) {
+      return false;
+    }
+    // If the temporal has already been visited, then we know the temporal
+    // value was used and thus declared in another scope
+    if (this.residualHeapVisitor.values.has(temporalAlias)) {
+      return false;
+    }
+    // Otherwise, we check the current scope and see if the
+    // temporal value was declared in one of the entries
+    for (let i = 0; i < scope._entries.length; i++) {
+      let entry = scope._entries[i];
+      if (entry instanceof TemporalBuildNodeEntry) {
+        if (entry.declared === temporalAlias) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 }
