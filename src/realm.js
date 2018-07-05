@@ -1745,12 +1745,11 @@ export class Realm {
 
   getTemporalBuildNodeEntryArgsFromDerivedValue(value: Value): void | TemporalBuildNodeEntryArgs {
     let name = value.intrinsicName;
-    invariant(name);
-    let preludeGenerator = this.preludeGenerator;
-    invariant(preludeGenerator !== undefined);
-    if (value instanceof AbstractValue && value.kind === "conditional") {
+    if ((value instanceof AbstractValue && value.kind === "conditional") || !name) {
       return undefined;
     }
+    let preludeGenerator = this.preludeGenerator;
+    invariant(preludeGenerator !== undefined);
     let temporalBuildNodeEntryArgs = preludeGenerator.derivedIds.get(name);
     return temporalBuildNodeEntryArgs;
   }
