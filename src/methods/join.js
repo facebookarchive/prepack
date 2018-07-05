@@ -32,7 +32,7 @@ import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComp
 import { construct_empty_effects } from "../realm.js";
 import { Path } from "../singletons.js";
 import { Generator } from "../utils/generator.js";
-import { AbstractValue, ConcreteValue, EmptyValue, ObjectValue, Value } from "../values/index.js";
+import { AbstractValue, ConcreteValue, EmptyValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
 
@@ -809,7 +809,7 @@ export class JoinImplementation {
     let join = (b: PropertyBinding, d1: void | Descriptor, d2: void | Descriptor) => {
       // If the PropertyBinding object has been freshly allocated do not join
       if (d1 === undefined) {
-        if (b.object instanceof ObjectValue && c2.has(b.object)) return d2; // no join
+        if (c2.has(b.object)) return d2; // no join
         if (b.descriptor !== undefined && m1.has(b)) {
           // property was deleted
           d1 = cloneDescriptor(b.descriptor);
@@ -821,7 +821,7 @@ export class JoinImplementation {
         }
       }
       if (d2 === undefined) {
-        if (b.object instanceof ObjectValue && c1.has(b.object)) return d1; // no join
+        if (c1.has(b.object)) return d1; // no join
         if (b.descriptor !== undefined && m2.has(b)) {
           // property was deleted
           d2 = cloneDescriptor(b.descriptor);

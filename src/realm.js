@@ -1051,7 +1051,7 @@ export class Realm {
   ) {
     if (modifiedProperties === undefined) return;
     modifiedProperties.forEach((desc, propertyBinding, m) => {
-      if (propertyBinding.object instanceof ObjectValue && newlyCreatedObjects.has(propertyBinding.object)) {
+      if (newlyCreatedObjects.has(propertyBinding.object)) {
         propertyBinding.descriptor = desc;
       }
     });
@@ -1108,10 +1108,7 @@ export class Realm {
 
     let tvalFor: Map<any, AbstractValue> = new Map();
     pbindings.forEach((val, key, map) => {
-      if (
-        key.object instanceof ObjectValue &&
-        (newlyCreatedObjects.has(key.object) || key.object.refuseSerialization)
-      ) {
+      if (newlyCreatedObjects.has(key.object) || key.object.refuseSerialization) {
         return;
       }
       let value = val && val.value;
@@ -1138,10 +1135,7 @@ export class Realm {
       }
     });
     pbindings.forEach((val, key, map) => {
-      if (
-        key.object instanceof ObjectValue &&
-        (newlyCreatedObjects.has(key.object) || key.object.refuseSerialization)
-      ) {
+      if (newlyCreatedObjects.has(key.object) || key.object.refuseSerialization) {
         return;
       }
       let path = key.pathNode;
