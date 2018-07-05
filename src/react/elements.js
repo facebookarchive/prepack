@@ -41,6 +41,9 @@ function createPropsObject(
   config: ObjectValue | AbstractObjectValue,
   children: void | Value
 ): { key: Value, ref: Value, props: ObjectValue } {
+  // If we're in "rendering" a React component tree, we should have an active reconciler
+  let activeReconciler = realm.react.activeReconciler;
+  let firstRenderOnly = activeReconciler !== undefined ? activeReconciler.componentTreeConfig.firstRenderOnly : false;
   let defaultProps =
     type instanceof ObjectValue || type instanceof AbstractObjectValue
       ? Get(realm, type, "defaultProps")
@@ -82,7 +85,7 @@ function createPropsObject(
   }
 
   let possibleRef = Get(realm, config, "ref");
-  if (possibleRef !== realm.intrinsics.null && possibleRef !== realm.intrinsics.undefined) {
+  if (possibleRef !== realm.intrinsics.null && possibleRef !== realm.intrinsics.undefined && !firstRenderOnly) {
     // if the config has been marked as having no partial key or ref and the possible ref
     // is abstract, yet the config doesn't have a ref property, then the ref can remain null
     let refNotNeeded =
@@ -117,13 +120,11 @@ function createPropsObject(
     (config instanceof AbstractObjectValue && config.isPartialObject()) ||
     (config instanceof ObjectValue && config.isPartialObject() && config.isSimpleObject())
   ) {
-    let args = [];
-    args.push(config);
     // create a new props object that will be the target of the Object.assign
     props = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
     realm.react.reactProps.add(props);
 
-    applyObjectAssignConfigsForReactElement(realm, props, args);
+    applyObjectAssignConfigsForReactElement(realm, props, [config]);
     props.makeFinal();
 
     if (children !== undefined) {

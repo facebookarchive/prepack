@@ -94,3 +94,23 @@ it("Replace this in callbacks 2", () => {
 it("Replace this in callbacks 3", () => {
   runTest(__dirname + "/FirstRenderOnly/replace-this-in-callbacks3.js", { firstRenderOnly: true });
 });
+
+it("Equivalence of snapshotted node", () => {
+  runTest(__dirname + "/FirstRenderOnly/equivalence.js", { firstRenderOnly: true });
+});
+
+it("Equivalence of snapshotted node 2", () => {
+  runTest(__dirname + "/FirstRenderOnly/equivalence2.js", { firstRenderOnly: true });
+});
+
+it("Equivalence of snapshotted node 3", () => {
+  runTest(__dirname + "/FirstRenderOnly/equivalence3.js", { firstRenderOnly: true });
+});
+
+it("Equivalence of snapshotted node 4", () => {
+  runTest(__dirname + "/FirstRenderOnly/equivalence4.js", { firstRenderOnly: true });
+});
+
+it("Equivalence of snapshotted node 5", () => {
+  runTest(__dirname + "/FirstRenderOnly/equivalence5.js", { firstRenderOnly: true });
+});
