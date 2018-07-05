@@ -1104,6 +1104,13 @@ export class ResidualHeapVisitor {
           action: () => entry.visit(callbacks, generator),
         });
       },
+      replaceAndRecordDelayedEntry: (generator, originalEntry: GeneratorEntry, newEntry: GeneratorEntry) => {
+        generator.replaceEntry(originalEntry, newEntry);
+        this.delayedActions.push({
+          scope: generator,
+          action: () => newEntry.visit(callbacks, generator),
+        });
+      },
       visitModifiedObjectProperty: (binding: PropertyBinding) => {
         let fixpoint_rerun = () => {
           if (this.values.has(binding.object)) {

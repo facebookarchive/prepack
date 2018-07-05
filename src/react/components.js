@@ -37,7 +37,7 @@ import invariant from "../invariant.js";
 import traverse from "babel-traverse";
 import type { ClassComponentMetadata } from "../types.js";
 import type { ReactEvaluatedNode } from "../serializer/types.js";
-import { attemptToMergeEquivalentObjectAssigns } from "../utils/generator.js";
+import { optimizeObjectAssignTemporalEntry } from "../utils/generator.js";
 import { FatalError } from "../errors.js";
 
 const lifecycleMethods = new Set([
@@ -406,7 +406,7 @@ export function applyGetDerivedStateFromProps(
             {
               skipInvariant: true,
               mutatesOnly: [newState],
-              customOptimizationFn: attemptToMergeEquivalentObjectAssigns,
+              optimizationFn: optimizeObjectAssignTemporalEntry,
             }
           );
           newState.makeSimple();
