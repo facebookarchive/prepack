@@ -102,7 +102,7 @@ export default class ArrayValue extends ObjectValue {
   ): ArrayValue {
     invariant(realm.generator !== undefined);
 
-    let value = realm.generator.deriveConcrete(
+    let value = realm.generator.deriveConcreteObject(
       intrinsicName => new ArrayValue(realm, intrinsicName),
       args,
       buildFunction,
