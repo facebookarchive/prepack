@@ -19,7 +19,7 @@ import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } fr
 import { Reference } from "../environment.js";
 import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
 import { Generator } from "../utils/generator.js";
-import { AbstractValue, ArrayValue, EmptyValue, ObjectValue, Value } from "../values/index.js";
+import { AbstractValue, ArrayValue, EmptyValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
 import * as t from "babel-types";
@@ -218,7 +218,7 @@ export class WidenImplementation {
       if (d1 === undefined && d2 === undefined) return undefined;
       // If the PropertyBinding object has been freshly allocated do not widen (that happens in AbstractObjectValue)
       if (d1 === undefined) {
-        if (b.object instanceof ObjectValue && c2.has(b.object)) return d2; // no widen
+        if (c2.has(b.object)) return d2; // no widen
         if (b.descriptor !== undefined && m1.has(b)) {
           // property was present in (n-1)th iteration and deleted in nth iteration
           d1 = cloneDescriptor(b.descriptor);
@@ -235,7 +235,7 @@ export class WidenImplementation {
         }
       }
       if (d2 === undefined) {
-        if (b.object instanceof ObjectValue && c1.has(b.object)) return d1; // no widen
+        if (c1.has(b.object)) return d1; // no widen
         if (m2.has(b)) {
           // property was present in nth iteration and deleted in (n+1)th iteration
           d2 = cloneDescriptor(d1);
@@ -406,13 +406,13 @@ export class WidenImplementation {
       if (val1 === undefined) continue; // deleted
       let val2 = m2.get(key1);
       if (val2 === undefined) continue; // A key that disappears has been widened away into the unknown key
-      if (key1.object instanceof ObjectValue && c1.has(key1.object)) {
+      if (c1.has(key1.object)) {
         continue;
       }
       if (!containsPropertyBinding(val1, val2)) return false;
     }
     for (const key2 of m2.keys()) {
-      if (key2.object instanceof ObjectValue && c2.has(key2.object)) {
+      if (c2.has(key2.object)) {
         continue;
       }
       if (!m1.has(key2)) return false;
