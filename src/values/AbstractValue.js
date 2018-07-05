@@ -24,7 +24,6 @@ import {
   Generator,
   PreludeGenerator,
   type TemporalBuildNodeEntry,
-  type TemporalBuildNodeEntryOptimizationStatus,
   type VisitEntryCallbacks,
 } from "../utils/generator.js";
 import buildExpressionTemplate from "../utils/builder.js";
@@ -790,11 +789,7 @@ export default class AbstractValue extends Value {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
-      optimizationFn?: (
-        VisitEntryCallbacks,
-        Generator,
-        TemporalBuildNodeEntry
-      ) => TemporalBuildNodeEntryOptimizationStatus,
+      optimizationFn?: (VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => boolean,
     |}
   ): AbstractValue {
     invariant(resultType !== UndefinedValue);
@@ -835,11 +830,7 @@ export default class AbstractValue extends Value {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
-      optimizationFn?: (
-        VisitEntryCallbacks,
-        Generator,
-        TemporalBuildNodeEntry
-      ) => TemporalBuildNodeEntryOptimizationStatus,
+      optimizationFn?: (VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => boolean,
     |}
   ): AbstractValue | UndefinedValue {
     let types = new TypesDomain(resultType);

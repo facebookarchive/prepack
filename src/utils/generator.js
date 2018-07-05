@@ -90,7 +90,7 @@ export type VisitEntryCallbacks = {|
   visitBindingAssignment: (Binding, Value) => Value,
 |};
 
-export type TemporalBuildNodeEntryOptimizationStatus = "NO_OPTIMIZATION" | "POSSIBLE_OPTIMIZATION" | "OPTIMIZATION";
+type TemporalBuildNodeEntryOptimizationStatus = "NO_OPTIMIZATION" | "POSSIBLE_OPTIMIZATION";
 
 export type DerivedExpressionBuildNodeFunction = (
   Array<BabelNodeExpression>,
@@ -126,7 +126,7 @@ export type TemporalBuildNodeEntryArgs = {
   dependencies?: Array<Generator>,
   isPure?: boolean,
   mutatesOnly?: Array<Value>,
-  optimizationFn?: (VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => TemporalBuildNodeEntryOptimizationStatus,
+  optimizationFn?: (VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => boolean,
 };
 
 export class TemporalBuildNodeEntry extends GeneratorEntry {
@@ -148,21 +148,16 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
   dependencies: void | Array<Generator>;
   isPure: void | boolean;
   mutatesOnly: void | Array<Value>;
-  optimizationFn:
-    | void
-    | ((VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => TemporalBuildNodeEntryOptimizationStatus);
+  optimizationFn: void | ((VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => boolean);
 
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     let omit = this.isPure && this.declared && callbacks.canOmit(this.declared);
 
     if (this.optimizationFn !== undefined && this.declared !== undefined) {
-      let optimizationStatus = this.optimizationFn(callbacks, containingGenerator, this);
-      // If we have a possible optimizaiton, we need to delay this entry visit
+      let didOptimize = this.optimizationFn(callbacks, containingGenerator, this);
+      // If we have a possible optimization, we need to delay this entry visit
       // and re-visit later as delayed entry.
-      if (optimizationStatus === "POSSIBLE_OPTIMIZATION") {
-        callbacks.recordDelayedEntry(containingGenerator, this);
-        return false;
-      } else if (optimizationStatus === "OPTIMIZATION") {
+      if (didOptimize) {
         // We don't want to visit this entry anymore as we've optimized and created
         // a new temporal node that will replace it
         return true;
@@ -979,11 +974,7 @@ export class Generator {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
-      optimizationFn?: (
-        VisitEntryCallbacks,
-        Generator,
-        TemporalBuildNodeEntry
-      ) => TemporalBuildNodeEntryOptimizationStatus,
+      optimizationFn?: (VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => boolean,
     |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
@@ -1151,6 +1142,7 @@ export class Generator {
   }
 
   replaceEntry(entry: GeneratorEntry, replacement: GeneratorEntry) {
+    // TODO: improve from O(n) to O(1)
     let index = this._entries.indexOf(entry);
     invariant(index !== -1);
     this._entries[index] = replacement;
@@ -1368,13 +1360,13 @@ export function optimizeObjectAssignTemporalEntry(
   callbacks: VisitEntryCallbacks,
   containingGenerator: Generator,
   temporalBuildNodeEntry: TemporalBuildNodeEntry
-): TemporalBuildNodeEntryOptimizationStatus {
+): boolean {
   let declared = temporalBuildNodeEntry.declared;
   if (!(declared instanceof AbstractObjectValue)) {
-    return "NO_OPTIMIZATION";
+    return false;
   }
   let realm = declared.$Realm;
-  // The only otpimization we attempt to do to Object.assign for now is merging of multiple entries
+  // The only optimization we attempt to do to Object.assign for now is merging of multiple entries
   // into a new generator entry.
   let result = attemptToMergeEquivalentObjectAssigns(realm, callbacks, temporalBuildNodeEntry);
 
@@ -1391,7 +1383,10 @@ export function optimizeObjectAssignTemporalEntry(
     // We have an optimized temporal entry, so replace the current temporal
     // entry and visit that entry instead.
     callbacks.replaceAndRecordDelayedEntry(containingGenerator, temporalBuildNodeEntry, result);
-    return "OPTIMIZATION";
+    return true;
+  } else if (result === "POSSIBLE_OPTIMIZATION") {
+    callbacks.recordDelayedEntry(containingGenerator, temporalBuildNodeEntry);
+    return true;
   }
-  return result;
+  return false;
 }
