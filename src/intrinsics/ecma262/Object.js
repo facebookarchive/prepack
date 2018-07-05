@@ -63,7 +63,11 @@ function attemptToMergeEquivalentObjectAssigns(callbacks: VisitEntryCallbacks, v
     }
     // Check if the "to" was definitely an Object.assign, it should
     // be a snapshot AbstractObjectValue
-    if (possibleOtherObjectAssignTo instanceof AbstractObjectValue) {
+    if (
+      possibleOtherObjectAssignTo instanceof AbstractObjectValue &&
+      // We don't handle conditions for now, this can be done at a later stage
+      possibleOtherObjectAssignTo.kind !== "conditional"
+    ) {
       let otherTemporalBuildNodeEntry = realm.getTemporalBuildNodeEntryArgsFromDerivedValue(
         possibleOtherObjectAssignTo
       );
