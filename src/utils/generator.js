@@ -123,6 +123,7 @@ export type TemporalBuildNodeEntryArgs = {
   dependencies?: Array<Generator>,
   isPure?: boolean,
   mutatesOnly?: Array<Value>,
+  customOptimizationFn?: (callbacks: VisitEntryCallbacks, value: AbstractObjectValue) => boolean,
 };
 
 class TemporalBuildNodeEntry extends GeneratorEntry {
@@ -144,10 +145,14 @@ class TemporalBuildNodeEntry extends GeneratorEntry {
   dependencies: void | Array<Generator>;
   isPure: void | boolean;
   mutatesOnly: void | Array<Value>;
+  customOptimizationFn: void | ((callbacks: VisitEntryCallbacks, value: AbstractObjectValue) => boolean);
 
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     let omit = this.isPure && this.declared && callbacks.canOmit(this.declared);
 
+    if (this.customOptimizationFn !== undefined) {
+      omit = this.customOptimizationFn(callbacks, this.declared);
+    }
     if (!omit && this.declared && this.mutatesOnly !== undefined) {
       omit = true;
       for (let arg of this.mutatesOnly) {
@@ -959,6 +964,7 @@ export class Generator {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
+      customOptimizationFn?: (callbacks: VisitEntryCallbacks, value: AbstractObjectValue) => boolean,
     |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
@@ -990,6 +996,7 @@ export class Generator {
         ]);
       },
       mutatesOnly: optionalArgs ? optionalArgs.mutatesOnly : undefined,
+      customOptimizationFn: optionalArgs ? optionalArgs.customOptimizationFn : undefined,
     });
     let type = types.getType();
     res.intrinsicName = id.name;

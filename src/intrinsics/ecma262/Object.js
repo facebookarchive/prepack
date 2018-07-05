@@ -42,6 +42,60 @@ import type { BabelNodeExpression } from "babel-types";
 import * as t from "babel-types";
 import invariant from "../../invariant.js";
 
+function attemptToMergeEquivalentObjectAssigns(callbacks: VisitEntryCallbacks, value: AbstractObjectValue): boolean {
+  let realm = value.$Realm;
+  let temporalBuildNodeEntry = realm.getTemporalBuildNodeEntryArgsFromDerivedValue(value);
+  if (temporalBuildNodeEntry === undefined) {
+    return false;
+  }
+  let args = temporalBuildNodeEntry.args;
+  // If we are Object.assigning 3 or more args
+  if (args.length < 3) {
+    return false;
+  }
+  // Then scan through the args after the "to" of this Object.assign, to see if any
+  // other sources are the "to" of a previous Object.assign call
+  for (let i = 2; i < args.length; i++) {
+    let possibleOtherObjectAssignTo = args[i];
+    // Ensure that the "to" value can be omitted
+    if (!callbacks.canOmit(possibleOtherObjectAssignTo)) {
+      continue;
+    }
+    // Check if the "to" was definitely an Object.assign, it should
+    // be a snapshot AbstractObjectValue
+    if (possibleOtherObjectAssignTo instanceof AbstractObjectValue) {
+      let otherTemporalBuildNodeEntry = realm.getTemporalBuildNodeEntryArgsFromDerivedValue(
+        possibleOtherObjectAssignTo
+      );
+      if (otherTemporalBuildNodeEntry === undefined) {
+        continue;
+      }
+      let otherArgs = otherTemporalBuildNodeEntry.args;
+      let objectAssingFunc = realm.intrinsics.Object.$Get("assign");
+      // Object.assign has at least 2 args and the first is that of Object.assign native function
+      if (otherArgs.length < 3 || otherArgs[0] !== objectAssingFunc) {
+        continue;
+      }
+      let to = args[1];
+      if (!callbacks.canOmit(to)) {
+        let newArgs = [objectAssingFunc, to];
+        for (let x = 2; x < otherArgs.length; x++) {
+          newArgs.push(otherArgs[x]);
+        }
+        // We now mutate the args in place with the above new args, clearing out the old args.
+        // The end result should be a merged Object.assign and one less temporal entry.
+        args.length = 0;
+        args.push(...newArgs);
+        // The previous Object.assign temporal's "to" is no longer being used anywhere and should
+        // now dead-code away nicely
+        return false;
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
 function handleObjectAssignSnapshot(
   to: ObjectValue | AbstractObjectValue,
   frm: ObjectValue | AbstractObjectValue,
@@ -285,6 +339,7 @@ export default function(realm: Realm): NativeFunctionValue {
           {
             skipInvariant: true,
             mutatesOnly: [to],
+            customOptimizationFn: attemptToMergeEquivalentObjectAssigns,
           }
         );
         invariant(temporalTo instanceof AbstractObjectValue);

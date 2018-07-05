@@ -784,6 +784,7 @@ export default class AbstractValue extends Value {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
+      customOptimizationFn?: (callbacks: VisitEntryCallbacks, value: AbstractObjectValue) => boolean,
     |}
   ): AbstractValue {
     invariant(resultType !== UndefinedValue);
@@ -824,6 +825,7 @@ export default class AbstractValue extends Value {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
+      customOptimizationFn?: (callbacks: VisitEntryCallbacks, value: AbstractObjectValue) => boolean,
     |}
   ): AbstractValue | UndefinedValue {
     let types = new TypesDomain(resultType);

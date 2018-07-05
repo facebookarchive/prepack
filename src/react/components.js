@@ -37,6 +37,7 @@ import invariant from "../invariant.js";
 import traverse from "babel-traverse";
 import type { ClassComponentMetadata } from "../types.js";
 import type { ReactEvaluatedNode } from "../serializer/types.js";
+import { attemptToMergeEquivalentObjectAssigns } from "../intrinsics/ecma262/Object.js";
 import { FatalError } from "../errors.js";
 
 const lifecycleMethods = new Set([
@@ -402,7 +403,11 @@ export function applyGetDerivedStateFromProps(
             ([methodNode, ..._args]) => {
               return t.callExpression(methodNode, ((_args: any): Array<any>));
             },
-            { skipInvariant: true, mutatesOnly: [newState] }
+            {
+              skipInvariant: true,
+              mutatesOnly: [newState],
+              customOptimizationFn: attemptToMergeEquivalentObjectAssigns,
+            }
           );
           newState.makeSimple();
           newState.makePartial();
