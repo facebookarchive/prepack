@@ -126,7 +126,7 @@ export type TemporalBuildNodeEntryArgs = {
   dependencies?: Array<Generator>,
   isPure?: boolean,
   mutatesOnly?: Array<Value>,
-  optimizationFn?: (VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => boolean,
+  optimizationFn?: (VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => void | boolean,
 };
 
 export class TemporalBuildNodeEntry extends GeneratorEntry {
@@ -148,19 +148,15 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
   dependencies: void | Array<Generator>;
   isPure: void | boolean;
   mutatesOnly: void | Array<Value>;
-  optimizationFn: void | ((VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => boolean);
+  optimizationFn: void | ((VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => void | boolean);
 
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     let omit = this.isPure && this.declared && callbacks.canOmit(this.declared);
 
     if (this.optimizationFn !== undefined && this.declared !== undefined) {
-      let didOptimize = this.optimizationFn(callbacks, containingGenerator, this);
-      // If we have a possible optimization, we need to delay this entry visit
-      // and re-visit later as delayed entry.
-      if (didOptimize) {
-        // We don't want to visit this entry anymore as we've optimized and created
-        // a new temporal node that will replace it
-        return true;
+      let result = this.optimizationFn(callbacks, containingGenerator, this);
+      if (result !== undefined) {
+        return result;
       }
     }
     if (!omit && this.declared && this.mutatesOnly !== undefined) {
@@ -974,7 +970,7 @@ export class Generator {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
-      optimizationFn?: (VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => boolean,
+      optimizationFn?: (VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => void | boolean,
     |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
@@ -1360,7 +1356,7 @@ export function optimizeObjectAssignTemporalEntry(
   callbacks: VisitEntryCallbacks,
   containingGenerator: Generator,
   temporalBuildNodeEntry: TemporalBuildNodeEntry
-): boolean {
+): void | boolean {
   let declared = temporalBuildNodeEntry.declared;
   if (!(declared instanceof AbstractObjectValue)) {
     return false;
@@ -1386,7 +1382,6 @@ export function optimizeObjectAssignTemporalEntry(
     return true;
   } else if (result === "POSSIBLE_OPTIMIZATION") {
     callbacks.recordDelayedEntry(containingGenerator, temporalBuildNodeEntry);
-    return true;
+    return false;
   }
-  return false;
 }

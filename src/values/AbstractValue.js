@@ -789,7 +789,7 @@ export default class AbstractValue extends Value {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
-      optimizationFn?: (VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => boolean,
+      optimizationFn?: (VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => void | boolean,
     |}
   ): AbstractValue {
     invariant(resultType !== UndefinedValue);
@@ -830,7 +830,7 @@ export default class AbstractValue extends Value {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
-      optimizationFn?: (VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => boolean,
+      optimizationFn?: (VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => void | boolean,
     |}
   ): AbstractValue | UndefinedValue {
     let types = new TypesDomain(resultType);
