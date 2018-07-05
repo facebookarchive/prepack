@@ -106,3 +106,7 @@ it("Equivalence of snapshotted node 2", () => {
 it("Equivalence of snapshotted node 3", () => {
   runTest(__dirname + "/FirstRenderOnly/equivalence3.js", { firstRenderOnly: true });
 });
+
+it("Equivalence of snapshotted node 4", () => {
+  runTest(__dirname + "/FirstRenderOnly/equivalence4.js", { firstRenderOnly: true });
+});
