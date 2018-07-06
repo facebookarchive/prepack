@@ -1754,7 +1754,7 @@ export class Realm {
     return temporalBuildNodeEntry;
   }
 
-  getTemporalGeneratorEntriesReferencingArg(arg: Value): void | Set<TemporalBuildNodeEntry> {
+  getTemporalGeneratorEntriesReferencingArg(arg: AbstractValue | ObjectValue): void | Set<TemporalBuildNodeEntry> {
     return this.temporalEntryArgToEntries.get(arg);
   }
 

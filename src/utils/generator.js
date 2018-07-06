@@ -1372,27 +1372,29 @@ export function attemptToMergeEquivalentObjectAssigns(
       let otherArgsToUse = [];
       for (let x = 2; x < otherArgs.length; x++) {
         let arg = otherArgs[x];
-        let temporalGeneratorEntries = realm.getTemporalGeneratorEntriesReferencingArg(arg);
-        // We need to now check if there are any other temporal entries that exist
-        // between the Object.assign TemporalObjectAssignEntry (start) that we're trying
-        // to merge and the current TemporalObjectAssignEntry we're going to mergin into (end)
-        let startIndex = otherTemporalBuildNodeEntry.index;
-        let endIndex = temporalBuildNodeEntry.index;
+        if (arg instanceof ObjectValue || arg instanceof AbstractValue) {
+          let temporalGeneratorEntries = realm.getTemporalGeneratorEntriesReferencingArg(arg);
+          // We need to now check if there are any other temporal entries that exist
+          // between the Object.assign TemporalObjectAssignEntry (start) that we're trying
+          // to merge and the current TemporalObjectAssignEntry we're going to mergin into (end)
+          let startIndex = otherTemporalBuildNodeEntry.index;
+          let endIndex = temporalBuildNodeEntry.index;
 
-        if (temporalGeneratorEntries !== undefined) {
-          for (let temporalGeneratorEntry of temporalGeneratorEntries) {
-            // If the entry is that of another Object.assign, then
-            // we know that this entry isn't going to cause issues
-            // with merging the TemporalObjectAssignEntry.
-            if (temporalGeneratorEntry instanceof TemporalObjectAssignEntry) {
-              continue;
-            }
-            // If the index of this entry exist between start and end indexes,
-            // then we cannot optimize and merge the TemporalObjectAssignEntry
-            // because another generator entry has a dependency on the Object.assign
-            // TemporalObjectAssignEntry we're trying to merge.
-            if (temporalGeneratorEntry.index > startIndex && temporalGeneratorEntry.index < endIndex) {
-              continue loopThroughArgs;
+          if (temporalGeneratorEntries !== undefined) {
+            for (let temporalGeneratorEntry of temporalGeneratorEntries) {
+              // If the entry is that of another Object.assign, then
+              // we know that this entry isn't going to cause issues
+              // with merging the TemporalObjectAssignEntry.
+              if (temporalGeneratorEntry instanceof TemporalObjectAssignEntry) {
+                continue;
+              }
+              // If the index of this entry exist between start and end indexes,
+              // then we cannot optimize and merge the TemporalObjectAssignEntry
+              // because another generator entry has a dependency on the Object.assign
+              // TemporalObjectAssignEntry we're trying to merge.
+              if (temporalGeneratorEntry.index > startIndex && temporalGeneratorEntry.index < endIndex) {
+                continue loopThroughArgs;
+              }
             }
           }
         }
