@@ -49,8 +49,8 @@ export class LoggingTracer extends Tracer {
   realm: Realm;
   nesting: Array<string>;
 
-  log(message: string) {
-    console.log(`[calls] ${this.nesting.map(_ => "  ").join("")}${message}`);
+  log(message: string, prefix: string = "[calls]") {
+    console.log(`${prefix} ${this.nesting.map(_ => "  ").join("")}${message}`);
   }
 
   beginEvaluateForEffects(state: any) {

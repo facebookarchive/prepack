@@ -39,13 +39,16 @@ export function createAbstractFunction(realm: Realm, ...additionalValues: Array<
     "global.__abstract",
     "__abstract",
     0,
-    (context, [typeNameOrTemplate, _name]) => {
+    (context, [typeNameOrTemplate, _name, options]) => {
       let name = _name;
       if (name instanceof StringValue) name = name.value;
       if (name !== undefined && typeof name !== "string") {
         throw new TypeError("intrinsic name argument is not a string");
       }
-      return createAbstract(realm, typeNameOrTemplate, name, ...additionalValues);
+      if (options && !(options instanceof ObjectValue)) {
+        throw new TypeError("options must be an ObjectValue if provided");
+      }
+      return createAbstract(realm, typeNameOrTemplate, name, options, ...additionalValues);
     }
   );
 }
@@ -71,6 +74,9 @@ export default function(realm: Realm): void {
   // - ':string', ':boolean', ':number', ':object', ':function' to indicate that
   //   the abstract value represents a function that only returns values of the specified type, or
   // - an actual object defining known properties.
+  // options is an optional object that may contain:
+  // - allowDuplicateNames: boolean representing whether the name of the abstract value may be
+  //   repeated, by default they must be unique
   // If the abstract value gets somehow embedded in the final heap,
   // it will be referred to by the supplied name in the generated code.
   global.$DefineOwnProperty("__abstract", {
@@ -122,7 +128,7 @@ export default function(realm: Realm): void {
   global.$DefineOwnProperty("__optimize", {
     value: new NativeFunctionValue(realm, "global.__optimize", "__optimize", 0, (context, [value, config]) => {
       // only optimize functions for now
-      if (value instanceof ECMAScriptSourceFunctionValue) {
+      if (value instanceof ECMAScriptSourceFunctionValue || value instanceof AbstractValue) {
         realm.assignToGlobal(
           t.memberExpression(
             t.memberExpression(t.identifier("global"), t.identifier("__optimizedFunctions")),
@@ -130,6 +136,8 @@ export default function(realm: Realm): void {
           ),
           value
         );
+      } else {
+        throw new TypeError("Called __optimize on an invalid type");
       }
       return value;
     }),
