@@ -13,7 +13,6 @@ import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import { FatalError } from "../../errors.js";
 import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { optimizeObjectAssignTemporalEntry } from "../../utils/generator.js";
 import { AbruptCompletion, PossiblyNormalCompletion } from "../../completions.js";
 import {
   AbstractValue,
@@ -286,7 +285,7 @@ export default function(realm: Realm): NativeFunctionValue {
           {
             skipInvariant: true,
             mutatesOnly: [to],
-            optimizationFn: optimizeObjectAssignTemporalEntry,
+            temporalType: "OBJECT_ASSIGN",
           }
         );
         invariant(temporalTo instanceof AbstractObjectValue);

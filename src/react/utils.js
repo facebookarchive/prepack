@@ -30,7 +30,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { optimizeObjectAssignTemporalEntry, Generator } from "../utils/generator.js";
+import { Generator } from "../utils/generator.js";
 import type {
   Descriptor,
   FunctionBodyAstNode,
@@ -1075,7 +1075,7 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
           {
             skipInvariant: true,
             mutatesOnly: [to],
-            optimizationFn: optimizeObjectAssignTemporalEntry,
+            temporalType: "OBJECT_ASSIGN",
           }
         );
         invariant(temporalTo instanceof AbstractObjectValue);

@@ -20,12 +20,7 @@ import type {
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
-import {
-  Generator,
-  PreludeGenerator,
-  type TemporalBuildNodeEntry,
-  type VisitEntryCallbacks,
-} from "../utils/generator.js";
+import { PreludeGenerator, type TemporalBuildNodeType } from "../utils/generator.js";
 import buildExpressionTemplate from "../utils/builder.js";
 
 import {
@@ -789,7 +784,7 @@ export default class AbstractValue extends Value {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
-      optimizationFn?: (VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => void | boolean,
+      temporalType?: TemporalBuildNodeType,
     |}
   ): AbstractValue {
     invariant(resultType !== UndefinedValue);
@@ -830,7 +825,7 @@ export default class AbstractValue extends Value {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
-      optimizationFn?: (VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => void | boolean,
+      temporalType?: TemporalBuildNodeType,
     |}
   ): AbstractValue | UndefinedValue {
     let types = new TypesDomain(resultType);

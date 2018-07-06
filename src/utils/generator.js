@@ -90,7 +90,7 @@ export type VisitEntryCallbacks = {|
   visitBindingAssignment: (Binding, Value) => Value,
 |};
 
-type TemporalBuildNodeEntryOptimizationStatus = "NO_OPTIMIZATION" | "POSSIBLE_OPTIMIZATION";
+export type TemporalBuildNodeType = "OBJECT_ASSIGN";
 
 export type DerivedExpressionBuildNodeFunction = (
   Array<BabelNodeExpression>,
@@ -126,7 +126,7 @@ export type TemporalBuildNodeEntryArgs = {
   dependencies?: Array<Generator>,
   isPure?: boolean,
   mutatesOnly?: Array<Value>,
-  optimizationFn?: (VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => void | boolean,
+  temporalType?: TemporalBuildNodeType,
 };
 
 export class TemporalBuildNodeEntry extends GeneratorEntry {
@@ -148,17 +148,11 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
   dependencies: void | Array<Generator>;
   isPure: void | boolean;
   mutatesOnly: void | Array<Value>;
-  optimizationFn: void | ((VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => void | boolean);
+  temporalType: void | TemporalBuildNodeType;
 
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     let omit = this.isPure && this.declared && callbacks.canOmit(this.declared);
 
-    if (this.optimizationFn !== undefined && this.declared !== undefined) {
-      let result = this.optimizationFn(callbacks, containingGenerator, this);
-      if (result !== undefined) {
-        return result;
-      }
-    }
     if (!omit && this.declared && this.mutatesOnly !== undefined) {
       omit = true;
       for (let arg of this.mutatesOnly) {
@@ -218,6 +212,39 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
 
   getDependencies() {
     return this.dependencies;
+  }
+}
+
+export class TemporalObjectAssignEntry extends TemporalBuildNodeEntry {
+  visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
+    let declared = this.declared;
+    if (!(declared instanceof AbstractObjectValue)) {
+      return false;
+    }
+    let realm = declared.$Realm;
+    // The only optimization we attempt to do to Object.assign for now is merging of multiple entries
+    // into a new generator entry.
+    let result = attemptToMergeEquivalentObjectAssigns(realm, callbacks, this);
+
+    if (result instanceof TemporalObjectAssignEntry) {
+      let nextResult = result;
+      while (nextResult instanceof TemporalObjectAssignEntry) {
+        nextResult = attemptToMergeEquivalentObjectAssigns(realm, callbacks, result);
+        // If we get back a TemporalObjectAssignEntry, then we have successfully merged a single
+        // Object.assign, but we may be able to merge more. So repeat the process.
+        if (nextResult instanceof TemporalObjectAssignEntry) {
+          result = nextResult;
+        }
+      }
+      // We have an optimized temporal entry, so replace the current temporal
+      // entry and visit that entry instead.
+      callbacks.replaceAndRecordDelayedEntry(containingGenerator, this, result);
+      return true;
+    } else if (result === "POSSIBLE_OPTIMIZATION") {
+      callbacks.recordDelayedEntry(containingGenerator, this);
+      return false;
+    }
+    return super.visit(callbacks, containingGenerator);
   }
 }
 
@@ -970,7 +997,7 @@ export class Generator {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
-      optimizationFn?: (VisitEntryCallbacks, Generator, TemporalBuildNodeEntry) => void | boolean,
+      temporalType?: TemporalBuildNodeType,
     |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
@@ -1002,7 +1029,7 @@ export class Generator {
         ]);
       },
       mutatesOnly: optionalArgs ? optionalArgs.mutatesOnly : undefined,
-      optimizationFn: optionalArgs ? optionalArgs.optimizationFn : undefined,
+      temporalType: optionalArgs ? optionalArgs.temporalType : undefined,
     });
     let type = types.getType();
     res.intrinsicName = id.name;
@@ -1083,13 +1110,19 @@ export class Generator {
 
   // PITFALL Warning: adding a new kind of TemporalBuildNodeEntry that is not the result of a join or composition
   // will break this purgeEntriesWithGeneratorDepencies.
-  _addEntry(entry: TemporalBuildNodeEntryArgs): void {
-    this._entries.push(new TemporalBuildNodeEntry(entry));
+  _addEntry(entryArgs: TemporalBuildNodeEntryArgs): void {
+    let entry;
+    if (entryArgs.temporalType === "OBJECT_ASSIGN") {
+      entry = new TemporalObjectAssignEntry(entryArgs);
+    } else {
+      entry = new TemporalBuildNodeEntry(entryArgs);
+    }
+    this._entries.push(entry);
   }
 
-  _addDerivedEntry(id: string, entry: TemporalBuildNodeEntryArgs): void {
-    this._addEntry(entry);
-    this.preludeGenerator.derivedIds.set(id, entry);
+  _addDerivedEntry(id: string, entryArgs: TemporalBuildNodeEntryArgs): void {
+    this._addEntry(entryArgs);
+    this.preludeGenerator.derivedIds.set(id, entryArgs);
   }
 
   appendGenerator(other: Generator, leadingComment: string): void {
@@ -1278,6 +1311,8 @@ export class PreludeGenerator {
   }
 }
 
+type TemporalBuildNodeEntryOptimizationStatus = "NO_OPTIMIZATION" | "POSSIBLE_OPTIMIZATION";
+
 // This function attempts to optimize Object.assign calls, by merging mulitple
 // calls into one another where possible. For example:
 //
@@ -1291,7 +1326,7 @@ export function attemptToMergeEquivalentObjectAssigns(
   realm: Realm,
   callbacks: VisitEntryCallbacks,
   temporalBuildNodeEntry: TemporalBuildNodeEntry
-): TemporalBuildNodeEntryOptimizationStatus | TemporalBuildNodeEntry {
+): TemporalBuildNodeEntryOptimizationStatus | TemporalObjectAssignEntry {
   let args = temporalBuildNodeEntry.args;
   // If we are Object.assigning 3 or more args
   if (args.length < 3) {
@@ -1321,13 +1356,20 @@ export function attemptToMergeEquivalentObjectAssigns(
       if (otherArgs.length < 3 || otherArgs[0] !== objectAssingFunc) {
         continue;
       }
+      let otherArgsToUse = [];
+      for (let x = 2; x < otherArgs.length; x++) {
+        let arg = otherArgs[x];
+        // let generatorEntries = realm.getAllGeneratorEntriesReferencingArg(arg);
+
+        // for (let generatorEntry of generatorEntries) {
+        // }
+        otherArgsToUse.push(arg);
+      }
       // If we cannot omit the "to" value that means it's being used, so we shall not try to
       // optimize this Object.assign.
       if (!callbacks.canOmit(to)) {
-        let newArgs = [objectAssingFunc, to];
-        for (let x = 2; x < otherArgs.length; x++) {
-          newArgs.push(otherArgs[x]);
-        }
+        let newArgs = [objectAssingFunc, to, ...otherArgsToUse];
+
         for (let x = 2; x < args.length; x++) {
           let arg = args[x];
           // We don't want to add the "to" that we're merging with!
@@ -1344,7 +1386,7 @@ export function attemptToMergeEquivalentObjectAssigns(
         let newTemporalBuildNodeEntryArgs = Object.assign({}, temporalBuildNodeEntry, {
           args: newArgs,
         });
-        return new TemporalBuildNodeEntry(newTemporalBuildNodeEntryArgs);
+        return new TemporalObjectAssignEntry(newTemporalBuildNodeEntryArgs);
       }
       // We might be able to optimize, but we are not sure because "to" can still omit.
       // So we return possible optimization status and wait until "to" does get visited.
@@ -1354,38 +1396,4 @@ export function attemptToMergeEquivalentObjectAssigns(
     }
   }
   return "NO_OPTIMIZATION";
-}
-
-export function optimizeObjectAssignTemporalEntry(
-  callbacks: VisitEntryCallbacks,
-  containingGenerator: Generator,
-  temporalBuildNodeEntry: TemporalBuildNodeEntry
-): void | boolean {
-  let declared = temporalBuildNodeEntry.declared;
-  if (!(declared instanceof AbstractObjectValue)) {
-    return false;
-  }
-  let realm = declared.$Realm;
-  // The only optimization we attempt to do to Object.assign for now is merging of multiple entries
-  // into a new generator entry.
-  let result = attemptToMergeEquivalentObjectAssigns(realm, callbacks, temporalBuildNodeEntry);
-
-  if (result instanceof TemporalBuildNodeEntry) {
-    let nextResult = result;
-    while (nextResult instanceof TemporalBuildNodeEntry) {
-      nextResult = attemptToMergeEquivalentObjectAssigns(realm, callbacks, result);
-      // If we get back a TemporalBuildNodeEntry, then we have successfully merged a single
-      // Object.assign, but we may be able to merge more. So repeat the process.
-      if (nextResult instanceof TemporalBuildNodeEntry) {
-        result = nextResult;
-      }
-    }
-    // We have an optimized temporal entry, so replace the current temporal
-    // entry and visit that entry instead.
-    callbacks.replaceAndRecordDelayedEntry(containingGenerator, temporalBuildNodeEntry, result);
-    return true;
-  } else if (result === "POSSIBLE_OPTIMIZATION") {
-    callbacks.recordDelayedEntry(containingGenerator, temporalBuildNodeEntry);
-    return false;
-  }
 }
