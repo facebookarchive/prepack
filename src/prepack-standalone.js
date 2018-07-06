@@ -23,7 +23,6 @@ import type { PrepackOptions } from "./prepack-options";
 import { defaultOptions } from "./options";
 import invariant from "./invariant.js";
 import { version } from "../package.json";
-import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
 import { type SerializedResult } from "./serializer/types.js";
 import { SerializerStatistics } from "./serializer/statistics.js";
 import { ResidualHeapVisitor } from "./serializer/ResidualHeapVisitor.js";
@@ -31,16 +30,17 @@ import { Modules } from "./utils/modules.js";
 import { Logger } from "./utils/logger.js";
 import { Generator } from "./utils/generator.js";
 import { AbstractObjectValue, AbstractValue, ObjectValue } from "./values/index.js";
+import type { DebuggerConfigArguments } from "./types";
 
 export function prepackSources(
   sources: Array<SourceFile>,
   options: PrepackOptions = defaultOptions,
-  debugChannel: DebugChannel | void = undefined,
+  debuggerConfigArgs: void | DebuggerConfigArguments,
   statistics: SerializerStatistics | void = undefined
 ): SerializedResult {
   let realmOptions = getRealmOptions(options);
   realmOptions.errorHandler = options.errorHandler;
-  let realm = construct_realm(realmOptions, debugChannel, statistics || new SerializerStatistics());
+  let realm = construct_realm(realmOptions, debuggerConfigArgs, statistics || new SerializerStatistics());
   initializeGlobals(realm);
   if (typeof options.additionalGlobals === "function") {
     options.additionalGlobals(realm);
@@ -82,6 +82,7 @@ export function prepackSources(
         sourceMapContents: serialized.map && JSON.stringify(serialized.map),
       },
     ];
+    let debugChannel = debuggerConfigArgs ? debuggerConfigArgs.debugChannel : undefined;
     realm = construct_realm(realmOptions, debugChannel);
     initializeGlobals(realm);
     if (typeof options.additionalGlobals === "function") {

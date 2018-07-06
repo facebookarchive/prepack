@@ -20,22 +20,24 @@ import * as partialEvaluators from "./partial-evaluators/index.js";
 import { Environment } from "./singletons.js";
 import { ObjectValue } from "./values/index.js";
 import { DebugServer } from "./debugger/server/Debugger.js";
-import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
 import simplifyAndRefineAbstractValue from "./utils/simplifier.js";
 import invariant from "./invariant.js";
+import type { DebuggerConfigArguments } from "./types";
 
 export default function(
   opts: RealmOptions = {},
-  debugChannel: void | DebugChannel = undefined,
+  debuggerConfigArgs: void | DebuggerConfigArguments,
   statistics: void | RealmStatistics = undefined
 ): Realm {
   initializeSingletons();
   let r = new Realm(opts, statistics || new RealmStatistics());
   // Presence of debugChannel indicates we wish to use debugger.
-  if (debugChannel) {
-    invariant(debugChannel.debuggerIsAttached(), "Debugger intends to be used but is not attached.");
-    invariant(opts.debuggerConfigArgs !== undefined, "Debugger intends to be used but does not have config arguments.");
-    r.debuggerInstance = new DebugServer(debugChannel, r, opts.debuggerConfigArgs);
+  if (debuggerConfigArgs) {
+    let debugChannel = debuggerConfigArgs.debugChannel;
+    if (debugChannel) {
+      invariant(debugChannel.debuggerIsAttached(), "Debugger intends to be used but is not attached.");
+      r.debuggerInstance = new DebugServer(debugChannel, r, debuggerConfigArgs);
+    }
   }
 
   let i = r.intrinsics;

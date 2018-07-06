@@ -52,6 +52,7 @@ import type {
 import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "./realm.js";
 import { CompilerDiagnostic } from "./errors.js";
 import type { Severity } from "./errors.js";
+import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
 
 export const ElementSize = {
   Float32: 4,
@@ -155,7 +156,7 @@ export type FunctionBodyAstNode = {
 
 export type PropertyBinding = {
   descriptor?: Descriptor,
-  object: ObjectValue | AbstractObjectValue,
+  object: ObjectValue,
   key: void | string | SymbolValue | AbstractValue, // where an abstract value must be of type String or Number or Symbol
   // contains a build node that produces a member expression that resolves to this property binding (location)
   pathNode?: AbstractValue,
@@ -827,6 +828,13 @@ export type JoinType = {
     d1: void | Descriptor,
     d2: void | Descriptor
   ): void | Descriptor,
+
+  mapAndJoin(
+    realm: Realm,
+    values: Set<ConcreteValue>,
+    joinConditionFactory: (ConcreteValue) => Value,
+    functionToMap: (ConcreteValue) => Completion | Value
+  ): Value,
 };
 
 export type CreateType = {
@@ -1053,3 +1061,10 @@ export type UtilsType = {|
   getTypeFromName: string => void | typeof Value,
   describeValue: Value => string,
 |};
+
+export type DebuggerConfigArguments = {
+  diagnosticSeverity?: Severity,
+  sourcemaps?: Array<SourceFile>,
+  buckRoot?: string,
+  debugChannel?: DebugChannel,
+};

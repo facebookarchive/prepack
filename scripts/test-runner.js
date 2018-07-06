@@ -359,6 +359,7 @@ function runTest(name, code, options: PrepackOptions, args) {
   options.invariantLevel = code.includes("// omit invariants") || args.verbose ? 0 : 99;
   if (code.includes("// emit concrete model")) options.emitConcreteModel = true;
   if (code.includes("// exceeds stack limit")) options.maxStackDepth = 10;
+  if (code.includes("// instant render")) options.instantRender = true;
   if (code.includes("// react")) {
     options.reactEnabled = true;
     options.reactOutput = "jsx";

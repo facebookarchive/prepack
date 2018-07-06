@@ -157,6 +157,7 @@ function tryAndApplySourceOrRecover(
   delayedSources: Array<Value>,
   to_must_be_partial: boolean
 ): boolean {
+  invariant(!realm.instantRender.enabled);
   let effects;
   let savedSuppressDiagnostics = realm.suppressDiagnostics;
   try {
@@ -238,7 +239,7 @@ export default function(realm: Realm): NativeFunctionValue {
 
       // 4. For each element nextSource of sources, in ascending index order,
       for (let nextSource of sources) {
-        if (realm.isInPureScope()) {
+        if (realm.isInPureScope() && !realm.instantRender.enabled) {
           realm.evaluateWithPossibleThrowCompletion(
             () => {
               to_must_be_partial = tryAndApplySourceOrRecover(
@@ -281,7 +282,10 @@ export default function(realm: Realm): NativeFunctionValue {
           ([methodNode, targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
             return t.callExpression(methodNode, [targetNode, ...sourceNodes]);
           },
-          { skipInvariant: true }
+          {
+            skipInvariant: true,
+            mutatesOnly: [to],
+          }
         );
         invariant(temporalTo instanceof AbstractObjectValue);
         if (to instanceof AbstractObjectValue) {
@@ -291,10 +295,6 @@ export default function(realm: Realm): NativeFunctionValue {
           temporalTo.values = new ValuesDomain(to);
         }
         to.temporalAlias = temporalTo;
-        // Store the args for the temporal so we can easily clone
-        // and reconstruct the temporal at another point, rather than
-        // mutate the existing temporal
-        realm.temporalAliasArgs.set(temporalTo, temporalArgs);
       }
       return to;
     });

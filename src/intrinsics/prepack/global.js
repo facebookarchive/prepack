@@ -23,7 +23,7 @@ import {
   StringValue,
   Value,
 } from "../../values/index.js";
-import { To } from "../../singletons.js";
+import { To, Path } from "../../singletons.js";
 import { ValuesDomain } from "../../domains/index.js";
 import * as t from "babel-types";
 import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
@@ -203,7 +203,7 @@ export default function(realm: Realm): void {
         invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
         invariant(typeof functionValue.$Call === "function");
         let functionCall: Function = functionValue.$Call;
-        return realm.evaluatePure(() => functionCall(realm.intrinsics.undefined, []));
+        return realm.evaluatePure(() => functionCall(realm.intrinsics.undefined, []), /*reportSideEffectFunc*/ null);
       }
     ),
     writable: true,
@@ -239,8 +239,8 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  // Helper function used to instatiate a residual function
-  function deriveNativeFunctionValue(unsafe: boolean): NativeFunctionValue {
+  // Helper function used to instantiate a residual function
+  function createNativeFunctionForResidualCall(unsafe: boolean): NativeFunctionValue {
     return new NativeFunctionValue(
       realm,
       "global.__residual",
@@ -277,6 +277,52 @@ export default function(realm: Realm): void {
     );
   }
 
+  function createNativeFunctionForResidualInjection(
+    name: string,
+    initializeAndValidateArgs: (Array<Value>) => void,
+    buildNode_: (Array<BabelNodeExpression>) => BabelNodeStatement,
+    numArgs: number
+  ): NativeFunctionValue {
+    return new NativeFunctionValue(realm, "global." + name, name, numArgs, (context, ciArgs) => {
+      initializeAndValidateArgs(ciArgs);
+      invariant(realm.generator !== undefined);
+      realm.generator.emitStatement(ciArgs, buildNode_);
+      return realm.intrinsics.undefined;
+    });
+  }
+
+  // Helper function that specifies a dynamic invariant that cannot be evaluated at prepack time, and needs code to
+  // be injected into the serialized output.
+  global.$DefineOwnProperty("__assume", {
+    value: createNativeFunctionForResidualInjection(
+      "__assume",
+      ([c, s]): void => {
+        if (!c.mightBeTrue()) {
+          let error = new CompilerDiagnostic(
+            `Assumed condition cannot hold`,
+            realm.currentLocation,
+            "PP0038",
+            "FatalError"
+          );
+          realm.handleError(error);
+          throw new FatalError();
+        }
+        Path.pushAndRefine(c);
+      },
+      ([c, s]: Array<BabelNodeExpression>) => {
+        let errorLiteral = s.type === "StringLiteral" ? s : t.stringLiteral("Assumption violated");
+        return t.ifStatement(
+          t.unaryExpression("!", c),
+          t.blockStatement([t.throwStatement(t.newExpression(t.identifier("Error"), [errorLiteral]))])
+        );
+      },
+      2
+    ),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
   // Helper function that identifies a computation that must remain part of the residual program and cannot be partially evaluated,
   // e.g. because it contains a loop over abstract values.
   // __residual(typeNameOrTemplate, function, arg0, arg1, ...) creates a new abstract value
@@ -284,7 +330,7 @@ export default function(realm: Realm): void {
   // where typeNameOrTemplate either either 'string', 'boolean', 'number', 'object', or an actual object defining known properties.
   // The function must not have side effects, and it must not access any state (besides the supplied arguments).
   global.$DefineOwnProperty("__residual", {
-    value: deriveNativeFunctionValue(false),
+    value: createNativeFunctionForResidualCall(false),
     writable: true,
     enumerable: false,
     configurable: true,
@@ -293,7 +339,7 @@ export default function(realm: Realm): void {
   // Helper function that identifies a variant of the residual function that has implicit dependencies. This version of residual will infer the dependencies
   // and rewrite the function body to do the same thing as the original residual function.
   global.$DefineOwnProperty("__residual_unsafe", {
-    value: deriveNativeFunctionValue(true),
+    value: createNativeFunctionForResidualCall(true),
     writable: true,
     enumerable: false,
     configurable: true,

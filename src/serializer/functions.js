@@ -85,7 +85,7 @@ export class Functions {
     realm.handleError(
       new CompilerDiagnostic(
         `Optimized Function Value ${location} is an not a function or react element`,
-        undefined,
+        realm.currentLocation,
         "PP0033",
         "FatalError"
       )

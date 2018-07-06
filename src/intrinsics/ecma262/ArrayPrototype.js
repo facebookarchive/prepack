@@ -14,6 +14,7 @@ import {
   AbstractValue,
   ArrayValue,
   BooleanValue,
+  ConcreteValue,
   NullValue,
   NumberValue,
   ObjectValue,
@@ -36,7 +37,7 @@ import {
   Get,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
-import { Create, Properties, To } from "../../singletons.js";
+import { Create, Join, Properties, To } from "../../singletons.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.31
@@ -964,48 +965,71 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = To.ToLength(realm, Get(realm, O, "length"));
-
-    // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
-    if (!IsCallable(realm, callbackfn)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
+    let lenVal = Get(realm, O, "length");
+    if (lenVal instanceof AbstractValue && !lenVal.mightNotBeNumber() && !lenVal.values.isTop()) {
+      let values = lenVal.values.getElements();
+      let n = values.size;
+      if (n > 1 && n < 10) {
+        let a = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), 0);
+        return Join.mapAndJoin(
+          realm,
+          values,
+          v => AbstractValue.createFromBinaryOp(realm, "===", v, lenVal, lenVal.expressionLocation),
+          v => doMap(v, a)
+        );
+      }
     }
+    return doMap(lenVal.throwIfNotConcrete());
 
-    // 4. If thisArg was supplied, let T be thisArg; else let T be undefined.
-    let T = thisArg || realm.intrinsics.undefined;
+    function doMap(val: ConcreteValue, resultArray?: ObjectValue) {
+      let len = To.ToLength(realm, val);
 
-    // 5. Let A be ? ArraySpeciesCreate(O, len).
-    let A = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), len);
-
-    // 6. Let k be 0.
-    let k = 0;
-
-    // 7. Repeat, while k < len
-    while (k < len) {
-      // a. Let Pk be ! To.ToString(k).
-      let Pk = new StringValue(realm, k + "");
-
-      // b. Let kPresent be ? HasProperty(O, Pk).
-      let kPresent = HasProperty(realm, O, Pk);
-
-      // c. If kPresent is true, then
-      if (kPresent) {
-        // i. Let kValue be ? Get(O, Pk).
-        let kValue = Get(realm, O, Pk);
-
-        // ii. Let mappedValue be ? Call(callbackfn, T, « kValue, k, O »).
-        let mappedValue = Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]);
-
-        // iii. Perform ? CreateDataPropertyOrThrow(A, Pk, mappedValue).
-        Create.CreateDataPropertyOrThrow(realm, A, Pk, mappedValue);
+      // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
+      if (!IsCallable(realm, callbackfn)) {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
       }
 
-      // d. Increase k by 1.
-      k++;
-    }
+      // 4. If thisArg was supplied, let T be thisArg; else let T be undefined.
+      let T = thisArg || realm.intrinsics.undefined;
 
-    // 8. Return A.
-    return A;
+      // 5. Let A be ? ArraySpeciesCreate(O, len).
+      let A;
+      if (resultArray === undefined) A = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), len);
+      else {
+        A = resultArray;
+        Properties.Set(realm, A, "length", val, true);
+      }
+
+      // 6. Let k be 0.
+      let k = 0;
+
+      // 7. Repeat, while k < len
+      while (k < len) {
+        // a. Let Pk be ! To.ToString(k).
+        let Pk = new StringValue(realm, k + "");
+
+        // b. Let kPresent be ? HasProperty(O, Pk).
+        let kPresent = HasProperty(realm, O, Pk);
+
+        // c. If kPresent is true, then
+        if (kPresent) {
+          // i. Let kValue be ? Get(O, Pk).
+          let kValue = Get(realm, O, Pk);
+
+          // ii. Let mappedValue be ? Call(callbackfn, T, « kValue, k, O »).
+          let mappedValue = Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]);
+
+          // iii. Perform ? CreateDataPropertyOrThrow(A, Pk, mappedValue).
+          Create.CreateDataPropertyOrThrow(realm, A, Pk, mappedValue);
+        }
+
+        // d. Increase k by 1.
+        k++;
+      }
+
+      // 8. Return A.
+      return A;
+    }
   });
 
   // ECMA262 22.1.3.17

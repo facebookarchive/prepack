@@ -92,8 +92,19 @@ export class HeapInspector {
       return false;
     }
 
-    if (val instanceof AbstractValue && val.hasIdentifier()) {
-      return true;
+    if (val instanceof AbstractValue) {
+      if (val.hasIdentifier()) {
+        return true;
+      }
+
+      if (
+        val.$Realm.instantRender.enabled &&
+        val.intrinsicName !== undefined &&
+        val.intrinsicName.startsWith("__native")
+      ) {
+        // Never factor out multiple occurrences of InstantRender's __native... abstract functions.
+        return true;
+      }
     }
 
     if (val.isIntrinsic()) {

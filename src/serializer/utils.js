@@ -9,7 +9,15 @@
 
 /* @flow */
 
-import { ECMAScriptSourceFunctionValue, FunctionValue, ObjectValue, SymbolValue } from "../values/index.js";
+import {
+  AbstractValue,
+  ECMAScriptSourceFunctionValue,
+  EmptyValue,
+  FunctionValue,
+  IntegralValue,
+  ObjectValue,
+  SymbolValue,
+} from "../values/index.js";
 import type { Effects, Realm, SideEffectType } from "../realm.js";
 
 import { FatalError } from "../errors.js";
@@ -24,17 +32,41 @@ import { getLocationFromValue } from "../react/utils";
 
 /**
  * Get index property list length by searching array properties list for the max index key value plus 1.
+ * If tail elements are conditional, return the minimum length if an assignment to the length property
+ * can be avoided because of that. The boolean part of the result is a flag that indicates if the latter is true.
  */
-export function getSuggestedArrayLiteralLength(realm: Realm, val: ObjectValue): number {
+export function getSuggestedArrayLiteralLength(realm: Realm, val: ObjectValue): [number, boolean] {
   invariant(IsArray(realm, val));
 
-  let length = 0;
+  let minLength = 0,
+    maxLength = 0;
+  let actualLength;
   for (const key of val.properties.keys()) {
-    if (IsArrayIndex(realm, key) && Number(key) >= length) {
-      length = Number(key) + 1;
+    if (IsArrayIndex(realm, key) && Number(key) >= maxLength) {
+      let prevMax = maxLength;
+      maxLength = Number(key) + 1;
+      let elem = val._SafeGetDataPropertyValue(key);
+      if (!elem.mightHaveBeenDeleted()) minLength = maxLength;
+      else if (elem instanceof AbstractValue && elem.kind === "conditional") {
+        let maxLengthVal = new IntegralValue(realm, maxLength);
+        let [c, x, y] = elem.args;
+        if (x instanceof EmptyValue && !y.mightHaveBeenDeleted()) {
+          let prevActual = actualLength === undefined ? new IntegralValue(realm, prevMax) : actualLength;
+          actualLength = AbstractValue.createFromConditionalOp(realm, c, prevActual, maxLengthVal);
+        } else if (y instanceof EmptyValue && !x.mightHaveBeenDeleted()) {
+          let prevActual = actualLength === undefined ? new IntegralValue(realm, prevMax) : actualLength;
+          actualLength = AbstractValue.createFromConditionalOp(realm, c, maxLengthVal, prevActual);
+        } else {
+          actualLength = undefined;
+        }
+      }
     }
   }
-  return length;
+  if (maxLength > minLength && actualLength instanceof AbstractValue) {
+    let lengthVal = val._SafeGetDataPropertyValue("length");
+    if (lengthVal.equals(actualLength)) return [minLength, true];
+  }
+  return [maxLength, false];
 }
 
 export function commonAncestorOf<T>(node1: void | T, node2: void | T, getParent: T => void | T): void | T {

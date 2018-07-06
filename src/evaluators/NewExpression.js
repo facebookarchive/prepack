@@ -28,8 +28,6 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm
 ): ObjectValue | AbstractObjectValue {
-  realm.setNextExecutionContextLocation(ast.loc);
-
   // ECMA262 12.3.3.1 We just implement this method inline since it's only called here.
   // 1. Return ? EvaluateNew(NewExpression, empty).
 
@@ -62,12 +60,17 @@ export default function(
     // b. ReturnIfAbrupt(argList).
   }
 
-  // If we are in pure scope, attempt to recover from creating the construct if
-  // it fails by creating a temporal abstract
-  if (realm.isInPureScope()) {
-    return tryToEvaluateConstructOrLeaveAsAbstract(constructor, argsList, strictCode, realm);
-  } else {
-    return createConstruct(constructor, argsList, realm);
+  let previousLoc = realm.setNextExecutionContextLocation(ast.loc);
+  try {
+    // If we are in pure scope, attempt to recover from creating the construct if
+    // it fails by creating a temporal abstract
+    if (realm.isInPureScope()) {
+      return tryToEvaluateConstructOrLeaveAsAbstract(constructor, argsList, strictCode, realm);
+    } else {
+      return createConstruct(constructor, argsList, realm);
+    }
+  } finally {
+    realm.setNextExecutionContextLocation(previousLoc);
   }
 }
 

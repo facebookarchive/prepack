@@ -32,7 +32,7 @@ import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComp
 import { construct_empty_effects } from "../realm.js";
 import { Path } from "../singletons.js";
 import { Generator } from "../utils/generator.js";
-import { AbstractValue, EmptyValue, ObjectValue, Value } from "../values/index.js";
+import { AbstractValue, ConcreteValue, EmptyValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
 
@@ -809,7 +809,7 @@ export class JoinImplementation {
     let join = (b: PropertyBinding, d1: void | Descriptor, d2: void | Descriptor) => {
       // If the PropertyBinding object has been freshly allocated do not join
       if (d1 === undefined) {
-        if (b.object instanceof ObjectValue && c2.has(b.object)) return d2; // no join
+        if (c2.has(b.object)) return d2; // no join
         if (b.descriptor !== undefined && m1.has(b)) {
           // property was deleted
           d1 = cloneDescriptor(b.descriptor);
@@ -821,7 +821,7 @@ export class JoinImplementation {
         }
       }
       if (d2 === undefined) {
-        if (b.object instanceof ObjectValue && c1.has(b.object)) return d1; // no join
+        if (c1.has(b.object)) return d1; // no join
         if (b.descriptor !== undefined && m2.has(b)) {
           // property was deleted
           d2 = cloneDescriptor(b.descriptor);
@@ -913,5 +913,50 @@ export class JoinImplementation {
       d3.descriptor2 = d2;
       return d3;
     }
+  }
+
+  mapAndJoin(
+    realm: Realm,
+    values: Set<ConcreteValue>,
+    joinConditionFactory: ConcreteValue => Value,
+    functionToMap: ConcreteValue => Completion | Value
+  ): Value {
+    invariant(values.size > 1);
+    let joinedEffects;
+    for (let val of values) {
+      let condition = joinConditionFactory(val);
+      let effects = realm.evaluateForEffects(
+        () => {
+          invariant(condition instanceof AbstractValue);
+          return Path.withCondition(condition, () => {
+            return functionToMap(val);
+          });
+        },
+        undefined,
+        "mapAndJoin"
+      );
+      joinedEffects =
+        joinedEffects === undefined ? effects : this.joinForkOrChoose(realm, condition, effects, joinedEffects);
+    }
+    invariant(joinedEffects !== undefined);
+    let completion = joinedEffects.result;
+    if (completion instanceof PossiblyNormalCompletion) {
+      // in this case one of the branches may complete abruptly, which means that
+      // not all control flow branches join into one flow at this point.
+      // Consequently we have to continue tracking changes until the point where
+      // all the branches come together into one.
+      completion = realm.composeWithSavedCompletion(completion);
+    }
+    // Note that the effects of (non joining) abrupt branches are not included
+    // in joinedEffects, but are tracked separately inside completion.
+    realm.applyEffects(joinedEffects);
+
+    // return or throw completion
+    if (completion instanceof AbruptCompletion) throw completion;
+    if (completion instanceof SimpleNormalCompletion) {
+      completion = completion.value;
+    }
+    invariant(completion instanceof Value);
+    return completion;
   }
 }

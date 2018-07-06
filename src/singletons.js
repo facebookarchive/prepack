@@ -10,6 +10,7 @@
 /* @flow */
 
 import type {
+  ConcretizeType,
   CreateType,
   EnvironmentType,
   FunctionType,
@@ -18,9 +19,8 @@ import type {
   PathType,
   PropertiesType,
   ToType,
-  WidenType,
-  ConcretizeType,
   UtilsType,
+  WidenType,
 } from "./types.js";
 
 export let Create: CreateType = (null: any);

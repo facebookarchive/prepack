@@ -22,7 +22,7 @@ import {
 } from "../values/index.js";
 import type { BabelNodeStatement } from "babel-types";
 import type { SerializedBody } from "./types.js";
-import { Generator } from "../utils/generator.js";
+import { Generator, type TemporalBuildNodeEntryArgs } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import { BodyReference } from "./types.js";
 import { ResidualFunctions } from "./ResidualFunctions.js";
@@ -66,9 +66,9 @@ type EmitterDependenciesVisitorCallbacks<T> = {
 export class Emitter {
   constructor(
     residualFunctions: ResidualFunctions,
-    referencedDeclaredValues: Map<AbstractValue | ConcreteValue, void | FunctionValue>,
+    referencedDeclaredValues: Map<Value, void | FunctionValue>,
     conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>,
-    derivedIds: Map<string, Array<Value>>
+    derivedIds: Map<string, TemporalBuildNodeEntryArgs>
   ) {
     this._mainBody = { type: "MainGenerator", parentBody: undefined, entries: [], done: false };
     this._waitingForValues = new Map();
@@ -369,10 +369,6 @@ export class Emitter {
       switch (kind) {
         case "Object":
           let proto = val.$Prototype;
-          if (val.temporalAlias !== undefined && !val.isIntrinsic()) {
-            result = recurse(val.temporalAlias);
-            if (result !== undefined) return result;
-          }
           if (
             proto instanceof ObjectValue &&
             // if this is falsy, prototype chain might be cyclic

@@ -79,7 +79,8 @@ export type AbstractValueKind =
   | "global.JSON.parse(A)"
   | "JSON.stringify(...)"
   | "JSON.parse(...)"
-  | "global.Math.imul(A, B)";
+  | "global.Math.imul(A, B)"
+  | "global.__cannotBecomeObject(A)";
 
 // Use AbstractValue.makeKind to make a kind from one of these prefices.
 type AbstractValueKindPrefix =
@@ -145,7 +146,9 @@ export default class AbstractValue extends Value {
     function add_intrinsic(name: string) {
       if (name.startsWith("_$")) {
         if (gen === undefined) return;
-        add_args(gen.derivedIds.get(name));
+        let temporalBuildNodeEntryArgs = gen.derivedIds.get(name);
+        invariant(temporalBuildNodeEntryArgs !== undefined);
+        add_args(temporalBuildNodeEntryArgs.args);
       } else if (names.indexOf(name) < 0) {
         names.push(name);
       }
@@ -776,7 +779,12 @@ export default class AbstractValue extends Value {
     template: PreludeGenerator => ({}) => BabelNodeExpression,
     resultType: typeof Value,
     operands: Array<Value>,
-    optionalArgs?: {| kind?: AbstractValueKind, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {|
+      kind?: AbstractValueKind,
+      isPure?: boolean,
+      skipInvariant?: boolean,
+      mutatesOnly?: Array<Value>,
+    |}
   ): AbstractValue {
     invariant(resultType !== UndefinedValue);
     let temp = AbstractValue.createFromTemplate(realm, template, resultType, operands, "");
@@ -811,7 +819,12 @@ export default class AbstractValue extends Value {
     resultType: typeof Value,
     args: Array<Value>,
     buildFunction: AbstractValueBuildNodeFunction,
-    optionalArgs?: {| kind?: AbstractValueKind, isPure?: boolean, skipInvariant?: boolean |}
+    optionalArgs?: {|
+      kind?: AbstractValueKind,
+      isPure?: boolean,
+      skipInvariant?: boolean,
+      mutatesOnly?: Array<Value>,
+    |}
   ): AbstractValue | UndefinedValue {
     let types = new TypesDomain(resultType);
     let values = ValuesDomain.topVal;

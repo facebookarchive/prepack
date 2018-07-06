@@ -15,7 +15,6 @@ import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
 import { Completion, ReturnCompletion, AbruptCompletion, NormalCompletion } from "../completions.js";
-import { ExecutionContext } from "../realm.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord } from "../environment.js";
 import {
   AbstractValue,
@@ -1044,7 +1043,7 @@ export class FunctionImplementation {
     ctx.suspend();
 
     // 13. Let evalCxt be a new ECMAScript code execution context.
-    let evalCxt = new ExecutionContext();
+    let evalCxt = realm.createExecutionContext();
     evalCxt.isStrict = strictEval;
 
     // 14. Set the evalCxt's Function to null.

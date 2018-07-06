@@ -10,17 +10,9 @@
 /* @flow strict-local */
 
 import type { ErrorHandler } from "./errors.js";
-import type {
-  SerializerOptions,
-  RealmOptions,
-  Compatibility,
-  DebuggerOptions,
-  ReactOutputTypes,
-  InvariantModeTypes,
-} from "./options";
+import type { SerializerOptions, RealmOptions, Compatibility, ReactOutputTypes, InvariantModeTypes } from "./options";
 import { Realm } from "./realm.js";
-import invariant from "./invariant.js";
-import type { DebuggerConfigArguments } from "./debugger/common/types";
+import type { DebuggerConfigArguments } from "./types";
 
 export type PrepackOptions = {|
   additionalGlobals?: Realm => void,
@@ -44,6 +36,7 @@ export type PrepackOptions = {|
   emitConcreteModel?: boolean,
   outputFilename?: string,
   profile?: boolean,
+  instantRender?: boolean,
   reactEnabled?: boolean,
   reactOutput?: ReactOutputTypes,
   reactVerbose?: boolean,
@@ -76,6 +69,7 @@ export function getRealmOptions({
   invariantMode = "throw",
   emitConcreteModel = false,
   uniqueSuffix,
+  instantRender,
   reactEnabled,
   reactOutput,
   reactVerbose,
@@ -99,6 +93,7 @@ export function getRealmOptions({
     invariantMode,
     emitConcreteModel,
     uniqueSuffix,
+    instantRender,
     reactEnabled,
     reactOutput,
     reactVerbose,
@@ -151,15 +146,5 @@ export function getSerializerOptions({
   if (heapGraphFormat !== undefined) {
     result.heapGraphFormat = heapGraphFormat;
   }
-  return result;
-}
-
-export function getDebuggerOptions({ debugInFilePath, debugOutFilePath }: PrepackOptions): DebuggerOptions {
-  invariant(debugInFilePath !== undefined, "Debugger invoked without input file path");
-  invariant(debugOutFilePath !== undefined, "Debugger invoked without output file path");
-  let result: DebuggerOptions = {
-    inFilePath: debugInFilePath,
-    outFilePath: debugOutFilePath,
-  };
   return result;
 }
