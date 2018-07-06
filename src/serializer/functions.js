@@ -162,12 +162,12 @@ export class Functions {
     applyOptimizedReactComponents(this.realm, this.writeEffects, environmentRecordIdAfterGlobalCode);
   }
 
-  _callOfFunction(funcValue: FunctionValue, argModelString: ?StringValue): void => Value {
+  _callOfFunction(funcValue: FunctionValue, argModelString: void | StringValue): void => Value {
     let call = funcValue.$Call;
     invariant(call);
     let numArgs = funcValue.getLength();
     let args = [];
-    let argModel = argModelString ? (JSON.parse(argModelString.value): ArgModel) : undefined;
+    let argModel = argModelString !== undefined ? (JSON.parse(argModelString.value): ArgModel) : undefined;
     invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
     let params = funcValue.$FormalParameters;
     if (numArgs && numArgs > 0 && params) {
@@ -181,7 +181,7 @@ export class Functions {
               this.realm,
               paramName,
               funcValue.expressionLocation,
-              shape.getValueTypeForAbstract(),
+              shape !== undefined ? shape.getValueTypeForAbstract() : Value,
               shape
             )
           );

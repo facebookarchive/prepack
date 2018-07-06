@@ -120,7 +120,7 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   mightBeFinalObject(): boolean {
-    if (this.shape.isKnown()) return this.shape.isReadOnly();
+    if (this.shape) return this.shape.isReadOnly();
     if (this.values.isTop()) return false;
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
@@ -130,7 +130,7 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   mightNotBeFinalObject(): boolean {
-    if (this.shape.isKnown()) return !this.shape.isReadOnly();
+    if (this.shape) return !this.shape.isReadOnly();
     if (this.values.isTop()) return false;
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
@@ -507,16 +507,22 @@ export default class AbstractObjectValue extends AbstractValue {
         let type = Value;
         if (P === "length" && Value.isTypeCompatibleWith(this.getType(), ArrayValue)) type = NumberValue;
         invariant(typeof P === "string");
-        let propertyShape = ob.shape.getMemberAccessShapeInformation(P);
-        if (propertyShape.isKnown()) type = propertyShape.getValueTypeForAbstract();
+        let propertyShape, propertyGetter;
+        if (this.$Realm.instantRender.enabled && ob.shape !== undefined) {
+          propertyShape = ob.shape.getMemberAccessShapeInformation(P);
+          if (propertyShape !== undefined) {
+            propertyGetter = ob.shape.getMemberAccessGraphQLGetter(propertyShape);
+            type = propertyShape.getValueTypeForAbstract();
+          }
+        }
         let propAbsVal = AbstractValue.createTemporalFromBuildFunction(
           this.$Realm,
           type,
           [ob],
           ([o]) => {
             invariant(typeof P === "string");
-            return propertyShape.isKnown()
-              ? t.callExpression(t.identifier("prop_" + propertyShape.getDescription().type), [o, t.stringLiteral(P)])
+            return propertyGetter !== undefined
+              ? t.callExpression(t.identifier("__prop_" + propertyGetter), [o, t.stringLiteral(P)])
               : memberExpressionHelper(o, P);
           },
           {
@@ -524,9 +530,7 @@ export default class AbstractObjectValue extends AbstractValue {
             isPure: true,
           }
         );
-        if (propAbsVal instanceof AbstractValue) {
-          propAbsVal.shape = propertyShape;
-        }
+        if (propAbsVal instanceof AbstractValue) propAbsVal.shape = propertyShape;
         return propAbsVal;
       };
       if (this.isSimpleObject() && this.isIntrinsic()) {

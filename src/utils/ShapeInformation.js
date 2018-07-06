@@ -9,132 +9,192 @@
 
 /* @flow */
 
-import invariant from "../invariant.js";
 import { getTypeFromName } from "../utils.js";
 import { Value, UndefinedValue, NullValue } from "../values/index.js";
 
-type ShapeDescriptionCommon = {|
-  optional: boolean,
-  type: string,
-|};
+type AbstractValueType =
+  | "void"
+  | "null"
+  | "boolean"
+  | "string"
+  | "symbol"
+  | "number"
+  | "object"
+  | "array"
+  | "function"
+  | "integral";
 
-type ShapeDescriptionOfObject = ShapeDescriptionCommon & {|
+type ElementGetters = "bool" | "double" | "int" | "time" | "string";
+
+type ListGetters = "bool_list" | "double_list" | "int_list" | "time_list" | "string_list" | "tree" | "tree_list";
+
+type SupportedGetters = ElementGetters | ListGetters;
+
+type ShapeDescriptorCommon = {
+  optional: boolean,
+  jsType: AbstractValueType,
+  graphQLType?: string,
+};
+
+type ShapeDescriptorOfObject = ShapeDescriptorCommon & {
   kind: "object",
   readonly: boolean,
-  properties: { [string]: ShapeDescription },
-|};
+  properties: { [string]: void | ShapeDescriptor },
+};
 
-type ShapeDescriptionOfArray = ShapeDescriptionCommon & {|
+type ShapeDescriptorOfArray = ShapeDescriptorCommon & {
   kind: "array",
   readonly: boolean,
-  shape: ShapeDescription,
-|};
+  shape: void | ShapeDescriptor,
+};
 
-type ShapeDescriptionOfLink = ShapeDescriptionCommon & {|
+type ShapeDescriptorOfLink = ShapeDescriptorCommon & {
   kind: "link",
   shapeName: string,
-|};
+};
 
-type ShapeDescriptionOfPrimitive = ShapeDescriptionCommon & {|
-  kind: "primitive",
-|};
+type ShapeDescriptorOfPrimitive = ShapeDescriptorCommon & {
+  kind: "scalar",
+};
 
-export type ShapeDescriptionNonLink = ShapeDescriptionOfObject | ShapeDescriptionOfArray | ShapeDescriptionOfPrimitive;
+type ShapeDescriptorOfEnum = ShapeDescriptorCommon & {
+  kind: "enum",
+};
 
-export type ShapeDescription = ShapeDescriptionNonLink | ShapeDescriptionOfLink;
+export type ShapeDescriptorNonLink =
+  | ShapeDescriptorOfObject
+  | ShapeDescriptorOfArray
+  | ShapeDescriptorOfPrimitive
+  | ShapeDescriptorOfEnum;
 
-export type ShapeUniverse = { [string]: ShapeDescription };
+export type ShapeDescriptor = ShapeDescriptorNonLink | ShapeDescriptorOfLink;
 
-export type ArgModel = {|
+export type ShapeUniverse = { [string]: ShapeDescriptor };
+
+export type ArgModel = {
   universe: ShapeUniverse,
   arguments: { [string]: string },
-|};
+};
 
 export class ShapeInformation {
-  constructor(description: void | ShapeDescription, universe: void | ShapeUniverse) {
-    // resolve links immediately
-    while (description && description.kind === "link") {
-      description = universe[description.shapeName];
-    }
-    this._description = description;
+  constructor(descriptor: ShapeDescriptorNonLink, universe: ShapeUniverse) {
+    this._descriptor = descriptor;
     this._universe = universe;
   }
 
-  static unknownShape = new ShapeInformation(undefined, undefined);
-
-  _description: void | ShapeDescriptionNonLink;
-  _universe: void | ShapeUniverse;
-
-  isKnown(): boolean {
-    return this._description !== undefined;
-  }
+  _descriptor: ShapeDescriptorNonLink;
+  _universe: ShapeUniverse;
 
   isReadOnly(): boolean {
-    invariant(this._description !== undefined);
-    switch (this._description.kind) {
+    switch (this._descriptor.kind) {
       case "object":
       case "array":
-        return this._desctiption.readonly;
-      case "primitive":
+        return this._descriptor.readonly;
+      case "scalar":
         return true;
       default:
         return false;
     }
   }
 
-  getDescription(): ShapeDescriptionNonLink {
-    invariant(this._description !== undefined);
-    return this._description;
+  getDescriptor(): ShapeDescriptorNonLink {
+    return this._descriptor;
   }
 
   getValueTypeForAbstract(): typeof Value {
-    if (this._description && !this._description.optional) {
-      let type = getTypeFromName(this._description.type);
+    if (!this._descriptor.optional) {
+      let type = getTypeFromName(this._descriptor.jsType);
       // do not return NullValue or UndefinedValue as they cannot be
       // types for abstract value
-      if (type && type !== NullValue && type !== UndefinedValue) {
+      if (type !== undefined && type !== NullValue && type !== UndefinedValue) {
         return type;
       }
     }
     return Value;
   }
 
-  getMemberAccessShapeInformation(key: string): ShapeInformation {
-    if (this._description === undefined) {
-      return ShapeInformation.unknownShape;
-    }
-    invariant(this._description && this._universe);
-    switch (this._description.kind) {
+  getMemberAccessShapeInformation(key: string): void | ShapeInformation {
+    switch (this._descriptor.kind) {
       case "object":
-        return new ShapeInformation(this._description.properties[key], this._universe);
+        return ShapeInformation._resolveLinksAndWrap(this._descriptor.properties[key], this._universe);
       case "array":
         switch (key) {
           case "length":
             return ShapeInformation._arrayLengthPropertyShape;
           case "prototype":
-            return ShapeInformation.unknownShape;
+            return undefined;
           default:
-            return new ShapeInformation(this._description.shape, this._universe);
+            return ShapeInformation._resolveLinksAndWrap(this._descriptor.shape, this._universe);
         }
       default:
         // it is still legal to do member access on primitive value
         // such as string
-        return ShapeInformation.unknownShape;
+        return undefined;
     }
   }
 
-  static createForArgument(model: void | ArgModel, argname: string): ShapeInformation {
-    return model && argname in model.arguments
-      ? new ShapeInformation(model.universe[model.arguments[argname]], model.universe)
-      : ShapeInformation.unknownShape;
+  getMemberAccessGraphQLGetter(propertyShape: ShapeInformation): void | SupportedGetters {
+    // we need getter only if we are inside of GraphQL object
+    return this._descriptor.graphQLType !== undefined && this._descriptor.kind === "object"
+      ? propertyShape._getGetter()
+      : undefined;
+  }
+
+  _getGetter(): void | SupportedGetters {
+    switch (this._descriptor.kind) {
+      case "object":
+        return "tree";
+      case "array":
+        let innerShape = ShapeInformation._resolveLinksAndWrap(this._descriptor.shape, this._universe);
+        if (innerShape === undefined) {
+          return undefined;
+        }
+        let innerGetter = innerShape._getGetter();
+        // no supported for nested arrays
+        return innerGetter !== undefined && !innerGetter.endsWith("_list") ? innerGetter + "_list" : undefined;
+      case "scalar":
+        switch (this._descriptor.graphQLType) {
+          case "Color":
+          case "File":
+          case "ID":
+          case "String":
+          case "Url":
+            return "string";
+          case "Int":
+          case "Time":
+            return "int";
+          case "Float":
+            return "double";
+          case "Boolean":
+            return "bool";
+          default:
+            return undefined;
+        }
+      case "enum":
+        return "string";
+      default:
+        return undefined;
+    }
+  }
+
+  static _resolveLinksAndWrap(descriptor: void | ShapeDescriptor, universe: ShapeUniverse): void | ShapeInformation {
+    while (descriptor && descriptor.kind === "link") {
+      descriptor = universe[descriptor.shapeName];
+    }
+    return descriptor !== undefined ? new ShapeInformation(descriptor, universe) : undefined;
+  }
+
+  static createForArgument(model: void | ArgModel, argname: string): void | ShapeInformation {
+    return model !== undefined
+      ? ShapeInformation._resolveLinksAndWrap(model.universe[model.arguments[argname]], model.universe)
+      : undefined;
   }
 
   static _arrayLengthPropertyShape = new ShapeInformation(
     {
-      kind: "primitive",
-      type: "integral",
+      kind: "scalar",
+      jsType: "integral",
       optional: false,
-      readonly: false,
     },
     {}
   );

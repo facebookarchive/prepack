@@ -115,7 +115,7 @@ export default class AbstractValue extends Value {
     this.args = args;
     this.hashValue = hashValue;
     this.kind = optionalArgs ? optionalArgs.kind : undefined;
-    this.shape = optionalArgs && optionalArgs.shape ? optionalArgs.shape : ShapeInformation.unknownShape;
+    this.shape = optionalArgs ? optionalArgs.shape : undefined;
   }
 
   hashValue: number;
@@ -124,7 +124,7 @@ export default class AbstractValue extends Value {
   values: ValuesDomain;
   mightBeEmpty: boolean;
   args: Array<Value>;
-  shape: ShapeInformation;
+  shape: void | ShapeInformation;
   _buildNode: void | AbstractValueBuildNodeFunction | BabelNodeExpression;
 
   toDisplayString(): string {
@@ -900,7 +900,7 @@ export default class AbstractValue extends Value {
     name: string,
     location: ?BabelNodeSourceLocation,
     type: typeof Value = Value,
-    shape: ?ShapeInformation = undefined
+    shape: void | ShapeInformation = undefined
   ): AbstractValue {
     if (!realm.useAbstractInterpretation) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
@@ -915,7 +915,7 @@ export default class AbstractValue extends Value {
     let result = new Constructor(realm, types, values, 943586754858 + hashString(name), [], id);
     result.kind = AbstractValue.makeKind("abstractCounted", (realm.objectCount++).toString()); // need not be an object, but must be unique
     result.expressionLocation = location;
-    result.shape = shape ? shape : ShapeInformation.unknownShape;
+    result.shape = shape;
     return result;
   }
 
