@@ -310,7 +310,7 @@ export default class AbstractObjectValue extends AbstractValue {
     if (elements.size === 1) {
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
-        return cv.$GetOwnProperty(P, cv);
+        return cv.$GetOwnProperty(P);
       }
       invariant(false);
     } else if (this.kind === "conditional") {
@@ -385,7 +385,9 @@ export default class AbstractObjectValue extends AbstractValue {
             if (!IsDataDescriptor(this.$Realm, desc)) continue;
             // values may be different
             let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
-            desc.value = AbstractValue.createFromConditionalOp(this.$Realm, cond, d.value, desc.value);
+            let dval = d.value;
+            invariant(dval instanceof Value);
+            desc.value = AbstractValue.createFromConditionalOp(this.$Realm, cond, dval, desc.value);
           }
         }
       }
@@ -435,7 +437,7 @@ export default class AbstractObjectValue extends AbstractValue {
           AbstractValue.reportIntrospectionError(this, P);
           throw new FatalError();
         }
-        let dval = d === undefined || d.vale === undefined ? this.$Realm.intrinsics.empty : d.value;
+        let dval = d === undefined || d.value === undefined ? this.$Realm.intrinsics.empty : d.value;
         invariant(dval instanceof Value);
         let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
         desc.value = AbstractValue.createFromConditionalOp(this.$Realm, cond, new_val, dval);
@@ -470,7 +472,7 @@ export default class AbstractObjectValue extends AbstractValue {
     if (elements.size === 1) {
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
-        return cv.$HasProperty(P, cv);
+        return cv.$HasProperty(P);
       }
       invariant(false);
     } else {
@@ -646,12 +648,14 @@ export default class AbstractObjectValue extends AbstractValue {
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {
+        invariant(cv instanceof ObjectValue);
         return cv.$GetPartial(P, Receiver === this ? cv : Receiver);
       }
       invariant(false);
     } else {
       let result;
       for (let cv of elements) {
+        invariant(cv instanceof ObjectValue);
         let cvVal = cv.$GetPartial(P, Receiver === this ? cv : Receiver);
         if (result === undefined) result = cvVal;
         else {
@@ -688,6 +692,7 @@ export default class AbstractObjectValue extends AbstractValue {
           throw new FatalError();
         }
         let oldVal = d === undefined ? this.$Realm.intrinsics.empty : d.value;
+        invariant(oldVal instanceof Value);
         let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
         let v = AbstractValue.createFromConditionalOp(this.$Realm, cond, V, oldVal);
         if (cv.$Set(P, v, cv)) sawTrue = true;
@@ -810,7 +815,9 @@ export default class AbstractObjectValue extends AbstractValue {
           throw new FatalError();
         }
         let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
-        let v = AbstractValue.createFromConditionalOp(this.$Realm, cond, this.$Realm.intrinsics.empty, d.value);
+        let dval = d.value;
+        invariant(dval instanceof Value);
+        let v = AbstractValue.createFromConditionalOp(this.$Realm, cond, this.$Realm.intrinsics.empty, dval);
         if (cv.$Set(P, v, cv)) sawTrue = true;
         else sawFalse = true;
       }

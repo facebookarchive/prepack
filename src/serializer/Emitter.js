@@ -163,7 +163,7 @@ export class Emitter {
   endEmitting(
     dependency: string | Generator | Value,
     oldBody: SerializedBody,
-    valuesToProcess: void | Set<Value>,
+    valuesToProcess: void | Set<AbstractValue | ObjectValue>,
     isChild: boolean = false
   ) {
     invariant(!this._finalized);
@@ -206,7 +206,7 @@ export class Emitter {
 
     return lastBody;
   }
-  processValues(valuesToProcess: Set<Value>) {
+  processValues(valuesToProcess: Set<AbstractValue | ObjectValue>) {
     for (let value of valuesToProcess) this._processValue(value);
   }
   finalize() {
@@ -467,9 +467,10 @@ export class Emitter {
   emitNowOrAfterWaitingForDependencies(dependencies: Array<Value>, func: () => void, targetBody: SerializedBody) {
     this.emitAfterWaiting(this.getReasonToWaitForDependencies(dependencies), dependencies, func, targetBody);
   }
-  declare(value: Value) {
+  declare(value: AbstractValue | ObjectValue) {
     invariant(!this._finalized);
     invariant(!this._activeValues.has(value));
+    invariant(value instanceof ObjectValue || value.hasIdentifier());
     invariant(this._isEmittingActiveGenerator());
     invariant(!this.cannotDeclare());
     invariant(!this._body.done);
@@ -486,10 +487,10 @@ export class Emitter {
     // Bodies of the following types will never contain any (temporal) abstract value declarations.
     return this._body.type === "DelayInitializations" || this._body.type === "LazyObjectInitializer";
   }
-  hasBeenDeclared(value: Value): boolean {
+  hasBeenDeclared(value: AbstractValue | ObjectValue): boolean {
     return this.getDeclarationBody(value) !== undefined;
   }
-  getDeclarationBody(value: Value): void | SerializedBody {
+  getDeclarationBody(value: AbstractValue | ObjectValue): void | SerializedBody {
     for (let b = this._body; b !== undefined; b = b.parentBody) {
       if (b.declaredValues !== undefined && b.declaredValues.has(value)) {
         return b;
