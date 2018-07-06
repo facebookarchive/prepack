@@ -34,6 +34,8 @@ import * as t from "babel-types";
 import { ResidualHeapRefCounter } from "./ResidualHeapRefCounter";
 import { ResidualHeapGraphGenerator } from "./ResidualHeapGraphGenerator";
 import { Referentializer } from "./Referentializer.js";
+import { Get } from "../methods/index.js";
+import { ObjectValue, Value } from "../values/index.js";
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
@@ -91,6 +93,25 @@ export class Serializer {
     return code;
   }
 
+  processOutputEntries(): boolean {
+    let realm = this.realm;
+    let output = this.logger.tryQuery(() => Get(realm, realm.$GlobalObject, "__output"), realm.intrinsics.undefined);
+    if (!(output instanceof ObjectValue)) return false;
+    let generator = realm.generator;
+    let preludeGenerator = realm.preludeGenerator;
+    if (generator === undefined || preludeGenerator === undefined) return false;
+    generator._entries.length = 0;
+    preludeGenerator.declaredGlobals.clear();
+    for (let name of output.getOwnPropertyKeysArray()) {
+      let property = output.properties.get(name);
+      if (!property) continue;
+      let value = property.descriptor && property.descriptor.value;
+      if (!(value instanceof Value)) continue;
+      generator.emitGlobalDeclaration(name, value);
+    }
+    return true;
+  }
+
   init(sources: Array<SourceFile>, sourceMaps?: boolean = false): void | SerializedResult {
     let realmStatistics = this.realm.statistics;
     invariant(realmStatistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
@@ -107,7 +128,9 @@ export class Serializer {
 
       if (this.logger.hasErrors()) return undefined;
 
-      statistics.resolveInitializedModules.measure(() => this.modules.resolveInitializedModules());
+      if (!this.processOutputEntries()) {
+        statistics.resolveInitializedModules.measure(() => this.modules.resolveInitializedModules());
+      }
 
       statistics.checkThatFunctionsAreIndependent.measure(() =>
         this.functions.checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode)
