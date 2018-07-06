@@ -486,8 +486,7 @@ export function OrdinaryCallEvaluateBody(
 
           // Stash the remaining completions in the realm start tracking the effects that need to be appended
           // to the normal branch at the next join point.
-          realm.savedCompletion = remainingCompletions;
-          realm.captureEffects(remainingCompletions); // so that we can join the normal path with them later on
+          realm.composeWithSavedCompletion(remainingCompletions);
           return c;
         } finally {
           realm.incorporatePriorSavedCompletion(priorSavedCompletion);

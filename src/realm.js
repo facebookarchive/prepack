@@ -55,9 +55,10 @@ import { cloneDescriptor, Construct } from "./methods/index.js";
 import {
   AbruptCompletion,
   Completion,
-  SimpleNormalCompletion,
+  ErasedAbruptCompletion,
   ForkedAbruptCompletion,
   PossiblyNormalCompletion,
+  SimpleNormalCompletion,
   ThrowCompletion,
 } from "./completions.js";
 import type { Compatibility, RealmOptions, ReactOutputTypes, InvariantModeTypes } from "./options.js";
@@ -1254,16 +1255,85 @@ export class Realm {
       this.captureEffects(savedCompletion);
       this.savedCompletion = savedCompletion;
     }
+    let realm = this;
     pushPathConditionsLeadingToNormalCompletion(completion);
     return completion.value;
 
-    function pushPathConditionsLeadingToNormalCompletion(c: PossiblyNormalCompletion) {
-      if (c.consequent instanceof AbruptCompletion) {
+    function pushPathConditionsLeadingToNormalCompletion(c: ForkedAbruptCompletion | PossiblyNormalCompletion) {
+      if (allPathsAreAbrupt(c.consequent)) {
         Path.pushInverseAndRefine(c.joinCondition);
-        if (c.alternate instanceof PossiblyNormalCompletion) pushPathConditionsLeadingToNormalCompletion(c.alternate);
-      } else if (c.alternate instanceof AbruptCompletion) {
+        if (c.alternate instanceof PossiblyNormalCompletion || c.alternate instanceof ForkedAbruptCompletion)
+          pushPathConditionsLeadingToNormalCompletion(c.alternate);
+      } else if (allPathsAreAbrupt(c.alternate)) {
         Path.pushAndRefine(c.joinCondition);
-        if (c.consequent instanceof PossiblyNormalCompletion) pushPathConditionsLeadingToNormalCompletion(c.consequent);
+        if (c.consequent instanceof PossiblyNormalCompletion || c.consequent instanceof ForkedAbruptCompletion)
+          pushPathConditionsLeadingToNormalCompletion(c.consequent);
+      } else if (allPathsAreNormal(c.consequent)) {
+        if (!allPathsAreNormal(c.alternate)) {
+          let alternatePC = getNormalPathConditionFor(c.alternate);
+          let disjunct = AbstractValue.createFromLogicalOp(realm, "||", c.joinCondition, alternatePC);
+          Path.pushAndRefine(disjunct);
+        }
+      } else if (allPathsAreNormal(c.alternate)) {
+        let consequentPC = getNormalPathConditionFor(c.consequent);
+        let inverse = AbstractValue.createFromUnaryOp(realm, "!", c.joinCondition);
+        let disjunct = AbstractValue.createFromLogicalOp(realm, "||", inverse, consequentPC);
+        Path.pushAndRefine(disjunct);
+      } else {
+        let jc = c.joinCondition;
+        let consequentPC = AbstractValue.createFromLogicalOp(realm, "&&", jc, getNormalPathConditionFor(c.consequent));
+        let ijc = AbstractValue.createFromUnaryOp(realm, "!", jc);
+        let alternatePC = AbstractValue.createFromLogicalOp(realm, "&&", ijc, getNormalPathConditionFor(c.alternate));
+        let disjunct = AbstractValue.createFromLogicalOp(realm, "||", consequentPC, alternatePC);
+        Path.pushAndRefine(disjunct);
+      }
+    }
+
+    function allPathsAreAbrupt(c: Completion): boolean {
+      if (c instanceof ForkedAbruptCompletion) return allPathsAreAbrupt(c.consequent) && allPathsAreAbrupt(c.alternate);
+      if (c instanceof AbruptCompletion) return !(c instanceof ErasedAbruptCompletion);
+      return false;
+    }
+
+    function allPathsAreNormal(c: Completion): boolean {
+      if (c instanceof PossiblyNormalCompletion || c instanceof ForkedAbruptCompletion)
+        return allPathsAreNormal(c.consequent) && allPathsAreNormal(c.alternate);
+      if (c instanceof AbruptCompletion) return c instanceof ErasedAbruptCompletion;
+      return true;
+    }
+
+    function getNormalPathConditionFor(c: Completion): Value {
+      invariant(c instanceof PossiblyNormalCompletion || c instanceof ForkedAbruptCompletion);
+      if (allPathsAreAbrupt(c.consequent)) {
+        invariant(!allPathsAreAbrupt(c.alternate));
+        let inverse = AbstractValue.createFromUnaryOp(realm, "!", c.joinCondition);
+        if (allPathsAreNormal(c.alternate)) return inverse;
+        return AbstractValue.createFromLogicalOp(realm, "&&", inverse, getNormalPathConditionFor(c.alternate));
+      } else if (allPathsAreAbrupt(c.alternate)) {
+        invariant(!allPathsAreAbrupt(c.consequent));
+        if (allPathsAreNormal(c.consequent)) return c.joinCondition;
+        return AbstractValue.createFromLogicalOp(realm, "&&", c.joinCondition, getNormalPathConditionFor(c.consequent));
+      } else if (allPathsAreNormal(c.consequent)) {
+        // In principle the simplifier shoud reduce the result of the else clause to this case. This does less work.
+        invariant(!allPathsAreNormal(c.alternate));
+        invariant(!allPathsAreAbrupt(c.alternate));
+        let ijc = AbstractValue.createFromUnaryOp(realm, "!", c.joinCondition);
+        let alternatePC = AbstractValue.createFromLogicalOp(realm, "&&", ijc, getNormalPathConditionFor(c.alternate));
+        return AbstractValue.createFromLogicalOp(realm, "||", c.joinCondition, alternatePC);
+      } else if (allPathsAreNormal(c.alternate)) {
+        // In principle the simplifier shoud reduce the result of the else clause to this case. This does less work.
+        invariant(!allPathsAreNormal(c.consequent));
+        invariant(!allPathsAreAbrupt(c.consequent));
+        let jc = c.joinCondition;
+        let consequentPC = AbstractValue.createFromLogicalOp(realm, "&&", jc, getNormalPathConditionFor(c.consequent));
+        let ijc = AbstractValue.createFromUnaryOp(realm, "!", jc);
+        return AbstractValue.createFromLogicalOp(realm, "||", consequentPC, ijc);
+      } else {
+        let jc = c.joinCondition;
+        let consequentPC = AbstractValue.createFromLogicalOp(realm, "&&", jc, getNormalPathConditionFor(c.consequent));
+        let ijc = AbstractValue.createFromUnaryOp(realm, "!", jc);
+        let alternatePC = AbstractValue.createFromLogicalOp(realm, "&&", ijc, getNormalPathConditionFor(c.alternate));
+        return AbstractValue.createFromLogicalOp(realm, "||", consequentPC, alternatePC);
       }
     }
   }
