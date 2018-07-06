@@ -292,7 +292,8 @@ export class Reconciler {
             evaluateWithNestedParentEffects(this.realm, nestedEffects, () =>
               this.realm.evaluateForEffects(resolveOptimizedClosure, /*state*/ null, `react nested optimized closure`)
             ),
-          this._handleReportedSideEffect
+          (sideEffectType, binding, expressionLocation) =>
+            handleReportedSideEffect(throwUnsupportedSideEffectError, sideEffectType, binding, expressionLocation)
         )
       );
       this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);
