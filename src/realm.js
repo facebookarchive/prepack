@@ -1747,7 +1747,7 @@ export class Realm {
 
   getTemporalBuildNodeEntryFromDerivedValue(value: Value): void | TemporalBuildNodeEntry {
     let name = value.intrinsicName;
-    if ((value instanceof AbstractValue && value.kind === "conditional") || !name) {
+    if (!name) {
       return undefined;
     }
     let temporalBuildNodeEntry = value.$Realm.derivedIds.get(name);
