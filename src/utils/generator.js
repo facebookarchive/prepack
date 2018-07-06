@@ -1110,7 +1110,7 @@ export class Generator {
 
   // PITFALL Warning: adding a new kind of TemporalBuildNodeEntry that is not the result of a join or composition
   // will break this purgeEntriesWithGeneratorDepencies.
-  _addEntry(entryArgs: TemporalBuildNodeEntryArgs): void {
+  _addEntry(entryArgs: TemporalBuildNodeEntryArgs): TemporalBuildNodeEntry {
     let entry;
     if (entryArgs.temporalType === "OBJECT_ASSIGN") {
       entry = new TemporalObjectAssignEntry(entryArgs);
@@ -1118,11 +1118,12 @@ export class Generator {
       entry = new TemporalBuildNodeEntry(entryArgs);
     }
     this._entries.push(entry);
+    return entry;
   }
 
   _addDerivedEntry(id: string, entryArgs: TemporalBuildNodeEntryArgs): void {
-    this._addEntry(entryArgs);
-    this.preludeGenerator.derivedIds.set(id, entryArgs);
+    let entry = this._addEntry(entryArgs);
+    this.preludeGenerator.derivedIds.set(id, entry);
   }
 
   appendGenerator(other: Generator, leadingComment: string): void {
@@ -1242,7 +1243,7 @@ export class PreludeGenerator {
   }
 
   prelude: Array<BabelNodeStatement>;
-  derivedIds: Map<string, TemporalBuildNodeEntryArgs>;
+  derivedIds: Map<string, TemporalBuildNodeEntry>;
   memoizedRefs: Map<string, BabelNodeIdentifier>;
   nameGenerator: NameGenerator;
   usesThis: boolean;
@@ -1345,9 +1346,7 @@ export function attemptToMergeEquivalentObjectAssigns(
     // Check if the "to" was definitely an Object.assign, it should
     // be a snapshot AbstractObjectValue
     if (possibleOtherObjectAssignTo instanceof AbstractObjectValue) {
-      let otherTemporalBuildNodeEntry = realm.getTemporalBuildNodeEntryArgsFromDerivedValue(
-        possibleOtherObjectAssignTo
-      );
+      let otherTemporalBuildNodeEntry = realm.getTemporalBuildNodeEntryFromDerivedValue(possibleOtherObjectAssignTo);
       if (otherTemporalBuildNodeEntry === undefined) {
         continue;
       }
@@ -1359,10 +1358,12 @@ export function attemptToMergeEquivalentObjectAssigns(
       let otherArgsToUse = [];
       for (let x = 2; x < otherArgs.length; x++) {
         let arg = otherArgs[x];
-        // let generatorEntries = realm.getAllGeneratorEntriesReferencingArg(arg);
+        let temporalGeneratorEntries = realm.getAllTemporalGeneratorEntriesReferencingArg(arg);
 
-        // for (let generatorEntry of generatorEntries) {
-        // }
+        for (let temporalGeneratorEntry of temporalGeneratorEntries) {
+          // TODO
+          temporalGeneratorEntry;
+        }
         otherArgsToUse.push(arg);
       }
       // If we cannot omit the "to" value that means it's being used, so we shall not try to

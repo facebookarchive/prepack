@@ -63,7 +63,7 @@ import {
 import type { Compatibility, RealmOptions, ReactOutputTypes, InvariantModeTypes } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
-import { Generator, PreludeGenerator, type TemporalBuildNodeEntryArgs } from "./utils/generator.js";
+import { Generator, PreludeGenerator, type TemporalBuildNodeEntry } from "./utils/generator.js";
 import { emptyExpression, voidExpression } from "./utils/babelhelpers.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
@@ -1743,14 +1743,19 @@ export class Realm {
     return !this._abstractValuesDefined.has(nameString);
   }
 
-  getTemporalBuildNodeEntryArgsFromDerivedValue(value: Value): void | TemporalBuildNodeEntryArgs {
+  getTemporalBuildNodeEntryFromDerivedValue(value: Value): void | TemporalBuildNodeEntry {
     let name = value.intrinsicName;
     if ((value instanceof AbstractValue && value.kind === "conditional") || !name) {
       return undefined;
     }
     let preludeGenerator = this.preludeGenerator;
     invariant(preludeGenerator !== undefined);
-    let temporalBuildNodeEntryArgs = preludeGenerator.derivedIds.get(name);
-    return temporalBuildNodeEntryArgs;
+    let temporalBuildNodeEntry = preludeGenerator.derivedIds.get(name);
+    return temporalBuildNodeEntry;
+  }
+
+  getAllTemporalGeneratorEntriesReferencingArg(arg: Value): Array<TemporalBuildNodeEntry> {
+    // TODO
+    return [];
   }
 }
