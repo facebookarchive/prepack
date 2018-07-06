@@ -54,7 +54,6 @@ export class Serializer {
     if (serializerOptions.trace) {
       let loggingTracer = new LoggingTracer(this.realm);
       this.realm.tracers.push(loggingTracer);
-      this.realm.loggingTracer = loggingTracer;
     }
 
     this.options = serializerOptions;

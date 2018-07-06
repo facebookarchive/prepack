@@ -34,6 +34,7 @@ import type { AdditionalFunctionEffects, WriteEffects } from "./types";
 import { convertConfigObjectToReactComponentTreeConfig, valueIsKnownReactAbstraction } from "../react/utils.js";
 import { applyOptimizedReactComponents, optimizeReactComponentTreeRoot } from "../react/optimizing.js";
 import { stringOfLocation } from "../utils/babelhelpers";
+import { LoggingTracer } from "./LoggingTracer";
 import * as t from "babel-types";
 
 type AdditionalFunctionEntry = {
@@ -216,14 +217,17 @@ export class Functions {
       let currentOptimizedFunctionId = optimizedFunctionId++;
       additionalFunctionStack.push(functionValue);
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
-      let loggingTracer = this.realm.loggingTracer;
-      if (loggingTracer)
+      let loggingTracers = this.realm.tracers.filter(x => x instanceof LoggingTracer);
+      let loggingTracer = loggingTracers.length > 0 ? loggingTracers[0] : undefined;
+      if (loggingTracer) {
+        invariant(loggingTracer instanceof LoggingTracer);
         loggingTracer.log(
           `>Starting Optimized Function ${currentOptimizedFunctionId} ${
             functionValue.intrinsicName ? functionValue.intrinsicName : "[unknown name]"
           } ${functionValue.expressionLocation ? stringOfLocation(functionValue.expressionLocation) : ""}`,
           "[optimized functions]"
         );
+      }
       let call = this._callOfFunction(functionValue);
       let effects: Effects = this.realm.evaluatePure(
         () => this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
@@ -264,8 +268,10 @@ export class Functions {
         return null;
       }, additionalFunctionEffects.effects);
       invariant(additionalFunctionStack.pop() === functionValue);
-      if (loggingTracer)
+      if (loggingTracer) {
+        invariant(loggingTracer instanceof LoggingTracer);
         loggingTracer.log(`<Ending Optimized Function ${currentOptimizedFunctionId}`, "[optimized functions]");
+      }
     };
 
     while (additionalFunctionsToProcess.length > 0) {

@@ -68,7 +68,6 @@ import { emptyExpression, voidExpression } from "./utils/babelhelpers.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
-import type { LoggingTracer } from "./serializer/LoggingTracer";
 import * as t from "babel-types";
 
 export type BindingEntry = {
@@ -438,8 +437,6 @@ export class Realm {
   nextGeneratorId: number = 0;
   _abstractValuesDefined: Set<string>;
   _checkedObjectIds: Map<ObjectValue | AbstractObjectValue, number>;
-
-  loggingTracer: LoggingTracer | void;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
