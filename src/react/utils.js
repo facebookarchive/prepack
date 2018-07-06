@@ -576,17 +576,14 @@ export function hasNoPartialKeyOrRef(realm: Realm, props: ObjectValue | Abstract
       return false;
     }
     let elements = props.values.getElements();
-    if (elements.size === 1) {
-      props = Array.from(elements)[0];
-    } else {
-      for (let element of elements) {
-        let wasSafe = hasNoPartialKeyOrRef(realm, element);
-        if (!wasSafe) {
-          return false;
-        }
+    for (let element of elements) {
+      invariant(element instanceof ObjectValue);
+      let wasSafe = hasNoPartialKeyOrRef(realm, element);
+      if (!wasSafe) {
+        return false;
       }
-      return true;
     }
+    return true;
   }
   if (props instanceof ObjectValue && props.properties.has("key") && props.properties.has("ref")) {
     return true;
@@ -665,12 +662,10 @@ export function getProperty(
       return realm.intrinsics.undefined;
     }
     let elements = object.values.getElements();
-    invariant(elements);
-    if (elements.size > 0) {
-      object = Array.from(elements)[0];
-    } else {
-      // intentionally left in
-      invariant(false, "TODO: should we hit this?");
+    invariant(elements.size === 1, "TODO: deal with multiple elements");
+    for (let element of elements) {
+      invariant(element instanceof ObjectValue, "TODO: deal with object set templates");
+      object = element;
     }
     invariant(object instanceof ObjectValue);
   }
