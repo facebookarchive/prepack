@@ -12,13 +12,14 @@
 import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "./invariant.js";
 import type { Effects, Realm } from "./realm.js";
-import { AbstractValue, Value } from "./values/index.js";
+import { AbstractValue, EmptyValue, Value } from "./values/index.js";
 
 export class Completion {
   constructor(value: Value, location: ?BabelNodeSourceLocation, target?: ?string) {
     this.value = value;
     this.target = target;
     this.location = location;
+    invariant(this.constructor !== Completion, "Completion is an abstract base class");
   }
 
   value: Value;
@@ -33,7 +34,12 @@ export class Completion {
 }
 
 // Normal completions are returned just like spec completions
-export class NormalCompletion extends Completion {}
+export class NormalCompletion extends Completion {
+  constructor(value: Value, location: ?BabelNodeSourceLocation, target?: ?string) {
+    super(value, location, target);
+    invariant(this.constructor !== NormalCompletion, "NormalCompletion is an abstract base class");
+  }
+}
 
 // SimpleNormalCompletions are returned just like spec completions. This class exists as the parallel for
 // PossiblyNormalCompletion to make comparisons easier.
@@ -41,7 +47,12 @@ export class SimpleNormalCompletion extends NormalCompletion {}
 
 // Abrupt completions are thrown as exeptions, to make it a easier
 // to quickly get to the matching high level construct.
-export class AbruptCompletion extends Completion {}
+export class AbruptCompletion extends Completion {
+  constructor(value: Value, location: ?BabelNodeSourceLocation, target?: ?string) {
+    super(value, location, target);
+    invariant(this.constructor !== AbruptCompletion, "AbruptCompletion is an abstract base class");
+  }
+}
 
 export class ThrowCompletion extends AbruptCompletion {
   constructor(value: Value, location: ?BabelNodeSourceLocation, nativeStack?: ?string) {
@@ -55,6 +66,7 @@ export class ThrowCompletion extends AbruptCompletion {
 
   nativeStack: string;
 }
+
 export class ContinueCompletion extends AbruptCompletion {
   constructor(value: Value, location: ?BabelNodeSourceLocation, target: ?string) {
     super(value, location, target || null);
@@ -72,6 +84,11 @@ export class ReturnCompletion extends AbruptCompletion {
     super(value, location);
   }
 }
+
+// An erased abrupt completion arises when an abrupt completion reaches a join point.
+// Ideally we should use a SimpleNormalCompletion in its place, but that can only
+// happen after ForkedAbruptCompletion and PossiblyNormalCompletion are unified.
+export class ErasedAbruptCompletion extends AbruptCompletion {}
 
 export class ForkedAbruptCompletion extends AbruptCompletion {
   constructor(
@@ -158,6 +175,7 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
   }
 
   transferChildrenToPossiblyNormalCompletion(): PossiblyNormalCompletion {
+    invariant(this.consequent.value instanceof EmptyValue || this.alternate.value instanceof EmptyValue);
     return new PossiblyNormalCompletion(
       this.value.$Realm.intrinsics.empty,
       this.joinCondition,
@@ -232,6 +250,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   // TODO blappert: these functions are a copy of those in ForkedAbruptCompletion, but the two classes will be unified
   // soon
   updateConsequentKeepingCurrentEffects(newConsequent: Completion) {
+    if (newConsequent instanceof NormalCompletion) this.value = newConsequent.value;
     let effects = this.consequentEffects;
     newConsequent.effects = effects;
     newConsequent.effects.result = newConsequent;
@@ -240,6 +259,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   }
 
   updateAlternateKeepingCurrentEffects(newAlternate: Completion) {
+    if (newAlternate instanceof NormalCompletion) this.value = newAlternate.value;
     let effects = this.alternateEffects;
     newAlternate.effects = effects;
     newAlternate.effects.result = newAlternate;

@@ -36,7 +36,7 @@ import {
   Reference,
   LexicalEnvironment,
 } from "../environment.js";
-import { NormalCompletion, AbruptCompletion } from "../completions.js";
+import { AbruptCompletion, SimpleNormalCompletion } from "../completions.js";
 import { FatalError } from "../errors.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import {
@@ -659,7 +659,7 @@ export class EnvironmentImplementation {
 
       // 4. If iteratorRecord.[[Done]] is false, return ? IteratorClose(iterator, result).
       if (iteratorRecord.$Done === false) {
-        let completion = IteratorClose(realm, iterator, new NormalCompletion(realm.intrinsics.undefined));
+        let completion = IteratorClose(realm, iterator, new SimpleNormalCompletion(realm.intrinsics.undefined));
         if (completion instanceof AbruptCompletion) {
           throw completion;
         }
