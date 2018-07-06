@@ -10,4 +10,4 @@ function f(x, foo) {
 
 if (global.__optimize) __optimize(f);
 
-global.inspect = function() { return f(false, {a: 3}); }
+global.inspect = function() { return JSON.stringify(f(false, {a: 3})); }
