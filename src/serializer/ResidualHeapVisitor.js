@@ -1104,9 +1104,6 @@ export class ResidualHeapVisitor {
           action: () => entry.visit(callbacks, generator),
         });
       },
-      updateEntryInPlace: (entryToMutate: TemporalBuildNodeEntry, newEntry: TemporalBuildNodeEntry) => {
-        entryToMutate.args = newEntry.args;
-      },
       visitModifiedObjectProperty: (binding: PropertyBinding) => {
         let fixpoint_rerun = () => {
           if (this.values.has(binding.object)) {

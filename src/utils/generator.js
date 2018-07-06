@@ -84,7 +84,6 @@ export type VisitEntryCallbacks = {|
   canOmit: Value => boolean,
   recordDeclaration: (AbstractValue | ObjectValue) => void,
   recordDelayedEntry: (Generator, GeneratorEntry) => void,
-  updateEntryInPlace: (TemporalBuildNodeEntry, TemporalBuildNodeEntry) => void,
   visitModifiedObjectProperty: PropertyBinding => void,
   visitModifiedBinding: Binding => [ResidualFunctionBinding, Value],
   visitBindingAssignment: (Binding, Value) => Value,
@@ -258,7 +257,7 @@ export class TemporalObjectAssignEntry extends TemporalBuildNodeEntry {
       }
       // We have an optimized temporal entry, so replace the current temporal
       // entry and visit that entry instead.
-      callbacks.updateEntryInPlace(this, result);
+      this.args = result.args;
     } else if (result === "POSSIBLE_OPTIMIZATION") {
       callbacks.recordDelayedEntry(containingGenerator, this);
       return false;
