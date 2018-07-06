@@ -34,7 +34,7 @@ import {
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
 import type { BabelNodeBlockStatement } from "babel-types";
-import { Generator, TemporalBuildNodeEntry } from "../utils/generator.js";
+import { Generator } from "../utils/generator.js";
 import type { GeneratorEntry, VisitEntryCallbacks } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
