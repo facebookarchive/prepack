@@ -114,11 +114,13 @@ export type ComponentTreeState = {
 function setContextCurrentValue(contextObject: ObjectValue | AbstractObjectValue, value: Value): void {
   if (contextObject instanceof AbstractObjectValue && !contextObject.values.isTop()) {
     let elements = contextObject.values.getElements();
-    if (elements && elements.size > 0) {
-      contextObject = Array.from(elements)[0];
+    if (elements && elements.size === 1) {
+      for (let element of elements) {
+        invariant(element instanceof ObjectValue);
+        contextObject = element;
+      }
     } else {
-      // intentionally left in
-      invariant(false, "TODO: should we hit this?");
+      invariant(false, "TODO: deal with multiple possible context objects");
     }
   }
   if (!(contextObject instanceof ObjectValue)) {

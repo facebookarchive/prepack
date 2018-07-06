@@ -196,7 +196,10 @@ function emitResidualLoopIfSafe(
           // Note that it is not safe, in general, to extract a concrete object from the values domain of
           // an abstract object. We can get away with it here only because the concrete object does not
           // escape the code below and is thus never referenced directly in generated code because of this logic.
-          for (let oe of ob.values.getElements()) o = oe;
+          for (let oe of ob.values.getElements()) {
+            invariant(oe instanceof ObjectValue);
+            o = oe;
+          }
         }
         let generator = realm.generator;
         invariant(generator !== undefined);
