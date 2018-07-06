@@ -687,13 +687,15 @@ export default class AbstractObjectValue extends AbstractValue {
       let d1 = ob1.$GetOwnProperty(P);
       let d2 = ob2.$GetOwnProperty(P);
       let oldVal1 =
-        d1 === undefined ? this.$Realm.intrinsics.undefined : IsDataDescriptor(this.$Realm, d1) ? d1.value : undefined;
+        d1 === undefined ? this.$Realm.intrinsics.empty : IsDataDescriptor(this.$Realm, d1) ? d1.value : undefined;
       let oldVal2 =
-        d2 === undefined ? this.$Realm.intrinsics.undefined : IsDataDescriptor(this.$Realm, d2) ? d2.value : undefined;
+        d2 === undefined ? this.$Realm.intrinsics.empty : IsDataDescriptor(this.$Realm, d2) ? d2.value : undefined;
       if (oldVal1 === undefined || oldVal2 === undefined) {
         AbstractValue.reportIntrospectionError(this, P);
         throw new FatalError();
       }
+      invariant(oldVal1 instanceof Value);
+      invariant(oldVal2 instanceof Value);
       let newVal1 = AbstractValue.createFromConditionalOp(this.$Realm, cond, V, oldVal1);
       let newVal2 = AbstractValue.createFromConditionalOp(this.$Realm, cond, oldVal2, V);
       let result1 = ob1.$Set(P, newVal1, ob1);
