@@ -1366,6 +1366,10 @@ export function attemptToMergeEquivalentObjectAssigns(
       let otherArgsToUse = [];
       for (let x = 2; x < otherArgs.length; x++) {
         let arg = otherArgs[x];
+        // The arg might have been havoced, so ensure we do not continue in this case
+        if (arg instanceof ObjectValue && arg.mightBeHavocedObject()) {
+          continue loopThroughArgs;
+        }
         if (arg instanceof ObjectValue || arg instanceof AbstractValue) {
           let temporalGeneratorEntries = realm.getTemporalGeneratorEntriesReferencingArg(arg);
           // We need to now check if there are any other temporal entries that exist
