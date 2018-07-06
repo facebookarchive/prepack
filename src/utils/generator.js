@@ -1388,6 +1388,8 @@ export function attemptToMergeEquivalentObjectAssigns(
               if (temporalGeneratorEntry instanceof TemporalObjectAssignEntry) {
                 continue;
               }
+              // TODO: what if the temporalGeneratorEntry can be omitted and not needed?
+
               // If the index of this entry exist between start and end indexes,
               // then we cannot optimize and merge the TemporalObjectAssignEntry
               // because another generator entry has a dependency on the Object.assign
