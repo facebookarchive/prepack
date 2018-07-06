@@ -637,7 +637,7 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 11738 || numPassedES6 < 5406 || numTimeouts > 0)) {
+  if (!args.filterString && (numPassedES5 < 11944 || numPassedES6 < 5566 || numTimeouts > 2)) {
     console.error(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -787,6 +787,7 @@ function handleTest(
       // filter out by flags, features, and includes
       let keepThisTest =
         filterFeatures(banners) &&
+        filterNegative(banners) &&
         filterFlags(banners) &&
         filterIncludes(banners) &&
         filterDescription(banners) &&
@@ -908,6 +909,7 @@ function createRealm(timeout: number): { realm: Realm, $: ObjectValue } {
   // Create a new realm.
   let realm = construct_realm({
     strictlyMonotonicDateNow: true,
+    errorHandler: () => "Fail",
     timeout: timeout * 1000,
   });
   initializeGlobals(realm);
@@ -997,7 +999,12 @@ function runTest(
     let stack = err.stack;
     if (data.negative.type) {
       let type = data.negative.type;
-      if (err && err instanceof ThrowCompletion && (Get(realm, err.value, "name"): any).value === type) {
+      if (
+        err &&
+        err instanceof ThrowCompletion &&
+        err.value instanceof ObjectValue &&
+        (Get(realm, err.value, "name"): any).value === type
+      ) {
         // Expected an error and got one.
         return new TestResult(true, strict);
       } else {
@@ -1164,12 +1171,19 @@ function filterFeatures(data: BannerData): boolean {
   if (features.includes("Symbol.isConcatSpreadable")) return false;
   if (features.includes("IsHTMLDDA")) return false;
   if (features.includes("regexp-unicode-property-escapes")) return false;
+  if (features.includes("character-class-escape-non-whitespace")) return false;
   if (features.includes("regexp-named-groups")) return false;
   if (features.includes("regexp-lookbehind")) return false;
   if (features.includes("regexp-dotall")) return false;
   if (features.includes("optional-catch-binding")) return false;
   if (features.includes("Symbol.asyncIterator")) return false;
   if (features.includes("Promise.prototype.finally")) return false;
+  return true;
+}
+
+function filterNegative(data: BannerData): boolean {
+  let negative = data.negative;
+  if (negative.phase === "parse") return false;
   return true;
 }
 

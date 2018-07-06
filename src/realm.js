@@ -488,7 +488,7 @@ export class Realm {
           "FatalError"
         );
         this.handleError(error);
-        throw new FatalError();
+        throw new FatalError("Timed out");
       }
     }
   }
