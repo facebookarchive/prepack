@@ -127,11 +127,11 @@ export class GeneratorEntry {
     invariant(false, "GeneratorEntry is an abstract base class");
   }
 
-  happensAfter(entry: GeneratorEntry): boolean {
+  notEqualToAndDoesNotHappenAfter(entry: GeneratorEntry): boolean {
     return this.index > entry.index;
   }
 
-  happensBefore(entry: GeneratorEntry): boolean {
+  notEqualToAndDoesNotHappenBefore(entry: GeneratorEntry): boolean {
     return this.index < entry.index;
   }
 
@@ -1386,8 +1386,8 @@ export function attemptToMergeEquivalentObjectAssigns(
               // because another generator entry may have a dependency on the Object.assign
               // TemporalObjectAssignEntry we're trying to merge.
               if (
-                temporalGeneratorEntry.happensAfter(otherTemporalBuildNodeEntry) &&
-                temporalGeneratorEntry.happensBefore(temporalBuildNodeEntry)
+                temporalGeneratorEntry.notEqualToAndDoesNotHappenAfter(otherTemporalBuildNodeEntry) &&
+                temporalGeneratorEntry.notEqualToAndDoesNotHappenBefore(temporalBuildNodeEntry)
               ) {
                 continue loopThroughArgs;
               }
