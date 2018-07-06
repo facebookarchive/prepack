@@ -34,7 +34,7 @@ import {
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
 import * as t from "babel-types";
 import type { BabelNodeBlockStatement } from "babel-types";
-import { Generator } from "../utils/generator.js";
+import { Generator, TemporalBuildNodeEntry } from "../utils/generator.js";
 import type { GeneratorEntry, VisitEntryCallbacks } from "../utils/generator.js";
 import traverse from "babel-traverse";
 import invariant from "../invariant.js";
@@ -1104,12 +1104,8 @@ export class ResidualHeapVisitor {
           action: () => entry.visit(callbacks, generator),
         });
       },
-      replaceAndRecordDelayedEntry: (generator, originalEntry: GeneratorEntry, newEntry: GeneratorEntry) => {
-        generator.replaceEntry(originalEntry, newEntry);
-        this.delayedActions.push({
-          scope: generator,
-          action: () => newEntry.visit(callbacks, generator),
-        });
+      updateEntryInPlace: (entryToMutate: TemporalBuildNodeEntry, newEntry: TemporalBuildNodeEntry) => {
+        entryToMutate.args = newEntry.args;
       },
       visitModifiedObjectProperty: (binding: PropertyBinding) => {
         let fixpoint_rerun = () => {

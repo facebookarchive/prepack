@@ -247,6 +247,7 @@ export class Realm {
     this.partialEvaluators = (Object.create(null): any);
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
 
+    this.derivedIds = new Map();
     this.temporalEntryArgToEntries = new Map();
     this.temporalEntryCounter = 0;
 
@@ -343,6 +344,7 @@ export class Realm {
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
 
+  derivedIds: Map<string, TemporalBuildNodeEntry>;
   temporalEntryArgToEntries: Map<Value, Set<TemporalBuildNodeEntry>>;
   temporalEntryCounter: number;
 
@@ -1748,9 +1750,7 @@ export class Realm {
     if ((value instanceof AbstractValue && value.kind === "conditional") || !name) {
       return undefined;
     }
-    let preludeGenerator = this.preludeGenerator;
-    invariant(preludeGenerator !== undefined);
-    let temporalBuildNodeEntry = preludeGenerator.derivedIds.get(name);
+    let temporalBuildNodeEntry = value.$Realm.derivedIds.get(name);
     return temporalBuildNodeEntry;
   }
 

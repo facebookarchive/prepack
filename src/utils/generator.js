@@ -84,7 +84,7 @@ export type VisitEntryCallbacks = {|
   canOmit: Value => boolean,
   recordDeclaration: Value => void,
   recordDelayedEntry: (Generator, GeneratorEntry) => void,
-  replaceAndRecordDelayedEntry: (Generator, GeneratorEntry, GeneratorEntry) => void,
+  updateEntryInPlace: (TemporalBuildNodeEntry, TemporalBuildNodeEntry) => void,
   visitModifiedObjectProperty: PropertyBinding => void,
   visitModifiedBinding: Binding => [ResidualFunctionBinding, Value],
   visitBindingAssignment: (Binding, Value) => Value,
@@ -105,6 +105,16 @@ export type GeneratorBuildNodeFunction = (
 ) => BabelNodeStatement;
 
 export class GeneratorEntry {
+  constructor(realm: Realm) {
+    // We increment the index of every TemporalBuildNodeEntry created.
+    // This should match up as a form of timeline value due to the tree-like
+    // structure we use to create entries during evaluation. For example,
+    // if all AST nodes in a BlockStatement resulted in a temporal build node
+    // for each AST node, then each would have a sequential index as to its
+    // position of how it was evaluated in the BlockSstatement.
+    this.index = realm.temporalEntryCounter++;
+  }
+
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     invariant(false, "GeneratorEntry is an abstract base class");
   }
@@ -116,6 +126,16 @@ export class GeneratorEntry {
   getDependencies(): void | Array<Generator> {
     invariant(false, "GeneratorEntry is an abstract base class");
   }
+
+  happensAfter(entry: GeneratorEntry): boolean {
+    return this.index > entry.index;
+  }
+
+  happensBefore(entry: GeneratorEntry): boolean {
+    return this.index < entry.index;
+  }
+
+  index: number;
 }
 
 export type TemporalBuildNodeEntryArgs = {
@@ -131,7 +151,7 @@ export type TemporalBuildNodeEntryArgs = {
 
 export class TemporalBuildNodeEntry extends GeneratorEntry {
   constructor(realm: Realm, args: TemporalBuildNodeEntryArgs) {
-    super();
+    super(realm);
     Object.assign(this, args);
     if (this.mutatesOnly !== undefined) {
       invariant(!this.isPure);
@@ -139,13 +159,6 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
         invariant(this.args.includes(arg));
       }
     }
-    // We increment the index of every TemporalBuildNodeEntry created.
-    // This should match up as a form of timeline value due to the tree-like
-    // structure we use to create entries during evaluation. For example,
-    // if all AST nodes in a BlockStatement resulted in a temporal build node
-    // for each AST node, then each would have a sequential index as to its
-    // position of how it was evaluated in the BlockSstatement.
-    this.index = realm.temporalEntryCounter++;
   }
 
   declared: void | Value;
@@ -156,7 +169,6 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
   isPure: void | boolean;
   mutatesOnly: void | Array<Value>;
   temporalType: void | TemporalBuildNodeType;
-  index: number;
 
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     let omit = this.isPure && this.declared && callbacks.canOmit(this.declared);
@@ -226,7 +238,7 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
 export class TemporalObjectAssignEntry extends TemporalBuildNodeEntry {
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     let declared = this.declared;
-    if (!(declared instanceof AbstractObjectValue)) {
+    if (!(declared instanceof AbstractObjectValue || declared instanceof ObjectValue)) {
       return false;
     }
     let realm = declared.$Realm;
@@ -246,8 +258,7 @@ export class TemporalObjectAssignEntry extends TemporalBuildNodeEntry {
       }
       // We have an optimized temporal entry, so replace the current temporal
       // entry and visit that entry instead.
-      callbacks.replaceAndRecordDelayedEntry(containingGenerator, this, result);
-      return true;
+      callbacks.updateEntryInPlace(this, result);
     } else if (result === "POSSIBLE_OPTIMIZATION") {
       callbacks.recordDelayedEntry(containingGenerator, this);
       return false;
@@ -263,8 +274,8 @@ type ModifiedPropertyEntryArgs = {|
 |};
 
 class ModifiedPropertyEntry extends GeneratorEntry {
-  constructor(args: ModifiedPropertyEntryArgs) {
-    super();
+  constructor(realm: Realm, args: ModifiedPropertyEntryArgs) {
+    super(realm);
     Object.assign(this, args);
   }
 
@@ -301,8 +312,8 @@ type ModifiedBindingEntryArgs = {|
 |};
 
 class ModifiedBindingEntry extends GeneratorEntry {
-  constructor(args: ModifiedBindingEntryArgs) {
-    super();
+  constructor(realm: Realm, args: ModifiedBindingEntryArgs) {
+    super(realm);
     Object.assign(this, args);
   }
 
@@ -355,8 +366,8 @@ class ModifiedBindingEntry extends GeneratorEntry {
 }
 
 class ReturnValueEntry extends GeneratorEntry {
-  constructor(generator: Generator, returnValue: Value) {
-    super();
+  constructor(realm: Realm, generator: Generator, returnValue: Value) {
+    super(realm);
     this.returnValue = returnValue.promoteEmptyToUndefined();
     this.containingGenerator = generator;
   }
@@ -385,7 +396,7 @@ class ReturnValueEntry extends GeneratorEntry {
 
 class IfThenElseEntry extends GeneratorEntry {
   constructor(generator: Generator, completion: PossiblyNormalCompletion | ForkedAbruptCompletion, realm: Realm) {
-    super();
+    super(realm);
     this.completion = completion;
     this.containingGenerator = generator;
     this.condition = completion.joinCondition;
@@ -427,8 +438,8 @@ class IfThenElseEntry extends GeneratorEntry {
 }
 
 class BindingAssignmentEntry extends GeneratorEntry {
-  constructor(binding: Binding, value: Value) {
-    super();
+  constructor(realm: Realm, binding: Binding, value: Value) {
+    super(realm);
     this.binding = binding;
     this.value = value;
   }
@@ -564,7 +575,7 @@ export class Generator {
       }
     }
     this._entries.push(
-      new ModifiedPropertyEntry({
+      new ModifiedPropertyEntry(this.realm, {
         propertyBinding,
         newDescriptor: desc,
         containingGenerator: this,
@@ -575,7 +586,7 @@ export class Generator {
   emitBindingModification(modifiedBinding: Binding) {
     invariant(this.effectsToApply !== undefined);
     this._entries.push(
-      new ModifiedBindingEntry({
+      new ModifiedBindingEntry(this.realm, {
         modifiedBinding,
         newValue: modifiedBinding.value,
         containingGenerator: this,
@@ -584,7 +595,7 @@ export class Generator {
   }
 
   emitReturnValue(result: Value) {
-    this._entries.push(new ReturnValueEntry(this, result));
+    this._entries.push(new ReturnValueEntry(this.realm, this, result));
   }
 
   emitIfThenElse(result: PossiblyNormalCompletion | ForkedAbruptCompletion, realm: Realm) {
@@ -633,7 +644,7 @@ export class Generator {
   }
 
   emitBindingAssignment(binding: Binding, value: Value) {
-    this._entries.push(new BindingAssignmentEntry(binding, value));
+    this._entries.push(new BindingAssignmentEntry(this.realm, binding, value));
   }
 
   emitPropertyAssignment(object: ObjectValue, key: string, value: Value) {
@@ -1017,7 +1028,7 @@ export class Generator {
       this.realm,
       types,
       values,
-      1735003607742176 + this.preludeGenerator.derivedIds.size,
+      1735003607742176 + this.realm.derivedIds.size,
       [],
       id,
       options
@@ -1132,7 +1143,7 @@ export class Generator {
 
   _addDerivedEntry(id: string, entryArgs: TemporalBuildNodeEntryArgs): void {
     let entry = this._addEntry(entryArgs);
-    this.preludeGenerator.derivedIds.set(id, entry);
+    this.realm.derivedIds.set(id, entry);
   }
 
   appendGenerator(other: Generator, leadingComment: string): void {
@@ -1178,22 +1189,6 @@ export class Generator {
       },
       dependencies: [generator1, generator2],
     });
-  }
-
-  replaceEntry(entry: GeneratorEntry, replacement: GeneratorEntry) {
-    // TODO: improve from O(n) to O(1)
-    let index = this._entries.indexOf(entry);
-    invariant(index !== -1);
-    this._entries[index] = replacement;
-    // Ensure the replacement entry has the same index, as it's going to be in the same position
-    if (entry instanceof TemporalBuildNodeEntry) {
-      invariant(replacement instanceof TemporalBuildNodeEntry);
-      replacement.index = entry.index;
-    }
-    if (replacement instanceof TemporalBuildNodeEntry && replacement.declared !== undefined) {
-      invariant(replacement.declared.intrinsicName);
-      this.preludeGenerator.derivedIds.set(replacement.declared.intrinsicName, replacement);
-    }
   }
 }
 
@@ -1248,7 +1243,6 @@ export class NameGenerator {
 export class PreludeGenerator {
   constructor(debugNames: ?boolean, uniqueSuffix: ?string) {
     this.prelude = [];
-    this.derivedIds = new Map();
     this.memoizedRefs = new Map();
     this.nameGenerator = new NameGenerator(new Set(), !!debugNames, uniqueSuffix || "", "_$");
     this.usesThis = false;
@@ -1257,7 +1251,6 @@ export class PreludeGenerator {
   }
 
   prelude: Array<BabelNodeStatement>;
-  derivedIds: Map<string, TemporalBuildNodeEntry>;
   memoizedRefs: Map<string, BabelNodeIdentifier>;
   nameGenerator: NameGenerator;
   usesThis: boolean;
@@ -1354,6 +1347,9 @@ export function attemptToMergeEquivalentObjectAssigns(
   loopThroughArgs: for (let i = 2; i < args.length; i++) {
     let possibleOtherObjectAssignTo = args[i];
     // Ensure that the "to" value can be omitted
+    // Note: this check is still somewhat fragile and depends on the visiting order
+    // but it's not a functional problem right now and can be better addressed at a
+    // later point.
     if (!callbacks.canOmit(possibleOtherObjectAssignTo)) {
       continue;
     }
@@ -1375,11 +1371,8 @@ export function attemptToMergeEquivalentObjectAssigns(
         if (arg instanceof ObjectValue || arg instanceof AbstractValue) {
           let temporalGeneratorEntries = realm.getTemporalGeneratorEntriesReferencingArg(arg);
           // We need to now check if there are any other temporal entries that exist
-          // between the Object.assign TemporalObjectAssignEntry (start) that we're trying
-          // to merge and the current TemporalObjectAssignEntry we're going to mergin into (end)
-          let startIndex = otherTemporalBuildNodeEntry.index;
-          let endIndex = temporalBuildNodeEntry.index;
-
+          // between the Object.assign TemporalObjectAssignEntry that we're trying to
+          // merge and the current TemporalObjectAssignEntry we're going to mergin into.
           if (temporalGeneratorEntries !== undefined) {
             for (let temporalGeneratorEntry of temporalGeneratorEntries) {
               // If the entry is that of another Object.assign, then
@@ -1392,9 +1385,12 @@ export function attemptToMergeEquivalentObjectAssigns(
 
               // If the index of this entry exist between start and end indexes,
               // then we cannot optimize and merge the TemporalObjectAssignEntry
-              // because another generator entry has a dependency on the Object.assign
+              // because another generator entry may have a dependency on the Object.assign
               // TemporalObjectAssignEntry we're trying to merge.
-              if (temporalGeneratorEntry.index > startIndex && temporalGeneratorEntry.index < endIndex) {
+              if (
+                temporalGeneratorEntry.happensAfter(otherTemporalBuildNodeEntry) &&
+                temporalGeneratorEntry.happensBefore(temporalBuildNodeEntry)
+              ) {
                 continue loopThroughArgs;
               }
             }
@@ -1415,11 +1411,11 @@ export function attemptToMergeEquivalentObjectAssigns(
           }
         }
         // We now create a new TemporalObjectAssignEntry, without mutating the existing
-        // entry. This new entry is essentially a TemporalObjectAssignEntry that contains two
-        // Object.assign call TemporalObjectAssignEntry entries that have been merged into a
-        // single entry. The previous Object.assign TemporalObjectAssignEntry should dead-code
-        // eliminate away once we replace the original TemporalObjectAssignEntry we started
-        // with with the new merged on as they will no longer be referenced.
+        // entry at this point. This new entry is essentially a TemporalObjectAssignEntry
+        // that contains two Object.assign call TemporalObjectAssignEntry entries that have
+        // been merged into a single entry. The previous Object.assign TemporalObjectAssignEntry
+        // should dead-code eliminate away once we replace the original TemporalObjectAssignEntry
+        // we started with with the new merged on as they will no longer be referenced.
         let newTemporalObjectAssignEntryArgs = Object.assign({}, temporalBuildNodeEntry, {
           args: newArgs,
         });

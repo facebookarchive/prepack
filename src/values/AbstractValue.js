@@ -142,11 +142,10 @@ export default class AbstractValue extends Value {
   addSourceNamesTo(names: Array<string>, visited: Set<AbstractValue> = new Set()) {
     if (visited.has(this)) return;
     visited.add(this);
-    let gen = this.$Realm.preludeGenerator;
+    let realm = this.$Realm;
     function add_intrinsic(name: string) {
       if (name.startsWith("_$")) {
-        if (gen === undefined) return;
-        let temporalBuildNodeEntryArgs = gen.derivedIds.get(name);
+        let temporalBuildNodeEntryArgs = realm.derivedIds.get(name);
         invariant(temporalBuildNodeEntryArgs !== undefined);
         add_args(temporalBuildNodeEntryArgs.args);
       } else if (names.indexOf(name) < 0) {
