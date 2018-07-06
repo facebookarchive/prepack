@@ -58,6 +58,7 @@
     "depcheck": "babel-node scripts/detect_bad_deps.js",
     "prettier": "node ./scripts/prettier.js write-changed",
     "prettier-all": "node ./scripts/prettier.js write",
+    "prettier-ci": "node ./scripts/prettier.js",
     "debug-fb-www": "node --stack_trace_limit=200 --stack_size=10000 --max_old_space_size=16384 ./scripts/debug-fb-www.js"
   },
   "dependencies": {
