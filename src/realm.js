@@ -247,6 +247,9 @@ export class Realm {
     this.partialEvaluators = (Object.create(null): any);
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
 
+    this.temporalEntryArgToEntries = new Map();
+    this.temporalEntryCounter = 0;
+
     this.instantRender = {
       enabled: opts.instantRender || false,
     };
@@ -339,6 +342,9 @@ export class Realm {
   contextStack: Array<ExecutionContext> = [];
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
+
+  temporalEntryArgToEntries: Map<Value, Set<TemporalBuildNodeEntry>>;
+  temporalEntryCounter: number;
 
   instantRender: {
     enabled: boolean,
@@ -1754,8 +1760,20 @@ export class Realm {
     return temporalBuildNodeEntry;
   }
 
-  getAllTemporalGeneratorEntriesReferencingArg(arg: Value): Array<TemporalBuildNodeEntry> {
-    // TODO
-    return [];
+  getTemporalGeneratorEntriesReferencingArg(arg: Value): void | Set<TemporalBuildNodeEntry> {
+    return this.temporalEntryArgToEntries.get(arg);
+  }
+
+  saveTemporalGeneratorEntryArgs(temporalBuildNodeEntry: TemporalBuildNodeEntry): void {
+    let args = temporalBuildNodeEntry.args;
+    for (let arg of args) {
+      let temporalEntries = this.temporalEntryArgToEntries.get(arg);
+
+      if (temporalEntries === undefined) {
+        temporalEntries = new Set();
+        this.temporalEntryArgToEntries.set(arg, temporalEntries);
+      }
+      temporalEntries.add(temporalBuildNodeEntry);
+    }
   }
 }

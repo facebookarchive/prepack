@@ -130,7 +130,7 @@ export type TemporalBuildNodeEntryArgs = {
 };
 
 export class TemporalBuildNodeEntry extends GeneratorEntry {
-  constructor(args: TemporalBuildNodeEntryArgs) {
+  constructor(realm: Realm, args: TemporalBuildNodeEntryArgs) {
     super();
     Object.assign(this, args);
     if (this.mutatesOnly !== undefined) {
@@ -139,6 +139,13 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
         invariant(this.args.includes(arg));
       }
     }
+    // We increment the index of every TemporalBuildNodeEntry created.
+    // This should match up as a form of timeline value due to the tree-like
+    // structure we use to create entries during evaluation. For example,
+    // if all AST nodes in a BlockStatement resulted in a temporal build node
+    // for each AST node, then each would have a sequential index as to its
+    // position of how it was evaluated in the BlockSstatement.
+    this.index = realm.temporalEntryCounter++;
   }
 
   declared: void | Value;
@@ -149,6 +156,7 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
   isPure: void | boolean;
   mutatesOnly: void | Array<Value>;
   temporalType: void | TemporalBuildNodeType;
+  index: number;
 
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     let omit = this.isPure && this.declared && callbacks.canOmit(this.declared);
@@ -1113,10 +1121,11 @@ export class Generator {
   _addEntry(entryArgs: TemporalBuildNodeEntryArgs): TemporalBuildNodeEntry {
     let entry;
     if (entryArgs.temporalType === "OBJECT_ASSIGN") {
-      entry = new TemporalObjectAssignEntry(entryArgs);
+      entry = new TemporalObjectAssignEntry(this.realm, entryArgs);
     } else {
-      entry = new TemporalBuildNodeEntry(entryArgs);
+      entry = new TemporalBuildNodeEntry(this.realm, entryArgs);
     }
+    this.realm.saveTemporalGeneratorEntryArgs(entry);
     this._entries.push(entry);
     return entry;
   }
@@ -1176,6 +1185,11 @@ export class Generator {
     let index = this._entries.indexOf(entry);
     invariant(index !== -1);
     this._entries[index] = replacement;
+    // Ensure the replacement entry has the same index, as it's going to be in the same position
+    if (entry instanceof TemporalBuildNodeEntry) {
+      invariant(replacement instanceof TemporalBuildNodeEntry);
+      replacement.index = entry.index;
+    }
     if (replacement instanceof TemporalBuildNodeEntry && replacement.declared !== undefined) {
       invariant(replacement.declared.intrinsicName);
       this.preludeGenerator.derivedIds.set(replacement.declared.intrinsicName, replacement);
@@ -1337,7 +1351,7 @@ export function attemptToMergeEquivalentObjectAssigns(
   let to = args[1];
   // Then scan through the args after the "to" of this Object.assign, to see if any
   // other sources are the "to" of a previous Object.assign call
-  for (let i = 2; i < args.length; i++) {
+  loopThroughArgs: for (let i = 2; i < args.length; i++) {
     let possibleOtherObjectAssignTo = args[i];
     // Ensure that the "to" value can be omitted
     if (!callbacks.canOmit(possibleOtherObjectAssignTo)) {
@@ -1358,11 +1372,29 @@ export function attemptToMergeEquivalentObjectAssigns(
       let otherArgsToUse = [];
       for (let x = 2; x < otherArgs.length; x++) {
         let arg = otherArgs[x];
-        let temporalGeneratorEntries = realm.getAllTemporalGeneratorEntriesReferencingArg(arg);
+        let temporalGeneratorEntries = realm.getTemporalGeneratorEntriesReferencingArg(arg);
+        // We need to now check if there are any other temporal entries that exist
+        // between the Object.assign TemporalObjectAssignEntry (start) that we're trying
+        // to merge and the current TemporalObjectAssignEntry we're going to mergin into (end)
+        let startIndex = otherTemporalBuildNodeEntry.index;
+        let endIndex = temporalBuildNodeEntry.index;
 
-        for (let temporalGeneratorEntry of temporalGeneratorEntries) {
-          // TODO
-          temporalGeneratorEntry;
+        if (temporalGeneratorEntries !== undefined) {
+          for (let temporalGeneratorEntry of temporalGeneratorEntries) {
+            // If the entry is that of another Object.assign, then
+            // we know that this entry isn't going to cause issues
+            // with merging the TemporalObjectAssignEntry.
+            if (temporalGeneratorEntry instanceof TemporalObjectAssignEntry) {
+              continue;
+            }
+            // If the index of this entry exist between start and end indexes,
+            // then we cannot optimize and merge the TemporalObjectAssignEntry
+            // because another generator entry has a dependency on the Object.assign
+            // TemporalObjectAssignEntry we're trying to merge.
+            if (temporalGeneratorEntry.index > startIndex && temporalGeneratorEntry.index < endIndex) {
+              continue loopThroughArgs;
+            }
+          }
         }
         otherArgsToUse.push(arg);
       }
@@ -1378,16 +1410,16 @@ export function attemptToMergeEquivalentObjectAssigns(
             newArgs.push(arg);
           }
         }
-        // We now create a new TemporalBuildNodeEntry, without mutating the existing
-        // entry. This new entry is essentially a TemporalBuildNodeEntry that contains two
-        // Object.assign call TemporalBuildNodeEntry entries that have been merged into a
-        // single entry. The previous Object.assign TemporalBuildNodeEntrys should dead-code
-        // eliminate away once we replace the original TemporalBuildNodeEntry we started
+        // We now create a new TemporalObjectAssignEntry, without mutating the existing
+        // entry. This new entry is essentially a TemporalObjectAssignEntry that contains two
+        // Object.assign call TemporalObjectAssignEntry entries that have been merged into a
+        // single entry. The previous Object.assign TemporalObjectAssignEntry should dead-code
+        // eliminate away once we replace the original TemporalObjectAssignEntry we started
         // with with the new merged on as they will no longer be referenced.
-        let newTemporalBuildNodeEntryArgs = Object.assign({}, temporalBuildNodeEntry, {
+        let newTemporalObjectAssignEntryArgs = Object.assign({}, temporalBuildNodeEntry, {
           args: newArgs,
         });
-        return new TemporalObjectAssignEntry(newTemporalBuildNodeEntryArgs);
+        return new TemporalObjectAssignEntry(realm, newTemporalObjectAssignEntryArgs);
       }
       // We might be able to optimize, but we are not sure because "to" can still omit.
       // So we return possible optimization status and wait until "to" does get visited.
