@@ -34,13 +34,14 @@ import { ReactEquivalenceSet } from "../react/ReactEquivalenceSet.js";
 import { ReactElementSet } from "../react/ReactElementSet.js";
 import { ReactPropsSet } from "../react/ReactPropsSet.js";
 import type { ReactOutputTypes } from "../options.js";
+import { FatalError } from "../errors";
+import { Get } from "../methods/index.js";
 
 export class ResidualReactElementVisitor {
   constructor(realm: Realm, residualHeapVisitor: ResidualHeapVisitor) {
     this.realm = realm;
     this.residualHeapVisitor = residualHeapVisitor;
     this.reactOutput = realm.react.output || "create-element";
-    this.someReactElement = undefined;
     this.reactEquivalenceSet = new ReactEquivalenceSet(realm, this);
     this.reactElementEquivalenceSet = new ReactElementSet(realm, this.reactEquivalenceSet);
     this.reactPropsEquivalenceSet = new ReactPropsSet(realm, this.reactEquivalenceSet);
@@ -49,7 +50,6 @@ export class ResidualReactElementVisitor {
   realm: Realm;
   residualHeapVisitor: ResidualHeapVisitor;
   reactOutput: ReactOutputTypes;
-  someReactElement: void | ObjectValue;
   reactEquivalenceSet: ReactEquivalenceSet;
   reactElementEquivalenceSet: ReactElementSet;
   reactPropsEquivalenceSet: ReactPropsSet;
@@ -111,9 +111,29 @@ export class ResidualReactElementVisitor {
       },
     });
 
-    if (this.realm.react.output === "create-element" || isReactFragment) {
-      this.someReactElement = reactElement;
+    // Our serializer requires that every value we serialize must first be visited in every scope where it appears. In
+    // our React element serializer we serialize some values (namely `React.createElement` and `React.Fragment`) that do
+    // not necessarily appear in our source code. We must manually visit these values in our visitor pass for the values
+    // to be serializable.
+    {
+      if (this.realm.react.output === "create-element") {
+        const reactLibraryObject = this._getReactLibraryValue();
+        invariant(reactLibraryObject instanceof ObjectValue);
+        const createElement = reactLibraryObject.properties.get("createElement");
+        invariant(createElement !== undefined);
+        const reactCreateElement = Get(this.realm, reactLibraryObject, "createElement");
+        // Our `createElement` value will be used in the prelude of the optimized function we serialize to initialize
+        // our hoisted React elements. So we need to ensure that we visit our value in a scope above our own to allow
+        // the function to be used in our optimized function prelude. We use our global scope to accomplish this. We are
+        // a "friend" class of `ResidualHeapVisitor` so we call one of its private methods.
+        this.residualHeapVisitor._visitInUnrelatedScope(this.residualHeapVisitor.globalGenerator, reactCreateElement);
+      }
+      if (isReactFragment) {
+        const reactLibraryObject = this._getReactLibraryValue();
+        this.residualHeapVisitor.visitValue(reactLibraryObject);
+      }
     }
+
     // determine if this ReactElement node tree is going to be hoistable
     determineIfReactElementCanBeHoisted(this.realm, reactElement, this.residualHeapVisitor);
   }
@@ -153,5 +173,14 @@ export class ResidualReactElementVisitor {
       }
     }
     return false;
+  }
+
+  _getReactLibraryValue() {
+    const reactLibraryObject = this.realm.fbLibraries.react;
+    // if there is no React library, then we should throw and error
+    if (reactLibraryObject === undefined) {
+      throw new FatalError("unable to find React library reference in scope");
+    }
+    return reactLibraryObject;
   }
 }
