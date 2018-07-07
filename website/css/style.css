@@ -20,6 +20,18 @@ body {
   margin: 0;
 }
 
+/* Prism.js overrides */
+
+pre[class*="language-"] {
+  margin: 0;
+  height: 100%;
+}
+
+:not(pre) > code[class*="language-"], pre[class*="language-"] {
+  background: #1c231f;
+  overflow: auto;
+}
+
 /* HEADER */
 
 header, .repl-container {
@@ -196,7 +208,7 @@ header, .repl-container {
 }
 
 .nav-toggle span {
-  background-color: #323330;
+  background-color: #ffffff;
   display: block;
   height: 1px;
   left: 50%;
@@ -225,11 +237,11 @@ header, .repl-container {
 }
 
 .nav-toggle:hover {
-  background-color: #f5da55;
+  background-color: #1eb168;
 }
 
 .nav-toggle.is-active span {
-  background-color: #323330;
+  background-color: #ffffff;
 }
 
 .nav-toggle.is-active span:nth-child(1) {
@@ -297,7 +309,7 @@ header, .repl-container {
 }
 
 a.nav-item {
-  color: #323330;
+  color: #ffffff;
 }
 
 @media screen and (max-width: 768px) {
@@ -312,18 +324,23 @@ a.nav-item:not(.is-brand) {
 }
 
 a.nav-item:hover:not(.is-brand) {
-  color: #363636;
-  border-bottom: 1px solid #323330;
+  color: #1eb168;
+  border-bottom: 1px solid #1eb168;
 }
 
 a.nav-item.is-active {
-  color: #363636;
-  border-bottom: 1px solid #323330;
+  color: #1eb168;
+  border-bottom: 1px solid #1eb168;
 }
 
 a.nav-item.is-brand {
-  color: #323330;
+  color: #ffffff;
   font-size: 24px;
+}
+
+img.nav-logo {
+  height: 30px;
+  margin: 5px;
 }
 
 @media screen and (min-width: 1000px) {
@@ -364,7 +381,7 @@ a.nav-item.is-brand {
 
 @media screen and (max-width: 768px) {
   .nav-menu.nav-right {
-    background-color: white;
+    background-color: #101512;
     -webkit-box-shadow: 0 4px 7px rgba(10, 10, 10, 0.1);
     box-shadow: 0 4px 7px rgba(10, 10, 10, 0.1);
     left: 0;
@@ -380,7 +397,8 @@ a.nav-item.is-brand {
 
   .nav-menu.nav-right .nav-item:hover {
     padding: 0.75rem;
-    background-color: #f5da55;
+    background-color: #1eb168;
+    color: #ffffff;
   }
 
   .nav-menu.nav-right.is-active {
@@ -393,7 +411,7 @@ a.nav-item.is-brand {
   -webkit-box-align: stretch;
   -ms-flex-align: stretch;
   align-items: stretch;
-  background-color: #f5da55;
+  background-color: #101512;
   display: -webkit-box;
   display: -ms-flexbox;
   display: flex;
@@ -428,8 +446,8 @@ a.nav-item.is-brand {
 }
 
 .hero {
-  background: #323330;
-  color: #FFF;
+  background: #1c231f;
+  color: #ffffff;
   padding: 50px 0;
   font-weight: 200;
   text-align: center;
@@ -440,7 +458,7 @@ a.nav-item.is-brand {
   margin: 0;
   font-size: 64px;
   line-height: 96px;
-  color: #f5da55;
+  color: #ffffff;
 }
 
 .hero h2.minitext {
@@ -460,8 +478,8 @@ a.nav-item.is-brand {
 
 .button {
   border-radius: 4px;
-  border: solid 1px #f5da55;
-  color: #f5da55;
+  border: solid 1px #1eb168;
+  color: #1eb168;
   display: inline-block;
   font-size: 20px;
   font-weight: 400;
@@ -473,8 +491,8 @@ a.nav-item.is-brand {
 .button:hover, .button:active, .button:focus {
   text-decoration: none;
   box-shadow: none;
-  color: #fafafa;
-  background-color: #f5da55;
+  color: #ffffff;
+  background-color: #1eb168;
 }
 
 .section {
@@ -497,7 +515,7 @@ a.nav-item.is-brand {
 .example-input, .example-output {
   flex: 1;
   margin: 0 5px;
-  background-color: #fdfaeb;
+  background-color:#1c231f;
   width: 0;
   display: flex;
   flex-direction: column;
@@ -514,8 +532,8 @@ a.nav-item.is-brand {
 }
 
 .example-input::before, .example-output::before, .code-block::before {
-  background: #FBF4D0;
-  color: #B0A673;
+  background: #101512;
+  color: #ffffff;
   display: block;
   font-size: 11px;
   font-weight: bold;
