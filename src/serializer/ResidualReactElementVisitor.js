@@ -115,23 +115,21 @@ export class ResidualReactElementVisitor {
     // our React element serializer we serialize some values (namely `React.createElement` and `React.Fragment`) that do
     // not necessarily appear in our source code. We must manually visit these values in our visitor pass for the values
     // to be serializable.
-    {
-      if (this.realm.react.output === "create-element") {
-        const reactLibraryObject = this._getReactLibraryValue();
-        invariant(reactLibraryObject instanceof ObjectValue);
-        const createElement = reactLibraryObject.properties.get("createElement");
-        invariant(createElement !== undefined);
-        const reactCreateElement = Get(this.realm, reactLibraryObject, "createElement");
-        // Our `createElement` value will be used in the prelude of the optimized function we serialize to initialize
-        // our hoisted React elements. So we need to ensure that we visit our value in a scope above our own to allow
-        // the function to be used in our optimized function prelude. We use our global scope to accomplish this. We are
-        // a "friend" class of `ResidualHeapVisitor` so we call one of its private methods.
-        this.residualHeapVisitor._visitInUnrelatedScope(this.residualHeapVisitor.globalGenerator, reactCreateElement);
-      }
-      if (isReactFragment) {
-        const reactLibraryObject = this._getReactLibraryValue();
-        this.residualHeapVisitor.visitValue(reactLibraryObject);
-      }
+    if (this.realm.react.output === "create-element") {
+      const reactLibraryObject = this._getReactLibraryValue();
+      invariant(reactLibraryObject instanceof ObjectValue);
+      const createElement = reactLibraryObject.properties.get("createElement");
+      invariant(createElement !== undefined);
+      const reactCreateElement = Get(this.realm, reactLibraryObject, "createElement");
+      // Our `createElement` value will be used in the prelude of the optimized function we serialize to initialize
+      // our hoisted React elements. So we need to ensure that we visit our value in a scope above our own to allow
+      // the function to be used in our optimized function prelude. We use our global scope to accomplish this. We are
+      // a "friend" class of `ResidualHeapVisitor` so we call one of its private methods.
+      this.residualHeapVisitor._visitInUnrelatedScope(this.residualHeapVisitor.globalGenerator, reactCreateElement);
+    }
+    if (isReactFragment) {
+      const reactLibraryObject = this._getReactLibraryValue();
+      this.residualHeapVisitor.visitValue(reactLibraryObject);
     }
 
     // determine if this ReactElement node tree is going to be hoistable
