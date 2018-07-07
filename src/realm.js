@@ -195,7 +195,14 @@ export function construct_empty_effects(
   realm: Realm,
   c: Completion = new SimpleNormalCompletion(realm.intrinsics.empty)
 ): Effects {
-  return new Effects(c, new Generator(realm, "construct_empty_effects"), new Map(), new Map(), new Set());
+  // TODO #2222: Check if `realm.pathConditions` is always correct here. Consider making it a required parameter.
+  return new Effects(
+    c,
+    new Generator(realm, "construct_empty_effects", realm.pathConditions),
+    new Map(),
+    new Map(),
+    new Set()
+  );
 }
 
 export class Realm {
@@ -230,10 +237,10 @@ export class Realm {
     this.emitConcreteModel = !!opts.emitConcreteModel;
 
     this.$TemplateMap = [];
+    this.pathConditions = [];
 
     if (this.useAbstractInterpretation) {
       this.preludeGenerator = new PreludeGenerator(opts.debugNames, opts.uniqueSuffix);
-      this.pathConditions = [];
       ObjectValue.setupTrackedPropertyAccessors(ObjectValue.trackedPropertyNames);
       ObjectValue.setupTrackedPropertyAccessors(NativeFunctionValue.trackedPropertyNames);
       ObjectValue.setupTrackedPropertyAccessors(ProxyValue.trackedPropertyNames);
@@ -826,7 +833,7 @@ export class Realm {
     let saved_generator = this.generator;
     let saved_createdObjects = this.createdObjects;
     let saved_completion = this.savedCompletion;
-    this.generator = new Generator(this, generatorName);
+    this.generator = new Generator(this, generatorName, this.pathConditions);
     this.createdObjects = new Set();
     this.savedCompletion = undefined; // while in this call, we only explore the normal path.
 
@@ -1381,7 +1388,7 @@ export class Realm {
       (this.modifiedProperties: any),
       (this.createdObjects: any)
     );
-    this.generator = new Generator(this, "captured");
+    this.generator = new Generator(this, "captured", this.pathConditions);
     this.modifiedBindings = new Map();
     this.modifiedProperties = new Map();
     this.createdObjects = new Set();

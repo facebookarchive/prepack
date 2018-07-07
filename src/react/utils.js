@@ -630,7 +630,7 @@ export function evaluateWithNestedParentEffects(
     realm.applyEffects(
       new Effects(
         value,
-        new Generator(realm, "evaluateWithNestedEffects"),
+        new Generator(realm, "evaluateWithNestedEffects", effects.generator.pathConditions),
         modifiedBindings,
         modifiedProperties,
         createdObjects
