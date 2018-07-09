@@ -33,8 +33,6 @@ import { ReactStatistics } from "./types";
 import type { AdditionalFunctionEffects, WriteEffects } from "./types";
 import { convertConfigObjectToReactComponentTreeConfig, valueIsKnownReactAbstraction } from "../react/utils.js";
 import { applyOptimizedReactComponents, optimizeReactComponentTreeRoot } from "../react/optimizing.js";
-import { stringOfLocation } from "../utils/babelhelpers";
-import { LoggingTracer } from "./LoggingTracer";
 import * as t from "babel-types";
 
 type AdditionalFunctionEntry = {
@@ -217,15 +215,7 @@ export class Functions {
       let currentOptimizedFunctionId = optimizedFunctionId++;
       additionalFunctionStack.push(functionValue);
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
-      let loggingTracer = this.realm.getTracer(LoggingTracer);
-      if (loggingTracer) {
-        loggingTracer.log(
-          `>Starting Optimized Function ${currentOptimizedFunctionId} ${
-            functionValue.intrinsicName ? functionValue.intrinsicName : "[unknown name]"
-          } ${functionValue.expressionLocation ? stringOfLocation(functionValue.expressionLocation) : ""}`,
-          "[optimized functions]"
-        );
-      }
+      for (let t1 of this.realm.tracers) t1.beginOptimizingFunction(currentOptimizedFunctionId, functionValue);
       let call = this._callOfFunction(functionValue);
       let effects: Effects = this.realm.evaluatePure(
         () => this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
@@ -266,9 +256,7 @@ export class Functions {
         return null;
       }, additionalFunctionEffects.effects);
       invariant(additionalFunctionStack.pop() === functionValue);
-      if (loggingTracer) {
-        loggingTracer.log(`<Ending Optimized Function ${currentOptimizedFunctionId}`, "[optimized functions]");
-      }
+      for (let t2 of this.realm.tracers) t2.endOptimizingFunction(currentOptimizedFunctionId);
     };
 
     while (additionalFunctionsToProcess.length > 0) {

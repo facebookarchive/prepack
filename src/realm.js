@@ -136,6 +136,8 @@ export class Tracer {
     newTarget: void | ObjectValue,
     result: void | Reference | Value | AbruptCompletion
   ) {}
+  beginOptimizingFunction(optimizedFunctionId: number, functionValue: FunctionValue) {}
+  endOptimizingFunction(optimizedFunctionId: number) {}
 }
 
 export class ExecutionContext {
@@ -437,14 +439,6 @@ export class Realm {
   nextGeneratorId: number = 0;
   _abstractValuesDefined: Set<string>;
   _checkedObjectIds: Map<ObjectValue | AbstractObjectValue, number>;
-
-  // Have to pass in Tracer type as argument because we can't import them here to avoid increasing flow cycle
-  getTracer<T>(tracerType: T): T | void {
-    let tracers = this.tracers.filter(x => x instanceof tracerType);
-    invariant(tracers.length <= 1, "Looking for a tracer but found multiple.");
-    if (tracers.length === 1) return tracers[0];
-    return undefined;
-  }
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
