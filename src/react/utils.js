@@ -955,6 +955,7 @@ function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps:
 
   let preludeGenerator = realm.preludeGenerator;
   invariant(preludeGenerator !== undefined);
+  let to = newTemporalArgs[0];
   let temporalTo = AbstractValue.createTemporalFromBuildFunction(
     realm,
     ObjectValue,
@@ -964,7 +965,7 @@ function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps:
     },
     {
       skipInvariant: true,
-      mutatesOnly: [targetNode],
+      mutatesOnly: [to],
       temporalType: "OBJECT_ASSIGN",
     }
   );

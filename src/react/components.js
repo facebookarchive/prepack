@@ -19,7 +19,6 @@ import {
   NativeFunctionValue,
   ECMAScriptFunctionValue,
   Value,
-  FunctionValue,
 } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
