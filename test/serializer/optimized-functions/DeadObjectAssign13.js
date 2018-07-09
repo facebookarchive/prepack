@@ -1,5 +1,7 @@
-// Copies of _8:3
-// _8 is the variable for Object.assign. See DeadObjectAssign4.js for
+// Copies of _\$7:3
+// inline expressions
+
+// _$7 is the variable for Object.assign. See DeadObjectAssign4.js for
 // a larger explanation.
 
 function f(x, foo) {

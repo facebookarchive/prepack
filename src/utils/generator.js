@@ -1333,15 +1333,14 @@ export function attemptToMergeEquivalentObjectAssigns(
   temporalBuildNodeEntry: TemporalBuildNodeEntry
 ): TemporalBuildNodeEntryOptimizationStatus | TemporalObjectAssignEntry {
   let args = temporalBuildNodeEntry.args;
-  // If we are Object.assigning 3 or more args
-  if (args.length < 3) {
+  // If we are Object.assigning 2 or more args
+  if (args.length < 2) {
     return "NO_OPTIMIZATION";
   }
-  let objectAssingFunc = args[0];
-  let to = args[1];
+  let to = args[0];
   // Then scan through the args after the "to" of this Object.assign, to see if any
   // other sources are the "to" of a previous Object.assign call
-  loopThroughArgs: for (let i = 2; i < args.length; i++) {
+  loopThroughArgs: for (let i = 1; i < args.length; i++) {
     let possibleOtherObjectAssignTo = args[i];
     // Ensure that the "to" value can be omitted
     // Note: this check is still somewhat fragile and depends on the visiting order
@@ -1354,16 +1353,16 @@ export function attemptToMergeEquivalentObjectAssigns(
     // be a snapshot AbstractObjectValue
     if (possibleOtherObjectAssignTo instanceof AbstractObjectValue) {
       let otherTemporalBuildNodeEntry = realm.getTemporalBuildNodeEntryFromDerivedValue(possibleOtherObjectAssignTo);
-      if (otherTemporalBuildNodeEntry === undefined) {
+      if (!(otherTemporalBuildNodeEntry instanceof TemporalObjectAssignEntry)) {
         continue;
       }
       let otherArgs = otherTemporalBuildNodeEntry.args;
-      // Object.assign has at least 2 args and the first is that of Object.assign native function
-      if (otherArgs.length < 3 || otherArgs[0] !== objectAssingFunc) {
+      // Object.assign has at least 1 arg
+      if (otherArgs.length < 2) {
         continue;
       }
       let otherArgsToUse = [];
-      for (let x = 2; x < otherArgs.length; x++) {
+      for (let x = 1; x < otherArgs.length; x++) {
         let arg = otherArgs[x];
         // The arg might have been havoced, so ensure we do not continue in this case
         if (arg instanceof ObjectValue && arg.mightBeHavocedObject()) {
@@ -1402,7 +1401,7 @@ export function attemptToMergeEquivalentObjectAssigns(
       // If we cannot omit the "to" value that means it's being used, so we shall not try to
       // optimize this Object.assign.
       if (!callbacks.canOmit(to)) {
-        let newArgs = [objectAssingFunc, to, ...otherArgsToUse];
+        let newArgs = [to, ...otherArgsToUse];
 
         for (let x = 2; x < args.length; x++) {
           let arg = args[x];

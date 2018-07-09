@@ -1,10 +1,10 @@
-// Copies of _5:2
-// Why? _5 is the variable for Object.assign, and there should be
+// Copies of _\$4:2
+// inline expressions
+
+// Why? _$4 is the variable for Object.assign, and there should be
 // two copies of it. One for it's declaration and one for its reference.
-// I could not think of another way of getting this test to work only
-// for the compiled output. Passing in values to the optimized function
-// with getters or monkey patching Object.assign breaks because output
-// values will never match when we compare compiled vs non-compiled.
+// We use inline expressions on all test iterations to ensure the copies
+// count is always constant.
 
 function f(foo) {
   var a = Object.assign({}, foo);
