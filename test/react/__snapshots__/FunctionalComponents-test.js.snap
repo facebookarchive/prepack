@@ -2848,6 +2848,130 @@ ReactStatistics {
 }
 `;
 
+exports[`Hoist Fragment: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "React.Fragment",
+          "status": "NORMAL",
+        },
+      ],
+      "message": "",
+      "name": "Root",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Hoist Fragment: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "React.Fragment",
+          "status": "NORMAL",
+        },
+      ],
+      "message": "",
+      "name": "Root",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Hoist Fragment: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "React.Fragment",
+          "status": "NORMAL",
+        },
+      ],
+      "message": "",
+      "name": "Root",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`Hoist Fragment: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "React.Fragment",
+          "status": "NORMAL",
+        },
+      ],
+      "message": "",
+      "name": "Root",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`Mutations - not-safe 1: (JSX => JSX) 1`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
 
 exports[`Mutations - not-safe 1: (JSX => createElement) 1`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;

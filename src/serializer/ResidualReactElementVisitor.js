@@ -34,7 +34,6 @@ import { ReactEquivalenceSet } from "../react/ReactEquivalenceSet.js";
 import { ReactElementSet } from "../react/ReactElementSet.js";
 import { ReactPropsSet } from "../react/ReactPropsSet.js";
 import type { ReactOutputTypes } from "../options.js";
-import { FatalError } from "../errors";
 import { Get } from "../methods/index.js";
 
 export class ResidualReactElementVisitor {
@@ -129,7 +128,9 @@ export class ResidualReactElementVisitor {
     }
     if (isReactFragment) {
       const reactLibraryObject = this._getReactLibraryValue();
-      this.residualHeapVisitor.visitValue(reactLibraryObject);
+      // Our `React.Fragment` value will be used in the function to lazily initialize hoisted JSX elements. So we need
+      // to visit the library in our global generator so that it is available when creating the hoisted elements.
+      this.residualHeapVisitor._visitInUnrelatedScope(this.residualHeapVisitor.globalGenerator, reactLibraryObject);
     }
 
     // determine if this ReactElement node tree is going to be hoistable
@@ -175,10 +176,7 @@ export class ResidualReactElementVisitor {
 
   _getReactLibraryValue() {
     const reactLibraryObject = this.realm.fbLibraries.react;
-    // if there is no React library, then we should throw and error
-    if (reactLibraryObject === undefined) {
-      throw new FatalError("unable to find React library reference in scope");
-    }
+    invariant(reactLibraryObject, "Unable to find React library reference in scope.");
     return reactLibraryObject;
   }
 }
