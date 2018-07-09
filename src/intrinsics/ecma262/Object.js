@@ -100,7 +100,7 @@ function copyKeys(realm: Realm, keys, from, to): void {
 
 function applyObjectAssignSource(
   realm: Realm,
-  nextSource: ObjectValue | AbstractObjectValue,
+  nextSource: Value,
   to: ObjectValue | AbstractObjectValue,
   delayedSources: Array<Value>,
   to_must_be_partial: boolean
@@ -152,7 +152,7 @@ function applyObjectAssignSource(
 
 function tryAndApplySourceOrRecover(
   realm: Realm,
-  nextSource: ObjectValue | AbstractObjectValue,
+  nextSource: Value,
   to: ObjectValue | AbstractObjectValue,
   delayedSources: Array<Value>,
   to_must_be_partial: boolean
@@ -225,7 +225,7 @@ export default function(realm: Realm): NativeFunctionValue {
 
   // ECMA262 19.1.2.1
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
-    let ObjectAssign = func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
+    func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
       // 1. Let to be ? ToObject(target).
       let to = To.ToObject(realm, target);
       let to_must_be_partial = false;
@@ -274,17 +274,20 @@ export default function(realm: Realm): NativeFunctionValue {
         to.makeSimple();
 
         // Tell serializer that it may add properties to to only after temporalTo has been emitted
-        let temporalArgs = [ObjectAssign, to, ...delayedSources];
+        let temporalArgs = [to, ...delayedSources];
+        let preludeGenerator = realm.preludeGenerator;
+        invariant(preludeGenerator !== undefined);
         let temporalTo = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,
           temporalArgs,
-          ([methodNode, targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
-            return t.callExpression(methodNode, [targetNode, ...sourceNodes]);
+          ([targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
+            return t.callExpression(preludeGenerator.memoizeReference("Object.assign"), [targetNode, ...sourceNodes]);
           },
           {
             skipInvariant: true,
             mutatesOnly: [to],
+            temporalType: "OBJECT_ASSIGN",
           }
         );
         invariant(temporalTo instanceof AbstractObjectValue);

@@ -64,7 +64,7 @@ import {
 import type { Compatibility, RealmOptions, ReactOutputTypes, InvariantModeTypes } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
-import { Generator, PreludeGenerator, type TemporalBuildNodeEntryArgs } from "./utils/generator.js";
+import { Generator, PreludeGenerator, type TemporalBuildNodeEntry } from "./utils/generator.js";
 import { emptyExpression, voidExpression } from "./utils/babelhelpers.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
@@ -248,6 +248,10 @@ export class Realm {
     this.partialEvaluators = (Object.create(null): any);
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
 
+    this.derivedIds = new Map();
+    this.temporalEntryArgToEntries = new Map();
+    this.temporalEntryCounter = 0;
+
     this.instantRender = {
       enabled: opts.instantRender || false,
     };
@@ -340,6 +344,10 @@ export class Realm {
   contextStack: Array<ExecutionContext> = [];
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
+
+  derivedIds: Map<string, TemporalBuildNodeEntry>;
+  temporalEntryArgToEntries: Map<Value, Set<TemporalBuildNodeEntry>>;
+  temporalEntryCounter: number;
 
   instantRender: {
     enabled: boolean,
@@ -1807,12 +1815,29 @@ export class Realm {
     return !this._abstractValuesDefined.has(nameString);
   }
 
-  getTemporalBuildNodeEntryArgsFromDerivedValue(value: Value): void | TemporalBuildNodeEntryArgs {
+  getTemporalBuildNodeEntryFromDerivedValue(value: Value): void | TemporalBuildNodeEntry {
     let name = value.intrinsicName;
-    invariant(name);
-    let preludeGenerator = this.preludeGenerator;
-    invariant(preludeGenerator !== undefined);
-    let temporalBuildNodeEntryArgs = preludeGenerator.derivedIds.get(name);
-    return temporalBuildNodeEntryArgs;
+    if (!name) {
+      return undefined;
+    }
+    let temporalBuildNodeEntry = value.$Realm.derivedIds.get(name);
+    return temporalBuildNodeEntry;
+  }
+
+  getTemporalGeneratorEntriesReferencingArg(arg: AbstractValue | ObjectValue): void | Set<TemporalBuildNodeEntry> {
+    return this.temporalEntryArgToEntries.get(arg);
+  }
+
+  saveTemporalGeneratorEntryArgs(temporalBuildNodeEntry: TemporalBuildNodeEntry): void {
+    let args = temporalBuildNodeEntry.args;
+    for (let arg of args) {
+      let temporalEntries = this.temporalEntryArgToEntries.get(arg);
+
+      if (temporalEntries === undefined) {
+        temporalEntries = new Set();
+        this.temporalEntryArgToEntries.set(arg, temporalEntries);
+      }
+      temporalEntries.add(temporalBuildNodeEntry);
+    }
   }
 }

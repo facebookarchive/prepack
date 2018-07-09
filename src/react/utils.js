@@ -30,7 +30,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { Generator } from "../utils/generator.js";
+import { Generator, TemporalObjectAssignEntry } from "../utils/generator.js";
 import type {
   Descriptor,
   FunctionBodyAstNode,
@@ -944,20 +944,30 @@ function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps:
     // be a better option.
     invariant(false, "TODO applyClonedTemporalAlias conditional");
   }
-  let temporalBuildNodeEntryArgs = realm.getTemporalBuildNodeEntryArgsFromDerivedValue(temporalAlias);
-  invariant(temporalBuildNodeEntryArgs !== undefined);
-  let temporalArgs = temporalBuildNodeEntryArgs.args;
+  let temporalBuildNodeEntry = realm.getTemporalBuildNodeEntryFromDerivedValue(temporalAlias);
+  if (!(temporalBuildNodeEntry instanceof TemporalObjectAssignEntry)) {
+    invariant(false, "TODO nont TemporalObjectAssignEntry");
+  }
+  invariant(temporalBuildNodeEntry !== undefined);
+  let temporalArgs = temporalBuildNodeEntry.args;
   // replace the original props with the cloned one
   let newTemporalArgs = temporalArgs.map(arg => (arg === props ? clonedProps : arg));
 
+  let preludeGenerator = realm.preludeGenerator;
+  invariant(preludeGenerator !== undefined);
+  let to = newTemporalArgs[0];
   let temporalTo = AbstractValue.createTemporalFromBuildFunction(
     realm,
     ObjectValue,
     newTemporalArgs,
-    ([methodNode, targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
-      return t.callExpression(methodNode, [targetNode, ...sourceNodes]);
+    ([targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
+      return t.callExpression(preludeGenerator.memoizeReference("Object.assign"), [targetNode, ...sourceNodes]);
     },
-    { skipInvariant: true }
+    {
+      skipInvariant: true,
+      mutatesOnly: [to],
+      temporalType: "OBJECT_ASSIGN",
+    }
   );
   invariant(temporalTo instanceof AbstractObjectValue);
   invariant(clonedProps instanceof ObjectValue);
@@ -1059,15 +1069,21 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
         // prepare our temporal Object.assign fallback
         to.makePartial();
         to.makeSimple();
-        let temporalArgs = [objAssign, to, ...delayedSources];
+        let temporalArgs = [to, ...delayedSources];
+        let preludeGenerator = realm.preludeGenerator;
+        invariant(preludeGenerator !== undefined);
         let temporalTo = AbstractValue.createTemporalFromBuildFunction(
           realm,
           ObjectValue,
           temporalArgs,
-          ([methodNode, ..._args]) => {
-            return t.callExpression(methodNode, ((_args: any): Array<any>));
+          ([..._args]) => {
+            return t.callExpression(preludeGenerator.memoizeReference("Object.assign"), ((_args: any): Array<any>));
           },
-          { skipInvariant: true, mutatesOnly: [to] }
+          {
+            skipInvariant: true,
+            mutatesOnly: [to],
+            temporalType: "OBJECT_ASSIGN",
+          }
         );
         invariant(temporalTo instanceof AbstractObjectValue);
         temporalTo.values = new ValuesDomain(to);

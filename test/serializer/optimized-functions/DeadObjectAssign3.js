@@ -1,4 +1,5 @@
 // Copies of assign\(:0
+
 global.f = function() {
   var x = global.__abstract ? global.__abstract({}, "({})") : {};
   global.__makeSimple && __makeSimple(x);

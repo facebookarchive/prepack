@@ -20,7 +20,7 @@ import type {
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
-import { PreludeGenerator } from "../utils/generator.js";
+import { PreludeGenerator, type TemporalBuildNodeType } from "../utils/generator.js";
 import buildExpressionTemplate from "../utils/builder.js";
 
 import {
@@ -142,11 +142,10 @@ export default class AbstractValue extends Value {
   addSourceNamesTo(names: Array<string>, visited: Set<AbstractValue> = new Set()) {
     if (visited.has(this)) return;
     visited.add(this);
-    let gen = this.$Realm.preludeGenerator;
+    let realm = this.$Realm;
     function add_intrinsic(name: string) {
       if (name.startsWith("_$")) {
-        if (gen === undefined) return;
-        let temporalBuildNodeEntryArgs = gen.derivedIds.get(name);
+        let temporalBuildNodeEntryArgs = realm.derivedIds.get(name);
         invariant(temporalBuildNodeEntryArgs !== undefined);
         add_args(temporalBuildNodeEntryArgs.args);
       } else if (names.indexOf(name) < 0) {
@@ -784,6 +783,7 @@ export default class AbstractValue extends Value {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
+      temporalType?: TemporalBuildNodeType,
     |}
   ): AbstractValue {
     invariant(resultType !== UndefinedValue);
@@ -824,6 +824,7 @@ export default class AbstractValue extends Value {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
+      temporalType?: TemporalBuildNodeType,
     |}
   ): AbstractValue | UndefinedValue {
     let types = new TypesDomain(resultType);
