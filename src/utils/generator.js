@@ -126,11 +126,11 @@ export class GeneratorEntry {
     invariant(false, "GeneratorEntry is an abstract base class");
   }
 
-  notEqualToAndDoesNotHappenAfter(entry: GeneratorEntry): boolean {
+  notEqualToAndDoesNotHappenBefore(entry: GeneratorEntry): boolean {
     return this.index > entry.index;
   }
 
-  notEqualToAndDoesNotHappenBefore(entry: GeneratorEntry): boolean {
+  notEqualToAndDoesNotHappenAfter(entry: GeneratorEntry): boolean {
     return this.index < entry.index;
   }
 
@@ -1124,8 +1124,6 @@ export class Generator {
     return res;
   }
 
-  // PITFALL Warning: adding a new kind of TemporalBuildNodeEntry that is not the result of a join or composition
-  // will break this purgeEntriesWithGeneratorDepencies.
   _addEntry(entryArgs: TemporalBuildNodeEntryArgs): TemporalBuildNodeEntry {
     let entry;
     if (entryArgs.temporalType === "OBJECT_ASSIGN") {
@@ -1372,7 +1370,7 @@ export function attemptToMergeEquivalentObjectAssigns(
           let temporalGeneratorEntries = realm.getTemporalGeneratorEntriesReferencingArg(arg);
           // We need to now check if there are any other temporal entries that exist
           // between the Object.assign TemporalObjectAssignEntry that we're trying to
-          // merge and the current TemporalObjectAssignEntry we're going to mergin into.
+          // merge and the current TemporalObjectAssignEntry we're going to merge into.
           if (temporalGeneratorEntries !== undefined) {
             for (let temporalGeneratorEntry of temporalGeneratorEntries) {
               // If the entry is that of another Object.assign, then
@@ -1383,13 +1381,13 @@ export function attemptToMergeEquivalentObjectAssigns(
               }
               // TODO: what if the temporalGeneratorEntry can be omitted and not needed?
 
-              // If the index of this entry exist between start and end indexes,
+              // If the index of this entry exists between start and end indexes,
               // then we cannot optimize and merge the TemporalObjectAssignEntry
               // because another generator entry may have a dependency on the Object.assign
               // TemporalObjectAssignEntry we're trying to merge.
               if (
-                temporalGeneratorEntry.notEqualToAndDoesNotHappenAfter(otherTemporalBuildNodeEntry) &&
-                temporalGeneratorEntry.notEqualToAndDoesNotHappenBefore(temporalBuildNodeEntry)
+                temporalGeneratorEntry.notEqualToAndDoesNotHappenBefore(otherTemporalBuildNodeEntry) &&
+                temporalGeneratorEntry.notEqualToAndDoesNotHappenAfter(temporalBuildNodeEntry)
               ) {
                 continue loopThroughArgs;
               }

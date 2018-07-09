@@ -378,7 +378,7 @@ export function applyGetDerivedStateFromProps(
         // the partial abstract state
         AbstractValue.createTemporalFromBuildFunction(
           realm,
-          FunctionValue,
+          ObjectValue,
           [newState, prevState, state],
           ([..._args]) => {
             return t.callExpression(preludeGenerator.memoizeReference("Object.assign"), ((_args: any): Array<any>));
@@ -401,7 +401,7 @@ export function applyGetDerivedStateFromProps(
           invariant(preludeGenerator !== undefined);
           AbstractValue.createTemporalFromBuildFunction(
             realm,
-            FunctionValue,
+            ObjectValue,
             [objectAssign, newState, prevState, state],
             ([..._args]) => {
               return t.callExpression(preludeGenerator.memoizeReference("Object.assign"), ((_args: any): Array<any>));

@@ -962,7 +962,11 @@ function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps:
     ([targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
       return t.callExpression(preludeGenerator.memoizeReference("Object.assign"), [targetNode, ...sourceNodes]);
     },
-    { skipInvariant: true }
+    {
+      skipInvariant: true,
+      mutatesOnly: [targetNode],
+      temporalType: "OBJECT_ASSIGN",
+    }
   );
   invariant(temporalTo instanceof AbstractObjectValue);
   invariant(clonedProps instanceof ObjectValue);
