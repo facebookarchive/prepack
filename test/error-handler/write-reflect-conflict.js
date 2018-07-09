@@ -1,5 +1,5 @@
 // recover-from-errors
-// expected errors: [{"severity":"Warning","errorCode":"PP1007","callStack":"Error\n    at additional1 (unknown)"},{"severity":"Warning","errorCode":"PP1007","callStack":"Error\n    at additional2 (unknown)"},{"location":{"start":{"line":11,"column":29},"end":{"line":11,"column":30},"identifierName":"a","source":"test/error-handler/write-reflect-conflict.js"},"severity":"FatalError","errorCode":"PP1003"}]
+// expected errors: [{"severity":"Warning","errorCode":"PP1007","callStack":"Error\n    "},{"severity":"Warning","errorCode":"PP1007","callStack":"Error\n    "},{"location":{"start":{"line":11,"column":29},"end":{"line":11,"column":30},"identifierName":"a","source":"test/error-handler/write-reflect-conflict.js"},"severity":"FatalError","errorCode":"PP1003"}]
 
 a = {};
 

@@ -286,6 +286,9 @@ export class Reconciler {
 
     try {
       this.realm.react.activeReconciler = this;
+      let throwUnsupportedSideEffectError = (msg: string) => {
+        throw new UnsupportedSideEffect(msg);
+      };
       let effects = this.realm.wrapInGlobalEnv(() =>
         this.realm.evaluatePure(
           () =>
