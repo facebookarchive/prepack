@@ -59,7 +59,7 @@ export function GeneratorStart(
 }
 
 // ECMA26225.3.3.2
-export function GeneratorValidate(realm: Realm, generator: Value) {
+export function GeneratorValidate(realm: Realm, generator: Value): void | "suspendedStart" {
   // 1. If Type(generator) is not Object, throw a TypeError exception.
   if (!(generator instanceof ObjectValue)) {
     throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, "Type(generator) is not Object");

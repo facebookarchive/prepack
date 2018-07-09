@@ -27,7 +27,7 @@ export function GlobalDeclarationInstantiation(
   ast: BabelNodeProgram,
   env: LexicalEnvironment,
   strictCode: boolean
-) {
+): EmptyValue {
   realm.getRunningContext().isStrict = realm.isStrict = strictCode;
 
   // 1. Let envRec be env's EnvironmentRecord.

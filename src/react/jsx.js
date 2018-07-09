@@ -74,7 +74,7 @@ export function convertJSXExpressionToIdentifier(
   }
 }
 
-export function convertKeyValueToJSXAttribute(key: string, expr: BabelNodeExpression) {
+export function convertKeyValueToJSXAttribute(key: string, expr: BabelNodeExpression): BabelNode {
   let wrapInContainer = true;
 
   if (expr && t.isStringLiteral(expr) && typeof expr.value === "string") {

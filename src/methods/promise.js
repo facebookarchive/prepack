@@ -12,7 +12,14 @@
 import type { Realm } from "../realm.js";
 import type { ResolvingFunctions, PromiseCapability, PromiseReaction } from "../types.js";
 import { AbruptCompletion } from "../completions.js";
-import { Value, ObjectValue, StringValue, NativeFunctionValue, FunctionValue } from "../values/index.js";
+import {
+  Value,
+  ObjectValue,
+  StringValue,
+  NativeFunctionValue,
+  FunctionValue,
+  type UndefinedValue,
+} from "../values/index.js";
 import { SameValue } from "../methods/abstract.js";
 import { Construct } from "../methods/construct.js";
 import { Get } from "../methods/get.js";
@@ -23,7 +30,7 @@ import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 
 // ECMA262 8.4.1
-export function EnqueueJob(realm: Realm, queueName: string, job: Function, args: Array<any>) {}
+export function EnqueueJob(realm: Realm, queueName: string, job: Function, args: Array<any>): void {}
 
 // ECMA262 25.4.1.5
 export function NewPromiseCapability(realm: Realm, C: Value): PromiseCapability {
@@ -624,7 +631,11 @@ export function RejectPromise(realm: Realm, promise: ObjectValue, reason: Value)
 }
 
 // ECMA262 25.4.1.8
-export function TriggerPromiseReactions(realm: Realm, reactions: Array<PromiseReaction>, argument: Value) {
+export function TriggerPromiseReactions(
+  realm: Realm,
+  reactions: Array<PromiseReaction>,
+  argument: Value
+): UndefinedValue {
   // 1. Repeat for each reaction in reactions, in original insertion order
   for (let reaction of reactions) {
     // a. Perform EnqueueJob("PromiseJobs", PromiseReactionJob, « reaction, argument »).
@@ -635,7 +646,12 @@ export function TriggerPromiseReactions(realm: Realm, reactions: Array<PromiseRe
 }
 
 // ECMA262 25.4.1.9
-export function HostPromiseRejectionTracker(realm: Realm, promise: ObjectValue, operation: "reject" | "handle") {}
+export function HostPromiseRejectionTracker(realm: Realm, promise: ObjectValue, operation: "reject" | "handle"): void {}
 
 // ECMA262 25.4.2.2
-export function PromiseResolveThenableJob(realm: Realm, promiseToResolve: ObjectValue, thenable: Value, then: Value) {}
+export function PromiseResolveThenableJob(
+  realm: Realm,
+  promiseToResolve: ObjectValue,
+  thenable: Value,
+  then: Value
+): void {}
