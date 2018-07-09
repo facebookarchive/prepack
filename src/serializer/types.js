@@ -10,7 +10,7 @@
 /* @flow strict-local */
 
 import { DeclarativeEnvironmentRecord, type Binding } from "../environment.js";
-import { ConcreteValue, Value, ObjectValue, AbstractValue } from "../values/index.js";
+import { AbstractValue, ConcreteValue, ObjectValue, Value } from "../values/index.js";
 import type { ECMAScriptSourceFunctionValue, FunctionValue } from "../values/index.js";
 import type { BabelNodeExpression, BabelNodeStatement, BabelNodeMemberExpression } from "babel-types";
 import { SameValue } from "../methods/abstract.js";
