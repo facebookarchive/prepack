@@ -60,7 +60,7 @@ jobs:
             yarn test-sourcemaps
             yarn test-std-in
             yarn test-residual
-            yarn test-test262 --statusFile ~/artifacts/test262-status.txt --timeout 120 --cpuScale 0.25 --verbose
+            yarn test-test262 --expectedCounts 11945,5566,0 --statusFile ~/artifacts/test262-status.txt --timeout 120 --cpuScale 0.25 --verbose
             #yarn test-test262-new --statusFile ~/artifacts/test262-new-status.txt --timeout 120 --verbose
       - store_artifacts:
           path: ~/artifacts/
