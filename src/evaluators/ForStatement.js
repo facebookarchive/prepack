@@ -11,7 +11,13 @@
 
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
-import { AbstractValue, Value, EmptyValue, ECMAScriptSourceFunctionValue } from "../values/index.js";
+import {
+  AbstractValue,
+  Value,
+  EmptyValue,
+  ECMAScriptSourceFunctionValue,
+  type UndefinedValue,
+} from "../values/index.js";
 import {
   AbruptCompletion,
   BreakCompletion,
@@ -45,7 +51,7 @@ type BailOutWrapperInfo = {
 };
 
 // ECMA262 13.7.4.9
-export function CreatePerIterationEnvironment(realm: Realm, perIterationBindings: Array<string>) {
+export function CreatePerIterationEnvironment(realm: Realm, perIterationBindings: Array<string>): UndefinedValue {
   // 1. If perIterationBindings has any elements, then
   if (perIterationBindings.length > 0) {
     // a. Let lastIterationEnv be the running execution context's LexicalEnvironment.

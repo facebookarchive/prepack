@@ -406,7 +406,7 @@ export function traverseReactElement(
   realm: Realm,
   reactElement: ObjectValue,
   traversalVisitor: ElementTraversalVisitor
-) {
+): void {
   let typeValue = getProperty(realm, reactElement, "type");
   traversalVisitor.visitType(typeValue);
 

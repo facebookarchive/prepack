@@ -24,7 +24,7 @@ export function getNodeBufferFromTypedArray(realm: Realm, value: ObjectValue): U
 // Takes a value from the host realm and create it into a Prepack Realm.
 // TODO: Move this to a bigger general purpose proxy between the environments.
 // See issue #644 for more details.
-export function createDeepIntrinsic(realm: Realm, value: mixed, intrinsicName: string) {
+export function createDeepIntrinsic(realm: Realm, value: mixed, intrinsicName: string): Value {
   switch (typeof value) {
     case "undefined":
       return realm.intrinsics.undefined;
