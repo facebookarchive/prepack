@@ -46,7 +46,7 @@ export function prepackStdin(
   options: PrepackOptions = defaultOptions,
   processSerializedCode: SerializedResult => void,
   printDiagnostics: boolean => boolean
-) {
+): void | SerializedResult {
   let sourceMapFilename = options.inputSourceMapFilename || "";
   process.stdin.setEncoding("utf8");
   process.stdin.resume();
@@ -86,7 +86,7 @@ export function prepackFile(
   options: PrepackOptions = defaultOptions,
   callback: (any, ?{ code: string, map?: SourceMap }) => void,
   fileErrorHandler?: (err: ?Error) => void
-) {
+): void {
   if (options.compatibility === "node-cli") {
     prepackNodeCLI(filename, options, callback);
     return;
@@ -121,7 +121,7 @@ export function prepackFile(
   });
 }
 
-export function prepackFileSync(filenames: Array<string>, options: PrepackOptions = defaultOptions) {
+export function prepackFileSync(filenames: Array<string>, options: PrepackOptions = defaultOptions): SerializedResult {
   if (options.compatibility === "node-cli") {
     if (filenames.length !== 1) {
       console.error(`Does not support multiple file prepack in node-cli mode.`);

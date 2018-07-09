@@ -134,7 +134,7 @@ export type ScopeBinding = {
   referentializationScope: ReferentializationScope,
 };
 
-export function AreSameResidualBinding(realm: Realm, x: ResidualFunctionBinding, y: ResidualFunctionBinding) {
+export function AreSameResidualBinding(realm: Realm, x: ResidualFunctionBinding, y: ResidualFunctionBinding): boolean {
   if (x.serializedValue === y.serializedValue) return true;
   if (x.value && x.value === y.value) return true;
   if (x.value instanceof ConcreteValue && y.value instanceof ConcreteValue) {

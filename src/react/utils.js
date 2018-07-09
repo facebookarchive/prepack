@@ -131,7 +131,7 @@ export function isTagName(ast: BabelNode): boolean {
   return ast.type === "JSXIdentifier" && /^[a-z]|\-/.test(((ast: any): BabelNodeJSXIdentifier).name);
 }
 
-export function isReactComponent(name: string) {
+export function isReactComponent(name: string): boolean {
   return name.length > 0 && name[0] === name[0].toUpperCase();
 }
 
@@ -221,7 +221,7 @@ export function addKeyToReactElement(realm: Realm, reactElement: ObjectValue): O
 // we create a unique key for each JSXElement to prevent collisions
 // otherwise React will detect a missing/conflicting key at runtime and
 // this can break the reconcilation of JSXElements in arrays
-export function getUniqueReactElementKey(index?: string, usedReactElementKeys: Set<string>) {
+export function getUniqueReactElementKey(index?: string, usedReactElementKeys: Set<string>): string {
   let key;
   do {
     key = Math.random()
@@ -610,7 +610,11 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   return flattenedChildren;
 }
 
-export function evaluateWithNestedParentEffects(realm: Realm, nestedEffects: Array<Effects>, f: () => Effects) {
+export function evaluateWithNestedParentEffects(
+  realm: Realm,
+  nestedEffects: Array<Effects>,
+  f: () => Effects
+): Effects {
   let nextEffects = nestedEffects.slice();
   let modifiedBindings;
   let modifiedProperties;
@@ -847,7 +851,7 @@ function isEventProp(name: string): boolean {
   return name.length > 2 && name[0].toLowerCase() === "o" && name[1].toLowerCase() === "n";
 }
 
-export function getLocationFromValue(expressionLocation: any) {
+export function getLocationFromValue(expressionLocation: any): string {
   // if we can't get a value, then it's likely that the source file was not given
   // (this happens in React tests) so instead don't print any location
   return expressionLocation
