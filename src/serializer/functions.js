@@ -217,10 +217,8 @@ export class Functions {
       let currentOptimizedFunctionId = optimizedFunctionId++;
       additionalFunctionStack.push(functionValue);
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
-      let loggingTracers = this.realm.tracers.filter(x => x instanceof LoggingTracer);
-      let loggingTracer = loggingTracers.length > 0 ? loggingTracers[0] : undefined;
+      let loggingTracer = this.realm.getTracer(LoggingTracer);
       if (loggingTracer) {
-        invariant(loggingTracer instanceof LoggingTracer);
         loggingTracer.log(
           `>Starting Optimized Function ${currentOptimizedFunctionId} ${
             functionValue.intrinsicName ? functionValue.intrinsicName : "[unknown name]"
@@ -269,7 +267,6 @@ export class Functions {
       }, additionalFunctionEffects.effects);
       invariant(additionalFunctionStack.pop() === functionValue);
       if (loggingTracer) {
-        invariant(loggingTracer instanceof LoggingTracer);
         loggingTracer.log(`<Ending Optimized Function ${currentOptimizedFunctionId}`, "[optimized functions]");
       }
     };

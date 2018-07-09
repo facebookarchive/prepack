@@ -43,10 +43,13 @@ export function createAbstractFunction(realm: Realm, ...additionalValues: Array<
       let name = _name;
       if (name instanceof StringValue) name = name.value;
       if (name !== undefined && typeof name !== "string") {
-        throw new TypeError("intrinsic name argument is not a string");
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "intrinsic name argument is not a string");
       }
       if (options && !(options instanceof ObjectValue)) {
-        throw new TypeError("options must be an ObjectValue if provided");
+        throw realm.createErrorThrowCompletion(
+          realm.intrinsics.TypeError,
+          "options must be an ObjectValue if provided"
+        );
       }
       return createAbstract(realm, typeNameOrTemplate, name, options, ...additionalValues);
     }
@@ -137,7 +140,7 @@ export default function(realm: Realm): void {
           value
         );
       } else {
-        throw new TypeError("Called __optimize on an invalid type");
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Called __optimize on an invalid type");
       }
       return value;
     }),

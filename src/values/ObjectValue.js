@@ -530,7 +530,7 @@ export default class ObjectValue extends ConcreteValue {
     });
   }
 
-  getOwnPropertyKeysArray(allowAbstractKeys: ?true): Array<string> {
+  getOwnPropertyKeysArray(allowAbstractKeys: boolean = false): Array<string> {
     if (this.isPartialObject() || this.mightBeHavocedObject() || this.unknownProperty !== undefined) {
       AbstractValue.reportIntrospectionError(this);
       throw new FatalError();
