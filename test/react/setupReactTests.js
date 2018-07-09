@@ -113,12 +113,8 @@ function setupReactTests() {
     statistics: Object,
   |} {
     let code = `(function() {
-      // For some reason, the serializer fails if React is not
-      // reachable from a global in tests. This field isn't used.
-      // TODO: figure out why this is necessary in tests.
-      window.___unused_React = require('react');
-      ${source}
-    })()`;
+${source}
+})()`;
     let prepackOptions = {
       errorHandler: diag => {
         diagnosticLog.push(diag);
