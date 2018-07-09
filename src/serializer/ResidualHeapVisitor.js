@@ -1223,21 +1223,6 @@ export class ResidualHeapVisitor {
     this.visitGenerator(this.globalGenerator);
     for (let moduleValue of this.modules.initializedModules.values()) this.visitValue(moduleValue);
 
-    if (this.realm.react.enabled) {
-      let fixpoint_rerun = () => {
-        let progress;
-        if (this.residualReactElementVisitor.someReactElement !== undefined) {
-          this._visitReactLibrary(this.residualReactElementVisitor.someReactElement);
-          progress = true;
-        } else {
-          this._enqueueWithUnrelatedScope(this.globalGenerator, fixpoint_rerun);
-          progress = false;
-        }
-        return progress;
-      };
-      fixpoint_rerun();
-    }
-
     this._visitUntilFixpoint();
 
     let referentializer = this.referentializer;
@@ -1330,38 +1315,6 @@ export class ResidualHeapVisitor {
       invariant(expected === actual);
       if (this.realm.react.verbose) {
         this.logger.logInformation(`  (${actual} items processed)`);
-      }
-    }
-  }
-
-  _visitReactLibrary(someReactElement: ObjectValue) {
-    // find and visit the React library
-    let reactLibraryObject = this.realm.fbLibraries.react;
-    if (this.realm.react.output === "jsx") {
-      // React might not be defined in scope, i.e. another library is using JSX
-      // we don't throw an error as we should support JSX stand-alone
-      if (reactLibraryObject !== undefined) {
-        this.visitValue(reactLibraryObject);
-      }
-    } else if (this.realm.react.output === "create-element") {
-      let logError = () => {
-        this.logger.logError(
-          someReactElement,
-          "unable to visit createElement due to React not being referenced in scope"
-        );
-      };
-      // createElement output needs React in scope
-      if (reactLibraryObject === undefined) {
-        logError();
-      } else {
-        invariant(reactLibraryObject instanceof ObjectValue);
-        let createElement = reactLibraryObject.properties.get("createElement");
-        if (createElement === undefined || createElement.descriptor === undefined) {
-          logError();
-        } else {
-          let reactCreateElement = Get(this.realm, reactLibraryObject, "createElement");
-          this.visitValue(reactCreateElement);
-        }
       }
     }
   }
