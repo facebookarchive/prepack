@@ -93,6 +93,9 @@ export class Serializer {
     return code;
   }
 
+  // When global.__output is an object, then this function replaces the global generator
+  // with one that declares global variables corresponding to the key-value pairs in the __output object,
+  // effectively rewriting the roots for visiting/serialization.
   processOutputEntries(): boolean {
     let realm = this.realm;
     let output = this.logger.tryQuery(() => Get(realm, realm.$GlobalObject, "__output"), realm.intrinsics.undefined);
