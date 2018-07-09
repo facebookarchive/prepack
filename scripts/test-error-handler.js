@@ -17,7 +17,10 @@ let chalk = require("chalk");
 let path = require("path");
 let fs = require("fs");
 
-function search(dir, relative) {
+/* eslint-disable no-undef */
+const { expect } = global;
+
+export function search(dir, relative) {
   let tests = [];
 
   if (fs.existsSync(dir)) {
@@ -50,9 +53,7 @@ function errorHandler(
   return retval;
 }
 
-function runTest(name: string, code: string): boolean {
-  console.log(chalk.inverse(name));
-
+export function runTest(name: string, code: string) {
   let recover = code.includes("// recover-from-errors");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
@@ -75,39 +76,15 @@ function runTest(name: string, code: string): boolean {
       initializeMoreModules: false,
       compatibility,
     };
-    prepackFileSync([name], options);
+    let result = prepackFileSync([name], options);
     if (!recover) {
-      console.error(chalk.red("Serialization succeeded though it should have failed"));
-      return false;
+      expect(result).toBeUndefined()
     }
   } catch (e) {
-    if (!(e instanceof FatalError)) {
-      console.error(chalk.red(`Unexpected error: ${e.message}`));
-      return false;
-    }
-  }
-  if (errors.length !== expectedErrors.length) {
-    console.error(chalk.red(`Expected ${expectedErrors.length} errors, but found ${errors.length}`));
-    return false;
+    expect(e).toBeInstanceOf(FatalError);
   }
 
-  for (let i = 0; i < expectedErrors.length; ++i) {
-    for (let prop in expectedErrors[i]) {
-      let expected = expectedErrors[i][prop];
-      let actual = (errors[i]: any)[prop];
-      if (prop === "location") {
-        if (actual) delete actual.filename;
-        actual = JSON.stringify(actual);
-        expected = JSON.stringify(expected);
-      }
-      if (expected !== actual) {
-        console.error(chalk.red(`Error ${i + 1}: Expected ${expected} errors, but found ${actual}`));
-        return false;
-      }
-    }
-  }
-
-  return true;
+  expect(errors).toMatchSnapshot(name);
 }
 
 function run() {

@@ -134,11 +134,13 @@
       "<rootDir>/node_modules/react-native/",
       "<rootDir>/lib/",
       "<rootDir>/test/react/",
+      "<rootDir>/test/",
       "<rootDir>/fb-www/"
     ],
     "testEnvironment": "jsdom",
     "testMatch": [
       "**/test/react/*-test.js",
+      "**/test/*-test.js",
       "**/fb-www/**/*-test.js"
     ]
   }
