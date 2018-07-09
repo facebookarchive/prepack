@@ -24,9 +24,9 @@ type AbstractValueType =
   | "function"
   | "integral";
 
-type ElementGetters = "bool" | "double" | "int" | "time" | "string";
+type ElementGetters = "bool" | "double" | "int" | "time" | "string" | "tree";
 
-type ListGetters = "bool_list" | "double_list" | "int_list" | "time_list" | "string_list" | "tree" | "tree_list";
+type ListGetters = "bool_list" | "double_list" | "int_list" | "time_list" | "string_list" | "tree_list";
 
 type SupportedGetters = ElementGetters | ListGetters;
 
@@ -149,9 +149,23 @@ export class ShapeInformation {
         if (innerShape === undefined) {
           return undefined;
         }
-        let innerGetter = innerShape._getGetter();
-        // no supported for nested arrays
-        return innerGetter !== undefined && !innerGetter.endsWith("_list") ? innerGetter + "_list" : undefined;
+        switch (innerShape._getGetter()) {
+          case "bool":
+            return "bool_list";
+          case "double":
+            return "double_list";
+          case "int":
+            return "int_list";
+          case "time":
+            return "time_list";
+          case "string":
+            return "string_list";
+          case "tree":
+            return "tree_list";
+          // no support for nested arrays yet
+          default:
+            return undefined;
+        }
       case "scalar":
         switch (this._descriptor.graphQLType) {
           case "Color":

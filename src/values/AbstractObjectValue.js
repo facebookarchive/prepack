@@ -507,11 +507,12 @@ export default class AbstractObjectValue extends AbstractValue {
         let type = Value;
         if (P === "length" && Value.isTypeCompatibleWith(this.getType(), ArrayValue)) type = NumberValue;
         invariant(typeof P === "string");
+        let obShape = ob.shape;
         let propertyShape, propertyGetter;
-        if (this.$Realm.instantRender.enabled && ob.shape !== undefined) {
-          propertyShape = ob.shape.getMemberAccessShapeInformation(P);
+        if (this.$Realm.instantRender.enabled && obShape !== undefined) {
+          propertyShape = obShape.getMemberAccessShapeInformation(P);
           if (propertyShape !== undefined) {
-            propertyGetter = ob.shape.getMemberAccessGraphQLGetter(propertyShape);
+            propertyGetter = obShape.getMemberAccessGraphQLGetter(propertyShape);
             type = propertyShape.getValueTypeForAbstract();
           }
         }
@@ -522,7 +523,10 @@ export default class AbstractObjectValue extends AbstractValue {
           ([o]) => {
             invariant(typeof P === "string");
             return propertyGetter !== undefined
-              ? t.callExpression(t.identifier("__prop_" + propertyGetter), [o, t.stringLiteral(P)])
+              ? t.callExpression(t.memberExpression(t.identifier("global"), t.identifier("__prop_" + propertyGetter)), [
+                  o,
+                  t.stringLiteral(P),
+                ])
               : memberExpressionHelper(o, P);
           },
           {
