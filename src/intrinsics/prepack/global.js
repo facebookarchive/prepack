@@ -113,20 +113,20 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  let additonalFunctionUid = 0;
+  let additionalFunctionUid = 0;
   // Allows dynamically registering optimized functions.
   // WARNING: these functions will get exposed at global scope and called there.
   // NB: If we interpret one of these calls in an evaluateForEffects context
   //     that is not subsequently applied, the function will not be registered
   //     (because prepack won't have a correct value for the FunctionValue itself)
   global.$DefineOwnProperty("__optimize", {
-    value: new NativeFunctionValue(realm, "global.__optimize", "__optimize", 0, (context, [value, config]) => {
+    value: new NativeFunctionValue(realm, "global.__optimize", "__optimize", 1, (context, [value, config]) => {
       // only optimize functions for now
       if (value instanceof ECMAScriptSourceFunctionValue) {
         realm.assignToGlobal(
           t.memberExpression(
             t.memberExpression(t.identifier("global"), t.identifier("__optimizedFunctions")),
-            t.identifier("" + additonalFunctionUid++)
+            t.identifier("" + additionalFunctionUid++)
           ),
           value
         );

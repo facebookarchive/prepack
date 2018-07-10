@@ -2303,8 +2303,6 @@ export class ResidualHeapSerializer {
 
     Array.prototype.push.apply(this.prelude, this.preludeGenerator.prelude);
 
-    this.modules.resolveInitializedModules();
-
     this.emitter.finalize();
 
     this.residualFunctions.residualFunctionInitializers.factorifyInitializers(this.factoryNameGenerator);
