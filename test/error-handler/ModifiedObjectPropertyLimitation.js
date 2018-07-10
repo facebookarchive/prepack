@@ -8,6 +8,6 @@
             throw o;
         }
     }
-    if (global.__optimize) __optimize(f);
+    if (global.__optimize) __optimize(f, { pure: false });
     inspect = function() { try { f(true); } catch (e) { return e.$Prototype === p; } }
 })();
