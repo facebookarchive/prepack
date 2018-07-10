@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { Realm, type Effects, type SideEffectType } from "../realm.js";
+import { Realm, type Effects } from "../realm.js";
 import {
   AbstractObjectValue,
   AbstractValue,
@@ -77,8 +77,8 @@ import {
   UnsupportedSideEffect,
 } from "./errors.js";
 import { Logger } from "../utils/logger.js";
-import type { ClassComponentMetadata, PropertyBinding, ReactComponentTreeConfig, ReactHint } from "../types.js";
-import type { Binding } from "../environment.js";
+import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
+import { handleReportedSideEffect } from "../serializer/utils.js";
 
 type ComponentResolutionStrategy =
   | "NORMAL"
@@ -187,6 +187,9 @@ export class Reconciler {
 
     try {
       this.realm.react.activeReconciler = this;
+      let throwUnsupportedSideEffectError = (msg: string) => {
+        throw new UnsupportedSideEffect(msg);
+      };
       let effects = this.realm.wrapInGlobalEnv(() =>
         this.realm.evaluatePure(
           () =>
@@ -195,7 +198,8 @@ export class Reconciler {
               /*state*/ null,
               `react component: ${getComponentName(this.realm, componentType)}`
             ),
-          this._handleReportedSideEffect
+          (sideEffectType, binding, expressionLocation) =>
+            handleReportedSideEffect(throwUnsupportedSideEffectError, sideEffectType, binding, expressionLocation)
         )
       );
       this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
@@ -284,13 +288,17 @@ export class Reconciler {
 
     try {
       this.realm.react.activeReconciler = this;
+      let throwUnsupportedSideEffectError = (msg: string) => {
+        throw new UnsupportedSideEffect(msg);
+      };
       let effects = this.realm.wrapInGlobalEnv(() =>
         this.realm.evaluatePure(
           () =>
             evaluateWithNestedParentEffects(this.realm, nestedEffects, () =>
               this.realm.evaluateForEffects(resolveOptimizedClosure, /*state*/ null, `react nested optimized closure`)
             ),
-          this._handleReportedSideEffect
+          (sideEffectType, binding, expressionLocation) =>
+            handleReportedSideEffect(throwUnsupportedSideEffectError, sideEffectType, binding, expressionLocation)
         )
       );
       this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);
@@ -1499,32 +1507,6 @@ export class Reconciler {
           }
         }
       }
-    }
-  }
-
-  _handleReportedSideEffect(
-    sideEffectType: SideEffectType,
-    binding: void | Binding | PropertyBinding,
-    expressionLocation: any
-  ): void {
-    let location = getLocationFromValue(expressionLocation);
-
-    if (sideEffectType === "MODIFIED_BINDING") {
-      let name = binding ? `"${((binding: any): Binding).name}"` : "unknown";
-      throw new UnsupportedSideEffect(`side-effects from mutating the binding ${name}${location}`);
-    } else if (sideEffectType === "MODIFIED_PROPERTY" || sideEffectType === "MODIFIED_GLOBAL") {
-      let name = "";
-      let key = ((binding: any): PropertyBinding).key;
-      if (typeof key === "string") {
-        name = `"${key}"`;
-      }
-      if (sideEffectType === "MODIFIED_PROPERTY") {
-        throw new UnsupportedSideEffect(`side-effects from mutating a property ${name}${location}`);
-      } else {
-        throw new UnsupportedSideEffect(`side-effects from mutating the global object property ${name}${location}`);
-      }
-    } else if (sideEffectType === "EXCEPTION_THROWN") {
-      throw new UnsupportedSideEffect(`side-effects from throwing exception${location}`);
     }
   }
 }

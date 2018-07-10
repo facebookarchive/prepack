@@ -1,3 +1,4 @@
+// expected Warning: PP1007
 // does not contain:dead
 (function () {
     let b = { p: "dead" };

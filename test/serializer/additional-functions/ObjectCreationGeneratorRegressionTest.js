@@ -1,3 +1,4 @@
+// expected Warning: PP0023
 function nullthrows(x) {
     if (x != null) {
         return x;

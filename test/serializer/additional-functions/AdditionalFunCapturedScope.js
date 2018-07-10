@@ -1,4 +1,5 @@
 // serialized function clone count: 0
+// expected Warning: PP1007
 var addit_funs = [];
 
 var f = function(x) {

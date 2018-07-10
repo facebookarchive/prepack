@@ -1,3 +1,4 @@
+// expected Warning: PP0023
 (function() {
     function URI(other) {
         if (other.foo) {

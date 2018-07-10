@@ -1,3 +1,4 @@
+// expected Warning: PP1007
 var cache = {};
 
 function additional1(x, y) {

@@ -1815,7 +1815,7 @@ export class Realm {
         console.log(diagnostic.callStack);
       }
     }
-    return errorHandler(diagnostic);
+    return errorHandler(diagnostic, this.suppressDiagnostics);
   }
 
   saveNameString(nameString: string): void {
