@@ -90,6 +90,7 @@ jobs:
       - run:
           name: "Run Checks"
           command: |
+            yarn prettier-ci
             yarn lint
             yarn flow
             yarn depcheck
