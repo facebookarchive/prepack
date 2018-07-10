@@ -76,14 +76,14 @@ Object.keys(config).forEach(key => {
             console.log(
               "\n" +
                 chalk.red(`  This project uses prettier to format all JavaScript code.\n`) +
-                chalk.dim(`    Please run `) +
+                chalk.dim(`  Please run `) +
                 chalk.reset("yarn prettier-all") +
                 chalk.dim(` and add changes to files listed below to your commit:`) +
-                `\n\n`
+                `\n`
             );
             didWarn = true;
           }
-          console.log(file);
+          console.log(`  ${file}`);
         }
       }
     } catch (error) {
@@ -94,6 +94,7 @@ Object.keys(config).forEach(key => {
   });
 
   if (didWarn || didError) {
+    console.log();
     process.exit(1);
   }
 });
