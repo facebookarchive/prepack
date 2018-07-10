@@ -67,9 +67,7 @@ it("fb-www 11", () => {
 });
 
 it("fb-www 12", () => {
-  runTest(__dirname + "/FBMocks/fb12.js", {
-    expectReconcilerError: true,
-  });
+  runTest(__dirname + "/FBMocks/fb12.js");
 });
 
 it("fb-www 13", () => {
@@ -106,9 +104,7 @@ it("fb-www 18", () => {
 });
 
 it("fb-www 19", () => {
-  runTest(__dirname + "/FBMocks/fb19.js", {
-    expectReconcilerError: true,
-  });
+  runTest(__dirname + "/FBMocks/fb19.js");
 });
 
 it("fb-www 20", () => {

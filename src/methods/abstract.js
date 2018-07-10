@@ -29,7 +29,7 @@ import {
 } from "../values/index.js";
 import { Call } from "./call.js";
 import { IsCallable } from "./is.js";
-import { Completion, ReturnCompletion, ThrowCompletion } from "../completions.js";
+import { Completion, PureScopeThrowCompletion, ReturnCompletion, ThrowCompletion } from "../completions.js";
 import { GetMethod, Get } from "./get.js";
 import { HasCompatibleType } from "./has.js";
 import { To } from "../singletons.js";
@@ -575,7 +575,9 @@ export function UpdateEmpty(realm: Realm, completionRecord: Completion | Value, 
   if (completionRecord instanceof ReturnCompletion || completionRecord instanceof ThrowCompletion) {
     invariant(completionRecord.value, "expected completion record to have a value");
   }
-
+  if (completionRecord instanceof PureScopeThrowCompletion) {
+    return completionRecord;
+  }
   // 2. If completionRecord.[[Value]] is not empty, return Completion(completionRecord).
   if (completionRecord instanceof EmptyValue) return value;
   if (completionRecord instanceof Value || (completionRecord.value && !(completionRecord.value instanceof EmptyValue)))

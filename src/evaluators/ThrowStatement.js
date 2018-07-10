@@ -12,8 +12,9 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import { ThrowCompletion } from "../completions.js";
+import { PureScopeThrowCompletion, ThrowCompletion } from "../completions.js";
 import { Environment } from "../singletons.js";
+import invariant from "../invariant.js";
 import type { BabelNodeThrowStatement } from "babel-types";
 
 export default function(
@@ -24,5 +25,10 @@ export default function(
 ): Value {
   let exprRef = env.evaluate(ast.argument, strictCode);
   let exprValue = Environment.GetValue(realm, exprRef);
+  if (realm.isInPureScope() && !realm.isInPureTryStatement) {
+    invariant(realm.generator !== undefined);
+    realm.generator.emitThrow(exprValue);
+    throw new PureScopeThrowCompletion(exprValue, ast.loc);
+  }
   throw new ThrowCompletion(exprValue, ast.loc);
 }
