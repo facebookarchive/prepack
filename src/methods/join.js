@@ -43,7 +43,8 @@ function joinGenerators(
   generator1: Generator,
   generator2: Generator
 ): Generator {
-  let result = new Generator(realm, "joined");
+  // TODO #2222: Check if `realm.pathConditions` is correct here.
+  let result = new Generator(realm, "joined", realm.pathConditions);
   if (!generator1.empty() || !generator2.empty()) {
     result.joinGenerators(joinCondition, generator1, generator2);
   }
@@ -693,7 +694,10 @@ export class JoinImplementation {
   }
 
   composeGenerators(realm: Realm, generator1: Generator, generator2: Generator): Generator {
-    let result = new Generator(realm, "composed");
+    // TODO #2222: The path condition of the resulting generator should really just be generator2.pathConditions,
+    // and we shouldn't have to bring in generator1.pathConditions. We have observed that this causes an issue
+    // in InstantRender.
+    let result = new Generator(realm, "composed", generator1.pathConditions.concat(generator2.pathConditions));
     // We copy the entries here because actually composing the generators breaks the serializer
     if (!generator1.empty()) result.appendGenerator(generator1, "");
     if (!generator2.empty()) result.appendGenerator(generator2, "");
@@ -740,7 +744,7 @@ export class JoinImplementation {
       // binding-assignment generator entry; however, we play it safe and don't
       // mutate the generator; instead, we create a new one that wraps around the old one.
       if (!rewritten) {
-        let h = new Generator(realm, "RewrittenToAppendBindingAssignments");
+        let h = new Generator(realm, "RewrittenToAppendBindingAssignments", g.pathConditions);
         if (!g.empty()) h.appendGenerator(g, "");
         g = h;
         rewritten = true;
