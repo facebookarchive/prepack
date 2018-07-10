@@ -1,5 +1,4 @@
 var React = require("react");
-this["React"] = React;
 
 function Foo(props) {
   return [<div ref={props.callback} key="0" />];
