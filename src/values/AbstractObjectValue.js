@@ -768,16 +768,11 @@ export default class AbstractObjectValue extends AbstractValue {
             let generator = this.$Realm.generator;
             invariant(generator);
 
-            if (typeof P === "string") {
-              generator.emitStatement(
-                [Receiver, new StringValue(this.$Realm, P), V],
-                createOperationDescriptor("ABSTRACT_OBJECT_SET_PARTIAL")
-              );
-            } else {
+            if (typeof P !== "string" && !(P instanceof StringValue)) {
               // Coercion can only have effects on anything reachable from the key.
               Havoc.value(this.$Realm, P);
-              generator.emitStatement([Receiver, P, V], createOperationDescriptor("ABSTRACT_OBJECT_SET_PARTIAL"));
             }
+            generator.emitPropertyAssignment(Receiver, P, V);
             return this.$Realm.intrinsics.undefined;
           },
           TypesDomain.topVal,
