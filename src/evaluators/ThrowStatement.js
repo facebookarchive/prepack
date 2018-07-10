@@ -28,7 +28,7 @@ export default function(
   if (realm.isInPureScope() && !realm.isInPureTryStatement) {
     invariant(realm.generator !== undefined);
     realm.generator.emitThrow(exprValue);
-    throw new PureScopeThrowCompletion(ast.loc);
+    throw new PureScopeThrowCompletion(realm, ast.loc);
   }
   throw new ThrowCompletion(exprValue, ast.loc);
 }
