@@ -120,7 +120,7 @@ export default function(realm: Realm): void {
   //     that is not subsequently applied, the function will not be registered
   //     (because prepack won't have a correct value for the FunctionValue itself)
   global.$DefineOwnProperty("__optimize", {
-    value: new NativeFunctionValue(realm, "global.__optimize", "__optimize", 1, (context, [value, config]) => {
+    value: new NativeFunctionValue(realm, "global.__optimize", "__optimize", 2, (context, [value, config]) => {
       // only optimize functions for now
       if (value instanceof ECMAScriptSourceFunctionValue) {
         realm.assignToGlobal(
@@ -130,6 +130,9 @@ export default function(realm: Realm): void {
           ),
           value
         );
+        if (config instanceof ObjectValue) {
+          realm.optimizedFunctionConfig.set(value, config);
+        }
       }
       return value;
     }),

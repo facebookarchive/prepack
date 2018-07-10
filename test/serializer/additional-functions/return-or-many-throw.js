@@ -31,7 +31,9 @@ function func1(doNotThrow) {
 }
 
 if (global.__optimize)
-  __optimize(func1);
+  __optimize(func1, {
+    pure: false,
+  });
 
 inspect = function() {
   let error;

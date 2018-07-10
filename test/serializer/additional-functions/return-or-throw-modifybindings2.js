@@ -20,7 +20,9 @@ else x = 11;
   global.func1 = func1;
 
   if (global.__optimize)
-    __optimize(func1);
+    __optimize(func1, {
+      pure: false,
+    });
 
   global.inspect = function() {
     let prevfoo = foo;

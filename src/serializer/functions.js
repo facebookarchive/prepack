@@ -135,6 +135,24 @@ export class Functions {
     applyOptimizedReactComponents(this.realm, this.writeEffects, environmentRecordIdAfterGlobalCode);
   }
 
+  // When __optimize calls are called, an optional "pure" property can be passed
+  // on a config object to disable pure scope, otherwise pure scope is enabled by default.
+  // i.e. __optimimze(foo, { pure: false });
+  _isPureOptimizedFunction(funcValue: FunctionValue): boolean {
+    let possibleConfig = this.realm.optimizedFunctionConfig.get(funcValue);
+
+    if (possibleConfig instanceof ObjectValue) {
+      let pureVal = Get(this.realm, possibleConfig, "pure");
+
+      // The config object should contain a "pure" property
+      // that is a false boolean. Otherwise, we return true.
+      if (pureVal === this.realm.intrinsics.false) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   _callOfFunction(funcValue: FunctionValue): void => Value {
     let call = funcValue.$Call;
     invariant(call);
@@ -199,10 +217,13 @@ export class Functions {
       additionalFunctionStack.push(functionValue);
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
       let call = this._callOfFunction(functionValue);
-      let effects: Effects = this.realm.evaluatePure(
-        () => this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
-        /*reportSideEffectFunc*/ null
-      );
+      let isPureFunction = this._isPureOptimizedFunction(functionValue);
+      let effects: Effects = isPureFunction
+        ? this.realm.evaluatePure(
+            () => this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
+            /*reportSideEffectFunc*/ null
+          )
+        : this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function");
       invariant(effects);
       let additionalFunctionEffects = createAdditionalEffects(
         this.realm,

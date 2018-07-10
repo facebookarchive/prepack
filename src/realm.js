@@ -261,6 +261,8 @@ export class Realm {
     this.temporalEntryArgToEntries = new Map();
     this.temporalEntryCounter = 0;
 
+    this.optimizedFunctionConfig = new Map();
+
     this.instantRender = {
       enabled: opts.instantRender || false,
     };
@@ -357,6 +359,8 @@ export class Realm {
   derivedIds: Map<string, TemporalBuildNodeEntry>;
   temporalEntryArgToEntries: Map<Value, Set<TemporalBuildNodeEntry>>;
   temporalEntryCounter: number;
+
+  optimizedFunctionConfig: Map<FunctionValue, ObjectValue>;
 
   instantRender: {
     enabled: boolean,
