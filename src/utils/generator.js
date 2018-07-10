@@ -66,14 +66,14 @@ export type SerializationContext = {|
     mightHaveBeenDeleted: boolean,
     deleteIfMightHaveBeenDeleted: boolean
   ) => BabelNodeStatement,
-  serializeGenerator: (Generator, Set<AbstractValue | ConcreteValue>) => Array<BabelNodeStatement>,
+  serializeGenerator: (Generator, Set<AbstractValue | ObjectValue>) => Array<BabelNodeStatement>,
   initGenerator: Generator => void,
   finalizeGenerator: Generator => void,
   emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
-  processValues: (Set<AbstractValue | ConcreteValue>) => void,
+  processValues: (Set<AbstractValue | ObjectValue>) => void,
   canOmit: Value => boolean,
-  declare: (AbstractValue | ConcreteValue) => void,
+  declare: (AbstractValue | ObjectValue) => void,
   emitPropertyModification: PropertyBinding => void,
   options: SerializerOptions,
 |};
@@ -82,26 +82,38 @@ export type VisitEntryCallbacks = {|
   visitEquivalentValue: Value => Value,
   visitGenerator: (Generator, Generator) => void,
   canOmit: Value => boolean,
-  recordDeclaration: (AbstractValue | ConcreteValue) => void,
+  recordDeclaration: (AbstractValue | ObjectValue) => void,
   recordDelayedEntry: (Generator, GeneratorEntry) => void,
   visitModifiedObjectProperty: PropertyBinding => void,
   visitModifiedBinding: Binding => [ResidualFunctionBinding, Value],
   visitBindingAssignment: (Binding, Value) => Value,
 |};
 
+export type TemporalBuildNodeType = "OBJECT_ASSIGN";
+
 export type DerivedExpressionBuildNodeFunction = (
   Array<BabelNodeExpression>,
   SerializationContext,
-  Set<AbstractValue | ConcreteValue>
+  Set<AbstractValue | ObjectValue>
 ) => BabelNodeExpression;
 
 export type GeneratorBuildNodeFunction = (
   Array<BabelNodeExpression>,
   SerializationContext,
-  Set<AbstractValue | ConcreteValue>
+  Set<AbstractValue | ObjectValue>
 ) => BabelNodeStatement;
 
 export class GeneratorEntry {
+  constructor(realm: Realm) {
+    // We increment the index of every TemporalBuildNodeEntry created.
+    // This should match up as a form of timeline value due to the tree-like
+    // structure we use to create entries during evaluation. For example,
+    // if all AST nodes in a BlockStatement resulted in a temporal build node
+    // for each AST node, then each would have a sequential index as to its
+    // position of how it was evaluated in the BlockSstatement.
+    this.index = realm.temporalEntryCounter++;
+  }
+
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     invariant(false, "GeneratorEntry is an abstract base class");
   }
@@ -113,21 +125,32 @@ export class GeneratorEntry {
   getDependencies(): void | Array<Generator> {
     invariant(false, "GeneratorEntry is an abstract base class");
   }
+
+  notEqualToAndDoesNotHappenBefore(entry: GeneratorEntry): boolean {
+    return this.index > entry.index;
+  }
+
+  notEqualToAndDoesNotHappenAfter(entry: GeneratorEntry): boolean {
+    return this.index < entry.index;
+  }
+
+  index: number;
 }
 
 export type TemporalBuildNodeEntryArgs = {
-  declared?: AbstractValue | ConcreteValue,
+  declared?: AbstractValue | ObjectValue,
   args: Array<Value>,
   // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
   buildNode?: GeneratorBuildNodeFunction,
   dependencies?: Array<Generator>,
   isPure?: boolean,
   mutatesOnly?: Array<Value>,
+  temporalType?: TemporalBuildNodeType,
 };
 
 export class TemporalBuildNodeEntry extends GeneratorEntry {
-  constructor(args: TemporalBuildNodeEntryArgs) {
-    super();
+  constructor(realm: Realm, args: TemporalBuildNodeEntryArgs) {
+    super(realm);
     Object.assign(this, args);
     if (this.mutatesOnly !== undefined) {
       invariant(!this.isPure);
@@ -137,13 +160,14 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
     }
   }
 
-  declared: void | AbstractValue | ConcreteValue;
+  declared: void | AbstractValue | ObjectValue;
   args: Array<Value>;
   // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
   buildNode: void | GeneratorBuildNodeFunction;
   dependencies: void | Array<Generator>;
   isPure: void | boolean;
   mutatesOnly: void | Array<Value>;
+  temporalType: void | TemporalBuildNodeType;
 
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     let omit = this.isPure && this.declared && callbacks.canOmit(this.declared);
@@ -210,6 +234,38 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
   }
 }
 
+export class TemporalObjectAssignEntry extends TemporalBuildNodeEntry {
+  visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
+    let declared = this.declared;
+    if (!(declared instanceof AbstractObjectValue || declared instanceof ObjectValue)) {
+      return false;
+    }
+    let realm = declared.$Realm;
+    // The only optimization we attempt to do to Object.assign for now is merging of multiple entries
+    // into a new generator entry.
+    let result = attemptToMergeEquivalentObjectAssigns(realm, callbacks, this);
+
+    if (result instanceof TemporalObjectAssignEntry) {
+      let nextResult = result;
+      while (nextResult instanceof TemporalObjectAssignEntry) {
+        nextResult = attemptToMergeEquivalentObjectAssigns(realm, callbacks, result);
+        // If we get back a TemporalObjectAssignEntry, then we have successfully merged a single
+        // Object.assign, but we may be able to merge more. So repeat the process.
+        if (nextResult instanceof TemporalObjectAssignEntry) {
+          result = nextResult;
+        }
+      }
+      // We have an optimized temporal entry, so replace the current temporal
+      // entry and visit that entry instead.
+      this.args = result.args;
+    } else if (result === "POSSIBLE_OPTIMIZATION") {
+      callbacks.recordDelayedEntry(containingGenerator, this);
+      return false;
+    }
+    return super.visit(callbacks, containingGenerator);
+  }
+}
+
 type ModifiedPropertyEntryArgs = {|
   propertyBinding: PropertyBinding,
   newDescriptor: void | Descriptor,
@@ -217,8 +273,8 @@ type ModifiedPropertyEntryArgs = {|
 |};
 
 class ModifiedPropertyEntry extends GeneratorEntry {
-  constructor(args: ModifiedPropertyEntryArgs) {
-    super();
+  constructor(realm: Realm, args: ModifiedPropertyEntryArgs) {
+    super(realm);
     Object.assign(this, args);
   }
 
@@ -255,8 +311,8 @@ type ModifiedBindingEntryArgs = {|
 |};
 
 class ModifiedBindingEntry extends GeneratorEntry {
-  constructor(args: ModifiedBindingEntryArgs) {
-    super();
+  constructor(realm: Realm, args: ModifiedBindingEntryArgs) {
+    super(realm);
     Object.assign(this, args);
   }
 
@@ -309,8 +365,8 @@ class ModifiedBindingEntry extends GeneratorEntry {
 }
 
 class ReturnValueEntry extends GeneratorEntry {
-  constructor(generator: Generator, returnValue: Value) {
-    super();
+  constructor(realm: Realm, generator: Generator, returnValue: Value) {
+    super(realm);
     this.returnValue = returnValue.promoteEmptyToUndefined();
     this.containingGenerator = generator;
   }
@@ -339,7 +395,7 @@ class ReturnValueEntry extends GeneratorEntry {
 
 class IfThenElseEntry extends GeneratorEntry {
   constructor(generator: Generator, completion: PossiblyNormalCompletion | ForkedAbruptCompletion, realm: Realm) {
-    super();
+    super(realm);
     this.completion = completion;
     this.containingGenerator = generator;
     this.condition = completion.joinCondition;
@@ -381,8 +437,8 @@ class IfThenElseEntry extends GeneratorEntry {
 }
 
 class BindingAssignmentEntry extends GeneratorEntry {
-  constructor(binding: Binding, value: Value) {
-    super();
+  constructor(realm: Realm, binding: Binding, value: Value) {
+    super(realm);
     this.binding = binding;
     this.value = value;
   }
@@ -411,7 +467,7 @@ class BindingAssignmentEntry extends GeneratorEntry {
 function serializeBody(
   generator: Generator,
   context: SerializationContext,
-  valuesToProcess: Set<AbstractValue | ConcreteValue>
+  valuesToProcess: Set<AbstractValue | ObjectValue>
 ): BabelNodeBlockStatement {
   let statements = context.serializeGenerator(generator, valuesToProcess);
   if (statements.length === 1 && statements[0].type === "BlockStatement") return (statements[0]: any);
@@ -419,7 +475,7 @@ function serializeBody(
 }
 
 export class Generator {
-  constructor(realm: Realm, name: string, effects?: Effects) {
+  constructor(realm: Realm, name: string, pathConditions: Array<AbstractValue>, effects?: Effects) {
     invariant(realm.useAbstractInterpretation);
     let realmPreludeGenerator = realm.preludeGenerator;
     invariant(realmPreludeGenerator);
@@ -429,7 +485,7 @@ export class Generator {
     this.id = realm.nextGeneratorId++;
     this._name = name;
     this.effectsToApply = effects;
-    this.pathConditions = [].concat(realm.pathConditions);
+    this.pathConditions = pathConditions;
   }
 
   realm: Realm;
@@ -443,7 +499,7 @@ export class Generator {
   static _generatorOfEffects(realm: Realm, name: string, environmentRecordIdAfterGlobalCode: number, effects: Effects) {
     let { result, generator, modifiedBindings, modifiedProperties, createdObjects } = effects;
 
-    let output = new Generator(realm, name, effects);
+    let output = new Generator(realm, name, generator.pathConditions, effects);
     output.appendGenerator(generator, generator._name);
 
     for (let propertyBinding of modifiedProperties.keys()) {
@@ -518,7 +574,7 @@ export class Generator {
       }
     }
     this._entries.push(
-      new ModifiedPropertyEntry({
+      new ModifiedPropertyEntry(this.realm, {
         propertyBinding,
         newDescriptor: desc,
         containingGenerator: this,
@@ -529,7 +585,7 @@ export class Generator {
   emitBindingModification(modifiedBinding: Binding) {
     invariant(this.effectsToApply !== undefined);
     this._entries.push(
-      new ModifiedBindingEntry({
+      new ModifiedBindingEntry(this.realm, {
         modifiedBinding,
         newValue: modifiedBinding.value,
         containingGenerator: this,
@@ -538,7 +594,7 @@ export class Generator {
   }
 
   emitReturnValue(result: Value) {
-    this._entries.push(new ReturnValueEntry(this, result));
+    this._entries.push(new ReturnValueEntry(this.realm, this, result));
   }
 
   emitIfThenElse(result: PossiblyNormalCompletion | ForkedAbruptCompletion, realm: Realm) {
@@ -587,7 +643,7 @@ export class Generator {
   }
 
   emitBindingAssignment(binding: Binding, value: Value) {
-    this._entries.push(new BindingAssignmentEntry(binding, value));
+    this._entries.push(new BindingAssignmentEntry(this.realm, binding, value));
   }
 
   emitPropertyAssignment(object: ObjectValue, key: string, value: Value) {
@@ -918,8 +974,8 @@ export class Generator {
     });
   }
 
-  deriveConcrete(
-    buildValue: (intrinsicName: string) => ConcreteValue,
+  deriveConcreteObject(
+    buildValue: (intrinsicName: string) => ObjectValue,
     args: Array<Value>,
     buildNode_: DerivedExpressionBuildNodeFunction | BabelNodeExpression,
     optionalArgs?: {| isPure?: boolean |}
@@ -927,10 +983,8 @@ export class Generator {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
     let value = buildValue(id.name);
-    if (value instanceof ObjectValue) {
-      value.intrinsicNameGenerated = true;
-      value._isScopedTemplate = true; // because this object doesn't exist ahead of time, and the visitor would otherwise declare it in the common scope
-    }
+    value.intrinsicNameGenerated = true;
+    value._isScopedTemplate = true; // because this object doesn't exist ahead of time, and the visitor would otherwise declare it in the common scope
     this._addDerivedEntry(id.name, {
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: value,
@@ -959,6 +1013,7 @@ export class Generator {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
+      temporalType?: TemporalBuildNodeType,
     |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
@@ -970,7 +1025,7 @@ export class Generator {
       this.realm,
       types,
       values,
-      1735003607742176 + this.preludeGenerator.derivedIds.size,
+      1735003607742176 + this.realm.derivedIds.size,
       [],
       id,
       options
@@ -990,6 +1045,7 @@ export class Generator {
         ]);
       },
       mutatesOnly: optionalArgs ? optionalArgs.mutatesOnly : undefined,
+      temporalType: optionalArgs ? optionalArgs.temporalType : undefined,
     });
     let type = types.getType();
     res.intrinsicName = id.name;
@@ -1068,15 +1124,21 @@ export class Generator {
     return res;
   }
 
-  // PITFALL Warning: adding a new kind of TemporalBuildNodeEntry that is not the result of a join or composition
-  // will break this purgeEntriesWithGeneratorDepencies.
-  _addEntry(entry: TemporalBuildNodeEntryArgs): void {
-    this._entries.push(new TemporalBuildNodeEntry(entry));
+  _addEntry(entryArgs: TemporalBuildNodeEntryArgs): TemporalBuildNodeEntry {
+    let entry;
+    if (entryArgs.temporalType === "OBJECT_ASSIGN") {
+      entry = new TemporalObjectAssignEntry(this.realm, entryArgs);
+    } else {
+      entry = new TemporalBuildNodeEntry(this.realm, entryArgs);
+    }
+    this.realm.saveTemporalGeneratorEntryArgs(entry);
+    this._entries.push(entry);
+    return entry;
   }
 
-  _addDerivedEntry(id: string, entry: TemporalBuildNodeEntryArgs): void {
-    this._addEntry(entry);
-    this.preludeGenerator.derivedIds.set(id, entry);
+  _addDerivedEntry(id: string, entryArgs: TemporalBuildNodeEntryArgs): void {
+    let entry = this._addEntry(entryArgs);
+    this.realm.derivedIds.set(id, entry);
   }
 
   appendGenerator(other: Generator, leadingComment: string): void {
@@ -1176,7 +1238,6 @@ export class NameGenerator {
 export class PreludeGenerator {
   constructor(debugNames: ?boolean, uniqueSuffix: ?string) {
     this.prelude = [];
-    this.derivedIds = new Map();
     this.memoizedRefs = new Map();
     this.nameGenerator = new NameGenerator(new Set(), !!debugNames, uniqueSuffix || "", "_$");
     this.usesThis = false;
@@ -1185,7 +1246,6 @@ export class PreludeGenerator {
   }
 
   prelude: Array<BabelNodeStatement>;
-  derivedIds: Map<string, TemporalBuildNodeEntryArgs>;
   memoizedRefs: Map<string, BabelNodeIdentifier>;
   nameGenerator: NameGenerator;
   usesThis: boolean;
@@ -1252,4 +1312,119 @@ export class PreludeGenerator {
     this.memoizedRefs.set(key, ref);
     return ref;
   }
+}
+
+type TemporalBuildNodeEntryOptimizationStatus = "NO_OPTIMIZATION" | "POSSIBLE_OPTIMIZATION";
+
+// This function attempts to optimize Object.assign calls, by merging mulitple
+// calls into one another where possible. For example:
+//
+// var a = Object.assign({}, someAbstact);
+// var b = Object.assign({}, a);
+//
+// Becomes:
+// var b = Object.assign({}, someAbstract, a);
+//
+export function attemptToMergeEquivalentObjectAssigns(
+  realm: Realm,
+  callbacks: VisitEntryCallbacks,
+  temporalBuildNodeEntry: TemporalBuildNodeEntry
+): TemporalBuildNodeEntryOptimizationStatus | TemporalObjectAssignEntry {
+  let args = temporalBuildNodeEntry.args;
+  // If we are Object.assigning 2 or more args
+  if (args.length < 2) {
+    return "NO_OPTIMIZATION";
+  }
+  let to = args[0];
+  // Then scan through the args after the "to" of this Object.assign, to see if any
+  // other sources are the "to" of a previous Object.assign call
+  loopThroughArgs: for (let i = 1; i < args.length; i++) {
+    let possibleOtherObjectAssignTo = args[i];
+    // Ensure that the "to" value can be omitted
+    // Note: this check is still somewhat fragile and depends on the visiting order
+    // but it's not a functional problem right now and can be better addressed at a
+    // later point.
+    if (!callbacks.canOmit(possibleOtherObjectAssignTo)) {
+      continue;
+    }
+    // Check if the "to" was definitely an Object.assign, it should
+    // be a snapshot AbstractObjectValue
+    if (possibleOtherObjectAssignTo instanceof AbstractObjectValue) {
+      let otherTemporalBuildNodeEntry = realm.getTemporalBuildNodeEntryFromDerivedValue(possibleOtherObjectAssignTo);
+      if (!(otherTemporalBuildNodeEntry instanceof TemporalObjectAssignEntry)) {
+        continue;
+      }
+      let otherArgs = otherTemporalBuildNodeEntry.args;
+      // Object.assign has at least 1 arg
+      if (otherArgs.length < 2) {
+        continue;
+      }
+      let otherArgsToUse = [];
+      for (let x = 1; x < otherArgs.length; x++) {
+        let arg = otherArgs[x];
+        // The arg might have been havoced, so ensure we do not continue in this case
+        if (arg instanceof ObjectValue && arg.mightBeHavocedObject()) {
+          continue loopThroughArgs;
+        }
+        if (arg instanceof ObjectValue || arg instanceof AbstractValue) {
+          let temporalGeneratorEntries = realm.getTemporalGeneratorEntriesReferencingArg(arg);
+          // We need to now check if there are any other temporal entries that exist
+          // between the Object.assign TemporalObjectAssignEntry that we're trying to
+          // merge and the current TemporalObjectAssignEntry we're going to merge into.
+          if (temporalGeneratorEntries !== undefined) {
+            for (let temporalGeneratorEntry of temporalGeneratorEntries) {
+              // If the entry is that of another Object.assign, then
+              // we know that this entry isn't going to cause issues
+              // with merging the TemporalObjectAssignEntry.
+              if (temporalGeneratorEntry instanceof TemporalObjectAssignEntry) {
+                continue;
+              }
+              // TODO: what if the temporalGeneratorEntry can be omitted and not needed?
+
+              // If the index of this entry exists between start and end indexes,
+              // then we cannot optimize and merge the TemporalObjectAssignEntry
+              // because another generator entry may have a dependency on the Object.assign
+              // TemporalObjectAssignEntry we're trying to merge.
+              if (
+                temporalGeneratorEntry.notEqualToAndDoesNotHappenBefore(otherTemporalBuildNodeEntry) &&
+                temporalGeneratorEntry.notEqualToAndDoesNotHappenAfter(temporalBuildNodeEntry)
+              ) {
+                continue loopThroughArgs;
+              }
+            }
+          }
+        }
+        otherArgsToUse.push(arg);
+      }
+      // If we cannot omit the "to" value that means it's being used, so we shall not try to
+      // optimize this Object.assign.
+      if (!callbacks.canOmit(to)) {
+        let newArgs = [to, ...otherArgsToUse];
+
+        for (let x = 2; x < args.length; x++) {
+          let arg = args[x];
+          // We don't want to add the "to" that we're merging with!
+          if (arg !== possibleOtherObjectAssignTo) {
+            newArgs.push(arg);
+          }
+        }
+        // We now create a new TemporalObjectAssignEntry, without mutating the existing
+        // entry at this point. This new entry is essentially a TemporalObjectAssignEntry
+        // that contains two Object.assign call TemporalObjectAssignEntry entries that have
+        // been merged into a single entry. The previous Object.assign TemporalObjectAssignEntry
+        // should dead-code eliminate away once we replace the original TemporalObjectAssignEntry
+        // we started with with the new merged on as they will no longer be referenced.
+        let newTemporalObjectAssignEntryArgs = Object.assign({}, temporalBuildNodeEntry, {
+          args: newArgs,
+        });
+        return new TemporalObjectAssignEntry(realm, newTemporalObjectAssignEntryArgs);
+      }
+      // We might be able to optimize, but we are not sure because "to" can still omit.
+      // So we return possible optimization status and wait until "to" does get visited.
+      // It may never get visited, but that's okay as we'll skip the optimization all
+      // together.
+      return "POSSIBLE_OPTIMIZATION";
+    }
+  }
+  return "NO_OPTIMIZATION";
 }

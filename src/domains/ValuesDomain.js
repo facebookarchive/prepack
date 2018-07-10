@@ -79,11 +79,11 @@ export default class ValuesDomain {
     return elems.has(x);
   }
 
-  isTop() {
+  isTop(): boolean {
     return this._elements === undefined;
   }
 
-  getElements() {
+  getElements(): Set<ConcreteValue> {
     invariant(this._elements !== undefined);
     return this._elements;
   }
@@ -98,7 +98,7 @@ export default class ValuesDomain {
     // all of these values. TODO #1000: probably the upper bound can be quite a bit smaller.
     if (!leftElements || !rightElements || leftElements.size > 100 || rightElements.size > 100)
       return ValuesDomain.topVal;
-    let resultSet = new Set();
+    let resultSet: Set<ConcreteValue> = new Set();
     let savedHandler = realm.errorHandler;
     let savedIsReadOnly = realm.isReadOnly;
     realm.isReadOnly = true;
@@ -109,8 +109,17 @@ export default class ValuesDomain {
       for (let leftElem of leftElements) {
         for (let rightElem of rightElements) {
           let result = ValuesDomain.computeBinary(realm, op, leftElem, rightElem);
-          invariant(result instanceof ConcreteValue);
-          resultSet.add(result);
+          if (result instanceof ConcreteValue) {
+            resultSet.add(result);
+          } else {
+            invariant(result instanceof AbstractValue);
+            if (result.values.isTop()) {
+              return ValuesDomain.topVal;
+            }
+            for (let subResult of result.values.getElements()) {
+              resultSet.add(subResult);
+            }
+          }
         }
       }
     } catch (e) {
@@ -311,7 +320,6 @@ export default class ValuesDomain {
       for (let leftElem of leftElements) {
         for (let rightElem of rightElements) {
           let result = ValuesDomain.computeLogical(realm, op, leftElem, rightElem);
-          invariant(result instanceof ConcreteValue);
           resultSet.add(result);
         }
       }
@@ -326,7 +334,12 @@ export default class ValuesDomain {
 
   // Note that calling this can result in user code running, which can side-effect the heap.
   // If that is not the desired behavior, mark the realm as read-only for the duration of the call.
-  static computeLogical(realm: Realm, op: BabelNodeLogicalOperator, lval: ConcreteValue, rval: ConcreteValue): Value {
+  static computeLogical(
+    realm: Realm,
+    op: BabelNodeLogicalOperator,
+    lval: ConcreteValue,
+    rval: ConcreteValue
+  ): ConcreteValue {
     let lbool = To.ToBoolean(realm, lval);
 
     if (op === "&&") {
@@ -412,8 +425,17 @@ export default class ValuesDomain {
       };
       for (let operandElem of operandElements) {
         let result = ValuesDomain.computeUnary(realm, op, operandElem);
-        invariant(result instanceof ConcreteValue);
-        resultSet.add(result);
+        if (result instanceof ConcreteValue) {
+          resultSet.add(result);
+        } else {
+          invariant(result instanceof AbstractValue);
+          if (result.values.isTop()) {
+            return ValuesDomain.topVal;
+          }
+          for (let subResult of result.values.getElements()) {
+            resultSet.add(subResult);
+          }
+        }
       }
     } catch (e) {
       if (e instanceof AbruptCompletion) return ValuesDomain.topVal;

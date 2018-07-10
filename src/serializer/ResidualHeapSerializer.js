@@ -16,7 +16,6 @@ import {
   AbstractValue,
   BooleanValue,
   BoundFunctionValue,
-  ConcreteValue,
   ECMAScriptSourceFunctionValue,
   EmptyValue,
   FunctionValue,
@@ -196,7 +195,7 @@ export class ResidualHeapSerializer {
       this.residualFunctions,
       referencedDeclaredValues,
       conditionalFeasibility,
-      this.preludeGenerator.derivedIds
+      this.realm.derivedIds
     );
     this.mainBody = this.emitter.getBody();
     this.residualHeapInspector = residualHeapInspector;
@@ -1898,7 +1897,7 @@ export class ResidualHeapSerializer {
     if (serializedValue.type === "Identifier") {
       let id = ((serializedValue: any): BabelNodeIdentifier);
       invariant(
-        !this.preludeGenerator.derivedIds.has(id.name) ||
+        !this.realm.derivedIds.has(id.name) ||
           this.emitter.cannotDeclare() ||
           this.emitter.hasBeenDeclared(val) ||
           (this.emitter.emittingToAdditionalFunction() && this.referencedDeclaredValues.get(val) === undefined),
@@ -2083,7 +2082,7 @@ export class ResidualHeapSerializer {
   _withGeneratorScope(
     type: "Generator" | "AdditionalFunction",
     generator: Generator,
-    valuesToProcess: void | Set<AbstractValue | ConcreteValue>,
+    valuesToProcess: void | Set<AbstractValue | ObjectValue>,
     callback: SerializedBody => void,
     isChildOverride?: boolean
   ): Array<BabelNodeStatement> {
@@ -2110,7 +2109,7 @@ export class ResidualHeapSerializer {
       serializeBinding: this.serializeBinding.bind(this),
       serializeGenerator: (
         generator: Generator,
-        valuesToProcess: Set<AbstractValue | ConcreteValue>
+        valuesToProcess: Set<AbstractValue | ObjectValue>
       ): Array<BabelNodeStatement> =>
         this._withGeneratorScope("Generator", generator, valuesToProcess, () => generator.serialize(context)),
       initGenerator: (generator: Generator) => {
@@ -2127,7 +2126,7 @@ export class ResidualHeapSerializer {
       emit: (statement: BabelNodeStatement) => {
         this.emitter.emit(statement);
       },
-      processValues: (valuesToProcess: Set<AbstractValue | ConcreteValue>) => {
+      processValues: (valuesToProcess: Set<AbstractValue | ObjectValue>) => {
         this.emitter.processValues(valuesToProcess);
       },
       getPropertyAssignmentStatement: this._getPropertyAssignmentStatement.bind(this),
@@ -2143,7 +2142,7 @@ export class ResidualHeapSerializer {
         }
         return canOmit;
       },
-      declare: (value: AbstractValue | ConcreteValue) => {
+      declare: (value: AbstractValue | ObjectValue) => {
         this.emitter.declare(value);
       },
       emitPropertyModification: (propertyBinding: PropertyBinding) => {
@@ -2285,7 +2284,7 @@ export class ResidualHeapSerializer {
 
     this.generator.serialize(this._getContext());
     this.getStatistics().generators++;
-    invariant(this.emitter.declaredCount() <= this.preludeGenerator.derivedIds.size);
+    invariant(this.emitter.declaredCount() <= this.realm.derivedIds.size);
 
     // TODO #20: add timers
 
@@ -2303,8 +2302,6 @@ export class ResidualHeapSerializer {
     this.postGeneratorSerialization();
 
     Array.prototype.push.apply(this.prelude, this.preludeGenerator.prelude);
-
-    this.modules.resolveInitializedModules();
 
     this.emitter.finalize();
 

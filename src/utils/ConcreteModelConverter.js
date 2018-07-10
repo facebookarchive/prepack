@@ -86,9 +86,14 @@ export function concretize(realm: Realm, val: Value): ConcreteValue {
           invariant(false, "Not yet implemented");
       }
     } else {
+      // TODO: This was broken. Is this actually used?
       const values = val.values.getElements();
-      invariant(values.length === 1, "Concrete model should only have one value");
-      return values[0];
+      invariant(values.size === 1, "Concrete model should only have one value");
+      for (let value in values) {
+        invariant(value instanceof ConcreteValue, "Concrete model should only contain one concrete value");
+        return value;
+      }
+      invariant(false);
     }
   } else if (type === FunctionValue) {
     return createEmptyFunction(realm);

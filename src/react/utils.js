@@ -10,9 +10,8 @@
 /* @flow */
 
 import { Realm, Effects } from "../realm.js";
-import { ValuesDomain } from "../domains/index.js";
 import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
-import type { BabelNode, BabelNodeJSXIdentifier, BabelNodeExpression } from "babel-types";
+import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
 import { parseExpression } from "babylon";
 import {
   AbstractObjectValue,
@@ -30,7 +29,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { Generator } from "../utils/generator.js";
+import { Generator, TemporalObjectAssignEntry } from "../utils/generator.js";
 import type {
   Descriptor,
   FunctionBodyAstNode,
@@ -131,7 +130,7 @@ export function isTagName(ast: BabelNode): boolean {
   return ast.type === "JSXIdentifier" && /^[a-z]|\-/.test(((ast: any): BabelNodeJSXIdentifier).name);
 }
 
-export function isReactComponent(name: string) {
+export function isReactComponent(name: string): boolean {
   return name.length > 0 && name[0] === name[0].toUpperCase();
 }
 
@@ -221,7 +220,7 @@ export function addKeyToReactElement(realm: Realm, reactElement: ObjectValue): O
 // we create a unique key for each JSXElement to prevent collisions
 // otherwise React will detect a missing/conflicting key at runtime and
 // this can break the reconcilation of JSXElements in arrays
-export function getUniqueReactElementKey(index?: string, usedReactElementKeys: Set<string>) {
+export function getUniqueReactElementKey(index?: string, usedReactElementKeys: Set<string>): string {
   let key;
   do {
     key = Math.random()
@@ -576,17 +575,14 @@ export function hasNoPartialKeyOrRef(realm: Realm, props: ObjectValue | Abstract
       return false;
     }
     let elements = props.values.getElements();
-    if (elements.size === 1) {
-      props = Array.from(elements)[0];
-    } else {
-      for (let element of elements) {
-        let wasSafe = hasNoPartialKeyOrRef(realm, element);
-        if (!wasSafe) {
-          return false;
-        }
+    for (let element of elements) {
+      invariant(element instanceof ObjectValue);
+      let wasSafe = hasNoPartialKeyOrRef(realm, element);
+      if (!wasSafe) {
+        return false;
       }
-      return true;
     }
+    return true;
   }
   if (props instanceof ObjectValue && props.properties.has("key") && props.properties.has("ref")) {
     return true;
@@ -613,7 +609,11 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   return flattenedChildren;
 }
 
-export function evaluateWithNestedParentEffects(realm: Realm, nestedEffects: Array<Effects>, f: () => Effects) {
+export function evaluateWithNestedParentEffects(
+  realm: Realm,
+  nestedEffects: Array<Effects>,
+  f: () => Effects
+): Effects {
   let nextEffects = nestedEffects.slice();
   let modifiedBindings;
   let modifiedProperties;
@@ -629,7 +629,7 @@ export function evaluateWithNestedParentEffects(realm: Realm, nestedEffects: Arr
     realm.applyEffects(
       new Effects(
         value,
-        new Generator(realm, "evaluateWithNestedEffects"),
+        new Generator(realm, "evaluateWithNestedEffects", effects.generator.pathConditions),
         modifiedBindings,
         modifiedProperties,
         createdObjects
@@ -665,12 +665,10 @@ export function getProperty(
       return realm.intrinsics.undefined;
     }
     let elements = object.values.getElements();
-    invariant(elements);
-    if (elements.size > 0) {
-      object = Array.from(elements)[0];
-    } else {
-      // intentionally left in
-      invariant(false, "TODO: should we hit this?");
+    invariant(elements.size === 1, "TODO: deal with multiple elements");
+    for (let element of elements) {
+      invariant(element instanceof ObjectValue, "TODO: deal with object set templates");
+      object = element;
     }
     invariant(object instanceof ObjectValue);
   }
@@ -852,7 +850,7 @@ function isEventProp(name: string): boolean {
   return name.length > 2 && name[0].toLowerCase() === "o" && name[1].toLowerCase() === "n";
 }
 
-export function getLocationFromValue(expressionLocation: any) {
+export function getLocationFromValue(expressionLocation: any): string {
   // if we can't get a value, then it's likely that the source file was not given
   // (this happens in React tests) so instead don't print any location
   return expressionLocation
@@ -949,25 +947,17 @@ function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps:
     // be a better option.
     invariant(false, "TODO applyClonedTemporalAlias conditional");
   }
-  let temporalBuildNodeEntryArgs = realm.getTemporalBuildNodeEntryArgsFromDerivedValue(temporalAlias);
-  invariant(temporalBuildNodeEntryArgs !== undefined);
-  let temporalArgs = temporalBuildNodeEntryArgs.args;
+  let temporalBuildNodeEntry = realm.getTemporalBuildNodeEntryFromDerivedValue(temporalAlias);
+  if (!(temporalBuildNodeEntry instanceof TemporalObjectAssignEntry)) {
+    invariant(false, "TODO nont TemporalObjectAssignEntry");
+  }
+  invariant(temporalBuildNodeEntry !== undefined);
+  let temporalArgs = temporalBuildNodeEntry.args;
   // replace the original props with the cloned one
-  let newTemporalArgs = temporalArgs.map(arg => (arg === props ? clonedProps : arg));
+  let [to, ...sources] = temporalArgs.map(arg => (arg === props ? clonedProps : arg));
 
-  let temporalTo = AbstractValue.createTemporalFromBuildFunction(
-    realm,
-    ObjectValue,
-    newTemporalArgs,
-    ([methodNode, targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
-      return t.callExpression(methodNode, [targetNode, ...sourceNodes]);
-    },
-    { skipInvariant: true }
-  );
-  invariant(temporalTo instanceof AbstractObjectValue);
-  invariant(clonedProps instanceof ObjectValue);
-  temporalTo.values = new ValuesDomain(clonedProps);
-  clonedProps.temporalAlias = temporalTo;
+  invariant(to instanceof ObjectValue || to instanceof AbstractObjectValue);
+  AbstractValue.createTemporalObjectAssign(realm, to, sources);
 }
 
 export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value): ObjectValue {
@@ -1064,19 +1054,7 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
         // prepare our temporal Object.assign fallback
         to.makePartial();
         to.makeSimple();
-        let temporalArgs = [objAssign, to, ...delayedSources];
-        let temporalTo = AbstractValue.createTemporalFromBuildFunction(
-          realm,
-          ObjectValue,
-          temporalArgs,
-          ([methodNode, ..._args]) => {
-            return t.callExpression(methodNode, ((_args: any): Array<any>));
-          },
-          { skipInvariant: true, mutatesOnly: [to] }
-        );
-        invariant(temporalTo instanceof AbstractObjectValue);
-        temporalTo.values = new ValuesDomain(to);
-        to.temporalAlias = temporalTo;
+        AbstractValue.createTemporalObjectAssign(realm, to, delayedSources);
         return;
       } else {
         throw error;

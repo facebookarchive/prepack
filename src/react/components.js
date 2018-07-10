@@ -19,7 +19,6 @@ import {
   NativeFunctionValue,
   ECMAScriptFunctionValue,
   Value,
-  FunctionValue,
 } from "../values/index.js";
 import * as t from "babel-types";
 import type { BabelNodeIdentifier } from "babel-types";
@@ -370,19 +369,13 @@ export function applyGetDerivedStateFromProps(
         let c = AbstractValue.createFromLogicalOp(realm, "&&", a, b);
         invariant(c instanceof AbstractValue);
         let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+        let preludeGenerator = realm.preludeGenerator;
+        invariant(preludeGenerator !== undefined);
         // we cannot use the standard Object.assign as partial state
         // is not simple. however, given getDerivedStateFromProps is
         // meant to be pure, we can assume that there are no getters on
         // the partial abstract state
-        AbstractValue.createTemporalFromBuildFunction(
-          realm,
-          FunctionValue,
-          [objectAssign, newState, prevState, state],
-          ([methodNode, ..._args]) => {
-            return t.callExpression(methodNode, ((_args: any): Array<any>));
-          },
-          { skipInvariant: true }
-        );
+        AbstractValue.createTemporalObjectAssign(realm, newState, [prevState, state]);
         newState.makeSimple();
         newState.makePartial();
         newState.makeFinal();
@@ -395,15 +388,9 @@ export function applyGetDerivedStateFromProps(
         objectAssignCall(realm.intrinsics.undefined, [newState, prevState, state]);
       } catch (e) {
         if (realm.isInPureScope() && e instanceof FatalError) {
-          AbstractValue.createTemporalFromBuildFunction(
-            realm,
-            FunctionValue,
-            [objectAssign, newState, prevState, state],
-            ([methodNode, ..._args]) => {
-              return t.callExpression(methodNode, ((_args: any): Array<any>));
-            },
-            { skipInvariant: true, mutatesOnly: [newState] }
-          );
+          let preludeGenerator = realm.preludeGenerator;
+          invariant(preludeGenerator !== undefined);
+          AbstractValue.createTemporalObjectAssign(realm, newState, [prevState, state]);
           newState.makeSimple();
           newState.makePartial();
           return newState;

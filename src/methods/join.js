@@ -20,6 +20,7 @@ import {
   BreakCompletion,
   Completion,
   ContinueCompletion,
+  ErasedAbruptCompletion,
   PossiblyNormalCompletion,
   ForkedAbruptCompletion,
   SimpleNormalCompletion,
@@ -42,7 +43,8 @@ function joinGenerators(
   generator1: Generator,
   generator2: Generator
 ): Generator {
-  let result = new Generator(realm, "joined");
+  // TODO #2222: Check if `realm.pathConditions` is correct here.
+  let result = new Generator(realm, "joined", realm.pathConditions);
   if (!generator1.empty() || !generator2.empty()) {
     result.joinGenerators(joinCondition, generator1, generator2);
   }
@@ -399,7 +401,7 @@ export class JoinImplementation {
       if (v2 instanceof EmptyValue) return v1 || realm.intrinsics.undefined;
       return AbstractValue.createFromConditionalOp(realm, joinCondition, v1, v2);
     };
-    let ac = new AbruptCompletion(realm.intrinsics.empty);
+    let ac = new ErasedAbruptCompletion(realm.intrinsics.empty);
     let ee = construct_empty_effects(realm, ac);
     let fc = this.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, c, ac, ee);
     let ce = construct_empty_effects(realm, fc);
@@ -429,7 +431,7 @@ export class JoinImplementation {
     if (!(c instanceof ForkedAbruptCompletion)) {
       return emptyEffects;
     }
-    let dummyCompletion = new AbruptCompletion(realm.intrinsics.empty);
+    let erasedAbruptCompletion = new ErasedAbruptCompletion(realm.intrinsics.empty);
     // Join up the consequent and alternate completions and compose them with their prefix effects
     let ce = this.extractAndJoinCompletionsOfType(CompletionType, realm, c.consequent, convertToPNC);
     // ce will be applied to the global state before any non joining branches in c.consequent, so move
@@ -441,10 +443,14 @@ export class JoinImplementation {
       // Erase completions of type CompletionType and prepare for transformation of c to a possibly normal completion
       if (c.consequent instanceof CompletionType) {
         c.updateConsequentKeepingCurrentEffects(
-          convertToPNC ? new SimpleNormalCompletion(realm.intrinsics.empty) : dummyCompletion
+          convertToPNC ? new SimpleNormalCompletion(realm.intrinsics.empty) : erasedAbruptCompletion
         );
         convertToPNC = false;
-      } else if (convertToPNC && c.consequent instanceof ForkedAbruptCompletion) {
+      } else if (
+        convertToPNC &&
+        c.consequent instanceof ForkedAbruptCompletion &&
+        c.consequent.containsCompletion(NormalCompletion)
+      ) {
         c.updateConsequentKeepingCurrentEffects((c.consequent.transferChildrenToPossiblyNormalCompletion(): any));
         convertToPNC = false;
       }
@@ -461,9 +467,13 @@ export class JoinImplementation {
       // Erase completions of type CompletionType and prepare for transformation of c to a possibly normal completion
       if (c.alternate instanceof CompletionType) {
         c.updateAlternateKeepingCurrentEffects(
-          convertToPNC ? new SimpleNormalCompletion(realm.intrinsics.empty) : dummyCompletion
+          convertToPNC ? new SimpleNormalCompletion(realm.intrinsics.empty) : erasedAbruptCompletion
         );
-      } else if (convertToPNC && c.alternate instanceof ForkedAbruptCompletion) {
+      } else if (
+        convertToPNC &&
+        c.alternate instanceof ForkedAbruptCompletion &&
+        c.alternate.containsCompletion(NormalCompletion)
+      ) {
         c.updateAlternateKeepingCurrentEffects((c.alternate.transferChildrenToPossiblyNormalCompletion(): any));
       }
     } else {
@@ -649,7 +659,7 @@ export class JoinImplementation {
       let savedEffects;
       let savedPathConditions = [];
       if (result1 instanceof PossiblyNormalCompletion) {
-        completion = result1.value;
+        completion = result1.getNormalCompletion();
         savedEffects = result1.savedEffects;
         savedPathConditions = result1.savedPathConditions;
       }
@@ -684,7 +694,10 @@ export class JoinImplementation {
   }
 
   composeGenerators(realm: Realm, generator1: Generator, generator2: Generator): Generator {
-    let result = new Generator(realm, "composed");
+    // TODO #2222: The path condition of the resulting generator should really just be generator2.pathConditions,
+    // and we shouldn't have to bring in generator1.pathConditions. We have observed that this causes an issue
+    // in InstantRender.
+    let result = new Generator(realm, "composed", generator1.pathConditions.concat(generator2.pathConditions));
     // We copy the entries here because actually composing the generators breaks the serializer
     if (!generator1.empty()) result.appendGenerator(generator1, "");
     if (!generator2.empty()) result.appendGenerator(generator2, "");
@@ -731,7 +744,7 @@ export class JoinImplementation {
       // binding-assignment generator entry; however, we play it safe and don't
       // mutate the generator; instead, we create a new one that wraps around the old one.
       if (!rewritten) {
-        let h = new Generator(realm, "RewrittenToAppendBindingAssignments");
+        let h = new Generator(realm, "RewrittenToAppendBindingAssignments", g.pathConditions);
         if (!g.empty()) h.appendGenerator(g, "");
         g = h;
         rewritten = true;

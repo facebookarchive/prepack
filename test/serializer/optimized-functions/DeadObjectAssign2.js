@@ -1,4 +1,5 @@
 // Copies of .assign;:1
+
 global.f = function() {
   var x = global.__abstract ? global.__abstract({}, "({a: 1})") : {a: 1};
   var val = {};

@@ -18,7 +18,7 @@ export function cloneDescriptor(d: void | Descriptor): void | Descriptor {
   return clone;
 }
 
-export function clearDescriptor(d: Descriptor) {
+export function clearDescriptor(d: Descriptor): void {
   delete d.writable;
   delete d.enumerable;
   delete d.configurable;
@@ -27,7 +27,7 @@ export function clearDescriptor(d: Descriptor) {
   delete d.set;
 }
 
-export function copyDescriptor(from: Descriptor, to: Descriptor) {
+export function copyDescriptor(from: Descriptor, to: Descriptor): void {
   if (from.hasOwnProperty("writable")) to.writable = from.writable;
   if (from.hasOwnProperty("enumerable")) to.enumerable = from.enumerable;
   if (from.hasOwnProperty("configurable")) to.configurable = from.configurable;
@@ -40,7 +40,7 @@ export function copyDescriptor(from: Descriptor, to: Descriptor) {
 }
 
 // does not check if the contents of value properties are the same
-export function equalDescriptors(d1: Descriptor, d2: Descriptor) {
+export function equalDescriptors(d1: Descriptor, d2: Descriptor): boolean {
   if (d1.hasOwnProperty("writable")) {
     if (!d2.hasOwnProperty("writable")) return false;
     if (d1.writable !== d2.writable) return false;

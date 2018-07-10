@@ -417,7 +417,7 @@ export function SameValueNonNumber(realm: Realm, x: ConcreteValue, y: ConcreteVa
 }
 
 // Checks if two property keys are identical.
-export function SamePropertyKey(realm: Realm, x: PropertyKeyValue, y: PropertyKeyValue) {
+export function SamePropertyKey(realm: Realm, x: PropertyKeyValue, y: PropertyKeyValue): boolean {
   if (typeof x === "string" && typeof y === "string") {
     return x === y;
   }

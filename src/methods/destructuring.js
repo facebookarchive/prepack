@@ -14,8 +14,8 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { Reference } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
-import { Value, ObjectValue, UndefinedValue, StringValue } from "../values/index.js";
-import { NormalCompletion, AbruptCompletion } from "../completions.js";
+import { Value, ObjectValue, UndefinedValue, StringValue, SymbolValue } from "../values/index.js";
+import { AbruptCompletion, SimpleNormalCompletion } from "../completions.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import {
   RequireObjectCoercible,
@@ -46,7 +46,7 @@ function RestDestructuringAssignmentEvaluation(
   excludedNames: Array<PropertyKeyValue>,
   strictCode: boolean,
   env: LexicalEnvironment
-) {
+): void | boolean | Value {
   let DestructuringAssignmentTarget = property.argument;
 
   let lref;
@@ -84,7 +84,7 @@ function PropertyDestructuringAssignmentEvaluation(
   value: Value,
   strictCode: boolean,
   env: LexicalEnvironment
-) {
+): Array<string | StringValue | SymbolValue> {
   // Base condition for recursive call below
   if (properties.length === 0) {
     return [];
@@ -194,7 +194,7 @@ export function DestructuringAssignmentEvaluation(
   value: Value,
   strictCode: boolean,
   env: LexicalEnvironment
-) {
+): void | boolean | Value {
   if (pattern.type === "ObjectPattern") {
     let AssignmentPropertyList = [],
       AssignmentRestProperty = null;
@@ -280,7 +280,7 @@ export function DestructuringAssignmentEvaluation(
 
     // 4. If iteratorRecord.[[Done]] is false, return ? IteratorClose(iterator, result).
     if (iteratorRecord.$Done === false) {
-      let completion = IteratorClose(realm, iterator, new NormalCompletion(realm.intrinsics.undefined));
+      let completion = IteratorClose(realm, iterator, new SimpleNormalCompletion(realm.intrinsics.undefined));
       if (completion instanceof AbruptCompletion) {
         throw completion;
       }
@@ -298,7 +298,7 @@ export function IteratorDestructuringAssignmentEvaluation(
   iteratorRecord: { $Iterator: ObjectValue, $Done: boolean },
   strictCode: boolean,
   env: LexicalEnvironment
-) {
+): void | boolean | Value {
   let elements = _elements;
   // Check if the last element is a rest element. If so then we want to save the
   // element and handle it separately after we iterate through the other
@@ -555,13 +555,13 @@ export function IteratorDestructuringAssignmentEvaluation(
       invariant(lref);
 
       // a. Return ? PutValue(lref, A).
-      Properties.PutValue(realm, lref, A);
+      return Properties.PutValue(realm, lref, A);
     } else {
       // 6. Let nestedAssignmentPattern be the parse of the source text corresponding to DestructuringAssignmentTarget using either AssignmentPattern or AssignmentPattern[Yield] as the goal symbol depending upon whether this AssignmentElement has the [Yield] parameter.
       let nestedAssignmentPattern = DestructuringAssignmentTarget;
 
       // 7. Return the result of performing DestructuringAssignmentEvaluation of nestedAssignmentPattern with A as the argument.
-      DestructuringAssignmentEvaluation(realm, nestedAssignmentPattern, A, strictCode, env);
+      return DestructuringAssignmentEvaluation(realm, nestedAssignmentPattern, A, strictCode, env);
     }
   }
 }
@@ -574,7 +574,7 @@ export function KeyedDestructuringAssignmentEvaluation(
   propertyName: PropertyKeyValue,
   strictCode: boolean,
   env: LexicalEnvironment
-) {
+): void | boolean | Value {
   let DestructuringAssignmentTarget;
   let Initializer;
 

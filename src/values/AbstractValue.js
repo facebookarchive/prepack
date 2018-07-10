@@ -20,7 +20,7 @@ import type {
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
-import { PreludeGenerator } from "../utils/generator.js";
+import { PreludeGenerator, type TemporalBuildNodeType } from "../utils/generator.js";
 import buildExpressionTemplate from "../utils/builder.js";
 
 import {
@@ -142,11 +142,10 @@ export default class AbstractValue extends Value {
   addSourceNamesTo(names: Array<string>, visited: Set<AbstractValue> = new Set()) {
     if (visited.has(this)) return;
     visited.add(this);
-    let gen = this.$Realm.preludeGenerator;
+    let realm = this.$Realm;
     function add_intrinsic(name: string) {
       if (name.startsWith("_$")) {
-        if (gen === undefined) return;
-        let temporalBuildNodeEntryArgs = gen.derivedIds.get(name);
+        let temporalBuildNodeEntryArgs = realm.derivedIds.get(name);
         invariant(temporalBuildNodeEntryArgs !== undefined);
         add_args(temporalBuildNodeEntryArgs.args);
       } else if (names.indexOf(name) < 0) {
@@ -784,6 +783,7 @@ export default class AbstractValue extends Value {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
+      temporalType?: TemporalBuildNodeType,
     |}
   ): AbstractValue {
     invariant(resultType !== UndefinedValue);
@@ -824,6 +824,7 @@ export default class AbstractValue extends Value {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
+      temporalType?: TemporalBuildNodeType,
     |}
   ): AbstractValue | UndefinedValue {
     let types = new TypesDomain(resultType);
@@ -977,5 +978,38 @@ export default class AbstractValue extends Value {
 
   static makeKind(prefix: AbstractValueKindPrefix, suffix: string): AbstractValueKind {
     return ((`${prefix}:${suffix}`: any): AbstractValueKind);
+  }
+
+  static createTemporalObjectAssign(
+    realm: Realm,
+    to: ObjectValue | AbstractObjectValue,
+    sources: Array<Value>
+  ): AbstractObjectValue {
+    // Tell serializer that it may add properties to to only after temporalTo has been emitted
+    let temporalArgs = [to, ...sources];
+    let preludeGenerator = realm.preludeGenerator;
+    invariant(preludeGenerator !== undefined);
+    let temporalTo = AbstractValue.createTemporalFromBuildFunction(
+      realm,
+      ObjectValue,
+      temporalArgs,
+      ([targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
+        return t.callExpression(preludeGenerator.memoizeReference("Object.assign"), [targetNode, ...sourceNodes]);
+      },
+      {
+        skipInvariant: true,
+        mutatesOnly: [to],
+        temporalType: "OBJECT_ASSIGN",
+      }
+    );
+    invariant(temporalTo instanceof AbstractObjectValue);
+    if (to instanceof AbstractObjectValue) {
+      temporalTo.values = to.values;
+    } else {
+      invariant(to instanceof ObjectValue);
+      temporalTo.values = new ValuesDomain(to);
+    }
+    to.temporalAlias = temporalTo;
+    return temporalTo;
   }
 }

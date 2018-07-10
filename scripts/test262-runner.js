@@ -235,6 +235,9 @@ class MasterProgramArgs {
   filterString: string;
   singleThreaded: boolean;
   relativeTestPath: string;
+  expectedES5: number;
+  expectedES6: number;
+  expectedTimeouts: number;
 
   constructor(
     verbose: boolean,
@@ -244,7 +247,10 @@ class MasterProgramArgs {
     statusFile: string,
     filterString: string,
     singleThreaded: boolean,
-    relativeTestPath: string
+    relativeTestPath: string,
+    expectedES5: number,
+    expectedES6: number,
+    expectedTimeouts: number
   ) {
     this.verbose = verbose;
     this.timeout = timeout;
@@ -254,6 +260,9 @@ class MasterProgramArgs {
     this.filterString = filterString;
     this.singleThreaded = singleThreaded;
     this.relativeTestPath = relativeTestPath;
+    this.expectedES5 = expectedES5;
+    this.expectedES6 = expectedES6;
+    this.expectedTimeouts = expectedTimeouts;
   }
 }
 
@@ -323,7 +332,9 @@ function usage(): string {
     EOL +
     `[--verbose] [--timeout <number>] [--bailAfter <number>] ` +
     EOL +
-    `[--cpuScale <number>] [--statusFile <string>] [--singleThreaded] [--relativeTestPath <string>]`
+    `[--cpuScale <number>] [--statusFile <string>] [--singleThreaded] [--relativeTestPath <string>]` +
+    EOL +
+    `[--expectedCounts <es5pass,es6pass,timeouts>]`
   );
 }
 
@@ -339,39 +350,54 @@ function masterArgsParse(): MasterProgramArgs {
       bailAfter: Infinity,
       singleThreaded: false,
       relativeTestPath: "/../test/test262",
+      expectedCounts: "11944,5566,2",
     },
   });
   let filterString = parsedArgs._[0];
   if (typeof parsedArgs.verbose !== "boolean") {
     throw new ArgsParseError("verbose must be a boolean (either --verbose or not)");
   }
+  let verbose = parsedArgs.verbose;
   if (typeof parsedArgs.timeout !== "number") {
     throw new ArgsParseError("timeout must be a number (in seconds) (--timeout 10)");
   }
+  let timeout = parsedArgs.timeout;
   if (typeof parsedArgs.bailAfter !== "number") {
     throw new ArgsParseError("bailAfter must be a number (--bailAfter 10)");
   }
+  let bailAfter = parsedArgs.bailAfter;
   if (typeof parsedArgs.cpuScale !== "number") {
     throw new ArgsParseError("cpuScale must be a number (--cpuScale 0.5)");
   }
+  let cpuScale = parsedArgs.cpuScale;
   if (typeof parsedArgs.statusFile !== "string") {
     throw new ArgsParseError("statusFile must be a string (--statusFile file.txt)");
   }
+  let statusFile = parsedArgs.statusFile;
   if (typeof parsedArgs.singleThreaded !== "boolean") {
     throw new ArgsParseError("singleThreaded must be a boolean (either --singleThreaded or not)");
   }
+  let singleThreaded = parsedArgs.singleThreaded;
   if (typeof parsedArgs.relativeTestPath !== "string") {
     throw new ArgsParseError("relativeTestPath must be a string (--relativeTestPath /../test/test262)");
   }
+  let relativeTestPath = parsedArgs.relativeTestPath;
+  if (typeof parsedArgs.expectedCounts !== "string") {
+    throw new ArgsParseError("expectedCounts must be a string (--expectedCounts 11944,5566,2");
+  }
+  let expectedCounts = parsedArgs.expectedCounts.split(",").map(x => Number(x));
   let programArgs = new MasterProgramArgs(
-    parsedArgs.verbose,
-    parsedArgs.timeout,
-    parsedArgs.bailAfter,
-    parsedArgs.cpuScale,
-    parsedArgs.statusFile,
+    verbose,
+    timeout,
+    bailAfter,
+    cpuScale,
+    statusFile,
     filterString,
-    parsedArgs.singleThreaded,
-    parsedArgs.relativeTestPath
+    singleThreaded,
+    relativeTestPath,
+    expectedCounts[0],
+    expectedCounts[1],
+    expectedCounts[2]
   );
   if (programArgs.filterString) {
     // if filterstring is provided, assume that verbosity is desired
@@ -637,7 +663,10 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 11738 || numPassedES6 < 5406 || numTimeouts > 0)) {
+  if (
+    !args.filterString &&
+    (numPassedES5 < args.expectedES5 || numPassedES6 < args.expectedES6 || numTimeouts > args.expectedTimeouts)
+  ) {
     console.error(chalk.red("Overall failure. Expected more tests to pass!"));
     return 1;
   } else {
@@ -787,6 +816,7 @@ function handleTest(
       // filter out by flags, features, and includes
       let keepThisTest =
         filterFeatures(banners) &&
+        filterNegative(banners) &&
         filterFlags(banners) &&
         filterIncludes(banners) &&
         filterDescription(banners) &&
@@ -908,6 +938,7 @@ function createRealm(timeout: number): { realm: Realm, $: ObjectValue } {
   // Create a new realm.
   let realm = construct_realm({
     strictlyMonotonicDateNow: true,
+    errorHandler: () => "Fail",
     timeout: timeout * 1000,
   });
   initializeGlobals(realm);
@@ -997,7 +1028,12 @@ function runTest(
     let stack = err.stack;
     if (data.negative.type) {
       let type = data.negative.type;
-      if (err && err instanceof ThrowCompletion && (Get(realm, err.value, "name"): any).value === type) {
+      if (
+        err &&
+        err instanceof ThrowCompletion &&
+        err.value instanceof ObjectValue &&
+        (Get(realm, err.value, "name"): any).value === type
+      ) {
         // Expected an error and got one.
         return new TestResult(true, strict);
       } else {
@@ -1164,12 +1200,19 @@ function filterFeatures(data: BannerData): boolean {
   if (features.includes("Symbol.isConcatSpreadable")) return false;
   if (features.includes("IsHTMLDDA")) return false;
   if (features.includes("regexp-unicode-property-escapes")) return false;
+  if (features.includes("character-class-escape-non-whitespace")) return false;
   if (features.includes("regexp-named-groups")) return false;
   if (features.includes("regexp-lookbehind")) return false;
   if (features.includes("regexp-dotall")) return false;
   if (features.includes("optional-catch-binding")) return false;
   if (features.includes("Symbol.asyncIterator")) return false;
   if (features.includes("Promise.prototype.finally")) return false;
+  return true;
+}
+
+function filterNegative(data: BannerData): boolean {
+  let negative = data.negative;
+  if (negative.phase === "parse") return false;
   return true;
 }
 

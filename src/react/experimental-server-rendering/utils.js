@@ -61,7 +61,7 @@ export function isCustomComponent(
 }
 
 // $FlowFixMe: we don't want to provides types here as we inject this function into source
-export function escapeHtml(string) {
+export function escapeHtml(string): string {
   if (typeof string === "boolean" || typeof string === "number") {
     return "" + string;
   }
@@ -152,7 +152,7 @@ export function convertValueToNode(value: Value): ReactNode {
   invariant(false, "TODO");
 }
 
-export function createHtmlEscapeHelper(realm: Realm) {
+export function createHtmlEscapeHelper(realm: Realm): ECMAScriptSourceFunctionValue {
   let escapeHelperAst = parseExpression(escapeHtml.toString(), { plugins: ["flow"] });
   let helper = new ECMAScriptSourceFunctionValue(realm);
   let body = escapeHelperAst.body;
@@ -162,7 +162,7 @@ export function createHtmlEscapeHelper(realm: Realm) {
   return helper;
 }
 
-export function createArrayHelper(realm: Realm) {
+export function createArrayHelper(realm: Realm): ECMAScriptSourceFunctionValue {
   let arrayHelper = `
     function arrayHelper(array) {
       let length = array.length;
