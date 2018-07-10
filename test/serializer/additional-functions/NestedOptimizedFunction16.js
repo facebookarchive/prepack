@@ -1,3 +1,4 @@
+// skip this test for now
 (function () {
 
   var fn2 = function(item, self) {

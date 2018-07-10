@@ -53,7 +53,10 @@ export class Serializer {
       !!serializerOptions.accelerateUnsupportedRequires
     );
     this.functions = new Functions(this.realm, this.modules.moduleTracer);
-    if (serializerOptions.trace) this.realm.tracers.push(new LoggingTracer(this.realm));
+    if (serializerOptions.trace) {
+      let loggingTracer = new LoggingTracer(this.realm);
+      this.realm.tracers.push(loggingTracer);
+    }
 
     this.options = serializerOptions;
   }

@@ -14,6 +14,7 @@ import type {
   BabelNodeMemberExpression,
   BabelNodeStringLiteral,
   BabelNodeIdentifier,
+  BabelNodeSourceLocation,
 } from "babel-types";
 import * as t from "babel-types";
 
@@ -56,4 +57,8 @@ export function memberExpressionHelper(
     computed = true;
   }
   return t.memberExpression(object, propertyExpression, computed);
+}
+
+export function stringOfLocation(location: BabelNodeSourceLocation): string {
+  return `${location.start.line}:${location.start.column} ${location.end.line}:${location.end.line}`;
 }

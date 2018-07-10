@@ -137,6 +137,8 @@ export class Tracer {
     newTarget: void | ObjectValue,
     result: void | Reference | Value | AbruptCompletion
   ) {}
+  beginOptimizingFunction(optimizedFunctionId: number, functionValue: FunctionValue) {}
+  endOptimizingFunction(optimizedFunctionId: number) {}
 }
 
 export class ExecutionContext {
