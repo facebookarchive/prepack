@@ -1,3 +1,4 @@
+// expected Warning: PP1007
 (function() {
     let x = 23;
     function g() { return x; }

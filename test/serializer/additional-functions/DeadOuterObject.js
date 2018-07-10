@@ -1,3 +1,5 @@
+// expected Warning: PP1007
+
 (function () {
     let outer = {};
     function f(x) {

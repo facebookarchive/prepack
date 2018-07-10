@@ -60,4 +60,4 @@ export class InvariantError extends Error {
   }
 }
 
-export type ErrorHandler = (error: CompilerDiagnostic) => ErrorHandlerResult;
+export type ErrorHandler = (error: CompilerDiagnostic, suppressDiagnostics: boolean) => ErrorHandlerResult;

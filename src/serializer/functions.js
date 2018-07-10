@@ -33,6 +33,7 @@ import { ReactStatistics } from "./types";
 import type { AdditionalFunctionEffects, WriteEffects } from "./types";
 import { convertConfigObjectToReactComponentTreeConfig, valueIsKnownReactAbstraction } from "../react/utils.js";
 import { applyOptimizedReactComponents, optimizeReactComponentTreeRoot } from "../react/optimizing.js";
+import { handleReportedSideEffect } from "./utils.js";
 import * as t from "babel-types";
 
 type AdditionalFunctionEntry = {
@@ -215,11 +216,17 @@ export class Functions {
       let currentOptimizedFunctionId = optimizedFunctionId++;
       additionalFunctionStack.push(functionValue);
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+      let logCompilerDiagnostic = (msg: string) => {
+        let error = new CompilerDiagnostic(msg, undefined, "PP1007", "Warning");
+        realm.handleError(error);
+      };
       for (let t1 of this.realm.tracers) t1.beginOptimizingFunction(currentOptimizedFunctionId, functionValue);
       let call = this._callOfFunction(functionValue);
-      let effects: Effects = this.realm.evaluatePure(
-        () => this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
-        /*reportSideEffectFunc*/ null
+      let realm = this.realm;
+      let effects: Effects = realm.evaluatePure(
+        () => realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
+        (sideEffectType, binding, expressionLocation) =>
+          handleReportedSideEffect(logCompilerDiagnostic, sideEffectType, binding, expressionLocation)
       );
       invariant(effects);
       let additionalFunctionEffects = createAdditionalEffects(

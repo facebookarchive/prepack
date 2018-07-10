@@ -1,3 +1,4 @@
+// expected Warning: PP1007
 let x = undefined;
 let y = undefined;
 global.f = function() {

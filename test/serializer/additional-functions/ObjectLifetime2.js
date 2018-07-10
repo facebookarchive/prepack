@@ -1,3 +1,4 @@
+// expected Warning: PP1007
 (function () {
     let a = [1,2,3];
     let f = function() {
