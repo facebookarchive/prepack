@@ -281,6 +281,12 @@ export default class ObjectValue extends ConcreteValue {
   // If set, this happened during object initialization and the value is never changed again, so not tracked.
   _isScopedTemplate: void | true;
 
+  // If true, this object represents one or more object with the same structure.
+  // We don't know which of the objects it may be though, so all updates are
+  // weak. These should only be accessed through abstract values after being widened.
+  // An object should only be widened in its creation branch, so it's not tracked.
+  _hasWidenedIdentity: void | true;
+
   // If true, then unknown properties should return transitively simple abstract object values
   _simplicityIsTransitive: AbstractValue | BooleanValue;
 
@@ -375,6 +381,15 @@ export default class ObjectValue extends ConcreteValue {
 
   makeNotFinal(): void {
     this._isFinal = this.$Realm.intrinsics.false;
+  }
+
+  hasWidenedIdentity(): boolean {
+    return this._hasWidenedIdentity === true;
+  }
+
+  // Makes this object represent one or more objects with the same structure.
+  widenIdentity(): void {
+    this._hasWidenedIdentity = true;
   }
 
   isPartialObject(): boolean {

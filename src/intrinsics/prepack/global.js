@@ -496,6 +496,23 @@ export default function(realm: Realm): void {
     })
   );
 
+  // __widenIdentity(object) marks a template object as representing one or more objects instances with the same structure.
+  global.$DefineOwnProperty(
+    "__widenIdentity",
+    new PropertyDescriptor({
+      value: new NativeFunctionValue(realm, "global.__widenIdentity", "__widenIdentity", 1, (context, [object]) => {
+        if (object instanceof AbstractObjectValue || object instanceof ObjectValue) {
+          object.widenIdentity();
+          return object;
+        }
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not an (abstract) object");
+      }),
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    })
+  );
+
   // Helper function that emits a check whether a given object property has a particular value.
   global.$DefineOwnProperty(
     "__assumeDataProperty",

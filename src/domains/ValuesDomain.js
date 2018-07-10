@@ -114,6 +114,25 @@ export default class ValuesDomain {
       };
       for (let leftElem of leftElements) {
         for (let rightElem of rightElements) {
+          if (
+            (op === "===" || op === "!==" || op === "==" || op === "!=") &&
+            leftElem === rightElem &&
+            leftElem instanceof ObjectValue &&
+            leftElem.hasWidenedIdentity() &&
+            rightElem instanceof ObjectValue &&
+            rightElem.hasWidenedIdentity()
+          ) {
+            // If we are comparing the identity of the same set of objects against
+            // each other we know that this might be equal to itself, but since it
+            // represents multiple objects, it also might not be. Therefore,
+            // this can be either true or false.
+            // If these are two different ObjectValues with widened identities, then
+            // those are considered part of disjoint sets so they're never equal to
+            // each other.
+            resultSet.add(realm.intrinsics.true);
+            resultSet.add(realm.intrinsics.false);
+            continue;
+          }
           let result = ValuesDomain.computeBinary(realm, op, leftElem, rightElem);
           if (result instanceof ConcreteValue) {
             resultSet.add(result);

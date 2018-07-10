@@ -411,6 +411,14 @@ export function SameValueNonNumber(realm: Realm, x: ConcreteValue, y: ConcreteVa
     return x === y;
   }
 
+  invariant(x instanceof ObjectValue && y instanceof ObjectValue);
+  // Comparing widened object identities should use an abstract value wrapper. The widened
+  // ObjectValue itself shouldn't be leaked outside the so this shouldn't happen directly.
+  invariant(
+    x !== y || !x.hasWidenedIdentity() || !y.hasWidenedIdentity(),
+    "two widened object identif of the same set should never be compared directly"
+  );
+
   // 8. Return true if x and y are the same Object value. Otherwise, return false.
   return x === y;
 }

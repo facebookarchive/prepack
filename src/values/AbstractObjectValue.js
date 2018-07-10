@@ -173,6 +173,16 @@ export default class AbstractObjectValue extends AbstractValue {
     this.cachedIsSimpleObject = true;
   }
 
+  widenIdentity(): void {
+    // top already has the widest identity (unknown).
+    if (!this.values.isTop()) {
+      for (let element of this.values.getElements()) {
+        invariant(element instanceof ObjectValue);
+        element.widenIdentity();
+      }
+    }
+  }
+
   // Use this only if it is known that only the string properties of the snapshot will be accessed.
   getSnapshot(options?: { removeProperties: boolean }): AbstractObjectValue {
     if (this.isIntrinsic()) return this; // already temporal
