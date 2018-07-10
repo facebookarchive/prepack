@@ -7,20 +7,21 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
 
-import { type CompilerDiagnostic, type ErrorHandlerResult, FatalError } from "../lib/errors.js";
-import { prepackFileSync } from "../lib/prepack-node.js";
-import invariant from "../lib/invariant.js";
+//import { type CompilerDiagnostic, type ErrorHandlerResult, FatalError } from "../lib/errors.js";
+//import { prepackFileSync } from "../lib/prepack-node.js";
+//import invariant from "../lib/invariant.js";
+let { FatalError } = require("../lib/errors.js");
+let { prepackFileSync } = require("../lib/prepack-node.js");
+//let { invariant } = require("../lib/invariant.js");
 
-let chalk = require("chalk");
 let path = require("path");
 let fs = require("fs");
 
 /* eslint-disable no-undef */
 const { expect } = global;
 
-export function search(dir, relative) {
+function search(dir, relative) {
   let tests = [];
 
   if (fs.existsSync(dir)) {
@@ -42,8 +43,6 @@ export function search(dir, relative) {
   return tests;
 }
 
-let tests = search(`${__dirname}/../test/error-handler`, "test/error-handler");
-
 function errorHandler(
   retval: ErrorHandlerResult,
   errors: Array<CompilerDiagnostic>,
@@ -53,17 +52,17 @@ function errorHandler(
   return retval;
 }
 
-export function runTest(name: string, code: string) {
+function runTest(name: string, code: string) {
   let recover = code.includes("// recover-from-errors");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
 
   let expectedErrors = code.match(/\/\/\s*expected errors:\s*(.*)/);
-  invariant(expectedErrors);
-  invariant(expectedErrors.length > 1);
+  //invariant(expectedErrors);
+  //invariant(expectedErrors.length > 1);
   expectedErrors = expectedErrors[1];
   expectedErrors = eval(expectedErrors); // eslint-disable-line no-eval
-  invariant(expectedErrors.constructor === Array);
+  //invariant(expectedErrors.constructor === Array);
 
   let errors = [];
   try {
@@ -78,7 +77,7 @@ export function runTest(name: string, code: string) {
     };
     let result = prepackFileSync([name], options);
     if (!recover) {
-      expect(result).toBeUndefined()
+      expect(result).toBeUndefined();
     }
   } catch (e) {
     expect(e).toBeInstanceOf(FatalError);
@@ -87,23 +86,4 @@ export function runTest(name: string, code: string) {
   expect(errors).toMatchSnapshot(name);
 }
 
-function run() {
-  let failed = 0;
-  let passed = 0;
-  let total = 0;
-
-  for (let test of tests) {
-    // filter hidden files
-    if (path.basename(test.name)[0] === ".") continue;
-    if (test.name.endsWith("~")) continue;
-
-    total++;
-    if (runTest(test.name, test.file)) passed++;
-    else failed++;
-  }
-
-  console.log("Passed:", `${passed}/${total}`, (Math.floor((passed / total) * 100) || 0) + "%");
-  return failed === 0;
-}
-
-if (!run()) process.exit(1);
+module.exports = { search, runTest };

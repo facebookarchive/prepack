@@ -12,17 +12,10 @@
 const { search, runTest } = require("../lib/test-error-handler.js");
 const { it, expect } = global;
 
-it("thing", () => {
-  expect(true).toBe(false);
-})
+let tests = search(`${__dirname}/error-handler`, "test/error-handler");
 
-/*let tests = search(`${__dirname}/error-handler`, "error-handler");
-
-console.error("hi");
-console.error(tests.length);
 for (let test of tests) {
-  console.log(test.name);
   it(test.name, () => {
-    runTest(test.file);
+    runTest(test.name, test.file);
   })
-}*/
+}
