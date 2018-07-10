@@ -1,5 +1,5 @@
 // abstract effects
-// expected errors: [{location: {"start":{"line":26,"column":11},"end":{"line":26,"column":21},"identifierName":"abstractFn","source":"test/error-handler/try-and-call-abstract-function.js"}, errorCode: "PP0021", severity: "RecoverableError", message: "Possible throw inside try/catch is not yet supported"}]
+// expected errors: [{location: {"start":{"line":30,"column":11},"end":{"line":30,"column":21},"identifierName":"abstractFn","source":"test/error-handler/try-and-call-abstract-function.js"}, errorCode: "PP0021", severity: "RecoverableError", message: "Possible throw inside try/catch is not yet supported"}]
 // recover-from-errors
 
 let abstractFn = global.__abstract

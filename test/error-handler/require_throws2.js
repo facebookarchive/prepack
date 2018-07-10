@@ -1,6 +1,6 @@
 // delay unsupported requires
 // recover-from-errors
-// expected errors: [{"location":{"start":{"line":85,"column":4},"end":{"line":85,"column":12},"source":"test/error-handler/require_throws2.js"},"severity":"Warning","errorCode":"PP0018"}]
+// expected errors: [{"location":{"start":{"line":84,"column":4},"end":{"line":84,"column":12},"source":"test/error-handler/require_throws2.js"},"severity":"Warning","errorCode":"PP0018"}]
 
 let b = global.__abstract ? __abstract("boolean", "true") : true;
 

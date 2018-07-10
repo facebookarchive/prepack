@@ -1,5 +1,5 @@
 // recover-from-errors
-// expected errors: [{"location":{"start":{"line":11,"column":20},"end":{"line":11,"column":23},"identifierName":"foo","source":"test/error-handler/instanceof.js"},"severity":"RecoverableError","errorCode":"PP0004"}, {"location":{"start":{"line":17,"column":20},"end":{"line":17,"column":21},"identifierName":"b","source":"test/error-handler/instanceof.js"},"severity":"RecoverableError","errorCode":"PP0003"}, {"location":{"start":{"line":23,"column":20},"end":{"line":23,"column":21},"identifierName":"f","source":"test/error-handler/instanceof.js"},"severity":"RecoverableError","errorCode":"PP0004"}]
+// expected errors: [{"location":{"start":{"line":15,"column":20},"end":{"line":15,"column":23},"identifierName":"foo","source":"test/error-handler/instanceof.js"},"severity":"RecoverableError","errorCode":"PP0004"}, {"location":{"start":{"line":21,"column":20},"end":{"line":21,"column":21},"identifierName":"b","source":"test/error-handler/instanceof.js"},"severity":"RecoverableError","errorCode":"PP0003"}, {"location":{"start":{"line":27,"column":20},"end":{"line":27,"column":21},"identifierName":"f","source":"test/error-handler/instanceof.js"},"severity":"RecoverableError","errorCode":"PP0004"}]
 
 var b = global.__abstract ? __abstract("boolean", "true") : true;
 function foo() {}
