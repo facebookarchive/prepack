@@ -67,7 +67,7 @@ export default function(
         loc: e.loc,
         stackDecorated: false,
       };
-      throw new ThrowCompletion(error, e.loc);
+      throw new ThrowCompletion(error, false, e.loc);
     } else {
       throw e;
     }

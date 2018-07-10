@@ -598,7 +598,7 @@ export class JoinImplementation {
       };
       let val = this.joinValues(realm, result1.value, result2.value, getAbstractValue);
       invariant(val instanceof Value);
-      return new ThrowCompletion(val, result1.location);
+      return new ThrowCompletion(val, result1.pureThrow && result2.pureThrow, result1.location);
     }
     if (result1 instanceof SimpleNormalCompletion && result2 instanceof SimpleNormalCompletion) {
       return new SimpleNormalCompletion(getAbstractValue(result1.value, result2.value));

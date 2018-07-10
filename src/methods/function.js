@@ -14,13 +14,7 @@ import type { PropertyKeyValue, FunctionBodyAstNode } from "../types.js";
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
-import {
-  AbruptCompletion,
-  Completion,
-  NormalCompletion,
-  ReturnCompletion,
-  SimpleNormalCompletion,
-} from "../completions.js";
+import { Completion, ReturnCompletion, AbruptCompletion, NormalCompletion } from "../completions.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord } from "../environment.js";
 import {
   AbstractValue,
@@ -1165,9 +1159,6 @@ export class FunctionImplementation {
         let res = blockEnv.evaluateCompletionDeref(node, strictCode);
         if (!(res instanceof EmptyValue)) {
           if (res instanceof AbruptCompletion) throw UpdateEmpty(realm, res, blockValue || realm.intrinsics.empty);
-          if (res instanceof SimpleNormalCompletion) {
-            res = res.value;
-          }
           invariant(res instanceof Value);
           blockValue = res;
         }

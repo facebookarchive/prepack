@@ -24,7 +24,7 @@ export default function(
 ): [Completion | Value, BabelNode, Array<BabelNodeStatement>] {
   let [argValue, argAst, io] = env.partiallyEvaluateCompletionDeref(ast.argument, strictCode);
   if (argValue instanceof Value) {
-    let c = new ThrowCompletion(argValue, ast.loc);
+    let c = new ThrowCompletion(argValue, false, ast.loc);
     let s = t.throwStatement((argAst: any)); // will be an expression because argValue is a Value
     return [c, s, io];
   }

@@ -55,15 +55,17 @@ export class AbruptCompletion extends Completion {
 }
 
 export class ThrowCompletion extends AbruptCompletion {
-  constructor(value: Value, location: ?BabelNodeSourceLocation, nativeStack?: ?string) {
+  constructor(value: Value, pureThrow: boolean, location: ?BabelNodeSourceLocation, nativeStack?: ?string) {
     super(value, location);
     this.nativeStack = nativeStack || new Error().stack;
+    this.pureThrow = pureThrow;
     let realm = value.$Realm;
-    if (realm.isInPureScope() && realm.reportSideEffectCallback !== undefined) {
+    if (realm.isInPureScope() && realm.reportSideEffectCallback !== undefined && !pureThrow) {
       realm.reportSideEffectCallback("EXCEPTION_THROWN", undefined, location);
     }
   }
 
+  pureThrow: boolean;
   nativeStack: string;
 }
 

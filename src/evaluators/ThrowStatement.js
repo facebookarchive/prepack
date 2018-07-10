@@ -12,7 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import { SimpleNormalCompletion, ThrowCompletion } from "../completions.js";
+import { ThrowCompletion } from "../completions.js";
 import { Environment } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeThrowStatement } from "babel-types";
@@ -29,10 +29,7 @@ export default function(
     invariant(realm.generator !== undefined);
     // TODO: we should porbably materialize exprValue at this point
     realm.generator.emitThrow(exprValue);
-    // We want a completion to bubble up the execution path, but
-    // we don't want the completion to serialize to a value as
-    // we do generate a generator entry above instead.
-    throw new SimpleNormalCompletion(realm.intrinsics.empty, ast.loc);
+    throw new ThrowCompletion(realm.intrinsics.empty, true, ast.loc);
   }
-  throw new ThrowCompletion(exprValue, ast.loc);
+  throw new ThrowCompletion(exprValue, false, ast.loc);
 }
