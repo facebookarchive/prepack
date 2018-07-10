@@ -375,7 +375,7 @@ export function applyGetDerivedStateFromProps(
         // is not simple. however, given getDerivedStateFromProps is
         // meant to be pure, we can assume that there are no getters on
         // the partial abstract state
-        AbstractValue.createAbstractObjectAssign(realm, newState, [prevState, state]);
+        AbstractValue.createTemporalObjectAssign(realm, newState, [prevState, state]);
         newState.makeSimple();
         newState.makePartial();
         newState.makeFinal();
@@ -390,7 +390,7 @@ export function applyGetDerivedStateFromProps(
         if (realm.isInPureScope() && e instanceof FatalError) {
           let preludeGenerator = realm.preludeGenerator;
           invariant(preludeGenerator !== undefined);
-          AbstractValue.createAbstractObjectAssign(realm, newState, [prevState, state]);
+          AbstractValue.createTemporalObjectAssign(realm, newState, [prevState, state]);
           newState.makeSimple();
           newState.makePartial();
           return newState;

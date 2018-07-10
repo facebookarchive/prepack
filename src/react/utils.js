@@ -957,7 +957,7 @@ function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps:
   let [to, ...sources] = temporalArgs.map(arg => (arg === props ? clonedProps : arg));
 
   invariant(to instanceof ObjectValue || to instanceof AbstractObjectValue);
-  AbstractValue.createAbstractObjectAssign(realm, to, sources);
+  AbstractValue.createTemporalObjectAssign(realm, to, sources);
 }
 
 export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value): ObjectValue {
@@ -1054,7 +1054,7 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
         // prepare our temporal Object.assign fallback
         to.makePartial();
         to.makeSimple();
-        AbstractValue.createAbstractObjectAssign(realm, to, delayedSources);
+        AbstractValue.createTemporalObjectAssign(realm, to, delayedSources);
         return;
       } else {
         throw error;

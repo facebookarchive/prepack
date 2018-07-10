@@ -272,7 +272,7 @@ export default function(realm: Realm): NativeFunctionValue {
         // but now that it is partial we need to set the _isSimple flag.
         to.makeSimple();
 
-        AbstractValue.createAbstractObjectAssign(realm, to, delayedSources);
+        AbstractValue.createTemporalObjectAssign(realm, to, delayedSources);
       }
       return to;
     });
