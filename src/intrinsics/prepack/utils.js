@@ -67,6 +67,7 @@ export function createAbstract(
   realm: Realm,
   typeNameOrTemplate?: Value | string,
   name?: string,
+  options?: ObjectValue,
   ...additionalValues: Array<ConcreteValue>
 ): AbstractValue | AbstractObjectValue {
   if (!realm.useAbstractInterpretation) {
@@ -74,6 +75,7 @@ export function createAbstract(
   }
 
   let { type, template, functionResultType } = parseTypeNameOrTemplate(realm, typeNameOrTemplate);
+  let optionsMap = options ? options.properties : new Map();
 
   let result;
   let locString,
@@ -95,7 +97,7 @@ export function createAbstract(
     result = AbstractValue.createFromTemplate(realm, throwTemplate, type, [locVal], kind);
   } else {
     let kind = AbstractValue.makeKind("abstract", name);
-    if (!realm.isNameStringUnique(name)) {
+    if (!optionsMap.get("allowDuplicateNames") && !realm.isNameStringUnique(name)) {
       let error = new CompilerDiagnostic("An abstract value with the same name exists", loc, "PP0019", "FatalError");
       realm.handleError(error);
       throw new FatalError();

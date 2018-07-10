@@ -530,7 +530,7 @@ export default class ObjectValue extends ConcreteValue {
     });
   }
 
-  getOwnPropertyKeysArray(): Array<string> {
+  getOwnPropertyKeysArray(allowAbstractKeys: boolean = false): Array<string> {
     if (this.isPartialObject() || this.mightBeHavocedObject() || this.unknownProperty !== undefined) {
       AbstractValue.reportIntrospectionError(this);
       throw new FatalError();
@@ -546,8 +546,10 @@ export default class ObjectValue extends ConcreteValue {
       if (!pv.mightHaveBeenDeleted()) return true;
       // The property may or may not be there at runtime.
       // We can at best return an abstract keys array.
-      // For now just terminate.
+      // For now, unless the caller has told us that is okay,
+      // just terminate.
       invariant(pv instanceof AbstractValue);
+      if (allowAbstractKeys) return true;
       AbstractValue.reportIntrospectionError(pv);
       throw new FatalError();
     });

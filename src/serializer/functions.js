@@ -23,6 +23,7 @@ import {
   FunctionValue,
   ObjectValue,
   UndefinedValue,
+  EmptyValue,
   Value,
 } from "../values/index.js";
 import { Get } from "../methods/index.js";
@@ -57,6 +58,20 @@ export class Functions {
 
   __optimizedFunctionEntryOfValue(value: Value): AdditionalFunctionEntry | void {
     let realm = this.realm;
+
+    if (value instanceof AbstractValue) {
+      // if we conditionally called __optimize, we may have an AbstractValue that is the union of Empty or Undefined and
+      // a function/component to optimize
+      let elements = value.values.getElements();
+      if (elements) {
+        let possibleValues = [...elements].filter(
+          element => !(element instanceof EmptyValue || element instanceof UndefinedValue)
+        );
+        if (possibleValues.length === 1) {
+          value = possibleValues[0];
+        }
+      }
+    }
     if (value instanceof ECMAScriptSourceFunctionValue) {
       // additional function logic
       return { value };
@@ -100,7 +115,7 @@ export class Functions {
       realm.intrinsics.undefined
     );
     invariant(globalRecordedAdditionalFunctionsMap instanceof ObjectValue);
-    for (let funcId of globalRecordedAdditionalFunctionsMap.getOwnPropertyKeysArray()) {
+    for (let funcId of globalRecordedAdditionalFunctionsMap.getOwnPropertyKeysArray(true)) {
       let property = globalRecordedAdditionalFunctionsMap.properties.get(funcId);
       if (property) {
         let value = property.descriptor && property.descriptor.value;
@@ -195,9 +210,12 @@ export class Functions {
       }
     };
 
+    let optimizedFunctionId = 0;
     let getEffectsFromAdditionalFunctionAndNestedFunctions = functionValue => {
+      let currentOptimizedFunctionId = optimizedFunctionId++;
       additionalFunctionStack.push(functionValue);
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+      for (let t1 of this.realm.tracers) t1.beginOptimizingFunction(currentOptimizedFunctionId, functionValue);
       let call = this._callOfFunction(functionValue);
       let effects: Effects = this.realm.evaluatePure(
         () => this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
@@ -238,6 +256,7 @@ export class Functions {
         return null;
       }, additionalFunctionEffects.effects);
       invariant(additionalFunctionStack.pop() === functionValue);
+      for (let t2 of this.realm.tracers) t2.endOptimizingFunction(currentOptimizedFunctionId);
     };
 
     while (additionalFunctionsToProcess.length > 0) {
