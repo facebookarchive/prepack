@@ -1,4 +1,4 @@
-// does not contain:3 ===
+// does not contain:|| 3 ===
 let n1 = global.__abstract ? __abstract("number", "1") : 1;
 
 function f1() {
