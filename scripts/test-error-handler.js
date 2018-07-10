@@ -7,29 +7,35 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
+/* @flow */
 
-//import { type CompilerDiagnostic, type ErrorHandlerResult, FatalError } from "../lib/errors.js";
-//import { prepackFileSync } from "../lib/prepack-node.js";
-//import invariant from "../lib/invariant.js";
-let { FatalError } = require("../lib/errors.js");
-let { prepackFileSync } = require("../lib/prepack-node.js");
-//let { invariant } = require("../lib/invariant.js");
-
-let path = require("path");
-let fs = require("fs");
+import { type CompilerDiagnostic, type ErrorHandlerResult, FatalError } from "../lib/errors.js";
+import { prepackFileSync } from "../lib/prepack-node.js";
+import path from "path";
+import fs from "fs";
 
 /* eslint-disable no-undef */
 const { expect } = global;
 
-function search(dir, relative) {
-  let tests = [];
+type Test = {|
+  file: string,
+  name: string,
+|};
+
+function search(dir: string, relative: string): Array<Test> {
+  let tests: Array<Test> = [];
 
   if (fs.existsSync(dir)) {
     for (let name of fs.readdirSync(dir)) {
       let loc = path.join(dir, name);
       let stat = fs.statSync(loc);
 
-      if (stat.isFile()) {
+      if (
+        stat.isFile() &&
+        // Ignore temporary emacs and vim files
+        name[0] !== "." &&
+        !name.endsWith("~")
+      ) {
         tests.push({
           file: fs.readFileSync(loc, "utf8"),
           name: path.join(relative, name),
@@ -56,13 +62,6 @@ function runTest(name: string, code: string) {
   let recover = code.includes("// recover-from-errors");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
-
-  let expectedErrors = code.match(/\/\/\s*expected errors:\s*(.*)/);
-  //invariant(expectedErrors);
-  //invariant(expectedErrors.length > 1);
-  expectedErrors = expectedErrors[1];
-  expectedErrors = eval(expectedErrors); // eslint-disable-line no-eval
-  //invariant(expectedErrors.constructor === Array);
 
   let errors = [];
   try {

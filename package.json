@@ -40,7 +40,7 @@
     "test-test262-new": "babel-node scripts/test262.js",
     "test-internal": "babel-node --stack_size=10000 --stack_trace_limit=200 --max_old_space_size=16384 scripts/test-internal.js",
     "test-internal-react": "babel-node --stack_size=10000 --stack_trace_limit=200 --max_old_space_size=16384 scripts/test-internal-react.js",
-    "test-error-handler": "babel-node scripts/test-error-handler.js",
+    "test-error-handler": "yarn jest error-handler",
     "test-error-handler-with-coverage": "./node_modules/.bin/istanbul cover ./lib/test-error-handler.js --dir coverage.error && ./node_modules/.bin/remap-istanbul -i coverage.error/coverage.json -o coverage-sourcemapped.error -t html",
     "test-node-cli-mode": "bash < scripts/test-node-cli-mode.sh",
     "test-std-in": "bash < scripts/test-std-in.sh",
@@ -63,6 +63,7 @@
   "dependencies": {
     "babel-core": "^6.26.0",
     "babel-generator": "^6.8.0",
+    "babel-jest": "^23.4.0",
     "babel-plugin-transform-react-jsx": "^6.24.1",
     "babel-template": "^6.9.0",
     "babel-traverse": "^6.9.0",

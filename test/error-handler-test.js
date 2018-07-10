@@ -9,7 +9,7 @@
 
 /* @flow */
 
-const { search, runTest } = require("../lib/test-error-handler.js");
+import { search, runTest } from "../scripts/test-error-handler.js";
 const { it, expect } = global;
 
 let tests = search(`${__dirname}/error-handler`, "test/error-handler");
