@@ -3,9 +3,9 @@ var React = require("react");
 function App(props) {
   var someProps = Object.assign({}, props, {
     text: "Text!",
-  })
+  });
   var propsWithout = babelHelpers.objectWithoutProperties(someProps, []);
-  return <div>{propsWithout.text}</div>
+  return <div>{propsWithout.text}</div>;
 }
 
 App.getTrials = function(renderer, Root, data, isCompiled) {

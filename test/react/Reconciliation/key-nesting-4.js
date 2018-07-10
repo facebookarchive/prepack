@@ -1,5 +1,5 @@
-var React = require('react');
-this['React'] = React;
+var React = require("react");
+this["React"] = React;
 
 function Foo(props) {
   return [<div ref={props.callback} key="0" />];
@@ -31,9 +31,9 @@ App.getTrials = function(renderer, Root) {
   renderer.update(<Root callback={callback} foo={true} />);
   renderer.update(<Root callback={callback} foo={true} />);
   let results = [];
-  results.push(['ensure ref is called on every change', counter]);
-  results.push(['ensure refs are cleared', nodes.map(Boolean)]);
-  results.push(['ensure refs are different', new Set(nodes).size]);
+  results.push(["ensure ref is called on every change", counter]);
+  results.push(["ensure refs are cleared", nodes.map(Boolean)]);
+  results.push(["ensure refs are different", new Set(nodes).size]);
   return results;
 };
 

@@ -4,9 +4,9 @@ function App(props) {
   var data = {};
   var someProps = Object.assign(data, props, {
     text: "Text!",
-  })
+  });
   var propsWithout = babelHelpers.objectWithoutProperties(data, []);
-  return <div>{propsWithout.text}</div>
+  return <div>{propsWithout.text}</div>;
 }
 
 App.getTrials = function(renderer, Root, data, isCompiled) {
