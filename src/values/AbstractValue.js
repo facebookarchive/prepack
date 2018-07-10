@@ -979,4 +979,37 @@ export default class AbstractValue extends Value {
   static makeKind(prefix: AbstractValueKindPrefix, suffix: string): AbstractValueKind {
     return ((`${prefix}:${suffix}`: any): AbstractValueKind);
   }
+
+  static createAbstractObjectAssign(
+    realm: Realm,
+    to: ObjectValue | AbstractObjectValue,
+    sources: Array<Value>
+  ): AbstractObjectValue {
+    // Tell serializer that it may add properties to to only after temporalTo has been emitted
+    let temporalArgs = [to, ...sources];
+    let preludeGenerator = realm.preludeGenerator;
+    invariant(preludeGenerator !== undefined);
+    let temporalTo = AbstractValue.createTemporalFromBuildFunction(
+      realm,
+      ObjectValue,
+      temporalArgs,
+      ([targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
+        return t.callExpression(preludeGenerator.memoizeReference("Object.assign"), [targetNode, ...sourceNodes]);
+      },
+      {
+        skipInvariant: true,
+        mutatesOnly: [to],
+        temporalType: "OBJECT_ASSIGN",
+      }
+    );
+    invariant(temporalTo instanceof AbstractObjectValue);
+    if (to instanceof AbstractObjectValue) {
+      temporalTo.values = to.values;
+    } else {
+      invariant(to instanceof ObjectValue);
+      temporalTo.values = new ValuesDomain(to);
+    }
+    to.temporalAlias = temporalTo;
+    return temporalTo;
+  }
 }
