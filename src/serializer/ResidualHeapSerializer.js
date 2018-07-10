@@ -36,6 +36,7 @@ import type {
   BabelNodeBlockStatement,
   BabelNodeLVal,
   BabelNodeMemberExpression,
+  BabelNodeSpreadElement,
   BabelVariableKind,
   BabelNodeFile,
   BabelNodeFunctionExpression,
@@ -293,7 +294,7 @@ export class ResidualHeapSerializer {
     objectPrototypeAlreadyEstablished: boolean = false,
     cleanupDummyProperties: ?Set<string>,
     skipPrototype: boolean = false
-  ) {
+  ): void {
     //inject symbols
     for (let [symbol, propertyBinding] of obj.symbols) {
       invariant(propertyBinding);
@@ -361,7 +362,7 @@ export class ResidualHeapSerializer {
     this.getStatistics().objectProperties += obj.properties.size;
   }
 
-  _emitObjectPrototype(obj: ObjectValue, objectPrototypeAlreadyEstablished: boolean) {
+  _emitObjectPrototype(obj: ObjectValue, objectPrototypeAlreadyEstablished: boolean): void {
     let kind = obj.getKind();
     let proto = obj.$Prototype;
     if (objectPrototypeAlreadyEstablished) {
@@ -413,7 +414,7 @@ export class ResidualHeapSerializer {
     );
   }
 
-  _emitConstructorPrototype(func: FunctionValue) {
+  _emitConstructorPrototype(func: FunctionValue): void {
     // If the original prototype object was mutated,
     // request its serialization here as this might be observable by
     // residual code.
@@ -463,7 +464,7 @@ export class ResidualHeapSerializer {
     return values;
   }
 
-  _emitPropertiesWithComputedNames(obj: ObjectValue, absVal: AbstractValue) {
+  _emitPropertiesWithComputedNames(obj: ObjectValue, absVal: AbstractValue): void {
     if (absVal.kind === "widened property") return;
     if (absVal.kind === "template for prototype member expression") return;
     invariant(absVal.args.length === 3);
@@ -530,7 +531,7 @@ export class ResidualHeapSerializer {
   }
 
   // Overridable.
-  getSerializeObjectIdentifier(val: Value) {
+  getSerializeObjectIdentifier(val: Value): BabelNodeIdentifier {
     return this.residualHeapValueIdentifiers.getIdentifierAndIncrementReferenceCount(val);
   }
 
@@ -668,7 +669,7 @@ export class ResidualHeapSerializer {
     return t.expressionStatement(t.sequenceExpression(body));
   }
 
-  _serializeDeclarativeEnvironmentRecordBinding(residualFunctionBinding: ResidualFunctionBinding) {
+  _serializeDeclarativeEnvironmentRecordBinding(residualFunctionBinding: ResidualFunctionBinding): void {
     if (!residualFunctionBinding.serializedValue) {
       let value = residualFunctionBinding.value;
       invariant(residualFunctionBinding.declarativeEnvironmentRecord);
@@ -954,7 +955,7 @@ export class ResidualHeapSerializer {
     return { body, commonAncestor };
   }
 
-  _getValueDebugName(val: Value) {
+  _getValueDebugName(val: Value): string {
     let name;
     if (val instanceof FunctionValue) {
       name = val.getName();
@@ -1001,7 +1002,7 @@ export class ResidualHeapSerializer {
     bindingType: BabelVariableKind,
     id: BabelNodeLVal,
     init: BabelNodeExpression
-  ) {
+  ): void {
     if (emittingToResidualFunction) {
       let declar = t.variableDeclaration(bindingType, [t.variableDeclarator(id)]);
       this.getPrelude(referencingOnlyOptimizedFunction).push(declar);
@@ -1133,7 +1134,7 @@ export class ResidualHeapSerializer {
     return [desc.get, desc.set];
   }
 
-  _deleteProperty(location: BabelNodeLVal) {
+  _deleteProperty(location: BabelNodeLVal): void {
     invariant(location.type === "MemberExpression");
     this.emitter.emit(
       t.expressionStatement(t.unaryExpression("delete", ((location: any): BabelNodeMemberExpression), true))
@@ -1193,7 +1194,7 @@ export class ResidualHeapSerializer {
     array: ObjectValue,
     indexPropertyLength: number,
     remainingProperties: Map<string, PropertyBinding>
-  ) {
+  ): Array<null | BabelNodeExpression | BabelNodeSpreadElement> {
     let elems = [];
     for (let i = 0; i < indexPropertyLength; i++) {
       let key = i + "";
@@ -1716,7 +1717,11 @@ export class ResidualHeapSerializer {
     return t.objectExpression(props);
   }
 
-  _serializeValueObjectViaConstructor(val: ObjectValue, skipPrototype: boolean, classConstructor?: Value) {
+  _serializeValueObjectViaConstructor(
+    val: ObjectValue,
+    skipPrototype: boolean,
+    classConstructor?: Value
+  ): BabelNodeExpression {
     let proto = val.$Prototype;
     this._emitObjectProperties(
       val,
@@ -1963,7 +1968,7 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _serializeValueObjectBase(obj: ObjectValue) {
+  _serializeValueObjectBase(obj: ObjectValue): void | BabelNodeExpression {
     if (obj instanceof ProxyValue) {
       return this._serializeValueProxy(obj);
     }
@@ -2009,7 +2014,7 @@ export class ResidualHeapSerializer {
     return res;
   }
 
-  _serializeGlobalBinding(boundName: string, binding: ResidualFunctionBinding) {
+  _serializeGlobalBinding(boundName: string, binding: ResidualFunctionBinding): void {
     invariant(!binding.declarativeEnvironmentRecord);
     if (!binding.serializedValue) {
       binding.referentialized = true;
@@ -2023,7 +2028,7 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _annotateGeneratorStatements(generator: Generator, statements: Array<BabelNodeStatement>) {
+  _annotateGeneratorStatements(generator: Generator, statements: Array<BabelNodeStatement>): void {
     let comment = `generator "${generator.getName()}"`;
     let parent = this.generatorDAG.getParent(generator);
     if (parent instanceof Generator) {
@@ -2172,7 +2177,7 @@ export class ResidualHeapSerializer {
     return context;
   }
 
-  _shouldBeWrapped(body: Array<any>) {
+  _shouldBeWrapped(body: Array<any>): boolean {
     for (let i = 0; i < body.length; i++) {
       let item = body[i];
       if (item.type === "ExpressionStatement") {
@@ -2203,7 +2208,7 @@ export class ResidualHeapSerializer {
     generator: Generator,
     functionValue: FunctionValue,
     additionalEffects: AdditionalFunctionEffects
-  ) {
+  ): Array<BabelNodeStatement> {
     let inAdditionalFunction = this.tryGetOptimizedFunctionRoot(functionValue);
     return this._withGeneratorScope(
       "AdditionalFunction",
@@ -2230,7 +2235,10 @@ export class ResidualHeapSerializer {
   //          -- we don't overwrite anything they capture
   // PropertyBindings -- visit any property bindings that aren't to createdobjects
   // CreatedObjects -- should take care of itself
-  _serializeAdditionalFunction(additionalFunctionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects) {
+  _serializeAdditionalFunction(
+    additionalFunctionValue: FunctionValue,
+    additionalEffects: AdditionalFunctionEffects
+  ): void {
     let { effects, transforms, generator, additionalRoots } = additionalEffects;
     // No function info means the function is dead code, also break recursive cycles where we've already started
     // serializing this value
@@ -2265,7 +2273,7 @@ export class ResidualHeapSerializer {
     this.rewrittenAdditionalFunctions.set(additionalFunctionValue, body);
   }
 
-  prepareAdditionalFunctionValues() {
+  prepareAdditionalFunctionValues(): void {
     let additionalFVEffects = this.additionalFunctionValuesAndEffects;
     if (additionalFVEffects)
       for (let [additionalFunctionValue, { generator }] of additionalFVEffects.entries()) {
@@ -2413,7 +2421,7 @@ export class ResidualHeapSerializer {
     return t.file(t.program(ast_body, program_directives));
   }
 
-  _logScopes(scopes: Set<Scope>) {
+  _logScopes(scopes: Set<Scope>): void {
     console.log(`  referenced by ${scopes.size} scopes`);
     for (let s of scopes)
       if (s instanceof Generator) {
@@ -2426,7 +2434,7 @@ export class ResidualHeapSerializer {
       }
   }
 
-  _logSerializedResidualMismatches() {
+  _logSerializedResidualMismatches(): void {
     let logValue = value => {
       console.log(describeValue(value));
       let scopes = this.residualValues.get(value);

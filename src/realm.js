@@ -115,8 +115,8 @@ export class Effects {
 }
 
 export class Tracer {
-  beginEvaluateForEffects(state: any) {}
-  endEvaluateForEffects(state: any, effects: void | Effects) {}
+  beginEvaluateForEffects(state: any): void {}
+  endEvaluateForEffects(state: any, effects: void | Effects): void {}
   detourCall(
     F: FunctionValue,
     thisArgument: void | Value,
@@ -129,16 +129,16 @@ export class Tracer {
     thisArgument: void | Value,
     argumentsList: Array<Value>,
     newTarget: void | ObjectValue
-  ) {}
+  ): void {}
   afterCall(
     F: FunctionValue,
     thisArgument: void | Value,
     argumentsList: Array<Value>,
     newTarget: void | ObjectValue,
     result: void | Reference | Value | AbruptCompletion
-  ) {}
-  beginOptimizingFunction(optimizedFunctionId: number, functionValue: FunctionValue) {}
-  endOptimizingFunction(optimizedFunctionId: number) {}
+  ): void {}
+  beginOptimizingFunction(optimizedFunctionId: number, functionValue: FunctionValue): void {}
+  endOptimizingFunction(optimizedFunctionId: number): void {}
 }
 
 export class ExecutionContext {
@@ -156,12 +156,12 @@ export class ExecutionContext {
     this.caller = context;
   }
 
-  setFunction(F: null | FunctionValue) {
+  setFunction(F: null | FunctionValue): void {
     if (F instanceof ECMAScriptSourceFunctionValue) this.isStrict = F.$Strict;
     this.function = F;
   }
 
-  setLocation(loc: null | BabelNodeSourceLocation) {
+  setLocation(loc: null | BabelNodeSourceLocation): void {
     if (!loc) return;
     this.loc = loc;
   }
@@ -487,15 +487,17 @@ export class Realm {
    Setting a realm read-only sets all contained environments to read-only, but
    all new environments (e.g. new ExecutionContexts) will be writeable.
    */
-  setReadOnly(readOnlyValue: boolean) {
+  setReadOnly(readOnlyValue: boolean): boolean {
+    let oldReadOnly = this.isReadOnly;
     this.isReadOnly = readOnlyValue;
     this.$GlobalEnv.environmentRecord.isReadOnly = readOnlyValue;
     this.contextStack.forEach(ctx => {
       ctx.setReadOnly(readOnlyValue);
     });
+    return oldReadOnly;
   }
 
-  testTimeout() {
+  testTimeout(): void {
     let timeout = this.timeout;
     if (timeout !== undefined && !--this.timeoutCounter) {
       this.timeoutCounter = this.timeoutCounterThreshold;
@@ -523,7 +525,7 @@ export class Realm {
     return context;
   }
 
-  clearBlockBindings(modifiedBindings: void | Bindings, environmentRecord: DeclarativeEnvironmentRecord) {
+  clearBlockBindings(modifiedBindings: void | Bindings, environmentRecord: DeclarativeEnvironmentRecord): void {
     if (modifiedBindings === undefined) return;
     for (let b of modifiedBindings.keys()) {
       if (b.mightHaveBeenCaptured) continue;
@@ -531,7 +533,7 @@ export class Realm {
     }
   }
 
-  clearBlockBindingsFromCompletion(completion: Completion, environmentRecord: DeclarativeEnvironmentRecord) {
+  clearBlockBindingsFromCompletion(completion: Completion, environmentRecord: DeclarativeEnvironmentRecord): void {
     if (completion instanceof PossiblyNormalCompletion) {
       this.clearBlockBindings(completion.alternateEffects.modifiedBindings, environmentRecord);
       this.clearBlockBindings(completion.consequentEffects.modifiedBindings, environmentRecord);
@@ -553,7 +555,7 @@ export class Realm {
 
   // Call when a scope falls out of scope and should be destroyed.
   // Clears the Bindings corresponding to the disappearing Scope from ModifiedBindings
-  onDestroyScope(lexicalEnvironment: LexicalEnvironment) {
+  onDestroyScope(lexicalEnvironment: LexicalEnvironment): void {
     invariant(this.activeLexicalEnvironments.has(lexicalEnvironment));
     let modifiedBindings = this.modifiedBindings;
     if (modifiedBindings) {
@@ -578,7 +580,7 @@ export class Realm {
     this.contextStack.push(context);
   }
 
-  markVisibleLocalBindingsAsPotentiallyCaptured() {
+  markVisibleLocalBindingsAsPotentiallyCaptured(): void {
     let context = this.getRunningContext();
     if (context.function === undefined) return;
     let lexEnv = context.lexicalEnvironment;
@@ -595,7 +597,7 @@ export class Realm {
     }
   }
 
-  clearFunctionBindings(modifiedBindings: void | Bindings, funcVal: FunctionValue) {
+  clearFunctionBindings(modifiedBindings: void | Bindings, funcVal: FunctionValue): void {
     if (modifiedBindings === undefined) return;
     for (let b of modifiedBindings.keys()) {
       if (b.mightHaveBeenCaptured) continue;
@@ -604,7 +606,7 @@ export class Realm {
     }
   }
 
-  clearFunctionBindingsFromCompletion(completion: Completion, funcVal: FunctionValue) {
+  clearFunctionBindingsFromCompletion(completion: Completion, funcVal: FunctionValue): void {
     if (completion instanceof PossiblyNormalCompletion) {
       this.clearFunctionBindings(completion.alternateEffects.modifiedBindings, funcVal);
       this.clearFunctionBindings(completion.consequentEffects.modifiedBindings, funcVal);
@@ -649,15 +651,15 @@ export class Realm {
     }
   }
 
-  assignToGlobal(name: BabelNodeLVal, value: Value) {
+  assignToGlobal(name: BabelNodeLVal, value: Value): void {
     this.wrapInGlobalEnv(() => this.$GlobalEnv.assignToGlobal(name, value));
   }
 
-  deleteGlobalBinding(name: string) {
+  deleteGlobalBinding(name: string): void {
     this.$GlobalEnv.environmentRecord.DeleteBinding(name);
   }
 
-  neverCheckProperty(object: ObjectValue | AbstractObjectValue, P: string) {
+  neverCheckProperty(object: ObjectValue | AbstractObjectValue, P: string): boolean {
     return (
       P.startsWith("__") ||
       (object === this.$GlobalObject && P === "global") ||
@@ -675,7 +677,7 @@ export class Realm {
     return checkedBindingsObject;
   }
 
-  markPropertyAsChecked(object: ObjectValue | AbstractObjectValue, P: string) {
+  markPropertyAsChecked(object: ObjectValue | AbstractObjectValue, P: string): void {
     invariant(!this.neverCheckProperty(object, P));
     let objectId = this._checkedObjectIds.get(object);
     if (objectId === undefined) this._checkedObjectIds.set(object, (objectId = this._checkedObjectIds.size));
@@ -704,7 +706,7 @@ export class Realm {
     reportSideEffectFunc:
       | null
       | ((sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, value: void | Value) => void)
-  ) {
+  ): T {
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
     let saved_reportSideEffectCallback = this.reportSideEffectCallback;
     // Track all objects (including function closures) created during
@@ -729,7 +731,7 @@ export class Realm {
     }
   }
 
-  isInPureScope() {
+  isInPureScope(): boolean {
     return !!this.createdObjectsTrackedForLeaks;
   }
 
@@ -1068,7 +1070,7 @@ export class Realm {
   _applyPropertiesToNewlyCreatedObjects(
     modifiedProperties: void | PropertyBindings,
     newlyCreatedObjects: CreatedObjects
-  ) {
+  ): void {
     if (modifiedProperties === undefined) return;
     modifiedProperties.forEach((desc, propertyBinding, m) => {
       if (newlyCreatedObjects.has(propertyBinding.object)) {
@@ -1078,7 +1080,7 @@ export class Realm {
   }
 
   // populate the loop body generator with assignments that will update the phiNodes
-  _emitLocalAssignments(gen: Generator, bindings: Bindings, newlyCreatedObjects: CreatedObjects) {
+  _emitLocalAssignments(gen: Generator, bindings: Bindings, newlyCreatedObjects: CreatedObjects): void {
     let tvalFor: Map<any, AbstractValue> = new Map();
     bindings.forEach((binding, key, map) => {
       let val = binding.value;
@@ -1115,7 +1117,7 @@ export class Realm {
   }
 
   // populate the loop body generator with assignments that will update properties modified inside the loop
-  _emitPropertAssignments(gen: Generator, pbindings: PropertyBindings, newlyCreatedObjects: CreatedObjects) {
+  _emitPropertAssignments(gen: Generator, pbindings: PropertyBindings, newlyCreatedObjects: CreatedObjects): void {
     function isSelfReferential(value: Value, pathNode: void | AbstractValue): boolean {
       if (value === pathNode) return true;
       if (value instanceof AbstractValue && pathNode !== undefined) {
@@ -1232,7 +1234,7 @@ export class Realm {
     return result;
   }
 
-  updateAbruptCompletions(priorEffects: Effects, c: PossiblyNormalCompletion) {
+  updateAbruptCompletions(priorEffects: Effects, c: PossiblyNormalCompletion): void {
     if (c.consequent instanceof AbruptCompletion) {
       c.consequent.effects = this.composeEffects(priorEffects, c.consequentEffects);
       let alternate = c.alternate;
@@ -1245,7 +1247,7 @@ export class Realm {
     }
   }
 
-  wrapSavedCompletion(completion: PossiblyNormalCompletion) {
+  wrapSavedCompletion(completion: PossiblyNormalCompletion): void {
     if (this.savedCompletion !== undefined) {
       if (completion.consequent instanceof AbruptCompletion) {
         completion.alternate = this.savedCompletion;
@@ -1357,7 +1359,7 @@ export class Realm {
     }
   }
 
-  incorporatePriorSavedCompletion(priorCompletion: void | PossiblyNormalCompletion) {
+  incorporatePriorSavedCompletion(priorCompletion: void | PossiblyNormalCompletion): void {
     if (priorCompletion === undefined) return;
     // A completion that has been saved and that is still active, will always have savedEffects.
     invariant(priorCompletion.savedEffects !== undefined);
@@ -1383,7 +1385,7 @@ export class Realm {
     }
   }
 
-  captureEffects(completion: PossiblyNormalCompletion) {
+  captureEffects(completion: PossiblyNormalCompletion): void {
     invariant(completion.savedEffects === undefined);
     completion.savedEffects = new Effects(
       new SimpleNormalCompletion(this.intrinsics.undefined),
@@ -1412,7 +1414,7 @@ export class Realm {
     );
   }
 
-  stopEffectCaptureAndUndoEffects(completion: PossiblyNormalCompletion) {
+  stopEffectCaptureAndUndoEffects(completion: PossiblyNormalCompletion): void {
     // Roll back the state changes
     this.undoBindings(this.modifiedBindings);
     this.restoreProperties(this.modifiedProperties);
@@ -1431,7 +1433,7 @@ export class Realm {
   }
 
   // Apply the given effects to the global state
-  applyEffects(effects: Effects, leadingComment: string = "", appendGenerator: boolean = true) {
+  applyEffects(effects: Effects, leadingComment: string = "", appendGenerator: boolean = true): void {
     invariant(
       effects.canBeApplied,
       "Effects have been applied and not properly reverted. It is not safe to apply them a second time."
@@ -1624,7 +1626,7 @@ export class Realm {
     return result;
   }
 
-  redoBindings(modifiedBindings: void | Bindings) {
+  redoBindings(modifiedBindings: void | Bindings): void {
     if (modifiedBindings === undefined) return;
     modifiedBindings.forEach(({ hasLeaked, value }, binding, m) => {
       binding.hasLeaked = hasLeaked || false;
@@ -1632,7 +1634,7 @@ export class Realm {
     });
   }
 
-  undoBindings(modifiedBindings: void | Bindings) {
+  undoBindings(modifiedBindings: void | Bindings): void {
     if (modifiedBindings === undefined) return;
     modifiedBindings.forEach((entry, binding, m) => {
       if (entry.hasLeaked === undefined) entry.hasLeaked = binding.hasLeaked;
@@ -1645,7 +1647,7 @@ export class Realm {
   // Restores each PropertyBinding in the given map to the value it
   // had when it was entered into the map and updates the map to record
   // the value the Binding had just before the call to this method.
-  restoreProperties(modifiedProperties: void | PropertyBindings) {
+  restoreProperties(modifiedProperties: void | PropertyBindings): void {
     if (modifiedProperties === undefined) return;
     modifiedProperties.forEach((desc, propertyBinding, m) => {
       let d = propertyBinding.descriptor;
@@ -1656,12 +1658,12 @@ export class Realm {
 
   // Provide the realm with maps in which to track modifications.
   // A map can be set to undefined if no tracking is required.
-  setModifiedMaps(modifiedBindings: void | Bindings, modifiedProperties: void | PropertyBindings) {
+  setModifiedMaps(modifiedBindings: void | Bindings, modifiedProperties: void | PropertyBindings): void {
     this.modifiedBindings = modifiedBindings;
     this.modifiedProperties = modifiedProperties;
   }
 
-  rebuildObjectProperty(object: Value, key: string, propertyValue: Value, path: string) {
+  rebuildObjectProperty(object: Value, key: string, propertyValue: Value, path: string): void {
     if (!(propertyValue instanceof AbstractValue)) return;
     if (propertyValue.kind === "abstractConcreteUnion") {
       let absVal = propertyValue.args.find(e => e instanceof AbstractValue);
@@ -1680,7 +1682,7 @@ export class Realm {
     }
   }
 
-  rebuildNestedProperties(abstractValue: AbstractValue | UndefinedValue, path: string) {
+  rebuildNestedProperties(abstractValue: AbstractValue | UndefinedValue, path: string): void {
     if (!(abstractValue instanceof AbstractObjectValue)) return;
     if (abstractValue.values.isTop()) return;
     let template = abstractValue.getTemplate();
@@ -1717,7 +1719,7 @@ export class Realm {
     return previousValue;
   }
 
-  reportIntrospectionError(message?: void | string | StringValue) {
+  reportIntrospectionError(message?: void | string | StringValue): void {
     if (message === undefined) message = "";
     if (typeof message === "string") message = new StringValue(this, message);
     invariant(message instanceof StringValue);

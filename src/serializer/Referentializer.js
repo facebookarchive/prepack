@@ -278,7 +278,7 @@ export class Referentializer {
   }
 
   // Cleans all scopes between passes of the serializer
-  cleanInstance(instance: FunctionInstance) {
+  cleanInstance(instance: FunctionInstance): void {
     instance.initializationStatements = [];
     for (let b of ((instance: any): FunctionInstance).residualFunctionBindings.values()) {
       let binding = ((b: any): ResidualFunctionBinding);

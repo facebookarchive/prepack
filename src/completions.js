@@ -125,7 +125,7 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
     return this.alternate.effects;
   }
 
-  updateConsequentKeepingCurrentEffects(newConsequent: AbruptCompletion) {
+  updateConsequentKeepingCurrentEffects(newConsequent: AbruptCompletion): AbruptCompletion {
     let effects = this.consequent.effects;
     invariant(effects);
     newConsequent.effects = effects;
@@ -134,7 +134,7 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
     return newConsequent;
   }
 
-  updateAlternateKeepingCurrentEffects(newAlternate: AbruptCompletion) {
+  updateAlternateKeepingCurrentEffects(newAlternate: AbruptCompletion): AbruptCompletion {
     let effects = this.alternate.effects;
     invariant(effects);
     newAlternate.effects = effects;
@@ -249,7 +249,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
 
   // TODO blappert: these functions are a copy of those in ForkedAbruptCompletion, but the two classes will be unified
   // soon
-  updateConsequentKeepingCurrentEffects(newConsequent: Completion) {
+  updateConsequentKeepingCurrentEffects(newConsequent: Completion): Completion {
     if (newConsequent instanceof NormalCompletion) this.value = newConsequent.value;
     let effects = this.consequentEffects;
     newConsequent.effects = effects;
@@ -258,7 +258,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     return newConsequent;
   }
 
-  updateAlternateKeepingCurrentEffects(newAlternate: Completion) {
+  updateAlternateKeepingCurrentEffects(newAlternate: Completion): Completion {
     if (newAlternate instanceof NormalCompletion) this.value = newAlternate.value;
     let effects = this.alternateEffects;
     newAlternate.effects = effects;
