@@ -326,8 +326,9 @@ export class JoinImplementation {
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof SimpleNormalCompletion) {
         nc.value = AbstractValue.createFromConditionalOp(realm, joinCondition, pnc.alternate.value, v);
+        pnc.alternateEffects.result = nc;
+        nc.effects = pnc.alternateEffects;
         pnc.alternate = nc;
-        pnc.alternateEffects.result = pnc.alternate;
       } else {
         invariant(pnc.alternate instanceof PossiblyNormalCompletion);
         this.updatePossiblyNormalCompletionWithConditionalSimpleNormalCompletion(
@@ -340,8 +341,9 @@ export class JoinImplementation {
     } else {
       if (pnc.consequent instanceof SimpleNormalCompletion) {
         nc.value = AbstractValue.createFromConditionalOp(realm, joinCondition, pnc.consequent.value, v);
+        pnc.consequentEffects.result = nc;
+        nc.effects = pnc.consequentEffects;
         pnc.consequent = nc;
-        pnc.consequentEffects.result = pnc.consequent;
       } else {
         invariant(pnc.consequent instanceof PossiblyNormalCompletion);
         this.updatePossiblyNormalCompletionWithConditionalSimpleNormalCompletion(
