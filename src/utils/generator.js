@@ -475,7 +475,7 @@ function serializeBody(
 }
 
 export class Generator {
-  constructor(realm: Realm, name: string, effects?: Effects) {
+  constructor(realm: Realm, name: string, pathConditions: Array<AbstractValue>, effects?: Effects) {
     invariant(realm.useAbstractInterpretation);
     let realmPreludeGenerator = realm.preludeGenerator;
     invariant(realmPreludeGenerator);
@@ -485,7 +485,7 @@ export class Generator {
     this.id = realm.nextGeneratorId++;
     this._name = name;
     this.effectsToApply = effects;
-    this.pathConditions = [].concat(realm.pathConditions);
+    this.pathConditions = pathConditions;
   }
 
   realm: Realm;
@@ -499,7 +499,7 @@ export class Generator {
   static _generatorOfEffects(realm: Realm, name: string, environmentRecordIdAfterGlobalCode: number, effects: Effects) {
     let { result, generator, modifiedBindings, modifiedProperties, createdObjects } = effects;
 
-    let output = new Generator(realm, name, effects);
+    let output = new Generator(realm, name, generator.pathConditions, effects);
     output.appendGenerator(generator, generator._name);
 
     for (let propertyBinding of modifiedProperties.keys()) {
