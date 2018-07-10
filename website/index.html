@@ -2,9 +2,10 @@
 <html lang="en">
   <head>
     <title>Prepack &middot; Partial evaluator for JavaScript</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
     <script src="js/prism.js"></script>
-    <link rel="stylesheet" href="css/style.css"/>
     <link rel="stylesheet" href="css/prism.css"/>
+    <link rel="stylesheet" href="css/style.css"/>
     <script>
       (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
         (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
@@ -21,6 +22,7 @@
 
         <div class="nav-left">
           <a class="nav-item is-brand" href="./">
+            <img class="nav-logo" src="static/images/prepack_logo.png" alt="prepack logo"/>
             Prepack
           </a>
         </div>
@@ -238,7 +240,7 @@ three = require("three");</code></pre>
                 <li>
                   <b>Symbolic Execution</b>
                   <p>
-                    In addition to computing over concrete values, Prepack's interpreter has the ability to operate on <b>abstract values</b> which typically arise from environment interactions. For example, <code class="language-js">Date.now</code> can return an abstract value. You can also manually inject abstract values via auxiliary helper functions such as <code class="language-js">__abstract()</code>. Prepack tracks all operations that are performed over abstract values. When branching over abstract values, Prepack will fork execution and explore all possibilities. Thus, Prepack implements a <a href="https://en.wikipedia.org/wiki/Symbolic_execution">Symbolic Execution</a> engine for JavaScript.
+                    In addition to computing over concrete values, Prepack's interpreter has the ability to operate on <b>abstract values</b> which typically arise from environment interactions. For example, <code>Date.now</code> can return an abstract value. You can also manually inject abstract values via auxiliary helper functions such as <code>__abstract()</code>. Prepack tracks all operations that are performed over abstract values. When branching over abstract values, Prepack will fork execution and explore all possibilities. Thus, Prepack implements a <a href="https://en.wikipedia.org/wiki/Symbolic_execution">Symbolic Execution</a> engine for JavaScript.
                   </p>
                 </li>
                 <li>
@@ -264,7 +266,7 @@ three = require("three");</code></pre>
             <h2>The Environment matters!</h2>
             <div class="align-left">
               <p>
-                Out of the box, Prepack does not fully model a browser or node.js environment: Prepack has no built-in knowledge of <code class="language-js">document</code> or <code class="language-js">window</code>. In fact, when prepacking code which references such properties, they will evaluate to <code class="language-js">undefined</code>. You would have to insert a model of the relevant functionality at the beginning of the code you want to prepack.
+                Out of the box, Prepack does not fully model a browser or node.js environment: Prepack has no built-in knowledge of <code>document</code> or <code>window</code>. In fact, when prepacking code which references such properties, they will evaluate to <code>undefined</code>. You would have to insert a model of the relevant functionality at the beginning of the code you want to prepack.
               </p>
               <p>The following helper functions aid in writing models.
               <pre><code class="language-js">// Assume that a certain property has a simple known value.
