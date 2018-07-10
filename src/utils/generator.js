@@ -192,7 +192,7 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
     }
   }
 
-  serialize(context: SerializationContext) {
+  serialize(context: SerializationContext): void {
     let omit = this.isPure && this.declared && context.canOmit(this.declared);
 
     if (!omit && this.declared && this.mutatesOnly !== undefined) {
@@ -229,7 +229,7 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
     }
   }
 
-  getDependencies() {
+  getDependencies(): void | Array<Generator> {
     return this.dependencies;
   }
 }
@@ -282,7 +282,7 @@ class ModifiedPropertyEntry extends GeneratorEntry {
   propertyBinding: PropertyBinding;
   newDescriptor: void | Descriptor;
 
-  serialize(context: SerializationContext) {
+  serialize(context: SerializationContext): void {
     let desc = this.propertyBinding.descriptor;
     invariant(desc === this.newDescriptor);
     context.emitPropertyModification(this.propertyBinding);
@@ -299,7 +299,7 @@ class ModifiedPropertyEntry extends GeneratorEntry {
     return true;
   }
 
-  getDependencies() {
+  getDependencies(): void | Array<Generator> {
     return undefined;
   }
 }
@@ -321,7 +321,7 @@ class ModifiedBindingEntry extends GeneratorEntry {
   newValue: void | Value;
   residualFunctionBinding: void | ResidualFunctionBinding;
 
-  serialize(context: SerializationContext) {
+  serialize(context: SerializationContext): void {
     let residualFunctionBinding = this.residualFunctionBinding;
     invariant(residualFunctionBinding !== undefined);
     invariant(residualFunctionBinding.referentialized);
@@ -359,7 +359,7 @@ class ModifiedBindingEntry extends GeneratorEntry {
     return true;
   }
 
-  getDependencies() {
+  getDependencies(): void | Array<Generator> {
     return undefined;
   }
 }
@@ -383,12 +383,12 @@ class ReturnValueEntry extends GeneratorEntry {
     return true;
   }
 
-  serialize(context: SerializationContext) {
+  serialize(context: SerializationContext): void {
     let result = context.serializeValue(this.returnValue);
     context.emit(t.returnStatement(result));
   }
 
-  getDependencies() {
+  getDependencies(): void | Array<Generator> {
     return undefined;
   }
 }
@@ -422,7 +422,7 @@ class IfThenElseEntry extends GeneratorEntry {
     return true;
   }
 
-  serialize(context: SerializationContext) {
+  serialize(context: SerializationContext): void {
     let condition = context.serializeValue(this.condition);
     let valuesToProcess = new Set();
     let consequentBody = context.serializeGenerator(this.consequentGenerator, valuesToProcess);
@@ -431,7 +431,7 @@ class IfThenElseEntry extends GeneratorEntry {
     context.processValues(valuesToProcess);
   }
 
-  getDependencies() {
+  getDependencies(): void | Array<Generator> {
     return [this.consequentGenerator, this.alternateGenerator];
   }
 }
@@ -446,7 +446,7 @@ class BindingAssignmentEntry extends GeneratorEntry {
   binding: Binding;
   value: Value;
 
-  serialize(context: SerializationContext) {
+  serialize(context: SerializationContext): void {
     context.emit(
       t.expressionStatement(
         t.assignmentExpression("=", context.serializeBinding(this.binding), context.serializeValue(this.value))
@@ -459,7 +459,7 @@ class BindingAssignmentEntry extends GeneratorEntry {
     return true;
   }
 
-  getDependencies() {
+  getDependencies(): void | Array<Generator> {
     return undefined;
   }
 }
@@ -496,7 +496,12 @@ export class Generator {
   _name: string;
   pathConditions: Array<AbstractValue>;
 
-  static _generatorOfEffects(realm: Realm, name: string, environmentRecordIdAfterGlobalCode: number, effects: Effects) {
+  static _generatorOfEffects(
+    realm: Realm,
+    name: string,
+    environmentRecordIdAfterGlobalCode: number,
+    effects: Effects
+  ): Generator {
     let { result, generator, modifiedBindings, modifiedProperties, createdObjects } = effects;
 
     let output = new Generator(realm, name, generator.pathConditions, effects);
@@ -549,7 +554,7 @@ export class Generator {
     );
   }
 
-  emitPropertyModification(propertyBinding: PropertyBinding) {
+  emitPropertyModification(propertyBinding: PropertyBinding): void {
     invariant(this.effectsToApply !== undefined);
     let desc = propertyBinding.descriptor;
     if (desc !== undefined) {
@@ -582,7 +587,7 @@ export class Generator {
     );
   }
 
-  emitBindingModification(modifiedBinding: Binding) {
+  emitBindingModification(modifiedBinding: Binding): void {
     invariant(this.effectsToApply !== undefined);
     this._entries.push(
       new ModifiedBindingEntry(this.realm, {
@@ -593,11 +598,11 @@ export class Generator {
     );
   }
 
-  emitReturnValue(result: Value) {
+  emitReturnValue(result: Value): void {
     this._entries.push(new ReturnValueEntry(this.realm, this, result));
   }
 
-  emitIfThenElse(result: PossiblyNormalCompletion | ForkedAbruptCompletion, realm: Realm) {
+  emitIfThenElse(result: PossiblyNormalCompletion | ForkedAbruptCompletion, realm: Realm): void {
     this._entries.push(new IfThenElseEntry(this, result, realm));
   }
 
@@ -605,16 +610,16 @@ export class Generator {
     return `${this._name}(#${this.id})`;
   }
 
-  empty() {
+  empty(): boolean {
     return this._entries.length === 0;
   }
 
-  emitGlobalDeclaration(key: string, value: Value) {
+  emitGlobalDeclaration(key: string, value: Value): void {
     this.preludeGenerator.declaredGlobals.add(key);
     if (!(value instanceof UndefinedValue)) this.emitGlobalAssignment(key, value);
   }
 
-  emitGlobalAssignment(key: string, value: Value) {
+  emitGlobalAssignment(key: string, value: Value): void {
     this._addEntry({
       args: [value],
       buildNode: ([valueNode]) =>
@@ -624,7 +629,7 @@ export class Generator {
     });
   }
 
-  emitConcreteModel(key: string, value: Value) {
+  emitConcreteModel(key: string, value: Value): void {
     this._addEntry({
       args: [concretize(this.realm, value)],
       buildNode: ([valueNode]) =>
@@ -634,7 +639,7 @@ export class Generator {
     });
   }
 
-  emitGlobalDelete(key: string) {
+  emitGlobalDelete(key: string): void {
     this._addEntry({
       args: [],
       buildNode: ([]) =>
@@ -642,11 +647,11 @@ export class Generator {
     });
   }
 
-  emitBindingAssignment(binding: Binding, value: Value) {
+  emitBindingAssignment(binding: Binding, value: Value): void {
     this._entries.push(new BindingAssignmentEntry(this.realm, binding, value));
   }
 
-  emitPropertyAssignment(object: ObjectValue, key: string, value: Value) {
+  emitPropertyAssignment(object: ObjectValue, key: string, value: Value): void {
     if (object.refuseSerialization) return;
     this._addEntry({
       args: [object, value],
@@ -660,7 +665,7 @@ export class Generator {
     });
   }
 
-  emitDefineProperty(object: ObjectValue, key: string, desc: Descriptor, isDescChanged: boolean = true) {
+  emitDefineProperty(object: ObjectValue, key: string, desc: Descriptor, isDescChanged: boolean = true): void {
     if (object.refuseSerialization) return;
     if (desc.enumerable && desc.configurable && desc.writable && desc.value && !isDescChanged) {
       let descValue = desc.value;
@@ -682,7 +687,7 @@ export class Generator {
     }
   }
 
-  emitPropertyDelete(object: ObjectValue, key: string) {
+  emitPropertyDelete(object: ObjectValue, key: string): void {
     if (object.refuseSerialization) return;
     this._addEntry({
       args: [object],
@@ -691,14 +696,14 @@ export class Generator {
     });
   }
 
-  emitCall(createCallee: () => BabelNodeExpression, args: Array<Value>) {
+  emitCall(createCallee: () => BabelNodeExpression, args: Array<Value>): void {
     this._addEntry({
       args,
       buildNode: values => t.expressionStatement(t.callExpression(createCallee(), [...values])),
     });
   }
 
-  emitConsoleLog(method: ConsoleMethodTypes, args: Array<string | ConcreteValue>) {
+  emitConsoleLog(method: ConsoleMethodTypes, args: Array<string | ConcreteValue>): void {
     this.emitCall(
       () => t.memberExpression(t.identifier("console"), t.identifier(method)),
       args.map(v => (typeof v === "string" ? new StringValue(this.realm, v) : v))
@@ -706,7 +711,7 @@ export class Generator {
   }
 
   // test must be a temporal value, which means that it must have a defined intrinsicName
-  emitDoWhileStatement(test: AbstractValue, body: Generator) {
+  emitDoWhileStatement(test: AbstractValue, body: Generator): void {
     this._addEntry({
       args: [],
       buildNode: function([], context, valuesToProcess) {
@@ -720,7 +725,7 @@ export class Generator {
     });
   }
 
-  emitConditionalThrow(value: Value) {
+  emitConditionalThrow(value: Value): void {
     function createStatement(val: Value, context: SerializationContext) {
       if (!(val instanceof AbstractValue) || val.kind !== "conditional") {
         return t.throwStatement(context.serializeValue(val));
@@ -742,7 +747,7 @@ export class Generator {
     });
   }
 
-  _issueThrowCompilerDiagnostic(value: Value) {
+  _issueThrowCompilerDiagnostic(value: Value): void {
     let message = "Program may terminate with exception";
     if (value instanceof ObjectValue) {
       let object = ((value: any): ObjectValue);
@@ -757,7 +762,7 @@ export class Generator {
     this.realm.handleError(diagnostic);
   }
 
-  emitThrow(value: Value) {
+  emitThrow(value: Value): void {
     this._issueThrowCompilerDiagnostic(value);
     this.emitStatement([value], ([argument]) => t.throwStatement(argument));
   }
@@ -766,7 +771,7 @@ export class Generator {
   // for any AbstractValues
   // e.g: (obj.property !== undefined && typeof obj.property !== "object")
   // NB: if the type of the AbstractValue is top, skips the invariant
-  emitFullInvariant(object: ObjectValue | AbstractObjectValue, key: string, value: Value) {
+  emitFullInvariant(object: ObjectValue | AbstractObjectValue, key: string, value: Value): void {
     if (object.refuseSerialization) return;
     let accessedPropertyOf = objectNode => memberExpressionHelper(objectNode, key);
     let condition;
@@ -785,7 +790,7 @@ export class Generator {
               invariant(nestedValue instanceof AbstractValue);
               populateComparisonsLists(nestedValue);
             }
-        } else if (absValue.getType().isTop || absValue.getType() === Value) {
+        } else if (absValue.getType() === Value) {
           isTop = true;
         } else {
           typeComparisons.add(absValue.getType());
@@ -857,7 +862,7 @@ export class Generator {
     object: ObjectValue | AbstractObjectValue,
     key: string,
     state: "MISSING" | "PRESENT" | "DEFINED"
-  ) {
+  ): void {
     if (object.refuseSerialization) return;
     let accessedPropertyOf = (objectNode: BabelNodeExpression) => memberExpressionHelper(objectNode, key);
     let condition = ([objectNode: BabelNodeExpression]) => {
@@ -921,7 +926,7 @@ export class Generator {
     return this.deriveAbstract(types, values, args, (nodes: any) => t.callExpression(createCallee(), nodes), { kind });
   }
 
-  emitStatement(args: Array<Value>, buildNode_: (Array<BabelNodeExpression>) => BabelNodeStatement) {
+  emitStatement(args: Array<Value>, buildNode_: (Array<BabelNodeExpression>) => BabelNodeStatement): void {
     this._addEntry({
       args,
       buildNode: buildNode_,
@@ -952,7 +957,7 @@ export class Generator {
     sourceObject: ObjectValue,
     targetObject: ObjectValue,
     boundName: BabelNodeIdentifier
-  ) {
+  ): void {
     this._addEntry({
       // duplicate args to ensure refcount > 1
       args: [o, targetObject, sourceObject, targetObject, sourceObject],
@@ -1089,7 +1094,7 @@ export class Generator {
     return res;
   }
 
-  visit(callbacks: VisitEntryCallbacks) {
+  visit(callbacks: VisitEntryCallbacks): void {
     let visitFn = () => {
       for (let entry of this._entries) entry.visit(callbacks, this);
       return null;
@@ -1101,7 +1106,7 @@ export class Generator {
     }
   }
 
-  serialize(context: SerializationContext) {
+  serialize(context: SerializationContext): void {
     let serializeFn = () => {
       context.initGenerator(this);
       for (let entry of this._entries) entry.serialize(context);
@@ -1187,7 +1192,7 @@ export class Generator {
   }
 }
 
-function escapeInvalidIdentifierCharacters(s: string) {
+function escapeInvalidIdentifierCharacters(s: string): string {
   let res = "";
   for (let c of s)
     if ((c >= "0" && c <= "9") || (c >= "a" && c <= "z") || (c >= "A" && c <= "Z")) res += c;
@@ -1276,7 +1281,7 @@ export class PreludeGenerator {
       .reduce((obj, prop) => t.memberExpression(obj, prop));
   }
 
-  globalReference(key: string, globalScope: boolean = false) {
+  globalReference(key: string, globalScope: boolean = false): BabelNodeIdentifier | BabelNodeMemberExpression {
     if (globalScope && t.isValidIdentifier(key)) return t.identifier(key);
     return memberExpressionHelper(this.memoizeReference("global"), key);
   }

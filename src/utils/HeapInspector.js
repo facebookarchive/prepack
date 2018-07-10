@@ -83,7 +83,7 @@ export class HeapInspector {
     freeze: { writable: false, configurable: false },
   };
 
-  getTargetIntegrityDescriptor(val: ObjectValue) {
+  getTargetIntegrityDescriptor(val: ObjectValue): { writable: boolean, configurable: boolean } {
     return HeapInspector._integrityDescriptors[this.getTargetIntegrityCommand(val)];
   }
 
@@ -115,7 +115,7 @@ export class HeapInspector {
   }
 
   // Object properties which have the default value can be ignored by the serializer.
-  canIgnoreProperty(val: ObjectValue, key: string) {
+  canIgnoreProperty(val: ObjectValue, key: string): boolean {
     let set = this.ignoredProperties.get(val);
     if (!set) {
       this.ignoredProperties.set(val, (set = this._getIgnoredProperties(val)));
@@ -123,7 +123,7 @@ export class HeapInspector {
     return set.has(key);
   }
 
-  _getIgnoredProperties(val: ObjectValue) {
+  _getIgnoredProperties(val: ObjectValue): Set<string> {
     let set: Set<string> = new Set();
     for (let [key, propertyBinding] of val.properties) {
       invariant(propertyBinding);
@@ -134,7 +134,7 @@ export class HeapInspector {
     return set;
   }
 
-  _canIgnoreProperty(val: ObjectValue, key: string, desc: Descriptor) {
+  _canIgnoreProperty(val: ObjectValue, key: string, desc: Descriptor): boolean {
     let targetDescriptor = this.getTargetIntegrityDescriptor(val);
 
     if (IsArray(this.realm, val)) {

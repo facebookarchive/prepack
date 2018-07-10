@@ -56,7 +56,7 @@ export default class ArgumentsExotic extends ObjectValue {
   }
 
   // ECMA262 9.4.4.2
-  $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor) {
+  $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
     // 1. Let args be the arguments object.
     let args = this;
 

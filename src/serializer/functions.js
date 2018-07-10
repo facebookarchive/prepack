@@ -107,7 +107,7 @@ export class Functions {
     throw new FatalError("Optimized Function Values must be functions or react elements");
   }
 
-  __generateInitialAdditionalFunctions(globalKey: string) {
+  __generateInitialAdditionalFunctions(globalKey: string): Array<AdditionalFunctionEntry> {
     let recordedAdditionalFunctions: Array<AdditionalFunctionEntry> = [];
     let realm = this.realm;
     let globalRecordedAdditionalFunctionsMap = this.moduleTracer.modules.logger.tryQuery(
@@ -186,7 +186,7 @@ export class Functions {
     return call.bind(this, thisArg, args);
   }
 
-  checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode: number) {
+  checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode: number): void {
     let additionalFunctionsToProcess = this.__generateInitialAdditionalFunctions("__optimizedFunctions");
     // When we find declarations of nested optimized functions, we need to apply the parent
     // effects.
@@ -318,7 +318,7 @@ export class Functions {
     conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic>,
     pbs: PropertyBindings,
     call2: void => Value
-  ) {
+  ): void {
     let reportConflict = (location: BabelNodeSourceLocation) => {
       let error = new CompilerDiagnostic(
         `Property access conflicts with write in optimized function ${fname}`,

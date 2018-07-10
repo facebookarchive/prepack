@@ -47,7 +47,13 @@ type HavocedFunctionInfo = {
   unboundWrites: Set<string>,
 };
 
-function visitName(path: BabelTraversePath, state: HavocedFunctionInfo, name: string, read: boolean, write: boolean) {
+function visitName(
+  path: BabelTraversePath,
+  state: HavocedFunctionInfo,
+  name: string,
+  read: boolean,
+  write: boolean
+): void {
   // Is the name bound to some local identifier? If so, we don't need to do anything
   if (path.scope.hasBinding(name, /*noGlobals*/ true)) return;
 
@@ -56,13 +62,13 @@ function visitName(path: BabelTraversePath, state: HavocedFunctionInfo, name: st
   if (write) state.unboundWrites.add(name);
 }
 
-function ignorePath(path: BabelTraversePath) {
+function ignorePath(path: BabelTraversePath): boolean {
   let parent = path.parent;
   return t.isLabeledStatement(parent) || t.isBreakStatement(parent) || t.isContinueStatement(parent);
 }
 
 let HavocedClosureRefVisitor = {
-  ReferencedIdentifier(path: BabelTraversePath, state: HavocedFunctionInfo) {
+  ReferencedIdentifier(path: BabelTraversePath, state: HavocedFunctionInfo): void {
     if (ignorePath(path)) return;
 
     let innerName = path.node.name;
@@ -72,7 +78,7 @@ let HavocedClosureRefVisitor = {
     visitName(path, state, innerName, true, false);
   },
 
-  "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: HavocedFunctionInfo) {
+  "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: HavocedFunctionInfo): void {
     let doesRead = path.node.operator !== "=";
     for (let name in path.getBindingIdentifiers()) {
       visitName(path, state, name, doesRead, true);
@@ -137,7 +143,7 @@ class ObjectValueHavocingVisitor {
     return true;
   }
 
-  visitObjectProperty(binding: PropertyBinding) {
+  visitObjectProperty(binding: PropertyBinding): void {
     let desc = binding.descriptor;
     if (desc === undefined) return; //deleted
     this.visitDescriptor(desc);
@@ -227,7 +233,7 @@ class ObjectValueHavocingVisitor {
     }
   }
 
-  visitObjectPrototype(obj: ObjectValue) {
+  visitObjectPrototype(obj: ObjectValue): void {
     let proto = obj.$Prototype;
     this.visitValue(proto);
   }
@@ -273,7 +279,7 @@ class ObjectValueHavocingVisitor {
   visitDeclarativeEnvironmentRecordBinding(
     record: DeclarativeEnvironmentRecord,
     remainingHavocedBindings: HavocedFunctionInfo
-  ) {
+  ): void {
     let bindings = record.bindings;
     for (let bindingName of Object.keys(bindings)) {
       let binding = bindings[bindingName];
@@ -514,7 +520,7 @@ class ObjectValueHavocingVisitor {
   }
 }
 
-function ensureFrozenValue(realm, value, loc) {
+function ensureFrozenValue(realm, value, loc): void {
   // TODO: This should really check if it is recursively immutability.
   if (value instanceof ObjectValue && !TestIntegrityLevel(realm, value, "frozen")) {
     let diag = new CompilerDiagnostic(
@@ -530,7 +536,7 @@ function ensureFrozenValue(realm, value, loc) {
 // Ensure that a value is immutable. If it is not, set all its properties to abstract values
 // and all reachable bindings to abstract values.
 export class HavocImplementation {
-  value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation) {
+  value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation): void {
     if (realm.instantRender.enabled) {
       // TODO: For InstantRender...
       // - For declarative bindings, we do want proper materialization/leaking/havocing

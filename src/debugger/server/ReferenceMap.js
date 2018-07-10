@@ -30,7 +30,7 @@ export class ReferenceMap<T> {
     return this._mapping.get(reference);
   }
 
-  clean() {
+  clean(): void {
     this._counter = 0;
     this._mapping = new Map();
   }

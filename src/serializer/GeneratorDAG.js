@@ -44,11 +44,11 @@ export class GeneratorDAG {
     return this.createdObjects.get(value);
   }
 
-  add(parent: FunctionValue | "GLOBAL", generator: Generator) {
+  add(parent: FunctionValue | "GLOBAL", generator: Generator): void {
     this._add(parent, generator);
   }
 
-  _add(parent: Generator | FunctionValue | "GLOBAL", generator: Generator) {
+  _add(parent: Generator | FunctionValue | "GLOBAL", generator: Generator): void {
     let a = this.parents.get(generator);
     if (a === undefined) this.parents.set(generator, (a = []));
     if (!a.includes(parent)) a.push(parent);

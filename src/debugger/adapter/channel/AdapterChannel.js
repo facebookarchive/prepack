@@ -35,12 +35,12 @@ export class AdapterChannel {
   _prepackProcess: child_process.ChildProcess;
 
   // Error handler for errors in files from the adapter channel
-  _handleFileReadError(err: ?ErrnoError) {
+  _handleFileReadError(err: ?ErrnoError): void {
     console.error(err);
     process.exit(1);
   }
 
-  _processPrepackMessage(message: string) {
+  _processPrepackMessage(message: string): void {
     let dbgResponse = this._marshaller.unmarshallResponse(message);
     if (dbgResponse.result.kind === "breakpoint-add") {
       this._eventEmitter.emit(DebugMessage.BREAKPOINT_ADD_ACKNOWLEDGE, dbgResponse.id, dbgResponse);
@@ -67,23 +67,23 @@ export class AdapterChannel {
     return true;
   }
 
-  _addRequestCallback(requestID: number, callback: DebuggerResponse => void) {
+  _addRequestCallback(requestID: number, callback: DebuggerResponse => void): void {
     invariant(!this._pendingRequestCallbacks.has(requestID), "Request ID already exists in pending requests");
     this._pendingRequestCallbacks.set(requestID, callback);
   }
 
-  _processRequestCallback(response: DebuggerResponse) {
+  _processRequestCallback(response: DebuggerResponse): void {
     let callback = this._pendingRequestCallbacks.get(response.id);
     invariant(callback !== undefined, "Request ID does not exist in pending requests: " + response.id);
     callback(response);
     this._pendingRequestCallbacks.delete(response.id);
   }
 
-  registerChannelEvent(event: string, listener: (response: DebuggerResponse) => void) {
+  registerChannelEvent(event: string, listener: (response: DebuggerResponse) => void): void {
     this._eventEmitter.addListener(event, listener);
   }
 
-  launch(requestID: number, args: PrepackLaunchArguments, callback: DebuggerResponse => void) {
+  launch(requestID: number, args: PrepackLaunchArguments, callback: DebuggerResponse => void): void {
     this.sendDebuggerStart(requestID);
     this.listenOnFile(this._processPrepackMessage.bind(this));
     let prepackCommand = args.sourceFiles.concat(args.prepackArguments);
@@ -123,73 +123,73 @@ export class AdapterChannel {
     this._addRequestCallback(requestID, callback);
   }
 
-  run(requestID: number, callback: DebuggerResponse => void) {
+  run(requestID: number, callback: DebuggerResponse => void): void {
     this._queue.enqueue(this._marshaller.marshallContinueRequest(requestID));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }
 
-  setBreakpoints(requestID: number, breakpoints: Array<Breakpoint>, callback: DebuggerResponse => void) {
+  setBreakpoints(requestID: number, breakpoints: Array<Breakpoint>, callback: DebuggerResponse => void): void {
     this._queue.enqueue(this._marshaller.marshallSetBreakpointsRequest(requestID, breakpoints));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }
 
-  getStackFrames(requestID: number, callback: DebuggerResponse => void) {
+  getStackFrames(requestID: number, callback: DebuggerResponse => void): void {
     this._queue.enqueue(this._marshaller.marshallStackFramesRequest(requestID));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }
 
-  getScopes(requestID: number, frameId: number, callback: DebuggerResponse => void) {
+  getScopes(requestID: number, frameId: number, callback: DebuggerResponse => void): void {
     this._queue.enqueue(this._marshaller.marshallScopesRequest(requestID, frameId));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }
 
-  getVariables(requestID: number, variablesReference: number, callback: DebuggerResponse => void) {
+  getVariables(requestID: number, variablesReference: number, callback: DebuggerResponse => void): void {
     this._queue.enqueue(this._marshaller.marshallVariablesRequest(requestID, variablesReference));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }
 
-  stepInto(requestID: number, callback: DebuggerResponse => void) {
+  stepInto(requestID: number, callback: DebuggerResponse => void): void {
     this._queue.enqueue(this._marshaller.marshallStepIntoRequest(requestID));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }
 
-  stepOver(requestID: number, callback: DebuggerResponse => void) {
+  stepOver(requestID: number, callback: DebuggerResponse => void): void {
     this._queue.enqueue(this._marshaller.marshallStepOverRequest(requestID));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }
 
-  stepOut(requestID: number, callback: DebuggerResponse => void) {
+  stepOut(requestID: number, callback: DebuggerResponse => void): void {
     this._queue.enqueue(this._marshaller.marshallStepOutRequest(requestID));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }
 
-  evaluate(requestID: number, frameId: void | number, expression: string, callback: DebuggerResponse => void) {
+  evaluate(requestID: number, frameId: void | number, expression: string, callback: DebuggerResponse => void): void {
     this._queue.enqueue(this._marshaller.marshallEvaluateRequest(requestID, frameId, expression));
     this.trySendNextRequest();
     this._addRequestCallback(requestID, callback);
   }
 
-  writeOut(contents: string) {
+  writeOut(contents: string): void {
     this._ioWrapper.writeOutSync(contents);
   }
 
-  sendDebuggerStart(requestID: number) {
+  sendDebuggerStart(requestID: number): void {
     this.writeOut(this._marshaller.marshallDebuggerStart(requestID));
   }
 
-  listenOnFile(messageProcessor: (message: string) => void) {
+  listenOnFile(messageProcessor: (message: string) => void): void {
     this._ioWrapper.readIn(this._handleFileReadError.bind(this), messageProcessor);
   }
 
-  clean() {
+  clean(): void {
     this._ioWrapper.clearInFile();
     this._ioWrapper.clearOutFile();
   }
