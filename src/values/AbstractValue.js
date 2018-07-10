@@ -980,7 +980,7 @@ export default class AbstractValue extends Value {
     return ((`${prefix}:${suffix}`: any): AbstractValueKind);
   }
 
-  static createAbstractObjectAssign(
+  static createTemporalObjectAssign(
     realm: Realm,
     to: ObjectValue | AbstractObjectValue,
     sources: Array<Value>
