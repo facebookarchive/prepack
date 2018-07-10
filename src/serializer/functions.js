@@ -35,9 +35,9 @@ import type { AdditionalFunctionEffects, WriteEffects } from "./types";
 import { convertConfigObjectToReactComponentTreeConfig, valueIsKnownReactAbstraction } from "../react/utils.js";
 import { applyOptimizedReactComponents, optimizeReactComponentTreeRoot } from "../react/optimizing.js";
 import { handleReportedSideEffect } from "./utils.js";
-import * as t from "@babel/types";
 import { ShapeInformation } from "../utils/ShapeInformation";
 import type { ArgModel } from "../utils/ShapeInformation";
+import * as t from "@babel/types";
 
 type AdditionalFunctionEntry = {
   value: ECMAScriptSourceFunctionValue | AbstractValue,
@@ -181,7 +181,7 @@ export class Functions {
               this.realm,
               paramName,
               funcValue.expressionLocation,
-              shape !== undefined ? shape.getValueTypeForAbstract() : Value,
+              shape !== undefined ? shape.getAbstractType() : Value,
               shape
             )
           );

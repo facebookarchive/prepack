@@ -19,9 +19,8 @@ import type {
 } from "@babel/types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
-import type { PropertyKeyValue } from "../types.js";
 import { PreludeGenerator, type TemporalBuildNodeType } from "../utils/generator.js";
-import { ShapeInformation } from "../utils/ShapeInformation.js";
+import type { PropertyKeyValue, ShapeInformationInterface } from "../types.js";
 import buildExpressionTemplate from "../utils/builder.js";
 
 import {
@@ -102,7 +101,7 @@ export default class AbstractValue extends Value {
     hashValue: number,
     args: Array<Value>,
     buildNode?: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: AbstractValueKind, intrinsicName?: string, shape?: ShapeInformation |}
+    optionalArgs?: {| kind?: AbstractValueKind, intrinsicName?: string, shape?: ShapeInformationInterface |}
   ) {
     invariant(realm.useAbstractInterpretation);
     super(realm, optionalArgs ? optionalArgs.intrinsicName : undefined);
@@ -124,7 +123,7 @@ export default class AbstractValue extends Value {
   values: ValuesDomain;
   mightBeEmpty: boolean;
   args: Array<Value>;
-  shape: void | ShapeInformation;
+  shape: void | ShapeInformationInterface;
   _buildNode: void | AbstractValueBuildNodeFunction | BabelNodeExpression;
 
   toDisplayString(): string {
@@ -900,7 +899,7 @@ export default class AbstractValue extends Value {
     name: string,
     location: ?BabelNodeSourceLocation,
     type: typeof Value = Value,
-    shape: void | ShapeInformation = undefined
+    shape: void | ShapeInformationInterface = undefined
   ): AbstractValue {
     if (!realm.useAbstractInterpretation) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");

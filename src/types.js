@@ -1049,3 +1049,24 @@ export type DebuggerConfigArguments = {
   buckRoot?: string,
   debugChannel?: DebugChannel,
 };
+
+export type SupportedGraphQLGetters =
+  | "bool"
+  | "double"
+  | "int"
+  | "time"
+  | "string"
+  | "tree"
+  | "bool_list"
+  | "double_list"
+  | "int_list"
+  | "time_list"
+  | "string_list"
+  | "tree_list";
+
+export interface ShapeInformationInterface {
+  isReadOnly(): boolean;
+  getPropertyShape(key: string): void | ShapeInformationInterface;
+  getGetter(): void | SupportedGraphQLGetters;
+  getAbstractType(): typeof Value;
+}

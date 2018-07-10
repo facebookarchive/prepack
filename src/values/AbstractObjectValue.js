@@ -11,7 +11,7 @@
 
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
-import type { Descriptor, PropertyKeyValue } from "../types.js";
+import type { Descriptor, PropertyKeyValue, ShapeInformationInterface } from "../types.js";
 import {
   AbstractValue,
   type AbstractValueKind,
@@ -24,7 +24,6 @@ import {
   Value,
 } from "./index.js";
 import { protoExpression, memberExpressionHelper } from "../utils/babelhelpers.js";
-import { ShapeInformation } from "../utils/ShapeInformation.js";
 import type { AbstractValueBuildNodeFunction } from "./AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import {
@@ -46,7 +45,7 @@ export default class AbstractObjectValue extends AbstractValue {
     hashValue: number,
     args: Array<Value>,
     buildNode?: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: AbstractValueKind, intrinsicName?: string, shape?: ShapeInformation |}
+    optionalArgs?: {| kind?: AbstractValueKind, intrinsicName?: string, shape?: ShapeInformationInterface |}
   ) {
     super(realm, types, values, hashValue, args, buildNode, optionalArgs);
     if (!values.isTop()) {
@@ -510,10 +509,10 @@ export default class AbstractObjectValue extends AbstractValue {
         let obShape = ob.shape;
         let propertyShape, propertyGetter;
         if (this.$Realm.instantRender.enabled && obShape !== undefined) {
-          propertyShape = obShape.getMemberAccessShapeInformation(P);
+          propertyShape = obShape.getPropertyShape(P);
           if (propertyShape !== undefined) {
-            propertyGetter = obShape.getMemberAccessGraphQLGetter(propertyShape);
-            type = propertyShape.getValueTypeForAbstract();
+            type = propertyShape.getAbstractType();
+            propertyGetter = propertyShape.getGetter();
           }
         }
         let propAbsVal = AbstractValue.createTemporalFromBuildFunction(
