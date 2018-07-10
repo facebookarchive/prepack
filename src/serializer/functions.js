@@ -62,8 +62,8 @@ export class Functions {
       return { value };
     } else if (value instanceof ObjectValue) {
       // React component tree logic
-      let config = Get(realm, value, "config");
-      let rootComponent = Get(realm, value, "rootComponent");
+      let config = value._SafeGetDataPropertyValue("config");
+      let rootComponent = value._SafeGetDataPropertyValue("rootComponent");
       let validConfig = config instanceof ObjectValue || config === realm.intrinsics.undefined;
       let validRootComponent =
         rootComponent instanceof ECMAScriptSourceFunctionValue ||
@@ -137,12 +137,12 @@ export class Functions {
 
   // When __optimize calls are called, an optional "pure" property can be passed
   // on a config object to disable pure scope, otherwise pure scope is enabled by default.
-  // i.e. __optimimze(foo, { pure: false });
+  // i.e. __optimize(foo, { pure: false });
   _isPureOptimizedFunction(funcValue: FunctionValue): boolean {
     let possibleConfig = this.realm.optimizedFunctionConfig.get(funcValue);
 
     if (possibleConfig instanceof ObjectValue) {
-      let pureVal = Get(this.realm, possibleConfig, "pure");
+      let pureVal = possibleConfig._SafeGetDataPropertyValue("pure");
 
       // The config object should contain a "pure" property
       // that is a false boolean. Otherwise, we return true.
@@ -196,7 +196,7 @@ export class Functions {
     let additionalFunctionStack = [];
     let additionalFunctions = new Set(additionalFunctionsToProcess.map(entry => entry.value));
     let optimizedFunctionsObject = this.moduleTracer.modules.logger.tryQuery(
-      () => Get(this.realm, this.realm.$GlobalObject, "__optimizedFunctions"),
+      () => this.realm.$GlobalObject._SafeGetDataPropertyValue("__optimizedFunctions"),
       this.realm.intrinsics.undefined
     );
     invariant(optimizedFunctionsObject instanceof ObjectValue);

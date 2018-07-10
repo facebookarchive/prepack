@@ -85,16 +85,6 @@ export class ReturnCompletion extends AbruptCompletion {
   }
 }
 
-// A pure scope throw completion is to only be used from throw statements when
-// in pure scope at the time of evaluating the throw statement and when
-// there is not within a try statement.
-// For more information see: https://github.com/facebook/prepack/pull/2233
-export class PureScopeThrowCompletion extends AbruptCompletion {
-  constructor(realm: Realm, location: ?BabelNodeSourceLocation) {
-    super(realm.intrinsics.empty, location);
-  }
-}
-
 // An erased abrupt completion arises when an abrupt completion reaches a join point.
 // Ideally we should use a SimpleNormalCompletion in its place, but that can only
 // happen after ForkedAbruptCompletion and PossiblyNormalCompletion are unified.

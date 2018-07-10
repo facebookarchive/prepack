@@ -12,7 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import { PureScopeThrowCompletion, ThrowCompletion } from "../completions.js";
+import { SimpleNormalCompletion, ThrowCompletion } from "../completions.js";
 import { Environment } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeThrowStatement } from "babel-types";
@@ -27,8 +27,12 @@ export default function(
   let exprValue = Environment.GetValue(realm, exprRef);
   if (realm.isInPureScope() && !realm.isInPureTryStatement) {
     invariant(realm.generator !== undefined);
+    // TODO: we should porbably materialize exprValue at this point
     realm.generator.emitThrow(exprValue);
-    throw new PureScopeThrowCompletion(realm, ast.loc);
+    // We want a completion to bubble up the execution path, but
+    // we don't want the completion to serialize to a value as
+    // we do generate a generator entry above instead.
+    throw new SimpleNormalCompletion(realm.intrinsics.empty, ast.loc);
   }
   throw new ThrowCompletion(exprValue, ast.loc);
 }

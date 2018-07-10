@@ -21,7 +21,7 @@ import type {
 import type { Realm } from "./realm.js";
 import type { SourceFile, SourceMap, SourceType } from "./types.js";
 
-import { AbruptCompletion, Completion, ThrowCompletion } from "./completions.js";
+import { AbruptCompletion, Completion, SimpleNormalCompletion, ThrowCompletion } from "./completions.js";
 import { CompilerDiagnostic, FatalError } from "./errors.js";
 import { defaultOptions } from "./options";
 import type { PartialEvaluatorOptions } from "./options";
@@ -1115,7 +1115,7 @@ export class LexicalEnvironment {
     try {
       return this.evaluate(ast, strictCode, metadata);
     } catch (err) {
-      if (err instanceof AbruptCompletion) return err;
+      if (err instanceof AbruptCompletion || err instanceof SimpleNormalCompletion) return err;
       if (err instanceof Error)
         // rethrowing Error should preserve stack trace
         throw err;

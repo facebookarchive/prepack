@@ -32,6 +32,7 @@ function func1(doNotThrow) {
 
 if (global.__optimize)
   __optimize(func1, {
+    // This function mutates the object "obj", thus this isn't a pure function
     pure: false,
   });
 
