@@ -15,7 +15,6 @@
 const chalk = require("chalk");
 const fs = require("fs");
 const glob = require("glob");
-const path = require("path");
 const prettier = require("prettier");
 const execFileSync = require("child_process").execFileSync;
 
@@ -48,7 +47,6 @@ const changedFiles = new Set(
 
 Object.keys(config).forEach(key => {
   const patterns = config[key].patterns;
-  const options = config[key].options;
   const ignore = config[key].ignore;
 
   const globPattern = patterns.length > 1 ? `{${patterns.join(",")}}` : `${patterns.join(",")}`;
