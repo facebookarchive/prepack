@@ -28,7 +28,7 @@ export class FileIOWrapper {
   _isAdapter: boolean;
 
   // Read in a message from the input asynchronously
-  readIn(errorHandler: (err: ?ErrnoError) => void, messageProcessor: (message: string) => void) {
+  readIn(errorHandler: (err: ?ErrnoError) => void, messageProcessor: (message: string) => void): void {
     fs.readFile(this._inFilePath, { encoding: "utf8" }, (err: ?ErrnoError, contents: string) => {
       if (err) {
         errorHandler(err);
@@ -70,15 +70,15 @@ export class FileIOWrapper {
   }
 
   // Write out a message to the output synchronously
-  writeOutSync(contents: string) {
+  writeOutSync(contents: string): void {
     fs.writeFileSync(this._outFilePath, this._packager.package(contents));
   }
 
-  clearInFile() {
+  clearInFile(): void {
     fs.writeFileSync(this._inFilePath, "");
   }
 
-  clearOutFile() {
+  clearOutFile(): void {
     fs.writeFileSync(this._outFilePath, "");
   }
 }

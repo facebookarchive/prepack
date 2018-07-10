@@ -53,7 +53,7 @@ export class IntegralValue extends NumberValue {
     super(realm, value, intrinsicName);
   }
 
-  static createFromNumberValue(realm: Realm, value: number, intrinsicName?: string) {
+  static createFromNumberValue(realm: Realm, value: number, intrinsicName?: string): IntegralValue | NumberValue {
     return Number.isInteger(value)
       ? new IntegralValue(realm, value, intrinsicName)
       : new NumberValue(realm, value, intrinsicName);

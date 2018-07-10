@@ -128,7 +128,7 @@ export default class AbstractValue extends Value {
     return "[Abstract " + this.hashValue.toString() + "]";
   }
 
-  addSourceLocationsTo(locations: Array<BabelNodeSourceLocation>, seenValues?: Set<AbstractValue> = new Set()) {
+  addSourceLocationsTo(locations: Array<BabelNodeSourceLocation>, seenValues?: Set<AbstractValue> = new Set()): void {
     if (seenValues.has(this)) return;
     seenValues.add(this);
     if (this._buildNode && !(this._buildNode instanceof Function)) {
@@ -139,7 +139,7 @@ export default class AbstractValue extends Value {
     }
   }
 
-  addSourceNamesTo(names: Array<string>, visited: Set<AbstractValue> = new Set()) {
+  addSourceNamesTo(names: Array<string>, visited: Set<AbstractValue> = new Set()): void {
     if (visited.has(this)) return;
     visited.add(this);
     let realm = this.$Realm;
@@ -179,7 +179,7 @@ export default class AbstractValue extends Value {
       : ((buildNode: any): BabelNodeExpression);
   }
 
-  equals(x: Value) {
+  equals(x: Value): boolean {
     if (x instanceof ConcreteValue) return false;
     let thisArgs = this.args;
     let n = thisArgs.length;
@@ -216,20 +216,20 @@ export default class AbstractValue extends Value {
     return this.hashValue;
   }
 
-  getType() {
+  getType(): typeof Value {
     return this.types.getType();
   }
 
-  getIdentifier() {
+  getIdentifier(): BabelNodeIdentifier {
     invariant(this.hasIdentifier());
     return ((this._buildNode: any): BabelNodeIdentifier);
   }
 
-  hasIdentifier() {
-    return this._buildNode && this._buildNode.type === "Identifier";
+  hasIdentifier(): boolean {
+    return this._buildNode ? this._buildNode.type === "Identifier" : false;
   }
 
-  _checkAbstractValueImpliesCounter() {
+  _checkAbstractValueImpliesCounter(): void {
     let realm = this.$Realm;
     let abstractValueImpliesMax = realm.abstractValueImpliesMax;
     // if abstractValueImpliesMax is 0, then the counter is disabled
@@ -897,7 +897,7 @@ export default class AbstractValue extends Value {
     name: string,
     location: ?BabelNodeSourceLocation,
     type: typeof Value = Value
-  ) {
+  ): AbstractValue {
     if (!realm.useAbstractInterpretation) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
     }
@@ -947,7 +947,7 @@ export default class AbstractValue extends Value {
     return `${identity} ${location}`;
   }
 
-  static reportIntrospectionError(val: Value, propertyName: void | PropertyKeyValue) {
+  static reportIntrospectionError(val: Value, propertyName: void | PropertyKeyValue): void {
     let message = "";
     if (!val.$Realm.suppressDiagnostics)
       message = `This operation is not yet supported on ${AbstractValue.describe(val, propertyName)}`;

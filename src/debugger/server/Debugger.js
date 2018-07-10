@@ -73,7 +73,7 @@ export class DebugServer {
   /* ast: the current ast node we are stopped on
   /* reason: the reason the debuggee is stopping
   */
-  waitForRun(loc: void | BabelNodeSourceLocation) {
+  waitForRun(loc: void | BabelNodeSourceLocation): void {
     let keepRunning = false;
     let request;
     while (!keepRunning) {
@@ -83,7 +83,7 @@ export class DebugServer {
   }
 
   // Checking if the debugger needs to take any action on reaching this ast node
-  checkForActions(ast: BabelNode) {
+  checkForActions(ast: BabelNode): void {
     if (this._checkAndUpdateLastExecuted(ast)) {
       let stoppables: Array<StoppableObject> = this._stepManager.getAndDeleteCompletedSteppers(ast);
       let breakpoint = this._breakpointManager.getStoppableBreakpoint(ast);
@@ -101,7 +101,7 @@ export class DebugServer {
 
   // Process a command from a debugger. Returns whether Prepack should unblock
   // if it is blocked
-  processDebuggerCommand(request: DebuggerRequest, loc: void | BabelNodeSourceLocation) {
+  processDebuggerCommand(request: DebuggerRequest, loc: void | BabelNodeSourceLocation): boolean {
     let requestID = request.id;
     let command = request.command;
     let args = request.arguments;
@@ -174,7 +174,11 @@ export class DebugServer {
     return false;
   }
 
-  processStackframesCommand(requestID: number, args: StackframeArguments, astLoc: void | BabelNodeSourceLocation) {
+  processStackframesCommand(
+    requestID: number,
+    args: StackframeArguments,
+    astLoc: void | BabelNodeSourceLocation
+  ): void {
     let frameInfos: Array<Stackframe> = [];
     let loc = this._getFrameLocation(astLoc ? astLoc : null);
     let fileName = loc.fileName;
@@ -222,7 +226,7 @@ export class DebugServer {
     };
   }
 
-  processScopesCommand(requestID: number, args: ScopesArguments) {
+  processScopesCommand(requestID: number, args: ScopesArguments): void {
     // first check that frameId is in the valid range
     if (args.frameId < 0 || args.frameId >= this._realm.contextStack.length) {
       throw new DebuggerError("Invalid command", "Invalid frame id for scopes request: " + args.frameId);
@@ -264,18 +268,18 @@ export class DebugServer {
     }
   }
 
-  processVariablesCommand(requestID: number, args: VariablesArguments) {
+  processVariablesCommand(requestID: number, args: VariablesArguments): void {
     let variables = this._variableManager.getVariablesByReference(args.variablesReference);
     this._channel.sendVariablesResponse(requestID, variables);
   }
 
-  processEvaluateCommand(requestID: number, args: EvaluateArguments) {
+  processEvaluateCommand(requestID: number, args: EvaluateArguments): void {
     let evalResult = this._variableManager.evaluate(args.frameId, args.expression);
     this._channel.sendEvaluateResponse(requestID, evalResult);
   }
 
   // actions that need to happen before Prepack can resume
-  _onDebuggeeResume() {
+  _onDebuggeeResume(): void {
     // resets the variable manager
     this._variableManager.clean();
   }
@@ -315,7 +319,7 @@ export class DebugServer {
   }
 
   //  Displays Prepack error message, then waits for user to run the program to continue (similar to a breakpoint).
-  handlePrepackError(diagnostic: CompilerDiagnostic) {
+  handlePrepackError(diagnostic: CompilerDiagnostic): void {
     invariant(diagnostic.location && diagnostic.location.source);
     // The following constructs the message and stop-instruction that is sent to the UI to actually stop the execution.
     let location = diagnostic.location;
@@ -350,7 +354,7 @@ export class DebugServer {
     }
   }
 
-  shutdown() {
+  shutdown(): void {
     // clean the channel pipes
     this._channel.shutdown();
   }

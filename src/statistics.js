@@ -28,7 +28,7 @@ export class RealmStatistics {
   evaluatedNodes: number;
 
   // legacy projection
-  getRealmStatistics() {
+  getRealmStatistics(): any {
     return {
       simplifications: this.simplifications,
       simplificationAttempts: this.simplificationAttempts,
@@ -41,7 +41,7 @@ export class RealmStatistics {
   fixupFilenames: PerformanceTracker;
   evaluation: PerformanceTracker;
 
-  projectPerformanceTrackers(suffix: string, projection: PerformanceTracker => number) {
+  projectPerformanceTrackers(suffix: string, projection: PerformanceTracker => number): any {
     let res = {};
     for (let key of Object.keys(this)) {
       let value = (this: any)[key];
@@ -50,7 +50,7 @@ export class RealmStatistics {
     return res;
   }
 
-  log() {
+  log(): void {
     console.log(`=== realm statistics`);
     console.log(`${this.evaluatedNodes} AST nodes evaluated.`);
     console.log(`${this.simplifications} abstract values simplified after ${this.simplificationAttempts} attempts.`);

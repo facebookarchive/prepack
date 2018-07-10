@@ -999,7 +999,7 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
   }
 
   // ECMA262 8.1.1.4.18
-  CreateGlobalFunctionBinding(N: string, V: Value, D: boolean) {
+  CreateGlobalFunctionBinding(N: string, V: Value, D: boolean): void {
     // 1. Let envRec be the global Environment Record for which the method was invoked.
     let envRec = this;
 
@@ -1062,7 +1062,7 @@ export class LexicalEnvironment {
   parent: null | LexicalEnvironment;
   realm: Realm;
 
-  destroy() {
+  destroy(): void {
     this.destroyed = true;
     // Once the containing environment is destroyed, we can no longer add or remove entries from the environmentRecord
     // (but we can update existing values).
@@ -1071,7 +1071,7 @@ export class LexicalEnvironment {
     }
   }
 
-  assignToGlobal(globalAst: BabelNodeLVal, rvalue: Value) {
+  assignToGlobal(globalAst: BabelNodeLVal, rvalue: Value): void {
     let globalValue = this.evaluate(globalAst, false);
     Properties.PutValue(this.realm, globalValue, rvalue);
   }
@@ -1288,7 +1288,7 @@ export class LexicalEnvironment {
     return Environment.GetValue(this.realm, res);
   }
 
-  fixup_source_locations(ast: BabelNode, map: string) {
+  fixup_source_locations(ast: BabelNode, map: string): void {
     const smc = new sourceMap.SourceMapConsumer(map);
     traverseFast(ast, node => {
       let loc = node.loc;
@@ -1320,7 +1320,7 @@ export class LexicalEnvironment {
     });
   }
 
-  fixup_filenames(ast: BabelNode) {
+  fixup_filenames(ast: BabelNode): void {
     traverseFast(ast, node => {
       let loc = node.loc;
       if (!loc || !loc.source) {

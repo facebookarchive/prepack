@@ -101,7 +101,7 @@ export class ResidualHeapGraphGenerator extends ResidualHeapVisitor {
     return val instanceof EmptyValue || val.isIntrinsic() || HeapInspector.isLeaf(val);
   }
 
-  _updateEdge(val: Value) {
+  _updateEdge(val: Value): void {
     if (this._path.length > 0) {
       const parent = this._path[this._path.length - 1];
       this._edges.push({ fromId: this._getValueId(parent), toId: this._getValueId(val) });
