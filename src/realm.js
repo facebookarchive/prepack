@@ -195,7 +195,9 @@ export function construct_empty_effects(
   realm: Realm,
   c: Completion = new SimpleNormalCompletion(realm.intrinsics.empty)
 ): Effects {
-  // TODO #2222: Check if `realm.pathConditions` is always correct here. Consider making it a required parameter.
+  // TODO #2222: Check if `realm.pathConditions` is always correct here.
+  // The path conditions here should probably be empty.
+  // Picking up the current path conditions from the Realm might be the reason why composition does not work.
   return new Effects(
     c,
     new Generator(realm, "construct_empty_effects", realm.pathConditions),
