@@ -175,6 +175,8 @@ export class Functions {
   // When __optimize calls are called, an optional "pure" property can be passed
   // on a config object to disable pure scope, otherwise pure scope is enabled by default.
   // i.e. __optimize(foo, { pure: false });
+  // We also assume that any throw not surrounded by a try block within that pure scope is
+  // assumed to be uncaught and exit the entire program.
   _isPureOptimizedFunction(optimizedFunctionConfig: void | Value): boolean {
     if (optimizedFunctionConfig instanceof ObjectValue) {
       let pureVal = optimizedFunctionConfig._SafeGetDataPropertyValue("pure");
