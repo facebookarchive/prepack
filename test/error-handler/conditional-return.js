@@ -12,11 +12,13 @@ function f() {
 }
 
 function g() {
-  f()
+  f();
   //condition from line 7 should have been undone and this should fail.
   return n2 - n1;
 }
 
 g();
 
-inspect = function (){return true;}
+inspect = function() {
+  return true;
+};

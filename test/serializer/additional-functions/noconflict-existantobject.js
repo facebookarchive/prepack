@@ -22,4 +22,4 @@ inspect = function() {
   additional2();
   additional1();
   return global.b + global.c.foo + global.c.bar;
-}
+};

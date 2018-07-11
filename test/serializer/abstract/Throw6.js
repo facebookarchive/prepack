@@ -7,4 +7,6 @@ function foo(b) {
 
 var z = foo(!x);
 
-inspect = function() { return z; }
+inspect = function() {
+  return z;
+};

@@ -1,6 +1,9 @@
 // abstract effects
 var __evaluatePureFunction = this.__evaluatePureFunction || (f => f());
-var obj = global.__abstract && global.__makePartial && global.__makeSimple ? __makeSimple(__makePartial(__abstract({}, "({foo:1})"))) : {foo:1};
+var obj =
+  global.__abstract && global.__makePartial && global.__makeSimple
+    ? __makeSimple(__makePartial(__abstract({}, "({foo:1})")))
+    : { foo: 1 };
 
 // Intentionally allocate outside the pure scope.
 var copyOfObj = {};
@@ -14,4 +17,4 @@ __evaluatePureFunction(() => {
 
 inspect = function() {
   return JSON.stringify(copyOfObj);
-}
+};

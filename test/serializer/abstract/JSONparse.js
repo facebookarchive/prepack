@@ -10,4 +10,6 @@ let ob3 = JSON.parse(str);
 y = ob3.x;
 var z = ob2x;
 
-inspect = function() { return "" + str + ob.x + ob2.x + ob3.x + z }
+inspect = function() {
+  return "" + str + ob.x + ob2.x + ob3.x + z;
+};

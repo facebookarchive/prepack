@@ -5,9 +5,9 @@ const Foo = class {
   method(y) {
     return this.x + y;
   }
-}
+};
 
-inspect = function() { 
-  var foo = new Foo(); 
-  return [foo, foo.method(10)]
-}
+inspect = function() {
+  var foo = new Foo();
+  return [foo, foo.method(10)];
+};

@@ -8,8 +8,8 @@ var f = function() {
     var x4 = x3 + x3;
     return x4;
   }
-}
+};
 var g = f();
-inspect = function() {  
+inspect = function() {
   return f()();
-}
+};

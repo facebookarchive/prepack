@@ -4,8 +4,7 @@ let ob2 = b ? { foo: 24 } : null;
 
 var x = "no can do";
 var y;
-if (ob1 == null || undefined == ob2)
-  x = "no can do";
+if (ob1 == null || undefined == ob2) x = "no can do";
 else {
   x = ob1.foo;
   y = ob2.foo;
@@ -17,4 +16,6 @@ if (null == ob1) {
   x = "no can do";
 }
 
-inspect = function() { return x + " " + y; }
+inspect = function() {
+  return x + " " + y;
+};

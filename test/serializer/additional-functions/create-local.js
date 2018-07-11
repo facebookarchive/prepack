@@ -25,5 +25,5 @@ inspect = function() {
   let y = global.y;
   additional1();
 
-  return '' + x.foo + y.bar + (global.x === x) + global.x.foo;
-}
+  return "" + x.foo + y.bar + (global.x === x) + global.x.foo;
+};

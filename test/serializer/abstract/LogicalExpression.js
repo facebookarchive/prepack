@@ -26,4 +26,6 @@ let f = y || (z8 = 789);
 
 let g = true || (z8 = 111);
 
-inspect = function() { return "" + z + z0 + z1 + z2 + z3 + z4 + z5 + z6 + z7 + z8; }
+inspect = function() {
+  return "" + z + z0 + z1 + z2 + z3 + z4 + z5 + z6 + z7 + z8;
+};

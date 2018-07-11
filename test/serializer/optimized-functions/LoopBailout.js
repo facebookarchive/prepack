@@ -14,5 +14,5 @@ function fn(props, splitPoint) {
 global.__optimize && __optimize(fn);
 
 inspect = function() {
-  return fn({text: "foo\nfoo"}, 5);
+  return fn({ text: "foo\nfoo" }, 5);
 };

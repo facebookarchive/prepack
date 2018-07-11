@@ -1,5 +1,11 @@
-function hello() { return 'hello'; } 
-function world() { return 'world'; } 
-var s = hello() + ' ' + world();
+function hello() {
+  return "hello";
+}
+function world() {
+  return "world";
+}
+var s = hello() + " " + world();
 
-inspect = function() { return s; }
+inspect = function() {
+  return s;
+};

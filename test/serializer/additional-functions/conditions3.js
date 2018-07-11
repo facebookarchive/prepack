@@ -25,14 +25,26 @@ ShimURI.prototype.toString = function() {
   return "http://foo.com";
 };
 
-var isXXXURI = global.__abstract ? __abstract("function", "(function a() { return true; })") : function() { return true; };
+var isXXXURI = global.__abstract
+  ? __abstract("function", "(function a() { return true; })")
+  : function() {
+      return true;
+    };
 var XXX2 = global.__abstract ? __abstract("function", "(function b() {})") : function() {};
 var XXX3 = global.__abstract ? __abstract("function", "(function c() {})") : function() {};
 var XXX6 = global.__abstract
   ? __abstract("object", "({link_react_default_hash: '#', XXX9: true, XXX10: true})")
-  : {link_react_default_hash: '#', XXX9: true, XXX10: true};
-var XXX7 = global.__abstract ?__abstract("function", "(function e() { return true; })") : function() { return true; };
-var XXX5 = global.__abstract ? __abstract("function", "(function f() { return true;  })") : function() { return true; };
+  : { link_react_default_hash: "#", XXX9: true, XXX10: true };
+var XXX7 = global.__abstract
+  ? __abstract("function", "(function e() { return true; })")
+  : function() {
+      return true;
+    };
+var XXX5 = global.__abstract
+  ? __abstract("function", "(function f() { return true;  })")
+  : function() {
+      return true;
+    };
 var URI = global.__abstract ? __abstract("function", "(function () { return ShimURI; })()") : ShimURI;
 
 var dontUpgradeRegex = new RegExp("^(l|lm|h)\\..*$", "i");
@@ -54,9 +66,7 @@ function XXX8(href) {
 }
 
 function isXXXishURI(uri) {
-  return (
-    isXXXURI(uri) || XXX2(uri) || XXX3(uri)
-  );
+  return isXXXURI(uri) || XXX2(uri) || XXX3(uri);
 }
 
 var RELATIVE_PREFIX = /^(#|\/\w)/;
@@ -65,10 +75,7 @@ function shouldShim(href) {
     return false;
   }
   var protocol = href.getProtocol();
-  return (
-    (protocol === "http" || protocol === "https") &&
-    !isXXXishURI(href)
-  );
+  return (protocol === "http" || protocol === "https") && !isXXXishURI(href);
 }
 
 function parseHref(rawHref) {
@@ -77,17 +84,11 @@ function parseHref(rawHref) {
 
   if (rawHref instanceof URI) {
     href_string = rawHref.toString();
-  } else if (
-    typeof rawHref === "string" &&
-    rawHref !== "" &&
-    rawHref !== "#"
-  ) {
+  } else if (typeof rawHref === "string" && rawHref !== "" && rawHref !== "#") {
     href_string = rawHref;
   } else if (typeof rawHref === "object" && rawHref !== null) {
     href_string = rawHref.url.toString();
-    shimhash = rawHref.shimhash
-      ? rawHref.shimhash.toString()
-      : shimhash;
+    shimhash = rawHref.shimhash ? rawHref.shimhash.toString() : shimhash;
   } else {
     href_string = "#";
     shimhash = null;
@@ -140,10 +141,7 @@ function fn1(props) {
     }
   }
 
-  var noopener =
-    XXX6.use_rel_no_opener &&
-    shimhash !== null &&
-    target === "_blank";
+  var noopener = XXX6.use_rel_no_opener && shimhash !== null && target === "_blank";
 
   return cr(
     fn2,
@@ -155,7 +153,7 @@ function fn1(props) {
       shimhash: shimhash,
       target: target,
       useRedirect: useRedirect,
-      useMetaReferrer: useMetaReferrer
+      useMetaReferrer: useMetaReferrer,
     })
   );
 }
@@ -163,5 +161,5 @@ function fn1(props) {
 global.__optimize && __optimize(fn1);
 
 global.inspect = function() {
-  return fn1({href: "http://foobar.com", linkRef: "123"});
-}
+  return fn1({ href: "http://foobar.com", linkRef: "123" });
+};

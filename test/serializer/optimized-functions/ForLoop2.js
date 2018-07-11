@@ -13,5 +13,5 @@
 
   global.inspect = function() {
     return fn();
-  }
+  };
 })();

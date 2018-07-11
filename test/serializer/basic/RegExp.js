@@ -8,4 +8,6 @@ j = regexp2.lastIndex;
 
 k = "and /books/ are books too".match(regexp3);
 
-inspect = function() { return "" + global.i + global.j + global.k + "Facebook is cool".match(global.regexp).index; }
+inspect = function() {
+  return "" + global.i + global.j + global.k + "Facebook is cool".match(global.regexp).index;
+};

@@ -9,4 +9,6 @@ var s = new WeakMap();
 s.set(alive, 1);
 s.set(dead, 1);
 
-inspect = function() {return "containsAlive: " + s.has(alive);}
+inspect = function() {
+  return "containsAlive: " + s.has(alive);
+};

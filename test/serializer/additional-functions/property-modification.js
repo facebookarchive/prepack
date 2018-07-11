@@ -24,4 +24,4 @@ inspect = function() {
   additional2();
   additional1();
   return JSON.stringify(global.a) + JSON.stringify(global.b);
-}
+};

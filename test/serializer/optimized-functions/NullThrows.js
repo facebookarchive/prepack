@@ -1,7 +1,7 @@
-var x = global.__abstract ? x = __abstract(undefined, "({ check: true })") : { check: true };
+var x = global.__abstract ? (x = __abstract(undefined, "({ check: true })")) : { check: true };
 
 function nullthrows(x) {
-  var message = arguments.length <= 1 || arguments[1] === undefined ? 'Got unexpected null or undefined' : arguments[1];
+  var message = arguments.length <= 1 || arguments[1] === undefined ? "Got unexpected null or undefined" : arguments[1];
   if (x != null) {
     return x;
   }
@@ -9,7 +9,7 @@ function nullthrows(x) {
 
   error.framesToPop = 1;
   throw error;
-};
+}
 
 function func1() {
   nullthrows(x.check);
@@ -18,7 +18,8 @@ function func1() {
   };
 }
 
-if (global.__optimize)
-  __optimize(func1);
+if (global.__optimize) __optimize(func1);
 
-inspect = function () { return func1(); }
+inspect = function() {
+  return func1();
+};

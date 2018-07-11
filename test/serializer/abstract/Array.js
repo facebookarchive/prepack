@@ -2,4 +2,5 @@
 
 var l = __abstract("number");
 var a = new Array(l);
-if (a.length) {}
+if (a.length) {
+}

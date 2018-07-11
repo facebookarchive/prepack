@@ -5,4 +5,5 @@ function foo() {
   for (var e of x) return e;
 }
 let p;
-for ([p = foo()] of [[undefined]]) {}
+for ([p = foo()] of [[undefined]]) {
+}

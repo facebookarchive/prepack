@@ -1,2 +1,4 @@
 let y = 123 * 4;
-inspect = function() { return y; }
+inspect = function() {
+  return y;
+};

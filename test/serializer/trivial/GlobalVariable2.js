@@ -2,4 +2,6 @@
 var x = 1;
 x = 2;
 x = undefined;
-inspect = function() { return x; }
+inspect = function() {
+  return x;
+};

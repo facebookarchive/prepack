@@ -15,4 +15,6 @@ try {
   if (err instanceof TypeError) x3 = true;
 }
 
-inspect = function() { return "" + x1 + x3; }
+inspect = function() {
+  return "" + x1 + x3;
+};

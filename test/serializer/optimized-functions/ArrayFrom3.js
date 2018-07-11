@@ -6,13 +6,7 @@ function fn(x, y) {
     })
     .filter(Boolean);
 
-  var result = !y
-    ? []
-    : items.slice(
-        y.startIndex,
-        y.startIndex +
-          y.length
-      );
+  var result = !y ? [] : items.slice(y.startIndex, y.startIndex + y.length);
 
   result.reverse();
 
@@ -22,5 +16,5 @@ function fn(x, y) {
 this.__optimize && __optimize(fn);
 
 inspect = function() {
- return JSON.stringify(fn([1, 2, 3], {startIndex: 0, length: 3}));
-}
+  return JSON.stringify(fn([1, 2, 3], { startIndex: 0, length: 3 }));
+};

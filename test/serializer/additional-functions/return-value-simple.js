@@ -23,4 +23,4 @@ inspect = function() {
   let x = additional2();
   let y = additional1();
   return x + y;
-}
+};

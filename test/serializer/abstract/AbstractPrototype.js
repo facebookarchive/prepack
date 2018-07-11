@@ -5,4 +5,6 @@ Constructor.prototype = obj;
 
 let obj2 = new Constructor();
 
-inspect = function() { return Object.getPrototypeOf(obj2) === obj; }
+inspect = function() {
+  return Object.getPrototypeOf(obj2) === obj;
+};

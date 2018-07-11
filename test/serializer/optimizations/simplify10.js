@@ -4,4 +4,6 @@ let s = NaN;
 let u = c ? s : 42;
 let v = c ? 43 : s;
 
-inspect = function() { return u + " " + v; }
+inspect = function() {
+  return u + " " + v;
+};

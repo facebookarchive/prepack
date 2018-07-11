@@ -1,10 +1,10 @@
 let a = global.__abstract ? __abstract("boolean", "(true)") : true;
 let b = global.__abstract ? __abstract("boolean", "((true))") : true;
 
-let na
+let na;
 if (!a) na = 10;
 
-let nb
+let nb;
 if (!b) nb = 20;
 
 let n2 = global.__abstract ? __abstract("number", "7") : 7;
@@ -16,9 +16,11 @@ function f() {
 
 function g() {
   if (a) return;
-  f()
+  f();
   return na - n2;
 }
 
-g()
-inspect = function () {return true;}
+g();
+inspect = function() {
+  return true;
+};

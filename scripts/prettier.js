@@ -31,7 +31,8 @@ const config = {
     patterns: ["scripts/**/*.js"],
   },
   jest: {
-    patterns: ["test/react/**/*.js"],
+    patterns: ["test/**/*.js"],
+    ignore: ["test/**/syntaxError.js"],
   },
 };
 

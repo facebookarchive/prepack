@@ -3,9 +3,11 @@ var f = function() {
   return function() {
     i += 1;
     return i;
-  }
-}
+  };
+};
 
 var g = f();
 
-inspect = function() { return g() + " " + g(); }
+inspect = function() {
+  return g() + " " + g();
+};

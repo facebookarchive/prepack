@@ -7,4 +7,6 @@ for (var p in ob) {
   tgt[p] = src[p];
 }
 
-inspect = function() { return tgt.a; }
+inspect = function() {
+  return tgt.a;
+};

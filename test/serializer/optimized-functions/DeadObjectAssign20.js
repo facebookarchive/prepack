@@ -15,4 +15,6 @@ function f(o) {
 
 if (global.__optimize) __optimize(f);
 
-global.inspect = function() { return JSON.stringify(f({x: 10})); }
+global.inspect = function() {
+  return JSON.stringify(f({ x: 10 }));
+};

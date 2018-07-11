@@ -14,5 +14,7 @@
   }
   let f1 = g(1);
   let f2 = g(2);
-  inspect = function() { return f1() + f2(); }
+  inspect = function() {
+    return f1() + f2();
+  };
 })();

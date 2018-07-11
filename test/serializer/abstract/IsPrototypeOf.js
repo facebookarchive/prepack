@@ -7,4 +7,6 @@ let p = x ? {} : ob.p;
 
 y = Object.prototype.isPrototypeOf(p);
 
-inspect = function() { return "" + y; }
+inspect = function() {
+  return "" + y;
+};

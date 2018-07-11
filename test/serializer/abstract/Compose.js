@@ -7,11 +7,13 @@ function bar(y) {
 
 function fn(x, y) {
   if (x) {
-    bar(y)
+    bar(y);
   }
   return 123;
 }
 
 if (global.__optimize) __optimize(fn);
 
-inspect = function() { return fn(true, false); }
+inspect = function() {
+  return fn(true, false);
+};

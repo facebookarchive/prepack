@@ -18,7 +18,7 @@ function define(factory, moduleId, dependencyMap) {
     exports: undefined,
     factory: factory,
     hasError: false,
-    isInitialized: false
+    isInitialized: false,
   };
 
   var _verboseName = arguments[3];
@@ -61,25 +61,24 @@ function loadModuleImplementation(moduleId, module) {
   }
 
   module.isInitialized = true;
-  var exports = module.exports = {};
+  var exports = (module.exports = {});
   var _module = module,
-      factory = _module.factory,
-      dependencyMap = _module.dependencyMap;
-      try {
+    factory = _module.factory,
+    dependencyMap = _module.dependencyMap;
+  try {
+    var _moduleObject = { exports: exports };
 
-   var _moduleObject = { exports: exports };
+    factory(global, require, _moduleObject, exports, dependencyMap);
 
-   factory(global, require, _moduleObject, exports, dependencyMap);
+    module.factory = undefined;
 
-      module.factory = undefined;
-
-   return module.exports = _moduleObject.exports;
- } catch (e) {
-   module.hasError = true;
-   module.isInitialized = false;
-   module.exports = undefined;
-   throw e;
- }
+    return (module.exports = _moduleObject.exports);
+  } catch (e) {
+    module.hasError = true;
+    module.isInitialized = false;
+    module.exports = undefined;
+    throw e;
+  }
 }
 
 function unknownModuleError(id) {
@@ -94,7 +93,8 @@ function moduleThrewError(id) {
 // === End require code ===
 
 define(function(global, require, module, exports) {
-  if (__abstract({}, "({})").unsupported) {}
+  if (__abstract({}, "({})").unsupported) {
+  }
 }, 0, null);
 
 define(function(global, require, module, exports) {

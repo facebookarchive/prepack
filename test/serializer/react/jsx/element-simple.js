@@ -29,21 +29,31 @@ function createElement(type, options, ...children) {
     }
   }
   return {
-    $$typeof: Symbol.for('react.element'),
+    $$typeof: Symbol.for("react.element"),
     props,
     key,
     ref,
     type,
     _owner: undefined,
-  }
+  };
 }
 
 global.React = {
   createElement,
 };
 
-global.reactElement = createElement('div', null, createElement(MyComponent, {
-  foo: 'bar'
-}, 'Hello world'));
+global.reactElement = createElement(
+  "div",
+  null,
+  createElement(
+    MyComponent,
+    {
+      foo: "bar",
+    },
+    "Hello world"
+  )
+);
 
-inspect = function() { return global.reactElement; }
+inspect = function() {
+  return global.reactElement;
+};

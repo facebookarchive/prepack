@@ -16,4 +16,6 @@ function f(b) {
 
 var z = f(!x);
 
-inspect = function() { return z; }
+inspect = function() {
+  return z;
+};

@@ -1,4 +1,8 @@
-var o = {x: 42};
-o.f = (function() { return this.x; }).bind(o);
+var o = { x: 42 };
+o.f = function() {
+  return this.x;
+}.bind(o);
 
-inspect = function() { return o.f(); }
+inspect = function() {
+  return o.f();
+};

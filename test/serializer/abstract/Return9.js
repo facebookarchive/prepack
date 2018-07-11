@@ -3,7 +3,6 @@ function f() {}
 
 let y = 1;
 function g() {
-
   if (b) return "foo";
   y = 2;
   f();
@@ -12,4 +11,6 @@ function g() {
 
 var x = g();
 
-inspect = function() { return [x, y].join(" "); }
+inspect = function() {
+  return [x, y].join(" ");
+};

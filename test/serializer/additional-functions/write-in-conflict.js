@@ -18,4 +18,4 @@ x = additional2();
 
 inspect = function() {
   return x;
-}
+};

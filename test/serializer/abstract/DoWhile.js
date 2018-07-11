@@ -6,4 +6,6 @@ do {
   j = 0;
 } while (i < n);
 
-inspect = function() { return i + " " + j; }
+inspect = function() {
+  return i + " " + j;
+};

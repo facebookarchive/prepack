@@ -40,5 +40,6 @@ for (let v of s1) {
   x6.push(v);
 }
 
-
-inspect = function() { return JSON.stringify([x1, x2, x3, x4, x5, x6]); }
+inspect = function() {
+  return JSON.stringify([x1, x2, x3, x4, x5, x6]);
+};

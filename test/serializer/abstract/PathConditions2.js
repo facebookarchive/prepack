@@ -24,4 +24,6 @@ function f1() {
 
 var x = f1();
 
-inspect = function() { return x; }
+inspect = function() {
+  return x;
+};

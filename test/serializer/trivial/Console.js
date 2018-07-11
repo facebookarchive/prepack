@@ -5,4 +5,4 @@ inspect = function() {
   console.log({});
   console.warn({});
   console.error({});
-}
+};

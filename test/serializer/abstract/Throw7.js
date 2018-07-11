@@ -2,11 +2,10 @@
 
 let x = global.__abstract ? __abstract("boolean", "true") : true;
 
-function __d(factory, moduleId) {
-}
+function __d(factory, moduleId) {}
 
 function foo() {
-  let r = {xyz: 123};
+  let r = { xyz: 123 };
   if (!x) throw "something bad";
   return r;
 }
@@ -23,4 +22,6 @@ __d(foo, 0);
 
 var z = require(0);
 
-inspect = function() { return z; }
+inspect = function() {
+  return z;
+};
