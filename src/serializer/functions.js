@@ -92,7 +92,7 @@ export class Functions {
           };
         }
       } else if (functionValue !== realm.intrinsics.undefined) {
-        return { functionValue, config };
+        return { value, config };
       }
     }
 
@@ -211,7 +211,7 @@ export class Functions {
     // When we find declarations of nested optimized functions, we need to apply the parent
     // effects.
     let additionalFunctionStack = [];
-    let additionalFunctions = new Set(additionalFunctionsToProcess.map(entry => entry.functionValue));
+    let additionalFunctions = new Set(additionalFunctionsToProcess.map(entry => entry.value));
     let optimizedFunctionsObject = this.moduleTracer.modules.logger.tryQuery(
       () => this.realm.$GlobalObject._SafeGetDataPropertyValue("__optimizedFunctions"),
       this.realm.intrinsics.undefined
@@ -231,7 +231,7 @@ export class Functions {
     };
 
     let optimizedFunctionId = 0;
-    let getEffectsFromAdditionalFunctionAndNestedFunctions = ({ functionValue, config }) => {
+    let getEffectsFromAdditionalFunctionAndNestedFunctions = ({ value: functionValue, config }) => {
       let currentOptimizedFunctionId = optimizedFunctionId++;
       additionalFunctionStack.push(functionValue);
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
@@ -275,8 +275,8 @@ export class Functions {
             invariant(newValue instanceof Value); //todo: this does not seem invariantly true
             let newEntry = this.__optimizedFunctionEntryOfValue(newValue);
             if (newEntry) {
-              additionalFunctions.add(newEntry.functionValue);
-              getEffectsFromAdditionalFunctionAndNestedFunctions(newEntry.functionValue);
+              additionalFunctions.add(newEntry.value);
+              getEffectsFromAdditionalFunctionAndNestedFunctions(newEntry.value);
               // Now we have to rember the stack of effects that need to be applied to deal with
               // this additional function.
             }

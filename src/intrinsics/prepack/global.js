@@ -133,7 +133,7 @@ export default function(realm: Realm): void {
       // only optimize functions for now
       if (value instanceof ECMAScriptSourceFunctionValue || value instanceof AbstractValue) {
         let optimizedFunctionObject = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
-        optimizedFunctionObject.$Set("functionValue", value, optimizedFunctionObject);
+        optimizedFunctionObject.$Set("value", value, optimizedFunctionObject);
         optimizedFunctionObject.$Set("config", config, optimizedFunctionObject);
         realm.assignToGlobal(
           t.memberExpression(
