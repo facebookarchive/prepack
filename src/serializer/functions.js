@@ -95,10 +95,21 @@ export class Functions {
             ),
           };
         }
-      } else if (
-        functionValue !== realm.intrinsics.undefined &&
-        functionValue instanceof ECMAScriptSourceFunctionValue
-      ) {
+      } else if (functionValue !== realm.intrinsics.undefined) {
+        if (functionValue instanceof AbstractValue) {
+          // if we conditionally called __optimize, we may have an AbstractValue that is the union of Empty or Undefined and
+          // a function/component to optimize
+          let elements = functionValue.values.getElements();
+          if (elements) {
+            let possibleValues = [...elements].filter(
+              element => !(element instanceof EmptyValue || element instanceof UndefinedValue)
+            );
+            if (possibleValues.length === 1) {
+              functionValue = possibleValues[0];
+            }
+          }
+        }
+        invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
         return { value: functionValue, optimizedFunctionConfig: config };
       }
     }
