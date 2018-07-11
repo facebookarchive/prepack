@@ -27,7 +27,7 @@ export function GlobalDeclarationInstantiation(
   ast: BabelNodeProgram,
   env: LexicalEnvironment,
   strictCode: boolean
-) {
+): EmptyValue {
   realm.getRunningContext().isStrict = realm.isStrict = strictCode;
 
   // 1. Let envRec be env's EnvironmentRecord.
@@ -272,7 +272,7 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
       if (res.containsCompletion(ThrowCompletion)) {
         // Join e with the remaining completions
         let normalGenerator = e.generator;
-        e.generator = new Generator(realm, "dummy"); // This generator comes after everything else.
+        e.generator = new Generator(realm, "dummy", normalGenerator.pathConditions); // This generator comes after everything else.
         let r = (e.result = new ThrowCompletion(realm.intrinsics.empty));
         let fc = Join.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, res, r, e);
         let allEffects = Join.extractAndJoinCompletionsOfType(ThrowCompletion, realm, fc);

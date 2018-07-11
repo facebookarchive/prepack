@@ -29,7 +29,7 @@
     "build-prepack": "babel src --out-dir lib --source-maps",
     "watch": "babel src scripts --out-dir lib --watch --source-maps",
     "lint": "eslint src scripts",
-    "flow": "flow version; flow check",
+    "flow": "flow version; flow check --merge-timeout 0",
     "test-residual": "babel-node scripts/test-residual.js",
     "test-residual-with-coverage": "./node_modules/.bin/istanbul cover ./lib/test-residual.js --dir coverage.residual && ./node_modules/.bin/remap-istanbul -i coverage.residual/coverage.json -o coverage-sourcemapped.residual -t html",
     "test-serializer": "babel-node --stack_trace_limit=200 --stack_size=10000 scripts/test-runner.js",
@@ -58,6 +58,7 @@
     "depcheck": "babel-node scripts/detect_bad_deps.js",
     "prettier": "node ./scripts/prettier.js write-changed",
     "prettier-all": "node ./scripts/prettier.js write",
+    "prettier-ci": "node ./scripts/prettier.js",
     "debug-fb-www": "node --stack_trace_limit=200 --stack_size=10000 --max_old_space_size=16384 ./scripts/debug-fb-www.js"
   },
   "dependencies": {
@@ -94,7 +95,7 @@
     "eslint-plugin-flowtype": "^2.40.0",
     "eslint-plugin-header": "^1.0.0",
     "eslint-plugin-prettier": "^2.1.2",
-    "flow-bin": "^0.75.0",
+    "flow-bin": "^0.76.0",
     "flow-typed": "^2.3.0",
     "graceful-fs": "^4.1.11",
     "invariant": "^2.2.0",

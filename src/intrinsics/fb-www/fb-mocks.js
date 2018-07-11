@@ -261,7 +261,7 @@ function createBootloader(realm: Realm, global: ObjectValue | AbstractObjectValu
   return AbstractValue.createAbstractObject(realm, "Bootloader", bootloader);
 }
 
-export function createFbMocks(realm: Realm, global: ObjectValue | AbstractObjectValue) {
+export function createFbMocks(realm: Realm, global: ObjectValue | AbstractObjectValue): void {
   global.$DefineOwnProperty("__DEV__", {
     // TODO: we'll likely want to make this configurable from the outside.
     value: realm.intrinsics.false,

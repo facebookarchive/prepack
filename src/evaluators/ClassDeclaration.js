@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { AbstractValue, Value } from "../values/index.js";
+import { AbstractValue, Value, type ECMAScriptSourceFunctionValue } from "../values/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { NullValue, EmptyValue, ObjectValue, ECMAScriptFunctionValue } from "../values/index.js";
 import type {
@@ -58,7 +58,7 @@ export function ClassDefinitionEvaluation(
   className: string | void,
   strictCode: boolean,
   env: LexicalEnvironment
-) {
+): ECMAScriptSourceFunctionValue {
   // 1. Let lex be the LexicalEnvironment of the running execution context.
   let lex = env;
 

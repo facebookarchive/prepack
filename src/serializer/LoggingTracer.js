@@ -27,6 +27,7 @@ import {
 } from "../values/index.js";
 import { To } from "../singletons.js";
 import invariant from "../invariant.js";
+import { stringOfLocation } from "../utils/babelhelpers.js";
 
 function describeValue(realm: Realm, v: Value): string {
   if (v instanceof NumberValue || v instanceof BooleanValue) return v.value.toString();
@@ -80,5 +81,17 @@ export class LoggingTracer extends Tracer {
   ) {
     let name = this.nesting.pop();
     this.log(`<${name}${result instanceof ThrowCompletion ? ": error" : ""}`);
+  }
+
+  beginOptimizingFunction(optimizedFunctionId: number, functionValue: FunctionValue) {
+    this.log(
+      `>Starting Optimized Function ${optimizedFunctionId} ${
+        functionValue.intrinsicName ? functionValue.intrinsicName : "[unknown name]"
+      } ${functionValue.expressionLocation ? stringOfLocation(functionValue.expressionLocation) : ""}`
+    );
+  }
+
+  endOptimizingFunction(optimizedFunctionId: number) {
+    this.log(`<Ending Optimized Function ${optimizedFunctionId}`);
   }
 }

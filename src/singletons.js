@@ -35,46 +35,46 @@ export let Widen: WidenType = (null: any);
 export let concretize: ConcretizeType = (null: any);
 export let Utils: UtilsType = (null: any);
 
-export function setCreate(singleton: CreateType) {
+export function setCreate(singleton: CreateType): void {
   Create = singleton;
 }
 
-export function setEnvironment(singleton: EnvironmentType) {
+export function setEnvironment(singleton: EnvironmentType): void {
   Environment = singleton;
 }
 
-export function setFunctions(singleton: FunctionType) {
+export function setFunctions(singleton: FunctionType): void {
   Functions = singleton;
 }
 
-export function setHavoc(singleton: HavocType) {
+export function setHavoc(singleton: HavocType): void {
   Havoc = singleton;
 }
 
-export function setJoin(singleton: JoinType) {
+export function setJoin(singleton: JoinType): void {
   Join = singleton;
 }
 
-export function setPath(singleton: PathType) {
+export function setPath(singleton: PathType): void {
   Path = singleton;
 }
 
-export function setProperties(singleton: PropertiesType) {
+export function setProperties(singleton: PropertiesType): void {
   Properties = singleton;
 }
 
-export function setTo(singleton: ToType) {
+export function setTo(singleton: ToType): void {
   To = singleton;
 }
 
-export function setWiden(singleton: WidenType) {
+export function setWiden(singleton: WidenType): void {
   Widen = singleton;
 }
 
-export function setConcretize(singleton: ConcretizeType) {
+export function setConcretize(singleton: ConcretizeType): void {
   concretize = singleton;
 }
 
-export function setUtils(singleton: UtilsType) {
+export function setUtils(singleton: UtilsType): void {
   Utils = singleton;
 }

@@ -195,7 +195,7 @@ export class ResidualHeapSerializer {
       this.residualFunctions,
       referencedDeclaredValues,
       conditionalFeasibility,
-      this.preludeGenerator.derivedIds
+      this.realm.derivedIds
     );
     this.mainBody = this.emitter.getBody();
     this.residualHeapInspector = residualHeapInspector;
@@ -1897,7 +1897,7 @@ export class ResidualHeapSerializer {
     if (serializedValue.type === "Identifier") {
       let id = ((serializedValue: any): BabelNodeIdentifier);
       invariant(
-        !this.preludeGenerator.derivedIds.has(id.name) ||
+        !this.realm.derivedIds.has(id.name) ||
           this.emitter.cannotDeclare() ||
           this.emitter.hasBeenDeclared(val) ||
           (this.emitter.emittingToAdditionalFunction() && this.referencedDeclaredValues.get(val) === undefined),
@@ -2284,7 +2284,7 @@ export class ResidualHeapSerializer {
 
     this.generator.serialize(this._getContext());
     this.getStatistics().generators++;
-    invariant(this.emitter.declaredCount() <= this.preludeGenerator.derivedIds.size);
+    invariant(this.emitter.declaredCount() <= this.realm.derivedIds.size);
 
     // TODO #20: add timers
 
@@ -2302,8 +2302,6 @@ export class ResidualHeapSerializer {
     this.postGeneratorSerialization();
 
     Array.prototype.push.apply(this.prelude, this.preludeGenerator.prelude);
-
-    this.modules.resolveInitializedModules();
 
     this.emitter.finalize();
 

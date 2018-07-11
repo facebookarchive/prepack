@@ -34,7 +34,7 @@ export function prepackNodeCLI(
   filename: string,
   options: PrepackOptions = defaultOptions,
   callback: (any, ?{ code: string, map?: SourceMap }) => void
-) {
+): void {
   let serialized;
   try {
     serialized = prepackNodeCLISync(filename, options);

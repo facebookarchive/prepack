@@ -1,4 +1,3 @@
-// throws introspection error
 let abstract_bool = global.__abstract ? global.__abstract("boolean", "(false)") : false;
 
 function func1() {

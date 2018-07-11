@@ -38,7 +38,6 @@ import {
   HasSomeCompatibleType,
 } from "../../methods/index.js";
 import { Create, Havoc, Properties as Props, To } from "../../singletons.js";
-import type { BabelNodeExpression } from "babel-types";
 import * as t from "babel-types";
 import invariant from "../../invariant.js";
 
@@ -100,7 +99,7 @@ function copyKeys(realm: Realm, keys, from, to): void {
 
 function applyObjectAssignSource(
   realm: Realm,
-  nextSource: ObjectValue | AbstractObjectValue,
+  nextSource: Value,
   to: ObjectValue | AbstractObjectValue,
   delayedSources: Array<Value>,
   to_must_be_partial: boolean
@@ -152,7 +151,7 @@ function applyObjectAssignSource(
 
 function tryAndApplySourceOrRecover(
   realm: Realm,
-  nextSource: ObjectValue | AbstractObjectValue,
+  nextSource: Value,
   to: ObjectValue | AbstractObjectValue,
   delayedSources: Array<Value>,
   to_must_be_partial: boolean
@@ -225,7 +224,7 @@ export default function(realm: Realm): NativeFunctionValue {
 
   // ECMA262 19.1.2.1
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
-    let ObjectAssign = func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
+    func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
       // 1. Let to be ? ToObject(target).
       let to = To.ToObject(realm, target);
       let to_must_be_partial = false;
@@ -273,28 +272,7 @@ export default function(realm: Realm): NativeFunctionValue {
         // but now that it is partial we need to set the _isSimple flag.
         to.makeSimple();
 
-        // Tell serializer that it may add properties to to only after temporalTo has been emitted
-        let temporalArgs = [ObjectAssign, to, ...delayedSources];
-        let temporalTo = AbstractValue.createTemporalFromBuildFunction(
-          realm,
-          ObjectValue,
-          temporalArgs,
-          ([methodNode, targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
-            return t.callExpression(methodNode, [targetNode, ...sourceNodes]);
-          },
-          {
-            skipInvariant: true,
-            mutatesOnly: [to],
-          }
-        );
-        invariant(temporalTo instanceof AbstractObjectValue);
-        if (to instanceof AbstractObjectValue) {
-          temporalTo.values = to.values;
-        } else {
-          invariant(to instanceof ObjectValue);
-          temporalTo.values = new ValuesDomain(to);
-        }
-        to.temporalAlias = temporalTo;
+        AbstractValue.createTemporalObjectAssign(realm, to, delayedSources);
       }
       return to;
     });

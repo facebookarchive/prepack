@@ -14,7 +14,7 @@ import { exec } from "child_process";
 
 const MAX_CYCLE_LEN = 57; // NEVER EVER increase this value
 
-const cmd = "flow check --profile";
+const cmd = "flow check --profile --merge-timeout 0";
 exec(cmd, function(error, stdout, stderr) {
   error;
   stdout;

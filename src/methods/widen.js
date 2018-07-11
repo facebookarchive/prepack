@@ -97,7 +97,7 @@ export class WidenImplementation {
       e2.createdObjects
     );
     let createdObjects = new Set(); // Top, since the empty set knows nothing. There is no other choice for widen.
-    let generator = new Generator(realm, "widen"); // code subject to widening will be generated somewhere else
+    let generator = new Generator(realm, "widen", realm.pathConditions); // code subject to widening will be generated somewhere else
     return new Effects(result, generator, bindings, properties, createdObjects);
   }
 

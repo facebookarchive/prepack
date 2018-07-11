@@ -64,7 +64,7 @@ import {
 import type { Compatibility, RealmOptions, ReactOutputTypes, InvariantModeTypes } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
-import { Generator, PreludeGenerator, type TemporalBuildNodeEntryArgs } from "./utils/generator.js";
+import { Generator, PreludeGenerator, type TemporalBuildNodeEntry } from "./utils/generator.js";
 import { emptyExpression, voidExpression } from "./utils/babelhelpers.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
@@ -137,6 +137,8 @@ export class Tracer {
     newTarget: void | ObjectValue,
     result: void | Reference | Value | AbruptCompletion
   ) {}
+  beginOptimizingFunction(optimizedFunctionId: number, functionValue: FunctionValue) {}
+  endOptimizingFunction(optimizedFunctionId: number) {}
 }
 
 export class ExecutionContext {
@@ -195,7 +197,16 @@ export function construct_empty_effects(
   realm: Realm,
   c: Completion = new SimpleNormalCompletion(realm.intrinsics.empty)
 ): Effects {
-  return new Effects(c, new Generator(realm, "construct_empty_effects"), new Map(), new Map(), new Set());
+  // TODO #2222: Check if `realm.pathConditions` is always correct here.
+  // The path conditions here should probably be empty.
+  // Picking up the current path conditions from the Realm might be the reason why composition does not work.
+  return new Effects(
+    c,
+    new Generator(realm, "construct_empty_effects", realm.pathConditions),
+    new Map(),
+    new Map(),
+    new Set()
+  );
 }
 
 export class Realm {
@@ -230,10 +241,10 @@ export class Realm {
     this.emitConcreteModel = !!opts.emitConcreteModel;
 
     this.$TemplateMap = [];
+    this.pathConditions = [];
 
     if (this.useAbstractInterpretation) {
       this.preludeGenerator = new PreludeGenerator(opts.debugNames, opts.uniqueSuffix);
-      this.pathConditions = [];
       ObjectValue.setupTrackedPropertyAccessors(ObjectValue.trackedPropertyNames);
       ObjectValue.setupTrackedPropertyAccessors(NativeFunctionValue.trackedPropertyNames);
       ObjectValue.setupTrackedPropertyAccessors(ProxyValue.trackedPropertyNames);
@@ -247,6 +258,10 @@ export class Realm {
     this.evaluators = (Object.create(null): any);
     this.partialEvaluators = (Object.create(null): any);
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
+
+    this.derivedIds = new Map();
+    this.temporalEntryArgToEntries = new Map();
+    this.temporalEntryCounter = 0;
 
     this.instantRender = {
       enabled: opts.instantRender || false,
@@ -340,6 +355,10 @@ export class Realm {
   contextStack: Array<ExecutionContext> = [];
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
+
+  derivedIds: Map<string, TemporalBuildNodeEntry>;
+  temporalEntryArgToEntries: Map<Value, Set<TemporalBuildNodeEntry>>;
+  temporalEntryCounter: number;
 
   instantRender: {
     enabled: boolean,
@@ -818,7 +837,7 @@ export class Realm {
     let saved_generator = this.generator;
     let saved_createdObjects = this.createdObjects;
     let saved_completion = this.savedCompletion;
-    this.generator = new Generator(this, generatorName);
+    this.generator = new Generator(this, generatorName, this.pathConditions);
     this.createdObjects = new Set();
     this.savedCompletion = undefined; // while in this call, we only explore the normal path.
 
@@ -1373,7 +1392,7 @@ export class Realm {
       (this.modifiedProperties: any),
       (this.createdObjects: any)
     );
-    this.generator = new Generator(this, "captured");
+    this.generator = new Generator(this, "captured", this.pathConditions);
     this.modifiedBindings = new Map();
     this.modifiedProperties = new Map();
     this.createdObjects = new Set();
@@ -1807,12 +1826,29 @@ export class Realm {
     return !this._abstractValuesDefined.has(nameString);
   }
 
-  getTemporalBuildNodeEntryArgsFromDerivedValue(value: Value): void | TemporalBuildNodeEntryArgs {
+  getTemporalBuildNodeEntryFromDerivedValue(value: Value): void | TemporalBuildNodeEntry {
     let name = value.intrinsicName;
-    invariant(name);
-    let preludeGenerator = this.preludeGenerator;
-    invariant(preludeGenerator !== undefined);
-    let temporalBuildNodeEntryArgs = preludeGenerator.derivedIds.get(name);
-    return temporalBuildNodeEntryArgs;
+    if (!name) {
+      return undefined;
+    }
+    let temporalBuildNodeEntry = value.$Realm.derivedIds.get(name);
+    return temporalBuildNodeEntry;
+  }
+
+  getTemporalGeneratorEntriesReferencingArg(arg: AbstractValue | ObjectValue): void | Set<TemporalBuildNodeEntry> {
+    return this.temporalEntryArgToEntries.get(arg);
+  }
+
+  saveTemporalGeneratorEntryArgs(temporalBuildNodeEntry: TemporalBuildNodeEntry): void {
+    let args = temporalBuildNodeEntry.args;
+    for (let arg of args) {
+      let temporalEntries = this.temporalEntryArgToEntries.get(arg);
+
+      if (temporalEntries === undefined) {
+        temporalEntries = new Set();
+        this.temporalEntryArgToEntries.set(arg, temporalEntries);
+      }
+      temporalEntries.add(temporalBuildNodeEntry);
+    }
   }
 }

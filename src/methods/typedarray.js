@@ -209,7 +209,7 @@ export function IntegerIndexedElementSet(realm: Realm, O: ObjectValue, index: nu
 }
 
 // ECMA262 22.2.3.5.1
-export function ValidateTypedArray(realm: Realm, O: Value) {
+export function ValidateTypedArray(realm: Realm, O: Value): ObjectValue {
   O = O.throwIfNotConcrete();
 
   // 1. If Type(O) is not Object, throw a TypeError exception.

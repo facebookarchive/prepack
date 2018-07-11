@@ -47,7 +47,7 @@ export function prepackSources(
   }
 
   if (options.check) {
-    realm.generator = new Generator(realm, "main");
+    realm.generator = new Generator(realm, "main", realm.pathConditions);
     let logger = new Logger(realm, !!options.internalDebug);
     let modules = new Modules(
       realm,
@@ -88,13 +88,13 @@ export function prepackSources(
     if (typeof options.additionalGlobals === "function") {
       options.additionalGlobals(realm);
     }
-    realm.generator = new Generator(realm, "main");
+    realm.generator = new Generator(realm, "main", realm.pathConditions);
     let result = realm.$GlobalEnv.executePartialEvaluator(residualSources, options);
     if (result instanceof AbruptCompletion) throw result;
     return { ...result };
   } else {
     invariant(options.residual);
-    realm.generator = new Generator(realm, "main");
+    realm.generator = new Generator(realm, "main", realm.pathConditions);
     let result = realm.$GlobalEnv.executePartialEvaluator(sources, options);
     if (result instanceof AbruptCompletion) throw result;
     return { ...result };

@@ -563,7 +563,7 @@ export function EvaluateDirectCallWithArgList(
 }
 
 // ECMA262 14.6.3
-export function PrepareForTailCall(realm: Realm) {
+export function PrepareForTailCall(realm: Realm): void {
   // 1. Let leafContext be the running execution context.
   let leafContext = realm.getRunningContext();
 

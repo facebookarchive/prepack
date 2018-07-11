@@ -10,7 +10,7 @@
 /* @flow strict-local */
 
 import { DeclarativeEnvironmentRecord, type Binding } from "../environment.js";
-import { ConcreteValue, Value, ObjectValue, AbstractValue } from "../values/index.js";
+import { AbstractValue, ConcreteValue, ObjectValue, Value } from "../values/index.js";
 import type { ECMAScriptSourceFunctionValue, FunctionValue } from "../values/index.js";
 import type { BabelNodeExpression, BabelNodeStatement, BabelNodeMemberExpression } from "babel-types";
 import { SameValue } from "../methods/abstract.js";
@@ -134,7 +134,7 @@ export type ScopeBinding = {
   referentializationScope: ReferentializationScope,
 };
 
-export function AreSameResidualBinding(realm: Realm, x: ResidualFunctionBinding, y: ResidualFunctionBinding) {
+export function AreSameResidualBinding(realm: Realm, x: ResidualFunctionBinding, y: ResidualFunctionBinding): boolean {
   if (x.serializedValue === y.serializedValue) return true;
   if (x.value && x.value === y.value) return true;
   if (x.value instanceof ConcreteValue && y.value instanceof ConcreteValue) {
