@@ -85,11 +85,6 @@ export class ReturnCompletion extends AbruptCompletion {
   }
 }
 
-// An erased abrupt completion arises when an abrupt completion reaches a join point.
-// Ideally we should use a SimpleNormalCompletion in its place, but that can only
-// happen after ForkedAbruptCompletion and PossiblyNormalCompletion are unified.
-export class ErasedAbruptCompletion extends AbruptCompletion {}
-
 export class ForkedAbruptCompletion extends AbruptCompletion {
   constructor(
     realm: Realm,
