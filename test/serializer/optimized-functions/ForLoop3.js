@@ -13,10 +13,10 @@
 
   global.inspect = function() {
     try {
-      fn({foo() {}});
+      fn({ foo() {} });
     } catch (err) {
       return err.message;
     }
-    return 'expected an error';
-  }
+    return "expected an error";
+  };
 })();

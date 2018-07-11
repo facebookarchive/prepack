@@ -1,15 +1,17 @@
 // serialized function clone count: 0
-function f (x) {
+function f(x) {
   var valueA = 0;
   var valueB = 1;
   var valueC = 2;
 
-  function a() { // no inline
+  function a() {
+    // no inline
     valueA++;
     return b();
   }
 
-  function b() { // no inline
+  function b() {
+    // no inline
     valueA++;
     valueB++;
     return c();
@@ -17,7 +19,7 @@ function f (x) {
 
   function c() {
     if (valueA % 3) a();
-    x ? valueC++ : valueC += 2;
+    x ? valueC++ : (valueC += 2);
     return valueA * valueB * valueC;
   }
 
@@ -28,5 +30,5 @@ var s = f(true);
 var r = f(false);
 
 inspect = function() {
-  return s() + ' ' + r();
-}
+  return s() + " " + r();
+};

@@ -11,16 +11,16 @@ function call(fn) {
       exception = e;
       success = false;
     }
-    return {value, exception, success};
+    return { value, exception, success };
   }
-  var res = global.__residual? global.__residual(template, residualCall, fn) : residualCall(fn);
+  var res = global.__residual ? global.__residual(template, residualCall, fn) : residualCall(fn);
   if (!res.success) {
     throw res.exception;
   }
   return res.value;
 }
 
-var fn = global.__abstract ? global.__abstract('function', '(function () { })') : function () { };
+var fn = global.__abstract ? global.__abstract("function", "(function () { })") : function() {};
 
 var x = 1;
 try {
@@ -28,7 +28,8 @@ try {
   x = 2;
   //call(fn);
   x = 3;
-} catch (err) {
-}
+} catch (err) {}
 
-inspect = function() { return x; }
+inspect = function() {
+  return x;
+};

@@ -3,7 +3,9 @@
 
 function additional1() {
   var x2 = { foo: 5 };
-  foo = function() { return x2; }
+  foo = function() {
+    return x2;
+  };
   var y = 5;
 }
 
@@ -14,7 +16,9 @@ function produceObject() {
 function additional2() {
   "use strict";
   let x1 = produceObject();
-  global.bar = function() { return x1; }
+  global.bar = function() {
+    return x1;
+  };
 }
 
 if (global.__optimize) {
@@ -30,5 +34,14 @@ inspect = function() {
   additional1();
   additional2();
 
-  return ' ' + JSON.stringify(global.bar()) + global.foo().foo + bar1() + foo1().foo + (bar1 === global.bar) + (bar1() === global.bar()) + (foo1() === global.foo());
-}
+  return (
+    " " +
+    JSON.stringify(global.bar()) +
+    global.foo().foo +
+    bar1() +
+    foo1().foo +
+    (bar1 === global.bar) +
+    (bar1() === global.bar()) +
+    (foo1() === global.foo())
+  );
+};

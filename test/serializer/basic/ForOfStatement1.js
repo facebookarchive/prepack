@@ -10,10 +10,10 @@
           break xyz;
         }
       }`);
-  };
+  }
   for (var p0 of [1]) {
-    /*empty*/;
-  };
+    /*empty*/
+  }
   let bar = foo();
   let tgt = {};
   for (let [p2 = "pp"] of [[undefined]]) {
@@ -31,19 +31,25 @@
     break;
   }
   try {
-    for (var { p6 = (null).nonsense } of [{}]) {
+    for (var { p6 = null.nonsense } of [{}]) {
       tgt[p6] = "tppppp";
     }
   } catch (e) {
     tgt["e"] = e.constructor.name;
   }
   try {
-    for ((null).p7 of [{}]) {
+    for (null.p7 of [{}]) {
       tgt[p7] = "tpppp";
     }
   } catch (e) {
     tgt["ee"] = e.constructor.name;
   }
-  (function() { for (var p8 in [1]) { return; } })();
-  inspect = function() { return bar + tgt.pp + tgt.ppp + tgt.p4 + tgt.p5 + tgt.e + tgt.ee; }
+  (function() {
+    for (var p8 in [1]) {
+      return;
+    }
+  })();
+  inspect = function() {
+    return bar + tgt.pp + tgt.ppp + tgt.p4 + tgt.p5 + tgt.e + tgt.ee;
+  };
 })();

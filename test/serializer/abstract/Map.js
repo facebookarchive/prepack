@@ -29,4 +29,6 @@ for (let [k, v] of m2) {
   x3.push([k, v]);
 }
 
-inspect = function() { return JSON.stringify([x1, x2, x3]); }
+inspect = function() {
+  return JSON.stringify([x1, x2, x3]);
+};

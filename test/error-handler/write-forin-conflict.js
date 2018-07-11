@@ -7,7 +7,6 @@ function additional1() {
 
 function additional2() {
   for (let p in global.a) {
-
   }
 }
 
@@ -20,4 +19,4 @@ inspect = function() {
   additional2();
   additional1();
   return global.b;
-}
+};

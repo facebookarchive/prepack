@@ -5,4 +5,6 @@ var n = global.__abstract ? __abstract("string", '("a")') : "a";
 
 z = ob[n];
 
-inspect = function() { return global.z; }
+inspect = function() {
+  return global.z;
+};

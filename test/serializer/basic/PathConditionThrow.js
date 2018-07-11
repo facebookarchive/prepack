@@ -9,9 +9,10 @@ function f() {
 }
 
 function g() {
-
   if (!b) throw 10;
-  return (n2 - n1);
+  return n2 - n1;
 }
 
-inspect = function() {return f()}
+inspect = function() {
+  return f();
+};

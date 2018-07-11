@@ -1,4 +1,4 @@
-let ob = global.__abstract ? __makeSimple(__abstract("object", "({a: 1})")) : {a : 1};
+let ob = global.__abstract ? __makeSimple(__abstract("object", "({a: 1})")) : { a: 1 };
 let a = ob.a;
 
 let _1aw_ = !a;
@@ -11,4 +11,6 @@ if (!_1bw_) {
   var y = _1bw_ ? 123 : 456;
 }
 
-inspect = function() { return y; }
+inspect = function() {
+  return y;
+};

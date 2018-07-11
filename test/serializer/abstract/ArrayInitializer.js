@@ -8,5 +8,7 @@
     o.push(3);
   } else {
   }
-  inspect = function() { return o; }
+  inspect = function() {
+    return o;
+  };
 })();

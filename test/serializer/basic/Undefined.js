@@ -2,5 +2,7 @@
 // omit invariants
 (function() {
   var x = undefined;
-  inspect = function() { return x; }
+  inspect = function() {
+    return x;
+  };
 })();

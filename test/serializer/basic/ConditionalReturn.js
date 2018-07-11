@@ -9,4 +9,6 @@ function f() {
   return n2 - n1;
 }
 
-inspect = function() {return f() };
+inspect = function() {
+  return f();
+};

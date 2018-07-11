@@ -30,4 +30,6 @@ if (ob3 !== null) {
   y = "no can do";
 }
 
-inspect = function() { return x + " " + y; }
+inspect = function() {
+  return x + " " + y;
+};

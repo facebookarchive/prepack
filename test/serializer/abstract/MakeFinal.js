@@ -1,5 +1,5 @@
 function fn(abstractFunc) {
-  var x = {a: 2, b: 3};
+  var x = { a: 2, b: 3 };
   global.__makeFinal ? global.__makeFinal(x) : Object.freeze(x);
   abstractFunc(x);
   return x.a + x.b;
@@ -14,4 +14,4 @@ global.inspect = function() {
     // isFinal logic works
     x.a = 7;
   });
-}
+};

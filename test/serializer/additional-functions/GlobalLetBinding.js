@@ -2,12 +2,16 @@
 let x = undefined;
 let y = undefined;
 global.f = function() {
-    x = {};
+  x = {};
 };
 
 global.f1 = function() {
-    y = {};
+  y = {};
 };
-  
+
 if (global.__optimize) __optimize(f);
-global.inspect = function() { global.f(); global.f1(); return x !== y; }
+global.inspect = function() {
+  global.f();
+  global.f1();
+  return x !== y;
+};

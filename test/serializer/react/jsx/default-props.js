@@ -6,15 +6,15 @@ function MyComponent(props) {
   return <span>{props.title}</span>;
 }
 MyComponent.defaultProps = {
-  title: 'Hello world',
-  children: 'No children!',
+  title: "Hello world",
+  children: "No children!",
 };
 
 function ChildComponent(props) {
   return <span>{props.title}</span>;
 }
 ChildComponent.defaultProps = {
-  title: 'I am a child',
+  title: "I am a child",
 };
 
 function createElement(type, options, ...children) {
@@ -40,13 +40,13 @@ function createElement(type, options, ...children) {
     }
   }
   return {
-    $$typeof: Symbol.for('react.element'),
+    $$typeof: Symbol.for("react.element"),
     props,
     key,
     ref,
     type,
     _owner: undefined,
-  }
+  };
 }
 
 global.React = {
@@ -59,4 +59,6 @@ global.reactElement = (
   </MyComponent>
 );
 
-inspect = function() { return global.reactElement; }
+inspect = function() {
+  return global.reactElement;
+};

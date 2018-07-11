@@ -12,5 +12,6 @@ let b2 = y ? null : a2;
 var c2 = b2 == undefined;
 var c3 = b2 == null;
 
-
-inspect = function() { return [c, c1, c2, c3].join(" "); }
+inspect = function() {
+  return [c, c1, c2, c3].join(" ");
+};

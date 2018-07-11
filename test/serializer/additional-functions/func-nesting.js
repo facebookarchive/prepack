@@ -1,32 +1,32 @@
 inspect = undefined;
-(function(){
-  var Super =
-    function Super() {
-      this.prop = "bar";
-    };
+(function() {
+  var Super = function Super() {
+    this.prop = "bar";
+  };
 
-  var ES5Class = (function (superclass) {
+  var ES5Class = (function(superclass) {
     function Foo() {
       superclass.apply(this, arguments);
       this.state = "hello";
     }
 
-    if ( superclass ) {
+    if (superclass) {
       Foo.__proto__ = superclass;
     }
-    Foo.prototype = Object.create( superclass && superclass.prototype );
+    Foo.prototype = Object.create(superclass && superclass.prototype);
     Foo.prototype.constructor = Foo;
-    Foo.prototype.method = function() { return " world"; };
+    Foo.prototype.method = function() {
+      return " world";
+    };
 
     return Foo;
-  }(Super));
+  })(Super);
 
   function additional1() {
     return new ES5Class();
   }
 
-  function additional2() {
-  }
+  function additional2() {}
 
   if (global.__optimize) {
     __optimize(additional1);
@@ -41,6 +41,6 @@ inspect = undefined;
     let c2 = additional1();
     additional2();
 
-    return 'START' + c1 + ' ' + (c1.prototype === c2.prototype) + ' ' + (c1.method === c2.method);
-  }
-}());
+    return "START" + c1 + " " + (c1.prototype === c2.prototype) + " " + (c1.method === c2.method);
+  };
+})();

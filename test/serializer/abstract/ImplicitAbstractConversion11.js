@@ -1,2 +1,4 @@
-let y = 2 < 'abc';
-inspect = function() { return y; }
+let y = 2 < "abc";
+inspect = function() {
+  return y;
+};

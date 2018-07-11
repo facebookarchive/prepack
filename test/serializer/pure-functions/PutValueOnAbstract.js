@@ -7,9 +7,9 @@ if (!this.__evaluatePureFunction) {
 var symbol = Symbol();
 
 var result = __evaluatePureFunction(() => {
-  var somethingUnknown = global.__abstract ? __abstract(undefined, '({})') : {};
+  var somethingUnknown = global.__abstract ? __abstract(undefined, "({})") : {};
   somethingUnknown.foo = 123;
-  somethingUnknown['0'] = 'bar';
+  somethingUnknown["0"] = "bar";
   somethingUnknown[symbol] = 5;
   return somethingUnknown;
 });

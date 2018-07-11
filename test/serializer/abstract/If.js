@@ -29,4 +29,6 @@ var z = y;
 var z1 = yy;
 var z2 = ob.a;
 var z3 = ob.b;
-inspect = function() { return "" +  a + z + z1 + z2 + z3; }
+inspect = function() {
+  return "" + a + z + z1 + z2 + z3;
+};

@@ -9,8 +9,8 @@ var f = function() {
     return x4;
   }
   return nested;
-}
+};
 var g = f();
 inspect = function() {
   return g();
-}
+};

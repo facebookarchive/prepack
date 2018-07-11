@@ -10,4 +10,4 @@ function checker() {
 
 global.__optimize && __optimize(checker);
 
-inspect = () => {}
+inspect = () => {};

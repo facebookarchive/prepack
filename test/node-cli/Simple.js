@@ -1,11 +1,15 @@
-var greeting = require('./Greeting');
+var greeting = require("./Greeting");
 
 // The residual program after initialization.
-__residual('boolean', function(greeting, console) {
+__residual(
+  "boolean",
+  function(greeting, console) {
+    console.log(greeting + " world!");
 
-  console.log(greeting + ' world!');
-
-  // Currently, we're required to have a return value even though
-  // we're not going to use it.
-  return false;
-}, greeting, console);
+    // Currently, we're required to have a return value even though
+    // we're not going to use it.
+    return false;
+  },
+  greeting,
+  console
+);

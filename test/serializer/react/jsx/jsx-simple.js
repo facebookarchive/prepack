@@ -33,20 +33,30 @@ function createElement(type, options, ...children) {
     }
   }
   return {
-    $$typeof: Symbol.for('react.element'),
+    $$typeof: Symbol.for("react.element"),
     props,
     key,
     ref,
     type,
     _owner: undefined,
-  }
+  };
 }
 
 global.React = {
   createElement,
 };
 
-global.reactElement = <div><MyComponent foo="bar">Hello world</MyComponent></div>;
-global.reactElementB = <div><Container.MyComponent foo="bar">Hello world</Container.MyComponent></div>;
+global.reactElement = (
+  <div>
+    <MyComponent foo="bar">Hello world</MyComponent>
+  </div>
+);
+global.reactElementB = (
+  <div>
+    <Container.MyComponent foo="bar">Hello world</Container.MyComponent>
+  </div>
+);
 
-inspect = function() { return [global.reactElement, global.reactElementB]; }
+inspect = function() {
+  return [global.reactElement, global.reactElementB];
+};

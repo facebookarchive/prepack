@@ -7,6 +7,6 @@ var f = function() {
     var x3 = x2 + x2;
     var x4 = x3 + x3;
     return x4;
-  }
-}
+  };
+};
 var g = f();

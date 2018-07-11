@@ -2,4 +2,5 @@
 
 var x = __abstract("number");
 var y = x.toLocaleString();
-if (y) {}
+if (y) {
+}

@@ -8,4 +8,6 @@ let p = x ? 1 : ob.p;
 
 var z = Number.isFinite(p);
 
-inspect = function() { return "" + z; }
+inspect = function() {
+  return "" + z;
+};
