@@ -42,7 +42,7 @@ import * as t from "@babel/types";
 type AdditionalFunctionEntry = {
   value: ECMAScriptSourceFunctionValue | AbstractValue,
   config?: ReactComponentTreeConfig,
-  argModelString?: StringValue,
+  argModelString?: string,
 };
 
 export class Functions {
@@ -61,33 +61,40 @@ export class Functions {
   writeEffects: WriteEffects;
   _noopFunction: void | ECMAScriptSourceFunctionValue;
 
-  __optimizedFunctionEntryOfValue(value: Value): AdditionalFunctionEntry | void {
-    let realm = this.realm;
-
-    if (value instanceof AbstractValue) {
-      // if we conditionally called __optimize, we may have an AbstractValue that is the union of Empty or Undefined and
-      // a function/component to optimize
-      let elements = value.values.getElements();
-      if (elements) {
-        let possibleValues = [...elements].filter(
-          element => !(element instanceof EmptyValue || element instanceof UndefinedValue)
-        );
-        if (possibleValues.length === 1) {
-          value = possibleValues[0];
-        }
+  __unwrapAbstract(value: AbstractValue): Value {
+    let elements = value.values.getElements();
+    if (elements) {
+      let possibleValues = [...elements].filter(
+        element => !(element instanceof EmptyValue || element instanceof UndefinedValue)
+      );
+      if (possibleValues.length === 1) {
+        return possibleValues[0];
       }
     }
-    if (value instanceof ECMAScriptSourceFunctionValue) {
-      // additional function logic
-      return { value };
-    } else if (value instanceof ObjectValue) {
-      let funcValue = Get(realm, value, "funcValue");
-      // regular case with __optimized with type information
-      if (funcValue !== realm.intrinsics.undefined) {
-        invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
-        let argModelString = Get(realm, value, "argModelString");
-        return argModelString instanceof StringValue ? { value: funcValue, argModelString } : { value: funcValue };
+    return value;
+  }
+
+  __optimizedFunctionEntryOfValue(value: Value): AdditionalFunctionEntry | void {
+    let realm = this.realm;
+    // if we conditionally called __optimize, we may have an AbstractValue that is the union of Empty or Undefined and
+    // a function/component to optimize
+    if (value instanceof AbstractValue) {
+      value = this.__unwrapAbstract(value);
+    }
+    invariant(value instanceof ObjectValue);
+    let funcValue = Get(realm, value, "funcValue");
+    if (funcValue !== realm.intrinsics.undefined) {
+      // unwrap from this side
+      if (funcValue instanceof AbstractValue) {
+        funcValue = this.__unwrapAbstract(funcValue);
       }
+      // regular case with __optimized with type information
+      invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
+      let argModelString = Get(realm, value, "argModelString");
+      return argModelString instanceof StringValue
+        ? { value: funcValue, argModelString: argModelString.value }
+        : { value: funcValue };
+    } else {
       // React component tree logic
       let config = Get(realm, value, "config");
       let rootComponent = Get(realm, value, "rootComponent");
@@ -162,12 +169,12 @@ export class Functions {
     applyOptimizedReactComponents(this.realm, this.writeEffects, environmentRecordIdAfterGlobalCode);
   }
 
-  _callOfFunction(funcValue: FunctionValue, argModelString: void | StringValue): void => Value {
+  _callOfFunction(funcValue: FunctionValue, argModelString: void | string): void => Value {
     let call = funcValue.$Call;
     invariant(call);
     let numArgs = funcValue.getLength();
     let args = [];
-    let argModel = argModelString !== undefined ? (JSON.parse(argModelString.value): ArgModel) : undefined;
+    let argModel = argModelString !== undefined ? (JSON.parse(argModelString): ArgModel) : undefined;
     invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
     let params = funcValue.$FormalParameters;
     if (numArgs && numArgs > 0 && params) {

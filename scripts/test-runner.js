@@ -446,8 +446,7 @@ function runTest(name, code, options: PrepackOptions, args) {
     let codeIterations = [];
     let markersToFind = [];
     for (let [positive, marker] of [[true, "// does contain:"], [false, "// does not contain:"]]) {
-      if (code.includes(marker)) {
-        let i = code.indexOf(marker);
+      for (let i = code.indexOf(marker); i >= 0; i = code.indexOf(marker, i + 1)) {
         let value = code.substring(i + marker.length, code.indexOf("\n", i));
         markersToFind.push({ positive, value });
       }

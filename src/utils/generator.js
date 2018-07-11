@@ -56,6 +56,7 @@ import type {
 import { nullExpression, memberExpressionHelper } from "./babelhelpers.js";
 import { Utils, concretize } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";
+import type { ShapeInformationInterface } from "../types.js";
 
 export type SerializationContext = {|
   serializeValue: Value => BabelNodeExpression,
@@ -1019,12 +1020,14 @@ export class Generator {
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
       temporalType?: TemporalBuildNodeType,
+      shape?: ShapeInformationInterface,
     |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
     let options = {};
-    if (optionalArgs && optionalArgs.kind) options.kind = optionalArgs.kind;
+    if (optionalArgs && optionalArgs.kind !== undefined) options.kind = optionalArgs.kind;
+    if (optionalArgs && optionalArgs.shape !== undefined) options.shape = optionalArgs.shape;
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
     let res = new Constructor(
       this.realm,

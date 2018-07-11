@@ -13,7 +13,7 @@ import { Utils } from "../singletons.js";
 import { Value } from "../values/index.js";
 import type { SupportedGraphQLGetters, ShapeInformationInterface } from "../types.js";
 
-type AbstractValueType =
+type ECMAScriptType =
   | "void"
   | "null"
   | "boolean"
@@ -26,7 +26,7 @@ type AbstractValueType =
   | "integral";
 
 type ShapeDescriptorCommon = {
-  jsType: AbstractValueType,
+  jsType: ECMAScriptType,
   graphQLType?: string,
 };
 
