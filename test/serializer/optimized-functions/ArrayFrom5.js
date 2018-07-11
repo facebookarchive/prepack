@@ -4,9 +4,8 @@ function fn(x, y) {
   return foo[y] + 5;
 }
 
-
 if (global.__optimize) __optimize(fn);
 
 inspect = function() {
-  return JSON.stringify([10], 0)
+  return JSON.stringify([10], 0);
 };

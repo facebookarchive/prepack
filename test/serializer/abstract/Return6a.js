@@ -1,4 +1,4 @@
-let x = global.__abstract ? __abstract("number", "(1)") : 1
+let x = global.__abstract ? __abstract("number", "(1)") : 1;
 
 let i = 0;
 
@@ -11,4 +11,6 @@ function f() {
 
 f();
 
-inspect = function() { return i; }
+inspect = function() {
+  return i;
+};

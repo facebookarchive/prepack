@@ -30,4 +30,6 @@ try {
   x = e;
 }
 
-inspect = function() { return x; }
+inspect = function() {
+  return x;
+};

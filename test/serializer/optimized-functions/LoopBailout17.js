@@ -1,12 +1,11 @@
 (function() {
-
   global._DateFormatConfig = {
     formats: {
-      'l, F j, Y': 'l, F j, Y',
+      "l, F j, Y": "l, F j, Y",
     },
-  }
+  };
 
-  var DateFormatConfig = global.__abstract ?  __abstract({}, "(global._DateFormatConfig)") : global._DateFormatConfig;
+  var DateFormatConfig = global.__abstract ? __abstract({}, "(global._DateFormatConfig)") : global._DateFormatConfig;
   global.__makeSimple && __makeSimple(DateFormatConfig);
 
   var MONTH_NAMES = void 0;
@@ -15,15 +14,7 @@
   var DateStrings = {
     getWeekdayName: function getWeekdayName(weekday) {
       if (!WEEKDAY_NAMES) {
-        WEEKDAY_NAMES = [
-          "Sunday",
-          "Monday",
-          "Tuesday",
-          "Wednesday",
-          "Thursday",
-          "Friday",
-          "Saturday"
-        ];
+        WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
       }
 
       return WEEKDAY_NAMES[weekday];
@@ -41,7 +32,7 @@
         "September",
         "October",
         "November",
-        "December"
+        "December",
       ];
     },
 
@@ -106,6 +97,5 @@
 
   global.inspect = function() {
     return JSON.stringify(global.fn("1529579851072"));
-  }
-
+  };
 })();

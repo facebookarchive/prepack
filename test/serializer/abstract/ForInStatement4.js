@@ -6,4 +6,6 @@ for (var p in ob) {
   tgt[p] = ob[p];
 }
 
-inspect = function() { return ""; }
+inspect = function() {
+  return "";
+};

@@ -9,7 +9,7 @@ require = function(moduleId) {
   var moduleIdReallyIsNumber = moduleId;
   var module = modules[moduleIdReallyIsNumber];
   return module && module.isInitialized ? module.exports : guardedLoadModule(moduleIdReallyIsNumber, module);
-}
+};
 
 function define(factory, moduleId, dependencyMap) {
   if (moduleId in modules) {
@@ -20,7 +20,7 @@ function define(factory, moduleId, dependencyMap) {
     exports: undefined,
     factory: factory,
     hasError: false,
-    isInitialized: false
+    isInitialized: false,
   };
 
   var _verboseName = arguments[3];
@@ -63,18 +63,17 @@ function loadModuleImplementation(moduleId, module) {
   }
 
   module.isInitialized = true;
-  var exports = module.exports = {};
+  var exports = (module.exports = {});
   var _module = module,
-      factory = _module.factory,
-      dependencyMap = _module.dependencyMap;
+    factory = _module.factory,
+    dependencyMap = _module.dependencyMap;
   try {
-
     var _moduleObject = { exports: exports };
 
     factory(global, require, _moduleObject, exports, dependencyMap);
     module.factory = undefined;
 
-    return module.exports = _moduleObject.exports;
+    return (module.exports = _moduleObject.exports);
   } catch (e) {
     module.hasError = true;
     module.isInitialized = false;
@@ -99,12 +98,14 @@ define(function(global, require, module, exports) {
 }, 0, null);
 
 define(function(global, r, module, exports) {
-  module.exports = function() { return r(0); }
+  module.exports = function() {
+    return r(0);
+  };
 }, 1, null);
 
 inspect = function() {
   return require(0).foo;
-}
+};
 
 var verboseNamesToModuleIds = {};
 var ErrorUtils = undefined;

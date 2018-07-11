@@ -29,13 +29,13 @@ function createElement(type, options, ...children) {
     }
   }
   return {
-    $$typeof: Symbol.for('react.element'),
+    $$typeof: Symbol.for("react.element"),
     props,
     key,
     ref,
     type,
     _owner: undefined,
-  }
+  };
 }
 
 global.React = {
@@ -43,7 +43,11 @@ global.React = {
 };
 
 function MyComponent(props) {
-  return <span>Title: {props.title}, Number: {props.number}</span>;
+  return (
+    <span>
+      Title: {props.title}, Number: {props.number}
+    </span>
+  );
 }
 
 let props = {
@@ -57,4 +61,6 @@ global.reactElement = (
   </div>
 );
 
-inspect = function() { return global.reactElement; }
+inspect = function() {
+  return global.reactElement;
+};

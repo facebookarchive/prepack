@@ -1,3 +1,3 @@
-for (;true;) {
-  break; 
+for (; true; ) {
+  break;
 }

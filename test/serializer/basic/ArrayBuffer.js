@@ -6,4 +6,6 @@ var z = new Int16Array(x);
 z[0] = 2;
 var a = new DataView(x);
 a.setInt8(2, 3);
-inspect = function() { return x.byteLength + y[0] + z[0] + y[2]; }
+inspect = function() {
+  return x.byteLength + y[0] + z[0] + y[2];
+};

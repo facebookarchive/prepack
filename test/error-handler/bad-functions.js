@@ -21,4 +21,4 @@ inspect = function() {
   additional2();
   additional1();
   return global.a;
-}
+};

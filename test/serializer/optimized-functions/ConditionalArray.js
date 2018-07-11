@@ -1,7 +1,7 @@
 // does contain:1-2-3
 
-function fn(a)  {
-  var array = (a === null ? [1,2,3] : [4,5,6]);
+function fn(a) {
+  var array = a === null ? [1, 2, 3] : [4, 5, 6];
 
   return array.join("-");
 }
@@ -13,4 +13,4 @@ inspect = function() {
     a: fn(null),
     b: fn(true),
   });
-}
+};

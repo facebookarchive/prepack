@@ -1,2 +1,4 @@
 Object["0"] = 1;
-inspect = function() { return Object["0"]; }
+inspect = function() {
+  return Object["0"];
+};

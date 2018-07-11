@@ -1,4 +1,4 @@
-var x = global.__abstract ? x = __abstract("number", "(3)") : 3;
+var x = global.__abstract ? (x = __abstract("number", "(3)")) : 3;
 
 function func1() {
   for (let i = 0; i < 10; i++) {
@@ -11,5 +11,4 @@ function func1() {
   }
 }
 
-if (global.__optimize)
-  __optimize(func1);
+if (global.__optimize) __optimize(func1);

@@ -9,4 +9,6 @@ var m = new WeakMap();
 m.set(obj1, obj3);
 m.set(obj2, obj1);
 
-inspect = function() {return "containsRootObject: " + global.s.has(obj2);}
+inspect = function() {
+  return "containsRootObject: " + global.s.has(obj2);
+};

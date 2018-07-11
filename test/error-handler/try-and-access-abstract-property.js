@@ -2,8 +2,14 @@
 // recover-from-errors
 // expected errors: [{location: {"start":{"line":13,"column":11},"end":{"line":13,"column":15},"identifierName":"obj1","source":"test/error-handler/try-and-access-abstract-property.js"}, errorCode: "PP0021", severity: "RecoverableError", message: "Possible throw inside try/catch is not yet supported"},{location: {"start":{"line":21,"column":11},"end":{"line":21,"column":15},"identifierName":"obj2","source":"test/error-handler/try-and-access-abstract-property.js"}, errorCode: "PP0021", severity: "RecoverableError", message: "Possible throw inside try/catch is not yet supported"}]
 
-let obj1 = global.__abstract ? __abstract('object', '({get foo() { return "bar"; }})') : {get foo() { return "bar"; }};
-let obj2 = global.__abstract ? __abstract('object', '({foo:{bar:"baz"}})') : {foo:{bar:"baz"}};
+let obj1 = global.__abstract
+  ? __abstract("object", '({get foo() { return "bar"; }})')
+  : {
+      get foo() {
+        return "bar";
+      },
+    };
+let obj2 = global.__abstract ? __abstract("object", '({foo:{bar:"baz"}})') : { foo: { bar: "baz" } };
 if (global.__makeSimple) {
   __makeSimple(obj2);
 }
@@ -33,4 +39,4 @@ inspect = function() {
   let ret1 = additional1();
   let ret2 = additional2();
   return JSON.stringify({ ret1, ret2 });
-}
+};

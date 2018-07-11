@@ -1,16 +1,16 @@
 var invariant = function(condition, message) {
   if (condition) return;
   throw new Error(message);
-}
+};
 
 if (!global.__evaluatePureFunction) {
   global.__evaluatePureFunction = f => f();
 }
 
 __evaluatePureFunction(() => {
-  var x = global.__abstract 
-    ? __abstract("object", "({foo: {foo2: {}}, bar: {bar2: {}}})") 
-    : {foo: {foo2: {}}, bar: {bar2: {}}};
+  var x = global.__abstract
+    ? __abstract("object", "({foo: {foo2: {}}, bar: {bar2: {}}})")
+    : { foo: { foo2: {} }, bar: { bar2: {} } };
 
   if (global.__makeSimple) {
     __makeSimple(x);
@@ -22,5 +22,5 @@ __evaluatePureFunction(() => {
   var foo2 = foo.foo2 || invariant(0, "Should not error 1!");
   var bar2 = foo.bar2 || invariant(0, "Should not error 2!");
 
-  foo2 || bar2 || invariant(0, "Should not error 3!")
+  foo2 || bar2 || invariant(0, "Should not error 3!");
 });

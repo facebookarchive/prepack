@@ -19,6 +19,6 @@ function App(props) {
 
 inspect = function() {
   return App({ a: true, b: false });
-}
+};
 
-if (this.__optimize)  __optimize(App);
+if (this.__optimize) __optimize(App);

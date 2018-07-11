@@ -14,4 +14,4 @@ if (global.__makePartial) __makePartial(global);
 
 inspect = function() {
   return global.fooFunc() === undefined && global.barUndefined === undefined && global.barzAbstract === undefined;
-}
+};

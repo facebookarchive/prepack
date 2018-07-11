@@ -3,7 +3,11 @@
 
 var b = global.__abstract ? __abstract("boolean", "true") : true;
 var x = global.__abstract ? __abstract("number", "123") : 123;
-var badOb = { valueOf: function() { throw 13;} }
+var badOb = {
+  valueOf: function() {
+    throw 13;
+  },
+};
 var ob = global.__makePartial ? __makePartial({}) : badOb;
 var y = b ? ob : x;
 
@@ -16,4 +20,6 @@ try {
 
 z1 = y < 13 && x > 122 && 123 <= x && x >= 123 && x == y && x != 1 && x === x && x !== y;
 
-inspect = function() { return "" + z + z1; }
+inspect = function() {
+  return "" + z + z1;
+};

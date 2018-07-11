@@ -8,4 +8,6 @@ let p = x ? undefined : ob.p;
 
 var y = Object.create(Object.prototype, p);
 
-inspect = function() { return "" + y; }
+inspect = function() {
+  return "" + y;
+};

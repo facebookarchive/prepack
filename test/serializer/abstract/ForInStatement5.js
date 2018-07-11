@@ -5,5 +5,5 @@ if (global.__makeSimple) __makeSimple(ob);
 
 let tgt = {};
 for (var p in ob) {
-  tgt[p] = ob[p+p];
+  tgt[p] = ob[p + p];
 }

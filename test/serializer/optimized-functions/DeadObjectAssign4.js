@@ -14,4 +14,6 @@ function f(foo) {
 
 if (global.__optimize) __optimize(f);
 
-global.inspect = function() { return f({}); }
+global.inspect = function() {
+  return f({});
+};

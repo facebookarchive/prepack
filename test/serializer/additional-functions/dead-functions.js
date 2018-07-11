@@ -1,4 +1,4 @@
-(function () {
+(function() {
   function g() {
     return 42;
   }

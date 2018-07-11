@@ -8,15 +8,15 @@ function require() {
 }
 
 var _7 = {
-  foo: " hello "
+  foo: " hello ",
 };
 
 var _a = {
   factory: {},
 };
 var _8 = {
-  "foo": {},
-  "1": _a
+  foo: {},
+  "1": _a,
 };
 
 var modules = _8;

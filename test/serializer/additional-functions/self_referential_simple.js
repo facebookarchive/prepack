@@ -12,4 +12,4 @@ if (global.__optimize) {
 
 inspect = function() {
   return func1()[0] === func1()[0];
-}
+};

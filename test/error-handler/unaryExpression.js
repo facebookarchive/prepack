@@ -5,7 +5,9 @@ var b = global.__abstract ? __abstract("boolean", "true") : true;
 var x = global.__abstract ? __abstract("number", "123") : 123;
 var badOb = {};
 if (global.__makeSimple) global.__makeSimple(badOb);
-badOb[Symbol.toPrimitive] = function() { throw 13;}
+badOb[Symbol.toPrimitive] = function() {
+  throw 13;
+};
 var mysteryOb = b ? null : badOb;
 
 var x1 = +mysteryOb;

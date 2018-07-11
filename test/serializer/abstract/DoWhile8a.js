@@ -7,4 +7,6 @@ do {
 let x = b[1];
 let j = b.length;
 
-inspect = function() { return i + " " + j + " " + x + " " + JSON.stringify(b); }
+inspect = function() {
+  return i + " " + j + " " + x + " " + JSON.stringify(b);
+};

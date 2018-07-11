@@ -32,4 +32,4 @@ inspect = function() {
   additional1();
   let foo = global.foo;
   return "" + JSON.stringify(foo.x) + JSON.stringify(foo.y);
-}
+};

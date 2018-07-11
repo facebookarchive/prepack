@@ -5,4 +5,6 @@
   }
   global.a = a;
 })();
-inspect = function() { return global.a(22); }
+inspect = function() {
+  return global.a(22);
+};

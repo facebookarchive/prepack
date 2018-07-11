@@ -14,4 +14,6 @@ class Foo extends Bar {
 
 new Foo(1);
 
-inspect = function() { return global.x; }
+inspect = function() {
+  return global.x;
+};

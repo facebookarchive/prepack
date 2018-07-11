@@ -1,2 +1,4 @@
 let y = 1 >= 3;
-inspect = function() { return y; }
+inspect = function() {
+  return y;
+};

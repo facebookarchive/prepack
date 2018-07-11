@@ -24,7 +24,7 @@ let _1FA_item = _1Ex_ ? _1FB_ : _$G_derived;
 let _1F9_ = !_1FA_item;
 
 let _1FW_ = {
-  bar: 1
+  bar: 1,
 };
 
 let _1FV_rendered = _1F9_ ? null : _1FW_;
@@ -38,5 +38,6 @@ if (_1FU_) {
   var x = 456;
 }
 
-
-inspect = function() { return x; }
+inspect = function() {
+  return x;
+};

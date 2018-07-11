@@ -10,4 +10,6 @@ function f() {
   x = 42;
 }
 
-inspect = function () {return f()};
+inspect = function() {
+  return f();
+};

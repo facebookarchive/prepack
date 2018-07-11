@@ -3,4 +3,6 @@ let y = x++;
 ++x;
 let z = --y;
 y--;
-inspect = function() { return '' + x + y + z; }
+inspect = function() {
+  return "" + x + y + z;
+};

@@ -1,4 +1,4 @@
-var x = global.__abstract ? x = __abstract("number", "(2)") : 2;
+var x = global.__abstract ? (x = __abstract("number", "(2)")) : 2;
 let i;
 let j = 100;
 
@@ -8,4 +8,6 @@ label: for (i = 0; i < 3; i++) {
   j += 100;
 }
 
-inspect = function() { return j; }
+inspect = function() {
+  return j;
+};

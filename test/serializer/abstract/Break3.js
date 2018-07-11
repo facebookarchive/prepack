@@ -12,5 +12,5 @@ var y = eval(`
     } while (true);`);
 
 inspect = function() {
-   return y;
-}
+  return y;
+};

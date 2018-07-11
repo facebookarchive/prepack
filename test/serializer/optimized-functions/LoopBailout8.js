@@ -1,6 +1,6 @@
 function fn(x, counter) {
   var i = 0;
-  for (; i !== x;) {
+  for (; i !== x; ) {
     counter.x++;
     i++;
   }
@@ -10,5 +10,5 @@ function fn(x, counter) {
 global.__optimize && __optimize(fn);
 
 inspect = function() {
-  return fn(100, {x: 2});
+  return fn(100, { x: 2 });
 };

@@ -10,4 +10,6 @@ if (!!n) {
   z = n ? 10 : 20;
 }
 
-inspect = function() { return "" + x + " " + y + " " + z; }
+inspect = function() {
+  return "" + x + " " + y + " " + z;
+};

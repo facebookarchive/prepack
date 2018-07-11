@@ -8,8 +8,14 @@ xyz: do {
   i++;
   break xyz;
 } while (i < n);
-do { 5; } while (false);
-do { } while (false);
-do { i++; } while (i < 12);
+do {
+  5;
+} while (false);
+do {} while (false);
+do {
+  i++;
+} while (i < 12);
 
-inspect = function() { return i; }
+inspect = function() {
+  return i;
+};

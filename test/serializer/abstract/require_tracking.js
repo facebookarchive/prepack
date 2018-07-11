@@ -19,7 +19,7 @@ function define(factory, moduleId, dependencyMap) {
     exports: undefined,
     factory: factory,
     hasError: false,
-    isInitialized: false
+    isInitialized: false,
   };
 
   var _verboseName = arguments[3];
@@ -62,25 +62,24 @@ function loadModuleImplementation(moduleId, module) {
   }
 
   module.isInitialized = true;
-  var exports = module.exports = {};
+  var exports = (module.exports = {});
   var _module = module,
-      factory = _module.factory,
-      dependencyMap = _module.dependencyMap;
-      try {
+    factory = _module.factory,
+    dependencyMap = _module.dependencyMap;
+  try {
+    var _moduleObject = { exports: exports };
 
-   var _moduleObject = { exports: exports };
+    factory(global, require, _moduleObject, exports, dependencyMap);
 
-   factory(global, require, _moduleObject, exports, dependencyMap);
+    module.factory = undefined;
 
-      module.factory = undefined;
-
-   return module.exports = _moduleObject.exports;
- } catch (e) {
-   module.hasError = true;
-   module.isInitialized = false;
-   module.exports = undefined;
-   throw e;
- }
+    return (module.exports = _moduleObject.exports);
+  } catch (e) {
+    module.hasError = true;
+    module.isInitialized = false;
+    module.exports = undefined;
+    throw e;
+  }
 }
 
 function unknownModuleError(id) {
@@ -96,7 +95,7 @@ function moduleThrewError(id) {
 
 define(function(global, require, module, exports) {
   var y = require(2);
-  var obj = global.__abstract ? global.__abstract(undefined, "({unsupported: true})") : ({unsupported: true});
+  var obj = global.__abstract ? global.__abstract(undefined, "({unsupported: true})") : { unsupported: true };
   if (obj.unsupported) {
     exports.magic = 42 + y.foo;
   } else {
@@ -106,9 +105,10 @@ define(function(global, require, module, exports) {
 
 define(function(global, require, module, exports) {
   var x = require(0);
-  module.exports = function() { return x; }
+  module.exports = function() {
+    return x;
+  };
 }, 1, null);
-
 
 define(function(global, require, module, exports) {
   module.exports = { foo: 5 };
@@ -116,4 +116,6 @@ define(function(global, require, module, exports) {
 
 var f = require(1);
 
-inspect = function() { return f().magic; }
+inspect = function() {
+  return f().magic;
+};

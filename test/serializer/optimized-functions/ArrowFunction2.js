@@ -11,4 +11,6 @@ function foo(x) {
 
 if (global.__optimize) __optimize(foo);
 
-inspect = function() { return foo(5).bar(); }
+inspect = function() {
+  return foo(5).bar();
+};

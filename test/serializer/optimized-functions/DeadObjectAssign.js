@@ -9,4 +9,6 @@ global.f = function() {
 
 if (global.__optimize) __optimize(f);
 
-global.inspect = function() { return global.f(); }
+global.inspect = function() {
+  return global.f();
+};

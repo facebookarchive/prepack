@@ -14,7 +14,7 @@ function bar(uri) {
     str += uri.a;
   }
   return str;
-};
+}
 
 function fn(arg) {
   new URI(new URI(arg));
@@ -22,11 +22,11 @@ function fn(arg) {
 
 if (global.__optimize) __optimize(fn);
 
-inspect = function () {
+inspect = function() {
   try {
     fn({ a: "hello" });
     return "ok";
   } catch (err) {
     return err;
   }
-}
+};

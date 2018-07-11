@@ -1,21 +1,29 @@
-let obj1 = global.__abstract ? __abstract('object', '({valueOf() { this.x = 10; return 42; }})') : {valueOf() { this.x = 10; return 42; }};
+let obj1 = global.__abstract
+  ? __abstract("object", "({valueOf() { this.x = 10; return 42; }})")
+  : {
+      valueOf() {
+        this.x = 10;
+        return 42;
+      },
+    };
 
 function additional1() {
   var y = Object.create(obj1);
-  y + '';
+  y + "";
   return y.x;
 }
 
 function additional2() {
   var x = {
-    valueOf:
-      (global.__abstract
-        ? __abstract('function', '(function() { this.foo++; return 10; })')
-        : function() { this.foo++; return 10; }
-      ),
-    foo: 0
+    valueOf: global.__abstract
+      ? __abstract("function", "(function() { this.foo++; return 10; })")
+      : function() {
+          this.foo++;
+          return 10;
+        },
+    foo: 0,
   };
-  return x + '' + x.foo;
+  return x + "" + x.foo;
 }
 
 if (global.__optimize) {
@@ -24,5 +32,5 @@ if (global.__optimize) {
 }
 
 inspect = function() {
-  return additional1() + '' + additional2();
-}
+  return additional1() + "" + additional2();
+};

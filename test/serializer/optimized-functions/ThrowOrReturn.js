@@ -1,4 +1,4 @@
-var x = global.__abstract ? x = __abstract(undefined, "({ check: false })") : { check: false };
+var x = global.__abstract ? (x = __abstract(undefined, "({ check: false })")) : { check: false };
 
 function func1() {
   if (x.check) {
@@ -7,7 +7,8 @@ function func1() {
   return 1;
 }
 
-if (global.__optimize)
-  __optimize(func1);
+if (global.__optimize) __optimize(func1);
 
-inspect = function () { return func1(); }
+inspect = function() {
+  return func1();
+};

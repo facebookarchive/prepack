@@ -8,7 +8,11 @@ var z1 = mustBeFalse || (mustBeFalse && y);
 var z2 = x && y && "xxx";
 var z3;
 var z4;
-if (x || "yyy") z3 = "zzz"; else z3 = "xyz";
-if (x || false) z4 = "zzz"; else z4 = "xyz";
+if (x || "yyy") z3 = "zzz";
+else z3 = "xyz";
+if (x || false) z4 = "zzz";
+else z4 = "xyz";
 
-inspect = function() { return "" + z + z1 + z2 + z3 + z4; }
+inspect = function() {
+  return "" + z + z1 + z2 + z3 + z4;
+};

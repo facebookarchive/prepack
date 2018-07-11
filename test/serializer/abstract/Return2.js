@@ -10,4 +10,6 @@ function f(b) {
 
 var z = f(x);
 
-inspect = function() { return "" + y + z; }
+inspect = function() {
+  return "" + y + z;
+};

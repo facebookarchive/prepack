@@ -1,7 +1,11 @@
 // throws introspection error
 
-function foo(){};
-Object.defineProperty(foo, Symbol.hasInstance, { value: function() { throw 123; } })
+function foo() {}
+Object.defineProperty(foo, Symbol.hasInstance, {
+  value: function() {
+    throw 123;
+  },
+});
 var o = global.__abstract ? __abstract("object", "({})") : {};
 
 try {
@@ -10,4 +14,6 @@ try {
   x1 = err;
 }
 
-inspect = function() { return "" + x1; }
+inspect = function() {
+  return "" + x1;
+};

@@ -3,4 +3,4 @@
 let x = __abstract("number");
 let y = __abstract("number");
 
-let ob = { [x]: function () {}, [y]: 2 };
+let ob = { [x]: function() {}, [y]: 2 };

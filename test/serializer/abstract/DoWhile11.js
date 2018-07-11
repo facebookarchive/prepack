@@ -6,4 +6,6 @@ do {
   i++;
 } while (i < n);
 
-inspect = function() { return JSON.stringify(o); }
+inspect = function() {
+  return JSON.stringify(o);
+};

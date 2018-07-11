@@ -3,6 +3,8 @@
   o.a = o;
 
   global.inspect = function() {
-    for (let name in o) { return name; }
+    for (let name in o) {
+      return name;
+    }
   };
 })();

@@ -23,4 +23,6 @@ function d() {
 }
 
 var x = a() + ";" + b() + ";" + c() + ";" + d();
-inspect = function() { return x; }
+inspect = function() {
+  return x;
+};

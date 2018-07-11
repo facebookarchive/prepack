@@ -10,4 +10,6 @@ if (x) {
   z = 2;
 }
 
-inspect = function() { return z; }
+inspect = function() {
+  return z;
+};

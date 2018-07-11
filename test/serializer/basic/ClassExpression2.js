@@ -17,9 +17,9 @@ const Bar = class extends Foo {
   method(z) {
     return this.x + this.y + z;
   }
-}
+};
 
 inspect = function() {
   var foo = new Bar();
-  return [foo, foo.method(10)]
-}
+  return [foo, foo.method(10)];
+};
