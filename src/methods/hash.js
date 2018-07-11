@@ -109,7 +109,7 @@ export class HashSet<T: Equatable & Hashable> {
     invariant(false); // otherwise Flow thinks this method can return undefined
   }
 
-  expand() {
+  expand(): void {
     let oldEntries = this._entries;
     let n = oldEntries.length;
     let m = n * 2;

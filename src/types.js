@@ -641,7 +641,7 @@ export type EnvironmentType = {
     realm: Realm,
     G: ObjectValue | AbstractObjectValue,
     thisValue: ObjectValue | AbstractObjectValue
-  ): void,
+  ): LexicalEnvironment,
 
   // ECMA262 8.1.2.3
   NewObjectEnvironment(realm: Realm, O: ObjectValue | AbstractObjectValue, E: LexicalEnvironment): LexicalEnvironment,

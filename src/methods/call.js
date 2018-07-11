@@ -468,7 +468,7 @@ export function OrdinaryCallEvaluateBody(
           if (!(abruptCompletion instanceof ForkedAbruptCompletion)) return abruptCompletion;
 
           // If none of the completions are return completions, there is no need to join either
-          if (!abruptCompletion.containsCompletion(ReturnCompletion)) return abruptCompletion;
+          if (!abruptCompletion.containsCompletion(ReturnCompletion, false)) return abruptCompletion;
 
           // Apply the joined effects of return completions to the current state since these now join the normal path
           let joinedReturnEffects = Join.extractAndJoinCompletionsOfType(ReturnCompletion, realm, abruptCompletion);
@@ -482,7 +482,7 @@ export function OrdinaryCallEvaluateBody(
           let remainingCompletions = abruptCompletion.transferChildrenToPossiblyNormalCompletion();
 
           // If there are no throw completions left inside remainingCompletions, just return.
-          if (!remainingCompletions.containsCompletion(ThrowCompletion)) return c;
+          if (!remainingCompletions.containsCompletion(ThrowCompletion, true)) return c;
 
           // Stash the remaining completions in the realm start tracking the effects that need to be appended
           // to the normal branch at the next join point.

@@ -72,7 +72,7 @@ export class Logger {
     }
   }
 
-  logCompletion(res: Completion) {
+  logCompletion(res: Completion): void {
     let realm = this.realm;
     let value = res.value;
     if (this.internalDebug) console.error(`=== ${res.constructor.name} ===`);
@@ -115,20 +115,20 @@ export class Logger {
     this._hasErrors = true;
   }
 
-  logError(value: Value, message: string) {
+  logError(value: Value, message: string): void {
     this._log(value, message, "RecoverableError");
     this._hasErrors = true;
   }
 
-  logWarning(value: Value, message: string) {
+  logWarning(value: Value, message: string): void {
     this._log(value, message, "Warning");
   }
 
-  logInformation(message: string) {
+  logInformation(message: string): void {
     this._log(this.realm.intrinsics.undefined, message, "Information");
   }
 
-  _log(value: Value, message: string, severity: Severity) {
+  _log(value: Value, message: string, severity: Severity): void {
     let loc = value.expressionLocation;
     if (value.intrinsicName) {
       message = `${message}\nintrinsic name: ${value.intrinsicName}`;
@@ -137,7 +137,7 @@ export class Logger {
     if (this.realm.handleError(diagnostic) === "Fail") throw new FatalError();
   }
 
-  hasErrors() {
+  hasErrors(): boolean {
     return this._hasErrors;
   }
 }

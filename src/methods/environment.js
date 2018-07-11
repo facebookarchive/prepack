@@ -75,7 +75,7 @@ export class EnvironmentImplementation {
     excludedNames: Array<PropertyKeyValue>,
     strictCode: boolean,
     environment: ?LexicalEnvironment
-  ) {
+  ): void | boolean | Value {
     let BindingIdentifier = ((property.argument: any): BabelNodeIdentifier);
 
     // 1. Let restObj be ObjectCreate(%ObjectPrototype%).
@@ -110,7 +110,7 @@ export class EnvironmentImplementation {
     value: Value,
     strictCode: boolean,
     environment: ?LexicalEnvironment
-  ) {
+  ): Array<PropertyKeyValue> {
     // Base condition for recursive call below
     if (properties.length === 0) {
       return [];
@@ -403,7 +403,7 @@ export class EnvironmentImplementation {
     strictCode: boolean,
     body: Array<BabelNodeStatement>,
     env: LexicalEnvironment
-  ) {
+  ): void {
     // 1. Let envRec be env's EnvironmentRecord.
     let envRec = env.environmentRecord;
 
@@ -461,7 +461,7 @@ export class EnvironmentImplementation {
     realm: Realm,
     G: ObjectValue | AbstractObjectValue,
     thisValue: ObjectValue | AbstractObjectValue
-  ) {
+  ): LexicalEnvironment {
     // 1. Let env be a new Lexical Environment.
     let env = new LexicalEnvironment(realm);
 
@@ -565,7 +565,7 @@ export class EnvironmentImplementation {
   }
 
   // ECMA262 8.3.1
-  GetActiveScriptOrModule(realm: Realm) {
+  GetActiveScriptOrModule(realm: Realm): any {
     // The GetActiveScriptOrModule abstract operation is used to determine the running script or module, based on the active function object.
     // GetActiveScriptOrModule performs the following steps:
     //
@@ -763,7 +763,7 @@ export class EnvironmentImplementation {
     iteratorRecord: { $Iterator: ObjectValue, $Done: boolean },
     strictCode: boolean,
     environment: void | LexicalEnvironment
-  ) {
+  ): void {
     let env = environment ? environment : realm.getRunningContext().lexicalEnvironment;
 
     // Check if the last formal is a rest element. If so then we want to save the

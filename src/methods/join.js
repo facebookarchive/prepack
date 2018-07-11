@@ -220,7 +220,7 @@ export class JoinImplementation {
     realm: Realm,
     pnc: PossiblyNormalCompletion,
     subsequentEffects: Effects
-  ) {
+  ): void {
     let v = subsequentEffects.result;
     invariant(v instanceof SimpleNormalCompletion);
     pnc.value = v.value;
@@ -245,7 +245,7 @@ export class JoinImplementation {
     }
   }
 
-  updatePossiblyNormalCompletionWithValue(realm: Realm, pnc: PossiblyNormalCompletion, v: Value) {
+  updatePossiblyNormalCompletionWithValue(realm: Realm, pnc: PossiblyNormalCompletion, v: Value): void {
     let nc = new SimpleNormalCompletion(v);
     pnc.value = v;
     if (pnc.consequent instanceof AbruptCompletion) {
@@ -321,13 +321,14 @@ export class JoinImplementation {
     joinCondition: AbstractValue,
     pnc: PossiblyNormalCompletion,
     nc: SimpleNormalCompletion
-  ) {
+  ): void {
     let v = nc.value;
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof SimpleNormalCompletion) {
         nc.value = AbstractValue.createFromConditionalOp(realm, joinCondition, pnc.alternate.value, v);
+        pnc.alternateEffects.result = nc;
+        nc.effects = pnc.alternateEffects;
         pnc.alternate = nc;
-        pnc.alternateEffects.result = pnc.alternate;
       } else {
         invariant(pnc.alternate instanceof PossiblyNormalCompletion);
         this.updatePossiblyNormalCompletionWithConditionalSimpleNormalCompletion(
@@ -340,8 +341,9 @@ export class JoinImplementation {
     } else {
       if (pnc.consequent instanceof SimpleNormalCompletion) {
         nc.value = AbstractValue.createFromConditionalOp(realm, joinCondition, pnc.consequent.value, v);
+        pnc.consequentEffects.result = nc;
+        nc.effects = pnc.consequentEffects;
         pnc.consequent = nc;
-        pnc.consequentEffects.result = pnc.consequent;
       } else {
         invariant(pnc.consequent instanceof PossiblyNormalCompletion);
         this.updatePossiblyNormalCompletionWithConditionalSimpleNormalCompletion(
@@ -359,7 +361,7 @@ export class JoinImplementation {
     joinCondition: AbstractValue,
     pnc: PossiblyNormalCompletion,
     nc: SimpleNormalCompletion
-  ) {
+  ): void {
     let v = nc.value;
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof SimpleNormalCompletion) {
@@ -449,7 +451,7 @@ export class JoinImplementation {
       } else if (
         convertToPNC &&
         c.consequent instanceof ForkedAbruptCompletion &&
-        c.consequent.containsCompletion(NormalCompletion)
+        c.consequent.containsCompletion(NormalCompletion, false)
       ) {
         c.updateConsequentKeepingCurrentEffects((c.consequent.transferChildrenToPossiblyNormalCompletion(): any));
         convertToPNC = false;
@@ -472,7 +474,7 @@ export class JoinImplementation {
       } else if (
         convertToPNC &&
         c.alternate instanceof ForkedAbruptCompletion &&
-        c.alternate.containsCompletion(NormalCompletion)
+        c.alternate.containsCompletion(NormalCompletion, false)
       ) {
         c.updateAlternateKeepingCurrentEffects((c.alternate.transferChildrenToPossiblyNormalCompletion(): any));
       }
@@ -598,7 +600,7 @@ export class JoinImplementation {
       };
       let val = this.joinValues(realm, result1.value, result2.value, getAbstractValue);
       invariant(val instanceof Value);
-      return new ThrowCompletion(val, result1.pureThrow && result2.pureThrow, result1.location);
+      return new ThrowCompletion(val, result1.location);
     }
     if (result1 instanceof SimpleNormalCompletion && result2 instanceof SimpleNormalCompletion) {
       return new SimpleNormalCompletion(getAbstractValue(result1.value, result2.value));

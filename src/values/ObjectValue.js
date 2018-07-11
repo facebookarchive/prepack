@@ -126,7 +126,7 @@ export default class ObjectValue extends ConcreteValue {
     return ObjectValue.trackedPropertyNames;
   }
 
-  setupBindings(propertyNames: Array<string>) {
+  setupBindings(propertyNames: Array<string>): void {
     for (let propName of propertyNames) {
       let propBindingName = ObjectValue.trackedPropertyBindingNames.get(propName);
       invariant(propBindingName !== undefined);
@@ -134,7 +134,7 @@ export default class ObjectValue extends ConcreteValue {
     }
   }
 
-  static setupTrackedPropertyAccessors(propertyNames: Array<string>) {
+  static setupTrackedPropertyAccessors(propertyNames: Array<string>): void {
     for (let propName of propertyNames) {
       let propBindingName = ObjectValue.trackedPropertyBindingNames.get(propName);
       if (propBindingName === undefined)
@@ -483,7 +483,7 @@ export default class ObjectValue extends ConcreteValue {
     return fnValue;
   }
 
-  defineNativeProperty(name: SymbolValue | string, value?: Value | Array<Value>, desc?: Descriptor = {}) {
+  defineNativeProperty(name: SymbolValue | string, value?: Value | Array<Value>, desc?: Descriptor = {}): void {
     invariant(!value || value instanceof Value);
     this.$DefineOwnProperty(name, {
       value,
@@ -494,7 +494,7 @@ export default class ObjectValue extends ConcreteValue {
     });
   }
 
-  defineNativeGetter(name: SymbolValue | string, callback: NativeFunctionCallback, desc?: Descriptor = {}) {
+  defineNativeGetter(name: SymbolValue | string, callback: NativeFunctionCallback, desc?: Descriptor = {}): void {
     let intrinsicName, funcName;
     if (typeof name === "string") {
       funcName = `get ${name}`;
@@ -519,7 +519,7 @@ export default class ObjectValue extends ConcreteValue {
     });
   }
 
-  defineNativeConstant(name: SymbolValue | string, value?: Value | Array<Value>, desc?: Descriptor = {}) {
+  defineNativeConstant(name: SymbolValue | string, value?: Value | Array<Value>, desc?: Descriptor = {}): void {
     invariant(!value || value instanceof Value);
     this.$DefineOwnProperty(name, {
       value,
@@ -530,7 +530,7 @@ export default class ObjectValue extends ConcreteValue {
     });
   }
 
-  getOwnPropertyKeysArray(): Array<string> {
+  getOwnPropertyKeysArray(allowAbstractKeys: boolean = false): Array<string> {
     if (this.isPartialObject() || this.mightBeHavocedObject() || this.unknownProperty !== undefined) {
       AbstractValue.reportIntrospectionError(this);
       throw new FatalError();
@@ -546,8 +546,10 @@ export default class ObjectValue extends ConcreteValue {
       if (!pv.mightHaveBeenDeleted()) return true;
       // The property may or may not be there at runtime.
       // We can at best return an abstract keys array.
-      // For now just terminate.
+      // For now, unless the caller has told us that is okay,
+      // just terminate.
       invariant(pv instanceof AbstractValue);
+      if (allowAbstractKeys) return true;
       AbstractValue.reportIntrospectionError(pv);
       throw new FatalError();
     });
@@ -586,7 +588,7 @@ export default class ObjectValue extends ConcreteValue {
     }
   }
 
-  copyKeys(keys: Array<PropertyKeyValue>, from: ObjectValue, to: ObjectValue) {
+  copyKeys(keys: Array<PropertyKeyValue>, from: ObjectValue, to: ObjectValue): void {
     // c. Repeat for each element nextKey of keys in List order,
     for (let nextKey of keys) {
       // i. Let desc be ? from.[[GetOwnProperty]](nextKey).

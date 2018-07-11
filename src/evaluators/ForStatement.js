@@ -232,9 +232,9 @@ function ForBodyEvaluation(
 
     // At this stage there can still be other kinds of abrupt completions left inside abruptCompletion. If not just return.
     let stillAbrupt =
-      remainingCompletions.containsCompletion(BreakCompletion) ||
-      remainingCompletions.containsCompletion(ReturnCompletion) ||
-      remainingCompletions.containsCompletion(ThrowCompletion);
+      remainingCompletions.containsCompletion(BreakCompletion, false) ||
+      remainingCompletions.containsCompletion(ReturnCompletion, false) ||
+      remainingCompletions.containsCompletion(ThrowCompletion, false);
     if (!stillAbrupt) return c;
 
     // Stash the remaining completions in the realm start tracking the effects that need to be appended
@@ -260,7 +260,7 @@ function ForBodyEvaluation(
     if (!(abruptCompletion instanceof ForkedAbruptCompletion)) throw abruptCompletion;
 
     // If there are no breaks, we don't need to join
-    if (!abruptCompletion.containsCompletion(BreakCompletion)) throw abruptCompletion;
+    if (!abruptCompletion.containsCompletion(BreakCompletion, false)) throw abruptCompletion;
 
     // Apply the joined effects of break completions to the current state since these now join the normal path
     let joinedBreakEffects = Join.extractAndJoinCompletionsOfType(BreakCompletion, realm, abruptCompletion);
@@ -275,8 +275,8 @@ function ForBodyEvaluation(
 
     // At this stage there can still be other kinds of abrupt completions left inside abruptCompletion. If not just return.
     let stillAbrupt =
-      remainingCompletions.containsCompletion(ReturnCompletion) ||
-      remainingCompletions.containsCompletion(ThrowCompletion);
+      remainingCompletions.containsCompletion(ReturnCompletion, false) ||
+      remainingCompletions.containsCompletion(ThrowCompletion, false);
     if (!stillAbrupt) return (UpdateEmpty(realm, c, V): any).value;
 
     // Stash the remaining completions in the realm start tracking the effects that need to be appended

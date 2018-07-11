@@ -14,7 +14,6 @@ import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { ThrowCompletion } from "../completions.js";
 import { Environment } from "../singletons.js";
-import invariant from "../invariant.js";
 import type { BabelNodeThrowStatement } from "babel-types";
 
 export default function(
@@ -25,11 +24,5 @@ export default function(
 ): Value {
   let exprRef = env.evaluate(ast.argument, strictCode);
   let exprValue = Environment.GetValue(realm, exprRef);
-  if (realm.isInPureScope() && !realm.isInPureTryStatement) {
-    invariant(realm.generator !== undefined);
-    // TODO: we should porbably materialize exprValue at this point
-    realm.generator.emitThrow(exprValue);
-    throw new ThrowCompletion(realm.intrinsics.empty, true, ast.loc);
-  }
-  throw new ThrowCompletion(exprValue, false, ast.loc);
+  throw new ThrowCompletion(exprValue, ast.loc);
 }

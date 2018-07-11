@@ -192,7 +192,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
    * The offspring checking is needed because object may be emitting in a "ConditionalAssignmentBranch" of
    * lazy object's initializer body.
    */
-  _isEmittingIntoLazyObjectInitializerBody(obj: ObjectValue) {
+  _isEmittingIntoLazyObjectInitializerBody(obj: ObjectValue): boolean {
     const objLazyBody = this._lazyObjectInitializers.get(obj);
     return objLazyBody !== undefined && this.emitter.isCurrentBodyOffspringOf(objLazyBody);
   }

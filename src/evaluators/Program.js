@@ -235,7 +235,7 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
         // We are about the leave this program and this presents a join point where all control flows
         // converge into a single flow using the joined effects as the new state.
         res = Functions.incorporateSavedCompletion(realm, res);
-        if (res instanceof ForkedAbruptCompletion && res.containsCompletion(ThrowCompletion)) {
+        if (res instanceof ForkedAbruptCompletion && res.containsCompletion(ThrowCompletion, true)) {
           // The global state is now at the point where the first fork occurred.
           let joinedEffects = Join.joinNestedEffects(realm, res);
           realm.applyEffects(joinedEffects);
@@ -269,11 +269,11 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
       let e = realm.getCapturedEffects();
       realm.stopEffectCaptureAndUndoEffects(res);
       // The global state is now at the point where the last fork occurred.
-      if (res.containsCompletion(ThrowCompletion)) {
+      if (res.containsCompletion(ThrowCompletion, true)) {
         // Join e with the remaining completions
         let normalGenerator = e.generator;
         e.generator = new Generator(realm, "dummy", normalGenerator.pathConditions); // This generator comes after everything else.
-        let r = (e.result = new ThrowCompletion(realm.intrinsics.empty, false));
+        let r = (e.result = new ThrowCompletion(realm.intrinsics.empty));
         let fc = Join.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, res, r, e);
         let allEffects = Join.extractAndJoinCompletionsOfType(ThrowCompletion, realm, fc);
         realm.applyEffects(allEffects, "all code", true);

@@ -180,7 +180,7 @@ export class ResidualHeapVisitor {
   // to the current common scope, visit the value in the scope it was
   // created --- this causes the value later to be serialized in its
   // creation scope, ensuring that the value has the right creation / life time.
-  _registerAdditionalRoot(value: ObjectValue) {
+  _registerAdditionalRoot(value: ObjectValue): void {
     let creationGenerator = this.generatorDAG.getCreator(value) || this.globalGenerator;
 
     let additionalFunction = this._getAdditionalFunctionOfScope() || "GLOBAL";
@@ -242,7 +242,7 @@ export class ResidualHeapVisitor {
 
   // Careful!
   // Only use _withScope when you know that the currently applied effects makes sense for the given (nested) scope!
-  _withScope(scope: Scope, f: () => void) {
+  _withScope(scope: Scope, f: () => void): void {
     let oldScope = this.scope;
     this.scope = scope;
     try {
@@ -253,18 +253,18 @@ export class ResidualHeapVisitor {
   }
 
   // Queues up an action to be later processed in some arbitrary scope.
-  _enqueueWithUnrelatedScope(scope: Scope, action: () => void | boolean) {
+  _enqueueWithUnrelatedScope(scope: Scope, action: () => void | boolean): void {
     this.delayedActions.push({ scope, action });
   }
 
   // Queues up visiting a value in some arbitrary scope.
-  _visitInUnrelatedScope(scope: Scope, val: Value) {
+  _visitInUnrelatedScope(scope: Scope, val: Value): void {
     let scopes = this.values.get(val);
     if (scopes !== undefined && scopes.has(scope)) return;
     this._enqueueWithUnrelatedScope(scope, () => this.visitValue(val));
   }
 
-  visitObjectProperty(binding: PropertyBinding) {
+  visitObjectProperty(binding: PropertyBinding): void {
     let desc = binding.descriptor;
     let obj = binding.object;
     invariant(binding.key !== undefined, "Undefined keys should never make it here.");
@@ -329,7 +329,7 @@ export class ResidualHeapVisitor {
     }
   }
 
-  visitObjectPrototype(obj: ObjectValue) {
+  visitObjectPrototype(obj: ObjectValue): void {
     let proto = obj.$Prototype;
 
     let kind = obj.getKind();
@@ -340,7 +340,7 @@ export class ResidualHeapVisitor {
     }
   }
 
-  visitConstructorPrototype(func: Value) {
+  visitConstructorPrototype(func: Value): void {
     // If the original prototype object was mutated,
     // request its serialization here as this might be observable by
     // residual code.
@@ -629,7 +629,7 @@ export class ResidualHeapVisitor {
   // function c() { return x.length + y.length; }
   // Here we need to make sure that a and b both initialize x and y because x and y will be in the same
   // captured scope because c captures both x and y.
-  visitBinding(val: FunctionValue, residualFunctionBinding: ResidualFunctionBinding) {
+  visitBinding(val: FunctionValue, residualFunctionBinding: ResidualFunctionBinding): void {
     let environment = residualFunctionBinding.declarativeEnvironmentRecord;
     if (environment === null) return;
     invariant(this.scope === val);
@@ -983,7 +983,7 @@ export class ResidualHeapVisitor {
   }
 
   // Overridable hook for post-visiting the value.
-  postProcessValue(val: Value) {}
+  postProcessValue(val: Value): void {}
 
   _mark(val: Value): boolean {
     let scopes = this.values.get(val);
@@ -1189,7 +1189,7 @@ export class ResidualHeapVisitor {
   //             we don't overwrite anything they capture
   // PropertyBindings -- (property modifications) visit any property bindings to pre-existing objects
   // CreatedObjects -- should take care of itself
-  _visitAdditionalFunction(functionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects) {
+  _visitAdditionalFunction(functionValue: FunctionValue, additionalEffects: AdditionalFunctionEffects): void {
     // Get Instance + Info
     invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
     let code = functionValue.$ECMAScriptCode;
@@ -1230,7 +1230,7 @@ export class ResidualHeapVisitor {
       for (let instance of this.functionInstances.values()) referentializer.referentialize(instance);
   }
 
-  _visitUntilFixpoint() {
+  _visitUntilFixpoint(): void {
     if (this.realm.react.verbose) {
       this.logger.logInformation(`Computing fixed point...`);
     }

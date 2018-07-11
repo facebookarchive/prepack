@@ -19,12 +19,14 @@ export class Completion {
     this.value = value;
     this.target = target;
     this.location = location;
+    this.createdInPureScope = value.$Realm.isInPureScope();
     invariant(this.constructor !== Completion, "Completion is an abstract base class");
   }
 
   value: Value;
   target: ?string;
   location: ?BabelNodeSourceLocation;
+  createdInPureScope: boolean;
 
   effects: ?Effects;
 
@@ -55,17 +57,23 @@ export class AbruptCompletion extends Completion {
 }
 
 export class ThrowCompletion extends AbruptCompletion {
-  constructor(value: Value, pureThrow: boolean, location: ?BabelNodeSourceLocation, nativeStack?: ?string) {
+  constructor(value: Value, location: ?BabelNodeSourceLocation, nativeStack?: ?string) {
     super(value, location);
     this.nativeStack = nativeStack || new Error().stack;
-    this.pureThrow = pureThrow;
     let realm = value.$Realm;
-    if (realm.isInPureScope() && realm.reportSideEffectCallback !== undefined && !pureThrow) {
-      realm.reportSideEffectCallback("EXCEPTION_THROWN", undefined, location);
+
+    if (this.createdInPureScope) {
+      if (!realm.isInPureTryStatement) {
+        invariant(realm.generator !== undefined);
+        // TODO: we should porbably materialize exprValue at this point
+        realm.generator.emitThrow(value);
+        this.value = realm.intrinsics.empty;
+      } else if (realm.reportSideEffectCallback !== undefined) {
+        realm.reportSideEffectCallback("EXCEPTION_THROWN", undefined, location);
+      }
     }
   }
 
-  pureThrow: boolean;
   nativeStack: string;
 }
 
@@ -127,7 +135,7 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
     return this.alternate.effects;
   }
 
-  updateConsequentKeepingCurrentEffects(newConsequent: AbruptCompletion) {
+  updateConsequentKeepingCurrentEffects(newConsequent: AbruptCompletion): AbruptCompletion {
     let effects = this.consequent.effects;
     invariant(effects);
     newConsequent.effects = effects;
@@ -136,7 +144,7 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
     return newConsequent;
   }
 
-  updateAlternateKeepingCurrentEffects(newAlternate: AbruptCompletion) {
+  updateAlternateKeepingCurrentEffects(newAlternate: AbruptCompletion): AbruptCompletion {
     let effects = this.alternate.effects;
     invariant(effects);
     newAlternate.effects = effects;
@@ -152,14 +160,24 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
     );
   }
 
-  containsCompletion(CompletionType: typeof Completion): boolean {
-    if (this.consequent instanceof CompletionType) return true;
-    if (this.alternate instanceof CompletionType) return true;
+  containsCompletion(CompletionType: typeof Completion, skipCompletionsCreatedInPureScope: boolean): boolean {
+    if (
+      this.consequent instanceof CompletionType &&
+      this.consequent.createdInPureScope !== skipCompletionsCreatedInPureScope
+    ) {
+      return true;
+    }
+    if (
+      this.alternate instanceof CompletionType &&
+      this.alternate.createdInPureScope !== skipCompletionsCreatedInPureScope
+    ) {
+      return true;
+    }
     if (this.consequent instanceof ForkedAbruptCompletion) {
-      if (this.consequent.containsCompletion(CompletionType)) return true;
+      if (this.consequent.containsCompletion(CompletionType, skipCompletionsCreatedInPureScope)) return true;
     }
     if (this.alternate instanceof ForkedAbruptCompletion) {
-      if (this.alternate.containsCompletion(CompletionType)) return true;
+      if (this.alternate.containsCompletion(CompletionType, skipCompletionsCreatedInPureScope)) return true;
     }
     return false;
   }
@@ -251,7 +269,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
 
   // TODO blappert: these functions are a copy of those in ForkedAbruptCompletion, but the two classes will be unified
   // soon
-  updateConsequentKeepingCurrentEffects(newConsequent: Completion) {
+  updateConsequentKeepingCurrentEffects(newConsequent: Completion): Completion {
     if (newConsequent instanceof NormalCompletion) this.value = newConsequent.value;
     let effects = this.consequentEffects;
     newConsequent.effects = effects;
@@ -260,7 +278,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     return newConsequent;
   }
 
-  updateAlternateKeepingCurrentEffects(newAlternate: Completion) {
+  updateAlternateKeepingCurrentEffects(newAlternate: Completion): Completion {
     if (newAlternate instanceof NormalCompletion) this.value = newAlternate.value;
     let effects = this.alternateEffects;
     newAlternate.effects = effects;
@@ -294,14 +312,24 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     return result;
   }
 
-  containsCompletion(CompletionType: typeof Completion): boolean {
-    if (this.consequent instanceof CompletionType) return true;
-    if (this.alternate instanceof CompletionType) return true;
+  containsCompletion(CompletionType: typeof Completion, skipCompletionsCreatedInPureScope: boolean): boolean {
+    if (
+      this.consequent instanceof CompletionType &&
+      this.consequent.createdInPureScope !== skipCompletionsCreatedInPureScope
+    ) {
+      return true;
+    }
+    if (
+      this.alternate instanceof CompletionType &&
+      this.alternate.createdInPureScope !== skipCompletionsCreatedInPureScope
+    ) {
+      return true;
+    }
     if (this.consequent instanceof ForkedAbruptCompletion || this.consequent instanceof PossiblyNormalCompletion) {
-      if (this.consequent.containsCompletion(CompletionType)) return true;
+      if (this.consequent.containsCompletion(CompletionType, skipCompletionsCreatedInPureScope)) return true;
     }
     if (this.alternate instanceof ForkedAbruptCompletion || this.alternate instanceof PossiblyNormalCompletion) {
-      if (this.alternate.containsCompletion(CompletionType)) return true;
+      if (this.alternate.containsCompletion(CompletionType, skipCompletionsCreatedInPureScope)) return true;
     }
     return false;
   }

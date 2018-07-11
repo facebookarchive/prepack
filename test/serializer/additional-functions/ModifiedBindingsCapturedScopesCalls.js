@@ -1,3 +1,4 @@
+// expected Warning: PP1007
 // add at runtime:var a = 17;
 // Copies of \|\|:2
 (function () {

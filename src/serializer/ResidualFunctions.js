@@ -15,6 +15,9 @@ import { FunctionValue, ECMAScriptSourceFunctionValue, ObjectValue } from "../va
 import type { SerializerOptions } from "../options.js";
 import * as t from "babel-types";
 import type {
+  BabelNodeCallExpression,
+  BabelNodeClassMethod,
+  BabelNodeClassExpression,
   BabelNodeExpression,
   BabelNodeStatement,
   BabelNodeIdentifier,
@@ -22,7 +25,6 @@ import type {
   BabelNodeLVal,
   BabelNodeSpreadElement,
   BabelNodeFunctionExpression,
-  BabelNodeClassExpression,
   BabelNodeArrowFunctionExpression,
 } from "babel-types";
 import type { FunctionBodyAstNode } from "../types.js";
@@ -46,12 +48,8 @@ import { Referentializer } from "./Referentializer.js";
 import { getOrDefault } from "./utils.js";
 
 type ResidualFunctionsResult = {
-  unstrictFunctionBodies: Array<
-    BabelNodeFunctionExpression | BabelNodeClassExpression | BabelNodeArrowFunctionExpression
-  >,
-  strictFunctionBodies: Array<
-    BabelNodeFunctionExpression | BabelNodeClassExpression | BabelNodeArrowFunctionExpression
-  >,
+  unstrictFunctionBodies: Array<BabelNodeFunctionExpression | BabelNodeArrowFunctionExpression>,
+  strictFunctionBodies: Array<BabelNodeFunctionExpression | BabelNodeArrowFunctionExpression>,
 };
 
 export class ResidualFunctions {
@@ -118,27 +116,27 @@ export class ResidualFunctions {
   referentializer: Referentializer;
   additionalFunctionPreludes: Map<FunctionValue, Array<BabelNodeStatement>>;
 
-  getStatistics() {
+  getStatistics(): SerializerStatistics {
     invariant(this.realm.statistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
     return this.realm.statistics;
   }
 
-  addFunctionInstance(instance: FunctionInstance) {
+  addFunctionInstance(instance: FunctionInstance): void {
     this.functionInstances.push(instance);
     let code = instance.functionValue.$ECMAScriptCode;
     invariant(code != null);
     getOrDefault(this.functions, code, () => []).push(instance);
   }
 
-  setFunctionPrototype(constructor: FunctionValue, prototypeId: BabelNodeIdentifier) {
+  setFunctionPrototype(constructor: FunctionValue, prototypeId: BabelNodeIdentifier): void {
     this.functionPrototypes.set(constructor, prototypeId);
   }
 
-  addFunctionUsage(val: FunctionValue, bodyReference: BodyReference) {
+  addFunctionUsage(val: FunctionValue, bodyReference: BodyReference): void {
     if (!this.firstFunctionUsages.has(val)) this.firstFunctionUsages.set(val, bodyReference);
   }
 
-  _shouldUseFactoryFunction(funcBody: BabelNodeBlockStatement, instances: Array<FunctionInstance>) {
+  _shouldUseFactoryFunction(funcBody: BabelNodeBlockStatement, instances: Array<FunctionInstance>): boolean {
     invariant(instances.length > 0);
     function shouldInlineFunction(): boolean {
       if (instances[0].scopeInstances.size > 0) return false;
@@ -261,7 +259,11 @@ export class ResidualFunctions {
     });
   }
 
-  _createFunctionExpression(params: Array<BabelNodeLVal>, body: BabelNodeBlockStatement, isLexical: boolean) {
+  _createFunctionExpression(
+    params: Array<BabelNodeLVal>,
+    body: BabelNodeBlockStatement,
+    isLexical: boolean
+  ): BabelNodeFunctionExpression | BabelNodeArrowFunctionExpression {
     // Additional statements might be inserted at the beginning of the body, so we clone it.
     body = ((Object.assign({}, body): any): BabelNodeBlockStatement);
     return isLexical ? t.arrowFunctionExpression(params, body) : t.functionExpression(null, params, body);
@@ -296,11 +298,32 @@ export class ResidualFunctions {
     );
     this._sortFunctionByOriginalOrdering(functionEntries);
     this.getStatistics().functions = functionEntries.length;
-    let unstrictFunctionBodies = [];
-    let strictFunctionBodies = [];
+    let unstrictFunctionBodies: Array<BabelNodeFunctionExpression | BabelNodeArrowFunctionExpression> = [];
+    let strictFunctionBodies: Array<BabelNodeFunctionExpression | BabelNodeArrowFunctionExpression> = [];
+    let registerFunctionStrictness = (
+      node:
+        | BabelNodeFunctionExpression
+        | BabelNodeArrowFunctionExpression
+        | BabelNodeClassMethod
+        | BabelNodeClassExpression,
+      strict: boolean
+    ) => {
+      if (t.isFunctionExpression(node) || t.isArrowFunctionExpression(node)) {
+        (strict ? strictFunctionBodies : unstrictFunctionBodies).push(
+          ((node: any): BabelNodeFunctionExpression | BabelNodeArrowFunctionExpression)
+        );
+      }
+    };
     let funcNodes: Map<FunctionValue, BabelNodeFunctionExpression> = new Map();
-
-    let defineFunction = (instance, funcId, funcOrClassNode) => {
+    let defineFunction = (
+      instance: FunctionInstance,
+      funcId: BabelNodeIdentifier,
+      funcOrClassNode:
+        | BabelNodeCallExpression
+        | BabelNodeFunctionExpression
+        | BabelNodeArrowFunctionExpression
+        | BabelNodeClassExpression
+    ) => {
       let { functionValue } = instance;
 
       if (instance.initializationStatements.length > 0) {
@@ -420,11 +443,10 @@ export class ResidualFunctions {
       let id = this.locationService.getLocation(funcValue);
       invariant(id !== undefined);
 
-      if (funcValue instanceof ECMAScriptSourceFunctionValue && funcValue.$Strict) {
-        strictFunctionBodies.push(funcOrClassNode);
-      } else {
-        unstrictFunctionBodies.push(funcOrClassNode);
-      }
+      registerFunctionStrictness(
+        funcOrClassNode,
+        funcValue instanceof ECMAScriptSourceFunctionValue && funcValue.$Strict
+      );
       defineFunction(instance, id, funcOrClassNode);
     }
 
@@ -530,11 +552,7 @@ export class ResidualFunctions {
           let id = this.locationService.getLocation(functionValue);
           invariant(id !== undefined);
 
-          if (functionValue.$Strict) {
-            strictFunctionBodies.push(funcOrClassNode);
-          } else {
-            unstrictFunctionBodies.push(funcOrClassNode);
-          }
+          registerFunctionStrictness(funcOrClassNode, functionValue.$Strict);
           invariant(id !== undefined);
           invariant(funcOrClassNode !== undefined);
           defineFunction(instance, id, funcOrClassNode);
@@ -620,11 +638,7 @@ export class ResidualFunctions {
         let factoryDeclaration = t.variableDeclaration("var", [t.variableDeclarator(factoryId, factoryNode)]);
         this.prelude.push(factoryDeclaration);
 
-        if (normalInstances[0].functionValue.$Strict) {
-          strictFunctionBodies.push(factoryNode);
-        } else {
-          unstrictFunctionBodies.push(factoryNode);
-        }
+        registerFunctionStrictness(factoryNode, normalInstances[0].functionValue.$Strict);
 
         for (let instance of normalInstances) {
           let { functionValue, residualFunctionBindings, insertionPoint } = instance;
@@ -672,11 +686,7 @@ export class ResidualFunctions {
             let childBody = t.blockStatement([t.returnStatement(t.callExpression(callee, callArgs))]);
 
             funcNode = t.functionExpression(null, params, childBody);
-            if (functionValue.$Strict) {
-              strictFunctionBodies.push(funcNode);
-            } else {
-              unstrictFunctionBodies.push(funcNode);
-            }
+            registerFunctionStrictness(funcNode, functionValue.$Strict);
           } else {
             funcNode = t.callExpression(
               t.memberExpression(factoryId, t.identifier("bind")),

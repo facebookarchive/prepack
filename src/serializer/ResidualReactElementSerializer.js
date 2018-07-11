@@ -14,7 +14,7 @@ import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { canHoistReactElement } from "../react/hoisting.js";
 import * as t from "babel-types";
 import type { BabelNode, BabelNodeExpression } from "babel-types";
-import { AbstractValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
+import { AbstractValue, AbstractObjectValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
 import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
 import { Logger } from "../utils/logger.js";
 import invariant from "../invariant.js";
@@ -79,7 +79,7 @@ export class ResidualReactElementSerializer {
     reactElementAst: BabelNodeExpression,
     hoistedCreateElementIdentifier: BabelNodeIdentifier,
     originalCreateElementIdentifier: BabelNodeIdentifier
-  ) {
+  ): void {
     // if the currentHoistedReactElements is not defined, we create it an emit the function call
     // this should only occur once per additional function
     if (this._lazilyHoistedNodes === undefined) {
@@ -107,7 +107,7 @@ export class ResidualReactElementSerializer {
     this._lazilyHoistedNodes.nodes.push({ id, astNode: reactElementAst });
   }
 
-  _getReactLibraryValue() {
+  _getReactLibraryValue(): AbstractObjectValue | ObjectValue {
     let reactLibraryObject = this.realm.fbLibraries.react;
     // if there is no React library, then we should throw and error
     if (reactLibraryObject === undefined) {
@@ -116,7 +116,7 @@ export class ResidualReactElementSerializer {
     return reactLibraryObject;
   }
 
-  _getReactCreateElementValue() {
+  _getReactCreateElementValue(): Value {
     let reactLibraryObject = this._getReactLibraryValue();
     return getProperty(this.realm, reactLibraryObject, "createElement");
   }
@@ -438,7 +438,7 @@ export class ResidualReactElementSerializer {
     return reactElementChild;
   }
 
-  serializeLazyHoistedNodes() {
+  serializeLazyHoistedNodes(): Array<BabelNodeStatement> {
     const entries = [];
     if (this._lazilyHoistedNodes !== undefined) {
       let { id, nodes, createElementIdentifier } = this._lazilyHoistedNodes;

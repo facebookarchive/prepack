@@ -375,15 +375,7 @@ export function applyGetDerivedStateFromProps(
         // is not simple. however, given getDerivedStateFromProps is
         // meant to be pure, we can assume that there are no getters on
         // the partial abstract state
-        AbstractValue.createTemporalFromBuildFunction(
-          realm,
-          ObjectValue,
-          [newState, prevState, state],
-          ([..._args]) => {
-            return t.callExpression(preludeGenerator.memoizeReference("Object.assign"), ((_args: any): Array<any>));
-          },
-          { skipInvariant: true, mutatesOnly: [newState], temporalType: "OBJECT_ASSIGN" }
-        );
+        AbstractValue.createTemporalObjectAssign(realm, newState, [prevState, state]);
         newState.makeSimple();
         newState.makePartial();
         newState.makeFinal();
@@ -398,19 +390,7 @@ export function applyGetDerivedStateFromProps(
         if (realm.isInPureScope() && e instanceof FatalError) {
           let preludeGenerator = realm.preludeGenerator;
           invariant(preludeGenerator !== undefined);
-          AbstractValue.createTemporalFromBuildFunction(
-            realm,
-            ObjectValue,
-            [objectAssign, newState, prevState, state],
-            ([..._args]) => {
-              return t.callExpression(preludeGenerator.memoizeReference("Object.assign"), ((_args: any): Array<any>));
-            },
-            {
-              skipInvariant: true,
-              mutatesOnly: [newState],
-              temporalType: "OBJECT_ASSIGN",
-            }
-          );
+          AbstractValue.createTemporalObjectAssign(realm, newState, [prevState, state]);
           newState.makeSimple();
           newState.makePartial();
           return newState;

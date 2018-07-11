@@ -38,7 +38,6 @@ import {
   HasSomeCompatibleType,
 } from "../../methods/index.js";
 import { Create, Havoc, Properties as Props, To } from "../../singletons.js";
-import type { BabelNodeExpression } from "babel-types";
 import * as t from "babel-types";
 import invariant from "../../invariant.js";
 
@@ -273,31 +272,7 @@ export default function(realm: Realm): NativeFunctionValue {
         // but now that it is partial we need to set the _isSimple flag.
         to.makeSimple();
 
-        // Tell serializer that it may add properties to to only after temporalTo has been emitted
-        let temporalArgs = [to, ...delayedSources];
-        let preludeGenerator = realm.preludeGenerator;
-        invariant(preludeGenerator !== undefined);
-        let temporalTo = AbstractValue.createTemporalFromBuildFunction(
-          realm,
-          ObjectValue,
-          temporalArgs,
-          ([targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
-            return t.callExpression(preludeGenerator.memoizeReference("Object.assign"), [targetNode, ...sourceNodes]);
-          },
-          {
-            skipInvariant: true,
-            mutatesOnly: [to],
-            temporalType: "OBJECT_ASSIGN",
-          }
-        );
-        invariant(temporalTo instanceof AbstractObjectValue);
-        if (to instanceof AbstractObjectValue) {
-          temporalTo.values = to.values;
-        } else {
-          invariant(to instanceof ObjectValue);
-          temporalTo.values = new ValuesDomain(to);
-        }
-        to.temporalAlias = temporalTo;
+        AbstractValue.createTemporalObjectAssign(realm, to, delayedSources);
       }
       return to;
     });
