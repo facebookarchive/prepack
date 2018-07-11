@@ -681,6 +681,34 @@ export default class AbstractObjectValue extends AbstractValue {
         return cv.$Set(P, V, Receiver === this ? cv : Receiver);
       }
       invariant(false);
+    } else if (this.kind === "conditional") {
+      // this is the join of two concrete/abstract objects
+      // use this join condition for the join of the two property values
+      let [cond, ob1, ob2] = this.args;
+      invariant(cond instanceof AbstractValue);
+      invariant(ob1 instanceof ObjectValue || ob1 instanceof AbstractObjectValue);
+      invariant(ob2 instanceof ObjectValue || ob2 instanceof AbstractObjectValue);
+      let d1 = ob1.$GetOwnProperty(P);
+      let d2 = ob2.$GetOwnProperty(P);
+      let oldVal1 =
+        d1 === undefined ? this.$Realm.intrinsics.empty : IsDataDescriptor(this.$Realm, d1) ? d1.value : undefined;
+      let oldVal2 =
+        d2 === undefined ? this.$Realm.intrinsics.empty : IsDataDescriptor(this.$Realm, d2) ? d2.value : undefined;
+      if (oldVal1 === undefined || oldVal2 === undefined) {
+        AbstractValue.reportIntrospectionError(this, P);
+        throw new FatalError();
+      }
+      invariant(oldVal1 instanceof Value);
+      invariant(oldVal2 instanceof Value);
+      let newVal1 = AbstractValue.createFromConditionalOp(this.$Realm, cond, V, oldVal1);
+      let newVal2 = AbstractValue.createFromConditionalOp(this.$Realm, cond, oldVal2, V);
+      let result1 = ob1.$Set(P, newVal1, ob1);
+      let result2 = ob2.$Set(P, newVal2, ob2);
+      if (result1 !== result2) {
+        AbstractValue.reportIntrospectionError(this, P);
+        throw new FatalError();
+      }
+      return result1;
     } else {
       let sawTrue = false;
       let sawFalse = false;
