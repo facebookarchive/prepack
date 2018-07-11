@@ -109,13 +109,13 @@ export class Functions {
       : "location unknown";
     realm.handleError(
       new CompilerDiagnostic(
-        `Optimized Function Value ${location} is an not a function or react element`,
+        `Optimized Function Value ${location} is an not a function or React component`,
         realm.currentLocation,
         "PP0033",
         "FatalError"
       )
     );
-    throw new FatalError("Optimized Function Values must be functions or react elements");
+    throw new FatalError("Optimized Function Values must be functions or React components");
   }
 
   __generateInitialAdditionalFunctions(globalKey: string): Array<AdditionalFunctionEntry> {
