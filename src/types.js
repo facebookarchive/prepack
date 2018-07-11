@@ -755,12 +755,7 @@ export type JoinType = {
     nc: SimpleNormalCompletion
   ): void,
 
-  extractAndJoinCompletionsOfType(
-    CompletionType: typeof AbruptCompletion,
-    realm: Realm,
-    c: AbruptCompletion,
-    convertToPNC?: boolean
-  ): Effects,
+  extractAndJoinCompletionsOfType(CompletionType: typeof AbruptCompletion, realm: Realm, c: AbruptCompletion): Effects,
 
   joinForkOrChoose(realm: Realm, joinCondition: Value, e1: Effects, e2: Effects): Effects,
 
