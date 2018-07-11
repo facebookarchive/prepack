@@ -67,7 +67,6 @@ export class ThrowCompletion extends AbruptCompletion {
         invariant(realm.generator !== undefined);
         // TODO: we should porbably materialize exprValue at this point
         realm.generator.emitThrow(value);
-        this.value = realm.intrinsics.empty;
       } else if (realm.reportSideEffectCallback !== undefined) {
         realm.reportSideEffectCallback("EXCEPTION_THROWN", undefined, location);
       }

@@ -3884,13 +3884,29 @@ ReactStatistics {
 }
 `;
 
-exports[`Runtime error: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Runtime error: (JSX => JSX) 1`] = `
+"Failed to render React component \\"App\\" due to a JS error: null or undefined
+TypeError
+    "
+`;
 
-exports[`Runtime error: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Runtime error: (JSX => createElement) 1`] = `
+"Failed to render React component \\"App\\" due to a JS error: null or undefined
+TypeError
+    "
+`;
 
-exports[`Runtime error: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Runtime error: (createElement => JSX) 1`] = `
+"Failed to render React component \\"App\\" due to a JS error: null or undefined
+TypeError
+    "
+`;
 
-exports[`Runtime error: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Runtime error: (createElement => createElement) 1`] = `
+"Failed to render React component \\"App\\" due to a JS error: null or undefined
+TypeError
+    "
+`;
 
 exports[`Simple 2: (JSX => JSX) 1`] = `
 ReactStatistics {

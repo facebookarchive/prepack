@@ -38,7 +38,8 @@ import * as t from "babel-types";
 
 type AdditionalFunctionEntry = {
   value: ECMAScriptSourceFunctionValue | AbstractValue,
-  config?: ReactComponentTreeConfig,
+  reactConfig?: ReactComponentTreeConfig,
+  optimizedFunctionConfig?: Value,
 };
 
 export class Functions {
@@ -76,7 +77,7 @@ export class Functions {
     if (value instanceof ObjectValue) {
       let config = value._SafeGetDataPropertyValue("config");
       let rootComponent = value._SafeGetDataPropertyValue("rootComponent");
-      let functionValue = value._SafeGetDataPropertyValue("functionValue");
+      let functionValue = value._SafeGetDataPropertyValue("value");
 
       if (rootComponent !== realm.intrinsics.undefined) {
         // React component tree logic
@@ -88,11 +89,15 @@ export class Functions {
         if (validConfig && validRootComponent) {
           return {
             value: ((rootComponent: any): AbstractValue | ECMAScriptSourceFunctionValue),
-            config: convertConfigObjectToReactComponentTreeConfig(realm, ((config: any): ObjectValue | UndefinedValue)),
+            reactConfig: convertConfigObjectToReactComponentTreeConfig(
+              realm,
+              ((config: any): ObjectValue | UndefinedValue)
+            ),
           };
         }
       } else if (functionValue !== realm.intrinsics.undefined) {
-        return { value, config };
+        invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+        return { value: functionValue, optimizedFunctionConfig: config };
       }
     }
 
@@ -139,12 +144,12 @@ export class Functions {
     if (this.realm.react.verbose) {
       logger.logInformation(`Evaluating ${recordedReactRootValues.length} React component tree roots...`);
     }
-    for (let { value: componentRoot, config } of recordedReactRootValues) {
-      invariant(config);
+    for (let { value: componentRoot, reactConfig } of recordedReactRootValues) {
+      invariant(reactConfig);
       optimizeReactComponentTreeRoot(
         this.realm,
         componentRoot,
-        config,
+        reactConfig,
         this.writeEffects,
         environmentRecordIdAfterGlobalCode,
         logger,
@@ -157,9 +162,9 @@ export class Functions {
   // When __optimize calls are called, an optional "pure" property can be passed
   // on a config object to disable pure scope, otherwise pure scope is enabled by default.
   // i.e. __optimize(foo, { pure: false });
-  _isPureOptimizedFunction(config: Value): boolean {
-    if (config instanceof ObjectValue) {
-      let pureVal = config._SafeGetDataPropertyValue("pure");
+  _isPureOptimizedFunction(optimizedFunctionConfig: void | Value): boolean {
+    if (optimizedFunctionConfig instanceof ObjectValue) {
+      let pureVal = optimizedFunctionConfig._SafeGetDataPropertyValue("pure");
 
       // The config object should contain a "pure" property
       // that is a false boolean. Otherwise, we return true.
@@ -213,7 +218,7 @@ export class Functions {
     let additionalFunctionStack = [];
     let additionalFunctions = new Set(additionalFunctionsToProcess.map(entry => entry.value));
     let optimizedFunctionsObject = this.moduleTracer.modules.logger.tryQuery(
-      () => this.realm.$GlobalObject._SafeGetDataPropertyValue("__optimizedFunctions"),
+      () => Get(this.realm, this.realm.$GlobalObject, "__optimizedFunctions"),
       this.realm.intrinsics.undefined
     );
     invariant(optimizedFunctionsObject instanceof ObjectValue);
@@ -231,7 +236,7 @@ export class Functions {
     };
 
     let optimizedFunctionId = 0;
-    let getEffectsFromAdditionalFunctionAndNestedFunctions = ({ value: functionValue, config }) => {
+    let getEffectsFromAdditionalFunctionAndNestedFunctions = ({ value: functionValue, optimizedFunctionConfig }) => {
       let currentOptimizedFunctionId = optimizedFunctionId++;
       additionalFunctionStack.push(functionValue);
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
@@ -242,7 +247,7 @@ export class Functions {
       for (let t1 of this.realm.tracers) t1.beginOptimizingFunction(currentOptimizedFunctionId, functionValue);
       let call = this._callOfFunction(functionValue);
       let realm = this.realm;
-      let isPureFunction = this._isPureOptimizedFunction(config);
+      let isPureFunction = this._isPureOptimizedFunction(optimizedFunctionConfig);
       let effects: Effects = isPureFunction
         ? realm.evaluatePure(
             () => realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
@@ -276,7 +281,7 @@ export class Functions {
             let newEntry = this.__optimizedFunctionEntryOfValue(newValue);
             if (newEntry) {
               additionalFunctions.add(newEntry.value);
-              getEffectsFromAdditionalFunctionAndNestedFunctions(newEntry.value);
+              getEffectsFromAdditionalFunctionAndNestedFunctions(newEntry);
               // Now we have to rember the stack of effects that need to be applied to deal with
               // this additional function.
             }
