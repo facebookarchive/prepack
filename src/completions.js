@@ -140,7 +140,7 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
     newConsequent.effects = effects;
     newConsequent.effects.result = newConsequent;
     this.consequent = newConsequent;
-    return newConsequent;
+    return this;
   }
 
   updateAlternateKeepingCurrentEffects(newAlternate: AbruptCompletion): AbruptCompletion {
@@ -149,7 +149,7 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
     newAlternate.effects = effects;
     newAlternate.effects.result = newAlternate;
     this.alternate = newAlternate;
-    return newAlternate;
+    return this;
   }
 
   toDisplayString(): string {
@@ -224,20 +224,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     invariant(consequent === consequentEffects.result);
     invariant(alternate === alternateEffects.result);
     invariant(consequent instanceof NormalCompletion || alternate instanceof NormalCompletion);
-    invariant(consequent instanceof AbruptCompletion || alternate instanceof AbruptCompletion);
-    invariant(
-      consequent instanceof AbruptCompletion || (consequent instanceof NormalCompletion && value === consequent.value)
-    );
-    invariant(
-      alternate instanceof AbruptCompletion || (alternate instanceof NormalCompletion && value === alternate.value)
-    );
-    let loc =
-      consequent instanceof AbruptCompletion
-        ? consequent.location
-        : alternate instanceof Completion
-          ? alternate.location
-          : alternate.expressionLocation;
-    super(value, loc);
+    super(value, consequent.location);
     this.joinCondition = joinCondition;
     consequent.effects = consequentEffects;
     alternate.effects = alternateEffects;
@@ -266,24 +253,22 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     return this.alternate.effects;
   }
 
-  // TODO blappert: these functions are a copy of those in ForkedAbruptCompletion, but the two classes will be unified
-  // soon
-  updateConsequentKeepingCurrentEffects(newConsequent: Completion): Completion {
+  updateConsequentKeepingCurrentEffects(newConsequent: Completion): PossiblyNormalCompletion {
     if (newConsequent instanceof NormalCompletion) this.value = newConsequent.value;
     let effects = this.consequentEffects;
     newConsequent.effects = effects;
     newConsequent.effects.result = newConsequent;
     this.consequent = newConsequent;
-    return newConsequent;
+    return this;
   }
 
-  updateAlternateKeepingCurrentEffects(newAlternate: Completion): Completion {
+  updateAlternateKeepingCurrentEffects(newAlternate: Completion): PossiblyNormalCompletion {
     if (newAlternate instanceof NormalCompletion) this.value = newAlternate.value;
     let effects = this.alternateEffects;
     newAlternate.effects = effects;
     newAlternate.effects.result = newAlternate;
     this.alternate = newAlternate;
-    return newAlternate;
+    return this;
   }
 
   toDisplayString(): string {
