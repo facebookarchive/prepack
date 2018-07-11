@@ -55,7 +55,6 @@ import { cloneDescriptor, Construct } from "./methods/index.js";
 import {
   AbruptCompletion,
   Completion,
-  ErasedAbruptCompletion,
   ForkedAbruptCompletion,
   PossiblyNormalCompletion,
   SimpleNormalCompletion,
@@ -1312,14 +1311,14 @@ export class Realm {
 
     function allPathsAreAbrupt(c: Completion): boolean {
       if (c instanceof ForkedAbruptCompletion) return allPathsAreAbrupt(c.consequent) && allPathsAreAbrupt(c.alternate);
-      if (c instanceof AbruptCompletion) return !(c instanceof ErasedAbruptCompletion);
+      if (c instanceof AbruptCompletion) return true;
       return false;
     }
 
     function allPathsAreNormal(c: Completion): boolean {
       if (c instanceof PossiblyNormalCompletion || c instanceof ForkedAbruptCompletion)
         return allPathsAreNormal(c.consequent) && allPathsAreNormal(c.alternate);
-      if (c instanceof AbruptCompletion) return c instanceof ErasedAbruptCompletion;
+      if (c instanceof AbruptCompletion) return false;
       return true;
     }
 
