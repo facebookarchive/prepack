@@ -20,7 +20,6 @@ import {
   BreakCompletion,
   Completion,
   ContinueCompletion,
-  ErasedAbruptCompletion,
   PossiblyNormalCompletion,
   ForkedAbruptCompletion,
   SimpleNormalCompletion,
@@ -184,7 +183,6 @@ export class JoinImplementation {
         pnc.savedEffects
       );
     } else {
-      invariant(pnc.alternate instanceof AbruptCompletion);
       if (pnc.consequent instanceof SimpleNormalCompletion) {
         let { generator, modifiedBindings, modifiedProperties, createdObjects } = pnc.consequentEffects;
         let newConsequentEffects = new Effects(c, generator, modifiedBindings, modifiedProperties, createdObjects);
@@ -253,7 +251,7 @@ export class JoinImplementation {
         if (v instanceof AbstractValue) v = realm.simplifyAndRefineAbstractValue(v);
         if (pnc.alternate instanceof SimpleNormalCompletion) {
           nc.value = v;
-          pnc.updateAlternateKeepingCurrentEffects(nc);
+          pnc = pnc.updateAlternateKeepingCurrentEffects(nc);
           pnc.value = v;
         } else {
           invariant(pnc.alternate instanceof PossiblyNormalCompletion);
@@ -267,7 +265,7 @@ export class JoinImplementation {
         if (v instanceof AbstractValue) v = realm.simplifyAndRefineAbstractValue(v);
         if (pnc.consequent instanceof SimpleNormalCompletion) {
           nc.value = v;
-          pnc.updateConsequentKeepingCurrentEffects(nc);
+          pnc = pnc.updateConsequentKeepingCurrentEffects(nc);
           pnc.value = v;
         } else {
           invariant(pnc.consequent instanceof PossiblyNormalCompletion);
@@ -302,17 +300,37 @@ export class JoinImplementation {
       let nae = new Effects(na, ae.generator, ae.modifiedBindings, ae.modifiedProperties, ae.createdObjects);
       return new ForkedAbruptCompletion(realm, pnc.joinCondition, pncc, pnc.consequentEffects, na, nae);
     } else {
-      let pnca = pnc.alternate;
-      invariant(pnca instanceof AbruptCompletion);
-      e = realm.composeEffects(pnc.consequentEffects, e);
-      if (pnc.consequent instanceof SimpleNormalCompletion) {
-        return new ForkedAbruptCompletion(realm, pnc.joinCondition, ac, e, pnca, pnc.alternateEffects);
+      let nc, nce;
+      if (pncc instanceof PossiblyNormalCompletion) {
+        nc = this.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, pncc, ac, e);
+        let ce = pnc.consequentEffects;
+        nce = new Effects(nc, ce.generator, ce.modifiedBindings, ce.modifiedProperties, ce.createdObjects);
+      } else {
+        invariant(pncc instanceof SimpleNormalCompletion);
+        nc = ac;
+        nce = realm.composeEffects(pnc.consequentEffects, e);
       }
-      invariant(pnc.consequent instanceof PossiblyNormalCompletion);
-      let nc = this.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, pnc.consequent, ac, e);
-      let ce = pnc.consequentEffects;
-      let nce = new Effects(nc, ce.generator, ce.modifiedBindings, ce.modifiedProperties, ce.createdObjects);
-      return new ForkedAbruptCompletion(realm, pnc.joinCondition, nc, nce, pnca, pnc.alternateEffects);
+      let pnca = pnc.alternate;
+      let na, nae;
+      // TODO (hermanv) if we use e as is, it ends up being applied twice when the join of the normal
+      // path is applied to the current state. Follow up with a PR that allows Effects to get deeply cloned
+      // and then clone e at this point.
+      e = construct_empty_effects(realm);
+      // Note that ac may depend on the effects in the original e, so use e.result until the cloning is done.
+      ac = (e.result: any);
+      if (pnca instanceof PossiblyNormalCompletion) {
+        na = this.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, pnca, ac, e);
+        let ae = pnc.alternateEffects;
+        nae = new Effects(na, ae.generator, ae.modifiedBindings, ae.modifiedProperties, ae.createdObjects);
+      } else if (pnca instanceof SimpleNormalCompletion) {
+        na = ac;
+        nae = realm.composeEffects(pnc.alternateEffects, e);
+      } else {
+        invariant(pnca instanceof AbruptCompletion);
+        na = pnca;
+        nae = pnc.alternateEffects;
+      }
+      return new ForkedAbruptCompletion(realm, pnc.joinCondition, nc, nce, na, nae);
     }
   }
 
@@ -366,7 +384,7 @@ export class JoinImplementation {
     if (pnc.consequent instanceof AbruptCompletion) {
       if (pnc.alternate instanceof SimpleNormalCompletion) {
         nc.value = AbstractValue.createFromConditionalOp(realm, joinCondition, v, pnc.alternate.value);
-        pnc.updateAlternateKeepingCurrentEffects(nc);
+        pnc = pnc.updateAlternateKeepingCurrentEffects(nc);
       } else {
         invariant(pnc.alternate instanceof PossiblyNormalCompletion);
         this.updatePossiblyNormalCompletionWithInverseConditionalSimpleNormalCompletion(
@@ -379,7 +397,7 @@ export class JoinImplementation {
     } else {
       if (pnc.consequent instanceof SimpleNormalCompletion) {
         nc.value = AbstractValue.createFromConditionalOp(realm, joinCondition, v, pnc.consequent.value);
-        pnc.updateConsequentKeepingCurrentEffects(nc);
+        pnc = pnc.updateConsequentKeepingCurrentEffects(nc);
       } else {
         invariant(pnc.consequent instanceof PossiblyNormalCompletion);
         this.updatePossiblyNormalCompletionWithInverseConditionalSimpleNormalCompletion(
@@ -403,15 +421,12 @@ export class JoinImplementation {
       if (v2 instanceof EmptyValue) return v1 || realm.intrinsics.undefined;
       return AbstractValue.createFromConditionalOp(realm, joinCondition, v1, v2);
     };
-    let ac = new ErasedAbruptCompletion(realm.intrinsics.empty);
-    let ee = construct_empty_effects(realm, ac);
-    let fc = this.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, c, ac, ee);
-    let ce = construct_empty_effects(realm, fc);
+    let ce = construct_empty_effects(realm, c);
     let ae = construct_empty_effects(realm, a);
     let rv = this.joinValues(realm, c.value, a.value, getAbstractValue);
     invariant(rv instanceof Value);
     a.value = rv;
-    return new PossiblyNormalCompletion(rv, joinCondition, fc, ce, a, ae, []);
+    return new PossiblyNormalCompletion(rv, joinCondition, c, ce, a, ae, []);
   }
 
   // Join all effects that result in completions of type CompletionType.
@@ -419,12 +434,7 @@ export class JoinImplementation {
   // Also erase any generators that appears in branches resulting in completions of type CompletionType.
   // Note that c is modified in place and should be replaced with a PossiblyNormalCompletion by the caller
   // if either of its branches cease to be an AbruptCompletion.
-  extractAndJoinCompletionsOfType(
-    CompletionType: typeof AbruptCompletion,
-    realm: Realm,
-    c: AbruptCompletion,
-    convertToPNC: boolean = true
-  ): Effects {
+  extractAndJoinCompletionsOfType(CompletionType: typeof AbruptCompletion, realm: Realm, c: AbruptCompletion): Effects {
     let emptyEffects = construct_empty_effects(realm);
     if (c instanceof CompletionType) {
       emptyEffects.result = c;
@@ -433,9 +443,8 @@ export class JoinImplementation {
     if (!(c instanceof ForkedAbruptCompletion)) {
       return emptyEffects;
     }
-    let erasedAbruptCompletion = new ErasedAbruptCompletion(realm.intrinsics.empty);
     // Join up the consequent and alternate completions and compose them with their prefix effects
-    let ce = this.extractAndJoinCompletionsOfType(CompletionType, realm, c.consequent, convertToPNC);
+    let ce = this.extractAndJoinCompletionsOfType(CompletionType, realm, c.consequent);
     // ce will be applied to the global state before any non joining branches in c.consequent, so move
     // the generator from c.consequentEffects to ce.generator so that all branches will see its effects.
     ce = realm.composeEffects(c.consequentEffects, ce);
@@ -444,22 +453,14 @@ export class JoinImplementation {
     if (ce.result instanceof CompletionType) {
       // Erase completions of type CompletionType and prepare for transformation of c to a possibly normal completion
       if (c.consequent instanceof CompletionType) {
-        c.updateConsequentKeepingCurrentEffects(
-          convertToPNC ? new SimpleNormalCompletion(realm.intrinsics.empty) : erasedAbruptCompletion
-        );
-        convertToPNC = false;
-      } else if (
-        convertToPNC &&
-        c.consequent instanceof ForkedAbruptCompletion &&
-        c.consequent.containsCompletion(NormalCompletion)
-      ) {
-        c.updateConsequentKeepingCurrentEffects((c.consequent.transferChildrenToPossiblyNormalCompletion(): any));
-        convertToPNC = false;
+        c = c.updateConsequentKeepingCurrentEffects(new SimpleNormalCompletion(realm.intrinsics.empty));
+      } else if (c.consequent instanceof ForkedAbruptCompletion && c.consequent.containsCompletion(NormalCompletion)) {
+        c = c.updateConsequentKeepingCurrentEffects((c.consequent.transferChildrenToPossiblyNormalCompletion(): any));
       }
     } else {
       ce.result = new CompletionType(realm.intrinsics.empty);
     }
-    let ae = this.extractAndJoinCompletionsOfType(CompletionType, realm, c.alternate, convertToPNC);
+    let ae = this.extractAndJoinCompletionsOfType(CompletionType, realm, c.alternate);
     // ae will be applied to the global state before any non joining branches in c.alternate, so move
     // the generator from c.alternateEffects to ae.generator so that all branches will see its effects.
     ae = realm.composeEffects(c.alternateEffects, ae);
@@ -468,15 +469,9 @@ export class JoinImplementation {
     if (ae.result instanceof CompletionType) {
       // Erase completions of type CompletionType and prepare for transformation of c to a possibly normal completion
       if (c.alternate instanceof CompletionType) {
-        c.updateAlternateKeepingCurrentEffects(
-          convertToPNC ? new SimpleNormalCompletion(realm.intrinsics.empty) : erasedAbruptCompletion
-        );
-      } else if (
-        convertToPNC &&
-        c.alternate instanceof ForkedAbruptCompletion &&
-        c.alternate.containsCompletion(NormalCompletion)
-      ) {
-        c.updateAlternateKeepingCurrentEffects((c.alternate.transferChildrenToPossiblyNormalCompletion(): any));
+        c = c.updateAlternateKeepingCurrentEffects(new SimpleNormalCompletion(realm.intrinsics.empty));
+      } else if (c.alternate instanceof ForkedAbruptCompletion && c.alternate.containsCompletion(NormalCompletion)) {
+        c = c.updateAlternateKeepingCurrentEffects((c.alternate.transferChildrenToPossiblyNormalCompletion(): any));
       }
     } else {
       ae.result = new CompletionType(realm.intrinsics.empty);
