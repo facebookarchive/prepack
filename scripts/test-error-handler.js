@@ -9,8 +9,8 @@
 
 /* @flow */
 
-import { type CompilerDiagnostic, type ErrorHandlerResult, FatalError } from "../lib/errors.js";
-import { prepackFileSync } from "../lib/prepack-node.js";
+import { type CompilerDiagnostic, type ErrorHandlerResult, FatalError } from "../src/errors.js";
+import { prepackFileSync } from "../src/prepack-node.js";
 import path from "path";
 import fs from "fs";
 

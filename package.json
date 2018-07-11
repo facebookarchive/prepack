@@ -133,7 +133,7 @@
     "preset": "react-native",
     "roots": [
       "<rootDir>/node_modules/react-native/",
-      "<rootDir>/lib/",
+      "<rootDir>/src/",
       "<rootDir>/test/react/",
       "<rootDir>/test/",
       "<rootDir>/fb-www/"
