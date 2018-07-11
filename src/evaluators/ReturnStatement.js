@@ -28,5 +28,5 @@ export default function(
   } else {
     arg = realm.intrinsics.undefined;
   }
-  throw new ReturnCompletion(arg, ast.loc);
+  throw new ReturnCompletion(arg, undefined, ast.loc);
 }

@@ -211,7 +211,7 @@ function ForBodyEvaluation(
     // Incorporate the savedCompletion (we should only get called if there is one).
     invariant(realm.savedCompletion !== undefined);
     if (valueOrCompletionAtLoopContinuePoint instanceof Value)
-      valueOrCompletionAtLoopContinuePoint = new ContinueCompletion(valueOrCompletionAtLoopContinuePoint);
+      valueOrCompletionAtLoopContinuePoint = new ContinueCompletion(valueOrCompletionAtLoopContinuePoint, undefined);
     let abruptCompletion = Functions.incorporateSavedCompletion(realm, valueOrCompletionAtLoopContinuePoint);
     invariant(abruptCompletion instanceof AbruptCompletion);
 
@@ -251,7 +251,7 @@ function ForBodyEvaluation(
 
     // Incorporate the savedCompletion if there is one.
     if (valueOrCompletionAtUnconditionalExit instanceof Value)
-      valueOrCompletionAtUnconditionalExit = new BreakCompletion(valueOrCompletionAtUnconditionalExit);
+      valueOrCompletionAtUnconditionalExit = new BreakCompletion(valueOrCompletionAtUnconditionalExit, undefined);
     let abruptCompletion = Functions.incorporateSavedCompletion(realm, valueOrCompletionAtUnconditionalExit);
     invariant(abruptCompletion instanceof AbruptCompletion);
 

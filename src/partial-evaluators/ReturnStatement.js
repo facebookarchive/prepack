@@ -27,6 +27,6 @@ export default function(
   } else {
     result = realm.intrinsics.undefined;
   }
-  if (!(result instanceof AbruptCompletion)) result = new ReturnCompletion(result, ast.loc);
+  if (!(result instanceof AbruptCompletion)) result = new ReturnCompletion(result, undefined, ast.loc);
   return [result, ast, []];
 }
