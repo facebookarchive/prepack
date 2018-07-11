@@ -605,6 +605,12 @@ export default class AbstractValue extends Value {
       kind === "template for property name condition"
         ? ValuesDomain.topVal
         : ValuesDomain.binaryOp(realm, op, leftValues, rightValues);
+    if (!resultValues.isTop()) {
+      let values = resultValues.getElements();
+      if (values.size === 1) {
+        for (let val of values) return val;
+      }
+    }
     let [hash, args] = kind === undefined ? hashBinary(op, left, right) : hashCall(kind, left, right);
     let result = new AbstractValue(realm, resultTypes, resultValues, hash, args, ([x, y]) =>
       t.binaryExpression(op, x, y)

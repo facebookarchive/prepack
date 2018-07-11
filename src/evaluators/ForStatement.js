@@ -39,6 +39,7 @@ import { Environment, Functions, Havoc, Join, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import * as t from "babel-types";
 import type { FunctionBodyAstNode } from "../types.js";
+import { construct_empty_effects } from "../realm";
 import type { BabelNodeExpression, BabelNodeForStatement, BabelNodeBlockStatement } from "babel-types";
 
 type BailOutWrapperInfo = {
@@ -101,6 +102,7 @@ function ForBodyEvaluation(
   let env = realm.getRunningContext().lexicalEnvironment;
 
   // 3. Repeat
+  let iterationCount = 0;
   while (true) {
     // a. If test is not [empty], then
     if (test) {
@@ -111,10 +113,31 @@ function ForBodyEvaluation(
       let testValue = Environment.GetValue(realm, testRef);
 
       // iii. If ToBoolean(testValue) is false, return NormalCompletion(V).
-      if (!To.ToBooleanPartial(realm, testValue)) {
-        // joinAllLoopExits does not handle labeled break/continue, so only use it when doing AI
-        if (realm.useAbstractInterpretation) return joinAllLoopExits(V);
-        return V;
+      if ((testValue instanceof AbstractValue && iterationCount++ < 10) || !To.ToBooleanPartial(realm, testValue)) {
+        // If the testValue is not known, fork the state. Arbitrarily Limit this unrolling to 10 iterations.
+        // If the test eventually becomes known, we have an exact execution. If not, we exceed the limit and fail.
+        if (realm.useAbstractInterpretation) {
+          if (testValue instanceof AbstractValue) {
+            let normalCompletion = new SimpleNormalCompletion(V);
+            let abruptCompletion = new BreakCompletion(V);
+            let pnc = new PossiblyNormalCompletion(
+              V,
+              testValue,
+              normalCompletion,
+              construct_empty_effects(realm, normalCompletion),
+              abruptCompletion,
+              construct_empty_effects(realm, abruptCompletion),
+              []
+            );
+            realm.composeWithSavedCompletion(pnc);
+            realm.abstractValueImpliesMax = 1000;
+          } else {
+            // joinAllLoopExits does not handle labeled break/continue, so only use it when doing AI
+            return joinAllLoopExits(V);
+          }
+        } else {
+          return V;
+        }
       }
     }
 
@@ -512,7 +535,12 @@ function evaluateForStatement(
       varDcl;
 
       // 3. Return ? ForBodyEvaluation(the first Expression, the second Expression, Statement, « », labelSet).
-      return ForBodyEvaluation(realm, test, update, body, [], labelSet, strictCode);
+      let savedImpliesMax = realm.abstractValueImpliesMax;
+      try {
+        return ForBodyEvaluation(realm, test, update, body, [], labelSet, strictCode);
+      } finally {
+        realm.abstractValueImpliesMax = savedImpliesMax;
+      }
     } else {
       // for (LexicalDeclaration Expression; Expression) Statement
       // 1. Let oldEnv be the running execution context's LexicalEnvironment.
