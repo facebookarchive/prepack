@@ -323,7 +323,7 @@ function callNativeFunctionValue(
     }
   };
 
-  const wrapInReturnCompletion = contextVal => new ReturnCompletion(contextVal, realm.currentLocation);
+  const wrapInReturnCompletion = contextVal => new ReturnCompletion(contextVal, undefined, realm.currentLocation);
 
   if (context instanceof AbstractObjectValue && context.kind === "conditional") {
     let [condValue, consequentVal, alternateVal] = context.args;
@@ -379,7 +379,7 @@ export function OrdinaryCallEvaluateBody(
       GeneratorStart(realm, G, code);
 
       // 4. Return Completion{[[Type]]: return, [[Value]]: G, [[Target]]: empty}.
-      return new ReturnCompletion(G, realm.currentLocation);
+      return new ReturnCompletion(G, undefined, realm.currentLocation);
     } else {
       // TODO #1586: abstractRecursionSummarization is disabled for now, as it is likely too limiting
       // (as observed in large internal tests).
@@ -455,7 +455,7 @@ export function OrdinaryCallEvaluateBody(
           // converge into a single flow using their joint effects to update the post join point state.
           if (!(c instanceof ReturnCompletion)) {
             if (!(c instanceof AbruptCompletion)) {
-              c = new ReturnCompletion(realm.intrinsics.undefined, realm.currentLocation);
+              c = new ReturnCompletion(realm.intrinsics.undefined, undefined, realm.currentLocation);
             }
           }
           invariant(c instanceof AbruptCompletion);

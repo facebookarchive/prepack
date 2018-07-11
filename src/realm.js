@@ -88,13 +88,13 @@ let effects_uid = 0;
 
 export class Effects {
   constructor(
-    result: EvaluationResult,
+    result: Completion,
     generator: Generator,
     bindings: Bindings,
     propertyBindings: PropertyBindings,
     createdObjects: CreatedObjects
   ) {
-    this.result = result;
+    this._result = result;
     this.generator = generator;
     this.modifiedBindings = bindings;
     this.modifiedProperties = propertyBindings;
@@ -102,9 +102,18 @@ export class Effects {
 
     this.canBeApplied = true;
     this._id = effects_uid++;
+    if (result.effects === undefined) result.effects = this; //todo: require callers to ensure this
   }
 
-  result: EvaluationResult;
+  _result: Completion;
+  get result(): Completion {
+    return this._result;
+  }
+  set result(completion: Completion): void {
+    if (completion.effects === undefined) completion.effects = this; //todo: require callers to ensure this
+    this._result = completion;
+  }
+
   generator: Generator;
   modifiedBindings: Bindings;
   modifiedProperties: PropertyBindings;
@@ -194,7 +203,7 @@ export class ExecutionContext {
 
 export function construct_empty_effects(
   realm: Realm,
-  c: Completion = new SimpleNormalCompletion(realm.intrinsics.empty)
+  c: Completion = new SimpleNormalCompletion(realm.intrinsics.empty, undefined)
 ): Effects {
   // TODO #2222: Check if `realm.pathConditions` is always correct here.
   // The path conditions here should probably be empty.
@@ -1203,9 +1212,7 @@ export class Realm {
   }
 
   composeEffects(priorEffects: Effects, subsequentEffects: Effects): Effects {
-    let result = construct_empty_effects(this);
-
-    result.result = subsequentEffects.result;
+    let result = construct_empty_effects(this, subsequentEffects.result);
 
     result.generator = Join.composeGenerators(
       this,
@@ -1733,7 +1740,7 @@ export class Realm {
     if (typeof message === "string") message = new StringValue(this, message);
     invariant(message instanceof StringValue);
     this.nextContextLocation = this.currentLocation;
-    return new ThrowCompletion(Construct(this, type, [message]), this.currentLocation);
+    return new ThrowCompletion(Construct(this, type, [message]), undefined, this.currentLocation);
   }
 
   appendGenerator(generator: Generator, leadingComment: string = ""): void {

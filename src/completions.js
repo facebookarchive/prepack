@@ -11,22 +11,23 @@
 
 import type { BabelNodeSourceLocation } from "babel-types";
 import invariant from "./invariant.js";
-import type { Effects, Realm } from "./realm.js";
+import { Effects, Realm } from "./realm.js";
 import { AbstractValue, EmptyValue, Value } from "./values/index.js";
 
 export class Completion {
-  constructor(value: Value, location: ?BabelNodeSourceLocation, target?: ?string) {
+  constructor(value: Value, precedingEffects: void | Effects, location: ?BabelNodeSourceLocation, target?: ?string) {
     this.value = value;
+    this.effects = precedingEffects;
+    if (precedingEffects !== undefined) precedingEffects.result = this;
     this.target = target;
     this.location = location;
     invariant(this.constructor !== Completion, "Completion is an abstract base class");
   }
 
   value: Value;
+  effects: void | Effects;
   target: ?string;
   location: ?BabelNodeSourceLocation;
-
-  effects: ?Effects;
 
   toDisplayString(): string {
     return "[" + this.constructor.name + " value " + (this.value ? this.value.toDisplayString() : "undefined") + "]";
@@ -35,8 +36,8 @@ export class Completion {
 
 // Normal completions are returned just like spec completions
 export class NormalCompletion extends Completion {
-  constructor(value: Value, location: ?BabelNodeSourceLocation, target?: ?string) {
-    super(value, location, target);
+  constructor(value: Value, precedingEffects: void | Effects, location: ?BabelNodeSourceLocation, target?: ?string) {
+    super(value, precedingEffects, location, target);
     invariant(this.constructor !== NormalCompletion, "NormalCompletion is an abstract base class");
   }
 }
@@ -48,15 +49,20 @@ export class SimpleNormalCompletion extends NormalCompletion {}
 // Abrupt completions are thrown as exeptions, to make it a easier
 // to quickly get to the matching high level construct.
 export class AbruptCompletion extends Completion {
-  constructor(value: Value, location: ?BabelNodeSourceLocation, target?: ?string) {
-    super(value, location, target);
+  constructor(value: Value, precedingEffects: void | Effects, location: ?BabelNodeSourceLocation, target?: ?string) {
+    super(value, precedingEffects, location, target);
     invariant(this.constructor !== AbruptCompletion, "AbruptCompletion is an abstract base class");
   }
 }
 
 export class ThrowCompletion extends AbruptCompletion {
-  constructor(value: Value, location: ?BabelNodeSourceLocation, nativeStack?: ?string) {
-    super(value, location);
+  constructor(
+    value: Value,
+    precedingEffects: void | Effects,
+    location: ?BabelNodeSourceLocation,
+    nativeStack?: ?string
+  ) {
+    super(value, precedingEffects, location);
     this.nativeStack = nativeStack || new Error().stack;
     let realm = value.$Realm;
     if (realm.isInPureScope() && realm.reportSideEffectCallback !== undefined) {
@@ -68,20 +74,20 @@ export class ThrowCompletion extends AbruptCompletion {
 }
 
 export class ContinueCompletion extends AbruptCompletion {
-  constructor(value: Value, location: ?BabelNodeSourceLocation, target: ?string) {
-    super(value, location, target || null);
+  constructor(value: Value, precedingEffects: void | Effects, location: ?BabelNodeSourceLocation, target: ?string) {
+    super(value, precedingEffects, location, target || null);
   }
 }
 
 export class BreakCompletion extends AbruptCompletion {
-  constructor(value: Value, location: ?BabelNodeSourceLocation, target: ?string) {
-    super(value, location, target || null);
+  constructor(value: Value, precedingEffects: void | Effects, location: ?BabelNodeSourceLocation, target: ?string) {
+    super(value, precedingEffects, location, target || null);
   }
 }
 
 export class ReturnCompletion extends AbruptCompletion {
-  constructor(value: Value, location: ?BabelNodeSourceLocation) {
-    super(value, location);
+  constructor(value: Value, precedingEffects: void | Effects, location: ?BabelNodeSourceLocation) {
+    super(value, precedingEffects, location);
   }
 }
 
@@ -94,7 +100,7 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
     alternate: AbruptCompletion,
     alternateEffects: Effects
   ) {
-    super(realm.intrinsics.empty, consequent.location);
+    super(realm.intrinsics.empty, undefined, consequent.location);
     invariant(consequentEffects);
     invariant(alternateEffects);
     this.joinCondition = joinCondition;
@@ -121,19 +127,29 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
   }
 
   updateConsequentKeepingCurrentEffects(newConsequent: AbruptCompletion): AbruptCompletion {
-    let effects = this.consequent.effects;
-    invariant(effects);
-    newConsequent.effects = effects;
-    newConsequent.effects.result = newConsequent;
+    let e = this.consequent.effects;
+    invariant(e);
+    newConsequent.effects = new Effects(
+      newConsequent,
+      e.generator,
+      e.modifiedBindings,
+      e.modifiedProperties,
+      e.createdObjects
+    );
     this.consequent = newConsequent;
     return this;
   }
 
   updateAlternateKeepingCurrentEffects(newAlternate: AbruptCompletion): AbruptCompletion {
-    let effects = this.alternate.effects;
-    invariant(effects);
-    newAlternate.effects = effects;
-    newAlternate.effects.result = newAlternate;
+    let e = this.alternate.effects;
+    invariant(e);
+    newAlternate.effects = new Effects(
+      newAlternate,
+      e.generator,
+      e.modifiedBindings,
+      e.modifiedProperties,
+      e.createdObjects
+    );
     this.alternate = newAlternate;
     return this;
   }
@@ -200,7 +216,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     invariant(consequent === consequentEffects.result);
     invariant(alternate === alternateEffects.result);
     invariant(consequent instanceof NormalCompletion || alternate instanceof NormalCompletion);
-    super(value, consequent.location);
+    super(value, undefined, consequent.location);
     this.joinCondition = joinCondition;
     consequent.effects = consequentEffects;
     alternate.effects = alternateEffects;
