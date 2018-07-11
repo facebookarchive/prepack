@@ -10,5 +10,5 @@ function fn(x, oldItems) {
 global.__optimize && __optimize(fn);
 
 inspect = function() {
-  return JSON.stringify(fn(5, [1,2,3,4,5]));
+  return JSON.stringify(fn(5, [1, 2, 3, 4, 5]));
 };

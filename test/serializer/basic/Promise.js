@@ -6,4 +6,4 @@ function fn(resolve) {
 
 inspect = function() {
   return new Promise(fn);
-}
+};

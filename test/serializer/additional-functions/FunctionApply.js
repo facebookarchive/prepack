@@ -14,8 +14,5 @@ function fn(arg) {
 if (global.__optimize) __optimize(fn);
 
 inspect = function() {
-  return JSON.stringify([
-    fn([1, 2, 3]),
-    fn([4, 5, 6]),
-  ])
+  return JSON.stringify([fn([1, 2, 3]), fn([4, 5, 6])]);
 };

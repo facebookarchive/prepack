@@ -12,4 +12,6 @@ var z1 = y;
 var z2 = f(!x);
 var z3 = y;
 
-inspect = function() { return "" + z + z1 + z2 + z3; }
+inspect = function() {
+  return "" + z + z1 + z2 + z3;
+};

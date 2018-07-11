@@ -1,4 +1,4 @@
-let ob = global.__abstract ? __abstract({p: 1}, "({p: 1})") : {p: 1};
+let ob = global.__abstract ? __abstract({ p: 1 }, "({p: 1})") : { p: 1 };
 if (global.__makeSimple) __makeSimple(ob);
 
 Object.assign = function(target, sources) {
@@ -15,4 +15,6 @@ Object.assign = function(target, sources) {
 
 global.z = Object.assign({}, ob);
 
-inspect = function() { return global.z.p; }
+inspect = function() {
+  return global.z.p;
+};

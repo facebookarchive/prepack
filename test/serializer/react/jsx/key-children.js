@@ -25,13 +25,13 @@ function createElement(type, options, ...children) {
     }
   }
   return {
-    $$typeof: Symbol.for('react.element'),
+    $$typeof: Symbol.for("react.element"),
     props,
     key,
     ref,
     type,
     _owner: undefined,
-  }
+  };
 }
 
 global.React = {
@@ -44,22 +44,22 @@ global.reactElement = (
   <div>
     <span>Span 1</span>
     Text node
-    {
+    {[
+      <span>Span 2</span>,
+      "Text node",
       [
-        <span>Span 2</span>,
+        <em key="a">Em 1</em>,
+        <em key="b">Em 2</em>,
         "Text node",
-        [
-          <em key="a">Em 1</em>,
-          <em key="b">Em 2</em>,
-          "Text node",
-          <em key="c">Em 3</em>,
-          toggle ? <em key="d">Em 4</em> : <em key="d">Em 5</em>,
-        ],
-        <span>Span 3</span>,
-      ]
-    }
+        <em key="c">Em 3</em>,
+        toggle ? <em key="d">Em 4</em> : <em key="d">Em 5</em>,
+      ],
+      <span>Span 3</span>,
+    ]}
     <span>Span 4</span>
   </div>
 );
 
-inspect = function() { return global.reactElement; }
+inspect = function() {
+  return global.reactElement;
+};

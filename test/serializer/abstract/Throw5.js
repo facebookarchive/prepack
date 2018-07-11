@@ -11,4 +11,6 @@ try {
   z = e;
 }
 
-inspect = function() { return z; }
+inspect = function() {
+  return z;
+};

@@ -12,4 +12,6 @@ if (y) {
   console.log("false");
 }
 
-inspect = function() { return ""; }
+inspect = function() {
+  return "";
+};

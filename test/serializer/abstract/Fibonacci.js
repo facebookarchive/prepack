@@ -9,4 +9,6 @@ function fibonacci(x) {
 let x = fibonacci(n);
 let y = typeof x;
 
-inspect = function() { return x + " " + y; }
+inspect = function() {
+  return x + " " + y;
+};

@@ -7,8 +7,14 @@ if (!this.__evaluatePureFunction) {
 var symbol = Symbol();
 
 var result = __evaluatePureFunction(() => {
-  var obj = {y:0};
-  var somethingUnknown = global.__abstract ? __abstract(undefined, '({set x(v) { v.y++; }})') : {set x(v) { v.y++ }};
+  var obj = { y: 0 };
+  var somethingUnknown = global.__abstract
+    ? __abstract(undefined, "({set x(v) { v.y++; }})")
+    : {
+        set x(v) {
+          v.y++;
+        },
+      };
   somethingUnknown.x = obj;
   return obj.y;
 });

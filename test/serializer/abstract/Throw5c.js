@@ -6,8 +6,11 @@ if (x) {
   if (y) throw new Error("x is true");
   z = 1;
 } else {
-  if (!y) {} else throw new Error("x is false");
+  if (!y) {
+  } else throw new Error("x is false");
   z = 2;
 }
 
-inspect = function() { return z; }
+inspect = function() {
+  return z;
+};

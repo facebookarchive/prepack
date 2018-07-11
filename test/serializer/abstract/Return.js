@@ -15,4 +15,6 @@ function f(b) {
 var z = f(x);
 var z1 = y;
 
-inspect = function() { return "" + z + z1; }
+inspect = function() {
+  return "" + z + z1;
+};

@@ -4,13 +4,15 @@
 Object.defineProperty(global, "console", {
   configurable: true,
   enumerable: true,
-  get: function () { throw new Error("42"); }
+  get: function() {
+    throw new Error("42");
+  },
 });
 
 inspect = function() {
   try {
     return console;
-  } catch(e) {
+  } catch (e) {
     return e.message;
   }
-}
+};

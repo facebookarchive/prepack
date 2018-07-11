@@ -7,4 +7,6 @@ do {
   throw "oopsie";
 } while (i < n);
 
-inspect = function() { return i; }
+inspect = function() {
+  return i;
+};

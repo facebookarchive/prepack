@@ -2,9 +2,11 @@
   function bar() {
     try {
       return global._0.name;
-    } catch(e) {
+    } catch (e) {
       return "exception";
     }
   }
-  inspect = function() { return bar(); }
+  inspect = function() {
+    return bar();
+  };
 })();

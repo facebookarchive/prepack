@@ -1,11 +1,6 @@
 function fn(secondaryPattern, replaceWith, wholeNumber) {
   var replaced;
-  while (
-    (replaced = wholeNumber.replace(
-      secondaryPattern,
-      replaceWith
-    )) != wholeNumber
-  ) {
+  while ((replaced = wholeNumber.replace(secondaryPattern, replaceWith)) != wholeNumber) {
     wholeNumber = replaced;
   }
   return wholeNumber;

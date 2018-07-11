@@ -1,4 +1,4 @@
-let x = global.__abstract ? __abstract("boolean", "true") : true
+let x = global.__abstract ? __abstract("boolean", "true") : true;
 
 var y = 1;
 
@@ -13,4 +13,6 @@ function g(b) {
 
 var z = g(x);
 
-inspect = function() { return z; }
+inspect = function() {
+  return z;
+};

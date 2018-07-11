@@ -5,17 +5,18 @@
 // a larger explanation.
 
 function f(o) {
-  var p = Object.assign({}, o, {a: 1});
-  var q = Object.assign({}, p, {a: 3});
-  var p2 = Object.assign({}, o, {a: 2});
-  var q2 = Object.assign({}, p2, {a: 4});
+  var p = Object.assign({}, o, { a: 1 });
+  var q = Object.assign({}, p, { a: 3 });
+  var p2 = Object.assign({}, o, { a: 2 });
+  var q2 = Object.assign({}, p2, { a: 4 });
   return [q, q2];
 }
 
 if (global.__optimize) __optimize(f);
 
-global.inspect = function() { return JSON.stringify(f({a: 10})); }
-
+global.inspect = function() {
+  return JSON.stringify(f({ a: 10 }));
+};
 
 function f(o1, o2, g, h) {
   let a = Object.assign({}, o1);
@@ -30,7 +31,9 @@ function f(o1, o2, g, h) {
 if (global.__optimize) __optimize(f);
 
 inspect = function() {
-  return f({}, {}, 
+  return f(
+    {},
+    {},
     function(o1, o2) {
       o2.o1 = o1;
     },
@@ -38,4 +41,4 @@ inspect = function() {
       o2.o1.x = 42;
     }
   ).x;
-}
+};

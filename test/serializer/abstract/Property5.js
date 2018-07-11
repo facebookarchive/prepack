@@ -1,15 +1,17 @@
 // does not contain:dead
 let x = global.__abstract ? __abstract("boolean", "true") : true;
 
-let ob = { };
+let ob = {};
 if (x) {
-    ob.x = 123;
+  ob.x = 123;
 } else {
-    let nested = { p: "dead" };
-    ob.x = { left: nested, right: nested };
+  let nested = { p: "dead" };
+  ob.x = { left: nested, right: nested };
 }
 if (x) {
-    var y = ob;
+  var y = ob;
 }
 
-inspect = function() { return y; }
+inspect = function() {
+  return y;
+};

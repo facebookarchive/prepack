@@ -1,6 +1,6 @@
 function fn(x, oldItems) {
   var items = [];
-  for (; i !== x;) {
+  for (; i !== x; ) {
     var oldItem = oldItems[i];
     items.push(oldItem + 2);
     i++;
@@ -11,5 +11,5 @@ function fn(x, oldItems) {
 global.__optimize && __optimize(fn);
 
 inspect = function() {
-  return JSON.stringify(fn(5, [1,2,3,4,5]));
+  return JSON.stringify(fn(5, [1, 2, 3, 4, 5]));
 };

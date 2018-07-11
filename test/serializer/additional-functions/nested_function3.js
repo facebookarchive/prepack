@@ -4,7 +4,9 @@ let x1 = { bar: 500 };
 
 function additional1() {
   var x2 = { foo: 5 };
-  foo = function() { return [x1, x2]; }
+  foo = function() {
+    return [x1, x2];
+  };
   var y = 7;
 }
 
@@ -24,9 +26,15 @@ inspect = function() {
   let [ret2, ret2_] = global.foo();
   additional1();
   let [ret3, ret3_] = global.foo();
-  let strings = [ret1, ret1_, ret2, ret2_, ret3, ret3_].map(JSON.stringify).join(' ');
+  let strings = [ret1, ret1_, ret2, ret2_, ret3, ret3_].map(JSON.stringify).join(" ");
 
-  return strings + (ret1 === ret2) + (ret1 === ret3) + (ret2 === ret3) +
-    (ret1_ === ret2_) + (ret1_ === ret3_) + (ret2_ === ret3_);
-
-}
+  return (
+    strings +
+    (ret1 === ret2) +
+    (ret1 === ret3) +
+    (ret2 === ret3) +
+    (ret1_ === ret2_) +
+    (ret1_ === ret3_) +
+    (ret2_ === ret3_)
+  );
+};

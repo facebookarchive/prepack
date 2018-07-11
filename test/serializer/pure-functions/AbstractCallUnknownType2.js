@@ -5,7 +5,7 @@ if (global.__makeSimple) {
 if (global.__makePartial) {
   __makePartial(obj);
 }
-let condition = global.__abstract ? __abstract('boolean', 'false') : false;
+let condition = global.__abstract ? __abstract("boolean", "false") : false;
 
 function additional1() {
   return obj.foo();
@@ -15,7 +15,7 @@ function additional2() {
   function fn() {
     return 5;
   }
-  let fnOrString = condition ? fn : 'string';
+  let fnOrString = condition ? fn : "string";
   return fnOrString();
 }
 
@@ -37,5 +37,5 @@ inspect = function() {
   } catch (x) {
     didThrow2 = true;
   }
-  return didThrow1 + ', ' + didThrow2;
-}
+  return didThrow1 + ", " + didThrow2;
+};

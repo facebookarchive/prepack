@@ -20,8 +20,7 @@ function func1() {
   return x;
 }
 
-if (global.__optimize)
-  __optimize(func1);
+if (global.__optimize) __optimize(func1);
 
 inspect = function() {
   let error;
@@ -31,5 +30,5 @@ inspect = function() {
   } catch (e) {
     error = e.message;
   }
-  return 'err: ' + error + ' ret ' + ret + ' foo ' + global.foo;
-}
+  return "err: " + error + " ret " + ret + " foo " + global.foo;
+};

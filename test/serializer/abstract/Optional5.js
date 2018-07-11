@@ -11,4 +11,6 @@ function getCollectionData(collection) {
 
 var z = getCollectionData(y);
 
-inspect = function() { return JSON.stringify(z); }
+inspect = function() {
+  return JSON.stringify(z);
+};

@@ -11,4 +11,4 @@ function b() {
 inspect = function() {
   a();
   return cond;
-}
+};

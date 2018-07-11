@@ -1,7 +1,7 @@
 // add at runtime:global.__obj1 = { a: 1 }; global.__obj2 = { a: 2 };
 
-let obj1 = global.__abstract ? __abstract({}, 'global.__obj1') : { a: 1 };
-let obj2 = global.__abstract ? __abstract({}, 'global.__obj2') : { a: 2 };
+let obj1 = global.__abstract ? __abstract({}, "global.__obj1") : { a: 1 };
+let obj2 = global.__abstract ? __abstract({}, "global.__obj2") : { a: 2 };
 
 if (global.__makePartial) {
   __makePartial(obj1);
@@ -38,4 +38,4 @@ inspect = function() {
     result += ret2[key];
   }
   return result;
-}
+};

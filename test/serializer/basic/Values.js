@@ -8,4 +8,6 @@ function g(i) {
 var h0 = g(0);
 var h1 = g(1);
 
-inspect = function() { return h1(42) - h0(42); }
+inspect = function() {
+  return h1(42) - h0(42);
+};

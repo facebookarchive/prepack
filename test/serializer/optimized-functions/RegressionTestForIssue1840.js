@@ -27,7 +27,7 @@
   }
 
   __optimizeReactComponentTree(App, {
-    firstRenderOnly: true
+    firstRenderOnly: true,
   });
 
   module.exports = App;

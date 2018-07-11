@@ -5,13 +5,13 @@
         break;
       }
     }
-  };
+  }
 
   function fn2(count) {
     if (count >= 0) {
-      return ['1', '*'];
+      return ["1", "*"];
     } else {
-      return ['2', '*'];
+      return ["2", "*"];
     }
   }
 
@@ -22,10 +22,6 @@
   global.__optimize && __optimize(fn);
 
   global.inspect = function() {
-    return JSON.stringify([
-      fn({foo: -1}),
-      fn({foo: 1})
-    ]);
+    return JSON.stringify([fn({ foo: -1 }), fn({ foo: 1 })]);
   };
-
 })();

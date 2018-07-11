@@ -9,4 +9,6 @@ try {
   x1 = err;
 }
 
-inspect = function() { return "" + x1; }
+inspect = function() {
+  return "" + x1;
+};

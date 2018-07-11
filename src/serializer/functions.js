@@ -95,8 +95,10 @@ export class Functions {
             ),
           };
         }
-      } else if (functionValue !== realm.intrinsics.undefined) {
-        invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+      } else if (
+        functionValue !== realm.intrinsics.undefined &&
+        functionValue instanceof ECMAScriptSourceFunctionValue
+      ) {
         return { value: functionValue, optimizedFunctionConfig: config };
       }
     }

@@ -5,5 +5,7 @@ if (global.__assumeDataProperty) __assumeDataProperty(global, "inspect", undefin
 if (global.__makePartial) __makePartial(global);
 
 let foo = {};
-if(global.obj) foo = global.obj;
-inspect = function() { return ' ' + (global.obj === foo) + ' ' + global.func(); }
+if (global.obj) foo = global.obj;
+inspect = function() {
+  return " " + (global.obj === foo) + " " + global.func();
+};

@@ -1,7 +1,7 @@
 // add at runtime:global.__obj1 = { "extends": Math.random(), b: 10 }; global.__obj2 = { "while": Math.random(), b: 10 };
 
-let obj1 = global.__abstract ? __abstract({}, 'global.__obj1') : { "extends": Math.random(), b: 10 };
-let obj2 = global.__abstract ? __abstract({}, 'global.__obj2') : { "while": Math.random(), b: 10 };
+let obj1 = global.__abstract ? __abstract({}, "global.__obj1") : { extends: Math.random(), b: 10 };
+let obj2 = global.__abstract ? __abstract({}, "global.__obj2") : { while: Math.random(), b: 10 };
 
 if (global.__makePartial) {
   __makePartial(obj1);
@@ -14,13 +14,13 @@ if (global.__makeSimple) {
 
 function additional1() {
   obj1.c = 10;
-  delete obj1['extends'];
+  delete obj1["extends"];
   return obj1;
 }
 
 function additional2() {
   obj2.c = 5;
-  delete obj2['while'];
+  delete obj2["while"];
   return obj2;
 }
 
@@ -40,4 +40,4 @@ inspect = function() {
   result += ret1.b;
   result += ret2.b;
   return result;
-}
+};

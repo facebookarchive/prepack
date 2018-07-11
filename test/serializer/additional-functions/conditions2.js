@@ -1,4 +1,3 @@
-// expected Warning: PP0023
 if (!this.__evaluatePureFunction) {
   this.__evaluatePureFunction = function(f) {
     return f();
@@ -6,7 +5,6 @@ if (!this.__evaluatePureFunction) {
 }
 
 global.result = __evaluatePureFunction(() => {
-
   var something_E = global.__abstract ? __abstract(undefined, "({link_react_default_hash: {}})") : {};
 
   var babelHelpers = {
@@ -43,17 +41,18 @@ global.result = __evaluatePureFunction(() => {
   }
 
   var someModuleY = global.__abstract ? __abstract(undefined, "({getURIBuilder() {return new global.URI();}})") : {};
-  var ActorURIConfig = global.__abstract ? __abstract(undefined, "({PARAMETER_ACTOR: 0})") : {PARAMETER_ACTOR: 0};
-  global.URI = global.__abstract ? __abstract(undefined, "(function (){return {addQueryData() {}}})") : function(){return {addQueryData() {}}};
+  var ActorURIConfig = global.__abstract ? __abstract(undefined, "({PARAMETER_ACTOR: 0})") : { PARAMETER_ACTOR: 0 };
+  global.URI = global.__abstract
+    ? __abstract(undefined, "(function (){return {addQueryData() {}}})")
+    : function() {
+        return { addQueryData() {} };
+      };
 
   var ActorURI = {
     create: function create(uri, actorID) {
-      return new URI(uri).addQueryData(
-        ActorURIConfig.PARAMETER_ACTOR,
-        actorID
-      );
+      return new URI(uri).addQueryData(ActorURIConfig.PARAMETER_ACTOR, actorID);
     },
-    PARAMETER_ACTOR: ActorURIConfig.PARAMETER_ACTOR
+    PARAMETER_ACTOR: ActorURIConfig.PARAMETER_ACTOR,
   };
 
   var someModuleX = {
@@ -62,7 +61,8 @@ global.result = __evaluatePureFunction(() => {
       var feedbackTargetID = _ref.feedbackTargetID;
       var reactionKey = _ref.reactionKey;
       return ActorURI.create(
-        someModuleY.getURIBuilder()
+        someModuleY
+          .getURIBuilder()
           .setString("foobar", feedbackTargetID)
           .setEnum("foobar", reactionKey)
           .getURI(),
@@ -74,7 +74,8 @@ global.result = __evaluatePureFunction(() => {
       var actorID = _ref2.actorID;
       var feedbackTargetID = _ref2.feedbackTargetID;
       return ActorURI.create(
-        someModuleY.getURIBuilder()
+        someModuleY
+          .getURIBuilder()
           .setString("foobar", feedbackTargetID)
           .getURI(),
         actorID
@@ -87,12 +88,12 @@ global.result = __evaluatePureFunction(() => {
       return {
         ajaxify: dialogURI,
         href: pageURI,
-        rel: "foobar"
+        rel: "foobar",
       };
-    }
+    },
   };
 
-  var reactionEdge = global.__abstract ? __abstract(undefined, "({reaction_type: {}})") : {reaction_type: {}};
+  var reactionEdge = global.__abstract ? __abstract(undefined, "({reaction_type: {}})") : { reaction_type: {} };
   var actorID = global.__abstract ? __abstract(undefined, "(1)") : 1;
   var reactionIndex = global.__abstract ? __abstract(undefined, "(0)") : 0;
 
@@ -102,20 +103,12 @@ global.result = __evaluatePureFunction(() => {
     var feedbackTargetID = _props.feedbackTargetID;
     var relay = _props.relay;
     var selectedReactionIndex = state.selectedReactionIndex;
-    var i18nReactionCount =
-      (_ref2 = reactionEdge) != null ? _ref2.i18n_reaction_count : _ref2;
+    var i18nReactionCount = (_ref2 = reactionEdge) != null ? _ref2.i18n_reaction_count : _ref2;
     var i18nReactionName =
-      (_ref3 = reactionEdge) != null
-        ? (_ref3 = _ref3.node) != null ? _ref3.localized_name : _ref3
-        : _ref3;
-    var reactionKey =
-      (_ref4 = reactionEdge) != null
-        ? (_ref4 = _ref4.node) != null ? _ref4.key : _ref4
-        : _ref4;
+      (_ref3 = reactionEdge) != null ? ((_ref3 = _ref3.node) != null ? _ref3.localized_name : _ref3) : _ref3;
+    var reactionKey = (_ref4 = reactionEdge) != null ? ((_ref4 = _ref4.node) != null ? _ref4.key : _ref4) : _ref4;
     var reactionType =
-      (_ref5 = reactionEdge) != null
-        ? (_ref5 = _ref5.node) != null ? _ref5.reaction_type : _ref5
-        : _ref5;
+      (_ref5 = reactionEdge) != null ? ((_ref5 = _ref5.node) != null ? _ref5.reaction_type : _ref5) : _ref5;
 
     reactionType || invariant(0, "Error 1");
 
@@ -124,21 +117,16 @@ global.result = __evaluatePureFunction(() => {
     var primerProps = someModuleX.getPrimerProps({
       actorID: actorID,
       feedbackTargetID: feedbackTargetID,
-      reactionKey: reactionKey
+      reactionKey: reactionKey,
     });
 
     var reactionsNotFocused = selectedReactionIndex === null;
-    var currentReactionIsFocused =
-      selectedReactionIndex === reactionIndex;
-    var tabIndex =
-      (reactionsNotFocused && reactionIndex === 0) ||
-      currentReactionIsFocused
-        ? 0
-        : -1;
+    var currentReactionIsFocused = selectedReactionIndex === reactionIndex;
+    var tabIndex = (reactionsNotFocused && reactionIndex === 0) || currentReactionIsFocused ? 0 : -1;
 
-    var placeholder = function (children) {
-      return {i18nReactionName, foo: true, children: children()}
-    }
+    var placeholder = function(children) {
+      return { i18nReactionName, foo: true, children: children() };
+    };
 
     return placeholder(function() {
       return {
@@ -162,13 +150,10 @@ global.result = __evaluatePureFunction(() => {
       "image",
       "imageRight",
       "label",
-      "labelIsHidden"
+      "labelIsHidden",
     ]);
 
-    var className =
-      "xxx" +
-      (disabled ? " " + "xxx2" : "") +
-      (depressed ? " " + "xxx3" : "");
+    var className = "xxx" + (disabled ? " " + "xxx2" : "") + (depressed ? " " + "xxx3" : "");
 
     var imageChild = image;
     if (imageChild) {
@@ -179,7 +164,7 @@ global.result = __evaluatePureFunction(() => {
           imageProps.className = "xxx4";
         }
       }
-      imageChild = imageRightChild = {x: "clone"};
+      imageChild = imageRightChild = { x: "clone" };
     }
 
     var imageRightChild = imageRight;
@@ -191,26 +176,23 @@ global.result = __evaluatePureFunction(() => {
           _imageProps.className = "xxx5";
         }
       }
-      imageRightChild = {x: "clone"};
+      imageRightChild = { x: "clone" };
     }
 
     function callback(children) {
-      return {x: "final", children: children(props.children)};
+      return { x: "final", children: children(props.children) };
     }
 
     if (props.href) {
       return callback(Third);
     } else if (props.type && props.type !== "submit") {
-      return {x: "final2"};
+      return { x: "final2" };
     } else {
-      return {x: "final3"};
+      return { x: "final3" };
     }
   }
 
-  var something_B = new RegExp(
-    "(^|\\.)somethingB\\.com$",
-    "i"
-  );
+  var something_B = new RegExp("(^|\\.)somethingB\\.com$", "i");
 
   var something_D = ["https"];
 
@@ -223,10 +205,7 @@ global.result = __evaluatePureFunction(() => {
       return false;
     }
 
-    return (
-      something_D.indexOf(uri.getProtocol()) !== -1 &&
-      something_B.test(uri.getDomain())
-    );
+    return something_D.indexOf(uri.getProtocol()) !== -1 && something_B.test(uri.getDomain());
   }
 
   var something_C = ["http", "https"];
@@ -245,10 +224,7 @@ global.result = __evaluatePureFunction(() => {
       return true;
     }
 
-    return (
-      something_C.indexOf(uri.getProtocol()) !== -1 &&
-      something_A.test(uri.getDomain())
-    );
+    return something_C.indexOf(uri.getProtocol()) !== -1 && something_A.test(uri.getDomain());
   }
 
   checkSomethingA.setRegex = function(regex) {
@@ -256,9 +232,7 @@ global.result = __evaluatePureFunction(() => {
   };
 
   function checkSomethingC(uri) {
-    return (
-      checkSomethingA(uri) || checkSomethingB(uri) || checkSomethingD(uri)
-    );
+    return checkSomethingA(uri) || checkSomethingB(uri) || checkSomethingD(uri);
   }
 
   function isOnionURI(uri) {
@@ -278,10 +252,7 @@ global.result = __evaluatePureFunction(() => {
       return false;
     }
 
-    return (
-      something_D.indexOf(uri.getProtocol()) !== -1 &&
-      something_F.test(uri.getDomain())
-    );
+    return something_D.indexOf(uri.getProtocol()) !== -1 && something_F.test(uri.getDomain());
   }
 
   var RELATIVE_PREFIX = /^(#|\/\w)/;
@@ -291,13 +262,10 @@ global.result = __evaluatePureFunction(() => {
     }
     var uri = new URI(href);
     var protocol = uri.getProtocol();
-    return (
-      (protocol === "http" || protocol === "https") &&
-      !checkSomethingC(uri)
-    );
+    return (protocol === "http" || protocol === "https") && !checkSomethingC(uri);
   }
 
-  var killswitch = global.__abstract ? __abstract(undefined, "(function killswitch(){})") : function killswitch(){};
+  var killswitch = global.__abstract ? __abstract(undefined, "(function killswitch(){})") : function killswitch() {};
 
   var dontUpgradeRegex = new RegExp("^(l|lm|h)\\..*$", "i");
   function upgradeUnshimmedLink(href) {
@@ -316,7 +284,9 @@ global.result = __evaluatePureFunction(() => {
     return href.setProtocol("https");
   }
 
-  var LinkReactUnsafeHrefConfig = global.__abstract ? __abstract(undefined, "({LinkHrefChecker: null})") : {LinkHrefChecker: null};
+  var LinkReactUnsafeHrefConfig = global.__abstract
+    ? __abstract(undefined, "({LinkHrefChecker: null})")
+    : { LinkHrefChecker: null };
   var LinkHrefChecker = LinkReactUnsafeHrefConfig.LinkHrefChecker;
 
   function Third(props) {
@@ -331,7 +301,7 @@ global.result = __evaluatePureFunction(() => {
       "s",
       "href",
       "linkRef",
-      "target"
+      "target",
     ]);
 
     var href = "#";
@@ -339,17 +309,11 @@ global.result = __evaluatePureFunction(() => {
 
     if (rawHref instanceof URI) {
       href = rawHref.toString();
-    } else if (
-      typeof rawHref === "string" &&
-      rawHref !== "" &&
-      rawHref !== "#"
-    ) {
+    } else if (typeof rawHref === "string" && rawHref !== "" && rawHref !== "#") {
       href = rawHref;
     } else if (typeof rawHref === "object" && rawHref !== null) {
       href = rawHref.url.toString();
-      shimhash = rawHref.shimhash
-        ? rawHref.shimhash.toString()
-        : shimhash;
+      shimhash = rawHref.shimhash ? rawHref.shimhash.toString() : shimhash;
     } else {
       href = "#";
       shimhash = null;
@@ -370,10 +334,7 @@ global.result = __evaluatePureFunction(() => {
     var href_uri = new URI(href);
 
     if (something_E.supports_meta_referrer) {
-      if (
-        something_E.onion_always_shim &&
-        isOnionURI(href_uri)
-      ) {
+      if (something_E.onion_always_shim && isOnionURI(href_uri)) {
         useRedirect = true;
       } else {
         if (isSafeToSkipShim) {
@@ -385,10 +346,7 @@ global.result = __evaluatePureFunction(() => {
       }
     }
 
-    var noopener =
-      something_E.use_rel_no_opener &&
-      shimhash !== null &&
-      target === "_blank";
+    var noopener = something_E.use_rel_no_opener && shimhash !== null && target === "_blank";
 
     var upgraded_href = upgradeUnshimmedLink(href_uri);
     if (upgraded_href != null) {
@@ -397,14 +355,17 @@ global.result = __evaluatePureFunction(() => {
 
     var children = Forth(props.children);
 
-    return {x: "final4", children: children};
+    return { x: "final4", children: children };
   }
 
-  var loadLogging = global.__abstract ? __abstract(undefined, "(function loadLogging() {})") : function loadLogging() {};
+  var loadLogging = global.__abstract
+    ? __abstract(undefined, "(function loadLogging() {})")
+    : function loadLogging() {};
 
   function logMetaReferrer(href, shimhash) {
     loadLogging(function(a, x) {
-      var uri = x.getURIBuilder()
+      var uri = x
+        .getURIBuilder()
         .setString("u", href)
         .setString("h", shimhash)
         .getURI();
@@ -414,9 +375,7 @@ global.result = __evaluatePureFunction(() => {
 
   var LynxGeneration = {
     getShimURI: function getShimURI() {
-      return new URI("/l.php").setDomain(
-        something_E.linkshim_host
-      );
+      return new URI("/l.php").setDomain(something_E.linkshim_host);
     },
 
     getLynxURIProtocol: function getLynxURIProtocol(targetURI) {
@@ -436,10 +395,7 @@ global.result = __evaluatePureFunction(() => {
         .toString();
     },
 
-    temporarilySetMetaReferrer: function temporarilySetMetaReferrer(
-      href,
-      shimhash
-    ) {
+    temporarilySetMetaReferrer: function temporarilySetMetaReferrer(href, shimhash) {
       var meta = $("meta_referrer");
       meta.content = something_E.switched_meta_referrer_policy;
       setTimeout(function() {
@@ -448,7 +404,7 @@ global.result = __evaluatePureFunction(() => {
       }, 100);
     },
 
-    loadLogging: loadLogging
+    loadLogging: loadLogging,
   };
 
   function Forth(props) {
@@ -471,7 +427,7 @@ global.result = __evaluatePureFunction(() => {
       "useMetaReferrer",
       "nofollow",
       "noopener",
-      "rel"
+      "rel",
     ]);
 
     var outputHref = href;
@@ -495,8 +451,8 @@ global.result = __evaluatePureFunction(() => {
         href: outputHref,
         rel: outputRel,
         ref: linkRef,
-        onClick: null
-      })
+        onClick: null,
+      }),
     };
   }
 

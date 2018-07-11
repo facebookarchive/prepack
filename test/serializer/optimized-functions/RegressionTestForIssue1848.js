@@ -25,7 +25,7 @@ __evaluatePureFunction(function() {
   }
 
   __optimizeReactComponentTree(App, {
-    firstRenderOnly: true
+    firstRenderOnly: true,
   });
 
   module.exports = App;

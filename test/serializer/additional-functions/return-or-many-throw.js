@@ -46,5 +46,5 @@ inspect = function() {
   } catch (e) {
     error = e.message;
   }
-  return 'err: ' + error + ' ret ' + ret + ' normal ret ' + normalRet + ' foo ' + obj.foo;
-}
+  return "err: " + error + " ret " + ret + " normal ret " + normalRet + " foo " + obj.foo;
+};

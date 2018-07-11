@@ -1,5 +1,5 @@
 // throws introspection error
-let ob = __abstract({}, "({})")
+let ob = __abstract({}, "({})");
 if (global.__makeSimple) __makeSimple(ob);
 let x = __abstract("string");
 

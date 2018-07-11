@@ -9,4 +9,6 @@ let str = x ? "abc" : "def";
 var z1 = str !== "abc" ? str : "ghi1";
 var z2 = str === "abc" ? str : "ghi2";
 
-inspect = function() { return z + z1 + z2; }
+inspect = function() {
+  return z + z1 + z2;
+};

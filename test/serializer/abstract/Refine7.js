@@ -1,11 +1,21 @@
 // add at runtime:var global=this;this.nativePerformanceNow = Date.now;
-if (global.__assumeDataProperty) __assumeDataProperty(this, "nativePerformanceNow", function() {
-  if (this.__residual)
-    return this.__residual("number", function(global) {
-      return global.nativePerformanceNow();
-    }, global);
-  else return this.nativePerformanceNow();
-}, "SKIP_INVARIANT");
+if (global.__assumeDataProperty)
+  __assumeDataProperty(
+    this,
+    "nativePerformanceNow",
+    function() {
+      if (this.__residual)
+        return this.__residual(
+          "number",
+          function(global) {
+            return global.nativePerformanceNow();
+          },
+          global
+        );
+      else return this.nativePerformanceNow();
+    },
+    "SKIP_INVARIANT"
+  );
 let performanceNow = nativePerformanceNow;
 
 let timespans = {};
@@ -31,4 +41,6 @@ function stopTimespan(key) {
 startTimespan("hello");
 stopTimespan("hello");
 
-inspect = function() { return true; }
+inspect = function() {
+  return true;
+};

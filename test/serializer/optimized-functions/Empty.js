@@ -1,4 +1,4 @@
-var x = global.__abstract ? x = __abstract("boolean", "true") : true;
+var x = global.__abstract ? (x = __abstract("boolean", "true")) : true;
 
 function foo() {
   let ob = {};
@@ -8,4 +8,6 @@ function foo() {
 
 if (global.__optimize) __optimize(foo);
 
-inspect = function() { return foo(); }
+inspect = function() {
+  return foo();
+};

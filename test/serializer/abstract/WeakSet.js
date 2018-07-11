@@ -7,7 +7,8 @@ let bar2 = { y: 2 };
 let ws = new WeakSet();
 var x1 = ws.add(bar0);
 
-if (x) ws.add(bar1); else ws.add(bar2);
+if (x) ws.add(bar1);
+else ws.add(bar2);
 
 var x2 = ws.has(bar0);
 var x3 = ws.delete(bar0);
@@ -16,4 +17,6 @@ var x3 = ws.delete(bar0);
 // x5 = ws.delete(bar0);
 // x6 = ws.has(bar0);
 
-inspect = function() { return JSON.stringify([x1, x2, x3, "x4", "x5", "x6"]); }
+inspect = function() {
+  return JSON.stringify([x1, x2, x3, "x4", "x5", "x6"]);
+};

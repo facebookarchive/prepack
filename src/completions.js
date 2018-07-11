@@ -162,13 +162,13 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
   containsCompletion(CompletionType: typeof Completion, skipCompletionsCreatedInPureScope: boolean): boolean {
     if (
       this.consequent instanceof CompletionType &&
-      this.consequent.createdInPureScope !== skipCompletionsCreatedInPureScope
+      (!skipCompletionsCreatedInPureScope || !this.consequent.createdInPureScope)
     ) {
       return true;
     }
     if (
       this.alternate instanceof CompletionType &&
-      this.alternate.createdInPureScope !== skipCompletionsCreatedInPureScope
+      (!skipCompletionsCreatedInPureScope || !this.alternate.createdInPureScope)
     ) {
       return true;
     }
@@ -314,13 +314,13 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   containsCompletion(CompletionType: typeof Completion, skipCompletionsCreatedInPureScope: boolean): boolean {
     if (
       this.consequent instanceof CompletionType &&
-      this.consequent.createdInPureScope !== skipCompletionsCreatedInPureScope
+      (!skipCompletionsCreatedInPureScope || !this.consequent.createdInPureScope)
     ) {
       return true;
     }
     if (
       this.alternate instanceof CompletionType &&
-      this.alternate.createdInPureScope !== skipCompletionsCreatedInPureScope
+      (!skipCompletionsCreatedInPureScope || !this.alternate.createdInPureScope)
     ) {
       return true;
     }

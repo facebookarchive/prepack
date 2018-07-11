@@ -21,5 +21,5 @@ inspect = function inspect() {
   let z = additional1(7);
   let z2 = additional2(42);
 
-  return '' + JSON.stringify(z) + ' ' + JSON.stringify(z2);
-}
+  return "" + JSON.stringify(z) + " " + JSON.stringify(z2);
+};

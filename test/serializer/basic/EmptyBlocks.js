@@ -8,5 +8,7 @@
   let x = Date.now();
   if (x * 2 > 42) x = fib(10);
   global.result = x;
-  inspect = function() { return global.result; }
+  inspect = function() {
+    return global.result;
+  };
 })();

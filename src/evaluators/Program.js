@@ -235,7 +235,7 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
         // We are about the leave this program and this presents a join point where all control flows
         // converge into a single flow using the joined effects as the new state.
         res = Functions.incorporateSavedCompletion(realm, res);
-        if (res instanceof ForkedAbruptCompletion && res.containsCompletion(ThrowCompletion, true)) {
+        if (res instanceof ForkedAbruptCompletion && res.containsCompletion(ThrowCompletion, false)) {
           // The global state is now at the point where the first fork occurred.
           let joinedEffects = Join.joinNestedEffects(realm, res);
           realm.applyEffects(joinedEffects);

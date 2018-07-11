@@ -1,7 +1,7 @@
 // does not contain:12
 
 function fn(source1, source2, someAbstract) {
-  var target = {}
+  var target = {};
   var usefulStuff = {
     makeNumber() {
       return 5;
@@ -23,4 +23,4 @@ global.__optimize && __optimize(fn);
 
 inspect = function() {
   return fn({}, {}, function() {});
-}
+};

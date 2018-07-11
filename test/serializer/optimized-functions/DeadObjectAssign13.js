@@ -6,10 +6,12 @@
 
 function f(x, foo) {
   var a = Object.assign({}, foo);
-  
-  return x ? Object.assign({}, a, {a: 1}) : Object.assign({}, a, {a: 2})
+
+  return x ? Object.assign({}, a, { a: 1 }) : Object.assign({}, a, { a: 2 });
 }
 
 if (global.__optimize) __optimize(f);
 
-global.inspect = function() { return JSON.stringify(f(false, {a: 3})); }
+global.inspect = function() {
+  return JSON.stringify(f(false, { a: 3 }));
+};

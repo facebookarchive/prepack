@@ -4,6 +4,8 @@
 let alive = new Object();
 let dead = new String("__dead_object_signature__");
 
-var s = new WeakSet([alive,dead]);
+var s = new WeakSet([alive, dead]);
 
-inspect = function() {return "containsAlive: " + s.has(alive);}
+inspect = function() {
+  return "containsAlive: " + s.has(alive);
+};

@@ -3,7 +3,8 @@ if (!global.__evaluatePureFunction) {
 }
 
 __evaluatePureFunction(() => {
-  var x = (global.__abstract ? __abstract(undefined, "({foo: 123})"): {foo: 123}) ||
+  var x =
+    (global.__abstract ? __abstract(undefined, "({foo: 123})") : { foo: 123 }) ||
     (global.__abstract ? __abstract(undefind, "(false)") : false);
   var y = global.__abstract ? __abstract(undefined, "('foo')") : "foo";
 
@@ -12,4 +13,4 @@ __evaluatePureFunction(() => {
 
 inspect = function() {
   return global.x;
-}
+};

@@ -3,7 +3,9 @@
 
 function additional1() {
   var x2 = { foo: 5 };
-  foo = function() { return x2; }
+  foo = function() {
+    return x2;
+  };
   var y = 7;
 }
 
@@ -23,5 +25,5 @@ inspect = function() {
   let ret2 = global.foo();
   ret1.x += 9;
 
-  return ' ' + JSON.stringify(ret1) + JSON.stringify(ret2) + (ret1 === ret2);
-}
+  return " " + JSON.stringify(ret1) + JSON.stringify(ret2) + (ret1 === ret2);
+};
