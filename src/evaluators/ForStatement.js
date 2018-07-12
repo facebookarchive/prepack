@@ -162,25 +162,41 @@ function ForBodyEvaluation(
       Environment.GetValue(realm, incRef);
     } else if (realm.useAbstractInterpretation) {
       // If we have no increment and we've hit 100 iterations of trying to evaluate
-      // this loop body, then see if we have a break or continue completion in a guarded
-      // condition and fail if it does.
+      // this loop body, then see if we have a break, return or throw completion in a
+      // guarded condition and fail if it does.
       possibleInfiniteLoopIterations++;
-      if (possibleInfiniteLoopIterations === 100) {
-        failIfContainsBreakOrContinueCompletion(realm.savedCompletion, false);
+      if (possibleInfiniteLoopIterations > 100) {
+        failIfContainsBreakOrReturnOrThrowCompletion(realm.savedCompletion);
       }
     }
   }
   invariant(false);
 
-  function failIfContainsBreakOrContinueCompletion(c: void | Completion | Value, withNonLocalTarget: boolean) {
+  function failIfContainsBreakOrReturnOrThrowCompletion(c: void | Completion | Value) {
+    if (c === undefined) return;
+    if (c instanceof ThrowCompletion || c instanceof BreakCompletion || c instanceof ReturnCompletion) {
+      let diagnostic = new CompilerDiagnostic(
+        "break, throw or return with target cannot be guarded by abstract condition",
+        c.location,
+        "PP0035",
+        "FatalError"
+      );
+      realm.handleError(diagnostic);
+      throw new FatalError();
+    }
+    if (c instanceof PossiblyNormalCompletion || c instanceof ForkedAbruptCompletion) {
+      failIfContainsBreakOrReturnOrThrowCompletion(c.consequent);
+      failIfContainsBreakOrReturnOrThrowCompletion(c.alternate);
+    }
+  }
+
+  function failIfContainsBreakOrContinueCompletionWithNonLocalTarget(c: void | Completion | Value) {
     if (c === undefined) return;
     if (c instanceof ContinueCompletion || c instanceof BreakCompletion) {
-      if (withNonLocalTarget) {
-        if (!c.target) return;
-        if (labelSet && labelSet.indexOf(c.target) >= 0) {
-          c.target = null;
-          return;
-        }
+      if (!c.target) return;
+      if (labelSet && labelSet.indexOf(c.target) >= 0) {
+        c.target = null;
+        return;
       }
       let diagnostic = new CompilerDiagnostic(
         "break or continue with target cannot be guarded by abstract condition",
@@ -192,8 +208,8 @@ function ForBodyEvaluation(
       throw new FatalError();
     }
     if (c instanceof PossiblyNormalCompletion || c instanceof ForkedAbruptCompletion) {
-      failIfContainsBreakOrContinueCompletion(c.consequent, withNonLocalTarget);
-      failIfContainsBreakOrContinueCompletion(c.alternate, withNonLocalTarget);
+      failIfContainsBreakOrContinueCompletionWithNonLocalTarget(c.consequent);
+      failIfContainsBreakOrContinueCompletionWithNonLocalTarget(c.alternate);
     }
   }
 
@@ -217,7 +233,7 @@ function ForBodyEvaluation(
   ): Value | AbruptCompletion {
     // We are about start the next loop iteration and this presents a join point where all non loop breaking abrupt
     // control flows converge into a single flow using their joined effects as the new state.
-    failIfContainsBreakOrContinueCompletion(realm.savedCompletion, true);
+    failIfContainsBreakOrContinueCompletionWithNonLocalTarget(realm.savedCompletion);
 
     // Incorporate the savedCompletion (we should only get called if there is one).
     invariant(realm.savedCompletion !== undefined);
@@ -258,7 +274,7 @@ function ForBodyEvaluation(
   function joinAllLoopExits(valueOrCompletionAtUnconditionalExit: Value | AbruptCompletion): Value {
     // We are about the leave this loop and this presents a join point where all loop breaking control flows
     // converge into a single flow using their joined effects as the new state.
-    failIfContainsBreakOrContinueCompletion(realm.savedCompletion, true);
+    failIfContainsBreakOrContinueCompletionWithNonLocalTarget(realm.savedCompletion);
 
     // Incorporate the savedCompletion if there is one.
     if (valueOrCompletionAtUnconditionalExit instanceof Value)
