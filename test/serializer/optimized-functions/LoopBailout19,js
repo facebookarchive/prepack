@@ -3,7 +3,7 @@ function fn(x, oldItems) {
   for (var i; ; ) {
     i++;
     if (i > x) {
-      breakl
+      break;
     }
     items.push(oldItem + 2);
   }

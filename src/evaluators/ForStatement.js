@@ -166,7 +166,7 @@ function ForBodyEvaluation(
       // guarded condition and fail if it does. We already have logic to guard
       // against loops that are actually infinite. However, because there may be so
       // many forked execution paths, and they're non linear, then it might
-      // computational lead to a something that seems like an infinite loop.
+      // computationally lead to a something that seems like an infinite loop.
       possibleInfiniteLoopIterations++;
       if (possibleInfiniteLoopIterations > 100) {
         failIfContainsBreakOrReturnOrThrowCompletion(realm.savedCompletion);
