@@ -21,6 +21,6 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm
 ): [BreakCompletion, BabelNodeBreakStatement, Array<BabelNodeStatement>] {
-  let result = new BreakCompletion(realm.intrinsics.empty, ast.loc, ast.label && ast.label.name);
+  let result = new BreakCompletion(realm.intrinsics.empty, undefined, ast.loc, ast.label && ast.label.name);
   return [result, ast, []];
 }

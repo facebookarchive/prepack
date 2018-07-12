@@ -453,9 +453,9 @@ export class JoinImplementation {
     if (ce.result instanceof CompletionType) {
       // Erase completions of type CompletionType and prepare for transformation of c to a possibly normal completion
       if (c.consequent instanceof CompletionType) {
-        c = c.updateConsequentKeepingCurrentEffects(new SimpleNormalCompletion(realm.intrinsics.empty));
+        c.updateConsequentKeepingCurrentEffects(new SimpleNormalCompletion(realm.intrinsics.empty, undefined));
       } else if (c.consequent instanceof ForkedAbruptCompletion && c.consequent.containsCompletion(NormalCompletion)) {
-        c = c.updateConsequentKeepingCurrentEffects((c.consequent.transferChildrenToPossiblyNormalCompletion(): any));
+        c.updateConsequentKeepingCurrentEffects((c.consequent.transferChildrenToPossiblyNormalCompletion(): any));
       }
     } else {
       ce.result = new CompletionType(realm.intrinsics.empty);
@@ -469,9 +469,9 @@ export class JoinImplementation {
     if (ae.result instanceof CompletionType) {
       // Erase completions of type CompletionType and prepare for transformation of c to a possibly normal completion
       if (c.alternate instanceof CompletionType) {
-        c = c.updateAlternateKeepingCurrentEffects(new SimpleNormalCompletion(realm.intrinsics.empty));
+        c.updateAlternateKeepingCurrentEffects(new SimpleNormalCompletion(realm.intrinsics.empty, undefined));
       } else if (c.alternate instanceof ForkedAbruptCompletion && c.alternate.containsCompletion(NormalCompletion)) {
-        c = c.updateAlternateKeepingCurrentEffects((c.alternate.transferChildrenToPossiblyNormalCompletion(): any));
+        c.updateAlternateKeepingCurrentEffects((c.alternate.transferChildrenToPossiblyNormalCompletion(): any));
       }
     } else {
       ae.result = new CompletionType(realm.intrinsics.empty);
@@ -480,7 +480,7 @@ export class JoinImplementation {
     let e = this.joinForkOrChoose(realm, c.joinCondition, ce, ae);
     if (e.result instanceof ForkedAbruptCompletion) {
       if (e.result.consequent instanceof CompletionType && e.result.alternate instanceof CompletionType) {
-        e.result = this.collapseResults(realm, e.result.joinCondition, e.result.consequent, e.result.alternate);
+        e.result = this.collapseResults(realm, e.result.joinCondition, e, e.result.consequent, e.result.alternate);
       }
     }
     return e;
@@ -552,7 +552,7 @@ export class JoinImplementation {
       let e1 = this.joinNestedEffects(realm, c.consequent, c.consequentEffects);
       let e2 = this.joinNestedEffects(realm, c.alternate, c.alternateEffects);
       let e3 = this.joinForkOrChoose(realm, c.joinCondition, e1, e2);
-      e3.result = this.collapseResults(realm, c.joinCondition, e1.result, e2.result);
+      this.collapseResults(realm, c.joinCondition, e3, e1.result, e2.result);
       return e3;
     }
     if (precedingEffects !== undefined) return precedingEffects;
@@ -564,6 +564,7 @@ export class JoinImplementation {
   collapseResults(
     realm: Realm,
     joinCondition: AbstractValue,
+    precedingEffects: Effects,
     result1: EvaluationResult,
     result2: EvaluationResult
   ): Completion {
@@ -575,19 +576,24 @@ export class JoinImplementation {
     if (result1 instanceof BreakCompletion && result2 instanceof BreakCompletion && result1.target === result2.target) {
       let val = this.joinValues(realm, result1.value, result2.value, getAbstractValue);
       invariant(val instanceof Value);
-      return new BreakCompletion(val, joinCondition.expressionLocation, result1.target);
+      return new BreakCompletion(val, precedingEffects, joinCondition.expressionLocation, result1.target);
     }
     if (
       result1 instanceof ContinueCompletion &&
       result2 instanceof ContinueCompletion &&
       result1.target === result2.target
     ) {
-      return new ContinueCompletion(realm.intrinsics.empty, joinCondition.expressionLocation, result1.target);
+      return new ContinueCompletion(
+        realm.intrinsics.empty,
+        precedingEffects,
+        joinCondition.expressionLocation,
+        result1.target
+      );
     }
     if (result1 instanceof ReturnCompletion && result2 instanceof ReturnCompletion) {
       let val = this.joinValues(realm, result1.value, result2.value, getAbstractValue);
       invariant(val instanceof Value);
-      return new ReturnCompletion(val, joinCondition.expressionLocation);
+      return new ReturnCompletion(val, precedingEffects, joinCondition.expressionLocation);
     }
     if (result1 instanceof ThrowCompletion && result2 instanceof ThrowCompletion) {
       getAbstractValue = (v1: void | Value, v2: void | Value) => {
@@ -595,10 +601,10 @@ export class JoinImplementation {
       };
       let val = this.joinValues(realm, result1.value, result2.value, getAbstractValue);
       invariant(val instanceof Value);
-      return new ThrowCompletion(val, result1.location);
+      return new ThrowCompletion(val, precedingEffects, result1.location);
     }
     if (result1 instanceof SimpleNormalCompletion && result2 instanceof SimpleNormalCompletion) {
-      return new SimpleNormalCompletion(getAbstractValue(result1.value, result2.value));
+      return new SimpleNormalCompletion(getAbstractValue(result1.value, result2.value), precedingEffects);
     }
     AbstractValue.reportIntrospectionError(joinCondition);
     throw new FatalError();

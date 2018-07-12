@@ -764,6 +764,7 @@ export type JoinType = {
   collapseResults(
     realm: Realm,
     joinCondition: AbstractValue,
+    precedingEffects: Effects,
     result1: EvaluationResult,
     result2: EvaluationResult
   ): Completion,

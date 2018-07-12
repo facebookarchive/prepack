@@ -21,6 +21,6 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm
 ): [ContinueCompletion, BabelNodeContinueStatement, Array<BabelNodeStatement>] {
-  let result = new ContinueCompletion(realm.intrinsics.empty, ast.loc, ast.label && ast.label.name);
+  let result = new ContinueCompletion(realm.intrinsics.empty, undefined, ast.loc, ast.label && ast.label.name);
   return [result, ast, []];
 }
