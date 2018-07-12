@@ -1,10 +1,7 @@
 function fn(x, oldItems) {
   var items = [];
-  for (var i; ; ) {
+  for (var i; i < x; ) {
     i++;
-    if (i > x) {
-      break;
-    }
     items.push(oldItem + 2);
   }
   return items;
