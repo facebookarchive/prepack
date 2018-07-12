@@ -163,7 +163,10 @@ function ForBodyEvaluation(
     } else if (realm.useAbstractInterpretation) {
       // If we have no increment and we've hit 100 iterations of trying to evaluate
       // this loop body, then see if we have a break, return or throw completion in a
-      // guarded condition and fail if it does.
+      // guarded condition and fail if it does. We already have logic to guard
+      // against loops that are actually infinite. However, because there may be so
+      // many forked execution paths, and they're non linear, then it might
+      // computational lead to a something that seems like an infinite loop.
       possibleInfiniteLoopIterations++;
       if (possibleInfiniteLoopIterations > 100) {
         failIfContainsBreakOrReturnOrThrowCompletion(realm.savedCompletion);
@@ -176,7 +179,7 @@ function ForBodyEvaluation(
     if (c === undefined) return;
     if (c instanceof ThrowCompletion || c instanceof BreakCompletion || c instanceof ReturnCompletion) {
       let diagnostic = new CompilerDiagnostic(
-        "break, throw or return with target cannot be guarded by abstract condition",
+        "break, throw or return cannot be guarded by abstract condition",
         c.location,
         "PP0035",
         "FatalError"
