@@ -1,7 +1,8 @@
-// Copies of _\$D:4
+// Copies of _\$A\(:3
+// Copies of var _\$A = _\$9.assign;:1
 // inline expressions
 
-// _$D is the variable for Object.assign. See DeadObjectAssign4.js for
+// _$A is the variable for Object.assign. See DeadObjectAssign4.js for
 // a larger explanation.
 
 function f(x, foo, bar) {
