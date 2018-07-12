@@ -99,6 +99,7 @@ function ForBodyEvaluation(
   // 2. Perform ? CreatePerIterationEnvironment(perIterationBindings).
   CreatePerIterationEnvironment(realm, perIterationBindings);
   let env = realm.getRunningContext().lexicalEnvironment;
+  let possibleInfiniteLoopIterations = 0;
 
   // 3. Repeat
   while (true) {
@@ -159,17 +160,27 @@ function ForBodyEvaluation(
 
       // ii. Perform ? GetValue(incRef).
       Environment.GetValue(realm, incRef);
+    } else if (realm.useAbstractInterpretation) {
+      // If we have no increment and we've hit 100 iterations of trying to evaluate
+      // this loop body, then see if we have a break or continue completion in a guarded
+      // condition and fail if it does.
+      possibleInfiniteLoopIterations++;
+      if (possibleInfiniteLoopIterations === 100) {
+        failIfContainsBreakOrContinueCompletion(realm.savedCompletion, false);
+      }
     }
   }
   invariant(false);
 
-  function failIfContainsBreakOrContinueCompletionWithNonLocalTarget(c: void | Completion | Value) {
+  function failIfContainsBreakOrContinueCompletion(c: void | Completion | Value, withNonLocalTarget: boolean) {
     if (c === undefined) return;
     if (c instanceof ContinueCompletion || c instanceof BreakCompletion) {
-      if (!c.target) return;
-      if (labelSet && labelSet.indexOf(c.target) >= 0) {
-        c.target = null;
-        return;
+      if (withNonLocalTarget) {
+        if (!c.target) return;
+        if (labelSet && labelSet.indexOf(c.target) >= 0) {
+          c.target = null;
+          return;
+        }
       }
       let diagnostic = new CompilerDiagnostic(
         "break or continue with target cannot be guarded by abstract condition",
@@ -181,8 +192,8 @@ function ForBodyEvaluation(
       throw new FatalError();
     }
     if (c instanceof PossiblyNormalCompletion || c instanceof ForkedAbruptCompletion) {
-      failIfContainsBreakOrContinueCompletionWithNonLocalTarget(c.consequent);
-      failIfContainsBreakOrContinueCompletionWithNonLocalTarget(c.alternate);
+      failIfContainsBreakOrContinueCompletion(c.consequent, withNonLocalTarget);
+      failIfContainsBreakOrContinueCompletion(c.alternate, withNonLocalTarget);
     }
   }
 
@@ -206,7 +217,7 @@ function ForBodyEvaluation(
   ): Value | AbruptCompletion {
     // We are about start the next loop iteration and this presents a join point where all non loop breaking abrupt
     // control flows converge into a single flow using their joined effects as the new state.
-    failIfContainsBreakOrContinueCompletionWithNonLocalTarget(realm.savedCompletion);
+    failIfContainsBreakOrContinueCompletion(realm.savedCompletion, true);
 
     // Incorporate the savedCompletion (we should only get called if there is one).
     invariant(realm.savedCompletion !== undefined);
@@ -247,7 +258,7 @@ function ForBodyEvaluation(
   function joinAllLoopExits(valueOrCompletionAtUnconditionalExit: Value | AbruptCompletion): Value {
     // We are about the leave this loop and this presents a join point where all loop breaking control flows
     // converge into a single flow using their joined effects as the new state.
-    failIfContainsBreakOrContinueCompletionWithNonLocalTarget(realm.savedCompletion);
+    failIfContainsBreakOrContinueCompletion(realm.savedCompletion, true);
 
     // Incorporate the savedCompletion if there is one.
     if (valueOrCompletionAtUnconditionalExit instanceof Value)
@@ -322,6 +333,11 @@ let BailOutWrapperClosureRefVisitor = {
       let { id, init } = node.declarations[index];
 
       if (t.isIdentifier(id)) {
+        // If init is undefined, then we need to ensure we provide
+        // an actual Babel undefined node for it.
+        if (init === null) {
+          init = t.identifier("undefined");
+        }
         return t.assignmentExpression("=", id, init);
       } else {
         // We do not currently support ObjectPattern, SpreadPattern and ArrayPattern
