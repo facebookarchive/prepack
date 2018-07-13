@@ -157,7 +157,7 @@ export class UISession {
   _processInitializeResponse(response: DebugProtocol.InitializeResponse) {
     let launchArgs: LaunchRequestArguments = {
       prepackRuntime: this._prepackRuntime,
-      sourceFile: this._sourceFiles.join(" "),
+      sourceFiles: this._sourceFiles,
       prepackArguments: this._prepackArguments,
     };
     this._sendLaunchRequest(launchArgs);
