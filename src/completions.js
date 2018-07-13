@@ -158,12 +158,8 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
   }
 
   containsCompletion(CompletionType: typeof Completion): boolean {
-    if (this.consequent instanceof CompletionType) {
-      return true;
-    }
-    if (this.alternate instanceof CompletionType) {
-      return true;
-    }
+    if (this.consequent instanceof CompletionType) return true;
+    if (this.alternate instanceof CompletionType) return true;
     if (this.consequent instanceof ForkedAbruptCompletion) {
       if (this.consequent.containsCompletion(CompletionType)) return true;
     }
@@ -289,12 +285,8 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   }
 
   containsCompletion(CompletionType: typeof Completion): boolean {
-    if (this.consequent instanceof CompletionType) {
-      return true;
-    }
-    if (this.alternate instanceof CompletionType) {
-      return true;
-    }
+    if (this.consequent instanceof CompletionType) return true;
+    if (this.alternate instanceof CompletionType) return true;
     if (this.consequent instanceof ForkedAbruptCompletion || this.consequent instanceof PossiblyNormalCompletion) {
       if (this.consequent.containsCompletion(CompletionType)) return true;
     }
