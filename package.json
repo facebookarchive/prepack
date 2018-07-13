@@ -92,6 +92,7 @@
     "@babel/preset-react": "^7.0.0-beta.53",
     "@babel/register": "^7.0.0-beta.53",
     "babel-core": "7.0.0-bridge.0",
+    "babel-eslint": "^8.2.6",
     "babel-jest": "^23.4.0",
     "babel-plugin-jest-hoist": "^23.2.0",
     "chalk": "^1.1.3",
