@@ -58,7 +58,7 @@ import {
   wrapReactElementInBranchOrReturnValue,
 } from "./branching.js";
 import * as t from "babel-types";
-import { Completion } from "../completions.js";
+import { Completion, AbruptCompletion } from "../completions.js";
 import {
   getInitialProps,
   getInitialContext,
@@ -1267,6 +1267,9 @@ export class Reconciler {
       }
       return result;
     } catch (error) {
+      if (error instanceof AbruptCompletion) {
+        throw error;
+      }
       return this._resolveComponentResolutionFailure(error, reactElement, evaluatedNode, branchStatus);
     }
   }

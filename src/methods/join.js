@@ -220,7 +220,10 @@ export class JoinImplementation {
         let consequent = completion.consequent;
         if (consequent instanceof ThrowCompletion) {
           completion.updateConsequentKeepingCurrentEffects(new SimpleNormalCompletion(realm.intrinsics.empty));
-        } else if (consequent instanceof PossiblyNormalCompletion || consequent instanceof ForkedAbruptCompletion) {
+        } else if (
+          (consequent instanceof PossiblyNormalCompletion || consequent instanceof ForkedAbruptCompletion) &&
+          consequent.containsCompletion(ThrowCompletion)
+        ) {
           completion.updateConsequentKeepingCurrentEffects(
             this.recusrivelyConvertPureThrowCompletionsToSimpleNormalCompletions(realm, consequent)
           );
@@ -228,12 +231,17 @@ export class JoinImplementation {
         let alternate = completion.alternate;
         if (alternate instanceof ThrowCompletion) {
           completion.updateAlternateKeepingCurrentEffects(new SimpleNormalCompletion(realm.intrinsics.empty));
-        } else if (alternate instanceof PossiblyNormalCompletion || alternate instanceof ForkedAbruptCompletion) {
+        } else if (
+          (alternate instanceof PossiblyNormalCompletion || alternate instanceof ForkedAbruptCompletion) &&
+          alternate.containsCompletion(ThrowCompletion)
+        ) {
           completion.updateAlternateKeepingCurrentEffects(
             this.recusrivelyConvertPureThrowCompletionsToSimpleNormalCompletions(realm, alternate)
           );
         }
       }
+    } else if (completion instanceof ThrowCompletion) {
+      debugger;
     }
     return completion;
   }

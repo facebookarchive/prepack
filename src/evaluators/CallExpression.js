@@ -282,10 +282,6 @@ function tryToEvaluateCallOrLeaveAsAbstract(
   } finally {
     realm.suppressDiagnostics = savedSuppressDiagnostics;
   }
-  // We are in pure scope, so extract any throw completions if not in a try statement
-  if (!realm.isInPureTryStatement) {
-    realm.getEffectsWithoutPureThrowCompletions(effects);
-  }
   let completion = effects.result;
   // Note that the effects of (non joining) abrupt branches are not included
   // in effects, but are tracked separately inside completion.

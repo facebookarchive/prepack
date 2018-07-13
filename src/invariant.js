@@ -13,6 +13,7 @@ import { InvariantError } from "./errors.js";
 
 export default function invariant(condition: boolean, format: string = ""): void {
   if (condition) return;
+  debugger;
   const message = `${format}
 This is likely a bug in Prepack, not your code. Feel free to open an issue on GitHub.`;
   let error = new InvariantError(message);
