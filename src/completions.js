@@ -88,6 +88,9 @@ export class BreakCompletion extends AbruptCompletion {
 export class ReturnCompletion extends AbruptCompletion {
   constructor(value: Value, precedingEffects: void | Effects, location: ?BabelNodeSourceLocation) {
     super(value, precedingEffects, location);
+    if (value instanceof EmptyValue) {
+      this.value = value.$Realm.intrinsics.undefined;
+    }
   }
 }
 

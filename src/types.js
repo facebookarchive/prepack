@@ -32,7 +32,6 @@ import {
   AbruptCompletion,
   Completion,
   ForkedAbruptCompletion,
-  SimpleNormalCompletion,
   PossiblyNormalCompletion,
   NormalCompletion,
 } from "./completions.js";
@@ -740,20 +739,6 @@ export type JoinType = {
     // effects collected after pnc was constructed
     e: Effects
   ): ForkedAbruptCompletion,
-
-  updatePossiblyNormalCompletionWithConditionalSimpleNormalCompletion(
-    realm: Realm,
-    joinCondition: AbstractValue,
-    pnc: PossiblyNormalCompletion,
-    nc: SimpleNormalCompletion
-  ): void,
-
-  updatePossiblyNormalCompletionWithInverseConditionalSimpleNormalCompletion(
-    realm: Realm,
-    joinCondition: AbstractValue,
-    pnc: PossiblyNormalCompletion,
-    nc: SimpleNormalCompletion
-  ): void,
 
   extractAndJoinCompletionsOfType(CompletionType: typeof AbruptCompletion, realm: Realm, c: AbruptCompletion): Effects,
 
