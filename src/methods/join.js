@@ -244,36 +244,35 @@ export class JoinImplementation {
   }
 
   updatePossiblyNormalCompletionWithValue(realm: Realm, pnc: PossiblyNormalCompletion, v: Value): void {
-    let nc = new SimpleNormalCompletion(v);
-    pnc.value = v;
-    if (pnc.consequent instanceof AbruptCompletion) {
+    let updateNonAbruptCompletionWithValue = (c: Completion, val: Value) => {
+      if (c instanceof SimpleNormalCompletion) {
+        let nc = new SimpleNormalCompletion(val);
+        pnc = pnc.updateAlternateKeepingCurrentEffects(nc);
+        c.value = val;
+      } else if (c instanceof PossiblyNormalCompletion) {
+        this.updatePossiblyNormalCompletionWithValue(realm, c, val);
+      } else {
+        invariant(false);
+      }
+    };
+    let pncc = pnc.consequent;
+    let pnca = pnc.alternate;
+    if (pncc instanceof AbruptCompletion) {
       Path.withInverseCondition(pnc.joinCondition, () => {
-        if (v instanceof AbstractValue) v = realm.simplifyAndRefineAbstractValue(v);
-        if (pnc.alternate instanceof SimpleNormalCompletion) {
-          nc.value = v;
-          pnc = pnc.updateAlternateKeepingCurrentEffects(nc);
-          pnc.value = v;
-        } else {
-          invariant(pnc.alternate instanceof PossiblyNormalCompletion);
-          this.updatePossiblyNormalCompletionWithValue(realm, pnc.alternate, v);
-          invariant(pnc.alternate instanceof PossiblyNormalCompletion);
-          pnc.value = pnc.alternate.value;
-        }
+        let sv = v instanceof AbstractValue ? realm.simplifyAndRefineAbstractValue(v) : v;
+        updateNonAbruptCompletionWithValue(pnca, sv);
       });
     } else {
       Path.withCondition(pnc.joinCondition, () => {
-        if (v instanceof AbstractValue) v = realm.simplifyAndRefineAbstractValue(v);
-        if (pnc.consequent instanceof SimpleNormalCompletion) {
-          nc.value = v;
-          pnc = pnc.updateConsequentKeepingCurrentEffects(nc);
-          pnc.value = v;
-        } else {
-          invariant(pnc.consequent instanceof PossiblyNormalCompletion);
-          this.updatePossiblyNormalCompletionWithValue(realm, pnc.consequent, v);
-          invariant(pnc.consequent instanceof PossiblyNormalCompletion);
-          pnc.value = pnc.consequent.value;
-        }
+        let sv = v instanceof AbstractValue ? realm.simplifyAndRefineAbstractValue(v) : v;
+        updateNonAbruptCompletionWithValue(pncc, sv);
       });
+      if (!(pnca instanceof AbruptCompletion)) {
+        Path.withInverseCondition(pnc.joinCondition, () => {
+          let sv = v instanceof AbstractValue ? realm.simplifyAndRefineAbstractValue(v) : v;
+          updateNonAbruptCompletionWithValue(pnca, sv);
+        });
+      }
     }
   }
 
@@ -290,6 +289,7 @@ export class JoinImplementation {
     e.result = ac;
     let pncc = pnc.consequent;
     if (pncc instanceof AbruptCompletion) {
+      // todo: simplify with implied path condition
       e = realm.composeEffects(pnc.alternateEffects, e);
       if (pnc.alternate instanceof SimpleNormalCompletion) {
         return new ForkedAbruptCompletion(realm, pnc.joinCondition, pncc, pnc.consequentEffects, ac, e);
