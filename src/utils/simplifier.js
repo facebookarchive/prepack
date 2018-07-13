@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "@babel/types";
 import { FatalError, InfeasiblePathError } from "../errors.js";
 import { ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
@@ -17,7 +17,7 @@ import { Realm } from "../realm.js";
 import { AbstractValue, BooleanValue, ConcreteValue, Value } from "../values/index.js";
 import { Path, To } from "../singletons.js";
 import EmptyValue from "../values/EmptyValue";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 
 export default function simplifyAndRefineAbstractValue(
   realm: Realm,

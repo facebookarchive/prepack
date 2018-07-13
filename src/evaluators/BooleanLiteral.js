@@ -13,7 +13,7 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { BooleanValue } from "../values/index.js";
-import type { BabelNodeBooleanLiteral } from "babel-types";
+import type { BabelNodeBooleanLiteral } from "@babel/types";
 
 export default function(
   ast: BabelNodeBooleanLiteral,

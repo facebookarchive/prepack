@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { parseExpression } from "babylon";
+import { parseExpression } from "@babel/parser";
 import { ValuesDomain } from "../../domains/index.js";
 import {
   AbstractObjectValue,
@@ -26,7 +26,7 @@ import { Environment } from "../../singletons.js";
 import { createReactHintObject, getReactSymbol } from "../../react/utils.js";
 import { cloneReactElement, createReactElement } from "../../react/elements.js";
 import { Properties, Create, To } from "../../singletons.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import invariant from "../../invariant";
 import { updateIntrinsicNames, addMockFunctionToObject } from "./utils.js";
 

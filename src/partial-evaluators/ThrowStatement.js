@@ -9,12 +9,12 @@
 
 /* @flow */
 
-import type { BabelNode, BabelNodeStatement, BabelNodeThrowStatement } from "babel-types";
+import type { BabelNode, BabelNodeStatement, BabelNodeThrowStatement } from "@babel/types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 import { Completion, ThrowCompletion } from "../completions.js";
 import { Value } from "../values/index.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 
 export default function(
   ast: BabelNodeThrowStatement,

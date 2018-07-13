@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import invariant from "../invariant.js";
 import type { PropertyKeyValue } from "../types.js";
 import {
@@ -57,20 +57,19 @@ import type {
   BabelNodeVariableDeclaration,
   BabelNodeIdentifier,
   BabelNodeRestElement,
-  BabelNodeRestProperty,
   BabelNodeObjectProperty,
   BabelNodeObjectPattern,
   BabelNodeArrayPattern,
   BabelNodeStatement,
   BabelNodeLVal,
   BabelNodePattern,
-} from "babel-types";
+} from "@babel/types";
 
 export class EnvironmentImplementation {
   // 2.6 RestBindingInitialization (please suggest an appropriate section name)
   RestBindingInitialization(
     realm: Realm,
-    property: BabelNodeRestProperty,
+    property: BabelNodeRestElement,
     value: Value,
     excludedNames: Array<PropertyKeyValue>,
     strictCode: boolean,
@@ -671,11 +670,11 @@ export class EnvironmentImplementation {
       RequireObjectCoercible(realm, value);
 
       let BindingPropertyList = [],
-        BindingRestProperty = null;
+        BindingRestElement = null;
 
       for (let property of node.properties) {
-        if (property.type === "RestProperty") {
-          BindingRestProperty = property;
+        if (property.type === "RestElement") {
+          BindingRestElement = property;
         } else {
           BindingPropertyList.push(property);
         }
@@ -685,7 +684,7 @@ export class EnvironmentImplementation {
       //   { BindingPropertyList }
       //   { BindingPropertyList, }
 
-      if (!BindingRestProperty) {
+      if (!BindingRestElement) {
         // 1. Let excludedNames be the result of performing PropertyBindingInitialization for BindingPropertyList using value and environment as the argument.
         /* let excludedNames = */ this.PropertyBindingInitialization(
           realm,
@@ -701,22 +700,15 @@ export class EnvironmentImplementation {
         return realm.intrinsics.empty;
       }
 
-      // ObjectBindingPattern : { BindingRestProperty }
+      // ObjectBindingPattern : { BindingRestElement }
       if (BindingPropertyList.length === 0) {
         // 1. Let excludedNames be a new empty List.
         let excludedNames = [];
 
-        // 2. Return the result of performing RestBindingInitialization of BindingRestProperty with value, environment and excludedNames as the arguments.
-        return this.RestBindingInitialization(
-          realm,
-          BindingRestProperty,
-          value,
-          excludedNames,
-          strictCode,
-          environment
-        );
+        // 2. Return the result of performing RestBindingInitialization of BindingRestElement with value, environment and excludedNames as the arguments.
+        return this.RestBindingInitialization(realm, BindingRestElement, value, excludedNames, strictCode, environment);
       } else {
-        // ObjectBindingPattern : { BindingPropertyList, BindingRestProperty }
+        // ObjectBindingPattern : { BindingPropertyList, BindingRestElement }
 
         // 1. Let excludedNames be the result of performing PropertyBindingInitialization of BindingPropertyList using value and environment as arguments.
         let excludedNames = this.PropertyBindingInitialization(
@@ -729,15 +721,8 @@ export class EnvironmentImplementation {
 
         // 2. ReturnIfAbrupt(excludedNames).
 
-        // 3. Return the result of performing RestBindingInitialization of BindingRestProperty with value, environment and excludedNames as the arguments.
-        return this.RestBindingInitialization(
-          realm,
-          BindingRestProperty,
-          value,
-          excludedNames,
-          strictCode,
-          environment
-        );
+        // 3. Return the result of performing RestBindingInitialization of BindingRestElement with value, environment and excludedNames as the arguments.
+        return this.RestBindingInitialization(realm, BindingRestElement, value, excludedNames, strictCode, environment);
       }
     } else if (node.type === "Identifier") {
       // ECMA262 12.1.5

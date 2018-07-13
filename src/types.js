@@ -48,7 +48,7 @@ import type {
   BabelNodePattern,
   BabelNodeVariableDeclaration,
   BabelNodeSourceLocation,
-} from "babel-types";
+} from "@babel/types";
 import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "./realm.js";
 import { CompilerDiagnostic } from "./errors.js";
 import type { Severity } from "./errors.js";

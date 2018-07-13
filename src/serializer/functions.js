@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "@babel/types";
 import { Completion, PossiblyNormalCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
@@ -34,7 +34,7 @@ import type { AdditionalFunctionEffects, WriteEffects } from "./types";
 import { convertConfigObjectToReactComponentTreeConfig, valueIsKnownReactAbstraction } from "../react/utils.js";
 import { applyOptimizedReactComponents, optimizeReactComponentTreeRoot } from "../react/optimizing.js";
 import { handleReportedSideEffect } from "./utils.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 
 type AdditionalFunctionEntry = {
   value: ECMAScriptSourceFunctionValue | AbstractValue,

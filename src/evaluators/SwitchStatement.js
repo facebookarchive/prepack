@@ -26,7 +26,7 @@ import { EmptyValue, AbstractValue, Value } from "../values/index.js";
 import { StrictEqualityComparisonPartial, UpdateEmpty } from "../methods/index.js";
 import { Environment, Path, Join } from "../singletons.js";
 import { FatalError } from "../errors.js";
-import type { BabelNodeSwitchStatement, BabelNodeSwitchCase, BabelNodeExpression } from "babel-types";
+import type { BabelNodeSwitchStatement, BabelNodeSwitchCase, BabelNodeExpression } from "@babel/types";
 import invariant from "../invariant.js";
 
 // 13.12.10 Runtime Semantics: CaseSelectorEvaluation

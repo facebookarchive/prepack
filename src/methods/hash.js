@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelBinaryOperator, BabelUnaryOperator } from "babel-types";
+import type { BabelBinaryOperator, BabelUnaryOperator } from "@babel/types";
 import invariant from "../invariant.js";
 
 interface Hashable {

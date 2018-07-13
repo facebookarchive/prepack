@@ -9,8 +9,8 @@
 
 /* @flow */
 
-import { BabelNode } from "babel-types";
-import * as t from "babel-types";
+import { BabelNode } from "@babel/types";
+import * as t from "@babel/types";
 
 // This is a variation of traverseFast from
 // https://github.com/babel/babel/blob/28ae47a174f67a8ae6f4527e0a66e88896814170/packages/babel-types/src/index.js

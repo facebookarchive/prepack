@@ -33,7 +33,7 @@ import { Completion, ReturnCompletion, ThrowCompletion } from "../completions.js
 import { GetMethod, Get } from "./get.js";
 import { HasCompatibleType } from "./has.js";
 import { To } from "../singletons.js";
-import type { BabelNodeSourceLocation, BabelBinaryOperator } from "babel-types";
+import type { BabelNodeSourceLocation, BabelBinaryOperator } from "@babel/types";
 import invariant from "../invariant.js";
 
 export const URIReserved = ";/?:@&=+$,";

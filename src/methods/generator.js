@@ -14,7 +14,7 @@ import { AbruptCompletion } from "../completions.js";
 import { Value, ObjectValue, UndefinedValue } from "../values/index.js";
 import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
-import type { BabelNodeBlockStatement } from "babel-types";
+import type { BabelNodeBlockStatement } from "@babel/types";
 
 // ECMA26225.3.3.1
 export function GeneratorStart(

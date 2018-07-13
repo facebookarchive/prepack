@@ -19,7 +19,7 @@ import { Generator } from "../utils/generator.js";
 import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import traverseFast from "../utils/traverse-fast.js";
-import type { BabelNodeProgram, BabelNodeVariableDeclaration } from "babel-types";
+import type { BabelNodeProgram, BabelNodeVariableDeclaration } from "@babel/types";
 
 // ECMA262 15.1.11
 export function GlobalDeclarationInstantiation(

@@ -22,7 +22,7 @@ import {
 } from "./options.js";
 import { type SerializedResult } from "./serializer/types.js";
 import { prepackStdin, prepackFileSync } from "./prepack-node.js";
-import type { BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "@babel/types";
 import fs from "fs";
 import v8 from "v8";
 import { version } from "../package.json";

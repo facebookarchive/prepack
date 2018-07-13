@@ -9,7 +9,7 @@
 
 /* @flow strict-local */
 
-import type { BabelNodeBreakStatement, BabelNodeStatement } from "babel-types";
+import type { BabelNodeBreakStatement, BabelNodeStatement } from "@babel/types";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 

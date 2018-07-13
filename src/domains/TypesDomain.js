@@ -10,7 +10,7 @@
 /* @flow strict-local */
 
 import invariant from "../invariant.js";
-import type { BabelBinaryOperator, BabelNodeLogicalOperator, BabelUnaryOperator } from "babel-types";
+import type { BabelBinaryOperator, BabelNodeLogicalOperator, BabelUnaryOperator } from "@babel/types";
 import {
   AbstractValue,
   BooleanValue,

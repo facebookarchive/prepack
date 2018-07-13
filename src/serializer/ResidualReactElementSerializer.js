@@ -12,8 +12,8 @@
 import { Realm } from "../realm.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { canHoistReactElement } from "../react/hoisting.js";
-import * as t from "babel-types";
-import type { BabelNode, BabelNodeExpression } from "babel-types";
+import * as t from "@babel/types";
+import type { BabelNode, BabelNodeExpression } from "@babel/types";
 import { AbstractValue, AbstractObjectValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
 import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
 import { Logger } from "../utils/logger.js";
@@ -344,7 +344,7 @@ export class ResidualReactElementSerializer {
         let expr = ((attribute.expr: any): BabelNodeExpression);
 
         if (attribute.type === "SPREAD") {
-          astAttributes.push(t.spreadProperty(expr));
+          astAttributes.push(t.spreadElement(expr));
         } else if (attribute.type === "PROPERTY") {
           let attributeKey = attribute.key;
           let key;

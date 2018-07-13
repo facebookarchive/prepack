@@ -24,7 +24,7 @@ import { Get } from "./get.js";
 import { HasSomeCompatibleType } from "./has.js";
 import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
-import type { BabelNodeClassMethod } from "babel-types";
+import type { BabelNodeClassMethod } from "@babel/types";
 
 // ECMA262 9.2.8
 export function MakeConstructor(

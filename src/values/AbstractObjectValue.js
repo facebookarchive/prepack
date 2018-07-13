@@ -33,9 +33,9 @@ import {
   equalDescriptors,
 } from "../methods/index.js";
 import { Havoc, Widen } from "../singletons.js";
-import type { BabelNodeExpression } from "babel-types";
+import type { BabelNodeExpression } from "@babel/types";
 import invariant from "../invariant.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 
 export default class AbstractObjectValue extends AbstractValue {
   constructor(

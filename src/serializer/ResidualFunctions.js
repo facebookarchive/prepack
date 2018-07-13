@@ -13,7 +13,7 @@ import { FatalError } from "../errors.js";
 import { Realm } from "../realm.js";
 import { FunctionValue, ECMAScriptSourceFunctionValue, ObjectValue } from "../values/index.js";
 import type { SerializerOptions } from "../options.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import type {
   BabelNodeCallExpression,
   BabelNodeClassMethod,
@@ -26,7 +26,7 @@ import type {
   BabelNodeSpreadElement,
   BabelNodeFunctionExpression,
   BabelNodeArrowFunctionExpression,
-} from "babel-types";
+} from "@babel/types";
 import type { FunctionBodyAstNode } from "../types.js";
 import type { NameGenerator } from "../utils/generator.js";
 import invariant from "../invariant.js";

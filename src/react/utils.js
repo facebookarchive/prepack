@@ -11,8 +11,8 @@
 
 import { Realm, Effects } from "../realm.js";
 import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
-import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
-import { parseExpression } from "babylon";
+import type { BabelNode, BabelNodeJSXIdentifier } from "@babel/types";
+import { parseExpression } from "@babel/parser";
 import {
   AbstractObjectValue,
   AbstractValue,
@@ -42,9 +42,9 @@ import { computeBinary } from "../evaluators/BinaryExpression.js";
 import type { AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
 import invariant from "../invariant.js";
 import { Create, Properties, To } from "../singletons.js";
-import traverse from "babel-traverse";
-import * as t from "babel-types";
-import type { BabelNodeStatement } from "babel-types";
+import traverse from "@babel/traverse";
+import * as t from "@babel/types";
+import type { BabelNodeStatement } from "@babel/types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 
 export type ReactSymbolTypes =
@@ -339,7 +339,8 @@ export function convertSimpleClassComponentToFunctionalComponent(
       {},
       undefined
     );
-    traverse.clearCache();
+    // Babel 7 removed clearCache
+    // traverse.clearCache();
   });
 }
 

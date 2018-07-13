@@ -16,7 +16,7 @@ import type {
   BabelNodeLogicalOperator,
   BabelNodeSourceLocation,
   BabelUnaryOperator,
-} from "babel-types";
+} from "@babel/types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
@@ -40,7 +40,7 @@ import { hashString, hashBinary, hashCall, hashTernary, hashUnary } from "../met
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 
-import * as t from "babel-types";
+import * as t from "@babel/types";
 
 export type AbstractValueBuildNodeFunction = (Array<BabelNodeExpression>) => BabelNodeExpression;
 

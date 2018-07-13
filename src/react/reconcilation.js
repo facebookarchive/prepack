@@ -57,7 +57,7 @@ import {
   getValueWithBranchingLogicApplied,
   wrapReactElementInBranchOrReturnValue,
 } from "./branching.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import { Completion } from "../completions.js";
 import {
   getInitialProps,

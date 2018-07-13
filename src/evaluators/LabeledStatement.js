@@ -14,7 +14,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
 import { BreakCompletion } from "../completions.js";
-import type { BabelNode, BabelNodeLabeledStatement, BabelNodeVariableDeclaration } from "babel-types";
+import type { BabelNode, BabelNodeLabeledStatement, BabelNodeVariableDeclaration } from "@babel/types";
 import invariant from "../invariant.js";
 
 // ECMA262 13.13.14

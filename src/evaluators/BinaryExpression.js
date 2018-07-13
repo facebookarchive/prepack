@@ -32,8 +32,8 @@ import type {
   BabelNodeBinaryExpression,
   BabelNodeExpression,
   BabelNodeSourceLocation,
-} from "babel-types";
-import * as t from "babel-types";
+} from "@babel/types";
+import * as t from "@babel/types";
 import invariant from "../invariant.js";
 
 export default function(

@@ -25,7 +25,7 @@ Hello.getTrials = function(renderer, Root) {
   return [["fb2 mocks", renderer.toJSON()]];
 };
 
-if (this.__optimizeReactComponentTree) {
+if (window.__optimizeReactComponentTree) {
   __optimizeReactComponentTree(Hello);
 }
 

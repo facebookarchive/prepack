@@ -15,10 +15,10 @@ import type { Value } from "../values/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Add } from "../methods/index.js";
 import { AbstractValue, NumberValue, IntegralValue } from "../values/index.js";
-import type { BabelNodeUpdateExpression } from "babel-types";
+import type { BabelNodeUpdateExpression } from "@babel/types";
 import { Environment, Havoc, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import { ValuesDomain, TypesDomain } from "../domains/index.js";
 
 export default function(
