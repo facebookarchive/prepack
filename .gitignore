@@ -3,6 +3,7 @@
 /node_modules
 /lib
 npm-debug.log
+yarn-error.log
 .DS_Store
 build/
 .idea/
