@@ -166,6 +166,10 @@ it("Handle mapped arrays 2", () => {
   runTest(__dirname + "/FunctionalComponents/array-map2.js");
 });
 
+it("Handle mapped arrays 3", () => {
+  runTest(__dirname + "/FunctionalComponents/array-map3.js");
+});
+
 it("Handle mapped arrays from Array.from", () => {
   runTest(__dirname + "/FunctionalComponents/array-from.js");
 });
