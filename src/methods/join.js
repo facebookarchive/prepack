@@ -334,87 +334,11 @@ export class JoinImplementation {
     }
   }
 
-  updatePossiblyNormalCompletionWithConditionalSimpleNormalCompletion(
+  joinNormalCompletions(
     realm: Realm,
     joinCondition: AbstractValue,
-    pnc: PossiblyNormalCompletion,
-    nc: SimpleNormalCompletion
-  ): void {
-    let v = nc.value;
-    if (pnc.consequent instanceof AbruptCompletion) {
-      if (pnc.alternate instanceof SimpleNormalCompletion) {
-        nc.value = AbstractValue.createFromConditionalOp(realm, joinCondition, pnc.alternate.value, v);
-        pnc.alternateEffects.result = nc;
-        nc.effects = pnc.alternateEffects;
-        pnc.alternate = nc;
-      } else {
-        invariant(pnc.alternate instanceof PossiblyNormalCompletion);
-        this.updatePossiblyNormalCompletionWithConditionalSimpleNormalCompletion(
-          realm,
-          joinCondition,
-          pnc.alternate,
-          nc
-        );
-      }
-    } else {
-      if (pnc.consequent instanceof SimpleNormalCompletion) {
-        nc.value = AbstractValue.createFromConditionalOp(realm, joinCondition, pnc.consequent.value, v);
-        pnc.consequentEffects.result = nc;
-        nc.effects = pnc.consequentEffects;
-        pnc.consequent = nc;
-      } else {
-        invariant(pnc.consequent instanceof PossiblyNormalCompletion);
-        this.updatePossiblyNormalCompletionWithConditionalSimpleNormalCompletion(
-          realm,
-          joinCondition,
-          pnc.consequent,
-          nc
-        );
-      }
-    }
-  }
-
-  updatePossiblyNormalCompletionWithInverseConditionalSimpleNormalCompletion(
-    realm: Realm,
-    joinCondition: AbstractValue,
-    pnc: PossiblyNormalCompletion,
-    nc: SimpleNormalCompletion
-  ): void {
-    let v = nc.value;
-    if (pnc.consequent instanceof AbruptCompletion) {
-      if (pnc.alternate instanceof SimpleNormalCompletion) {
-        nc.value = AbstractValue.createFromConditionalOp(realm, joinCondition, v, pnc.alternate.value);
-        pnc = pnc.updateAlternateKeepingCurrentEffects(nc);
-      } else {
-        invariant(pnc.alternate instanceof PossiblyNormalCompletion);
-        this.updatePossiblyNormalCompletionWithInverseConditionalSimpleNormalCompletion(
-          realm,
-          joinCondition,
-          pnc.alternate,
-          nc
-        );
-      }
-    } else {
-      if (pnc.consequent instanceof SimpleNormalCompletion) {
-        nc.value = AbstractValue.createFromConditionalOp(realm, joinCondition, v, pnc.consequent.value);
-        pnc = pnc.updateConsequentKeepingCurrentEffects(nc);
-      } else {
-        invariant(pnc.consequent instanceof PossiblyNormalCompletion);
-        this.updatePossiblyNormalCompletionWithInverseConditionalSimpleNormalCompletion(
-          realm,
-          joinCondition,
-          pnc.consequent,
-          nc
-        );
-      }
-    }
-  }
-
-  joinPossiblyNormalCompletions(
-    realm: Realm,
-    joinCondition: AbstractValue,
-    c: PossiblyNormalCompletion,
-    a: PossiblyNormalCompletion
+    c: NormalCompletion,
+    a: NormalCompletion
   ): PossiblyNormalCompletion {
     let getAbstractValue = (v1: void | Value, v2: void | Value): Value => {
       if (v1 instanceof EmptyValue) return v2 || realm.intrinsics.undefined;
@@ -633,8 +557,8 @@ export class JoinImplementation {
     if (result1 instanceof AbruptCompletion && result2 instanceof AbruptCompletion) {
       return new ForkedAbruptCompletion(realm, joinCondition, result1, e1, result2, e2);
     }
-    if (result1 instanceof PossiblyNormalCompletion && result2 instanceof PossiblyNormalCompletion) {
-      return this.joinPossiblyNormalCompletions(realm, joinCondition, result1, result2);
+    if (result1 instanceof NormalCompletion && result2 instanceof NormalCompletion) {
+      return this.joinNormalCompletions(realm, joinCondition, result1, result2);
     }
     if (result1 instanceof AbruptCompletion) {
       let completion = result2;
@@ -677,21 +601,6 @@ export class JoinImplementation {
         savedPathConditions,
         savedEffects
       );
-    }
-    if (result1 instanceof PossiblyNormalCompletion) {
-      invariant(result2 instanceof SimpleNormalCompletion);
-      this.updatePossiblyNormalCompletionWithConditionalSimpleNormalCompletion(realm, joinCondition, result1, result2);
-      return result1;
-    }
-    if (result2 instanceof PossiblyNormalCompletion) {
-      invariant(result1 instanceof SimpleNormalCompletion);
-      this.updatePossiblyNormalCompletionWithInverseConditionalSimpleNormalCompletion(
-        realm,
-        joinCondition,
-        result2,
-        result1
-      );
-      return result2;
     }
     invariant(false);
   }
