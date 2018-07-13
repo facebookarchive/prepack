@@ -197,7 +197,7 @@ export function valueIsLegacyCreateClassComponent(realm: Realm, value: Value): b
 }
 
 export function valueIsFactoryClassComponent(realm: Realm, value: Value): boolean {
-  if (value instanceof ObjectValue) {
+  if (value instanceof ObjectValue && !ArrayValue.isIntrinsicAndHasWidenedNumericProperty(value)) {
     return To.ToBooleanPartial(realm, Get(realm, value, "render"));
   }
   return false;
