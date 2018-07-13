@@ -1854,25 +1854,9 @@ export class Realm {
     }
   }
 
-  updateEffectsAndExtractPureThrowCompletions(effects: Effects): void {
-    let completion = effects.result;
-    if (completion instanceof PossiblyNormalCompletion) {
-      if (completion.alternate.containsCompletion(ThrowCompletion)) {
-        // This is not correct: "completion" is a PNC, and needs to be Abrupt.
-        // If I try to use "replacePossiblyNormalCompletionWithForkedAbruptCompletion"
-        // with completion.consequent or completion.alternate as the second argument
-        // we get somewhere but ultimate the generators are broken upon serialization.
-        // I'm parking this PR for now. Too many things seem fragile and I most likely need to
-        // have a deep-dive talk with Herman at some point to better understand it all.
-        let e = Join.extractAndJoinCompletionsOfType(ThrowCompletion, this, completion);
-        completion.alternate = e.result;
-        completion.alternate.effects = e;
-      }
-      if (completion.consequent.containsCompletion(ThrowCompletion)) {
-        let e = Join.extractAndJoinCompletionsOfType(ThrowCompletion, this, completion);
-        completion.consequent = e.result;
-        completion.consequent.effects = e;
-      }
+  getEffectsWithoutPureThrowCompletions(effects: Effects): Effects {
+    if (effects.result instanceof Completion) {
+      effects.completion = Join.recusrivelyConvertPureThrowCompletionsToSimpleNormalCompletions(this, effects.result);
     }
   }
 }

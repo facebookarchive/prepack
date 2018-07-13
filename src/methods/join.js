@@ -214,6 +214,30 @@ export class JoinImplementation {
     }
   }
 
+  recusrivelyConvertPureThrowCompletionsToSimpleNormalCompletions(realm: Realm, completion: Completion): Completion {
+    if (completion instanceof PossiblyNormalCompletion || completion instanceof ForkedAbruptCompletion) {
+      if (completion.containsCompletion(ThrowCompletion)) {
+        let consequent = completion.consequent;
+        if (consequent instanceof ThrowCompletion) {
+          completion.updateConsequentKeepingCurrentEffects(new SimpleNormalCompletion(realm.intrinsics.empty));
+        } else if (consequent instanceof PossiblyNormalCompletion || consequent instanceof ForkedAbruptCompletion) {
+          completion.updateConsequentKeepingCurrentEffects(
+            this.recusrivelyConvertPureThrowCompletionsToSimpleNormalCompletions(realm, consequent)
+          );
+        }
+        let alternate = completion.alternate;
+        if (alternate instanceof ThrowCompletion) {
+          completion.updateAlternateKeepingCurrentEffects(new SimpleNormalCompletion(realm.intrinsics.empty));
+        } else if (alternate instanceof PossiblyNormalCompletion || alternate instanceof ForkedAbruptCompletion) {
+          completion.updateAlternateKeepingCurrentEffects(
+            this.recusrivelyConvertPureThrowCompletionsToSimpleNormalCompletions(realm, alternate)
+          );
+        }
+      }
+    }
+    return completion;
+  }
+
   updatePossiblyNormalCompletionWithSubsequentEffects(
     realm: Realm,
     pnc: PossiblyNormalCompletion,
