@@ -319,3 +319,7 @@ it("Dynamic ReactElement type #4", () => {
 it("Hoist Fragment", () => {
   runTest(__dirname + "/FunctionalComponents/hoist-fragment.js");
 });
+
+it("Pathological case", () => {
+  runTest(__dirname + "/FunctionalComponents/pathological-case.js");
+});
