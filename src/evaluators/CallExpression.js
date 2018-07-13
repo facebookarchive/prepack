@@ -10,7 +10,7 @@
 /* @flow */
 
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
+import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion, ThrowCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
 import { Effects } from "../realm.js";
 import { type LexicalEnvironment, type BaseValue, mightBecomeAnObject } from "../environment.js";
@@ -282,10 +282,22 @@ function tryToEvaluateCallOrLeaveAsAbstract(
   } finally {
     realm.suppressDiagnostics = savedSuppressDiagnostics;
   }
+  let completion = effects.result;
+  if (completion instanceof PossiblyNormalCompletion && !realm.isInPureTryStatement) {
+    if (completion.alternate instanceof ThrowCompletion) {
+      let e = Join.extractAndJoinCompletionsOfType(ThrowCompletion, realm, completion);
+      completion.alternate = e.result;
+      completion.alternate.effects = e;
+    }
+    if (completion.consequent instanceof ThrowCompletion) {
+      let e = Join.extractAndJoinCompletionsOfType(ThrowCompletion, realm, completion);
+      completion.consequent = e.result;
+      completion.consequent.effects = e;
+    }
+  }
   // Note that the effects of (non joining) abrupt branches are not included
   // in effects, but are tracked separately inside completion.
   realm.applyEffects(effects);
-  let completion = effects.result;
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
     // not all control flow branches join into one flow at this point.

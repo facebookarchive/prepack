@@ -19,14 +19,12 @@ export class Completion {
     this.value = value;
     this.target = target;
     this.location = location;
-    this.createdInPureScope = value.$Realm.isInPureScope();
     invariant(this.constructor !== Completion, "Completion is an abstract base class");
   }
 
   value: Value;
   target: ?string;
   location: ?BabelNodeSourceLocation;
-  createdInPureScope: boolean;
 
   effects: ?Effects;
 
@@ -62,7 +60,7 @@ export class ThrowCompletion extends AbruptCompletion {
     this.nativeStack = nativeStack || new Error().stack;
     let realm = value.$Realm;
 
-    if (this.createdInPureScope) {
+    if (realm.isInPureScope()) {
       if (!realm.isInPureTryStatement) {
         invariant(realm.generator !== undefined);
         // TODO: we should porbably materialize exprValue at this point
@@ -159,24 +157,18 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
     );
   }
 
-  containsCompletion(CompletionType: typeof Completion, skipCompletionsCreatedInPureScope: boolean): boolean {
-    if (
-      this.consequent instanceof CompletionType &&
-      (!skipCompletionsCreatedInPureScope || !this.consequent.createdInPureScope)
-    ) {
+  containsCompletion(CompletionType: typeof Completion): boolean {
+    if (this.consequent instanceof CompletionType) {
       return true;
     }
-    if (
-      this.alternate instanceof CompletionType &&
-      (!skipCompletionsCreatedInPureScope || !this.alternate.createdInPureScope)
-    ) {
+    if (this.alternate instanceof CompletionType) {
       return true;
     }
     if (this.consequent instanceof ForkedAbruptCompletion) {
-      if (this.consequent.containsCompletion(CompletionType, skipCompletionsCreatedInPureScope)) return true;
+      if (this.consequent.containsCompletion(CompletionType)) return true;
     }
     if (this.alternate instanceof ForkedAbruptCompletion) {
-      if (this.alternate.containsCompletion(CompletionType, skipCompletionsCreatedInPureScope)) return true;
+      if (this.alternate.containsCompletion(CompletionType)) return true;
     }
     return false;
   }
@@ -296,24 +288,18 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     return result;
   }
 
-  containsCompletion(CompletionType: typeof Completion, skipCompletionsCreatedInPureScope: boolean): boolean {
-    if (
-      this.consequent instanceof CompletionType &&
-      (!skipCompletionsCreatedInPureScope || !this.consequent.createdInPureScope)
-    ) {
+  containsCompletion(CompletionType: typeof Completion): boolean {
+    if (this.consequent instanceof CompletionType) {
       return true;
     }
-    if (
-      this.alternate instanceof CompletionType &&
-      (!skipCompletionsCreatedInPureScope || !this.alternate.createdInPureScope)
-    ) {
+    if (this.alternate instanceof CompletionType) {
       return true;
     }
     if (this.consequent instanceof ForkedAbruptCompletion || this.consequent instanceof PossiblyNormalCompletion) {
-      if (this.consequent.containsCompletion(CompletionType, skipCompletionsCreatedInPureScope)) return true;
+      if (this.consequent.containsCompletion(CompletionType)) return true;
     }
     if (this.alternate instanceof ForkedAbruptCompletion || this.alternate instanceof PossiblyNormalCompletion) {
-      if (this.alternate.containsCompletion(CompletionType, skipCompletionsCreatedInPureScope)) return true;
+      if (this.alternate.containsCompletion(CompletionType)) return true;
     }
     return false;
   }

@@ -454,10 +454,7 @@ export class JoinImplementation {
       // Erase completions of type CompletionType and prepare for transformation of c to a possibly normal completion
       if (c.consequent instanceof CompletionType) {
         c = c.updateConsequentKeepingCurrentEffects(new SimpleNormalCompletion(realm.intrinsics.empty));
-      } else if (
-        c.consequent instanceof ForkedAbruptCompletion &&
-        c.consequent.containsCompletion(NormalCompletion, false)
-      ) {
+      } else if (c.consequent instanceof ForkedAbruptCompletion && c.consequent.containsCompletion(NormalCompletion)) {
         c = c.updateConsequentKeepingCurrentEffects((c.consequent.transferChildrenToPossiblyNormalCompletion(): any));
       }
     } else {
@@ -473,10 +470,7 @@ export class JoinImplementation {
       // Erase completions of type CompletionType and prepare for transformation of c to a possibly normal completion
       if (c.alternate instanceof CompletionType) {
         c = c.updateAlternateKeepingCurrentEffects(new SimpleNormalCompletion(realm.intrinsics.empty));
-      } else if (
-        c.alternate instanceof ForkedAbruptCompletion &&
-        c.alternate.containsCompletion(NormalCompletion, false)
-      ) {
+      } else if (c.alternate instanceof ForkedAbruptCompletion && c.alternate.containsCompletion(NormalCompletion)) {
         c = c.updateAlternateKeepingCurrentEffects((c.alternate.transferChildrenToPossiblyNormalCompletion(): any));
       }
     } else {
