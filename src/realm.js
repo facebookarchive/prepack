@@ -1045,7 +1045,7 @@ export class Realm {
       joinedEffects = Join.joinForkOrChoose(this, condValue, effects1, effects2);
       // We are in pure scope, so extract any throw completions if not in a try statement
       if (!this.isInPureTryStatement) {
-        this.getEffectsWithoutPureThrowCompletions(joinedEffects);
+        joinedEffects = this.getEffectsWithoutPureThrowCompletions(joinedEffects);
       }
       completion = joinedEffects.result;
       if (completion instanceof ForkedAbruptCompletion) {
@@ -1859,8 +1859,19 @@ export class Realm {
   }
 
   getEffectsWithoutPureThrowCompletions(effects: Effects): Effects {
-    if (effects.result instanceof Completion) {
-      effects.completion = Join.recusrivelyConvertPureThrowCompletionsToSimpleNormalCompletions(this, effects.result);
+    let completion = effects.result;
+    if (
+      (completion instanceof PossiblyNormalCompletion || completion instanceof ForkedAbruptCompletion) &&
+      completion.containsCompletion(ThrowCompletion)
+    ) {
+      let newCompletion = Join.recusrivelyConvertPureThrowCompletionsToSimpleNormalCompletions(this, effects.result);
+      return Join.joinForkOrChoose(
+        this,
+        newCompletion.joinCondition,
+        newCompletion.consequentEffects,
+        newCompletion.alternateEffects
+      );
     }
+    return effects;
   }
 }

@@ -240,8 +240,6 @@ export class JoinImplementation {
           );
         }
       }
-    } else if (completion instanceof ThrowCompletion) {
-      debugger;
     }
     return completion;
   }
