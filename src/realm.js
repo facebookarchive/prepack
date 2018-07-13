@@ -300,6 +300,8 @@ export class Realm {
       verbose: opts.reactVerbose || false,
     };
 
+    this.reportSideEffectCallbacks = new Set();
+
     this.alreadyDescribedLocations = new WeakMap();
     this.stripFlow = opts.stripFlow || false;
 
@@ -346,9 +348,9 @@ export class Realm {
   createdObjects: void | CreatedObjects;
   createdObjectsTrackedForLeaks: void | CreatedObjects;
   reportObjectGetOwnProperties: void | (ObjectValue => void);
-  reportSideEffectCallback:
-    | void
-    | ((sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, expressionLocation: any) => void);
+  reportSideEffectCallbacks: Set<
+    (sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, expressionLocation: any) => void
+  >;
   reportPropertyAccess: void | (PropertyBinding => void);
   savedCompletion: void | PossiblyNormalCompletion;
 
@@ -716,26 +718,21 @@ export class Realm {
       | ((sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, value: void | Value) => void)
   ): T {
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
-    let saved_reportSideEffectCallback = this.reportSideEffectCallback;
     // Track all objects (including function closures) created during
     // this call. This will be used to make the assumption that every
     // *other* object is unchanged (pure). These objects are marked
     // as leaked if they're passed to abstract functions.
     this.createdObjectsTrackedForLeaks = new Set();
-    this.reportSideEffectCallback = (...args) => {
-      if (reportSideEffectFunc != null) {
-        reportSideEffectFunc(...args);
-      }
-      // Ensure we call any previously nested side-effect callbacks
-      if (saved_reportSideEffectCallback != null) {
-        saved_reportSideEffectCallback(...args);
-      }
-    };
+    if (reportSideEffectFunc !== null) {
+      this.reportSideEffectCallbacks.add(reportSideEffectFunc);
+    }
     try {
       return f();
     } finally {
       this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
-      this.reportSideEffectCallback = saved_reportSideEffectCallback;
+      if (reportSideEffectFunc !== null) {
+        this.reportSideEffectCallbacks.delete(reportSideEffectFunc);
+      }
     }
   }
 
@@ -1539,8 +1536,7 @@ export class Realm {
       this.modifiedBindings !== undefined &&
       !this.modifiedBindings.has(binding) &&
       value !== undefined &&
-      this.isInPureScope() &&
-      this.reportSideEffectCallback !== undefined
+      this.isInPureScope()
     ) {
       let env = binding.environment;
 
@@ -1548,7 +1544,9 @@ export class Realm {
         !(env instanceof DeclarativeEnvironmentRecord) ||
         (env instanceof DeclarativeEnvironmentRecord && !isDefinedInsidePureFn(env))
       ) {
-        this.reportSideEffectCallback("MODIFIED_BINDING", binding, value.expressionLocation);
+        for (let callback of this.reportSideEffectCallbacks) {
+          callback("MODIFIED_BINDING", binding, value.expressionLocation);
+        }
       }
     }
 
@@ -1591,11 +1589,13 @@ export class Realm {
 
       if (createdObjectsTrackedForLeaks !== undefined && !createdObjectsTrackedForLeaks.has(object)) {
         if (binding.object === this.$GlobalObject) {
-          this.reportSideEffectCallback &&
-            this.reportSideEffectCallback("MODIFIED_GLOBAL", binding, object.expressionLocation);
+          for (let callback of this.reportSideEffectCallbacks) {
+            callback("MODIFIED_GLOBAL", binding, object.expressionLocation);
+          }
         } else {
-          this.reportSideEffectCallback &&
-            this.reportSideEffectCallback("MODIFIED_PROPERTY", binding, object.expressionLocation);
+          for (let callback of this.reportSideEffectCallbacks) {
+            callback("MODIFIED_PROPERTY", binding, object.expressionLocation);
+          }
         }
       }
     }
