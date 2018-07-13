@@ -79,9 +79,7 @@ it("Runtime error", () => {
 });
 
 it("Simple 13", () => {
-  runTest(__dirname + "/FunctionalComponents/simple-13.js", {
-    expectReconcilerError: true,
-  });
+  runTest(__dirname + "/FunctionalComponents/simple-13.js");
 });
 
 it("Simple 14", () => {

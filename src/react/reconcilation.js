@@ -58,7 +58,7 @@ import {
   wrapReactElementInBranchOrReturnValue,
 } from "./branching.js";
 import * as t from "babel-types";
-import { Completion } from "../completions.js";
+import { Completion, AbruptCompletion } from "../completions.js";
 import {
   getInitialProps,
   getInitialContext,
@@ -203,6 +203,10 @@ export class Reconciler {
         )
       );
       this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
+      // We are in pure scope, so extract any throw completions if not in a try statement
+      if (!this.realm.isInPureTryStatement) {
+        effects = this.realm.getEffectsWithoutPureThrowCompletions(effects);
+      }
       return effects;
     } finally {
       this.realm.react.activeReconciler = undefined;
@@ -302,6 +306,10 @@ export class Reconciler {
         )
       );
       this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);
+      // We are in pure scope, so extract any throw completions if not in a try statement
+      if (!this.realm.isInPureTryStatement) {
+        effects = this.realm.getEffectsWithoutPureThrowCompletions(effects);
+      }
       return effects;
     } finally {
       this.realm.react.activeReconciler = undefined;
@@ -1259,6 +1267,9 @@ export class Reconciler {
       }
       return result;
     } catch (error) {
+      if (error instanceof AbruptCompletion) {
+        throw error;
+      }
       return this._resolveComponentResolutionFailure(error, reactElement, evaluatedNode, branchStatus);
     }
   }

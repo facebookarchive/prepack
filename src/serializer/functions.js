@@ -38,7 +38,8 @@ import * as t from "babel-types";
 
 type AdditionalFunctionEntry = {
   value: ECMAScriptSourceFunctionValue | AbstractValue,
-  config?: ReactComponentTreeConfig,
+  reactConfig?: ReactComponentTreeConfig,
+  optimizedFunctionConfig?: Value,
 };
 
 export class Functions {
@@ -73,23 +74,43 @@ export class Functions {
         }
       }
     }
-    if (value instanceof ECMAScriptSourceFunctionValue) {
-      // additional function logic
-      return { value };
-    } else if (value instanceof ObjectValue) {
-      // React component tree logic
-      let config = Get(realm, value, "config");
-      let rootComponent = Get(realm, value, "rootComponent");
-      let validConfig = config instanceof ObjectValue || config === realm.intrinsics.undefined;
-      let validRootComponent =
-        rootComponent instanceof ECMAScriptSourceFunctionValue ||
-        (rootComponent instanceof AbstractValue && valueIsKnownReactAbstraction(this.realm, rootComponent));
+    if (value instanceof ObjectValue) {
+      let config = value._SafeGetDataPropertyValue("config");
+      let rootComponent = value._SafeGetDataPropertyValue("rootComponent");
+      let functionValue = value._SafeGetDataPropertyValue("value");
 
-      if (validConfig && validRootComponent) {
-        return {
-          value: ((rootComponent: any): AbstractValue | ECMAScriptSourceFunctionValue),
-          config: convertConfigObjectToReactComponentTreeConfig(realm, ((config: any): ObjectValue | UndefinedValue)),
-        };
+      if (rootComponent !== realm.intrinsics.undefined) {
+        // React component tree logic
+        let validConfig = config instanceof ObjectValue || config === realm.intrinsics.undefined;
+        let validRootComponent =
+          rootComponent instanceof ECMAScriptSourceFunctionValue ||
+          (rootComponent instanceof AbstractValue && valueIsKnownReactAbstraction(this.realm, rootComponent));
+
+        if (validConfig && validRootComponent) {
+          return {
+            value: ((rootComponent: any): AbstractValue | ECMAScriptSourceFunctionValue),
+            reactConfig: convertConfigObjectToReactComponentTreeConfig(
+              realm,
+              ((config: any): ObjectValue | UndefinedValue)
+            ),
+          };
+        }
+      } else if (functionValue !== realm.intrinsics.undefined) {
+        if (functionValue instanceof AbstractValue) {
+          // if we conditionally called __optimize, we may have an AbstractValue that is the union of Empty or Undefined and
+          // a function/component to optimize
+          let elements = functionValue.values.getElements();
+          if (elements) {
+            let possibleValues = [...elements].filter(
+              element => !(element instanceof EmptyValue || element instanceof UndefinedValue)
+            );
+            if (possibleValues.length === 1) {
+              functionValue = possibleValues[0];
+            }
+          }
+        }
+        invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+        return { value: functionValue, optimizedFunctionConfig: config };
       }
     }
 
@@ -99,13 +120,13 @@ export class Functions {
       : "location unknown";
     realm.handleError(
       new CompilerDiagnostic(
-        `Optimized Function Value ${location} is an not a function or react element`,
+        `Optimized Function Value ${location} is an not a function or React component`,
         realm.currentLocation,
         "PP0033",
         "FatalError"
       )
     );
-    throw new FatalError("Optimized Function Values must be functions or react elements");
+    throw new FatalError("Optimized Function Values must be functions or React components");
   }
 
   __generateInitialAdditionalFunctions(globalKey: string): Array<AdditionalFunctionEntry> {
@@ -136,12 +157,12 @@ export class Functions {
     if (this.realm.react.verbose) {
       logger.logInformation(`Evaluating ${recordedReactRootValues.length} React component tree roots...`);
     }
-    for (let { value: componentRoot, config } of recordedReactRootValues) {
-      invariant(config);
+    for (let { value: componentRoot, reactConfig } of recordedReactRootValues) {
+      invariant(reactConfig);
       optimizeReactComponentTreeRoot(
         this.realm,
         componentRoot,
-        config,
+        reactConfig,
         this.writeEffects,
         environmentRecordIdAfterGlobalCode,
         logger,
@@ -149,6 +170,24 @@ export class Functions {
       );
     }
     applyOptimizedReactComponents(this.realm, this.writeEffects, environmentRecordIdAfterGlobalCode);
+  }
+
+  // When __optimize calls are called, an optional "pure" property can be passed
+  // on a config object to disable pure scope, otherwise pure scope is enabled by default.
+  // i.e. __optimize(foo, { pure: false });
+  // We also assume that any throw not surrounded by a try block within that pure scope is
+  // assumed to be uncaught and exit the entire program.
+  _isPureOptimizedFunction(optimizedFunctionConfig: void | Value): boolean {
+    if (optimizedFunctionConfig instanceof ObjectValue) {
+      let pureVal = optimizedFunctionConfig._SafeGetDataPropertyValue("pure");
+
+      // The config object should contain a "pure" property
+      // that is a false boolean. Otherwise, we return true.
+      if (pureVal === this.realm.intrinsics.false) {
+        return false;
+      }
+    }
+    return true;
   }
 
   _callOfFunction(funcValue: FunctionValue): void => Value {
@@ -212,7 +251,7 @@ export class Functions {
     };
 
     let optimizedFunctionId = 0;
-    let getEffectsFromAdditionalFunctionAndNestedFunctions = functionValue => {
+    let getEffectsFromAdditionalFunctionAndNestedFunctions = ({ value: functionValue, optimizedFunctionConfig }) => {
       let currentOptimizedFunctionId = optimizedFunctionId++;
       additionalFunctionStack.push(functionValue);
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
@@ -223,11 +262,14 @@ export class Functions {
       for (let t1 of this.realm.tracers) t1.beginOptimizingFunction(currentOptimizedFunctionId, functionValue);
       let call = this._callOfFunction(functionValue);
       let realm = this.realm;
-      let effects: Effects = realm.evaluatePure(
-        () => realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
-        (sideEffectType, binding, expressionLocation) =>
-          handleReportedSideEffect(logCompilerDiagnostic, sideEffectType, binding, expressionLocation)
-      );
+      let isPureFunction = this._isPureOptimizedFunction(optimizedFunctionConfig);
+      let effects: Effects = isPureFunction
+        ? realm.evaluatePure(
+            () => realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
+            (sideEffectType, binding, expressionLocation) =>
+              handleReportedSideEffect(logCompilerDiagnostic, sideEffectType, binding, expressionLocation)
+          )
+        : realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function");
       invariant(effects);
       let additionalFunctionEffects = createAdditionalEffects(
         this.realm,
@@ -254,7 +296,7 @@ export class Functions {
             let newEntry = this.__optimizedFunctionEntryOfValue(newValue);
             if (newEntry) {
               additionalFunctions.add(newEntry.value);
-              getEffectsFromAdditionalFunctionAndNestedFunctions(newEntry.value);
+              getEffectsFromAdditionalFunctionAndNestedFunctions(newEntry);
               // Now we have to rember the stack of effects that need to be applied to deal with
               // this additional function.
             }
@@ -267,8 +309,8 @@ export class Functions {
     };
 
     while (additionalFunctionsToProcess.length > 0) {
-      let funcValue = additionalFunctionsToProcess.shift().value;
-      getEffectsFromAdditionalFunctionAndNestedFunctions(funcValue);
+      let optimizedFunctionObject = additionalFunctionsToProcess.shift();
+      getEffectsFromAdditionalFunctionAndNestedFunctions(optimizedFunctionObject);
     }
     invariant(additionalFunctionStack.length === 0);
 

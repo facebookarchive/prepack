@@ -65,8 +65,15 @@ export class ThrowCompletion extends AbruptCompletion {
     super(value, precedingEffects, location);
     this.nativeStack = nativeStack || new Error().stack;
     let realm = value.$Realm;
-    if (realm.isInPureScope() && realm.reportSideEffectCallback !== undefined) {
-      realm.reportSideEffectCallback("EXCEPTION_THROWN", undefined, location);
+
+    if (realm.isInPureScope()) {
+      if (!realm.isInPureTryStatement) {
+        invariant(realm.generator !== undefined);
+        // TODO: we should porbably materialize exprValue at this point
+        realm.generator.emitThrow(value);
+      } else if (realm.reportSideEffectCallback !== undefined) {
+        realm.reportSideEffectCallback("EXCEPTION_THROWN", undefined, location);
+      }
     }
   }
 

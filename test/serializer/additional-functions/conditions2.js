@@ -1,4 +1,3 @@
-// expected Warning: PP0023
 if (!this.__evaluatePureFunction) {
   this.__evaluatePureFunction = function(f) {
     return f();

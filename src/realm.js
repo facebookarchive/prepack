@@ -1051,6 +1051,10 @@ export class Realm {
       // Join the effects, creating an abstract view of what happened, regardless
       // of the actual value of condValue.
       joinedEffects = Join.joinForkOrChoose(this, condValue, effects1, effects2);
+      // We are in pure scope, so extract any throw completions if not in a try statement
+      if (!this.isInPureTryStatement) {
+        joinedEffects = this.getEffectsWithoutPureThrowCompletions(joinedEffects);
+      }
       completion = joinedEffects.result;
       if (completion instanceof ForkedAbruptCompletion) {
         // Note that the effects are tracked separately inside completion and will be applied later.
@@ -1858,5 +1862,22 @@ export class Realm {
       }
       temporalEntries.add(temporalBuildNodeEntry);
     }
+  }
+
+  getEffectsWithoutPureThrowCompletions(effects: Effects): Effects {
+    let completion = effects.result;
+    if (
+      (completion instanceof PossiblyNormalCompletion || completion instanceof ForkedAbruptCompletion) &&
+      completion.containsCompletion(ThrowCompletion)
+    ) {
+      let newCompletion = Join.recusrivelyConvertPureThrowCompletionsToSimpleNormalCompletions(this, effects.result);
+      return Join.joinForkOrChoose(
+        this,
+        newCompletion.joinCondition,
+        newCompletion.consequentEffects,
+        newCompletion.alternateEffects
+      );
+    }
+    return effects;
   }
 }
