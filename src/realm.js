@@ -1853,4 +1853,20 @@ export class Realm {
       temporalEntries.add(temporalBuildNodeEntry);
     }
   }
+
+  updateEffectsAndExtractPureThrowCompletions(effects: Effects): void {
+    let completion = effects.result;
+    if (completion instanceof PossiblyNormalCompletion) {
+      if (completion.alternate.containsCompletion(ThrowCompletion)) {
+        let e = Join.extractAndJoinCompletionsOfType(ThrowCompletion, this, completion);
+        completion.alternate = e.result;
+        completion.alternate.effects = e;
+      }
+      if (completion.consequent.containsCompletion(ThrowCompletion)) {
+        let e = Join.extractAndJoinCompletionsOfType(ThrowCompletion, this, completion);
+        completion.consequent = e.result;
+        completion.consequent.effects = e;
+      }
+    }
+  }
 }

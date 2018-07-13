@@ -203,6 +203,10 @@ export class Reconciler {
         )
       );
       this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedRootNode);
+      // We are in pure scope, so extract any throw completions if not in a try statement
+      if (!this.realm.isInPureTryStatement) {
+        this.realm.updateEffectsAndExtractPureThrowCompletions(effects);
+      }
       return effects;
     } finally {
       this.realm.react.activeReconciler = undefined;
@@ -302,6 +306,10 @@ export class Reconciler {
         )
       );
       this._handleNestedOptimizedClosuresFromEffects(effects, evaluatedNode);
+      // We are in pure scope, so extract any throw completions if not in a try statement
+      if (!this.realm.isInPureTryStatement) {
+        this.realm.updateEffectsAndExtractPureThrowCompletions(effects);
+      }
       return effects;
     } finally {
       this.realm.react.activeReconciler = undefined;

@@ -282,19 +282,11 @@ function tryToEvaluateCallOrLeaveAsAbstract(
   } finally {
     realm.suppressDiagnostics = savedSuppressDiagnostics;
   }
-  let completion = effects.result;
-  if (completion instanceof PossiblyNormalCompletion && !realm.isInPureTryStatement) {
-    if (completion.alternate instanceof ThrowCompletion) {
-      let e = Join.extractAndJoinCompletionsOfType(ThrowCompletion, realm, completion);
-      completion.alternate = e.result;
-      completion.alternate.effects = e;
-    }
-    if (completion.consequent instanceof ThrowCompletion) {
-      let e = Join.extractAndJoinCompletionsOfType(ThrowCompletion, realm, completion);
-      completion.consequent = e.result;
-      completion.consequent.effects = e;
-    }
+  // We are in pure scope, so extract any throw completions if not in a try statement
+  if (!realm.isInPureTryStatement) {
+    realm.updateEffectsAndExtractPureThrowCompletions(effects);
   }
+  let completion = effects.result;
   // Note that the effects of (non joining) abrupt branches are not included
   // in effects, but are tracked separately inside completion.
   realm.applyEffects(effects);
