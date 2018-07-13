@@ -91,6 +91,11 @@ function InternalGetPropertiesMap(O: ObjectValue, P: PropertyKeyValue): Map<any,
 }
 
 function InternalSetProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, desc: Descriptor) {
+  if (O.hasWidenedIdentity()) {
+    // If this object as unknown identity, we need to only weakly update the descriptor.
+    desc = weaklyUpdateDescriptor(realm, undefined, desc);
+  }
+
   let map = InternalGetPropertiesMap(O, P);
   let key = InternalGetPropertiesKey(P);
   let propertyBinding = map.get(key);
@@ -124,6 +129,7 @@ function InternalEmitPropertyMutationEffect(
       // We only emit effects on intrinsics or snapshots.
       return;
     }
+    invariant(!Target.hasWidenedIdentity()); // only the abstract wrapper should be the target.
     invariant(!Target.mightBeLeakedObject()); // leaked objects are never updated
     invariant(!Target.mightBeFinalObject()); // final objects are never updated
   }
@@ -204,6 +210,77 @@ function leakDescriptor(realm: Realm, desc: Descriptor) {
   if (desc.set) {
     Leak.value(realm, desc.set);
   }
+}
+
+function weaklyUpdateValue(realm: Realm, value1: Value, value2: Value): Value {
+  if (value1 === value2) {
+    return value1;
+  }
+  if (
+    !(value1 instanceof AbstractValue) &&
+    !(value2 instanceof AbstractValue) &&
+    SameValuePartial(realm, value1.throwIfNotConcrete(), value2.throwIfNotConcrete())
+  ) {
+    return value1;
+  }
+  return AbstractValue.createFromWeakPropertyUpdate(realm, value1, value2);
+}
+
+function weaklyUpdateDescriptor(realm: Realm, desc1: void | Descriptor, desc2: Descriptor): Descriptor {
+  if (desc1 instanceof AbstractJoinedDescriptor) {
+    return new AbstractJoinedDescriptor(
+      desc1.joinCondition,
+      desc1.descriptor1 ? weaklyUpdateDescriptor(realm, desc1.descriptor1, desc2) : undefined,
+      desc1.descriptor2 ? weaklyUpdateDescriptor(realm, desc1.descriptor2, desc2) : undefined
+    );
+  }
+  if (desc2 instanceof AbstractJoinedDescriptor) {
+    return new AbstractJoinedDescriptor(
+      desc2.joinCondition,
+      desc2.descriptor1 ? weaklyUpdateDescriptor(realm, desc1, desc2.descriptor1) : undefined,
+      desc2.descriptor2 ? weaklyUpdateDescriptor(realm, desc1, desc2.descriptor2) : undefined
+    );
+  }
+  if (desc1 === undefined) {
+    if (IsDataDescriptor(realm, desc2)) {
+      let weakDesc = new PropertyDescriptor(desc2);
+      weakDesc.value = weaklyUpdateValue(realm, realm.intrinsics.empty, desc2.value || realm.intrinsics.empty);
+      return weakDesc;
+    } else {
+      let error = new CompilerDiagnostic(
+        "cannot yet weakly update an accessor descriptor that may or may not exist",
+        realm.currentLocation,
+        "PP0042",
+        "FatalError"
+      );
+      realm.handleError(error);
+      throw new FatalError();
+    }
+  }
+  invariant(desc1 instanceof PropertyDescriptor && desc2 instanceof PropertyDescriptor);
+  if (equalDescriptors(desc1, desc2)) {
+    if (IsDataDescriptor(realm, desc1)) {
+      let weakDesc = new PropertyDescriptor(desc1);
+      weakDesc.value = weaklyUpdateValue(
+        realm,
+        desc1.value || realm.intrinsics.empty,
+        desc2.value || realm.intrinsics.empty
+      );
+      return weakDesc;
+    } else {
+      // Access descriptors are equal only if all their values are equal.
+      return desc1;
+    }
+  }
+  // TODO: Create a WeakAbstractDescriptor to deal with this case.
+  let error = new CompilerDiagnostic(
+    "cannot yet weakly update an descriptors with different attributes",
+    realm.currentLocation,
+    "PP0042",
+    "FatalError"
+  );
+  realm.handleError(error);
+  throw new FatalError();
 }
 
 // Determines if an object with parent O may create its own property P.
@@ -774,7 +851,12 @@ export class PropertiesImplementation {
       }
       invariant(propertyBinding !== undefined);
       realm.recordModifiedProperty(propertyBinding);
-      propertyBinding.descriptor = undefined;
+      if (O.hasWidenedIdentity() && propertyBinding.descriptor !== undefined) {
+        // If this object has unknown identity, we need to only weakly delete the descriptor.
+        propertyBinding.descriptor = weaklyUpdateDescriptor(realm, undefined, propertyBinding.descriptor);
+      } else {
+        propertyBinding.descriptor = undefined;
+      }
       InternalEmitPropertyMutationEffect(realm, Target, P, undefined, desc);
 
       // b. Return true.
@@ -1012,6 +1094,17 @@ export class PropertiesImplementation {
     // 6. If IsGenericDescriptor(Desc) is true, no further validation is required.
     if (IsGenericDescriptor(realm, Desc)) {
     } else if (IsDataDescriptor(realm, current) !== IsDataDescriptor(realm, Desc)) {
+      if (O !== undefined && O.hasWidenedIdentity()) {
+        let error = new CompilerDiagnostic(
+          "Changing a descriptor type of an object template is not supported.",
+          realm.currentLocation,
+          "PP0038",
+          "FatalError"
+        );
+        realm.handleError(error);
+        throw new FatalError();
+      }
+
       // 7. Else if IsDataDescriptor(current) and IsDataDescriptor(Desc) have different results, then
       // a. Return false, if the [[Configurable]] field of current is false.
       if (!current.configurable) return false;
@@ -1093,6 +1186,7 @@ export class PropertiesImplementation {
     // 10. If O is not undefined, then
     if (O !== undefined) {
       invariant(P !== undefined);
+
       let key = InternalGetPropertiesKey(P);
       let map = InternalGetPropertiesMap(O, P);
       let propertyBinding = map.get(key);
@@ -1115,6 +1209,11 @@ export class PropertiesImplementation {
         if ((Desc: any)[field] !== undefined) {
           (current: any)[field] = (Desc: any)[field];
         }
+      }
+
+      if (O.hasWidenedIdentity()) {
+        // If this object has unknown identity, we need to only weakly update the descriptor.
+        Desc = weaklyUpdateDescriptor(realm, current, oldDesc);
       }
       InternalEmitPropertyMutationEffect(realm, Target, P, current, oldDesc);
     }
