@@ -30,8 +30,7 @@ export class ReactPropsSet {
 
     for (let [propName] of props.properties) {
       currentMap = reactEquivalenceSet.getKey(propName, currentMap, visitedValues);
-      let prop = reactEquivalenceSet.getEquivalentPropertyValue(props, propName);
-      result = reactEquivalenceSet.getValue(prop, currentMap, visitedValues);
+      result = reactEquivalenceSet.getEquivalentPropertyValue(props, propName, currentMap, visitedValues);
       currentMap = result.map;
     }
     let temporalAlias = props.temporalAlias;

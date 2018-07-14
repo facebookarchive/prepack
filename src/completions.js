@@ -65,8 +65,10 @@ export class ThrowCompletion extends AbruptCompletion {
     super(value, precedingEffects, location);
     this.nativeStack = nativeStack || new Error().stack;
     let realm = value.$Realm;
-    if (realm.isInPureScope() && realm.reportSideEffectCallback !== undefined) {
-      realm.reportSideEffectCallback("EXCEPTION_THROWN", undefined, location);
+    if (realm.isInPureScope()) {
+      for (let callback of realm.reportSideEffectCallbacks) {
+        callback("EXCEPTION_THROWN", undefined, location);
+      }
     }
   }
 
@@ -88,6 +90,9 @@ export class BreakCompletion extends AbruptCompletion {
 export class ReturnCompletion extends AbruptCompletion {
   constructor(value: Value, precedingEffects: void | Effects, location: ?BabelNodeSourceLocation) {
     super(value, precedingEffects, location);
+    if (value instanceof EmptyValue) {
+      this.value = value.$Realm.intrinsics.undefined;
+    }
   }
 }
 

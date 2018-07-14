@@ -29,23 +29,19 @@ export class ReactElementSet {
 
     // type
     currentMap = reactEquivalenceSet.getKey("type", currentMap, visitedValues);
-    let type = reactEquivalenceSet.getEquivalentPropertyValue(reactElement, "type");
-    let result = reactEquivalenceSet.getValue(type, currentMap, visitedValues);
+    let result = reactEquivalenceSet.getEquivalentPropertyValue(reactElement, "type", currentMap, visitedValues);
     currentMap = result.map;
     // key
     currentMap = reactEquivalenceSet.getKey("key", currentMap, visitedValues);
-    let key = reactEquivalenceSet.getEquivalentPropertyValue(reactElement, "key");
-    result = reactEquivalenceSet.getValue(key, currentMap, visitedValues);
+    result = reactEquivalenceSet.getEquivalentPropertyValue(reactElement, "key", currentMap, visitedValues);
     currentMap = result.map;
     // ref
     currentMap = reactEquivalenceSet.getKey("ref", currentMap, visitedValues);
-    let ref = reactEquivalenceSet.getEquivalentPropertyValue(reactElement, "ref");
-    result = reactEquivalenceSet.getValue(ref, currentMap, visitedValues);
+    result = reactEquivalenceSet.getEquivalentPropertyValue(reactElement, "ref", currentMap, visitedValues);
     currentMap = result.map;
     // props
     currentMap = reactEquivalenceSet.getKey("props", currentMap, visitedValues);
-    let props = reactEquivalenceSet.getEquivalentPropertyValue(reactElement, "props");
-    result = reactEquivalenceSet.getValue(props, currentMap, visitedValues);
+    result = reactEquivalenceSet.getEquivalentPropertyValue(reactElement, "props", currentMap, visitedValues);
 
     if (result.value === null) {
       result.value = reactElement;
