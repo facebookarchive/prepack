@@ -422,7 +422,7 @@ function generateRuntimeForStatement(
     null,
     functionInfo
   );
-  traverse.clearCache();
+  traverse.cache.clear();
   let { usesReturn, usesThrow, usesArguments, usesGotoToLabel, varPatternUnsupported, usesThis } = functionInfo;
 
   if (usesReturn || usesThrow || usesArguments || usesGotoToLabel || varPatternUnsupported) {

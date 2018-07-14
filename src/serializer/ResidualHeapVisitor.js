@@ -566,7 +566,7 @@ export class ResidualHeapVisitor {
         null,
         state
       );
-      traverse.clearCache();
+      traverse.cache.clear();
       this.functionInfos.set(code, functionInfo);
 
       if (val.isResidual && functionInfo.unbound.size) {

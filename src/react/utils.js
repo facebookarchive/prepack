@@ -339,7 +339,7 @@ export function convertSimpleClassComponentToFunctionalComponent(
       {},
       undefined
     );
-    traverse.clearCache();
+    traverse.cache.clear();
   });
 }
 
