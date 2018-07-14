@@ -566,8 +566,7 @@ export class ResidualHeapVisitor {
         null,
         state
       );
-      // Babel 7 removed clearCache
-      // traverse.clearCache();
+      traverse.cache.clear();
       this.functionInfos.set(code, functionInfo);
 
       if (val.isResidual && functionInfo.unbound.size) {

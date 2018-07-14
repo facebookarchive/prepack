@@ -339,8 +339,7 @@ export function convertSimpleClassComponentToFunctionalComponent(
       {},
       undefined
     );
-    // Babel 7 removed clearCache
-    // traverse.clearCache();
+    traverse.cache.clear();
   });
 }
 

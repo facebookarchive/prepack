@@ -422,8 +422,7 @@ function generateRuntimeForStatement(
     null,
     functionInfo
   );
-  // Babel 7 removed clearCache
-  // traverse.clearCache();
+  traverse.cache.clear();
   let { usesReturn, usesThrow, usesArguments, usesGotoToLabel, varPatternUnsupported, usesThis } = functionInfo;
 
   if (usesReturn || usesThrow || usesArguments || usesGotoToLabel || varPatternUnsupported) {
