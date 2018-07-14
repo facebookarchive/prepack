@@ -23,7 +23,7 @@ import {
   Value,
 } from "../../values/index.js";
 import invariant from "../../invariant.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import { SameValueZeroPartial, AbstractRelationalComparison } from "../../methods/abstract.js";
 import {
   StrictEqualityComparisonPartial,

@@ -13,7 +13,7 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { IntegralValue } from "../values/index.js";
-import type { BabelNodeNumericLiteral } from "babel-types";
+import type { BabelNodeNumericLiteral } from "@babel/types";
 
 export default function(
   ast: BabelNodeNumericLiteral,

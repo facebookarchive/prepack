@@ -9,13 +9,13 @@
 
 /* @flow */
 
-import type { BabelNodeFile, BabelNodeStatement } from "babel-types";
+import type { BabelNodeFile, BabelNodeStatement } from "@babel/types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
 import { Completion } from "../completions.js";
 import { Value } from "../values/index.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 
 export default function(
   ast: BabelNodeFile,

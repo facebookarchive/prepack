@@ -18,7 +18,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
 import { Reference } from "../environment.js";
 import { Environment } from "../singletons.js";
-import type { BabelNodeLogicalExpression } from "babel-types";
+import type { BabelNodeLogicalExpression } from "@babel/types";
 import invariant from "../invariant.js";
 import { Join, Path, To } from "../singletons.js";
 

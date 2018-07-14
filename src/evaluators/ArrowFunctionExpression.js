@@ -14,8 +14,8 @@ import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { Functions } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
-import * as t from "babel-types";
-import type { BabelNodeArrowFunctionExpression } from "babel-types";
+import * as t from "@babel/types";
+import type { BabelNodeArrowFunctionExpression } from "@babel/types";
 
 // ECMA262 14.2.16
 export default function(

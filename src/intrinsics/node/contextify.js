@@ -25,12 +25,12 @@ import {
 import { Get, GetFunctionRealm } from "../../methods/index.js";
 import { Properties, To } from "../../singletons.js";
 import parse from "../../utils/parse.js";
-import type { BabelNodeFile } from "babel-types";
+import type { BabelNodeFile } from "@babel/types";
 
 // TODO: This creates a strong dependency on babel and its transforms even
 // outside of devDependencies which is unfortunate. Get rid of this once classes
 // and destructuring is fully implemented.
-import { transform as babelTransform } from "babel-core";
+import { transform as babelTransform } from "@babel/core";
 
 // Hook for transpiling
 function transform(code: string, filename: string): string {

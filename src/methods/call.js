@@ -37,8 +37,8 @@ import { ReturnCompletion, AbruptCompletion, ThrowCompletion, ForkedAbruptComple
 import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
 import { Create, Environment, Functions, Join, Havoc, To, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
-import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "babel-types";
-import * as t from "babel-types";
+import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "@babel/types";
+import * as t from "@babel/types";
 
 // ECMA262 12.3.6.1
 export function ArgumentListEvaluation(

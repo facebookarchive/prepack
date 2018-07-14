@@ -10,10 +10,10 @@
 /* @flow strict-local */
 
 import { Value } from "../values/index.js";
-import type { BabelNodeIdentifier } from "babel-types";
+import type { BabelNodeIdentifier } from "@babel/types";
 import invariant from "../invariant.js";
 import type { NameGenerator, PreludeGenerator } from "../utils/generator";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 
 // This class maintains a map of values to babel identifiers.
 // This class can optionally track how often such value identifiers are referenced

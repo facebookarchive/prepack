@@ -13,7 +13,7 @@
  * https://github.com/flowtype/flow-typed
  */
 
-import { BabelNode } from "babel-types";
+import { BabelNode } from "@babel/types";
 
 type SourceMap = {
   sources: Array<string>,

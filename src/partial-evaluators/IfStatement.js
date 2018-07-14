@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeIfStatement, BabelNodeStatement } from "babel-types";
+import type { BabelNodeIfStatement, BabelNodeStatement } from "@babel/types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 import { Effects } from "../realm.js";
@@ -21,7 +21,7 @@ import { AbstractValue, Value } from "../values/index.js";
 import { construct_empty_effects } from "../realm.js";
 import { Join } from "../singletons.js";
 
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import invariant from "../invariant.js";
 
 export default function(

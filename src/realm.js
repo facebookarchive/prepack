@@ -67,8 +67,8 @@ import { Generator, PreludeGenerator, type TemporalBuildNodeEntry } from "./util
 import { emptyExpression, voidExpression } from "./utils/babelhelpers.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
-import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
-import * as t from "babel-types";
+import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "@babel/types";
+import * as t from "@babel/types";
 
 export type BindingEntry = {
   hasLeaked: void | boolean,

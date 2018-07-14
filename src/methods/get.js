@@ -41,8 +41,8 @@ import {
 } from "./index.js";
 import { Create, Environment, Join, Path, To } from "../singletons.js";
 import invariant from "../invariant.js";
-import type { BabelNodeTemplateLiteral } from "babel-types";
-import * as t from "babel-types";
+import type { BabelNodeTemplateLiteral } from "@babel/types";
+import * as t from "@babel/types";
 import { memberExpressionHelper } from "../utils/babelhelpers.js";
 
 // ECMA262 7.3.22

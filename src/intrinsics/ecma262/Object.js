@@ -38,7 +38,7 @@ import {
   HasSomeCompatibleType,
 } from "../../methods/index.js";
 import { Create, Havoc, Properties as Props, To } from "../../singletons.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import invariant from "../../invariant.js";
 
 function snapshotToObjectAndRemoveProperties(

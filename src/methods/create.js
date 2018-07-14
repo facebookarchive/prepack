@@ -37,7 +37,7 @@ import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
 import traverseFast from "../utils/traverse-fast.js";
-import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeFunctionDeclaration } from "babel-types";
+import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeFunctionDeclaration } from "@babel/types";
 
 const allElementTypes = ["Undefined", "Null", "Boolean", "String", "Symbol", "Number", "Object"];
 

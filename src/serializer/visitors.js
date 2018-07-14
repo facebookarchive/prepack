@@ -10,9 +10,9 @@
 /* @flow strict-local */
 
 import { Realm } from "../realm.js";
-import * as t from "babel-types";
-import type { BabelNodeCallExpression } from "babel-types";
-import type { BabelTraversePath, BabelTraverseScope } from "babel-traverse";
+import * as t from "@babel/types";
+import type { BabelNodeCallExpression } from "@babel/types";
+import type { BabelTraversePath, BabelTraverseScope } from "@babel/traverse";
 import type { FunctionInfo } from "./types.js";
 
 type GetModuleIdIfNodeIsRequireFunction =

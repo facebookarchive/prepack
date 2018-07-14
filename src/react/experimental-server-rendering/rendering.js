@@ -39,7 +39,7 @@ import {
   getReactSymbol,
   isReactElement,
 } from "../utils.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import invariant from "../../invariant.js";
 import {
   convertValueToNode,

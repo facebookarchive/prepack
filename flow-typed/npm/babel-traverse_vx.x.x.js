@@ -13,7 +13,7 @@
  * https://github.com/flowtype/flow-typed
  */
 
-import type { BabelNode, BabelNodeIdentifier } from "babel-types";
+import type { BabelNode, BabelNodeIdentifier } from "@babel/types";
 
 declare module 'babel-traverse' {
   declare export class BabelTraversePath {

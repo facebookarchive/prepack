@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeCallExpression, BabelNodeExpression, BabelNodeStatement } from "babel-types";
+import type { BabelNodeCallExpression, BabelNodeExpression, BabelNodeStatement } from "@babel/types";
 import type { Realm } from "../realm.js";
 import { Effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
@@ -20,7 +20,7 @@ import { EvaluateDirectCallWithArgList, GetThisValue, IsInTailPosition, SameValu
 import { Environment, Functions, Join } from "../singletons.js";
 import { AbstractValue, BooleanValue, FunctionValue, Value } from "../values/index.js";
 
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import invariant from "../invariant.js";
 
 // ECMA262 12.3.4.1

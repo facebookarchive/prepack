@@ -31,7 +31,7 @@ import {
   IsConstructor,
   IsCallable,
 } from "../../methods/index.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import { GetIterator, IteratorClose, IteratorStep, IteratorValue } from "../../methods/iterator.js";
 import { Create, Havoc, Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";

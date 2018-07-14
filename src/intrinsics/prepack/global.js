@@ -25,8 +25,8 @@ import {
 } from "../../values/index.js";
 import { To, Path } from "../../singletons.js";
 import { ValuesDomain } from "../../domains/index.js";
-import * as t from "babel-types";
-import type { BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
+import * as t from "@babel/types";
+import type { BabelNodeExpression, BabelNodeSpreadElement } from "@babel/types";
 import invariant from "../../invariant.js";
 import { createAbstract, parseTypeNameOrTemplate } from "./utils.js";
 import { describeValue } from "../../utils.js";

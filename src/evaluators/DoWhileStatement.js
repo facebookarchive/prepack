@@ -19,7 +19,7 @@ import { LoopContinues, InternalGetResultValue, TryToApplyEffectsOfJoiningBranch
 import { AbruptCompletion, BreakCompletion, ForkedAbruptCompletion, SimpleNormalCompletion } from "../completions.js";
 import { Environment, To } from "../singletons.js";
 import invariant from "../invariant.js";
-import type { BabelNodeDoWhileStatement } from "babel-types";
+import type { BabelNodeDoWhileStatement } from "@babel/types";
 
 export default function(
   ast: BabelNodeDoWhileStatement,

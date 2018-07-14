@@ -14,7 +14,7 @@
  */
 
 import type { Realm } from "../realm.js";
-import type { BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "@babel/types";
 import {
   AbstractObjectValue,
   AbstractValue,
@@ -32,7 +32,7 @@ import {
   ECMAScriptSourceFunctionValue,
   Value,
 } from "../values/index.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import invariant from "../invariant.js";
 import type { FunctionBodyAstNode } from "../types.js";
 import { CompilerDiagnostic } from "../errors.js";

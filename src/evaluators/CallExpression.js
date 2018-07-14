@@ -33,9 +33,9 @@ import {
   IsInTailPosition,
   SameValue,
 } from "../methods/index.js";
-import type { BabelNodeCallExpression, BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
+import type { BabelNodeCallExpression, BabelNodeExpression, BabelNodeSpreadElement } from "@babel/types";
 import invariant from "../invariant.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import SuperCall from "./SuperCall";
 import { memberExpressionHelper } from "../utils/babelhelpers.js";
 

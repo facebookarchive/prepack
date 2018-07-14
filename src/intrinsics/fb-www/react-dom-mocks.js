@@ -12,7 +12,7 @@
 import type { Realm } from "../../realm.js";
 import { ObjectValue, AbstractObjectValue, AbstractValue, FunctionValue } from "../../values/index.js";
 import { createReactHintObject, isReactElement } from "../../react/utils.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import invariant from "../../invariant";
 import { updateIntrinsicNames, addMockFunctionToObject } from "./utils.js";
 import { renderToString } from "../../react/experimental-server-rendering/rendering.js";

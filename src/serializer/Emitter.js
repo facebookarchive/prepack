@@ -19,7 +19,7 @@ import {
   SymbolValue,
   Value,
 } from "../values/index.js";
-import type { BabelNodeStatement } from "babel-types";
+import type { BabelNodeStatement } from "@babel/types";
 import type { SerializedBody } from "./types.js";
 import { Generator, type TemporalBuildNodeEntry } from "../utils/generator.js";
 import invariant from "../invariant.js";

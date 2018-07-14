@@ -15,7 +15,7 @@ import type {
   BabelNodeExpression,
   BabelNodeStatement,
   BabelNodeSourceLocation,
-} from "babel-types";
+} from "@babel/types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
@@ -25,7 +25,7 @@ import { FatalError } from "../errors.js";
 import { Join } from "../singletons.js";
 import { AbstractValue, BooleanValue, ConcreteValue, NullValue, UndefinedValue, Value } from "../values/index.js";
 
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import invariant from "../invariant.js";
 
 export default function(

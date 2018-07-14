@@ -31,7 +31,7 @@ import {
   getProperty,
   hasNoPartialKeyOrRef,
 } from "./utils.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 

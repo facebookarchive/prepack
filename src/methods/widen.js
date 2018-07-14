@@ -22,7 +22,7 @@ import { Generator } from "../utils/generator.js";
 import { AbstractValue, ArrayValue, EmptyValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import { memberExpressionHelper } from "../utils/babelhelpers.js";
 
 export class WidenImplementation {

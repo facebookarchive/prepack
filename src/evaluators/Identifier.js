@@ -13,7 +13,7 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Reference } from "../environment.js";
 import { Environment } from "../singletons.js";
-import type { BabelNodeIdentifier } from "babel-types";
+import type { BabelNodeIdentifier } from "@babel/types";
 
 // ECMA262 12.1.6
 export default function(

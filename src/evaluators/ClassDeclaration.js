@@ -19,7 +19,7 @@ import type {
   BabelNodeClassExpression,
   BabelNodeClassMethod,
   BabelNodeExpression,
-} from "babel-types";
+} from "@babel/types";
 import parse from "../utils/parse.js";
 import {
   HasOwnProperty,

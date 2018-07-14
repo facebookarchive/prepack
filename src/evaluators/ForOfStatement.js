@@ -40,7 +40,7 @@ import type {
   BabelNodeLVal,
   BabelNodeStatement,
   BabelNodeVariableDeclaration,
-} from "babel-types";
+} from "@babel/types";
 
 export type IterationKind = "iterate" | "enumerate";
 export type LhsKind = "lexicalBinding" | "varBinding" | "assignment";

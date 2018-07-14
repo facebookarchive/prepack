@@ -12,7 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { ObjectValue } from "./index.js";
 import { FunctionValue, Value } from "./index.js";
-import type { BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "@babel/types";
 
 /* Abstract base class for non-exotic function objects(either with source or built-in) */
 export default class ECMAScriptFunctionValue extends FunctionValue {
