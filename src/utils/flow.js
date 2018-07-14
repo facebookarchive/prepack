@@ -75,6 +75,5 @@ export function stripFlowTypeAnnotations(ast: BabelNode): void {
     {},
     undefined
   );
-  // Babel 7 removed clearCache
-  // traverse.clearCache();
+  traverse.clearCache();
 }
