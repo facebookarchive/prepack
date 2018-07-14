@@ -9,6 +9,8 @@
 
 /* @flow */
 
+process.env.NODE_ENV = "test";
+
 let fs = require("fs");
 let path = require("path");
 let { prepackSources } = require("../../lib/prepack-node.js");
