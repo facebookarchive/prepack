@@ -9,8 +9,6 @@
 
 /* @flow */
 
-process.env.NODE_ENV = "test";
-
 let fs = require("fs");
 let path = require("path");
 let { prepackSources } = require("../../lib/prepack-node.js");
@@ -151,6 +149,7 @@ ${source}
 
   function transpileSource(source) {
     return babel.transform(source, {
+      configFile: false,
       presets: ["@babel/preset-flow"],
       plugins: [
         ["@babel/plugin-proposal-object-rest-spread", { loose: true, useBuiltIns: true }],

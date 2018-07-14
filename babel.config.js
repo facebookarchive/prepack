@@ -8,17 +8,11 @@
  */
 
 module.exports = function (api) {
-  api.cache(false);
-  // We don't want Jest to transform tests other than Flow
-  if (process.env.NODE_ENV === "test") {
-    return {
-      presets: [
-        "@babel/preset-flow",
-      ],
-    };
-  }
+  api.cache(true);
+
   const plugins = [
     "@babel/plugin-syntax-flow",
+    "@babel/plugin-syntax-jsx",
     "@babel/plugin-transform-flow-strip-types",
     "@babel/plugin-transform-react-jsx",
     "@babel/plugin-transform-react-display-name",
