@@ -21,7 +21,7 @@ import type {
   BabelNodeJSXAttribute,
   BabelNodeJSXSpreadAttribute,
   BabelNodeJSXExpressionContainer,
-} from "babel-types";
+} from "@babel/types";
 import {
   AbstractObjectValue,
   ArrayValue,

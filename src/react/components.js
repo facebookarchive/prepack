@@ -20,8 +20,8 @@ import {
   ECMAScriptFunctionValue,
   Value,
 } from "../values/index.js";
-import * as t from "babel-types";
-import type { BabelNodeIdentifier } from "babel-types";
+import * as t from "@babel/types";
+import type { BabelNodeIdentifier } from "@babel/types";
 import {
   flagPropsWithNoPartialKeyOrRef,
   getProperty,
@@ -33,7 +33,7 @@ import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get, Construct } from "../methods/index.js";
 import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
-import traverse from "babel-traverse";
+import traverse from "@babel/traverse";
 import type { ClassComponentMetadata } from "../types.js";
 import type { ReactEvaluatedNode } from "../serializer/types.js";
 import { FatalError } from "../errors.js";

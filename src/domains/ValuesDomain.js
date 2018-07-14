@@ -9,7 +9,7 @@
 
 /* @flow strict-local */
 
-import type { BabelBinaryOperator, BabelNodeLogicalOperator, BabelUnaryOperator } from "babel-types";
+import type { BabelBinaryOperator, BabelNodeLogicalOperator, BabelUnaryOperator } from "@babel/types";
 import { AbruptCompletion } from "../completions.js";
 import { FatalError } from "../errors.js";
 import invariant from "../invariant.js";

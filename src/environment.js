@@ -17,7 +17,7 @@ import type {
   BabelNodePosition,
   BabelNodeStatement,
   BabelNodeSourceLocation,
-} from "babel-types";
+} from "@babel/types";
 import type { Realm } from "./realm.js";
 import type { SourceFile, SourceMap, SourceType } from "./types.js";
 
@@ -40,13 +40,13 @@ import {
   UndefinedValue,
   Value,
 } from "./values/index.js";
-import generate from "babel-generator";
+import generate from "@babel/generator";
 import parse from "./utils/parse.js";
 import invariant from "./invariant.js";
 import traverseFast from "./utils/traverse-fast.js";
 import { HasProperty, Get, IsExtensible, HasOwnProperty, IsDataDescriptor } from "./methods/index.js";
 import { Environment, Havoc, Properties, To } from "./singletons.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
 import PrimitiveValue from "./values/PrimitiveValue";
 

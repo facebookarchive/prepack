@@ -24,9 +24,9 @@ import type {
   BabelNodeSourceLocation,
   BabelNodeStatement,
   BabelNodeVariableDeclaration,
-} from "babel-types";
+} from "@babel/types";
 import invariant from "../invariant.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 
 // helper func to report error
 function reportError(realm: Realm, loc: ?BabelNodeSourceLocation) {

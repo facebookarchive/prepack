@@ -10,8 +10,8 @@
 /* @flow strict-local */
 
 import { BreakpointManager } from "./BreakpointManager.js";
-import { BabelNode } from "babel-types";
-import type { BabelNodeSourceLocation } from "babel-types";
+import { BabelNode } from "@babel/types";
+import type { BabelNodeSourceLocation } from "@babel/types";
 import invariant from "../common/invariant.js";
 import type { DebugChannel } from "./channel/DebugChannel.js";
 import { DebugMessage } from "./../common/channel/DebugMessage.js";

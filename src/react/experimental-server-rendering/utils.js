@@ -15,7 +15,7 @@
 
 import type { Realm } from "../../realm.js";
 import type { FunctionBodyAstNode } from "../../types.js";
-import { parseExpression } from "babylon";
+import { parseExpression } from "@babel/parser";
 import {
   AbstractObjectValue,
   AbstractValue,

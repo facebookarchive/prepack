@@ -9,7 +9,7 @@
 
 /* @flow strict */
 
-import type { BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "@babel/types";
 
 // Information: Just an informative message with no semantic implications whatsoever.
 // Warning: Prepack will produce code that matches the behavior of the original code, but the original code might have an error.

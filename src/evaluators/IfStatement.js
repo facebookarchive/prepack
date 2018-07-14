@@ -16,7 +16,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
 import { Reference } from "../environment.js";
 import { UpdateEmpty } from "../methods/index.js";
-import type { BabelNodeIfStatement } from "babel-types";
+import type { BabelNodeIfStatement } from "@babel/types";
 import invariant from "../invariant.js";
 import { Environment, To } from "../singletons.js";
 

@@ -14,7 +14,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { Environment } from "../singletons.js";
 import { ReturnCompletion } from "../completions.js";
-import type { BabelNodeReturnStatement } from "babel-types";
+import type { BabelNodeReturnStatement } from "@babel/types";
 
 export default function(
   ast: BabelNodeReturnStatement,

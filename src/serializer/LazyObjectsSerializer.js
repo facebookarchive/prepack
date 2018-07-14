@@ -11,14 +11,14 @@
 
 import { Realm } from "../realm.js";
 import { AbstractValue, FunctionValue, Value, ObjectValue } from "../values/index.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import type {
   BabelNodeExpression,
   BabelNodeStatement,
   BabelNodeIdentifier,
   BabelNodeBlockStatement,
   BabelNodeSwitchCase,
-} from "babel-types";
+} from "@babel/types";
 import type {
   SerializedBody,
   FunctionInfo,

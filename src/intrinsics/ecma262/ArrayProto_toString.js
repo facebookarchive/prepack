@@ -15,7 +15,7 @@ import { To } from "../../singletons.js";
 import { Get } from "../../methods/get.js";
 import { Call } from "../../methods/call.js";
 import { IsCallable } from "../../methods/is.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 22.1.3.30

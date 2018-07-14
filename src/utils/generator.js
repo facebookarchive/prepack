@@ -33,7 +33,7 @@ import {
 import { CompilerDiagnostic } from "../errors.js";
 import type { AbstractValueBuildNodeFunction } from "../values/AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import invariant from "../invariant.js";
 import {
   AbruptCompletion,
@@ -52,7 +52,7 @@ import type {
   BabelNodeVariableDeclaration,
   BabelNodeBlockStatement,
   BabelNodeLVal,
-} from "babel-types";
+} from "@babel/types";
 import { nullExpression, memberExpressionHelper } from "./babelhelpers.js";
 import { Utils, concretize } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";

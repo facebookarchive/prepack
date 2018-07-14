@@ -33,10 +33,10 @@ import {
   Value,
 } from "../values/index.js";
 import { TestIntegrityLevel } from "../methods/index.js";
-import * as t from "babel-types";
-import traverse from "babel-traverse";
-import type { BabelTraversePath } from "babel-traverse";
-import type { BabelNodeSourceLocation } from "babel-types";
+import * as t from "@babel/types";
+import traverse from "@babel/traverse";
+import type { BabelTraversePath } from "@babel/traverse";
+import type { BabelNodeSourceLocation } from "@babel/types";
 import invariant from "../invariant.js";
 import { HeapInspector } from "../utils/HeapInspector.js";
 import { Logger } from "../utils/logger.js";
@@ -107,7 +107,8 @@ function getHavocedFunctionInfo(value: FunctionValue) {
     null,
     functionInfo
   );
-  traverse.clearCache();
+  // Babel 7 removed clearCache
+  // traverse.clearCache();
   return functionInfo;
 }
 

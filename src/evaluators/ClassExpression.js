@@ -12,7 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import type { BabelNodeClassExpression } from "babel-types";
+import type { BabelNodeClassExpression } from "@babel/types";
 import { HasOwnProperty } from "../methods/index.js";
 import { ClassDefinitionEvaluation } from "./ClassDeclaration";
 import { Functions } from "../singletons.js";

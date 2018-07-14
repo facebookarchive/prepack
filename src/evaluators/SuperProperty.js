@@ -16,7 +16,7 @@ import { Reference } from "../environment.js";
 import { StringValue } from "../values/index.js";
 import { RequireObjectCoercible } from "../methods/index.js";
 import { Environment, To } from "../singletons.js";
-import type { BabelNodeMemberExpression } from "babel-types";
+import type { BabelNodeMemberExpression } from "@babel/types";
 import invariant from "../invariant.js";
 
 function MakeSuperPropertyReference(realm: Realm, propertyKey, strict: boolean): Reference {

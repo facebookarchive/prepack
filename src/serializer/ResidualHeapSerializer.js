@@ -28,7 +28,7 @@ import {
   Value,
   UndefinedValue,
 } from "../values/index.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import type {
   BabelNodeExpression,
   BabelNodeStatement,
@@ -40,7 +40,7 @@ import type {
   BabelVariableKind,
   BabelNodeFile,
   BabelNodeFunctionExpression,
-} from "babel-types";
+} from "@babel/types";
 import { Generator, PreludeGenerator, NameGenerator } from "../utils/generator.js";
 import type { SerializationContext } from "../utils/generator.js";
 import invariant from "../invariant.js";

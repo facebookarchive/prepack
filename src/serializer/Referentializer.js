@@ -11,9 +11,9 @@
 
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import type { SerializerOptions } from "../options.js";
-import * as t from "babel-types";
-import generate from "babel-generator";
-import type { BabelNodeStatement, BabelNodeExpression, BabelNodeIdentifier } from "babel-types";
+import * as t from "@babel/types";
+import generate from "@babel/generator";
+import type { BabelNodeStatement, BabelNodeExpression, BabelNodeIdentifier } from "@babel/types";
 import { NameGenerator } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import type { ResidualFunctionBinding, ScopeBinding, FunctionInstance } from "./types.js";

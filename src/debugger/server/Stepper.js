@@ -9,7 +9,7 @@
 
 /* @flow strict-local */
 import type { SourceData } from "./../common/types.js";
-import { BabelNode } from "babel-types";
+import { BabelNode } from "@babel/types";
 import invariant from "./../common/invariant.js";
 
 export class Stepper {

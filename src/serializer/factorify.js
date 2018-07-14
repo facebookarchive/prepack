@@ -9,8 +9,8 @@
 
 /* @flow strict-local */
 
-import * as t from "babel-types";
-import type { BabelNodeStatement, BabelNodeObjectExpression, BabelNodeLVal } from "babel-types";
+import * as t from "@babel/types";
+import type { BabelNodeStatement, BabelNodeObjectExpression, BabelNodeLVal } from "@babel/types";
 import { NameGenerator } from "../utils/generator.js";
 
 function isLiteral(node) {

@@ -39,7 +39,7 @@ let fs = require("fs");
 let vm = require("vm");
 let os = require("os");
 let minimist = require("minimist");
-let babel = require("babel-core");
+let babel = require("@babel/core");
 let child_process = require("child_process");
 const EOL = os.EOL;
 let execSpec;
@@ -51,6 +51,7 @@ function transformWithBabel(code, plugins, presets) {
   return babel.transform(code, {
     plugins: plugins,
     presets: presets,
+    configFile: false,
   }).code;
 }
 
@@ -471,14 +472,14 @@ function runTest(name, code, options: PrepackOptions, args) {
     }
     if (delayUnsupportedRequires) options.residual = false;
     if (args.es5) {
-      code = transformWithBabel(code, [], [["env", { forceAllTransforms: true, modules: false }]]);
+      code = transformWithBabel(code, [], [["@babel/env", { forceAllTransforms: true, modules: false }]]);
     }
     let unique = 27277;
     let oldUniqueSuffix = "";
     let expectedCode = code;
     let actualStack;
     if (compileJSXWithBabel) {
-      expectedCode = transformWithBabel(expectedCode, ["transform-react-jsx"]);
+      expectedCode = transformWithBabel(expectedCode, ["@babel/plugin-transform-react-jsx"]);
     }
 
     return execInContext(
@@ -558,7 +559,7 @@ function runTest(name, code, options: PrepackOptions, args) {
 
             let newCode = serialized.code;
             if (compileJSXWithBabel) {
-              newCode = transformWithBabel(newCode, ["transform-react-jsx"]);
+              newCode = transformWithBabel(newCode, ["@babel/plugin-transform-react-jsx"]);
             }
             let markersIssue = false;
             for (let { positive, value } of markersToFind) {
@@ -594,7 +595,11 @@ function runTest(name, code, options: PrepackOptions, args) {
             if (args.verbose) console.log(codeToRun);
             codeIterations.push(unescapleUniqueSuffix(codeToRun, options.uniqueSuffix));
             if (args.es5) {
-              codeToRun = transformWithBabel(codeToRun, [], [["env", { forceAllTransforms: true, modules: false }]]);
+              codeToRun = transformWithBabel(
+                codeToRun,
+                [],
+                [["@babel/env", { forceAllTransforms: true, modules: false }]]
+              );
             }
             // lint output
             lintCompiledSource(codeToRun);

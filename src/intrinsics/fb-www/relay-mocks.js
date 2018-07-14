@@ -14,10 +14,10 @@ import { ObjectValue, FunctionValue, AbstractValue, ECMAScriptSourceFunctionValu
 import { Create, Environment } from "../../singletons.js";
 import { createAbstract } from "../prepack/utils.js";
 import { Get } from "../../methods/index.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import invariant from "../../invariant";
 import { createReactHintObject } from "../../react/utils.js";
-import { parseExpression } from "babylon";
+import { parseExpression } from "@babel/parser";
 import { addMockFunctionToObject } from "./utils.js";
 
 let reactRelayCode = `

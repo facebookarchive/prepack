@@ -14,7 +14,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { StringValue } from "../values/index.js";
 import { Environment, To } from "../singletons.js";
-import type { BabelNodeTemplateLiteral } from "babel-types";
+import type { BabelNodeTemplateLiteral } from "@babel/types";
 
 // ECMA262 12.2.9
 export default function(

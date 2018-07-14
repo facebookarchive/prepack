@@ -46,7 +46,7 @@ import {
   SameValue,
   SameValuePartial,
 } from "../methods/index.js";
-import { type BabelNodeObjectMethod, type BabelNodeClassMethod, isValidIdentifier } from "babel-types";
+import { type BabelNodeObjectMethod, type BabelNodeClassMethod, isValidIdentifier } from "@babel/types";
 import type { LexicalEnvironment } from "../environment.js";
 import { Create, Environment, Functions, Havoc, Join, Path, To } from "../singletons.js";
 import IsStrict from "../utils/strict.js";

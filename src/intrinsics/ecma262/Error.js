@@ -15,7 +15,7 @@ import { ObjectValue, FunctionValue, NativeFunctionValue, StringValue } from "..
 import { Get } from "../../methods/index.js";
 import { Create, Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
-import type { BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "@babel/types";
 
 export default function(realm: Realm): NativeFunctionValue {
   return build("Error", realm, false);

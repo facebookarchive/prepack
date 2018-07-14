@@ -10,8 +10,8 @@
 /* @flow strict-local */
 
 import { FunctionValue, Value } from "../values/index.js";
-import * as t from "babel-types";
-import type { BabelNodeStatement } from "babel-types";
+import * as t from "@babel/types";
+import type { BabelNodeStatement } from "@babel/types";
 import { NameGenerator } from "../utils/generator.js";
 import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";

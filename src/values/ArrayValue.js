@@ -15,7 +15,7 @@ import { AbstractValue, ObjectValue, StringValue, NumberValue, Value } from "./i
 import { IsAccessorDescriptor, IsPropertyKey, IsArrayIndex } from "../methods/is.js";
 import { Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
-import type { BabelNodeExpression } from "babel-types";
+import type { BabelNodeExpression } from "@babel/types";
 
 export default class ArrayValue extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {

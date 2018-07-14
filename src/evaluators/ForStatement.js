@@ -29,17 +29,17 @@ import {
   SimpleNormalCompletion,
   ThrowCompletion,
 } from "../completions.js";
-import traverse from "babel-traverse";
-import type { BabelTraversePath } from "babel-traverse";
+import traverse from "@babel/traverse";
+import type { BabelTraversePath } from "@babel/traverse";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { UpdateEmpty } from "../methods/index.js";
 import { LoopContinues, InternalGetResultValue, TryToApplyEffectsOfJoiningBranches } from "./ForOfStatement.js";
 import { Environment, Functions, Havoc, Join, To } from "../singletons.js";
 import invariant from "../invariant.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import type { FunctionBodyAstNode } from "../types.js";
-import type { BabelNodeExpression, BabelNodeForStatement, BabelNodeBlockStatement } from "babel-types";
+import type { BabelNodeExpression, BabelNodeForStatement, BabelNodeBlockStatement } from "@babel/types";
 
 type BailOutWrapperInfo = {
   usesArguments: boolean,
@@ -422,7 +422,8 @@ function generateRuntimeForStatement(
     null,
     functionInfo
   );
-  traverse.clearCache();
+  // Babel 7 removed clearCache
+  // traverse.clearCache();
   let { usesReturn, usesThrow, usesArguments, usesGotoToLabel, varPatternUnsupported, usesThis } = functionInfo;
 
   if (usesReturn || usesThrow || usesArguments || usesGotoToLabel || varPatternUnsupported) {

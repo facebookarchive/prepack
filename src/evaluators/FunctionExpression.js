@@ -16,7 +16,7 @@ import { MakeConstructor } from "../methods/index.js";
 import { Create, Environment, Functions, Properties } from "../singletons.js";
 import { StringValue } from "../values/index.js";
 import IsStrict from "../utils/strict.js";
-import type { BabelNodeFunctionExpression } from "babel-types";
+import type { BabelNodeFunctionExpression } from "@babel/types";
 import invariant from "../invariant.js";
 
 export default function(

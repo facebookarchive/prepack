@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNode, BabelNodeBlockStatement, BabelNodeProgram } from "babel-types";
+import type { BabelNode, BabelNodeBlockStatement, BabelNodeProgram } from "@babel/types";
 
 export default function IsStrict(node: BabelNode): boolean {
   if (node.type !== "BlockStatement" && node.type !== "Program") return false;

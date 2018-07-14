@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "@babel/types";
 import invariant from "./invariant.js";
 import { Effects, Realm } from "./realm.js";
 import { AbstractValue, EmptyValue, Value } from "./values/index.js";
