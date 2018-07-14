@@ -8,6 +8,7 @@
 .*/test/serializer/.*
 .*/scripts/prettier.js
 .*/tmp_website_build/.*
+babel.config.js
 
 [include]
 

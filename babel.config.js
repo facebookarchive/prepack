@@ -7,11 +7,8 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
- /* @flow */
- /* eslint-disable no-undef */
-
 module.exports = function (api) {
-  api.cache(true);
+  api.cache(false);
   // We don't want Jest to transform tests other than Flow
   if (process.env.NODE_ENV === "test") {
     return {
