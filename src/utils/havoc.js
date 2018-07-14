@@ -107,8 +107,7 @@ function getHavocedFunctionInfo(value: FunctionValue) {
     null,
     functionInfo
   );
-  // Babel 7 removed clearCache
-  // traverse.clearCache();
+  traverse.cache.clear();
   return functionInfo;
 }
 
