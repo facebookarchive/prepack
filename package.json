@@ -27,7 +27,7 @@
     "build-scripts": "babel scripts --out-dir lib --source-maps",
     "build-bundle": "webpack-cli",
     "build-prepack": "babel src --out-dir lib --source-maps",
-    "watch": "babel src scripts --out-dir lib --watch --source-maps",
+    "watch": "babel src scripts --out-dir lib --watch --source-maps --verbose",
     "lint": "eslint src scripts",
     "flow": "flow version; flow check --merge-timeout 0",
     "test-residual": "babel-node scripts/test-residual.js",
