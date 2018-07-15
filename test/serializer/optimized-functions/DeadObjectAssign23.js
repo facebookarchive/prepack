@@ -27,9 +27,12 @@ function fn(obj, x) {
 this.__optimize && __optimize(fn);
 
 inspect = function() {
-  return fn({
-    cond1: false,
-    cond2: false,
-    cond3: true,
-  }, { a: 0, b: 0 })
-}
+  return fn(
+    {
+      cond1: false,
+      cond2: false,
+      cond3: true,
+    },
+    { a: 0, b: 0 }
+  );
+};
