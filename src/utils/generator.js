@@ -1367,6 +1367,11 @@ export function attemptToMergeEquivalentObjectAssigns(
       let otherArgsToUse = [];
       for (let x = 1; x < otherArgs.length; x++) {
         let arg = otherArgs[x];
+        // If this arg is a known arg of the root, then we can't merge these Object.assigns
+        // as they share the same args.
+        if (args.includes(arg)) {
+          continue loopThroughArgs;
+        }
         // The arg might have been havoced, so ensure we do not continue in this case
         if (arg instanceof ObjectValue && arg.mightBeHavocedObject()) {
           continue loopThroughArgs;
