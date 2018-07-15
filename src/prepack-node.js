@@ -15,6 +15,7 @@
 import { defaultOptions } from "./options";
 import { FatalError } from "./errors.js";
 import { type PrepackOptions } from "./prepack-options";
+import { prepackSourcesToLLVMModule } from "./prepack-node-llvm.js";
 import { prepackSources } from "./prepack-standalone.js";
 import { type SourceMap } from "./types.js";
 import { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
@@ -24,6 +25,7 @@ import { SerializerStatistics } from "./serializer/statistics.js";
 
 import fs from "fs";
 
+export * from "./prepack-node-llvm";
 export * from "./prepack-standalone";
 
 function createStatistics(options: PrepackOptions) {
@@ -58,7 +60,8 @@ export function prepackStdin(
       let serialized;
       let success;
       try {
-        serialized = prepackSources(
+        let prepack = options.emitLLVM ? prepackSourcesToLLVMModule : prepackSources;
+        serialized = prepack(
           [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
           options,
           undefined,
@@ -100,7 +103,8 @@ export function prepackFile(
       }
       let serialized;
       try {
-        serialized = prepackSources(
+        let prepack = options.emitLLVM ? prepackSourcesToLLVMModule : prepackSources;
+        serialized = prepack(
           [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
           options,
           undefined,
@@ -137,5 +141,6 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     options.debuggerConfigArgs.debugChannel = new DebugChannel(ioWrapper);
     options.debuggerConfigArgs.sourcemaps = sourceFiles;
   }
-  return prepackSources(sourceFiles, options, options.debuggerConfigArgs, createStatistics(options));
+  let prepack = options.emitLLVM ? prepackSourcesToLLVMModule : prepackSources;
+  return prepack(sourceFiles, options, options.debuggerConfigArgs, createStatistics(options));
 }

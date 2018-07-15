@@ -81,6 +81,8 @@ function run(
     --cpuprofile             Create a CPU profile file for the run that can be loaded into the Chrome JavaScript CPU Profile viewer.
     --debugDiagnosticSeverity  FatalError | RecoverableError | Warning | Information (default = FatalError). Diagnostic level at which debugger will stop.
     --debugBuckRoot          Root directory that buck assumes when creating sourcemap paths.
+    --emitLLVM               Emits LLVM bitcode instead of JavaScript source.
+    --emitLLVMAssembly       Emits LLVM assembly language instead of JavaScript source.
   `;
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -104,6 +106,7 @@ function run(
   let cpuprofilePath: void | string;
   let invariantMode: void | InvariantModeTypes;
   let invariantLevel: void | number;
+  let printLLVMAssemblyLanguage = false;
   let flags = {
     initializeMoreModules: false,
     trace: false,
@@ -122,6 +125,7 @@ function run(
     profile: false,
     instantRender: false,
     reactEnabled: false,
+    emitLLVM: false,
   };
 
   let reproArguments = [];
@@ -240,6 +244,10 @@ function run(
           }
           reactOutput = (arg: any);
           reproArguments.push("--reactOutput", reactOutput);
+          break;
+        case "emitLLVMAssembly":
+          printLLVMAssemblyLanguage = true;
+          flags.emitLLVM = true;
           break;
         case "repro":
           reproFilePath = args.shift();
@@ -508,15 +516,35 @@ fi
   }
 
   function processSerializedCode(serialized: SerializedResult) {
-    if (serialized.code === "") {
-      console.error("Prepack returned empty code.");
-      return;
-    }
-    if (outputFilename) {
-      console.log(`Prepacked source code written to ${outputFilename}.`);
-      fs.writeFileSync(outputFilename, serialized.code);
+    if (flags.emitLLVM) {
+      let module = serialized.llvmModule;
+      if (!module) {
+        console.error("Prepack returned no LLVM module.");
+        return;
+      }
+      if (outputFilename) {
+        if (printLLVMAssemblyLanguage) {
+          console.log(`Prepacked LLVM assembly language written to ${outputFilename}.`);
+          fs.writeFileSync(outputFilename, module.print());
+        } else {
+          console.log(`Prepacked LLVM bitcode written to ${outputFilename}.`);
+          // This needs to be lazy required to avoid a hard dependency on this package.
+          require("llvm-node").writeBitcodeToFile(module, outputFilename);
+        }
+      } else {
+        console.log(module.print());
+      }
     } else {
-      console.log(serialized.code);
+      if (serialized.code === "") {
+        console.error("Prepack returned empty code.");
+        return;
+      }
+      if (outputFilename) {
+        console.log(`Prepacked source code written to ${outputFilename}.`);
+        fs.writeFileSync(outputFilename, serialized.code);
+      } else {
+        console.log(serialized.code);
+      }
     }
     if (statsFileName) {
       let statistics = serialized.statistics;
