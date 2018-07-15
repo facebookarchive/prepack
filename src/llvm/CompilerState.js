@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { Module } from "llvm-node";
+import type { Module, Value as LLVMValue } from "llvm-node";
 import type { Logger } from "../utils/logger.js";
 import type { Realm } from "../realm.js";
 
@@ -17,9 +17,11 @@ export class CompilerState {
   +realm: Realm;
   +module: Module;
   +logger: Logger;
+  +declaredVariables: Map<string, LLVMValue>;
   constructor(realm: Realm, module: Module, logger: Logger) {
     this.realm = realm;
     this.module = module;
     this.logger = logger;
+    this.declaredVariables = new Map();
   }
 }

@@ -10,3 +10,6 @@
 /* @flow */
 
 export * from "./Generator.js";
+export * from "./Expression.js";
+export * from "./Statement.js";
+export * from "./Value.js";

@@ -11,7 +11,6 @@
 
 import type { Generator } from "../../utils/generator.js";
 import type { CompilerState } from "../CompilerState.js";
-import type { AbstractValue, ObjectValue, SymbolValue, Value } from "../../values/index.js";
 import type { Binding } from "../../environment.js";
 import type { Descriptor, PropertyBinding } from "../../types.js";
 import type {
@@ -22,23 +21,24 @@ import type {
   BabelNodeLVal,
 } from "@babel/types";
 
+import { AbstractValue, ObjectValue, SymbolValue, Value } from "../../values/index.js";
+
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
-import { BasicBlock } from "llvm-node";
+import { BasicBlock, IRBuilder } from "llvm-node";
 import { llvmContext } from "../llvm-context.js";
+
+import { valueToExpression } from "./Expression.js";
+import { buildFromStatement } from "./Statement.js";
+import { buildFromValue } from "./Value.js";
 
 export function buildFromGenerator(state: CompilerState, generator: Generator): BasicBlock {
   let block = BasicBlock.create(llvmContext);
+  let irBuilder = new IRBuilder(block);
 
   let serializationContext = {
     serializeValue(value: Value): BabelNodeExpression {
-      let error = new CompilerDiagnostic(
-        "Unsupported value type in the LLVM backend.",
-        value.expressionLocation,
-        "PP2000",
-        "FatalError"
-      );
-      state.realm.handleError(error);
-      throw new FatalError();
+      let llvmValue = buildFromValue(state, value, irBuilder);
+      return valueToExpression(llvmValue);
     },
     serializeBinding(binding: Binding): BabelNodeIdentifier | BabelNodeMemberExpression {
       let error = new CompilerDiagnostic(
@@ -81,17 +81,15 @@ export function buildFromGenerator(state: CompilerState, generator: Generator): 
       throw new FatalError();
     },
     emit(statement: BabelNodeStatement): void {
-      let error = new CompilerDiagnostic(
-        "Unsupported statement type in the LLVM backend.",
-        statement.loc,
-        "PP2000",
-        "FatalError"
-      );
-      state.realm.handleError(error);
-      throw new FatalError();
+      buildFromStatement(state, statement, irBuilder);
     },
     processValues(valuesToProcess: Set<AbstractValue | ObjectValue>): void {},
     canOmit(val: Value): boolean {
+      if (val instanceof ObjectValue) {
+        // The LLVM backend doesn't allow objects to escape so any mutation
+        // of them can be omitted.
+        return true;
+      }
       return false;
     },
     declare(value: AbstractValue | ObjectValue): void {},
