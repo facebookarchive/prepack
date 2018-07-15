@@ -102,7 +102,8 @@ export class Effects {
 
     this.canBeApplied = true;
     this._id = effects_uid++;
-    if (result.effects === undefined) result.effects = this; //todo: require callers to ensure this
+    invariant(result.effects === undefined);
+    result.effects = this;
   }
 
   _result: Completion;
@@ -110,6 +111,7 @@ export class Effects {
     return this._result;
   }
   set result(completion: Completion): void {
+    invariant(completion.effects === undefined);
     if (completion.effects === undefined) completion.effects = this; //todo: require callers to ensure this
     this._result = completion;
   }
@@ -863,7 +865,10 @@ export class Realm {
           else throw e;
         }
         // This is a join point for the normal branch of a PossiblyNormalCompletion.
-        if (c instanceof Value || c instanceof AbruptCompletion) c = Functions.incorporateSavedCompletion(this, c);
+        if (c instanceof Value || c instanceof AbruptCompletion) {
+          c = Functions.incorporateSavedCompletion(this, c);
+          if (c instanceof Completion && c.effects !== undefined) c = c.shallowCloneWithoutEffects();
+        }
         invariant(c !== undefined);
         if (c instanceof PossiblyNormalCompletion) {
           // The current state may have advanced since the time control forked into the various paths recorded in c.
@@ -1029,6 +1034,7 @@ export class Realm {
     } catch (e) {
       if (!(e instanceof InfeasiblePathError)) throw e;
     }
+    invariant(effects1 === undefined || effects1.result.effects === effects1);
 
     let effects2;
     try {
@@ -1036,6 +1042,7 @@ export class Realm {
     } catch (e) {
       if (!(e instanceof InfeasiblePathError)) throw e;
     }
+    invariant(effects2 === undefined || effects2.result.effects === effects2);
 
     let joinedEffects, completion;
     if (effects1 === undefined || effects2 === undefined) {
@@ -1209,7 +1216,7 @@ export class Realm {
   }
 
   composeEffects(priorEffects: Effects, subsequentEffects: Effects): Effects {
-    let result = construct_empty_effects(this, subsequentEffects.result);
+    let result = construct_empty_effects(this, subsequentEffects.result.shallowCloneWithoutEffects());
 
     result.generator = Join.composeGenerators(
       this,

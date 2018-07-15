@@ -24,11 +24,11 @@ function fn(cond, cond2) {
     return res.prop1;
   }
 
-  return 2; //a.prop1;
+  return a.prop1;
 }
 
 if (global.__optimize) __optimize(fn);
 
 inspect = function() {
   return fn(true, false);
-}
+};

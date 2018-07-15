@@ -110,18 +110,20 @@ function callBothFunctionsAndJoinTheirEffects(
     undefined,
     "callBothFunctionsAndJoinTheirEffects/1"
   );
+  let r1 = e1.result.shallowCloneWithoutEffects();
 
   const e2 = realm.evaluateForEffects(
     () => EvaluateCall(func2, func2, ast, argVals, strictCode, env, realm),
     undefined,
     "callBothFunctionsAndJoinTheirEffects/2"
   );
+  let r2 = e2.result.shallowCloneWithoutEffects();
 
   let joinedEffects = Join.joinForkOrChoose(
     realm,
     cond,
-    new Effects(e1.result, e1.generator, e1.modifiedBindings, e1.modifiedProperties, e1.createdObjects),
-    new Effects(e2.result, e2.generator, e2.modifiedBindings, e2.modifiedProperties, e2.createdObjects)
+    new Effects(r1, e1.generator, e1.modifiedBindings, e1.modifiedProperties, e1.createdObjects),
+    new Effects(r2, e2.generator, e2.modifiedBindings, e2.modifiedProperties, e2.createdObjects)
   );
   let joinedCompletion = joinedEffects.result;
   if (joinedCompletion instanceof PossiblyNormalCompletion) {

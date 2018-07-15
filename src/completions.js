@@ -16,9 +16,13 @@ import { AbstractValue, EmptyValue, Value } from "./values/index.js";
 
 export class Completion {
   constructor(value: Value, precedingEffects: void | Effects, location: ?BabelNodeSourceLocation, target?: ?string) {
+    let e = precedingEffects;
+    if (e !== undefined) {
+      if (e.result === undefined) e.result = this;
+      else e = new Effects(this, e.generator, e.modifiedBindings, e.modifiedProperties, e.createdObjects);
+    }
     this.value = value;
-    this.effects = precedingEffects;
-    if (precedingEffects !== undefined) precedingEffects.result = this;
+    this.effects = e;
     this.target = target;
     this.location = location;
     invariant(this.constructor !== Completion, "Completion is an abstract base class");
@@ -28,6 +32,10 @@ export class Completion {
   effects: void | Effects;
   target: ?string;
   location: ?BabelNodeSourceLocation;
+
+  shallowCloneWithoutEffects(): Completion {
+    invariant(false, "Completion.shallowCloneWithoutEffects is an abstract base method and should not be called");
+  }
 
   toDisplayString(): string {
     return "[" + this.constructor.name + " value " + (this.value ? this.value.toDisplayString() : "undefined") + "]";
@@ -40,11 +48,19 @@ export class NormalCompletion extends Completion {
     super(value, precedingEffects, location, target);
     invariant(this.constructor !== NormalCompletion, "NormalCompletion is an abstract base class");
   }
+
+  shallowCloneWithoutEffects(): NormalCompletion {
+    invariant(false, "NormalCompletion.shallowCloneWithoutEffects is an abstract base method and should not be called");
+  }
 }
 
 // SimpleNormalCompletions are returned just like spec completions. This class exists as the parallel for
 // PossiblyNormalCompletion to make comparisons easier.
-export class SimpleNormalCompletion extends NormalCompletion {}
+export class SimpleNormalCompletion extends NormalCompletion {
+  shallowCloneWithoutEffects(): SimpleNormalCompletion {
+    return new SimpleNormalCompletion(this.value, undefined, this.location, this.target);
+  }
+}
 
 // Abrupt completions are thrown as exeptions, to make it a easier
 // to quickly get to the matching high level construct.
@@ -52,6 +68,10 @@ export class AbruptCompletion extends Completion {
   constructor(value: Value, precedingEffects: void | Effects, location: ?BabelNodeSourceLocation, target?: ?string) {
     super(value, precedingEffects, location, target);
     invariant(this.constructor !== AbruptCompletion, "AbruptCompletion is an abstract base class");
+  }
+
+  shallowCloneWithoutEffects(): AbruptCompletion {
+    invariant(false, "AbruptCompletion.shallowCloneWithoutEffects is an abstract base method and should not be called");
   }
 }
 
@@ -73,17 +93,29 @@ export class ThrowCompletion extends AbruptCompletion {
   }
 
   nativeStack: string;
+
+  shallowCloneWithoutEffects(): ThrowCompletion {
+    return new ThrowCompletion(this.value, undefined, this.location, this.nativeStack);
+  }
 }
 
 export class ContinueCompletion extends AbruptCompletion {
   constructor(value: Value, precedingEffects: void | Effects, location: ?BabelNodeSourceLocation, target: ?string) {
     super(value, precedingEffects, location, target || null);
   }
+
+  shallowCloneWithoutEffects(): ContinueCompletion {
+    return new ContinueCompletion(this.value, undefined, this.location, this.target);
+  }
 }
 
 export class BreakCompletion extends AbruptCompletion {
   constructor(value: Value, precedingEffects: void | Effects, location: ?BabelNodeSourceLocation, target: ?string) {
     super(value, precedingEffects, location, target || null);
+  }
+
+  shallowCloneWithoutEffects(): BreakCompletion {
+    return new BreakCompletion(this.value, undefined, this.location, this.target);
   }
 }
 
@@ -93,6 +125,10 @@ export class ReturnCompletion extends AbruptCompletion {
     if (value instanceof EmptyValue) {
       this.value = value.$Realm.intrinsics.undefined;
     }
+  }
+
+  shallowCloneWithoutEffects(): ReturnCompletion {
+    return new ReturnCompletion(this.value, undefined, this.location);
   }
 }
 
@@ -106,18 +142,31 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
     alternateEffects: Effects
   ) {
     super(realm.intrinsics.empty, undefined, consequent.location);
-    invariant(consequentEffects);
-    invariant(alternateEffects);
+    invariant(consequentEffects.result === consequent);
+    invariant(consequent.effects === consequentEffects);
+    invariant(alternateEffects.result === alternate);
+    invariant(alternate.effects === alternateEffects);
     this.joinCondition = joinCondition;
-    consequent.effects = consequentEffects;
     this.consequent = consequent;
-    alternate.effects = alternateEffects;
     this.alternate = alternate;
   }
 
   joinCondition: AbstractValue;
   consequent: AbruptCompletion;
   alternate: AbruptCompletion;
+
+  shallowCloneWithoutEffects(): ForkedAbruptCompletion {
+    let consequentEffects = this.consequentEffects;
+    let alternateEffects = this.alternateEffects;
+    return new ForkedAbruptCompletion(
+      this.value.$Realm,
+      this.joinCondition,
+      this.consequent,
+      consequentEffects,
+      this.alternate,
+      alternateEffects
+    );
+  }
 
   // For convenience, this.consequent.effects should always be defined, but accessing it directly requires
   // verifying that with an invariant.
@@ -219,12 +268,12 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     savedEffects: void | Effects = undefined
   ) {
     invariant(consequent === consequentEffects.result);
+    invariant(consequent.effects === consequentEffects);
     invariant(alternate === alternateEffects.result);
+    invariant(alternate.effects === alternateEffects);
     invariant(consequent instanceof NormalCompletion || alternate instanceof NormalCompletion);
     super(value, undefined, consequent.location);
     this.joinCondition = joinCondition;
-    consequent.effects = consequentEffects;
-    alternate.effects = alternateEffects;
     this.consequent = consequent;
     this.alternate = alternate;
     this.savedEffects = savedEffects;
@@ -237,6 +286,23 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   savedEffects: void | Effects;
   // The path conditions that applied at the time of the oldest fork that caused this completion to arise.
   savedPathConditions: Array<AbstractValue>;
+
+  shallowCloneWithoutEffects(): PossiblyNormalCompletion {
+    let consequentEffects = this.consequentEffects;
+    let alternateEffects = this.alternateEffects;
+    invariant(this.consequent === consequentEffects.result);
+    invariant(this.alternate === alternateEffects.result);
+    return new PossiblyNormalCompletion(
+      this.value,
+      this.joinCondition,
+      this.consequent,
+      consequentEffects,
+      this.alternate,
+      alternateEffects,
+      this.savedPathConditions,
+      this.savedEffects
+    );
+  }
 
   // For convenience, this.consequent.effects should always be defined, but accessing it directly requires
   // verifying that with an invariant.
@@ -252,19 +318,17 @@ export class PossiblyNormalCompletion extends NormalCompletion {
 
   updateConsequentKeepingCurrentEffects(newConsequent: Completion): PossiblyNormalCompletion {
     if (newConsequent instanceof NormalCompletion) this.value = newConsequent.value;
-    let effects = this.consequentEffects;
-    newConsequent.effects = effects;
-    newConsequent.effects.result = newConsequent;
-    this.consequent = newConsequent;
+    let e = this.consequentEffects;
+    let effects = new Effects(newConsequent, e.generator, e.modifiedBindings, e.modifiedProperties, e.createdObjects);
+    this.consequent = effects.result;
     return this;
   }
 
   updateAlternateKeepingCurrentEffects(newAlternate: Completion): PossiblyNormalCompletion {
     if (newAlternate instanceof NormalCompletion) this.value = newAlternate.value;
-    let effects = this.alternateEffects;
-    newAlternate.effects = effects;
-    newAlternate.effects.result = newAlternate;
-    this.alternate = newAlternate;
+    let e = this.alternateEffects;
+    let effects = new Effects(newAlternate, e.generator, e.modifiedBindings, e.modifiedProperties, e.createdObjects);
+    this.alternate = effects.result;
     return this;
   }
 

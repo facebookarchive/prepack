@@ -351,7 +351,7 @@ function getErrorHandlerWithWarningCapture(
 }
 
 function runTest(name, code, options: PrepackOptions, args) {
-  console.log(chalk.inverse(name) + " " + JSON.stringify(options));
+  if (!args.fast && args.filter === "") console.log(chalk.inverse(name) + " " + JSON.stringify(options));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
   let initializeMoreModules = code.includes("// initialize more modules");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
@@ -666,17 +666,17 @@ function runTest(name, code, options: PrepackOptions, args) {
               console.error(chalk.red(`Code generation did not reach fixed point after ${max} iterations!`));
             }
 
-            console.log(chalk.underline("original code"));
-            console.log(code);
-            console.log(chalk.underline("output of inspect() on original code"));
-            console.log(expected);
+            console.error(chalk.underline("original code"));
+            console.error(code);
+            console.error(chalk.underline("output of inspect() on original code"));
+            console.error(expected);
             for (let ii = 0; ii < codeIterations.length; ii++) {
-              console.log(chalk.underline(`generated code in iteration ${ii}`));
-              console.log(codeIterations[ii]);
+              console.error(chalk.underline(`generated code in iteration ${ii}`));
+              console.error(codeIterations[ii]);
             }
-            console.log(chalk.underline("output of inspect() on last generated code iteration"));
-            console.log(actual);
-            if (actualStack) console.log(actualStack);
+            console.error(chalk.underline("output of inspect() on last generated code iteration"));
+            console.error(actual);
+            if (actualStack) console.error(actualStack);
             return Promise.resolve(false);
           } else if (type === "RETURN") {
             return value;
@@ -880,6 +880,7 @@ function main(): void {
     }
     process.exit(1);
   }
+  if (args.fast && args.filter === "") (console: any).error = function() {};
   (args && args.cpuprofilePath ? runWithCpuProfiler : run)(args)
     .then(function(result) {
       if (!result) {
