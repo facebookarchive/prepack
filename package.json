@@ -129,6 +129,7 @@
     "webpack-cli": "^3.0.8"
   },
   "optionalDependencies": {
+    "llvm-node": "^2.0.5",
     "v8-profiler": "^5.7.0"
   },
   "engines": {

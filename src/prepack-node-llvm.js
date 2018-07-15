@@ -33,6 +33,14 @@ export function prepackSourcesToLLVMModule(
     options.additionalGlobals(realm);
   }
 
+  // Feature test if llvm-node is installed. Fail gracefully otherwise.
+  try {
+    require("llvm-node");
+  } catch (x) {
+    console.error("To use the emitLLVM option you need to add the llvm-node package to your dependencies.");
+    process.exit(1);
+  }
+
   // This require is lazy to avoid taking on a hard dependency on the
   // llvm-node package. No need to battle with the installation process
   // of native dependencies if the LLVM option isn't used.
