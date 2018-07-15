@@ -2204,7 +2204,7 @@ export class ResidualHeapSerializer {
           );
         }
       },
-      options: this._options,
+      debugScopes: !!this._options.debugScopes,
     };
     return context;
   }

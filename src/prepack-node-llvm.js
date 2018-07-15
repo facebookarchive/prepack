@@ -33,16 +33,16 @@ export function prepackSourcesToLLVMModule(
     options.additionalGlobals(realm);
   }
 
-  // This require is inlined to avoid taking on a hard dependency on this
-  // package. No need to battle with the installation process of native
-  // dependencies if the LLVM option isn't used.
-  const llvm = require("llvm-node");
+  // This require is lazy to avoid taking on a hard dependency on the
+  // llvm-node package. No need to battle with the installation process
+  // of native dependencies if the LLVM option isn't used.
+  const { compileSources } = require("./llvm/compiler");
+  let llvmModule = compileSources(realm, sources, options.sourceMaps, options.internalDebug);
 
-  let context = new llvm.LLVMContext();
-  let llvmModule = new llvm.Module("", context);
   if (sources.length === 1 && sources[0].filePath) {
     llvmModule.sourceFileName = sources[0].filePath;
   }
+
   return {
     code: "", // Empty for LLVM modules
     map: undefined,

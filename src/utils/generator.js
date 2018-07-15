@@ -54,7 +54,6 @@ import type {
 } from "@babel/types";
 import { nullExpression, memberExpressionHelper } from "./babelhelpers.js";
 import { Utils, concretize } from "../singletons.js";
-import type { SerializerOptions } from "../options.js";
 import type { ShapeInformationInterface } from "../types.js";
 
 export type SerializationContext = {|
@@ -76,7 +75,7 @@ export type SerializationContext = {|
   declare: (AbstractValue | ObjectValue) => void,
   emitPropertyModification: PropertyBinding => void,
   emitBindingModification: Binding => void,
-  options: SerializerOptions,
+  debugScopes: boolean,
 |};
 
 export type VisitEntryCallbacks = {|
@@ -225,7 +224,7 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
           }
         }
         let declared = this.declared;
-        if (declared !== undefined && context.options.debugScopes) {
+        if (declared !== undefined && context.debugScopes) {
           let s = t.emptyStatement();
           s.leadingComments = [({ type: "BlockComment", value: `declaring ${declared.intrinsicName || "?"}` }: any)];
           context.emit(s);
