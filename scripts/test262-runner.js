@@ -350,7 +350,7 @@ function masterArgsParse(): MasterProgramArgs {
       bailAfter: Infinity,
       singleThreaded: false,
       relativeTestPath: "/../test/test262",
-      expectedCounts: "11944,5566,2",
+      expectedCounts: "11943,5641,2",
     },
   });
   let filterString = parsedArgs._[0];
@@ -668,7 +668,8 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
     (numPassedES5 < args.expectedES5 || numPassedES6 < args.expectedES6 || numTimeouts > args.expectedTimeouts)
   ) {
     console.error(chalk.red("Overall failure. Expected more tests to pass!"));
-    return 1;
+    process.exit(1);
+    invariant(false);
   } else {
     // use 0 to avoid the npm error messages
     return 0;
