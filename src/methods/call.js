@@ -461,6 +461,7 @@ export function OrdinaryCallEvaluateBody(
           invariant(c instanceof AbruptCompletion);
 
           // If there is a saved completion (i.e. unjoined abruptly completing control flows) then combine them with c
+          console.log(realm.savedCompletion.savedEffects.toDisplayString());
           let abruptCompletion = Functions.incorporateSavedCompletion(realm, c);
           invariant(abruptCompletion instanceof AbruptCompletion);
 

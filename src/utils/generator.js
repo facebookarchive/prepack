@@ -9,7 +9,8 @@
 
 /* @flow */
 
-import type { Effects, Realm } from "../realm.js";
+import type { Realm } from "../realm.js";
+import { Effects } from "../realm.js";
 import type { ConsoleMethodTypes, Descriptor, PropertyBinding } from "../types.js";
 import type { ResidualFunctionBinding } from "../serializer/types.js";
 import type { Binding } from "../environment.js";
@@ -169,6 +170,13 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
   mutatesOnly: void | Array<Value>;
   temporalType: void | TemporalBuildNodeType;
 
+  toDisplayJson(depth: number) {
+    if (depth <= 0) return `TemporalBuildNode${index}`;
+    let obj = {...this};
+    delete obj.buildNode;
+    return Effects.verboseToDisplayJson(obj, depth);
+  }
+
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     let omit = this.isPure && this.declared && callbacks.canOmit(this.declared);
 
@@ -282,6 +290,11 @@ class ModifiedPropertyEntry extends GeneratorEntry {
   propertyBinding: PropertyBinding;
   newDescriptor: void | Descriptor;
 
+  toDisplayString() {
+    let propertyKey = this.propertyBinding.key;
+    return `[ModifiedProperty ${propertyKey instanceof Value ? propertyKey.toDisplayString() : propertyKey}]`;
+  }
+
   serialize(context: SerializationContext): void {
     let desc = this.propertyBinding.descriptor;
     invariant(desc === this.newDescriptor);
@@ -320,6 +333,10 @@ class ModifiedBindingEntry extends GeneratorEntry {
   modifiedBinding: Binding;
   newValue: void | Value;
   residualFunctionBinding: void | ResidualFunctionBinding;
+
+  toDisplayString() {
+    return `[ModifiedBinding ${this.modifiedBinding.name}]`;
+  }
 
   serialize(context: SerializationContext): void {
     let residualFunctionBinding = this.residualFunctionBinding;
@@ -374,6 +391,10 @@ class ReturnValueEntry extends GeneratorEntry {
   returnValue: Value;
   containingGenerator: Generator;
 
+  toDisplayString() {
+    return `[Return ${value.toDisplayString()}]`;
+  }
+
   visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     invariant(
       containingGenerator === this.containingGenerator,
@@ -411,6 +432,16 @@ class IfThenElseEntry extends GeneratorEntry {
   consequentGenerator: Generator;
   alternateGenerator: Generator;
 
+  toDisplayJson() {
+    return Effects.verboseToDisplayJson({
+      type: "IfThenElseEntry",
+      condition: condition,
+      consequent: this.consequentGenerator,
+      alternate: this.alternateGenerator,
+    });
+  }
+
+
   visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     invariant(
       containingGenerator === this.containingGenerator,
@@ -445,6 +476,11 @@ class BindingAssignmentEntry extends GeneratorEntry {
 
   binding: Binding;
   value: Value;
+
+  toDisplayString() {
+    return `[ModifiedBinding ${this.modifiedBinding.name}]`;
+  }
+
 
   serialize(context: SerializationContext): void {
     context.emit(
@@ -495,6 +531,11 @@ export class Generator {
   id: number;
   _name: string;
   pathConditions: Array<AbstractValue>;
+
+  toDisplayJson(depth) {
+    if (depth <= 0) return `Generator${id}`;
+    return Effects.verboseToDisplayJson(this, depth);
+  }
 
   static _generatorOfEffects(
     realm: Realm,

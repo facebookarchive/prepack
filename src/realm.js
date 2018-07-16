@@ -84,6 +84,8 @@ export type CreatedObjects = Set<ObjectValue>;
 
 export type SideEffectType = "MODIFIED_BINDING" | "MODIFIED_PROPERTY" | "EXCEPTION_THROWN" | "MODIFIED_GLOBAL";
 
+export type JsonVerbosity = "NAME_ONLY" | "SIMPLE" | "FULL";
+
 let effects_uid = 0;
 
 export class Effects {
@@ -111,6 +113,59 @@ export class Effects {
   createdObjects: CreatedObjects;
   canBeApplied: boolean;
   _id: number;
+
+  toDisplayString(verbosity: number) {
+    return JSON.stringify(this.toDisplayJson(10), null, 2).replace(/\"/g, "");
+  }
+
+  static verboseToDisplayJson(obj: Object, depth: number) {
+    let result = {};
+    function valueOfProp(prop) {
+      if (Array.isArray(prop)) {
+        // Try to return a 1-line string if possible
+        if (prop.length === 0) return "[]";
+        let valuesArray = prop.map(x => valueOfProp(x));
+        if (valuesArray.length === 1) return valuesArray[0];
+        if (valuesArray.length < 5) {
+          let string = "[" + valuesArray.reduce((acc, x) => `${acc}, ${x instanceof Object ? JSON.stringify(x) : x}`) + "]";
+          string = string.replace(/\"/g, "");
+          if (string.length < 60) return string;
+        }
+        return valuesArray;
+      }
+      if (prop instanceof Set || prop instanceof Map) return prop.size;
+      if (prop.toDisplayJson) return prop.toDisplayJson(depth - 1);
+      if (prop.toDisplayString) return prop.toDisplayString();
+      if (prop.toJSON) return prop.toJSON();
+      return prop.toString();
+    }
+    for (let key in obj) {
+      let prop = obj[key];
+      if (!prop) continue;
+      let value = valueOfProp(prop);
+      if (value !== "[object Object]") result[key] = value;
+    }
+    return result;
+  }
+
+  /*
+  if depth = 0 will just return its name
+  */
+  toDisplayJson(depth: number = 1) {
+    if (depth <= 0) return `Effects ${this._id}`;
+    return Effects.verboseToDisplayJson(this, depth);
+      /*case "SIMPLE": return  {
+        result: this.result.toDisplayString(),
+        id: this._id,
+        modifiedBindings: this.modifiedBindings.size,
+        modifiedProperties: this.modifiedProperties.size,
+        createdObjects: this.createdObjects.size,
+        applied: !this.canBeApplied,
+        generator: `Generator${this.generator.id}`,
+      };
+      case "VERBOSE":
+    }*/
+  }
 }
 
 export class Tracer {
