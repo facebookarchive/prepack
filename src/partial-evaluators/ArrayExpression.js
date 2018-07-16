@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeArrayExpression, BabelNodeStatement } from "babel-types";
+import type { BabelNodeArrayExpression, BabelNodeStatement } from "@babel/types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
@@ -20,7 +20,7 @@ import { AbstractValue, NumberValue, ObjectValue, StringValue, Value } from "../
 import { Create, Properties } from "../singletons.js";
 
 import invariant from "../invariant.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 
 // ECMA262 2.2.5.3
 export default function(

@@ -14,7 +14,7 @@ import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
 import { construct_empty_effects } from "../realm.js";
 import { Environment, To } from "../singletons.js";
-import type { BabelNodeConditionalExpression } from "babel-types";
+import type { BabelNodeConditionalExpression } from "@babel/types";
 import invariant from "../invariant.js";
 import type { Realm } from "../realm.js";
 

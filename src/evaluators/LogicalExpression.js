@@ -18,7 +18,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { AbstractValue, ConcreteValue, Value } from "../values/index.js";
 import { Reference } from "../environment.js";
 import { Environment } from "../singletons.js";
-import type { BabelNodeLogicalExpression } from "babel-types";
+import type { BabelNodeLogicalExpression } from "@babel/types";
 import invariant from "../invariant.js";
 import { Join, Path, To } from "../singletons.js";
 
@@ -92,7 +92,13 @@ export default function(
     joinedEffects = Join.joinForkOrChoose(
       realm,
       lval,
-      new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2),
+      new Effects(
+        result2.shallowCloneWithoutEffects(),
+        generator2,
+        modifiedBindings2,
+        modifiedProperties2,
+        createdObjects2
+      ),
       new Effects(new SimpleNormalCompletion(lval), generator1, modifiedBindings1, modifiedProperties1, createdObjects1)
     );
   } else {
@@ -106,7 +112,13 @@ export default function(
         modifiedProperties1,
         createdObjects1
       ),
-      new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
+      new Effects(
+        result2.shallowCloneWithoutEffects(),
+        generator2,
+        modifiedBindings2,
+        modifiedProperties2,
+        createdObjects2
+      )
     );
   }
   let completion = joinedEffects.result;

@@ -12,7 +12,7 @@
 import type { Realm } from "../../realm.js";
 import { AbstractValue, ArrayValue, NativeFunctionValue, Value } from "../../values/index.js";
 import { Create, To } from "../../singletons.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 22.1.3.30

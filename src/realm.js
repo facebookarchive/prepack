@@ -67,8 +67,8 @@ import { Generator, PreludeGenerator, type TemporalBuildNodeEntry } from "./util
 import { emptyExpression, voidExpression } from "./utils/babelhelpers.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
-import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "babel-types";
-import * as t from "babel-types";
+import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "@babel/types";
+import * as t from "@babel/types";
 import { Utils } from "./singletons.js";
 
 export type BindingEntry = {
@@ -89,13 +89,13 @@ let effects_uid = 0;
 
 export class Effects {
   constructor(
-    result: EvaluationResult,
+    result: Completion,
     generator: Generator,
     bindings: Bindings,
     propertyBindings: PropertyBindings,
     createdObjects: CreatedObjects
   ) {
-    this.result = result;
+    this._result = result;
     this.generator = generator;
     this.modifiedBindings = bindings;
     this.modifiedProperties = propertyBindings;
@@ -103,9 +103,20 @@ export class Effects {
 
     this.canBeApplied = true;
     this._id = effects_uid++;
+    invariant(result.effects === undefined);
+    result.effects = this;
   }
 
-  result: EvaluationResult;
+  _result: Completion;
+  get result(): Completion {
+    return this._result;
+  }
+  set result(completion: Completion): void {
+    invariant(completion.effects === undefined);
+    if (completion.effects === undefined) completion.effects = this; //todo: require callers to ensure this
+    this._result = completion;
+  }
+
   generator: Generator;
   modifiedBindings: Bindings;
   modifiedProperties: PropertyBindings;
@@ -204,7 +215,7 @@ export class ExecutionContext {
 
 export function construct_empty_effects(
   realm: Realm,
-  c: Completion = new SimpleNormalCompletion(realm.intrinsics.empty)
+  c: Completion = new SimpleNormalCompletion(realm.intrinsics.empty, undefined)
 ): Effects {
   // TODO #2222: Check if `realm.pathConditions` is always correct here.
   // The path conditions here should probably be empty.
@@ -301,6 +312,8 @@ export class Realm {
       verbose: opts.reactVerbose || false,
     };
 
+    this.reportSideEffectCallbacks = new Set();
+
     this.alreadyDescribedLocations = new WeakMap();
     this.stripFlow = opts.stripFlow || false;
 
@@ -347,9 +360,9 @@ export class Realm {
   createdObjects: void | CreatedObjects;
   createdObjectsTrackedForLeaks: void | CreatedObjects;
   reportObjectGetOwnProperties: void | (ObjectValue => void);
-  reportSideEffectCallback:
-    | void
-    | ((sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, expressionLocation: any) => void);
+  reportSideEffectCallbacks: Set<
+    (sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, expressionLocation: any) => void
+  >;
   reportPropertyAccess: void | (PropertyBinding => void);
   savedCompletion: void | PossiblyNormalCompletion;
 
@@ -717,26 +730,21 @@ export class Realm {
       | ((sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, value: void | Value) => void)
   ): T {
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
-    let saved_reportSideEffectCallback = this.reportSideEffectCallback;
     // Track all objects (including function closures) created during
     // this call. This will be used to make the assumption that every
     // *other* object is unchanged (pure). These objects are marked
     // as leaked if they're passed to abstract functions.
     this.createdObjectsTrackedForLeaks = new Set();
-    this.reportSideEffectCallback = (...args) => {
-      if (reportSideEffectFunc != null) {
-        reportSideEffectFunc(...args);
-      }
-      // Ensure we call any previously nested side-effect callbacks
-      if (saved_reportSideEffectCallback != null) {
-        saved_reportSideEffectCallback(...args);
-      }
-    };
+    if (reportSideEffectFunc !== null) {
+      this.reportSideEffectCallbacks.add(reportSideEffectFunc);
+    }
     try {
       return f();
     } finally {
       this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
-      this.reportSideEffectCallback = saved_reportSideEffectCallback;
+      if (reportSideEffectFunc !== null) {
+        this.reportSideEffectCallbacks.delete(reportSideEffectFunc);
+      }
     }
   }
 
@@ -867,7 +875,10 @@ export class Realm {
           else throw e;
         }
         // This is a join point for the normal branch of a PossiblyNormalCompletion.
-        if (c instanceof Value || c instanceof AbruptCompletion) c = Functions.incorporateSavedCompletion(this, c);
+        if (c instanceof Value || c instanceof AbruptCompletion) {
+          c = Functions.incorporateSavedCompletion(this, c);
+          if (c instanceof Completion && c.effects !== undefined) c = c.shallowCloneWithoutEffects();
+        }
         invariant(c !== undefined);
         if (c instanceof PossiblyNormalCompletion) {
           // The current state may have advanced since the time control forked into the various paths recorded in c.
@@ -1033,6 +1044,7 @@ export class Realm {
     } catch (e) {
       if (!(e instanceof InfeasiblePathError)) throw e;
     }
+    invariant(effects1 === undefined || effects1.result.effects === effects1);
 
     let effects2;
     try {
@@ -1040,6 +1052,7 @@ export class Realm {
     } catch (e) {
       if (!(e instanceof InfeasiblePathError)) throw e;
     }
+    invariant(effects2 === undefined || effects2.result.effects === effects2);
 
     let joinedEffects, completion;
     if (effects1 === undefined || effects2 === undefined) {
@@ -1213,9 +1226,7 @@ export class Realm {
   }
 
   composeEffects(priorEffects: Effects, subsequentEffects: Effects): Effects {
-    let result = construct_empty_effects(this);
-
-    result.result = subsequentEffects.result;
+    let result = construct_empty_effects(this, subsequentEffects.result.shallowCloneWithoutEffects());
 
     result.generator = Join.composeGenerators(
       this,
@@ -1542,8 +1553,7 @@ export class Realm {
       this.modifiedBindings !== undefined &&
       !this.modifiedBindings.has(binding) &&
       value !== undefined &&
-      this.isInPureScope() &&
-      this.reportSideEffectCallback !== undefined
+      this.isInPureScope()
     ) {
       let env = binding.environment;
 
@@ -1551,7 +1561,9 @@ export class Realm {
         !(env instanceof DeclarativeEnvironmentRecord) ||
         (env instanceof DeclarativeEnvironmentRecord && !isDefinedInsidePureFn(env))
       ) {
-        this.reportSideEffectCallback("MODIFIED_BINDING", binding, value.expressionLocation);
+        for (let callback of this.reportSideEffectCallbacks) {
+          callback("MODIFIED_BINDING", binding, value.expressionLocation);
+        }
       }
     }
 
@@ -1594,11 +1606,13 @@ export class Realm {
 
       if (createdObjectsTrackedForLeaks !== undefined && !createdObjectsTrackedForLeaks.has(object)) {
         if (binding.object === this.$GlobalObject) {
-          this.reportSideEffectCallback &&
-            this.reportSideEffectCallback("MODIFIED_GLOBAL", binding, object.expressionLocation);
+          for (let callback of this.reportSideEffectCallbacks) {
+            callback("MODIFIED_GLOBAL", binding, object.expressionLocation);
+          }
         } else {
-          this.reportSideEffectCallback &&
-            this.reportSideEffectCallback("MODIFIED_PROPERTY", binding, object.expressionLocation);
+          for (let callback of this.reportSideEffectCallbacks) {
+            callback("MODIFIED_PROPERTY", binding, object.expressionLocation);
+          }
         }
       }
     }
@@ -1743,7 +1757,7 @@ export class Realm {
     if (typeof message === "string") message = new StringValue(this, message);
     invariant(message instanceof StringValue);
     this.nextContextLocation = this.currentLocation;
-    return new ThrowCompletion(Construct(this, type, [message]), this.currentLocation);
+    return new ThrowCompletion(Construct(this, type, [message]), undefined, this.currentLocation);
   }
 
   appendGenerator(generator: Generator, leadingComment: string = ""): void {

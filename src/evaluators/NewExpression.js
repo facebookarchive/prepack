@@ -19,8 +19,8 @@ import { IsConstructor, ArgumentListEvaluation } from "../methods/index.js";
 import { Construct } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { FatalError } from "../errors.js";
-import * as t from "babel-types";
-import { BabelNodeNewExpression, type BabelNodeExpression } from "babel-types";
+import * as t from "@babel/types";
+import { BabelNodeNewExpression, type BabelNodeExpression } from "@babel/types";
 
 export default function(
   ast: BabelNodeNewExpression,

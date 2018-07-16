@@ -17,7 +17,7 @@ import { AbstractValue, ObjectValue, Value } from "../values/index.js";
 import { UpdateEmpty } from "../methods/index.js";
 import { Environment, To } from "../singletons.js";
 import invariant from "../invariant.js";
-import type { BabelNodeWithStatement } from "babel-types";
+import type { BabelNodeWithStatement } from "@babel/types";
 
 // ECMA262 13.11.7
 export default function(

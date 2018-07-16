@@ -40,7 +40,7 @@ import type {
   BabelNodeLVal,
   BabelNodeStatement,
   BabelNodeVariableDeclaration,
-} from "babel-types";
+} from "@babel/types";
 
 export type IterationKind = "iterate" | "enumerate";
 export type LhsKind = "lexicalBinding" | "varBinding" | "assignment";
@@ -62,7 +62,7 @@ export function TryToApplyEffectsOfJoiningBranches(realm: Realm, c: ForkedAbrupt
     realm.applyEffects(joinedEffects, "end of loop body");
   } else if (jr instanceof ForkedAbruptCompletion) {
     if (jr.containsBreakOrContinue()) {
-      // todo: extract the continue completions, apply those while stashing the other comletions
+      // todo: extract the continue completions, apply those while stashing the other completions
       // in realm.savedCompletion. This may need customization depending on the caller.
       AbstractValue.reportIntrospectionError(jr.joinCondition);
       throw new FatalError();
@@ -167,7 +167,7 @@ export function ForInOfHeadEvaluation(
     // a. If exprValue.[[Value]] is null or undefined, then
     if (exprValue instanceof NullValue || exprValue instanceof UndefinedValue) {
       // i. Return Completion{[[Type]]: break, [[Value]]: empty, [[Target]]: empty}.
-      throw new BreakCompletion(realm.intrinsics.empty, expr.loc, null);
+      throw new BreakCompletion(realm.intrinsics.empty, undefined, expr.loc, null);
     }
 
     // b. Let obj be ToObject(exprValue).

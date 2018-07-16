@@ -9,7 +9,7 @@
 
 /* @flow strict-local */
 
-import { BabelNodeSourceLocation } from "babel-types";
+import { BabelNodeSourceLocation } from "@babel/types";
 import invariant from "./../common/invariant.js";
 import { Stepper, StepIntoStepper, StepOverStepper, StepOutStepper } from "./Stepper.js";
 import type { Realm } from "./../../realm.js";

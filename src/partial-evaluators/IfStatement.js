@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeIfStatement, BabelNodeStatement } from "babel-types";
+import type { BabelNodeIfStatement, BabelNodeStatement } from "@babel/types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 import { Effects } from "../realm.js";
@@ -21,7 +21,7 @@ import { AbstractValue, Value } from "../values/index.js";
 import { construct_empty_effects } from "../realm.js";
 import { Join } from "../singletons.js";
 
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import invariant from "../invariant.js";
 
 export default function(
@@ -77,12 +77,14 @@ export default function(
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of exprValue.
   const ce = consequentEffects;
+  let cr = ce.result.shallowCloneWithoutEffects();
   const ae = alternateEffects;
+  let ar = ae.result.shallowCloneWithoutEffects();
   let joinedEffects = Join.joinForkOrChoose(
     realm,
     exprValue,
-    new Effects(ce.result, ce.generator, ce.modifiedBindings, ce.modifiedProperties, ce.createdObjects),
-    new Effects(ae.result, ae.generator, ae.modifiedBindings, ae.modifiedProperties, ae.createdObjects)
+    new Effects(cr, ce.generator, ce.modifiedBindings, ce.modifiedProperties, ce.createdObjects),
+    new Effects(ar, ae.generator, ae.modifiedBindings, ae.modifiedProperties, ae.createdObjects)
   );
   completion = joinedEffects.result;
   if (completion instanceof PossiblyNormalCompletion) {

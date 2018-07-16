@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
+import { AbruptCompletion, Completion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { construct_empty_effects, type Realm, Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding, PropertyKeyValue } from "../types.js";
 import {
@@ -46,7 +46,7 @@ import {
   SameValue,
   SameValuePartial,
 } from "../methods/index.js";
-import { type BabelNodeObjectMethod, type BabelNodeClassMethod, isValidIdentifier } from "babel-types";
+import { type BabelNodeObjectMethod, type BabelNodeClassMethod, isValidIdentifier } from "@babel/types";
 import type { LexicalEnvironment } from "../environment.js";
 import { Create, Environment, Functions, Havoc, Join, Path, To } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
@@ -321,6 +321,8 @@ export class PropertiesImplementation {
 
       // Join the effects, creating an abstract view of what happened, regardless
       // of the actual value of ownDesc.joinCondition.
+      if (result1 instanceof Completion) result1 = result1.shallowCloneWithoutEffects();
+      if (result2 instanceof Completion) result2 = result2.shallowCloneWithoutEffects();
       let joinedEffects = Join.joinForkOrChoose(
         realm,
         joinCondition,

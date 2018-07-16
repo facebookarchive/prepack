@@ -9,6 +9,8 @@
 
 const path = require("path");
 
+process.env.NODE_ENV = "production";
+
 const WebpackConfig = {
   entry: "./",
   output: {
@@ -16,6 +18,8 @@ const WebpackConfig = {
     filename: "prepack.min.js",
     library: "Prepack",
   },
+  parallelism: 1,
+  profile: true,
   mode: "production",
   optimization: {
     minimize: true,
@@ -24,12 +28,8 @@ const WebpackConfig = {
     rules: [
       {
         test: /\.js$/,
-        exclude: /(node_modules|bower_components)/,
         use: {
           loader: "babel-loader",
-          options: {
-            presets: ["env"],
-          },
         },
       },
     ],

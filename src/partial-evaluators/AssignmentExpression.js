@@ -14,7 +14,7 @@ import type {
   BabelNodeAssignmentExpression,
   BabelNodeExpression,
   BabelNodeStatement,
-} from "babel-types";
+} from "@babel/types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
@@ -27,7 +27,7 @@ import { BooleanValue, ConcreteValue, NullValue, ObjectValue, UndefinedValue, Va
 import { IsAnonymousFunctionDefinition, IsIdentifierRef, HasOwnProperty } from "../methods/index.js";
 import { Environment, Functions, Join, Properties } from "../singletons.js";
 
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import invariant from "../invariant.js";
 
 // ECMA262 12.15 Assignment Operators

@@ -30,7 +30,7 @@ import { To } from "../singletons.js";
 import { Value } from "../values/index.js";
 import invariant from "../invariant.js";
 import { HasName, HasCompatibleType } from "./has.js";
-import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeLVal, BabelNodeClassMethod } from "babel-types";
+import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeLVal, BabelNodeClassMethod } from "@babel/types";
 
 // ECMA262 22.1.3.1.1
 export function IsConcatSpreadable(realm: Realm, _O: Value): boolean {

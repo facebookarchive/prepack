@@ -9,7 +9,7 @@
 
 /* @flow strict-local */
 
-import type { BabelNodeBlockStatement, BabelNodeStatement } from "babel-types";
+import type { BabelNodeBlockStatement, BabelNodeStatement } from "@babel/types";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 
@@ -18,7 +18,7 @@ import { EmptyValue, StringValue, Value } from "../values/index.js";
 import { Environment, Functions } from "../singletons.js";
 
 import invariant from "../invariant.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 
 // ECMA262 13.2.13
 export default function(

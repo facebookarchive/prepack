@@ -9,12 +9,12 @@
 
 /* @flow */
 
-import type { BabelNode, BabelNodeStatement, BabelNodeThrowStatement } from "babel-types";
+import type { BabelNode, BabelNodeStatement, BabelNodeThrowStatement } from "@babel/types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 import { Completion, ThrowCompletion } from "../completions.js";
 import { Value } from "../values/index.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 
 export default function(
   ast: BabelNodeThrowStatement,
@@ -24,7 +24,7 @@ export default function(
 ): [Completion | Value, BabelNode, Array<BabelNodeStatement>] {
   let [argValue, argAst, io] = env.partiallyEvaluateCompletionDeref(ast.argument, strictCode);
   if (argValue instanceof Value) {
-    let c = new ThrowCompletion(argValue, ast.loc);
+    let c = new ThrowCompletion(argValue, undefined, ast.loc);
     let s = t.throwStatement((argAst: any)); // will be an expression because argValue is a Value
     return [c, s, io];
   }

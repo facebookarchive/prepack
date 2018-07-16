@@ -53,8 +53,8 @@ import {
 } from "../methods/index.js";
 import { Havoc, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
-import type { typeAnnotation } from "babel-types";
-import * as t from "babel-types";
+import type { typeAnnotation } from "@babel/types";
+import * as t from "@babel/types";
 import { memberExpressionHelper } from "../utils/babelhelpers.js";
 
 function isWidenedValue(v: void | Value) {

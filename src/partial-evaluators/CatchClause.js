@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeCatchClause, BabelNodeStatement } from "babel-types";
+import type { BabelNodeCatchClause, BabelNodeStatement } from "@babel/types";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 

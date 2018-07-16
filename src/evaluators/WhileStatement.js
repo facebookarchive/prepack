@@ -12,7 +12,7 @@
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { Value } from "../values/index.js";
-import type { BabelNodeWhileStatement, BabelNode } from "babel-types";
+import type { BabelNodeWhileStatement, BabelNode } from "@babel/types";
 import invariant from "../invariant.js";
 
 export default function(

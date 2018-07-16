@@ -35,7 +35,7 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 
 type ElementConvType = {
   Int8: (Realm, numberOrValue) => number,

@@ -38,8 +38,19 @@ import {
   HasSomeCompatibleType,
 } from "../../methods/index.js";
 import { Create, Havoc, Properties as Props, To } from "../../singletons.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import invariant from "../../invariant.js";
+
+function snapshotToObjectAndRemoveProperties(
+  to: ObjectValue | AbstractObjectValue,
+  delayedSources: Array<Value>
+): void {
+  // If to has properties, we better remove them because after the temporal call to Object.assign we don't know their values anymore
+  if (to.hasStringOrSymbolProperties()) {
+    // Preserve them in a snapshot and add the snapshot to the sources
+    delayedSources.push(to.getSnapshot({ removeProperties: true }));
+  }
+}
 
 function handleObjectAssignSnapshot(
   to: ObjectValue | AbstractObjectValue,
@@ -52,16 +63,16 @@ function handleObjectAssignSnapshot(
     AbstractValue.reportIntrospectionError(to);
     throw new FatalError();
   } else {
-    // if to has properties, we better remove them because after the temporal call to Object.assign we don't know their values anymore
-    if (to.hasStringOrSymbolProperties()) {
-      // preserve them in a snapshot and add the snapshot to the sources
-      delayedSources.push(to.getSnapshot({ removeProperties: true }));
-    }
-
     if (frm instanceof ObjectValue && frm.mightBeHavocedObject()) {
+      // "frm" is havoced, so it might contain properties that potentially overwrite
+      // properties already on the "to" object.
+      snapshotToObjectAndRemoveProperties(to, delayedSources);
       // it's not safe to trust any of its values
       delayedSources.push(frm);
     } else if (frm_was_partial) {
+      // "frm" is partial, so it might contain properties that potentially overwrite
+      // properties already on the "to" object.
+      snapshotToObjectAndRemoveProperties(to, delayedSources);
       if (frm instanceof AbstractObjectValue && frm.kind === "explicit conversion to object") {
         // Make it implicit again since it is getting delayed into an Object.assign call.
         delayedSources.push(frm.args[0]);

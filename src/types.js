@@ -32,7 +32,6 @@ import {
   AbruptCompletion,
   Completion,
   ForkedAbruptCompletion,
-  SimpleNormalCompletion,
   PossiblyNormalCompletion,
   NormalCompletion,
 } from "./completions.js";
@@ -48,7 +47,7 @@ import type {
   BabelNodePattern,
   BabelNodeVariableDeclaration,
   BabelNodeSourceLocation,
-} from "babel-types";
+} from "@babel/types";
 import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "./realm.js";
 import { CompilerDiagnostic } from "./errors.js";
 import type { Severity } from "./errors.js";
@@ -741,20 +740,6 @@ export type JoinType = {
     e: Effects
   ): ForkedAbruptCompletion,
 
-  updatePossiblyNormalCompletionWithConditionalSimpleNormalCompletion(
-    realm: Realm,
-    joinCondition: AbstractValue,
-    pnc: PossiblyNormalCompletion,
-    nc: SimpleNormalCompletion
-  ): void,
-
-  updatePossiblyNormalCompletionWithInverseConditionalSimpleNormalCompletion(
-    realm: Realm,
-    joinCondition: AbstractValue,
-    pnc: PossiblyNormalCompletion,
-    nc: SimpleNormalCompletion
-  ): void,
-
   extractAndJoinCompletionsOfType(CompletionType: typeof AbruptCompletion, realm: Realm, c: AbruptCompletion): Effects,
 
   joinForkOrChoose(realm: Realm, joinCondition: Value, e1: Effects, e2: Effects): Effects,
@@ -764,6 +749,7 @@ export type JoinType = {
   collapseResults(
     realm: Realm,
     joinCondition: AbstractValue,
+    precedingEffects: Effects,
     result1: EvaluationResult,
     result2: EvaluationResult
   ): Completion,

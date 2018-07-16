@@ -10,9 +10,9 @@
 /* @flow */
 
 import { Realm, Effects } from "../realm.js";
-import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
-import type { BabelNode, BabelNodeJSXIdentifier } from "babel-types";
-import { parseExpression } from "babylon";
+import { AbruptCompletion, Completion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
+import type { BabelNode, BabelNodeJSXIdentifier } from "@babel/types";
+import { parseExpression } from "@babel/parser";
 import {
   AbstractObjectValue,
   AbstractValue,
@@ -42,9 +42,9 @@ import { computeBinary } from "../evaluators/BinaryExpression.js";
 import type { AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
 import invariant from "../invariant.js";
 import { Create, Properties, To } from "../singletons.js";
-import traverse from "babel-traverse";
-import * as t from "babel-types";
-import type { BabelNodeStatement } from "babel-types";
+import traverse from "@babel/traverse";
+import * as t from "@babel/types";
+import type { BabelNodeStatement } from "@babel/types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 
 export type ReactSymbolTypes =
@@ -197,7 +197,7 @@ export function valueIsLegacyCreateClassComponent(realm: Realm, value: Value): b
 }
 
 export function valueIsFactoryClassComponent(realm: Realm, value: Value): boolean {
-  if (value instanceof ObjectValue) {
+  if (value instanceof ObjectValue && !ArrayValue.isIntrinsicAndHasWidenedNumericProperty(value)) {
     return To.ToBooleanPartial(realm, Get(realm, value, "render"));
   }
   return false;
@@ -339,7 +339,7 @@ export function convertSimpleClassComponentToFunctionalComponent(
       {},
       undefined
     );
-    traverse.clearCache();
+    traverse.cache.clear();
   });
 }
 
@@ -623,6 +623,7 @@ export function evaluateWithNestedParentEffects(
   if (nextEffects.length !== 0) {
     let effects = nextEffects.shift();
     value = effects.result;
+    if (value instanceof Completion) value = value.shallowCloneWithoutEffects();
     createdObjects = effects.createdObjects;
     modifiedBindings = effects.modifiedBindings;
     modifiedProperties = effects.modifiedProperties;
@@ -991,7 +992,7 @@ export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value
 }
 
 export function applyObjectAssignConfigsForReactElement(realm: Realm, to: ObjectValue, sources: Array<Value>): void {
-  // get the global Object.assign
+  // Get the global Object.assign
   let globalObj = Get(realm, realm.$GlobalObject, "Object");
   invariant(globalObj instanceof ObjectValue);
   let objAssign = Get(realm, globalObj, "assign");
@@ -999,90 +1000,8 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
   let objectAssignCall = objAssign.$Call;
   invariant(objectAssignCall !== undefined);
 
-  const tryToApplyObjectAssign = () => {
-    invariant(!realm.instantRender.enabled);
-    let effects;
-    let savedSuppressDiagnostics = realm.suppressDiagnostics;
-    try {
-      realm.suppressDiagnostics = true;
-      effects = realm.evaluateForEffects(
-        () => objectAssignCall(realm.intrinsics.undefined, [to, ...sources]),
-        undefined,
-        "tryToApplyObjectAssign"
-      );
-    } catch (error) {
-      if (error instanceof FatalError) {
-        // if the built-in Object.assign failed, we need to recover
-        realm.suppressDiagnostics = savedSuppressDiagnostics;
-        let delayedSources = [];
-
-        for (let obj of sources) {
-          // ignore null or undefined
-          if (obj === realm.intrinsics.null || obj === realm.intrinsics.undefined) {
-            continue;
-          }
-          let source = To.ToObject(realm, obj);
-          // the object is simple and partial so we can safely copy over properties
-          if (source instanceof ObjectValue && !source.isPartialObject()) {
-            for (let [propName, binding] of source.properties) {
-              if (binding.descriptor !== undefined) {
-                Properties.Set(realm, to, propName, Get(realm, source, propName), true);
-              }
-            }
-            let snapshot = source.getSnapshot();
-            delayedSources.push(snapshot);
-            source.temporalAlias = snapshot;
-          } else {
-            // if we are dealing with an abstract object or one that is partial, then
-            // we don't try and copy its properties over as there's no guarantee they are
-            // safe to copy
-            if (source instanceof AbstractObjectValue && source.kind === "explicit conversion to object") {
-              // Make it implicit again since it is getting delayed into an Object.assign call.
-              delayedSources.push(source.args[0]);
-            } else {
-              let snapshot = source.getSnapshot();
-              delayedSources.push(snapshot);
-              source.temporalAlias = snapshot;
-            }
-            // if to has properties, we better remove them because after the temporal call to Object.assign we don't know their values anymore
-            if (to.hasStringOrSymbolProperties()) {
-              // preserve them in a snapshot and add the snapshot to the sources
-              delayedSources.push(to.getSnapshot({ removeProperties: true }));
-            }
-          }
-        }
-        // prepare our temporal Object.assign fallback
-        to.makePartial();
-        to.makeSimple();
-        AbstractValue.createTemporalObjectAssign(realm, to, delayedSources);
-        return;
-      } else {
-        throw error;
-      }
-    } finally {
-      realm.suppressDiagnostics = savedSuppressDiagnostics;
-    }
-    // Note that the effects of (non joining) abrupt branches are not included
-    // in effects, but are tracked separately inside completion.
-    realm.applyEffects(effects);
-    let completion = effects.result;
-    if (completion instanceof PossiblyNormalCompletion) {
-      // in this case one of the branches may complete abruptly, which means that
-      // not all control flow branches join into one flow at this point.
-      // Consequently we have to continue tracking changes until the point where
-      // all the branches come together into one.
-      completion = realm.composeWithSavedCompletion(completion);
-    }
-    // return or throw completion
-    if (completion instanceof AbruptCompletion) throw completion;
-    if (completion instanceof SimpleNormalCompletion) completion = completion.value;
-  };
-
-  if (realm.isInPureScope() && !realm.instantRender.enabled) {
-    tryToApplyObjectAssign();
-  } else {
-    objectAssignCall(realm.intrinsics.undefined, [to, ...sources]);
-  }
+  // Use the existing internal Prepack Object.assign model
+  objectAssignCall(realm.intrinsics.undefined, [to, ...sources]);
 }
 
 // In firstRenderOnly mode, we strip off onEventHanlders and any props

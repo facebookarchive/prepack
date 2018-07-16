@@ -39,7 +39,7 @@ let fs = require("fs");
 let vm = require("vm");
 let os = require("os");
 let minimist = require("minimist");
-let babel = require("babel-core");
+let babel = require("@babel/core");
 let child_process = require("child_process");
 const EOL = os.EOL;
 let execSpec;
@@ -51,6 +51,7 @@ function transformWithBabel(code, plugins, presets) {
   return babel.transform(code, {
     plugins: plugins,
     presets: presets,
+    configFile: false,
   }).code;
 }
 
@@ -350,7 +351,7 @@ function getErrorHandlerWithWarningCapture(
 }
 
 function runTest(name, code, options: PrepackOptions, args) {
-  console.log(chalk.inverse(name) + " " + JSON.stringify(options));
+  if (!args.fast && args.filter === "") console.log(chalk.inverse(name) + " " + JSON.stringify(options));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
   let initializeMoreModules = code.includes("// initialize more modules");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
@@ -471,14 +472,14 @@ function runTest(name, code, options: PrepackOptions, args) {
     }
     if (delayUnsupportedRequires) options.residual = false;
     if (args.es5) {
-      code = transformWithBabel(code, [], [["env", { forceAllTransforms: true, modules: false }]]);
+      code = transformWithBabel(code, [], [["@babel/env", { forceAllTransforms: true, modules: false }]]);
     }
     let unique = 27277;
     let oldUniqueSuffix = "";
     let expectedCode = code;
     let actualStack;
     if (compileJSXWithBabel) {
-      expectedCode = transformWithBabel(expectedCode, ["transform-react-jsx"]);
+      expectedCode = transformWithBabel(expectedCode, ["@babel/plugin-transform-react-jsx"]);
     }
 
     return execInContext(
@@ -558,7 +559,7 @@ function runTest(name, code, options: PrepackOptions, args) {
 
             let newCode = serialized.code;
             if (compileJSXWithBabel) {
-              newCode = transformWithBabel(newCode, ["transform-react-jsx"]);
+              newCode = transformWithBabel(newCode, ["@babel/plugin-transform-react-jsx"]);
             }
             let markersIssue = false;
             for (let { positive, value } of markersToFind) {
@@ -594,7 +595,11 @@ function runTest(name, code, options: PrepackOptions, args) {
             if (args.verbose) console.log(codeToRun);
             codeIterations.push(unescapleUniqueSuffix(codeToRun, options.uniqueSuffix));
             if (args.es5) {
-              codeToRun = transformWithBabel(codeToRun, [], [["env", { forceAllTransforms: true, modules: false }]]);
+              codeToRun = transformWithBabel(
+                codeToRun,
+                [],
+                [["@babel/env", { forceAllTransforms: true, modules: false }]]
+              );
             }
             // lint output
             lintCompiledSource(codeToRun);
@@ -661,17 +666,17 @@ function runTest(name, code, options: PrepackOptions, args) {
               console.error(chalk.red(`Code generation did not reach fixed point after ${max} iterations!`));
             }
 
-            console.log(chalk.underline("original code"));
-            console.log(code);
-            console.log(chalk.underline("output of inspect() on original code"));
-            console.log(expected);
+            console.error(chalk.underline("original code"));
+            console.error(code);
+            console.error(chalk.underline("output of inspect() on original code"));
+            console.error(expected);
             for (let ii = 0; ii < codeIterations.length; ii++) {
-              console.log(chalk.underline(`generated code in iteration ${ii}`));
-              console.log(codeIterations[ii]);
+              console.error(chalk.underline(`generated code in iteration ${ii}`));
+              console.error(codeIterations[ii]);
             }
-            console.log(chalk.underline("output of inspect() on last generated code iteration"));
-            console.log(actual);
-            if (actualStack) console.log(actualStack);
+            console.error(chalk.underline("output of inspect() on last generated code iteration"));
+            console.error(actual);
+            if (actualStack) console.error(actualStack);
             return Promise.resolve(false);
           } else if (type === "RETURN") {
             return value;
@@ -875,6 +880,7 @@ function main(): void {
     }
     process.exit(1);
   }
+  if (args.fast && args.filter === "") (console: any).error = function() {};
   (args && args.cpuprofilePath ? runWithCpuProfiler : run)(args)
     .then(function(result) {
       if (!result) {

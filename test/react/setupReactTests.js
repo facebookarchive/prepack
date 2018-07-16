@@ -16,7 +16,6 @@ let babel = require("babel-core");
 let React = require("react");
 let ReactDOM = require("react-dom");
 let ReactDOMServer = require("react-dom/server");
-// $FlowFixMe: we really do have react-native in the dependencies
 let ReactNative = require("react-native");
 let PropTypes = require("prop-types");
 let ReactRelay = require("react-relay");
@@ -150,8 +149,12 @@ ${source}
 
   function transpileSource(source) {
     return babel.transform(source, {
-      presets: ["babel-preset-react"],
-      plugins: ["transform-object-rest-spread"],
+      configFile: false,
+      presets: ["@babel/preset-flow"],
+      plugins: [
+        ["@babel/plugin-proposal-object-rest-spread", { loose: true, useBuiltIns: true }],
+        ["@babel/plugin-transform-react-jsx", { useBuiltIns: true }],
+      ],
     }).code;
   }
 

@@ -32,7 +32,7 @@ import { Reference, EnvironmentRecord } from "../environment.js";
 import invariant from "../invariant.js";
 import { IsCallable } from "../methods/index.js";
 import { Environment, To } from "../singletons.js";
-import type { BabelNodeUnaryExpression } from "babel-types";
+import type { BabelNodeUnaryExpression } from "@babel/types";
 
 function isInstance(proto, Constructor): boolean {
   return proto instanceof Constructor || proto === Constructor.prototype;

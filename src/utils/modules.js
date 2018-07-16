@@ -27,7 +27,7 @@ import {
   UndefinedValue,
   NullValue,
 } from "../values/index.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import type {
   BabelNodeIdentifier,
   BabelNodeLVal,
@@ -35,7 +35,7 @@ import type {
   BabelNodeNumericLiteral,
   BabelNodeStringLiteral,
   BabelNodeMemberExpression,
-} from "babel-types";
+} from "@babel/types";
 import invariant from "../invariant.js";
 import { Logger } from "./logger.js";
 import { SerializerStatistics } from "../serializer/statistics.js";

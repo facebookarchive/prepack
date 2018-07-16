@@ -22,7 +22,7 @@ import {
 import { UpdateEmpty } from "../methods/index.js";
 import { Functions, Join } from "../singletons.js";
 import { Value } from "../values/index.js";
-import type { BabelNodeTryStatement } from "babel-types";
+import type { BabelNodeTryStatement } from "@babel/types";
 import invariant from "../invariant.js";
 
 export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {

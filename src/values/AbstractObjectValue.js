@@ -33,9 +33,9 @@ import {
   equalDescriptors,
 } from "../methods/index.js";
 import { Havoc, Widen } from "../singletons.js";
-import type { BabelNodeExpression } from "babel-types";
+import type { BabelNodeExpression } from "@babel/types";
 import invariant from "../invariant.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 
 export default class AbstractObjectValue extends AbstractValue {
   constructor(
@@ -498,7 +498,7 @@ export default class AbstractObjectValue extends AbstractValue {
 
     if (this.values.isTop()) {
       let generateAbstractGet = () => {
-        let ob = this;
+        let ob = Receiver;
         if (this.kind === "explicit conversion to object") ob = this.args[0];
         let type = Value;
         if (P === "length" && Value.isTypeCompatibleWith(this.getType(), ArrayValue)) type = NumberValue;
@@ -520,7 +520,7 @@ export default class AbstractObjectValue extends AbstractValue {
         return generateAbstractGet();
       } else if (this.$Realm.isInPureScope()) {
         // This object might have leaked to a getter.
-        Havoc.value(this.$Realm, this);
+        Havoc.value(this.$Realm, Receiver);
         // The getter might throw anything.
         return this.$Realm.evaluateWithPossibleThrowCompletion(
           generateAbstractGet,

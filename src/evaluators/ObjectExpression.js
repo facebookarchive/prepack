@@ -22,7 +22,7 @@ import type {
   BabelNodeObjectProperty,
   BabelNodeObjectMethod,
   BabelNodeClassMethod,
-} from "babel-types";
+} from "@babel/types";
 
 // Returns the result of evaluating PropertyName.
 export function EvalPropertyName(
@@ -113,7 +113,7 @@ export default function(
       } else {
         Create.CreateDataPropertyOrThrow(realm, obj, propKey, propValue);
       }
-    } else if (prop.type === "SpreadProperty") {
+    } else if (prop.type === "SpreadElement") {
       // 1. Let exprValue be the result of evaluating AssignmentExpression.
       let exprValue = env.evaluate(prop.argument, strictCode);
 

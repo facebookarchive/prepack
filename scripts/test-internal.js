@@ -10,7 +10,7 @@
 /* @flow */
 
 import { CompilerDiagnostic, type ErrorHandlerResult, FatalError } from "../lib/errors.js";
-import type { BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "@babel/types";
 import { prepackSources } from "../lib/prepack-standalone.js";
 
 let chalk = require("chalk");

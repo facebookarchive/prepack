@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { AbruptCompletion, PossiblyNormalCompletion } from "../completions.js";
+import { AbruptCompletion, Completion, PossiblyNormalCompletion } from "../completions.js";
 import { InfeasiblePathError } from "../errors.js";
 import { construct_empty_effects, type Realm, Effects } from "../realm.js";
 import type { PropertyKeyValue, CallableObjectValue } from "../types.js";
@@ -41,8 +41,8 @@ import {
 } from "./index.js";
 import { Create, Environment, Join, Path, To } from "../singletons.js";
 import invariant from "../invariant.js";
-import type { BabelNodeTemplateLiteral } from "babel-types";
-import * as t from "babel-types";
+import type { BabelNodeTemplateLiteral } from "@babel/types";
+import * as t from "@babel/types";
 import { memberExpressionHelper } from "../utils/babelhelpers.js";
 
 // ECMA262 7.3.22
@@ -164,6 +164,8 @@ export function OrdinaryGet(
   }
   // Join the effects, creating an abstract view of what happened, regardless
   // of the actual value of ownDesc.joinCondition.
+  if (result1 instanceof Completion) result1 = result1.shallowCloneWithoutEffects();
+  if (result2 instanceof Completion) result2 = result2.shallowCloneWithoutEffects();
   let joinedEffects = Join.joinForkOrChoose(
     realm,
     joinCondition,

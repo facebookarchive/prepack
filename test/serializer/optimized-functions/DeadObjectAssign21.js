@@ -1,4 +1,5 @@
-// Copies of _\$E:4
+// Copies of _\$E\(:3
+// Copies of var _\$E = _\$D.assign;:1
 // inline expressions
 
 // _$E is the variable for Object.assign. See DeadObjectAssign4.js for

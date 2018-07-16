@@ -13,8 +13,8 @@ import type { Realm } from "../../realm.js";
 import { AbstractValue, ECMAScriptSourceFunctionValue, ObjectValue, StringValue } from "../../values/index.js";
 import { Environment } from "../../singletons.js";
 import invariant from "../../invariant";
-import * as t from "babel-types";
-import { parseExpression } from "babylon";
+import * as t from "@babel/types";
+import { parseExpression } from "@babel/parser";
 
 let reactNativeCode = `
   function createReactNative(React, reactNameRequireName) {

@@ -23,7 +23,7 @@ import {
 } from "../../values/index.js";
 import { Create } from "../../singletons.js";
 import { Get } from "../../methods/index.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import invariant from "../../invariant";
 import { Properties } from "../../singletons.js";
 import { forEachArrayValue } from "../../react/utils.js";

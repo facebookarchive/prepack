@@ -23,8 +23,8 @@ import { HasOwnProperty, HasSomeCompatibleType } from "../../methods/has.js";
 import { Invoke } from "../../methods/call.js";
 import { Properties, To } from "../../singletons.js";
 import { FatalError } from "../../errors.js";
-import type { BabelNodeExpression } from "babel-types";
-import * as t from "babel-types";
+import type { BabelNodeExpression } from "@babel/types";
+import * as t from "@babel/types";
 import invariant from "../../invariant.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 

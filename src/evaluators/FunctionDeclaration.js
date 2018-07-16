@@ -16,7 +16,7 @@ import { MakeConstructor } from "../methods/construct.js";
 import { Create, Functions, Properties } from "../singletons.js";
 import { StringValue } from "../values/index.js";
 import IsStrict from "../utils/strict.js";
-import type { BabelNodeFunctionDeclaration } from "babel-types";
+import type { BabelNodeFunctionDeclaration } from "@babel/types";
 
 // ECMA262 14.1.20
 export default function(

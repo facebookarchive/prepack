@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "@babel/types";
 import type { Realm } from "../realm.js";
 import {
   AbstractObjectValue,

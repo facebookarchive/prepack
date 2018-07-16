@@ -166,6 +166,10 @@ it("Handle mapped arrays 2", () => {
   runTest(__dirname + "/FunctionalComponents/array-map2.js");
 });
 
+it("Handle mapped arrays 3", () => {
+  runTest(__dirname + "/FunctionalComponents/array-map3.js");
+});
+
 it("Handle mapped arrays from Array.from", () => {
   runTest(__dirname + "/FunctionalComponents/array-from.js");
 });
@@ -314,4 +318,8 @@ it("Dynamic ReactElement type #4", () => {
 
 it("Hoist Fragment", () => {
   runTest(__dirname + "/FunctionalComponents/hoist-fragment.js");
+});
+
+it("Pathological case", () => {
+  runTest(__dirname + "/FunctionalComponents/pathological-case.js");
 });

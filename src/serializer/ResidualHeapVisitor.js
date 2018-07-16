@@ -32,11 +32,11 @@ import {
   Value,
 } from "../values/index.js";
 import { describeLocation } from "../intrinsics/ecma262/Error.js";
-import * as t from "babel-types";
-import type { BabelNodeBlockStatement } from "babel-types";
+import * as t from "@babel/types";
+import type { BabelNodeBlockStatement } from "@babel/types";
 import { Generator } from "../utils/generator.js";
 import type { GeneratorEntry, VisitEntryCallbacks } from "../utils/generator.js";
-import traverse from "babel-traverse";
+import traverse from "@babel/traverse";
 import invariant from "../invariant.js";
 import type {
   AdditionalFunctionEffects,
@@ -566,7 +566,7 @@ export class ResidualHeapVisitor {
         null,
         state
       );
-      traverse.clearCache();
+      traverse.cache.clear();
       this.functionInfos.set(code, functionInfo);
 
       if (val.isResidual && functionInfo.unbound.size) {

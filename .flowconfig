@@ -1,5 +1,5 @@
 [ignore]
-.*/node_modules/babel.*
+.*/node_modules/@babel/.*
 .*/test262/.*
 .*/node_modules/.*\.json
 .*/lib/.*
@@ -8,6 +8,7 @@
 .*/test/serializer/.*
 .*/scripts/prettier.js
 .*/tmp_website_build/.*
+babel.config.js
 
 [include]
 

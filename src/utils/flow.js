@@ -9,9 +9,9 @@
 
 /* @flow strict */
 
-import traverse from "babel-traverse";
-import { BabelNode } from "babel-types";
-import * as t from "babel-types";
+import traverse from "@babel/traverse";
+import { BabelNode } from "@babel/types";
+import * as t from "@babel/types";
 
 // Taken directly from Babel:
 // https://github.com/babel/babel/blob/cde005422701a69ff21044c138c29a5ad23b6d0a/packages/babel-plugin-transform-flow-strip-types/src/index.js#L32-L107
@@ -75,5 +75,5 @@ export function stripFlowTypeAnnotations(ast: BabelNode): void {
     {},
     undefined
   );
-  traverse.clearCache();
+  traverse.cache.clear();
 }

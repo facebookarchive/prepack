@@ -16,7 +16,7 @@ import { GetIterator } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { IteratorStep, IteratorValue } from "../methods/iterator.js";
 import { Create, Environment, Properties } from "../singletons.js";
-import type { BabelNodeArrayExpression } from "babel-types";
+import type { BabelNodeArrayExpression } from "@babel/types";
 
 // ECMA262 2.2.5.3
 export default function(
