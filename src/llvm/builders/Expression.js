@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { CompilerState } from "../CompilerState.js";
-import type { BabelNodeExpression } from "@babel/types";
+import type { BabelNodeExpression, BabelNodeBinaryExpression } from "@babel/types";
 
 import invariant from "../../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
@@ -24,6 +24,61 @@ export function valueToExpression(llvmValue: LLVMValue): BabelNodeExpression {
   // Decorators is an unused any field so we can reuse that.
   identifier.decorators = llvmValue;
   return identifier;
+}
+
+function buildFromBinaryExpression(
+  state: CompilerState,
+  expr: BabelNodeBinaryExpression,
+  builder: IRBuilder
+): LLVMValue {
+  switch (expr.operator) {
+    case "==":
+    case "===": {
+      let left = buildFromExpression(state, expr.left, builder);
+      let right = buildFromExpression(state, expr.right, builder);
+      if (!left.type.equals(right.type)) {
+        let error = new CompilerDiagnostic(
+          "Cannot compare values of different types.",
+          expr.loc,
+          "PP2000",
+          "FatalError"
+        );
+        state.realm.handleError(error);
+        throw new FatalError();
+      }
+      return builder.createICmpEQ(left, right);
+    }
+    case "!=":
+    case "!==":
+    case "+":
+    case "-":
+    case "/":
+    case "%":
+    case "*":
+    case "**":
+    case "&":
+    case "|":
+    case ">>":
+    case ">>>":
+    case "<<":
+    case "^":
+    case "in":
+    case "instanceof":
+    case ">":
+    case "<":
+    case ">=":
+    case "<=":
+      let error = new CompilerDiagnostic(
+        `The ${expr.operator} is not yet implemented for LLVM.`,
+        expr.loc,
+        "PP2000",
+        "FatalError"
+      );
+      state.realm.handleError(error);
+      throw new FatalError();
+    default:
+      invariant(false, "unknown operator: " + expr.operator);
+  }
 }
 
 export function buildFromExpression(state: CompilerState, expr: BabelNodeExpression, builder: IRBuilder): LLVMValue {
@@ -52,6 +107,9 @@ export function buildFromExpression(state: CompilerState, expr: BabelNodeExpress
         return buildFromExpression(state, arg, builder);
       });
       return builder.createCall(callee, args);
+    }
+    case "BinaryExpression": {
+      return buildFromBinaryExpression(state, expr, builder);
     }
     default: {
       let error = new CompilerDiagnostic(
