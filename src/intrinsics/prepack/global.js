@@ -135,6 +135,8 @@ export default function(realm: Realm): void {
         let argModelError;
         if (argModelString instanceof StringValue) {
           try {
+            // result here is ignored as the main point here is to
+            // check and produce error
             JSON.parse(argModelString.value);
           } catch (e) {
             argModelError = new CompilerDiagnostic(
@@ -152,14 +154,9 @@ export default function(realm: Realm): void {
             "FatalError"
           );
         }
-        if (argModelError !== undefined) {
-          let z = realm.handleError(argModelError);
-          console.log(z);
-          if (z !== "Recover") throw new FatalError();
+        if (argModelError !== undefined && realm.handleError(argModelError) !== "Recover") {
+          throw new FatalError();
         }
-        // if (argModelError !== undefined && realm.handleError(argModelError) !== "Recover") {
-        //   throw new FatalError();
-        // }
       }
       if (value instanceof ECMAScriptSourceFunctionValue || value instanceof AbstractValue) {
         let functionDescriptor = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);

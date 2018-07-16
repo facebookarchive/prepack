@@ -61,7 +61,7 @@ export class Functions {
   writeEffects: WriteEffects;
   _noopFunction: void | ECMAScriptSourceFunctionValue;
 
-  __unwrapAbstract(value: AbstractValue): Value {
+  _unwrapAbstract(value: AbstractValue): Value {
     let elements = value.values.getElements();
     if (elements) {
       let possibleValues = [...elements].filter(
@@ -79,14 +79,14 @@ export class Functions {
     // if we conditionally called __optimize, we may have an AbstractValue that is the union of Empty or Undefined and
     // a function/component to optimize
     if (value instanceof AbstractValue) {
-      value = this.__unwrapAbstract(value);
+      value = this._unwrapAbstract(value);
     }
     invariant(value instanceof ObjectValue);
     let funcValue = Get(realm, value, "funcValue");
     if (funcValue !== realm.intrinsics.undefined) {
       // unwrap from this side
       if (funcValue instanceof AbstractValue) {
-        funcValue = this.__unwrapAbstract(funcValue);
+        funcValue = this._unwrapAbstract(funcValue);
       }
       // regular case with __optimized with type information
       invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
