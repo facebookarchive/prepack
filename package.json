@@ -44,6 +44,7 @@
     "test-error-handler": "babel-node scripts/test-error-handler.js",
     "test-error-handler-with-coverage": "./node_modules/.bin/istanbul cover ./lib/test-error-handler.js --dir coverage.error && ./node_modules/.bin/remap-istanbul -i coverage.error/coverage.json -o coverage-sourcemapped.error -t html",
     "test-std-in": "bash < scripts/test-std-in.sh",
+    "test-llvm": "babel-node scripts/test-llvm.js",
     "test-react": "jest",
     "test-react-fast": "SKIP_REACT_JSX_TESTS=true jest",
     "test": "yarn test-residual && yarn test-serializer && yarn test-sourcemaps && yarn test-error-handler && yarn test-std-in && yarn test-test262 && yarn test-internal && yarn test-internal-react && yarn test-react",
