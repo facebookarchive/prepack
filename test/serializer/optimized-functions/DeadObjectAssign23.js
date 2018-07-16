@@ -1,5 +1,3 @@
-import { ATTRIBUTE_NAME_CHAR } from "../../../lib/react/experimental-server-rendering/dom-config";
-
 // Copies of _\$C\(:2
 // Copies of var _\$C = _\$B.assign;:1
 // inline expressions
