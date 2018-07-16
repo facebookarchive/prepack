@@ -10,7 +10,7 @@
 /* @flow */
 
 import { Realm, Effects } from "../realm.js";
-import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
+import { AbruptCompletion, Completion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "@babel/types";
 import { parseExpression } from "@babel/parser";
 import {
@@ -623,6 +623,7 @@ export function evaluateWithNestedParentEffects(
   if (nextEffects.length !== 0) {
     let effects = nextEffects.shift();
     value = effects.result;
+    if (value instanceof Completion) value = value.shallowCloneWithoutEffects();
     createdObjects = effects.createdObjects;
     modifiedBindings = effects.modifiedBindings;
     modifiedProperties = effects.modifiedProperties;
