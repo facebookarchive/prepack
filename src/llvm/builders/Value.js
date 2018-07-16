@@ -9,6 +9,7 @@
 
 /* @flow */
 
+import type { BabelNodeSourceLocation } from "@babel/types";
 import type { CompilerState } from "../CompilerState.js";
 
 import invariant from "../../invariant.js";
@@ -19,13 +20,14 @@ import {
   ConstantFP,
   Function as LLVMFunction,
   FunctionType,
-  Type,
+  Type as LLVMType,
   LinkageTypes,
   IRBuilder,
 } from "llvm-node";
 import {
   Value,
   AbstractValue,
+  AbstractObjectValue,
   BooleanValue,
   NumberValue,
   IntegralValue,
@@ -40,6 +42,55 @@ import {
 import { llvmContext } from "../llvm-context.js";
 
 import { buildFromExpression, valueToExpression } from "./Expression.js";
+
+export function getType(
+  state: CompilerState,
+  type: typeof Value,
+  expressionLocation?: ?BabelNodeSourceLocation
+): LLVMType {
+  if (type === Value) {
+    let error = new CompilerDiagnostic(
+      "The type of this expression is not known or has multiple types.",
+      expressionLocation,
+      "PP2000",
+      "FatalError"
+    );
+    state.realm.handleError(error);
+    throw new FatalError();
+  } else if (type === BooleanValue) {
+    return LLVMType.getInt1Ty(llvmContext);
+  } else if (type === UndefinedValue) {
+    return LLVMType.getVoidTy(llvmContext);
+  } else if (type === NullValue) {
+    invariant(false, "null value has to be determined at the call site");
+  } else if (type === NumberValue) {
+    return LLVMType.getDoubleTy(llvmContext);
+  } else if (type === IntegralValue) {
+    return LLVMType.getInt32Ty(llvmContext);
+  } else if (type === StringValue) {
+    let error = new CompilerDiagnostic(
+      "String types are not yet supported.",
+      expressionLocation,
+      "PP2000",
+      "FatalError"
+    );
+    state.realm.handleError(error);
+    throw new FatalError();
+  } else if (type === SymbolValue) {
+    let error = new CompilerDiagnostic(
+      "Symbol types are not yet supported.",
+      expressionLocation,
+      "PP2000",
+      "FatalError"
+    );
+    state.realm.handleError(error);
+    throw new FatalError();
+  } else if (type === EmptyValue) {
+    invariant(false, "since we are not serializing objects we should not need empty value");
+  } else {
+    invariant(false, "unknown type");
+  }
+}
 
 function buildFromAbstractValue(state: CompilerState, value: AbstractValue, builder: IRBuilder): LLVMValue {
   let serializedArgs;
@@ -66,8 +117,9 @@ function buildFromAbstractValue(state: CompilerState, value: AbstractValue, buil
 function buildFromIntrinsicFunctionValue(state: CompilerState, value: Value, builder: IRBuilder): LLVMValue {
   let intrinsicName = value.intrinsicName;
   invariant(intrinsicName);
-  // TODO: Determine type signature of function.
-  let fnType = FunctionType.get(Type.getVoidTy(llvmContext), false);
+  invariant(value instanceof AbstractObjectValue, "only abstract functions should be serialized");
+  let returnType = getType(state, value.functionResultType || Value, value.expressionLocation);
+  let fnType = FunctionType.get(returnType, true);
   let fn = LLVMFunction.create(fnType, LinkageTypes.ExternalLinkage, intrinsicName, state.module);
   return fn;
 }
