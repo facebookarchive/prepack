@@ -109,7 +109,8 @@ export function IsCallable(realm: Realm, _func: Value): boolean {
   if (func.isSimpleObject()) return false;
 
   // 2. If argument has a [[Call]] internal method, return true.
-  func = func.throwIfNotConcreteObject();
+  if (func instanceof AbstractObjectValue) func = func.getTemplate();
+  else func = func.throwIfNotConcreteObject();
   if (func.$Call) return true;
 
   // 3. Return false.
