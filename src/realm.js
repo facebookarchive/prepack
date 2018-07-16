@@ -877,6 +877,7 @@ export class Realm {
           this.stopEffectCaptureAndUndoEffects(c);
           Join.updatePossiblyNormalCompletionWithSubsequentEffects(this, c, subsequentEffects);
           this.savedCompletion = undefined;
+          this.applyEffects(subsequentEffects, "subsequentEffects", true);
         }
 
         invariant(this.generator !== undefined);
