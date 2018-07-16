@@ -306,7 +306,7 @@ function callNativeFunctionValue(
           mightBecomeAnObject(contextVal)
       );
       let completion = f.callCallback(
-        // this is to get around Flow not understand the above invariant
+        // this is to get around Flow not understanding the above invariant
         ((contextVal: any): AbstractObjectValue | ObjectValue | NullValue | UndefinedValue),
         argumentsList,
         env.environmentRecord.$NewTarget
