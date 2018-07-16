@@ -28,8 +28,8 @@ export function buildFromStatement(state: CompilerState, statement: BabelNodeSta
       // Derived values create temporary variables in the generator. That's unfortunate.
       for (let decl of statement.declarations) {
         let id = decl.id;
-        invariant(id.type === "Identifier");
-        invariant(!state.declaredVariables.has(id.name));
+        invariant(id.type === "Identifier", "variable declarations must use identifiers");
+        invariant(!state.declaredVariables.has(id.name), "redeclaration of identifier: " + id.name);
         let init = decl.init;
         invariant(init);
         let value = buildFromExpression(state, init, builder);
