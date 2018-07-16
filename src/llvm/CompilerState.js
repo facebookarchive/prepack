@@ -11,6 +11,7 @@
 
 import type { Module, Value as LLVMValue } from "llvm-node";
 import type { Logger } from "../utils/logger.js";
+import type { Value } from "../values/index.js";
 import type { Realm } from "../realm.js";
 
 export class CompilerState {
@@ -18,10 +19,12 @@ export class CompilerState {
   +module: Module;
   +logger: Logger;
   +declaredVariables: Map<string, LLVMValue>;
+  +builtValues: Map<Value, LLVMValue>;
   constructor(realm: Realm, module: Module, logger: Logger) {
     this.realm = realm;
     this.module = module;
     this.logger = logger;
     this.declaredVariables = new Map();
+    this.builtValues = new Map();
   }
 }

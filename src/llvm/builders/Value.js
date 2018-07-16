@@ -168,7 +168,7 @@ function buildFromSymbolValue(state: CompilerState, value: SymbolValue, builder:
   throw new FatalError();
 }
 
-export function buildFromValue(state: CompilerState, value: Value, builder: IRBuilder): LLVMValue {
+function buildNewValue(state: CompilerState, value: Value, builder: IRBuilder): LLVMValue {
   if (value.isIntrinsic()) {
     return buildFromIntrinsicValue(state, value, builder);
   } else if (value instanceof AbstractValue) {
@@ -226,4 +226,14 @@ export function buildFromValue(state: CompilerState, value: Value, builder: IRBu
   } else {
     invariant(false, "Unknown value type: " + value.constructor.name);
   }
+}
+
+export function buildFromValue(state: CompilerState, value: Value, builder: IRBuilder): LLVMValue {
+  let llvmValue = state.builtValues.get(value);
+  if (llvmValue) {
+    return llvmValue;
+  }
+  llvmValue = buildNewValue(state, value, builder);
+  state.builtValues.set(value, llvmValue);
+  return llvmValue;
 }
