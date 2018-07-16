@@ -119,7 +119,8 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   mightBeFinalObject(): boolean {
-    if (this.shape) return this.shape.isReadOnly();
+    // modeled objects are always read-only
+    if (this.shape) return true;
     if (this.values.isTop()) return false;
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
@@ -129,7 +130,8 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   mightNotBeFinalObject(): boolean {
-    if (this.shape) return !this.shape.isReadOnly();
+    // modeled objects are always read-only
+    if (this.shape) return false;
     if (this.values.isTop()) return false;
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
@@ -531,9 +533,9 @@ export default class AbstractObjectValue extends AbstractValue {
           {
             skipInvariant: true,
             isPure: true,
+            shape: propertyShape,
           }
         );
-        if (propAbsVal instanceof AbstractValue) propAbsVal.shape = propertyShape;
         return propAbsVal;
       };
       if (this.isSimpleObject() && this.isIntrinsic()) {

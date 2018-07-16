@@ -1065,7 +1065,6 @@ export type SupportedGraphQLGetters =
   | "tree_list";
 
 export interface ShapeInformationInterface {
-  isReadOnly(): boolean;
   getPropertyShape(key: string): void | ShapeInformationInterface;
   getGetter(): void | SupportedGraphQLGetters;
   getAbstractType(): typeof Value;

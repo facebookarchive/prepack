@@ -1020,7 +1020,7 @@ export class Generator {
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
       temporalType?: TemporalBuildNodeType,
-      shape?: ShapeInformationInterface,
+      shape?: void | ShapeInformationInterface,
     |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);

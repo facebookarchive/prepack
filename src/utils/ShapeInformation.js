@@ -37,13 +37,11 @@ type ShapePropertyDescriptor = {
 
 type ShapeDescriptorOfObject = ShapeDescriptorCommon & {
   kind: "object",
-  readonly: boolean,
   properties: { [string]: void | ShapePropertyDescriptor },
 };
 
 type ShapeDescriptorOfArray = ShapeDescriptorCommon & {
   kind: "array",
-  readonly: boolean,
   elementShape: void | ShapePropertyDescriptor,
 };
 
@@ -92,18 +90,6 @@ export class ShapeInformation implements ShapeInformationInterface {
   _parentDescriptor: void | ShapeDescriptorNonLink;
   _parentKey: void | string;
   _universe: ShapeUniverse;
-
-  isReadOnly(): boolean {
-    switch (this._descriptor.kind) {
-      case "object":
-      case "array":
-        return this._descriptor.readonly;
-      case "scalar":
-        return true;
-      default:
-        return false;
-    }
-  }
 
   getGetter(): void | SupportedGraphQLGetters {
     // we want getter only for existing GraphQL objects

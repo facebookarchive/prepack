@@ -11,7 +11,6 @@ function gen_getter(valid) {
     return o[k];
   };
 }
-
 global.__prop_int = gen_getter(["age", "width", "height"]);
 global.__prop_string = gen_getter(["name", "friendlyName"]);
 global.__prop_string_list = gen_getter(["friendNames"]);
@@ -61,12 +60,10 @@ global.__prop_string_list = gen_getter(["friendNames"]);
               },
               optional: false,
             },
-            readonly: true,
           },
           optional: true,
         },
       },
-      readonly: true,
     },
     Props: {
       kind: "object",
@@ -99,12 +96,10 @@ global.__prop_string_list = gen_getter(["friendNames"]);
                 optional: false,
               },
             },
-            readonly: false,
           },
           optional: true,
         },
       },
-      readonly: false,
     },
     Size: {
       kind: "scalar",

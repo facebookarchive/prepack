@@ -828,7 +828,7 @@ export default class AbstractValue extends Value {
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
       temporalType?: TemporalBuildNodeType,
-      shape?: ShapeInformationInterface,
+      shape?: void | ShapeInformationInterface,
     |}
   ): AbstractValue | UndefinedValue {
     let types = new TypesDomain(resultType);
