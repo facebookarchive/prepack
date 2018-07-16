@@ -128,6 +128,13 @@ function buildFromIntrinsicValue(state: CompilerState, value: Value, builder: IR
   if (Value.isTypeCompatibleWith(value.getType(), FunctionValue)) {
     return buildFromIntrinsicFunctionValue(state, value, builder);
   }
+  let intrinsicName = value.intrinsicName;
+  invariant(intrinsicName);
+  let derivedValue = state.declaredVariables.get(intrinsicName);
+  if (derivedValue) {
+    return derivedValue;
+  }
+
   let error = new CompilerDiagnostic(
     "Unsupported intrinsic value type in the LLVM backend.",
     value.expressionLocation,
