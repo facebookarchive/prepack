@@ -20,24 +20,21 @@ import type {
   BabelNodeMemberExpression,
   BabelNodeLVal,
 } from "@babel/types";
+import * as t from "@babel/types";
 
 import { AbstractValue, ObjectValue, SymbolValue, Value } from "../../values/index.js";
 
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
-import { BasicBlock, IRBuilder } from "llvm-node";
-import { llvmContext } from "../llvm-context.js";
+import { IRBuilder } from "llvm-node";
 
 import { valueToExpression } from "./Expression.js";
 import { buildFromStatement } from "./Statement.js";
 import { buildFromValue } from "./Value.js";
 
-export function buildFromGenerator(state: CompilerState, generator: Generator): BasicBlock {
-  let block = BasicBlock.create(llvmContext);
-  let irBuilder = new IRBuilder(block);
-
+export function buildFromGenerator(state: CompilerState, generator: Generator, builder: IRBuilder): void {
   let serializationContext = {
     serializeValue(value: Value): BabelNodeExpression {
-      let llvmValue = buildFromValue(state, value, irBuilder);
+      let llvmValue = buildFromValue(state, value, builder);
       return valueToExpression(llvmValue);
     },
     serializeBinding(binding: Binding): BabelNodeIdentifier | BabelNodeMemberExpression {
@@ -66,7 +63,10 @@ export function buildFromGenerator(state: CompilerState, generator: Generator): 
       throw new FatalError();
     },
     serializeGenerator(gen: Generator, valuesToProcess: Set<AbstractValue | ObjectValue>): Array<BabelNodeStatement> {
-      throw new Error("TODO");
+      // Hack to store the block in a Babel form.
+      let blockStatement = t.blockStatement([]);
+      (blockStatement: any).generator = gen;
+      return [blockStatement];
     },
     initGenerator(gen: Generator): void {},
     finalizeGenerator(gen: Generator): void {},
@@ -81,7 +81,7 @@ export function buildFromGenerator(state: CompilerState, generator: Generator): 
       throw new FatalError();
     },
     emit(statement: BabelNodeStatement): void {
-      buildFromStatement(state, statement, irBuilder);
+      buildFromStatement(state, statement, builder);
     },
     processValues(valuesToProcess: Set<AbstractValue | ObjectValue>): void {},
     canOmit(val: Value): boolean {
@@ -103,6 +103,4 @@ export function buildFromGenerator(state: CompilerState, generator: Generator): 
   };
 
   generator.serialize(serializationContext);
-
-  return block;
 }

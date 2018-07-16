@@ -11,12 +11,15 @@
 
 import type { CompilerState } from "../CompilerState.js";
 import type { BabelNodeStatement } from "@babel/types";
+import type { Generator } from "../../utils/generator.js";
 
 import invariant from "../../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
-import { IRBuilder } from "llvm-node";
+import { llvmContext } from "../llvm-context.js";
+import { IRBuilder, BasicBlock } from "llvm-node";
 
 import { buildFromExpression } from "./Expression.js";
+import { buildFromGenerator } from "./Generator.js";
 
 export function buildFromStatement(state: CompilerState, statement: BabelNodeStatement, builder: IRBuilder): void {
   switch (statement.type) {
@@ -44,6 +47,44 @@ export function buildFromStatement(state: CompilerState, statement: BabelNodeSta
         return;
       }
       builder.createRetVoid();
+      return;
+    }
+    case "IfStatement": {
+      let condition = buildFromExpression(state, statement.test, builder);
+      let consequentStatement = statement.consequent;
+      let alternateStatement = statement.alternate;
+      invariant(
+        consequentStatement.type === "BlockStatement" && (consequentStatement: any).generator,
+        "expected to be a block wrapper"
+      );
+      let consequentGen: Generator = (consequentStatement: any).generator;
+      let alternateGen: Generator;
+      if (alternateStatement) {
+        invariant(
+          alternateStatement.type === "BlockStatement" && (alternateStatement: any).generator,
+          "expected to be a block wrapper"
+        );
+        alternateGen = (alternateStatement: any).generator;
+      } else {
+        throw new Error("handle alternate block");
+      }
+      let parentFn = builder.getInsertBlock().parent;
+      let consequentBlock = BasicBlock.create(llvmContext, "Then", parentFn);
+      let alternateBlock = BasicBlock.create(llvmContext, "Else");
+      let continueBlock = BasicBlock.create(llvmContext, "Cont");
+
+      builder.createCondBr(condition, consequentBlock, alternateBlock);
+      builder.setInsertionPoint(consequentBlock);
+      buildFromGenerator(state, consequentGen, builder);
+      builder.createBr(continueBlock);
+
+      parentFn.addBasicBlock(alternateBlock);
+      builder.setInsertionPoint(alternateBlock);
+      buildFromGenerator(state, alternateGen, builder);
+      builder.createBr(continueBlock);
+
+      parentFn.addBasicBlock(continueBlock);
+      builder.setInsertionPoint(continueBlock);
       return;
     }
     default: {

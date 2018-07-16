@@ -17,7 +17,7 @@ import { AbruptCompletion } from "../completions.js";
 import { Generator } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import { Logger } from "../utils/logger.js";
-import { Module, Function as LLVMFunction, FunctionType, Type, LinkageTypes } from "llvm-node";
+import { Module, Function as LLVMFunction, FunctionType, Type, LinkageTypes, IRBuilder, BasicBlock } from "llvm-node";
 import { llvmContext } from "./llvm-context.js";
 import { CompilerState } from "./CompilerState";
 import { buildFromGenerator } from "./builders/index.js";
@@ -62,9 +62,10 @@ export function compileSources(
   let mainFnType = FunctionType.get(Type.getInt32Ty(llvmContext), false);
   let mainFn = LLVMFunction.create(mainFnType, LinkageTypes.ExternalLinkage, "main", llvmModule);
 
-  let mainBlock = buildFromGenerator(state, generator);
+  let block = BasicBlock.create(llvmContext, "Entry", mainFn);
+  let irBuilder = new IRBuilder(block);
 
-  mainFn.addBasicBlock(mainBlock);
+  buildFromGenerator(state, generator, irBuilder);
 
   return llvmModule;
 }
