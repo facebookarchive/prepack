@@ -25,7 +25,7 @@
   "scripts": {
     "build": "yarn build-prepack && yarn build-bundle",
     "build-scripts": "babel scripts --out-dir lib --source-maps",
-    "build-bundle": "webpack-cli",
+    "build-bundle": "webpack-cli --silent",
     "build-prepack": "babel src --out-dir lib --source-maps",
     "watch": "babel src scripts --out-dir lib --watch --source-maps --verbose",
     "lint": "eslint src scripts",
