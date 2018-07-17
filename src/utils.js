@@ -107,13 +107,14 @@ export function describeValue(value: Value): string {
   return suffix ? `${title}\n${suffix}` : title;
 }
 
-// eslint-disable-next-line flowtype/no-weak-types
-export function jsonToDisplayString<T: { toDisplayJson(number): Object }>(instance: T): string {
-  return JSON.stringify(instance.toDisplayJson(10), null, 2).replace(/\"/g, "");
+type DisplayResult = {} | string;
+
+export function jsonToDisplayString<T: { toDisplayJson(number): DisplayResult }>(instance: T, depth: number): string {
+  let result = instance.toDisplayJson(depth);
+  return result instanceof "string" ? result : JSON.stringify(result, null, 2).replace(/\"/g, "");
 }
 
-// eslint-disable-next-line flowtype/no-weak-types
-export function verboseToDisplayJson(obj: Object, depth: number): Object {
+export function verboseToDisplayJson(obj: {}, depth: number): DisplayResult {
   let result = {};
   function valueOfProp(prop) {
     if (typeof prop === "function") return undefined;
@@ -121,7 +122,6 @@ export function verboseToDisplayJson(obj: Object, depth: number): Object {
       // Try to return a 1-line string if possible
       if (prop.length === 0) return "[]";
       let valuesArray = prop.map(x => valueOfProp(x));
-      if (valuesArray.length === 1) return valuesArray[0];
       if (valuesArray.length < 5) {
         let string =
           "[" + valuesArray.reduce((acc, x) => `${acc}, ${x instanceof Object ? JSON.stringify(x) : x}`) + "]";
@@ -130,7 +130,7 @@ export function verboseToDisplayJson(obj: Object, depth: number): Object {
       }
       return valuesArray;
     }
-    if (prop instanceof Set || prop instanceof Map) return prop.size;
+    if (prop instanceof Set || prop instanceof Map) return `${prop.constructor.name}(${prop.size})`;
     if (prop.toDisplayJson) return prop.toDisplayJson(depth - 1);
     if (prop.toDisplayString) return prop.toDisplayString();
     if (prop.toJSON) return prop.toJSON();

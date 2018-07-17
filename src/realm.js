@@ -17,6 +17,7 @@ import type {
   Intrinsics,
   PropertyBinding,
   ReactHint,
+  DisplayResult,
 } from "./types.js";
 import { RealmStatistics } from "./statistics.js";
 import {
@@ -124,11 +125,11 @@ export class Effects {
   canBeApplied: boolean;
   _id: number;
 
-  toDisplayString() {
-    return Utils.jsonToDisplayString(this);
+  toDisplayString(): string {
+    return Utils.jsonToDisplayString(this, 10);
   }
 
-  toDisplayJson(depth: number = 1) {
+  toDisplayJson(depth: number = 1): DisplayResult {
     if (depth <= 0) return `Effects ${this._id}`;
     return Utils.verboseToDisplayJson(this, depth);
   }
@@ -910,6 +911,7 @@ export class Realm {
         // Return the captured state changes and evaluation result
         if (c instanceof Value) c = new SimpleNormalCompletion(c);
         result = new Effects(c, astGenerator, astBindings, astProperties, astCreatedObjects);
+        console.log(result.toDisplayString());
         return result;
       } finally {
         // Roll back the state changes

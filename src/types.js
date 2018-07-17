@@ -1037,14 +1037,14 @@ export type ToType = {
 
 export type ConcretizeType = (realm: Realm, val: Value) => ConcreteValue;
 
+export type DisplayResult = {} | string;
+
 export type UtilsType = {|
   typeToString: (typeof Value) => void | string,
   getTypeFromName: string => void | typeof Value,
   describeValue: Value => string,
-  // eslint-disable-next-line flowtype/no-weak-types
-  jsonToDisplayString: <T: { toDisplayJson(number): Object }>(T) => string,
-  // eslint-disable-next-line flowtype/no-weak-types
-  verboseToDisplayJson: (Object, number) => Object,
+  jsonToDisplayString: <T: { toDisplayJson(number): DisplayResult }>(T, number) => string,
+  verboseToDisplayJson: ({}, number) => DisplayResult,
 |};
 
 export type DebuggerConfigArguments = {

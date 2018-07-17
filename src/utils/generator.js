@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm, Effects } from "../realm.js";
-import type { ConsoleMethodTypes, Descriptor, PropertyBinding } from "../types.js";
+import type { ConsoleMethodTypes, Descriptor, PropertyBinding, DisplayResult } from "../types.js";
 import type { ResidualFunctionBinding } from "../serializer/types.js";
 import type { Binding } from "../environment.js";
 import {
@@ -134,14 +134,6 @@ export class GeneratorEntry {
     return this.index < entry.index;
   }
 
-  toDisplayString() {
-    Utils.jsonToDisplayString(this);
-  }
-
-  toDisplayJson(depth: number) {
-    invariant(false, "GeneratorEntry is an abstract base class");
-  }
-
   index: number;
 }
 
@@ -177,9 +169,9 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
   mutatesOnly: void | Array<Value>;
   temporalType: void | TemporalBuildNodeType;
 
-  toDisplayJson(depth: number) {
+  toDisplayJson(depth: number): DisplayResult {
     if (depth <= 0) return `TemporalBuildNode${this.index}`;
-    let obj = { ...this };
+    let obj = { type: "TemporalBuildNode", ...this };
     delete obj.buildNode;
     return Utils.verboseToDisplayJson(obj, depth);
   }
@@ -297,7 +289,7 @@ class ModifiedPropertyEntry extends GeneratorEntry {
   propertyBinding: PropertyBinding;
   newDescriptor: void | Descriptor;
 
-  toDisplayString() {
+  toDisplayString(): string {
     let propertyKey = this.propertyBinding.key;
     let propertyKeyString = propertyKey instanceof Value ? propertyKey.toDisplayString() : propertyKey;
     invariant(propertyKeyString !== undefined);
@@ -343,7 +335,7 @@ class ModifiedBindingEntry extends GeneratorEntry {
   newValue: void | Value;
   residualFunctionBinding: void | ResidualFunctionBinding;
 
-  toDisplayString() {
+  toDisplayString(): string {
     return `[ModifiedBinding ${this.modifiedBinding.name}]`;
   }
 
@@ -400,7 +392,7 @@ class ReturnValueEntry extends GeneratorEntry {
   returnValue: Value;
   containingGenerator: Generator;
 
-  toDisplayString() {
+  toDisplayString(): string {
     return `[Return ${this.returnValue.toDisplayString()}]`;
   }
 
@@ -441,11 +433,11 @@ class IfThenElseEntry extends GeneratorEntry {
   consequentGenerator: Generator;
   alternateGenerator: Generator;
 
-  toDisplayJson(depth: number) {
+  toDisplayJson(depth: number): DisplayResult {
     if (depth <= 0) return `IfThenElseEntry${this.index}`;
     return Utils.verboseToDisplayJson(
       {
-        type: "IfThenElseEntry",
+        type: "IfThenElse",
         condition: this.condition,
         consequent: this.consequentGenerator,
         alternate: this.alternateGenerator,
@@ -489,7 +481,7 @@ class BindingAssignmentEntry extends GeneratorEntry {
   binding: Binding;
   value: Value;
 
-  toDisplayString() {
+  toDisplayString(): string {
     return `[BindingAssignment ${this.binding.name} = ${this.value.toDisplayString()}]`;
   }
 
@@ -543,11 +535,11 @@ export class Generator {
   _name: string;
   pathConditions: Array<AbstractValue>;
 
-  toDisplayString() {
-    return Utils.jsonToDisplayString(this);
+  toDisplayString(): string {
+    return Utils.jsonToDisplayString(this, 2);
   }
 
-  toDisplayJson(depth: number) {
+  toDisplayJson(depth: number): DisplayResult {
     if (depth <= 0) return `Generator${this.id}-${this._name}`;
     return Utils.verboseToDisplayJson(this, depth);
   }
