@@ -27,13 +27,8 @@ import {
 } from "../values/index.js";
 import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { Environment, Havoc, To } from "../singletons.js";
-import type {
-  BabelBinaryOperator,
-  BabelNodeBinaryExpression,
-  BabelNodeExpression,
-  BabelNodeSourceLocation,
-} from "@babel/types";
-import * as t from "@babel/types";
+import type { BabelBinaryOperator, BabelNodeBinaryExpression, BabelNodeSourceLocation } from "@babel/types";
+import { createResidualBuildNode } from "../utils/generator.js";
 import invariant from "../invariant.js";
 
 export default function(
@@ -251,7 +246,7 @@ export function computeBinary(
           realm,
           resultType,
           [lval, rval],
-          ([lnode, rnode]: Array<BabelNodeExpression>) => t.binaryExpression(op, lnode, rnode)
+          createResidualBuildNode("BINARY_EXPRESSION", { op })
         ),
       TypesDomain.topVal,
       ValuesDomain.topVal

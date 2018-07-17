@@ -31,10 +31,10 @@ import {
   IsConstructor,
   IsCallable,
 } from "../../methods/index.js";
-import * as t from "@babel/types";
 import { GetIterator, IteratorClose, IteratorStep, IteratorValue } from "../../methods/iterator.js";
 import { Create, Havoc, Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
+import { createResidualBuildNode } from "../../utils/generator.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   let func = new NativeFunctionValue(realm, "Array", "Array", 1, (context, [...items], argCount, NewTarget) => {
@@ -247,7 +247,7 @@ export default function(realm: Realm): NativeFunctionValue {
         return ArrayValue.createTemporalWithWidenedNumericProperty(
           realm,
           args,
-          ([methodNode, ..._args]) => t.callExpression(methodNode, ((_args: any): Array<any>)),
+          createResidualBuildNode("UNKNOWN_ARRAY_METHOD_CALL"),
           { func: mapfn, thisVal: thisArg }
         );
       }

@@ -39,6 +39,7 @@ import type {
 import invariant from "../invariant.js";
 import { Logger } from "./logger.js";
 import { SerializerStatistics } from "../serializer/statistics.js";
+import { createResidualBuildNode } from "../../lib/utils/generator.js";
 
 function downgradeErrorsToWarnings(realm: Realm, f: () => any) {
   let savedHandler = realm.errorHandler;
@@ -243,8 +244,13 @@ export class ModuleTracer extends Tracer {
               );
             }
 
-            result = AbstractValue.createTemporalFromBuildFunction(realm, Value, [], ([]) =>
-              t.callExpression(t.identifier("require"), [t.valueToNode(moduleIdValue)])
+            let propName = moduleIdValue + "";
+            invariant(typeof propName === "string");
+            result = AbstractValue.createTemporalFromBuildFunction(
+              realm,
+              Value,
+              [],
+              createResidualBuildNode("MODULES_REQUIRE", { propName })
             );
           } else {
             result = effects.result;

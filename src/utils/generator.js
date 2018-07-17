@@ -12,14 +12,13 @@
 import type { Effects, Realm } from "../realm.js";
 import type { ConsoleMethodTypes, Descriptor, PropertyBinding } from "../types.js";
 import type { ResidualFunctionBinding } from "../serializer/types.js";
-import type { Binding } from "../environment.js";
+import type { BaseValue, Binding, ReferenceName } from "../environment.js";
 import {
   AbstractObjectValue,
   AbstractValue,
   type AbstractValueKind,
   BooleanValue,
   ConcreteValue,
-  EmptyValue,
   FunctionValue,
   NullValue,
   NumberValue,
@@ -31,9 +30,7 @@ import {
   Value,
 } from "../values/index.js";
 import { CompilerDiagnostic } from "../errors.js";
-import type { AbstractValueBuildNodeFunction } from "../values/AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import * as t from "@babel/types";
 import invariant from "../invariant.js";
 import {
   AbruptCompletion,
@@ -53,11 +50,153 @@ import type {
   BabelNodeBlockStatement,
   BabelNodeLVal,
 } from "@babel/types";
-import { nullExpression, memberExpressionHelper } from "./babelhelpers.js";
-import { Utils, concretize } from "../singletons.js";
+import { memberExpressionHelper } from "./babelhelpers.js";
+import { concretize } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";
+import * as t from "@babel/types";
+
+export type ResidualBuildNodeType =
+  | "IDENTIFIER"
+  | "SINGLE_ARG"
+  | "REBUILT_OBJECT"
+  | "CONSOLE_LOG"
+  | "FOR_IN"
+  | "DO_WHILE"
+  | "CONCRETE_MODEL"
+  | "BINARY_EXPRESSION"
+  | "LOGICAL_EXPRESSION"
+  | "CONDITIONAL_EXPRESSION"
+  | "UNARY_EXPRESSION"
+  | "ABSTRACT_FROM_TEMPLATE"
+  | "GLOBAL_ASSIGNMENT"
+  | "GLOBAL_DELETE"
+  | "EMIT_PROPERTY_ASSIGNMENT"
+  | "ABSTRACT_PROPERTY"
+  | "JOIN_GENERATORS"
+  | "APPEND_GENERATOR"
+  | "DEFINE_PROPERTY"
+  | "PROPERTY_DELETE"
+  | "THROW"
+  | "CONDITIONAL_THROW"
+  | "COERCE_TO_STRING"
+  | "ABSTRACT_FROM_TEMPLATE"
+  | "FOR_STATEMENT_FUNC"
+  | "NEW_EXPRESSION"
+  | "OBJECT_ASSIGN"
+  | "OBJECT_SET_PARTIAL"
+  | "OBJECT_GET_PARTIAL"
+  | "OBJECT_PROTO_HAS_OWN_PROPERTY"
+  | "OBJECT_PROTO_GET_OWN_PROPERTY_DESCRIPTOR"
+  | "ABSTRACT_OBJECT_SET_PARTIAL"
+  | "ABSTRACT_OBJECT_SET_PARTIAL_VALUE"
+  | "ABSTRACT_OBJECT_GET_PARTIAL"
+  | "ABSTRACT_OBJECT_GET_PROTO_OF"
+  | "DIRECT_CALL_WITH_ARG_LIST"
+  | "CALL_ABSTRACT_FUNC"
+  | "CALL_ABSTRACT_FUNC_THIS"
+  | "CALL_BAILOUT"
+  | "EMIT_CALL"
+  | "EMIT_CALL_AND_CAPTURE_RESULT"
+  | "GET_BINDING"
+  | "LOCAL_ASSIGNMENT"
+  | "LOGICAL_PROPERTY_ASSIGNMENT"
+  | "CONDITIONAL_PROPERTY_ASSIGNMENT"
+  | "PROPERTY_ASSIGNMENT"
+  | "MODULES_REQUIRE"
+  | "RESIDUAL_CALL"
+  | "ASSUME_CALL"
+  | "CANNOT_BECOME_OBJECT"
+  | "UPDATE_INCREMENTOR"
+  | "WIDENED_IDENTIFIER"
+  | "WIDEN_PROPERTY"
+  | "WIDEN_ABSTRACT_PROPERTY"
+  | "WIDEN_PROPERTY_ASSIGNMENT"
+  | "WIDEN_ABSTRACT_PROPERTY_ASSIGNMENT"
+  | "INVARIANT"
+  | "INVARIANT_APPEND"
+  | "DERIVED_ABSTRACT_INVARIANT"
+  | "PROPERTY_INVARIANT"
+  | "FULL_INVARIANT"
+  | "FULL_INVARIANT_FUNCTION"
+  | "FULL_INVARIANT_ABSTRACT"
+  | "UNKNOWN_ARRAY_METHOD_CALL"
+  | "UNKNOWN_ARRAY_METHOD_PROPERTY_CALL"
+  | "UNKNOWN_ARRAY_LENGTH"
+  | "UNKNOWN_ARRAY_GET_PARTIAL"
+  | "BABEL_HELPERS_OBJECT_WITHOUT_PROPERTIES"
+  | "REACT_DEFAULT_PROPS_HELPER"
+  | "REACT_TEMPORAL_FUNC"
+  | "REACT_CREATE_CONTEXT_PROVIDER"
+  | "REACT_SSR_REGEX_CONSTANT"
+  | "REACT_SSR_PREV_TEXT_NODE"
+  | "REACT_SSR_RENDER_VALUE_HELPER"
+  | "REACT_SSR_TEMPLATE_LITERAL"
+  | "REACT_NATIVE_STRING_LITERAL"
+  | "REACT_RELAY_MOCK_CONTAINER"
+  | "FB_MOCKS_BOOTLOADER_LOAD_MODULES"
+  | "FB_MOCKS_MAGIC_GLOBAL_FUNCTION";
+
+export type DerivedExpressionBuildNodeFunction = (
+  Array<BabelNodeExpression>,
+  SerializationContext,
+  Set<AbstractValue | ObjectValue>
+) => BabelNodeExpression;
+
+export type ResidualBuildNode = {
+  data: ResidualBuildNodeData,
+  kind: void | ResidualBuildKind,
+  type: ResidualBuildNodeType,
+};
+
+export type ResidualBuildNodeData = {
+  appendLastToInvariantBuildNode?: ResidualBuildNode,
+  binding?: Binding | PropertyBinding,
+  boundName?: BabelNodeIdentifier,
+  callTemplate?: () => BabelNodeExpression,
+  concreteComparisons?: Array<Value>,
+  desc?: Descriptor,
+  generator?: Generator,
+  generators?: Array<Generator>,
+  id?: string,
+  lh?: BabelNodeVariableDeclaration,
+  op?: any, // TODO: This is a union of Babel operators, refactor to not use "any" at some point
+  prefix?: boolean,
+  path?: Value,
+  propName?: string,
+  propRef?: ReferenceName | AbstractValue,
+  object?: ObjectValue,
+  quasis?: Array<any>,
+  state?: "MISSING" | "PRESENT" | "DEFINED",
+  thisArg?: BaseValue | Value,
+  template?: PreludeGenerator => ({}) => BabelNodeExpression,
+  typeComparisons?: Set<typeof Value>,
+  typeofString?: string,
+  usesThis?: boolean,
+  value?: Value,
+  violationConditionBuildNode?: ResidualBuildNode,
+};
+
+export type ResidualBuildKind = "DERIVED" | "VOID";
+
+export function createResidualBuildNode(
+  type: ResidualBuildNodeType,
+  data?: ResidualBuildNodeData = {},
+  kind?: ResidualBuildKind
+): ResidualBuildNode {
+  return {
+    data,
+    kind,
+    type,
+  };
+}
 
 export type SerializationContext = {|
+  serializeBuildNode: (
+    ResidualBuildNode,
+    Array<BabelNodeExpression>,
+    SerializationContext,
+    Set<AbstractValue | ObjectValue>
+  ) => BabelNodeStatement,
   serializeValue: Value => BabelNodeExpression,
   serializeBinding: Binding => BabelNodeIdentifier | BabelNodeMemberExpression,
   getPropertyAssignmentStatement: (
@@ -88,20 +227,6 @@ export type VisitEntryCallbacks = {|
   visitModifiedBinding: Binding => [ResidualFunctionBinding, Value],
   visitBindingAssignment: (Binding, Value) => Value,
 |};
-
-export type TemporalBuildNodeType = "OBJECT_ASSIGN";
-
-export type DerivedExpressionBuildNodeFunction = (
-  Array<BabelNodeExpression>,
-  SerializationContext,
-  Set<AbstractValue | ObjectValue>
-) => BabelNodeExpression;
-
-export type GeneratorBuildNodeFunction = (
-  Array<BabelNodeExpression>,
-  SerializationContext,
-  Set<AbstractValue | ObjectValue>
-) => BabelNodeStatement;
 
 export class GeneratorEntry {
   constructor(realm: Realm) {
@@ -141,11 +266,10 @@ export type TemporalBuildNodeEntryArgs = {
   declared?: AbstractValue | ObjectValue,
   args: Array<Value>,
   // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
-  buildNode?: GeneratorBuildNodeFunction,
+  buildNode?: ResidualBuildNode,
   dependencies?: Array<Generator>,
   isPure?: boolean,
   mutatesOnly?: Array<Value>,
-  temporalType?: TemporalBuildNodeType,
 };
 
 export class TemporalBuildNodeEntry extends GeneratorEntry {
@@ -163,11 +287,10 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
   declared: void | AbstractValue | ObjectValue;
   args: Array<Value>;
   // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
-  buildNode: void | GeneratorBuildNodeFunction;
+  buildNode: void | ResidualBuildNode;
   dependencies: void | Array<Generator>;
   isPure: void | boolean;
   mutatesOnly: void | Array<Value>;
-  temporalType: void | TemporalBuildNodeType;
 
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     let omit = this.isPure && this.declared && callbacks.canOmit(this.declared);
@@ -205,9 +328,9 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
     }
     if (!omit) {
       let nodes = this.args.map((boundArg, i) => context.serializeValue(boundArg));
-      if (this.buildNode) {
+      if (this.buildNode !== undefined) {
         let valuesToProcess = new Set();
-        let node = this.buildNode(nodes, context, valuesToProcess);
+        let node = context.serializeBuildNode(this.buildNode, nodes, context, valuesToProcess);
         if (node.type === "BlockStatement") {
           let block: BabelNodeBlockStatement = (node: any);
           let statements = block.body;
@@ -464,16 +587,6 @@ class BindingAssignmentEntry extends GeneratorEntry {
   }
 }
 
-function serializeBody(
-  generator: Generator,
-  context: SerializationContext,
-  valuesToProcess: Set<AbstractValue | ObjectValue>
-): BabelNodeBlockStatement {
-  let statements = context.serializeGenerator(generator, valuesToProcess);
-  if (statements.length === 1 && statements[0].type === "BlockStatement") return (statements[0]: any);
-  return t.blockStatement(statements);
-}
-
 export class Generator {
   constructor(realm: Realm, name: string, pathConditions: Array<AbstractValue>, effects?: Effects) {
     invariant(realm.useAbstractInterpretation);
@@ -622,28 +735,21 @@ export class Generator {
   emitGlobalAssignment(key: string, value: Value): void {
     this._addEntry({
       args: [value],
-      buildNode: ([valueNode]) =>
-        t.expressionStatement(
-          t.assignmentExpression("=", this.preludeGenerator.globalReference(key, false), valueNode)
-        ),
+      buildNode: createResidualBuildNode("GLOBAL_ASSIGNMENT", { propName: key }),
     });
   }
 
   emitConcreteModel(key: string, value: Value): void {
     this._addEntry({
       args: [concretize(this.realm, value)],
-      buildNode: ([valueNode]) =>
-        t.expressionStatement(
-          t.assignmentExpression("=", this.preludeGenerator.globalReference(key, false), valueNode)
-        ),
+      buildNode: createResidualBuildNode("CONCRETE_MODEL", { propName: key }),
     });
   }
 
   emitGlobalDelete(key: string): void {
     this._addEntry({
       args: [],
-      buildNode: ([]) =>
-        t.expressionStatement(t.unaryExpression("delete", this.preludeGenerator.globalReference(key, false))),
+      buildNode: createResidualBuildNode("GLOBAL_DELETE", { propName: key }),
     });
   }
 
@@ -655,13 +761,7 @@ export class Generator {
     if (object.refuseSerialization) return;
     this._addEntry({
       args: [object, value],
-      buildNode: ([objectNode, valueNode], context) =>
-        context.getPropertyAssignmentStatement(
-          memberExpressionHelper(objectNode, key),
-          value,
-          value.mightHaveBeenDeleted(),
-          /* deleteIfMightHaveBeenDeleted */ true
-        ),
+      buildNode: createResidualBuildNode("EMIT_PROPERTY_ASSIGNMENT", { propName: key, value }),
     });
   }
 
@@ -682,7 +782,7 @@ export class Generator {
           desc.get || object.$Realm.intrinsics.undefined,
           desc.set || object.$Realm.intrinsics.undefined,
         ],
-        buildNode: (_, context: SerializationContext) => context.emitDefinePropertyBody(object, key, desc),
+        buildNode: createResidualBuildNode("DEFINE_PROPERTY", { object, propName: key, desc }),
       });
     }
   }
@@ -691,59 +791,37 @@ export class Generator {
     if (object.refuseSerialization) return;
     this._addEntry({
       args: [object],
-      buildNode: ([objectNode]) =>
-        t.expressionStatement(t.unaryExpression("delete", memberExpressionHelper(objectNode, key))),
+      buildNode: createResidualBuildNode("PROPERTY_DELETE", { propName: key }),
     });
   }
 
-  emitCall(createCallee: () => BabelNodeExpression, args: Array<Value>): void {
+  emitCall(callTemplate: () => BabelNodeExpression, args: Array<Value>): void {
     this._addEntry({
       args,
-      buildNode: values => t.expressionStatement(t.callExpression(createCallee(), [...values])),
+      buildNode: createResidualBuildNode("EMIT_CALL", { callTemplate }),
     });
   }
 
   emitConsoleLog(method: ConsoleMethodTypes, args: Array<string | ConcreteValue>): void {
-    this.emitCall(
-      () => t.memberExpression(t.identifier("console"), t.identifier(method)),
-      args.map(v => (typeof v === "string" ? new StringValue(this.realm, v) : v))
-    );
+    this._addEntry({
+      args: args.map(v => (typeof v === "string" ? new StringValue(this.realm, v) : v)),
+      buildNode: createResidualBuildNode("CONSOLE_LOG", { propName: method }),
+    });
   }
 
   // test must be a temporal value, which means that it must have a defined intrinsicName
   emitDoWhileStatement(test: AbstractValue, body: Generator): void {
     this._addEntry({
       args: [],
-      buildNode: function([], context, valuesToProcess) {
-        let testId = test.intrinsicName;
-        invariant(testId !== undefined);
-        let statements = context.serializeGenerator(body, valuesToProcess);
-        let block = t.blockStatement(statements);
-        return t.doWhileStatement(t.identifier(testId), block);
-      },
+      buildNode: createResidualBuildNode("DO_WHILE", { generator: body, value: test }),
       dependencies: [body],
     });
   }
 
   emitConditionalThrow(value: Value): void {
-    function createStatement(val: Value, context: SerializationContext) {
-      if (!(val instanceof AbstractValue) || val.kind !== "conditional") {
-        return t.throwStatement(context.serializeValue(val));
-      }
-      let [cond, trueVal, falseVal] = val.args;
-      let condVal = context.serializeValue(cond);
-      let trueStat, falseStat;
-      if (trueVal instanceof EmptyValue) trueStat = t.blockStatement([]);
-      else trueStat = createStatement(trueVal, context);
-      if (falseVal instanceof EmptyValue) falseStat = t.blockStatement([]);
-      else falseStat = createStatement(falseVal, context);
-      return t.ifStatement(condVal, trueStat, falseStat);
-    }
     this._addEntry({
       args: [value],
-      buildNode: function([argument], context: SerializationContext) {
-        return createStatement(value, context);
-      },
+      buildNode: createResidualBuildNode("CONDITIONAL_THROW", { value }),
     });
   }
 
@@ -764,7 +842,7 @@ export class Generator {
 
   emitThrow(value: Value): void {
     this._issueThrowCompilerDiagnostic(value);
-    this.emitStatement([value], ([argument]) => t.throwStatement(argument));
+    this.emitStatement([value], createResidualBuildNode("THROW"));
   }
 
   // Checks the full set of possible concrete values as well as typeof
@@ -773,8 +851,6 @@ export class Generator {
   // NB: if the type of the AbstractValue is top, skips the invariant
   emitFullInvariant(object: ObjectValue | AbstractObjectValue, key: string, value: Value): void {
     if (object.refuseSerialization) return;
-    let accessedPropertyOf = objectNode => memberExpressionHelper(objectNode, key);
-    let condition;
     if (value instanceof AbstractValue) {
       let isTop = false;
       let concreteComparisons = [];
@@ -803,58 +879,27 @@ export class Generator {
       if (isTop) {
         return;
       } else {
-        condition = ([valueNode]) => {
-          // Create `object.property !== concreteValue`
-          let checks = concreteComparisons.map(concreteValue =>
-            t.binaryExpression("!==", valueNode, t.valueToNode(concreteValue.serialize()))
-          );
-          // Create `typeof object.property !== typeValue`
-          checks = checks.concat(
-            [...typeComparisons].map(typeValue => {
-              let typeString = Utils.typeToString(typeValue);
-              invariant(typeString !== undefined, typeValue);
-              return t.binaryExpression(
-                "!==",
-                t.unaryExpression("typeof", valueNode, true),
-                t.stringLiteral(typeString)
-              );
-            })
-          );
-          return checks.reduce((expr, newCondition) => t.logicalExpression("&&", expr, newCondition));
-        };
-        this._emitInvariant([value, value], condition, valueNode => valueNode);
+        this._emitInvariant(
+          [value, value],
+          createResidualBuildNode("FULL_INVARIANT_ABSTRACT", { concreteComparisons, typeComparisons }),
+          createResidualBuildNode("INVARIANT_APPEND", { propName: key })
+        );
       }
     } else if (value instanceof FunctionValue) {
       // We do a special case for functions,
       // as we like to use concrete functions in the model to model abstract behaviors.
       // These concrete functions do not have the right identity.
-      condition = ([objectNode]) =>
-        t.binaryExpression(
-          "!==",
-          t.unaryExpression("typeof", accessedPropertyOf(objectNode), true),
-          t.stringLiteral("function")
-        );
-      this._emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
+      this._emitInvariant(
+        [object, value, object],
+        createResidualBuildNode("FULL_INVARIANT_FUNCTION", { propName: key }),
+        createResidualBuildNode("INVARIANT_APPEND", { propName: key })
+      );
     } else {
-      condition = ([objectNode, valueNode]) => t.binaryExpression("!==", accessedPropertyOf(objectNode), valueNode);
-      this._emitInvariant([object, value, object], condition, objnode => accessedPropertyOf(objnode));
-    }
-  }
-
-  getErrorStatement(message: BabelNodeExpression): BabelNodeStatement {
-    if (this.realm.invariantMode === "throw")
-      return t.throwStatement(t.newExpression(this.preludeGenerator.memoizeReference("Error"), [message]));
-    else {
-      let targetReference = this.realm.invariantMode;
-      let args = [message];
-      let i = targetReference.indexOf("+");
-      if (i !== -1) {
-        let s = targetReference.substr(i + 1);
-        let x = Number.parseInt(s, 10);
-        args.push(isNaN(x) ? t.stringLiteral(s) : t.numericLiteral(x));
-        targetReference = targetReference.substr(0, i);
-      }
-      return t.expressionStatement(t.callExpression(this.preludeGenerator.memoizeReference(targetReference), args));
+      this._emitInvariant(
+        [object, value, object],
+        createResidualBuildNode("FULL_INVARIANT", { propName: key }),
+        createResidualBuildNode("INVARIANT_APPEND", { propName: key })
+      );
     }
   }
 
@@ -864,72 +909,50 @@ export class Generator {
     state: "MISSING" | "PRESENT" | "DEFINED"
   ): void {
     if (object.refuseSerialization) return;
-    let accessedPropertyOf = (objectNode: BabelNodeExpression) => memberExpressionHelper(objectNode, key);
-    let condition = ([objectNode: BabelNodeExpression]) => {
-      let n = t.callExpression(
-        t.memberExpression(
-          this.preludeGenerator.memoizeReference("Object.prototype.hasOwnProperty"),
-          t.identifier("call")
-        ),
-        [objectNode, t.stringLiteral(key)]
-      );
-      if (state !== "MISSING") {
-        n = t.unaryExpression("!", n, true);
-        if (state === "DEFINED")
-          n = t.logicalExpression(
-            "||",
-            n,
-            t.binaryExpression("===", accessedPropertyOf(objectNode), t.valueToNode(undefined))
-          );
-      }
-      return n;
-    };
-
-    this._emitInvariant([object, object], condition, objnode => accessedPropertyOf(objnode));
+    this._emitInvariant(
+      [object, object],
+      createResidualBuildNode("PROPERTY_INVARIANT", { state, propName: key }),
+      createResidualBuildNode("INVARIANT_APPEND", { propName: key })
+    );
   }
 
   _emitInvariant(
     args: Array<Value>,
-    violationConditionFn: (Array<BabelNodeExpression>) => BabelNodeExpression,
-    appendLastToInvariantFn?: BabelNodeExpression => BabelNodeExpression
+    violationConditionBuildNode: ResidualBuildNode,
+    appendLastToInvariantBuildNode: ResidualBuildNode
   ): void {
     invariant(this.realm.invariantLevel > 0);
+    let invariantBuildNode = createResidualBuildNode("INVARIANT", {
+      appendLastToInvariantBuildNode,
+      violationConditionBuildNode,
+    });
     this._addEntry({
       args,
-      buildNode: (nodes: Array<BabelNodeExpression>) => {
-        let messageComponents = [
-          t.stringLiteral("Prepack model invariant violation ("),
-          t.numericLiteral(this.preludeGenerator.nextInvariantId++),
-        ];
-        if (appendLastToInvariantFn) {
-          let last = nodes.pop();
-          messageComponents.push(t.stringLiteral("): "));
-          messageComponents.push(appendLastToInvariantFn(last));
-        } else messageComponents.push(t.stringLiteral(")"));
-        let throwString = messageComponents[0];
-        for (let i = 1; i < messageComponents.length; i++)
-          throwString = t.binaryExpression("+", throwString, messageComponents[i]);
-        let condition = violationConditionFn(nodes);
-        let consequent = this.getErrorStatement(throwString);
-        return t.ifStatement(condition, consequent);
-      },
+      buildNode: invariantBuildNode,
     });
   }
 
   emitCallAndCaptureResult(
     types: TypesDomain,
     values: ValuesDomain,
-    createCallee: () => BabelNodeExpression,
+    callTemplate: () => BabelNodeExpression,
     args: Array<Value>,
     kind?: AbstractValueKind
   ): AbstractValue {
-    return this.deriveAbstract(types, values, args, (nodes: any) => t.callExpression(createCallee(), nodes), { kind });
+    return this.deriveAbstract(
+      types,
+      values,
+      args,
+      createResidualBuildNode("EMIT_CALL_AND_CAPTURE_RESULT", { callTemplate }),
+      { kind }
+    );
   }
 
-  emitStatement(args: Array<Value>, buildNode_: (Array<BabelNodeExpression>) => BabelNodeStatement): void {
+  emitStatement(args: Array<Value>, buildNode: ResidualBuildNode): void {
+    invariant(typeof buildNode !== "function");
     this._addEntry({
       args,
-      buildNode: buildNode_,
+      buildNode,
     });
   }
 
@@ -937,16 +960,12 @@ export class Generator {
     types: TypesDomain,
     values: ValuesDomain,
     args: Array<Value>,
-    buildNode_: AbstractValueBuildNodeFunction | BabelNodeExpression
+    buildNode: ResidualBuildNode
   ): UndefinedValue {
+    let voidBuildNode = createResidualBuildNode(buildNode.type, buildNode.data, "VOID");
     this._addEntry({
       args,
-      buildNode: (nodes: Array<BabelNodeExpression>) =>
-        t.expressionStatement(
-          (buildNode_: any) instanceof Function
-            ? ((buildNode_: any): AbstractValueBuildNodeFunction)(nodes)
-            : ((buildNode_: any): BabelNodeExpression)
-        ),
+      buildNode: voidBuildNode,
     });
     return this.realm.intrinsics.undefined;
   }
@@ -961,49 +980,31 @@ export class Generator {
     this._addEntry({
       // duplicate args to ensure refcount > 1
       args: [o, targetObject, sourceObject, targetObject, sourceObject],
-      buildNode: ([obj, tgt, src, obj1, tgt1, src1]) => {
-        return t.forInStatement(
-          lh,
-          obj,
-          t.blockStatement([
-            t.expressionStatement(
-              t.assignmentExpression(
-                "=",
-                memberExpressionHelper(tgt, boundName),
-                memberExpressionHelper(src, boundName)
-              )
-            ),
-          ])
-        );
-      },
+      buildNode: createResidualBuildNode("FOR_IN", { boundName, lh }),
     });
   }
 
   deriveConcreteObject(
     buildValue: (intrinsicName: string) => ObjectValue,
     args: Array<Value>,
-    buildNode_: DerivedExpressionBuildNodeFunction | BabelNodeExpression,
+    buildNode: ResidualBuildNode,
     optionalArgs?: {| isPure?: boolean |}
   ): ConcreteValue {
-    invariant(buildNode_ instanceof Function || args.length === 0);
-    let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
-    let value = buildValue(id.name);
+    let id = this.preludeGenerator.nameGenerator.generate("derived");
+    let value = buildValue(id);
     value.intrinsicNameGenerated = true;
     value._isScopedTemplate = true; // because this object doesn't exist ahead of time, and the visitor would otherwise declare it in the common scope
-    this._addDerivedEntry(id.name, {
+    // Build nodes are immutable so we need create a new version to update properties
+    let derivedBuildNode = createResidualBuildNode(
+      buildNode.type,
+      Object.assign({}, buildNode.data, { id }),
+      "DERIVED"
+    );
+    this._addDerivedEntry(id, {
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: value,
       args,
-      buildNode: (nodes: Array<BabelNodeExpression>, context: SerializationContext, valuesToProcess) => {
-        return t.variableDeclaration("var", [
-          t.variableDeclarator(
-            id,
-            (buildNode_: any) instanceof Function
-              ? ((buildNode_: any): DerivedExpressionBuildNodeFunction)(nodes, context, valuesToProcess)
-              : ((buildNode_: any): BabelNodeExpression)
-          ),
-        ]);
-      },
+      buildNode: derivedBuildNode,
     });
     return value;
   }
@@ -1012,17 +1013,15 @@ export class Generator {
     types: TypesDomain,
     values: ValuesDomain,
     args: Array<Value>,
-    buildNode_: DerivedExpressionBuildNodeFunction | BabelNodeExpression,
+    buildNode: ResidualBuildNode,
     optionalArgs?: {|
       kind?: AbstractValueKind,
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
-      temporalType?: TemporalBuildNodeType,
     |}
   ): AbstractValue {
-    invariant(buildNode_ instanceof Function || args.length === 0);
-    let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
+    let id = this.preludeGenerator.nameGenerator.generate("derived");
     let options = {};
     if (optionalArgs && optionalArgs.kind) options.kind = optionalArgs.kind;
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
@@ -1032,28 +1031,24 @@ export class Generator {
       values,
       1735003607742176 + this.realm.derivedIds.size,
       [],
-      id,
+      createResidualBuildNode("IDENTIFIER", { id }),
       options
     );
-    this._addDerivedEntry(id.name, {
+    // Build nodes are immutable so we need create a new version to update properties
+    let derivedBuildNode = createResidualBuildNode(
+      buildNode.type,
+      Object.assign({}, buildNode.data, { id }),
+      "DERIVED"
+    );
+    this._addDerivedEntry(id, {
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: res,
       args,
-      buildNode: (nodes: Array<BabelNodeExpression>, context: SerializationContext, valuesToProcess) => {
-        return t.variableDeclaration("var", [
-          t.variableDeclarator(
-            id,
-            (buildNode_: any) instanceof Function
-              ? ((buildNode_: any): DerivedExpressionBuildNodeFunction)(nodes, context, valuesToProcess)
-              : ((buildNode_: any): BabelNodeExpression)
-          ),
-        ]);
-      },
+      buildNode: derivedBuildNode,
       mutatesOnly: optionalArgs ? optionalArgs.mutatesOnly : undefined,
-      temporalType: optionalArgs ? optionalArgs.temporalType : undefined,
     });
     let type = types.getType();
-    res.intrinsicName = id.name;
+    res.intrinsicName = id;
     if (optionalArgs && optionalArgs.skipInvariant) return res;
     let typeofString;
     if (type instanceof FunctionValue) typeofString = "function";
@@ -1070,24 +1065,8 @@ export class Generator {
       // should mean the model is wrong.
       this._emitInvariant(
         [res, res],
-        nodes => {
-          invariant(typeofString !== undefined);
-          let condition = t.binaryExpression(
-            "!==",
-            t.unaryExpression("typeof", nodes[0]),
-            t.stringLiteral(typeofString)
-          );
-          if (typeofString === "object") {
-            condition = t.logicalExpression(
-              "&&",
-              condition,
-              t.binaryExpression("!==", t.unaryExpression("typeof", nodes[0]), t.stringLiteral("function"))
-            );
-            condition = t.logicalExpression("||", condition, t.binaryExpression("===", nodes[0], nullExpression));
-          }
-          return condition;
-        },
-        node => node
+        createResidualBuildNode("DERIVED_ABSTRACT_INVARIANT", { typeofString }),
+        createResidualBuildNode("SINGLE_ARG")
       );
     }
 
@@ -1131,7 +1110,8 @@ export class Generator {
 
   _addEntry(entryArgs: TemporalBuildNodeEntryArgs): TemporalBuildNodeEntry {
     let entry;
-    if (entryArgs.temporalType === "OBJECT_ASSIGN") {
+    let buildNode = entryArgs.buildNode;
+    if (buildNode && buildNode.type === "OBJECT_ASSIGN") {
       entry = new TemporalObjectAssignEntry(this.realm, entryArgs);
     } else {
       entry = new TemporalBuildNodeEntry(this.realm, entryArgs);
@@ -1157,20 +1137,7 @@ export class Generator {
     } else {
       this._addEntry({
         args: [],
-        buildNode: function(args, context, valuesToProcess) {
-          let statements = context.serializeGenerator(other, valuesToProcess);
-          if (statements.length === 1) {
-            let statement = statements[0];
-            if (leadingComment.length > 0)
-              statement.leadingComments = [({ type: "BlockComment", value: leadingComment }: any)];
-            return statement;
-          }
-          let block = t.blockStatement(statements);
-          if (leadingComment.length > 0)
-            block.leadingComments = [({ type: "BlockComment", value: leadingComment }: any)];
-          return block;
-        },
-        dependencies: [other],
+        buildNode: createResidualBuildNode("APPEND_GENERATOR", { generator: other, propName: leadingComment }),
       });
     }
   }
@@ -1178,16 +1145,11 @@ export class Generator {
   joinGenerators(joinCondition: AbstractValue, generator1: Generator, generator2: Generator): void {
     invariant(generator1 !== this && generator2 !== this && generator1 !== generator2);
     if (generator1.empty() && generator2.empty()) return;
+    let generators = [generator1, generator2];
     this._addEntry({
       args: [joinCondition],
-      buildNode: function([cond], context, valuesToProcess) {
-        let block1 = generator1.empty() ? null : serializeBody(generator1, context, valuesToProcess);
-        let block2 = generator2.empty() ? null : serializeBody(generator2, context, valuesToProcess);
-        if (block1) return t.ifStatement(cond, block1, block2);
-        invariant(block2);
-        return t.ifStatement(t.unaryExpression("!", cond), block2);
-      },
-      dependencies: [generator1, generator2],
+      buildNode: createResidualBuildNode("JOIN_GENERATORS", { generators }),
+      dependencies: generators,
     });
   }
 }

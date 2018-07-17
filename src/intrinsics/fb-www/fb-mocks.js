@@ -23,10 +23,10 @@ import {
 } from "../../values/index.js";
 import { Create } from "../../singletons.js";
 import { Get } from "../../methods/index.js";
-import * as t from "@babel/types";
 import invariant from "../../invariant";
 import { Properties } from "../../singletons.js";
 import { forEachArrayValue } from "../../react/utils.js";
+import { createResidualBuildNode } from "../../utils/generator.js";
 
 const fbMagicGlobalFunctions = [
   "asset",
@@ -117,9 +117,7 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
           realm,
           ObjectValue,
           temporalArgs,
-          ([methodNode, objNode, propRemoveNode]) => {
-            return t.callExpression(methodNode, [objNode, propRemoveNode]);
-          },
+          createResidualBuildNode("BABEL_HELPERS_OBJECT_WITHOUT_PROPERTIES"),
           temporalConfig
         );
         invariant(value instanceof AbstractObjectValue);
@@ -205,7 +203,7 @@ function createMagicGlobalFunction(realm: Realm, global: ObjectValue | AbstractO
         realm,
         FunctionValue,
         args,
-        _args => t.callExpression(t.identifier(functionName), ((_args: any): Array<any>)),
+        createResidualBuildNode("FB_MOCKS_MAGIC_GLOBAL_FUNCTION", { propName: functionName }),
         { skipInvariant: true, isPure: true }
       );
       invariant(val instanceof AbstractValue);
@@ -238,11 +236,7 @@ function createBootloader(realm: Realm, global: ObjectValue | AbstractObjectValu
       realm,
       FunctionValue,
       args,
-      _args =>
-        t.callExpression(
-          t.memberExpression(t.identifier("Bootloader"), t.identifier("loadModules")),
-          ((_args: any): Array<any>)
-        ),
+      createResidualBuildNode("FB_MOCKS_BOOTLOADER_LOAD_MODULES"),
       { skipInvariant: true }
     );
     invariant(val instanceof AbstractValue);

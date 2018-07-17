@@ -26,9 +26,9 @@ import { Environment } from "../../singletons.js";
 import { createReactHintObject, getReactSymbol } from "../../react/utils.js";
 import { cloneReactElement, createReactElement } from "../../react/elements.js";
 import { Properties, Create, To } from "../../singletons.js";
-import * as t from "@babel/types";
 import invariant from "../../invariant";
 import { updateIntrinsicNames, addMockFunctionToObject } from "./utils.js";
+import { createResidualBuildNode } from "../../utils/generator.js";
 
 // most of the code here was taken from https://github.com/facebook/react/blob/master/packages/react/src/ReactElement.js
 let reactCode = `
@@ -489,7 +489,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
         realm,
         ObjectValue,
         [funcValue, defaultValue],
-        ([methodNode, defaultValueNode]) => t.callExpression(methodNode, [defaultValueNode]),
+        createResidualBuildNode("REACT_TEMPORAL_FUNC"),
         { skipInvariant: true, isPure: true }
       );
       invariant(consumer instanceof AbstractObjectValue);
@@ -499,7 +499,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
         realm,
         ObjectValue,
         [consumer],
-        ([consumerNode]) => t.memberExpression(consumerNode, t.identifier("Provider")),
+        createResidualBuildNode("REACT_CREATE_CONTEXT_PROVIDER"),
         { skipInvariant: true, isPure: true }
       );
       invariant(provider instanceof AbstractObjectValue);
@@ -524,9 +524,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
       realm,
       FunctionValue,
       [funcVal],
-      ([createRefNode]) => {
-        return t.callExpression(createRefNode, []);
-      },
+      createResidualBuildNode("REACT_TEMPORAL_FUNC"),
       { skipInvariant: true, isPure: true }
     );
     invariant(createRef instanceof AbstractObjectValue);
@@ -538,9 +536,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
       realm,
       FunctionValue,
       [funcVal, func],
-      ([forwardRefNode, funcNode]) => {
-        return t.callExpression(forwardRefNode, [funcNode]);
-      },
+      createResidualBuildNode("REACT_TEMPORAL_FUNC"),
       { skipInvariant: true, isPure: true }
     );
     invariant(forwardedRef instanceof AbstractObjectValue);

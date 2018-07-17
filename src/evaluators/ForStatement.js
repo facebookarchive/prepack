@@ -40,6 +40,7 @@ import invariant from "../invariant.js";
 import * as t from "@babel/types";
 import type { FunctionBodyAstNode } from "../types.js";
 import type { BabelNodeExpression, BabelNodeForStatement, BabelNodeBlockStatement } from "@babel/types";
+import { createResidualBuildNode } from "../utils/generator.js";
 
 type BailOutWrapperInfo = {
   usesArguments: boolean,
@@ -455,10 +456,7 @@ function generateRuntimeForStatement(
     realm,
     Value,
     args,
-    ([func, thisExpr]) =>
-      usesThis
-        ? t.callExpression(t.memberExpression(func, t.identifier("call")), [thisExpr])
-        : t.callExpression(func, [])
+    createResidualBuildNode("FOR_STATEMENT_FUNC", { usesThis })
   );
   invariant(wrapperValue instanceof AbstractValue);
   return wrapperValue;

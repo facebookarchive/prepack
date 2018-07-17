@@ -23,8 +23,6 @@ import {
   StringValue,
   Value,
 } from "./index.js";
-import { protoExpression, memberExpressionHelper } from "../utils/babelhelpers.js";
-import type { AbstractValueBuildNodeFunction } from "./AbstractValue.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import {
   GetFromArrayWithWidenedNumericProperty,
@@ -33,9 +31,8 @@ import {
   equalDescriptors,
 } from "../methods/index.js";
 import { Havoc, Widen } from "../singletons.js";
-import type { BabelNodeExpression } from "@babel/types";
 import invariant from "../invariant.js";
-import * as t from "@babel/types";
+import { createResidualBuildNode, type ResidualBuildNode } from "../utils/generator.js";
 
 export default class AbstractObjectValue extends AbstractValue {
   constructor(
@@ -44,7 +41,7 @@ export default class AbstractObjectValue extends AbstractValue {
     values: ValuesDomain,
     hashValue: number,
     args: Array<Value>,
-    buildNode?: AbstractValueBuildNodeFunction | BabelNodeExpression,
+    buildNode?: ResidualBuildNode,
     optionalArgs?: {| kind?: AbstractValueKind, intrinsicName?: string |}
   ) {
     super(realm, types, values, hashValue, args, buildNode, optionalArgs);
@@ -259,13 +256,12 @@ export default class AbstractObjectValue extends AbstractValue {
     } else if (this.kind === "explicit conversion to object") {
       let primitiveValue = this.args[0];
       invariant(!Value.isTypeCompatibleWith(primitiveValue.getType(), PrimitiveValue));
-      let result = AbstractValue.createFromBuildFunction(realm, ObjectValue, [primitiveValue], ([p]) => {
-        invariant(realm.preludeGenerator !== undefined);
-        let getPrototypeOf = realm.preludeGenerator.memoizeReference("Object.getPrototypeOf");
-        return realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) || realm.isCompatibleWith("mobile")
-          ? t.memberExpression(p, protoExpression)
-          : t.callExpression(getPrototypeOf, [p]);
-      });
+      let result = AbstractValue.createFromBuildFunction(
+        realm,
+        ObjectValue,
+        [primitiveValue],
+        createResidualBuildNode("ABSTRACT_OBJECT_GET_PROTO_OF")
+      );
       invariant(result instanceof AbstractObjectValue);
       return result;
     } else {
@@ -502,14 +498,12 @@ export default class AbstractObjectValue extends AbstractValue {
         if (this.kind === "explicit conversion to object") ob = this.args[0];
         let type = Value;
         if (P === "length" && Value.isTypeCompatibleWith(this.getType(), ArrayValue)) type = NumberValue;
+        invariant(typeof P === "string");
         return AbstractValue.createTemporalFromBuildFunction(
           this.$Realm,
           type,
           [ob],
-          ([o]) => {
-            invariant(typeof P === "string");
-            return memberExpressionHelper(o, P);
-          },
+          createResidualBuildNode("ABSTRACT_PROPERTY", { propName: P }),
           {
             skipInvariant: true,
             isPure: true,
@@ -611,7 +605,7 @@ export default class AbstractObjectValue extends AbstractValue {
           this.$Realm,
           Value,
           [this, P],
-          ([o, p]) => memberExpressionHelper(o, p),
+          createResidualBuildNode("ABSTRACT_OBJECT_GET_PARTIAL"),
           { skipInvariant: true, isPure: true }
         );
       }
@@ -631,7 +625,7 @@ export default class AbstractObjectValue extends AbstractValue {
           this.$Realm,
           Value,
           [Receiver, P],
-          ([o, p]) => memberExpressionHelper(o, p),
+          createResidualBuildNode("ABSTRACT_OBJECT_GET_PARTIAL"),
           { skipInvariant: true, isPure: true }
         );
       }
@@ -758,20 +752,14 @@ export default class AbstractObjectValue extends AbstractValue {
               P = P.value;
             }
             if (typeof P === "string") {
-              generator.emitStatement([Receiver, V], ([objectNode, valueNode]) => {
-                invariant(typeof P === "string");
-                return t.expressionStatement(
-                  t.assignmentExpression("=", memberExpressionHelper(objectNode, P), valueNode)
-                );
-              });
+              generator.emitStatement(
+                [Receiver, V],
+                createResidualBuildNode("ABSTRACT_OBJECT_SET_PARTIAL", { propName: P })
+              );
             } else {
               // Coercion can only have effects on anything reachable from the key.
               Havoc.value(this.$Realm, P);
-              generator.emitStatement([Receiver, P, V], ([objectNode, keyNode, valueNode]) =>
-                t.expressionStatement(
-                  t.assignmentExpression("=", memberExpressionHelper(objectNode, keyNode), valueNode)
-                )
-              );
+              generator.emitStatement([Receiver, P, V], createResidualBuildNode("ABSTRACT_OBJECT_SET_PARTIAL_VALUE"));
             }
             return this.$Realm.intrinsics.undefined;
           },

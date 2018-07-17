@@ -14,8 +14,8 @@ import type { PropertyKeyValue, Descriptor, ObjectKind } from "../types.js";
 import { AbstractValue, ObjectValue, StringValue, NumberValue, Value } from "./index.js";
 import { IsAccessorDescriptor, IsPropertyKey, IsArrayIndex } from "../methods/is.js";
 import { Properties, To } from "../singletons.js";
+import { type ResidualBuildNode } from "../utils/generator.js";
 import invariant from "../invariant.js";
-import type { BabelNodeExpression } from "@babel/types";
 
 export default class ArrayValue extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {
@@ -97,7 +97,7 @@ export default class ArrayValue extends ObjectValue {
   static createTemporalWithWidenedNumericProperty(
     realm: Realm,
     args: Array<Value>,
-    buildFunction: (Array<BabelNodeExpression>) => BabelNodeExpression,
+    buildNode: ResidualBuildNode,
     reactArrayHint?: { func: Value, thisVal: Value }
   ): ArrayValue {
     invariant(realm.generator !== undefined);
@@ -105,7 +105,7 @@ export default class ArrayValue extends ObjectValue {
     let value = realm.generator.deriveConcreteObject(
       intrinsicName => new ArrayValue(realm, intrinsicName),
       args,
-      buildFunction,
+      buildNode,
       { isPure: true }
     );
 

@@ -12,7 +12,7 @@
 import type { Realm } from "../../realm.js";
 import { AbstractValue, ArrayValue, NativeFunctionValue, Value } from "../../values/index.js";
 import { Create, To } from "../../singletons.js";
-import * as t from "@babel/types";
+import { createResidualBuildNode } from "../../utils/generator.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 22.1.3.30
@@ -28,8 +28,11 @@ export default function(realm: Realm): NativeFunctionValue {
       realm.isInPureScope() &&
       O.$GetOwnProperty("values") === undefined
     ) {
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, [O], ([objNode]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("values")), [])
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        [O],
+        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "values" })
       );
     }
 

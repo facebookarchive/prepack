@@ -25,13 +25,13 @@ import {
 } from "../../values/index.js";
 import { To, Path } from "../../singletons.js";
 import { ValuesDomain } from "../../domains/index.js";
-import * as t from "@babel/types";
-import type { BabelNodeExpression, BabelNodeSpreadElement } from "@babel/types";
 import invariant from "../../invariant.js";
 import { createAbstract, parseTypeNameOrTemplate } from "./utils.js";
 import { describeValue } from "../../utils.js";
 import { valueIsKnownReactAbstraction } from "../../react/utils.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
+import * as t from "@babel/types";
+import { createResidualBuildNode, type ResidualBuildNode } from "../../utils/generator.js";
 
 export function createAbstractFunction(realm: Realm, ...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
   return new NativeFunctionValue(
@@ -270,8 +270,11 @@ export default function(realm: Realm): void {
         invariant(f instanceof FunctionValue);
         f.isResidual = true;
         if (unsafe) f.isUnsafeResidual = true;
-        let result = AbstractValue.createTemporalFromBuildFunction(realm, type, [f].concat(args), nodes =>
-          t.callExpression(nodes[0], ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>))
+        let result = AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          type,
+          [f].concat(args),
+          createResidualBuildNode("RESIDUAL_CALL")
         );
         if (template) {
           invariant(
@@ -281,7 +284,7 @@ export default function(realm: Realm): void {
           template.makePartial();
           result.values = new ValuesDomain(new Set([template]));
           invariant(realm.generator);
-          realm.rebuildNestedProperties(result, result.getIdentifier().name);
+          realm.rebuildNestedProperties(result, result.getIdentifier());
         }
         return result;
       }
@@ -291,13 +294,13 @@ export default function(realm: Realm): void {
   function createNativeFunctionForResidualInjection(
     name: string,
     initializeAndValidateArgs: (Array<Value>) => void,
-    buildNode_: (Array<BabelNodeExpression>) => BabelNodeStatement,
+    buildNode: ResidualBuildNode,
     numArgs: number
   ): NativeFunctionValue {
     return new NativeFunctionValue(realm, "global." + name, name, numArgs, (context, ciArgs) => {
       initializeAndValidateArgs(ciArgs);
       invariant(realm.generator !== undefined);
-      realm.generator.emitStatement(ciArgs, buildNode_);
+      realm.generator.emitStatement(ciArgs, buildNode);
       return realm.intrinsics.undefined;
     });
   }
@@ -320,13 +323,7 @@ export default function(realm: Realm): void {
         }
         Path.pushAndRefine(c);
       },
-      ([c, s]: Array<BabelNodeExpression>) => {
-        let errorLiteral = s.type === "StringLiteral" ? s : t.stringLiteral("Assumption violated");
-        return t.ifStatement(
-          t.unaryExpression("!", c),
-          t.blockStatement([t.throwStatement(t.newExpression(t.identifier("Error"), [errorLiteral]))])
-        );
-      },
+      createResidualBuildNode("ASSUME_CALL"),
       2
     ),
     writable: true,

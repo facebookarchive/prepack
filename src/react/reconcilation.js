@@ -57,7 +57,6 @@ import {
   getValueWithBranchingLogicApplied,
   wrapReactElementInBranchOrReturnValue,
 } from "./branching.js";
-import * as t from "@babel/types";
 import { Completion } from "../completions.js";
 import {
   getInitialProps,
@@ -79,6 +78,8 @@ import {
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
 import { handleReportedSideEffect } from "../serializer/utils.js";
+import { createResidualBuildNode } from "../utils/generator.js";
+import * as t from "@babel/types";
 
 type ComponentResolutionStrategy =
   | "NORMAL"
@@ -900,9 +901,7 @@ export class Reconciler {
         this.realm,
         ObjectValue,
         [reactDomPortalFunc, resolvedReactPortalValue, domNodeValue],
-        ([renderNode, ..._args]) => {
-          return t.callExpression(renderNode, ((_args: any): Array<any>));
-        },
+        createResidualBuildNode("REACT_TEMPORAL_FUNC"),
         { skipInvariant: true, isPure: true }
       );
     }

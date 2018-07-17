@@ -33,11 +33,10 @@ import {
   IsInTailPosition,
   SameValue,
 } from "../methods/index.js";
-import type { BabelNodeCallExpression, BabelNodeExpression, BabelNodeSpreadElement } from "@babel/types";
+import type { BabelNodeCallExpression } from "@babel/types";
 import invariant from "../invariant.js";
-import * as t from "@babel/types";
 import SuperCall from "./SuperCall";
-import { memberExpressionHelper } from "../utils/babelhelpers.js";
+import { createResidualBuildNode } from "../utils/generator.js";
 
 export default function(
   ast: BabelNodeCallExpression,
@@ -234,22 +233,12 @@ function generateRuntimeCall(
     }
   }
   let resultType = (func instanceof AbstractObjectValue ? func.functionResultType : undefined) || Value;
-  return AbstractValue.createTemporalFromBuildFunction(realm, resultType, args, nodes => {
-    let callFunc;
-    let argStart = 1;
-    if (thisArg instanceof Value) {
-      if (typeof propName === "string") {
-        callFunc = memberExpressionHelper(nodes[0], propName);
-      } else {
-        callFunc = memberExpressionHelper(nodes[0], nodes[1]);
-        argStart = 2;
-      }
-    } else {
-      callFunc = nodes[0];
-    }
-    let fun_args = ((nodes.slice(argStart): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
-    return t.callExpression(callFunc, fun_args);
-  });
+  return AbstractValue.createTemporalFromBuildFunction(
+    realm,
+    resultType,
+    args,
+    createResidualBuildNode("CALL_BAILOUT", { propRef: propName, thisArg })
+  );
 }
 
 function tryToEvaluateCallOrLeaveAsAbstract(

@@ -33,6 +33,7 @@ import {
   mapArrayValue,
 } from "./utils";
 import { ExpectedBailOut } from "./errors.js";
+import { createResidualBuildNode } from "../utils/generator.js";
 
 // Branch status is used for when Prepack returns an abstract value from a render
 // that results in a conditional path occuring. This can be problematic for reconcilation
@@ -243,7 +244,7 @@ export function wrapReactElementInBranchOrReturnValue(realm: Realm, value: Value
       realm,
       ObjectValue,
       [cloneReactElement(realm, value, false)],
-      ([node]) => node,
+      createResidualBuildNode("SINGLE_ARG"),
       { isPure: true, skipInvariant: true }
     );
     invariant(temporal instanceof AbstractObjectValue);
