@@ -1361,7 +1361,7 @@ export function attemptToMergeEquivalentObjectAssigns(
       }
       let otherArgs = otherTemporalBuildNodeEntry.args;
       // Object.assign has at least 1 arg
-      if (otherArgs.length < 2) {
+      if (otherArgs.length < 1) {
         continue;
       }
       let otherArgsToUse = [];
@@ -1404,15 +1404,12 @@ export function attemptToMergeEquivalentObjectAssigns(
       // If we cannot omit the "to" value that means it's being used, so we shall not try to
       // optimize this Object.assign.
       if (!callbacks.canOmit(to)) {
-        let newArgs = [to, ...otherArgsToUse];
+        // our merged Object.assign, shoud look like:
+        // Object.assign(to, ...prefixArgs, ...otherArgsToUse, ...suffixArgs)
+        let prefixArgs = args.slice(1, i - 1); // We start at 1, as 0 is the index of "to" a
+        let suffixArgs = args.slice(i + 1);
+        let newArgs = [to, ...prefixArgs, ...otherArgsToUse, ...suffixArgs];
 
-        for (let x = 2; x < args.length; x++) {
-          let arg = args[x];
-          // We don't want to add the "to" that we're merging with!
-          if (arg !== possibleOtherObjectAssignTo) {
-            newArgs.push(arg);
-          }
-        }
         // We now create a new TemporalObjectAssignEntry, without mutating the existing
         // entry at this point. This new entry is essentially a TemporalObjectAssignEntry
         // that contains two Object.assign call TemporalObjectAssignEntry entries that have
