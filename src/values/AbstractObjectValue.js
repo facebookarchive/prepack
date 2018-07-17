@@ -504,14 +504,16 @@ export default class AbstractObjectValue extends AbstractValue {
       let generateAbstractGet = () => {
         let ob = Receiver;
         if (this.kind === "explicit conversion to object") ob = this.args[0];
-        invariant(ob instanceof AbstractValue);
         let type = Value;
         if (P === "length" && Value.isTypeCompatibleWith(this.getType(), ArrayValue)) type = NumberValue;
+        // shape logic
+        let shapeContainer = this.kind === "explicit conversion to object" ? this.args[0] : this;
+        invariant(shapeContainer instanceof AbstractValue);
         invariant(typeof P === "string");
-        let obShape = ob.shape;
+        let shape = shapeContainer.shape;
         let propertyShape, propertyGetter;
-        if (this.$Realm.instantRender.enabled && obShape !== undefined) {
-          propertyShape = obShape.getPropertyShape(P);
+        if (this.$Realm.instantRender.enabled && shape !== undefined) {
+          propertyShape = shape.getPropertyShape(P);
           if (propertyShape !== undefined) {
             type = propertyShape.getAbstractType();
             propertyGetter = propertyShape.getGetter();
