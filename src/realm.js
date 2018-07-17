@@ -911,7 +911,6 @@ export class Realm {
         // Return the captured state changes and evaluation result
         if (c instanceof Value) c = new SimpleNormalCompletion(c);
         result = new Effects(c, astGenerator, astBindings, astProperties, astCreatedObjects);
-        console.log(result.toDisplayString());
         return result;
       } finally {
         // Roll back the state changes

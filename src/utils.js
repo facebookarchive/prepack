@@ -111,7 +111,7 @@ type DisplayResult = {} | string;
 
 export function jsonToDisplayString<T: { toDisplayJson(number): DisplayResult }>(instance: T, depth: number): string {
   let result = instance.toDisplayJson(depth);
-  return result instanceof "string" ? result : JSON.stringify(result, null, 2).replace(/\"/g, "");
+  return typeof result === "string" ? result : JSON.stringify(result, null, 2).replace(/\"/g, "");
 }
 
 export function verboseToDisplayJson(obj: {}, depth: number): DisplayResult {
