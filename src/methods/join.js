@@ -487,14 +487,18 @@ export class JoinImplementation {
     } = e2;
     invariant(result2.effects === e2);
 
+    let emptyEffects = construct_empty_effects(realm);
+
     let result = this.joinOrForkResults(realm, joinCondition, result1, result2, e1, e2);
     if (result1 instanceof AbruptCompletion) {
       if (!(result2 instanceof AbruptCompletion)) {
         invariant(result instanceof PossiblyNormalCompletion);
+        e2.generator = emptyEffects.generator;
         return new Effects(result, generator2, modifiedBindings2, modifiedProperties2, createdObjects2);
       }
     } else if (result2 instanceof AbruptCompletion) {
       invariant(result instanceof PossiblyNormalCompletion);
+      e1.generator = emptyEffects.generator;
       return new Effects(result, generator1, modifiedBindings1, modifiedProperties1, createdObjects1);
     }
 

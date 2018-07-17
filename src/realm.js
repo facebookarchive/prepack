@@ -1066,8 +1066,8 @@ export class Realm {
         // not all control flow branches join into one flow at this point.
         // Consequently we have to continue tracking changes until the point where
         // all the branches come together into one.
+        this.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
         completion = this.composeWithSavedCompletion(completion);
-        this.applyEffects(joinedEffects, "evaluateWithAbstractConditional", false);
       } else {
         this.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
       }
