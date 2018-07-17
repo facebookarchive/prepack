@@ -1341,10 +1341,6 @@ export function attemptToMergeEquivalentObjectAssigns(
     return "NO_OPTIMIZATION";
   }
   let to = args[0];
-  // Prefix args contains all the args that led up to finding the other
-  // Object.assign call to merge into, we need to know these to properly
-  // create the merged Object.assign.
-  let prefixArgs = [];
   // Then scan through the args after the "to" of this Object.assign, to see if any
   // other sources are the "to" of a previous Object.assign call
   loopThroughArgs: for (let i = 1; i < args.length; i++) {
@@ -1354,7 +1350,6 @@ export function attemptToMergeEquivalentObjectAssigns(
     // but it's not a functional problem right now and can be better addressed at a
     // later point.
     if (!callbacks.canOmit(possibleOtherObjectAssignTo)) {
-      prefixArgs.push(possibleOtherObjectAssignTo);
       continue;
     }
     // Check if the "to" was definitely an Object.assign, it should
@@ -1362,13 +1357,11 @@ export function attemptToMergeEquivalentObjectAssigns(
     if (possibleOtherObjectAssignTo instanceof AbstractObjectValue) {
       let otherTemporalBuildNodeEntry = realm.getTemporalBuildNodeEntryFromDerivedValue(possibleOtherObjectAssignTo);
       if (!(otherTemporalBuildNodeEntry instanceof TemporalObjectAssignEntry)) {
-        prefixArgs.push(possibleOtherObjectAssignTo);
         continue;
       }
       let otherArgs = otherTemporalBuildNodeEntry.args;
       // Object.assign has at least 1 arg
       if (otherArgs.length < 1) {
-        prefixArgs.push(possibleOtherObjectAssignTo);
         continue;
       }
       let otherArgsToUse = [];
@@ -1376,7 +1369,6 @@ export function attemptToMergeEquivalentObjectAssigns(
         let arg = otherArgs[x];
         // The arg might have been havoced, so ensure we do not continue in this case
         if (arg instanceof ObjectValue && arg.mightBeHavocedObject()) {
-          prefixArgs.push(possibleOtherObjectAssignTo);
           continue loopThroughArgs;
         }
         if (arg instanceof ObjectValue || arg instanceof AbstractValue) {
@@ -1402,7 +1394,6 @@ export function attemptToMergeEquivalentObjectAssigns(
                 temporalGeneratorEntry.notEqualToAndDoesNotHappenBefore(otherTemporalBuildNodeEntry) &&
                 temporalGeneratorEntry.notEqualToAndDoesNotHappenAfter(temporalBuildNodeEntry)
               ) {
-                prefixArgs.push(possibleOtherObjectAssignTo);
                 continue loopThroughArgs;
               }
             }
@@ -1415,15 +1406,10 @@ export function attemptToMergeEquivalentObjectAssigns(
       if (!callbacks.canOmit(to)) {
         // our merged Object.assign, shoud look like:
         // Object.assign(to, ...prefixArgs, ...otherArgsToUse, ...suffixArgs)
-        let newArgs = [to, ...prefixArgs, ...otherArgsToUse];
+        let prefixArgs = args.slice(1, i - 1); // We start at 1, as 0 is the index of "to" a
+        let suffixArgs = args.slice(i + 1);
+        let newArgs = [to, ...prefixArgs, ...otherArgsToUse, ...suffixArgs];
 
-        // Push our suffix args, these are args that are from our original
-        // Object.assign, that were came after our Object.assign "to".
-        // In this case, we can use "i" as it was our loop incrementor
-        // and its value index should be that of the Object.assign "to".
-        for (let x = i + 1; x < args.length; x++) {
-          newArgs.push(args[x]);
-        }
         // We now create a new TemporalObjectAssignEntry, without mutating the existing
         // entry at this point. This new entry is essentially a TemporalObjectAssignEntry
         // that contains two Object.assign call TemporalObjectAssignEntry entries that have
