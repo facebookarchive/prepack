@@ -139,7 +139,12 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     } catch (_e) {
       if (options.inputSourceMapFilename !== undefined) console.warn(`No sourcemap found at ${sourceMapFilename}.`);
     }
-    return { filePath: filename, fileContents: code, sourceMapContents: sourceMap };
+    return {
+      filePath: filename,
+      fileContents: code,
+      sourceMapContents: sourceMap,
+      sourceMapFilename: sourceMapFilename,
+    };
   });
 
   // The existence of debug[In/Out]FilePath represents the desire to use the debugger.
@@ -150,5 +155,8 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     options.debuggerConfigArgs.debugChannel = new DebugChannel(ioWrapper);
     options.debuggerConfigArgs.sourcemaps = sourceFiles;
   }
+
+  if (options.debugReproArgs) options.debugReproArgs.sourcemaps = sourceFiles;
+
   return prepackSources(sourceFiles, options, options.debuggerConfigArgs, createStatistics(options));
 }

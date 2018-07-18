@@ -74,6 +74,15 @@ export function prepackSources(
       throw new FatalError("serializer failed");
     }
 
+    if (realm.debugReproManager) {
+      let localManager = realm.debugReproManager;
+      let sourcePaths = {
+        sourceFiles: localManager.getSourceFilePaths(),
+        sourceMaps: localManager.getSourceMapPaths(),
+      };
+      serialized.sourceFilePaths = sourcePaths;
+    }
+
     if (!options.residual) return serialized;
     let residualSources = [
       {

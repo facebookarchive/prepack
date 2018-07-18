@@ -10,6 +10,7 @@
 /* @flow strict-local */
 
 import type { ErrorHandler } from "./errors.js";
+import type { DebugReproArguments } from "./types.js";
 
 export type Compatibility =
   | "browser"
@@ -74,6 +75,7 @@ export type RealmOptions = {
   reactOptimizeNestedFunctions?: boolean,
   stripFlow?: boolean,
   abstractValueImpliesMax?: number,
+  debugReproArgs?: DebugReproArguments,
 };
 
 export type SerializerOptions = {

@@ -69,6 +69,7 @@ import { Environment, Functions, Join, Properties, To, Widen, Path } from "./sin
 import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "@babel/types";
 import * as t from "@babel/types";
+import { DebugReproManager } from "./utils/DebugReproManager.js";
 
 export type BindingEntry = {
   hasLeaked: void | boolean,
@@ -463,6 +464,7 @@ export class Realm {
   globalSymbolRegistry: Array<{ $Key: string, $Symbol: SymbolValue }>;
 
   debuggerInstance: DebugServerType | void;
+  debugReproManager: DebugReproManager | void;
 
   nextGeneratorId: number = 0;
   _abstractValuesDefined: Set<string>;
@@ -1791,6 +1793,16 @@ export class Realm {
     // stop execution for debugging before PP exits.
     if (this.debuggerInstance && this.debuggerInstance.shouldStopForSeverity(diagnostic.severity)) {
       this.debuggerInstance.handlePrepackError(diagnostic);
+    }
+
+    // If we're creating a DebugRepro, attach the sourceFile names to the error that is returned.
+    if (this.debugReproManager !== undefined) {
+      let manager = this.debugReproManager;
+      let sourcePaths = {
+        sourceFiles: manager.getSourceFilePaths(),
+        sourceMaps: manager.getSourceMapPaths(),
+      };
+      diagnostic.sourceFilePaths = sourcePaths;
     }
 
     // Default behaviour is to bail on the first error

@@ -91,6 +91,7 @@ export type SourceFile = {
   filePath: string,
   fileContents: string,
   sourceMapContents?: string,
+  sourceMapFilename?: string,
 };
 
 export type SourceMap = {
@@ -1048,4 +1049,9 @@ export type DebuggerConfigArguments = {
   sourcemaps?: Array<SourceFile>,
   buckRoot?: string,
   debugChannel?: DebugChannel,
+};
+
+export type DebugReproArguments = {
+  sourcemaps?: Array<SourceFile>,
+  buckRoot?: string,
 };

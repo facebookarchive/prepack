@@ -23,6 +23,7 @@ import { DebugServer } from "./debugger/server/Debugger.js";
 import simplifyAndRefineAbstractValue from "./utils/simplifier.js";
 import invariant from "./invariant.js";
 import type { DebuggerConfigArguments } from "./types";
+import { DebugReproManager } from "./utils/DebugReproManager";
 
 export default function(
   opts: RealmOptions = {},
@@ -39,6 +40,8 @@ export default function(
       r.debuggerInstance = new DebugServer(debugChannel, r, debuggerConfigArgs);
     }
   }
+
+  if (opts.debugReproArgs !== undefined) r.debugReproManager = new DebugReproManager(opts.debugReproArgs);
 
   let i = r.intrinsics;
   initializeIntrinsics(i, r);

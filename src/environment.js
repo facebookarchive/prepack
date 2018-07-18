@@ -1353,6 +1353,12 @@ export class LexicalEnvironment {
     if (this.realm.debuggerInstance) {
       this.realm.debuggerInstance.checkForActions(ast);
     }
+    if (this.realm.debugReproManager) {
+      if (ast.loc !== undefined && ast.loc !== null && ast.loc.source) {
+        this.realm.debugReproManager.addSourceFile(ast.loc.source);
+      }
+    }
+
     let res = this.evaluateAbstract(ast, strictCode, metadata);
     invariant(res instanceof Value || res instanceof Reference, ast.type);
     return res;

@@ -28,9 +28,11 @@ import v8 from "v8";
 import { version } from "../package.json";
 import invariant from "./invariant";
 import zipFactory from "node-zip";
+import zipdir from "zip-dir";
 import path from "path";
 import JSONTokenizer from "./utils/JSONTokenizer.js";
-import type { DebuggerConfigArguments } from "./types";
+import type { DebuggerConfigArguments, DebugReproArguments } from "./types";
+import child_process from "child_process";
 
 // Prepack helper
 declare var __residual: any;
@@ -104,6 +106,8 @@ function run(
   let cpuprofilePath: void | string;
   let invariantMode: void | InvariantModeTypes;
   let invariantLevel: void | number;
+  let reproUnconditionally = false;
+  let reproOnFatal = false;
   let flags = {
     initializeMoreModules: false,
     trace: false,
@@ -131,13 +135,14 @@ function run(
     return path.basename(fileName);
   };
   let debuggerConfigArgs: DebuggerConfigArguments = {};
+  let debugReproArgs: void | DebugReproArguments;
   while (args.length) {
     let arg = args.shift();
     if (!arg.startsWith("--")) {
       let inputs = arg.trim().split(/\s+/g); // Split on all whitespace
       for (let input of inputs) {
         inputFilenames.push(input);
-        reproArguments.push(inputFile(input));
+        reproFileNames.push(input);
       }
     } else {
       arg = arg.slice(2);
@@ -241,8 +246,20 @@ function run(
           reactOutput = (arg: any);
           reproArguments.push("--reactOutput", reactOutput);
           break;
-        case "repro":
+        case "reproOnFatal":
+          reproOnFatal = true;
           reproFilePath = args.shift();
+          debugReproArgs = {
+            sourcemaps: [],
+          };
+          // do not include this in reproArguments needed by --repro, as we don't need to create a repro from the repro...
+          break;
+        case "repro":
+          reproUnconditionally = true;
+          reproFilePath = args.shift();
+          debugReproArgs = {
+            sourcemaps: [],
+          };
           // do not include this in reproArguments needed by --repro, as we don't need to create a repro from the repro...
           break;
         case "cpuprofile":
@@ -274,9 +291,14 @@ function run(
             `Invalid debugger diagnostic severity: ${arg}`
           );
           debuggerConfigArgs.diagnosticSeverity = arg;
+          reproArguments.push("--debugDiagnosticSeverity", arg);
           break;
         case "debugBuckRoot":
-          debuggerConfigArgs.buckRoot = args.shift();
+          let buckRoot = args.shift();
+          debuggerConfigArgs.buckRoot = buckRoot;
+          // Race condition with --repro flag
+          if (debugReproArgs) debugReproArgs.buckRoot = buckRoot;
+          reproArguments.push("--debugBuckRoot", "$(pwd)");
           break;
         case "help":
           const options = [
@@ -316,26 +338,6 @@ function run(
     }
   }
 
-  if (reproFilePath !== undefined) {
-    const zip = zipFactory();
-    for (let fileName of reproFileNames) {
-      let content = fs.readFileSync(fileName, "utf8");
-      zip.file(path.basename(fileName), content);
-    }
-    zip.file(
-      "repro.sh",
-      `#!/bin/bash
-if [ -z "$PREPACK" ]; then
-  echo "Set environment variable PREPACK to bin/prepack.js in your Prepack directory."
-else
-  node "$PREPACK" ${reproArguments.map(a => `"${a}"`).join(" ")}
-fi
-`
-    );
-    const data = zip.generate({ base64: false, compression: "DEFLATE" });
-    fs.writeFileSync(reproFilePath, data, "binary");
-  }
-
   if (!flags.serialize && !flags.residual) flags.serialize = true;
   if (check) {
     flags.serialize = false;
@@ -361,6 +363,7 @@ fi
       invariantMode,
       invariantLevel,
       debuggerConfigArgs,
+      debugReproArgs,
     },
     flags
   );
@@ -454,6 +457,83 @@ fi
     return fatalErrors === 0;
   }
 
+  function generateDebugRepro(
+    sourceMaps: Array<string>,
+    originalSourceFiles: Array<{ absolute: string, relative: string }>
+  ) {
+    let reproZip = zipFactory();
+    if (reproFilePath === undefined) return;
+
+    for (let file of originalSourceFiles) {
+      try {
+        // To avoid copying the "/User/name/..." version of the bundle/map/model included in originalSourceFiles
+        if (!reproFileNames.includes(file.relative)) {
+          console.log(`Zipping ${file.absolute}`);
+          let content = fs.readFileSync(file.absolute, "utf8");
+          reproZip.file(file.relative, content);
+        }
+      } catch (err) {
+        console.error(`Could not zip source file: ${err}`);
+      }
+    }
+
+    for (let file of reproFileNames) {
+      let content = fs.readFileSync(file, "utf8");
+      reproZip.file(path.basename(file), content);
+    }
+
+    for (let map of sourceMaps) {
+      try {
+        console.log(`Zipping ${map}`);
+        let content = fs.readFileSync(map, "utf8");
+        reproZip.file(path.basename(map), content);
+      } catch (err) {
+        console.error(`Could not zip sourcemap: ${err}`);
+      }
+    }
+
+    // Copy Prepack lib and package.json to install dependencies on other end
+    let yarnRuntime = "yarn";
+    let yarnCommand = ["pack", "--filename", "prepack-bundled.tgz"];
+    let yarnProcess = child_process.spawn(yarnRuntime, yarnCommand);
+
+    yarnProcess.on("exit", function(code, signal) {
+      let unzipRuntime = "tar";
+      let unzipCommand = ["-xzf", "prepack-bundled.tgz"];
+      let unzipProcess = child_process.spawn(unzipRuntime, unzipCommand);
+
+      unzipProcess.on("exit", function(code, signal) {
+        zipdir(path.resolve(path.dirname(__dirname), "package"), function(err, buffer) {
+          if (err) {
+            console.error(err);
+            return;
+          }
+
+          reproZip.file("prepack-runtime-bundle.zip", buffer);
+
+          let reproScriptArguments = `prepackArguments=${reproArguments.map(a => `${a}`).join("&prepackArguments=")}`;
+          let reproScriptSourceFiles = `sourceFiles=$(pwd)/${reproFileNames
+            .map(f => `${path.basename(f)}`)
+            .join("&sourceFiles=$(pwd)/")}`;
+
+          reproZip.file(
+            "repro.sh",
+            `#!/bin/bash
+        unzip prepack-runtime-bundle.zip
+        yarn install
+        PREPACK_RUNTIME="prepackRuntime=$(pwd)/lib/prepack-cli.js"
+        PREPACK_ARGUMENTS="${reproScriptArguments}"
+        PREPACK_SOURCEFILES="${reproScriptSourceFiles}"
+        atom \"atom://nuclide/prepack-debugger?$PREPACK_SOURCEFILES&$PREPACK_RUNTIME&$PREPACK_ARGUMENTS\"
+        `
+          );
+          const data = reproZip.generate({ base64: false, compression: "DEFLATE" });
+          if (reproFilePath) fs.writeFileSync(reproFilePath, data, "binary");
+        });
+      });
+    });
+  }
+
   let profiler;
   let success;
   try {
@@ -475,6 +555,14 @@ fi
         return;
       }
       let serialized = prepackFileSync(inputFilenames, resolvedOptions);
+      if (reproUnconditionally) {
+        if (serialized.sourceFilePaths) {
+          generateDebugRepro(serialized.sourceFilePaths.sourceMaps, serialized.sourceFilePaths.sourceFiles);
+        } else {
+          generateDebugRepro([], []);
+        }
+      }
+
       success = printDiagnostics(false);
       if (resolvedOptions.serialize && serialized) processSerializedCode(serialized);
     } catch (err) {
@@ -482,6 +570,30 @@ fi
       if (!(err instanceof FatalError)) {
         // if it is not a FatalError, it means prepack failed, and we should display the Prepack stack trace.
         console.error(err.stack);
+      }
+      if (reproOnFatal || reproUnconditionally) {
+        // Get largest list of original sources from all diagnostics.
+        // Must iterate through both because maps are ordered so we can't tell which diagnostic is most recent.
+        let largestSourceFilesList = [];
+        let largestLength = 0;
+        let sourceMaps = [];
+
+        let allDiagnostics = Array.from(compilerDiagnostics.values()).concat(compilerDiagnosticsList);
+        allDiagnostics.forEach(diagnostic => {
+          if (
+            diagnostic.sourceFilePaths &&
+            diagnostic.sourceFilePaths.sourceFiles &&
+            diagnostic.sourceFilePaths.sourceMaps
+          ) {
+            if (diagnostic.sourceFilePaths.sourceFiles.length > largestLength) {
+              largestSourceFilesList = diagnostic.sourceFilePaths.sourceFiles;
+              largestLength = diagnostic.sourceFilePaths.sourceFiles.length;
+              sourceMaps = diagnostic.sourceFilePaths.sourceMaps;
+            }
+          }
+        });
+        generateDebugRepro(sourceMaps, largestSourceFilesList);
+        return;
       }
       success = false;
     }
