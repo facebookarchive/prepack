@@ -19,8 +19,8 @@ import {
   ConstantInt,
   ConstantFP,
   Function as LLVMFunction,
-  FunctionType,
   Type as LLVMType,
+  FunctionType,
   LinkageTypes,
   IRBuilder,
 } from "llvm-node";
@@ -42,6 +42,7 @@ import {
 import { llvmContext } from "../llvm-context.js";
 
 import { buildFromExpression, valueToExpression } from "./Expression.js";
+import { buildFromStringValue } from "./StringValue.js";
 
 export function getType(
   state: CompilerState,
@@ -151,17 +152,6 @@ function buildFromNumberValue(state: CompilerState, value: NumberValue, builder:
   } else {
     return ConstantFP.get(llvmContext, value.value);
   }
-}
-
-function buildFromStringValue(state: CompilerState, value: StringValue, builder: IRBuilder): LLVMValue {
-  let error = new CompilerDiagnostic(
-    "String types are not yet supported in the LLVM backend.",
-    value.expressionLocation,
-    "PP2000",
-    "FatalError"
-  );
-  state.realm.handleError(error);
-  throw new FatalError();
 }
 
 function buildFromSymbolValue(state: CompilerState, value: SymbolValue, builder: IRBuilder): LLVMValue {

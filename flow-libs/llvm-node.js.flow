@@ -270,7 +270,7 @@ declare module "llvm-node" {
     MSP430_BUILTIN: 90,
     MaxID: 1023,
   };
-  declare export class UndefValue {
+  declare export class UndefValue extends Constant {
     constructor(): this;
     static get(type: Type): UndefValue;
   }

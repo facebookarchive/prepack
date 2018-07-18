@@ -15,11 +15,12 @@ import type { BabelNodeExpression, BabelNodeBinaryExpression } from "@babel/type
 import invariant from "../../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
 import { Value as LLVMValue, BasicBlock, IRBuilder } from "llvm-node";
-import { Value, NumberValue, IntegralValue } from "../../values/index.js";
+import { Value, NumberValue, IntegralValue, StringValue } from "../../values/index.js";
 import { llvmContext } from "../llvm-context.js";
 import * as t from "@babel/types";
 
 import { buildFromValue } from "./Value.js";
+import { buildAppendString, getStringPtr } from "./StringValue.js";
 
 export function valueToExpression(value: Value): BabelNodeExpression {
   // Hack. We use an identifier to hold the LLVM value so that
@@ -69,6 +70,8 @@ function buildFromBinaryExpression(
           "PP2000",
           "FatalError"
         );
+        state.realm.handleError(error);
+        throw new FatalError();
       }
     }
     case "!=":
@@ -84,9 +87,28 @@ function buildFromBinaryExpression(
           "PP2000",
           "FatalError"
         );
+        state.realm.handleError(error);
+        throw new FatalError();
       }
     }
-    case "+":
+    case "+": {
+      if (type === IntegralValue) {
+        return builder.createAdd(left, right);
+      } else if (type === NumberValue) {
+        return builder.createFAdd(left, right);
+      } else if (type === StringValue) {
+        return buildAppendString(state, leftValue, rightValue, builder);
+      } else {
+        let error = new CompilerDiagnostic(
+          `The + operator for ${type.name} is not yet implemented for LLVM.`,
+          expr.loc,
+          "PP2000",
+          "FatalError"
+        );
+        state.realm.handleError(error);
+        throw new FatalError();
+      }
+    }
     case "-":
     case "/":
     case "%":
@@ -138,7 +160,14 @@ export function buildFromExpression(state: CompilerState, expr: BabelNodeExpress
       let callee = buildFromExpression(state, expr.callee, builder);
       let args = expr.arguments.map(arg => {
         invariant(arg.type !== "SpreadElement");
-        return buildFromExpression(state, arg, builder);
+        let val = buildFromExpression(state, arg, builder);
+        if (state.intrinsics.isStringType(val.type)) {
+          // For strings we unwrap the ptr and only pass the pointer
+          // not the length. The length has to be passed to the FFI
+          // manually.
+          return getStringPtr(val, builder);
+        }
+        return val;
       });
       return builder.createCall(callee, args);
     }
