@@ -11,7 +11,6 @@
 
 import type { Realm, Effects } from "../realm.js";
 import type { ConsoleMethodTypes, Descriptor, PropertyBinding, DisplayResult } from "../types.js";
-import type { ResidualFunctionBinding } from "../serializer/types.js";
 import type { Binding } from "../environment.js";
 import {
   AbstractObjectValue,
@@ -76,6 +75,7 @@ export type SerializationContext = {|
   canOmit: Value => boolean,
   declare: (AbstractValue | ObjectValue) => void,
   emitPropertyModification: PropertyBinding => void,
+  emitBindingModification: Binding => void,
   options: SerializerOptions,
 |};
 
@@ -85,8 +85,8 @@ export type VisitEntryCallbacks = {|
   canOmit: Value => boolean,
   recordDeclaration: (AbstractValue | ObjectValue) => void,
   recordDelayedEntry: (Generator, GeneratorEntry) => void,
-  visitModifiedObjectProperty: PropertyBinding => void,
-  visitModifiedBinding: Binding => [ResidualFunctionBinding, Value],
+  visitModifiedProperty: PropertyBinding => void,
+  visitModifiedBinding: Binding => void,
   visitBindingAssignment: (Binding, Value) => Value,
 |};
 
@@ -310,7 +310,7 @@ class ModifiedPropertyEntry extends GeneratorEntry {
     );
     let desc = this.propertyBinding.descriptor;
     invariant(desc === this.newDescriptor);
-    context.visitModifiedObjectProperty(this.propertyBinding);
+    context.visitModifiedProperty(this.propertyBinding);
     return true;
   }
 
@@ -321,7 +321,6 @@ class ModifiedPropertyEntry extends GeneratorEntry {
 
 type ModifiedBindingEntryArgs = {|
   modifiedBinding: Binding,
-  newValue: void | Value,
   containingGenerator: Generator,
 |};
 
@@ -333,30 +332,13 @@ class ModifiedBindingEntry extends GeneratorEntry {
 
   containingGenerator: Generator;
   modifiedBinding: Binding;
-  newValue: void | Value;
-  residualFunctionBinding: void | ResidualFunctionBinding;
 
   toDisplayString(): string {
     return `[ModifiedBinding ${this.modifiedBinding.name}]`;
   }
 
   serialize(context: SerializationContext): void {
-    let residualFunctionBinding = this.residualFunctionBinding;
-    invariant(residualFunctionBinding !== undefined);
-    invariant(residualFunctionBinding.referentialized);
-    invariant(
-      residualFunctionBinding.serializedValue,
-      "ResidualFunctionBinding must be referentialized before serializing a mutation to it."
-    );
-    let newValue = this.newValue;
-    invariant(newValue);
-    let bindingReference = ((residualFunctionBinding.serializedValue: any): BabelNodeLVal);
-    invariant(
-      t.isLVal(bindingReference),
-      "Referentialized values must be LVals even though serializedValues may be any Expression"
-    );
-    let serializedNewValue = context.serializeValue(newValue);
-    context.emit(t.expressionStatement(t.assignmentExpression("=", bindingReference, serializedNewValue)));
+    context.emitBindingModification(this.modifiedBinding);
   }
 
   visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
@@ -364,17 +346,7 @@ class ModifiedBindingEntry extends GeneratorEntry {
       containingGenerator === this.containingGenerator,
       "This entry requires effects to be applied and may not be moved"
     );
-    invariant(
-      this.modifiedBinding.value === this.newValue,
-      "ModifiedBinding's value has been changed since last visit."
-    );
-    let [residualBinding, newValue] = context.visitModifiedBinding(this.modifiedBinding);
-    invariant(
-      this.residualFunctionBinding === undefined || this.residualFunctionBinding === residualBinding,
-      "ResidualFunctionBinding has been changed since last visit."
-    );
-    this.residualFunctionBinding = residualBinding;
-    this.newValue = newValue;
+    context.visitModifiedBinding(this.modifiedBinding);
     return true;
   }
 
@@ -641,7 +613,6 @@ export class Generator {
     this._entries.push(
       new ModifiedBindingEntry(this.realm, {
         modifiedBinding,
-        newValue: modifiedBinding.value,
         containingGenerator: this,
       })
     );
