@@ -79,7 +79,8 @@ function run(
     --invariantMode          Whether to throw an exception or call a console function to log an invariant violation; default = throw.
     --emitConcreteModel      Synthesize concrete model values for abstract models(defined by __assumeDataProperty).
     --version                Output the version number.
-    --repro                  Create a zip file with all information needed to reproduce a Prepack run.
+    --reproOnFatal           Create a zip file with all information needed to reproduce a Prepack run if Prepacking fails with a FatalError.
+    --reproUnconditionally   Create a zip file with all information needed to reproduce a Prepack run, regardless of success of Prepack.
     --cpuprofile             Create a CPU profile file for the run that can be loaded into the Chrome JavaScript CPU Profile viewer.
     --debugDiagnosticSeverity  FatalError | RecoverableError | Warning | Information (default = FatalError). Diagnostic level at which debugger will stop.
     --debugBuckRoot          Root directory that buck assumes when creating sourcemap paths.
@@ -254,7 +255,7 @@ function run(
           };
           // do not include this in reproArguments needed by --repro, as we don't need to create a repro from the repro...
           break;
-        case "repro":
+        case "reproUnconditionally":
           reproUnconditionally = true;
           reproFilePath = args.shift();
           debugReproArgs = {
@@ -461,9 +462,10 @@ function run(
     sourceMaps: Array<string>,
     originalSourceFiles: Array<{ absolute: string, relative: string }>
   ) {
-    let reproZip = zipFactory();
     if (reproFilePath === undefined) return;
 
+    let reproZip = zipFactory();
+    // Copy all original sourcefiles used while Prepacking.
     for (let file of originalSourceFiles) {
       try {
         // To avoid copying the "/User/name/..." version of the bundle/map/model included in originalSourceFiles
@@ -477,11 +479,13 @@ function run(
       }
     }
 
+    // Copy all input files
     for (let file of reproFileNames) {
       let content = fs.readFileSync(file, "utf8");
       reproZip.file(path.basename(file), content);
     }
 
+    // Copy all sourcemaps (discovered while prepacking)
     for (let map of sourceMaps) {
       try {
         console.log(`Zipping ${map}`);
@@ -492,12 +496,15 @@ function run(
       }
     }
 
-    // Copy Prepack lib and package.json to install dependencies on other end
+    // Copy Prepack lib and package.json to install dependencies.
     let yarnRuntime = "yarn";
     let yarnCommand = ["pack", "--filename", "prepack-bundled.tgz"];
     let yarnProcess = child_process.spawn(yarnRuntime, yarnCommand);
 
     yarnProcess.on("exit", function(code, signal) {
+      // Because zipping the .tgz causes corruption issues when unzipping, we will
+      // unpack the .tgz, then zip those contents. The `yarn pack` command is so that
+      // all necessary files are found automatically.
       let unzipRuntime = "tar";
       let unzipCommand = ["-xzf", "prepack-bundled.tgz"];
       let unzipProcess = child_process.spawn(unzipRuntime, unzipCommand);
@@ -511,6 +518,7 @@ function run(
 
           reproZip.file("prepack-runtime-bundle.zip", buffer);
 
+          // Programatically assemble parameters to debugger.
           let reproScriptArguments = `prepackArguments=${reproArguments.map(a => `${a}`).join("&prepackArguments=")}`;
           let reproScriptSourceFiles = `sourceFiles=$(pwd)/${reproFileNames
             .map(f => `${path.basename(f)}`)

@@ -14,12 +14,12 @@ import { SourceMapManager } from "./SourceMapManager.js";
 
 export class DebugReproManager {
   constructor(configArgs: DebugReproArguments) {
-    console.log("debug repro manager created");
     this._sourceMapManager = new SourceMapManager(configArgs.buckRoot, configArgs.sourcemaps);
     if (configArgs.sourcemaps) {
-      this._sourceMapNames = configArgs.sourcemaps
-        .filter(m => m.sourceMapFilename !== undefined)
-        .map(m => m.sourceMapFilename);
+      this._sourceMapNames = [];
+      configArgs.sourcemaps.forEach(m => {
+        if (m.sourceMapFilename) this._sourceMapNames.push(m.sourceMapFilename);
+      });
     }
     this._usedSourceFiles = new Set();
   }
