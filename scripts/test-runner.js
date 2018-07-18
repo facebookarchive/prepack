@@ -601,7 +601,9 @@ function runTest(name, code, options: PrepackOptions, args) {
               );
             }
             // lint output
-            lintCompiledSource(codeToRun);
+            const lintDirectives = code.split("\n").filter(line => line.startsWith("/* eslint-"));
+            const codeToLint = `${lintDirectives.join("\n")}\n${codeToRun}`;
+            lintCompiledSource(codeToLint);
             let actualPromise;
             if (execSpec) {
               actualPromise = execExternal(execSpec, codeToRun);

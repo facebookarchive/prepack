@@ -1,4 +1,5 @@
 // does not contain:x = 5;
+/* eslint-disable no-redeclare */
 
 function additional1(argument, argument) {
   var z = { foo: argument };
