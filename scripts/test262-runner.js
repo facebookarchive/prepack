@@ -19,6 +19,7 @@ import { DetachArrayBuffer } from "../lib/methods/arraybuffer.js";
 import { To } from "../lib/singletons.js";
 import { Get } from "../lib/methods/get.js";
 import invariant from "../lib/invariant.js";
+import { prepackSources } from "../lib/prepack-node.js";
 
 import yaml from "js-yaml";
 import chalk from "chalk";
@@ -31,6 +32,7 @@ import os from "os";
 import tty from "tty";
 import minimist from "minimist";
 import process from "process";
+import vm from "vm";
 
 const EOL = os.EOL;
 const cpus = os.cpus();
@@ -40,6 +42,11 @@ require("source-map-support").install();
 type HarnessMap = { [key: string]: string };
 type TestRecord = { test: TestFileInfo, result: TestResult[] };
 type GroupsMap = { [key: string]: TestRecord[] };
+
+type TestRunOptions = {|
+  +timeout: number,
+  +serializer: boolean,
+|};
 
 // A TestTask is a task for a worker process to execute, which contains a
 // single test to run
@@ -235,6 +242,7 @@ class MasterProgramArgs {
   filterString: string;
   singleThreaded: boolean;
   relativeTestPath: string;
+  serializer: boolean;
   expectedES5: number;
   expectedES6: number;
   expectedTimeouts: number;
@@ -248,6 +256,7 @@ class MasterProgramArgs {
     filterString: string,
     singleThreaded: boolean,
     relativeTestPath: string,
+    serializer: boolean,
     expectedES5: number,
     expectedES6: number,
     expectedTimeouts: number
@@ -260,6 +269,7 @@ class MasterProgramArgs {
     this.filterString = filterString;
     this.singleThreaded = singleThreaded;
     this.relativeTestPath = relativeTestPath;
+    this.serializer = serializer;
     this.expectedES5 = expectedES5;
     this.expectedES6 = expectedES6;
     this.expectedTimeouts = expectedTimeouts;
@@ -267,11 +277,13 @@ class MasterProgramArgs {
 }
 
 class WorkerProgramArgs {
-  timeout: number;
   relativeTestPath: string;
+  timeout: number;
+  serializer: boolean;
 
-  constructor(timeout: number, relativeTestPath: string) {
+  constructor(relativeTestPath: string, timeout: number, serializer: boolean) {
     this.timeout = timeout;
+    this.serializer = serializer;
     this.relativeTestPath = relativeTestPath;
   }
 }
@@ -341,7 +353,7 @@ function usage(): string {
 function masterArgsParse(): MasterProgramArgs {
   let parsedArgs = minimist(process.argv.slice(2), {
     string: ["statusFile", "relativeTestPath"],
-    boolean: ["verbose", "singleThreaded"],
+    boolean: ["verbose", "singleThreaded", "serializer"],
     default: {
       verbose: process.stdout instanceof tty.WriteStream ? false : true,
       statusFile: "",
@@ -350,6 +362,7 @@ function masterArgsParse(): MasterProgramArgs {
       bailAfter: Infinity,
       singleThreaded: false,
       relativeTestPath: "/../test/test262",
+      serializer: false,
       expectedCounts: "11943,5641,2",
     },
   });
@@ -382,6 +395,10 @@ function masterArgsParse(): MasterProgramArgs {
     throw new ArgsParseError("relativeTestPath must be a string (--relativeTestPath /../test/test262)");
   }
   let relativeTestPath = parsedArgs.relativeTestPath;
+  if (typeof parsedArgs.serializer !== "boolean") {
+    throw new ArgsParseError("serializer must be a boolean (either --serializer or not)");
+  }
+  let serializer = parsedArgs.serializer;
   if (typeof parsedArgs.expectedCounts !== "string") {
     throw new ArgsParseError("expectedCounts must be a string (--expectedCounts 11944,5566,2");
   }
@@ -395,6 +412,7 @@ function masterArgsParse(): MasterProgramArgs {
     filterString,
     singleThreaded,
     relativeTestPath,
+    serializer,
     expectedCounts[0],
     expectedCounts[1],
     expectedCounts[2]
@@ -409,17 +427,21 @@ function masterArgsParse(): MasterProgramArgs {
 function workerArgsParse(): WorkerProgramArgs {
   let parsedArgs = minimist(process.argv.slice(2), {
     default: {
-      timeout: 10,
       relativeTestPath: "/../test/test262",
+      timeout: 10,
+      serializer: false,
     },
   });
-  if (typeof parsedArgs.timeout !== "number") {
-    throw new ArgsParseError("timeout must be a number (in seconds) (--timeout 10)");
-  }
   if (typeof parsedArgs.relativeTestPath !== "string") {
     throw new ArgsParseError("relativeTestPath must be a string (--relativeTestPath /../test/test262)");
   }
-  return new WorkerProgramArgs(parsedArgs.timeout, parsedArgs.relativeTestPath);
+  if (typeof parsedArgs.timeout !== "number") {
+    throw new ArgsParseError("timeout must be a number (in seconds) (--timeout 10)");
+  }
+  if (typeof parsedArgs.serializer !== "boolean") {
+    throw new ArgsParseError("serializer must be a boolean (either --serializer or not)");
+  }
+  return new WorkerProgramArgs(parsedArgs.relativeTestPath, parsedArgs.timeout, parsedArgs.serializer);
 }
 
 function masterRun(args: MasterProgramArgs) {
@@ -453,7 +475,11 @@ function masterRunSingleProcess(
   let harnesses = getHarnesses(args.relativeTestPath);
   let numLeft = tests.length;
   for (let t of tests) {
-    handleTest(t, harnesses, args.timeout, (err, results) => {
+    let options: TestRunOptions = {
+      timeout: args.timeout,
+      serializer: args.serializer,
+    };
+    handleTest(t, harnesses, options, (err, results) => {
       if (err) {
         if (args.verbose) {
           console.error(err);
@@ -499,9 +525,14 @@ function masterRunMultiProcess(
 
   let exitCount = 0;
   cluster.on("exit", (worker, code, signal) => {
-    exitCount++;
-    if (exitCount === numWorkers) {
-      process.exit(handleFinished(args, groups, numFiltered));
+    if (code !== 0) {
+      console.log(`Worker ${worker.process.pid} died with ${signal || code}. Restarting...`);
+      cluster.fork();
+    } else {
+      exitCount++;
+      if (exitCount === numWorkers) {
+        process.exit(handleFinished(args, groups, numFiltered));
+      }
     }
   });
 
@@ -757,7 +788,11 @@ function workerRun(args: WorkerProgramArgs) {
       case TestTask.sentinel:
         // begin executing this TestTask
         let task = TestTask.fromObject(message);
-        handleTest(task.file, harnesses, args.timeout, (err, results) => {
+        let options: TestRunOptions = {
+          timeout: args.timeout,
+          serializer: args.serializer,
+        };
+        handleTest(task.file, harnesses, options, (err, results) => {
           handleTestResultsMultiProcess(err, task.file, results);
         });
         break;
@@ -801,7 +836,7 @@ function handleTestResultsMultiProcess(err: ?Error, test: TestFileInfo, testResu
 function handleTest(
   test: TestFileInfo,
   harnesses: HarnessMap,
-  timeout: number,
+  options: TestRunOptions,
   cb: (err: ?Error, testResults: TestResult[]) => void
 ): void {
   prepareTest(test, testFilterByContents, (err, banners, testFileContents) => {
@@ -822,11 +857,12 @@ function handleTest(
         filterIncludes(banners) &&
         filterDescription(banners) &&
         filterCircleCI(banners) &&
-        filterSneakyGenerators(banners, testFileContents);
+        filterSneakyGenerators(banners, testFileContents) &&
+        (!options.serializer || filterReallyBigArrays(test, testFileContents));
       let testResults = [];
       if (keepThisTest) {
         // now run the test
-        testResults = runTestWithStrictness(test, testFileContents, banners, harnesses, timeout);
+        testResults = runTestWithStrictness(test, testFileContents, banners, harnesses, options);
       }
       cb(null, testResults);
     }
@@ -987,8 +1023,12 @@ function runTest(
   // eslint-disable-next-line flowtype/no-weak-types
   harnesses: Object,
   strict: boolean,
-  timeout: number
+  { timeout, serializer }: TestRunOptions
 ): ?TestResult {
+  if (serializer) {
+    return executeTestUsingSerializer(test, testFileContents, data, harnesses, strict, timeout);
+  }
+
   let { realm } = createRealm(timeout);
 
   // Run the test.
@@ -1022,6 +1062,7 @@ function runTest(
     // succeeded
     return new TestResult(true, strict);
   } catch (err) {
+    // Skip syntax errors.
     if (err.value && err.value.$Prototype && err.value.$Prototype.intrinsicName === "SyntaxError.prototype") {
       return null;
     }
@@ -1085,6 +1126,82 @@ function runTest(
 
       return new TestResult(false, strict, new Error(`Got an error, but was not expecting one:${EOL}${stack}`));
     }
+  }
+}
+
+function executeTestUsingSerializer(
+  test: TestFileInfo,
+  testFileContents: string,
+  data: BannerData,
+  // eslint-disable-next-line flowtype/no-weak-types
+  harnesses: Object,
+  strict: boolean,
+  timeout: number
+) {
+  let sources = [];
+
+  // Add the test262 intrinsics.
+  sources.push({
+    filePath: "test262.js",
+    fileContents: `\
+var $ = {
+  evalScript: () => {}, // noop for now
+  global,
+};
+var $262 = $;
+var print = () => {}; // noop for now
+  `,
+  });
+
+  // Add the harness files.
+  for (let name of ["sta.js", "assert.js"].concat(data.includes || [])) {
+    let harness = harnesses[name];
+    sources.push({ filePath: name, fileContents: harness });
+  }
+
+  // Add the test file.
+  sources.push({ filePath: test.location, fileContents: (strict ? '"use strict";' + EOL : "") + testFileContents });
+
+  let result;
+  try {
+    result = prepackSources(sources, {
+      serialize: true,
+      timeout: timeout * 1000,
+      errorHandler: diag => {
+        if (diag.severity === "Information") return "Recover";
+        if (diag.severity !== "Warning") return "Fail";
+        return "Recover";
+      },
+      onParse: () => {
+        // TODO(calebmer): Turn all literals into abstract values
+      },
+    });
+  } catch (error) {
+    if (error.message === "Timed out") return new TestResult(false, strict, error);
+    if (error.message.includes("Syntax error")) return null;
+    return new TestResult(false, strict, new Error(`Prepack error:\n${error.stack}`));
+  }
+
+  const context = vm.createContext({
+    // NOTE: Workaround since Prepack serializes code that expects a global `TypedArray` class which does not exist per
+    // the ECMAScript specification.
+    TypedArray: Object.getPrototypeOf(Int8Array),
+  });
+
+  try {
+    vm.runInContext(result.code, context, { timeout: timeout * 1000 });
+  } catch (error) {
+    if (error.message === "Timed out") return new TestResult(false, strict, error);
+    if (data.negative && data.negative.type === error.name) {
+      return new TestResult(true, strict);
+    } else {
+      return new TestResult(false, strict, new Error(`Runtime error:\n${error.stack}`));
+    }
+  }
+  if (data.negative.type) {
+    return new TestResult(false, strict, new Error(`Expected \`${data.negative.type}\` error.`));
+  } else {
+    return new TestResult(true, strict);
   }
 }
 
@@ -1263,6 +1380,18 @@ function filterSneakyGenerators(data: BannerData, testFileContents: string) {
   return true;
 }
 
+function filterReallyBigArrays(test: TestFileInfo, testFileContents: string) {
+  // In tests where we serialize our values disable large array serialization. Serializing arrays with gaps
+  // is inefficient. Consider: https://prepack.io/repl#G4QwTgBCELwQ2gXQNwCgTwAyNhAjGhnptrgakA
+  return !(
+    ((test.location.includes("Array") || test.location.includes("Object")) &&
+      testFileContents.includes("4294967294")) ||
+    (test.location.includes("Array") && testFileContents.includes("Math.pow(2, 32)")) ||
+    // Sneaky...
+    test.location.includes("Array/S15.4_A1.1_T10.js")
+  );
+}
+
 /**
  * Run a given ${test} whose file contents are ${testFileContents} and return
  * a list of results, one for each strictness level (strict or not).
@@ -1274,10 +1403,10 @@ function runTestWithStrictness(
   data: BannerData,
   // eslint-disable-next-line flowtype/no-weak-types
   harnesses: Object,
-  timeout: number
+  options: TestRunOptions
 ): Array<TestResult> {
   let fn = (strict: boolean) => {
-    return runTest(test, testFileContents, data, harnesses, strict, timeout);
+    return runTest(test, testFileContents, data, harnesses, strict, options);
   };
   if (data.flags.includes("onlyStrict")) {
     if (testFileContents.includes("assert.throws(SyntaxError")) return [];

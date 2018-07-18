@@ -67,7 +67,11 @@ export class Serializer {
   modules: Modules;
   options: SerializerOptions;
 
-  _execute(sources: Array<SourceFile>, sourceMaps?: boolean = false): { [string]: string } {
+  _execute(
+    sources: Array<SourceFile>,
+    sourceMaps?: boolean = false,
+    onParse?: t.BabelNodeFile => void
+  ): { [string]: string } {
     let realm = this.realm;
     let [res, code] = realm.$GlobalEnv.executeSources(sources, "script", ast => {
       let realmPreludeGenerator = realm.preludeGenerator;
@@ -79,6 +83,7 @@ export class Serializer {
         forbiddenNames.add(((node: any): BabelNodeIdentifier).name);
         return true;
       });
+      if (onParse) onParse(ast);
     });
 
     if (res instanceof AbruptCompletion) {
@@ -118,7 +123,11 @@ export class Serializer {
     return true;
   }
 
-  init(sources: Array<SourceFile>, sourceMaps?: boolean = false): void | SerializedResult {
+  init(
+    sources: Array<SourceFile>,
+    sourceMaps?: boolean = false,
+    onParse?: t.BabelNodeFile => void
+  ): void | SerializedResult {
     let realmStatistics = this.realm.statistics;
     invariant(realmStatistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
     let statistics: SerializerStatistics = realmStatistics;
@@ -129,7 +138,7 @@ export class Serializer {
         this.logger.logInformation(`Evaluating initialization path...`);
       }
 
-      let code = this._execute(sources);
+      let code = this._execute(sources, sourceMaps, onParse);
       let environmentRecordIdAfterGlobalCode = EnvironmentRecord.nextId;
 
       if (this.logger.hasErrors()) return undefined;
