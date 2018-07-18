@@ -14,7 +14,8 @@ import type { BabelNodeExpression, BabelNodeBinaryExpression } from "@babel/type
 
 import invariant from "../../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
-import { Value as LLVMValue, IRBuilder } from "llvm-node";
+import { Value as LLVMValue, BasicBlock, IRBuilder } from "llvm-node";
+import { llvmContext } from "../llvm-context.js";
 import * as t from "@babel/types";
 
 export function valueToExpression(llvmValue: LLVMValue): BabelNodeExpression {
@@ -110,6 +111,34 @@ export function buildFromExpression(state: CompilerState, expr: BabelNodeExpress
     }
     case "BinaryExpression": {
       return buildFromBinaryExpression(state, expr, builder);
+    }
+    case "ConditionalExpression": {
+      let condition = buildFromExpression(state, expr.test, builder);
+      let parentFn = builder.getInsertBlock().parent;
+      let consequentBlock = BasicBlock.create(llvmContext, "Then", parentFn);
+      let alternateBlock = BasicBlock.create(llvmContext, "Else");
+      let continueBlock = BasicBlock.create(llvmContext, "Cont");
+
+      builder.createCondBr(condition, consequentBlock, alternateBlock);
+      builder.setInsertionPoint(consequentBlock);
+      let consequentValue = buildFromExpression(state, expr.consequent, builder);
+      builder.createBr(continueBlock);
+
+      parentFn.addBasicBlock(alternateBlock);
+      builder.setInsertionPoint(alternateBlock);
+      let alternateValue = buildFromExpression(state, expr.alternate, builder);
+      builder.createBr(continueBlock);
+
+      parentFn.addBasicBlock(continueBlock);
+      builder.setInsertionPoint(continueBlock);
+
+      invariant(consequentValue.type.equals(alternateValue.type));
+
+      let phi = builder.createPhi(consequentValue.type, 2);
+      phi.addIncoming(consequentValue, consequentBlock);
+      phi.addIncoming(alternateValue, alternateBlock);
+
+      return phi;
     }
     default: {
       let error = new CompilerDiagnostic(
