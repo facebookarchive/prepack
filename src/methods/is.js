@@ -108,6 +108,16 @@ export function IsCallable(realm: Realm, _func: Value): boolean {
   if (HasCompatibleType(func, FunctionValue)) return true;
   if (func.isSimpleObject()) return false;
 
+  if (func instanceof AbstractObjectValue && !func.values.isTop()) {
+    let result;
+    for (let element of func.values.getElements()) {
+      let isCallable = IsCallable(realm, element);
+      if (result === undefined) result = isCallable;
+      else if (result !== isCallable) func.throwIfNotConcreteObject();
+    }
+    if (result !== undefined) return result;
+  }
+
   // 2. If argument has a [[Call]] internal method, return true.
   func = func.throwIfNotConcreteObject();
   if (func.$Call) return true;
