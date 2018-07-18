@@ -9,8 +9,8 @@
 
 /* @flow */
 
-import type { Effects, Realm } from "../realm.js";
-import type { ConsoleMethodTypes, Descriptor, PropertyBinding } from "../types.js";
+import type { Realm, Effects } from "../realm.js";
+import type { ConsoleMethodTypes, Descriptor, PropertyBinding, DisplayResult } from "../types.js";
 import type { ResidualFunctionBinding } from "../serializer/types.js";
 import type { Binding } from "../environment.js";
 import {
@@ -56,6 +56,7 @@ import type {
 import { nullExpression, memberExpressionHelper } from "./babelhelpers.js";
 import { Utils, concretize } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";
+import type { ShapeInformationInterface } from "../types.js";
 
 export type SerializationContext = {|
   serializeValue: Value => BabelNodeExpression,
@@ -168,6 +169,13 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
   isPure: void | boolean;
   mutatesOnly: void | Array<Value>;
   temporalType: void | TemporalBuildNodeType;
+
+  toDisplayJson(depth: number): DisplayResult {
+    if (depth <= 0) return `TemporalBuildNode${this.index}`;
+    let obj = { type: "TemporalBuildNode", ...this };
+    delete obj.buildNode;
+    return Utils.verboseToDisplayJson(obj, depth);
+  }
 
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     let omit = this.isPure && this.declared && callbacks.canOmit(this.declared);
@@ -282,6 +290,13 @@ class ModifiedPropertyEntry extends GeneratorEntry {
   propertyBinding: PropertyBinding;
   newDescriptor: void | Descriptor;
 
+  toDisplayString(): string {
+    let propertyKey = this.propertyBinding.key;
+    let propertyKeyString = propertyKey instanceof Value ? propertyKey.toDisplayString() : propertyKey;
+    invariant(propertyKeyString !== undefined);
+    return `[ModifiedProperty ${propertyKeyString}]`;
+  }
+
   serialize(context: SerializationContext): void {
     let desc = this.propertyBinding.descriptor;
     invariant(desc === this.newDescriptor);
@@ -320,6 +335,10 @@ class ModifiedBindingEntry extends GeneratorEntry {
   modifiedBinding: Binding;
   newValue: void | Value;
   residualFunctionBinding: void | ResidualFunctionBinding;
+
+  toDisplayString(): string {
+    return `[ModifiedBinding ${this.modifiedBinding.name}]`;
+  }
 
   serialize(context: SerializationContext): void {
     let residualFunctionBinding = this.residualFunctionBinding;
@@ -374,6 +393,10 @@ class ReturnValueEntry extends GeneratorEntry {
   returnValue: Value;
   containingGenerator: Generator;
 
+  toDisplayString(): string {
+    return `[Return ${this.returnValue.toDisplayString()}]`;
+  }
+
   visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     invariant(
       containingGenerator === this.containingGenerator,
@@ -411,6 +434,19 @@ class IfThenElseEntry extends GeneratorEntry {
   consequentGenerator: Generator;
   alternateGenerator: Generator;
 
+  toDisplayJson(depth: number): DisplayResult {
+    if (depth <= 0) return `IfThenElseEntry${this.index}`;
+    return Utils.verboseToDisplayJson(
+      {
+        type: "IfThenElse",
+        condition: this.condition,
+        consequent: this.consequentGenerator,
+        alternate: this.alternateGenerator,
+      },
+      depth
+    );
+  }
+
   visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     invariant(
       containingGenerator === this.containingGenerator,
@@ -445,6 +481,10 @@ class BindingAssignmentEntry extends GeneratorEntry {
 
   binding: Binding;
   value: Value;
+
+  toDisplayString(): string {
+    return `[BindingAssignment ${this.binding.name} = ${this.value.toDisplayString()}]`;
+  }
 
   serialize(context: SerializationContext): void {
     context.emit(
@@ -496,6 +536,15 @@ export class Generator {
   _name: string;
   pathConditions: Array<AbstractValue>;
 
+  toDisplayString(): string {
+    return Utils.jsonToDisplayString(this, 2);
+  }
+
+  toDisplayJson(depth: number): DisplayResult {
+    if (depth <= 0) return `Generator${this.id}-${this._name}`;
+    return Utils.verboseToDisplayJson(this, depth);
+  }
+
   static _generatorOfEffects(
     realm: Realm,
     name: string,
@@ -510,7 +559,7 @@ export class Generator {
     for (let propertyBinding of modifiedProperties.keys()) {
       let object = propertyBinding.object;
       if (createdObjects.has(object)) continue; // Created Object's binding
-      if (object.refuseSerialization) continue; // modification to internal state
+      if (ObjectValue.refuseSerializationOnPropertyBinding(propertyBinding)) continue; // modification to internal state
       // modifications to intrinsic objects are tracked in the generator
       if (object.isIntrinsic()) continue;
       output.emitPropertyModification(propertyBinding);
@@ -1019,12 +1068,14 @@ export class Generator {
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
       temporalType?: TemporalBuildNodeType,
+      shape?: void | ShapeInformationInterface,
     |}
   ): AbstractValue {
     invariant(buildNode_ instanceof Function || args.length === 0);
     let id = t.identifier(this.preludeGenerator.nameGenerator.generate("derived"));
     let options = {};
-    if (optionalArgs && optionalArgs.kind) options.kind = optionalArgs.kind;
+    if (optionalArgs && optionalArgs.kind !== undefined) options.kind = optionalArgs.kind;
+    if (optionalArgs && optionalArgs.shape !== undefined) options.shape = optionalArgs.shape;
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
     let res = new Constructor(
       this.realm,
@@ -1361,7 +1412,7 @@ export function attemptToMergeEquivalentObjectAssigns(
       }
       let otherArgs = otherTemporalBuildNodeEntry.args;
       // Object.assign has at least 1 arg
-      if (otherArgs.length < 2) {
+      if (otherArgs.length < 1) {
         continue;
       }
       let otherArgsToUse = [];
@@ -1404,15 +1455,12 @@ export function attemptToMergeEquivalentObjectAssigns(
       // If we cannot omit the "to" value that means it's being used, so we shall not try to
       // optimize this Object.assign.
       if (!callbacks.canOmit(to)) {
-        let newArgs = [to, ...otherArgsToUse];
+        // our merged Object.assign, shoud look like:
+        // Object.assign(to, ...prefixArgs, ...otherArgsToUse, ...suffixArgs)
+        let prefixArgs = args.slice(1, i - 1); // We start at 1, as 0 is the index of "to" a
+        let suffixArgs = args.slice(i + 1);
+        let newArgs = [to, ...prefixArgs, ...otherArgsToUse, ...suffixArgs];
 
-        for (let x = 2; x < args.length; x++) {
-          let arg = args[x];
-          // We don't want to add the "to" that we're merging with!
-          if (arg !== possibleOtherObjectAssignTo) {
-            newArgs.push(arg);
-          }
-        }
         // We now create a new TemporalObjectAssignEntry, without mutating the existing
         // entry at this point. This new entry is essentially a TemporalObjectAssignEntry
         // that contains two Object.assign call TemporalObjectAssignEntry entries that have

@@ -12,23 +12,8 @@
 import type { ErrorHandler } from "./errors.js";
 import type { DebugReproArguments } from "./types.js";
 
-export type Compatibility =
-  | "browser"
-  | "jsc-600-1-4-17"
-  | "mobile"
-  | "node-source-maps"
-  | "node-cli"
-  | "fb-www"
-  | "node-react";
-export const CompatibilityValues = [
-  "browser",
-  "jsc-600-1-4-17",
-  "mobile",
-  "node-source-maps",
-  "node-cli",
-  "fb-www",
-  "node-react",
-];
+export type Compatibility = "browser" | "jsc-600-1-4-17" | "mobile" | "node-source-maps" | "fb-www" | "node-react";
+export const CompatibilityValues = ["browser", "jsc-600-1-4-17", "mobile", "node-source-maps", "fb-www", "node-react"];
 
 export type InvariantModeTypes =
   | "throw"

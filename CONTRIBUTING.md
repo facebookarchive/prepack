@@ -6,7 +6,7 @@ To read more about the project, check out this [suggested reading wiki](https://
 
 ## Code of Conduct
 
-Facebook has adopted a Code of Conduct that we expect project participants to adhere to. Please [read the full text](https://code.facebook.com/pages/876921332402685/open-source-code-of-conduct) so that you can understand what actions will and will not be tolerated.
+Facebook has adopted a Code of Conduct that we expect project participants to adhere to. Please [read the full text](https://code.fb.com/codeofconduct/) so that you can understand what actions will and will not be tolerated.
 
 ## Our Development Process
 The GitHub repository is the source of truth for us and all development takes place here.

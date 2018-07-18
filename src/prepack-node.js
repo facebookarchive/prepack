@@ -15,7 +15,6 @@
 import { defaultOptions } from "./options";
 import { FatalError } from "./errors.js";
 import { type PrepackOptions } from "./prepack-options";
-import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment.js";
 import { prepackSources } from "./prepack-standalone.js";
 import { type SourceMap } from "./types.js";
 import { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
@@ -25,7 +24,6 @@ import { SerializerStatistics } from "./serializer/statistics.js";
 
 import fs from "fs";
 
-export * from "./prepack-node-environment";
 export * from "./prepack-standalone";
 
 function createStatistics(options: PrepackOptions) {
@@ -87,10 +85,6 @@ export function prepackFile(
   callback: (any, ?{ code: string, map?: SourceMap }) => void,
   fileErrorHandler?: (err: ?Error) => void
 ): void {
-  if (options.compatibility === "node-cli") {
-    prepackNodeCLI(filename, options, callback);
-    return;
-  }
   let sourceMapFilename =
     options.inputSourceMapFilename !== undefined ? options.inputSourceMapFilename : filename + ".map";
   fs.readFile(filename, "utf8", function(fileErr, code) {
@@ -122,13 +116,6 @@ export function prepackFile(
 }
 
 export function prepackFileSync(filenames: Array<string>, options: PrepackOptions = defaultOptions): SerializedResult {
-  if (options.compatibility === "node-cli") {
-    if (filenames.length !== 1) {
-      console.error(`Does not support multiple file prepack in node-cli mode.`);
-      process.exit(1);
-    }
-    return prepackNodeCLISync(filenames[0], options);
-  }
   const sourceFiles = filenames.map(filename => {
     let code = fs.readFileSync(filename, "utf8");
     let sourceMap = "";
