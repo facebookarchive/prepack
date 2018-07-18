@@ -29,7 +29,7 @@
     "build-prepack": "babel src --out-dir lib --source-maps",
     "watch": "babel src scripts --out-dir lib --watch --source-maps",
     "lint": "eslint src scripts",
-    "flow": "flow version; flow status",
+    "flow": "flow",
     "flow-ci": "flow version; flow check",
     "test-residual": "babel-node scripts/test-residual.js",
     "test-residual-with-coverage": "./node_modules/.bin/istanbul cover ./lib/test-residual.js --dir coverage.residual && ./node_modules/.bin/remap-istanbul -i coverage.residual/coverage.json -o coverage-sourcemapped.residual -t html",
