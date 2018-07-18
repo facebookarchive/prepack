@@ -19,8 +19,8 @@ import type {
 } from "@babel/types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
-import type { PropertyKeyValue } from "../types.js";
 import { PreludeGenerator, type TemporalBuildNodeType } from "../utils/generator.js";
+import type { PropertyKeyValue, ShapeInformationInterface } from "../types.js";
 import buildExpressionTemplate from "../utils/builder.js";
 
 import {
@@ -101,7 +101,7 @@ export default class AbstractValue extends Value {
     hashValue: number,
     args: Array<Value>,
     buildNode?: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: AbstractValueKind, intrinsicName?: string |}
+    optionalArgs?: {| kind?: AbstractValueKind, intrinsicName?: string, shape?: ShapeInformationInterface |}
   ) {
     invariant(realm.useAbstractInterpretation);
     super(realm, optionalArgs ? optionalArgs.intrinsicName : undefined);
@@ -114,6 +114,7 @@ export default class AbstractValue extends Value {
     this.args = args;
     this.hashValue = hashValue;
     this.kind = optionalArgs ? optionalArgs.kind : undefined;
+    this.shape = optionalArgs ? optionalArgs.shape : undefined;
   }
 
   hashValue: number;
@@ -122,6 +123,7 @@ export default class AbstractValue extends Value {
   values: ValuesDomain;
   mightBeEmpty: boolean;
   args: Array<Value>;
+  shape: void | ShapeInformationInterface;
   _buildNode: void | AbstractValueBuildNodeFunction | BabelNodeExpression;
 
   toDisplayString(): string {
@@ -784,6 +786,7 @@ export default class AbstractValue extends Value {
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
       temporalType?: TemporalBuildNodeType,
+      shape?: ShapeInformationInterface,
     |}
   ): AbstractValue {
     invariant(resultType !== UndefinedValue);
@@ -825,6 +828,7 @@ export default class AbstractValue extends Value {
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
       temporalType?: TemporalBuildNodeType,
+      shape?: void | ShapeInformationInterface,
     |}
   ): AbstractValue | UndefinedValue {
     let types = new TypesDomain(resultType);
@@ -896,7 +900,8 @@ export default class AbstractValue extends Value {
     realm: Realm,
     name: string,
     location: ?BabelNodeSourceLocation,
-    type: typeof Value = Value
+    type: typeof Value = Value,
+    shape: void | ShapeInformationInterface = undefined
   ): AbstractValue {
     if (!realm.useAbstractInterpretation) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
@@ -911,6 +916,7 @@ export default class AbstractValue extends Value {
     let result = new Constructor(realm, types, values, 943586754858 + hashString(name), [], id);
     result.kind = AbstractValue.makeKind("abstractCounted", (realm.objectCount++).toString()); // need not be an object, but must be unique
     result.expressionLocation = location;
+    result.shape = shape;
     return result;
   }
 
