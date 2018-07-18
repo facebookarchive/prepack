@@ -217,12 +217,14 @@ export function handleReportedSideEffect(
     exceptionHandler(`side-effects from mutating the binding ${name}${location}`);
   } else if (sideEffectType === "MODIFIED_PROPERTY" || sideEffectType === "MODIFIED_GLOBAL") {
     let name = "";
-    let key = ((binding: any): PropertyBinding).key;
+    let pb = ((binding: any): PropertyBinding);
+    let key = pb.key;
     if (typeof key === "string") {
       name = `"${key}"`;
     }
     if (sideEffectType === "MODIFIED_PROPERTY") {
-      exceptionHandler(`side-effects from mutating a property ${name}${location}`);
+      if (!ObjectValue.refuseSerializationOnPropertyBinding(pb))
+        exceptionHandler(`side-effects from mutating a property ${name}${location}`);
     } else {
       exceptionHandler(`side-effects from mutating the global object property ${name}${location}`);
     }

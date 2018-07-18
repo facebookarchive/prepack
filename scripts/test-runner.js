@@ -507,9 +507,11 @@ function runTest(name, code, options: PrepackOptions, args) {
               if (code.includes(diagnosticExpectedComment)) {
                 let idx = code.indexOf(diagnosticExpectedComment);
                 let errorCodeString = code.substring(idx + diagnosticExpectedComment.length, code.indexOf("\n", idx));
-                let errorCodeSet = new Set();
-                expectedDiagnostics.set(severity, errorCodeSet);
-                errorCodeString.split(",").forEach(errorCode => errorCodeSet.add(errorCode.trim()));
+                if (errorCodeString.trim() !== "") {
+                  let errorCodeSet = new Set();
+                  expectedDiagnostics.set(severity, errorCodeSet);
+                  errorCodeString.split(",").forEach(errorCode => errorCodeSet.add(errorCode.trim()));
+                }
                 options.residual = false;
                 options.errorHandler = getErrorHandlerWithWarningCapture(diagnosticOutput, args.verbose);
               }

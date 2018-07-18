@@ -559,7 +559,7 @@ export class Generator {
     for (let propertyBinding of modifiedProperties.keys()) {
       let object = propertyBinding.object;
       if (createdObjects.has(object)) continue; // Created Object's binding
-      if (object.refuseSerialization) continue; // modification to internal state
+      if (ObjectValue.refuseSerializationOnPropertyBinding(propertyBinding)) continue; // modification to internal state
       // modifications to intrinsic objects are tracked in the generator
       if (object.isIntrinsic()) continue;
       output.emitPropertyModification(propertyBinding);

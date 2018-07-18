@@ -370,7 +370,7 @@ export class Functions {
     };
     let oldReportPropertyAccess = this.realm.reportPropertyAccess;
     this.realm.reportPropertyAccess = (pb: PropertyBinding) => {
-      if (pb.object.refuseSerialization) return;
+      if (ObjectValue.refuseSerializationOnPropertyBinding(pb)) return;
       let location = this.realm.currentLocation;
       if (!location) return; // happens only when accessing an additional function property
       if (pbs.has(pb) && !conflicts.has(location)) reportConflict(location);
