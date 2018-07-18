@@ -1183,8 +1183,8 @@ var print = () => {}; // noop for now
   }
 
   const context = vm.createContext({
-    // NOTE: Workaround since Prepack serializes code that expects a global `TypedArray` class which does not exist per
-    // the ECMAScript specification.
+    // TODO(#2292): Workaround since Prepack serializes code that expects a global `TypedArray` class which does not
+    // exist per the ECMAScript specification.
     TypedArray: Object.getPrototypeOf(Int8Array),
   });
 
