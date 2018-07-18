@@ -31,6 +31,7 @@ import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { LazyObjectsSerializer } from "./LazyObjectsSerializer.js";
 import * as t from "@babel/types";
+import type { BabelNodeFile } from "@babel/types";
 import { ResidualHeapRefCounter } from "./ResidualHeapRefCounter";
 import { ResidualHeapGraphGenerator } from "./ResidualHeapGraphGenerator";
 import { Referentializer } from "./Referentializer.js";
@@ -70,7 +71,7 @@ export class Serializer {
   _execute(
     sources: Array<SourceFile>,
     sourceMaps?: boolean = false,
-    onParse?: t.BabelNodeFile => void
+    onParse?: BabelNodeFile => void
   ): { [string]: string } {
     let realm = this.realm;
     let [res, code] = realm.$GlobalEnv.executeSources(sources, "script", ast => {
@@ -126,7 +127,7 @@ export class Serializer {
   init(
     sources: Array<SourceFile>,
     sourceMaps?: boolean = false,
-    onParse?: t.BabelNodeFile => void
+    onParse?: BabelNodeFile => void
   ): void | SerializedResult {
     let realmStatistics = this.realm.statistics;
     invariant(realmStatistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
