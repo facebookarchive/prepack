@@ -1059,7 +1059,7 @@ export type DebugReproArguments = {
   sourcemaps?: Array<SourceFile>,
   buckRoot?: string,
 };
-  
+
 export type SupportedGraphQLGetters =
   | "bool"
   | "double"
