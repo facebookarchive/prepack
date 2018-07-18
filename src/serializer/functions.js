@@ -21,6 +21,7 @@ import {
   AbstractValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
+  StringValue,
   ObjectValue,
   UndefinedValue,
   EmptyValue,
@@ -34,11 +35,14 @@ import type { AdditionalFunctionEffects, WriteEffects } from "./types";
 import { convertConfigObjectToReactComponentTreeConfig, valueIsKnownReactAbstraction } from "../react/utils.js";
 import { applyOptimizedReactComponents, optimizeReactComponentTreeRoot } from "../react/optimizing.js";
 import { handleReportedSideEffect } from "./utils.js";
+import { ShapeInformation } from "../utils/ShapeInformation";
+import type { ArgModel } from "../utils/ShapeInformation";
 import * as t from "@babel/types";
 
 type AdditionalFunctionEntry = {
   value: ECMAScriptSourceFunctionValue | AbstractValue,
   config?: ReactComponentTreeConfig,
+  argModelString?: string,
 };
 
 export class Functions {
@@ -57,26 +61,40 @@ export class Functions {
   writeEffects: WriteEffects;
   _noopFunction: void | ECMAScriptSourceFunctionValue;
 
-  __optimizedFunctionEntryOfValue(value: Value): AdditionalFunctionEntry | void {
-    let realm = this.realm;
-
-    if (value instanceof AbstractValue) {
-      // if we conditionally called __optimize, we may have an AbstractValue that is the union of Empty or Undefined and
-      // a function/component to optimize
-      let elements = value.values.getElements();
-      if (elements) {
-        let possibleValues = [...elements].filter(
-          element => !(element instanceof EmptyValue || element instanceof UndefinedValue)
-        );
-        if (possibleValues.length === 1) {
-          value = possibleValues[0];
-        }
+  _unwrapAbstract(value: AbstractValue): Value {
+    let elements = value.values.getElements();
+    if (elements) {
+      let possibleValues = [...elements].filter(
+        element => !(element instanceof EmptyValue || element instanceof UndefinedValue)
+      );
+      if (possibleValues.length === 1) {
+        return possibleValues[0];
       }
     }
-    if (value instanceof ECMAScriptSourceFunctionValue) {
-      // additional function logic
-      return { value };
-    } else if (value instanceof ObjectValue) {
+    return value;
+  }
+
+  __optimizedFunctionEntryOfValue(value: Value): AdditionalFunctionEntry | void {
+    let realm = this.realm;
+    // if we conditionally called __optimize, we may have an AbstractValue that is the union of Empty or Undefined and
+    // a function/component to optimize
+    if (value instanceof AbstractValue) {
+      value = this._unwrapAbstract(value);
+    }
+    invariant(value instanceof ObjectValue);
+    let funcValue = Get(realm, value, "funcValue");
+    if (funcValue !== realm.intrinsics.undefined) {
+      // unwrap from this side
+      if (funcValue instanceof AbstractValue) {
+        funcValue = this._unwrapAbstract(funcValue);
+      }
+      // regular case with __optimized with type information
+      invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
+      let argModelString = Get(realm, value, "argModelString");
+      return argModelString instanceof StringValue
+        ? { value: funcValue, argModelString: argModelString.value }
+        : { value: funcValue };
+    } else {
       // React component tree logic
       let config = Get(realm, value, "config");
       let rootComponent = Get(realm, value, "rootComponent");
@@ -151,22 +169,27 @@ export class Functions {
     applyOptimizedReactComponents(this.realm, this.writeEffects, environmentRecordIdAfterGlobalCode);
   }
 
-  _callOfFunction(funcValue: FunctionValue): void => Value {
+  _callOfFunction(funcValue: FunctionValue, argModelString: void | string): void => Value {
     let call = funcValue.$Call;
     invariant(call);
     let numArgs = funcValue.getLength();
     let args = [];
+    let argModel = argModelString !== undefined ? (JSON.parse(argModelString): ArgModel) : undefined;
     invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
     let params = funcValue.$FormalParameters;
     if (numArgs && numArgs > 0 && params) {
       for (let parameterId of params) {
         if (t.isIdentifier(parameterId)) {
+          let paramName = ((parameterId: any): BabelNodeIdentifier).name;
+          let shape = ShapeInformation.createForArgument(argModel, paramName);
           // Create an AbstractValue similar to __abstract being called
           args.push(
             AbstractValue.createAbstractArgument(
               this.realm,
-              ((parameterId: any): BabelNodeIdentifier).name,
-              funcValue.expressionLocation
+              paramName,
+              funcValue.expressionLocation,
+              shape !== undefined ? shape.getAbstractType() : Value,
+              shape
             )
           );
         } else {
@@ -212,7 +235,7 @@ export class Functions {
     };
 
     let optimizedFunctionId = 0;
-    let getEffectsFromAdditionalFunctionAndNestedFunctions = functionValue => {
+    let getEffectsFromAdditionalFunctionAndNestedFunctions = (functionValue, argModelString) => {
       let currentOptimizedFunctionId = optimizedFunctionId++;
       additionalFunctionStack.push(functionValue);
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
@@ -221,7 +244,7 @@ export class Functions {
         realm.handleError(error);
       };
       for (let t1 of this.realm.tracers) t1.beginOptimizingFunction(currentOptimizedFunctionId, functionValue);
-      let call = this._callOfFunction(functionValue);
+      let call = this._callOfFunction(functionValue, argModelString);
       let realm = this.realm;
       let effects: Effects = realm.evaluatePure(
         () => realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
@@ -254,7 +277,7 @@ export class Functions {
             let newEntry = this.__optimizedFunctionEntryOfValue(newValue);
             if (newEntry) {
               additionalFunctions.add(newEntry.value);
-              getEffectsFromAdditionalFunctionAndNestedFunctions(newEntry.value);
+              getEffectsFromAdditionalFunctionAndNestedFunctions(newEntry.value, newEntry.argModelString);
               // Now we have to rember the stack of effects that need to be applied to deal with
               // this additional function.
             }
@@ -267,8 +290,8 @@ export class Functions {
     };
 
     while (additionalFunctionsToProcess.length > 0) {
-      let funcValue = additionalFunctionsToProcess.shift().value;
-      getEffectsFromAdditionalFunctionAndNestedFunctions(funcValue);
+      let funcObject = additionalFunctionsToProcess.shift();
+      getEffectsFromAdditionalFunctionAndNestedFunctions(funcObject.value, funcObject.argModelString);
     }
     invariant(additionalFunctionStack.length === 0);
 
