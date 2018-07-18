@@ -17,6 +17,7 @@ import type {
   Intrinsics,
   PropertyBinding,
   ReactHint,
+  DisplayResult,
 } from "./types.js";
 import { RealmStatistics } from "./statistics.js";
 import {
@@ -69,6 +70,7 @@ import { Environment, Functions, Join, Properties, To, Widen, Path } from "./sin
 import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "@babel/types";
 import * as t from "@babel/types";
+import { Utils } from "./singletons.js";
 
 export type BindingEntry = {
   hasLeaked: void | boolean,
@@ -122,6 +124,15 @@ export class Effects {
   createdObjects: CreatedObjects;
   canBeApplied: boolean;
   _id: number;
+
+  toDisplayString(): string {
+    return Utils.jsonToDisplayString(this, 10);
+  }
+
+  toDisplayJson(depth: number = 1): DisplayResult {
+    if (depth <= 0) return `Effects ${this._id}`;
+    return Utils.verboseToDisplayJson(this, depth);
+  }
 }
 
 export class Tracer {
