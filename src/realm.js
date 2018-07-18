@@ -66,11 +66,10 @@ import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { Generator, PreludeGenerator, type TemporalBuildNodeEntry } from "./utils/generator.js";
 import { emptyExpression, voidExpression } from "./utils/babelhelpers.js";
-import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
+import { Environment, Functions, Join, Properties, To, Widen, Path, DebugReproManager } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "@babel/types";
 import * as t from "@babel/types";
-import { DebugReproManager } from "./utils/DebugReproManager.js";
 import { Utils } from "./singletons.js";
 
 export type BindingEntry = {
@@ -477,7 +476,7 @@ export class Realm {
   globalSymbolRegistry: Array<{ $Key: string, $Symbol: SymbolValue }>;
 
   debuggerInstance: DebugServerType | void;
-  debugReproManager: DebugReproManager | void;
+  debugReproManager: typeof DebugReproManager | void;
 
   nextGeneratorId: number = 0;
   _abstractValuesDefined: Set<string>;

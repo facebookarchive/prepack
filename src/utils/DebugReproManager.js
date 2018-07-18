@@ -12,8 +12,8 @@
 import type { DebugReproArguments } from "../types.js";
 import { SourceMapManager } from "./SourceMapManager.js";
 
-export class DebugReproManager {
-  constructor(configArgs: DebugReproArguments) {
+export class DebugReproManagerImplementation {
+  construct(configArgs: DebugReproArguments): DebugReproManagerImplementation {
     this._sourceMapManager = new SourceMapManager(configArgs.buckRoot, configArgs.sourcemaps);
     if (configArgs.sourcemaps) {
       this._sourceMapNames = [];
@@ -22,6 +22,8 @@ export class DebugReproManager {
       });
     }
     this._usedSourceFiles = new Set();
+
+    return this;
   }
 
   _sourceMapManager: SourceMapManager;

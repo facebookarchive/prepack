@@ -21,6 +21,7 @@ import type {
   ToType,
   UtilsType,
   WidenType,
+  DebugReproManagerType,
 } from "./types.js";
 
 export let Create: CreateType = (null: any);
@@ -34,6 +35,7 @@ export let To: ToType = (null: any);
 export let Widen: WidenType = (null: any);
 export let concretize: ConcretizeType = (null: any);
 export let Utils: UtilsType = (null: any);
+export let DebugReproManager: DebugReproManagerType = (null: any);
 
 export function setCreate(singleton: CreateType): void {
   Create = singleton;
@@ -77,4 +79,8 @@ export function setConcretize(singleton: ConcretizeType): void {
 
 export function setUtils(singleton: UtilsType): void {
   Utils = singleton;
+}
+
+export function setDebugReproManager(singleton: DebugReproManagerType): void {
+  DebugReproManager = singleton;
 }

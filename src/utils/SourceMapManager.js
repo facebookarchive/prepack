@@ -10,7 +10,6 @@
 /* @flow strict-local */
 
 import type { SourceFile } from "../types.js";
-// import { DebuggerError } from "./../common/DebuggerError.js";
 import invariant from "../invariant.js";
 
 /**

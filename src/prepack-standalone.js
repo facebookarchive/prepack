@@ -30,17 +30,20 @@ import { Modules } from "./utils/modules.js";
 import { Logger } from "./utils/logger.js";
 import { Generator } from "./utils/generator.js";
 import { AbstractObjectValue, AbstractValue, ObjectValue } from "./values/index.js";
-import type { DebuggerConfigArguments } from "./types";
 
 export function prepackSources(
   sources: Array<SourceFile>,
   options: PrepackOptions = defaultOptions,
-  debuggerConfigArgs: void | DebuggerConfigArguments,
   statistics: SerializerStatistics | void = undefined
 ): SerializedResult {
   let realmOptions = getRealmOptions(options);
   realmOptions.errorHandler = options.errorHandler;
-  let realm = construct_realm(realmOptions, debuggerConfigArgs, statistics || new SerializerStatistics());
+  let realm = construct_realm(
+    realmOptions,
+    options.debugReproArgs,
+    options.debuggerConfigArgs,
+    statistics || new SerializerStatistics()
+  );
   initializeGlobals(realm);
   if (typeof options.additionalGlobals === "function") {
     options.additionalGlobals(realm);
@@ -91,7 +94,7 @@ export function prepackSources(
         sourceMapContents: serialized.map && JSON.stringify(serialized.map),
       },
     ];
-    let debugChannel = debuggerConfigArgs ? debuggerConfigArgs.debugChannel : undefined;
+    let debugChannel = options.debuggerConfigArgs ? options.debuggerConfigArgs.debugChannel : undefined;
     realm = construct_realm(realmOptions, debugChannel);
     initializeGlobals(realm);
     if (typeof options.additionalGlobals === "function") {

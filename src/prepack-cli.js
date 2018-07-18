@@ -250,17 +250,17 @@ function run(
         case "reproOnFatal":
           reproOnFatal = true;
           reproFilePath = args.shift();
-          debugReproArgs = {
-            sourcemaps: [],
-          };
+          debugReproArgs = {};
+          debugReproArgs.sourcemaps = [];
+          if (debuggerConfigArgs.buckRoot) debugReproArgs.buckRoot = debuggerConfigArgs.buckRoot;
           // do not include this in reproArguments needed by --repro, as we don't need to create a repro from the repro...
           break;
         case "reproUnconditionally":
           reproUnconditionally = true;
           reproFilePath = args.shift();
-          debugReproArgs = {
-            sourcemaps: [],
-          };
+          debugReproArgs = {};
+          debugReproArgs.sourcemaps = [];
+          if (debuggerConfigArgs.buckRoot) debugReproArgs.buckRoot = debuggerConfigArgs.buckRoot;
           // do not include this in reproArguments needed by --repro, as we don't need to create a repro from the repro...
           break;
         case "cpuprofile":
@@ -297,7 +297,6 @@ function run(
         case "debugBuckRoot":
           let buckRoot = args.shift();
           debuggerConfigArgs.buckRoot = buckRoot;
-          // Race condition with --repro flag
           if (debugReproArgs) debugReproArgs.buckRoot = buckRoot;
           reproArguments.push("--debugBuckRoot", "$(pwd)");
           break;

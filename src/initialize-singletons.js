@@ -20,6 +20,7 @@ import { PropertiesImplementation } from "./methods/properties.js";
 import { ToImplementation } from "./methods/to.js";
 import { WidenImplementation } from "./methods/widen.js";
 import { concretize } from "./utils/ConcreteModelConverter.js";
+import { DebugReproManagerImplementation } from "./utils/DebugReproManager.js";
 import * as utils from "./utils.js";
 
 export default function() {
@@ -34,4 +35,5 @@ export default function() {
   Singletons.setWiden((new WidenImplementation(): any));
   Singletons.setConcretize(concretize);
   Singletons.setUtils(utils);
+  Singletons.setDebugReproManager((new DebugReproManagerImplementation(): any));
 }

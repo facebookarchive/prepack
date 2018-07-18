@@ -61,7 +61,6 @@ export function prepackStdin(
         serialized = prepackSources(
           [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
           options,
-          undefined,
           createStatistics(options)
         );
         processSerializedCode(serialized);
@@ -103,7 +102,6 @@ export function prepackFile(
         serialized = prepackSources(
           [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
           options,
-          undefined,
           createStatistics(options)
         );
       } catch (err) {
@@ -145,5 +143,5 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
 
   if (options.debugReproArgs) options.debugReproArgs.sourcemaps = sourceFiles;
 
-  return prepackSources(sourceFiles, options, options.debuggerConfigArgs, createStatistics(options));
+  return prepackSources(sourceFiles, options, createStatistics(options));
 }
