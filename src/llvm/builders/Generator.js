@@ -29,13 +29,11 @@ import { IRBuilder } from "llvm-node";
 
 import { valueToExpression } from "./Expression.js";
 import { buildFromStatement } from "./Statement.js";
-import { buildFromValue } from "./Value.js";
 
 export function buildFromGenerator(state: CompilerState, generator: Generator, builder: IRBuilder): void {
   let serializationContext = {
     serializeValue(value: Value): BabelNodeExpression {
-      let llvmValue = buildFromValue(state, value, builder);
-      return valueToExpression(llvmValue);
+      return valueToExpression(value);
     },
     serializeBinding(binding: Binding): BabelNodeIdentifier | BabelNodeMemberExpression {
       let error = new CompilerDiagnostic(

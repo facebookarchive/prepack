@@ -15,16 +15,24 @@ import type { BabelNodeExpression, BabelNodeBinaryExpression } from "@babel/type
 import invariant from "../../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
 import { Value as LLVMValue, BasicBlock, IRBuilder } from "llvm-node";
+import { Value, NumberValue, IntegralValue } from "../../values/index.js";
 import { llvmContext } from "../llvm-context.js";
 import * as t from "@babel/types";
 
-export function valueToExpression(llvmValue: LLVMValue): BabelNodeExpression {
+import { buildFromValue } from "./Value.js";
+
+export function valueToExpression(value: Value): BabelNodeExpression {
   // Hack. We use an identifier to hold the LLVM value so that
   // we can represent the value in the Babel representation.
   let identifier = t.identifier("LLVM_VALUE");
   // Decorators is an unused any field so we can reuse that.
-  identifier.decorators = llvmValue;
+  identifier.decorators = value;
   return identifier;
+}
+
+function valueFromExpression(expr: BabelNodeExpression): Value {
+  invariant(expr.type === "Identifier" && expr.name === "LLVM_VALUE" && expr.decorators);
+  return (expr.decorators: Value);
 }
 
 function buildFromBinaryExpression(
@@ -32,25 +40,52 @@ function buildFromBinaryExpression(
   expr: BabelNodeBinaryExpression,
   builder: IRBuilder
 ): LLVMValue {
+  let leftValue = valueFromExpression(expr.left);
+  let rightValue = valueFromExpression(expr.right);
+  let left = buildFromValue(state, leftValue, builder);
+  let right = buildFromValue(state, rightValue, builder);
+  let type = leftValue.getType();
+  if (type !== rightValue.getType()) {
+    let error = new CompilerDiagnostic(
+      `Cannot apply the ${expr.operator} operator to values of different types.`,
+      expr.loc,
+      "PP2000",
+      "FatalError"
+    );
+    state.realm.handleError(error);
+    throw new FatalError();
+  }
   switch (expr.operator) {
     case "==":
     case "===": {
-      let left = buildFromExpression(state, expr.left, builder);
-      let right = buildFromExpression(state, expr.right, builder);
-      if (!left.type.equals(right.type)) {
+      if (type === IntegralValue) {
+        return builder.createICmpEQ(left, right);
+      } else if (type === NumberValue) {
+        return builder.createFCmpOEQ(left, right);
+      } else {
         let error = new CompilerDiagnostic(
-          "Cannot compare values of different types.",
+          `The equality operator for ${type.name} is not yet implemented for LLVM.`,
           expr.loc,
           "PP2000",
           "FatalError"
         );
-        state.realm.handleError(error);
-        throw new FatalError();
       }
-      return builder.createICmpEQ(left, right);
     }
     case "!=":
-    case "!==":
+    case "!==": {
+      if (type === IntegralValue) {
+        return builder.createICmpNE(left, right);
+      } else if (type === NumberValue) {
+        return builder.createFCmpONE(left, right);
+      } else {
+        let error = new CompilerDiagnostic(
+          `The equality operator for ${type.name} is not yet implemented for LLVM.`,
+          expr.loc,
+          "PP2000",
+          "FatalError"
+        );
+      }
+    }
     case "+":
     case "-":
     case "/":
@@ -63,14 +98,12 @@ function buildFromBinaryExpression(
     case ">>>":
     case "<<":
     case "^":
-    case "in":
-    case "instanceof":
     case ">":
     case "<":
     case ">=":
     case "<=":
       let error = new CompilerDiagnostic(
-        `The ${expr.operator} is not yet implemented for LLVM.`,
+        `The ${expr.operator} operator is not yet implemented for LLVM.`,
         expr.loc,
         "PP2000",
         "FatalError"
@@ -86,7 +119,7 @@ export function buildFromExpression(state: CompilerState, expr: BabelNodeExpress
   switch (expr.type) {
     case "Identifier": {
       if (expr.name === "LLVM_VALUE" && expr.decorators) {
-        return (expr.decorators: LLVMValue);
+        return buildFromValue(state, (expr.decorators: Value), builder);
       }
       let derivedValue = state.declaredVariables.get(expr.name);
       if (derivedValue) {

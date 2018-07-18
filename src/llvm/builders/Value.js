@@ -95,7 +95,7 @@ export function getType(
 function buildFromAbstractValue(state: CompilerState, value: AbstractValue, builder: IRBuilder): LLVMValue {
   let serializedArgs;
   try {
-    serializedArgs = value.args.map((abstractArg, i) => valueToExpression(buildFromValue(state, abstractArg, builder)));
+    serializedArgs = value.args.map((abstractArg, i) => valueToExpression(abstractArg));
   } catch (x) {
     if (x instanceof FatalError) {
       // Emit an additional compiler diagnostic for the location where
