@@ -1,6 +1,6 @@
 {
   "name": "prepack",
-  "version": "0.2.44-alpha.0",
+  "version": "0.2.45-alpha.0",
   "description": "Execute a JS bundle, serialize global state and side effects to a snapshot that can be quickly restored.",
   "homepage": "https://github.com/facebook/prepack",
   "repository": {
@@ -25,11 +25,12 @@
   "scripts": {
     "build": "yarn build-prepack && yarn build-bundle",
     "build-scripts": "babel scripts --out-dir lib --source-maps",
-    "build-bundle": "webpack-cli",
+    "build-bundle": "webpack-cli --silent",
     "build-prepack": "babel src --out-dir lib --source-maps",
     "watch": "babel src scripts --out-dir lib --watch --source-maps --verbose",
     "lint": "eslint src scripts",
-    "flow": "flow version; flow check --merge-timeout 0",
+    "flow": "flow",
+    "flow-ci": "flow version; flow check",
     "test-residual": "babel-node scripts/test-residual.js",
     "test-residual-with-coverage": "./node_modules/.bin/istanbul cover ./lib/test-residual.js --dir coverage.residual && ./node_modules/.bin/remap-istanbul -i coverage.residual/coverage.json -o coverage-sourcemapped.residual -t html",
     "test-serializer": "babel-node --stack_trace_limit=200 --stack_size=10000 scripts/test-runner.js",
@@ -42,7 +43,6 @@
     "test-internal-react": "babel-node --stack_size=10000 --stack_trace_limit=200 --max_old_space_size=16384 scripts/test-internal-react.js",
     "test-error-handler": "babel-node scripts/test-error-handler.js",
     "test-error-handler-with-coverage": "./node_modules/.bin/istanbul cover ./lib/test-error-handler.js --dir coverage.error && ./node_modules/.bin/remap-istanbul -i coverage.error/coverage.json -o coverage-sourcemapped.error -t html",
-    "test-node-cli-mode": "bash < scripts/test-node-cli-mode.sh",
     "test-std-in": "bash < scripts/test-std-in.sh",
     "test-react": "jest",
     "test-react-fast": "SKIP_REACT_JSX_TESTS=true jest",
@@ -52,7 +52,6 @@
     "repl": "node lib/repl-cli.js",
     "precheck": "yarn prepack-cli --check",
     "prepack-cli": "node --stack_size=10000 --stack_trace_limit=200 --max_old_space_size=16384 lib/prepack-cli.js --accelerateUnsupportedRequires --compatibility jsc-600-1-4-17 --delayUnsupportedRequires --mathRandomSeed 0",
-    "prepack-prepack": "node --stack_size=10000 --max_old_space_size=8096 ./bin/prepack.js ./lib/prepack-cli.js --out ./lib/prepack-cli.prepacked.js --compatibility node-cli --mathRandomSeed rnd",
     "validate": "yarn install --frozen-lockfile && yarn build && yarn build-scripts && yarn lint && yarn depcheck && yarn flow && yarn test",
     "prepublishOnly": "yarn build",
     "depcheck": "babel-node scripts/detect_bad_deps.js",

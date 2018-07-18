@@ -1038,10 +1038,14 @@ export type ToType = {
 
 export type ConcretizeType = (realm: Realm, val: Value) => ConcreteValue;
 
+export type DisplayResult = {} | string;
+
 export type UtilsType = {|
   typeToString: (typeof Value) => void | string,
   getTypeFromName: string => void | typeof Value,
   describeValue: Value => string,
+  jsonToDisplayString: <T: { toDisplayJson(number): DisplayResult }>(T, number) => string,
+  verboseToDisplayJson: ({}, number) => DisplayResult,
 |};
 
 export type DebuggerConfigArguments = {
@@ -1055,3 +1059,23 @@ export type DebugReproArguments = {
   sourcemaps?: Array<SourceFile>,
   buckRoot?: string,
 };
+  
+export type SupportedGraphQLGetters =
+  | "bool"
+  | "double"
+  | "int"
+  | "time"
+  | "string"
+  | "tree"
+  | "bool_list"
+  | "double_list"
+  | "int_list"
+  | "time_list"
+  | "string_list"
+  | "tree_list";
+
+export interface ShapeInformationInterface {
+  getPropertyShape(key: string): void | ShapeInformationInterface;
+  getGetter(): void | SupportedGraphQLGetters;
+  getAbstractType(): typeof Value;
+}

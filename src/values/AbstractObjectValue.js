@@ -11,7 +11,7 @@
 
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
-import type { Descriptor, PropertyKeyValue } from "../types.js";
+import type { Descriptor, PropertyKeyValue, ShapeInformationInterface } from "../types.js";
 import {
   AbstractValue,
   type AbstractValueKind,
@@ -45,7 +45,7 @@ export default class AbstractObjectValue extends AbstractValue {
     hashValue: number,
     args: Array<Value>,
     buildNode?: AbstractValueBuildNodeFunction | BabelNodeExpression,
-    optionalArgs?: {| kind?: AbstractValueKind, intrinsicName?: string |}
+    optionalArgs?: {| kind?: AbstractValueKind, intrinsicName?: string, shape?: ShapeInformationInterface |}
   ) {
     super(realm, types, values, hashValue, args, buildNode, optionalArgs);
     if (!values.isTop()) {
@@ -119,6 +119,8 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   mightBeFinalObject(): boolean {
+    // modeled objects are always read-only
+    if (this.shape) return true;
     if (this.values.isTop()) return false;
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
@@ -128,6 +130,8 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   mightNotBeFinalObject(): boolean {
+    // modeled objects are always read-only
+    if (this.shape) return false;
     if (this.values.isTop()) return false;
     for (let element of this.values.getElements()) {
       invariant(element instanceof ObjectValue);
@@ -498,29 +502,49 @@ export default class AbstractObjectValue extends AbstractValue {
 
     if (this.values.isTop()) {
       let generateAbstractGet = () => {
-        let ob = this;
+        let ob = Receiver;
         if (this.kind === "explicit conversion to object") ob = this.args[0];
         let type = Value;
         if (P === "length" && Value.isTypeCompatibleWith(this.getType(), ArrayValue)) type = NumberValue;
-        return AbstractValue.createTemporalFromBuildFunction(
+        // shape logic
+        let shapeContainer = this.kind === "explicit conversion to object" ? this.args[0] : this;
+        invariant(shapeContainer instanceof AbstractValue);
+        invariant(typeof P === "string");
+        let shape = shapeContainer.shape;
+        let propertyShape, propertyGetter;
+        if (this.$Realm.instantRender.enabled && shape !== undefined) {
+          propertyShape = shape.getPropertyShape(P);
+          if (propertyShape !== undefined) {
+            type = propertyShape.getAbstractType();
+            propertyGetter = propertyShape.getGetter();
+          }
+        }
+        let propAbsVal = AbstractValue.createTemporalFromBuildFunction(
           this.$Realm,
           type,
           [ob],
           ([o]) => {
             invariant(typeof P === "string");
-            return memberExpressionHelper(o, P);
+            return propertyGetter !== undefined
+              ? t.callExpression(t.memberExpression(t.identifier("global"), t.identifier("__prop_" + propertyGetter)), [
+                  o,
+                  t.stringLiteral(P),
+                ])
+              : memberExpressionHelper(o, P);
           },
           {
             skipInvariant: true,
             isPure: true,
+            shape: propertyShape,
           }
         );
+        return propAbsVal;
       };
       if (this.isSimpleObject() && this.isIntrinsic()) {
         return generateAbstractGet();
       } else if (this.$Realm.isInPureScope()) {
         // This object might have leaked to a getter.
-        Havoc.value(this.$Realm, this);
+        Havoc.value(this.$Realm, Receiver);
         // The getter might throw anything.
         return this.$Realm.evaluateWithPossibleThrowCompletion(
           generateAbstractGet,

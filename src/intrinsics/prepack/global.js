@@ -129,15 +129,46 @@ export default function(realm: Realm): void {
   //     that is not subsequently applied, the function will not be registered
   //     (because prepack won't have a correct value for the FunctionValue itself)
   global.$DefineOwnProperty("__optimize", {
-    value: new NativeFunctionValue(realm, "global.__optimize", "__optimize", 1, (context, [value, config]) => {
+    value: new NativeFunctionValue(realm, "global.__optimize", "__optimize", 1, (context, [value, argModelString]) => {
       // only optimize functions for now
+      if (argModelString !== undefined) {
+        let argModelError;
+        if (argModelString instanceof StringValue) {
+          try {
+            // result here is ignored as the main point here is to
+            // check and produce error
+            JSON.parse(argModelString.value);
+          } catch (e) {
+            argModelError = new CompilerDiagnostic(
+              "Failed to parse model for arguments",
+              realm.currentLocation,
+              "PP1008",
+              "FatalError"
+            );
+          }
+        } else {
+          argModelError = new CompilerDiagnostic(
+            "String expected as a model",
+            realm.currentLocation,
+            "PP1008",
+            "FatalError"
+          );
+        }
+        if (argModelError !== undefined && realm.handleError(argModelError) !== "Recover") {
+          throw new FatalError();
+        }
+      }
       if (value instanceof ECMAScriptSourceFunctionValue || value instanceof AbstractValue) {
+        let functionDescriptor = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+        functionDescriptor.$Set("funcValue", value, functionDescriptor);
+        functionDescriptor.$Set("argModelString", argModelString || realm.intrinsics.undefined, functionDescriptor);
+        // add to the todo list
         realm.assignToGlobal(
           t.memberExpression(
             t.memberExpression(t.identifier("global"), t.identifier("__optimizedFunctions")),
             t.identifier("" + additionalFunctionUid++)
           ),
-          value
+          functionDescriptor
         );
       } else {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Called __optimize on an invalid type");

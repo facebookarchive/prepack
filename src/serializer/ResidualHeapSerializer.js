@@ -2389,7 +2389,7 @@ export class ResidualHeapSerializer {
       }
 
       if (this._shouldBeWrapped(body)) {
-        let globalExpression = this.realm.isCompatibleWith("node-cli") ? t.identifier("global") : t.thisExpression();
+        let globalExpression = t.thisExpression();
 
         let functionExpression = t.functionExpression(null, [], t.blockStatement(body, globalDirectives));
         let callExpression = this.preludeGenerator.usesThis

@@ -106,3 +106,41 @@ export function describeValue(value: Value): string {
   if (value.__originalName !== undefined) title += `, original name: ${value.__originalName}`;
   return suffix ? `${title}\n${suffix}` : title;
 }
+
+type DisplayResult = {} | string;
+
+export function jsonToDisplayString<T: { toDisplayJson(number): DisplayResult }>(instance: T, depth: number): string {
+  let result = instance.toDisplayJson(depth);
+  return typeof result === "string" ? result : JSON.stringify(result, null, 2).replace(/\"/g, "");
+}
+
+export function verboseToDisplayJson(obj: {}, depth: number): DisplayResult {
+  let result = {};
+  function valueOfProp(prop) {
+    if (typeof prop === "function") return undefined;
+    if (Array.isArray(prop)) {
+      // Try to return a 1-line string if possible
+      if (prop.length === 0) return "[]";
+      let valuesArray = prop.map(x => valueOfProp(x));
+      if (valuesArray.length < 5) {
+        let string =
+          "[" + valuesArray.reduce((acc, x) => `${acc}, ${x instanceof Object ? JSON.stringify(x) : x}`) + "]";
+        string = string.replace(/\"/g, "");
+        if (string.length < 60) return string;
+      }
+      return valuesArray;
+    }
+    if (prop instanceof Set || prop instanceof Map) return `${prop.constructor.name}(${prop.size})`;
+    if (prop.toDisplayJson) return prop.toDisplayJson(depth - 1);
+    if (prop.toDisplayString) return prop.toDisplayString();
+    if (prop.toJSON) return prop.toJSON();
+    return prop.toString();
+  }
+  for (let key in obj) {
+    let prop = obj[key];
+    if (!prop) continue;
+    let value = valueOfProp(prop);
+    if (value && value !== "[object Object]") result[key] = value;
+  }
+  return result;
+}

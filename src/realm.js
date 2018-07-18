@@ -17,6 +17,7 @@ import type {
   Intrinsics,
   PropertyBinding,
   ReactHint,
+  DisplayResult,
 } from "./types.js";
 import { RealmStatistics } from "./statistics.js";
 import {
@@ -70,6 +71,7 @@ import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "@babel/types";
 import * as t from "@babel/types";
 import { DebugReproManager } from "./utils/DebugReproManager.js";
+import { Utils } from "./singletons.js";
 
 export type BindingEntry = {
   hasLeaked: void | boolean,
@@ -103,7 +105,8 @@ export class Effects {
 
     this.canBeApplied = true;
     this._id = effects_uid++;
-    if (result.effects === undefined) result.effects = this; //todo: require callers to ensure this
+    invariant(result.effects === undefined);
+    result.effects = this;
   }
 
   _result: Completion;
@@ -111,6 +114,7 @@ export class Effects {
     return this._result;
   }
   set result(completion: Completion): void {
+    invariant(completion.effects === undefined);
     if (completion.effects === undefined) completion.effects = this; //todo: require callers to ensure this
     this._result = completion;
   }
@@ -121,6 +125,15 @@ export class Effects {
   createdObjects: CreatedObjects;
   canBeApplied: boolean;
   _id: number;
+
+  toDisplayString(): string {
+    return Utils.jsonToDisplayString(this, 10);
+  }
+
+  toDisplayJson(depth: number = 1): DisplayResult {
+    if (depth <= 0) return `Effects ${this._id}`;
+    return Utils.verboseToDisplayJson(this, depth);
+  }
 }
 
 export class Tracer {
@@ -865,7 +878,10 @@ export class Realm {
           else throw e;
         }
         // This is a join point for the normal branch of a PossiblyNormalCompletion.
-        if (c instanceof Value || c instanceof AbruptCompletion) c = Functions.incorporateSavedCompletion(this, c);
+        if (c instanceof Value || c instanceof AbruptCompletion) {
+          c = Functions.incorporateSavedCompletion(this, c);
+          if (c instanceof Completion && c.effects !== undefined) c = c.shallowCloneWithoutEffects();
+        }
         invariant(c !== undefined);
         if (c instanceof PossiblyNormalCompletion) {
           // The current state may have advanced since the time control forked into the various paths recorded in c.
@@ -874,6 +890,7 @@ export class Realm {
           this.stopEffectCaptureAndUndoEffects(c);
           Join.updatePossiblyNormalCompletionWithSubsequentEffects(this, c, subsequentEffects);
           this.savedCompletion = undefined;
+          this.applyEffects(subsequentEffects, "subsequentEffects", true);
         }
 
         invariant(this.generator !== undefined);
@@ -1031,6 +1048,7 @@ export class Realm {
     } catch (e) {
       if (!(e instanceof InfeasiblePathError)) throw e;
     }
+    invariant(effects1 === undefined || effects1.result.effects === effects1);
 
     let effects2;
     try {
@@ -1038,6 +1056,7 @@ export class Realm {
     } catch (e) {
       if (!(e instanceof InfeasiblePathError)) throw e;
     }
+    invariant(effects2 === undefined || effects2.result.effects === effects2);
 
     let joinedEffects, completion;
     if (effects1 === undefined || effects2 === undefined) {
@@ -1060,8 +1079,8 @@ export class Realm {
         // not all control flow branches join into one flow at this point.
         // Consequently we have to continue tracking changes until the point where
         // all the branches come together into one.
+        this.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
         completion = this.composeWithSavedCompletion(completion);
-        this.applyEffects(joinedEffects, "evaluateWithAbstractConditional", false);
       } else {
         this.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
       }
@@ -1211,7 +1230,7 @@ export class Realm {
   }
 
   composeEffects(priorEffects: Effects, subsequentEffects: Effects): Effects {
-    let result = construct_empty_effects(this, subsequentEffects.result);
+    let result = construct_empty_effects(this, subsequentEffects.result.shallowCloneWithoutEffects());
 
     result.generator = Join.composeGenerators(
       this,
