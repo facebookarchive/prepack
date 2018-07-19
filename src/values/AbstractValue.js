@@ -143,9 +143,9 @@ export default class AbstractValue extends Value {
     let realm = this.$Realm;
     function add_intrinsic(name: string) {
       if (name.startsWith("_$")) {
-        let temporalBuildNodeEntryArgs = realm.derivedIds.get(name);
-        invariant(temporalBuildNodeEntryArgs !== undefined);
-        add_args(temporalBuildNodeEntryArgs.args);
+        let temporalOperationEntryArgs = realm.derivedIds.get(name);
+        invariant(temporalOperationEntryArgs !== undefined);
+        add_args(temporalOperationEntryArgs.args);
       } else if (names.indexOf(name) < 0) {
         names.push(name);
       }

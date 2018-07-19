@@ -29,7 +29,7 @@ import {
   hardModifyReactObjectPropertyBinding,
 } from "../react/utils.js";
 import invariant from "../invariant.js";
-import { TemporalBuildNodeEntry } from "../utils/generator.js";
+import { TemporalOperationEntry } from "../utils/generator.js";
 import { ReactEquivalenceSet } from "../react/ReactEquivalenceSet.js";
 import { ReactElementSet } from "../react/ReactElementSet.js";
 import { ReactPropsSet } from "../react/ReactPropsSet.js";
@@ -165,7 +165,7 @@ export class ResidualReactElementVisitor {
     // temporal value was declared in one of the entries
     for (let i = 0; i < scope._entries.length; i++) {
       let entry = scope._entries[i];
-      if (entry instanceof TemporalBuildNodeEntry) {
+      if (entry instanceof TemporalOperationEntry) {
         if (entry.declared === temporalAlias) {
           return true;
         }
