@@ -39,7 +39,7 @@ import type {
 import invariant from "../invariant.js";
 import { Logger } from "./logger.js";
 import { SerializerStatistics } from "../serializer/statistics.js";
-import { createResidualBuildNode } from "../../lib/utils/generator.js";
+import { createOperationDescriptor } from "./generator.js";
 
 function downgradeErrorsToWarnings(realm: Realm, f: () => any) {
   let savedHandler = realm.errorHandler;
@@ -250,7 +250,7 @@ export class ModuleTracer extends Tracer {
               realm,
               Value,
               [],
-              createResidualBuildNode("MODULES_REQUIRE", { propName })
+              createOperationDescriptor("MODULES_REQUIRE", { propName })
             );
           } else {
             result = effects.result;

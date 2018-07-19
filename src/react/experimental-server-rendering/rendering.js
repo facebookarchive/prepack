@@ -68,7 +68,7 @@ import {
 // $FlowFixMe: flow complains that this isn't a module but it is, and it seems to load fine
 import hyphenateStyleName from "fbjs/lib/hyphenateStyleName";
 import { To } from "../../singletons.js";
-import { createResidualBuildNode } from "../../utils/generator.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 export type ReactNode = Array<ReactNode> | string | AbstractValue | ArrayValue;
 
@@ -78,7 +78,7 @@ function renderValueWithHelper(realm: Realm, value: Value, helper: ECMAScriptSou
     realm,
     Value,
     [helper, value],
-    createResidualBuildNode("REACT_SSR_RENDER_VALUE_HELPER")
+    createOperationDescriptor("REACT_SSR_RENDER_VALUE_HELPER")
   );
   invariant(val instanceof AbstractValue);
   return val;
@@ -260,7 +260,7 @@ function renderReactNode(realm: Realm, reactNode: ReactNode): StringValue | Abst
     realm,
     StringValue,
     args,
-    createResidualBuildNode("REACT_SSR_TEMPLATE_LITERAL", { quasis })
+    createOperationDescriptor("REACT_SSR_TEMPLATE_LITERAL", { quasis })
   );
   invariant(val instanceof AbstractValue);
   return val;
@@ -497,9 +497,9 @@ export function renderToString(
   invariant(realm.generator);
   // create a single regex used for the escape functions
   // by hoisting it, it gets cached by the VM JITs
-  realm.generator.emitStatement([], createResidualBuildNode("REACT_SSR_REGEX_CONSTANT"));
+  realm.generator.emitStatement([], createOperationDescriptor("REACT_SSR_REGEX_CONSTANT"));
   invariant(realm.generator);
-  realm.generator.emitStatement([], createResidualBuildNode("REACT_SSR_PREV_TEXT_NODE"));
+  realm.generator.emitStatement([], createOperationDescriptor("REACT_SSR_PREV_TEXT_NODE"));
   invariant(effects);
   realm.applyEffects(effects);
   invariant(effects.result instanceof SimpleNormalCompletion);

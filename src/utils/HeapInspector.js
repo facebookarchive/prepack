@@ -28,7 +28,7 @@ import {
 } from "../values/index.js";
 import { To } from "../singletons.js";
 import invariant from "../invariant.js";
-import { Logger } from "../utils/logger.js";
+import { Logger } from "./logger.js";
 
 type TargetIntegrityCommand = "freeze" | "seal" | "preventExtensions" | "";
 

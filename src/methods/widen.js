@@ -17,8 +17,8 @@ import type { Descriptor, PropertyBinding } from "../types.js";
 
 import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { Reference } from "../environment.js";
-import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
-import { Generator, createResidualBuildNode } from "../utils/generator.js";
+import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComparison } from "./index.js";
+import { Generator, createOperationDescriptor } from "../utils/generator.js";
 import { AbstractValue, ArrayValue, EmptyValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
@@ -156,7 +156,7 @@ export class WidenImplementation {
             result.types,
             result.values,
             [b.value || realm.intrinsics.undefined],
-            createResidualBuildNode("SINGLE_ARG"),
+            createOperationDescriptor("SINGLE_ARG"),
             { skipInvariant: true }
           );
           b.phiNode = phiNode;
@@ -165,7 +165,7 @@ export class WidenImplementation {
         invariant(phiNode.intrinsicName !== undefined);
         let phiName = phiNode.intrinsicName;
         result.intrinsicName = phiName;
-        result.buildNode = createResidualBuildNode("WIDENED_IDENTIFIER", { id: phiName });
+        result.operationDescriptor = createOperationDescriptor("WIDENED_IDENTIFIER", { id: phiName });
       }
       invariant(result instanceof Value);
       let previousHasLeaked = b2.previousHasLeaked;
@@ -251,7 +251,7 @@ export class WidenImplementation {
         let pathNode = b.pathNode;
         if (pathNode === undefined) {
           //Since properties already have mutable storage locations associated with them, we do not
-          //need phi nodes. What we need is an abstract value with a build node that results in a memberExpression
+          //need phi nodes. What we need is an abstract value with a operation descriptor that results in a memberExpression
           //that resolves to the storage location of the property.
 
           // For now, we only handle loop invariant properties
@@ -266,7 +266,7 @@ export class WidenImplementation {
                 realm,
                 rval,
                 [b.object],
-                createResidualBuildNode("WIDEN_PROPERTY", { propName: key })
+                createOperationDescriptor("WIDEN_PROPERTY", { propName: key })
               );
             } else {
               invariant(key instanceof AbstractValue);
@@ -274,7 +274,7 @@ export class WidenImplementation {
                 realm,
                 rval,
                 [b.object, key],
-                createResidualBuildNode("WIDEN_ABSTRACT_PROPERTY")
+                createOperationDescriptor("WIDEN_ABSTRACT_PROPERTY")
               );
             }
             // The value of the property at the start of the loop needs to be written to the property
@@ -291,7 +291,7 @@ export class WidenImplementation {
                   rval.types,
                   rval.values,
                   [b.object, initVal],
-                  createResidualBuildNode("WIDEN_PROPERTY_ASSIGNMENT", { propName: key })
+                  createOperationDescriptor("WIDEN_PROPERTY_ASSIGNMENT", { propName: key })
                 );
               } else {
                 invariant(key instanceof AbstractValue);
@@ -299,7 +299,7 @@ export class WidenImplementation {
                   rval.types,
                   rval.values,
                   [b.object, key, initVal],
-                  createResidualBuildNode("WIDEN_ABSTRACT_PROPERTY_ASSIGNMENT")
+                  createOperationDescriptor("WIDEN_ABSTRACT_PROPERTY_ASSIGNMENT")
                 );
               }
             }

@@ -34,7 +34,7 @@ import {
 import { GetIterator, IteratorClose, IteratorStep, IteratorValue } from "../../methods/iterator.js";
 import { Create, Havoc, Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
-import { createResidualBuildNode } from "../../utils/generator.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   let func = new NativeFunctionValue(realm, "Array", "Array", 1, (context, [...items], argCount, NewTarget) => {
@@ -247,7 +247,7 @@ export default function(realm: Realm): NativeFunctionValue {
         return ArrayValue.createTemporalWithWidenedNumericProperty(
           realm,
           args,
-          createResidualBuildNode("UNKNOWN_ARRAY_METHOD_CALL"),
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL"),
           { func: mapfn, thisVal: thisArg }
         );
       }

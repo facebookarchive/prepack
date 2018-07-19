@@ -15,7 +15,7 @@ import { To } from "../../singletons.js";
 import { Get } from "../../methods/get.js";
 import { Call } from "../../methods/call.js";
 import { IsCallable } from "../../methods/is.js";
-import { createResidualBuildNode } from "../../utils/generator.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 22.1.3.30
@@ -40,7 +40,7 @@ export default function(realm: Realm): NativeFunctionValue {
           realm,
           StringValue,
           [array],
-          createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "toString" })
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "toString" })
         );
       }
 

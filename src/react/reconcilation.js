@@ -47,7 +47,7 @@ import {
   valueIsFactoryClassComponent,
   valueIsKnownReactAbstraction,
   valueIsLegacyCreateClassComponent,
-} from "./utils";
+} from "./utils.js";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { Properties } from "../singletons.js";
@@ -78,7 +78,7 @@ import {
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
 import { handleReportedSideEffect } from "../serializer/utils.js";
-import { createResidualBuildNode } from "../utils/generator.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 import * as t from "@babel/types";
 
 type ComponentResolutionStrategy =
@@ -901,7 +901,7 @@ export class Reconciler {
         this.realm,
         ObjectValue,
         [reactDomPortalFunc, resolvedReactPortalValue, domNodeValue],
-        createResidualBuildNode("REACT_TEMPORAL_FUNC"),
+        createOperationDescriptor("REACT_TEMPORAL_FUNC"),
         { skipInvariant: true, isPure: true }
       );
     }

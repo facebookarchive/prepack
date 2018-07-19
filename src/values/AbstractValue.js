@@ -18,7 +18,7 @@ import type {
 } from "@babel/types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
-import { createResidualBuildNode, PreludeGenerator, type ResidualBuildNode } from "../utils/generator.js";
+import { createOperationDescriptor, PreludeGenerator, type OperationDescriptor } from "../utils/generator.js";
 import type { PropertyKeyValue, ShapeInformationInterface } from "../types.js";
 import buildExpressionTemplate from "../utils/builder.js";
 
@@ -95,7 +95,7 @@ export default class AbstractValue extends Value {
     values: ValuesDomain,
     hashValue: number,
     args: Array<Value>,
-    buildNode?: ResidualBuildNode,
+    operationDescriptor?: OperationDescriptor,
     optionalArgs?: {| kind?: AbstractValueKind, intrinsicName?: string, shape?: ShapeInformationInterface |}
   ) {
     invariant(realm.useAbstractInterpretation);
@@ -105,7 +105,7 @@ export default class AbstractValue extends Value {
     this.types = types;
     this.values = values;
     this.mightBeEmpty = false;
-    this.buildNode = buildNode;
+    this.operationDescriptor = operationDescriptor;
     this.args = args;
     this.hashValue = hashValue;
     this.kind = optionalArgs ? optionalArgs.kind : undefined;
@@ -119,7 +119,7 @@ export default class AbstractValue extends Value {
   mightBeEmpty: boolean;
   args: Array<Value>;
   shape: void | ShapeInformationInterface;
-  buildNode: void | ResidualBuildNode;
+  operationDescriptor: void | OperationDescriptor;
 
   toDisplayString(): string {
     return "[Abstract " + this.hashValue.toString() + "]";
@@ -208,14 +208,14 @@ export default class AbstractValue extends Value {
 
   getIdentifier(): string {
     invariant(this.hasIdentifier());
-    invariant(this.buildNode !== undefined);
-    let { id } = this.buildNode.data;
+    invariant(this.operationDescriptor !== undefined);
+    let { id } = this.operationDescriptor.data;
     invariant(id !== undefined);
     return id;
   }
 
   hasIdentifier(): boolean {
-    return this.buildNode ? this.buildNode.type === "IDENTIFIER" : false;
+    return this.operationDescriptor ? this.operationDescriptor.type === "IDENTIFIER" : false;
   }
 
   _checkAbstractValueImpliesCounter(): void {
@@ -595,8 +595,8 @@ export default class AbstractValue extends Value {
         ? ValuesDomain.topVal
         : ValuesDomain.binaryOp(realm, op, leftValues, rightValues);
     let [hash, args] = kind === undefined ? hashBinary(op, left, right) : hashCall(kind, left, right);
-    let buildNode = createResidualBuildNode("BINARY_EXPRESSION", { op });
-    let result = new AbstractValue(realm, resultTypes, resultValues, hash, args, buildNode);
+    let operationDescriptor = createOperationDescriptor("BINARY_EXPRESSION", { op });
+    let result = new AbstractValue(realm, resultTypes, resultValues, hash, args, operationDescriptor);
     result.kind = kind || op;
     result.expressionLocation = loc;
     if (doNotSimplify) return result;
@@ -640,8 +640,8 @@ export default class AbstractValue extends Value {
     let Constructor = Value.isTypeCompatibleWith(resultTypes.getType(), ObjectValue)
       ? AbstractObjectValue
       : AbstractValue;
-    let buildNode = createResidualBuildNode("LOGICAL_EXPRESSION", { op });
-    let result = new Constructor(realm, resultTypes, resultValues, hash, args, buildNode);
+    let operationDescriptor = createOperationDescriptor("LOGICAL_EXPRESSION", { op });
+    let result = new Constructor(realm, resultTypes, resultValues, hash, args, operationDescriptor);
     result.kind = op;
     result.expressionLocation = loc;
     if (doNotSimplify) return result;
@@ -671,8 +671,8 @@ export default class AbstractValue extends Value {
     let values = ValuesDomain.joinValues(realm, left, right);
     let [hash, args] = hashTernary(condition, left || realm.intrinsics.undefined, right || realm.intrinsics.undefined);
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let buildNode = createResidualBuildNode("CONDITIONAL_EXPRESSION");
-    let result = new Constructor(realm, types, values, hash, args, buildNode, { kind: "conditional" });
+    let operationDescriptor = createOperationDescriptor("CONDITIONAL_EXPRESSION");
+    let result = new Constructor(realm, types, values, hash, args, operationDescriptor, { kind: "conditional" });
     result.expressionLocation = loc;
     if (left) result.mightBeEmpty = left.mightHaveBeenDeleted();
     if (right && !result.mightBeEmpty) result.mightBeEmpty = right.mightHaveBeenDeleted();
@@ -694,8 +694,15 @@ export default class AbstractValue extends Value {
     invariant(op !== "delete" && op !== "++" && op !== "--"); // The operation must be pure
     let resultTypes = TypesDomain.unaryOp(op, new TypesDomain(operand.getType()));
     let resultValues = ValuesDomain.unaryOp(realm, op, operand.values);
-    let buildNode = createResidualBuildNode("UNARY_EXPRESSION", { op, prefix });
-    let result = new AbstractValue(realm, resultTypes, resultValues, hashUnary(op, operand), [operand], buildNode);
+    let operationDescriptor = createOperationDescriptor("UNARY_EXPRESSION", { op, prefix });
+    let result = new AbstractValue(
+      realm,
+      resultTypes,
+      resultValues,
+      hashUnary(op, operand),
+      [operand],
+      operationDescriptor
+    );
     result.kind = op;
     result.expressionLocation = loc;
     if (doNotSimplify) return result;
@@ -724,8 +731,8 @@ export default class AbstractValue extends Value {
     let Constructor = Value.isTypeCompatibleWith(resultType, ObjectValue) ? AbstractObjectValue : AbstractValue;
     let labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     invariant(labels.length >= operands.length);
-    let buildNode = createResidualBuildNode("ABSTRACT_FROM_TEMPLATE", { template });
-    let result = new Constructor(realm, resultTypes, resultValues, hash, operands, buildNode);
+    let operationDescriptor = createOperationDescriptor("ABSTRACT_FROM_TEMPLATE", { template });
+    let result = new Constructor(realm, resultTypes, resultValues, hash, operands, operationDescriptor);
     result.kind = kind;
     result.expressionLocation = loc || realm.currentLocation;
     return result;
@@ -772,15 +779,15 @@ export default class AbstractValue extends Value {
     let values = temp.values;
     let args = temp.args;
     invariant(realm.generator !== undefined);
-    invariant(temp.buildNode !== undefined);
-    return realm.generator.deriveAbstract(types, values, args, temp.buildNode, optionalArgs);
+    invariant(temp.operationDescriptor !== undefined);
+    return realm.generator.deriveAbstract(types, values, args, temp.operationDescriptor, optionalArgs);
   }
 
   static createFromBuildFunction(
     realm: Realm,
     resultType: typeof Value,
     args: Array<Value>,
-    buildNode: ResidualBuildNode,
+    operationDescriptor: OperationDescriptor,
     optionalArgs?: {| kind?: AbstractValueKind |}
   ): AbstractValue | UndefinedValue {
     let types = new TypesDomain(resultType);
@@ -789,7 +796,7 @@ export default class AbstractValue extends Value {
     let kind = (optionalArgs && optionalArgs.kind) || "build function";
     let hash;
     [hash, args] = hashCall(kind, ...args);
-    let result = new Constructor(realm, types, values, hash, args, buildNode);
+    let result = new Constructor(realm, types, values, hash, args, operationDescriptor);
     result.kind = kind;
     return result;
   }
@@ -798,7 +805,7 @@ export default class AbstractValue extends Value {
     realm: Realm,
     resultType: typeof Value,
     args: Array<Value>,
-    buildNode: ResidualBuildNode,
+    operationDescriptor: OperationDescriptor,
     optionalArgs?: {|
       kind?: AbstractValueKind,
       isPure?: boolean,
@@ -811,14 +818,14 @@ export default class AbstractValue extends Value {
     let values = ValuesDomain.topVal;
     invariant(realm.generator !== undefined);
     if (resultType === UndefinedValue) {
-      return realm.generator.emitVoidExpression(types, values, args, buildNode);
+      return realm.generator.emitVoidExpression(types, values, args, operationDescriptor);
     } else {
-      return realm.generator.deriveAbstract(types, values, args, buildNode, optionalArgs);
+      return realm.generator.deriveAbstract(types, values, args, operationDescriptor, optionalArgs);
     }
   }
 
   // Creates a union of an abstract value with one or more concrete values.
-  // The build node for the abstract values becomes the build node for the union.
+  // The operation descriptor for the abstract values becomes the operation descriptor for the union.
   // Use this only to allow instrinsic abstract objects to be null and/or undefined.
   static createAbstractConcreteUnion(realm: Realm, ...elements: Array<Value>): AbstractValue {
     let concreteValues: Array<ConcreteValue> = (elements.filter(e => e instanceof ConcreteValue): any);
@@ -835,7 +842,7 @@ export default class AbstractValue extends Value {
     }
     let types = TypesDomain.topVal;
     let [hash, operands] = hashCall("abstractConcreteUnion", abstractValue, ...concreteValues);
-    let result = new AbstractValue(realm, types, values, hash, operands, createResidualBuildNode("SINGLE_ARG"), {
+    let result = new AbstractValue(realm, types, values, hash, operands, createOperationDescriptor("SINGLE_ARG"), {
       kind: "abstractConcreteUnion",
     });
     result.expressionLocation = realm.currentLocation;
@@ -846,13 +853,13 @@ export default class AbstractValue extends Value {
     realm: Realm,
     resultTemplate: AbstractValue,
     args: Array<Value>,
-    buildNode: ResidualBuildNode
+    operationDescriptor: OperationDescriptor
   ): AbstractValue {
     let types = resultTemplate.types;
     let values = resultTemplate.values;
     let [hash] = hashCall("widened property", ...args);
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let result = new Constructor(realm, types, values, hash, args, buildNode);
+    let result = new Constructor(realm, types, values, hash, args, operationDescriptor);
     result.kind = "widened property";
     result.mightBeEmpty = resultTemplate.mightBeEmpty;
     result.expressionLocation = resultTemplate.expressionLocation;
@@ -888,8 +895,8 @@ export default class AbstractValue extends Value {
     let types = new TypesDomain(type);
     let values = ValuesDomain.topVal;
     let Constructor = Value.isTypeCompatibleWith(type, ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let buildNode = createResidualBuildNode("IDENTIFIER", { id: name });
-    let result = new Constructor(realm, types, values, 943586754858 + hashString(name), [], buildNode);
+    let operationDescriptor = createOperationDescriptor("IDENTIFIER", { id: name });
+    let result = new Constructor(realm, types, values, 943586754858 + hashString(name), [], operationDescriptor);
     result.kind = AbstractValue.makeKind("abstractCounted", (realm.objectCount++).toString()); // need not be an object, but must be unique
     result.expressionLocation = location;
     result.shape = shape;
@@ -975,7 +982,7 @@ export default class AbstractValue extends Value {
       realm,
       ObjectValue,
       temporalArgs,
-      createResidualBuildNode("OBJECT_ASSIGN"),
+      createOperationDescriptor("OBJECT_ASSIGN"),
       { skipInvariant: true, mutatesOnly: [to] }
     );
     invariant(temporalTo instanceof AbstractObjectValue);

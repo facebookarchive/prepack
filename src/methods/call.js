@@ -32,12 +32,12 @@ import {
   AbstractValue,
 } from "../values/index.js";
 import { GetIterator, HasSomeCompatibleType, IsCallable, IsPropertyKey, IteratorStep, IteratorValue } from "./index.js";
-import { GeneratorStart } from "../methods/generator.js";
+import { GeneratorStart } from "./generator.js";
 import { ReturnCompletion, AbruptCompletion, ThrowCompletion, ForkedAbruptCompletion } from "../completions.js";
-import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
+import { GetTemplateObject, GetV, GetThisValue } from "./get.js";
 import { Create, Environment, Functions, Join, Havoc, To, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
-import { createResidualBuildNode } from "../utils/generator.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "@babel/types";
 
 // ECMA262 12.3.6.1
@@ -528,7 +528,7 @@ export function EvaluateDirectCallWithArgList(
       realm,
       func.functionResultType || Value,
       [func].concat(argList),
-      createResidualBuildNode("DIRECT_CALL_WITH_ARG_LIST")
+      createOperationDescriptor("DIRECT_CALL_WITH_ARG_LIST")
     );
   }
   func = func.throwIfNotConcrete();
@@ -595,7 +595,7 @@ export function Call(realm: Realm, F: Value, V: Value, argsList?: Array<Value>):
         realm,
         Value,
         fullArgs,
-        createResidualBuildNode("CALL_ABSTRACT_FUNC")
+        createOperationDescriptor("CALL_ABSTRACT_FUNC")
       );
     } else {
       let fullArgs = [F, V].concat(argsList);
@@ -603,7 +603,7 @@ export function Call(realm: Realm, F: Value, V: Value, argsList?: Array<Value>):
         realm,
         Value,
         fullArgs,
-        createResidualBuildNode("CALL_ABSTRACT_FUNC_THIS")
+        createOperationDescriptor("CALL_ABSTRACT_FUNC_THIS")
       );
     }
   }

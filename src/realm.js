@@ -63,9 +63,9 @@ import {
 } from "./completions.js";
 import type { Compatibility, RealmOptions, ReactOutputTypes, InvariantModeTypes } from "./options.js";
 import invariant from "./invariant.js";
-import seedrandom from "seedrandom";
+import seedrandom from "../../../Library/Caches/typescript/2.9/node_modules/@types/seedrandom";
 import {
-  createResidualBuildNode,
+  createOperationDescriptor,
   Generator,
   PreludeGenerator,
   type TemporalBuildNodeEntry,
@@ -1028,7 +1028,7 @@ export class Realm {
             test.types,
             test.values,
             [test],
-            createResidualBuildNode("SINGLE_ARG"),
+            createOperationDescriptor("SINGLE_ARG"),
             { skipInvariant: true }
           );
           return [effects1, effects2, cond];
@@ -1116,8 +1116,8 @@ export class Realm {
     bindings.forEach((binding, key, map) => {
       let val = binding.value;
       if (val instanceof AbstractValue) {
-        invariant(val.buildNode !== undefined);
-        let tval = gen.deriveAbstract(val.types, val.values, [val], createResidualBuildNode("SINGLE_ARG"));
+        invariant(val.operationDescriptor !== undefined);
+        let tval = gen.deriveAbstract(val.types, val.values, [val], createOperationDescriptor("SINGLE_ARG"));
         tvalFor.set(key, tval);
       }
     });
@@ -1127,12 +1127,12 @@ export class Realm {
         let phiNode = key.phiNode;
         let tval = tvalFor.get(key);
         invariant(tval !== undefined);
-        gen.emitStatement([tval], createResidualBuildNode("LOCAL_ASSIGNMENT", { value: phiNode }));
+        gen.emitStatement([tval], createOperationDescriptor("LOCAL_ASSIGNMENT", { value: phiNode }));
       }
 
       if (val instanceof ObjectValue && newlyCreatedObjects.has(val)) {
         let phiNode = key.phiNode;
-        gen.emitStatement([val], createResidualBuildNode("LOCAL_ASSIGNMENT", { value: phiNode }));
+        gen.emitStatement([val], createOperationDescriptor("LOCAL_ASSIGNMENT", { value: phiNode }));
       }
     });
   }
@@ -1146,12 +1146,12 @@ export class Realm {
       }
       let value = val && val.value;
       if (value instanceof AbstractValue) {
-        invariant(value.buildNode !== undefined);
+        invariant(value.operationDescriptor !== undefined);
         let tval = gen.deriveAbstract(
           value.types,
           value.values,
           [key.object, value],
-          createResidualBuildNode("LOGICAL_PROPERTY_ASSIGNMENT", { binding: key, value }),
+          createOperationDescriptor("LOGICAL_PROPERTY_ASSIGNMENT", { binding: key, value }),
           {
             skipInvariant: true,
           }
@@ -1173,7 +1173,7 @@ export class Realm {
         if (path !== undefined) {
           gen.emitStatement(
             [key.object, tval || value, this.intrinsics.empty],
-            createResidualBuildNode("CONDITIONAL_PROPERTY_ASSIGNMENT", { binding: key, path, value })
+            createOperationDescriptor("CONDITIONAL_PROPERTY_ASSIGNMENT", { binding: key, path, value })
           );
         } else {
           // RH value was not widened, so it must have been a constant. We don't need to assign that inside the loop.
@@ -1185,7 +1185,7 @@ export class Realm {
         invariant(keyKey instanceof Value);
         gen.emitStatement(
           [key.object, keyKey, tval || value, this.intrinsics.empty],
-          createResidualBuildNode("PROPERTY_ASSIGNMENT", { path })
+          createOperationDescriptor("PROPERTY_ASSIGNMENT", { path })
         );
       }
     });
@@ -1663,7 +1663,7 @@ export class Realm {
       propertyValue.intrinsicName = `${path}.${key}`;
       propertyValue.kind = "rebuiltProperty";
       propertyValue.args = [object];
-      propertyValue.buildNode = createResidualBuildNode("REBUILT_OBJECT", { propName: key });
+      propertyValue.operationDescriptor = createOperationDescriptor("REBUILT_OBJECT", { propName: key });
       let intrinsicName = propertyValue.intrinsicName;
       invariant(intrinsicName !== undefined);
       this.rebuildNestedProperties(propertyValue, intrinsicName);

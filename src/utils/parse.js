@@ -15,7 +15,7 @@ import type { Realm } from "../realm.js";
 import { ThrowCompletion } from "../completions.js";
 import { StringValue } from "../values/index.js";
 import { Construct } from "../methods/construct.js";
-import traverseFast from "../utils/traverse-fast.js";
+import traverseFast from "./traverse-fast.js";
 import { parse } from "@babel/parser";
 import type { BabelNodeFile } from "@babel/types";
 

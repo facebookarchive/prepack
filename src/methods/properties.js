@@ -26,7 +26,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { EvalPropertyName } from "../evaluators/ObjectExpression";
+import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
 import { EnvironmentRecord, Reference } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
@@ -45,12 +45,12 @@ import {
   MakeConstructor,
   SameValue,
   SameValuePartial,
-} from "../methods/index.js";
+} from "./index.js";
 import { type BabelNodeObjectMethod, type BabelNodeClassMethod, isValidIdentifier } from "@babel/types";
 import type { LexicalEnvironment } from "../environment.js";
 import { Create, Environment, Functions, Havoc, Join, Path, To } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
-import { createResidualBuildNode } from "../utils/generator.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 function StringKey(key: PropertyKeyValue): string {
   if (key instanceof StringValue) key = key.value;
@@ -1189,7 +1189,7 @@ export class PropertiesImplementation {
         realm,
         Value,
         [O._templateFor || O],
-        createResidualBuildNode("ABSTRACT_PROPERTY", { propName }),
+        createOperationDescriptor("ABSTRACT_PROPERTY", { propName }),
         { isPure: true }
       );
       // TODO: We can't be sure what the descriptor will be, but the value will be abstract.
@@ -1217,7 +1217,7 @@ export class PropertiesImplementation {
                   realm,
                   type,
                   [O._templateFor || O],
-                  createResidualBuildNode("ABSTRACT_PROPERTY", { propName: P }),
+                  createOperationDescriptor("ABSTRACT_PROPERTY", { propName: P }),
                   { kind: AbstractValue.makeKind("property", P) }
                 );
               } else {
@@ -1225,7 +1225,7 @@ export class PropertiesImplementation {
                   realm,
                   type,
                   [O._templateFor || O],
-                  createResidualBuildNode("ABSTRACT_PROPERTY", { propName: P }),
+                  createOperationDescriptor("ABSTRACT_PROPERTY", { propName: P }),
                   { skipInvariant: true, isPure: true }
                 );
               }
@@ -1319,8 +1319,8 @@ export class PropertiesImplementation {
           if (value.kind !== "resolved") {
             let realmGenerator = realm.generator;
             invariant(realmGenerator);
-            invariant(value.buildNode);
-            value = realmGenerator.deriveAbstract(value.types, value.values, value.args, value.buildNode, {
+            invariant(value.operationDescriptor);
+            value = realmGenerator.deriveAbstract(value.types, value.values, value.args, value.operationDescriptor, {
               isPure: true,
               kind: "resolved",
               // We can't emit the invariant here otherwise it'll assume the AbstractValue's type not the union type

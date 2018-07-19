@@ -37,7 +37,7 @@ import {
   HasSomeCompatibleType,
 } from "../../methods/index.js";
 import { Create, Join, Properties, To } from "../../singletons.js";
-import { createResidualBuildNode } from "../../utils/generator.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.31
@@ -60,7 +60,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         newArgs,
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "concat" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "concat" })
       );
     }
 
@@ -167,7 +167,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
           realm,
           BooleanValue,
           args,
-          createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "copyWithin" })
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "copyWithin" })
         );
         return O;
       }
@@ -267,7 +267,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         Value,
         [O],
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "entries" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "entries" })
       );
     }
 
@@ -296,7 +296,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         BooleanValue,
         args,
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "every" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "every" })
       );
     }
 
@@ -366,7 +366,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         Value,
         args,
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "fill" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "fill" })
       );
       return O;
     }
@@ -419,7 +419,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         args,
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "filter" }),
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "filter" }),
         { func: callbackfn, thisVal: thisArg }
       );
     }
@@ -499,7 +499,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         Value,
         args,
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "find" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "find" })
       );
     }
 
@@ -560,7 +560,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         NumberValue,
         args,
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "findIndex" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "findIndex" })
       );
     }
 
@@ -621,7 +621,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         BooleanValue,
         args,
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "forEach" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "forEach" })
       );
       return realm.intrinsics.undefined;
     }
@@ -687,7 +687,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
           realm,
           BooleanValue,
           args,
-          createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "includes" })
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "includes" })
         );
       }
 
@@ -750,7 +750,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         NumberValue,
         args,
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "indexOf" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "indexOf" })
       );
     }
 
@@ -826,7 +826,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         StringValue,
         args,
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "join" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "join" })
       );
     }
 
@@ -900,7 +900,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         Value,
         [O],
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "keys" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "keys" })
       );
     }
 
@@ -929,7 +929,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         NumberValue,
         args,
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "lastIndexOf" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "lastIndexOf" })
       );
     }
 
@@ -995,7 +995,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         args,
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "map" }),
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "map" }),
         { func: callbackfn, thisVal: thisArg }
       );
     }
@@ -1085,7 +1085,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         Value,
         [O],
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "pop" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "pop" })
       );
     }
 
@@ -1138,7 +1138,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         NumberValue,
         [O, ...args],
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "push" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "push" })
       );
     }
 
@@ -1196,7 +1196,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         Value,
         args,
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "reduce" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "reduce" })
       );
     }
 
@@ -1303,7 +1303,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         Value,
         args,
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "reduceRight" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "reduceRight" })
       );
     }
 
@@ -1404,7 +1404,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         ArrayValue,
         [O],
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "reverse" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "reverse" })
       );
       return O;
     }
@@ -1507,7 +1507,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         Value,
         [O],
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "shift" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "shift" })
       );
     }
 
@@ -1581,7 +1581,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         newArgs,
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "slice" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "slice" })
       );
     }
 
@@ -1661,7 +1661,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         BooleanValue,
         args,
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "some" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "some" })
       );
     }
 
@@ -1728,7 +1728,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         Value,
         args,
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "sort" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "sort" })
       );
       // context is returned instead of O at the end of this method
       // so we do the same here
@@ -1920,7 +1920,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         ArrayValue,
         args,
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "splice" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "splice" })
       );
     }
 
@@ -2121,7 +2121,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         StringValue,
         [array],
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "toLocaleString" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "toLocaleString" })
       );
     }
 
@@ -2201,7 +2201,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         NumberValue,
         [O],
-        createResidualBuildNode("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "unshift" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "unshift" })
       );
     }
 

@@ -54,7 +54,7 @@ import {
 import { Havoc, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { typeAnnotation } from "@babel/types";
-import { createResidualBuildNode } from "../utils/generator.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 function isWidenedValue(v: void | Value) {
   if (!(v instanceof AbstractValue)) return false;
@@ -571,11 +571,14 @@ export default class ObjectValue extends ConcreteValue {
       if (realm.react.enabled && realm.react.reactProps.has(this)) {
         realm.react.reactProps.add(template);
       }
-      let buildNode = createResidualBuildNode("SINGLE_ARG");
-      let result = AbstractValue.createTemporalFromBuildFunction(this.$Realm, ObjectValue, [template], buildNode, {
-        skipInvariant: true,
-        isPure: true,
-      });
+      let operationDescriptor = createOperationDescriptor("SINGLE_ARG");
+      let result = AbstractValue.createTemporalFromBuildFunction(
+        this.$Realm,
+        ObjectValue,
+        [template],
+        operationDescriptor,
+        { skipInvariant: true, isPure: true }
+      );
       invariant(result instanceof AbstractObjectValue);
       result.values = new ValuesDomain(template);
       return result;
@@ -770,7 +773,7 @@ export default class ObjectValue extends ConcreteValue {
           this.$Realm,
           Value,
           [Receiver, P],
-          createResidualBuildNode("OBJECT_GET_PARTIAL"),
+          createOperationDescriptor("OBJECT_GET_PARTIAL"),
           { skipInvariant: true, isPure: true }
         );
       } else {
@@ -798,7 +801,7 @@ export default class ObjectValue extends ConcreteValue {
           this.$Realm,
           Value,
           [this, P],
-          createResidualBuildNode("OBJECT_GET_PARTIAL"),
+          createOperationDescriptor("OBJECT_GET_PARTIAL"),
           { skipInvariant: true, isPure: true }
         );
       }
@@ -808,7 +811,7 @@ export default class ObjectValue extends ConcreteValue {
         this.$Realm,
         Value,
         [this, P],
-        createResidualBuildNode("OBJECT_GET_PARTIAL"),
+        createOperationDescriptor("OBJECT_GET_PARTIAL"),
         { skipInvariant: true, isPure: true }
       );
     }
@@ -861,7 +864,7 @@ export default class ObjectValue extends ConcreteValue {
         this.$Realm,
         absVal.getType(),
         [ob, propName],
-        createResidualBuildNode("OBJECT_GET_PARTIAL"),
+        createOperationDescriptor("OBJECT_GET_PARTIAL"),
         { skipInvariant: true, isPure: true }
       );
     }
@@ -879,7 +882,7 @@ export default class ObjectValue extends ConcreteValue {
           this.$Realm,
           absVal.getType(),
           [ob, propName],
-          createResidualBuildNode("OBJECT_GET_PARTIAL"),
+          createOperationDescriptor("OBJECT_GET_PARTIAL"),
           { skipInvariant: true, isPure: true }
         );
       } else if (arg2.args.length === 3) {
@@ -941,7 +944,7 @@ export default class ObjectValue extends ConcreteValue {
             let generator = this.$Realm.generator;
             invariant(generator);
             invariant(P instanceof AbstractValue);
-            generator.emitStatement([Receiver, P, V], createResidualBuildNode("OBJECT_SET_PARTIAL"));
+            generator.emitStatement([Receiver, P, V], createOperationDescriptor("OBJECT_SET_PARTIAL"));
             return this.$Realm.intrinsics.undefined;
           },
           TypesDomain.topVal,

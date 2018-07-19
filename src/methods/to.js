@@ -35,7 +35,7 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
-import { createResidualBuildNode } from "../utils/generator.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 type ElementConvType = {
   Int8: (Realm, numberOrValue) => number,
@@ -748,7 +748,7 @@ export class ToImplementation {
     if (value.mightNotBeString()) {
       let result;
       // If the property is not a string we need to coerce it.
-      let coerceToString = createResidualBuildNode("COERCE_TO_STRING");
+      let coerceToString = createOperationDescriptor("COERCE_TO_STRING");
       if (value.mightNotBeNumber() && !value.isSimpleObject()) {
         // If this might be a non-simple object, we need to coerce this at a
         // temporal point since it can have side-effects.

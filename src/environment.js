@@ -24,7 +24,7 @@ import * as t from "@babel/types";
 
 import { AbruptCompletion, Completion, ThrowCompletion } from "./completions.js";
 import { CompilerDiagnostic, FatalError } from "./errors.js";
-import { defaultOptions } from "./options";
+import { defaultOptions } from "./options.js";
 import type { PartialEvaluatorOptions } from "./options";
 import { ExecutionContext } from "./realm.js";
 import {
@@ -48,16 +48,16 @@ import traverseFast from "./utils/traverse-fast.js";
 import { HasProperty, Get, IsExtensible, HasOwnProperty, IsDataDescriptor } from "./methods/index.js";
 import { Environment, Havoc, Properties, To } from "./singletons.js";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
-import PrimitiveValue from "./values/PrimitiveValue";
-import { createResidualBuildNode } from "./utils/generator.js";
+import PrimitiveValue from "./values/PrimitiveValue.js";
+import { createOperationDescriptor } from "./utils/generator.js";
 
-const sourceMap = require("source-map");
+const sourceMap = require("../../../Library/Caches/typescript/2.9/node_modules/source-map/source-map");
 
 function deriveGetBinding(realm: Realm, binding: Binding) {
   let types = TypesDomain.topVal;
   let values = ValuesDomain.topVal;
   invariant(realm.generator !== undefined);
-  return realm.generator.deriveAbstract(types, values, [], createResidualBuildNode("GET_BINDING", { binding }));
+  return realm.generator.deriveAbstract(types, values, [], createOperationDescriptor("GET_BINDING", { binding }));
 }
 
 export function havocBinding(binding: Binding): void {

@@ -22,7 +22,7 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
-import { hardModifyReactObjectPropertyBinding, isReactElement, isReactPropsObject, getProperty } from "./utils";
+import { hardModifyReactObjectPropertyBinding, isReactElement, isReactPropsObject, getProperty } from "./utils.js";
 import { ResidualReactElementVisitor } from "../serializer/ResidualReactElementVisitor.js";
 
 export type ReactSetValueMapKey = Value | number | string;

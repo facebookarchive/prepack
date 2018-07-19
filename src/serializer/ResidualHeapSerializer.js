@@ -42,7 +42,7 @@ import type {
   BabelNodeFunctionExpression,
 } from "@babel/types";
 import { Generator, PreludeGenerator, NameGenerator } from "../utils/generator.js";
-import type { ResidualBuildNode, SerializationContext } from "../utils/generator.js";
+import type { OperationDescriptor, SerializationContext } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import type {
   ResidualFunctionBinding,
@@ -81,10 +81,10 @@ import type { Binding } from "../environment.js";
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord, FunctionEnvironmentRecord } from "../environment.js";
 import type { Referentializer } from "./Referentializer.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
-import { type Replacement, getReplacement } from "./ResidualFunctionInstantiator";
+import { type Replacement, getReplacement } from "./ResidualFunctionInstantiator.js";
 import { describeValue } from "../utils.js";
 import { getAsPropertyNameExpression } from "../utils/babelhelpers.js";
-import { ResidualBuildNodeSerializer } from "./ResidualBuildNodeSerializer.js";
+import { ResidualOperationSerializer } from "./ResidualOperationSerializer.js";
 
 function commentStatement(text: string) {
   let s = t.emptyStatement();
@@ -143,7 +143,7 @@ export class ResidualHeapSerializer {
     let realmPreludeGenerator = this.realm.preludeGenerator;
     invariant(realmPreludeGenerator);
     this.preludeGenerator = realmPreludeGenerator;
-    this.buildNodeSerializer = new ResidualBuildNodeSerializer(realm, realmPreludeGenerator);
+    this.residualOperationSerializer = new ResidualOperationSerializer(realm, realmPreludeGenerator);
 
     this.prelude = [];
     this._descriptors = new Map();
@@ -233,7 +233,7 @@ export class ResidualHeapSerializer {
   body: Array<BabelNodeStatement>;
   mainBody: SerializedBody;
   realm: Realm;
-  buildNodeSerializer: ResidualBuildNodeSerializer;
+  residualOperationSerializer: ResidualOperationSerializer;
   preludeGenerator: PreludeGenerator;
   generator: Generator;
   _descriptors: Map<string, BabelNodeIdentifier>;
@@ -388,7 +388,9 @@ export class ResidualHeapSerializer {
                 ? t.memberExpression(uid, protoExpression)
                 : t.callExpression(this.preludeGenerator.memoizeReference("Object.getPrototypeOf"), [uid]);
             let condition = t.binaryExpression("!==", fetchedPrototype, serializedProto);
-            let consequent = this.buildNodeSerializer.getErrorStatement(t.stringLiteral("unexpected prototype"));
+            let consequent = this.residualOperationSerializer.getErrorStatement(
+              t.stringLiteral("unexpected prototype")
+            );
             this.emitter.emit(t.ifStatement(condition, consequent));
           },
           this.emitter.getBody()
@@ -1914,8 +1916,8 @@ export class ResidualHeapSerializer {
       let prop = this.serializeValue(val.args[1]);
       return t.memberExpression(obj, prop, true);
     }
-    invariant(val.buildNode !== undefined);
-    let serializedValue = this.buildNodeSerializer.serialize(val.buildNode, serializedArgs);
+    invariant(val.operationDescriptor !== undefined);
+    let serializedValue = this.residualOperationSerializer.serialize(val.operationDescriptor, serializedArgs);
     if (serializedValue.type === "Identifier") {
       let id = ((serializedValue: any): BabelNodeIdentifier);
       invariant(
@@ -2127,13 +2129,18 @@ export class ResidualHeapSerializer {
     // along the code of the nested generator; their definitions need to get hoisted
     // or repeated so that they are accessible and defined from all using scopes
     let context = {
-      serializeBuildNode: (
-        buildNode: ResidualBuildNode,
+      serializeOperationDescriptor: (
+        operationDescriptor: OperationDescriptor,
         nodes: Array<BabelNodeExpression>,
         _context: SerializationContext,
         valuesToProcess: Set<AbstractValue | ObjectValue>
       ) => {
-        let serializedValue = this.buildNodeSerializer.serialize(buildNode, nodes, _context, valuesToProcess);
+        let serializedValue = this.residualOperationSerializer.serialize(
+          operationDescriptor,
+          nodes,
+          _context,
+          valuesToProcess
+        );
 
         return ((serializedValue: any): BabelNodeStatement);
       },

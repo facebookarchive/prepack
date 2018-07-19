@@ -32,7 +32,7 @@ import {
 } from "../methods/index.js";
 import { Havoc, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
-import { createResidualBuildNode, type ResidualBuildNode } from "../utils/generator.js";
+import { createOperationDescriptor, type OperationDescriptor } from "../utils/generator.js";
 
 export default class AbstractObjectValue extends AbstractValue {
   constructor(
@@ -41,10 +41,10 @@ export default class AbstractObjectValue extends AbstractValue {
     values: ValuesDomain,
     hashValue: number,
     args: Array<Value>,
-    buildNode?: ResidualBuildNode,
+    operationDescriptor?: OperationDescriptor,
     optionalArgs?: {| kind?: AbstractValueKind, intrinsicName?: string, shape?: ShapeInformationInterface |}
   ) {
-    super(realm, types, values, hashValue, args, buildNode, optionalArgs);
+    super(realm, types, values, hashValue, args, operationDescriptor, optionalArgs);
     if (!values.isTop()) {
       for (let element of this.values.getElements()) invariant(element instanceof ObjectValue);
     }
@@ -264,7 +264,7 @@ export default class AbstractObjectValue extends AbstractValue {
         realm,
         ObjectValue,
         [primitiveValue],
-        createResidualBuildNode("ABSTRACT_OBJECT_GET_PROTO_OF")
+        createOperationDescriptor("ABSTRACT_OBJECT_GET_PROTO_OF")
       );
       invariant(result instanceof AbstractObjectValue);
       return result;
@@ -519,7 +519,7 @@ export default class AbstractObjectValue extends AbstractValue {
           this.$Realm,
           type,
           [ob],
-          createResidualBuildNode("ABSTRACT_OBJECT_GET", { propertyGetter, propName: P }),
+          createOperationDescriptor("ABSTRACT_OBJECT_GET", { propertyGetter, propName: P }),
           {
             skipInvariant: true,
             isPure: true,
@@ -623,7 +623,7 @@ export default class AbstractObjectValue extends AbstractValue {
           this.$Realm,
           Value,
           [this, P],
-          createResidualBuildNode("ABSTRACT_OBJECT_GET_PARTIAL"),
+          createOperationDescriptor("ABSTRACT_OBJECT_GET_PARTIAL"),
           { skipInvariant: true, isPure: true }
         );
       }
@@ -643,7 +643,7 @@ export default class AbstractObjectValue extends AbstractValue {
           this.$Realm,
           Value,
           [Receiver, P],
-          createResidualBuildNode("ABSTRACT_OBJECT_GET_PARTIAL"),
+          createOperationDescriptor("ABSTRACT_OBJECT_GET_PARTIAL"),
           { skipInvariant: true, isPure: true }
         );
       }
@@ -772,12 +772,12 @@ export default class AbstractObjectValue extends AbstractValue {
             if (typeof P === "string") {
               generator.emitStatement(
                 [Receiver, V],
-                createResidualBuildNode("ABSTRACT_OBJECT_SET_PARTIAL", { propName: P })
+                createOperationDescriptor("ABSTRACT_OBJECT_SET_PARTIAL", { propName: P })
               );
             } else {
               // Coercion can only have effects on anything reachable from the key.
               Havoc.value(this.$Realm, P);
-              generator.emitStatement([Receiver, P, V], createResidualBuildNode("ABSTRACT_OBJECT_SET_PARTIAL_VALUE"));
+              generator.emitStatement([Receiver, P, V], createOperationDescriptor("ABSTRACT_OBJECT_SET_PARTIAL_VALUE"));
             }
             return this.$Realm.intrinsics.undefined;
           },

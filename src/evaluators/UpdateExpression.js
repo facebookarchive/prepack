@@ -19,7 +19,7 @@ import type { BabelNodeUpdateExpression } from "@babel/types";
 import { Environment, Havoc, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import { ValuesDomain, TypesDomain } from "../domains/index.js";
-import { createResidualBuildNode } from "../utils/generator.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 export default function(
   ast: BabelNodeUpdateExpression,
@@ -50,7 +50,7 @@ export default function(
               realm,
               NumberValue,
               [oldExpr],
-              createResidualBuildNode("UPDATE_INCREMENTOR", { op })
+              createOperationDescriptor("UPDATE_INCREMENTOR", { op })
             ),
           TypesDomain.topVal,
           ValuesDomain.topVal

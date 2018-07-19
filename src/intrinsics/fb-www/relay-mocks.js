@@ -14,11 +14,11 @@ import { ObjectValue, FunctionValue, AbstractValue, ECMAScriptSourceFunctionValu
 import { Create, Environment } from "../../singletons.js";
 import { createAbstract } from "../prepack/utils.js";
 import { Get } from "../../methods/index.js";
-import invariant from "../../invariant";
+import invariant from "../../invariant.js";
 import { createReactHintObject } from "../../react/utils.js";
 import { parseExpression } from "@babel/parser";
 import { addMockFunctionToObject } from "./utils.js";
-import { createResidualBuildNode } from "../../utils/generator.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 let reactRelayCode = `
   function createReactRelay(React) {
@@ -113,7 +113,7 @@ function createReactRelayContainer(
       realm,
       FunctionValue,
       [reactRelay, ...args],
-      createResidualBuildNode("REACT_RELAY_MOCK_CONTAINER", { propName: containerName }),
+      createOperationDescriptor("REACT_RELAY_MOCK_CONTAINER", { propName: containerName }),
       { skipInvariant: true, isPure: true }
     );
     invariant(value instanceof AbstractValue);

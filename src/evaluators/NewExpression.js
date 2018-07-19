@@ -20,7 +20,7 @@ import { Construct } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { FatalError } from "../errors.js";
 import { BabelNodeNewExpression } from "@babel/types";
-import { createResidualBuildNode } from "../utils/generator.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 export default function(
   ast: BabelNodeNewExpression,
@@ -102,7 +102,7 @@ function tryToEvaluateConstructOrLeaveAsAbstract(
             realm,
             ObjectValue,
             [constructor, ...argsList],
-            createResidualBuildNode("NEW_EXPRESSION")
+            createOperationDescriptor("NEW_EXPRESSION")
           ),
         TypesDomain.topVal,
         ValuesDomain.topVal

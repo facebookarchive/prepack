@@ -16,8 +16,8 @@ import invariant from "../invariant.js";
 import { Realm } from "../realm.js";
 import { AbstractValue, BooleanValue, ConcreteValue, Value } from "../values/index.js";
 import { Path, To } from "../singletons.js";
-import EmptyValue from "../values/EmptyValue";
-import { createResidualBuildNode } from "../../lib/utils/generator.js";
+import EmptyValue from "../values/EmptyValue.js";
+import { createOperationDescriptor } from "./generator.js";
 
 export default function simplifyAndRefineAbstractValue(
   realm: Realm,
@@ -128,7 +128,7 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
                 realm,
                 BooleanValue,
                 [xa],
-                createResidualBuildNode("CANNOT_BECOME_OBJECT"),
+                createOperationDescriptor("CANNOT_BECOME_OBJECT"),
                 { kind: "global.__cannotBecomeObject(A)" }
               );
             }

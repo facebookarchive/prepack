@@ -60,7 +60,7 @@ import { concretize, Utils } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";
 import * as t from "@babel/types";
 
-export type ResidualBuildNodeType =
+export type OperationDescriptorType =
   | "IDENTIFIER"
   | "SINGLE_ARG"
   | "REBUILT_OBJECT"
@@ -148,16 +148,16 @@ export type DerivedExpressionBuildNodeFunction = (
   Set<AbstractValue | ObjectValue>
 ) => BabelNodeExpression;
 
-export type ResidualBuildNode = {
-  data: ResidualBuildNodeData,
+export type OperationDescriptor = {
+  data: OperationDescriptorData,
   kind: void | ResidualBuildKind,
-  type: ResidualBuildNodeType,
+  type: OperationDescriptorType,
 };
 
 // TODO: gradually remove all these, currently it's a random bag of values
 // that should be in args or in other places rather than here.
-export type ResidualBuildNodeData = {
-  appendLastToInvariantBuildNode?: ResidualBuildNode,
+export type OperationDescriptorData = {
+  appendLastToInvariantOperationDescriptor?: OperationDescriptor,
   binding?: Binding | PropertyBinding,
   boundName?: BabelNodeIdentifier,
   callTemplate?: () => BabelNodeExpression,
@@ -182,16 +182,16 @@ export type ResidualBuildNodeData = {
   typeofString?: string,
   usesThis?: boolean,
   value?: Value,
-  violationConditionBuildNode?: ResidualBuildNode,
+  violationConditionOperationDescriptor?: OperationDescriptor,
 };
 
 export type ResidualBuildKind = "DERIVED" | "VOID";
 
-export function createResidualBuildNode(
-  type: ResidualBuildNodeType,
-  data?: ResidualBuildNodeData = {},
+export function createOperationDescriptor(
+  type: OperationDescriptorType,
+  data?: OperationDescriptorData = {},
   kind?: ResidualBuildKind
-): ResidualBuildNode {
+): OperationDescriptor {
   return {
     data,
     kind,
@@ -202,8 +202,8 @@ export function createResidualBuildNode(
 import type { ShapeInformationInterface } from "../types.js";
 
 export type SerializationContext = {|
-  serializeBuildNode: (
-    ResidualBuildNode,
+  serializeOperationDescriptor: (
+    OperationDescriptor,
     Array<BabelNodeExpression>,
     SerializationContext,
     Set<AbstractValue | ObjectValue>
@@ -277,8 +277,8 @@ export class GeneratorEntry {
 export type TemporalBuildNodeEntryArgs = {
   declared?: AbstractValue | ObjectValue,
   args: Array<Value>,
-  // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
-  buildNode?: ResidualBuildNode,
+  // If we're just trying to add roots for the serializer to notice, we don't need an operationDescriptor.
+  operationDescriptor?: OperationDescriptor,
   dependencies?: Array<Generator>,
   isPure?: boolean,
   mutatesOnly?: Array<Value>,
@@ -298,8 +298,8 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
 
   declared: void | AbstractValue | ObjectValue;
   args: Array<Value>;
-  // If we're just trying to add roots for the serializer to notice, we don't need a buildNode.
-  buildNode: void | ResidualBuildNode;
+  // If we're just trying to add roots for the serializer to notice, we don't need an operationDescriptor.
+  operationDescriptor: void | OperationDescriptor;
   dependencies: void | Array<Generator>;
   isPure: void | boolean;
   mutatesOnly: void | Array<Value>;
@@ -307,7 +307,7 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
   toDisplayJson(depth: number): DisplayResult {
     if (depth <= 0) return `TemporalBuildNode${this.index}`;
     let obj = { type: "TemporalBuildNode", ...this };
-    delete obj.buildNode;
+    delete obj.operationDescriptor;
     return Utils.verboseToDisplayJson(obj, depth);
   }
 
@@ -347,9 +347,9 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
     }
     if (!omit) {
       let nodes = this.args.map((boundArg, i) => context.serializeValue(boundArg));
-      if (this.buildNode !== undefined) {
+      if (this.operationDescriptor !== undefined) {
         let valuesToProcess = new Set();
-        let node = context.serializeBuildNode(this.buildNode, nodes, context, valuesToProcess);
+        let node = context.serializeOperationDescriptor(this.operationDescriptor, nodes, context, valuesToProcess);
         if (node.type === "BlockStatement") {
           let block: BabelNodeBlockStatement = (node: any);
           let statements = block.body;
@@ -766,21 +766,21 @@ export class Generator {
   emitGlobalAssignment(key: string, value: Value): void {
     this._addEntry({
       args: [value],
-      buildNode: createResidualBuildNode("GLOBAL_ASSIGNMENT", { propName: key }),
+      operationDescriptor: createOperationDescriptor("GLOBAL_ASSIGNMENT", { propName: key }),
     });
   }
 
   emitConcreteModel(key: string, value: Value): void {
     this._addEntry({
       args: [concretize(this.realm, value)],
-      buildNode: createResidualBuildNode("CONCRETE_MODEL", { propName: key }),
+      operationDescriptor: createOperationDescriptor("CONCRETE_MODEL", { propName: key }),
     });
   }
 
   emitGlobalDelete(key: string): void {
     this._addEntry({
       args: [],
-      buildNode: createResidualBuildNode("GLOBAL_DELETE", { propName: key }),
+      operationDescriptor: createOperationDescriptor("GLOBAL_DELETE", { propName: key }),
     });
   }
 
@@ -792,7 +792,7 @@ export class Generator {
     if (object.refuseSerialization) return;
     this._addEntry({
       args: [object, value],
-      buildNode: createResidualBuildNode("EMIT_PROPERTY_ASSIGNMENT", { propName: key, value }),
+      operationDescriptor: createOperationDescriptor("EMIT_PROPERTY_ASSIGNMENT", { propName: key, value }),
     });
   }
 
@@ -813,7 +813,7 @@ export class Generator {
           desc.get || object.$Realm.intrinsics.undefined,
           desc.set || object.$Realm.intrinsics.undefined,
         ],
-        buildNode: createResidualBuildNode("DEFINE_PROPERTY", { object, propName: key, desc }),
+        operationDescriptor: createOperationDescriptor("DEFINE_PROPERTY", { object, propName: key, desc }),
       });
     }
   }
@@ -822,21 +822,21 @@ export class Generator {
     if (object.refuseSerialization) return;
     this._addEntry({
       args: [object],
-      buildNode: createResidualBuildNode("PROPERTY_DELETE", { propName: key }),
+      operationDescriptor: createOperationDescriptor("PROPERTY_DELETE", { propName: key }),
     });
   }
 
   emitCall(callTemplate: () => BabelNodeExpression, args: Array<Value>): void {
     this._addEntry({
       args,
-      buildNode: createResidualBuildNode("EMIT_CALL", { callTemplate }),
+      operationDescriptor: createOperationDescriptor("EMIT_CALL", { callTemplate }),
     });
   }
 
   emitConsoleLog(method: ConsoleMethodTypes, args: Array<string | ConcreteValue>): void {
     this._addEntry({
       args: args.map(v => (typeof v === "string" ? new StringValue(this.realm, v) : v)),
-      buildNode: createResidualBuildNode("CONSOLE_LOG", { propName: method }),
+      operationDescriptor: createOperationDescriptor("CONSOLE_LOG", { propName: method }),
     });
   }
 
@@ -844,7 +844,7 @@ export class Generator {
   emitDoWhileStatement(test: AbstractValue, body: Generator): void {
     this._addEntry({
       args: [],
-      buildNode: createResidualBuildNode("DO_WHILE", { generator: body, value: test }),
+      operationDescriptor: createOperationDescriptor("DO_WHILE", { generator: body, value: test }),
       dependencies: [body],
     });
   }
@@ -852,7 +852,7 @@ export class Generator {
   emitConditionalThrow(value: Value): void {
     this._addEntry({
       args: [value],
-      buildNode: createResidualBuildNode("CONDITIONAL_THROW", { value }),
+      operationDescriptor: createOperationDescriptor("CONDITIONAL_THROW", { value }),
     });
   }
 
@@ -873,7 +873,7 @@ export class Generator {
 
   emitThrow(value: Value): void {
     this._issueThrowCompilerDiagnostic(value);
-    this.emitStatement([value], createResidualBuildNode("THROW"));
+    this.emitStatement([value], createOperationDescriptor("THROW"));
   }
 
   // Checks the full set of possible concrete values as well as typeof
@@ -912,8 +912,8 @@ export class Generator {
       } else {
         this._emitInvariant(
           [value, value],
-          createResidualBuildNode("FULL_INVARIANT_ABSTRACT", { concreteComparisons, typeComparisons }),
-          createResidualBuildNode("INVARIANT_APPEND", { propName: key })
+          createOperationDescriptor("FULL_INVARIANT_ABSTRACT", { concreteComparisons, typeComparisons }),
+          createOperationDescriptor("INVARIANT_APPEND", { propName: key })
         );
       }
     } else if (value instanceof FunctionValue) {
@@ -922,14 +922,14 @@ export class Generator {
       // These concrete functions do not have the right identity.
       this._emitInvariant(
         [object, value, object],
-        createResidualBuildNode("FULL_INVARIANT_FUNCTION", { propName: key }),
-        createResidualBuildNode("INVARIANT_APPEND", { propName: key })
+        createOperationDescriptor("FULL_INVARIANT_FUNCTION", { propName: key }),
+        createOperationDescriptor("INVARIANT_APPEND", { propName: key })
       );
     } else {
       this._emitInvariant(
         [object, value, object],
-        createResidualBuildNode("FULL_INVARIANT", { propName: key }),
-        createResidualBuildNode("INVARIANT_APPEND", { propName: key })
+        createOperationDescriptor("FULL_INVARIANT", { propName: key }),
+        createOperationDescriptor("INVARIANT_APPEND", { propName: key })
       );
     }
   }
@@ -942,24 +942,24 @@ export class Generator {
     if (object.refuseSerialization) return;
     this._emitInvariant(
       [object, object],
-      createResidualBuildNode("PROPERTY_INVARIANT", { state, propName: key }),
-      createResidualBuildNode("INVARIANT_APPEND", { propName: key })
+      createOperationDescriptor("PROPERTY_INVARIANT", { state, propName: key }),
+      createOperationDescriptor("INVARIANT_APPEND", { propName: key })
     );
   }
 
   _emitInvariant(
     args: Array<Value>,
-    violationConditionBuildNode: ResidualBuildNode,
-    appendLastToInvariantBuildNode: ResidualBuildNode
+    violationConditionOperationDescriptor: OperationDescriptor,
+    appendLastToInvariantOperationDescriptor: OperationDescriptor
   ): void {
     invariant(this.realm.invariantLevel > 0);
-    let invariantBuildNode = createResidualBuildNode("INVARIANT", {
-      appendLastToInvariantBuildNode,
-      violationConditionBuildNode,
+    let invariantOperationDescriptor = createOperationDescriptor("INVARIANT", {
+      appendLastToInvariantOperationDescriptor,
+      violationConditionOperationDescriptor,
     });
     this._addEntry({
       args,
-      buildNode: invariantBuildNode,
+      operationDescriptor: invariantOperationDescriptor,
     });
   }
 
@@ -974,16 +974,16 @@ export class Generator {
       types,
       values,
       args,
-      createResidualBuildNode("EMIT_CALL_AND_CAPTURE_RESULT", { callTemplate }),
+      createOperationDescriptor("EMIT_CALL_AND_CAPTURE_RESULT", { callTemplate }),
       { kind }
     );
   }
 
-  emitStatement(args: Array<Value>, buildNode: ResidualBuildNode): void {
-    invariant(typeof buildNode !== "function");
+  emitStatement(args: Array<Value>, operationDescriptor: OperationDescriptor): void {
+    invariant(typeof operationDescriptor !== "function");
     this._addEntry({
       args,
-      buildNode,
+      operationDescriptor,
     });
   }
 
@@ -991,12 +991,12 @@ export class Generator {
     types: TypesDomain,
     values: ValuesDomain,
     args: Array<Value>,
-    buildNode: ResidualBuildNode
+    operationDescriptor: OperationDescriptor
   ): UndefinedValue {
-    let voidBuildNode = createResidualBuildNode(buildNode.type, buildNode.data, "VOID");
+    let voidOperationDescriptor = createOperationDescriptor(operationDescriptor.type, operationDescriptor.data, "VOID");
     this._addEntry({
       args,
-      buildNode: voidBuildNode,
+      operationDescriptor: voidOperationDescriptor,
     });
     return this.realm.intrinsics.undefined;
   }
@@ -1011,31 +1011,31 @@ export class Generator {
     this._addEntry({
       // duplicate args to ensure refcount > 1
       args: [o, targetObject, sourceObject, targetObject, sourceObject],
-      buildNode: createResidualBuildNode("FOR_IN", { boundName, lh }),
+      operationDescriptor: createOperationDescriptor("FOR_IN", { boundName, lh }),
     });
   }
 
   deriveConcreteObject(
     buildValue: (intrinsicName: string) => ObjectValue,
     args: Array<Value>,
-    buildNode: ResidualBuildNode,
+    operationDescriptor: OperationDescriptor,
     optionalArgs?: {| isPure?: boolean |}
   ): ConcreteValue {
     let id = this.preludeGenerator.nameGenerator.generate("derived");
     let value = buildValue(id);
     value.intrinsicNameGenerated = true;
     value._isScopedTemplate = true; // because this object doesn't exist ahead of time, and the visitor would otherwise declare it in the common scope
-    // Build nodes are immutable so we need create a new version to update properties
-    let derivedBuildNode = createResidualBuildNode(
-      buildNode.type,
-      Object.assign({}, buildNode.data, { id }),
+    // Operation descriptors are immutable so we need create a new version to update properties
+    let derivedOperationDescriptor = createOperationDescriptor(
+      operationDescriptor.type,
+      Object.assign({}, operationDescriptor.data, { id }),
       "DERIVED"
     );
     this._addDerivedEntry(id, {
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: value,
       args,
-      buildNode: derivedBuildNode,
+      operationDescriptor: derivedOperationDescriptor,
     });
     return value;
   }
@@ -1044,7 +1044,7 @@ export class Generator {
     types: TypesDomain,
     values: ValuesDomain,
     args: Array<Value>,
-    buildNode: ResidualBuildNode,
+    operationDescriptor: OperationDescriptor,
     optionalArgs?: {|
       kind?: AbstractValueKind,
       isPure?: boolean,
@@ -1064,20 +1064,20 @@ export class Generator {
       values,
       1735003607742176 + this.realm.derivedIds.size,
       [],
-      createResidualBuildNode("IDENTIFIER", { id }),
+      createOperationDescriptor("IDENTIFIER", { id }),
       options
     );
-    // Build nodes are immutable so we need create a new version to update properties
-    let derivedBuildNode = createResidualBuildNode(
-      buildNode.type,
-      Object.assign({}, buildNode.data, { id }),
+    // Operation descriptor are immutable so we need create a new version to update properties
+    let derivedOperationDescriptor = createOperationDescriptor(
+      operationDescriptor.type,
+      Object.assign({}, operationDescriptor.data, { id }),
       "DERIVED"
     );
     this._addDerivedEntry(id, {
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: res,
       args,
-      buildNode: derivedBuildNode,
+      operationDescriptor: derivedOperationDescriptor,
       mutatesOnly: optionalArgs ? optionalArgs.mutatesOnly : undefined,
     });
     let type = types.getType();
@@ -1098,8 +1098,8 @@ export class Generator {
       // should mean the model is wrong.
       this._emitInvariant(
         [res, res],
-        createResidualBuildNode("DERIVED_ABSTRACT_INVARIANT", { typeofString }),
-        createResidualBuildNode("SINGLE_ARG")
+        createOperationDescriptor("DERIVED_ABSTRACT_INVARIANT", { typeofString }),
+        createOperationDescriptor("SINGLE_ARG")
       );
     }
 
@@ -1143,8 +1143,8 @@ export class Generator {
 
   _addEntry(entryArgs: TemporalBuildNodeEntryArgs): TemporalBuildNodeEntry {
     let entry;
-    let buildNode = entryArgs.buildNode;
-    if (buildNode && buildNode.type === "OBJECT_ASSIGN") {
+    let operationDescriptor = entryArgs.operationDescriptor;
+    if (operationDescriptor && operationDescriptor.type === "OBJECT_ASSIGN") {
       entry = new TemporalObjectAssignEntry(this.realm, entryArgs);
     } else {
       entry = new TemporalBuildNodeEntry(this.realm, entryArgs);
@@ -1170,7 +1170,10 @@ export class Generator {
     } else {
       this._addEntry({
         args: [],
-        buildNode: createResidualBuildNode("APPEND_GENERATOR", { generator: other, propName: leadingComment }),
+        operationDescriptor: createOperationDescriptor("APPEND_GENERATOR", {
+          generator: other,
+          propName: leadingComment,
+        }),
       });
     }
   }
@@ -1181,7 +1184,7 @@ export class Generator {
     let generators = [generator1, generator2];
     this._addEntry({
       args: [joinCondition],
-      buildNode: createResidualBuildNode("JOIN_GENERATORS", { generators }),
+      operationDescriptor: createOperationDescriptor("JOIN_GENERATORS", { generators }),
       dependencies: generators,
     });
   }

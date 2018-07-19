@@ -25,7 +25,7 @@ import { Properties, To } from "../../singletons.js";
 import { FatalError } from "../../errors.js";
 import invariant from "../../invariant.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
-import { createResidualBuildNode } from "../../utils/generator.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.1.3.2
@@ -53,7 +53,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
               realm,
               BooleanValue,
               [ObjectPrototypeHasOwnPrototype, context, key],
-              createResidualBuildNode("OBJECT_PROTO_HAS_OWN_PROPERTY")
+              createOperationDescriptor("OBJECT_PROTO_HAS_OWN_PROPERTY")
             ),
           TypesDomain.topVal,
           ValuesDomain.topVal

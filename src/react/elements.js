@@ -33,7 +33,7 @@ import {
 } from "./utils.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { createResidualBuildNode } from "../utils/generator.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 function createPropsObject(
   realm: Realm,
@@ -194,7 +194,7 @@ function createPropsObject(
           realm,
           ObjectValue,
           temporalArgs,
-          createResidualBuildNode("REACT_DEFAULT_PROPS_HELPER"),
+          createOperationDescriptor("REACT_DEFAULT_PROPS_HELPER"),
           { skipInvariant: true }
         );
         invariant(temporalTo instanceof AbstractObjectValue);

@@ -42,7 +42,7 @@ import {
 import { Create, Environment, Join, Path, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeTemplateLiteral } from "@babel/types";
-import { createResidualBuildNode } from "../utils/generator.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 // ECMA262 7.3.22
 export function GetFunctionRealm(realm: Realm, obj: ObjectValue): Realm {
@@ -564,7 +564,7 @@ export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayV
         realm,
         NumberValue,
         [arr],
-        createResidualBuildNode("UNKNOWN_ARRAY_LENGTH"),
+        createOperationDescriptor("UNKNOWN_ARRAY_LENGTH"),
         { skipInvariant: true, isPure: true }
       );
     }
@@ -582,7 +582,7 @@ export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayV
     realm,
     Value,
     [arr, prop],
-    createResidualBuildNode("UNKNOWN_ARRAY_GET_PARTIAL"),
+    createOperationDescriptor("UNKNOWN_ARRAY_GET_PARTIAL"),
     {
       skipInvariant: true,
       isPure: true,

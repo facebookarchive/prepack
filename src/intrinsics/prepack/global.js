@@ -31,7 +31,7 @@ import { describeValue } from "../../utils.js";
 import { valueIsKnownReactAbstraction } from "../../react/utils.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
 import * as t from "@babel/types";
-import { createResidualBuildNode, type ResidualBuildNode } from "../../utils/generator.js";
+import { createOperationDescriptor, type OperationDescriptor } from "../../utils/generator.js";
 
 export function createAbstractFunction(realm: Realm, ...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
   return new NativeFunctionValue(
@@ -305,7 +305,7 @@ export default function(realm: Realm): void {
           realm,
           type,
           [f].concat(args),
-          createResidualBuildNode("RESIDUAL_CALL")
+          createOperationDescriptor("RESIDUAL_CALL")
         );
         if (template) {
           invariant(
@@ -325,13 +325,13 @@ export default function(realm: Realm): void {
   function createNativeFunctionForResidualInjection(
     name: string,
     initializeAndValidateArgs: (Array<Value>) => void,
-    buildNode: ResidualBuildNode,
+    operationDescriptor: OperationDescriptor,
     numArgs: number
   ): NativeFunctionValue {
     return new NativeFunctionValue(realm, "global." + name, name, numArgs, (context, ciArgs) => {
       initializeAndValidateArgs(ciArgs);
       invariant(realm.generator !== undefined);
-      realm.generator.emitStatement(ciArgs, buildNode);
+      realm.generator.emitStatement(ciArgs, operationDescriptor);
       return realm.intrinsics.undefined;
     });
   }
@@ -354,7 +354,7 @@ export default function(realm: Realm): void {
         }
         Path.pushAndRefine(c);
       },
-      createResidualBuildNode("ASSUME_CALL"),
+      createOperationDescriptor("ASSUME_CALL"),
       2
     ),
     writable: true,

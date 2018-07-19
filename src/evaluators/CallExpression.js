@@ -36,8 +36,8 @@ import {
 } from "../methods/index.js";
 import type { BabelNodeCallExpression } from "@babel/types";
 import invariant from "../invariant.js";
-import SuperCall from "./SuperCall";
-import { createResidualBuildNode } from "../utils/generator.js";
+import SuperCall from "./SuperCall.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 export default function(
   ast: BabelNodeCallExpression,
@@ -238,7 +238,7 @@ function generateRuntimeCall(
     realm,
     resultType,
     args,
-    createResidualBuildNode("CALL_BAILOUT", { propRef: propName, thisArg })
+    createOperationDescriptor("CALL_BAILOUT", { propRef: propName, thisArg })
   );
 }
 
