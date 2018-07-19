@@ -12,7 +12,7 @@
 import type { CompilerState } from "../CompilerState.js";
 
 import invariant from "../../invariant.js";
-import { Value, StringValue } from "../../values/index.js";
+import { StringValue } from "../../values/index.js";
 import {
   Value as LLVMValue,
   Type as LLVMType,
@@ -29,8 +29,6 @@ import {
   config,
 } from "llvm-node";
 import { llvmContext } from "../llvm-context.js";
-
-import { buildFromValue } from "./Value.js";
 
 function allocString(state: CompilerState, size: LLVMValue, builder: IRBuilder): LLVMValue {
   // TODO: Move this to allocate in an arena allocated on the top of the stack.
