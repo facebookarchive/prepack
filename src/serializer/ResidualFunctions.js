@@ -45,7 +45,7 @@ import { ResidualFunctionInitializers } from "./ResidualFunctionInitializers.js"
 import { nullExpression } from "../utils/babelhelpers.js";
 import type { LocationService, ClassMethodInstance } from "./types.js";
 import { Referentializer } from "./Referentializer.js";
-import {Utils} from '../singletons';
+import { Utils } from "../singletons";
 
 type ResidualFunctionsResult = {
   unstrictFunctionBodies: Array<BabelNodeFunctionExpression | BabelNodeArrowFunctionExpression>,

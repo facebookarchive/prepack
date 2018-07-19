@@ -36,7 +36,7 @@ import { HeapInspector } from "../utils/HeapInspector.js";
 import type { Scope } from "./ResidualHeapVisitor.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
-import {Utils} from '../singletons';
+import { Utils } from "../singletons";
 import type { DeclarativeEnvironmentRecord } from "../environment.js";
 import type { Referentializer } from "./Referentializer.js";
 import { Generator } from "../utils/generator.js";

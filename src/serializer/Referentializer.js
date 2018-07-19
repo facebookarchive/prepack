@@ -20,7 +20,7 @@ import type { ResidualFunctionBinding, ScopeBinding, FunctionInstance } from "./
 import { type ReferentializationScope } from "./types.js";
 import { SerializerStatistics } from "./statistics.js";
 import { Realm } from "../realm.js";
-import {Utils} from '../singletons';
+import { Utils } from "../singletons";
 
 type ReferentializationState = {|
   capturedScopeInstanceIdx: number,
