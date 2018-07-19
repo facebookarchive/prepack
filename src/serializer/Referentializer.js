@@ -19,8 +19,8 @@ import invariant from "../invariant.js";
 import type { ResidualFunctionBinding, ScopeBinding, FunctionInstance } from "./types.js";
 import { type ReferentializationScope } from "./types.js";
 import { SerializerStatistics } from "./statistics.js";
-import { getOrDefault } from "./utils.js";
 import { Realm } from "../realm.js";
+import {Utils} from '../singletons';
 
 type ReferentializationState = {|
   capturedScopeInstanceIdx: number,
@@ -77,7 +77,7 @@ export class Referentializer {
   }
 
   _getReferentializationState(referentializationScope: ReferentializationScope): ReferentializationState {
-    return getOrDefault(
+    return Utils.getOrDefault(
       this.referentializationState,
       referentializationScope,
       this._createReferentializationState.bind(this)

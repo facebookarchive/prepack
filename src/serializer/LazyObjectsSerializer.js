@@ -36,7 +36,7 @@ import { HeapInspector } from "../utils/HeapInspector.js";
 import type { Scope } from "./ResidualHeapVisitor.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
-import { getOrDefault } from "./utils.js";
+import {Utils} from '../singletons';
 import type { DeclarativeEnvironmentRecord } from "../environment.js";
 import type { Referentializer } from "./Referentializer.js";
 import { Generator } from "../utils/generator.js";
@@ -115,7 +115,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
   _initializationCallbackName: BabelNodeIdentifier;
 
   _getValueLazyId(obj: ObjectValue): number {
-    return getOrDefault(this._valueLazyIds, obj, () => this._lazyObjectIdSeed++);
+    return Utils.getOrDefault(this._valueLazyIds, obj, () => this._lazyObjectIdSeed++);
   }
 
   // TODO: change to use _getTarget() to get the lazy objects initializer body.

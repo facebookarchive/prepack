@@ -144,3 +144,11 @@ export function verboseToDisplayJson(obj: {}, depth: number): DisplayResult {
   }
   return result;
 }
+
+// Gets map[key] with default value provided by defaultFn
+export function getOrDefault<K, V>(map: Map<K, V>, key: K, defaultFn: () => V): V {
+  let value = map.get(key);
+  if (value === undefined) map.set(key, (value = defaultFn()));
+  invariant(value !== undefined);
+  return value;
+}
