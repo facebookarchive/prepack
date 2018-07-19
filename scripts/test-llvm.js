@@ -45,8 +45,8 @@ function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
 
   let stdoutMatch = code.match(/\/\/\s*stdout:\s*(.*)/);
-  let expectedStdout = stdoutMatch && stdoutMatch.length > 1 ? stdoutMatch[1] : "";
-  invariant(expectedStdout);
+  let expectedStdout = stdoutMatch && stdoutMatch.length > 1 ? JSON.parse(stdoutMatch[1]) : undefined;
+  invariant(typeof expectedStdout === "string");
 
   let llvmIR: string;
   try {
