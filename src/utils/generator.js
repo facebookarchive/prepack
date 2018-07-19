@@ -1390,7 +1390,7 @@ export function attemptToMergeEquivalentObjectAssigns(
       for (let x = 1; x < otherArgs.length; x++) {
         let arg = otherArgs[x];
         // The arg might have been havoced, so ensure we do not continue in this case
-        if (arg instanceof ObjectValue && arg.mightBeHavocedObject()) {
+        if (arg instanceof ObjectValue && arg.isLeakedObject()) {
           continue loopThroughArgs;
         }
         if (arg instanceof ObjectValue || arg instanceof AbstractValue) {
