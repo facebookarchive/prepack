@@ -154,6 +154,8 @@ export type ResidualBuildNode = {
   type: ResidualBuildNodeType,
 };
 
+// TODO: gradually remove all these, currently it's a random bag of values
+// that should be in args or in other places rather than here.
 export type ResidualBuildNodeData = {
   appendLastToInvariantBuildNode?: ResidualBuildNode,
   binding?: Binding | PropertyBinding,
