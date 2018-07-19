@@ -18,6 +18,7 @@ import { Realm, type Effects } from "../realm.js";
 import invariant from "../invariant.js";
 import type { Generator } from "../utils/generator.js";
 import { type SerializerStatistics } from "./statistics.js";
+import type { Module as LLVMModule } from "llvm-node";
 
 export type TryQuery<T> = (f: () => T, defaultValue: T) => T;
 
@@ -205,4 +206,5 @@ export type SerializedResult = {
   statistics?: SerializerStatistics,
   reactStatistics?: ReactStatistics,
   heapGraph?: string,
+  llvmModule?: LLVMModule,
 };

@@ -60,6 +60,7 @@ export type PrepackOptions = {|
   abstractValueImpliesMax?: number,
   debuggerConfigArgs?: DebuggerConfigArguments,
   onParse?: BabelNodeFile => void,
+  emitLLVM?: boolean,
 |};
 
 export function getRealmOptions({

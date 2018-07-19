@@ -1,0 +1,490 @@
+/**
+ * Copyright (c) 2017-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ */
+
+/* @flow */
+
+// Generated using flowgen from llvm-node npm package and modified
+
+declare module "llvm-node" {
+  declare export type AttrKindEnum = number;
+  declare export var Attribute: {
+    AttrKind: {
+      Alignment: 1,
+      AllocSize: 2,
+      AlwaysInline: 3,
+      ArgMemOnly: 4,
+      Builtin: 5,
+      ByVal: 6,
+      Cold: 7,
+      Convergent: 8,
+      Dereferenceable: 9,
+      DereferenceableOrNull: 10,
+      InaccessibleMemOnly: 13,
+      InaccessibleMemOrArgMemOnly: 14,
+      InAlloca: 11,
+      InlineHint: 15,
+      InReg: 12,
+      JumpTable: 16,
+      MinSize: 17,
+      Naked: 18,
+      Nest: 19,
+      NoAlias: 20,
+      NoInline: 25,
+      NoBuiltin: 21,
+      NoCapture: 22,
+      NoDuplicate: 23,
+      NoImplicitFloat: 24,
+      NonLazyBind: 30,
+      NonNull: 31,
+      NoRecurse: 26,
+      NoRedZone: 27,
+      NoReturn: 28,
+      NoUnwind: 29,
+      OptimizeForSize: 32,
+      OptimizeNone: 33,
+      ReadNone: 34,
+      ReadOnly: 35,
+      Returned: 36,
+      ReturnsTwice: 37,
+      SafeStack: 39,
+      SanitizeAddress: 40,
+      SanitizeMemory: 42,
+      SanitizeThread: 43,
+      SExt: 38,
+      StackAlignment: 45,
+      StackProtect: 46,
+      StackProtectReq: 47,
+      StackProtectStrong: 48,
+      StructRet: 50,
+      SwiftError: 51,
+      SwiftSelf: 52,
+      UWTable: 53,
+      WriteOnly: 54,
+      ZExt: 55,
+    },
+  };
+
+  //ir
+  declare export type LinkageTypesEnum = number;
+  declare export var LinkageTypes: {
+    ExternalLinkage: 0,
+    AvailableExternallyLinkage: 1,
+    LinkOnceAnyLinkage: 2,
+    LinkOnceODRLinkage: 3,
+    WeakAnyLinkage: 4,
+    WeakODRLinkage: 5,
+    AppendingLinkage: 6,
+    InternalLinkage: 7,
+    PrivateLinkage: 8,
+    ExternalWeakLinkage: 9,
+    CommonLinkage: 10,
+  };
+
+  declare export type VisibilityTypesEnum = 1 | 0 | 2;
+  declare export var VisibilityTypes: {
+    Hidden: 1,
+    Default: 0,
+    Protected: 2,
+  };
+
+  declare export class Value {
+    static MaxAlignmentExponent: number;
+    static MaximumAlignment: number;
+    constructor(): this;
+    +type: Type;
+    name: string;
+    dump: () => void;
+    hasName(): boolean;
+
+    /**
+     * Deletes the value. It is, therefore, forbidden to use the value any further
+     */
+    release(): void;
+    deleteValue(): void;
+    replaceAllUsesWith(value: Value): void;
+    useEmpty(): boolean;
+  }
+  declare export class Argument extends Value {
+    +argumentNumber: number;
+    +parent: Function;
+    constructor(type: Type, name?: string, fn?: Function, argNo?: number): this;
+    addAttr(kind: AttrKindEnum): void;
+    hasAttribute(kind: AttrKindEnum): boolean;
+    addDereferenceableAttr(bytes: number): void;
+  }
+  declare export class AllocaInst extends Value {
+    alignment: number;
+    +type: PointerType;
+    allocatedType: Type;
+    +arraySize: Value | null;
+    constructor(): this;
+  }
+  declare export class BasicBlock extends Value {
+    static create(context: LLVMContext, name?: string, parent?: Function, insertBefore?: BasicBlock): BasicBlock;
+    constructor(): this;
+    +parent: Function;
+    +empty: boolean;
+    +context: LLVMContext;
+    eraseFromParent(): void;
+    getTerminator(): Value | void;
+  }
+  declare export class Constant extends Value {
+    static getNullValue(type: Type): Constant;
+    static getAllOnesValue(type: Type): Constant;
+    constructor(): this;
+    isNullValue(): boolean;
+    isOneValue(): boolean;
+    isAllOnesValue(): boolean;
+  }
+  declare export class ConstantFP extends Constant {
+    static get(context: LLVMContext, value: number): ConstantFP;
+    static getNaN(type: Type): Constant;
+    constructor(): this;
+    +value: number;
+  }
+  declare export class ConstantInt extends Constant {
+    static get(context: LLVMContext, value: number, numBits?: number, signed?: boolean): ConstantInt;
+    static getFalse(context: LLVMContext): ConstantInt;
+    static getTrue(context: LLVMContext): ConstantInt;
+    constructor(): this;
+    +value: number;
+  }
+  declare export class ConstantPointerNull extends Constant {
+    static get(pointerType: PointerType): ConstantPointerNull;
+    constructor(): this;
+  }
+  declare export class ConstantArray extends Constant {
+    static get(arrayType: ArrayType, elements: Constant[]): Constant;
+  }
+  declare export class ConstantDataArray extends Constant {
+    static get(llvmContext: LLVMContext, values: Uint32Array | Float32Array | Float64Array): Constant;
+    static getString(llvmContext: LLVMContext, value: string): Constant;
+    constructor(): this;
+  }
+  declare export class ConstantStruct extends Constant {
+    static get(structType: StructType, values: Constant[]): Constant;
+    constructor(): this;
+  }
+  declare export class Function extends Constant {
+    static create(functionType: FunctionType, linkageTypes: LinkageTypesEnum, name?: string, module?: Module): Function;
+    callingConv: CallingConvEnum;
+    visibility: VisibilityTypesEnum;
+    +type: PointerType & {
+      elementType: FunctionType,
+    };
+    constructor(): this;
+    addAttribute(index: number, attribute: AttrKindEnum): void;
+    addBasicBlock(basicBlock: BasicBlock): void;
+    addDereferenceableAttr(attributeIndex: number, bytes: number): void;
+    addDereferenceableOrNullAttr(attributeIndex: number, bytes: number): void;
+    addFnAttr(attribute: AttrKindEnum): void;
+    getArguments(): Argument[];
+    getEntryBlock(): BasicBlock | null;
+    getBasicBlocks(): BasicBlock[];
+    viewCFG(): void;
+  }
+  declare export class GlobalVariable extends Constant {
+    constant: boolean;
+    initializer: Constant | void;
+    setUnnamedAddr(unnamedAddr: UnnamedAddrEnum): void;
+    hasGlobalUnnamedAddr(): boolean;
+    constructor(
+      module: Module,
+      type: Type,
+      constant: boolean,
+      linkageType: LinkageTypesEnum,
+      initializer?: Constant,
+      name?: string
+    ): this;
+  }
+  declare export type UnnamedAddrEnum = 0 | 1 | 2;
+  declare export var UnnamedAddr: {
+    None: 0,
+    Local: 1,
+    Global: 2,
+  };
+  declare export class PhiNode extends Value {
+    constructor(): this;
+    +elementType: Type;
+    addIncoming(value: Value, basicBlock: BasicBlock): void;
+  }
+  declare export class CallInst extends Value {
+    callingConv: CallingConvEnum;
+    constructor(): this;
+    addDereferenceableAttr(index: number, size: number): void;
+    hasRetAttr(kind: AttrKindEnum): boolean;
+    paramHasAttr(index: number, kind: AttrKindEnum): boolean;
+    getNumArgOperands(): number;
+  }
+  declare export type CallingConvEnum = number;
+  declare export var CallingConv: {
+    C: 0,
+    Fast: 8,
+    Cold: 9,
+    GHC: 10,
+    HiPE: 11,
+    WebKit_JS: 12,
+    AnyReg: 13,
+    PreserveMost: 14,
+    PreserveAll: 15,
+    Swift: 16,
+    CXX_FAST_TLS: 17,
+    FirstTargetCC: 64,
+    X86_StdCall: 64,
+    X86_FastCall: 65,
+    ARM_APCS: 66,
+    ARM_AAPCS: 67,
+    ARM_AAPCS_VFP: 68,
+    MSP430_INTR: 69,
+    X86_ThisCall: 70,
+    PTX_Kernel: 71,
+    PTX_Device: 72,
+    SPIR_FUNC: 75,
+    SPIR_KERNEL: 76,
+    Intel_OCL_BI: 77,
+    X86_64_SysV: 78,
+    /**
+     * @deprecated use Win64 instead
+     */
+    X86_64_Win64: 79,
+    Win64: 79,
+    X86_VectorCall: 80,
+    HHVM: 81,
+    HHVM_C: 82,
+    X86_INTR: 83,
+    AVR_INTR: 84,
+    AVR_SIGNAL: 85,
+    AVR_BUILTIN: 86,
+    AMDGPU_VS: 87,
+    AMDGPU_GS: 88,
+    AMDGPU_PS: 89,
+    AMDGPU_CS: 90,
+    AMDGPU_KERNEL: 90,
+    X86_RegCall: 90,
+    MSP430_BUILTIN: 90,
+    MaxID: 1023,
+  };
+  declare export class UndefValue extends Constant {
+    constructor(): this;
+    static get(type: Type): UndefValue;
+  }
+  declare export class DataLayout {
+    constructor(layout: string): this;
+    getStringRepresentation(): string;
+    getPointerSize(as: number): number;
+    getPrefTypeAlignment(type: Type): number;
+    getTypeStoreSize(type: Type): number;
+    getIntPtrType(context: LLVMContext, as: number): Type;
+  }
+  declare export class Type {
+    static TypeID: {
+      VoidTyID: number,
+      HalfTyID: number,
+      FloatTyID: number,
+      DoubleTyID: number,
+      X86_FP80TyID: number,
+      PPC_FP128TyID: number,
+      LabelTyID: number,
+      MetadataTyID: number,
+      X86_MMXTyID: number,
+      TokenTyID: number,
+      IntegerTyID: number,
+      FunctionTyID: number,
+      StructTyID: number,
+      ArrayTyID: number,
+      PointerTyID: number,
+      VectorTyID: number,
+    };
+    static getFloatTy(context: LLVMContext): Type;
+    static getDoubleTy(context: LLVMContext): Type;
+    static getVoidTy(context: LLVMContext): Type;
+    static getLabelTy(context: LLVMContext): Type;
+    static getInt1Ty(context: LLVMContext): Type;
+    static getInt8Ty(context: LLVMContext): Type;
+    static getInt16Ty(context: LLVMContext): Type;
+    static getInt32Ty(context: LLVMContext): Type;
+    static getInt64Ty(context: LLVMContext): Type;
+    static getInt128Ty(context: LLVMContext): Type;
+    static getIntNTy(context: LLVMContext, N: number): Type;
+    static getInt1PtrTy(context: LLVMContext, AS?: number): PointerType;
+    static getInt8PtrTy(context: LLVMContext, AS?: number): PointerType;
+    static getInt32PtrTy(context: LLVMContext, AS?: number): PointerType;
+    constructor(): this;
+    +typeID: number;
+    equals(other: Type): boolean;
+    isVoidTy(): boolean;
+    isFloatTy(): boolean;
+    isDoubleTy(): boolean;
+    isLabelTy(): boolean;
+    isIntegerTy(bitWidth?: number): boolean;
+    isFunctionTy(): FunctionType;
+    isStructTy(): StructType;
+    isArrayTy(): boolean;
+    isPointerTy(): PointerType;
+    getPointerTo(addressSpace?: number): PointerType;
+    getPrimitiveSizeInBits(): number;
+    toString(): string;
+  }
+  declare export class FunctionType extends Type {
+    static get(result: Type, isVarArg: boolean): FunctionType;
+    static get(result: Type, params: Type[], isVarArg: boolean): FunctionType;
+    static isValidReturnType(type: Type): boolean;
+    static isValidArgumentType(type: Type): boolean;
+    +returnType: Type;
+    +isVarArg: boolean;
+    +numParams: number;
+    constructor(): this;
+    getParams(): Type[];
+    getParamType(index: number): Type;
+  }
+  declare export class PointerType extends Type {
+    static get(elementType: Type, AS: number): PointerType;
+    elementType: Type;
+    constructor(): this;
+  }
+  declare export class ArrayType extends Type {
+    static get(elementType: Type, numElements: number): ArrayType;
+    +elementType: Type;
+    +numElements: number;
+    constructor(): this;
+  }
+  declare export class StructType extends Type {
+    static create(context: LLVMContext, name?: string): StructType;
+    static get(context: LLVMContext, elements: Type[], isPacked?: boolean): StructType;
+    name: string;
+    +numElements: number;
+    constructor(): this;
+    getElementType(index: number): Type;
+    setBody(elements: Type[], packed?: boolean): void;
+  }
+  declare export class IRBuilder {
+    constructor(context: LLVMContext): this;
+    constructor(basicBlock: BasicBlock, beforeInstruction?: Value): this;
+    setInsertionPoint(basicBlock: BasicBlock): void;
+    createAdd(lhs: Value, rhs: Value, name?: string): Value;
+    createAlloca(type: Type, arraySize?: Value, name?: string): AllocaInst;
+    createAlignedLoad(ptr: Value, align: number, name?: string): Value;
+    createAlignedStore(value: Value, ptr: Value, align: number, isVolatile?: boolean): Value;
+    createAnd(lhs: Value, rhs: Value, name?: string): Value;
+    createAShr(lhs: Value, rhs: Value, name?: string): Value;
+    createBitCast(value: Value, destType: Type, name?: string): Value;
+    createBr(basicBlock: BasicBlock): Value;
+    createCall(callee: Value, args: Value[], name?: string): CallInst;
+    createCondBr(condition: Value, then: BasicBlock, elseBlock: BasicBlock): Value;
+    createExtractValue(agg: Value, idxs: number[], name?: string): Value;
+    createFAdd(lhs: Value, rhs: Value, name?: string): Value;
+    createFCmpOGE(lhs: Value, rhs: Value, name?: string): Value;
+    createFCmpOGT(lhs: Value, rhs: Value, name?: string): Value;
+    createFCmpOLE(lhs: Value, rhs: Value, name?: string): Value;
+    createFCmpOLT(lhs: Value, rhs: Value, name?: string): Value;
+    createFCmpOEQ(lhs: Value, rhs: Value, name?: string): Value;
+    createFCmpONE(lhs: Value, rhs: Value, name?: string): Value;
+    createFCmpUGE(lhs: Value, rhs: Value, name?: string): Value;
+    createFCmpUGT(lhs: Value, rhs: Value, name?: string): Value;
+    createFCmpULE(lhs: Value, rhs: Value, name?: string): Value;
+    createFCmpULT(lhs: Value, rhs: Value, name?: string): Value;
+    createFCmpUEQ(lhs: Value, rhs: Value, name?: string): Value;
+    createFCmpUNE(lhs: Value, rhs: Value, name?: string): Value;
+    createFDiv(lhs: Value, rhs: Value, name?: string): Value;
+    createFNeg(value: Value, name?: string): Value;
+    createFMul(lhs: Value, rhs: Value, name?: string): Value;
+    createFRem(lhs: Value, rhs: Value, name?: string): Value;
+    createFSub(lhs: Value, rhs: Value, name?: string): Value;
+    createFPToSI(value: Value, type: Type, name?: string): Value;
+    createGlobalString(str: string, name?: string, addressSpace?: number): Value;
+    createGlobalStringPtr(str: string, name?: string, addressSpace?: number): Value;
+    createInBoundsGEP(ptr: Value, idxList: Value[], name?: string): Value;
+    createInBoundsGEP(type: Type, ptr: Value, idxList: Value[], name?: string): Value;
+    createInsertValue(agg: Value, val: Value, idxList: number[], name?: string): Value;
+    createIntCast(vlaue: Value, type: Type, isSigned: boolean, name?: string): Value;
+    createICmpEQ(lhs: Value, rhs: Value, name?: string): Value;
+    createICmpNE(lhs: Value, rhs: Value, name?: string): Value;
+    createICmpSGE(lhs: Value, rhs: Value, name?: string): Value;
+    createICmpSGT(lhs: Value, rhs: Value, name?: string): Value;
+    createICmpSLE(lhs: Value, rhs: Value, name?: string): Value;
+    createICmpSLT(lhs: Value, rhs: Value, name?: string): Value;
+    createICmpUGE(lhs: Value, rhs: Value, name?: string): Value;
+    createICmpUGT(lhs: Value, rhs: Value, name?: string): Value;
+    createICmpULE(lhs: Value, rhs: Value, name?: string): Value;
+    createICmpULT(lhs: Value, rhs: Value, name?: string): Value;
+    createLoad(ptr: Value, name?: string): Value;
+    createLShr(lhs: Value, rhs: Value, name?: string): Value;
+    createMul(lhs: Value, rhs: Value, name?: string): Value;
+    createNeg(value: Value, name?: string, hasNUW?: boolean, hasNSW?: boolean): Value;
+    createNot(value: Value, name?: string): Value;
+    createOr(lhs: Value, rhs: Value, name?: string): Value;
+    createXor(lhs: Value, rhs: Value, name?: string): Value;
+    createPhi(type: Type, numReservedValues: number, name?: string): PhiNode;
+    createPtrToInt(value: Value, destType: Type, name?: string): Value;
+    createRet(value: Value): Value;
+    createRetVoid(): Value;
+    createSelect(condition: Value, trueValue: Value, falseValue: Value, name?: string): Value;
+    createSDiv(lhs: Value, rhs: Value, name?: string): Value;
+    createShl(lhs: Value, rhs: Value, name?: string): Value;
+    createSIToFP(value: Value, type: Type, name?: string): Value;
+    createUIToFP(value: Value, type: Type, name?: string): Value;
+    createSub(lhs: Value, rhs: Value, name?: string): Value;
+    createStore(value: Value, ptr: Value, isVolatile?: boolean): Value;
+    createSRem(lhs: Value, rhs: Value, name?: string): Value;
+    createZExt(value: Value, destType: Type, name?: string): Value;
+    getInsertBlock(): BasicBlock;
+  }
+  declare export class LLVMContext {
+    constructor(): this;
+  }
+  declare export class Module {
+    empty: boolean;
+    +name: string;
+    moduleIdentifier: string;
+    sourceFileName: string;
+    dataLayout: DataLayout;
+    targetTriple: string;
+    constructor(moduleId: string, context: LLVMContext): this;
+    dump: () => void;
+    print(): string;
+    getFunction(name: string): Function;
+    getOrInsertFunction(name: string, functionType: FunctionType): Constant;
+    getGlobalVariable(name: string, allowInternal?: boolean): GlobalVariable;
+    getTypeByName(name: string): StructType | null;
+  }
+  declare export class TargetRegistry {
+    constructor(): this;
+    static lookupTarget(target: string): Target;
+  }
+  declare export interface Target {
+    +name: string;
+    +shortDescription: string;
+    createTargetMachine(triple: string, cpu: string): TargetMachine;
+  }
+  declare export interface TargetMachine {
+    createDataLayout(): DataLayout;
+  }
+  declare export var config: {
+    +LLVM_VERSION_MAJOR: number,
+    +LLVM_VERSION_MINOR: number,
+    +LLVM_VERSION_PATCH: number,
+    +LLVM_VERSION_STRING: string,
+    +LLVM_DEFAULT_TARGET_TRIPLE: string,
+  };
+  declare export function writeBitcodeToFile(module: Module, filename: string): void;
+
+  declare export function verifyModule(mod: Module): void;
+
+  declare export function verifyFunction(fun: Function): void;
+
+  declare export function initializeAllTargetInfos(): void;
+
+  declare export function initializeAllTargets(): void;
+
+  declare export function initializeAllTargetMCs(): void;
+
+  declare export function initializeAllAsmParsers(): void;
+
+  declare export function initializeAllAsmPrinters(): void;
+}
