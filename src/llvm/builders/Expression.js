@@ -147,31 +147,10 @@ export function buildFromExpression(state: CompilerState, expr: BabelNodeExpress
     }
     case "ConditionalExpression": {
       let condition = buildFromExpression(state, expr.test, builder);
-      let parentFn = builder.getInsertBlock().parent;
-      let consequentBlock = BasicBlock.create(llvmContext, "Then", parentFn);
-      let alternateBlock = BasicBlock.create(llvmContext, "Else");
-      let continueBlock = BasicBlock.create(llvmContext, "Cont");
-
-      builder.createCondBr(condition, consequentBlock, alternateBlock);
-      builder.setInsertionPoint(consequentBlock);
       let consequentValue = buildFromExpression(state, expr.consequent, builder);
-      builder.createBr(continueBlock);
-
-      parentFn.addBasicBlock(alternateBlock);
-      builder.setInsertionPoint(alternateBlock);
       let alternateValue = buildFromExpression(state, expr.alternate, builder);
-      builder.createBr(continueBlock);
-
-      parentFn.addBasicBlock(continueBlock);
-      builder.setInsertionPoint(continueBlock);
-
       invariant(consequentValue.type.equals(alternateValue.type));
-
-      let phi = builder.createPhi(consequentValue.type, 2);
-      phi.addIncoming(consequentValue, consequentBlock);
-      phi.addIncoming(alternateValue, alternateBlock);
-
-      return phi;
+      return builder.createSelect(condition, consequentValue, alternateValue);
     }
     default: {
       let error = new CompilerDiagnostic(
