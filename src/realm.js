@@ -63,7 +63,7 @@ import {
 } from "./completions.js";
 import type { Compatibility, RealmOptions, ReactOutputTypes, InvariantModeTypes } from "./options.js";
 import invariant from "./invariant.js";
-import seedrandom from "../../../Library/Caches/typescript/2.9/node_modules/@types/seedrandom";
+import seedrandom from "seedrandom";
 import {
   createOperationDescriptor,
   Generator,

@@ -51,7 +51,7 @@ import { TypesDomain, ValuesDomain } from "./domains/index.js";
 import PrimitiveValue from "./values/PrimitiveValue.js";
 import { createOperationDescriptor } from "./utils/generator.js";
 
-const sourceMap = require("../../../Library/Caches/typescript/2.9/node_modules/source-map/source-map");
+const sourceMap = require("source-map");
 
 function deriveGetBinding(realm: Realm, binding: Binding) {
   let types = TypesDomain.topVal;
