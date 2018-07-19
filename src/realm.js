@@ -1503,7 +1503,11 @@ export class Realm {
     // of the joined generator at the final join point.
     // This is the point at which other accesses to the leaked
     // object have been accounted for and generator entries have been
-    // created for them.
+    // created for them. 
+    //
+    // The appendGenerator flag accounts for a lot of the complexity
+    // of how this works. This is to be clarified (work in progress).
+
     if (appendGenerator && leakedObjects !== undefined && leakedObjects.size !== 0) {
       for (let lo of leakedObjects) {
         Materialize.materialize(this, lo);
