@@ -104,7 +104,13 @@ export function createAbstract(
     } else {
       realm.saveNameString(name);
     }
-    result = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), type, [], kind);
+    result = AbstractValue.createFromTemplate(
+      realm,
+      buildExpressionTemplate(name, { disablePlaceholders: !!optionsMap.get("disablePlaceholders") }),
+      type,
+      [],
+      kind
+    );
     result.intrinsicName = name;
   }
 

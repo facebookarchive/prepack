@@ -80,6 +80,8 @@ export default function(realm: Realm): void {
   // options is an optional object that may contain:
   // - allowDuplicateNames: boolean representing whether the name of the abstract value may be
   //   repeated, by default they must be unique
+  // - disablePlaceholders: boolean representing whether placeholders should be substituted in
+  //   the abstract value's name.
   // If the abstract value gets somehow embedded in the final heap,
   // it will be referred to by the supplied name in the generated code.
   global.$DefineOwnProperty("__abstract", {

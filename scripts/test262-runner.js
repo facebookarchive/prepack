@@ -33,6 +33,9 @@ import tty from "tty";
 import minimist from "minimist";
 import process from "process";
 import vm from "vm";
+import * as babelTypes from "@babel/types";
+import traverse from "@babel/traverse";
+import generate from "@babel/generator";
 
 const EOL = os.EOL;
 const cpus = os.cpus();
@@ -45,7 +48,7 @@ type GroupsMap = { [key: string]: TestRecord[] };
 
 type TestRunOptions = {|
   +timeout: number,
-  +serializer: boolean,
+  +serializer: boolean | "abstract-scalar",
 |};
 
 // A TestTask is a task for a worker process to execute, which contains a
@@ -353,7 +356,7 @@ function usage(): string {
 function masterArgsParse(): MasterProgramArgs {
   let parsedArgs = minimist(process.argv.slice(2), {
     string: ["statusFile", "relativeTestPath"],
-    boolean: ["verbose", "singleThreaded", "serializer"],
+    boolean: ["verbose", "singleThreaded"],
     default: {
       verbose: process.stdout instanceof tty.WriteStream ? false : true,
       statusFile: "",
@@ -395,8 +398,10 @@ function masterArgsParse(): MasterProgramArgs {
     throw new ArgsParseError("relativeTestPath must be a string (--relativeTestPath /../test/test262)");
   }
   let relativeTestPath = parsedArgs.relativeTestPath;
-  if (typeof parsedArgs.serializer !== "boolean") {
-    throw new ArgsParseError("serializer must be a boolean (either --serializer or not)");
+  if (!(typeof parsedArgs.serializer === "boolean" || parsedArgs.serializer === "abstract-scalar")) {
+    throw new ArgsParseError(
+      "serializer must be a boolean or must be the string 'abstract-scalar' (--serializer or --serializer abstract-scalar)"
+    );
   }
   let serializer = parsedArgs.serializer;
   if (typeof parsedArgs.expectedCounts !== "string") {
@@ -438,8 +443,10 @@ function workerArgsParse(): WorkerProgramArgs {
   if (typeof parsedArgs.timeout !== "number") {
     throw new ArgsParseError("timeout must be a number (in seconds) (--timeout 10)");
   }
-  if (typeof parsedArgs.serializer !== "boolean") {
-    throw new ArgsParseError("serializer must be a boolean (either --serializer or not)");
+  if (!(typeof parsedArgs.serializer === "boolean" || parsedArgs.serializer === "abstract-scalar")) {
+    throw new ArgsParseError(
+      "serializer must be a boolean or must be the string 'abstract-scalar' (--serializer or --serializer abstract-scalar)"
+    );
   }
   return new WorkerProgramArgs(parsedArgs.relativeTestPath, parsedArgs.timeout, parsedArgs.serializer);
 }
@@ -1023,13 +1030,13 @@ function runTest(
   // eslint-disable-next-line flowtype/no-weak-types
   harnesses: Object,
   strict: boolean,
-  { timeout, serializer }: TestRunOptions
+  options: TestRunOptions
 ): ?TestResult {
-  if (serializer) {
-    return executeTestUsingSerializer(test, testFileContents, data, harnesses, strict, timeout);
+  if (options.serializer) {
+    return executeTestUsingSerializer(test, testFileContents, data, harnesses, strict, options);
   }
 
-  let { realm } = createRealm(timeout);
+  let { realm } = createRealm(options.timeout);
 
   // Run the test.
   try {
@@ -1136,8 +1143,9 @@ function executeTestUsingSerializer(
   // eslint-disable-next-line flowtype/no-weak-types
   harnesses: Object,
   strict: boolean,
-  timeout: number
+  options: TestRunOptions
 ) {
+  let { timeout } = options;
   let sources = [];
 
   // Add the test262 intrinsics.
@@ -1172,8 +1180,16 @@ var print = () => {}; // noop for now
         if (diag.severity !== "Warning") return "Fail";
         return "Recover";
       },
-      onParse: () => {
-        // TODO(calebmer): Turn all literals into abstract values
+      onParse: ast => {
+        // Transform all statements which come from our test source file. Do not transform statements from our
+        // harness files.
+        if (options.serializer === "abstract-scalar") {
+          ast.program.body.forEach(node => {
+            if (node.loc.filename === test.location) {
+              transformScalarsToAbstractValues(node);
+            }
+          });
+        }
       },
     });
   } catch (error) {
@@ -1203,6 +1219,83 @@ var print = () => {}; // noop for now
   } else {
     return new TestResult(true, strict);
   }
+}
+
+const TransformScalarsToAbstractValuesVisitor = (() => {
+  const t = babelTypes;
+
+  function createAbstractCall(type, actual, { allowDuplicateNames, disablePlaceholders } = {}) {
+    const args = [type, actual];
+    if (allowDuplicateNames) {
+      args.push(
+        t.objectExpression([
+          t.objectProperty(t.identifier("allowDuplicateNames"), t.booleanLiteral(!!allowDuplicateNames)),
+          t.objectProperty(t.identifier("disablePlaceholders"), t.booleanLiteral(!!disablePlaceholders)),
+        ])
+      );
+    }
+    return t.callExpression(t.identifier("__abstract"), args);
+  }
+
+  const defaultOptions = {
+    allowDuplicateNames: true,
+    disablePlaceholders: true,
+  };
+
+  const symbolOptions = {
+    // Intentionally false since two symbol calls will be referentially not equal, but Prepack will share
+    // a variable.
+    allowDuplicateNames: false,
+    disablePlaceholders: true,
+  };
+
+  return {
+    noScope: true,
+
+    BooleanLiteral(p) {
+      p.node = p.container[p.key] = createAbstractCall(
+        t.stringLiteral("boolean"),
+        t.stringLiteral(p.node.value.toString()),
+        defaultOptions
+      );
+    },
+    StringLiteral(p) {
+      // `eval()` does not support abstract arguments and we don't care to fix that.
+      if (
+        p.parent.type === "CallExpression" &&
+        p.parent.callee.type === "Identifier" &&
+        p.parent.callee.name === "eval"
+      ) {
+        return;
+      }
+      p.node = p.container[p.key] = createAbstractCall(
+        t.stringLiteral("string"),
+        t.stringLiteral(JSON.stringify(p.node.value)),
+        defaultOptions
+      );
+    },
+    CallExpression(p) {
+      if (p.node.callee.type === "Identifier" && p.node.callee.name === "Symbol") {
+        p.node = p.container[p.key] = createAbstractCall(
+          t.stringLiteral("symbol"),
+          t.stringLiteral(generate(p.node).code),
+          symbolOptions
+        );
+      }
+    },
+    NumericLiteral(p) {
+      p.node = p.container[p.key] = createAbstractCall(
+        t.stringLiteral(Number.isInteger(p.node.value) ? "integral" : "number"),
+        t.stringLiteral(p.node.extra.raw),
+        defaultOptions
+      );
+    },
+  };
+})();
+
+function transformScalarsToAbstractValues(ast) {
+  traverse(ast, TransformScalarsToAbstractValuesVisitor);
+  traverse.cache.clear();
 }
 
 /**
