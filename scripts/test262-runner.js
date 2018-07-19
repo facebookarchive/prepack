@@ -245,7 +245,7 @@ class MasterProgramArgs {
   filterString: string;
   singleThreaded: boolean;
   relativeTestPath: string;
-  serializer: boolean;
+  serializer: boolean | "abstract-scalar";
   expectedES5: number;
   expectedES6: number;
   expectedTimeouts: number;
@@ -259,7 +259,7 @@ class MasterProgramArgs {
     filterString: string,
     singleThreaded: boolean,
     relativeTestPath: string,
-    serializer: boolean,
+    serializer: boolean | "abstract-scalar",
     expectedES5: number,
     expectedES6: number,
     expectedTimeouts: number
@@ -282,9 +282,9 @@ class MasterProgramArgs {
 class WorkerProgramArgs {
   relativeTestPath: string;
   timeout: number;
-  serializer: boolean;
+  serializer: boolean | "abstract-scalar";
 
-  constructor(relativeTestPath: string, timeout: number, serializer: boolean) {
+  constructor(relativeTestPath: string, timeout: number, serializer: boolean | "abstract-scalar") {
     this.timeout = timeout;
     this.serializer = serializer;
     this.relativeTestPath = relativeTestPath;
@@ -1185,7 +1185,7 @@ var print = () => {}; // noop for now
         // harness files.
         if (options.serializer === "abstract-scalar") {
           ast.program.body.forEach(node => {
-            if (node.loc.filename === test.location) {
+            if ((node.loc: any).filename === test.location) {
               transformScalarsToAbstractValues(node);
             }
           });
