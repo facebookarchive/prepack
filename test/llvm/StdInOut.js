@@ -1,4 +1,4 @@
-// stdout: hello world? no
+// stdout: "hello world? no"
 
 (function() {
   let getchar = __abstract(":integral", "getchar");
