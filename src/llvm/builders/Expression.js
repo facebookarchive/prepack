@@ -170,6 +170,8 @@ export function buildFromExpression(state: CompilerState, expr: BabelNodeExpress
           // manually.
           return getStringPtr(val, builder);
         }
+        // TODO: If we make function arguments typed, we'll need to start typing the kind of
+        // null pointer passed as the argument here if it can be null.
         return val;
       });
       return builder.createCall(callee, args);

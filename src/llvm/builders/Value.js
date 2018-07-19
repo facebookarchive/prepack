@@ -16,11 +16,13 @@ import invariant from "../../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
 import {
   Value as LLVMValue,
+  Constant,
   ConstantInt,
   ConstantFP,
   Function as LLVMFunction,
   Type as LLVMType,
   FunctionType,
+  PointerType,
   LinkageTypes,
   IRBuilder,
 } from "llvm-node";
@@ -63,7 +65,7 @@ export function getType(
   } else if (type === UndefinedValue) {
     return LLVMType.getVoidTy(llvmContext);
   } else if (type === NullValue) {
-    invariant(false, "null value has to be determined at the call site");
+    return PointerType.get(LLVMType.getInt8Ty(llvmContext), 0);
   } else if (type === NumberValue) {
     return LLVMType.getDoubleTy(llvmContext);
   } else if (type === IntegralValue) {
@@ -174,7 +176,7 @@ function buildNewValue(state: CompilerState, value: Value, builder: IRBuilder): 
     invariant(false, "Since we never serialize objects we should never need the empty value.");
   } else if (value instanceof UndefinedValue) {
     let error = new CompilerDiagnostic(
-      "This undefined value cannot be used in this operation.",
+      "The value undefined cannot be used in this operation. Convert it to a null if you want to pass null.",
       value.expressionLocation,
       "PP2000",
       "FatalError"
@@ -190,15 +192,7 @@ function buildNewValue(state: CompilerState, value: Value, builder: IRBuilder): 
   } else if (value instanceof BooleanValue) {
     return value.value ? ConstantInt.getTrue(llvmContext) : ConstantInt.getFalse(llvmContext);
   } else if (value instanceof NullValue) {
-    // Null values need a specific type and should be enforced at the call site.
-    let error = new CompilerDiagnostic(
-      "This null value cannot be used in this operation.",
-      value.expressionLocation,
-      "PP2000",
-      "FatalError"
-    );
-    state.realm.handleError(error);
-    throw new FatalError();
+    return Constant.getNullValue(PointerType.get(LLVMType.getInt8Ty(llvmContext), 0));
   } else if (value instanceof FunctionValue) {
     // TODO: Serialize optimized functions and pass as function pointer.
     // If this function closes over abstract values, pass as closure,
