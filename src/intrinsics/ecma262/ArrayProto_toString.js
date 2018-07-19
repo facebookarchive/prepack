@@ -15,7 +15,7 @@ import { To } from "../../singletons.js";
 import { Get } from "../../methods/get.js";
 import { Call } from "../../methods/call.js";
 import { IsCallable } from "../../methods/is.js";
-import * as t from "@babel/types";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 22.1.3.30
@@ -36,8 +36,11 @@ export default function(realm: Realm): NativeFunctionValue {
         realm.isInPureScope() &&
         array.$GetOwnProperty("toString") === undefined
       ) {
-        return AbstractValue.createTemporalFromBuildFunction(realm, StringValue, [array], ([objNode]) =>
-          t.callExpression(t.memberExpression(objNode, t.identifier("toString")), [])
+        return AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          StringValue,
+          [array],
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "toString" })
         );
       }
 

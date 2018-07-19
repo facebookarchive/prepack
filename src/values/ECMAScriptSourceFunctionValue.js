@@ -14,7 +14,7 @@ import type { BabelNodeBlockStatement, BabelNodeSourceLocation, BabelNodeLVal } 
 import type { FunctionBodyAstNode } from "../types.js";
 import { ECMAScriptFunctionValue } from "./index.js";
 import * as t from "@babel/types";
-import invariant from "../invariant";
+import invariant from "../invariant.js";
 
 /* Non built-in ECMAScript function objects with source code */
 export default class ECMAScriptSourceFunctionValue extends ECMAScriptFunctionValue {

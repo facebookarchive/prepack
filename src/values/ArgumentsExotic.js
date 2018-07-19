@@ -11,13 +11,13 @@
 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor } from "../types.js";
-import { ObjectValue, Value } from "../values/index.js";
+import { ObjectValue, Value } from "./index.js";
 import { IsDataDescriptor, IsAccessorDescriptor } from "../methods/is.js";
 import { HasOwnProperty } from "../methods/has.js";
 import { SameValuePartial } from "../methods/abstract.js";
 import { Get, OrdinaryGet } from "../methods/get.js";
 import { Properties } from "../singletons.js";
-import invariant from "../invariant";
+import invariant from "../invariant.js";
 
 export default class ArgumentsExotic extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {

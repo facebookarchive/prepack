@@ -157,7 +157,7 @@ export type PropertyBinding = {
   descriptor?: Descriptor,
   object: ObjectValue,
   key: void | string | SymbolValue | AbstractValue, // where an abstract value must be of type String or Number or Symbol
-  // contains a build node that produces a member expression that resolves to this property binding (location)
+  // contains a operation descriptor that produces a member expression that resolves to this property binding (location)
   pathNode?: AbstractValue,
   internalSlot?: boolean,
 };

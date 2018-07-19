@@ -12,9 +12,9 @@
 import type { Realm } from "../../realm.js";
 import { AbstractValue, ECMAScriptSourceFunctionValue, ObjectValue, StringValue } from "../../values/index.js";
 import { Environment } from "../../singletons.js";
-import invariant from "../../invariant";
-import * as t from "@babel/types";
+import invariant from "../../invariant.js";
 import { parseExpression } from "@babel/parser";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 let reactNativeCode = `
   function createReactNative(React, reactNameRequireName) {
@@ -1660,7 +1660,7 @@ export function createMockReactNative(realm: Realm, reactNativeRequireName: stri
     realm,
     StringValue,
     [],
-    () => t.stringLiteral("RCTView"),
+    createOperationDescriptor("REACT_NATIVE_STRING_LITERAL", { propName: "RCTView" }),
     { skipInvariant: true, isPure: true }
   );
   invariant(RCTViewDerivedReference instanceof AbstractValue);
@@ -1670,7 +1670,7 @@ export function createMockReactNative(realm: Realm, reactNativeRequireName: stri
     realm,
     StringValue,
     [],
-    () => t.stringLiteral("RCTText"),
+    createOperationDescriptor("REACT_NATIVE_STRING_LITERAL", { propName: "RCTText" }),
     { skipInvariant: true, isPure: true }
   );
   invariant(RCTTextDerivedReference instanceof AbstractValue);

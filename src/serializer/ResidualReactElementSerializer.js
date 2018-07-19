@@ -18,7 +18,7 @@ import { AbstractValue, AbstractObjectValue, ObjectValue, SymbolValue, Value } f
 import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
 import { Logger } from "../utils/logger.js";
 import invariant from "../invariant.js";
-import { FatalError } from "../errors";
+import { FatalError } from "../errors.js";
 import { traverseReactElement } from "../react/elements.js";
 import { canExcludeReactElementObjectProperty, getReactSymbol, getProperty } from "../react/utils.js";
 import type { ReactOutputTypes } from "../options.js";
