@@ -12,6 +12,11 @@
 import type { DebugReproArguments } from "../types.js";
 import { SourceMapManager } from "./SourceMapManager.js";
 
+/**
+ * Manager that captures name of all original sourcefiles touched by Prepack.
+ * When Prepack exits (regardless of success or failure), the list of all
+ * relevant sourcefiles is passed back to the CLI to be included in the reproBundle.
+ */
 export class DebugReproManagerImplementation {
   construct(configArgs: DebugReproArguments): DebugReproManagerImplementation {
     this._sourceMapManager = new SourceMapManager(configArgs.buckRoot, configArgs.sourcemaps);

@@ -1815,12 +1815,13 @@ export class Realm {
 
     // If we're creating a DebugRepro, attach the sourceFile names to the error that is returned.
     if (this.debugReproManager !== undefined) {
-      let manager = this.debugReproManager;
-      let sourcePaths = {
-        sourceFiles: manager.getSourceFilePaths(),
-        sourceMaps: manager.getSourceMapPaths(),
-      };
-      diagnostic.sourceFilePaths = sourcePaths;
+      // let manager = this.debugReproManager;
+      // let sourcePaths = {
+      //   sourceFiles: manager.getSourceFilePaths(),
+      //   sourceMaps: manager.getSourceMapPaths(),
+      // };
+      // diagnostic.sourceFilePaths = sourcePaths;
+      diagnostic.debugReproManager = this.debugReproManager;
     }
 
     // Default behaviour is to bail on the first error

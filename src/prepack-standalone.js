@@ -78,12 +78,13 @@ export function prepackSources(
     }
 
     if (realm.debugReproManager) {
-      let localManager = realm.debugReproManager;
-      let sourcePaths = {
-        sourceFiles: localManager.getSourceFilePaths(),
-        sourceMaps: localManager.getSourceMapPaths(),
-      };
-      serialized.sourceFilePaths = sourcePaths;
+      // let localManager = realm.debugReproManager;
+      // let sourcePaths = {
+      //   sourceFiles: localManager.getSourceFilePaths(),
+      //   sourceMaps: localManager.getSourceMapPaths(),
+      // };
+      // serialized.sourceFilePaths = sourcePaths;
+      serialized.debugRepromanager = realm.debugReproManager;
     }
 
     if (!options.residual) return serialized;

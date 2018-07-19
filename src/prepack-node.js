@@ -132,16 +132,19 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     };
   });
 
+  // Don't include sourcemaps that weren't found
+  let validSourceFiles = sourceFiles.filter(sf => sf.sourceMapContents !== "");
+
   // The existence of debug[In/Out]FilePath represents the desire to use the debugger.
   if (options.debugInFilePath !== undefined && options.debugOutFilePath !== undefined) {
     if (options.debuggerConfigArgs === undefined) options.debuggerConfigArgs = {};
 
     let ioWrapper = new FileIOWrapper(false, options.debugInFilePath, options.debugOutFilePath);
     options.debuggerConfigArgs.debugChannel = new DebugChannel(ioWrapper);
-    options.debuggerConfigArgs.sourcemaps = sourceFiles;
+    options.debuggerConfigArgs.sourcemaps = validSourceFiles;
   }
 
-  if (options.debugReproArgs) options.debugReproArgs.sourcemaps = sourceFiles;
+  if (options.debugReproArgs) options.debugReproArgs.sourcemaps = validSourceFiles;
 
   return prepackSources(sourceFiles, options, createStatistics(options));
 }
