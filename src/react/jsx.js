@@ -19,7 +19,7 @@ import type {
   BabelNodeStringLiteral,
 } from "@babel/types";
 import invariant from "../invariant.js";
-import { isReactComponent } from "./utils";
+import { isReactComponent } from "./utils.js";
 
 export function convertExpressionToJSXIdentifier(
   expr: BabelNodeExpression,

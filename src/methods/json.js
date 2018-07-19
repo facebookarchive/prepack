@@ -12,10 +12,10 @@
 import type { Realm } from "../realm.js";
 import { Value, ObjectValue, NumberValue, UndefinedValue, StringValue } from "../values/index.js";
 import { Create, To } from "../singletons.js";
-import { Get } from "../methods/get.js";
-import { Call } from "../methods/call.js";
-import { IsArray } from "../methods/is.js";
-import { EnumerableOwnProperties } from "../methods/own.js";
+import { Get } from "./get.js";
+import { Call } from "./call.js";
+import { IsArray } from "./is.js";
+import { EnumerableOwnProperties } from "./own.js";
 import type { PropertyKeyValue } from "../types.js";
 import invariant from "../invariant.js";
 

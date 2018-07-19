@@ -10,7 +10,6 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import * as t from "@babel/types";
 import invariant from "../invariant.js";
 import type { PropertyKeyValue } from "../types.js";
 import {
@@ -64,6 +63,7 @@ import type {
   BabelNodeLVal,
   BabelNodePattern,
 } from "@babel/types";
+import * as t from "@babel/types";
 
 export class EnvironmentImplementation {
   // 2.6 RestBindingInitialization (please suggest an appropriate section name)

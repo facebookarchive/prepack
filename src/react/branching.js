@@ -31,8 +31,9 @@ import {
   forEachArrayValue,
   getProperty,
   mapArrayValue,
-} from "./utils";
+} from "./utils.js";
 import { ExpectedBailOut } from "./errors.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 // Branch status is used for when Prepack returns an abstract value from a render
 // that results in a conditional path occuring. This can be problematic for reconcilation
@@ -243,7 +244,7 @@ export function wrapReactElementInBranchOrReturnValue(realm: Realm, value: Value
       realm,
       ObjectValue,
       [cloneReactElement(realm, value, false)],
-      ([node]) => node,
+      createOperationDescriptor("SINGLE_ARG"),
       { isPure: true, skipInvariant: true }
     );
     invariant(temporal instanceof AbstractObjectValue);

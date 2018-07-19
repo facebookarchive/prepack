@@ -10,7 +10,7 @@
 /* @flow strict-local */
 
 import { hashString } from "../methods/index.js";
-import { PrimitiveValue, Value } from "../values/index.js";
+import { PrimitiveValue, Value } from "./index.js";
 import type { Realm } from "../realm.js";
 
 export default class StringValue extends PrimitiveValue {
