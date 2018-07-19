@@ -1172,17 +1172,17 @@ export class ResidualHeapVisitor {
         fixpoint_rerun();
       },
       visitModifiedBinding: (modifiedBinding: Binding) => {
+        let containingGenerator = this._getContainingGenerator();
         let fixpoint_rerun = () => {
           if (this.hasBinding(modifiedBinding.environment, modifiedBinding.name)) {
             invariant(additionalFunctionInfo);
             let { functionValue } = additionalFunctionInfo;
             invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
-            // TODO: this should visit the original value but instead it visits the new value only (because of our generator context)
             let residualBinding = this.getBinding(modifiedBinding.environment, modifiedBinding.name);
             let funcInstance = additionalFunctionInfo.instance;
             invariant(funcInstance !== undefined);
             funcInstance.residualFunctionBindings.set(modifiedBinding.name, residualBinding);
-            let newValue = modifiedBinding.value;
+            let newValue = this.realm.lookasideTable.lookupBinding(containingGenerator, modifiedBinding);
             invariant(newValue);
             this.visitValue(newValue);
             residualBinding.modified = true;
