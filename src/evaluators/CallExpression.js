@@ -21,6 +21,7 @@ import {
   AbstractObjectValue,
   ConcreteValue,
   FunctionValue,
+  NativeFunctionValue,
   ObjectValue,
   Value,
 } from "../values/index.js";
@@ -255,7 +256,7 @@ function tryToEvaluateCallOrLeaveAsAbstract(
   let effects;
   let savedSuppressDiagnostics = realm.suppressDiagnostics;
   try {
-    realm.suppressDiagnostics = true;
+    realm.suppressDiagnostics = !(func instanceof NativeFunctionValue) || func.name !== "__optimize";
     effects = realm.evaluateForEffects(
       () => EvaluateDirectCall(realm, strictCode, env, ref, func, thisValue, ast.arguments, tailCall),
       undefined,

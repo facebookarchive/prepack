@@ -17,6 +17,7 @@ import type {
   Intrinsics,
   PropertyBinding,
   ReactHint,
+  DisplayResult,
 } from "./types.js";
 import { RealmStatistics } from "./statistics.js";
 import {
@@ -72,6 +73,7 @@ import {
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "@babel/types";
+import { Utils } from "./singletons.js";
 
 export type BindingEntry = {
   hasLeaked: void | boolean,
@@ -125,6 +127,15 @@ export class Effects {
   createdObjects: CreatedObjects;
   canBeApplied: boolean;
   _id: number;
+
+  toDisplayString(): string {
+    return Utils.jsonToDisplayString(this, 10);
+  }
+
+  toDisplayJson(depth: number = 1): DisplayResult {
+    if (depth <= 0) return `Effects ${this._id}`;
+    return Utils.verboseToDisplayJson(this, depth);
+  }
 }
 
 export class Tracer {
@@ -1073,8 +1084,8 @@ export class Realm {
         // not all control flow branches join into one flow at this point.
         // Consequently we have to continue tracking changes until the point where
         // all the branches come together into one.
+        this.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
         completion = this.composeWithSavedCompletion(completion);
-        this.applyEffects(joinedEffects, "evaluateWithAbstractConditional", false);
       } else {
         this.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
       }

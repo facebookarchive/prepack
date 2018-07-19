@@ -10,8 +10,13 @@
 /* @flow */
 
 import type { Effects, Realm } from "../realm.js";
-import type { ConsoleMethodTypes, Descriptor, PropertyBinding } from "../types.js";
-import type { ResidualFunctionBinding } from "../serializer/types.js";
+import type {
+  ConsoleMethodTypes,
+  Descriptor,
+  DisplayResult,
+  PropertyBinding,
+  SupportedGraphQLGetters,
+} from "../types.js";
 import type { BaseValue, Binding, ReferenceName } from "../environment.js";
 import {
   AbstractObjectValue,
@@ -51,7 +56,7 @@ import type {
   BabelNodeLVal,
 } from "@babel/types";
 import { memberExpressionHelper } from "./babelhelpers.js";
-import { concretize } from "../singletons.js";
+import { concretize, Utils } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";
 import * as t from "@babel/types";
 
@@ -91,6 +96,7 @@ export type ResidualBuildNodeType =
   | "ABSTRACT_OBJECT_SET_PARTIAL_VALUE"
   | "ABSTRACT_OBJECT_GET_PARTIAL"
   | "ABSTRACT_OBJECT_GET_PROTO_OF"
+  | "ABSTRACT_OBJECT_GET"
   | "DIRECT_CALL_WITH_ARG_LIST"
   | "CALL_ABSTRACT_FUNC"
   | "CALL_ABSTRACT_FUNC_THIS"
@@ -162,6 +168,7 @@ export type ResidualBuildNodeData = {
   op?: any, // TODO: This is a union of Babel operators, refactor to not use "any" at some point
   prefix?: boolean,
   path?: Value,
+  propertyGetter?: SupportedGraphQLGetters,
   propName?: string,
   propRef?: ReferenceName | AbstractValue,
   object?: ObjectValue,
@@ -190,6 +197,8 @@ export function createResidualBuildNode(
   };
 }
 
+import type { ShapeInformationInterface } from "../types.js";
+
 export type SerializationContext = {|
   serializeBuildNode: (
     ResidualBuildNode,
@@ -214,6 +223,7 @@ export type SerializationContext = {|
   canOmit: Value => boolean,
   declare: (AbstractValue | ObjectValue) => void,
   emitPropertyModification: PropertyBinding => void,
+  emitBindingModification: Binding => void,
   options: SerializerOptions,
 |};
 
@@ -223,8 +233,8 @@ export type VisitEntryCallbacks = {|
   canOmit: Value => boolean,
   recordDeclaration: (AbstractValue | ObjectValue) => void,
   recordDelayedEntry: (Generator, GeneratorEntry) => void,
-  visitModifiedObjectProperty: PropertyBinding => void,
-  visitModifiedBinding: Binding => [ResidualFunctionBinding, Value],
+  visitModifiedProperty: PropertyBinding => void,
+  visitModifiedBinding: Binding => void,
   visitBindingAssignment: (Binding, Value) => Value,
 |};
 
@@ -291,6 +301,13 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
   dependencies: void | Array<Generator>;
   isPure: void | boolean;
   mutatesOnly: void | Array<Value>;
+
+  toDisplayJson(depth: number): DisplayResult {
+    if (depth <= 0) return `TemporalBuildNode${this.index}`;
+    let obj = { type: "TemporalBuildNode", ...this };
+    delete obj.buildNode;
+    return Utils.verboseToDisplayJson(obj, depth);
+  }
 
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     let omit = this.isPure && this.declared && callbacks.canOmit(this.declared);
@@ -405,6 +422,13 @@ class ModifiedPropertyEntry extends GeneratorEntry {
   propertyBinding: PropertyBinding;
   newDescriptor: void | Descriptor;
 
+  toDisplayString(): string {
+    let propertyKey = this.propertyBinding.key;
+    let propertyKeyString = propertyKey instanceof Value ? propertyKey.toDisplayString() : propertyKey;
+    invariant(propertyKeyString !== undefined);
+    return `[ModifiedProperty ${propertyKeyString}]`;
+  }
+
   serialize(context: SerializationContext): void {
     let desc = this.propertyBinding.descriptor;
     invariant(desc === this.newDescriptor);
@@ -418,7 +442,7 @@ class ModifiedPropertyEntry extends GeneratorEntry {
     );
     let desc = this.propertyBinding.descriptor;
     invariant(desc === this.newDescriptor);
-    context.visitModifiedObjectProperty(this.propertyBinding);
+    context.visitModifiedProperty(this.propertyBinding);
     return true;
   }
 
@@ -429,7 +453,6 @@ class ModifiedPropertyEntry extends GeneratorEntry {
 
 type ModifiedBindingEntryArgs = {|
   modifiedBinding: Binding,
-  newValue: void | Value,
   containingGenerator: Generator,
 |};
 
@@ -441,26 +464,13 @@ class ModifiedBindingEntry extends GeneratorEntry {
 
   containingGenerator: Generator;
   modifiedBinding: Binding;
-  newValue: void | Value;
-  residualFunctionBinding: void | ResidualFunctionBinding;
+
+  toDisplayString(): string {
+    return `[ModifiedBinding ${this.modifiedBinding.name}]`;
+  }
 
   serialize(context: SerializationContext): void {
-    let residualFunctionBinding = this.residualFunctionBinding;
-    invariant(residualFunctionBinding !== undefined);
-    invariant(residualFunctionBinding.referentialized);
-    invariant(
-      residualFunctionBinding.serializedValue,
-      "ResidualFunctionBinding must be referentialized before serializing a mutation to it."
-    );
-    let newValue = this.newValue;
-    invariant(newValue);
-    let bindingReference = ((residualFunctionBinding.serializedValue: any): BabelNodeLVal);
-    invariant(
-      t.isLVal(bindingReference),
-      "Referentialized values must be LVals even though serializedValues may be any Expression"
-    );
-    let serializedNewValue = context.serializeValue(newValue);
-    context.emit(t.expressionStatement(t.assignmentExpression("=", bindingReference, serializedNewValue)));
+    context.emitBindingModification(this.modifiedBinding);
   }
 
   visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
@@ -468,17 +478,7 @@ class ModifiedBindingEntry extends GeneratorEntry {
       containingGenerator === this.containingGenerator,
       "This entry requires effects to be applied and may not be moved"
     );
-    invariant(
-      this.modifiedBinding.value === this.newValue,
-      "ModifiedBinding's value has been changed since last visit."
-    );
-    let [residualBinding, newValue] = context.visitModifiedBinding(this.modifiedBinding);
-    invariant(
-      this.residualFunctionBinding === undefined || this.residualFunctionBinding === residualBinding,
-      "ResidualFunctionBinding has been changed since last visit."
-    );
-    this.residualFunctionBinding = residualBinding;
-    this.newValue = newValue;
+    context.visitModifiedBinding(this.modifiedBinding);
     return true;
   }
 
@@ -496,6 +496,10 @@ class ReturnValueEntry extends GeneratorEntry {
 
   returnValue: Value;
   containingGenerator: Generator;
+
+  toDisplayString(): string {
+    return `[Return ${this.returnValue.toDisplayString()}]`;
+  }
 
   visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     invariant(
@@ -534,6 +538,19 @@ class IfThenElseEntry extends GeneratorEntry {
   consequentGenerator: Generator;
   alternateGenerator: Generator;
 
+  toDisplayJson(depth: number): DisplayResult {
+    if (depth <= 0) return `IfThenElseEntry${this.index}`;
+    return Utils.verboseToDisplayJson(
+      {
+        type: "IfThenElse",
+        condition: this.condition,
+        consequent: this.consequentGenerator,
+        alternate: this.alternateGenerator,
+      },
+      depth
+    );
+  }
+
   visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     invariant(
       containingGenerator === this.containingGenerator,
@@ -568,6 +585,10 @@ class BindingAssignmentEntry extends GeneratorEntry {
 
   binding: Binding;
   value: Value;
+
+  toDisplayString(): string {
+    return `[BindingAssignment ${this.binding.name} = ${this.value.toDisplayString()}]`;
+  }
 
   serialize(context: SerializationContext): void {
     context.emit(
@@ -609,6 +630,15 @@ export class Generator {
   _name: string;
   pathConditions: Array<AbstractValue>;
 
+  toDisplayString(): string {
+    return Utils.jsonToDisplayString(this, 2);
+  }
+
+  toDisplayJson(depth: number): DisplayResult {
+    if (depth <= 0) return `Generator${this.id}-${this._name}`;
+    return Utils.verboseToDisplayJson(this, depth);
+  }
+
   static _generatorOfEffects(
     realm: Realm,
     name: string,
@@ -623,7 +653,7 @@ export class Generator {
     for (let propertyBinding of modifiedProperties.keys()) {
       let object = propertyBinding.object;
       if (createdObjects.has(object)) continue; // Created Object's binding
-      if (object.refuseSerialization) continue; // modification to internal state
+      if (ObjectValue.refuseSerializationOnPropertyBinding(propertyBinding)) continue; // modification to internal state
       // modifications to intrinsic objects are tracked in the generator
       if (object.isIntrinsic()) continue;
       output.emitPropertyModification(propertyBinding);
@@ -705,7 +735,6 @@ export class Generator {
     this._entries.push(
       new ModifiedBindingEntry(this.realm, {
         modifiedBinding,
-        newValue: modifiedBinding.value,
         containingGenerator: this,
       })
     );
@@ -1019,11 +1048,13 @@ export class Generator {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
+      shape?: void | ShapeInformationInterface,
     |}
   ): AbstractValue {
     let id = this.preludeGenerator.nameGenerator.generate("derived");
     let options = {};
-    if (optionalArgs && optionalArgs.kind) options.kind = optionalArgs.kind;
+    if (optionalArgs && optionalArgs.kind !== undefined) options.kind = optionalArgs.kind;
+    if (optionalArgs && optionalArgs.shape !== undefined) options.shape = optionalArgs.shape;
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
     let res = new Constructor(
       this.realm,
@@ -1323,7 +1354,7 @@ export function attemptToMergeEquivalentObjectAssigns(
       }
       let otherArgs = otherTemporalBuildNodeEntry.args;
       // Object.assign has at least 1 arg
-      if (otherArgs.length < 2) {
+      if (otherArgs.length < 1) {
         continue;
       }
       let otherArgsToUse = [];
@@ -1366,15 +1397,12 @@ export function attemptToMergeEquivalentObjectAssigns(
       // If we cannot omit the "to" value that means it's being used, so we shall not try to
       // optimize this Object.assign.
       if (!callbacks.canOmit(to)) {
-        let newArgs = [to, ...otherArgsToUse];
+        // our merged Object.assign, shoud look like:
+        // Object.assign(to, ...prefixArgs, ...otherArgsToUse, ...suffixArgs)
+        let prefixArgs = args.slice(1, i - 1); // We start at 1, as 0 is the index of "to" a
+        let suffixArgs = args.slice(i + 1);
+        let newArgs = [to, ...prefixArgs, ...otherArgsToUse, ...suffixArgs];
 
-        for (let x = 2; x < args.length; x++) {
-          let arg = args[x];
-          // We don't want to add the "to" that we're merging with!
-          if (arg !== possibleOtherObjectAssignTo) {
-            newArgs.push(arg);
-          }
-        }
         // We now create a new TemporalObjectAssignEntry, without mutating the existing
         // entry at this point. This new entry is essentially a TemporalObjectAssignEntry
         // that contains two Object.assign call TemporalObjectAssignEntry entries that have

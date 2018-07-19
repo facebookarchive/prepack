@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-module.exports = function (api) {
+module.exports = function(api) {
   api.cache(true);
 
   const plugins = [
@@ -24,12 +24,15 @@ module.exports = function (api) {
   if (process.env.NODE_ENV === "production") {
     return {
       presets: [
-        ["@babel/env", {
-          "targets": {
-            "ie": "10",
+        [
+          "@babel/env",
+          {
+            targets: {
+              ie: "10",
+            },
+            forceAllTransforms: true,
           },
-          forceAllTransforms: true,
-        }],
+        ],
         "@babel/preset-flow",
       ],
       plugins,
@@ -38,13 +41,18 @@ module.exports = function (api) {
   // Default
   return {
     presets: [
-      ["@babel/env", {
-        "targets": {
-          "node": "6.10",
-        }
-      }],
+      [
+        "@babel/env",
+        {
+          targets: {
+            node: "6.10",
+          },
+        },
+      ],
       "@babel/preset-flow",
     ],
     plugins,
+    // `lib` files are already compiled with Babel. Don't try to compile them again.
+    ignore: ["lib/**/*.js"],
   };
 };

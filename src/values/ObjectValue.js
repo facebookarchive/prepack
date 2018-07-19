@@ -1072,4 +1072,10 @@ export default class ObjectValue extends ConcreteValue {
   $OwnPropertyKeys(): Array<PropertyKeyValue> {
     return OrdinaryOwnPropertyKeys(this.$Realm, this);
   }
+
+  static refuseSerializationOnPropertyBinding(pb: PropertyBinding): boolean {
+    if (pb.object.refuseSerialization) return true;
+    if (pb.internalSlot && typeof pb.key === "string" && pb.key[0] === "_") return true;
+    return false;
+  }
 }

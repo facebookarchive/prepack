@@ -16,6 +16,7 @@ babel.config.js
 flow-libs
 
 [options]
+merge_timeout=0
 suppress_comment= \\(.\\|\n\\)*\\$FlowFixMe
 esproposal.class_static_fields=enable
 esproposal.class_instance_fields=enable

@@ -203,6 +203,9 @@ export class ResidualBuildNodeSerializer {
       case "ABSTRACT_OBJECT_GET_PROTO_OF":
         babelNode = this._serializeAbstractObjectGetProtoOf(data, nodes);
         break;
+      case "ABSTRACT_OBJECT_GET":
+        babelNode = this._serializeAbstractObjectGet(data, nodes);
+        break;
       case "DEFINE_PROPERTY":
         babelNode = this._serializeDefineProperty(data, nodes, context);
         break;
@@ -393,6 +396,16 @@ export class ResidualBuildNodeSerializer {
   _serializeWidenProperty({ propName }: ResidualBuildNodeData, [o]: Array<BabelNodeExpression>) {
     invariant(typeof propName === "string");
     return memberExpressionHelper(o, propName);
+  }
+
+  _serializeAbstractObjectGet({ propertyGetter, propName: P }: ResidualBuildNodeData, [o]: Array<BabelNodeExpression>) {
+    invariant(typeof P === "string");
+    return propertyGetter !== undefined
+      ? t.callExpression(t.memberExpression(t.identifier("global"), t.identifier("__prop_" + propertyGetter)), [
+          o,
+          t.stringLiteral(P),
+        ])
+      : memberExpressionHelper(o, P);
   }
 
   _serializeAbstractObjectGetProtoOf(data: ResidualBuildNodeData, [p]: Array<BabelNodeExpression>) {
