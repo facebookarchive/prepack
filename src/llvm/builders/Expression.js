@@ -14,9 +14,8 @@ import type { BabelNodeExpression, BabelNodeBinaryExpression } from "@babel/type
 
 import invariant from "../../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
-import { Value as LLVMValue, BasicBlock, IRBuilder } from "llvm-node";
+import { Value as LLVMValue, IRBuilder } from "llvm-node";
 import { Value, NumberValue, IntegralValue, StringValue } from "../../values/index.js";
-import { llvmContext } from "../llvm-context.js";
 import * as t from "@babel/types";
 
 import { buildFromValue } from "./Value.js";
