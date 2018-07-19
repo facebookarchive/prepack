@@ -57,9 +57,16 @@ function memcpy(state: CompilerState, dest: LLVMValue, src: LLVMValue, len: LLVM
   return builder.createCall(state.intrinsics.memcpy, args);
 }
 
-export function buildAppendString(state: CompilerState, left: Value, right: Value, builder: IRBuilder): LLVMValue {
-  let lStr = buildFromValue(state, left, builder);
-  let rStr = buildFromValue(state, right, builder);
+function memcmp(state: CompilerState, a: LLVMValue, b: LLVMValue, len: LLVMValue, builder: IRBuilder) {
+  return builder.createCall(state.intrinsics.memcmp, [a, b, len]);
+}
+
+export function buildAppendString(
+  state: CompilerState,
+  lStr: LLVMValue,
+  rStr: LLVMValue,
+  builder: IRBuilder
+): LLVMValue {
   invariant(state.intrinsics.isStringType(lStr.type));
   invariant(state.intrinsics.isStringType(rStr.type));
   let lPtr = getStringPtr(lStr, builder);
@@ -75,6 +82,27 @@ export function buildAppendString(state: CompilerState, left: Value, right: Valu
   newStr = builder.createInsertValue(newStr, newPtr, [0]);
   newStr = builder.createInsertValue(newStr, newLength, [1]);
   return newStr;
+}
+
+export function buildCompareString(
+  state: CompilerState,
+  lStr: LLVMValue,
+  rStr: LLVMValue,
+  comparison: "eq" | "ne",
+  builder: IRBuilder
+): LLVMValue {
+  invariant(state.intrinsics.isStringType(lStr.type));
+  invariant(state.intrinsics.isStringType(rStr.type));
+  let lPtr = getStringPtr(lStr, builder);
+  let rPtr = getStringPtr(rStr, builder);
+  let lLength = getStringLength(lStr, builder);
+  let rLength = getStringLength(rStr, builder);
+  let equalLength = builder.createICmpEQ(lLength, rLength);
+  let lIsSmaller = builder.createICmpULT(lLength, rLength);
+  let smallestLength = builder.createSelect(lIsSmaller, lLength, rLength);
+  let bytesCmp = memcmp(state, lPtr, rPtr, smallestLength, builder);
+  let equalBytes = builder.createICmpEQ(bytesCmp, ConstantInt.get(llvmContext, 0));
+  return builder.createAnd(equalBytes, equalLength);
 }
 
 function byte(n: number) {

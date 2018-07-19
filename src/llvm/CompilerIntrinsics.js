@@ -23,6 +23,7 @@ import { llvmContext } from "./llvm-context.js";
 export class Intrinsics {
   +_module: Module;
   _memcpy: ?LLVMFunction;
+  _memcmp: ?LLVMFunction;
   _stringType: ?StructType;
 
   constructor(module: Module) {
@@ -61,5 +62,19 @@ export class Intrinsics {
     let memcpy = LLVMFunction.create(fnType, LinkageTypes.ExternalLinkage, "llvm.memcpy.p0i8.p0i8.i32", this._module);
     this._memcpy = memcpy;
     return memcpy;
+  }
+
+  get memcmp(): LLVMFunction {
+    if (this._memcmp) return this._memcmp;
+    let returnType = LLVMType.getInt32Ty(llvmContext);
+    let args = [
+      LLVMType.getInt8PtrTy(llvmContext),
+      LLVMType.getInt8PtrTy(llvmContext),
+      LLVMType.getInt32Ty(llvmContext),
+    ];
+    let fnType = FunctionType.get(returnType, args, false);
+    let memcmp = LLVMFunction.create(fnType, LinkageTypes.ExternalLinkage, "memcmp", this._module);
+    this._memcmp = memcmp;
+    return memcmp;
   }
 }

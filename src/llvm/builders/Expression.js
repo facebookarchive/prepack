@@ -20,7 +20,7 @@ import { llvmContext } from "../llvm-context.js";
 import * as t from "@babel/types";
 
 import { buildFromValue } from "./Value.js";
-import { buildAppendString, getStringPtr } from "./StringValue.js";
+import { buildAppendString, buildCompareString, getStringPtr } from "./StringValue.js";
 
 export function valueToExpression(value: Value): BabelNodeExpression {
   // Hack. We use an identifier to hold the LLVM value so that
@@ -63,6 +63,8 @@ function buildFromBinaryExpression(
         return builder.createICmpEQ(left, right);
       } else if (type === NumberValue) {
         return builder.createFCmpOEQ(left, right);
+      } else if (type === StringValue) {
+        return buildCompareString(state, left, right, "eq", builder);
       } else {
         let error = new CompilerDiagnostic(
           `The equality operator for ${type.name} is not yet implemented for LLVM.`,
@@ -80,6 +82,8 @@ function buildFromBinaryExpression(
         return builder.createICmpNE(left, right);
       } else if (type === NumberValue) {
         return builder.createFCmpONE(left, right);
+      } else if (type === StringValue) {
+        return buildCompareString(state, left, right, "ne", builder);
       } else {
         let error = new CompilerDiagnostic(
           `The equality operator for ${type.name} is not yet implemented for LLVM.`,
@@ -97,7 +101,7 @@ function buildFromBinaryExpression(
       } else if (type === NumberValue) {
         return builder.createFAdd(left, right);
       } else if (type === StringValue) {
-        return buildAppendString(state, leftValue, rightValue, builder);
+        return buildAppendString(state, left, right, builder);
       } else {
         let error = new CompilerDiagnostic(
           `The + operator for ${type.name} is not yet implemented for LLVM.`,
