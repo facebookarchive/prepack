@@ -37,6 +37,7 @@ import { ResidualHeapGraphGenerator } from "./ResidualHeapGraphGenerator";
 import { Referentializer } from "./Referentializer.js";
 import { Get } from "../methods/index.js";
 import { ObjectValue, Value } from "../values/index.js";
+import { ResidualHeapDiffer } from "./ResidualHeapDiffer.js";
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
@@ -195,6 +196,10 @@ export class Serializer {
         );
         statistics.deepTraversal.measure(() => residualHeapVisitor.visitRoots());
         if (this.logger.hasErrors()) return undefined;
+
+        let heapDiffer = new ResidualHeapDiffer(this.realm, residualHeapVisitor.generatorsByHash);
+        let normalizedGeneratorMap = heapDiffer.diffAndCreateNormalizedGeneratorMap();
+        normalizedGeneratorMap; // to make CI pass
 
         if (this.realm.react.verbose) {
           this.logger.logInformation(`Serializing evaluated nodes...`);

@@ -115,6 +115,7 @@ export class ResidualHeapVisitor {
     this.additionalGeneratorRoots = new Map();
     this.residualReactElementVisitor = new ResidualReactElementVisitor(this.realm, this);
     this.generatorDAG = new GeneratorDAG();
+    this.generatorsByHash = new Map();
   }
 
   realm: Realm;
@@ -145,6 +146,7 @@ export class ResidualHeapVisitor {
   // Parents will always be a generator, optimized function value or "GLOBAL"
   additionalGeneratorRoots: Map<Generator, Set<ObjectValue>>;
   generatorDAG: GeneratorDAG;
+  generatorsByHash: Map<string, Set<Generator>>;
   globalEnvironmentRecord: GlobalEnvironmentRecord;
   residualReactElementVisitor: ResidualReactElementVisitor;
 
@@ -1196,11 +1198,23 @@ export class ResidualHeapVisitor {
     return callbacks;
   }
 
+  _captureGeneratorHash(generator: Generator) {
+    let hash = generator.getHash();
+    let generators = this.generatorsByHash.get(hash);
+
+    if (generators === undefined) {
+      generators = new Set();
+      this.generatorsByHash.set(hash, generators);
+    }
+    generators.add(generator);
+  }
+
   visitGenerator(generator: Generator, additionalFunctionInfo?: AdditionalFunctionInfo): void {
     this._withScope(generator, () => {
       generator.visit(this.createGeneratorVisitCallbacks(additionalFunctionInfo));
     });
 
+    this._captureGeneratorHash(generator);
     // We don't bother purging created objects
   }
 
