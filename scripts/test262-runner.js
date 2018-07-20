@@ -1195,6 +1195,23 @@ var print = () => {}; // noop for now
   } catch (error) {
     if (error.message === "Timed out") return new TestResult(false, strict, error);
     if (error.message.includes("Syntax error")) return null;
+    // Uncomment the following JS code to do analysis on what kinds of Prepack errors we get.
+    //
+    // ```js
+    // console.error(
+    //   `${error.name.replace(/\n/g, "\\n")}: ${error.message.replace(/\n/g, "\\n")} (${error.stack
+    //     .match(/at .+$/gm)
+    //     .slice(0, 3)
+    //     .join(", ")})`
+    // );
+    // ```
+    //
+    // Analysis bash command:
+    //
+    // ```bash
+    // yarn test-test262 --serializer 2> result.err
+    // cat result.err | sort | uniq -c | sort -nr
+    // ```
     return new TestResult(false, strict, new Error(`Prepack error:\n${error.stack}`));
   }
 
