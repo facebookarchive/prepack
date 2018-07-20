@@ -38,6 +38,7 @@ import { handleReportedSideEffect } from "./utils.js";
 import { ShapeInformation } from "../utils/ShapeInformation";
 import type { ArgModel } from "../utils/ShapeInformation";
 import * as t from "@babel/types";
+import { stringOfLocation } from "../utils/babelhelpers";
 
 type AdditionalFunctionEntry = {
   value: ECMAScriptSourceFunctionValue | AbstractValue,
@@ -299,7 +300,12 @@ export class Functions {
     let conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
     for (let fun1 of additionalFunctions) {
       invariant(fun1 instanceof FunctionValue);
-      let fun1Name = this.functionExpressions.get(fun1) || fun1.intrinsicName || "(unknown function)";
+      let fun1Location = fun1.expressionLocation;
+      let fun1Name =
+        this.functionExpressions.get(fun1) ||
+        fun1.intrinsicName ||
+        fun1.__originalName ||
+        `(unknown function ${fun1Location ? stringOfLocation(fun1Location) : ""})`;
       // Also do argument validation here
       let additionalFunctionEffects = this.writeEffects.get(fun1);
       invariant(additionalFunctionEffects !== undefined);
@@ -318,8 +324,14 @@ export class Functions {
       for (let fun2 of additionalFunctions) {
         if (fun1 === fun2) continue;
         invariant(fun2 instanceof FunctionValue);
+        let fun2Location = fun2.expressionLocation;
+        let fun2Name =
+          this.functionExpressions.get(fun2) ||
+          fun2.intrinsicName ||
+          fun2.__originalName ||
+          `(unknown function ${fun2Location ? stringOfLocation(fun2Location) : ""})`;
         let reportFn = () => {
-          this.reportWriteConflicts(fun1Name, conflicts, e1.modifiedProperties, this._callOfFunction(fun2));
+          this.reportWriteConflicts(fun1Name, fun2Name, conflicts, e1.modifiedProperties, this._callOfFunction(fun2));
           return null;
         };
         let fun2Effects = this.writeEffects.get(fun2);
@@ -344,14 +356,25 @@ export class Functions {
   }
 
   reportWriteConflicts(
-    fname: string,
+    f1name: string,
+    f2name: string,
     conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic>,
     pbs: PropertyBindings,
     call2: void => Value
   ): void {
-    let reportConflict = (location: BabelNodeSourceLocation) => {
+    let reportConflict = (
+      location: BabelNodeSourceLocation,
+      object: string = "",
+      key?: string,
+      originalLocation?: BabelNodeSourceLocation
+    ) => {
+      let firstLocationString = originalLocation ? ` ${stringOfLocation(originalLocation)}` : "";
+      let propString = key ? `${object ? "" : "<unknown>"}.${key} ` : "";
+      let objectString = ` ${object}${propString}`;
       let error = new CompilerDiagnostic(
-        `Property access conflicts with write in optimized function ${fname}`,
+        `Property access${objectString}at${firstLocationString} in "${f1name}" conflicts with write at ${
+          location.start.line
+        }:${location.start.column} in optimized function "${f2name}"`,
         location,
         "PP1003",
         "FatalError"
@@ -366,14 +389,24 @@ export class Functions {
     this.realm.reportObjectGetOwnProperties = (ob: ObjectValue) => {
       let location = this.realm.currentLocation;
       invariant(location);
-      if (writtenObjects.has(ob) && !conflicts.has(location)) reportConflict(location);
+      if (writtenObjects.has(ob) && !conflicts.has(location))
+        reportConflict(location, ob.intrinsicName || ob.__originalName, undefined, ob.expressionLocation);
     };
     let oldReportPropertyAccess = this.realm.reportPropertyAccess;
     this.realm.reportPropertyAccess = (pb: PropertyBinding) => {
       if (ObjectValue.refuseSerializationOnPropertyBinding(pb)) return;
       let location = this.realm.currentLocation;
       if (!location) return; // happens only when accessing an additional function property
-      if (pbs.has(pb) && !conflicts.has(location)) reportConflict(location);
+      if (pbs.has(pb) && !conflicts.has(location)) {
+        let originalLocation =
+          pb.descriptor && pb.descriptor.value ? pb.descriptor.value.expressionLocation : undefined;
+        reportConflict(
+          location,
+          pb.object ? pb.object.intrinsicName || pb.object.__originalName : undefined,
+          pb.key,
+          originalLocation
+        );
+      }
     };
     try {
       ignoreErrorsIn(this.realm, () => this.realm.evaluateForEffectsInGlobalEnv(call2));
