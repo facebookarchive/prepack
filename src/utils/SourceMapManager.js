@@ -32,7 +32,9 @@ export class SourceMapManager {
     // Use presence of buck root argument to indicate which path format sourcemap prefixes take on.
     if (buckRoot !== undefined) {
       if (sourceMaps === undefined) {
-        throw new Error("Invalid input: Can't provide a sourcemap directory root without having sourcemaps present");
+        // A buckRoot is unnecessary if there are no sourcemaps to translate between.
+        // It actually causes paths to become incorrect, preventing proper files from opening.
+        this._buckRoot = "";
       }
       this._buckRoot = buckRoot;
       if (this._buckRoot[this._buckRoot.length - 1] === "/") {

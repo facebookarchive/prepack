@@ -28,8 +28,6 @@ export class CompilerDiagnostic extends Error {
     location: ?BabelNodeSourceLocation,
     errorCode: string,
     severity: Severity,
-    // For --reproOnFatalError, we need to pass the names of all sourcefiles touched by Prepack back to the CLI.
-    sourceFilePaths?: { sourceMaps: Array<string>, sourceFiles: Array<{ absolute: string, relative: string }> },
     debugReproManager?: DebugReproManagerImplementation
   ) {
     super(message);
@@ -37,7 +35,6 @@ export class CompilerDiagnostic extends Error {
     this.location = location;
     this.severity = severity;
     this.errorCode = errorCode;
-    this.sourceFilePaths = sourceFilePaths;
     this.debugReproManager = debugReproManager;
   }
 
@@ -45,7 +42,6 @@ export class CompilerDiagnostic extends Error {
   location: ?BabelNodeSourceLocation;
   severity: Severity;
   errorCode: string;
-  sourceFilePaths: void | { sourceMaps: Array<string>, sourceFiles: Array<{ absolute: string, relative: string }> };
   debugReproManager: void | DebugReproManagerImplementation;
 }
 

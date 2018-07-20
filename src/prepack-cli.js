@@ -572,14 +572,6 @@ function run(
       let serialized = prepackFileSync(inputFilenames, resolvedOptions);
       if (reproMode === "reproUnconditionally") {
         if (serialized.debugReproManager) generateDebugRepro(serialized.debugReproManager);
-
-        // if (serialized.sourceFilePaths) {
-        //   generateDebugRepro(serialized.debugReproManager);
-        // } else {
-        //   // An input can have no sourcemap/sourcefiles, but we can still package
-        //   // the input files, prepack runtime, and generate the script.
-        //   generateDebugRepro([], []);
-        // }
       }
 
       success = printDiagnostics(false);
@@ -591,30 +583,9 @@ function run(
         console.error(err.stack);
       }
       if (reproMode !== "none") {
-        // // Get largest list of original sources from all diagnostics.
-        // // Must iterate through both because maps are ordered so we can't tell which diagnostic is most recent.
-        // let largestSourceFilesList = [];
-        // let largestLength = 0;
-        // let sourceMaps = [];
-        //
-        // let allDiagnostics = Array.from(compilerDiagnostics.values()).concat(compilerDiagnosticsList);
-        // allDiagnostics.forEach(diagnostic => {
-        //   if (
-        //     diagnostic.sourceFilePaths &&
-        //     diagnostic.sourceFilePaths.sourceFiles &&
-        //     diagnostic.sourceFilePaths.sourceMaps
-        //   ) {
-        //     if (diagnostic.sourceFilePaths.sourceFiles.length > largestLength) {
-        //       largestSourceFilesList = diagnostic.sourceFilePaths.sourceFiles;
-        //       largestLength = diagnostic.sourceFilePaths.sourceFiles.length;
-        //       sourceMaps = diagnostic.sourceFilePaths.sourceMaps;
-        //     }
-        //   }
-        // });
         let allDiagnostics = Array.from(compilerDiagnostics.values()).concat(compilerDiagnosticsList);
-        let diagnostic = allDiagnostics[0];
+        let diagnostic = allDiagnostics[0]; // Since debugRreproManager is a reference to original object, an arbitrary diagnostic will suffice.
         generateDebugRepro(diagnostic.debugReproManager);
-        return;
       }
       success = false;
     }
