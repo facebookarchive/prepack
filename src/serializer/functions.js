@@ -21,7 +21,6 @@ import {
   AbstractValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
-  StringValue,
   ObjectValue,
   UndefinedValue,
   EmptyValue,
@@ -135,9 +134,22 @@ export class Functions {
 
   __generateInitialOptimizedFunctionsFromRealm(): Array<AdditionalFunctionEntry> {
     let realm = this.realm;
-    let recordedAdditionalFunctions = realm.optimizedFunctions.map(entry => {
+    let recordedAdditionalFunctions = [];
+    realm.optimizedFunctions.forEach(entry => {
       let value = entry.value instanceof AbstractValue ? this._unwrapAbstract(entry.value) : entry.value;
-      return { value, argModel: entry.argModel };
+      // Check for case where __optimize was called in speculative context where effects were discarded
+      if (value._isPartial === undefined) {
+        let error = new CompilerDiagnostic(
+          "Called __optimize on function in failed speculative context",
+          value.expressionLocation,
+          "PP1008",
+          "RecoverableError"
+        );
+        if (realm.handleError(error) !== "Recover") throw new FatalError();
+      } else {
+        invariant(value instanceof ECMAScriptSourceFunctionValue);
+        recordedAdditionalFunctions.push({ value, argModel: entry.argModel });
+      }
     });
     return recordedAdditionalFunctions;
   }
@@ -205,7 +217,7 @@ export class Functions {
   }
 
   checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode: number): void {
-    let additionalFunctionsToProcess = this.__generateInitialOptimizedFunctionsFromRealm("__optimizedFunctions");
+    let additionalFunctionsToProcess = this.__generateInitialOptimizedFunctionsFromRealm();
     // When we find declarations of nested optimized functions, we need to apply the parent
     // effects.
     let additionalFunctionStack = [];
@@ -255,8 +267,6 @@ export class Functions {
       effects = additionalFunctionEffects.effects;
       this.writeEffects.set(functionValue, additionalFunctionEffects);
 
-      // look for newly registered optimized functions
-      let modifiedProperties = additionalFunctionEffects.effects.modifiedProperties;
       // Conceptually this will ensure that the nested additional function is defined
       // although for later cases, we'll apply the effects of the parents only.
       this.realm.withEffectsAppliedInGlobalEnv(() => {

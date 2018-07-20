@@ -111,7 +111,6 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  let additionalFunctionUid = 0;
   // Allows dynamically registering optimized functions.
   // WARNING: these functions will get exposed at global scope and called there.
   // NB: If we interpret one of these calls in an evaluateForEffects context
