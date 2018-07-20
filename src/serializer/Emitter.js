@@ -88,7 +88,7 @@ export class Emitter {
       onAbstractValueWithIdentifier: val => {
         // If the value hasn't been declared yet, then we should wait for it.
         if (
-          derivedIds.has(val.getIdentifier().name) &&
+          derivedIds.has(val.getIdentifier()) &&
           !this.cannotDeclare() &&
           !this.hasBeenDeclared(val) &&
           (!this.emittingToAdditionalFunction() || referencedDeclaredValues.get(val) !== undefined)

@@ -52,6 +52,7 @@ import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObje
 import { CompilerDiagnostic } from "./errors.js";
 import type { Severity } from "./errors.js";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
+import type { DebugReproArguments } from "./utils/DebugReproManager.js";
 
 export const ElementSize = {
   Float32: 4,
@@ -158,7 +159,7 @@ export type PropertyBinding = {
   descriptor?: Descriptor,
   object: ObjectValue,
   key: void | string | SymbolValue | AbstractValue, // where an abstract value must be of type String or Number or Symbol
-  // contains a build node that produces a member expression that resolves to this property binding (location)
+  // contains a operation descriptor that produces a member expression that resolves to this property binding (location)
   pathNode?: AbstractValue,
   internalSlot?: boolean,
 };
@@ -1053,11 +1054,6 @@ export type DebuggerConfigArguments = {
   sourcemaps?: Array<SourceFile>,
   buckRoot?: string,
   debugChannel?: DebugChannel,
-};
-
-export type DebugReproArguments = {
-  sourcemaps?: Array<SourceFile>,
-  buckRoot?: string,
 };
 
 export type SupportedGraphQLGetters =

@@ -7,10 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow strict-local */
-
-import type { SourceFile } from "../types.js";
-import invariant from "../invariant.js";
+/* @flow strict */
 
 /**
  * Sourcemap paths can come in one of two formats:
@@ -28,11 +25,16 @@ import invariant from "../invariant.js";
  *           - Common Directory: /C/original.js, with `buckRoot` = /A
  */
 export class SourceMapManager {
-  constructor(buckRoot?: string, sourceMaps?: Array<SourceFile>) {
+  // Constructor takes an array of the subset of SourceFile properties that it needs.
+  // This is primarily to avoid importing the SourceFile type, which is done so that
+  // the DebugReproManager can safely import this SMM without increasing the flow cycle.
+  constructor(buckRoot?: string, sourceMaps?: Array<{ sourceMapContents: string, filePath: string }>) {
     // Use presence of buck root argument to indicate which path format sourcemap prefixes take on.
     if (buckRoot !== undefined) {
       if (sourceMaps === undefined) {
-        throw new Error("Invalid input: Can't provide a sourcemap directory root without having sourcemaps present");
+        // A buckRoot is unnecessary if there are no sourcemaps to translate between.
+        // It actually causes paths to become incorrect, preventing proper files from opening.
+        this._buckRoot = "";
       }
       this._buckRoot = buckRoot;
       if (this._buckRoot[this._buckRoot.length - 1] === "/") {
@@ -59,8 +61,7 @@ export class SourceMapManager {
       let originalSourcePaths = [];
       let mapPaths = [];
       for (let map of sourceMaps) {
-        invariant(map.sourceMapContents); // Checked above.
-        let parsed = JSON.parse(map.sourceMapContents);
+        let parsed = map.sourceMapContents ? JSON.parse(map.sourceMapContents) : {};
         // Two formats for sourcemaps exist.
         if ("sections" in parsed) {
           for (let section of parsed.sections) {
@@ -191,9 +192,11 @@ export class SourceMapManager {
       }
     } else {
       if (this._sourcemapCommonPrefix !== undefined && this._sourcemapMapDifference !== undefined) {
+        // This pattern is used to avoid needing invariants. Invariant isn't imported so that
+        // SourceMapManager avoids getting pulled into the flow cycle.
+        let smcp = this._sourcemapCommonPrefix;
         absolute = path.replace(this._sourcemapMapDifference, "");
-        invariant(this._sourcemapCommonPrefix !== undefined);
-        absolute = this._sourcemapCommonPrefix + absolute;
+        absolute = smcp + absolute;
       } else {
         absolute = path;
       }
@@ -212,7 +215,6 @@ export class SourceMapManager {
     } else {
       if (this._sourcemapCommonPrefix !== undefined && this._sourcemapMapDifference !== undefined) {
         relative = path.replace(this._sourcemapCommonPrefix, "");
-        invariant(this._sourcemapMapDifference !== undefined);
         relative = this._sourcemapMapDifference + relative;
       } else {
         relative = path;

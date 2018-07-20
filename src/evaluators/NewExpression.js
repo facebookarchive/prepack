@@ -19,8 +19,8 @@ import { IsConstructor, ArgumentListEvaluation } from "../methods/index.js";
 import { Construct } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { FatalError } from "../errors.js";
-import * as t from "@babel/types";
-import { BabelNodeNewExpression, type BabelNodeExpression } from "@babel/types";
+import { BabelNodeNewExpression } from "@babel/types";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 export default function(
   ast: BabelNodeNewExpression,
@@ -102,8 +102,7 @@ function tryToEvaluateConstructOrLeaveAsAbstract(
             realm,
             ObjectValue,
             [constructor, ...argsList],
-            ([constructorNode, ...argListNodes]: Array<BabelNodeExpression>) =>
-              t.newExpression(constructorNode, argListNodes)
+            createOperationDescriptor("NEW_EXPRESSION")
           ),
         TypesDomain.topVal,
         ValuesDomain.topVal

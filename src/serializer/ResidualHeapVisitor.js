@@ -682,6 +682,21 @@ export class ResidualHeapVisitor {
     }
   }
 
+  hasBinding(environment: EnvironmentRecord, name: string): boolean {
+    if (environment === this.globalEnvironmentRecord.$DeclarativeRecord) environment = this.globalEnvironmentRecord;
+
+    if (environment === this.globalEnvironmentRecord) {
+      // Global Binding
+      return this.globalBindings.get(name) !== undefined;
+    } else {
+      invariant(environment instanceof DeclarativeEnvironmentRecord);
+      // DeclarativeEnvironmentRecord binding
+      let residualFunctionBindings = this.declarativeEnvironmentRecordsBindings.get(environment);
+      if (residualFunctionBindings === undefined) return false;
+      return residualFunctionBindings.get(name) !== undefined;
+    }
+  }
+
   // Visits a binding, returns a ResidualFunctionBinding
   getBinding(environment: EnvironmentRecord, name: string): ResidualFunctionBinding {
     if (environment === this.globalEnvironmentRecord.$DeclarativeRecord) environment = this.globalEnvironmentRecord;
@@ -1104,7 +1119,7 @@ export class ResidualHeapVisitor {
           action: () => entry.visit(callbacks, generator),
         });
       },
-      visitModifiedObjectProperty: (binding: PropertyBinding) => {
+      visitModifiedProperty: (binding: PropertyBinding) => {
         let fixpoint_rerun = () => {
           if (this.values.has(binding.object)) {
             if (binding.internalSlot) {
@@ -1130,38 +1145,46 @@ export class ResidualHeapVisitor {
         fixpoint_rerun();
       },
       visitModifiedBinding: (modifiedBinding: Binding) => {
-        invariant(additionalFunctionInfo);
-        let { functionValue } = additionalFunctionInfo;
-        invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
-        let residualBinding = this.getBinding(modifiedBinding.environment, modifiedBinding.name);
-        let funcInstance = additionalFunctionInfo.instance;
-        invariant(funcInstance !== undefined);
-        funcInstance.residualFunctionBindings.set(modifiedBinding.name, residualBinding);
-        let newValue = modifiedBinding.value;
-        invariant(newValue);
-        newValue = this.visitEquivalentValue(newValue);
-        residualBinding.modified = true;
-        let otherFunc = residualBinding.additionalFunctionOverridesValue;
-        if (otherFunc !== undefined && otherFunc !== functionValue) {
-          let otherNameVal = otherFunc._SafeGetDataPropertyValue("name");
-          let otherNameStr = otherNameVal instanceof StringValue ? otherNameVal.value : "unknown function";
-          let funcNameVal = functionValue._SafeGetDataPropertyValue("name");
-          let funNameStr = funcNameVal instanceof StringValue ? funcNameVal.value : "unknown function";
-          let error = new CompilerDiagnostic(
-            `Variable ${
-              modifiedBinding.name
-            } written to in optimized function ${funNameStr} conflicts with write in another optimized function ${otherNameStr}`,
-            funcNameVal.expressionLocation,
-            "PP1001",
-            "RecoverableError"
-          );
-          if (functionValue.$Realm.handleError(error) === "Fail") throw new FatalError();
-        }
-        residualBinding.additionalFunctionOverridesValue = functionValue;
-        additionalFunctionInfo.modifiedBindings.set(modifiedBinding, residualBinding);
-        // TODO nested optimized functions: revisit adding GLOBAL as outer optimized function
-        residualBinding.potentialReferentializationScopes.add("GLOBAL");
-        return [residualBinding, newValue];
+        let fixpoint_rerun = () => {
+          if (this.hasBinding(modifiedBinding.environment, modifiedBinding.name)) {
+            invariant(additionalFunctionInfo);
+            let { functionValue } = additionalFunctionInfo;
+            invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+            let residualBinding = this.getBinding(modifiedBinding.environment, modifiedBinding.name);
+            let funcInstance = additionalFunctionInfo.instance;
+            invariant(funcInstance !== undefined);
+            funcInstance.residualFunctionBindings.set(modifiedBinding.name, residualBinding);
+            let newValue = modifiedBinding.value;
+            invariant(newValue);
+            this.visitValue(newValue);
+            residualBinding.modified = true;
+            let otherFunc = residualBinding.additionalFunctionOverridesValue;
+            if (otherFunc !== undefined && otherFunc !== functionValue) {
+              let otherNameVal = otherFunc._SafeGetDataPropertyValue("name");
+              let otherNameStr = otherNameVal instanceof StringValue ? otherNameVal.value : "unknown function";
+              let funcNameVal = functionValue._SafeGetDataPropertyValue("name");
+              let funNameStr = funcNameVal instanceof StringValue ? funcNameVal.value : "unknown function";
+              let error = new CompilerDiagnostic(
+                `Variable ${
+                  modifiedBinding.name
+                } written to in optimized function ${funNameStr} conflicts with write in another optimized function ${otherNameStr}`,
+                funcNameVal.expressionLocation,
+                "PP1001",
+                "RecoverableError"
+              );
+              if (functionValue.$Realm.handleError(error) === "Fail") throw new FatalError();
+            }
+            residualBinding.additionalFunctionOverridesValue = functionValue;
+            additionalFunctionInfo.modifiedBindings.set(modifiedBinding, residualBinding);
+            // TODO nested optimized functions: revisit adding GLOBAL as outer optimized function
+            residualBinding.potentialReferentializationScopes.add("GLOBAL");
+            return true;
+          } else {
+            this._enqueueWithUnrelatedScope(this.scope, fixpoint_rerun);
+            return false;
+          }
+        };
+        fixpoint_rerun();
       },
       visitBindingAssignment: (binding: Binding, value: Value) => {
         let residualBinding = this.getBinding(binding.environment, binding.name);

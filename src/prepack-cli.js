@@ -31,8 +31,10 @@ import zipFactory from "node-zip";
 import zipdir from "zip-dir";
 import path from "path";
 import JSONTokenizer from "./utils/JSONTokenizer.js";
-import type { DebuggerConfigArguments, DebugReproArguments, DebugReproManagerType } from "./types";
+import type { DebuggerConfigArguments } from "./types";
 import child_process from "child_process";
+import { DebugReproManagerImplementation } from "./utils/DebugReproManager.js";
+import type { DebugReproArguments } from "./utils/DebugReproManager.js";
 
 // Prepack helper
 declare var __residual: any;
@@ -571,6 +573,7 @@ function run(
       }
       let serialized = prepackFileSync(inputFilenames, resolvedOptions);
       if (reproMode === "reproUnconditionally") {
+<<<<<<< HEAD
         if (serialized.sourceFilePaths) {
           generateDebugRepro(serialized.sourceFilePaths.sourceFiles, serialized.sourceFilePaths.sourceMaps);
         } else {
@@ -578,6 +581,9 @@ function run(
           // the input files, prepack runtime, and generate the script.
           generateDebugRepro([], []);
         }
+=======
+        if (serialized.debugReproManager) generateDebugRepro(serialized.debugReproManager);
+>>>>>>> 06fa4623359997fb344b55992073e45f52972be3
       }
 
       success = printDiagnostics(false);
@@ -611,7 +617,6 @@ function run(
         });
 
         generateDebugRepro(largestSourceFilesList, sourceMaps);
-        return;
       }
       success = false;
     }
