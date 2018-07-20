@@ -21,11 +21,11 @@ import {
   NumberValue,
   UndefinedValue,
 } from "../values/index.js";
-import { GetPrototypeFromConstructor } from "../methods/get.js";
-import { AllocateArrayBuffer } from "../methods/arraybuffer.js";
-import { IsDetachedBuffer, IsInteger } from "../methods/is.js";
-import { GetValueFromBuffer, SetValueInBuffer } from "../methods/arraybuffer.js";
-import { Construct, SpeciesConstructor } from "../methods/construct.js";
+import { GetPrototypeFromConstructor } from "./get.js";
+import { AllocateArrayBuffer } from "./arraybuffer.js";
+import { IsDetachedBuffer, IsInteger } from "./is.js";
+import { GetValueFromBuffer, SetValueInBuffer } from "./arraybuffer.js";
+import { Construct, SpeciesConstructor } from "./construct.js";
 import { To } from "../singletons.js";
 import invariant from "../invariant.js";
 

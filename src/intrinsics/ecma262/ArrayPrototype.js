@@ -23,7 +23,6 @@ import {
   Value,
 } from "../../values/index.js";
 import invariant from "../../invariant.js";
-import * as t from "@babel/types";
 import { SameValueZeroPartial, AbstractRelationalComparison } from "../../methods/abstract.js";
 import {
   StrictEqualityComparisonPartial,
@@ -38,6 +37,7 @@ import {
   HasSomeCompatibleType,
 } from "../../methods/index.js";
 import { Create, Join, Properties, To } from "../../singletons.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.31
@@ -57,8 +57,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
       O.$GetOwnProperty("concat") === undefined
     ) {
       let newArgs = [O, ...args];
-      return ArrayValue.createTemporalWithWidenedNumericProperty(realm, newArgs, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("concat")), ((_args: any): Array<any>))
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
+        realm,
+        newArgs,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "concat" })
       );
     }
 
@@ -161,8 +163,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
         if (end) {
           args.push(end);
         }
-        AbstractValue.createTemporalFromBuildFunction(realm, BooleanValue, args, ([objNode, ..._args]) =>
-          t.callExpression(t.memberExpression(objNode, t.identifier("copyWithin")), ((_args: any): Array<any>))
+        AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          BooleanValue,
+          args,
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "copyWithin" })
         );
         return O;
       }
@@ -258,8 +263,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("entries") === undefined
     ) {
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, [O], ([objNode]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("entries")), [])
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        [O],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "entries" })
       );
     }
 
@@ -284,8 +292,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (thisArg) {
         args.push(thisArg);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, BooleanValue, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("every")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        BooleanValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "every" })
       );
     }
 
@@ -351,8 +362,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (end) {
         args.push(end);
       }
-      AbstractValue.createTemporalFromBuildFunction(realm, Value, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("fill")), ((_args: any): Array<any>))
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "fill" })
       );
       return O;
     }
@@ -405,8 +419,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         args,
-        ([objNode, ..._args]) =>
-          t.callExpression(t.memberExpression(objNode, t.identifier("filter")), ((_args: any): Array<any>)),
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "filter" }),
         { func: callbackfn, thisVal: thisArg }
       );
     }
@@ -482,8 +495,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (thisArg) {
         args.push(thisArg);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("find")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "find" })
       );
     }
 
@@ -540,8 +556,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (thisArg) {
         args.push(thisArg);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("findIndex")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        NumberValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "findIndex" })
       );
     }
 
@@ -598,8 +617,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (thisArg) {
         args.push(thisArg);
       }
-      AbstractValue.createTemporalFromBuildFunction(realm, BooleanValue, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("forEach")), ((_args: any): Array<any>))
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        BooleanValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "forEach" })
       );
       return realm.intrinsics.undefined;
     }
@@ -661,8 +683,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
         if (fromIndex) {
           args.push(fromIndex);
         }
-        return AbstractValue.createTemporalFromBuildFunction(realm, BooleanValue, args, ([objNode, ..._args]) =>
-          t.callExpression(t.memberExpression(objNode, t.identifier("includes")), ((_args: any): Array<any>))
+        return AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          BooleanValue,
+          args,
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "includes" })
         );
       }
 
@@ -721,8 +746,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (fromIndex) {
         args.push(fromIndex);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("indexOf")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        NumberValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "indexOf" })
       );
     }
 
@@ -794,8 +822,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (separator) {
         args.push(separator);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, StringValue, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("join")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        StringValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "join" })
       );
     }
 
@@ -865,8 +896,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("keys") === undefined
     ) {
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, [O], ([objNode]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("keys")), [])
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        [O],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "keys" })
       );
     }
 
@@ -891,8 +925,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (fromIndex) {
         args.push(fromIndex);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("lastIndexOf")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        NumberValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "lastIndexOf" })
       );
     }
 
@@ -958,8 +995,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         args,
-        ([objNode, ..._args]) =>
-          t.callExpression(t.memberExpression(objNode, t.identifier("map")), ((_args: any): Array<any>)),
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "map" }),
         { func: callbackfn, thisVal: thisArg }
       );
     }
@@ -1045,8 +1081,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("pop") === undefined
     ) {
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, [O], ([objNode]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("pop")), [])
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        [O],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "pop" })
       );
     }
 
@@ -1095,8 +1134,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("push") === undefined
     ) {
-      return AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, [O, ...args], ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("push")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        NumberValue,
+        [O, ...args],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "push" })
       );
     }
 
@@ -1150,8 +1192,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (initialValue) {
         args.push(initialValue);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("reduce")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "reduce" })
       );
     }
 
@@ -1254,8 +1299,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (initialValue) {
         args.push(initialValue);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("reduceRight")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "reduceRight" })
       );
     }
 
@@ -1352,8 +1400,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("reverse") === undefined
     ) {
-      AbstractValue.createTemporalFromBuildFunction(realm, ArrayValue, [O], ([objNode]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("reverse")), [])
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        ArrayValue,
+        [O],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "reverse" })
       );
       return O;
     }
@@ -1452,8 +1503,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("shift") === undefined
     ) {
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, [O], ([objNode]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("shift")), [])
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        [O],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "shift" })
       );
     }
 
@@ -1524,8 +1578,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
       O.$GetOwnProperty("slice") === undefined
     ) {
       let newArgs = [O, start, end];
-      return ArrayValue.createTemporalWithWidenedNumericProperty(realm, newArgs, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("slice")), ((_args: any): Array<any>))
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
+        realm,
+        newArgs,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "slice" })
       );
     }
 
@@ -1601,8 +1657,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (thisArg) {
         args.push(thisArg);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, BooleanValue, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("some")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        BooleanValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "some" })
       );
     }
 
@@ -1665,8 +1724,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       O.$GetOwnProperty("sort") === undefined
     ) {
       let args = [O, comparefn];
-      AbstractValue.createTemporalFromBuildFunction(realm, Value, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("sort")), ((_args: any): Array<any>))
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "sort" })
       );
       // context is returned instead of O at the end of this method
       // so we do the same here
@@ -1854,8 +1916,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (items && items.length > 0) {
         args.push(...items);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, ArrayValue, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("splice")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        ArrayValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "splice" })
       );
     }
 
@@ -2052,8 +2117,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       array.$GetOwnProperty("toLocaleString") === undefined
     ) {
-      return AbstractValue.createTemporalFromBuildFunction(realm, StringValue, [array], ([objNode]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("toLocaleString")), [])
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        StringValue,
+        [array],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "toLocaleString" })
       );
     }
 
@@ -2129,8 +2197,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("unshift") === undefined
     ) {
-      return AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, [O], ([objNode]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("unshift")), [])
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        NumberValue,
+        [O],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "unshift" })
       );
     }
 

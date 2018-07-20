@@ -12,9 +12,9 @@
 import type { Realm } from "../realm.js";
 import type { DataBlock, ElementType } from "../types.js";
 import { Value, ObjectValue, NumberValue, EmptyValue, NullValue, UndefinedValue } from "../values/index.js";
-import { SpeciesConstructor } from "../methods/construct.js";
-import { IsConstructor } from "../methods/index.js";
-import { IsDetachedBuffer } from "../methods/is.js";
+import { SpeciesConstructor } from "./construct.js";
+import { IsConstructor } from "./index.js";
+import { IsDetachedBuffer } from "./is.js";
 import { Create, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import { ElementSize } from "../types.js";

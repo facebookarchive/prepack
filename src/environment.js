@@ -20,10 +20,11 @@ import type {
 } from "@babel/types";
 import type { Realm } from "./realm.js";
 import type { SourceFile, SourceMap, SourceType } from "./types.js";
+import * as t from "@babel/types";
 
 import { AbruptCompletion, Completion, ThrowCompletion } from "./completions.js";
 import { CompilerDiagnostic, FatalError } from "./errors.js";
-import { defaultOptions } from "./options";
+import { defaultOptions } from "./options.js";
 import type { PartialEvaluatorOptions } from "./options";
 import { ExecutionContext } from "./realm.js";
 import {
@@ -46,9 +47,9 @@ import invariant from "./invariant.js";
 import traverseFast from "./utils/traverse-fast.js";
 import { HasProperty, Get, IsExtensible, HasOwnProperty, IsDataDescriptor } from "./methods/index.js";
 import { Environment, Havoc, Properties, To } from "./singletons.js";
-import * as t from "@babel/types";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
-import PrimitiveValue from "./values/PrimitiveValue";
+import PrimitiveValue from "./values/PrimitiveValue.js";
+import { createOperationDescriptor } from "./utils/generator.js";
 
 const sourceMap = require("source-map");
 
@@ -56,7 +57,7 @@ function deriveGetBinding(realm: Realm, binding: Binding) {
   let types = TypesDomain.topVal;
   let values = ValuesDomain.topVal;
   invariant(realm.generator !== undefined);
-  return realm.generator.deriveAbstract(types, values, [], (_, context) => context.serializeBinding(binding));
+  return realm.generator.deriveAbstract(types, values, [], createOperationDescriptor("GET_BINDING", { binding }));
 }
 
 export function havocBinding(binding: Binding): void {

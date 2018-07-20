@@ -23,10 +23,9 @@ import { HasOwnProperty, HasSomeCompatibleType } from "../../methods/has.js";
 import { Invoke } from "../../methods/call.js";
 import { Properties, To } from "../../singletons.js";
 import { FatalError } from "../../errors.js";
-import type { BabelNodeExpression } from "@babel/types";
-import * as t from "@babel/types";
 import invariant from "../../invariant.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.1.3.2
@@ -54,9 +53,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
               realm,
               BooleanValue,
               [ObjectPrototypeHasOwnPrototype, context, key],
-              ([methodNode, objectNode, nameNode]: Array<BabelNodeExpression>) => {
-                return t.callExpression(t.memberExpression(methodNode, t.identifier("call")), [objectNode, nameNode]);
-              }
+              createOperationDescriptor("OBJECT_PROTO_HAS_OWN_PROPERTY")
             ),
           TypesDomain.topVal,
           ValuesDomain.topVal

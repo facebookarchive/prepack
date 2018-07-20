@@ -66,7 +66,7 @@ export function prepackSources(
     return { code: "", map: undefined };
   } else if (options.serialize === true || options.residual !== true) {
     let serializer = new Serializer(realm, getSerializerOptions(options));
-    let serialized = serializer.init(sources, options.sourceMaps);
+    let serialized = serializer.init(sources, options.sourceMaps, options.onParse);
 
     //Turn off the debugger if there is one
     if (realm.debuggerInstance) {

@@ -12,7 +12,8 @@
 import type { ErrorHandler } from "./errors.js";
 import type { SerializerOptions, RealmOptions, Compatibility, ReactOutputTypes, InvariantModeTypes } from "./options";
 import { Realm } from "./realm.js";
-import type { DebuggerConfigArguments, DebugReproArguments } from "./types";
+import type { DebuggerConfigArguments } from "./types";
+import type { BabelNodeFile } from "@babel/types";
 
 export type PrepackOptions = {|
   additionalGlobals?: Realm => void,
@@ -59,6 +60,7 @@ export type PrepackOptions = {|
   abstractValueImpliesMax?: number,
   debuggerConfigArgs?: DebuggerConfigArguments,
   debugReproArgs?: DebugReproArguments,
+  onParse?: BabelNodeFile => void,
 |};
 
 export function getRealmOptions({

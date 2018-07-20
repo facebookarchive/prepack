@@ -38,7 +38,7 @@ import {
   HasSomeCompatibleType,
 } from "../../methods/index.js";
 import { Create, Havoc, Properties as Props, To } from "../../singletons.js";
-import * as t from "@babel/types";
+import { createOperationDescriptor } from "../../utils/generator.js";
 import invariant from "../../invariant.js";
 
 function snapshotToObjectAndRemoveProperties(
@@ -381,7 +381,7 @@ export default function(realm: Realm): NativeFunctionValue {
         realm,
         ObjectValue,
         [getOwnPropertyDescriptor, obj, P],
-        ([methodNode, objNode, keyNode]) => t.callExpression(methodNode, [objNode, keyNode])
+        createOperationDescriptor("OBJECT_PROTO_GET_OWN_PROPERTY_DESCRIPTOR")
       );
       invariant(result instanceof AbstractObjectValue);
       result.makeSimple();
@@ -500,12 +500,14 @@ export default function(realm: Realm): NativeFunctionValue {
       let array = ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         [objectKeys, obj],
-        ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
       );
       return array;
     } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
-      return ArrayValue.createTemporalWithWidenedNumericProperty(realm, [objectKeys, obj], ([methodNode, objNode]) =>
-        t.callExpression(methodNode, [objNode])
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
+        realm,
+        [objectKeys, obj],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
       );
     }
 
@@ -529,14 +531,14 @@ export default function(realm: Realm): NativeFunctionValue {
           let array = ArrayValue.createTemporalWithWidenedNumericProperty(
             realm,
             [objectValues, obj],
-            ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+            createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
           );
           return array;
         } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
           return ArrayValue.createTemporalWithWidenedNumericProperty(
             realm,
             [objectValues, obj],
-            ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+            createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
           );
         }
       }
@@ -561,14 +563,14 @@ export default function(realm: Realm): NativeFunctionValue {
         let array = ArrayValue.createTemporalWithWidenedNumericProperty(
           realm,
           [objectEntries, obj],
-          ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
         );
         return array;
       } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
         return ArrayValue.createTemporalWithWidenedNumericProperty(
           realm,
           [objectEntries, obj],
-          ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
         );
       }
 

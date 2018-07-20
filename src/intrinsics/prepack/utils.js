@@ -23,9 +23,9 @@ import buildExpressionTemplate from "../../utils/builder.js";
 import { ValuesDomain } from "../../domains/index.js";
 import { describeLocation } from "../ecma262/Error.js";
 import { To } from "../../singletons.js";
-import AbstractObjectValue from "../../values/AbstractObjectValue";
+import AbstractObjectValue from "../../values/AbstractObjectValue.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
-import { Utils } from "../../singletons";
+import { Utils } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 const throwTemplateSrc = "(function(){throw new global.Error('abstract value defined at ' + A);})()";

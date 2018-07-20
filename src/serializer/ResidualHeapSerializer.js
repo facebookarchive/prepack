@@ -42,7 +42,7 @@ import type {
   BabelNodeFunctionExpression,
 } from "@babel/types";
 import { Generator, PreludeGenerator, NameGenerator } from "../utils/generator.js";
-import type { SerializationContext } from "../utils/generator.js";
+import type { OperationDescriptor, SerializationContext } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import type {
   ResidualFunctionBinding,
@@ -78,12 +78,13 @@ import { canHoistFunction } from "../react/hoisting.js";
 import { To } from "../singletons.js";
 import { ResidualReactElementSerializer } from "./ResidualReactElementSerializer.js";
 import type { Binding } from "../environment.js";
-import { DeclarativeEnvironmentRecord, FunctionEnvironmentRecord } from "../environment.js";
+import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord, FunctionEnvironmentRecord } from "../environment.js";
 import type { Referentializer } from "./Referentializer.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
-import { type Replacement, getReplacement } from "./ResidualFunctionInstantiator";
+import { type Replacement, getReplacement } from "./ResidualFunctionInstantiator.js";
 import { describeValue } from "../utils.js";
 import { getAsPropertyNameExpression } from "../utils/babelhelpers.js";
+import { ResidualOperationSerializer } from "./ResidualOperationSerializer.js";
 
 function commentStatement(text: string) {
   let s = t.emptyStatement();
@@ -124,6 +125,7 @@ export class ResidualHeapSerializer {
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
+    globalBindings: Map<string, ResidualFunctionBinding>,
     referentializer: Referentializer,
     generatorDAG: GeneratorDAG,
     conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>,
@@ -141,6 +143,7 @@ export class ResidualHeapSerializer {
     let realmPreludeGenerator = this.realm.preludeGenerator;
     invariant(realmPreludeGenerator);
     this.preludeGenerator = realmPreludeGenerator;
+    this.residualOperationSerializer = new ResidualOperationSerializer(realm, realmPreludeGenerator);
 
     this.prelude = [];
     this._descriptors = new Map();
@@ -211,12 +214,16 @@ export class ResidualHeapSerializer {
     this.additionalFunctionValueInfos = additionalFunctionValueInfos;
     this.rewrittenAdditionalFunctions = new Map();
     this.declarativeEnvironmentRecordsBindings = declarativeEnvironmentRecordsBindings;
+    this.globalBindings = globalBindings;
     this.generatorDAG = generatorDAG;
     this.conditionalFeasibility = conditionalFeasibility;
     this.additionalFunctionGenerators = new Map();
     this.declaredGlobalLets = new Map();
     this._objectSemaphores = new Map();
     this.additionalGeneratorRoots = additionalGeneratorRoots;
+    let environment = realm.$GlobalEnv.environmentRecord;
+    invariant(environment instanceof GlobalEnvironmentRecord);
+    this.globalEnvironmentRecord = environment;
   }
 
   emitter: Emitter;
@@ -226,6 +233,7 @@ export class ResidualHeapSerializer {
   body: Array<BabelNodeStatement>;
   mainBody: SerializedBody;
   realm: Realm;
+  residualOperationSerializer: ResidualOperationSerializer;
   preludeGenerator: PreludeGenerator;
   generator: Generator;
   _descriptors: Map<string, BabelNodeIdentifier>;
@@ -256,6 +264,7 @@ export class ResidualHeapSerializer {
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>>;
   declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>;
+  globalBindings: Map<string, ResidualFunctionBinding>;
   residualReactElementSerializer: ResidualReactElementSerializer;
   referentializer: Referentializer;
   additionalFunctionGenerators: Map<FunctionValue, Generator>;
@@ -269,6 +278,7 @@ export class ResidualHeapSerializer {
   additionalGeneratorRoots: Map<Generator, Set<ObjectValue>>;
 
   declaredGlobalLets: Map<string, Value>;
+  globalEnvironmentRecord: GlobalEnvironmentRecord;
 
   getStatistics(): SerializerStatistics {
     invariant(this.realm.statistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
@@ -378,7 +388,9 @@ export class ResidualHeapSerializer {
                 ? t.memberExpression(uid, protoExpression)
                 : t.callExpression(this.preludeGenerator.memoizeReference("Object.getPrototypeOf"), [uid]);
             let condition = t.binaryExpression("!==", fetchedPrototype, serializedProto);
-            let consequent = this.generator.getErrorStatement(t.stringLiteral("unexpected prototype"));
+            let consequent = this.residualOperationSerializer.getErrorStatement(
+              t.stringLiteral("unexpected prototype")
+            );
             this.emitter.emit(t.ifStatement(condition, consequent));
           },
           this.emitter.getBody()
@@ -967,17 +979,23 @@ export class ResidualHeapSerializer {
     return name;
   }
 
-  serializeBinding(binding: Binding): BabelNodeIdentifier | BabelNodeMemberExpression {
-    let record = binding.environment;
-    invariant(record instanceof DeclarativeEnvironmentRecord, "only declarative environments has bindings");
+  _getResidualFunctionBinding(binding: Binding): void | ResidualFunctionBinding {
+    let environment = binding.environment;
+    if (environment === this.globalEnvironmentRecord.$DeclarativeRecord) environment = this.globalEnvironmentRecord;
 
-    let residualFunctionBindings = this.declarativeEnvironmentRecordsBindings.get(record);
-    invariant(
-      residualFunctionBindings,
-      "all bindings that create abstract values must have at least one call emitted to the generator so the function environment should have been visited"
-    );
-    let residualBinding = residualFunctionBindings.get(binding.name);
-    invariant(residualBinding, "any referenced residual binding should have been visited");
+    if (environment === this.globalEnvironmentRecord) {
+      return this.globalBindings.get(binding.name);
+    }
+
+    invariant(environment instanceof DeclarativeEnvironmentRecord, "only declarative environments have bindings");
+    let residualFunctionBindings = this.declarativeEnvironmentRecordsBindings.get(environment);
+    if (residualFunctionBindings === undefined) return undefined;
+    return residualFunctionBindings.get(binding.name);
+  }
+
+  serializeBinding(binding: Binding): BabelNodeIdentifier | BabelNodeMemberExpression {
+    let residualBinding = this._getResidualFunctionBinding(binding);
+    invariant(residualBinding !== undefined, "any referenced residual binding should have been visited");
 
     this._serializeDeclarativeEnvironmentRecordBinding(residualBinding);
 
@@ -1898,7 +1916,8 @@ export class ResidualHeapSerializer {
       let prop = this.serializeValue(val.args[1]);
       return t.memberExpression(obj, prop, true);
     }
-    let serializedValue = val.buildNode(serializedArgs);
+    invariant(val.operationDescriptor !== undefined);
+    let serializedValue = this.residualOperationSerializer.serialize(val.operationDescriptor, serializedArgs);
     if (serializedValue.type === "Identifier") {
       let id = ((serializedValue: any): BabelNodeIdentifier);
       invariant(
@@ -2110,13 +2129,30 @@ export class ResidualHeapSerializer {
     // along the code of the nested generator; their definitions need to get hoisted
     // or repeated so that they are accessible and defined from all using scopes
     let context = {
+      serializeOperationDescriptor: (
+        operationDescriptor: OperationDescriptor,
+        nodes: Array<BabelNodeExpression>,
+        _context: SerializationContext,
+        valuesToProcess: Set<AbstractValue | ObjectValue>
+      ) => {
+        let serializedValue = this.residualOperationSerializer.serialize(
+          operationDescriptor,
+          nodes,
+          _context,
+          valuesToProcess
+        );
+
+        return ((serializedValue: any): BabelNodeStatement);
+      },
       serializeValue: this.serializeValue.bind(this),
       serializeBinding: this.serializeBinding.bind(this),
       serializeGenerator: (
         generator: Generator,
         valuesToProcess: Set<AbstractValue | ObjectValue>
       ): Array<BabelNodeStatement> =>
-        this._withGeneratorScope("Generator", generator, valuesToProcess, () => generator.serialize(context)),
+        this._withGeneratorScope("Generator", generator, valuesToProcess, () =>
+          generator.serialize(((context: any): SerializationContext))
+        ),
       initGenerator: (generator: Generator) => {
         let activeGeneratorBody = this._getActiveBodyOfGenerator(generator);
         invariant(activeGeneratorBody === this.emitter.getBody(), "generator to init must be current emitter body");
@@ -2149,6 +2185,25 @@ export class ResidualHeapSerializer {
       },
       declare: (value: AbstractValue | ObjectValue) => {
         this.emitter.declare(value);
+      },
+      emitBindingModification: (binding: Binding) => {
+        let residualFunctionBinding = this._getResidualFunctionBinding(binding);
+        if (residualFunctionBinding !== undefined) {
+          invariant(residualFunctionBinding.referentialized);
+          invariant(
+            residualFunctionBinding.serializedValue,
+            "ResidualFunctionBinding must be referentialized before serializing a mutation to it."
+          );
+          let newValue = binding.value;
+          invariant(newValue);
+          let bindingReference = ((residualFunctionBinding.serializedValue: any): BabelNodeLVal);
+          invariant(
+            t.isLVal(bindingReference),
+            "Referentialized values must be LVals even though serializedValues may be any Expression"
+          );
+          let serializedNewValue = this.serializeValue(newValue);
+          this.emitter.emit(t.expressionStatement(t.assignmentExpression("=", bindingReference, serializedNewValue)));
+        }
       },
       emitPropertyModification: (propertyBinding: PropertyBinding) => {
         let desc = propertyBinding.descriptor;

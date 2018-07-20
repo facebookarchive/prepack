@@ -64,12 +64,15 @@ import {
 import type { Compatibility, RealmOptions, ReactOutputTypes, InvariantModeTypes } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
-import { Generator, PreludeGenerator, type TemporalBuildNodeEntry } from "./utils/generator.js";
-import { emptyExpression, voidExpression } from "./utils/babelhelpers.js";
+import {
+  createOperationDescriptor,
+  Generator,
+  PreludeGenerator,
+  type TemporalBuildNodeEntry,
+} from "./utils/generator.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path, DebugReproManager } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "@babel/types";
-import * as t from "@babel/types";
 import { Utils } from "./singletons.js";
 export type BindingEntry = {
   hasLeaked: void | boolean,
@@ -1018,12 +1021,16 @@ export class Realm {
           // Generate code using effects2 because its expressions have not been widened away.
           const e2 = effects2;
           this._applyPropertiesToNewlyCreatedObjects(e2.modifiedProperties, e2.createdObjects);
-          this._emitPropertAssignments(e2.generator, e2.modifiedProperties, e2.createdObjects);
+          this._emitPropertyAssignments(e2.generator, e2.modifiedProperties, e2.createdObjects);
           this._emitLocalAssignments(e2.generator, e2.modifiedBindings, e2.createdObjects);
           invariant(test instanceof AbstractValue);
-          let cond = e2.generator.deriveAbstract(test.types, test.values, [test], ([n]) => n, {
-            skipInvariant: true,
-          });
+          let cond = e2.generator.deriveAbstract(
+            test.types,
+            test.values,
+            [test],
+            createOperationDescriptor("SINGLE_ARG"),
+            { skipInvariant: true }
+          );
           return [effects1, effects2, cond];
         }
         effects1 = Widen.widenEffects(this, effects1, effects2);
@@ -1109,10 +1116,8 @@ export class Realm {
     bindings.forEach((binding, key, map) => {
       let val = binding.value;
       if (val instanceof AbstractValue) {
-        invariant(val._buildNode !== undefined);
-        let tval = gen.deriveAbstract(val.types, val.values, [val], ([n]) => n, {
-          skipInvariant: true,
-        });
+        invariant(val.operationDescriptor !== undefined);
+        let tval = gen.deriveAbstract(val.types, val.values, [val], createOperationDescriptor("SINGLE_ARG"));
         tvalFor.set(key, tval);
       }
     });
@@ -1122,36 +1127,18 @@ export class Realm {
         let phiNode = key.phiNode;
         let tval = tvalFor.get(key);
         invariant(tval !== undefined);
-        gen.emitStatement([tval], ([v]) => {
-          invariant(phiNode !== undefined);
-          let id = phiNode.buildNode([]);
-          return t.expressionStatement(t.assignmentExpression("=", (id: any), v));
-        });
+        gen.emitStatement([tval], createOperationDescriptor("LOCAL_ASSIGNMENT", { value: phiNode }));
       }
 
       if (val instanceof ObjectValue && newlyCreatedObjects.has(val)) {
         let phiNode = key.phiNode;
-        gen.emitStatement([val], ([v]) => {
-          invariant(phiNode !== undefined);
-          let id = phiNode.buildNode([]);
-          return t.expressionStatement(t.assignmentExpression("=", (id: any), v));
-        });
+        gen.emitStatement([val], createOperationDescriptor("LOCAL_ASSIGNMENT", { value: phiNode }));
       }
     });
   }
 
   // populate the loop body generator with assignments that will update properties modified inside the loop
-  _emitPropertAssignments(gen: Generator, pbindings: PropertyBindings, newlyCreatedObjects: CreatedObjects): void {
-    function isSelfReferential(value: Value, pathNode: void | AbstractValue): boolean {
-      if (value === pathNode) return true;
-      if (value instanceof AbstractValue && pathNode !== undefined) {
-        for (let v of value.args) {
-          if (isSelfReferential(v, pathNode)) return true;
-        }
-      }
-      return false;
-    }
-
+  _emitPropertyAssignments(gen: Generator, pbindings: PropertyBindings, newlyCreatedObjects: CreatedObjects): void {
     let tvalFor: Map<any, AbstractValue> = new Map();
     pbindings.forEach((val, key, map) => {
       if (newlyCreatedObjects.has(key.object) || key.object.refuseSerialization) {
@@ -1159,20 +1146,12 @@ export class Realm {
       }
       let value = val && val.value;
       if (value instanceof AbstractValue) {
-        invariant(value._buildNode !== undefined);
+        invariant(value.operationDescriptor !== undefined);
         let tval = gen.deriveAbstract(
           value.types,
           value.values,
           [key.object, value],
-          ([o, n]) => {
-            invariant(value instanceof Value);
-            if (typeof key.key === "string" && value.mightHaveBeenDeleted() && isSelfReferential(value, key.pathNode)) {
-              let inTest = t.binaryExpression("in", t.stringLiteral(key.key), o);
-              let addEmpty = t.conditionalExpression(inTest, n, emptyExpression);
-              n = t.logicalExpression("||", n, addEmpty);
-            }
-            return n;
-          },
+          createOperationDescriptor("LOGICAL_PROPERTY_ASSIGNMENT", { binding: key, value }),
           {
             skipInvariant: true,
           }
@@ -1189,27 +1168,13 @@ export class Realm {
       invariant(val !== undefined);
       let value = val.value;
       invariant(value instanceof Value);
-      let mightHaveBeenDeleted = value.mightHaveBeenDeleted();
-      let mightBeUndefined = value.mightBeUndefined();
       let keyKey = key.key;
       if (typeof keyKey === "string") {
         if (path !== undefined) {
-          gen.emitStatement([key.object, tval || value, this.intrinsics.empty], ([o, v, e]) => {
-            invariant(path !== undefined);
-            invariant(typeof keyKey === "string");
-            let lh = path.buildNode([o, t.identifier(keyKey)]);
-            let r = t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
-            if (mightHaveBeenDeleted) {
-              // If v === __empty || (v === undefined  && !(key.key in o))  then delete it
-              let emptyTest = t.binaryExpression("===", v, e);
-              let undefinedTest = t.binaryExpression("===", v, voidExpression);
-              let inTest = t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(keyKey), o));
-              let guard = t.logicalExpression("||", emptyTest, t.logicalExpression("&&", undefinedTest, inTest));
-              let deleteIt = t.expressionStatement(t.unaryExpression("delete", (lh: any)));
-              return t.ifStatement(mightBeUndefined ? emptyTest : guard, deleteIt, r);
-            }
-            return r;
-          });
+          gen.emitStatement(
+            [key.object, tval || value, this.intrinsics.empty],
+            createOperationDescriptor("CONDITIONAL_PROPERTY_ASSIGNMENT", { binding: key, path, value })
+          );
         } else {
           // RH value was not widened, so it must have been a constant. We don't need to assign that inside the loop.
           // Note, however, that if the LH side is a property of an intrinsic object, then an assignment will
@@ -1218,11 +1183,10 @@ export class Realm {
       } else {
         // TODO: What if keyKey is undefined?
         invariant(keyKey instanceof Value);
-        gen.emitStatement([key.object, keyKey, tval || value, this.intrinsics.empty], ([o, p, v, e]) => {
-          invariant(path !== undefined);
-          let lh = path.buildNode([o, p]);
-          return t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
-        });
+        gen.emitStatement(
+          [key.object, keyKey, tval || value, this.intrinsics.empty],
+          createOperationDescriptor("PROPERTY_ASSIGNMENT", { path })
+        );
       }
     });
   }
@@ -1699,11 +1663,10 @@ export class Realm {
       propertyValue.intrinsicName = `${path}.${key}`;
       propertyValue.kind = "rebuiltProperty";
       propertyValue.args = [object];
-      propertyValue._buildNode = ([node]) =>
-        t.isValidIdentifier(key)
-          ? t.memberExpression(node, t.identifier(key), false)
-          : t.memberExpression(node, t.stringLiteral(key), true);
-      this.rebuildNestedProperties(propertyValue, propertyValue.intrinsicName);
+      propertyValue.operationDescriptor = createOperationDescriptor("REBUILT_OBJECT", { propName: key });
+      let intrinsicName = propertyValue.intrinsicName;
+      invariant(intrinsicName !== undefined);
+      this.rebuildNestedProperties(propertyValue, intrinsicName);
     }
   }
 
