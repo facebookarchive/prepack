@@ -128,10 +128,6 @@ export default class AbstractValue extends Value {
   addSourceLocationsTo(locations: Array<BabelNodeSourceLocation>, seenValues?: Set<AbstractValue> = new Set()): void {
     if (seenValues.has(this)) return;
     seenValues.add(this);
-    // TODO: make this work again?
-    // if (this._buildNode && !(this._buildNode instanceof Function)) {
-    //   if (this._buildNode.loc) locations.push(this._buildNode.loc);
-    // }
     for (let val of this.args) {
       if (val instanceof AbstractValue) val.addSourceLocationsTo(locations, seenValues);
     }

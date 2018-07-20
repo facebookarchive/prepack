@@ -58,99 +58,91 @@ import type {
 import { memberExpressionHelper } from "./babelhelpers.js";
 import { concretize, Utils } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";
+import type { ShapeInformationInterface } from "../types.js";
 import * as t from "@babel/types";
 
 export type OperationDescriptorType =
-  | "IDENTIFIER"
-  | "SINGLE_ARG"
-  | "REBUILT_OBJECT"
-  | "CONSOLE_LOG"
-  | "FOR_IN"
-  | "DO_WHILE"
-  | "CONCRETE_MODEL"
-  | "BINARY_EXPRESSION"
-  | "LOGICAL_EXPRESSION"
-  | "CONDITIONAL_EXPRESSION"
-  | "UNARY_EXPRESSION"
   | "ABSTRACT_FROM_TEMPLATE"
-  | "GLOBAL_ASSIGNMENT"
-  | "GLOBAL_DELETE"
-  | "EMIT_PROPERTY_ASSIGNMENT"
-  | "ABSTRACT_PROPERTY"
-  | "JOIN_GENERATORS"
-  | "APPEND_GENERATOR"
-  | "DEFINE_PROPERTY"
-  | "PROPERTY_DELETE"
-  | "THROW"
-  | "CONDITIONAL_THROW"
-  | "COERCE_TO_STRING"
-  | "ABSTRACT_FROM_TEMPLATE"
-  | "FOR_STATEMENT_FUNC"
-  | "NEW_EXPRESSION"
-  | "OBJECT_ASSIGN"
-  | "OBJECT_SET_PARTIAL"
-  | "OBJECT_GET_PARTIAL"
-  | "OBJECT_PROTO_HAS_OWN_PROPERTY"
-  | "OBJECT_PROTO_GET_OWN_PROPERTY_DESCRIPTOR"
-  | "ABSTRACT_OBJECT_SET_PARTIAL"
-  | "ABSTRACT_OBJECT_SET_PARTIAL_VALUE"
+  | "ABSTRACT_OBJECT_GET"
   | "ABSTRACT_OBJECT_GET_PARTIAL"
   | "ABSTRACT_OBJECT_GET_PROTO_OF"
-  | "ABSTRACT_OBJECT_GET"
-  | "DIRECT_CALL_WITH_ARG_LIST"
+  | "ABSTRACT_OBJECT_SET_PARTIAL"
+  | "ABSTRACT_OBJECT_SET_PARTIAL_VALUE"
+  | "ABSTRACT_PROPERTY"
+  | "APPEND_GENERATOR"
+  | "ASSUME_CALL"
+  | "BABEL_HELPERS_OBJECT_WITHOUT_PROPERTIES"
+  | "BINARY_EXPRESSION"
   | "CALL_ABSTRACT_FUNC"
   | "CALL_ABSTRACT_FUNC_THIS"
   | "CALL_BAILOUT"
+  | "CANNOT_BECOME_OBJECT"
+  | "COERCE_TO_STRING"
+  | "CONCRETE_MODEL"
+  | "CONDITIONAL_EXPRESSION"
+  | "CONDITIONAL_PROPERTY_ASSIGNMENT"
+  | "CONDITIONAL_THROW"
+  | "CONSOLE_LOG"
+  | "DEFINE_PROPERTY"
+  | "DERIVED_ABSTRACT_INVARIANT"
+  | "DIRECT_CALL_WITH_ARG_LIST"
+  | "DO_WHILE"
   | "EMIT_CALL"
   | "EMIT_CALL_AND_CAPTURE_RESULT"
+  | "EMIT_PROPERTY_ASSIGNMENT"
+  | "FB_MOCKS_BOOTLOADER_LOAD_MODULES"
+  | "FB_MOCKS_MAGIC_GLOBAL_FUNCTION"
+  | "FOR_IN"
+  | "FOR_STATEMENT_FUNC"
+  | "FULL_INVARIANT"
+  | "FULL_INVARIANT_ABSTRACT"
+  | "FULL_INVARIANT_FUNCTION"
   | "GET_BINDING"
-  | "LOCAL_ASSIGNMENT"
-  | "LOGICAL_PROPERTY_ASSIGNMENT"
-  | "CONDITIONAL_PROPERTY_ASSIGNMENT"
-  | "PROPERTY_ASSIGNMENT"
-  | "MODULES_REQUIRE"
-  | "RESIDUAL_CALL"
-  | "ASSUME_CALL"
-  | "CANNOT_BECOME_OBJECT"
-  | "UPDATE_INCREMENTOR"
-  | "WIDENED_IDENTIFIER"
-  | "WIDEN_PROPERTY"
-  | "WIDEN_ABSTRACT_PROPERTY"
-  | "WIDEN_PROPERTY_ASSIGNMENT"
-  | "WIDEN_ABSTRACT_PROPERTY_ASSIGNMENT"
+  | "GLOBAL_ASSIGNMENT"
+  | "GLOBAL_DELETE"
+  | "IDENTIFIER"
   | "INVARIANT"
   | "INVARIANT_APPEND"
-  | "DERIVED_ABSTRACT_INVARIANT"
+  | "JOIN_GENERATORS"
+  | "LOCAL_ASSIGNMENT"
+  | "LOGICAL_EXPRESSION"
+  | "LOGICAL_PROPERTY_ASSIGNMENT"
+  | "MODULES_REQUIRE"
+  | "NEW_EXPRESSION"
+  | "OBJECT_ASSIGN"
+  | "OBJECT_GET_PARTIAL"
+  | "OBJECT_PROTO_GET_OWN_PROPERTY_DESCRIPTOR"
+  | "OBJECT_PROTO_HAS_OWN_PROPERTY"
+  | "OBJECT_SET_PARTIAL"
+  | "PROPERTY_ASSIGNMENT"
+  | "PROPERTY_DELETE"
   | "PROPERTY_INVARIANT"
-  | "FULL_INVARIANT"
-  | "FULL_INVARIANT_FUNCTION"
-  | "FULL_INVARIANT_ABSTRACT"
-  | "UNKNOWN_ARRAY_METHOD_CALL"
-  | "UNKNOWN_ARRAY_METHOD_PROPERTY_CALL"
-  | "UNKNOWN_ARRAY_LENGTH"
-  | "UNKNOWN_ARRAY_GET_PARTIAL"
-  | "BABEL_HELPERS_OBJECT_WITHOUT_PROPERTIES"
-  | "REACT_DEFAULT_PROPS_HELPER"
-  | "REACT_TEMPORAL_FUNC"
   | "REACT_CREATE_CONTEXT_PROVIDER"
-  | "REACT_SSR_REGEX_CONSTANT"
-  | "REACT_SSR_PREV_TEXT_NODE"
-  | "REACT_SSR_RENDER_VALUE_HELPER"
-  | "REACT_SSR_TEMPLATE_LITERAL"
+  | "REACT_DEFAULT_PROPS_HELPER"
   | "REACT_NATIVE_STRING_LITERAL"
   | "REACT_RELAY_MOCK_CONTAINER"
-  | "FB_MOCKS_BOOTLOADER_LOAD_MODULES"
-  | "FB_MOCKS_MAGIC_GLOBAL_FUNCTION";
-
-export type DerivedExpressionBuildNodeFunction = (
-  Array<BabelNodeExpression>,
-  SerializationContext,
-  Set<AbstractValue | ObjectValue>
-) => BabelNodeExpression;
+  | "REACT_SSR_PREV_TEXT_NODE"
+  | "REACT_SSR_REGEX_CONSTANT"
+  | "REACT_SSR_RENDER_VALUE_HELPER"
+  | "REACT_SSR_TEMPLATE_LITERAL"
+  | "REACT_TEMPORAL_FUNC"
+  | "REBUILT_OBJECT"
+  | "RESIDUAL_CALL"
+  | "SINGLE_ARG"
+  | "THROW"
+  | "UNARY_EXPRESSION"
+  | "UNKNOWN_ARRAY_GET_PARTIAL"
+  | "UNKNOWN_ARRAY_LENGTH"
+  | "UNKNOWN_ARRAY_METHOD_CALL"
+  | "UNKNOWN_ARRAY_METHOD_PROPERTY_CALL"
+  | "UPDATE_INCREMENTOR"
+  | "WIDEN_ABSTRACT_PROPERTY"
+  | "WIDEN_ABSTRACT_PROPERTY_ASSIGNMENT"
+  | "WIDEN_PROPERTY";
 
 export type OperationDescriptor = {
   data: OperationDescriptorData,
-  kind: void | ResidualBuildKind,
+  kind: void | OperationDescriptorKind,
   type: OperationDescriptorType,
 };
 
@@ -185,12 +177,12 @@ export type OperationDescriptorData = {
   violationConditionOperationDescriptor?: OperationDescriptor,
 };
 
-export type ResidualBuildKind = "DERIVED" | "VOID";
+export type OperationDescriptorKind = "DERIVED" | "VOID";
 
 export function createOperationDescriptor(
   type: OperationDescriptorType,
   data?: OperationDescriptorData = {},
-  kind?: ResidualBuildKind
+  kind?: OperationDescriptorKind
 ): OperationDescriptor {
   return {
     data,
@@ -198,8 +190,6 @@ export function createOperationDescriptor(
     type,
   };
 }
-
-import type { ShapeInformationInterface } from "../types.js";
 
 export type SerializationContext = {|
   serializeOperationDescriptor: (
@@ -245,7 +235,7 @@ export class GeneratorEntry {
     // We increment the index of every TemporalOperationEntry created.
     // This should match up as a form of timeline value due to the tree-like
     // structure we use to create entries during evaluation. For example,
-    // if all AST nodes in a BlockStatement resulted in a temporal build node
+    // if all AST nodes in a BlockStatement resulted in a temporal operation
     // for each AST node, then each would have a sequential index as to its
     // position of how it was evaluated in the BlockSstatement.
     this.index = realm.temporalEntryCounter++;
@@ -305,8 +295,8 @@ export class TemporalOperationEntry extends GeneratorEntry {
   mutatesOnly: void | Array<Value>;
 
   toDisplayJson(depth: number): DisplayResult {
-    if (depth <= 0) return `TemporalBuildNode${this.index}`;
-    let obj = { type: "TemporalBuildNode", ...this };
+    if (depth <= 0) return `TemporalOperation${this.index}`;
+    let obj = { type: "TemporalOperation", ...this };
     delete obj.operationDescriptor;
     return Utils.verboseToDisplayJson(obj, depth);
   }
