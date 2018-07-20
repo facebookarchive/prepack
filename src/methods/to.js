@@ -719,29 +719,19 @@ export class ToImplementation {
 
   ToStringValue(realm: Realm, val: Value): Value {
     if (val.getType() === StringValue) return val;
-    let str;
-    if (typeof val === "string") {
-      str = val;
-    } else if (val instanceof NumberValue) {
-      str = val.value + "";
-    } else if (val instanceof UndefinedValue) {
-      str = "undefined";
-    } else if (val instanceof NullValue) {
-      str = "null";
-    } else if (val instanceof SymbolValue) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
-    } else if (val instanceof BooleanValue) {
-      str = val.value ? "true" : "false";
-    } else if (val instanceof ObjectValue) {
+    if (val instanceof ObjectValue) {
       let primValue = this.ToPrimitiveOrAbstract(realm, val, "string");
       if (primValue.getType() === StringValue) return primValue;
-      str = this.ToStringPartial(realm, primValue);
+      let str = this.ToStringPartial(realm, primValue);
+      return new StringValue(realm, str);
+    } else if (val instanceof ConcreteValue) {
+      let str = this.ToString(realm, val);
+      return new StringValue(realm, str);
     } else if (val instanceof AbstractValue) {
       return this.ToStringAbstract(realm, val);
     } else {
       invariant(false, "unknown value type, can't coerce to string");
     }
-    return new StringValue(realm, str);
   }
 
   ToStringAbstract(realm: Realm, value: AbstractValue): AbstractValue {
@@ -749,7 +739,7 @@ export class ToImplementation {
       // If the property is not a string we need to coerce it.
       let coerceToString = ([p]) => t.binaryExpression("+", t.stringLiteral(""), p);
       let result;
-      if (value.mightNotBeNumber() && !value.isSimpleObject()) {
+      if (value.mightBeObject() && !value.isSimpleObject()) {
         // If this might be a non-simple object, we need to coerce this at a
         // temporal point since it can have side-effects.
         // We can't rely on comparison to do it later, even if
