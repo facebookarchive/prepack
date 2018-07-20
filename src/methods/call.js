@@ -32,13 +32,13 @@ import {
   AbstractValue,
 } from "../values/index.js";
 import { GetIterator, HasSomeCompatibleType, IsCallable, IsPropertyKey, IteratorStep, IteratorValue } from "./index.js";
-import { GeneratorStart } from "../methods/generator.js";
+import { GeneratorStart } from "./generator.js";
 import { ReturnCompletion, AbruptCompletion, ThrowCompletion, ForkedAbruptCompletion } from "../completions.js";
-import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
+import { GetTemplateObject, GetV, GetThisValue } from "./get.js";
 import { Create, Environment, Functions, Join, Havoc, To, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "@babel/types";
-import * as t from "@babel/types";
 
 // ECMA262 12.3.6.1
 export function ArgumentListEvaluation(
@@ -528,10 +528,7 @@ export function EvaluateDirectCallWithArgList(
       realm,
       func.functionResultType || Value,
       [func].concat(argList),
-      (nodes: Array<BabelNodeExpression>) => {
-        let fun_args = nodes.slice(1);
-        return t.callExpression(nodes[0], ((fun_args: any): Array<BabelNodeExpression | BabelNodeSpreadElement>));
-      }
+      createOperationDescriptor("DIRECT_CALL_WITH_ARG_LIST")
     );
   }
   func = func.throwIfNotConcrete();
@@ -594,16 +591,20 @@ export function Call(realm: Realm, F: Value, V: Value, argsList?: Array<Value>):
     }
     if (V === realm.intrinsics.undefined) {
       let fullArgs = [F].concat(argsList);
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, fullArgs, nodes => {
-        let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
-        return t.callExpression(nodes[0], fun_args);
-      });
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        fullArgs,
+        createOperationDescriptor("CALL_ABSTRACT_FUNC")
+      );
     } else {
       let fullArgs = [F, V].concat(argsList);
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, fullArgs, nodes => {
-        let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
-        return t.callExpression(t.memberExpression(nodes[0], t.identifier("call")), fun_args);
-      });
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        fullArgs,
+        createOperationDescriptor("CALL_ABSTRACT_FUNC_THIS")
+      );
     }
   }
   invariant(F instanceof ObjectValue);

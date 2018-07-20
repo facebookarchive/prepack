@@ -28,7 +28,7 @@ import {
   getValueFromFunctionCall,
   hardModifyReactObjectPropertyBinding,
   valueIsClassComponent,
-} from "./utils";
+} from "./utils.js";
 import { ExpectedBailOut, SimpleClassBailOut } from "./errors.js";
 import { Get, Construct } from "../methods/index.js";
 import { Properties } from "../singletons.js";

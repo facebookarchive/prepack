@@ -948,12 +948,12 @@ function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps:
     // be a better option.
     invariant(false, "TODO applyClonedTemporalAlias conditional");
   }
-  let temporalBuildNodeEntry = realm.getTemporalBuildNodeEntryFromDerivedValue(temporalAlias);
-  if (!(temporalBuildNodeEntry instanceof TemporalObjectAssignEntry)) {
+  let temporalOperationEntry = realm.getTemporalOperationEntryFromDerivedValue(temporalAlias);
+  if (!(temporalOperationEntry instanceof TemporalObjectAssignEntry)) {
     invariant(false, "TODO nont TemporalObjectAssignEntry");
   }
-  invariant(temporalBuildNodeEntry !== undefined);
-  let temporalArgs = temporalBuildNodeEntry.args;
+  invariant(temporalOperationEntry !== undefined);
+  let temporalArgs = temporalOperationEntry.args;
   // replace the original props with the cloned one
   let [to, ...sources] = temporalArgs.map(arg => (arg === props ? clonedProps : arg));
 

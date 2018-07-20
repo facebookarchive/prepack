@@ -21,7 +21,7 @@ import {
 } from "../values/index.js";
 import type { BabelNodeStatement } from "@babel/types";
 import type { SerializedBody } from "./types.js";
-import { Generator, type TemporalBuildNodeEntry } from "../utils/generator.js";
+import { Generator, type TemporalOperationEntry } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import { BodyReference } from "./types.js";
 import { ResidualFunctions } from "./ResidualFunctions.js";
@@ -67,7 +67,7 @@ export class Emitter {
     residualFunctions: ResidualFunctions,
     referencedDeclaredValues: Map<Value, void | FunctionValue>,
     conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>,
-    derivedIds: Map<string, TemporalBuildNodeEntry>
+    derivedIds: Map<string, TemporalOperationEntry>
   ) {
     this._mainBody = { type: "MainGenerator", parentBody: undefined, entries: [], done: false };
     this._waitingForValues = new Map();
@@ -88,7 +88,7 @@ export class Emitter {
       onAbstractValueWithIdentifier: val => {
         // If the value hasn't been declared yet, then we should wait for it.
         if (
-          derivedIds.has(val.getIdentifier().name) &&
+          derivedIds.has(val.getIdentifier()) &&
           !this.cannotDeclare() &&
           !this.hasBeenDeclared(val) &&
           (!this.emittingToAdditionalFunction() || referencedDeclaredValues.get(val) !== undefined)

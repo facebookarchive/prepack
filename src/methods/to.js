@@ -35,7 +35,7 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
-import * as t from "@babel/types";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 type ElementConvType = {
   Int8: (Realm, numberOrValue) => number,
@@ -736,9 +736,9 @@ export class ToImplementation {
 
   ToStringAbstract(realm: Realm, value: AbstractValue): AbstractValue {
     if (value.mightNotBeString()) {
-      // If the property is not a string we need to coerce it.
-      let coerceToString = ([p]) => t.binaryExpression("+", t.stringLiteral(""), p);
       let result;
+      // If the property is not a string we need to coerce it.
+      let coerceToString = createOperationDescriptor("COERCE_TO_STRING");
       if (value.mightBeObject() && !value.isSimpleObject()) {
         // If this might be a non-simple object, we need to coerce this at a
         // temporal point since it can have side-effects.

@@ -31,9 +31,9 @@ import {
   getProperty,
   hasNoPartialKeyOrRef,
 } from "./utils.js";
-import * as t from "@babel/types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 function createPropsObject(
   realm: Realm,
@@ -194,9 +194,7 @@ function createPropsObject(
           realm,
           ObjectValue,
           temporalArgs,
-          ([methodNode, ..._args]) => {
-            return t.callExpression(methodNode, ((_args: any): Array<any>));
-          },
+          createOperationDescriptor("REACT_DEFAULT_PROPS_HELPER"),
           { skipInvariant: true }
         );
         invariant(temporalTo instanceof AbstractObjectValue);
