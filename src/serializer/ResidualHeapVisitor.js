@@ -1198,8 +1198,12 @@ export class ResidualHeapVisitor {
     return callbacks;
   }
 
-  _captureGeneratorHash(generator: Generator) {
+  _captureGeneratorHash(generator: Generator): void {
     let hash = generator.getHash();
+    if (hash === "[Generator]") {
+      // This is a generator with no entries in it
+      return;
+    }
     let generators = this.generatorsByHash.get(hash);
 
     if (generators === undefined) {
