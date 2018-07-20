@@ -9,8 +9,12 @@
 
 /* @flow strict-local */
 
-import type { DebugReproArguments } from "../types.js";
 import { SourceMapManager } from "./SourceMapManager.js";
+
+export type DebugReproArguments = {
+  sourcemaps?: Array<SourceFile>,
+  buckRoot?: string,
+};
 
 /**
  * Manager that captures name of all original sourcefiles touched by Prepack.

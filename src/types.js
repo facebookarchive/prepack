@@ -52,6 +52,7 @@ import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObje
 import { CompilerDiagnostic } from "./errors.js";
 import type { Severity } from "./errors.js";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
+import type { DebugReproArguments } from "./utils/DebugReproManager.js";
 
 export const ElementSize = {
   Float32: 4,
@@ -1053,11 +1054,6 @@ export type DebuggerConfigArguments = {
   sourcemaps?: Array<SourceFile>,
   buckRoot?: string,
   debugChannel?: DebugChannel,
-};
-
-export type DebugReproArguments = {
-  sourcemaps?: Array<SourceFile>,
-  buckRoot?: string,
 };
 
 export type SupportedGraphQLGetters =

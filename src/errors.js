@@ -10,7 +10,7 @@
 /* @flow strict */
 
 import type { BabelNodeSourceLocation } from "@babel/types";
-import type { DebugReproManagerType } from "./types.js";
+import type { DebugReproManagerImplementation } from "./utils/DebugReproManager.js";
 
 // Information: Just an informative message with no semantic implications whatsoever.
 // Warning: Prepack will produce code that matches the behavior of the original code, but the original code might have an error.
@@ -30,7 +30,7 @@ export class CompilerDiagnostic extends Error {
     severity: Severity,
     // For --reproOnFatalError, we need to pass the names of all sourcefiles touched by Prepack back to the CLI.
     sourceFilePaths?: { sourceMaps: Array<string>, sourceFiles: Array<{ absolute: string, relative: string }> },
-    debugReproManager?: DebugReproManagerType
+    debugReproManager?: DebugReproManagerImplementation
   ) {
     super(message);
 
@@ -46,7 +46,7 @@ export class CompilerDiagnostic extends Error {
   severity: Severity;
   errorCode: string;
   sourceFilePaths: void | { sourceMaps: Array<string>, sourceFiles: Array<{ absolute: string, relative: string }> };
-  debugReproManager: void | DebugReproManagerType;
+  debugReproManager: void | DebugReproManagerImplementation;
 }
 
 // This error is thrown to exit Prepack when an ErrorHandler returns 'FatalError'

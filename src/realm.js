@@ -71,7 +71,6 @@ import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "@babel/types";
 import * as t from "@babel/types";
 import { Utils } from "./singletons.js";
-
 export type BindingEntry = {
   hasLeaked: void | boolean,
   value: void | Value,

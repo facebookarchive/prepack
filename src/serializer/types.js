@@ -18,7 +18,7 @@ import { Realm, type Effects } from "../realm.js";
 import invariant from "../invariant.js";
 import type { Generator } from "../utils/generator.js";
 import { type SerializerStatistics } from "./statistics.js";
-import type { DebugReproManagerType } from "../types.js";
+import type { DebugReproManagerImplementation } from "../utils/DebugReproManager.js";
 
 export type TryQuery<T> = (f: () => T, defaultValue: T) => T;
 
@@ -207,5 +207,5 @@ export type SerializedResult = {
   reactStatistics?: ReactStatistics,
   heapGraph?: string,
   // sourceFilePaths?: { sourceMaps: Array<string>, sourceFiles: Array<{ absolute: string, relative: string }> },
-  debugReproManager?: DebugReproManagerType,
+  debugReproManager?: DebugReproManagerImplementation,
 };
