@@ -22,6 +22,7 @@ import {
   IntegralValue,
   ObjectValue,
   StringValue,
+  SymbolValue,
   UndefinedValue,
   Value,
 } from "../values/index.js";
@@ -63,6 +64,10 @@ export function getPureBinaryOperationResultType(
     let leftPure = purityTest(realm, lval);
     let rightPure = purityTest(realm, rval);
     if (leftPure && rightPure) return typeIfPure;
+    if (lval.getType() === SymbolValue || rval.getType() === SymbolValue) {
+      // Symbols never implicitly coerce to primitives.
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+    }
     let loc = !leftPure ? lloc : rloc;
     let error = new CompilerDiagnostic(unknownValueOfOrToString, loc, "PP0002", "RecoverableError");
     if (realm.handleError(error) === "Recover") {
@@ -75,6 +80,10 @@ export function getPureBinaryOperationResultType(
     let ltype = To.GetToPrimitivePureResultType(realm, lval);
     let rtype = To.GetToPrimitivePureResultType(realm, rval);
     if (ltype === undefined || rtype === undefined) {
+      if (lval.getType() === SymbolValue || rval.getType() === SymbolValue) {
+        // Symbols never implicitly coerce to primitives.
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+      }
       let loc = ltype === undefined ? lloc : rloc;
       let error = new CompilerDiagnostic(unknownValueOfOrToString, loc, "PP0002", "RecoverableError");
       if (realm.handleError(error) === "Recover") {

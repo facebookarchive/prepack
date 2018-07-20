@@ -619,6 +619,7 @@ export class ToImplementation {
   GetToPrimitivePureResultType(realm: Realm, input: Value): void | typeof Value {
     let type = input.getType();
     if (input instanceof PrimitiveValue) return type;
+    if (type === SymbolValue) return undefined;
     if (input instanceof AbstractValue && !input.mightBeObject()) return PrimitiveValue;
     return undefined;
   }
