@@ -198,8 +198,8 @@ export class Serializer {
         if (this.logger.hasErrors()) return undefined;
 
         let heapDiffer = new ResidualHeapDiffer(this.realm, residualHeapVisitor.generatorsByHash);
-        let normalizedGeneratorMap = heapDiffer.diffAndCreateNormalizedGeneratorMap();
-        normalizedGeneratorMap; // to make CI pass
+        let normalizedGeneratorDiffResult = heapDiffer.diffAndNormalizeGenerators();
+        normalizedGeneratorDiffResult; // to make CI pass
 
         if (this.realm.react.verbose) {
           this.logger.logInformation(`Serializing evaluated nodes...`);
