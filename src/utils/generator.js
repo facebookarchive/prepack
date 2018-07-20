@@ -138,9 +138,9 @@ export type OperationDescriptorType =
   | "UPDATE_INCREMENTOR"
   | "WIDEN_ABSTRACT_PROPERTY"
   | "WIDEN_ABSTRACT_PROPERTY_ASSIGNMENT"
-  | "WIDENED_IDENTIFIER"
   | "WIDEN_PROPERTY"
-  | "WIDEN_PROPERTY_ASSIGNMENT";
+  | "WIDEN_PROPERTY_ASSIGNMENT"
+  | "WIDENED_IDENTIFIER";
 
 export type OperationDescriptor = {
   data: OperationDescriptorData,
