@@ -30,7 +30,6 @@ export class CompilerDiagnostic extends Error {
     severity: Severity,
     // For --reproOnFatalError, we need to pass the names of all sourcefiles touched by Prepack back to the CLI.
     sourceFilePaths?: { sourceMaps: Array<string>, sourceFiles: Array<{ absolute: string, relative: string }> },
-    debugReproManager?: DebugReproManagerType
   ) {
     super(message);
 
@@ -38,7 +37,6 @@ export class CompilerDiagnostic extends Error {
     this.severity = severity;
     this.errorCode = errorCode;
     this.sourceFilePaths = sourceFilePaths;
-    this.debugReproManager = debugReproManager;
   }
 
   callStack: void | string;
@@ -46,7 +44,6 @@ export class CompilerDiagnostic extends Error {
   severity: Severity;
   errorCode: string;
   sourceFilePaths: void | { sourceMaps: Array<string>, sourceFiles: Array<{ absolute: string, relative: string }> };
-  debugReproManager: void | DebugReproManagerType;
 }
 
 // This error is thrown to exit Prepack when an ErrorHandler returns 'FatalError'

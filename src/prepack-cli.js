@@ -453,9 +453,11 @@ function run(
     return fatalErrors === 0;
   }
 
-  function generateDebugRepro(manager?: DebugReproManagerType): boolean {
-    if (reproFilePath === undefined || manager === undefined) return false;
-
+  function generateDebugRepro(
+    sourceFiles: Array<{ absolute: string, relative: string }>,
+    sourceMaps: Array<string>
+  ): boolean {
+    if (reproFilePath === undefined) return false;
     let reproZip = zipFactory();
 
     // Copy all input files. Input files are saved during CLI parsing, so they
@@ -471,7 +473,7 @@ function run(
     }
 
     // Copy all sourcemaps (discovered while prepacking)
-    for (let map of manager.getSourceMapPaths()) {
+    for (let map of sourceMaps) {
       try {
         let content = fs.readFileSync(map, "utf8");
         reproZip.file(path.basename(map), content);
@@ -482,7 +484,7 @@ function run(
     }
 
     // Copy all original sourcefiles used while Prepacking.
-    for (let file of manager.getSourceFilePaths()) {
+    for (let file of sourceFiles) {
       try {
         // To avoid copying the "/User/name/..." version of the bundle/map/model included in originalSourceFiles
         if (!reproFileNames.includes(file.relative)) {
@@ -569,15 +571,13 @@ function run(
       }
       let serialized = prepackFileSync(inputFilenames, resolvedOptions);
       if (reproMode === "reproUnconditionally") {
-        if (serialized.debugReproManager) generateDebugRepro(serialized.debugReproManager);
-
-        // if (serialized.sourceFilePaths) {
-        //   generateDebugRepro(serialized.debugReproManager);
-        // } else {
-        //   // An input can have no sourcemap/sourcefiles, but we can still package
-        //   // the input files, prepack runtime, and generate the script.
-        //   generateDebugRepro([], []);
-        // }
+        if (serialized.sourceFilePaths) {
+          generateDebugRepro(serialized.sourceFilePaths.sourceFiles, serialized.sourceFilePaths.sourceMaps);
+        } else {
+          // An input can have no sourcemap/sourcefiles, but we can still package
+          // the input files, prepack runtime, and generate the script.
+          generateDebugRepro([], []);
+        }
       }
 
       success = printDiagnostics(false);
@@ -589,29 +589,28 @@ function run(
         console.error(err.stack);
       }
       if (reproMode !== "none") {
-        // // Get largest list of original sources from all diagnostics.
-        // // Must iterate through both because maps are ordered so we can't tell which diagnostic is most recent.
-        // let largestSourceFilesList = [];
-        // let largestLength = 0;
-        // let sourceMaps = [];
-        //
-        // let allDiagnostics = Array.from(compilerDiagnostics.values()).concat(compilerDiagnosticsList);
-        // allDiagnostics.forEach(diagnostic => {
-        //   if (
-        //     diagnostic.sourceFilePaths &&
-        //     diagnostic.sourceFilePaths.sourceFiles &&
-        //     diagnostic.sourceFilePaths.sourceMaps
-        //   ) {
-        //     if (diagnostic.sourceFilePaths.sourceFiles.length > largestLength) {
-        //       largestSourceFilesList = diagnostic.sourceFilePaths.sourceFiles;
-        //       largestLength = diagnostic.sourceFilePaths.sourceFiles.length;
-        //       sourceMaps = diagnostic.sourceFilePaths.sourceMaps;
-        //     }
-        //   }
-        // });
+        // Get largest list of original sources from all diagnostics.
+        // Must iterate through both because maps are ordered so we can't tell which diagnostic is most recent.
+        let largestSourceFilesList = [];
+        let largestLength = 0;
+        let sourceMaps = [];
+
         let allDiagnostics = Array.from(compilerDiagnostics.values()).concat(compilerDiagnosticsList);
-        let diagnostic = allDiagnostics[0];
-        generateDebugRepro(diagnostic.debugReproManager);
+        allDiagnostics.forEach(diagnostic => {
+          if (
+            diagnostic.sourceFilePaths &&
+            diagnostic.sourceFilePaths.sourceFiles &&
+            diagnostic.sourceFilePaths.sourceMaps
+          ) {
+            if (diagnostic.sourceFilePaths.sourceFiles.length > largestLength) {
+              largestSourceFilesList = diagnostic.sourceFilePaths.sourceFiles;
+              largestLength = diagnostic.sourceFilePaths.sourceFiles.length;
+              sourceMaps = diagnostic.sourceFilePaths.sourceMaps;
+            }
+          }
+        });
+
+        generateDebugRepro(largestSourceFilesList, sourceMaps);
         return;
       }
       success = false;
