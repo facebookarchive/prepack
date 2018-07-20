@@ -42,7 +42,7 @@ import * as t from "@babel/types";
 type AdditionalFunctionEntry = {
   value: ECMAScriptSourceFunctionValue | AbstractValue,
   config?: ReactComponentTreeConfig,
-  argModelString?: string,
+  argModel?: ArgModel,
 };
 
 export class Functions {
@@ -82,33 +82,19 @@ export class Functions {
       value = this._unwrapAbstract(value);
     }
     invariant(value instanceof ObjectValue);
-    let funcValue = Get(realm, value, "funcValue");
-    if (funcValue !== realm.intrinsics.undefined) {
-      // unwrap from this side
-      if (funcValue instanceof AbstractValue) {
-        funcValue = this._unwrapAbstract(funcValue);
-      }
-      // regular case with __optimized with type information
-      invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
-      let argModelString = Get(realm, value, "argModelString");
-      return argModelString instanceof StringValue
-        ? { value: funcValue, argModelString: argModelString.value }
-        : { value: funcValue };
-    } else {
-      // React component tree logic
-      let config = Get(realm, value, "config");
-      let rootComponent = Get(realm, value, "rootComponent");
-      let validConfig = config instanceof ObjectValue || config === realm.intrinsics.undefined;
-      let validRootComponent =
-        rootComponent instanceof ECMAScriptSourceFunctionValue ||
-        (rootComponent instanceof AbstractValue && valueIsKnownReactAbstraction(this.realm, rootComponent));
+    // React component tree logic
+    let config = Get(realm, value, "config");
+    let rootComponent = Get(realm, value, "rootComponent");
+    let validConfig = config instanceof ObjectValue || config === realm.intrinsics.undefined;
+    let validRootComponent =
+      rootComponent instanceof ECMAScriptSourceFunctionValue ||
+      (rootComponent instanceof AbstractValue && valueIsKnownReactAbstraction(this.realm, rootComponent));
 
-      if (validConfig && validRootComponent) {
-        return {
-          value: ((rootComponent: any): AbstractValue | ECMAScriptSourceFunctionValue),
-          config: convertConfigObjectToReactComponentTreeConfig(realm, ((config: any): ObjectValue | UndefinedValue)),
-        };
-      }
+    if (validConfig && validRootComponent) {
+      return {
+        value: ((rootComponent: any): AbstractValue | ECMAScriptSourceFunctionValue),
+        config: convertConfigObjectToReactComponentTreeConfig(realm, ((config: any): ObjectValue | UndefinedValue)),
+      };
     }
 
     let location = value.expressionLocation
@@ -147,6 +133,15 @@ export class Functions {
     return recordedAdditionalFunctions;
   }
 
+  __generateInitialOptimizedFunctionsFromRealm(): Array<AdditionalFunctionEntry> {
+    let realm = this.realm;
+    let recordedAdditionalFunctions = realm.optimizedFunctions.map(entry => {
+      let value = entry.value instanceof AbstractValue ? this._unwrapAbstract(entry.value) : entry.value;
+      return { value, argModel: entry.argModel };
+    });
+    return recordedAdditionalFunctions;
+  }
+
   optimizeReactComponentTreeRoots(statistics: ReactStatistics, environmentRecordIdAfterGlobalCode: number): void {
     let logger = this.moduleTracer.modules.logger;
     let recordedReactRootValues = this.__generateInitialAdditionalFunctions("__reactComponentTrees");
@@ -169,12 +164,11 @@ export class Functions {
     applyOptimizedReactComponents(this.realm, this.writeEffects, environmentRecordIdAfterGlobalCode);
   }
 
-  _callOfFunction(funcValue: FunctionValue, argModelString: void | string): void => Value {
+  _callOfFunction(funcValue: FunctionValue, argModel: void | ArgModel): void => Value {
     let call = funcValue.$Call;
     invariant(call);
     let numArgs = funcValue.getLength();
     let args = [];
-    let argModel = argModelString !== undefined ? (JSON.parse(argModelString): ArgModel) : undefined;
     invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
     let params = funcValue.$FormalParameters;
     if (numArgs && numArgs > 0 && params) {
@@ -211,16 +205,11 @@ export class Functions {
   }
 
   checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode: number): void {
-    let additionalFunctionsToProcess = this.__generateInitialAdditionalFunctions("__optimizedFunctions");
+    let additionalFunctionsToProcess = this.__generateInitialOptimizedFunctionsFromRealm("__optimizedFunctions");
     // When we find declarations of nested optimized functions, we need to apply the parent
     // effects.
     let additionalFunctionStack = [];
     let additionalFunctions = new Set(additionalFunctionsToProcess.map(entry => entry.value));
-    let optimizedFunctionsObject = this.moduleTracer.modules.logger.tryQuery(
-      () => Get(this.realm, this.realm.$GlobalObject, "__optimizedFunctions"),
-      this.realm.intrinsics.undefined
-    );
-    invariant(optimizedFunctionsObject instanceof ObjectValue);
 
     // If there's an additional function that delcared functionValue, it must be
     // have already been evaluated for the __optimize call to have happened, so
@@ -235,7 +224,9 @@ export class Functions {
     };
 
     let optimizedFunctionId = 0;
-    let getEffectsFromAdditionalFunctionAndNestedFunctions = (functionValue, argModelString) => {
+    let getEffectsFromAdditionalFunctionAndNestedFunctions = (functionValue, argModel) => {
+      let oldRealmOptimizedFunctions = this.realm.optimizedFunctions;
+      this.realm.optimizedFunctions = [];
       let currentOptimizedFunctionId = optimizedFunctionId++;
       additionalFunctionStack.push(functionValue);
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
@@ -244,7 +235,7 @@ export class Functions {
         realm.handleError(error);
       };
       for (let t1 of this.realm.tracers) t1.beginOptimizingFunction(currentOptimizedFunctionId, functionValue);
-      let call = this._callOfFunction(functionValue, argModelString);
+      let call = this._callOfFunction(functionValue, argModel);
       let realm = this.realm;
       let effects: Effects = realm.evaluatePure(
         () => realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
@@ -269,29 +260,23 @@ export class Functions {
       // Conceptually this will ensure that the nested additional function is defined
       // although for later cases, we'll apply the effects of the parents only.
       this.realm.withEffectsAppliedInGlobalEnv(() => {
-        for (let [propertyBinding] of modifiedProperties) {
-          let descriptor = propertyBinding.descriptor;
-          if (descriptor && propertyBinding.object === optimizedFunctionsObject) {
-            let newValue = descriptor.value;
-            invariant(newValue instanceof Value); //todo: this does not seem invariantly true
-            let newEntry = this.__optimizedFunctionEntryOfValue(newValue);
-            if (newEntry) {
-              additionalFunctions.add(newEntry.value);
-              getEffectsFromAdditionalFunctionAndNestedFunctions(newEntry.value, newEntry.argModelString);
-              // Now we have to rember the stack of effects that need to be applied to deal with
-              // this additional function.
-            }
-          }
+        let newOptFuncs = this.__generateInitialOptimizedFunctionsFromRealm();
+        for (let newEntry of newOptFuncs) {
+          additionalFunctions.add(newEntry.value);
+          getEffectsFromAdditionalFunctionAndNestedFunctions(newEntry.value, newEntry.argModel);
         }
+        // Now we have to rember the stack of effects that need to be applied to deal with
+        // this additional function.
         return null;
       }, additionalFunctionEffects.effects);
+      this.realm.optimizedFunctions.unshift(...oldRealmOptimizedFunctions);
       invariant(additionalFunctionStack.pop() === functionValue);
       for (let t2 of this.realm.tracers) t2.endOptimizingFunction(currentOptimizedFunctionId);
     };
 
     while (additionalFunctionsToProcess.length > 0) {
       let funcObject = additionalFunctionsToProcess.shift();
-      getEffectsFromAdditionalFunctionAndNestedFunctions(funcObject.value, funcObject.argModelString);
+      getEffectsFromAdditionalFunctionAndNestedFunctions(funcObject.value, funcObject.argModel);
     }
     invariant(additionalFunctionStack.length === 0);
 

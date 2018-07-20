@@ -74,6 +74,7 @@ import { Environment, Functions, Join, Properties, To, Widen, Path } from "./sin
 import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "@babel/types";
 import { Utils } from "./singletons.js";
+import type { ArgModel } from "./utils/ShapeInformation";
 
 export type BindingEntry = {
   hasLeaked: void | boolean,
@@ -337,6 +338,7 @@ export class Realm {
     this._abstractValuesDefined = new Set(); // A set of nameStrings to ensure abstract values have unique names
     this.debugNames = opts.debugNames;
     this._checkedObjectIds = new Map();
+    this.optimizedFunctions = [];
   }
 
   statistics: RealmStatistics;
@@ -483,6 +485,8 @@ export class Realm {
   nextGeneratorId: number = 0;
   _abstractValuesDefined: Set<string>;
   _checkedObjectIds: Map<ObjectValue | AbstractObjectValue, number>;
+
+  optimizedFunctions: Array<{ value: FunctionValue | AbstractValue, argModel: ArgModel | void }>;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
