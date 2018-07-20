@@ -68,7 +68,7 @@ import {
   createOperationDescriptor,
   Generator,
   PreludeGenerator,
-  type TemporalBuildNodeEntry,
+  type TemporalOperationEntry,
 } from "./utils/generator.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
@@ -382,8 +382,8 @@ export class Realm {
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
 
-  derivedIds: Map<string, TemporalBuildNodeEntry>;
-  temporalEntryArgToEntries: Map<Value, Set<TemporalBuildNodeEntry>>;
+  derivedIds: Map<string, TemporalOperationEntry>;
+  temporalEntryArgToEntries: Map<Value, Set<TemporalOperationEntry>>;
   temporalEntryCounter: number;
 
   instantRender: {
@@ -1816,21 +1816,21 @@ export class Realm {
     return !this._abstractValuesDefined.has(nameString);
   }
 
-  getTemporalBuildNodeEntryFromDerivedValue(value: Value): void | TemporalBuildNodeEntry {
+  getTemporalOperationEntryFromDerivedValue(value: Value): void | TemporalOperationEntry {
     let name = value.intrinsicName;
     if (!name) {
       return undefined;
     }
-    let temporalBuildNodeEntry = value.$Realm.derivedIds.get(name);
-    return temporalBuildNodeEntry;
+    let temporalOperationEntry = value.$Realm.derivedIds.get(name);
+    return temporalOperationEntry;
   }
 
-  getTemporalGeneratorEntriesReferencingArg(arg: AbstractValue | ObjectValue): void | Set<TemporalBuildNodeEntry> {
+  getTemporalGeneratorEntriesReferencingArg(arg: AbstractValue | ObjectValue): void | Set<TemporalOperationEntry> {
     return this.temporalEntryArgToEntries.get(arg);
   }
 
-  saveTemporalGeneratorEntryArgs(temporalBuildNodeEntry: TemporalBuildNodeEntry): void {
-    let args = temporalBuildNodeEntry.args;
+  saveTemporalGeneratorEntryArgs(temporalOperationEntry: TemporalOperationEntry): void {
+    let args = temporalOperationEntry.args;
     for (let arg of args) {
       let temporalEntries = this.temporalEntryArgToEntries.get(arg);
 
@@ -1838,7 +1838,7 @@ export class Realm {
         temporalEntries = new Set();
         this.temporalEntryArgToEntries.set(arg, temporalEntries);
       }
-      temporalEntries.add(temporalBuildNodeEntry);
+      temporalEntries.add(temporalOperationEntry);
     }
   }
 }

@@ -142,12 +142,12 @@ export class ReactEquivalenceSet {
     if (!this.residualReactElementVisitor.wasTemporalAliasDeclaredInCurrentScope(temporalAlias)) {
       return temporalAlias;
     }
-    let temporalBuildNodeEntry = this.realm.getTemporalBuildNodeEntryFromDerivedValue(temporalAlias);
+    let temporalOperationEntry = this.realm.getTemporalOperationEntryFromDerivedValue(temporalAlias);
 
-    if (temporalBuildNodeEntry === undefined) {
+    if (temporalOperationEntry === undefined) {
       return temporalAlias;
     }
-    let temporalArgs = temporalBuildNodeEntry.args;
+    let temporalArgs = temporalOperationEntry.args;
     if (temporalArgs.length === 0) {
       return temporalAlias;
     }
@@ -168,9 +168,9 @@ export class ReactEquivalenceSet {
         }
       } else if (arg instanceof AbstractObjectValue && !arg.values.isTop() && arg.kind !== "conditional") {
         // Might be a temporal, so let's check
-        let childTemporalBuildNodeEntry = this.realm.getTemporalBuildNodeEntryFromDerivedValue(arg);
+        let childTemporalOperationEntry = this.realm.getTemporalOperationEntryFromDerivedValue(arg);
 
-        if (childTemporalBuildNodeEntry !== undefined) {
+        if (childTemporalOperationEntry !== undefined) {
           equivalenceArg = this._getTemporalValue(arg, visitedValues);
           invariant(equivalenceArg instanceof AbstractObjectValue);
 
