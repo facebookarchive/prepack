@@ -372,7 +372,7 @@ export class Functions {
       let propString = key ? `${object ? "" : "<unknown>"}.${key} ` : "";
       let objectString = ` ${object}${propString}`;
       let error = new CompilerDiagnostic(
-        `Property access${objectString}at${firstLocationString} in "${f1name}" conflicts with write at ${
+        `Property modification${objectString}at${firstLocationString} in "${f1name}" conflicts with access at ${
           location.start.line
         }:${location.start.column} in optimized function "${f2name}"`,
         location,
