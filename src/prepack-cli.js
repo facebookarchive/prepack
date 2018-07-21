@@ -31,10 +31,8 @@ import zipFactory from "node-zip";
 import zipdir from "zip-dir";
 import path from "path";
 import JSONTokenizer from "./utils/JSONTokenizer.js";
-import type { DebuggerConfigArguments } from "./types";
+import type { DebuggerConfigArguments, DebugReproArguments } from "./types";
 import child_process from "child_process";
-import { DebugReproManagerImplementation } from "./utils/DebugReproManager.js";
-import type { DebugReproArguments } from "./utils/DebugReproManager.js";
 
 // Prepack helper
 declare var __residual: any;
@@ -455,11 +453,13 @@ function run(
     return fatalErrors === 0;
   }
 
+  // Returns true on success, false on failure
   function generateDebugRepro(
     sourceFiles: Array<{ absolute: string, relative: string }>,
-    sourceMaps: Array<string>
-  ): boolean {
-    if (reproFilePath === undefined) return false;
+    sourceMaps: Array<string>,
+    shouldExit: boolean // If repro should exit, the code will always be 1 (since it only exits from the FatalError case)
+  ) {
+    if (reproFilePath === undefined) process.exit(1);
     let reproZip = zipFactory();
 
     // Copy all input files. Input files are saved during CLI parsing, so they
@@ -470,7 +470,7 @@ function run(
         reproZip.file(path.basename(file), content);
       } catch (err) {
         console.error(`Could not zip input file ${err}`);
-        return false;
+        process.exit(1);
       }
     }
 
@@ -481,7 +481,7 @@ function run(
         reproZip.file(path.basename(map), content);
       } catch (err) {
         console.error(`Could not zip sourcemap: ${err}`);
-        return false;
+        process.exit(1);
       }
     }
 
@@ -503,52 +503,49 @@ function run(
     // The following steps need to be sequential, hence the series of `.on("exit")` callbacks.
     let yarnRuntime = "yarn";
     let yarnCommand = ["pack", "--filename", "prepack-bundled.tgz"];
-    let yarnProcess = child_process.spawn(yarnRuntime, yarnCommand);
+    child_process.spawnSync(yarnRuntime, yarnCommand);
+    // Because zipping the .tgz causes corruption issues when unzipping, we will
+    // unpack the .tgz, then zip those contents.
+    let unzipRuntime = "tar";
+    let unzipCommand = ["-xzf", "prepack-bundled.tgz"];
+    child_process.spawnSync(unzipRuntime, unzipCommand);
 
-    yarnProcess.on("exit", function(code, signal) {
-      // Because zipping the .tgz causes corruption issues when unzipping, we will
-      // unpack the .tgz, then zip those contents.
-      let unzipRuntime = "tar";
-      let unzipCommand = ["-xzf", "prepack-bundled.tgz"];
-      let unzipProcess = child_process.spawn(unzipRuntime, unzipCommand);
+    // Note that this process is asynchronous. A process.exit() elsewhere in this cli code
+    // might cause the whole process (including an ongoing zip) to prematurely terminate.
+    zipdir(path.resolve(path.dirname(__dirname), "package"), function(err, buffer) {
+      if (err) {
+        console.error(`Could not zip Prepack ${err}`);
+        process.exit(1);
+      }
 
-      unzipProcess.on("exit", function(code, signal) {
-        zipdir(path.resolve(path.dirname(__dirname), "package"), function(err, buffer) {
-          if (err) {
-            console.error(`Could not zip Prepack ${err}`);
-            return false;
-          }
+      reproZip.file("prepack-runtime-bundle.zip", buffer);
 
-          reproZip.file("prepack-runtime-bundle.zip", buffer);
+      // Programatically assemble parameters to debugger.
+      let reproScriptArguments = `prepackArguments=${reproArguments.map(a => `${a}`).join("&prepackArguments=")}`;
+      let reproScriptSourceFiles = `sourceFiles=$(pwd)/${reproFileNames
+        .map(f => `${path.basename(f)}`)
+        .join("&sourceFiles=$(pwd)/")}`;
 
-          // Programatically assemble parameters to debugger.
-          let reproScriptArguments = `prepackArguments=${reproArguments.map(a => `${a}`).join("&prepackArguments=")}`;
-          let reproScriptSourceFiles = `sourceFiles=$(pwd)/${reproFileNames
-            .map(f => `${path.basename(f)}`)
-            .join("&sourceFiles=$(pwd)/")}`;
+      // Generating script that `yarn install`s prepack dependencies.
+      // Then assembles a Nuclide deeplink that reflects the copy of Prepack in the package,
+      // the prepack arguments that this run was started with, and the input files being prepacked.
+      // The link is then called to open the Nuclide debugger.
+      reproZip.file(
+        "repro.sh",
+        `#!/bin/bash
+    unzip prepack-runtime-bundle.zip
+    yarn install
+    PREPACK_RUNTIME="prepackRuntime=$(pwd)/lib/prepack-cli.js"
+    PREPACK_ARGUMENTS="${reproScriptArguments}"
+    PREPACK_SOURCEFILES="${reproScriptSourceFiles}"
+    atom \"atom://nuclide/prepack-debugger?$PREPACK_SOURCEFILES&$PREPACK_RUNTIME&$PREPACK_ARGUMENTS\"
+    `
+      );
+      const data = reproZip.generate({ base64: false, compression: "DEFLATE" });
+      if (reproFilePath) fs.writeFileSync(reproFilePath, data, "binary");
 
-          // Generating script that `yarn install`s prepack dependencies.
-          // Then assembles a Nuclide deeplink that reflects the copy of Prepack in the package,
-          // the prepack arguments that this run was started with, and the input files being prepacked.
-          // The link is then called to open the Nuclide debugger.
-          reproZip.file(
-            "repro.sh",
-            `#!/bin/bash
-        unzip prepack-runtime-bundle.zip
-        yarn install
-        PREPACK_RUNTIME="prepackRuntime=$(pwd)/lib/prepack-cli.js"
-        PREPACK_ARGUMENTS="${reproScriptArguments}"
-        PREPACK_SOURCEFILES="${reproScriptSourceFiles}"
-        atom \"atom://nuclide/prepack-debugger?$PREPACK_SOURCEFILES&$PREPACK_RUNTIME&$PREPACK_ARGUMENTS\"
-        `
-          );
-          const data = reproZip.generate({ base64: false, compression: "DEFLATE" });
-          if (reproFilePath) fs.writeFileSync(reproFilePath, data, "binary");
-        });
-      });
+      if (shouldExit) process.exit(1);
     });
-
-    return true;
   }
 
   let profiler;
@@ -573,17 +570,13 @@ function run(
       }
       let serialized = prepackFileSync(inputFilenames, resolvedOptions);
       if (reproMode === "reproUnconditionally") {
-<<<<<<< HEAD
         if (serialized.sourceFilePaths) {
-          generateDebugRepro(serialized.sourceFilePaths.sourceFiles, serialized.sourceFilePaths.sourceMaps);
+          generateDebugRepro(serialized.sourceFilePaths.sourceFiles, serialized.sourceFilePaths.sourceMaps, false);
         } else {
           // An input can have no sourcemap/sourcefiles, but we can still package
           // the input files, prepack runtime, and generate the script.
-          generateDebugRepro([], []);
+          generateDebugRepro([], [], false);
         }
-=======
-        if (serialized.debugReproManager) generateDebugRepro(serialized.debugReproManager);
->>>>>>> 06fa4623359997fb344b55992073e45f52972be3
       }
 
       success = printDiagnostics(false);
@@ -616,7 +609,7 @@ function run(
           }
         });
 
-        generateDebugRepro(largestSourceFilesList, sourceMaps);
+        generateDebugRepro(largestSourceFilesList, sourceMaps, true);
       }
       success = false;
     }
@@ -676,7 +669,11 @@ function run(
     }
   }
 
-  if (!success) process.exit(1);
+  // If there is a repro going on, don't exit.
+  // The repro involves an async directory zip, so exiting here will cause the repro
+  // to not complete. Instead, all calls to repro include a flag to indicate
+  // whether or not it should process.exit() upon completion.
+  if (!success && reproMode === "none") process.exit(1);
 }
 
 if (typeof __residual === "function") {

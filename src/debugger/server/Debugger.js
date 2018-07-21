@@ -53,12 +53,7 @@ export class DebugServer {
     this._stepManager = new SteppingManager(this._realm, /* default discard old steppers */ false);
     this._stopEventManager = new StopEventManager();
     this._diagnosticSeverity = configArgs.diagnosticSeverity || "FatalError";
-    // Mapping SourceFiles to conform to SourceMapManager params -- see SMM for explanation.
-    let sourceMapManagerInput = configArgs.sourcemaps.map(m => {
-      sourceMapContents: m.sourceMapContents;
-      filePath: m.filePath;
-    });
-    this._sourceMapManager = new SourceMapManager(configArgs.buckRoot, sourceMapManagerInput);
+    this._sourceMapManager = new SourceMapManager(configArgs.buckRoot, configArgs.sourcemaps);
     this.waitForRun(undefined);
   }
   // the collection of breakpoints
