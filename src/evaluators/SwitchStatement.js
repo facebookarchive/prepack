@@ -17,8 +17,10 @@ import { computeBinary } from "./BinaryExpression.js";
 import {
   AbruptCompletion,
   BreakCompletion,
+  ForkedAbruptCompletion,
   SimpleNormalCompletion,
   PossiblyNormalCompletion,
+  ReturnCompletion,
   Completion,
 } from "../completions.js";
 import { InternalGetResultValue } from "./ForOfStatement.js";
@@ -64,6 +66,10 @@ function AbstractCaseBlockEvaluation(
         let node = c.consequent[i];
         let r = env.evaluateCompletion(node, strictCode);
         invariant(!(r instanceof Reference));
+
+        if (r instanceof ReturnCompletion || r instanceof ForkedAbruptCompletion) {
+          throw r;
+        }
 
         if (r instanceof PossiblyNormalCompletion) {
           // TODO correct handling of PossiblyNormal and AbruptCompletion
