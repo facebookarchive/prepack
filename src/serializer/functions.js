@@ -366,7 +366,7 @@ export class Functions {
       location: BabelNodeSourceLocation,
       object: string = "",
       key?: string,
-      originalLocation?: BabelNodeSourceLocation
+      originalLocation: BabelNodeSourceLocation | void | null
     ) => {
       let firstLocationString = originalLocation ? ` ${stringOfLocation(originalLocation)}` : "";
       let propString = key ? `${object ? "" : "<unknown>"}.${key} ` : "";
@@ -399,11 +399,14 @@ export class Functions {
       if (!location) return; // happens only when accessing an additional function property
       if (pbs.has(pb) && !conflicts.has(location)) {
         let originalLocation =
-          pb.descriptor && pb.descriptor.value ? pb.descriptor.value.expressionLocation : undefined;
+          pb.descriptor && pb.descriptor.value && !Array.isArray(pb.descriptor.value)
+            ? pb.descriptor.value.expressionLocation
+            : undefined;
+        let keyString = pb.key instanceof Value ? pb.key.toDisplayString() : pb.key;
         reportConflict(
           location,
           pb.object ? pb.object.intrinsicName || pb.object.__originalName : undefined,
-          pb.key,
+          keyString,
           originalLocation
         );
       }
