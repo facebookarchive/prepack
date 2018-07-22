@@ -25,6 +25,7 @@ export class Intrinsics {
   _memcpy: ?LLVMFunction;
   _memcmp: ?LLVMFunction;
   _stringType: ?StructType;
+  _uint32Type: ?StructType;
 
   constructor(module: Module) {
     this._module = module;
@@ -43,6 +44,20 @@ export class Intrinsics {
     stringType.setBody([pointerType, lengthType], false);
     this._stringType = stringType;
     return stringType;
+  }
+
+  isUint32Type(type: LLVMType): boolean {
+    if (!this._uint32Type) return false;
+    return this._uint32Type.equals(type);
+  }
+
+  get uint32Type(): StructType {
+    if (this._uint32Type) return this._uint32Type;
+    let uint32Type = StructType.create(llvmContext, "ui32");
+    let int32Type = LLVMType.getInt32Ty(llvmContext);
+    uint32Type.setBody([int32Type], false);
+    this._uint32Type = uint32Type;
+    return uint32Type;
   }
 
   get memcpy(): LLVMFunction {

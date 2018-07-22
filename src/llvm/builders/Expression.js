@@ -20,6 +20,7 @@ import * as t from "@babel/types";
 
 import { buildFromValue } from "./Value.js";
 import { buildAppendString, buildCompareString, getStringPtr } from "./StringValue.js";
+import { buildToBoolean } from "./To.js";
 
 export function valueToExpression(value: Value): BabelNodeExpression {
   // Hack. We use an identifier to hold the LLVM value so that
@@ -180,7 +181,7 @@ export function buildFromExpression(state: CompilerState, expr: BabelNodeExpress
       return buildFromBinaryExpression(state, expr, builder);
     }
     case "ConditionalExpression": {
-      let condition = buildFromExpression(state, expr.test, builder);
+      let condition = buildToBoolean(state, buildFromExpression(state, expr.test, builder), builder);
       let consequentValue = buildFromExpression(state, expr.consequent, builder);
       let alternateValue = buildFromExpression(state, expr.alternate, builder);
       invariant(consequentValue.type.equals(alternateValue.type));

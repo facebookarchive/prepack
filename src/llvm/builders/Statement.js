@@ -20,6 +20,7 @@ import { IRBuilder, BasicBlock } from "llvm-node";
 
 import { buildFromExpression } from "./Expression.js";
 import { buildFromGenerator } from "./Generator.js";
+import { buildToBoolean } from "./To.js";
 
 export function buildFromStatement(state: CompilerState, statement: BabelNodeStatement, builder: IRBuilder): void {
   switch (statement.type) {
@@ -50,7 +51,7 @@ export function buildFromStatement(state: CompilerState, statement: BabelNodeSta
       return;
     }
     case "IfStatement": {
-      let condition = buildFromExpression(state, statement.test, builder);
+      let condition = buildToBoolean(state, buildFromExpression(state, statement.test, builder), builder);
       let consequentStatement = statement.consequent;
       let alternateStatement = statement.alternate;
       invariant(

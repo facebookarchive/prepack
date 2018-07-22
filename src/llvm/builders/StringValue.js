@@ -42,7 +42,7 @@ export function getStringPtr(value: LLVMValue, builder: IRBuilder) {
   return builder.createExtractValue(value, [0], "String.ptr");
 }
 
-function getStringLength(value: LLVMValue, builder: IRBuilder) {
+export function getStringLength(value: LLVMValue, builder: IRBuilder) {
   return builder.createExtractValue(value, [1], "String.byteLength");
 }
 
@@ -133,8 +133,8 @@ function convertUCS2ToUTF8ConstantArray(string) {
   return elements;
 }
 
-export function buildFromStringValue(state: CompilerState, value: StringValue, builder: IRBuilder): LLVMValue {
-  let stringValue = value.value;
+export function buildFromStringValue(state: CompilerState, value: StringValue | string, builder: IRBuilder): LLVMValue {
+  let stringValue = typeof value === "string" ? value : value.value;
   let existingString = state.internedStrings.get(stringValue);
   if (existingString === undefined) {
     let elements = convertUCS2ToUTF8ConstantArray(stringValue);

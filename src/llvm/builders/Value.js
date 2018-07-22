@@ -150,7 +150,7 @@ function buildFromIntrinsicValue(state: CompilerState, value: Value, builder: IR
 
 function buildFromNumberValue(state: CompilerState, value: NumberValue, builder: IRBuilder): LLVMValue {
   if (value instanceof IntegralValue) {
-    return ConstantInt.get(llvmContext, value.value);
+    return ConstantInt.get(llvmContext, value.value, 32, true);
   } else {
     return ConstantFP.get(llvmContext, value.value);
   }
