@@ -22,10 +22,11 @@ import { llvmContext } from "./llvm-context.js";
 
 export class Intrinsics {
   +_module: Module;
-  _memcpy: ?LLVMFunction;
-  _memcmp: ?LLVMFunction;
   _stringType: ?StructType;
   _uint32Type: ?StructType;
+  _memcpy: ?LLVMFunction;
+  _memcmp: ?LLVMFunction;
+  _pow: ?LLVMFunction;
 
   constructor(module: Module) {
     this._module = module;
@@ -91,5 +92,15 @@ export class Intrinsics {
     let memcmp = LLVMFunction.create(fnType, LinkageTypes.ExternalLinkage, "memcmp", this._module);
     this._memcmp = memcmp;
     return memcmp;
+  }
+
+  get pow(): LLVMFunction {
+    if (this._pow) return this._pow;
+    let returnType = LLVMType.getDoubleTy(llvmContext);
+    let args = [LLVMType.getDoubleTy(llvmContext), LLVMType.getDoubleTy(llvmContext)];
+    let fnType = FunctionType.get(returnType, args, false);
+    let pow = LLVMFunction.create(fnType, LinkageTypes.ExternalLinkage, "llvm.pow.f64", this._module);
+    this._pow = pow;
+    return pow;
   }
 }
