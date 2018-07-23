@@ -122,15 +122,6 @@ export function build(name: string, realm: Realm, inheritError?: boolean = true)
       locationData: undefined,
     };
 
-    // Build a text description of the stack.
-    let stackDesc = {
-      value: buildStack(realm, O),
-      enumerable: false,
-      configurable: true,
-      writable: true,
-    };
-    Properties.DefinePropertyOrThrow(realm, O, "stack", stackDesc);
-
     // 3. If message is not undefined, then
     if (!message.mightBeUndefined()) {
       // a. Let msg be ? ToString(message).
@@ -149,6 +140,15 @@ export function build(name: string, realm: Realm, inheritError?: boolean = true)
     } else {
       message.throwIfNotConcrete();
     }
+
+    // Build a text description of the stack.
+    let stackDesc = {
+      value: buildStack(realm, O),
+      enumerable: false,
+      configurable: true,
+      writable: true,
+    };
+    Properties.DefinePropertyOrThrow(realm, O, "stack", stackDesc);
 
     // 4. Return O.
     return O;
