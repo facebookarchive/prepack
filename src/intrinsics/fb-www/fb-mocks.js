@@ -202,8 +202,8 @@ function createMagicGlobalFunction(realm: Realm, global: ObjectValue | AbstractO
       let val = AbstractValue.createTemporalFromBuildFunction(
         realm,
         FunctionValue,
-        args,
-        createOperationDescriptor("FB_MOCKS_MAGIC_GLOBAL_FUNCTION", { propName: functionName }),
+        [new StringValue(realm, functionName), ...args],
+        createOperationDescriptor("FB_MOCKS_MAGIC_GLOBAL_FUNCTION"),
         { skipInvariant: true, isPure: true }
       );
       invariant(val instanceof AbstractValue);

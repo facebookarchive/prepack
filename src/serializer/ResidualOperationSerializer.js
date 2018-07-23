@@ -28,7 +28,12 @@ import invariant from "../invariant.js";
 import { type Binding } from "../environment.js";
 import * as t from "@babel/types";
 import { AbstractValue, EmptyValue, ObjectValue, Value } from "../values/index.js";
-import type { BabelNodeBlockStatement, BabelNodeExpression, BabelNodeSpreadElement } from "@babel/types";
+import type {
+  BabelNodeBlockStatement,
+  BabelNodeExpression,
+  BabelNodeSpreadElement,
+  BabelNodeStringLiteral,
+} from "@babel/types";
 import { Utils } from "../singletons.js";
 import type { PropertyBinding } from "../types.js";
 
@@ -90,7 +95,7 @@ export class ResidualOperationSerializer {
 
     switch (type) {
       case "IDENTIFIER":
-        babelNode = this._serializeIdentifier(data);
+        babelNode = this._serializeIdentifier(data, nodes);
         break;
       case "REBUILT_OBJECT":
         babelNode = this._serializeRebuiltObject(data, nodes);
@@ -129,7 +134,7 @@ export class ResidualOperationSerializer {
         babelNode = this._serializeGlobalAssignment(data, nodes);
         break;
       case "GLOBAL_DELETE":
-        babelNode = this._serializeGlobalDelete(data);
+        babelNode = this._serializeGlobalDelete(data, nodes);
         break;
       case "EMIT_PROPERTY_ASSIGNMENT":
         babelNode = this._serializeEmitPropertyAssignment(data, nodes, context);
@@ -197,9 +202,6 @@ export class ResidualOperationSerializer {
       case "ABSTRACT_OBJECT_SET_PARTIAL":
         babelNode = this._serializeAbstractObjectSetPartial(data, nodes);
         break;
-      case "ABSTRACT_OBJECT_SET_PARTIAL_VALUE":
-        babelNode = this._serializeAbstractObjectSetPartialValue(data, nodes);
-        break;
       case "ABSTRACT_OBJECT_GET_PROTO_OF":
         babelNode = this._serializeAbstractObjectGetProtoOf(data, nodes);
         break;
@@ -243,7 +245,7 @@ export class ResidualOperationSerializer {
         babelNode = this._serializeConsoleLog(data, nodes);
         break;
       case "MODULES_REQUIRE":
-        babelNode = this._serializeModulesRequires(data);
+        babelNode = this._serializeModulesRequires(data, nodes);
         break;
       case "RESIDUAL_CALL":
         babelNode = this._serializeResidualCall(data, nodes);
@@ -255,19 +257,13 @@ export class ResidualOperationSerializer {
         babelNode = this._serializeCannotBecomeObject(data, nodes);
         break;
       case "WIDENED_IDENTIFIER":
-        babelNode = this._serializeIdentifier(data);
+        babelNode = this._serializeIdentifier(data, nodes);
         break;
       case "WIDEN_PROPERTY":
         babelNode = this._serializeWidenProperty(data, nodes);
         break;
-      case "WIDEN_ABSTRACT_PROPERTY":
-        babelNode = this._serializeWidenAbstractProperty(data, nodes);
-        break;
       case "WIDEN_PROPERTY_ASSIGNMENT":
         babelNode = this._serializeWidenPropertyAssignment(data, nodes);
-        break;
-      case "WIDEN_ABSTRACT_PROPERTY_ASSIGNMENT":
-        babelNode = this._serializeWidenAbstractPropertyAssignment(data, nodes);
         break;
 
       // Invariants
@@ -318,7 +314,7 @@ export class ResidualOperationSerializer {
         babelNode = this._serializeReactCreateContextProvider(data, nodes);
         break;
       case "REACT_NATIVE_STRING_LITERAL":
-        babelNode = this._serializeReactNativeStringLiteral(data);
+        babelNode = this._serializeReactNativeStringLiteral(data, nodes);
         break;
       case "REACT_RELAY_MOCK_CONTAINER":
         babelNode = this._serializeReactRelayMockContainer(data, nodes);
@@ -349,15 +345,15 @@ export class ResidualOperationSerializer {
   }
 
   _serializeAppendGenerator(
-    { generator, propName: leadingComment }: OperationDescriptorData,
-    node: Array<BabelNodeExpression>,
+    { generator }: OperationDescriptorData,
+    [leadingCommentNode]: Array<BabelNodeExpression>,
     context?: SerializationContext,
     valuesToProcess?: Set<AbstractValue | ObjectValue>
   ) {
     invariant(context !== undefined);
     invariant(generator !== undefined);
-    invariant(leadingComment !== undefined);
     invariant(valuesToProcess !== undefined);
+    let leadingComment = ((leadingCommentNode: any): BabelNodeStringLiteral).value;
     let statements = context.serializeGenerator(generator, valuesToProcess);
     if (statements.length === 1) {
       let statement = statements[0];
@@ -380,12 +376,7 @@ export class ResidualOperationSerializer {
     );
   }
 
-  _serializeWidenAbstractPropertyAssignment(data: OperationDescriptorData, [o, p, v]: Array<BabelNodeExpression>) {
-    return t.assignmentExpression("=", memberExpressionHelper(o, p), v);
-  }
-
-  _serializeWidenPropertyAssignment({ propName }: OperationDescriptorData, [o, v]: Array<BabelNodeExpression>) {
-    invariant(typeof propName === "string");
+  _serializeWidenPropertyAssignment(data: OperationDescriptorData, [o, propName, v]: Array<BabelNodeExpression>) {
     return t.assignmentExpression("=", memberExpressionHelper(o, propName), v);
   }
 
@@ -393,21 +384,13 @@ export class ResidualOperationSerializer {
     return memberExpressionHelper(o, p);
   }
 
-  _serializeWidenProperty({ propName }: OperationDescriptorData, [o]: Array<BabelNodeExpression>) {
-    invariant(typeof propName === "string");
+  _serializeWidenProperty(data: OperationDescriptorData, [o, propName]: Array<BabelNodeExpression>) {
     return memberExpressionHelper(o, propName);
   }
 
-  _serializeAbstractObjectGet(
-    { propertyGetter, propName: P }: OperationDescriptorData,
-    [o]: Array<BabelNodeExpression>
-  ) {
-    invariant(typeof P === "string");
+  _serializeAbstractObjectGet({ propertyGetter }: OperationDescriptorData, [o, P]: Array<BabelNodeExpression>) {
     return propertyGetter !== undefined
-      ? t.callExpression(t.memberExpression(t.identifier("global"), t.identifier("__prop_" + propertyGetter)), [
-          o,
-          t.stringLiteral(P),
-        ])
+      ? t.callExpression(t.memberExpression(t.identifier("global"), t.identifier("__prop_" + propertyGetter)), [o, P])
       : memberExpressionHelper(o, P);
   }
 
@@ -428,22 +411,21 @@ export class ResidualOperationSerializer {
     return t.callExpression(nodes[0], ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>));
   }
 
-  _serializeModulesRequires({ propName }: OperationDescriptorData) {
-    invariant(propName !== undefined);
-    return t.callExpression(t.identifier("require"), [t.valueToNode(propName)]);
+  _serializeModulesRequires(data: OperationDescriptorData, [propName]: Array<BabelNodeExpression>) {
+    return t.callExpression(t.identifier("require"), [propName]);
   }
 
-  _serializeConcreteModel({ propName }: OperationDescriptorData, [valueNode]: Array<BabelNodeExpression>) {
-    invariant(propName !== undefined);
+  _serializeConcreteModel(data: OperationDescriptorData, [valueNode, propName]: Array<BabelNodeExpression>) {
+    let propString = ((propName: any): BabelNodeStringLiteral).value;
     return t.expressionStatement(
-      t.assignmentExpression("=", this.preludeGenerator.globalReference(propName, false), valueNode)
+      t.assignmentExpression("=", this.preludeGenerator.globalReference(propString, false), valueNode)
     );
   }
 
-  _serializeConsoleLog({ propName }: OperationDescriptorData, nodes: Array<BabelNodeExpression>) {
-    invariant(propName !== undefined);
+  _serializeConsoleLog(data: OperationDescriptorData, [propName, ...nodes]: Array<BabelNodeExpression>) {
+    let propString = ((propName: any): BabelNodeStringLiteral).value;
     return t.expressionStatement(
-      t.callExpression(t.memberExpression(t.identifier("console"), t.identifier(propName)), [...nodes])
+      t.callExpression(t.memberExpression(t.identifier("console"), t.identifier(propString)), [...nodes])
     );
   }
 
@@ -478,13 +460,14 @@ export class ResidualOperationSerializer {
     );
   }
 
-  _serializeFullInvariant({ propName }: OperationDescriptorData, [objectNode, valueNode]: Array<BabelNodeExpression>) {
-    invariant(propName !== undefined);
+  _serializeFullInvariant(
+    data: OperationDescriptorData,
+    [propName, objectNode, valueNode]: Array<BabelNodeExpression>
+  ) {
     return t.binaryExpression("!==", memberExpressionHelper(objectNode, propName), valueNode);
   }
 
-  _serializeFullInvariantFunction({ propName }: OperationDescriptorData, [objectNode]: Array<BabelNodeExpression>) {
-    invariant(typeof propName === "string");
+  _serializeFullInvariantFunction(data: OperationDescriptorData, [propName, objectNode]: Array<BabelNodeExpression>) {
     return t.binaryExpression(
       "!==",
       t.unaryExpression("typeof", memberExpressionHelper(objectNode, propName), true),
@@ -494,7 +477,7 @@ export class ResidualOperationSerializer {
 
   _serializeFullInvariantAbstract(
     { concreteComparisons, typeComparisons }: OperationDescriptorData,
-    [valueNode]: Array<BabelNodeExpression>
+    [propName, valueNode]: Array<BabelNodeExpression>
   ) {
     invariant(concreteComparisons !== undefined);
     invariant(typeComparisons !== undefined);
@@ -513,20 +496,18 @@ export class ResidualOperationSerializer {
     return checks.reduce((expr, newCondition) => t.logicalExpression("&&", expr, newCondition));
   }
 
-  _serializeInvariantAppend({ propName }: OperationDescriptorData, [objectNode]: Array<BabelNodeExpression>) {
-    invariant(typeof propName === "string");
+  _serializeInvariantAppend(data: OperationDescriptorData, [propName, objectNode]: Array<BabelNodeExpression>) {
     return memberExpressionHelper(objectNode, propName);
   }
 
-  _serializePropertyInvariant({ propName, state }: OperationDescriptorData, [objectNode]: Array<BabelNodeExpression>) {
+  _serializePropertyInvariant({ state }: OperationDescriptorData, [propName, objectNode]: Array<BabelNodeExpression>) {
     invariant(state !== undefined);
-    invariant(typeof propName === "string");
     let n = t.callExpression(
       t.memberExpression(
         this.preludeGenerator.memoizeReference("Object.prototype.hasOwnProperty"),
         t.identifier("call")
       ),
-      [objectNode, t.stringLiteral(propName)]
+      [objectNode, propName]
     );
     if (state !== "MISSING") {
       n = t.unaryExpression("!", n, true);
@@ -545,16 +526,19 @@ export class ResidualOperationSerializer {
     return t.binaryExpression(op, oldValNode, t.numericLiteral(1));
   }
 
-  _serializeDerivedAbstractInvariant({ typeofString }: OperationDescriptorData, nodes: Array<BabelNodeExpression>) {
-    invariant(typeofString !== undefined);
-    let condition = t.binaryExpression("!==", t.unaryExpression("typeof", nodes[0]), t.stringLiteral(typeofString));
+  _serializeDerivedAbstractInvariant(
+    data: OperationDescriptorData,
+    [typeOfStringNode, typeofNode]: Array<BabelNodeExpression>
+  ) {
+    let typeofString = ((typeOfStringNode: any): BabelNodeStringLiteral).value;
+    let condition = t.binaryExpression("!==", t.unaryExpression("typeof", typeofNode), t.stringLiteral(typeofString));
     if (typeofString === "object") {
       condition = t.logicalExpression(
         "&&",
         condition,
-        t.binaryExpression("!==", t.unaryExpression("typeof", nodes[0]), t.stringLiteral("function"))
+        t.binaryExpression("!==", t.unaryExpression("typeof", typeofNode), t.stringLiteral("function"))
       );
-      condition = t.logicalExpression("||", condition, t.binaryExpression("===", nodes[0], nullExpression));
+      condition = t.logicalExpression("||", condition, t.binaryExpression("===", typeofNode, nullExpression));
     }
     return condition;
   }
@@ -569,9 +553,10 @@ export class ResidualOperationSerializer {
       t.numericLiteral(this.preludeGenerator.nextInvariantId++),
     ];
     if (appendLastToInvariantOperationDescriptor) {
+      let propName = nodes[0];
       let last = nodes.pop();
       messageComponents.push(t.stringLiteral("): "));
-      messageComponents.push(this.serialize(appendLastToInvariantOperationDescriptor, [last]));
+      messageComponents.push(this.serialize(appendLastToInvariantOperationDescriptor, [propName, last]));
     } else {
       messageComponents.push(t.stringLiteral(")"));
     }
@@ -584,12 +569,12 @@ export class ResidualOperationSerializer {
   }
 
   _serializeReactRelayMockContainer(
-    { propName }: OperationDescriptorData,
-    [reactRelayIdent, ...otherArgs]: Array<BabelNodeExpression>
+    data: OperationDescriptorData,
+    [reactRelayIdent, propName, ...otherArgs]: Array<BabelNodeExpression>
   ) {
-    invariant(typeof propName === "string");
+    let propString = ((propName: any): BabelNodeStringLiteral).value;
     return t.callExpression(
-      t.memberExpression(reactRelayIdent, t.identifier(propName)),
+      t.memberExpression(reactRelayIdent, t.identifier(propString)),
       ((otherArgs: any): Array<any>)
     );
   }
@@ -607,28 +592,23 @@ export class ResidualOperationSerializer {
   }
 
   _serializeConditionalPropertyAssignment(
-    { binding: _binding, path, value }: OperationDescriptorData,
-    [o, v, e]: Array<BabelNodeExpression>,
+    { path, value }: OperationDescriptorData,
+    [o, v, e, keyKey]: Array<BabelNodeExpression>,
     context?: SerializationContext,
     valuesToProcess?: Set<AbstractValue | ObjectValue>
   ) {
     invariant(value instanceof AbstractValue);
     invariant(path instanceof AbstractValue);
-    invariant(_binding !== undefined);
-    let binding = ((_binding: any): PropertyBinding);
-    invariant(value !== undefined);
-    let keyKey = binding.key;
-    invariant(typeof keyKey === "string");
     let mightHaveBeenDeleted = value.mightHaveBeenDeleted();
     let mightBeUndefined = value.mightBeUndefined();
     invariant(path.operationDescriptor !== undefined);
-    let lh = this.serialize(path.operationDescriptor, [o, t.identifier(keyKey)], context, valuesToProcess);
+    let lh = this.serialize(path.operationDescriptor, [o, keyKey], context, valuesToProcess);
     let r = t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
     if (mightHaveBeenDeleted) {
       // If v === __empty || (v === undefined  && !(key.key in o))  then delete it
       let emptyTest = t.binaryExpression("===", v, e);
       let undefinedTest = t.binaryExpression("===", v, voidExpression);
-      let inTest = t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(keyKey), o));
+      let inTest = t.unaryExpression("!", t.binaryExpression("in", keyKey, o));
       let guard = t.logicalExpression("||", emptyTest, t.logicalExpression("&&", undefinedTest, inTest));
       let deleteIt = t.expressionStatement(t.unaryExpression("delete", (lh: any)));
       return t.ifStatement(mightBeUndefined ? emptyTest : guard, deleteIt, r);
@@ -663,9 +643,8 @@ export class ResidualOperationSerializer {
     return t.expressionStatement(t.assignmentExpression("=", (id: any), v));
   }
 
-  _serializeReactNativeStringLiteral({ propName }: OperationDescriptorData) {
-    invariant(typeof propName === "string");
-    return t.stringLiteral(propName);
+  _serializeReactNativeStringLiteral(data: OperationDescriptorData, [propName]: Array<BabelNodeExpression>) {
+    return propName;
   }
 
   _serializeReactCreateContextProvider(data: OperationDescriptorData, [consumerNode]: Array<BabelNodeExpression>) {
@@ -698,33 +677,33 @@ export class ResidualOperationSerializer {
     return t.callExpression(t.memberExpression(methodNode, t.identifier("call")), [objectNode, nameNode]);
   }
 
-  _serializeRebuiltObject({ propName }: OperationDescriptorData, [node]: Array<BabelNodeExpression>) {
-    invariant(typeof propName === "string");
-    return t.isValidIdentifier(propName)
-      ? t.memberExpression(node, t.identifier(propName), false)
-      : t.memberExpression(node, t.stringLiteral(propName), true);
+  _serializeRebuiltObject(data: OperationDescriptorData, [node, propName]: Array<BabelNodeExpression>) {
+    let propString = ((propName: any): BabelNodeStringLiteral).value;
+    return t.isValidIdentifier(propString)
+      ? t.memberExpression(node, t.identifier(propString), false)
+      : t.memberExpression(node, propName, true);
   }
 
-  _serializeGlobalDelete({ propName }: OperationDescriptorData) {
-    invariant(typeof propName === "string");
-    return t.expressionStatement(t.unaryExpression("delete", this.preludeGenerator.globalReference(propName, false)));
+  _serializeGlobalDelete(data: OperationDescriptorData, [propName]: Array<BabelNodeExpression>) {
+    let propString = ((propName: any): BabelNodeStringLiteral).value;
+    return t.expressionStatement(t.unaryExpression("delete", this.preludeGenerator.globalReference(propString, false)));
   }
 
   _serializeDefineProperty(
-    { object, propName, desc }: OperationDescriptorData,
-    args: Array<BabelNodeExpression>,
+    { object, desc }: OperationDescriptorData,
+    [propName]: Array<BabelNodeExpression>,
     context?: SerializationContext
   ) {
+    let propString = ((propName: any): BabelNodeStringLiteral).value;
     invariant(object !== undefined);
-    invariant(propName !== undefined);
     invariant(desc !== undefined);
     invariant(context !== undefined);
-    return context.emitDefinePropertyBody(object, propName, desc);
+    return context.emitDefinePropertyBody(object, propString, desc);
   }
 
-  _serializeFBMocksMagicGlobalFunction({ propName }: OperationDescriptorData, args: Array<BabelNodeExpression>) {
-    invariant(typeof propName === "string");
-    return t.callExpression(t.identifier(propName), ((args: any): Array<any>));
+  _serializeFBMocksMagicGlobalFunction(data: OperationDescriptorData, [propName, ...args]: Array<BabelNodeExpression>) {
+    let propString = ((propName: any): BabelNodeStringLiteral).value;
+    return t.callExpression(t.identifier(propString), ((args: any): Array<any>));
   }
 
   _serializeFBMocksBootloaderLoadModules(data: OperationDescriptorData, args: Array<BabelNodeExpression>) {
@@ -735,14 +714,6 @@ export class ResidualOperationSerializer {
   }
 
   _serializeAbstractObjectSetPartial(
-    { propName }: OperationDescriptorData,
-    [objectNode, valueNode]: Array<BabelNodeExpression>
-  ) {
-    invariant(typeof propName === "string");
-    return t.expressionStatement(t.assignmentExpression("=", memberExpressionHelper(objectNode, propName), valueNode));
-  }
-
-  _serializeAbstractObjectSetPartialValue(
     data: OperationDescriptorData,
     [objectNode, keyNode, valueNode]: Array<BabelNodeExpression>
   ) {
@@ -768,7 +739,7 @@ export class ResidualOperationSerializer {
     return t.expressionStatement(t.assignmentExpression("=", memberExpressionHelper(objectNode, keyNode), valueNode));
   }
 
-  _serializeIdentifier(data: OperationDescriptorData) {
+  _serializeIdentifier(data: OperationDescriptorData, nodes: Array<BabelNodeExpression>) {
     invariant(typeof data.id === "string");
     return t.identifier(data.id);
   }
@@ -797,11 +768,11 @@ export class ResidualOperationSerializer {
   }
 
   _serializeUnknownArrayMethodPropertyCall(
-    { propName }: OperationDescriptorData,
-    [objNode, ..._args]: Array<BabelNodeExpression>
+    data: OperationDescriptorData,
+    [objNode, propName, ..._args]: Array<BabelNodeExpression>
   ) {
-    invariant(typeof propName === "string");
-    return t.callExpression(t.memberExpression(objNode, t.identifier(propName)), ((_args: any): Array<any>));
+    let propString = ((propName: any): BabelNodeStringLiteral).value;
+    return t.callExpression(t.memberExpression(objNode, t.identifier(propString)), ((_args: any): Array<any>));
   }
 
   _serializeThrow(data: OperationDescriptorData, [argument]: Array<BabelNodeExpression>) {
@@ -841,8 +812,7 @@ export class ResidualOperationSerializer {
     return t.callExpression(helperNode, [valueNode]);
   }
 
-  _serializePropertyDelete({ propName }: OperationDescriptorData, [objectNode]: Array<BabelNodeExpression>) {
-    invariant(propName !== undefined);
+  _serializePropertyDelete(data: OperationDescriptorData, [objectNode, propName]: Array<BabelNodeExpression>) {
     return t.expressionStatement(t.unaryExpression("delete", memberExpressionHelper(objectNode, propName)));
   }
 
@@ -922,13 +892,12 @@ export class ResidualOperationSerializer {
   }
 
   _serializeEmitPropertyAssignment(
-    { propName, value }: OperationDescriptorData,
-    [objectNode, valueNode]: Array<BabelNodeExpression>,
+    { value }: OperationDescriptorData,
+    [objectNode, valueNode, propName]: Array<BabelNodeExpression>,
     context?: SerializationContext
   ) {
     invariant(context !== undefined);
     invariant(value instanceof Value);
-    invariant(typeof propName === "string");
     return context.getPropertyAssignmentStatement(
       memberExpressionHelper(objectNode, propName),
       value,
@@ -937,10 +906,10 @@ export class ResidualOperationSerializer {
     );
   }
 
-  _serializeGlobalAssignment({ propName }: OperationDescriptorData, [valueNode]: Array<BabelNodeExpression>) {
-    invariant(typeof propName === "string");
+  _serializeGlobalAssignment(data: OperationDescriptorData, [valueNode, propName]: Array<BabelNodeExpression>) {
+    let propString = ((propName: any): BabelNodeStringLiteral).value;
     return t.expressionStatement(
-      t.assignmentExpression("=", this.preludeGenerator.globalReference(propName, false), valueNode)
+      t.assignmentExpression("=", this.preludeGenerator.globalReference(propString, false), valueNode)
     );
   }
 
@@ -948,8 +917,7 @@ export class ResidualOperationSerializer {
     return o;
   }
 
-  _serializeAbstractProperty({ propName }: OperationDescriptorData, [o]: Array<BabelNodeExpression>) {
-    invariant(propName !== undefined);
+  _serializeAbstractProperty(data: OperationDescriptorData, [o, propName]: Array<BabelNodeExpression>) {
     return memberExpressionHelper(o, propName);
   }
 

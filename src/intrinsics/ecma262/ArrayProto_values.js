@@ -10,7 +10,7 @@
 /* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
-import { AbstractValue, ArrayValue, NativeFunctionValue, Value } from "../../values/index.js";
+import { AbstractValue, ArrayValue, NativeFunctionValue, StringValue, Value } from "../../values/index.js";
 import { Create, To } from "../../singletons.js";
 import { createOperationDescriptor } from "../../utils/generator.js";
 
@@ -31,8 +31,8 @@ export default function(realm: Realm): NativeFunctionValue {
       return AbstractValue.createTemporalFromBuildFunction(
         realm,
         Value,
-        [O],
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "values" })
+        [O, new StringValue(realm, "values")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 

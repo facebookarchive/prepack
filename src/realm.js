@@ -1196,8 +1196,8 @@ export class Realm {
       if (typeof keyKey === "string") {
         if (path !== undefined) {
           gen.emitStatement(
-            [key.object, tval || value, this.intrinsics.empty],
-            createOperationDescriptor("CONDITIONAL_PROPERTY_ASSIGNMENT", { binding: key, path, value })
+            [key.object, tval || value, this.intrinsics.empty, new StringValue(this, keyKey)],
+            createOperationDescriptor("CONDITIONAL_PROPERTY_ASSIGNMENT", { path, value })
           );
         } else {
           // RH value was not widened, so it must have been a constant. We don't need to assign that inside the loop.
@@ -1686,8 +1686,8 @@ export class Realm {
     if (!propertyValue.isIntrinsic()) {
       propertyValue.intrinsicName = `${path}.${key}`;
       propertyValue.kind = "rebuiltProperty";
-      propertyValue.args = [object];
-      propertyValue.operationDescriptor = createOperationDescriptor("REBUILT_OBJECT", { propName: key });
+      propertyValue.args = [object, new StringValue(this, key)];
+      propertyValue.operationDescriptor = createOperationDescriptor("REBUILT_OBJECT");
       let intrinsicName = propertyValue.intrinsicName;
       invariant(intrinsicName !== undefined);
       this.rebuildNestedProperties(propertyValue, intrinsicName);
