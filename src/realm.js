@@ -68,7 +68,7 @@ import {
   createOperationDescriptor,
   Generator,
   PreludeGenerator,
-  type TemporalBuildNodeEntry,
+  type TemporalOperationEntry,
 } from "./utils/generator.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path, DebugReproManager } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
@@ -381,8 +381,8 @@ export class Realm {
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
 
-  derivedIds: Map<string, TemporalBuildNodeEntry>;
-  temporalEntryArgToEntries: Map<Value, Set<TemporalBuildNodeEntry>>;
+  derivedIds: Map<string, TemporalOperationEntry>;
+  temporalEntryArgToEntries: Map<Value, Set<TemporalOperationEntry>>;
   temporalEntryCounter: number;
 
   instantRender: {
@@ -854,8 +854,32 @@ export class Realm {
     return [effects, nodeAst, nodeIO];
   }
 
+  // Use this to evaluate code for internal purposes, so that the tracked state does not get polluted
+  evaluateWithoutEffects<T>(f: () => T): T {
+    // Save old state and set up undefined state
+    let savedGenerator = this.generator;
+    let savedBindings = this.modifiedBindings;
+    let savedProperties = this.modifiedProperties;
+    let savedCreatedObjects = this.createdObjects;
+    let saved_completion = this.savedCompletion;
+    try {
+      this.generator = undefined;
+      this.modifiedBindings = undefined;
+      this.modifiedProperties = undefined;
+      this.createdObjects = undefined;
+      this.savedCompletion = undefined;
+      return f();
+    } finally {
+      this.generator = savedGenerator;
+      this.modifiedBindings = savedBindings;
+      this.modifiedProperties = savedProperties;
+      this.createdObjects = savedCreatedObjects;
+      this.savedCompletion = saved_completion;
+    }
+  }
+
   evaluateForEffects(f: () => Completion | Value, state: any, generatorName: string): Effects {
-    // Save old state and set up empty state for ast
+    // Save old state and set up empty state
     let [savedBindings, savedProperties] = this.getAndResetModifiedMaps();
     let saved_generator = this.generator;
     let saved_createdObjects = this.createdObjects;
@@ -1764,7 +1788,7 @@ export class Realm {
   // Return value indicates whether the caller should try to recover from the error or not.
   handleError(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
     if (!diagnostic.callStack && this.contextStack.length > 0) {
-      let error = Construct(this, this.intrinsics.Error);
+      let error = this.evaluateWithoutEffects(() => Construct(this, this.intrinsics.Error));
       let stack = error._SafeGetDataPropertyValue("stack");
       if (stack instanceof StringValue) diagnostic.callStack = stack.value;
     }
@@ -1826,21 +1850,21 @@ export class Realm {
     return !this._abstractValuesDefined.has(nameString);
   }
 
-  getTemporalBuildNodeEntryFromDerivedValue(value: Value): void | TemporalBuildNodeEntry {
+  getTemporalOperationEntryFromDerivedValue(value: Value): void | TemporalOperationEntry {
     let name = value.intrinsicName;
     if (!name) {
       return undefined;
     }
-    let temporalBuildNodeEntry = value.$Realm.derivedIds.get(name);
-    return temporalBuildNodeEntry;
+    let temporalOperationEntry = value.$Realm.derivedIds.get(name);
+    return temporalOperationEntry;
   }
 
-  getTemporalGeneratorEntriesReferencingArg(arg: AbstractValue | ObjectValue): void | Set<TemporalBuildNodeEntry> {
+  getTemporalGeneratorEntriesReferencingArg(arg: AbstractValue | ObjectValue): void | Set<TemporalOperationEntry> {
     return this.temporalEntryArgToEntries.get(arg);
   }
 
-  saveTemporalGeneratorEntryArgs(temporalBuildNodeEntry: TemporalBuildNodeEntry): void {
-    let args = temporalBuildNodeEntry.args;
+  saveTemporalGeneratorEntryArgs(temporalOperationEntry: TemporalOperationEntry): void {
+    let args = temporalOperationEntry.args;
     for (let arg of args) {
       let temporalEntries = this.temporalEntryArgToEntries.get(arg);
 
@@ -1848,7 +1872,7 @@ export class Realm {
         temporalEntries = new Set();
         this.temporalEntryArgToEntries.set(arg, temporalEntries);
       }
-      temporalEntries.add(temporalBuildNodeEntry);
+      temporalEntries.add(temporalOperationEntry);
     }
   }
 }
