@@ -14,7 +14,7 @@ import type { SerializerOptions } from "../options.js";
 import * as t from "@babel/types";
 import generate from "@babel/generator";
 import type { BabelNodeStatement, BabelNodeExpression, BabelNodeIdentifier } from "@babel/types";
-import { NameGenerator } from "../utils/PreludeGenerator";
+import { NameGenerator } from "../utils/NameGenerator";
 import invariant from "../invariant.js";
 import type { ResidualFunctionBinding, ScopeBinding, FunctionInstance } from "./types.js";
 import { type ReferentializationScope } from "./types.js";

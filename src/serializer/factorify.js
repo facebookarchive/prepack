@@ -11,7 +11,7 @@
 
 import * as t from "@babel/types";
 import type { BabelNodeStatement, BabelNodeObjectExpression, BabelNodeLVal } from "@babel/types";
-import { NameGenerator } from "../utils/PreludeGenerator";
+import { NameGenerator } from "../utils/NameGenerator";
 
 function isLiteral(node) {
   switch (node.type) {

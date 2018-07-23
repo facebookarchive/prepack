@@ -42,7 +42,8 @@ import type {
   BabelNodeFunctionExpression,
 } from "@babel/types";
 import { Generator } from "../utils/generator.js";
-import { PreludeGenerator, NameGenerator } from "../utils/PreludeGenerator.js";
+import { PreludeGenerator } from "../utils/PreludeGenerator.js";
+import { NameGenerator } from "../utils/NameGenerator.js";
 import type { OperationDescriptor, SerializationContext } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import type {

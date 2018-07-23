@@ -12,7 +12,8 @@
 import { Value } from "../values/index.js";
 import type { BabelNodeIdentifier } from "@babel/types";
 import invariant from "../invariant.js";
-import type { PreludeGenerator, NameGenerator } from "../utils/PreludeGenerator.js";
+import type { PreludeGenerator } from "../utils/PreludeGenerator.js";
+import type { NameGenerator } from "../utils/NameGenerator.js";
 import * as t from "@babel/types";
 
 // This class maintains a map of values to babel identifiers.
