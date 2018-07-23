@@ -18,6 +18,7 @@ import type {
   PropertyBinding,
   ReactHint,
   DisplayResult,
+  DebugReproManagerType,
 } from "./types.js";
 import { RealmStatistics } from "./statistics.js";
 import {
@@ -70,7 +71,7 @@ import {
   PreludeGenerator,
   type TemporalOperationEntry,
 } from "./utils/generator.js";
-import { Environment, Functions, Join, Properties, To, Widen, Path, DebugReproManager } from "./singletons.js";
+import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "@babel/types";
 import { Utils } from "./singletons.js";
@@ -478,7 +479,7 @@ export class Realm {
   globalSymbolRegistry: Array<{ $Key: string, $Symbol: SymbolValue }>;
 
   debuggerInstance: DebugServerType | void;
-  debugReproManager: typeof DebugReproManager | void;
+  debugReproManager: DebugReproManagerType | void;
 
   nextGeneratorId: number = 0;
   _abstractValuesDefined: Set<string>;

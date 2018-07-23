@@ -31,8 +31,11 @@ export class DebugReproManagerImplementation {
     return this;
   }
 
+  // Manager to translate between relative/absolute paths used by sourceMaps/Filesystem.
   _sourceMapManager: SourceMapManager;
+  // Set of source files (to handle repeat additions) that Prepack encounters.
   _usedSourceFiles: Set<string>;
+  // The actual sourcemaps associated with the input.
   _sourceMapNames: Array<string>;
 
   addSourceFile(fileName: string) {

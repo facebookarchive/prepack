@@ -107,8 +107,7 @@ function run(
   let cpuprofilePath: void | string;
   let invariantMode: void | InvariantModeTypes;
   let invariantLevel: void | number;
-  let reproMode: "none" | "reproUnconditionally" | "reproOnFatalError";
-  reproMode = "none";
+  let reproMode: void | "reproUnconditionally" | "reproOnFatalError";
   let flags = {
     initializeMoreModules: false,
     trace: false,
@@ -224,11 +223,11 @@ function run(
           break;
         case "debugInFilePath":
           debugInFilePath = args.shift();
-          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as debugger behavior is not currently supported for repros
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as DebugAdapter takes care of this field
           break;
         case "debugOutFilePath":
           debugOutFilePath = args.shift();
-          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as debugger behavior is not currently supported for repros
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as DebugAdapter takes care of this field
           break;
         case "lazyObjectsRuntime":
           lazyObjectsRuntime = args.shift();
@@ -587,7 +586,7 @@ function run(
         // if it is not a FatalError, it means prepack failed, and we should display the Prepack stack trace.
         console.error(err.stack);
       }
-      if (reproMode !== "none") {
+      if (reproMode) {
         // Get largest list of original sources from all diagnostics.
         // Must iterate through both because maps are ordered so we can't tell which diagnostic is most recent.
         let largestSourceFilesList = [];
@@ -673,7 +672,7 @@ function run(
   // The repro involves an async directory zip, so exiting here will cause the repro
   // to not complete. Instead, all calls to repro include a flag to indicate
   // whether or not it should process.exit() upon completion.
-  if (!success && reproMode === "none") process.exit(1);
+  if (!success && reproMode === undefined) process.exit(1);
 }
 
 if (typeof __residual === "function") {
