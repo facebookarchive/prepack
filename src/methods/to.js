@@ -722,8 +722,7 @@ export class ToImplementation {
     if (val instanceof ObjectValue) {
       let primValue = this.ToPrimitiveOrAbstract(realm, val, "string");
       if (primValue.getType() === StringValue) return primValue;
-      let str = this.ToStringPartial(realm, primValue);
-      return new StringValue(realm, str);
+      return this.ToStringValue(realm, primValue);
     } else if (val instanceof ConcreteValue) {
       let str = this.ToString(realm, val);
       return new StringValue(realm, str);
