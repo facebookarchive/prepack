@@ -234,7 +234,7 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.1
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
     func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
       // 1. Let to be ? ToObject(target).
       let to = To.ToObject(realm, target);
