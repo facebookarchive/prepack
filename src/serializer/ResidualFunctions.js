@@ -28,7 +28,7 @@ import type {
   BabelNodeArrowFunctionExpression,
 } from "@babel/types";
 import type { FunctionBodyAstNode } from "../types.js";
-import type { NameGenerator } from "../utils/generator.js";
+import type { NameGenerator } from "../utils/NameGenerator.js";
 import invariant from "../invariant.js";
 import type {
   ResidualFunctionBinding,
