@@ -68,9 +68,7 @@ function AbstractCaseBlockEvaluation(
         let r = env.evaluateCompletion(node, strictCode);
         invariant(!(r instanceof Reference));
 
-        if (r instanceof ReturnCompletion
-            || r instanceof ForkedAbruptCompletion
-            || r instanceof ThrowCompletion) {
+        if (r instanceof ReturnCompletion || r instanceof ForkedAbruptCompletion || r instanceof ThrowCompletion) {
           throw r;
         }
 
