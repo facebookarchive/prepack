@@ -31,7 +31,7 @@ export default function(realm: Realm): NativeFunctionValue {
       }
 
       // b. Let s be ? ToString(value).
-      s = To.ToStringValue(realm, value);
+      s = new StringValue(realm, To.ToStringPartial(realm, value));
     }
 
     // 3. If NewTarget is undefined, return s.
