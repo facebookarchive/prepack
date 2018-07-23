@@ -35,6 +35,7 @@ export class SourceMapManager {
         // A buckRoot is unnecessary if there are no sourcemaps to translate between.
         // It actually causes paths to become incorrect, preventing proper files from opening.
         this._buckRoot = "";
+        return;
       }
       this._buckRoot = buckRoot;
       if (this._buckRoot[this._buckRoot.length - 1] === "/") {
@@ -43,7 +44,7 @@ export class SourceMapManager {
       }
     } else {
       // If sourcemaps don't exist, set prefixes to undefined and break.
-      if (sourceMaps) {
+      if (sourceMaps && sourceMaps.length > 0) {
         for (let map of sourceMaps) {
           if (map.sourceMapContents === undefined || map.sourceMapContents === "") {
             this._sourcemapCommonPrefix = undefined;
