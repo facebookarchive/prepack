@@ -70,7 +70,9 @@ function AbstractCaseBlockEvaluation(
 
         console.log(r.toDisplayString());
 
-        if (r instanceof ReturnCompletion || r instanceof ForkedAbruptCompletion || r instanceof ThrowCompletion) {
+        if (r instanceof ReturnCompletion
+            || r instanceof ForkedAbruptCompletion
+            || r instanceof ThrowCompletion) {
           throw r;
         }
 
