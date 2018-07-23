@@ -527,10 +527,10 @@ export class ResidualOperationSerializer {
   }
 
   _serializeDerivedAbstractInvariant(
-    { typeofString }: OperationDescriptorData,
-    [propName, typeofNode]: Array<BabelNodeExpression>
+    data: OperationDescriptorData,
+    [typeOfStringNode, typeofNode]: Array<BabelNodeExpression>
   ) {
-    invariant(typeofString !== undefined);
+    let typeofString = ((typeOfStringNode: any): BabelNodeStringLiteral).value;
     let condition = t.binaryExpression("!==", t.unaryExpression("typeof", typeofNode), t.stringLiteral(typeofString));
     if (typeofString === "object") {
       condition = t.logicalExpression(

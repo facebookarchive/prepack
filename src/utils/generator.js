@@ -169,7 +169,6 @@ export type OperationDescriptorData = {
   thisArg?: BaseValue | Value,
   template?: PreludeGenerator => ({}) => BabelNodeExpression,
   typeComparisons?: Set<typeof Value>,
-  typeofString?: string,
   usesThis?: boolean,
   value?: Value,
   violationConditionOperationDescriptor?: OperationDescriptor,
@@ -1089,8 +1088,8 @@ export class Generator {
       // Verify that the types are as expected, a failure of this invariant
       // should mean the model is wrong.
       this._emitInvariant(
-        [new StringValue(this.realm, ""), res, res],
-        createOperationDescriptor("DERIVED_ABSTRACT_INVARIANT", { typeofString }),
+        [new StringValue(this.realm, typeofString), res, res],
+        createOperationDescriptor("DERIVED_ABSTRACT_INVARIANT"),
         createOperationDescriptor("SINGLE_ARG")
       );
     }
