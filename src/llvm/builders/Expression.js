@@ -338,6 +338,11 @@ export function buildFromExpression(state: CompilerState, expr: BabelNodeExpress
     case "LogicalExpression": {
       let left = buildFromExpression(state, expr.left, builder);
       let right = buildFromExpression(state, expr.right, builder);
+      if (isNumericType(state, left.type) && isNumericType(state, right.type)) {
+        // If both are numbers, force them both to be doubles.
+        left = buildToNumber(state, left, builder);
+        right = buildToNumber(state, right, builder);
+      }
       if (!left.type.equals(right.type)) {
         let error = new CompilerDiagnostic(
           `Logical operators must result in the same type in the LLVM backend.`,
@@ -360,6 +365,11 @@ export function buildFromExpression(state: CompilerState, expr: BabelNodeExpress
       let condition = buildToBoolean(state, buildFromExpression(state, expr.test, builder), builder);
       let consequentValue = buildFromExpression(state, expr.consequent, builder);
       let alternateValue = buildFromExpression(state, expr.alternate, builder);
+      if (isNumericType(state, consequentValue.type) && isNumericType(state, alternateValue.type)) {
+        // If both are numbers, force them both to be doubles.
+        consequentValue = buildToNumber(state, consequentValue, builder);
+        alternateValue = buildToNumber(state, alternateValue, builder);
+      }
       if (!consequentValue.type.equals(alternateValue.type)) {
         let error = new CompilerDiagnostic(
           `Conditions must result in the same type in the LLVM backend.`,
