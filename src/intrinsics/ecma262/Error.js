@@ -11,10 +11,11 @@
 
 import type { Realm } from "../../realm.js";
 import type { LexicalEnvironment } from "../../environment.js";
-import { ObjectValue, FunctionValue, NativeFunctionValue, StringValue } from "../../values/index.js";
+import { AbstractValue, ObjectValue, FunctionValue, NativeFunctionValue, StringValue } from "../../values/index.js";
 import { Get } from "../../methods/index.js";
 import { Create, Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
+import buildExpressionTemplate from "../../utils/builder.js";
 import type { BabelNodeSourceLocation } from "@babel/types";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -76,23 +77,23 @@ export function describeLocation(
   return location;
 }
 
-function buildStack(realm: Realm, context: ObjectValue) {
+const buildStackTemplateSrc = "A + B + C";
+const buildStackTemplate = buildExpressionTemplate(buildStackTemplateSrc);
+
+function buildStack(realm: Realm, context: ObjectValue): Value {
   invariant(context.$ErrorData);
 
   let stack = context.$ErrorData.contextStack;
   if (!stack) return realm.intrinsics.undefined;
 
   let lines = [];
-  let header = "";
+  let header = `${To.ToStringPartial(realm, Get(realm, context, "name"))}: `;
 
-  header += To.ToStringPartial(realm, Get(realm, context, "name"));
-
-  let msg = Get(realm, context, "message");
-  if (!msg.mightBeUndefined()) {
-    msg = To.ToStringPartial(realm, msg);
-    if (msg) header += `: ${msg}`;
+  let message = Get(realm, context, "message");
+  if (!message.mightBeUndefined()) {
+    message = To.ToStringValue(realm, message);
   } else {
-    msg.throwIfNotConcrete();
+    message.throwIfNotConcrete();
   }
 
   for (let executionContext of stack.reverse()) {
@@ -106,8 +107,17 @@ function buildStack(realm: Realm, context: ObjectValue) {
     );
     if (locString !== undefined) lines.push(locString);
   }
+  let footer = `\n    ${lines.join("\n    ")}`;
 
-  return new StringValue(realm, `${header}\n    ${lines.join("\n    ")}`);
+  return message instanceof StringValue
+    ? new StringValue(realm, `${header}${message.value}${footer}`)
+    : AbstractValue.createFromTemplate(
+        realm,
+        buildStackTemplate,
+        StringValue,
+        [new StringValue(realm, header), message, new StringValue(realm, footer)],
+        buildStackTemplateSrc
+      );
 }
 
 export function build(name: string, realm: Realm, inheritError?: boolean = true): NativeFunctionValue {
