@@ -77,7 +77,7 @@ export function describeLocation(
   return location;
 }
 
-const buildStackTemplateSrc = "A + B + C";
+const buildStackTemplateSrc = 'A + (B ? ": " + B : "") + C';
 const buildStackTemplate = buildExpressionTemplate(buildStackTemplateSrc);
 
 function buildStack(realm: Realm, context: ObjectValue): Value {
@@ -87,7 +87,7 @@ function buildStack(realm: Realm, context: ObjectValue): Value {
   if (!stack) return realm.intrinsics.undefined;
 
   let lines = [];
-  let header = `${To.ToStringPartial(realm, Get(realm, context, "name"))}: `;
+  let header = To.ToStringPartial(realm, Get(realm, context, "name"));
 
   let message = Get(realm, context, "message");
   if (!message.mightBeUndefined()) {
@@ -110,7 +110,7 @@ function buildStack(realm: Realm, context: ObjectValue): Value {
   let footer = `\n    ${lines.join("\n    ")}`;
 
   return message instanceof StringValue
-    ? new StringValue(realm, `${header}${message.value}${footer}`)
+    ? new StringValue(realm, `${header}${message.value ? `: ${message.value}` : ""}${footer}`)
     : AbstractValue.createFromTemplate(
         realm,
         buildStackTemplate,
