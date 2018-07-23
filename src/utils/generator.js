@@ -67,7 +67,6 @@ export type OperationDescriptorType =
   | "ABSTRACT_OBJECT_GET_PARTIAL"
   | "ABSTRACT_OBJECT_GET_PROTO_OF"
   | "ABSTRACT_OBJECT_SET_PARTIAL"
-  | "ABSTRACT_OBJECT_SET_PARTIAL_VALUE"
   | "ABSTRACT_PROPERTY"
   | "APPEND_GENERATOR"
   | "ASSUME_CALL"
@@ -136,8 +135,6 @@ export type OperationDescriptorType =
   | "UNKNOWN_ARRAY_METHOD_CALL"
   | "UNKNOWN_ARRAY_METHOD_PROPERTY_CALL"
   | "UPDATE_INCREMENTOR"
-  | "WIDEN_ABSTRACT_PROPERTY"
-  | "WIDEN_ABSTRACT_PROPERTY_ASSIGNMENT"
   | "WIDEN_PROPERTY"
   | "WIDEN_PROPERTY_ASSIGNMENT"
   | "WIDENED_IDENTIFIER";
@@ -165,7 +162,6 @@ export type OperationDescriptorData = {
   prefix?: boolean,
   path?: Value,
   propertyGetter?: SupportedGraphQLGetters,
-  propName?: string,
   propRef?: ReferenceName | AbstractValue,
   object?: ObjectValue,
   quasis?: Array<any>,
@@ -757,22 +753,22 @@ export class Generator {
 
   emitGlobalAssignment(key: string, value: Value): void {
     this._addEntry({
-      args: [value],
-      operationDescriptor: createOperationDescriptor("GLOBAL_ASSIGNMENT", { propName: key }),
+      args: [value, new StringValue(this.realm, key)],
+      operationDescriptor: createOperationDescriptor("GLOBAL_ASSIGNMENT"),
     });
   }
 
   emitConcreteModel(key: string, value: Value): void {
     this._addEntry({
-      args: [concretize(this.realm, value)],
-      operationDescriptor: createOperationDescriptor("CONCRETE_MODEL", { propName: key }),
+      args: [concretize(this.realm, value), new StringValue(this.realm, key)],
+      operationDescriptor: createOperationDescriptor("CONCRETE_MODEL"),
     });
   }
 
   emitGlobalDelete(key: string): void {
     this._addEntry({
-      args: [],
-      operationDescriptor: createOperationDescriptor("GLOBAL_DELETE", { propName: key }),
+      args: [new StringValue(this.realm, key)],
+      operationDescriptor: createOperationDescriptor("GLOBAL_DELETE"),
     });
   }
 
@@ -783,8 +779,8 @@ export class Generator {
   emitPropertyAssignment(object: ObjectValue, key: string, value: Value): void {
     if (object.refuseSerialization) return;
     this._addEntry({
-      args: [object, value],
-      operationDescriptor: createOperationDescriptor("EMIT_PROPERTY_ASSIGNMENT", { propName: key, value }),
+      args: [object, value, new StringValue(this.realm, key)],
+      operationDescriptor: createOperationDescriptor("EMIT_PROPERTY_ASSIGNMENT", { value }),
     });
   }
 
@@ -800,12 +796,13 @@ export class Generator {
       invariant(descValue instanceof Value);
       this._addEntry({
         args: [
+          new StringValue(this.realm, key),
           object,
           descValue,
           desc.get || object.$Realm.intrinsics.undefined,
           desc.set || object.$Realm.intrinsics.undefined,
         ],
-        operationDescriptor: createOperationDescriptor("DEFINE_PROPERTY", { object, propName: key, desc }),
+        operationDescriptor: createOperationDescriptor("DEFINE_PROPERTY", { object, desc }),
       });
     }
   }
@@ -813,8 +810,8 @@ export class Generator {
   emitPropertyDelete(object: ObjectValue, key: string): void {
     if (object.refuseSerialization) return;
     this._addEntry({
-      args: [object],
-      operationDescriptor: createOperationDescriptor("PROPERTY_DELETE", { propName: key }),
+      args: [object, new StringValue(this.realm, key)],
+      operationDescriptor: createOperationDescriptor("PROPERTY_DELETE"),
     });
   }
 
@@ -827,8 +824,11 @@ export class Generator {
 
   emitConsoleLog(method: ConsoleMethodTypes, args: Array<string | ConcreteValue>): void {
     this._addEntry({
-      args: args.map(v => (typeof v === "string" ? new StringValue(this.realm, v) : v)),
-      operationDescriptor: createOperationDescriptor("CONSOLE_LOG", { propName: method }),
+      args: [
+        new StringValue(this.realm, method),
+        ...args.map(v => (typeof v === "string" ? new StringValue(this.realm, v) : v)),
+      ],
+      operationDescriptor: createOperationDescriptor("CONSOLE_LOG"),
     });
   }
 
@@ -903,9 +903,9 @@ export class Generator {
         return;
       } else {
         this._emitInvariant(
-          [value, value],
+          [new StringValue(this.realm, key), value, value],
           createOperationDescriptor("FULL_INVARIANT_ABSTRACT", { concreteComparisons, typeComparisons }),
-          createOperationDescriptor("INVARIANT_APPEND", { propName: key })
+          createOperationDescriptor("INVARIANT_APPEND")
         );
       }
     } else if (value instanceof FunctionValue) {
@@ -913,15 +913,15 @@ export class Generator {
       // as we like to use concrete functions in the model to model abstract behaviors.
       // These concrete functions do not have the right identity.
       this._emitInvariant(
-        [object, value, object],
-        createOperationDescriptor("FULL_INVARIANT_FUNCTION", { propName: key }),
-        createOperationDescriptor("INVARIANT_APPEND", { propName: key })
+        [new StringValue(this.realm, key), object, value, object],
+        createOperationDescriptor("FULL_INVARIANT_FUNCTION"),
+        createOperationDescriptor("INVARIANT_APPEND")
       );
     } else {
       this._emitInvariant(
-        [object, value, object],
-        createOperationDescriptor("FULL_INVARIANT", { propName: key }),
-        createOperationDescriptor("INVARIANT_APPEND", { propName: key })
+        [new StringValue(this.realm, key), object, value, object],
+        createOperationDescriptor("FULL_INVARIANT"),
+        createOperationDescriptor("INVARIANT_APPEND")
       );
     }
   }
@@ -933,9 +933,9 @@ export class Generator {
   ): void {
     if (object.refuseSerialization) return;
     this._emitInvariant(
-      [object, object],
-      createOperationDescriptor("PROPERTY_INVARIANT", { state, propName: key }),
-      createOperationDescriptor("INVARIANT_APPEND", { propName: key })
+      [new StringValue(this.realm, key), object, object],
+      createOperationDescriptor("PROPERTY_INVARIANT", { state }),
+      createOperationDescriptor("INVARIANT_APPEND")
     );
   }
 
@@ -1089,7 +1089,7 @@ export class Generator {
       // Verify that the types are as expected, a failure of this invariant
       // should mean the model is wrong.
       this._emitInvariant(
-        [res, res],
+        [new StringValue(this.realm, ""), res, res],
         createOperationDescriptor("DERIVED_ABSTRACT_INVARIANT", { typeofString }),
         createOperationDescriptor("SINGLE_ARG")
       );
@@ -1161,10 +1161,9 @@ export class Generator {
       this._entries.push(...other._entries);
     } else {
       this._addEntry({
-        args: [],
+        args: [new StringValue(this.realm, leadingComment)],
         operationDescriptor: createOperationDescriptor("APPEND_GENERATOR", {
           generator: other,
-          propName: leadingComment,
         }),
       });
     }

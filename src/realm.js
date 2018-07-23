@@ -1686,8 +1686,8 @@ export class Realm {
     if (!propertyValue.isIntrinsic()) {
       propertyValue.intrinsicName = `${path}.${key}`;
       propertyValue.kind = "rebuiltProperty";
-      propertyValue.args = [object];
-      propertyValue.operationDescriptor = createOperationDescriptor("REBUILT_OBJECT", { propName: key });
+      propertyValue.args = [object, new StringValue(this, key)];
+      propertyValue.operationDescriptor = createOperationDescriptor("REBUILT_OBJECT");
       let intrinsicName = propertyValue.intrinsicName;
       invariant(intrinsicName !== undefined);
       this.rebuildNestedProperties(propertyValue, intrinsicName);

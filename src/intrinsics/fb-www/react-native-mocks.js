@@ -1659,8 +1659,8 @@ export function createMockReactNative(realm: Realm, reactNativeRequireName: stri
   let RCTViewDerivedReference = AbstractValue.createTemporalFromBuildFunction(
     realm,
     StringValue,
-    [],
-    createOperationDescriptor("REACT_NATIVE_STRING_LITERAL", { propName: "RCTView" }),
+    [new StringValue(realm, "RCTView")],
+    createOperationDescriptor("REACT_NATIVE_STRING_LITERAL"),
     { skipInvariant: true, isPure: true }
   );
   invariant(RCTViewDerivedReference instanceof AbstractValue);
@@ -1669,8 +1669,8 @@ export function createMockReactNative(realm: Realm, reactNativeRequireName: stri
   let RCTTextDerivedReference = AbstractValue.createTemporalFromBuildFunction(
     realm,
     StringValue,
-    [],
-    createOperationDescriptor("REACT_NATIVE_STRING_LITERAL", { propName: "RCTText" }),
+    [new StringValue(realm, "RCTText")],
+    createOperationDescriptor("REACT_NATIVE_STRING_LITERAL"),
     { skipInvariant: true, isPure: true }
   );
   invariant(RCTTextDerivedReference instanceof AbstractValue);

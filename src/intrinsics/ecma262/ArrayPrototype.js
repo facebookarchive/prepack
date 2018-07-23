@@ -56,11 +56,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("concat") === undefined
     ) {
-      let newArgs = [O, ...args];
+      let newArgs = [O, new StringValue(realm, "concat"), ...args];
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         newArgs,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "concat" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -156,7 +156,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm.isInPureScope() &&
         O.$GetOwnProperty("copyWithin") === undefined
       ) {
-        let args = [O, target];
+        let args = [O, new StringValue(realm, "copyWithin"), target];
         if (start) {
           args.push(start);
         }
@@ -167,7 +167,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
           realm,
           BooleanValue,
           args,
-          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "copyWithin" })
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
         );
         return O;
       }
@@ -266,8 +266,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
       return AbstractValue.createTemporalFromBuildFunction(
         realm,
         Value,
-        [O],
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "entries" })
+        [O, new StringValue(realm, "entries")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -288,7 +288,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("every") === undefined
     ) {
-      let args = [O, callbackfn];
+      let args = [O, new StringValue(realm, "every"), callbackfn];
       if (thisArg) {
         args.push(thisArg);
       }
@@ -296,7 +296,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         BooleanValue,
         args,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "every" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -355,7 +355,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("fill") === undefined
     ) {
-      let args = [O, value];
+      let args = [O, new StringValue(realm, "fill"), value];
       if (start) {
         args.push(start);
       }
@@ -366,7 +366,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         Value,
         args,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "fill" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
       return O;
     }
@@ -412,14 +412,14 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("filter") === undefined
     ) {
-      let args = [O, callbackfn];
+      let args = [O, new StringValue(realm, "filter"), callbackfn];
       if (thisArg) {
         args.push(thisArg);
       }
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         args,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "filter" }),
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL"),
         { func: callbackfn, thisVal: thisArg }
       );
     }
@@ -491,7 +491,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("find") === undefined
     ) {
-      let args = [O, predicate];
+      let args = [O, new StringValue(realm, "find"), predicate];
       if (thisArg) {
         args.push(thisArg);
       }
@@ -499,7 +499,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         Value,
         args,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "find" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -552,7 +552,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("findIndex") === undefined
     ) {
-      let args = [O, predicate];
+      let args = [O, new StringValue(realm, "findIndex"), predicate];
       if (thisArg) {
         args.push(thisArg);
       }
@@ -560,7 +560,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         NumberValue,
         args,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "findIndex" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -613,7 +613,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("forEach") === undefined
     ) {
-      let args = [O, callbackfn];
+      let args = [O, new StringValue(realm, "forEach"), callbackfn];
       if (thisArg) {
         args.push(thisArg);
       }
@@ -621,7 +621,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         BooleanValue,
         args,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "forEach" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
       return realm.intrinsics.undefined;
     }
@@ -679,7 +679,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm.isInPureScope() &&
         O.$GetOwnProperty("includes") === undefined
       ) {
-        let args = [O, searchElement];
+        let args = [O, new StringValue(realm, "includes"), searchElement];
         if (fromIndex) {
           args.push(fromIndex);
         }
@@ -687,7 +687,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
           realm,
           BooleanValue,
           args,
-          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "includes" })
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
         );
       }
 
@@ -742,7 +742,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("indexOf") === undefined
     ) {
-      let args = [O, searchElement];
+      let args = [O, new StringValue(realm, "indexOf"), searchElement];
       if (fromIndex) {
         args.push(fromIndex);
       }
@@ -750,7 +750,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         NumberValue,
         args,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "indexOf" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -818,7 +818,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("join") === undefined
     ) {
-      let args = [O];
+      let args = [O, new StringValue(realm, "join")];
       if (separator) {
         args.push(separator);
       }
@@ -826,7 +826,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         StringValue,
         args,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "join" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -899,8 +899,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
       return AbstractValue.createTemporalFromBuildFunction(
         realm,
         Value,
-        [O],
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "keys" })
+        [O, new StringValue(realm, "keys")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -921,7 +921,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("lastIndexOf") === undefined
     ) {
-      let args = [O, searchElement];
+      let args = [O, new StringValue(realm, "lastIndexOf"), searchElement];
       if (fromIndex) {
         args.push(fromIndex);
       }
@@ -929,7 +929,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         NumberValue,
         args,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "lastIndexOf" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -988,14 +988,14 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("map") === undefined
     ) {
-      let args = [O, callbackfn];
+      let args = [O, new StringValue(realm, "map"), callbackfn];
       if (thisArg) {
         args.push(thisArg);
       }
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         args,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "map" }),
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL"),
         { func: callbackfn, thisVal: thisArg }
       );
     }
@@ -1084,8 +1084,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
       return AbstractValue.createTemporalFromBuildFunction(
         realm,
         Value,
-        [O],
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "pop" })
+        [O, new StringValue(realm, "pop")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -1137,8 +1137,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
       return AbstractValue.createTemporalFromBuildFunction(
         realm,
         NumberValue,
-        [O, ...args],
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "push" })
+        [O, new StringValue(realm, "push"), ...args],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -1188,7 +1188,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("reduce") === undefined
     ) {
-      let args = [O, callbackfn];
+      let args = [O, new StringValue(realm, "reduce"), callbackfn];
       if (initialValue) {
         args.push(initialValue);
       }
@@ -1196,7 +1196,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         Value,
         args,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "reduce" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -1295,7 +1295,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("reduceRight") === undefined
     ) {
-      let args = [O, callbackfn];
+      let args = [O, new StringValue(realm, "reduceRight"), callbackfn];
       if (initialValue) {
         args.push(initialValue);
       }
@@ -1303,7 +1303,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         Value,
         args,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "reduceRight" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -1403,8 +1403,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
       AbstractValue.createTemporalFromBuildFunction(
         realm,
         ArrayValue,
-        [O],
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "reverse" })
+        [O, new StringValue(realm, "reverse")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
       return O;
     }
@@ -1506,8 +1506,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
       return AbstractValue.createTemporalFromBuildFunction(
         realm,
         Value,
-        [O],
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "shift" })
+        [O, new StringValue(realm, "shift")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -1577,11 +1577,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("slice") === undefined
     ) {
-      let newArgs = [O, start, end];
+      let newArgs = [O, new StringValue(realm, "slice"), start, end];
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         newArgs,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "slice" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -1653,7 +1653,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("some") === undefined
     ) {
-      let args = [O, callbackfn];
+      let args = [O, new StringValue(realm, "some"), callbackfn];
       if (thisArg) {
         args.push(thisArg);
       }
@@ -1661,7 +1661,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         BooleanValue,
         args,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "some" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -1723,12 +1723,12 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("sort") === undefined
     ) {
-      let args = [O, comparefn];
+      let args = [O, new StringValue(realm, "sort"), comparefn];
       AbstractValue.createTemporalFromBuildFunction(
         realm,
         Value,
         args,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "sort" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
       // context is returned instead of O at the end of this method
       // so we do the same here
@@ -1909,7 +1909,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("splice") === undefined
     ) {
-      let args = [O, start];
+      let args = [O, new StringValue(realm, "splice"), start];
       if (deleteCount) {
         args.push(deleteCount);
       }
@@ -1920,7 +1920,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm,
         ArrayValue,
         args,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "splice" })
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -2120,8 +2120,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
       return AbstractValue.createTemporalFromBuildFunction(
         realm,
         StringValue,
-        [array],
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "toLocaleString" })
+        [array, new StringValue(realm, "toLocaleString")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -2200,8 +2200,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
       return AbstractValue.createTemporalFromBuildFunction(
         realm,
         NumberValue,
-        [O],
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "unshift" })
+        [O, new StringValue(realm, "unshift")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
