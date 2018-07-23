@@ -39,8 +39,8 @@ export default function(realm: Realm): NativeFunctionValue {
         return AbstractValue.createTemporalFromBuildFunction(
           realm,
           StringValue,
-          [array],
-          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL", { propName: "toString" })
+          [array, new StringValue(realm, "toString")],
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
         );
       }
 
