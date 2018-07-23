@@ -262,7 +262,6 @@ export class WidenImplementation {
             (key instanceof AbstractValue && !(key.mightNotBeString() && key.mightNotBeNumber()))
           ) {
             if (typeof key === "string") {
-              debugger;
               pathNode = AbstractValue.createFromWidenedProperty(
                 realm,
                 rval,

@@ -385,7 +385,6 @@ export class ResidualOperationSerializer {
   }
 
   _serializeWidenProperty(data: OperationDescriptorData, [o, propName]: Array<BabelNodeExpression>) {
-    debugger;
     return memberExpressionHelper(o, propName);
   }
 
@@ -593,28 +592,23 @@ export class ResidualOperationSerializer {
   }
 
   _serializeConditionalPropertyAssignment(
-    { binding: _binding, path, value }: OperationDescriptorData,
-    [o, v, e]: Array<BabelNodeExpression>,
+    { path, value }: OperationDescriptorData,
+    [o, v, e, keyKey]: Array<BabelNodeExpression>,
     context?: SerializationContext,
     valuesToProcess?: Set<AbstractValue | ObjectValue>
   ) {
     invariant(value instanceof AbstractValue);
     invariant(path instanceof AbstractValue);
-    invariant(_binding !== undefined);
-    let binding = ((_binding: any): PropertyBinding);
-    invariant(value !== undefined);
-    let keyKey = binding.key;
-    invariant(typeof keyKey === "string");
     let mightHaveBeenDeleted = value.mightHaveBeenDeleted();
     let mightBeUndefined = value.mightBeUndefined();
     invariant(path.operationDescriptor !== undefined);
-    let lh = this.serialize(path.operationDescriptor, [o, t.identifier(keyKey)], context, valuesToProcess);
+    let lh = this.serialize(path.operationDescriptor, [o, keyKey], context, valuesToProcess);
     let r = t.expressionStatement(t.assignmentExpression("=", (lh: any), v));
     if (mightHaveBeenDeleted) {
       // If v === __empty || (v === undefined  && !(key.key in o))  then delete it
       let emptyTest = t.binaryExpression("===", v, e);
       let undefinedTest = t.binaryExpression("===", v, voidExpression);
-      let inTest = t.unaryExpression("!", t.binaryExpression("in", t.stringLiteral(keyKey), o));
+      let inTest = t.unaryExpression("!", t.binaryExpression("in", keyKey, o));
       let guard = t.logicalExpression("||", emptyTest, t.logicalExpression("&&", undefinedTest, inTest));
       let deleteIt = t.expressionStatement(t.unaryExpression("delete", (lh: any)));
       return t.ifStatement(mightBeUndefined ? emptyTest : guard, deleteIt, r);

@@ -1196,8 +1196,8 @@ export class Realm {
       if (typeof keyKey === "string") {
         if (path !== undefined) {
           gen.emitStatement(
-            [key.object, tval || value, this.intrinsics.empty],
-            createOperationDescriptor("CONDITIONAL_PROPERTY_ASSIGNMENT", { binding: key, path, value })
+            [key.object, tval || value, this.intrinsics.empty, new StringValue(this, keyKey)],
+            createOperationDescriptor("CONDITIONAL_PROPERTY_ASSIGNMENT", { path, value })
           );
         } else {
           // RH value was not widened, so it must have been a constant. We don't need to assign that inside the loop.

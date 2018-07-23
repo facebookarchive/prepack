@@ -52,9 +52,6 @@ export function memberExpressionHelper(
   } else if (t.isStringLiteral(property)) {
     propertyExpression = getAsPropertyNameExpression(((property: any): BabelNodeStringLiteral).value);
     computed = !t.isIdentifier(propertyExpression);
-  } else if (t.isIdentifier(property)) {
-    propertyExpression = getAsPropertyNameExpression(((property: any): BabelNodeStringLiteral).name);
-    computed = !t.isIdentifier(propertyExpression);
   } else {
     propertyExpression = property;
     computed = true;
