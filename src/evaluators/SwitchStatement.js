@@ -17,6 +17,7 @@ import { computeBinary } from "./BinaryExpression.js";
 import {
   AbruptCompletion,
   BreakCompletion,
+  ThrowCompletion,
   ForkedAbruptCompletion,
   SimpleNormalCompletion,
   PossiblyNormalCompletion,
@@ -67,7 +68,9 @@ function AbstractCaseBlockEvaluation(
         let r = env.evaluateCompletion(node, strictCode);
         invariant(!(r instanceof Reference));
 
-        if (r instanceof ReturnCompletion || r instanceof ForkedAbruptCompletion) {
+        console.log(r.toDisplayString());
+
+        if (r instanceof ReturnCompletion || r instanceof ForkedAbruptCompletion || r instanceof ThrowCompletion) {
           throw r;
         }
 
