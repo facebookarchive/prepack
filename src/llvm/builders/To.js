@@ -13,7 +13,15 @@ import type { CompilerState } from "../CompilerState.js";
 
 import invariant from "../../invariant.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
-import { Value as LLVMValue, Type as LLVMType, ConstantInt, ConstantFP, IRBuilder, UndefValue } from "llvm-node";
+import {
+  Value as LLVMValue,
+  Type as LLVMType,
+  Constant,
+  ConstantInt,
+  ConstantFP,
+  IRBuilder,
+  UndefValue,
+} from "llvm-node";
 import { llvmContext } from "../llvm-context.js";
 
 import { buildFromStringValue, getStringLength } from "./StringValue.js";
@@ -69,6 +77,9 @@ export function buildToNumber(state: CompilerState, value: LLVMValue, builder: I
     );
     state.realm.handleError(error);
     throw new FatalError();
+  } else if (value.type.isVoidTy() || (value instanceof Constant && value.isNullValue())) {
+    // Undefined or Null
+    return ConstantFP.get(llvmContext, 0);
   } else {
     invariant(false, "only string, boolean and numbers should need toNumber");
   }
@@ -138,7 +149,7 @@ export function buildToUint32(state: CompilerState, value: LLVMValue, builder: I
     // Unsigned Integral
     return value;
   } else {
-    return buildToInt32(state, buildToNumber(state, value, builder), builder);
+    return buildToUint32(state, buildToNumber(state, value, builder), builder);
   }
 }
 
@@ -164,7 +175,13 @@ export function buildToString(state: CompilerState, value: LLVMValue, builder: I
   } else if (state.intrinsics.isStringType(value.type)) {
     // String
     return value;
+  } else if (value.type.isVoidTy()) {
+    // Undefined
+    return buildFromStringValue(state, "undefined", builder);
+  } else if (value instanceof Constant && value.isNullValue()) {
+    // Null
+    return buildFromStringValue(state, "null", builder);
   } else {
-    invariant(false, "only string, boolean and numbers should need toString");
+    invariant(false, "only string, boolean, undefined, null and numbers should need toString");
   }
 }

@@ -175,14 +175,7 @@ function buildNewValue(state: CompilerState, value: Value, builder: IRBuilder): 
   } else if (value instanceof EmptyValue) {
     invariant(false, "Since we never serialize objects we should never need the empty value.");
   } else if (value instanceof UndefinedValue) {
-    let error = new CompilerDiagnostic(
-      "The value undefined cannot be used in this operation. Convert it to a null if you want to pass null.",
-      value.expressionLocation,
-      "PP2000",
-      "FatalError"
-    );
-    state.realm.handleError(error);
-    throw new FatalError();
+    return Constant.getNullValue(LLVMType.getVoidTy(llvmContext));
   } else if (value instanceof SymbolValue) {
     return buildFromSymbolValue(state, value, builder);
   } else if (value instanceof StringValue) {
