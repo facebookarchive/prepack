@@ -619,7 +619,6 @@ export class ToImplementation {
   GetToPrimitivePureResultType(realm: Realm, input: Value): void | typeof Value {
     let type = input.getType();
     if (input instanceof PrimitiveValue) return type;
-    if (type === SymbolValue) return undefined;
     if (input instanceof AbstractValue && !input.mightBeObject()) return PrimitiveValue;
     return undefined;
   }
@@ -712,6 +711,16 @@ export class ToImplementation {
     } else {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "unknown value type, can't coerce to string");
     }
+  }
+
+  IsToStringPure(realm: Realm, input: string | Value): boolean {
+    if (input instanceof Value) {
+      if (this.IsToPrimitivePure(realm, input)) {
+        let type = input.getType();
+        return type !== SymbolValue && type !== PrimitiveValue && type !== Value;
+      }
+    }
+    return true;
   }
 
   ToStringPartial(realm: Realm, val: string | Value): string {
