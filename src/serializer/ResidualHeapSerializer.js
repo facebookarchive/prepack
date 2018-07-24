@@ -41,7 +41,9 @@ import type {
   BabelNodeFile,
   BabelNodeFunctionExpression,
 } from "@babel/types";
-import { Generator, PreludeGenerator, NameGenerator } from "../utils/generator.js";
+import { Generator } from "../utils/generator.js";
+import { PreludeGenerator } from "../utils/PreludeGenerator.js";
+import { NameGenerator } from "../utils/NameGenerator.js";
 import type { OperationDescriptor, SerializationContext } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import type {
@@ -2144,8 +2146,31 @@ export class ResidualHeapSerializer {
 
         return ((serializedValue: any): BabelNodeStatement);
       },
-      serializeValue: this.serializeValue.bind(this),
       serializeBinding: this.serializeBinding.bind(this),
+      serializeBindingAssignment: (binding: Binding, bindingValue: Value) => {
+        let serializeBinding = this.serializeBinding(binding);
+        let serializedValue = context.serializeValue(bindingValue);
+        return t.expressionStatement(t.assignmentExpression("=", serializeBinding, serializedValue));
+      },
+      serializeCondition: (
+        condition: Value,
+        consequentGenerator: Generator,
+        alternateGenerator: Generator,
+        valuesToProcess: Set<AbstractValue | ObjectValue>
+      ) => {
+        let serializedCondition = this.serializeValue(condition);
+        let consequentBody = context.serializeGenerator(consequentGenerator, valuesToProcess);
+        let alternateBody = context.serializeGenerator(alternateGenerator, valuesToProcess);
+        return t.ifStatement(serializedCondition, t.blockStatement(consequentBody), t.blockStatement(alternateBody));
+      },
+      serializeDebugScopeComment(declared: ObjectValue | AbstractValue) {
+        let s = t.emptyStatement();
+        s.leadingComments = [({ type: "BlockComment", value: `declaring ${declared.intrinsicName || "?"}` }: any)];
+        return s;
+      },
+      serializeReturnValue: (val: Value) => {
+        return t.returnStatement(this.serializeValue(val));
+      },
       serializeGenerator: (
         generator: Generator,
         valuesToProcess: Set<AbstractValue | ObjectValue>
@@ -2153,6 +2178,7 @@ export class ResidualHeapSerializer {
         this._withGeneratorScope("Generator", generator, valuesToProcess, () =>
           generator.serialize(((context: any): SerializationContext))
         ),
+      serializeValue: this.serializeValue.bind(this),
       initGenerator: (generator: Generator) => {
         let activeGeneratorBody = this._getActiveBodyOfGenerator(generator);
         invariant(activeGeneratorBody === this.emitter.getBody(), "generator to init must be current emitter body");
