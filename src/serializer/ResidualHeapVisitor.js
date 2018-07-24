@@ -66,6 +66,7 @@ import { ResidualReactElementVisitor } from "./ResidualReactElementVisitor.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
 
 export type Scope = FunctionValue | Generator;
+
 type BindingState = {|
   capturedBindings: Set<ResidualFunctionBinding>,
   capturingFunctions: Set<FunctionValue>,
@@ -254,6 +255,14 @@ export class ResidualHeapVisitor {
 
   // Queues up an action to be later processed in some arbitrary scope.
   _enqueueWithUnrelatedScope(scope: Scope, action: () => void | boolean): void {
+    // If we are in a zone with a non-default equivalence set (we are wrapped in a `withCleanEquivalenceSet` call) then
+    // we need to save our equivalence set so that we may load it before running our action.
+    if (this.residualReactElementVisitor.defaultEquivalenceSet === false) {
+      const save = this.residualReactElementVisitor.saveEquivalenceSet();
+      const originalAction = action;
+      action = () => this.residualReactElementVisitor.loadEquivalenceSet(save, originalAction);
+    }
+
     this.delayedActions.push({ scope, action });
   }
 
@@ -1114,10 +1123,7 @@ export class ResidualHeapVisitor {
         this.referencedDeclaredValues.set(value, this._getAdditionalFunctionOfScope());
       },
       recordDelayedEntry: (generator, entry: GeneratorEntry) => {
-        this.delayedActions.push({
-          scope: generator,
-          action: () => entry.visit(callbacks, generator),
-        });
+        this._enqueueWithUnrelatedScope(generator, () => entry.visit(callbacks, generator));
       },
       visitModifiedProperty: (binding: PropertyBinding) => {
         let fixpoint_rerun = () => {
@@ -1224,7 +1230,7 @@ export class ResidualHeapVisitor {
     // Set Visitor state
     // Allows us to emit function declarations etc. inside of this additional
     // function instead of adding them at global scope
-    this.residualReactElementVisitor.withCleanEquivalenceSet(() => {
+    let visitor = () => {
       invariant(funcInstance !== undefined);
       invariant(functionInfo !== undefined);
       let additionalFunctionInfo = {
@@ -1238,7 +1244,13 @@ export class ResidualHeapVisitor {
       let effectsGenerator = additionalEffects.generator;
       this.generatorDAG.add(functionValue, effectsGenerator);
       this.visitGenerator(effectsGenerator, additionalFunctionInfo);
-    });
+    };
+
+    if (this.realm.react.enabled) {
+      this.residualReactElementVisitor.withCleanEquivalenceSet(visitor);
+    } else {
+      visitor();
+    }
   }
 
   visitRoots(): void {
