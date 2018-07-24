@@ -14,7 +14,7 @@ import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { canHoistReactElement } from "../react/hoisting.js";
 import * as t from "@babel/types";
 import type { BabelNode, BabelNodeExpression } from "@babel/types";
-import { AbstractValue, AbstractObjectValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
+import { AbstractValue, AbstractObjectValue, ObjectValue, SymbolValue, FunctionValue, Value } from "../values/index.js";
 import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
 import { Logger } from "../utils/logger.js";
 import invariant from "../invariant.js";
@@ -59,7 +59,7 @@ export class ResidualReactElementSerializer {
   logger: Logger;
   reactOutput: ReactOutputTypes;
   residualHeapSerializer: ResidualHeapSerializer;
-  _lazilyHoistedNodes: Map<void | FunctionValue, LazilyHoistedNodes>;
+  _lazilyHoistedNodes: Map<FunctionValue, LazilyHoistedNodes>;
 
   _createReactElement(value: ObjectValue): ReactElement {
     return { attributes: [], children: [], declared: false, type: undefined, value };
@@ -82,7 +82,7 @@ export class ResidualReactElementSerializer {
   ): void {
     // if the currentHoistedReactElements is not defined, we create it an emit the function call
     // this should only occur once per additional function
-    let optimizedFunction = this.residualHeapSerializer.tryGetOptimizedFunctionRoot(reactElement);
+    const optimizedFunction = this.residualHeapSerializer.tryGetOptimizedFunctionRoot(reactElement);
     invariant(optimizedFunction);
     let lazilyHoistedNodes = this._lazilyHoistedNodes.get(optimizedFunction);
     if (lazilyHoistedNodes === undefined) {
@@ -156,15 +156,18 @@ export class ResidualReactElementSerializer {
           originalCreateElementIdentifier = this.residualHeapSerializer.serializeValue(createElement);
 
           if (shouldHoist) {
-            // if we haven't created a _lazilyHoistedNodes before, then this is the first time
+            const optimizedFunction = this.residualHeapSerializer.tryGetOptimizedFunctionRoot(value);
+            invariant(optimizedFunction);
+            const lazilyHoistedNodes = this._lazilyHoistedNodes.get(optimizedFunction);
+            // if we haven't created a lazilyHoistedNodes before, then this is the first time
             // so we only create the hoisted identifier once
-            if (this._lazilyHoistedNodes === undefined) {
+            if (lazilyHoistedNodes === undefined) {
               // create a new unique instance
               hoistedCreateElementIdentifier = t.identifier(
                 this.residualHeapSerializer.intrinsicNameGenerator.generate()
               );
             } else {
-              hoistedCreateElementIdentifier = this._lazilyHoistedNodes.createElementIdentifier;
+              hoistedCreateElementIdentifier = lazilyHoistedNodes.createElementIdentifier;
             }
           }
 
