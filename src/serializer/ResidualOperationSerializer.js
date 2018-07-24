@@ -12,11 +12,11 @@
 import { Realm } from "../realm.js";
 import {
   Generator,
-  PreludeGenerator,
   type SerializationContext,
   type OperationDescriptor,
   type OperationDescriptorData,
 } from "../utils/generator.js";
+import { PreludeGenerator } from "../utils/PreludeGenerator.js";
 import {
   emptyExpression,
   memberExpressionHelper,

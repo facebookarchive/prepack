@@ -18,7 +18,8 @@ import type {
 } from "@babel/types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
-import { createOperationDescriptor, PreludeGenerator, type OperationDescriptor } from "../utils/generator.js";
+import { createOperationDescriptor, type OperationDescriptor } from "../utils/generator.js";
+import { PreludeGenerator } from "../utils/PreludeGenerator.js";
 import type { PropertyKeyValue, ShapeInformationInterface } from "../types.js";
 import buildExpressionTemplate from "../utils/builder.js";
 

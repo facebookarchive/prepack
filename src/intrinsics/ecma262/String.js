@@ -10,7 +10,7 @@
 /* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
-import { NativeFunctionValue, NumberValue, StringValue, SymbolValue } from "../../values/index.js";
+import { NativeFunctionValue, NumberValue, StringValue, SymbolValue, Value } from "../../values/index.js";
 import { Get, GetPrototypeFromConstructor, SymbolDescriptiveString } from "../../methods/index.js";
 import { Create, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
@@ -18,7 +18,7 @@ import invariant from "../../invariant.js";
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 21.1.1
   let func = new NativeFunctionValue(realm, "String", "String", 1, (context, [value], argCount, NewTarget) => {
-    let s: ?StringValue;
+    let s: ?Value;
 
     // 1. If no arguments were passed to this function invocation, let s be "".
     if (argCount === 0) {
@@ -31,13 +31,14 @@ export default function(realm: Realm): NativeFunctionValue {
       }
 
       // b. Let s be ? ToString(value).
-      s = new StringValue(realm, To.ToStringPartial(realm, value));
+      s = To.ToStringValue(realm, value);
     }
 
     // 3. If NewTarget is undefined, return s.
     if (!NewTarget) return s;
 
     // 4. Return ? StringCreate(s, ? GetPrototypeFromConstructor(NewTarget, "%StringPrototype%")).
+    s = s.throwIfNotConcreteString();
     return Create.StringCreate(realm, s, GetPrototypeFromConstructor(realm, NewTarget, "StringPrototype"));
   });
 

@@ -11,7 +11,7 @@
 
 import buildTemplate from "@babel/template";
 import type { BabelNodeExpression } from "@babel/types";
-import type { PreludeGenerator } from "./generator.js";
+import type { PreludeGenerator } from "./PreludeGenerator.js";
 import invariant from "../invariant.js";
 
 const placeholders = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
