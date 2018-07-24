@@ -19,7 +19,7 @@ export class Completion {
     let e = precedingEffects;
     if (e !== undefined) {
       if (e.result === undefined) e.result = this;
-      else e = new Effects(this, e.generator, e.modifiedBindings, e.modifiedProperties, e.createdObjects);
+      else e = e.shallowCloneWithResult(this);
     }
     this.value = value;
     this.effects = e;
@@ -183,13 +183,7 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
   updateConsequentKeepingCurrentEffects(newConsequent: AbruptCompletion): AbruptCompletion {
     let e = this.consequent.effects;
     invariant(e);
-    newConsequent.effects = new Effects(
-      newConsequent,
-      e.generator,
-      e.modifiedBindings,
-      e.modifiedProperties,
-      e.createdObjects
-    );
+    newConsequent.effects = e.shallowCloneWithResult(newConsequent);
     this.consequent = newConsequent;
     return this;
   }
@@ -197,13 +191,7 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
   updateAlternateKeepingCurrentEffects(newAlternate: AbruptCompletion): AbruptCompletion {
     let e = this.alternate.effects;
     invariant(e);
-    newAlternate.effects = new Effects(
-      newAlternate,
-      e.generator,
-      e.modifiedBindings,
-      e.modifiedProperties,
-      e.createdObjects
-    );
+    newAlternate.effects = e.shallowCloneWithResult(newAlternate);
     this.alternate = newAlternate;
     return this;
   }
@@ -319,7 +307,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   updateConsequentKeepingCurrentEffects(newConsequent: Completion): PossiblyNormalCompletion {
     if (newConsequent instanceof NormalCompletion) this.value = newConsequent.value;
     let e = this.consequentEffects;
-    let effects = new Effects(newConsequent, e.generator, e.modifiedBindings, e.modifiedProperties, e.createdObjects);
+    let effects = e.shallowCloneWithResult(newConsequent);
     this.consequent = effects.result;
     return this;
   }
@@ -327,7 +315,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   updateAlternateKeepingCurrentEffects(newAlternate: Completion): PossiblyNormalCompletion {
     if (newAlternate instanceof NormalCompletion) this.value = newAlternate.value;
     let e = this.alternateEffects;
-    let effects = new Effects(newAlternate, e.generator, e.modifiedBindings, e.modifiedProperties, e.createdObjects);
+    let effects = e.shallowCloneWithResult(newAlternate);
     this.alternate = effects.result;
     return this;
   }
