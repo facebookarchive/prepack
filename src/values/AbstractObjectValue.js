@@ -518,8 +518,8 @@ export default class AbstractObjectValue extends AbstractValue {
         let propAbsVal = AbstractValue.createTemporalFromBuildFunction(
           this.$Realm,
           type,
-          [ob],
-          createOperationDescriptor("ABSTRACT_OBJECT_GET", { propertyGetter, propName: P }),
+          [ob, new StringValue(this.$Realm, P)],
+          createOperationDescriptor("ABSTRACT_OBJECT_GET", { propertyGetter }),
           {
             skipInvariant: true,
             isPure: true,
@@ -766,18 +766,15 @@ export default class AbstractObjectValue extends AbstractValue {
             let generator = this.$Realm.generator;
             invariant(generator);
 
-            if (P instanceof StringValue) {
-              P = P.value;
-            }
             if (typeof P === "string") {
               generator.emitStatement(
-                [Receiver, V],
-                createOperationDescriptor("ABSTRACT_OBJECT_SET_PARTIAL", { propName: P })
+                [Receiver, new StringValue(this.$Realm, P), V],
+                createOperationDescriptor("ABSTRACT_OBJECT_SET_PARTIAL")
               );
             } else {
               // Coercion can only have effects on anything reachable from the key.
               Havoc.value(this.$Realm, P);
-              generator.emitStatement([Receiver, P, V], createOperationDescriptor("ABSTRACT_OBJECT_SET_PARTIAL_VALUE"));
+              generator.emitStatement([Receiver, P, V], createOperationDescriptor("ABSTRACT_OBJECT_SET_PARTIAL"));
             }
             return this.$Realm.intrinsics.undefined;
           },

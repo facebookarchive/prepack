@@ -19,7 +19,7 @@ import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } fr
 import { Reference } from "../environment.js";
 import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComparison } from "./index.js";
 import { Generator, createOperationDescriptor } from "../utils/generator.js";
-import { AbstractValue, ArrayValue, EmptyValue, Value } from "../values/index.js";
+import { AbstractValue, ArrayValue, EmptyValue, Value, StringValue } from "../values/index.js";
 
 import invariant from "../invariant.js";
 
@@ -265,8 +265,8 @@ export class WidenImplementation {
               pathNode = AbstractValue.createFromWidenedProperty(
                 realm,
                 rval,
-                [b.object],
-                createOperationDescriptor("WIDEN_PROPERTY", { propName: key })
+                [b.object, new StringValue(realm, key)],
+                createOperationDescriptor("WIDEN_PROPERTY")
               );
             } else {
               invariant(key instanceof AbstractValue);
@@ -274,7 +274,7 @@ export class WidenImplementation {
                 realm,
                 rval,
                 [b.object, key],
-                createOperationDescriptor("WIDEN_ABSTRACT_PROPERTY")
+                createOperationDescriptor("WIDEN_PROPERTY")
               );
             }
             // The value of the property at the start of the loop needs to be written to the property
@@ -290,8 +290,8 @@ export class WidenImplementation {
                 generator.emitVoidExpression(
                   rval.types,
                   rval.values,
-                  [b.object, initVal],
-                  createOperationDescriptor("WIDEN_PROPERTY_ASSIGNMENT", { propName: key })
+                  [b.object, new StringValue(realm, key), initVal],
+                  createOperationDescriptor("WIDEN_PROPERTY_ASSIGNMENT")
                 );
               } else {
                 invariant(key instanceof AbstractValue);
@@ -299,7 +299,7 @@ export class WidenImplementation {
                   rval.types,
                   rval.values,
                   [b.object, key, initVal],
-                  createOperationDescriptor("WIDEN_ABSTRACT_PROPERTY_ASSIGNMENT")
+                  createOperationDescriptor("WIDEN_PROPERTY_ASSIGNMENT")
                 );
               }
             }

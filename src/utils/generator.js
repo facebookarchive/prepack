@@ -48,18 +48,16 @@ import {
 import type {
   BabelNodeExpression,
   BabelNodeIdentifier,
-  BabelNodeThisExpression,
-  BabelNodeStatement,
   BabelNodeMemberExpression,
+  BabelNodeStatement,
   BabelNodeVariableDeclaration,
   BabelNodeBlockStatement,
   BabelNodeLVal,
 } from "@babel/types";
-import { memberExpressionHelper } from "./babelhelpers.js";
 import { concretize, Utils } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";
 import type { ShapeInformationInterface } from "../types.js";
-import * as t from "@babel/types";
+import { PreludeGenerator } from "./PreludeGenerator.js";
 
 export type OperationDescriptorType =
   | "ABSTRACT_FROM_TEMPLATE"
@@ -67,7 +65,6 @@ export type OperationDescriptorType =
   | "ABSTRACT_OBJECT_GET_PARTIAL"
   | "ABSTRACT_OBJECT_GET_PROTO_OF"
   | "ABSTRACT_OBJECT_SET_PARTIAL"
-  | "ABSTRACT_OBJECT_SET_PARTIAL_VALUE"
   | "ABSTRACT_PROPERTY"
   | "APPEND_GENERATOR"
   | "ASSUME_CALL"
@@ -136,8 +133,6 @@ export type OperationDescriptorType =
   | "UNKNOWN_ARRAY_METHOD_CALL"
   | "UNKNOWN_ARRAY_METHOD_PROPERTY_CALL"
   | "UPDATE_INCREMENTOR"
-  | "WIDEN_ABSTRACT_PROPERTY"
-  | "WIDEN_ABSTRACT_PROPERTY_ASSIGNMENT"
   | "WIDEN_PROPERTY"
   | "WIDEN_PROPERTY_ASSIGNMENT"
   | "WIDENED_IDENTIFIER";
@@ -165,7 +160,6 @@ export type OperationDescriptorData = {
   prefix?: boolean,
   path?: Value,
   propertyGetter?: SupportedGraphQLGetters,
-  propName?: string,
   propRef?: ReferenceName | AbstractValue,
   object?: ObjectValue,
   quasis?: Array<any>,
@@ -173,7 +167,6 @@ export type OperationDescriptorData = {
   thisArg?: BaseValue | Value,
   template?: PreludeGenerator => ({}) => BabelNodeExpression,
   typeComparisons?: Set<typeof Value>,
-  typeofString?: string,
   usesThis?: boolean,
   value?: Value,
   violationConditionOperationDescriptor?: OperationDescriptor,
@@ -200,15 +193,19 @@ export type SerializationContext = {|
     SerializationContext,
     Set<AbstractValue | ObjectValue>
   ) => BabelNodeStatement,
-  serializeValue: Value => BabelNodeExpression,
   serializeBinding: Binding => BabelNodeIdentifier | BabelNodeMemberExpression,
+  serializeBindingAssignment: (Binding, Value) => BabelNodeStatement,
+  serializeCondition: (Value, Generator, Generator, Set<AbstractValue | ObjectValue>) => BabelNodeStatement,
+  serializeDebugScopeComment: (AbstractValue | ObjectValue) => BabelNodeStatement,
+  serializeReturnValue: Value => BabelNodeStatement,
+  serializeGenerator: (Generator, Set<AbstractValue | ObjectValue>) => Array<BabelNodeStatement>,
+  serializeValue: Value => BabelNodeExpression,
   getPropertyAssignmentStatement: (
     location: BabelNodeLVal,
     value: Value,
     mightHaveBeenDeleted: boolean,
     deleteIfMightHaveBeenDeleted: boolean
   ) => BabelNodeStatement,
-  serializeGenerator: (Generator, Set<AbstractValue | ObjectValue>) => Array<BabelNodeStatement>,
   initGenerator: Generator => void,
   finalizeGenerator: Generator => void,
   emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
@@ -352,9 +349,7 @@ export class TemporalOperationEntry extends GeneratorEntry {
         }
         let declared = this.declared;
         if (declared !== undefined && context.options.debugScopes) {
-          let s = t.emptyStatement();
-          s.leadingComments = [({ type: "BlockComment", value: `declaring ${declared.intrinsicName || "?"}` }: any)];
-          context.emit(s);
+          context.emit(context.serializeDebugScopeComment(declared));
         }
         context.emit(node);
         context.processValues(valuesToProcess);
@@ -505,8 +500,7 @@ class ReturnValueEntry extends GeneratorEntry {
   }
 
   serialize(context: SerializationContext): void {
-    let result = context.serializeValue(this.returnValue);
-    context.emit(t.returnStatement(result));
+    context.emit(context.serializeReturnValue(this.returnValue));
   }
 
   getDependencies(): void | Array<Generator> {
@@ -557,11 +551,10 @@ class IfThenElseEntry extends GeneratorEntry {
   }
 
   serialize(context: SerializationContext): void {
-    let condition = context.serializeValue(this.condition);
     let valuesToProcess = new Set();
-    let consequentBody = context.serializeGenerator(this.consequentGenerator, valuesToProcess);
-    let alternateBody = context.serializeGenerator(this.alternateGenerator, valuesToProcess);
-    context.emit(t.ifStatement(condition, t.blockStatement(consequentBody), t.blockStatement(alternateBody)));
+    context.emit(
+      context.serializeCondition(this.condition, this.consequentGenerator, this.alternateGenerator, valuesToProcess)
+    );
     context.processValues(valuesToProcess);
   }
 
@@ -585,11 +578,7 @@ class BindingAssignmentEntry extends GeneratorEntry {
   }
 
   serialize(context: SerializationContext): void {
-    context.emit(
-      t.expressionStatement(
-        t.assignmentExpression("=", context.serializeBinding(this.binding), context.serializeValue(this.value))
-      )
-    );
+    context.emit(context.serializeBindingAssignment(this.binding, this.value));
   }
 
   visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
@@ -757,22 +746,22 @@ export class Generator {
 
   emitGlobalAssignment(key: string, value: Value): void {
     this._addEntry({
-      args: [value],
-      operationDescriptor: createOperationDescriptor("GLOBAL_ASSIGNMENT", { propName: key }),
+      args: [value, new StringValue(this.realm, key)],
+      operationDescriptor: createOperationDescriptor("GLOBAL_ASSIGNMENT"),
     });
   }
 
   emitConcreteModel(key: string, value: Value): void {
     this._addEntry({
-      args: [concretize(this.realm, value)],
-      operationDescriptor: createOperationDescriptor("CONCRETE_MODEL", { propName: key }),
+      args: [concretize(this.realm, value), new StringValue(this.realm, key)],
+      operationDescriptor: createOperationDescriptor("CONCRETE_MODEL"),
     });
   }
 
   emitGlobalDelete(key: string): void {
     this._addEntry({
-      args: [],
-      operationDescriptor: createOperationDescriptor("GLOBAL_DELETE", { propName: key }),
+      args: [new StringValue(this.realm, key)],
+      operationDescriptor: createOperationDescriptor("GLOBAL_DELETE"),
     });
   }
 
@@ -783,8 +772,8 @@ export class Generator {
   emitPropertyAssignment(object: ObjectValue, key: string, value: Value): void {
     if (object.refuseSerialization) return;
     this._addEntry({
-      args: [object, value],
-      operationDescriptor: createOperationDescriptor("EMIT_PROPERTY_ASSIGNMENT", { propName: key, value }),
+      args: [object, value, new StringValue(this.realm, key)],
+      operationDescriptor: createOperationDescriptor("EMIT_PROPERTY_ASSIGNMENT", { value }),
     });
   }
 
@@ -800,12 +789,13 @@ export class Generator {
       invariant(descValue instanceof Value);
       this._addEntry({
         args: [
+          new StringValue(this.realm, key),
           object,
           descValue,
           desc.get || object.$Realm.intrinsics.undefined,
           desc.set || object.$Realm.intrinsics.undefined,
         ],
-        operationDescriptor: createOperationDescriptor("DEFINE_PROPERTY", { object, propName: key, desc }),
+        operationDescriptor: createOperationDescriptor("DEFINE_PROPERTY", { object, desc }),
       });
     }
   }
@@ -813,8 +803,8 @@ export class Generator {
   emitPropertyDelete(object: ObjectValue, key: string): void {
     if (object.refuseSerialization) return;
     this._addEntry({
-      args: [object],
-      operationDescriptor: createOperationDescriptor("PROPERTY_DELETE", { propName: key }),
+      args: [object, new StringValue(this.realm, key)],
+      operationDescriptor: createOperationDescriptor("PROPERTY_DELETE"),
     });
   }
 
@@ -827,8 +817,11 @@ export class Generator {
 
   emitConsoleLog(method: ConsoleMethodTypes, args: Array<string | ConcreteValue>): void {
     this._addEntry({
-      args: args.map(v => (typeof v === "string" ? new StringValue(this.realm, v) : v)),
-      operationDescriptor: createOperationDescriptor("CONSOLE_LOG", { propName: method }),
+      args: [
+        new StringValue(this.realm, method),
+        ...args.map(v => (typeof v === "string" ? new StringValue(this.realm, v) : v)),
+      ],
+      operationDescriptor: createOperationDescriptor("CONSOLE_LOG"),
     });
   }
 
@@ -903,9 +896,9 @@ export class Generator {
         return;
       } else {
         this._emitInvariant(
-          [value, value],
+          [new StringValue(this.realm, key), value, value],
           createOperationDescriptor("FULL_INVARIANT_ABSTRACT", { concreteComparisons, typeComparisons }),
-          createOperationDescriptor("INVARIANT_APPEND", { propName: key })
+          createOperationDescriptor("INVARIANT_APPEND")
         );
       }
     } else if (value instanceof FunctionValue) {
@@ -913,15 +906,15 @@ export class Generator {
       // as we like to use concrete functions in the model to model abstract behaviors.
       // These concrete functions do not have the right identity.
       this._emitInvariant(
-        [object, value, object],
-        createOperationDescriptor("FULL_INVARIANT_FUNCTION", { propName: key }),
-        createOperationDescriptor("INVARIANT_APPEND", { propName: key })
+        [new StringValue(this.realm, key), object, value, object],
+        createOperationDescriptor("FULL_INVARIANT_FUNCTION"),
+        createOperationDescriptor("INVARIANT_APPEND")
       );
     } else {
       this._emitInvariant(
-        [object, value, object],
-        createOperationDescriptor("FULL_INVARIANT", { propName: key }),
-        createOperationDescriptor("INVARIANT_APPEND", { propName: key })
+        [new StringValue(this.realm, key), object, value, object],
+        createOperationDescriptor("FULL_INVARIANT"),
+        createOperationDescriptor("INVARIANT_APPEND")
       );
     }
   }
@@ -933,9 +926,9 @@ export class Generator {
   ): void {
     if (object.refuseSerialization) return;
     this._emitInvariant(
-      [object, object],
-      createOperationDescriptor("PROPERTY_INVARIANT", { state, propName: key }),
-      createOperationDescriptor("INVARIANT_APPEND", { propName: key })
+      [new StringValue(this.realm, key), object, object],
+      createOperationDescriptor("PROPERTY_INVARIANT", { state }),
+      createOperationDescriptor("INVARIANT_APPEND")
     );
   }
 
@@ -1089,8 +1082,8 @@ export class Generator {
       // Verify that the types are as expected, a failure of this invariant
       // should mean the model is wrong.
       this._emitInvariant(
-        [res, res],
-        createOperationDescriptor("DERIVED_ABSTRACT_INVARIANT", { typeofString }),
+        [new StringValue(this.realm, typeofString), res, res],
+        createOperationDescriptor("DERIVED_ABSTRACT_INVARIANT"),
         createOperationDescriptor("SINGLE_ARG")
       );
     }
@@ -1161,10 +1154,9 @@ export class Generator {
       this._entries.push(...other._entries);
     } else {
       this._addEntry({
-        args: [],
+        args: [new StringValue(this.realm, leadingComment)],
         operationDescriptor: createOperationDescriptor("APPEND_GENERATOR", {
           generator: other,
-          propName: leadingComment,
         }),
       });
     }
@@ -1179,133 +1171,6 @@ export class Generator {
       operationDescriptor: createOperationDescriptor("JOIN_GENERATORS", { generators }),
       dependencies: generators,
     });
-  }
-}
-
-function escapeInvalidIdentifierCharacters(s: string): string {
-  let res = "";
-  for (let c of s)
-    if ((c >= "0" && c <= "9") || (c >= "a" && c <= "z") || (c >= "A" && c <= "Z")) res += c;
-    else res += "_" + c.charCodeAt(0);
-  return res;
-}
-
-const base62characters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-function base62encode(n: number): string {
-  invariant((n | 0) === n && n >= 0);
-  if (n === 0) return "0";
-  let s = "";
-  while (n > 0) {
-    let f = n % base62characters.length;
-    s = base62characters[f] + s;
-    n = (n - f) / base62characters.length;
-  }
-  return s;
-}
-
-export class NameGenerator {
-  constructor(forbiddenNames: Set<string>, debugNames: boolean, uniqueSuffix: string, prefix: string) {
-    this.prefix = prefix;
-    this.uidCounter = 0;
-    this.debugNames = debugNames;
-    this.forbiddenNames = forbiddenNames;
-    this.uniqueSuffix = uniqueSuffix;
-  }
-  prefix: string;
-  uidCounter: number;
-  debugNames: boolean;
-  forbiddenNames: Set<string>;
-  uniqueSuffix: string;
-  generate(debugSuffix: ?string): string {
-    let id;
-    do {
-      id = this.prefix + base62encode(this.uidCounter++);
-      if (this.uniqueSuffix.length > 0) id += this.uniqueSuffix;
-      if (this.debugNames) {
-        if (debugSuffix) id += "_" + escapeInvalidIdentifierCharacters(debugSuffix);
-        else id += "_";
-      }
-    } while (this.forbiddenNames.has(id));
-    return id;
-  }
-}
-
-export class PreludeGenerator {
-  constructor(debugNames: ?boolean, uniqueSuffix: ?string) {
-    this.prelude = [];
-    this.memoizedRefs = new Map();
-    this.nameGenerator = new NameGenerator(new Set(), !!debugNames, uniqueSuffix || "", "_$");
-    this.usesThis = false;
-    this.declaredGlobals = new Set();
-    this.nextInvariantId = 0;
-  }
-
-  prelude: Array<BabelNodeStatement>;
-  memoizedRefs: Map<string, BabelNodeIdentifier>;
-  nameGenerator: NameGenerator;
-  usesThis: boolean;
-  declaredGlobals: Set<string>;
-  nextInvariantId: number;
-
-  createNameGenerator(prefix: string): NameGenerator {
-    return new NameGenerator(
-      this.nameGenerator.forbiddenNames,
-      this.nameGenerator.debugNames,
-      this.nameGenerator.uniqueSuffix,
-      prefix
-    );
-  }
-
-  convertStringToMember(str: string): BabelNodeIdentifier | BabelNodeThisExpression | BabelNodeMemberExpression {
-    return str
-      .split(".")
-      .map(name => {
-        if (name === "global") {
-          return this.memoizeReference(name);
-        } else if (name === "this") {
-          return t.thisExpression();
-        } else {
-          return t.identifier(name);
-        }
-      })
-      .reduce((obj, prop) => t.memberExpression(obj, prop));
-  }
-
-  globalReference(key: string, globalScope: boolean = false): BabelNodeIdentifier | BabelNodeMemberExpression {
-    if (globalScope && t.isValidIdentifier(key)) return t.identifier(key);
-    return memberExpressionHelper(this.memoizeReference("global"), key);
-  }
-
-  memoizeReference(key: string): BabelNodeIdentifier {
-    let ref = this.memoizedRefs.get(key);
-    if (ref) return ref;
-
-    let init;
-    if (key.includes("(") || key.includes("[")) {
-      // Horrible but effective hack:
-      // Some internal object have intrinsic names such as
-      //    ([][Symbol.iterator]().__proto__.__proto__)
-      // and
-      //    RegExp.prototype[Symbol.match]
-      // which get turned into a babel node here.
-      // TODO: We should properly parse such a string, and memoize all references in it separately.
-      // Instead, we just turn it into a funky identifier, which Babel seems to accept.
-      init = t.identifier(key);
-    } else if (key === "global") {
-      this.usesThis = true;
-      init = t.thisExpression();
-    } else {
-      let i = key.lastIndexOf(".");
-      if (i === -1) {
-        init = t.memberExpression(this.memoizeReference("global"), t.identifier(key));
-      } else {
-        init = t.memberExpression(this.memoizeReference(key.substr(0, i)), t.identifier(key.substr(i + 1)));
-      }
-    }
-    ref = t.identifier(this.nameGenerator.generate(key));
-    this.prelude.push(t.variableDeclaration("var", [t.variableDeclarator(ref, init)]));
-    this.memoizedRefs.set(key, ref);
-    return ref;
   }
 }
 

@@ -65,12 +65,8 @@ import {
 import type { Compatibility, RealmOptions, ReactOutputTypes, InvariantModeTypes } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
-import {
-  createOperationDescriptor,
-  Generator,
-  PreludeGenerator,
-  type TemporalOperationEntry,
-} from "./utils/generator.js";
+import { createOperationDescriptor, Generator, type TemporalOperationEntry } from "./utils/generator.js";
+import { PreludeGenerator } from "./utils/PreludeGenerator.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "@babel/types";
@@ -127,6 +123,10 @@ export class Effects {
   createdObjects: CreatedObjects;
   canBeApplied: boolean;
   _id: number;
+
+  shallowCloneWithResult(result: Completion): Effects {
+    return new Effects(result, this.generator, this.modifiedBindings, this.modifiedProperties, this.createdObjects);
+  }
 
   toDisplayString(): string {
     return Utils.jsonToDisplayString(this, 10);
@@ -1197,8 +1197,8 @@ export class Realm {
       if (typeof keyKey === "string") {
         if (path !== undefined) {
           gen.emitStatement(
-            [key.object, tval || value, this.intrinsics.empty],
-            createOperationDescriptor("CONDITIONAL_PROPERTY_ASSIGNMENT", { binding: key, path, value })
+            [key.object, tval || value, this.intrinsics.empty, new StringValue(this, keyKey)],
+            createOperationDescriptor("CONDITIONAL_PROPERTY_ASSIGNMENT", { path, value })
           );
         } else {
           // RH value was not widened, so it must have been a constant. We don't need to assign that inside the loop.
@@ -1687,8 +1687,8 @@ export class Realm {
     if (!propertyValue.isIntrinsic()) {
       propertyValue.intrinsicName = `${path}.${key}`;
       propertyValue.kind = "rebuiltProperty";
-      propertyValue.args = [object];
-      propertyValue.operationDescriptor = createOperationDescriptor("REBUILT_OBJECT", { propName: key });
+      propertyValue.args = [object, new StringValue(this, key)];
+      propertyValue.operationDescriptor = createOperationDescriptor("REBUILT_OBJECT");
       let intrinsicName = propertyValue.intrinsicName;
       invariant(intrinsicName !== undefined);
       this.rebuildNestedProperties(propertyValue, intrinsicName);

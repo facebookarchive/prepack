@@ -1181,15 +1181,14 @@ export class PropertiesImplementation {
 
       invariant(realm.generator);
       let propName = P;
-      if (P instanceof StringValue) {
-        propName = P.value;
+      if (typeof propName === "string") {
+        propName = new StringValue(realm, propName);
       }
-      invariant(typeof propName === "string");
       let absVal = AbstractValue.createTemporalFromBuildFunction(
         realm,
         Value,
-        [O._templateFor || O],
-        createOperationDescriptor("ABSTRACT_PROPERTY", { propName }),
+        [O._templateFor || O, propName],
+        createOperationDescriptor("ABSTRACT_PROPERTY"),
         { isPure: true }
       );
       // TODO: We can't be sure what the descriptor will be, but the value will be abstract.
@@ -1216,16 +1215,16 @@ export class PropertiesImplementation {
                 return AbstractValue.createFromBuildFunction(
                   realm,
                   type,
-                  [O._templateFor || O],
-                  createOperationDescriptor("ABSTRACT_PROPERTY", { propName: P }),
+                  [O._templateFor || O, new StringValue(realm, P)],
+                  createOperationDescriptor("ABSTRACT_PROPERTY"),
                   { kind: AbstractValue.makeKind("property", P) }
                 );
               } else {
                 return AbstractValue.createTemporalFromBuildFunction(
                   realm,
                   type,
-                  [O._templateFor || O],
-                  createOperationDescriptor("ABSTRACT_PROPERTY", { propName: P }),
+                  [O._templateFor || O, new StringValue(realm, P)],
+                  createOperationDescriptor("ABSTRACT_PROPERTY"),
                   { skipInvariant: true, isPure: true }
                 );
               }
