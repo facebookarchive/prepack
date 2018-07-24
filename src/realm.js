@@ -124,6 +124,10 @@ export class Effects {
   canBeApplied: boolean;
   _id: number;
 
+  shallowCloneWithResult(result: Completion): Effects {
+    return new Effects(result, this.generator, this.modifiedBindings, this.modifiedProperties, this.createdObjects);
+  }
+
   toDisplayString(): string {
     return Utils.jsonToDisplayString(this, 10);
   }
