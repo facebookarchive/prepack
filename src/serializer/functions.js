@@ -303,8 +303,7 @@ export class Functions {
       let fun1Location = fun1.expressionLocation;
       let fun1Name =
         this.functionExpressions.get(fun1) ||
-        fun1.intrinsicName ||
-        fun1.__originalName ||
+        fun1.getDebugName() ||
         `(unknown function ${fun1Location ? stringOfLocation(fun1Location) : ""})`;
       // Also do argument validation here
       let additionalFunctionEffects = this.writeEffects.get(fun1);
@@ -327,8 +326,7 @@ export class Functions {
         let fun2Location = fun2.expressionLocation;
         let fun2Name =
           this.functionExpressions.get(fun2) ||
-          fun2.intrinsicName ||
-          fun2.__originalName ||
+          fun2.getDebugName() ||
           `(unknown function ${fun2Location ? stringOfLocation(fun2Location) : ""})`;
         let reportFn = () => {
           this.reportWriteConflicts(fun1Name, fun2Name, conflicts, e1.modifiedProperties, this._callOfFunction(fun2));
@@ -368,13 +366,14 @@ export class Functions {
       key?: string,
       originalLocation: BabelNodeSourceLocation | void | null
     ) => {
-      let firstLocationString = originalLocation ? ` ${stringOfLocation(originalLocation)}` : "";
-      let propString = key ? `${object ? "" : "<unknown>"}.${key} ` : "";
-      let objectString = ` ${object}${propString}`;
+      let firstLocationString = originalLocation ? `${stringOfLocation(originalLocation)}` : "";
+      let propString = key ? ` "${key}"` : "";
+      let objectString = object ? ` on object "${object}" ` : "";
+      if (!objectString && key) objectString = " on <unnamed object> ";
       let error = new CompilerDiagnostic(
-        `Property modification${objectString}at${firstLocationString} in "${f1name}" conflicts with access at ${
+        `Write to property${propString}${objectString}at optimized function ${f1name}[${firstLocationString}] conflicts with access in function ${f2name}[${
           location.start.line
-        }:${location.start.column} in optimized function "${f2name}"`,
+        }:${location.start.column}]`,
         location,
         "PP1003",
         "FatalError"
@@ -390,7 +389,7 @@ export class Functions {
       let location = this.realm.currentLocation;
       invariant(location);
       if (writtenObjects.has(ob) && !conflicts.has(location))
-        reportConflict(location, ob.intrinsicName || ob.__originalName, undefined, ob.expressionLocation);
+        reportConflict(location, ob.getDebugName(), undefined, ob.expressionLocation);
     };
     let oldReportPropertyAccess = this.realm.reportPropertyAccess;
     this.realm.reportPropertyAccess = (pb: PropertyBinding) => {
@@ -403,12 +402,7 @@ export class Functions {
             ? pb.descriptor.value.expressionLocation
             : undefined;
         let keyString = pb.key instanceof Value ? pb.key.toDisplayString() : pb.key;
-        reportConflict(
-          location,
-          pb.object ? pb.object.intrinsicName || pb.object.__originalName : undefined,
-          keyString,
-          originalLocation
-        );
+        reportConflict(location, pb.object ? pb.object.getDebugName() : undefined, keyString, originalLocation);
       }
     };
     try {
