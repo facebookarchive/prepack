@@ -26,9 +26,9 @@ import type { DebuggerConfigArguments, DebugReproArguments } from "./types";
 
 export default function(
   opts: RealmOptions = {},
-  debugReproArgs: void | DebugReproArguments,
   debuggerConfigArgs: void | DebuggerConfigArguments,
-  statistics: void | RealmStatistics = undefined
+  statistics: void | RealmStatistics = undefined,
+  debugReproArgs: void | DebugReproArguments
 ): Realm {
   initializeSingletons();
   let r = new Realm(opts, statistics || new RealmStatistics());

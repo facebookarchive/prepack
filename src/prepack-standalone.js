@@ -40,9 +40,9 @@ export function prepackSources(
   realmOptions.errorHandler = options.errorHandler;
   let realm = construct_realm(
     realmOptions,
-    options.debugReproArgs,
     options.debuggerConfigArgs,
-    statistics || new SerializerStatistics()
+    statistics || new SerializerStatistics(),
+    options.debugReproArgs
   );
   initializeGlobals(realm);
   if (typeof options.additionalGlobals === "function") {
