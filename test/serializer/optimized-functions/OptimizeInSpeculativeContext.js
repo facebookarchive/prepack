@@ -1,4 +1,4 @@
-// Does not contain:5
+// does not contain:= 5
 let obj1 = global.__abstract
   ? __abstract("object", '({get foo() { return "bar"; }})')
   : {

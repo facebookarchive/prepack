@@ -279,6 +279,21 @@ export class Functions {
       );
       invariant(additionalFunctionEffects);
       effects = additionalFunctionEffects.effects;
+      let oldWriteEffects = this.writeEffects.get(functionValue);
+      let removeIds = string => string.replace(/.*id:.*/g, "");
+      if (
+        oldWriteEffects &&
+        removeIds(oldWriteEffects.effects.toDisplayString()) !==
+          removeIds(additionalFunctionEffects.effects.toDisplayString())
+      ) {
+        let error = new CompilerDiagnostic(
+          "Trying to optimize a function with two parent optimized functions, but got different effects each time.",
+          functionValue.expressionLocation,
+          "PP1009",
+          "FatalError"
+        );
+        if (realm.handleError(error) !== "Recover") throw new FatalError();
+      }
       this.writeEffects.set(functionValue, additionalFunctionEffects);
 
       // Conceptually this will ensure that the nested additional function is defined
