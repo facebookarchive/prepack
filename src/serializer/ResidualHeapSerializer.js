@@ -2300,7 +2300,7 @@ export class ResidualHeapSerializer {
         invariant(effectsGenerator === generator);
         effectsGenerator.serialize(this._getContext());
         this.realm.withEffectsAppliedInGlobalEnv(() => {
-          const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
+          const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes(functionValue);
           this.mainBody.entries.push(...lazyHoistedReactNodes);
           return null;
         }, additionalEffects.effects);
