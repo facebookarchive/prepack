@@ -323,3 +323,7 @@ it("Hoist Fragment", () => {
 it("Pathological case", () => {
   runTest(__dirname + "/FunctionalComponents/pathological-case.js");
 });
+
+it("Model props", () => {
+  runTest(__dirname + "/FunctionalComponents/model-props.js");
+});

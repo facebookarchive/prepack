@@ -775,6 +775,7 @@ export function convertConfigObjectToReactComponentTreeConfig(
   // defaults
   let firstRenderOnly = false;
   let isRoot = false;
+  let modelString;
 
   if (!(config instanceof UndefinedValue)) {
     for (let [key] of config.properties) {
@@ -782,12 +783,17 @@ export function convertConfigObjectToReactComponentTreeConfig(
       if (propValue instanceof StringValue || propValue instanceof NumberValue || propValue instanceof BooleanValue) {
         let value = propValue.value;
 
-        // boolean options
         if (typeof value === "boolean") {
+          // boolean options
           if (key === "firstRenderOnly") {
             firstRenderOnly = value;
           } else if (key === "isRoot") {
             isRoot = value;
+          }
+        } else if (typeof value === "string") {
+          // string options
+          if (key === "model") {
+            modelString = value;
           }
         }
       } else {
@@ -805,6 +811,7 @@ export function convertConfigObjectToReactComponentTreeConfig(
   return {
     firstRenderOnly,
     isRoot,
+    modelString,
   };
 }
 
