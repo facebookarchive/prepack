@@ -374,6 +374,10 @@ export type HavocType = {
   value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation): void,
 };
 
+export type MaterializeType = {
+  materialize(realm: Realm, object: ObjectValue): void,
+};
+
 export type PropertiesType = {
   // ECMA262 9.1.9.1
   OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value, Receiver: Value): boolean,
