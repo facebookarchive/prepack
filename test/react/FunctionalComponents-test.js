@@ -331,3 +331,7 @@ it("Model props", () => {
 it("Inline keys", () => {
   runTest(__dirname + "/FunctionalComponents/keyed.js");
 });
+
+it("Inline unnecessary keys", () => {
+  runTest(__dirname + "/FunctionalComponents/keyed-unnecessarily.js");
+});

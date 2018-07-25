@@ -1087,7 +1087,14 @@ export class Reconciler {
       let childrenValue = Get(this.realm, propsValue, "children");
 
       if (childrenValue instanceof Value) {
-        let resolvedChildren = this._resolveDeeply(componentType, childrenValue, context, branchStatus, evaluatedNode);
+        let resolvedChildren = this._resolveDeeply(
+          componentType,
+          childrenValue,
+          context,
+          branchStatus,
+          evaluatedNode,
+          false
+        );
         // we can optimize further and flatten arrays on non-composite components
         if (resolvedChildren instanceof ArrayValue && !resolvedChildren.intrinsicName) {
           resolvedChildren = flattenChildren(this.realm, resolvedChildren);
@@ -1144,7 +1151,8 @@ export class Reconciler {
     reactElement: ObjectValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
-    evaluatedNode: ReactEvaluatedNode
+    evaluatedNode: ReactEvaluatedNode,
+    needsKey?: boolean
   ) {
     // We create a clone of the ReactElement to be safe. This is because the same
     // ReactElement might be a temporal referenced in other effects and also it allows us to
@@ -1265,7 +1273,7 @@ export class Reconciler {
 
       // If we have a new result and we might have a key value then wrap our inlined result in a
       // `<React.Fragment key={keyValue}>` so that we may maintain the key.
-      if (result !== reactElement && keyValue.mightNotBeNull()) {
+      if (needsKey && result !== reactElement && keyValue.mightNotBeNull()) {
         const react = this.realm.fbLibraries.react;
         invariant(react instanceof ObjectValue);
         const reactFragment = getProperty(this.realm, react, "Fragment");
@@ -1387,7 +1395,8 @@ export class Reconciler {
     value: Value,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
-    evaluatedNode: ReactEvaluatedNode
+    evaluatedNode: ReactEvaluatedNode,
+    needsKey?: boolean
   ): Value {
     if (
       value instanceof StringValue ||
@@ -1407,9 +1416,9 @@ export class Reconciler {
       return this._resolveAbstractValue(componentType, value, context, branchStatus, evaluatedNode);
     } else if (value instanceof ArrayValue) {
       // TODO investigate what about other iterables type objects
-      return this._resolveArray(componentType, value, context, branchStatus, evaluatedNode);
+      return this._resolveArray(componentType, value, context, branchStatus, evaluatedNode, needsKey);
     } else if (value instanceof ObjectValue && isReactElement(value)) {
-      return this._resolveReactElement(componentType, value, context, branchStatus, evaluatedNode);
+      return this._resolveReactElement(componentType, value, context, branchStatus, evaluatedNode, needsKey);
     } else {
       let location = getLocationFromValue(value.expressionLocation);
       throw new ExpectedBailOut(`invalid return value from render${location}`);
@@ -1433,7 +1442,8 @@ export class Reconciler {
     arrayValue: ArrayValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
-    evaluatedNode: ReactEvaluatedNode
+    evaluatedNode: ReactEvaluatedNode,
+    needsKey?: boolean
   ): ArrayValue {
     if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(arrayValue)) {
       let arrayHint = this.realm.react.arrayHints.get(arrayValue);
@@ -1449,8 +1459,9 @@ export class Reconciler {
       }
       return arrayValue;
     }
+    if (needsKey !== false) needsKey = true;
     let children = mapArrayValue(this.realm, arrayValue, elementValue =>
-      this._resolveDeeply(componentType, elementValue, context, "NEW_BRANCH", evaluatedNode)
+      this._resolveDeeply(componentType, elementValue, context, "NEW_BRANCH", evaluatedNode, needsKey)
     );
     children.makeFinal();
     return children;
