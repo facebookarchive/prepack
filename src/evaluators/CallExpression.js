@@ -110,10 +110,10 @@ function evaluateReference(
     // global code has finished.
     let prototypeIfPrimitive = getPrimitivePrototypeFromType(realm, base);
     if (prototypeIfPrimitive !== undefined && typeof referencedName === "string") {
-      let possibleProtoDesc = prototypeIfPrimitive._SafeGetDataPropertyValue(referencedName);
+      let possibleMethodValue = prototypeIfPrimitive._SafeGetDataPropertyValue(referencedName);
 
-      if (possibleProtoDesc !== undefined && possibleProtoDesc.value instanceof FunctionValue) {
-        return EvaluateCall(ref, possibleProtoDesc.value, ast, strictCode, env, realm);
+      if (possibleMethodValue instanceof FunctionValue) {
+        return EvaluateCall(ref, possibleMethodValue, ast, strictCode, env, realm);
       }
     }
     // avoid explicitly converting ref.base to an object because that will create a generator entry
