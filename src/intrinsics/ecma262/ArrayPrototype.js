@@ -36,7 +36,7 @@ import {
   Get,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
-import { Create, Havoc, Join, Properties, To } from "../../singletons.js";
+import { Create, Join, Properties, To } from "../../singletons.js";
 import { createOperationDescriptor } from "../../utils/generator.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
