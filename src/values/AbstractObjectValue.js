@@ -515,11 +515,12 @@ export default class AbstractObjectValue extends AbstractValue {
             propertyGetter = propertyShape.getGetter();
           }
         }
+        let realm = this.$Realm;
         // Create an unknown array temporal
         if (type === ArrayValue) {
           return ArrayValue.createTemporalWithWidenedNumericProperty(
             realm,
-            [ob, new StringValue(this.$Realm, P)],
+            [ob, new StringValue(realm, P)],
             createOperationDescriptor("ABSTRACT_OBJECT_GET", { propertyGetter }),
             {
               skipInvariant: true,
@@ -528,9 +529,9 @@ export default class AbstractObjectValue extends AbstractValue {
           );
         }
         let propAbsVal = AbstractValue.createTemporalFromBuildFunction(
-          this.$Realm,
+          realm,
           type,
-          [ob, new StringValue(this.$Realm, P)],
+          [ob, new StringValue(realm, P)],
           createOperationDescriptor("ABSTRACT_OBJECT_GET", { propertyGetter }),
           {
             skipInvariant: true,
