@@ -521,11 +521,7 @@ export default class AbstractObjectValue extends AbstractValue {
           return ArrayValue.createTemporalWithWidenedNumericProperty(
             realm,
             [ob, new StringValue(realm, P)],
-            createOperationDescriptor("ABSTRACT_OBJECT_GET", { propertyGetter }),
-            {
-              skipInvariant: true,
-              shape: propertyShape,
-            }
+            createOperationDescriptor("ABSTRACT_OBJECT_GET", { propertyGetter })
           );
         }
         let propAbsVal = AbstractValue.createTemporalFromBuildFunction(

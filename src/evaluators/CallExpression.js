@@ -21,6 +21,7 @@ import {
   ConcreteValue,
   FunctionValue,
   NativeFunctionValue,
+  NullValue,
   ObjectValue,
   PrimitiveValue,
   Value,
@@ -38,6 +39,10 @@ import type { BabelNodeCallExpression } from "@babel/types";
 import invariant from "../invariant.js";
 import SuperCall from "./SuperCall.js";
 import { createOperationDescriptor } from "../utils/generator.js";
+
+function isInstance(proto, Constructor): boolean {
+  return proto instanceof Constructor || proto === Constructor.prototype;
+}
 
 export default function(
   ast: BabelNodeCallExpression,
@@ -69,14 +74,14 @@ function evaluateReference(
   env: LexicalEnvironment,
   realm: Realm
 ): Value {
-  let base = ref.base;
   if (
     ref instanceof Reference &&
-    base instanceof AbstractValue &&
+    ref.base instanceof AbstractValue &&
     // TODO: what about ref.base conditionals that mightBeObjects?
-    base.mightNotBeObject() &&
+    ref.base.mightNotBeObject() &&
     realm.isInPureScope()
   ) {
+    let base = ref.base;
     if (base.kind === "conditional") {
       return evaluateConditionalReferenceBase(ref, ast, strictCode, env, realm);
     }
@@ -88,13 +93,15 @@ function evaluateReference(
     // on an abstract value as the value is immutable and can't have a property
     // that matches the prototype method (unless the prototype was modified).
     // In pure scope, we assume the global prototype of built-ins has not been altered.
-    if (type.prototype instanceof PrimitiveValue && typeof referencedName === "string") {
+    if (isInstance(type.prototype, PrimitiveValue) && typeof referencedName === "string") {
       let obj = To.ToObject(realm, base);
       let proto = obj.$GetPrototypeOf();
-      let possibleProtoDesc = proto.$GetOwnProperty(referencedName);
+      if (!(proto instanceof NullValue)) {
+        let possibleProtoDesc = proto.$GetOwnProperty(referencedName);
 
-      if (possibleProtoDesc !== undefined && possibleProtoDesc.value instanceof FunctionValue) {
-        return EvaluateCall(ref, possibleProtoDesc.value, ast, strictCode, env, realm);
+        if (possibleProtoDesc !== undefined && possibleProtoDesc.value instanceof FunctionValue) {
+          return EvaluateCall(ref, possibleProtoDesc.value, ast, strictCode, env, realm);
+        }
       }
     }
     // avoid explicitly converting ref.base to an object because that will create a generator entry
