@@ -7,6 +7,6 @@ function fn(someString) {
 
 inspect = function() {
   return fn("Hello world");
-}
+};
 
 this.__optimize && __optimize(fn);
