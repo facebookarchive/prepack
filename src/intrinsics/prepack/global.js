@@ -111,6 +111,49 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
+  // TODO: do more full validation walking the whole shape
+  function createAndValidateArgModel(argModelString: Value): ArgModel | void {
+    let argModelError;
+    if (argModelString instanceof StringValue) {
+      try {
+        let argModel = JSON.parse(argModelString.value);
+        if (!argModel.universe)
+          argModelError = new CompilerDiagnostic(
+            "ArgModel must contain a universe property containing a ShapeUniverse",
+            realm.currentLocation,
+            "PP1008",
+            "FatalError"
+          );
+        if (!argModel.arguments)
+          argModelError = new CompilerDiagnostic(
+            "ArgModel must contain an arguments property.",
+            realm.currentLocation,
+            "PP1008",
+            "FatalError"
+          );
+        return (argModel: ArgModel);
+      } catch (e) {
+        argModelError = new CompilerDiagnostic(
+          "Failed to parse model for arguments",
+          realm.currentLocation,
+          "PP1008",
+          "FatalError"
+        );
+      }
+    } else {
+      argModelError = new CompilerDiagnostic(
+        "String expected as a model",
+        realm.currentLocation,
+        "PP1008",
+        "FatalError"
+      );
+    }
+    if (argModelError !== undefined && realm.handleError(argModelError) !== "Recover") {
+      throw new FatalError();
+    }
+    return undefined;
+  }
+
   // Allows dynamically registering optimized functions.
   // WARNING: these functions will get exposed at global scope and called there.
   // NB: If we interpret one of these calls in an evaluateForEffects context
@@ -118,37 +161,26 @@ export default function(realm: Realm): void {
   //     (because prepack won't have a correct value for the FunctionValue itself)
   global.$DefineOwnProperty("__optimize", {
     value: new NativeFunctionValue(realm, "global.__optimize", "__optimize", 1, (context, [value, argModelString]) => {
-      // only optimize functions for now
       let argModel;
       if (argModelString !== undefined) {
-        let argModelError;
-        if (argModelString instanceof StringValue) {
-          try {
-            // result here is ignored as the main point here is to
-            // check and produce error
-            argModel = (JSON.parse(argModelString.value): ArgModel);
-          } catch (e) {
-            argModelError = new CompilerDiagnostic(
-              "Failed to parse model for arguments",
+        argModel = createAndValidateArgModel(argModelString);
+      }
+      if (value instanceof ECMAScriptSourceFunctionValue || value instanceof AbstractValue) {
+        let currentArgModel = realm.optimizedFunctions.get(value);
+        // Verify that if there is an existing argModel, that it is the same as the new one.
+        if (currentArgModel) {
+          let currentString = argModelString instanceof StringValue ? argModelString.value : argModelString;
+          if (JSON.stringify(currentArgModel) !== currentString) {
+            let argModelError = new CompilerDiagnostic(
+              "__optimize called twice with different argModelStrings",
               realm.currentLocation,
               "PP1008",
               "FatalError"
             );
+            if (realm.handleError(argModelError) !== "Recover") throw new FatalError();
           }
-        } else {
-          argModelError = new CompilerDiagnostic(
-            "String expected as a model",
-            realm.currentLocation,
-            "PP1008",
-            "FatalError"
-          );
         }
-        if (argModelError !== undefined && realm.handleError(argModelError) !== "Recover") {
-          throw new FatalError();
-        }
-      }
-      if (value instanceof ECMAScriptSourceFunctionValue || value instanceof AbstractValue) {
-        realm.optimizedFunctions.push({ value, argModel });
+        realm.optimizedFunctions.set(value, argModel);
       } else {
         let location = value.expressionLocation
           ? `${value.expressionLocation.start.line}:${value.expressionLocation.start.column} ` +

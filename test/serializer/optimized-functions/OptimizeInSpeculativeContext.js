@@ -1,3 +1,4 @@
+// Does not contain:5
 let obj1 = global.__abstract
   ? __abstract("object", '({get foo() { return "bar"; }})')
   : {
@@ -11,14 +12,20 @@ if (global.__makeSimple) {
 }
 
 function additional1() {
-  function foo() { return 2; }
+  function foo() {
+    let garbage = 5;
+    return 2;
+  }
   if (global.__optimize) __optimize(foo);
   global.foo = foo;
   return String(obj1.foo);
 }
 
 function additional2() {
-  function bar() { return 5; }
+  function bar() {
+    let garbage = 5;
+    return 5;
+  }
   if (global.__optimize) __optimize(bar);
   global.bar = bar;
   return String(obj2.foo.bar);

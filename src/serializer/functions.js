@@ -51,6 +51,7 @@ export class Functions {
     this.writeEffects = new Map();
     this.functionExpressions = new Map();
     this._noopFunction = undefined;
+    this._optimizedFunctionId = 0;
   }
 
   realm: Realm;
@@ -59,6 +60,7 @@ export class Functions {
   moduleTracer: ModuleTracer;
   writeEffects: WriteEffects;
   _noopFunction: void | ECMAScriptSourceFunctionValue;
+  _optimizedFunctionId: number;
 
   _unwrapAbstract(value: AbstractValue): Value {
     let elements = value.values.getElements();
@@ -73,7 +75,7 @@ export class Functions {
     return value;
   }
 
-  __optimizedFunctionEntryOfValue(value: Value): AdditionalFunctionEntry | void {
+  _optimizedFunctionEntryOfValue(value: Value): AdditionalFunctionEntry | void {
     let realm = this.realm;
     // if we conditionally called __optimize, we may have an AbstractValue that is the union of Empty or Undefined and
     // a function/component to optimize
@@ -111,7 +113,7 @@ export class Functions {
     throw new FatalError("Optimized Function Values must be functions or react elements");
   }
 
-  __generateInitialAdditionalFunctions(globalKey: string): Array<AdditionalFunctionEntry> {
+  _generateInitialAdditionalFunctions(globalKey: string): Array<AdditionalFunctionEntry> {
     let recordedAdditionalFunctions: Array<AdditionalFunctionEntry> = [];
     let realm = this.realm;
     let globalRecordedAdditionalFunctionsMap = this.moduleTracer.modules.logger.tryQuery(
@@ -125,18 +127,18 @@ export class Functions {
         let value = property.descriptor && property.descriptor.value;
         invariant(value !== undefined);
         invariant(value instanceof Value);
-        let entry = this.__optimizedFunctionEntryOfValue(value);
+        let entry = this._optimizedFunctionEntryOfValue(value);
         if (entry) recordedAdditionalFunctions.push(entry);
       }
     }
     return recordedAdditionalFunctions;
   }
 
-  __generateInitialOptimizedFunctionsFromRealm(): Array<AdditionalFunctionEntry> {
+  _generateOptimizedFunctionsFromRealm(): Array<AdditionalFunctionEntry> {
     let realm = this.realm;
     let recordedAdditionalFunctions = [];
-    realm.optimizedFunctions.forEach(entry => {
-      let value = entry.value instanceof AbstractValue ? this._unwrapAbstract(entry.value) : entry.value;
+    for (let [valueToOptimize, argModel] of realm.optimizedFunctions) {
+      let value = valueToOptimize instanceof AbstractValue ? this._unwrapAbstract(valueToOptimize) : valueToOptimize;
       // Check for case where __optimize was called in speculative context where effects were discarded
       if (value._isPartial === undefined) {
         let error = new CompilerDiagnostic(
@@ -148,15 +150,15 @@ export class Functions {
         if (realm.handleError(error) !== "Recover") throw new FatalError();
       } else {
         invariant(value instanceof ECMAScriptSourceFunctionValue);
-        recordedAdditionalFunctions.push({ value, argModel: entry.argModel });
+        recordedAdditionalFunctions.push({ value, argModel });
       }
-    });
+    }
     return recordedAdditionalFunctions;
   }
 
   optimizeReactComponentTreeRoots(statistics: ReactStatistics, environmentRecordIdAfterGlobalCode: number): void {
     let logger = this.moduleTracer.modules.logger;
-    let recordedReactRootValues = this.__generateInitialAdditionalFunctions("__reactComponentTrees");
+    let recordedReactRootValues = this._generateInitialAdditionalFunctions("__reactComponentTrees");
     // Get write effects of the components
     if (this.realm.react.verbose) {
       logger.logInformation(`Evaluating ${recordedReactRootValues.length} React component tree roots...`);
@@ -216,8 +218,22 @@ export class Functions {
     return call.bind(this, thisArg, args);
   }
 
+  _withEmptyOptimizedFunctionList(
+    { value, argModel }: AdditionalFunctionEntry,
+    func: (FunctionValue, ArgModel | void) => void
+  ): void {
+    let oldRealmOptimizedFunctions = this.realm.optimizedFunctions;
+    this.realm.optimizedFunctions = new Map();
+    let currentOptimizedFunctionId = this._optimizedFunctionId++;
+    invariant(value instanceof ECMAScriptSourceFunctionValue);
+    for (let t1 of this.realm.tracers) t1.beginOptimizingFunction(currentOptimizedFunctionId, value);
+    func(value, argModel);
+    for (let t2 of this.realm.tracers) t2.endOptimizingFunction(currentOptimizedFunctionId);
+    for (let [oldValue, model] of oldRealmOptimizedFunctions) this.realm.optimizedFunctions.set(oldValue, model);
+  }
+
   checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode: number): void {
-    let additionalFunctionsToProcess = this.__generateInitialOptimizedFunctionsFromRealm();
+    let additionalFunctionsToProcess = this._generateOptimizedFunctionsFromRealm();
     // When we find declarations of nested optimized functions, we need to apply the parent
     // effects.
     let additionalFunctionStack = [];
@@ -235,20 +251,18 @@ export class Functions {
       }
     };
 
-    let optimizedFunctionId = 0;
-    let getEffectsFromAdditionalFunctionAndNestedFunctions = (functionValue, argModel) => {
-      let oldRealmOptimizedFunctions = this.realm.optimizedFunctions;
-      this.realm.optimizedFunctions = [];
-      let currentOptimizedFunctionId = optimizedFunctionId++;
+    let recordWriteEffectsForOptimizedFunctionAndNestedFunctions = (
+      functionValue: FunctionValue,
+      argModel: ArgModel | void
+    ) => {
       additionalFunctionStack.push(functionValue);
-      invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+      let call = this._callOfFunction(functionValue, argModel);
+      let realm = this.realm;
+
       let logCompilerDiagnostic = (msg: string) => {
         let error = new CompilerDiagnostic(msg, undefined, "PP1007", "Warning");
         realm.handleError(error);
       };
-      for (let t1 of this.realm.tracers) t1.beginOptimizingFunction(currentOptimizedFunctionId, functionValue);
-      let call = this._callOfFunction(functionValue, argModel);
-      let realm = this.realm;
       let effects: Effects = realm.evaluatePure(
         () => realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
         (sideEffectType, binding, expressionLocation) =>
@@ -270,23 +284,21 @@ export class Functions {
       // Conceptually this will ensure that the nested additional function is defined
       // although for later cases, we'll apply the effects of the parents only.
       this.realm.withEffectsAppliedInGlobalEnv(() => {
-        let newOptFuncs = this.__generateInitialOptimizedFunctionsFromRealm();
+        let newOptFuncs = this._generateOptimizedFunctionsFromRealm();
         for (let newEntry of newOptFuncs) {
           additionalFunctions.add(newEntry.value);
-          getEffectsFromAdditionalFunctionAndNestedFunctions(newEntry.value, newEntry.argModel);
+          this._withEmptyOptimizedFunctionList(newEntry, recordWriteEffectsForOptimizedFunctionAndNestedFunctions);
         }
-        // Now we have to rember the stack of effects that need to be applied to deal with
+        // Now we have to remember the stack of effects that need to be applied to deal with
         // this additional function.
         return null;
       }, additionalFunctionEffects.effects);
-      this.realm.optimizedFunctions.unshift(...oldRealmOptimizedFunctions);
       invariant(additionalFunctionStack.pop() === functionValue);
-      for (let t2 of this.realm.tracers) t2.endOptimizingFunction(currentOptimizedFunctionId);
     };
 
     while (additionalFunctionsToProcess.length > 0) {
       let funcObject = additionalFunctionsToProcess.shift();
-      getEffectsFromAdditionalFunctionAndNestedFunctions(funcObject.value, funcObject.argModel);
+      this._withEmptyOptimizedFunctionList(funcObject, recordWriteEffectsForOptimizedFunctionAndNestedFunctions);
     }
     invariant(additionalFunctionStack.length === 0);
 

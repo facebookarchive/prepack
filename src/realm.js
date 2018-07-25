@@ -338,7 +338,7 @@ export class Realm {
     this._abstractValuesDefined = new Set(); // A set of nameStrings to ensure abstract values have unique names
     this.debugNames = opts.debugNames;
     this._checkedObjectIds = new Map();
-    this.optimizedFunctions = [];
+    this.optimizedFunctions = new Map();
   }
 
   statistics: RealmStatistics;
@@ -486,7 +486,7 @@ export class Realm {
   _abstractValuesDefined: Set<string>;
   _checkedObjectIds: Map<ObjectValue | AbstractObjectValue, number>;
 
-  optimizedFunctions: Array<{ value: FunctionValue | AbstractValue, argModel: ArgModel | void }>;
+  optimizedFunctions: Map<FunctionValue | AbstractValue, ArgModel | void>;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
