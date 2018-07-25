@@ -20,7 +20,12 @@ import { RegExpCreate } from "../../methods/regexp.js";
 import { SplitMatch, RequireObjectCoercible } from "../../methods/abstract.js";
 import { HasSomeCompatibleType } from "../../methods/has.js";
 import invariant from "../../invariant.js";
-import { createOperationDescriptor } from "../../utils/generator.js";
+import buildExpressionTemplate from "../../utils/builder.js";
+
+const sliceTemplateSrc = "(A).slice(B,C)";
+const sliceTemplate = buildExpressionTemplate(sliceTemplateSrc);
+const splitTemplateSrc = "(A).split(B,C)";
+const splitTemplate = buildExpressionTemplate(splitTemplateSrc);
 
 export default function(realm: Realm, obj: ObjectValue): ObjectValue {
   // ECMA262 21.1.3
@@ -572,13 +577,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     if (O instanceof AbstractValue && O.getType() === StringValue) {
-      return AbstractValue.createTemporalFromBuildFunction(
-        realm,
-        StringValue,
-        [O, start, end],
-        createOperationDescriptor("STRING_SLICE"),
-        { skipInvariant: true, isPure: true }
-      );
+      return AbstractValue.createFromTemplate(realm, sliceTemplate, StringValue, [O, start, end], sliceTemplateSrc);
     }
 
     // 2. Let S be ? ToString(O).
@@ -612,12 +611,12 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     if (O instanceof AbstractValue && O.getType() === StringValue) {
-      return AbstractValue.createTemporalFromBuildFunction(
+      return AbstractValue.createFromTemplate(
         realm,
+        splitTemplate,
         StringValue,
         [O, separator, limit],
-        createOperationDescriptor("STRING_SPLIT"),
-        { skipInvariant: true, isPure: true }
+        splitTemplateSrc
       );
     }
 

@@ -12,21 +12,18 @@
 import type { Realm } from "../../realm.js";
 import { ObjectValue, StringValue, SymbolValue, AbstractValue } from "../../values/index.js";
 import { SymbolDescriptiveString } from "../../methods/index.js";
+import buildExpressionTemplate from "../../utils/builder.js";
 import invariant from "../../invariant.js";
-import { createOperationDescriptor } from "../../utils/generator.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
+  const tsTemplateSrc = "(A).toString()";
+  const tsTemplate = buildExpressionTemplate(tsTemplateSrc);
+
   // ECMA262 19.4.3.2
   obj.defineNativeMethod("toString", 0, context => {
     const target = context instanceof ObjectValue ? context.$SymbolData : context;
     if (target instanceof AbstractValue && target.getType() === SymbolValue) {
-      return AbstractValue.createTemporalFromBuildFunction(
-        realm,
-        StringValue,
-        [target],
-        createOperationDescriptor("TO_STRING"),
-        { skipInvariant: true, isPure: true }
-      );
+      return AbstractValue.createFromTemplate(realm, tsTemplate, StringValue, [target], tsTemplateSrc);
     }
     // 1. Let s be the this value.
     let s = context.throwIfNotConcrete();

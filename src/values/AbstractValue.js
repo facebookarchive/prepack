@@ -69,6 +69,8 @@ export type AbstractValueKind =
   | "Bootloader"
   | "(A).length"
   | "(A).toString()"
+  | "(A).slice(B,C)"
+  | "(A).split(B,C)"
   | "global.JSON.stringify(A)"
   | "global.JSON.parse(A)"
   | "JSON.stringify(...)"
