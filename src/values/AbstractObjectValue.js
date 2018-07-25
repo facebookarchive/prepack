@@ -506,6 +506,7 @@ export default class AbstractObjectValue extends AbstractValue {
         let shapeContainer = this.kind === "explicit conversion to object" ? this.args[0] : this;
         invariant(shapeContainer instanceof AbstractValue);
         invariant(typeof P === "string");
+        let realm = this.$Realm;
         let shape = shapeContainer.shape;
         let propertyShape, propertyGetter;
         if (this.$Realm.instantRender.enabled && shape !== undefined) {
@@ -515,7 +516,6 @@ export default class AbstractObjectValue extends AbstractValue {
             propertyGetter = propertyShape.getGetter();
           }
         }
-        let realm = this.$Realm;
         // Create an unknown array temporal
         if (type === ArrayValue) {
           return ArrayValue.createTemporalWithWidenedNumericProperty(
