@@ -324,11 +324,20 @@ export class ResidualHeapSerializer {
       );
     }
 
+    // TODO #2259: Make deduplication in the face of leaking work for custom accessors
+    let isCertainlyLeaked = !obj.mightNotBeHavocedObject();
+    let shouldDropAsAssignedProp = (descriptor: Descriptor | void) =>
+      isCertainlyLeaked && (descriptor !== undefined && (descriptor.get === undefined && descriptor.set === undefined));
+
     // inject properties
     for (let [key, propertyBinding] of properties) {
       invariant(propertyBinding);
+
       if (propertyBinding.pathNode !== undefined) continue; // Property is assigned to inside loop
       let desc = propertyBinding.descriptor;
+
+      if (shouldDropAsAssignedProp(desc)) continue;
+
       if (desc === undefined) continue; //deleted
       if (this.residualHeapInspector.canIgnoreProperty(obj, key)) continue;
       invariant(desc !== undefined);
@@ -1694,13 +1703,25 @@ export class ResidualHeapSerializer {
     let remainingProperties = new Map(val.properties);
     const dummyProperties = new Set();
     let props = [];
+    let isCertainlyLeaked = !val.mightNotBeHavocedObject();
+
+    // TODO #2259: Make deduplication in the face of leaking work for custom accessors
+    let shouldDropAsAssignedProp = (descriptor: Descriptor | void) =>
+      isCertainlyLeaked && (descriptor !== undefined && (descriptor.get === undefined && descriptor.set === undefined));
+
     if (val.temporalAlias !== undefined) {
       return t.objectExpression(props);
     } else {
       for (let [key, propertyBinding] of val.properties) {
+        if (propertyBinding.descriptor !== undefined && shouldDropAsAssignedProp(propertyBinding.descriptor)) {
+          remainingProperties.delete(key);
+          continue;
+        }
+
         if (propertyBinding.pathNode !== undefined) continue; // written to inside loop
         let descriptor = propertyBinding.descriptor;
         if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
+
         let serializedKey = getAsPropertyNameExpression(key);
         if (this._canEmbedProperty(val, key, descriptor)) {
           let propValue = descriptor.value;
@@ -1727,6 +1748,7 @@ export class ResidualHeapSerializer {
         }
       }
     }
+
     this._emitObjectProperties(
       val,
       remainingProperties,
@@ -1734,6 +1756,7 @@ export class ResidualHeapSerializer {
       dummyProperties,
       skipPrototype
     );
+
     return t.objectExpression(props);
   }
 
