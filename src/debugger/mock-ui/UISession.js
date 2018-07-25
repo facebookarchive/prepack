@@ -123,7 +123,6 @@ export class UISession {
     } else if (event.event === "stopped") {
       this._prepackWaiting = true;
       if (event.body) {
-        this._uiOutput("we're stopped and have a body");
         this._uiOutput(event.body.reason);
       }
     }
