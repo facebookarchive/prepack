@@ -147,7 +147,6 @@ export default function(realm: Realm, obj: ObjectValue): void {
     return new StringValue(realm, s + x.toPrecision(p));
   });
 
-
   // ECMA262 20.1.3.6
   obj.defineNativeMethod("toString", 1, (context, [radix]) => {
     if (radix instanceof UndefinedValue) {

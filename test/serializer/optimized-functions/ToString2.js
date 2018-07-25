@@ -8,7 +8,7 @@ function fn(cond, a, b) {
     var x = global.__abstract ? __abstract("number", "b") : b;
     y = x.toString();
   }
-  return y
+  return y;
 }
 
 inspect = function() {
