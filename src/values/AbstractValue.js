@@ -68,6 +68,7 @@ export type AbstractValueKind =
   | "JSResource"
   | "Bootloader"
   | "(A).length"
+  | "(A).toString()"
   | "global.JSON.stringify(A)"
   | "global.JSON.parse(A)"
   | "JSON.stringify(...)"

@@ -66,7 +66,7 @@ export default function(
   }
 }
 
-function getPrimitiveProtoFromAbstractValueType(realm: Realm, value: AbstractValue): void | ObjectValue {
+function getPrimitivePrototypeFromType(realm: Realm, value: AbstractValue): void | ObjectValue {
   switch (value.getType()) {
     case IntegralValue:
     case NumberValue:
@@ -106,10 +106,11 @@ function evaluateReference(
     // if we are referencing a prototype method, then it's safe to access, even
     // on an abstract value as the value is immutable and can't have a property
     // that matches the prototype method (unless the prototype was modified).
-    // In pure scope, we assume the global prototype of built-ins has not been altered.
-    let possiblePrimitiveProto = getPrimitiveProtoFromAbstractValueType(realm, base);
-    if (possiblePrimitiveProto !== undefined && typeof referencedName === "string") {
-      let possibleProtoDesc = possiblePrimitiveProto.$GetOwnProperty(referencedName);
+    // We assume the global prototype of built-ins has not been altered since
+    // global code has finished.
+    let prototypeIfPrimitive = getPrimitivePrototypeFromType(realm, base);
+    if (prototypeIfPrimitive !== undefined && typeof referencedName === "string") {
+      let possibleProtoDesc = prototypeIfPrimitive._SafeGetDataPropertyValue(referencedName);
 
       if (possibleProtoDesc !== undefined && possibleProtoDesc.value instanceof FunctionValue) {
         return EvaluateCall(ref, possibleProtoDesc.value, ast, strictCode, env, realm);
