@@ -619,7 +619,7 @@ export default class AbstractObjectValue extends AbstractValue {
 
   $GetPartial(P: AbstractValue | PropertyKeyValue, Receiver: Value): Value {
     if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
-    if (this.values.isTop()) {
+    if (this.values.isTop() || !this.isSimpleObject()) {
       if (this.isSimpleObject() && this.isIntrinsic()) {
         return AbstractValue.createTemporalFromBuildFunction(
           this.$Realm,
@@ -750,7 +750,8 @@ export default class AbstractObjectValue extends AbstractValue {
 
   $SetPartial(_P: AbstractValue | PropertyKeyValue, V: Value, Receiver: Value): boolean {
     let P = _P;
-    if (this.values.isTop()) {
+    if (!this.values.isTop() && !(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
+    if (this.values.isTop() || !this.isSimpleObject()) {
       if (this.$Realm.isInPureScope()) {
         // If we're in a pure scope, we can havoc the key and the instance,
         // and leave the residual property assignment in place.
@@ -798,8 +799,6 @@ export default class AbstractObjectValue extends AbstractValue {
       this.$Realm.handleError(error);
       throw new FatalError();
     }
-
-    if (!(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
 
     let elements = this.values.getElements();
     if (elements.size === 1) {
