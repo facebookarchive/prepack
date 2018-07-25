@@ -992,14 +992,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (thisArg) {
         args.push(thisArg);
       }
-      // We don't actually want to havoc these values, we just want to materialize
-      // the values before the function call. The only way to currently materialize
-      // is to havoc. We need to remove this once materialization becomes it's own
-      // feature. We also need to do this to the rest of the Array.prototype methods
-      // although this one is blocking our internal bundle from pasing.
-      for (let arg of args) {
-        Havoc.value(realm, arg);
-      }
+      // We need to materialize here, but there's no way of doing it without
+      // havocing, which brings about even more issues. :/
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         args,
