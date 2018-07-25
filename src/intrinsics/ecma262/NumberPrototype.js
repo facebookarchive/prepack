@@ -20,7 +20,7 @@ import {
 } from "../../values/index.js";
 import { To } from "../../singletons.js";
 import invariant from "../../invariant.js";
-import buildExpressionTemplate from "../../utils/builder.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 20.1.3
@@ -88,16 +88,19 @@ export default function(realm: Realm, obj: ObjectValue): void {
     return new StringValue(realm, x.toFixed(f));
   });
 
-  let toLocaleStringSrc = "(A).toLocaleString()";
-  let toLocaleString = buildExpressionTemplate(toLocaleStringSrc);
-
   // ECMA262 20.1.3.4
   obj.defineNativeMethod("toLocaleString", 0, context => {
     let x = To.thisNumberValue(realm, context);
     if (realm.useAbstractInterpretation) {
       // The locale is environment-dependent and may also be time-dependent
       // so do this at runtime and at this point in time
-      return AbstractValue.createTemporalFromTemplate(realm, toLocaleString, StringValue, [x]);
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        StringValue,
+        [x],
+        createOperationDescriptor("TO_LOCALE_STRING"),
+        { skipInvariant: true, isPure: true }
+      );
     } else {
       return new StringValue(realm, x.toLocaleString());
     }
@@ -144,15 +147,19 @@ export default function(realm: Realm, obj: ObjectValue): void {
     return new StringValue(realm, s + x.toPrecision(p));
   });
 
-  const tsTemplateSrc = "(A).toString()";
-  const tsTemplate = buildExpressionTemplate(tsTemplateSrc);
 
   // ECMA262 20.1.3.6
   obj.defineNativeMethod("toString", 1, (context, [radix]) => {
     if (radix instanceof UndefinedValue) {
       const target = context instanceof ObjectValue ? context.$NumberData : context;
       if (target instanceof AbstractValue && (target.getType() === NumberValue || target.getType() === IntegralValue)) {
-        return AbstractValue.createFromTemplate(realm, tsTemplate, StringValue, [target], tsTemplateSrc);
+        return AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          StringValue,
+          [target],
+          createOperationDescriptor("TO_STRING"),
+          { skipInvariant: true, isPure: true }
+        );
       }
     }
     // 1. Let x be ? thisNumberValue(this value).

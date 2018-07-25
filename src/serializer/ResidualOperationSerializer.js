@@ -265,6 +265,18 @@ export class ResidualOperationSerializer {
       case "WIDEN_PROPERTY_ASSIGNMENT":
         babelNode = this._serializeWidenPropertyAssignment(data, nodes);
         break;
+      case "TO_STRING":
+        babelNode = this._serializeToString(data, nodes);
+        break;
+      case "TO_LOCALE_STRING":
+        babelNode = this._serializeToLocaleString(data, nodes);
+        break;
+      case "STRING_SLICE":
+        babelNode = this._serializeStringSlice(data, nodes);
+        break;
+      case "STRING_SPLIT":
+        babelNode = this._serializeStringSplit(data, nodes);
+        break;
 
       // Invariants
       case "INVARIANT":
@@ -342,6 +354,22 @@ export class ResidualOperationSerializer {
       return this._serializeVoidOperationDescriptor(((babelNode: any): BabelNodeExpression));
     }
     return babelNode;
+  }
+
+  _serializeStringSplit(data: OperationDescriptor, [a, b, c]: Array<BabelNodeExpression>) {
+    return t.callExpression(t.memberExpression(a, t.identifier("split")), [b, c]);
+  }
+
+  _serializeStringSlice(data: OperationDescriptor, [a, b, c]: Array<BabelNodeExpression>) {
+    return t.callExpression(t.memberExpression(a, t.identifier("slice")), [b, c]);
+  }
+
+  _serializeToString(data: OperationDescriptor, [node]: Array<BabelNodeExpression>) {
+    return t.callExpression(t.memberExpression(node, t.identifier("toString")), []);
+  }
+
+  _serializeToLocaleString(data: OperationDescriptor, [node]: Array<BabelNodeExpression>) {
+    return t.callExpression(t.memberExpression(node, t.identifier("toLocaleString")), []);
   }
 
   _serializeAppendGenerator(

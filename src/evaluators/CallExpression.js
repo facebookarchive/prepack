@@ -18,16 +18,19 @@ import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import {
   AbstractValue,
   AbstractObjectValue,
+  BooleanValue,
   ConcreteValue,
   FunctionValue,
+  IntegralValue,
   NativeFunctionValue,
-  NullValue,
+  NumberValue,
   ObjectValue,
-  PrimitiveValue,
+  StringValue,
+  SymbolValue,
   Value,
 } from "../values/index.js";
 import { Reference } from "../environment.js";
-import { Environment, Functions, Havoc, Join, To } from "../singletons.js";
+import { Environment, Functions, Havoc, Join } from "../singletons.js";
 import {
   ArgumentListEvaluation,
   EvaluateDirectCall,
@@ -39,10 +42,6 @@ import type { BabelNodeCallExpression } from "@babel/types";
 import invariant from "../invariant.js";
 import SuperCall from "./SuperCall.js";
 import { createOperationDescriptor } from "../utils/generator.js";
-
-function isInstance(proto, Constructor): boolean {
-  return proto instanceof Constructor || proto === Constructor.prototype;
-}
 
 export default function(
   ast: BabelNodeCallExpression,
@@ -67,6 +66,22 @@ export default function(
   }
 }
 
+function getPrimitiveProtoFromAbstractValueType(realm: Realm, value: AbstractValue): Void | ObjectValue {
+  switch (value.getType()) {
+    case IntegralValue:
+    case NumberValue:
+      return realm.intrinsics.NumberPrototype;
+    case StringValue:
+      return realm.intrinsics.StringPrototype;
+    case BooleanValue:
+      return realm.intrinsics.BooleanPrototype;
+    case SymbolValue:
+      return realm.intrinsics.SymbolPrototype;
+    default:
+      return undefined;
+  }
+}
+
 function evaluateReference(
   ref: Reference | Value,
   ast: BabelNodeCallExpression,
@@ -85,23 +100,19 @@ function evaluateReference(
     if (base.kind === "conditional") {
       return evaluateConditionalReferenceBase(ref, ast, strictCode, env, realm);
     }
-    let type = base.getType();
     let referencedName = ref.referencedName;
 
-    // When dealing with a PrimitiveValue, like StringValue, NumberValue etc
+    // When dealing with a PrimitiveValue, like StringValue, NumberValue, IntegralValue etc
     // if we are referencing a prototype method, then it's safe to access, even
     // on an abstract value as the value is immutable and can't have a property
     // that matches the prototype method (unless the prototype was modified).
     // In pure scope, we assume the global prototype of built-ins has not been altered.
-    if (isInstance(type.prototype, PrimitiveValue) && typeof referencedName === "string") {
-      let obj = To.ToObject(realm, base);
-      let proto = obj.$GetPrototypeOf();
-      if (!(proto instanceof NullValue)) {
-        let possibleProtoDesc = proto.$GetOwnProperty(referencedName);
+    let possiblePrimitiveProto = getPrimitiveProtoFromAbstractValueType(realm, base);
+    if (possiblePrimitiveProto !== undefined && typeof referencedName === "string") {
+      let possibleProtoDesc = possiblePrimitiveProto.$GetOwnProperty(referencedName);
 
-        if (possibleProtoDesc !== undefined && possibleProtoDesc.value instanceof FunctionValue) {
-          return EvaluateCall(ref, possibleProtoDesc.value, ast, strictCode, env, realm);
-        }
+      if (possibleProtoDesc !== undefined && possibleProtoDesc.value instanceof FunctionValue) {
+        return EvaluateCall(ref, possibleProtoDesc.value, ast, strictCode, env, realm);
       }
     }
     // avoid explicitly converting ref.base to an object because that will create a generator entry
