@@ -173,7 +173,7 @@ export class Reconciler {
   ): Effects {
     const resolveComponentTree = () => {
       try {
-        let initialProps = props || getInitialProps(this.realm, componentType);
+        let initialProps = props || getInitialProps(this.realm, componentType, this.componentTreeConfig);
         let initialContext = context || getInitialContext(this.realm, componentType);
         this.alreadyEvaluatedRootNodes.set(componentType, evaluatedRootNode);
         let { result } = this._resolveComponent(componentType, initialProps, initialContext, "ROOT", evaluatedRootNode);

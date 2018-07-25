@@ -73,6 +73,11 @@ export type ArgModel = {
   arguments: { [string]: string },
 };
 
+export type ComponentModel = {
+  universe: ShapeUniverse,
+  component: { props: string },
+};
+
 export class ShapeInformation implements ShapeInformationInterface {
   constructor(
     descriptor: ShapeDescriptorNonLink,
@@ -119,6 +124,17 @@ export class ShapeInformation implements ShapeInformationInterface {
     return model !== undefined
       ? ShapeInformation._resolveLinksAndWrap(
           model.universe[model.arguments[argname]],
+          undefined,
+          undefined,
+          model.universe
+        )
+      : undefined;
+  }
+
+  static createForReactComponentProps(model: void | ComponentModel): void | ShapeInformation {
+    return model !== undefined
+      ? ShapeInformation._resolveLinksAndWrap(
+          model.universe[model.component.props],
           undefined,
           undefined,
           model.universe

@@ -351,6 +351,7 @@ export type ReactHint = {| firstRenderValue: Value, object: ObjectValue, propert
 export type ReactComponentTreeConfig = {
   firstRenderOnly: boolean,
   isRoot: boolean,
+  modelString: void | string,
 };
 
 export type DebugServerType = {

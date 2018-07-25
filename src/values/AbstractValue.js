@@ -942,13 +942,15 @@ export default class AbstractValue extends Value {
     return realm.reportIntrospectionError(message);
   }
 
-  static createAbstractObject(realm: Realm, name: string, template?: ObjectValue): AbstractObjectValue {
+  static createAbstractObject(
+    realm: Realm,
+    name: string,
+    templateOrShape?: ObjectValue | ShapeInformationInterface
+  ): AbstractObjectValue {
     let value;
-    if (template === undefined) {
-      template = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+    if (templateOrShape === undefined) {
+      templateOrShape = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
     }
-    template.makePartial();
-    template.makeSimple();
     value = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), ObjectValue, [], name);
     if (!realm.isNameStringUnique(name)) {
       value.hashValue = ++realm.objectCount;
@@ -956,8 +958,14 @@ export default class AbstractValue extends Value {
       realm.saveNameString(name);
     }
     value.intrinsicName = name;
-    value.values = new ValuesDomain(new Set([template]));
-    realm.rebuildNestedProperties(value, name);
+    if (templateOrShape instanceof ObjectValue) {
+      templateOrShape.makePartial();
+      templateOrShape.makeSimple();
+      value.values = new ValuesDomain(new Set([templateOrShape]));
+      realm.rebuildNestedProperties(value, name);
+    } else {
+      value.shape = templateOrShape;
+    }
     invariant(value instanceof AbstractObjectValue);
     return value;
   }

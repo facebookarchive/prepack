@@ -206,6 +206,7 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   makeFinal(): void {
+    if (this.shape) return;
     if (this.values.isTop()) {
       AbstractValue.reportIntrospectionError(this);
       throw new FatalError();
@@ -506,9 +507,10 @@ export default class AbstractObjectValue extends AbstractValue {
         let shapeContainer = this.kind === "explicit conversion to object" ? this.args[0] : this;
         invariant(shapeContainer instanceof AbstractValue);
         invariant(typeof P === "string");
+        let realm = this.$Realm;
         let shape = shapeContainer.shape;
         let propertyShape, propertyGetter;
-        if (this.$Realm.instantRender.enabled && shape !== undefined) {
+        if ((realm.instantRender.enabled || realm.react.enabled) && shape !== undefined) {
           propertyShape = shape.getPropertyShape(P);
           if (propertyShape !== undefined) {
             type = propertyShape.getAbstractType();
@@ -516,7 +518,7 @@ export default class AbstractObjectValue extends AbstractValue {
           }
         }
         let propAbsVal = AbstractValue.createTemporalFromBuildFunction(
-          this.$Realm,
+          realm,
           type,
           [ob, new StringValue(this.$Realm, P)],
           createOperationDescriptor("ABSTRACT_OBJECT_GET", { propertyGetter }),
