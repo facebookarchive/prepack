@@ -22,10 +22,11 @@ import {
   FunctionValue,
   NativeFunctionValue,
   ObjectValue,
+  PrimitiveValue,
   Value,
 } from "../values/index.js";
 import { Reference } from "../environment.js";
-import { Environment, Functions, Havoc, Join } from "../singletons.js";
+import { Environment, Functions, Havoc, Join, To } from "../singletons.js";
 import {
   ArgumentListEvaluation,
   EvaluateDirectCall,
@@ -68,16 +69,33 @@ function evaluateReference(
   env: LexicalEnvironment,
   realm: Realm
 ): Value {
+  let base = ref.base;
   if (
     ref instanceof Reference &&
-    ref.base instanceof AbstractValue &&
+    base instanceof AbstractValue &&
     // TODO: what about ref.base conditionals that mightBeObjects?
-    ref.base.mightNotBeObject() &&
+    base.mightNotBeObject() &&
     realm.isInPureScope()
   ) {
-    let base = ref.base;
     if (base.kind === "conditional") {
       return evaluateConditionalReferenceBase(ref, ast, strictCode, env, realm);
+    }
+    let type = base.getType();
+    let referencedName = ref.referencedName;
+
+    // When dealing with a PrimitiveValue, like StringValue, NumberValue etc
+    // if we are referencing a prototype method, then it's safe to access, even
+    // on an abstract value as the value is immutable and can't have a property
+    // that matches the prototype method (unless the prototype was modified).
+    // In pure scope, we assume the global prototype of built-ins has not been altered.
+    if (type.prototype instanceof PrimitiveValue && typeof referencedName === "string") {
+      let obj = To.ToObject(realm, base);
+      let proto = obj.$GetPrototypeOf();
+      let possibleProtoDesc = proto.$GetOwnProperty(referencedName);
+
+      if (possibleProtoDesc !== undefined && possibleProtoDesc.value instanceof FunctionValue) {
+        return EvaluateCall(ref, possibleProtoDesc.value, ast, strictCode, env, realm);
+      }
     }
     // avoid explicitly converting ref.base to an object because that will create a generator entry
     // leading to two object allocations rather than one.
