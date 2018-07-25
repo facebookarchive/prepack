@@ -335,3 +335,7 @@ it("Inline keys", () => {
 it("Inline unnecessary keys", () => {
   runTest(__dirname + "/FunctionalComponents/keyed-unnecessarily.js");
 });
+
+it("Inline key on component that does not return element", () => {
+  runTest(__dirname + "/FunctionalComponents/keyed-non-element.js");
+});
