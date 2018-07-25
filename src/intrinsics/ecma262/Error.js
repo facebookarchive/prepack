@@ -11,7 +11,14 @@
 
 import type { Realm } from "../../realm.js";
 import type { LexicalEnvironment } from "../../environment.js";
-import { AbstractValue, ObjectValue, FunctionValue, NativeFunctionValue, StringValue } from "../../values/index.js";
+import {
+  AbstractValue,
+  ObjectValue,
+  FunctionValue,
+  NativeFunctionValue,
+  StringValue,
+  Value,
+} from "../../values/index.js";
 import { Get } from "../../methods/index.js";
 import { Create, Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
