@@ -287,6 +287,7 @@ export class ResidualHeapVisitor {
   }
 
   visitObjectProperties(obj: ObjectValue, kind?: ObjectKind): void {
+    // In non-instant render mode, properties of leaked objects are generated via assignments
     let { skipPrototype, constructor } = getObjectPrototypeMetadata(this.realm, obj);
     if (obj.temporalAlias !== undefined) return;
 
@@ -313,6 +314,15 @@ export class ResidualHeapVisitor {
         continue;
       }
       if (propertyBindingValue.pathNode !== undefined) continue; // property is written to inside a loop
+
+      // Leaked object. Properties are set via assignments
+      // TODO #2259: Make deduplication in the face of leaking work for custom accessors
+      if (
+        !obj.mightNotBeHavocedObject() &&
+        (descriptor !== undefined && (descriptor.get === undefined && descriptor.set === undefined))
+      )
+        continue;
+
       invariant(propertyBindingValue);
       this.visitObjectProperty(propertyBindingValue);
     }
