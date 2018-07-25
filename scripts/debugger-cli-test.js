@@ -14,6 +14,14 @@ let child_process = require("child_process");
 let expectedOutputsPrefix = ["Debugger is starting up Prepack...", "Prepack is ready"];
 let expectedOutputsSuffix = ["Prepack exited! Shutting down..."];
 
+function cleanDebuggerOutputs(outputs: Array<string>): Array<string> {
+  return outputs.filter(o => !o.includes("dbg")).map(o => o.replace(/\r?\n|\r/g, ""));
+}
+
+function prepareExpectedOutputs(expected: Array<string>): Array<string> {
+  return expectedOutputsPrefix.concat(expected).concat(expectedOutputsSuffix);
+}
+
 function generateArgs(prepackArguments: Array<string>, sourceFiles: Array<string>): Array<string> {
   let prepackArgs = [];
   for (let arg of prepackArguments) {
@@ -32,28 +40,30 @@ function generateArgs(prepackArguments: Array<string>, sourceFiles: Array<string
     .concat(prepackArgs);
 }
 
-function cleanDebuggerOutputs(outputs: Array<string>): Array<string> {
-  return outputs.filter(o => !o.includes("dbg")).map(o => o.replace(/\r?\n|\r/g, ""));
-}
-
-function prepareExpectedOutputs(expected: Array<string>): Array<string> {
-  return expectedOutputsPrefix.concat(expected).concat(expectedOutputsSuffix);
-}
-let i;
-for (i = 0; i < 3; i++) {
-  test(`test${i}`, done => {
-    let args = generateArgs([], ["test/debugger/sample1.js"]);
-    const commands = ["breakpoint add test/debugger/sample1.js 8", "run", "run"];
+describe.each([
+  [
+    "Breakpoint test",
+    [],
+    ["test/debugger/sample1.js"],
+    ["breakpoint add test/debugger/sample1.js 8", "run", "run"],
+    ["Breakpoint: test/debugger/sample1.js 8:2"],
+  ],
+])("Debugger Correctness Tests", (name, prepackArgs, inputSourceFiles, commands, expected) => {
+  test(name, done => {
+    let args = generateArgs(prepackArgs, inputSourceFiles);
     let commandIndex = 0;
-    let expectedOutputs = prepareExpectedOutputs(["Breakpoint: test/debugger/sample1.js 8:2"]);
     let debuggerOutputs = [];
 
     let child = child_process.spawn("node", args);
 
     child.stdout.on("data", function(data) {
       // console.log(`OUTPUT: [${data}]`);
+      let i;
+      for (i = 0; i < 99999; i++) {}
       let output = `${data}`;
+      // console.log(output);
       debuggerOutputs.push(output);
+      // console.log(debuggerOutputs);
       if ((output === "(dbg) (dbg) " || output === "(dbg) ") && commandIndex < commands.length) {
         // console.log(`WRITING: [${commands[commandIndex]}]`);
         child.stdin.write(`${commands[commandIndex]}\n`);
@@ -64,8 +74,8 @@ for (i = 0; i < 3; i++) {
     });
 
     child.on("close", (code, signal) => {
-      expect(cleanDebuggerOutputs(debuggerOutputs)).toEqual(expectedOutputs);
+      expect(cleanDebuggerOutputs(debuggerOutputs)).toEqual(prepareExpectedOutputs(expected));
       done();
     });
   });
-}
+});
