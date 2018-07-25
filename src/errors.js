@@ -41,7 +41,7 @@ export class CompilerDiagnostic extends Error {
   location: ?BabelNodeSourceLocation;
   severity: Severity;
   errorCode: string;
-  // For --reproOnFatalError, we need to pass the names of all sourcefiles touched by Prepack back to the CLI.
+  // For repro bundles, we need to pass the names of all sourcefiles/sourcemaps touched by Prepack back to the CLI.
   sourceFilePaths: void | { sourceMaps: Array<string>, sourceFiles: Array<{ absolute: string, relative: string }> };
 }
 
