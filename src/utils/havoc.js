@@ -180,9 +180,6 @@ class ObjectValueHavocingVisitor {
     // if this object wasn't already havoced, we need mark it as havoced
     // so that any mutation and property access get tracked after this.
     if (obj.mightNotBeHavocedObject()) {
-      if (obj.react) {
-        debugger;
-      }
       obj.havoc();
       if (obj.symbols.size > 0) {
         throw new FatalError("TODO: Support havocing objects with symbols");

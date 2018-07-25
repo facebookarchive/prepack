@@ -204,7 +204,6 @@ export function createClassInstanceForFirstRenderOnly(
 
   invariant(instance instanceof ObjectValue);
   instance.refuseSerialization = true;
-  instance.react = true;
   // assign props
   Properties.Set(realm, instance, "props", props, true);
   // assign context
