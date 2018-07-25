@@ -791,6 +791,21 @@ export function convertConfigObjectToReactComponentTreeConfig(
             isRoot = value;
           }
         } else if (typeof value === "string") {
+          try {
+            // result here is ignored as the main point here is to
+            // check and produce error
+            JSON.parse(value);
+          } catch (e) {
+            let componentModelError = new CompilerDiagnostic(
+              "Failed to parse model for component",
+              realm.currentLocation,
+              "PP1008",
+              "FatalError"
+            );
+            if (realm.handleError(componentModelError) !== "Recover") {
+              throw new FatalError();
+            }
+          }
           // string options
           if (key === "model") {
             modelString = value;
