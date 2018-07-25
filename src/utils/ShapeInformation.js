@@ -75,7 +75,7 @@ export type ArgModel = {
 
 export type ComponentModel = {
   universe: ShapeUniverse,
-  component: { [string]: string },
+  component: { props: string },
 };
 
 export class ShapeInformation implements ShapeInformationInterface {
