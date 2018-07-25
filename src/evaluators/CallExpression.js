@@ -66,7 +66,7 @@ export default function(
   }
 }
 
-function getPrimitiveProtoFromAbstractValueType(realm: Realm, value: AbstractValue): Void | ObjectValue {
+function getPrimitiveProtoFromAbstractValueType(realm: Realm, value: AbstractValue): void | ObjectValue {
   switch (value.getType()) {
     case IntegralValue:
     case NumberValue:

@@ -356,19 +356,19 @@ export class ResidualOperationSerializer {
     return babelNode;
   }
 
-  _serializeStringSplit(data: OperationDescriptor, [a, b, c]: Array<BabelNodeExpression>) {
+  _serializeStringSplit(data: OperationDescriptorData, [a, b, c]: Array<BabelNodeExpression>) {
     return t.callExpression(t.memberExpression(a, t.identifier("split")), [b, c]);
   }
 
-  _serializeStringSlice(data: OperationDescriptor, [a, b, c]: Array<BabelNodeExpression>) {
+  _serializeStringSlice(data: OperationDescriptorData, [a, b, c]: Array<BabelNodeExpression>) {
     return t.callExpression(t.memberExpression(a, t.identifier("slice")), [b, c]);
   }
 
-  _serializeToString(data: OperationDescriptor, [node]: Array<BabelNodeExpression>) {
+  _serializeToString(data: OperationDescriptorData, [node]: Array<BabelNodeExpression>) {
     return t.callExpression(t.memberExpression(node, t.identifier("toString")), []);
   }
 
-  _serializeToLocaleString(data: OperationDescriptor, [node]: Array<BabelNodeExpression>) {
+  _serializeToLocaleString(data: OperationDescriptorData, [node]: Array<BabelNodeExpression>) {
     return t.callExpression(t.memberExpression(node, t.identifier("toLocaleString")), []);
   }
 
