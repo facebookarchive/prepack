@@ -456,7 +456,7 @@ function run(
   function generateDebugRepro(
     sourceFiles: Array<{ absolute: string, relative: string }>,
     sourceMaps: Array<string>,
-    shouldExit: boolean // If repro should exit, the code will always be 1 (since it only exits from the FatalError case)
+    shouldExitWithError: boolean
   ) {
     if (reproFilePath === undefined) process.exit(1);
     let reproZip = zipFactory();
@@ -541,14 +541,20 @@ function run(
     `
       );
       const data = reproZip.generate({ base64: false, compression: "DEFLATE" });
-      if (reproFilePath) fs.writeFileSync(reproFilePath, data, "binary");
+      if (reproFilePath) {
+        fs.writeFileSync(reproFilePath, data, "binary");
+        console.log(`ReproBundle written to ${reproFilePath}`);
+      }
 
-      if (shouldExit) process.exit(1);
+      if (shouldExitWithError) process.exit(1);
     });
   }
 
   let profiler;
   let success;
+  let debugReproSourceFiles = [];
+  let debugReproSourceMaps = [];
+
   try {
     if (cpuprofilePath !== undefined) {
       try {
@@ -570,11 +576,13 @@ function run(
       let serialized = prepackFileSync(inputFilenames, resolvedOptions);
       if (reproMode === "reproUnconditionally") {
         if (serialized.sourceFilePaths) {
-          generateDebugRepro(serialized.sourceFilePaths.sourceFiles, serialized.sourceFilePaths.sourceMaps, false);
+          debugReproSourceFiles = serialized.sourceFilePaths.sourceFiles;
+          debugReproSourceMaps = serialized.sourceFilePaths.sourceMaps;
         } else {
           // An input can have no sourcemap/sourcefiles, but we can still package
           // the input files, prepack runtime, and generate the script.
-          generateDebugRepro([], [], false);
+          debugReproSourceFiles = [];
+          debugReproSourceMaps = [];
         }
       }
 
@@ -589,9 +597,7 @@ function run(
       if (reproMode) {
         // Get largest list of original sources from all diagnostics.
         // Must iterate through both because maps are ordered so we can't tell which diagnostic is most recent.
-        let largestSourceFilesList = [];
         let largestLength = 0;
-        let sourceMaps = [];
 
         let allDiagnostics = Array.from(compilerDiagnostics.values()).concat(compilerDiagnosticsList);
         allDiagnostics.forEach(diagnostic => {
@@ -601,14 +607,12 @@ function run(
             diagnostic.sourceFilePaths.sourceMaps
           ) {
             if (diagnostic.sourceFilePaths.sourceFiles.length > largestLength) {
-              largestSourceFilesList = diagnostic.sourceFilePaths.sourceFiles;
+              debugReproSourceFiles = diagnostic.sourceFilePaths.sourceFiles;
               largestLength = diagnostic.sourceFilePaths.sourceFiles.length;
-              sourceMaps = diagnostic.sourceFilePaths.sourceMaps;
+              debugReproSourceMaps = diagnostic.sourceFilePaths.sourceMaps;
             }
           }
         });
-
-        generateDebugRepro(largestSourceFilesList, sourceMaps, true);
       }
       success = false;
     }
@@ -668,11 +672,15 @@ function run(
     }
   }
 
-  // If there is a repro going on, don't exit.
+  // If there will be a repro going on, don't exit.
   // The repro involves an async directory zip, so exiting here will cause the repro
   // to not complete. Instead, all calls to repro include a flag to indicate
   // whether or not it should process.exit() upon completion.
-  if (!success && reproMode === undefined) process.exit(1);
+  if (!success && reproMode === undefined) {
+    process.exit(1);
+  } else if ((!success && reproMode === "reproOnFatalError") || reproMode === "reproUnconditionally") {
+    generateDebugRepro(debugReproSourceFiles, debugReproSourceMaps, !success);
+  }
 }
 
 if (typeof __residual === "function") {
