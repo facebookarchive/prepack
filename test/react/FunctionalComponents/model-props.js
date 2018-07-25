@@ -1,16 +1,12 @@
 var React = require("React");
 
 function App(props) {
-  return <div>
-    <h1>{props.header.toString()}</h1>
-    <ul>
-      {
-        props.items && props.items.map(item =>
-          <li key={item.id}>{item.title.toString()}</li>
-        )
-      }
-    </ul>
-  </div>;
+  return (
+    <div>
+      <h1>{props.header.toString()}</h1>
+      <ul>{props.items && props.items.map(item => <li key={item.id}>{item.title.toString()}</li>)}</ul>
+    </div>
+  );
 }
 
 App.getTrials = function(renderer, Root) {
@@ -20,7 +16,6 @@ App.getTrials = function(renderer, Root) {
 };
 
 if (this.__optimizeReactComponentTree) {
-
   let universe = {
     Item: {
       kind: "object",
