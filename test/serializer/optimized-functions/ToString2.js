@@ -1,4 +1,3 @@
-
 function fn(cond, a, b) {
   var y;
 

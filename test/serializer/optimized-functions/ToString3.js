@@ -1,9 +1,8 @@
-
 function fn(cond, cond2, a, b, c) {
   var x = global.__abstract ? __abstract("number", "a") : a;
   var y;
   var z;
-  var obj = Object.assign({}, b, {x})
+  var obj = Object.assign({}, b, { x });
 
   if (cond) {
     y = obj.x.toString() + c;
