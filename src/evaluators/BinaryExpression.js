@@ -64,10 +64,6 @@ export function getPureBinaryOperationResultType(
     let leftPure = purityTest(realm, lval);
     let rightPure = purityTest(realm, rval);
     if (leftPure && rightPure) return typeIfPure;
-    if (lval.getType() === SymbolValue || rval.getType() === SymbolValue) {
-      // Symbols never implicitly coerce to primitives.
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
-    }
     let loc = !leftPure ? lloc : rloc;
     let error = new CompilerDiagnostic(unknownValueOfOrToString, loc, "PP0002", "RecoverableError");
     if (realm.handleError(error) === "Recover") {
@@ -141,6 +137,9 @@ export function getPureBinaryOperationResultType(
     op === "*" ||
     op === "-"
   ) {
+    if (lval.getType() === SymbolValue || rval.getType() === SymbolValue) {
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+    }
     return reportErrorIfNotPure(To.IsToNumberPure.bind(To), NumberValue);
   } else if (op === "in" || op === "instanceof") {
     if (rval.mightNotBeObject()) {
