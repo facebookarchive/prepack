@@ -50,7 +50,7 @@ import {
 } from "./utils.js";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
-import { Properties } from "../singletons.js";
+import { Create, Properties } from "../singletons.js";
 import { FatalError, CompilerDiagnostic } from "../errors.js";
 import {
   type BranchStatusEnum,
@@ -75,6 +75,7 @@ import {
   SimpleClassBailOut,
   UnsupportedSideEffect,
 } from "./errors.js";
+import { createReactElement } from "./elements.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
 import { handleReportedSideEffect } from "../serializer/utils.js";
@@ -1154,6 +1155,7 @@ export class Reconciler {
     let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
     let refValue = getProperty(this.realm, reactElement, "ref");
+    let keyValue = getProperty(this.realm, reactElement, "key");
 
     invariant(
       !(typeValue instanceof AbstractValue && typeValue.kind === "conditional"),
@@ -1189,6 +1191,7 @@ export class Reconciler {
     ) {
       this._resolveReactElementBadRef(reactElement, evaluatedNode);
     }
+
     try {
       let result;
 
@@ -1216,7 +1219,8 @@ export class Reconciler {
           break;
         }
         case "FRAGMENT": {
-          return this._resolveFragmentComponent(componentType, reactElement, context, branchStatus, evaluatedNode);
+          result = this._resolveFragmentComponent(componentType, reactElement, context, branchStatus, evaluatedNode);
+          break;
         }
         case "RELAY_QUERY_RENDERER": {
           invariant(typeValue instanceof AbstractObjectValue);
@@ -1224,13 +1228,14 @@ export class Reconciler {
           break;
         }
         case "CONTEXT_PROVIDER": {
-          return this._resolveContextProviderComponent(
+          result = this._resolveContextProviderComponent(
             componentType,
             reactElement,
             context,
             branchStatus,
             evaluatedNode
           );
+          break;
         }
         case "CONTEXT_CONSUMER": {
           result = this._resolveContextConsumerComponent(
@@ -1253,9 +1258,24 @@ export class Reconciler {
       if (result === undefined) {
         result = reactElement;
       }
+
       if (result instanceof UndefinedValue) {
         return this._resolveReactElementUndefinedRender(reactElement, evaluatedNode, branchStatus);
       }
+
+      // If we have a new result and we might have a key value then wrap our inlined result in a
+      // `<React.Fragment key={keyValue}>` so that we may maintain the key.
+      if (result !== reactElement && keyValue.mightNotBeNull()) {
+        const react = this.realm.fbLibraries.react;
+        invariant(react instanceof ObjectValue);
+        const reactFragment = getProperty(this.realm, react, "Fragment");
+        const fragmentConfigValue = Create.ObjectCreate(this.realm, this.realm.intrinsics.ObjectPrototype);
+        Create.CreateDataPropertyOrThrow(this.realm, fragmentConfigValue, "key", keyValue);
+        const fragmentChildrenValue = Create.ArrayCreate(this.realm, 1);
+        Create.CreateDataPropertyOrThrow(this.realm, fragmentChildrenValue, "0", result);
+        result = createReactElement(this.realm, reactFragment, fragmentConfigValue, fragmentChildrenValue);
+      }
+
       return result;
     } catch (error) {
       return this._resolveComponentResolutionFailure(error, reactElement, evaluatedNode, branchStatus);

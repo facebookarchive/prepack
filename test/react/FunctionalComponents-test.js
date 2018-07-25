@@ -327,3 +327,7 @@ it("Pathological case", () => {
 it("Model props", () => {
   runTest(__dirname + "/FunctionalComponents/model-props.js");
 });
+
+it("Inline keys", () => {
+  runTest(__dirname + "/FunctionalComponents/keyed.js");
+});
