@@ -111,11 +111,7 @@ function getHavocedFunctionInfo(value: FunctionValue) {
   return functionInfo;
 }
 
-function materializeLeakedObject(
-  realm: Realm,
-  object: ObjectValue,
-  getCachingHeapInspector?: () => HeapInspector
-): void {
+function materializeObject(realm: Realm, object: ObjectValue, getCachingHeapInspector?: () => HeapInspector): void {
   let generator = realm.generator;
 
   if (object.symbols.size > 0) {
@@ -240,7 +236,7 @@ class ObjectValueHavocingVisitor {
       // materialization is a common operation and needs to be invoked
       // whenever non-final values need to be made available at intermediate
       // points in a program's control flow. An object can be materialized by
-      // calling materializeLeakedObject(). Sometimes, objects
+      // calling materializeObject(). Sometimes, objects
       // are materialized in cohorts (such as during leaking and havocing).
       // In these cases, we provide a caching mechanism for HeapInspector().
       let makeAndCacheHeapInspector = () => {
@@ -253,7 +249,7 @@ class ObjectValueHavocingVisitor {
         }
       };
       invariant(this.realm.generator !== undefined);
-      materializeLeakedObject(this.realm, obj, makeAndCacheHeapInspector);
+      materializeObject(this.realm, obj, makeAndCacheHeapInspector);
     }
   }
 
@@ -591,6 +587,6 @@ export class HavocImplementation {
 
 export class MaterializeImplementation {
   materialize(realm: Realm, val: ObjectValue) {
-    materializeLeakedObject(realm, val);
+    materializeObject(realm, val);
   }
 }
