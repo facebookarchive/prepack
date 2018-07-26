@@ -807,10 +807,12 @@ export default class ObjectValue extends ConcreteValue {
       }
       result = AbstractValue.createFromType(this.$Realm, Value, "sentinel member expression", [this, P]);
     } else {
+      // This is simple and not partial. Any access that isn't covered by checking against
+      // all its properties, is covered by reading from the prototype.
       result = AbstractValue.createTemporalFromBuildFunction(
         this.$Realm,
         Value,
-        [this, P],
+        [this.$Prototype, P],
         createOperationDescriptor("OBJECT_GET_PARTIAL"),
         { skipInvariant: true, isPure: true }
       );
