@@ -171,9 +171,56 @@ export function computeBinary(
   let resultType;
   const compute = () => {
     if (lval instanceof AbstractValue || rval instanceof AbstractValue) {
-      // generate error if binary operation might throw or have side effects
-      resultType = getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
-      return AbstractValue.createFromBinaryOp(realm, op, lval, rval, loc);
+      try {
+        // generate error if binary operation might throw or have side effects
+        resultType = getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
+        return AbstractValue.createFromBinaryOp(realm, op, lval, rval, loc);
+      } catch (x) {
+        if (x instanceof FatalError) {
+          // There is no need to revert any effects, because the above operation is pure.
+          // If this failed and one of the arguments was conditional, try each value
+          // and join the effects based on the condition.
+          if (lval instanceof AbstractValue && lval.kind === "conditional") {
+            let condition = lval.args[0];
+            invariant(condition instanceof AbstractValue);
+            return realm.evaluateWithAbstractConditional(
+              condition,
+              () =>
+                realm.evaluateForEffects(
+                  () => computeBinary(realm, op, lval.args[1], rval, lloc, rloc, loc),
+                  undefined,
+                  "ConditionalBinaryExpression/1"
+                ),
+              () =>
+                realm.evaluateForEffects(
+                  () => computeBinary(realm, op, lval.args[2], rval, lloc, rloc, loc),
+                  undefined,
+                  "ConditionalBinaryExpression/2"
+                )
+            );
+          }
+          if (rval instanceof AbstractValue && rval.kind === "conditional") {
+            let condition = rval.args[0];
+            invariant(condition instanceof AbstractValue);
+            return realm.evaluateWithAbstractConditional(
+              condition,
+              () =>
+                realm.evaluateForEffects(
+                  () => computeBinary(realm, op, lval, rval.args[1], lloc, rloc, loc),
+                  undefined,
+                  "ConditionalBinaryExpression/3"
+                ),
+              () =>
+                realm.evaluateForEffects(
+                  () => computeBinary(realm, op, lval, rval.args[2], lloc, rloc, loc),
+                  undefined,
+                  "ConditionalBinaryExpression/4"
+                )
+            );
+          }
+        }
+        throw x;
+      }
     } else {
       // ECMA262 12.10.3
 
