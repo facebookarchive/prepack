@@ -562,7 +562,7 @@ export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayV
     if (P === "length") {
       return AbstractValue.createTemporalFromBuildFunction(
         realm,
-        NumberValue,
+        Value,
         [arr],
         createOperationDescriptor("UNKNOWN_ARRAY_LENGTH"),
         { skipInvariant: true, isPure: true }

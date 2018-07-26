@@ -31,14 +31,7 @@ import {
   UndefinedValue,
 } from "../../values/index.js";
 import { Reconciler } from "../reconcilation.js";
-import {
-  createReactEvaluatedNode,
-  forEachArrayValue,
-  getComponentName,
-  getProperty,
-  getReactSymbol,
-  isReactElement,
-} from "../utils.js";
+import { createReactEvaluatedNode, getComponentName, getProperty, getReactSymbol, isReactElement } from "../utils.js";
 import * as t from "@babel/types";
 import invariant from "../../invariant.js";
 import {
@@ -67,7 +60,7 @@ import {
 } from "./dom-config.js";
 // $FlowFixMe: flow complains that this isn't a module but it is, and it seems to load fine
 import hyphenateStyleName from "fbjs/lib/hyphenateStyleName";
-import { To } from "../../singletons.js";
+import { To, Utils } from "../../singletons.js";
 import { createOperationDescriptor } from "../../utils/generator.js";
 
 export type ReactNode = Array<ReactNode> | string | AbstractValue | ArrayValue;
@@ -347,7 +340,7 @@ class ReactDOMServerRenderer {
       }
     }
     let elements = [];
-    forEachArrayValue(this.realm, value, elementValue => {
+    Utils.forEachArrayValue(this.realm, value, elementValue => {
       let renderedElement = this._renderValue(elementValue, namespace, depth);
       if (Array.isArray(renderedElement)) {
         elements.push(...renderedElement);

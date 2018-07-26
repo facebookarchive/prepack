@@ -1041,6 +1041,7 @@ export type ConcretizeType = (realm: Realm, val: Value) => ConcreteValue;
 export type DisplayResult = {} | string;
 
 export type UtilsType = {|
+  forEachArrayValue: (Realm, ArrayValue, (element: Value, index: number) => void) => void,
   typeToString: (typeof Value) => void | string,
   getTypeFromName: string => void | typeof Value,
   describeValue: Value => string,

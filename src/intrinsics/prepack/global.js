@@ -23,7 +23,7 @@ import {
   StringValue,
   Value,
 } from "../../values/index.js";
-import { To, Path } from "../../singletons.js";
+import { To, Path, Utils } from "../../singletons.js";
 import { ValuesDomain } from "../../domains/index.js";
 import invariant from "../../invariant.js";
 import { createAbstract, parseTypeNameOrTemplate } from "./utils.js";
@@ -31,6 +31,7 @@ import { describeValue } from "../../utils.js";
 import { valueIsKnownReactAbstraction } from "../../react/utils.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
 import * as t from "@babel/types";
+import { TypesDomain } from "../../domains/index.js";
 import { createOperationDescriptor, type OperationDescriptor } from "../../utils/generator.js";
 
 export function createAbstractFunction(realm: Realm, ...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
@@ -389,6 +390,26 @@ export default function(realm: Realm): void {
   global.$DefineOwnProperty("__isAbstract", {
     value: new NativeFunctionValue(realm, "global.__isAbstract", "__isAbstract", 1, (context, [value]) => {
       return new BooleanValue(realm, value instanceof AbstractValue);
+    }),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  // __changeType(value, type) changes the type domain of an abstract value
+  global.$DefineOwnProperty("__changeType", {
+    value: new NativeFunctionValue(realm, "global.__changeType", "__changeType", 1, (context, [value, typeString]) => {
+      if (value instanceof AbstractValue && typeString instanceof StringValue) {
+        let typeNameString = To.ToStringPartial(realm, typeString);
+        let type = Utils.getTypeFromName(typeNameString);
+        let types = new TypesDomain(type);
+        value.types = types;
+        return value;
+      }
+      throw realm.createErrorThrowCompletion(
+        realm.intrinsics.TypeError,
+        "__changeType expect a value (abstract) and type (string)"
+      );
     }),
     writable: true,
     enumerable: false,

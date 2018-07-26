@@ -9,6 +9,7 @@
 
 /* @flow strict-local */
 
+import { Realm } from "./realm.js";
 import {
   AbstractValue,
   ArrayValue,
@@ -26,6 +27,7 @@ import {
   Value,
 } from "./values/index.js";
 import invariant from "./invariant.js";
+import { Get } from "./methods/index.js";
 
 export function typeToString(type: typeof Value): void | string {
   function isInstance(proto, Constructor): boolean {
@@ -143,4 +145,25 @@ export function verboseToDisplayJson(obj: {}, depth: number): DisplayResult {
     if (value && value !== "[object Object]") result[key] = value;
   }
   return result;
+}
+
+// a helper function to loop over ArrayValues
+export function forEachArrayValue(
+  realm: Realm,
+  array: ArrayValue,
+  mapFunc: (element: Value, index: number) => void
+): void {
+  let lengthValue = Get(realm, array, "length");
+  invariant(lengthValue instanceof NumberValue, "TODO: support non-numeric length on forEachArrayValue");
+  let length = lengthValue.value;
+  for (let i = 0; i < length; i++) {
+    let elementProperty = array.properties.get("" + i);
+    let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
+    if (elementPropertyDescriptor) {
+      let elementValue = elementPropertyDescriptor.value;
+      if (elementValue instanceof Value) {
+        mapFunc(elementValue, i);
+      }
+    }
+  }
 }
