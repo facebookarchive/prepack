@@ -557,7 +557,7 @@ export class UISession {
     }
   }
 
-  serve(testMode: boolean, responseProcessor: string => void, commandSender: () => string, tester: void => void) {
+  serve(testMode: boolean, responseProcessor?: string => void, commandSender?: () => string, tester?: void => void) {
     this._testMode = testMode;
     this._testOutput = responseProcessor;
     this._testInput = commandSender;

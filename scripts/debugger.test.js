@@ -12,6 +12,7 @@
 // let child_process = require("child_process");
 import { UISession } from "../lib/debugger/mock-ui/UISession.js";
 import type { DebuggerCLIArguments } from "../lib/debugger/mock-ui/UISession.js";
+import fs from "fs";
 
 let expectedOutputsPrefix = ["Debugger is starting up Prepack...", "Prepack is ready"];
 let expectedOutputsSuffix = ["Prepack exited! Shutting down..."];
@@ -33,49 +34,52 @@ function generateArgs(prepackArguments: Array<string>, sourceFiles: Array<string
   };
 }
 
-describe.each([
-  [
-    "Breakpoint test1",
-    [],
-    ["test/debugger/sample1.js"],
-    ["breakpoint add test/debugger/sample1.js 8", "run", "run"],
-    ["Breakpoint: test/debugger/sample1.js 8:2"],
-  ],
-  [
-    "Breakpoint test2",
-    [],
-    ["test/debugger/sample1.js"],
-    ["breakpoint add test/debugger/sample1.js 8", "run", "run"],
-    ["Breakpoint: test/debugger/sample1.js 8:2"],
-  ],
-])("Debugger Correctness Tests", (name, prepackArgs, inputSourceFiles, commands, expected) => {
-  test(name, done => {
-    let args = generateArgs(prepackArgs, inputSourceFiles);
-    let commandIndex = 0;
-    let debuggerOutputs = [];
+function runTests(tests: Array<Array<string>>): void {
+  describe.each(tests)("Debugger Correctness Tests", (name, prepackArgs, inputSourceFiles, commands, expected) => {
+    test(name, done => {
+      let args = generateArgs(prepackArgs, inputSourceFiles);
+      let commandIndex = 0;
+      let debuggerOutputs = [];
 
-    let session = new UISession(process, args);
+      let session = new UISession(process, args);
 
-    let processResponse = function(data) {
-      // console.log(`OUTPUT: ${data}`);
-      debuggerOutputs.push(`${data}`);
-    };
+      let processResponse = function(data) {
+        // console.log(`OUTPUT: ${data}`);
+        debuggerOutputs.push(`${data}`);
+      };
 
-    let nextCommand = function(): string {
-      if (commandIndex < commands.length) {
-        let selectedCommand = commands[commandIndex];
-        commandIndex += 1;
-        // console.log(`SENDING: ${selectedCommand}`);
-        return selectedCommand;
-      }
-      return "";
-    };
+      // Allow UISession to query for next command so timing is correct.
+      // It's much trickier to try and read outputs and send the correct command.
+      let nextCommand = function(): string {
+        if (commandIndex < commands.length) {
+          let selectedCommand = commands[commandIndex];
+          commandIndex += 1;
+          // console.log(`SENDING: ${selectedCommand}`);
+          return selectedCommand;
+        }
+        return "";
+      };
 
-    let runTest = function(): void {
-      expect(cleanDebuggerOutputs(debuggerOutputs)).toEqual(cleanExpectedOutputs(expected));
-      done();
-    };
+      // Allow UISession to trigger the test when it finishes debugging.
+      let runTest = function(): void {
+        expect(cleanDebuggerOutputs(debuggerOutputs)).toEqual(cleanExpectedOutputs(expected));
+        done();
+      };
 
-    session.serve(true, processResponse, nextCommand, runTest);
+      session.serve(true, processResponse, nextCommand, runTest);
+    });
   });
-});
+}
+
+function findAndRunTests(): void {
+  let testParams = [];
+  let tests = JSON.parse(fs.readFileSync("test/debugger/testParams.json", "utf8")).DebuggerTestParameters;
+  console.log(tests);
+  for (let test of tests) {
+    testParams.push([test.name, test.prepackArgs, test.sourceFiles, test.commands, test.expectedOutput]);
+  }
+  console.log(testParams);
+  runTests(testParams);
+}
+
+findAndRunTests();

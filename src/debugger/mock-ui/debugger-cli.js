@@ -19,7 +19,7 @@ function run(process, console) {
   let args = readCLIArguments(process, console);
   let session = new UISession(process, args);
   try {
-    session.serve();
+    session.serve(false);
   } catch (e) {
     console.error(e);
     session.shutdown();
