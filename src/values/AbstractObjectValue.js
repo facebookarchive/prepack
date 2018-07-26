@@ -427,30 +427,60 @@ export default class AbstractObjectValue extends AbstractValue {
         enumerable: "enumerable" in Desc ? Desc.enumerable : false,
         configurable: "configurable" in Desc ? Desc.configurable : false,
       };
-      let new_val = desc.value;
-      invariant(new_val instanceof Value);
-      let sawTrue = false;
-      let sawFalse = false;
-      for (let cv of elements) {
-        invariant(cv instanceof ObjectValue);
-        let d = cv.$GetOwnProperty(P);
-        if (d !== undefined && !equalDescriptors(d, desc)) {
+      let newVal = desc.value;
+      if (this.kind === "conditional") {
+        // this is the join of two concrete/abstract objects
+        // use this join condition for the join of the two property values
+        let [cond, ob1, ob2] = this.args;
+        invariant(cond instanceof AbstractValue);
+        invariant(ob1 instanceof ObjectValue || ob1 instanceof AbstractObjectValue);
+        invariant(ob2 instanceof ObjectValue || ob2 instanceof AbstractObjectValue);
+        let d1 = ob1.$GetOwnProperty(P);
+        let d2 = ob2.$GetOwnProperty(P);
+        if ((d1 !== undefined && !equalDescriptors(d1, desc)) || (d2 !== undefined && !equalDescriptors(d2, desc))) {
           AbstractValue.reportIntrospectionError(this, P);
           throw new FatalError();
         }
-        let dval = d === undefined || d.value === undefined ? this.$Realm.intrinsics.empty : d.value;
-        invariant(dval instanceof Value);
-        let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
-        desc.value = AbstractValue.createFromConditionalOp(this.$Realm, cond, new_val, dval);
-        if (cv.$DefineOwnProperty(P, desc)) {
-          sawTrue = true;
-        } else sawFalse = true;
+        let oldVal1 = d1 === undefined || d1.value === undefined ? this.$Realm.intrinsics.empty : d1.value;
+        let oldVal2 = d2 === undefined || d2.value === undefined ? this.$Realm.intrinsics.empty : d2.value;
+        invariant(oldVal1 instanceof Value);
+        invariant(oldVal2 instanceof Value);
+        let newVal1 = AbstractValue.createFromConditionalOp(this.$Realm, cond, newVal, oldVal1);
+        let newVal2 = AbstractValue.createFromConditionalOp(this.$Realm, cond, oldVal2, newVal);
+        desc.value = newVal1;
+        let result1 = ob1.$DefineOwnProperty(P, desc);
+        desc.value = newVal2;
+        let result2 = ob2.$DefineOwnProperty(P, desc);
+        if (result1 !== result2) {
+          AbstractValue.reportIntrospectionError(this, P);
+          throw new FatalError();
+        }
+        return result1;
+      } else {
+        invariant(newVal instanceof Value);
+        let sawTrue = false;
+        let sawFalse = false;
+        for (let cv of elements) {
+          invariant(cv instanceof ObjectValue);
+          let d = cv.$GetOwnProperty(P);
+          if (d !== undefined && !equalDescriptors(d, desc)) {
+            AbstractValue.reportIntrospectionError(this, P);
+            throw new FatalError();
+          }
+          let dval = d === undefined || d.value === undefined ? this.$Realm.intrinsics.empty : d.value;
+          invariant(dval instanceof Value);
+          let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
+          desc.value = AbstractValue.createFromConditionalOp(this.$Realm, cond, newVal, dval);
+          if (cv.$DefineOwnProperty(P, desc)) {
+            sawTrue = true;
+          } else sawFalse = true;
+        }
+        if (sawTrue && sawFalse) {
+          AbstractValue.reportIntrospectionError(this, P);
+          throw new FatalError();
+        }
+        return sawTrue;
       }
-      if (sawTrue && sawFalse) {
-        AbstractValue.reportIntrospectionError(this, P);
-        throw new FatalError();
-      }
-      return sawTrue;
     }
   }
 
