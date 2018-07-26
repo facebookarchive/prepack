@@ -91,6 +91,7 @@ export type SourceFile = {
   filePath: string,
   fileContents: string,
   sourceMapContents?: string,
+  sourceMapFilename?: string,
 };
 
 export type SourceMap = {
@@ -1074,3 +1075,15 @@ export interface ShapeInformationInterface {
   getGetter(): void | SupportedGraphQLGetters;
   getAbstractType(): typeof Value;
 }
+
+export type DebugReproManagerType = {
+  construct(configArgs: DebugReproArguments): void,
+  addSourceFile(fileName: string): void,
+  getSourceFilePaths(): Array<{ absolute: string, relative: string }>,
+  getSourceMapPaths(): Array<string>,
+};
+
+export type DebugReproArguments = {
+  sourcemaps?: Array<SourceFile>,
+  buckRoot?: string,
+};

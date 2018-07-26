@@ -61,7 +61,6 @@ export function prepackStdin(
         serialized = prepackSources(
           [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
           options,
-          undefined,
           createStatistics(options)
         );
         processSerializedCode(serialized);
@@ -103,7 +102,6 @@ export function prepackFile(
         serialized = prepackSources(
           [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
           options,
-          undefined,
           createStatistics(options)
         );
       } catch (err) {
@@ -126,8 +124,16 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     } catch (_e) {
       if (options.inputSourceMapFilename !== undefined) console.warn(`No sourcemap found at ${sourceMapFilename}.`);
     }
-    return { filePath: filename, fileContents: code, sourceMapContents: sourceMap };
+    return {
+      filePath: filename,
+      fileContents: code,
+      sourceMapContents: sourceMap,
+      sourceMapFilename: sourceMapFilename,
+    };
   });
+
+  // Don't include sourcemaps that weren't found
+  let validSourceFiles = sourceFiles.filter(sf => sf.sourceMapContents !== "");
 
   // The existence of debug[In/Out]FilePath represents the desire to use the debugger.
   if (options.debugInFilePath !== undefined && options.debugOutFilePath !== undefined) {
@@ -135,7 +141,10 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
 
     let ioWrapper = new FileIOWrapper(false, options.debugInFilePath, options.debugOutFilePath);
     options.debuggerConfigArgs.debugChannel = new DebugChannel(ioWrapper);
-    options.debuggerConfigArgs.sourcemaps = sourceFiles;
+    options.debuggerConfigArgs.sourcemaps = validSourceFiles;
   }
-  return prepackSources(sourceFiles, options, options.debuggerConfigArgs, createStatistics(options));
+
+  if (options.debugReproArgs) options.debugReproArgs.sourcemaps = validSourceFiles;
+
+  return prepackSources(sourceFiles, options, createStatistics(options));
 }
