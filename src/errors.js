@@ -22,18 +22,27 @@ export type ErrorCode = "PP0001";
 // This is the error format used to report errors to the caller-supplied
 // error-handler
 export class CompilerDiagnostic extends Error {
-  constructor(message: string, location: ?BabelNodeSourceLocation, errorCode: string, severity: Severity) {
+  constructor(
+    message: string,
+    location: ?BabelNodeSourceLocation,
+    errorCode: string,
+    severity: Severity,
+    sourceFilePaths?: { sourceMaps: Array<string>, sourceFiles: Array<{ absolute: string, relative: string }> }
+  ) {
     super(message);
 
     this.location = location;
     this.severity = severity;
     this.errorCode = errorCode;
+    this.sourceFilePaths = sourceFilePaths;
   }
 
   callStack: void | string;
   location: ?BabelNodeSourceLocation;
   severity: Severity;
   errorCode: string;
+  // For repro bundles, we need to pass the names of all sourcefiles/sourcemaps touched by Prepack back to the CLI.
+  sourceFilePaths: void | { sourceMaps: Array<string>, sourceFiles: Array<{ absolute: string, relative: string }> };
 }
 
 // This error is thrown to exit Prepack when an ErrorHandler returns 'FatalError'

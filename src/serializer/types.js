@@ -205,4 +205,5 @@ export type SerializedResult = {
   statistics?: SerializerStatistics,
   reactStatistics?: ReactStatistics,
   heapGraph?: string,
+  sourceFilePaths?: { sourceMaps: Array<string>, sourceFiles: Array<{ absolute: string, relative: string }> },
 };
