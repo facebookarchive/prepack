@@ -666,6 +666,16 @@ export default class AbstractObjectValue extends AbstractValue {
         return cv.$GetPartial(P, Receiver === this ? cv : Receiver);
       }
       invariant(false);
+    } else if (this.kind === "conditional") {
+      // this is the join of two concrete/abstract objects
+      // use this join condition for the join of the two property values
+      let [cond, ob1, ob2] = this.args;
+      invariant(cond instanceof AbstractValue);
+      invariant(ob1 instanceof ObjectValue || ob1 instanceof AbstractObjectValue);
+      invariant(ob2 instanceof ObjectValue || ob2 instanceof AbstractObjectValue);
+      let d1val = ob1.$GetPartial(P, Receiver === this ? ob1 : Receiver);
+      let d2val = ob2.$GetPartial(P, Receiver === this ? ob2 : Receiver);
+      return AbstractValue.createFromConditionalOp(this.$Realm, cond, d1val, d2val);
     } else {
       let result;
       for (let cv of elements) {
@@ -807,6 +817,21 @@ export default class AbstractObjectValue extends AbstractValue {
         return cv.$SetPartial(P, V, Receiver === this ? cv : Receiver);
       }
       invariant(false);
+    } else if (this.kind === "conditional") {
+      // this is the join of two concrete/abstract objects
+      // use this join condition for the join of the two property values
+      let [cond, ob1, ob2] = this.args;
+      invariant(cond instanceof AbstractValue);
+      invariant(ob1 instanceof ObjectValue || ob1 instanceof AbstractObjectValue);
+      invariant(ob2 instanceof ObjectValue || ob2 instanceof AbstractObjectValue);
+      let oldVal1 = ob1.$GetPartial(P, Receiver === this ? ob1 : Receiver);
+      let oldVal2 = ob2.$GetPartial(P, Receiver === this ? ob2 : Receiver);
+      let newVal1 = AbstractValue.createFromConditionalOp(this.$Realm, cond, V, oldVal1);
+      let newVal2 = AbstractValue.createFromConditionalOp(this.$Realm, cond, oldVal2, V);
+      let result1 = ob1.$SetPartial(P, newVal1, ob1);
+      let result2 = ob2.$SetPartial(P, newVal2, ob2);
+      invariant(result1 && result2, "a simple object must be writable");
+      return result1;
     } else {
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
