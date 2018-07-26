@@ -24,8 +24,7 @@ import {
 import { Create } from "../../singletons.js";
 import { Get } from "../../methods/index.js";
 import invariant from "../../invariant.js";
-import { Properties } from "../../singletons.js";
-import { forEachArrayValue } from "../../react/utils.js";
+import { Properties, Utils } from "../../singletons.js";
 import { createOperationDescriptor } from "../../utils/generator.js";
 
 const fbMagicGlobalFunctions = [
@@ -84,7 +83,7 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
 
   const createObjectWithoutProperties = (obj: ObjectValue, keys: ArrayValue) => {
     let removeKeys = new Set();
-    forEachArrayValue(realm, keys, key => {
+    Utils.forEachArrayValue(realm, keys, key => {
       if (key instanceof StringValue || key instanceof NumberValue) {
         removeKeys.add(key.value);
       }

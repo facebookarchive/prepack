@@ -41,7 +41,7 @@ import { Get, cloneDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import type { AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
 import invariant from "../invariant.js";
-import { Create, Properties, To } from "../singletons.js";
+import { Create, Properties, To, Utils } from "../singletons.js";
 import traverse from "@babel/traverse";
 import * as t from "@babel/types";
 import type { BabelNodeStatement } from "@babel/types";
@@ -233,27 +233,6 @@ export function getUniqueReactElementKey(index?: string, usedReactElementKeys: S
     return `${key}${index}`;
   }
   return key;
-}
-
-// a helper function to loop over ArrayValues
-export function forEachArrayValue(
-  realm: Realm,
-  array: ArrayValue,
-  mapFunc: (element: Value, index: number) => void
-): void {
-  let lengthValue = Get(realm, array, "length");
-  invariant(lengthValue instanceof NumberValue, "TODO: support non-numeric length on forEachArrayValue");
-  let length = lengthValue.value;
-  for (let i = 0; i < length; i++) {
-    let elementProperty = array.properties.get("" + i);
-    let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
-    if (elementPropertyDescriptor) {
-      let elementValue = elementPropertyDescriptor.value;
-      if (elementValue instanceof Value) {
-        mapFunc(elementValue, i);
-      }
-    }
-  }
 }
 
 export function mapArrayValue(
@@ -591,7 +570,7 @@ export function hasNoPartialKeyOrRef(realm: Realm, props: ObjectValue | Abstract
 }
 
 function recursivelyFlattenArray(realm: Realm, array, targetArray): void {
-  forEachArrayValue(realm, array, item => {
+  Utils.forEachArrayValue(realm, array, item => {
     if (item instanceof ArrayValue && !item.intrinsicName) {
       recursivelyFlattenArray(realm, item, targetArray);
     } else {

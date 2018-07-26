@@ -24,15 +24,9 @@ import {
 } from "../values/index.js";
 import invariant from "../invariant.js";
 import { ValuesDomain } from "../domains/index.js";
-import {
-  cloneReactElement,
-  isReactElement,
-  addKeyToReactElement,
-  forEachArrayValue,
-  getProperty,
-  mapArrayValue,
-} from "./utils.js";
+import { cloneReactElement, isReactElement, addKeyToReactElement, getProperty, mapArrayValue } from "./utils.js";
 import { ExpectedBailOut } from "./errors.js";
+import { Utils } from "../singletons.js";
 import { createOperationDescriptor } from "../utils/generator.js";
 
 // Branch status is used for when Prepack returns an abstract value from a render
@@ -77,7 +71,7 @@ export function getValueWithBranchingLogicApplied(
     } else if (x instanceof ArrayValue) {
       // If we have x: []
       // Go  through the elements of array x
-      forEachArrayValue(realm, x, (xElem, index) => {
+      Utils.forEachArrayValue(realm, x, (xElem, index) => {
         let yElem = y;
         // And if we also have y: [], with a given element from x
         // search element of y at the same index from x.
@@ -90,7 +84,7 @@ export function getValueWithBranchingLogicApplied(
     } else if (y instanceof ArrayValue) {
       // If we have y: []
       // Go  through the elements of array y
-      forEachArrayValue(realm, y, (yElem, index) => {
+      Utils.forEachArrayValue(realm, y, (yElem, index) => {
         let xElem = x;
         // And if we also have x: [], with a given element from y
         // search element of x at the same index from y.
@@ -145,7 +139,7 @@ export function getValueWithBranchingLogicApplied(
       // If either case is an unknown array, we do not know
       // the contents of the array, so we cannot add keys
     } else if (x instanceof ArrayValue && arrayDepth === 0) {
-      forEachArrayValue(realm, x, (xElem, index) => {
+      Utils.forEachArrayValue(realm, x, (xElem, index) => {
         let yElem;
         if (y instanceof ArrayValue) {
           // handle the case of [x].equals([y])
@@ -160,7 +154,7 @@ export function getValueWithBranchingLogicApplied(
         }
       });
     } else if (y instanceof ArrayValue && arrayDepth === 0) {
-      forEachArrayValue(realm, y, (yElem, index) => {
+      Utils.forEachArrayValue(realm, y, (yElem, index) => {
         let xElem;
         if (x instanceof ArrayValue) {
           // handle the case of [y].equals([x]

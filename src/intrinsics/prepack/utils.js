@@ -13,6 +13,7 @@ import type { Realm } from "../../realm.js";
 import {
   Value,
   AbstractValue,
+  ArrayValue,
   ConcreteValue,
   FunctionValue,
   StringValue,
@@ -91,28 +92,51 @@ export function createAbstract(
     );
     if (locString !== undefined) break;
   }
-  if (name === undefined) {
+  let nameToUse = name;
+
+  if (nameToUse === undefined) {
     let locVal = new StringValue(realm, locString !== undefined ? locString : "(unknown location)");
     let kind = AbstractValue.makeKind("abstractCounted", (realm.objectCount++).toString()); // need not be an object, but must be unique
     result = AbstractValue.createFromTemplate(realm, throwTemplate, type, [locVal], kind);
   } else {
-    let kind = AbstractValue.makeKind("abstract", name);
-    if (!optionsMap.get("allowDuplicateNames") && !realm.isNameStringUnique(name)) {
-      let error = new CompilerDiagnostic("An abstract value with the same name exists", loc, "PP0019", "FatalError");
-      realm.handleError(error);
-      throw new FatalError();
+    let kind;
+    let isTemplate = false;
+    // If the user has generated a template, we use that instead
+    if (nameToUse.includes("template:")) {
+      isTemplate = true;
+      kind = nameToUse = nameToUse.replace("template:", "");
     } else {
-      realm.saveNameString(name);
+      kind = AbstractValue.makeKind("abstract", nameToUse);
     }
-    result = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), type, [], kind);
-    result.intrinsicName = name;
+
+    if (!isTemplate) {
+      if (!optionsMap.get("allowDuplicateNames") && !realm.isNameStringUnique(nameToUse)) {
+        let error = new CompilerDiagnostic("An abstract value with the same name exists", loc, "PP0019", "FatalError");
+        realm.handleError(error);
+        throw new FatalError();
+      } else {
+        realm.saveNameString(nameToUse);
+      }
+    }
+    let args = [];
+    if (optionsMap.has("args") && options instanceof ObjectValue) {
+      let argsArray = options._SafeGetDataPropertyValue("args");
+
+      if (argsArray instanceof ArrayValue) {
+        Utils.forEachArrayValue(realm, argsArray, value => {
+          args.push(value);
+        });
+      }
+    }
+    result = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(nameToUse), type, args, kind);
+    result.intrinsicName = nameToUse;
   }
 
   if (template) result.values = new ValuesDomain(new Set([template]));
   if (template && !(template instanceof FunctionValue)) {
     // why exclude functions?
     template.makePartial();
-    if (name !== undefined) realm.rebuildNestedProperties(result, name);
+    if (nameToUse !== undefined) realm.rebuildNestedProperties(result, nameToUse);
   }
   if (functionResultType) {
     invariant(result instanceof AbstractObjectValue);
