@@ -17,11 +17,8 @@ import { computeBinary } from "./BinaryExpression.js";
 import {
   AbruptCompletion,
   BreakCompletion,
-  ThrowCompletion,
-  ForkedAbruptCompletion,
   SimpleNormalCompletion,
   PossiblyNormalCompletion,
-  ReturnCompletion,
   Completion,
 } from "../completions.js";
 import { InternalGetResultValue } from "./ForOfStatement.js";
