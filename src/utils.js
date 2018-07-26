@@ -83,7 +83,7 @@ export function getTypeFromName(typeName: string): void | typeof Value {
   }
 }
 
-export function describeValue(value: Value): string {
+export function describeValue(value: Value, valueToString?: Value => string): string {
   let title;
   let suffix = "";
   if (value instanceof PrimitiveValue) title = value.toDisplayString();
@@ -100,6 +100,9 @@ export function describeValue(value: Value): string {
           .map(u => "  " + u)
           .join("\n") + "\n";
     }
+  }
+  if (valueToString !== undefined) {
+    title += `, id: ${valueToString(value)}`;
   }
   title += `, hash: ${value.getHash()}`;
   if (value.intrinsicName !== undefined) title += `, intrinsic name: ${value.intrinsicName}`;

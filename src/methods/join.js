@@ -659,7 +659,11 @@ export class JoinImplementation {
     // TODO #2222: The path condition of the resulting generator should really just be generator2.pathConditions,
     // and we shouldn't have to bring in generator1.pathConditions. We have observed that this causes an issue
     // in InstantRender.
-    let result = new Generator(realm, "composed", generator1.pathConditions.concat(generator2.pathConditions));
+    let result = new Generator(
+      realm,
+      "composed",
+      Array.from(new Set(generator1.pathConditions.concat(generator2.pathConditions)))
+    );
     // We copy the entries here because actually composing the generators breaks the serializer
     if (!generator1.empty()) result.appendGenerator(generator1, "");
     if (!generator2.empty()) result.appendGenerator(generator2, "");
