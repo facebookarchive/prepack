@@ -2,12 +2,15 @@ let x = global.__abstract ? __abstract("number", "1") : 1;
 
 function f(x) {
   switch (x) {
-    case 0: throw 12;
-    case 1: throw 24;
-    default: throw 42;
+    case 0:
+      throw 12;
+    case 1:
+      throw 24;
+    default:
+      throw 42;
   }
 }
 
 inspect = function() {
-  return ("" + f(x));
+  return "" + f(x);
 };
