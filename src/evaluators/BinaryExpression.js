@@ -181,38 +181,38 @@ export function computeBinary(
           // If this failed and one of the arguments was conditional, try each value
           // and join the effects based on the condition.
           if (lval instanceof AbstractValue && lval.kind === "conditional") {
-            let condition = lval.args[0];
+            let [condition, consequentL, alternateL] = lval.args;
             invariant(condition instanceof AbstractValue);
             return realm.evaluateWithAbstractConditional(
               condition,
               () =>
                 realm.evaluateForEffects(
-                  () => computeBinary(realm, op, lval.args[1], rval, lloc, rloc, loc),
+                  () => computeBinary(realm, op, consequentL, rval, lloc, rloc, loc),
                   undefined,
                   "ConditionalBinaryExpression/1"
                 ),
               () =>
                 realm.evaluateForEffects(
-                  () => computeBinary(realm, op, lval.args[2], rval, lloc, rloc, loc),
+                  () => computeBinary(realm, op, alternateL, rval, lloc, rloc, loc),
                   undefined,
                   "ConditionalBinaryExpression/2"
                 )
             );
           }
           if (rval instanceof AbstractValue && rval.kind === "conditional") {
-            let condition = rval.args[0];
+            let [condition, consequentR, alternateR] = rval.args;
             invariant(condition instanceof AbstractValue);
             return realm.evaluateWithAbstractConditional(
               condition,
               () =>
                 realm.evaluateForEffects(
-                  () => computeBinary(realm, op, lval, rval.args[1], lloc, rloc, loc),
+                  () => computeBinary(realm, op, lval, consequentR, lloc, rloc, loc),
                   undefined,
                   "ConditionalBinaryExpression/3"
                 ),
               () =>
                 realm.evaluateForEffects(
-                  () => computeBinary(realm, op, lval, rval.args[2], lloc, rloc, loc),
+                  () => computeBinary(realm, op, lval, alternateR, lloc, rloc, loc),
                   undefined,
                   "ConditionalBinaryExpression/4"
                 )
