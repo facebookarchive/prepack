@@ -807,13 +807,21 @@ export default class ObjectValue extends ConcreteValue {
       }
       result = AbstractValue.createFromType(this.$Realm, Value, "sentinel member expression", [this, P]);
     } else {
-      result = AbstractValue.createTemporalFromBuildFunction(
-        this.$Realm,
-        Value,
-        [this, P],
-        createOperationDescriptor("OBJECT_GET_PARTIAL"),
-        { skipInvariant: true, isPure: true }
-      );
+      // This is simple and not partial. Any access that isn't covered by checking against
+      // all its properties, is covered by reading from the prototype.
+      if (this.$Prototype === this.$Realm.intrinsics.null) {
+        // If the prototype is null, then the fallback value is undefined.
+        result = this.$Realm.intrinsics.undefined;
+      } else {
+        // Otherwise, we read the value dynamically from the prototype chain.
+        result = AbstractValue.createTemporalFromBuildFunction(
+          this.$Realm,
+          Value,
+          [this.$Prototype, P],
+          createOperationDescriptor("OBJECT_GET_PARTIAL"),
+          { skipInvariant: true, isPure: true }
+        );
+      }
     }
 
     // Get a specialization of the join of all values written to the object
