@@ -713,6 +713,16 @@ export class ToImplementation {
     }
   }
 
+  IsToStringPure(realm: Realm, input: string | Value): boolean {
+    if (input instanceof Value) {
+      if (this.IsToPrimitivePure(realm, input)) {
+        let type = input.getType();
+        return type !== SymbolValue && type !== PrimitiveValue && type !== Value;
+      }
+    }
+    return true;
+  }
+
   ToStringPartial(realm: Realm, val: string | Value): string {
     return this.ToString(realm, typeof val === "string" ? val : val.throwIfNotConcrete());
   }

@@ -1014,6 +1014,8 @@ export type ToType = {
     hint: "string" | "number"
   ): AbstractValue | PrimitiveValue,
 
+  IsToStringPure(realm: Realm, input: string | Value): boolean,
+
   // ECMA262 7.1.12
   ToString(realm: Realm, val: string | ConcreteValue): string,
 
