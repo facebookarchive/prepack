@@ -952,7 +952,7 @@ export default class ObjectValue extends ConcreteValue {
             let generator = this.$Realm.generator;
             invariant(generator);
             invariant(P instanceof AbstractValue);
-            generator.emitStatement([Receiver, P, V], createOperationDescriptor("OBJECT_SET_PARTIAL"));
+            generator.emitPropertyAssignment(Receiver, P, V);
             return this.$Realm.intrinsics.undefined;
           },
           TypesDomain.topVal,

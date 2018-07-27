@@ -235,8 +235,10 @@ export class PropertiesImplementation {
     if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
       // Writing a value to a havoced (because leaked) object leaks the value, so havoc it.
       Havoc.value(realm, V);
+      // The receiver might leak to a getter so if it's not already havoced, we need to havoc it.
+      Havoc.value(realm, Receiver);
       if (realm.generator) {
-        realm.generator.emitPropertyAssignment(O, StringKey(P), V);
+        realm.generator.emitPropertyAssignment(Receiver, StringKey(P), V);
       }
       return true;
     }

@@ -199,9 +199,6 @@ export class ResidualOperationSerializer {
       case "ABSTRACT_OBJECT_GET_PARTIAL":
         babelNode = this._serializeAbstractObjectGetPartial(data, nodes);
         break;
-      case "ABSTRACT_OBJECT_SET_PARTIAL":
-        babelNode = this._serializeAbstractObjectSetPartial(data, nodes);
-        break;
       case "ABSTRACT_OBJECT_GET_PROTO_OF":
         babelNode = this._serializeAbstractObjectGetProtoOf(data, nodes);
         break;
@@ -711,13 +708,6 @@ export class ResidualOperationSerializer {
       t.memberExpression(t.identifier("Bootloader"), t.identifier("loadModules")),
       ((args: any): Array<any>)
     );
-  }
-
-  _serializeAbstractObjectSetPartial(
-    data: OperationDescriptorData,
-    [objectNode, keyNode, valueNode]: Array<BabelNodeExpression>
-  ) {
-    return t.expressionStatement(t.assignmentExpression("=", memberExpressionHelper(objectNode, keyNode), valueNode));
   }
 
   _serializeUnknownArrayGetPartial(data: OperationDescriptorData, [o, p]: Array<BabelNodeExpression>) {
