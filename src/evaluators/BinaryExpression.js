@@ -22,6 +22,7 @@ import {
   IntegralValue,
   ObjectValue,
   StringValue,
+  SymbolValue,
   UndefinedValue,
   Value,
 } from "../values/index.js";
@@ -74,7 +75,28 @@ export function getPureBinaryOperationResultType(
   if (op === "+") {
     let ltype = To.GetToPrimitivePureResultType(realm, lval);
     let rtype = To.GetToPrimitivePureResultType(realm, rval);
+    if (ltype === StringValue || rtype === StringValue) {
+      // If either type is a string, the other one will be called with ToString, so that has to be pure.
+      if (!To.IsToStringPure(realm, rval)) {
+        rtype = undefined;
+      }
+      if (!To.IsToStringPure(realm, lval)) {
+        ltype = undefined;
+      }
+    } else {
+      // Otherwise, they will be called with ToNumber, so that has to be pure.
+      if (!To.IsToNumberPure(realm, rval)) {
+        rtype = undefined;
+      }
+      if (!To.IsToNumberPure(realm, lval)) {
+        ltype = undefined;
+      }
+    }
     if (ltype === undefined || rtype === undefined) {
+      if (lval.getType() === SymbolValue || rval.getType() === SymbolValue) {
+        // Symbols never implicitly coerce to primitives.
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+      }
       let loc = ltype === undefined ? lloc : rloc;
       let error = new CompilerDiagnostic(unknownValueOfOrToString, loc, "PP0002", "RecoverableError");
       if (realm.handleError(error) === "Recover") {
@@ -115,6 +137,9 @@ export function getPureBinaryOperationResultType(
     op === "*" ||
     op === "-"
   ) {
+    if (lval.getType() === SymbolValue || rval.getType() === SymbolValue) {
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+    }
     return reportErrorIfNotPure(To.IsToNumberPure.bind(To), NumberValue);
   } else if (op === "in" || op === "instanceof") {
     if (rval.mightNotBeObject()) {
