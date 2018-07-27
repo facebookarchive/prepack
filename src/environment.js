@@ -404,7 +404,15 @@ export class ObjectEnvironmentRecord extends EnvironmentRecord {
     let bindings = this.object;
 
     // 3. Let foundBinding be ? HasProperty(bindings, N).
-    let foundBinding = HasProperty(realm, bindings, N);
+    let foundBinding;
+    if (bindings.isPartialObject()) {
+      // If a partial object is used we have already issued an error in WithStatement.
+      // If we recovered from that, we assume that all bindings match against the
+      // partial object.
+      foundBinding = true;
+    } else {
+      foundBinding = HasProperty(realm, bindings, N);
+    }
 
     // 4. If foundBinding is false, return false.
     if (!foundBinding) return false;

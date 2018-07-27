@@ -416,6 +416,7 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   isSimpleObject(): boolean {
+    if (this === this.$Realm.intrinsics.ObjectPrototype) return true;
     if (!this._isSimple.mightNotBeTrue()) return true;
     if (this.isPartialObject()) return false;
     if (this.symbols.size > 0) return false;
@@ -426,7 +427,6 @@ export default class ObjectValue extends ConcreteValue {
       if (!desc.writable) return false;
     }
     if (this.$Prototype instanceof NullValue) return true;
-    if (this.$Prototype === this.$Realm.intrinsics.ObjectPrototype) return true;
     invariant(this.$Prototype);
     return this.$Prototype.isSimpleObject();
   }

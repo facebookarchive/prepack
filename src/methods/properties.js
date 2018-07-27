@@ -177,6 +177,13 @@ function havocDescriptor(realm: Realm, desc: Descriptor) {
 
 // Determines if an object with parent O may create its own property P.
 function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: PropertyKeyValue): boolean {
+  if (O.isSimpleObject()) {
+    // Simple object always allow property creation since there are no setters.
+    // Object.prototype is considered simple even though __proto__ is a setter.
+    // TODO: That is probably the incorrect assumption but that is implied everywhere.
+    return true;
+  }
+
   let ownDesc = O.$GetOwnProperty(P);
   let ownDescValue = !ownDesc
     ? realm.intrinsics.undefined
@@ -249,9 +256,7 @@ export class PropertiesImplementation {
     invariant(IsPropertyKey(realm, P), "expected property key");
 
     // 2. Let ownDesc be ? O.[[GetOwnProperty]](P).
-    let ownDesc;
-    let existingBinding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
-    if (existingBinding !== undefined || !(O.isPartialObject() && O.isSimpleObject())) ownDesc = O.$GetOwnProperty(P);
+    let ownDesc = O.$GetOwnProperty(P);
     let ownDescValue = !ownDesc
       ? realm.intrinsics.undefined
       : ownDesc.value === undefined
@@ -375,10 +380,7 @@ export class PropertiesImplementation {
         if (!(Receiver instanceof ObjectValue)) return false;
 
         // c. Let existingDescriptor be ? Receiver.[[GetOwnProperty]](P).
-        let existingDescriptor;
-        let binding = InternalGetPropertiesMap(Receiver, P).get(InternalGetPropertiesKey(P));
-        if (binding !== undefined || !(Receiver.isPartialObject() && Receiver.isSimpleObject()))
-          existingDescriptor = Receiver.$GetOwnProperty(P);
+        let existingDescriptor = Receiver.$GetOwnProperty(P);
         if (existingDescriptor !== undefined) {
           if (existingDescriptor.descriptor1 === ownDesc) existingDescriptor = ownDesc;
           else if (existingDescriptor.descriptor2 === ownDesc) existingDescriptor = ownDesc;
@@ -420,8 +422,8 @@ export class PropertiesImplementation {
             // At this point we are not actually sure that Receiver actually has
             // a property P, however, if it has, we are sure that its a data property,
             // and that redefining the property with valueDesc will not change the
-            // attributes of the property, so we delete it to make things nice for $DefineOwnProperty.
-            Receiver.$Delete(P);
+            // attributes of the property, so we can reuse the existing descriptor
+            // with its existing attributes.
             valueDesc = existingDescriptor;
             valueDesc.value = V;
           }
@@ -653,9 +655,15 @@ export class PropertiesImplementation {
       if (Path.implies(jc)) current = current.descriptor1;
       else if (!AbstractValue.createFromUnaryOp(realm, "!", jc, true).mightNotBeTrue()) current = current.descriptor2;
     }
+    let simpleDescriptorMightBeHaveBeenDeleted =
+      current &&
+      current.value instanceof Value &&
+      current.value.mightHaveBeenDeleted() &&
+      O !== undefined &&
+      O.isSimpleObject();
 
     // 2. If current is undefined, then
-    if (!current) {
+    if (!current || simpleDescriptorMightBeHaveBeenDeleted) {
       // a. If extensible is false, return false.
       if (!extensible) return false;
 
@@ -869,8 +877,13 @@ export class PropertiesImplementation {
 
     // 1. Let current be ? O.[[GetOwnProperty]](P).
     let current;
-    let binding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
-    if (binding !== undefined || !(O.isPartialObject() && O.isSimpleObject())) current = O.$GetOwnProperty(P);
+    if (!O.isSimpleObject()) {
+      // For simple objects it doesn't matter if it had a descriptor or not
+      // so we fast path the write by avoiding the read. This also lets
+      // us avoid triggering temporal reads when that is not possible.
+      // Such as during initialization.
+      current = O.$GetOwnProperty(P);
+    }
 
     // 2. Let extensible be the value of the [[Extensible]] internal slot of O.
     let extensible = O.getExtensible();
@@ -1244,6 +1257,9 @@ export class PropertiesImplementation {
             } else {
               absVal = createAbstractPropertyValue(Value);
             }
+            // We don't know for sure that this value exists so it might have been deleted.
+            invariant(absVal instanceof AbstractValue);
+            absVal.mightBeEmpty = true;
             return { configurable: true, enumerable: true, value: absVal, writable: true };
           } else {
             invariant(P instanceof SymbolValue);
