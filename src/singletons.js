@@ -16,6 +16,7 @@ import type {
   FunctionType,
   HavocType,
   JoinType,
+  MaterializeType,
   PathType,
   PropertiesType,
   ToType,
@@ -28,12 +29,14 @@ export let Create: CreateType = (null: any);
 export let Environment: EnvironmentType = (null: any);
 export let Functions: FunctionType = (null: any);
 export let Havoc: HavocType = (null: any);
+export let Materialize: MaterializeType = (null: any);
 export let Join: JoinType = (null: any);
 export let Path: PathType = (null: any);
 export let Properties: PropertiesType = (null: any);
 export let To: ToType = (null: any);
 export let Widen: WidenType = (null: any);
 export let concretize: ConcretizeType = (null: any);
+
 export let Utils: UtilsType = (null: any);
 export let DebugReproManager: DebugReproManagerType = (null: any);
 
@@ -51,6 +54,10 @@ export function setFunctions(singleton: FunctionType): void {
 
 export function setHavoc(singleton: HavocType): void {
   Havoc = singleton;
+}
+
+export function setMaterialize(singleton: MaterializeType): void {
+  Materialize = singleton;
 }
 
 export function setJoin(singleton: JoinType): void {
