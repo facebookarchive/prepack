@@ -1,4 +1,5 @@
-// does not contain:= 5
+// expected FatalError: PP1009
+// does not contain: = 5
 
 function fn() {
   let garbage = 5;

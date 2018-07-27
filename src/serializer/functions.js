@@ -34,8 +34,8 @@ import type { AdditionalFunctionEffects, WriteEffects } from "./types";
 import { convertConfigObjectToReactComponentTreeConfig, valueIsKnownReactAbstraction } from "../react/utils.js";
 import { applyOptimizedReactComponents, optimizeReactComponentTreeRoot } from "../react/optimizing.js";
 import { handleReportedSideEffect } from "./utils.js";
-import { ShapeInformation } from "../utils/ShapeInformation";
-import type { ArgModel } from "../utils/ShapeInformation";
+import { ShapeInformation } from "../utils/ShapeInformation.js";
+import type { ArgModel } from "../types.js";
 import * as t from "@babel/types";
 
 type AdditionalFunctionEntry = {
@@ -139,8 +139,9 @@ export class Functions {
     let recordedAdditionalFunctions = [];
     for (let [valueToOptimize, argModel] of realm.optimizedFunctions) {
       let value = valueToOptimize instanceof AbstractValue ? this._unwrapAbstract(valueToOptimize) : valueToOptimize;
+      invariant(value instanceof ECMAScriptSourceFunctionValue);
       // Check for case where __optimize was called in speculative context where effects were discarded
-      if (value._isPartial === undefined) {
+      if (!value.isValid()) {
         let error = new CompilerDiagnostic(
           "Called __optimize on function in failed speculative context",
           value.expressionLocation,
@@ -149,7 +150,6 @@ export class Functions {
         );
         if (realm.handleError(error) !== "Recover") throw new FatalError();
       } else {
-        invariant(value instanceof ECMAScriptSourceFunctionValue);
         recordedAdditionalFunctions.push({ value, argModel });
       }
     }
@@ -279,15 +279,9 @@ export class Functions {
       );
       invariant(additionalFunctionEffects);
       effects = additionalFunctionEffects.effects;
-      let oldWriteEffects = this.writeEffects.get(functionValue);
-      let removeIds = string => string.replace(/.*id:.*/g, "");
-      if (
-        oldWriteEffects &&
-        removeIds(oldWriteEffects.effects.toDisplayString()) !==
-          removeIds(additionalFunctionEffects.effects.toDisplayString())
-      ) {
+      if (this.writeEffects.has(functionValue)) {
         let error = new CompilerDiagnostic(
-          "Trying to optimize a function with two parent optimized functions, but got different effects each time.",
+          "Trying to optimize a function with two parent optimized functions, which is not currently allowed.",
           functionValue.expressionLocation,
           "PP1009",
           "FatalError"

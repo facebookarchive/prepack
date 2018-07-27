@@ -18,6 +18,7 @@ import type {
   PropertyBinding,
   ReactHint,
   DisplayResult,
+  ArgModel,
 } from "./types.js";
 import { RealmStatistics } from "./statistics.js";
 import {
@@ -74,7 +75,6 @@ import { Environment, Functions, Join, Properties, To, Widen, Path } from "./sin
 import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "@babel/types";
 import { Utils } from "./singletons.js";
-import type { ArgModel } from "./utils/ShapeInformation";
 
 export type BindingEntry = {
   hasLeaked: void | boolean,

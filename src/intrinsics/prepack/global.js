@@ -32,7 +32,7 @@ import { valueIsKnownReactAbstraction } from "../../react/utils.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
 import * as t from "@babel/types";
 import { createOperationDescriptor, type OperationDescriptor } from "../../utils/generator.js";
-import type { ArgModel } from "../../utils/ShapeInformation";
+import { createAndValidateArgModel } from "../../utils/ShapeInformation";
 
 export function createAbstractFunction(realm: Realm, ...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
   return new NativeFunctionValue(
@@ -111,49 +111,6 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  // TODO: do more full validation walking the whole shape
-  function createAndValidateArgModel(argModelString: Value): ArgModel | void {
-    let argModelError;
-    if (argModelString instanceof StringValue) {
-      try {
-        let argModel = JSON.parse(argModelString.value);
-        if (!argModel.universe)
-          argModelError = new CompilerDiagnostic(
-            "ArgModel must contain a universe property containing a ShapeUniverse",
-            realm.currentLocation,
-            "PP1008",
-            "FatalError"
-          );
-        if (!argModel.arguments)
-          argModelError = new CompilerDiagnostic(
-            "ArgModel must contain an arguments property.",
-            realm.currentLocation,
-            "PP1008",
-            "FatalError"
-          );
-        return (argModel: ArgModel);
-      } catch (e) {
-        argModelError = new CompilerDiagnostic(
-          "Failed to parse model for arguments",
-          realm.currentLocation,
-          "PP1008",
-          "FatalError"
-        );
-      }
-    } else {
-      argModelError = new CompilerDiagnostic(
-        "String expected as a model",
-        realm.currentLocation,
-        "PP1008",
-        "FatalError"
-      );
-    }
-    if (argModelError !== undefined && realm.handleError(argModelError) !== "Recover") {
-      throw new FatalError();
-    }
-    return undefined;
-  }
-
   // Allows dynamically registering optimized functions.
   // WARNING: these functions will get exposed at global scope and called there.
   // NB: If we interpret one of these calls in an evaluateForEffects context
@@ -163,7 +120,7 @@ export default function(realm: Realm): void {
     value: new NativeFunctionValue(realm, "global.__optimize", "__optimize", 1, (context, [value, argModelString]) => {
       let argModel;
       if (argModelString !== undefined) {
-        argModel = createAndValidateArgModel(argModelString);
+        argModel = createAndValidateArgModel(realm, argModelString);
       }
       if (value instanceof ECMAScriptSourceFunctionValue || value instanceof AbstractValue) {
         let currentArgModel = realm.optimizedFunctions.get(value);
