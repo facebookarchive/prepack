@@ -371,8 +371,8 @@ export class PropertiesImplementation {
         }
 
         // b. If Type(Receiver) is not Object, return false.
-        Receiver = Receiver.throwIfNotConcrete();
-        if (!(Receiver instanceof ObjectValue)) return false;
+        if (!Receiver.mightBeObject()) return false;
+        invariant(Receiver instanceof ObjectValue || Receiver instanceof AbstractObjectValue);
 
         // c. Let existingDescriptor be ? Receiver.[[GetOwnProperty]](P).
         let existingDescriptor = Receiver.$GetOwnProperty(P);

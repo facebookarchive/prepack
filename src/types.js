@@ -780,7 +780,7 @@ export type CreateType = {
   CopyDataProperties(realm: Realm, target: ObjectValue, source: Value, excluded: Array<PropertyKeyValue>): ObjectValue,
 
   // ECMA262 7.3.4
-  CreateDataProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value): boolean,
+  CreateDataProperty(realm: Realm, O: ObjectValue | AbstractObjectValue, P: PropertyKeyValue, V: Value): boolean,
 
   // ECMA262 7.3.5
   CreateMethodProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value): boolean,

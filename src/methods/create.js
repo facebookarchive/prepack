@@ -542,9 +542,9 @@ export class CreateImplementation {
   }
 
   // ECMA262 7.3.4
-  CreateDataProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value): boolean {
+  CreateDataProperty(realm: Realm, O: ObjectValue | AbstractObjectValue, P: PropertyKeyValue, V: Value): boolean {
     // 1. Assert: Type(O) is Object.
-    invariant(O instanceof ObjectValue, "Not an object value");
+    invariant(O instanceof ObjectValue || O instanceof AbstractObjectValue, "Not an object value");
 
     // 2. Assert: IsPropertyKey(P) is true.
     invariant(IsPropertyKey(realm, P), "Not a property key");
