@@ -6,11 +6,7 @@
 function fn2(props) {
   var _ref11;
   var commentsConnection =
-    (_ref11 = props) != null
-      ? (_ref11 = _ref11.feedback) != null
-        ? _ref11.display_comments
-        : _ref11
-      : _ref11;
+    (_ref11 = props) != null ? ((_ref11 = _ref11.feedback) != null ? _ref11.display_comments : _ref11) : _ref11;
 
   var func = props.func;
 
@@ -36,7 +32,7 @@ function fn(props) {
 }
 
 inspect = function() {
-  return JSON.stringify(fn({ items: [0, 1, 2], feedback: { display_comments: [1, 2, 3] } }))
-}
+  return JSON.stringify(fn({ items: [0, 1, 2], feedback: { display_comments: [1, 2, 3] } }));
+};
 
 if (global.__optimize) __optimize(fn);
