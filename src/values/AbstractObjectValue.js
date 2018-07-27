@@ -509,8 +509,13 @@ export default class AbstractObjectValue extends AbstractValue {
         let realm = this.$Realm;
         let shape = shapeContainer.shape;
         let propertyShape, propertyGetter;
-        if ((realm.instantRender.enabled || realm.react.enabled) && shape !== undefined && typeof P === "string") {
-          propertyShape = shape.getPropertyShape(P);
+        // propertyShape expects only a string value
+        if (
+          (realm.instantRender.enabled || realm.react.enabled) &&
+          shape !== undefined &&
+          (typeof P === "string" || P instanceof StringValue)
+        ) {
+          propertyShape = shape.getPropertyShape(P instanceof StringValue ? P.value : P);
           if (propertyShape !== undefined) {
             type = propertyShape.getAbstractType();
             propertyGetter = propertyShape.getGetter();
