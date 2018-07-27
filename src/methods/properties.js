@@ -180,6 +180,13 @@ function havocDescriptor(realm: Realm, desc: Descriptor) {
 
 // Determines if an object with parent O may create its own property P.
 function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: PropertyKeyValue): boolean {
+  if (O.isSimpleObject()) {
+    // Simple object always allow property creation since there are no setters.
+    // Object.prototype is considered simple even though __proto__ is a setter.
+    // TODO: That is probably the incorrect assumption but that is implied everywhere.
+    return true;
+  }
+
   let ownDesc = O.$GetOwnProperty(P);
   let ownDescValue = !ownDesc
     ? realm.intrinsics.undefined
@@ -261,9 +268,7 @@ export class PropertiesImplementation {
     invariant(IsPropertyKey(realm, P), "expected property key");
 
     // 2. Let ownDesc be ? O.[[GetOwnProperty]](P).
-    let ownDesc;
-    let existingBinding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
-    if (existingBinding !== undefined || !(O.isPartialObject() && O.isSimpleObject())) ownDesc = O.$GetOwnProperty(P);
+    let ownDesc = O.$GetOwnProperty(P);
     let ownDescValue = !ownDesc
       ? realm.intrinsics.undefined
       : ownDesc.value === undefined
@@ -387,10 +392,7 @@ export class PropertiesImplementation {
         if (!(Receiver instanceof ObjectValue)) return false;
 
         // c. Let existingDescriptor be ? Receiver.[[GetOwnProperty]](P).
-        let existingDescriptor;
-        let binding = InternalGetPropertiesMap(Receiver, P).get(InternalGetPropertiesKey(P));
-        if (binding !== undefined || !(Receiver.isPartialObject() && Receiver.isSimpleObject()))
-          existingDescriptor = Receiver.$GetOwnProperty(P);
+        let existingDescriptor = Receiver.$GetOwnProperty(P);
         if (existingDescriptor !== undefined) {
           if (existingDescriptor.descriptor1 === ownDesc) existingDescriptor = ownDesc;
           else if (existingDescriptor.descriptor2 === ownDesc) existingDescriptor = ownDesc;
@@ -432,8 +434,8 @@ export class PropertiesImplementation {
             // At this point we are not actually sure that Receiver actually has
             // a property P, however, if it has, we are sure that its a data property,
             // and that redefining the property with valueDesc will not change the
-            // attributes of the property, so we delete it to make things nice for $DefineOwnProperty.
-            Receiver.$Delete(P);
+            // attributes of the property, so we can reuse the existing
+            // descriptor.
             valueDesc = existingDescriptor;
             valueDesc.value = V;
           }
@@ -883,7 +885,6 @@ export class PropertiesImplementation {
       // e. Return true.
       return true;
     }
-    this.ThrowIfMightHaveBeenDeleted(current.value);
 
     // 3. Return true, if every field in Desc is absent.
     if (!Object.keys(Desc).length) return true;
@@ -913,8 +914,12 @@ export class PropertiesImplementation {
       return true;
     }
 
+    let mightHaveBeenDeleted = current.value instanceof Value && current.value.mightHaveBeenDeleted();
+
     // 5. If the [[Configurable]] field of current is false, then
     if (!current.configurable) {
+      invariant(!mightHaveBeenDeleted, "a non-configurable property can't be deleted");
+
       // a. Return false, if the [[Configurable]] field of Desc is true.
       if (Desc.configurable) return false;
 
@@ -952,9 +957,6 @@ export class PropertiesImplementation {
         // Preserve the existing values of the converted property's [[Configurable]] and [[Enumerable]] attributes and set the rest of the property's attributes to their default values.
         if (O !== undefined) {
           invariant(P !== undefined);
-          let key = InternalGetPropertiesKey(P);
-          let propertyBinding = InternalGetPropertiesMap(O, P).get(key);
-          invariant(propertyBinding !== undefined);
           delete current.writable;
           delete current.value;
           current.get = realm.intrinsics.undefined;
@@ -965,9 +967,6 @@ export class PropertiesImplementation {
         // i. If O is not undefined, convert the property named P of object O from an accessor property to a data property. Preserve the existing values of the converted property's [[Configurable]] and [[Enumerable]] attributes and set the rest of the property's attributes to their default values.
         if (O !== undefined) {
           invariant(P !== undefined);
-          let key = InternalGetPropertiesKey(P);
-          let propertyBinding = InternalGetPropertiesMap(O, P).get(key);
-          invariant(propertyBinding !== undefined);
           delete current.get;
           delete current.set;
           current.writable = false;
@@ -1007,6 +1006,25 @@ export class PropertiesImplementation {
       }
     }
 
+    if (mightHaveBeenDeleted) {
+      // If the property might have been deleted, we need to ensure that either
+      // the new descriptor overrides any existing values, or always results in
+      // the default value.
+      let unknownEnumerable = !("enumerable" in Desc) && !!current.enumerable;
+      let unknownWritable = !("writable" in Desc) && !!current.writable;
+      if (unknownEnumerable || unknownWritable) {
+        let error = new CompilerDiagnostic(
+          "unknown descriptor attributes on deleted property",
+          realm.currentLocation,
+          "PP0038",
+          "RecoverableError"
+        );
+        if (realm.handleError(error) !== "Recover") {
+          throw new FatalError();
+        }
+      }
+    }
+
     // 10. If O is not undefined, then
     if (O !== undefined) {
       invariant(P !== undefined);
@@ -1041,9 +1059,7 @@ export class PropertiesImplementation {
     invariant(O instanceof ObjectValue);
 
     // 1. Let current be ? O.[[GetOwnProperty]](P).
-    let current;
-    let binding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
-    if (binding !== undefined || !(O.isPartialObject() && O.isSimpleObject())) current = O.$GetOwnProperty(P);
+    let current = O.$GetOwnProperty(P);
 
     // 2. Let extensible be the value of the [[Extensible]] internal slot of O.
     let extensible = O.getExtensible();
