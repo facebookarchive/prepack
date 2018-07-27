@@ -50,7 +50,7 @@ import {
 } from "./utils.js";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
-import { Create, Properties } from "../singletons.js";
+import { Properties } from "../singletons.js";
 import { FatalError, CompilerDiagnostic } from "../errors.js";
 import {
   type BranchStatusEnum,
@@ -75,7 +75,7 @@ import {
   SimpleClassBailOut,
   UnsupportedSideEffect,
 } from "./errors.js";
-import { createReactElement } from "./elements.js";
+import { wrapReactElementWithKeyedFragment } from "./elements.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
 import { handleReportedSideEffect } from "../serializer/utils.js";
@@ -1185,20 +1185,6 @@ export class Reconciler {
       return reactElement;
     }
 
-    // If we have a new result and we might have a key value then wrap our inlined result in a
-    // `<React.Fragment key={keyValue}>` so that we may maintain the key.
-    if (needsKey && keyValue.mightNotBeNull()) {
-      const react = this.realm.fbLibraries.react;
-      invariant(react instanceof ObjectValue);
-      const reactFragment = getProperty(this.realm, react, "Fragment");
-      const fragmentConfigValue = Create.ObjectCreate(this.realm, this.realm.intrinsics.ObjectPrototype);
-      Create.CreateDataPropertyOrThrow(this.realm, fragmentConfigValue, "key", keyValue);
-      const fragmentChildrenValue = Create.ArrayCreate(this.realm, 1);
-      Create.CreateDataPropertyOrThrow(this.realm, fragmentChildrenValue, "0", reactElement);
-      const fragmentElement = createReactElement(this.realm, reactFragment, fragmentConfigValue, fragmentChildrenValue);
-      return this._resolveFragmentComponent(reactFragment, fragmentElement, context, branchStatus, evaluatedNode);
-    }
-
     let componentResolutionStrategy = this._getComponentResolutionStrategy(typeValue);
 
     // We do not support "ref" on <Component /> ReactElements, unless it's a forwarded ref
@@ -1284,6 +1270,12 @@ export class Reconciler {
 
       if (result instanceof UndefinedValue) {
         return this._resolveReactElementUndefinedRender(reactElement, evaluatedNode, branchStatus);
+      }
+
+      // If we have a new result and we might have a key value then wrap our inlined result in a
+      // `<React.Fragment key={keyValue}>` so that we may maintain the key.
+      if (!this.componentTreeConfig.firstRenderOnly && needsKey && keyValue.mightNotBeNull()) {
+        result = wrapReactElementWithKeyedFragment(this.realm, keyValue, result);
       }
 
       return result;

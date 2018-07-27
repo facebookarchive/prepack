@@ -3042,35 +3042,21 @@ ReactStatistics {
 
 exports[`Inline key on component that does not return element: (JSX => JSX) 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 5,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Delta",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "Delta",
+          "status": "INLINED",
         },
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Delta",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "Delta",
+          "status": "INLINED",
         },
       ],
       "message": "",
@@ -3086,35 +3072,21 @@ ReactStatistics {
 
 exports[`Inline key on component that does not return element: (JSX => createElement) 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 5,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Delta",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "Delta",
+          "status": "INLINED",
         },
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Delta",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "Delta",
+          "status": "INLINED",
         },
       ],
       "message": "",
@@ -3130,35 +3102,21 @@ ReactStatistics {
 
 exports[`Inline key on component that does not return element: (createElement => JSX) 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 5,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Delta",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "Delta",
+          "status": "INLINED",
         },
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Delta",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "Delta",
+          "status": "INLINED",
         },
       ],
       "message": "",
@@ -3174,35 +3132,21 @@ ReactStatistics {
 
 exports[`Inline key on component that does not return element: (createElement => createElement) 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 5,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Delta",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "Delta",
+          "status": "INLINED",
         },
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Delta",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "Delta",
+          "status": "INLINED",
         },
       ],
       "message": "",
@@ -3218,35 +3162,21 @@ ReactStatistics {
 
 exports[`Inline keys: (JSX => JSX) 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 5,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Omega",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "Omega",
+          "status": "INLINED",
         },
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Omega",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "Omega",
+          "status": "INLINED",
         },
       ],
       "message": "",
@@ -3262,35 +3192,21 @@ ReactStatistics {
 
 exports[`Inline keys: (JSX => createElement) 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 5,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Omega",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "Omega",
+          "status": "INLINED",
         },
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Omega",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "Omega",
+          "status": "INLINED",
         },
       ],
       "message": "",
@@ -3306,35 +3222,21 @@ ReactStatistics {
 
 exports[`Inline keys: (createElement => JSX) 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 5,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Omega",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "Omega",
+          "status": "INLINED",
         },
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Omega",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "Omega",
+          "status": "INLINED",
         },
       ],
       "message": "",
@@ -3350,35 +3252,21 @@ ReactStatistics {
 
 exports[`Inline keys: (createElement => createElement) 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 5,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Omega",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "Omega",
+          "status": "INLINED",
         },
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "Omega",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "Omega",
+          "status": "INLINED",
         },
       ],
       "message": "",
@@ -9202,35 +9090,21 @@ ReactStatistics {
 
 exports[`Return text: (JSX => JSX) 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 5,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "A",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "A",
+          "status": "INLINED",
         },
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "B",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "B",
+          "status": "INLINED",
         },
       ],
       "message": "",
@@ -9246,35 +9120,21 @@ ReactStatistics {
 
 exports[`Return text: (JSX => createElement) 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 5,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "A",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "A",
+          "status": "INLINED",
         },
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "B",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "B",
+          "status": "INLINED",
         },
       ],
       "message": "",
@@ -9290,35 +9150,21 @@ ReactStatistics {
 
 exports[`Return text: (createElement => JSX) 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 5,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "A",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "A",
+          "status": "INLINED",
         },
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "B",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "B",
+          "status": "INLINED",
         },
       ],
       "message": "",
@@ -9334,35 +9180,21 @@ ReactStatistics {
 
 exports[`Return text: (createElement => createElement) 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 5,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "A",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "A",
+          "status": "INLINED",
         },
         Object {
-          "children": Array [
-            Object {
-              "children": Array [],
-              "message": "",
-              "name": "B",
-              "status": "INLINED",
-            },
-          ],
+          "children": Array [],
           "message": "",
-          "name": "React.Fragment",
-          "status": "NORMAL",
+          "name": "B",
+          "status": "INLINED",
         },
       ],
       "message": "",
