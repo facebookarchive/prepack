@@ -634,6 +634,7 @@ export class Generator {
 
     for (let propertyBinding of modifiedProperties.keys()) {
       let object = propertyBinding.object;
+      realm.lookasideTable.setPropertyLookaside(output, propertyBinding);
       if (createdObjects.has(object)) continue; // Created Object's binding
       if (ObjectValue.refuseSerializationOnPropertyBinding(propertyBinding)) continue; // modification to internal state
       // modifications to intrinsic objects are tracked in the generator
@@ -642,6 +643,7 @@ export class Generator {
     }
 
     for (let modifiedBinding of modifiedBindings.keys()) {
+      realm.lookasideTable.setBindingLookaside(output, modifiedBinding);
       // TODO: Instead of looking at the environment ids, keep instead track of a createdEnvironmentRecords set,
       // and only consider bindings here from environment records that already existed, or even better,
       // ensure upstream that only such bindings are ever added to the modified-bindings set.

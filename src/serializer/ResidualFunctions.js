@@ -45,7 +45,7 @@ import { ResidualFunctionInitializers } from "./ResidualFunctionInitializers.js"
 import { nullExpression } from "../utils/babelhelpers.js";
 import type { LocationService, ClassMethodInstance } from "./types.js";
 import { Referentializer } from "./Referentializer.js";
-import { getOrDefault } from "./utils.js";
+import { Utils } from "../singletons";
 
 type ResidualFunctionsResult = {
   unstrictFunctionBodies: Array<BabelNodeFunctionExpression | BabelNodeArrowFunctionExpression>,
@@ -125,7 +125,7 @@ export class ResidualFunctions {
     this.functionInstances.push(instance);
     let code = instance.functionValue.$ECMAScriptCode;
     invariant(code != null);
-    getOrDefault(this.functions, code, () => []).push(instance);
+    Utils.getOrDefault(this.functions, code, () => []).push(instance);
   }
 
   setFunctionPrototype(constructor: FunctionValue, prototypeId: BabelNodeIdentifier): void {
@@ -278,9 +278,9 @@ export class ResidualFunctions {
     // these need to get spliced in at the end
     let additionalFunctionModifiedBindingsSegment: Map<FunctionValue, Array<BabelNodeStatement>> = new Map();
     let getModifiedBindingsSegment = additionalFunction =>
-      getOrDefault(additionalFunctionModifiedBindingsSegment, additionalFunction, () => []);
+      Utils.getOrDefault(additionalFunctionModifiedBindingsSegment, additionalFunction, () => []);
     let getFunctionBody = (instance: FunctionInstance): Array<BabelNodeStatement> =>
-      getOrDefault(functionBodies, instance, () => []);
+      Utils.getOrDefault(functionBodies, instance, () => []);
     let getPrelude = (instance: FunctionInstance): Array<BabelNodeStatement> => {
       let additionalFunction = instance.containingAdditionalFunction;
       let b;

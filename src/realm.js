@@ -138,6 +138,55 @@ export class Effects {
   }
 }
 
+export class LookasideTable {
+  constructor() {
+    this.properties = new Map();
+    this.bindings = new Map();
+  }
+
+  properties: Map<PropertyBinding, Map<Generator, void | Descriptor>>;
+  bindings: Map<Binding, Map<Generator, {| value: void | Value, hasLeaked: boolean |}>>;
+
+  // TODO: once everything has been converted, consider nulling out the original propertyBinding descriptor/adding a
+  // getter that throws because all lookups during serialization should eventually go through here
+  setPropertyLookaside(generator: Generator, propertyBinding: PropertyBinding) {
+    let bindingMap = Utils.getOrDefault(this.properties, propertyBinding, () => new Map());
+    invariant(!bindingMap.has(generator), "Lookaside entries must be unique");
+    bindingMap.set(generator, propertyBinding.descriptor);
+  }
+
+  setBindingLookaside(generator: Generator, binding: Binding) {
+    let bindingMap = Utils.getOrDefault(this.bindings, binding, () => new Map());
+    invariant(!bindingMap.has(generator), "Lookaside entries must be unique");
+    bindingMap.set(generator, { value: binding.value, hasLeaked: binding.hasLeaked });
+  }
+
+  // TODO: once everything has been converted, stop forwarding through the original property if not found
+  lookupProperty(generator: Generator, binding: PropertyBinding): Descriptor | void {
+    let entryToValue = this.properties.get(binding);
+    if (!entryToValue) return binding.descriptor;
+    if (entryToValue.has(generator)) return entryToValue.get(generator);
+    else return binding.descriptor;
+  }
+
+  _entryOfBinding(generator: Generator, binding: Binding) {
+    let entryToValue = this.bindings.get(binding);
+    if (entryToValue) return entryToValue.get(generator);
+  }
+
+  lookupBinding(generator: Generator, binding: Binding): Value | void {
+    let entry = this._entryOfBinding(generator, binding);
+    if (entry) return entry.value;
+    return binding ? binding.value : undefined;
+  }
+
+  lookupBindingHasLeaked(generator: Generator, binding: Binding): boolean | void {
+    let entry = this._entryOfBinding(generator, binding);
+    if (entry) return entry.hasLeaked;
+    return binding ? binding.hasLeaked : undefined;
+  }
+}
+
 export class Tracer {
   beginEvaluateForEffects(state: any): void {}
   endEvaluateForEffects(state: any, effects: void | Effects): void {}
@@ -337,6 +386,7 @@ export class Realm {
     this._abstractValuesDefined = new Set(); // A set of nameStrings to ensure abstract values have unique names
     this.debugNames = opts.debugNames;
     this._checkedObjectIds = new Map();
+    this.lookasideTable = new LookasideTable();
   }
 
   statistics: RealmStatistics;
@@ -485,6 +535,8 @@ export class Realm {
   _abstractValuesDefined: Set<string>;
   _checkedObjectIds: Map<ObjectValue | AbstractObjectValue, number>;
 
+  lookasideTable: LookasideTable;
+
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
     return compatibility === this.compatibility;
@@ -492,14 +544,19 @@ export class Realm {
 
   // Checks if there is a let binding at global scope with the given name
   // returning it if so
-  getGlobalLetBinding(key: string): void | Value {
+  getGlobalLetBinding(key: string, generator: Generator): void | Value {
     let globrec = this.$GlobalEnv.environmentRecord;
     // GlobalEnv should have a GlobalEnvironmentRecord
     invariant(globrec instanceof GlobalEnvironmentRecord);
     let dclrec = globrec.$DeclarativeRecord;
+    invariant(dclrec instanceof DeclarativeEnvironmentRecord);
 
     try {
-      return dclrec.HasBinding(key) ? dclrec.GetBindingValue(key, false) : undefined;
+      let binding = dclrec.bindings[key];
+      if (binding) {
+        return this.lookasideTable.lookupBinding(generator, binding);
+      }
+      return undefined;
     } catch (e) {
       if (e instanceof FatalError) return undefined;
       throw e;

@@ -1053,6 +1053,7 @@ export type UtilsType = {|
   describeValue: Value => string,
   jsonToDisplayString: <T: { toDisplayJson(number): DisplayResult }>(T, number) => string,
   verboseToDisplayJson: ({}, number) => DisplayResult,
+  getOrDefault: <K, V>(Map<K, V>, K, () => V) => V,
 |};
 
 export type DebuggerConfigArguments = {

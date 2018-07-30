@@ -11,7 +11,7 @@
 
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord, EnvironmentRecord } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { type Effects, Realm } from "../realm.js";
+import { type Effects, Realm, LookasideTable } from "../realm.js";
 import { Path } from "../singletons.js";
 import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
 import type { Binding } from "../environment.js";
@@ -56,11 +56,10 @@ import {
   canIgnoreClassLengthProperty,
   ClassPropertiesToIgnore,
   getObjectPrototypeMetadata,
-  getOrDefault,
   getSuggestedArrayLiteralLength,
   withDescriptorValue,
 } from "./utils.js";
-import { Environment, To } from "../singletons.js";
+import { Environment, To, Utils } from "../singletons.js";
 import { isReactElement, isReactPropsObject, valueIsReactLibraryObject } from "../react/utils.js";
 import { ResidualReactElementVisitor } from "./ResidualReactElementVisitor.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
@@ -149,6 +148,8 @@ export class ResidualHeapVisitor {
   globalEnvironmentRecord: GlobalEnvironmentRecord;
   residualReactElementVisitor: ResidualReactElementVisitor;
 
+  lookasideTable: LookasideTable;
+
   // Going backwards from the current scope, find either the containing
   // additional function, or if there isn't one, return the global generator.
   _getCommonScope(): FunctionValue | Generator {
@@ -166,6 +167,24 @@ export class ResidualHeapVisitor {
         let generator = this.globalGenerator;
         invariant(generator);
         return generator;
+      }
+    }
+    invariant(false);
+  }
+
+  _getContainingGenerator(): Generator {
+    let s = this.scope;
+    while (true) {
+      if (s instanceof Generator) return s;
+      else if (s instanceof FunctionValue) {
+        let additionalFunctionEffects = this.additionalFunctionValuesAndEffects.get(s);
+        if (additionalFunctionEffects) return additionalFunctionEffects.generator;
+
+        s = this.generatorDAG.getCreator(s) || "GLOBAL";
+      } else {
+        invariant(s === "GLOBAL");
+        invariant(this.globalGenerator);
+        return this.globalGenerator;
       }
     }
     invariant(false);
@@ -274,7 +293,7 @@ export class ResidualHeapVisitor {
   }
 
   visitObjectProperty(binding: PropertyBinding): void {
-    let desc = binding.descriptor;
+    let desc = this.realm.lookasideTable.lookupProperty(this._getContainingGenerator(), binding);
     let obj = binding.object;
     invariant(binding.key !== undefined, "Undefined keys should never make it here.");
     if (
@@ -294,7 +313,7 @@ export class ResidualHeapVisitor {
     // visit properties
     for (let [symbol, propertyBinding] of obj.symbols) {
       invariant(propertyBinding);
-      let desc = propertyBinding.descriptor;
+      let desc = this.realm.lookasideTable.lookupProperty(this._getContainingGenerator(), propertyBinding);
       if (desc === undefined) continue; //deleted
       this.visitDescriptor(desc);
       this.visitValue(symbol);
@@ -304,7 +323,7 @@ export class ResidualHeapVisitor {
     for (let [propertyBindingKey, propertyBindingValue] of obj.properties) {
       // we don't want to visit these as we handle the serialization ourselves
       // via a different logic route for classes
-      let descriptor = propertyBindingValue.descriptor;
+      let descriptor = this.realm.lookasideTable.lookupProperty(this._getContainingGenerator(), propertyBindingValue);
       if (
         obj instanceof ECMAScriptFunctionValue &&
         obj.$FunctionKind === "classConstructor" &&
@@ -329,6 +348,7 @@ export class ResidualHeapVisitor {
 
     // inject properties with computed names
     if (obj.unknownProperty !== undefined) {
+      // TODO: do I need to do something here, also is this tracked by effects?
       let desc = obj.unknownProperty.descriptor;
       if (desc !== undefined) {
         let val = desc.value;
@@ -622,7 +642,7 @@ export class ResidualHeapVisitor {
     }
   }
 
-  _visitBindingHelper(residualFunctionBinding: ResidualFunctionBinding) {
+  _visitBindingHelper(residualFunctionBinding: ResidualFunctionBinding, containingGenerator?: Generator) {
     if (residualFunctionBinding.hasLeaked) return;
     let environment = residualFunctionBinding.declarativeEnvironmentRecord;
     invariant(environment !== null);
@@ -632,7 +652,9 @@ export class ResidualHeapVisitor {
       let binding = environment.bindings[residualFunctionBinding.name];
       invariant(binding !== undefined);
       invariant(!binding.deletable);
-      let value = (binding.initialized && binding.value) || this.realm.intrinsics.undefined;
+      let value = containingGenerator
+        ? this.realm.lookasideTable.lookupBinding(containingGenerator, binding) || this.realm.intrinsics.undefined
+        : (binding.initialized && binding.value) || this.realm.intrinsics.undefined;
       residualFunctionBinding.value = this.visitEquivalentValue(value);
     } else {
       // Subsequently, we just need to visit the value.
@@ -656,17 +678,20 @@ export class ResidualHeapVisitor {
     let refScope = this._getAdditionalFunctionOfScope() || "GLOBAL";
     residualFunctionBinding.potentialReferentializationScopes.add(refScope);
     invariant(!(refScope instanceof Generator));
-    let funcToScopes = getOrDefault(this.functionToCapturedScopes, refScope, () => new Map());
+    let funcToScopes = Utils.getOrDefault(this.functionToCapturedScopes, refScope, () => new Map());
     let envRec = residualFunctionBinding.declarativeEnvironmentRecord;
     invariant(envRec !== null);
-    let bindingState = getOrDefault(funcToScopes, envRec, () => ({
+    let bindingState = Utils.getOrDefault(funcToScopes, envRec, () => ({
       capturedBindings: new Set(),
       capturingFunctions: new Set(),
     }));
+    let containingGenerator = this._getContainingGenerator();
     // If the binding is new for this bindingState, have all functions capturing bindings from that scope visit it
     if (!bindingState.capturedBindings.has(residualFunctionBinding)) {
       for (let functionValue of bindingState.capturingFunctions) {
-        this._enqueueWithUnrelatedScope(functionValue, () => this._visitBindingHelper(residualFunctionBinding));
+        this._enqueueWithUnrelatedScope(functionValue, () =>
+          this._visitBindingHelper(residualFunctionBinding, containingGenerator)
+        );
       }
       bindingState.capturedBindings.add(residualFunctionBinding);
     }
@@ -722,7 +747,7 @@ export class ResidualHeapVisitor {
 
     if (environment === this.globalEnvironmentRecord) {
       // Global Binding
-      return getOrDefault(this.globalBindings, name, () => {
+      return Utils.getOrDefault(this.globalBindings, name, () => {
         let residualFunctionBinding = {
           name,
           value: undefined,
@@ -733,7 +758,7 @@ export class ResidualHeapVisitor {
         };
         // Queue up visiting of global binding exactly once in the globalGenerator scope.
         this._enqueueWithUnrelatedScope(this.globalGenerator, () => {
-          let value = this.realm.getGlobalLetBinding(name);
+          let value = this.realm.getGlobalLetBinding(name, this.globalGenerator);
           if (value !== undefined) residualFunctionBinding.value = this.visitEquivalentValue(value);
         });
         return residualFunctionBinding;
@@ -741,12 +766,12 @@ export class ResidualHeapVisitor {
     } else {
       invariant(environment instanceof DeclarativeEnvironmentRecord);
       // DeclarativeEnvironmentRecord binding
-      let residualFunctionBindings = getOrDefault(
+      let residualFunctionBindings = Utils.getOrDefault(
         this.declarativeEnvironmentRecordsBindings,
         environment,
         () => new Map()
       );
-      return getOrDefault(
+      return Utils.getOrDefault(
         residualFunctionBindings,
         name,
         (): ResidualFunctionBinding => {
@@ -779,10 +804,12 @@ export class ResidualHeapVisitor {
       }
     };
     for (let [propertyName, method] of classPrototype.properties) {
-      withDescriptorValue(propertyName, method.descriptor, visitClassMethod);
+      let descriptor = this.realm.lookasideTable.lookupProperty(this._getContainingGenerator(), method);
+      withDescriptorValue(propertyName, descriptor, visitClassMethod);
     }
     for (let [symbol, method] of classPrototype.symbols) {
-      withDescriptorValue(symbol, method.descriptor, visitClassMethod);
+      let descriptor = this.realm.lookasideTable.lookupProperty(this._getContainingGenerator(), method);
+      withDescriptorValue(symbol, descriptor, visitClassMethod);
     }
 
     // handle class inheritance
@@ -796,7 +823,8 @@ export class ResidualHeapVisitor {
       invariant(constructor !== undefined);
       // check if the constructor was deleted, as it can't really be deleted
       // it just gets set to empty (the default again)
-      if (constructor.descriptor === undefined) {
+      let descriptor = this.realm.lookasideTable.lookupProperty(this._getContainingGenerator(), constructor);
+      if (descriptor === undefined) {
         classFunc.$HasEmptyConstructor = true;
       } else {
         let visitClassProperty = (propertyNameOrSymbol, methodFunc, methodType) => {
@@ -806,14 +834,13 @@ export class ResidualHeapVisitor {
         let constructorFunc = Get(this.realm, classPrototype, "constructor");
         invariant(constructorFunc instanceof ObjectValue);
         for (let [propertyName, method] of constructorFunc.properties) {
+          let methodDescriptor = this.realm.lookasideTable.lookupProperty(this._getContainingGenerator(), method);
           if (
             !ClassPropertiesToIgnore.has(propertyName) &&
-            method.descriptor !== undefined &&
-            !(
-              propertyName === "length" && canIgnoreClassLengthProperty(constructorFunc, method.descriptor, this.logger)
-            )
+            descriptor !== undefined &&
+            !(propertyName === "length" && canIgnoreClassLengthProperty(constructorFunc, methodDescriptor, this.logger))
           ) {
-            withDescriptorValue(propertyName, method.descriptor, visitClassProperty);
+            withDescriptorValue(propertyName, methodDescriptor, visitClassProperty);
           }
         }
       }
@@ -1161,6 +1188,7 @@ export class ResidualHeapVisitor {
         fixpoint_rerun();
       },
       visitModifiedBinding: (modifiedBinding: Binding) => {
+        let containingGenerator = this._getContainingGenerator();
         let fixpoint_rerun = () => {
           if (this.hasBinding(modifiedBinding.environment, modifiedBinding.name)) {
             invariant(additionalFunctionInfo);
@@ -1170,7 +1198,7 @@ export class ResidualHeapVisitor {
             let funcInstance = additionalFunctionInfo.instance;
             invariant(funcInstance !== undefined);
             funcInstance.residualFunctionBindings.set(modifiedBinding.name, residualBinding);
-            let newValue = modifiedBinding.value;
+            let newValue = this.realm.lookasideTable.lookupBinding(containingGenerator, modifiedBinding);
             invariant(newValue);
             this.visitValue(newValue);
             residualBinding.modified = true;
