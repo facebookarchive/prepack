@@ -1,3 +1,5 @@
+// inline expressions
+
 function fn(cond, cond2, a, b, c) {
   var x = global.__abstract ? __abstract("number", "a") : a;
   var y;
