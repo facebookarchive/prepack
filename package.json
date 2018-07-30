@@ -146,15 +146,13 @@
       "<rootDir>/lib/",
       "<rootDir>/test/react/",
       "<rootDir>/fb-www/",
-      "<rootDir>/test/debugger",
-      "<rootDir>/scripts"
+      "<rootDir>/test/debugger/"
     ],
     "testEnvironment": "jsdom",
     "testMatch": [
       "**/test/react/*-test.js",
       "**/fb-www/**/*-test.js",
-      "**/test/debugger/*-test.js",
-      "**/*debugger*.js"
+      "**/test/debugger/*-test.js"
     ],
     "transformIgnorePatterns": [
       "/node_modules/(?!react-native).+\\.js$"
