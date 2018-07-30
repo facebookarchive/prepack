@@ -41,7 +41,9 @@ import type {
   BabelNodeFile,
   BabelNodeFunctionExpression,
 } from "@babel/types";
-import { Generator, PreludeGenerator, NameGenerator } from "../utils/generator.js";
+import { Generator } from "../utils/generator.js";
+import { PreludeGenerator } from "../utils/PreludeGenerator.js";
+import { NameGenerator } from "../utils/NameGenerator.js";
 import type { OperationDescriptor, SerializationContext } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import type {
@@ -322,11 +324,20 @@ export class ResidualHeapSerializer {
       );
     }
 
+    // TODO #2259: Make deduplication in the face of leaking work for custom accessors
+    let isCertainlyLeaked = !obj.mightNotBeHavocedObject();
+    let shouldDropAsAssignedProp = (descriptor: Descriptor | void) =>
+      isCertainlyLeaked && (descriptor !== undefined && (descriptor.get === undefined && descriptor.set === undefined));
+
     // inject properties
     for (let [key, propertyBinding] of properties) {
       invariant(propertyBinding);
+
       if (propertyBinding.pathNode !== undefined) continue; // Property is assigned to inside loop
       let desc = propertyBinding.descriptor;
+
+      if (shouldDropAsAssignedProp(desc)) continue;
+
       if (desc === undefined) continue; //deleted
       if (this.residualHeapInspector.canIgnoreProperty(obj, key)) continue;
       invariant(desc !== undefined);
@@ -1692,13 +1703,25 @@ export class ResidualHeapSerializer {
     let remainingProperties = new Map(val.properties);
     const dummyProperties = new Set();
     let props = [];
+    let isCertainlyLeaked = !val.mightNotBeHavocedObject();
+
+    // TODO #2259: Make deduplication in the face of leaking work for custom accessors
+    let shouldDropAsAssignedProp = (descriptor: Descriptor | void) =>
+      isCertainlyLeaked && (descriptor !== undefined && (descriptor.get === undefined && descriptor.set === undefined));
+
     if (val.temporalAlias !== undefined) {
       return t.objectExpression(props);
     } else {
       for (let [key, propertyBinding] of val.properties) {
+        if (propertyBinding.descriptor !== undefined && shouldDropAsAssignedProp(propertyBinding.descriptor)) {
+          remainingProperties.delete(key);
+          continue;
+        }
+
         if (propertyBinding.pathNode !== undefined) continue; // written to inside loop
         let descriptor = propertyBinding.descriptor;
         if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
+
         let serializedKey = getAsPropertyNameExpression(key);
         if (this._canEmbedProperty(val, key, descriptor)) {
           let propValue = descriptor.value;
@@ -1725,6 +1748,7 @@ export class ResidualHeapSerializer {
         }
       }
     }
+
     this._emitObjectProperties(
       val,
       remainingProperties,
@@ -1732,6 +1756,7 @@ export class ResidualHeapSerializer {
       dummyProperties,
       skipPrototype
     );
+
     return t.objectExpression(props);
   }
 
@@ -2144,8 +2169,31 @@ export class ResidualHeapSerializer {
 
         return ((serializedValue: any): BabelNodeStatement);
       },
-      serializeValue: this.serializeValue.bind(this),
       serializeBinding: this.serializeBinding.bind(this),
+      serializeBindingAssignment: (binding: Binding, bindingValue: Value) => {
+        let serializeBinding = this.serializeBinding(binding);
+        let serializedValue = context.serializeValue(bindingValue);
+        return t.expressionStatement(t.assignmentExpression("=", serializeBinding, serializedValue));
+      },
+      serializeCondition: (
+        condition: Value,
+        consequentGenerator: Generator,
+        alternateGenerator: Generator,
+        valuesToProcess: Set<AbstractValue | ObjectValue>
+      ) => {
+        let serializedCondition = this.serializeValue(condition);
+        let consequentBody = context.serializeGenerator(consequentGenerator, valuesToProcess);
+        let alternateBody = context.serializeGenerator(alternateGenerator, valuesToProcess);
+        return t.ifStatement(serializedCondition, t.blockStatement(consequentBody), t.blockStatement(alternateBody));
+      },
+      serializeDebugScopeComment(declared: ObjectValue | AbstractValue) {
+        let s = t.emptyStatement();
+        s.leadingComments = [({ type: "BlockComment", value: `declaring ${declared.intrinsicName || "?"}` }: any)];
+        return s;
+      },
+      serializeReturnValue: (val: Value) => {
+        return t.returnStatement(this.serializeValue(val));
+      },
       serializeGenerator: (
         generator: Generator,
         valuesToProcess: Set<AbstractValue | ObjectValue>
@@ -2153,6 +2201,7 @@ export class ResidualHeapSerializer {
         this._withGeneratorScope("Generator", generator, valuesToProcess, () =>
           generator.serialize(((context: any): SerializationContext))
         ),
+      serializeValue: this.serializeValue.bind(this),
       initGenerator: (generator: Generator) => {
         let activeGeneratorBody = this._getActiveBodyOfGenerator(generator);
         invariant(activeGeneratorBody === this.emitter.getBody(), "generator to init must be current emitter body");
@@ -2274,7 +2323,7 @@ export class ResidualHeapSerializer {
         invariant(effectsGenerator === generator);
         effectsGenerator.serialize(this._getContext());
         this.realm.withEffectsAppliedInGlobalEnv(() => {
-          const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes();
+          const lazyHoistedReactNodes = this.residualReactElementSerializer.serializeLazyHoistedNodes(functionValue);
           this.mainBody.entries.push(...lazyHoistedReactNodes);
           return null;
         }, additionalEffects.effects);

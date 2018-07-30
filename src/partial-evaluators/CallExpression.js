@@ -11,7 +11,6 @@
 
 import type { BabelNodeCallExpression, BabelNodeExpression, BabelNodeStatement } from "@babel/types";
 import type { Realm } from "../realm.js";
-import { Effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 
 import { AbruptCompletion, Completion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
@@ -119,12 +118,7 @@ function callBothFunctionsAndJoinTheirEffects(
   );
   let r2 = e2.result.shallowCloneWithoutEffects();
 
-  let joinedEffects = Join.joinForkOrChoose(
-    realm,
-    cond,
-    new Effects(r1, e1.generator, e1.modifiedBindings, e1.modifiedProperties, e1.createdObjects),
-    new Effects(r2, e2.generator, e2.modifiedBindings, e2.modifiedProperties, e2.createdObjects)
-  );
+  let joinedEffects = Join.joinForkOrChoose(realm, cond, e1.shallowCloneWithResult(r1), e2.shallowCloneWithResult(r2));
   let joinedCompletion = joinedEffects.result;
   if (joinedCompletion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that

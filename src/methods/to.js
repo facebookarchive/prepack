@@ -713,35 +713,34 @@ export class ToImplementation {
     }
   }
 
+  IsToStringPure(realm: Realm, input: string | Value): boolean {
+    if (input instanceof Value) {
+      if (this.IsToPrimitivePure(realm, input)) {
+        let type = input.getType();
+        return type !== SymbolValue && type !== PrimitiveValue && type !== Value;
+      }
+    }
+    return true;
+  }
+
   ToStringPartial(realm: Realm, val: string | Value): string {
     return this.ToString(realm, typeof val === "string" ? val : val.throwIfNotConcrete());
   }
 
   ToStringValue(realm: Realm, val: Value): Value {
     if (val.getType() === StringValue) return val;
-    let str;
-    if (typeof val === "string") {
-      str = val;
-    } else if (val instanceof NumberValue) {
-      str = val.value + "";
-    } else if (val instanceof UndefinedValue) {
-      str = "undefined";
-    } else if (val instanceof NullValue) {
-      str = "null";
-    } else if (val instanceof SymbolValue) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
-    } else if (val instanceof BooleanValue) {
-      str = val.value ? "true" : "false";
-    } else if (val instanceof ObjectValue) {
+    if (val instanceof ObjectValue) {
       let primValue = this.ToPrimitiveOrAbstract(realm, val, "string");
       if (primValue.getType() === StringValue) return primValue;
-      str = this.ToStringPartial(realm, primValue);
+      return this.ToStringValue(realm, primValue);
+    } else if (val instanceof ConcreteValue) {
+      let str = this.ToString(realm, val);
+      return new StringValue(realm, str);
     } else if (val instanceof AbstractValue) {
       return this.ToStringAbstract(realm, val);
     } else {
       invariant(false, "unknown value type, can't coerce to string");
     }
-    return new StringValue(realm, str);
   }
 
   ToStringAbstract(realm: Realm, value: AbstractValue): AbstractValue {
@@ -749,7 +748,7 @@ export class ToImplementation {
       let result;
       // If the property is not a string we need to coerce it.
       let coerceToString = createOperationDescriptor("COERCE_TO_STRING");
-      if (value.mightNotBeNumber() && !value.isSimpleObject()) {
+      if (value.mightBeObject() && !value.isSimpleObject()) {
         // If this might be a non-simple object, we need to coerce this at a
         // temporal point since it can have side-effects.
         // We can't rely on comparison to do it later, even if

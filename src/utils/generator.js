@@ -48,109 +48,97 @@ import {
 import type {
   BabelNodeExpression,
   BabelNodeIdentifier,
-  BabelNodeThisExpression,
-  BabelNodeStatement,
   BabelNodeMemberExpression,
+  BabelNodeStatement,
   BabelNodeVariableDeclaration,
   BabelNodeBlockStatement,
   BabelNodeLVal,
 } from "@babel/types";
-import { memberExpressionHelper } from "./babelhelpers.js";
 import { concretize, Utils } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";
-import * as t from "@babel/types";
+import type { ShapeInformationInterface } from "../types.js";
+import { PreludeGenerator } from "./PreludeGenerator.js";
 
 export type OperationDescriptorType =
-  | "IDENTIFIER"
-  | "SINGLE_ARG"
-  | "REBUILT_OBJECT"
-  | "CONSOLE_LOG"
-  | "FOR_IN"
-  | "DO_WHILE"
-  | "CONCRETE_MODEL"
-  | "BINARY_EXPRESSION"
-  | "LOGICAL_EXPRESSION"
-  | "CONDITIONAL_EXPRESSION"
-  | "UNARY_EXPRESSION"
   | "ABSTRACT_FROM_TEMPLATE"
-  | "GLOBAL_ASSIGNMENT"
-  | "GLOBAL_DELETE"
-  | "EMIT_PROPERTY_ASSIGNMENT"
-  | "ABSTRACT_PROPERTY"
-  | "JOIN_GENERATORS"
-  | "APPEND_GENERATOR"
-  | "DEFINE_PROPERTY"
-  | "PROPERTY_DELETE"
-  | "THROW"
-  | "CONDITIONAL_THROW"
-  | "COERCE_TO_STRING"
-  | "ABSTRACT_FROM_TEMPLATE"
-  | "FOR_STATEMENT_FUNC"
-  | "NEW_EXPRESSION"
-  | "OBJECT_ASSIGN"
-  | "OBJECT_SET_PARTIAL"
-  | "OBJECT_GET_PARTIAL"
-  | "OBJECT_PROTO_HAS_OWN_PROPERTY"
-  | "OBJECT_PROTO_GET_OWN_PROPERTY_DESCRIPTOR"
-  | "ABSTRACT_OBJECT_SET_PARTIAL"
-  | "ABSTRACT_OBJECT_SET_PARTIAL_VALUE"
+  | "ABSTRACT_OBJECT_GET"
   | "ABSTRACT_OBJECT_GET_PARTIAL"
   | "ABSTRACT_OBJECT_GET_PROTO_OF"
-  | "ABSTRACT_OBJECT_GET"
-  | "DIRECT_CALL_WITH_ARG_LIST"
+  | "ABSTRACT_PROPERTY"
+  | "APPEND_GENERATOR"
+  | "ASSUME_CALL"
+  | "BABEL_HELPERS_OBJECT_WITHOUT_PROPERTIES"
+  | "BINARY_EXPRESSION"
   | "CALL_ABSTRACT_FUNC"
   | "CALL_ABSTRACT_FUNC_THIS"
   | "CALL_BAILOUT"
+  | "CANNOT_BECOME_OBJECT"
+  | "COERCE_TO_STRING"
+  | "CONCRETE_MODEL"
+  | "CONDITIONAL_EXPRESSION"
+  | "CONDITIONAL_PROPERTY_ASSIGNMENT"
+  | "CONDITIONAL_THROW"
+  | "CONSOLE_LOG"
+  | "DEFINE_PROPERTY"
+  | "DERIVED_ABSTRACT_INVARIANT"
+  | "DIRECT_CALL_WITH_ARG_LIST"
+  | "DO_WHILE"
   | "EMIT_CALL"
   | "EMIT_CALL_AND_CAPTURE_RESULT"
+  | "EMIT_PROPERTY_ASSIGNMENT"
+  | "FB_MOCKS_BOOTLOADER_LOAD_MODULES"
+  | "FB_MOCKS_MAGIC_GLOBAL_FUNCTION"
+  | "FOR_IN"
+  | "FOR_STATEMENT_FUNC"
+  | "FULL_INVARIANT"
+  | "FULL_INVARIANT_ABSTRACT"
+  | "FULL_INVARIANT_FUNCTION"
   | "GET_BINDING"
-  | "LOCAL_ASSIGNMENT"
-  | "LOGICAL_PROPERTY_ASSIGNMENT"
-  | "CONDITIONAL_PROPERTY_ASSIGNMENT"
-  | "PROPERTY_ASSIGNMENT"
-  | "MODULES_REQUIRE"
-  | "RESIDUAL_CALL"
-  | "ASSUME_CALL"
-  | "CANNOT_BECOME_OBJECT"
-  | "UPDATE_INCREMENTOR"
-  | "WIDENED_IDENTIFIER"
-  | "WIDEN_PROPERTY"
-  | "WIDEN_ABSTRACT_PROPERTY"
-  | "WIDEN_PROPERTY_ASSIGNMENT"
-  | "WIDEN_ABSTRACT_PROPERTY_ASSIGNMENT"
+  | "GLOBAL_ASSIGNMENT"
+  | "GLOBAL_DELETE"
+  | "IDENTIFIER"
   | "INVARIANT"
   | "INVARIANT_APPEND"
-  | "DERIVED_ABSTRACT_INVARIANT"
+  | "JOIN_GENERATORS"
+  | "LOCAL_ASSIGNMENT"
+  | "LOGICAL_EXPRESSION"
+  | "LOGICAL_PROPERTY_ASSIGNMENT"
+  | "MODULES_REQUIRE"
+  | "NEW_EXPRESSION"
+  | "OBJECT_ASSIGN"
+  | "OBJECT_GET_PARTIAL"
+  | "OBJECT_PROTO_GET_OWN_PROPERTY_DESCRIPTOR"
+  | "OBJECT_PROTO_HAS_OWN_PROPERTY"
+  | "OBJECT_SET_PARTIAL"
+  | "PROPERTY_ASSIGNMENT"
+  | "PROPERTY_DELETE"
   | "PROPERTY_INVARIANT"
-  | "FULL_INVARIANT"
-  | "FULL_INVARIANT_FUNCTION"
-  | "FULL_INVARIANT_ABSTRACT"
-  | "UNKNOWN_ARRAY_METHOD_CALL"
-  | "UNKNOWN_ARRAY_METHOD_PROPERTY_CALL"
-  | "UNKNOWN_ARRAY_LENGTH"
-  | "UNKNOWN_ARRAY_GET_PARTIAL"
-  | "BABEL_HELPERS_OBJECT_WITHOUT_PROPERTIES"
-  | "REACT_DEFAULT_PROPS_HELPER"
-  | "REACT_TEMPORAL_FUNC"
   | "REACT_CREATE_CONTEXT_PROVIDER"
-  | "REACT_SSR_REGEX_CONSTANT"
-  | "REACT_SSR_PREV_TEXT_NODE"
-  | "REACT_SSR_RENDER_VALUE_HELPER"
-  | "REACT_SSR_TEMPLATE_LITERAL"
+  | "REACT_DEFAULT_PROPS_HELPER"
   | "REACT_NATIVE_STRING_LITERAL"
   | "REACT_RELAY_MOCK_CONTAINER"
-  | "FB_MOCKS_BOOTLOADER_LOAD_MODULES"
-  | "FB_MOCKS_MAGIC_GLOBAL_FUNCTION";
-
-export type DerivedExpressionBuildNodeFunction = (
-  Array<BabelNodeExpression>,
-  SerializationContext,
-  Set<AbstractValue | ObjectValue>
-) => BabelNodeExpression;
+  | "REACT_SSR_PREV_TEXT_NODE"
+  | "REACT_SSR_REGEX_CONSTANT"
+  | "REACT_SSR_RENDER_VALUE_HELPER"
+  | "REACT_SSR_TEMPLATE_LITERAL"
+  | "REACT_TEMPORAL_FUNC"
+  | "REBUILT_OBJECT"
+  | "RESIDUAL_CALL"
+  | "SINGLE_ARG"
+  | "THROW"
+  | "UNARY_EXPRESSION"
+  | "UNKNOWN_ARRAY_GET_PARTIAL"
+  | "UNKNOWN_ARRAY_LENGTH"
+  | "UNKNOWN_ARRAY_METHOD_CALL"
+  | "UNKNOWN_ARRAY_METHOD_PROPERTY_CALL"
+  | "UPDATE_INCREMENTOR"
+  | "WIDEN_PROPERTY"
+  | "WIDEN_PROPERTY_ASSIGNMENT"
+  | "WIDENED_IDENTIFIER";
 
 export type OperationDescriptor = {
   data: OperationDescriptorData,
-  kind: void | ResidualBuildKind,
+  kind: void | OperationDescriptorKind,
   type: OperationDescriptorType,
 };
 
@@ -171,7 +159,6 @@ export type OperationDescriptorData = {
   prefix?: boolean,
   path?: Value,
   propertyGetter?: SupportedGraphQLGetters,
-  propName?: string,
   propRef?: ReferenceName | AbstractValue,
   object?: ObjectValue,
   quasis?: Array<any>,
@@ -179,18 +166,17 @@ export type OperationDescriptorData = {
   thisArg?: BaseValue | Value,
   template?: PreludeGenerator => ({}) => BabelNodeExpression,
   typeComparisons?: Set<typeof Value>,
-  typeofString?: string,
   usesThis?: boolean,
   value?: Value,
   violationConditionOperationDescriptor?: OperationDescriptor,
 };
 
-export type ResidualBuildKind = "DERIVED" | "VOID";
+export type OperationDescriptorKind = "DERIVED" | "VOID";
 
 export function createOperationDescriptor(
   type: OperationDescriptorType,
   data?: OperationDescriptorData = {},
-  kind?: ResidualBuildKind
+  kind?: OperationDescriptorKind
 ): OperationDescriptor {
   return {
     data,
@@ -199,8 +185,6 @@ export function createOperationDescriptor(
   };
 }
 
-import type { ShapeInformationInterface } from "../types.js";
-
 export type SerializationContext = {|
   serializeOperationDescriptor: (
     OperationDescriptor,
@@ -208,15 +192,19 @@ export type SerializationContext = {|
     SerializationContext,
     Set<AbstractValue | ObjectValue>
   ) => BabelNodeStatement,
-  serializeValue: Value => BabelNodeExpression,
   serializeBinding: Binding => BabelNodeIdentifier | BabelNodeMemberExpression,
+  serializeBindingAssignment: (Binding, Value) => BabelNodeStatement,
+  serializeCondition: (Value, Generator, Generator, Set<AbstractValue | ObjectValue>) => BabelNodeStatement,
+  serializeDebugScopeComment: (AbstractValue | ObjectValue) => BabelNodeStatement,
+  serializeReturnValue: Value => BabelNodeStatement,
+  serializeGenerator: (Generator, Set<AbstractValue | ObjectValue>) => Array<BabelNodeStatement>,
+  serializeValue: Value => BabelNodeExpression,
   getPropertyAssignmentStatement: (
     location: BabelNodeLVal,
     value: Value,
     mightHaveBeenDeleted: boolean,
     deleteIfMightHaveBeenDeleted: boolean
   ) => BabelNodeStatement,
-  serializeGenerator: (Generator, Set<AbstractValue | ObjectValue>) => Array<BabelNodeStatement>,
   initGenerator: Generator => void,
   finalizeGenerator: Generator => void,
   emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
@@ -242,10 +230,10 @@ export type VisitEntryCallbacks = {|
 
 export class GeneratorEntry {
   constructor(realm: Realm) {
-    // We increment the index of every TemporalBuildNodeEntry created.
+    // We increment the index of every TemporalOperationEntry created.
     // This should match up as a form of timeline value due to the tree-like
     // structure we use to create entries during evaluation. For example,
-    // if all AST nodes in a BlockStatement resulted in a temporal build node
+    // if all AST nodes in a BlockStatement resulted in a temporal operation
     // for each AST node, then each would have a sequential index as to its
     // position of how it was evaluated in the BlockSstatement.
     this.index = realm.temporalEntryCounter++;
@@ -274,7 +262,7 @@ export class GeneratorEntry {
   index: number;
 }
 
-export type TemporalBuildNodeEntryArgs = {
+export type TemporalOperationEntryArgs = {
   declared?: AbstractValue | ObjectValue,
   args: Array<Value>,
   // If we're just trying to add roots for the serializer to notice, we don't need an operationDescriptor.
@@ -284,8 +272,8 @@ export type TemporalBuildNodeEntryArgs = {
   mutatesOnly?: Array<Value>,
 };
 
-export class TemporalBuildNodeEntry extends GeneratorEntry {
-  constructor(realm: Realm, args: TemporalBuildNodeEntryArgs) {
+export class TemporalOperationEntry extends GeneratorEntry {
+  constructor(realm: Realm, args: TemporalOperationEntryArgs) {
     super(realm);
     Object.assign(this, args);
     if (this.mutatesOnly !== undefined) {
@@ -305,8 +293,8 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
   mutatesOnly: void | Array<Value>;
 
   toDisplayJson(depth: number): DisplayResult {
-    if (depth <= 0) return `TemporalBuildNode${this.index}`;
-    let obj = { type: "TemporalBuildNode", ...this };
+    if (depth <= 0) return `TemporalOperation${this.index}`;
+    let obj = { type: "TemporalOperation", ...this };
     delete obj.operationDescriptor;
     return Utils.verboseToDisplayJson(obj, depth);
   }
@@ -360,9 +348,7 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
         }
         let declared = this.declared;
         if (declared !== undefined && context.options.debugScopes) {
-          let s = t.emptyStatement();
-          s.leadingComments = [({ type: "BlockComment", value: `declaring ${declared.intrinsicName || "?"}` }: any)];
-          context.emit(s);
+          context.emit(context.serializeDebugScopeComment(declared));
         }
         context.emit(node);
         context.processValues(valuesToProcess);
@@ -376,7 +362,7 @@ export class TemporalBuildNodeEntry extends GeneratorEntry {
   }
 }
 
-export class TemporalObjectAssignEntry extends TemporalBuildNodeEntry {
+export class TemporalObjectAssignEntry extends TemporalOperationEntry {
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     let declared = this.declared;
     if (!(declared instanceof AbstractObjectValue || declared instanceof ObjectValue)) {
@@ -513,8 +499,7 @@ class ReturnValueEntry extends GeneratorEntry {
   }
 
   serialize(context: SerializationContext): void {
-    let result = context.serializeValue(this.returnValue);
-    context.emit(t.returnStatement(result));
+    context.emit(context.serializeReturnValue(this.returnValue));
   }
 
   getDependencies(): void | Array<Generator> {
@@ -565,11 +550,10 @@ class IfThenElseEntry extends GeneratorEntry {
   }
 
   serialize(context: SerializationContext): void {
-    let condition = context.serializeValue(this.condition);
     let valuesToProcess = new Set();
-    let consequentBody = context.serializeGenerator(this.consequentGenerator, valuesToProcess);
-    let alternateBody = context.serializeGenerator(this.alternateGenerator, valuesToProcess);
-    context.emit(t.ifStatement(condition, t.blockStatement(consequentBody), t.blockStatement(alternateBody)));
+    context.emit(
+      context.serializeCondition(this.condition, this.consequentGenerator, this.alternateGenerator, valuesToProcess)
+    );
     context.processValues(valuesToProcess);
   }
 
@@ -593,11 +577,7 @@ class BindingAssignmentEntry extends GeneratorEntry {
   }
 
   serialize(context: SerializationContext): void {
-    context.emit(
-      t.expressionStatement(
-        t.assignmentExpression("=", context.serializeBinding(this.binding), context.serializeValue(this.value))
-      )
-    );
+    context.emit(context.serializeBindingAssignment(this.binding, this.value));
   }
 
   visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
@@ -765,22 +745,22 @@ export class Generator {
 
   emitGlobalAssignment(key: string, value: Value): void {
     this._addEntry({
-      args: [value],
-      operationDescriptor: createOperationDescriptor("GLOBAL_ASSIGNMENT", { propName: key }),
+      args: [value, new StringValue(this.realm, key)],
+      operationDescriptor: createOperationDescriptor("GLOBAL_ASSIGNMENT"),
     });
   }
 
   emitConcreteModel(key: string, value: Value): void {
     this._addEntry({
-      args: [concretize(this.realm, value)],
-      operationDescriptor: createOperationDescriptor("CONCRETE_MODEL", { propName: key }),
+      args: [concretize(this.realm, value), new StringValue(this.realm, key)],
+      operationDescriptor: createOperationDescriptor("CONCRETE_MODEL"),
     });
   }
 
   emitGlobalDelete(key: string): void {
     this._addEntry({
-      args: [],
-      operationDescriptor: createOperationDescriptor("GLOBAL_DELETE", { propName: key }),
+      args: [new StringValue(this.realm, key)],
+      operationDescriptor: createOperationDescriptor("GLOBAL_DELETE"),
     });
   }
 
@@ -788,11 +768,16 @@ export class Generator {
     this._entries.push(new BindingAssignmentEntry(this.realm, binding, value));
   }
 
-  emitPropertyAssignment(object: ObjectValue, key: string, value: Value): void {
-    if (object.refuseSerialization) return;
+  emitPropertyAssignment(object: Value, key: string | Value, value: Value): void {
+    if (object instanceof ObjectValue && object.refuseSerialization) {
+      return;
+    }
+    if (typeof key === "string") {
+      key = new StringValue(this.realm, key);
+    }
     this._addEntry({
-      args: [object, value],
-      operationDescriptor: createOperationDescriptor("EMIT_PROPERTY_ASSIGNMENT", { propName: key, value }),
+      args: [object, value, key],
+      operationDescriptor: createOperationDescriptor("EMIT_PROPERTY_ASSIGNMENT", { value }),
     });
   }
 
@@ -808,12 +793,13 @@ export class Generator {
       invariant(descValue instanceof Value);
       this._addEntry({
         args: [
+          new StringValue(this.realm, key),
           object,
           descValue,
           desc.get || object.$Realm.intrinsics.undefined,
           desc.set || object.$Realm.intrinsics.undefined,
         ],
-        operationDescriptor: createOperationDescriptor("DEFINE_PROPERTY", { object, propName: key, desc }),
+        operationDescriptor: createOperationDescriptor("DEFINE_PROPERTY", { object, desc }),
       });
     }
   }
@@ -821,8 +807,8 @@ export class Generator {
   emitPropertyDelete(object: ObjectValue, key: string): void {
     if (object.refuseSerialization) return;
     this._addEntry({
-      args: [object],
-      operationDescriptor: createOperationDescriptor("PROPERTY_DELETE", { propName: key }),
+      args: [object, new StringValue(this.realm, key)],
+      operationDescriptor: createOperationDescriptor("PROPERTY_DELETE"),
     });
   }
 
@@ -835,8 +821,11 @@ export class Generator {
 
   emitConsoleLog(method: ConsoleMethodTypes, args: Array<string | ConcreteValue>): void {
     this._addEntry({
-      args: args.map(v => (typeof v === "string" ? new StringValue(this.realm, v) : v)),
-      operationDescriptor: createOperationDescriptor("CONSOLE_LOG", { propName: method }),
+      args: [
+        new StringValue(this.realm, method),
+        ...args.map(v => (typeof v === "string" ? new StringValue(this.realm, v) : v)),
+      ],
+      operationDescriptor: createOperationDescriptor("CONSOLE_LOG"),
     });
   }
 
@@ -911,9 +900,9 @@ export class Generator {
         return;
       } else {
         this._emitInvariant(
-          [value, value],
+          [new StringValue(this.realm, key), value, value],
           createOperationDescriptor("FULL_INVARIANT_ABSTRACT", { concreteComparisons, typeComparisons }),
-          createOperationDescriptor("INVARIANT_APPEND", { propName: key })
+          createOperationDescriptor("INVARIANT_APPEND")
         );
       }
     } else if (value instanceof FunctionValue) {
@@ -921,15 +910,15 @@ export class Generator {
       // as we like to use concrete functions in the model to model abstract behaviors.
       // These concrete functions do not have the right identity.
       this._emitInvariant(
-        [object, value, object],
-        createOperationDescriptor("FULL_INVARIANT_FUNCTION", { propName: key }),
-        createOperationDescriptor("INVARIANT_APPEND", { propName: key })
+        [new StringValue(this.realm, key), object, value, object],
+        createOperationDescriptor("FULL_INVARIANT_FUNCTION"),
+        createOperationDescriptor("INVARIANT_APPEND")
       );
     } else {
       this._emitInvariant(
-        [object, value, object],
-        createOperationDescriptor("FULL_INVARIANT", { propName: key }),
-        createOperationDescriptor("INVARIANT_APPEND", { propName: key })
+        [new StringValue(this.realm, key), object, value, object],
+        createOperationDescriptor("FULL_INVARIANT"),
+        createOperationDescriptor("INVARIANT_APPEND")
       );
     }
   }
@@ -941,9 +930,9 @@ export class Generator {
   ): void {
     if (object.refuseSerialization) return;
     this._emitInvariant(
-      [object, object],
-      createOperationDescriptor("PROPERTY_INVARIANT", { state, propName: key }),
-      createOperationDescriptor("INVARIANT_APPEND", { propName: key })
+      [new StringValue(this.realm, key), object, object],
+      createOperationDescriptor("PROPERTY_INVARIANT", { state }),
+      createOperationDescriptor("INVARIANT_APPEND")
     );
   }
 
@@ -1097,8 +1086,8 @@ export class Generator {
       // Verify that the types are as expected, a failure of this invariant
       // should mean the model is wrong.
       this._emitInvariant(
-        [res, res],
-        createOperationDescriptor("DERIVED_ABSTRACT_INVARIANT", { typeofString }),
+        [new StringValue(this.realm, typeofString), res, res],
+        createOperationDescriptor("DERIVED_ABSTRACT_INVARIANT"),
         createOperationDescriptor("SINGLE_ARG")
       );
     }
@@ -1141,20 +1130,20 @@ export class Generator {
     return res;
   }
 
-  _addEntry(entryArgs: TemporalBuildNodeEntryArgs): TemporalBuildNodeEntry {
+  _addEntry(entryArgs: TemporalOperationEntryArgs): TemporalOperationEntry {
     let entry;
     let operationDescriptor = entryArgs.operationDescriptor;
     if (operationDescriptor && operationDescriptor.type === "OBJECT_ASSIGN") {
       entry = new TemporalObjectAssignEntry(this.realm, entryArgs);
     } else {
-      entry = new TemporalBuildNodeEntry(this.realm, entryArgs);
+      entry = new TemporalOperationEntry(this.realm, entryArgs);
     }
     this.realm.saveTemporalGeneratorEntryArgs(entry);
     this._entries.push(entry);
     return entry;
   }
 
-  _addDerivedEntry(id: string, entryArgs: TemporalBuildNodeEntryArgs): void {
+  _addDerivedEntry(id: string, entryArgs: TemporalOperationEntryArgs): void {
     let entry = this._addEntry(entryArgs);
     this.realm.derivedIds.set(id, entry);
   }
@@ -1169,10 +1158,9 @@ export class Generator {
       this._entries.push(...other._entries);
     } else {
       this._addEntry({
-        args: [],
+        args: [new StringValue(this.realm, leadingComment)],
         operationDescriptor: createOperationDescriptor("APPEND_GENERATOR", {
           generator: other,
-          propName: leadingComment,
         }),
       });
     }
@@ -1190,134 +1178,7 @@ export class Generator {
   }
 }
 
-function escapeInvalidIdentifierCharacters(s: string): string {
-  let res = "";
-  for (let c of s)
-    if ((c >= "0" && c <= "9") || (c >= "a" && c <= "z") || (c >= "A" && c <= "Z")) res += c;
-    else res += "_" + c.charCodeAt(0);
-  return res;
-}
-
-const base62characters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-function base62encode(n: number): string {
-  invariant((n | 0) === n && n >= 0);
-  if (n === 0) return "0";
-  let s = "";
-  while (n > 0) {
-    let f = n % base62characters.length;
-    s = base62characters[f] + s;
-    n = (n - f) / base62characters.length;
-  }
-  return s;
-}
-
-export class NameGenerator {
-  constructor(forbiddenNames: Set<string>, debugNames: boolean, uniqueSuffix: string, prefix: string) {
-    this.prefix = prefix;
-    this.uidCounter = 0;
-    this.debugNames = debugNames;
-    this.forbiddenNames = forbiddenNames;
-    this.uniqueSuffix = uniqueSuffix;
-  }
-  prefix: string;
-  uidCounter: number;
-  debugNames: boolean;
-  forbiddenNames: Set<string>;
-  uniqueSuffix: string;
-  generate(debugSuffix: ?string): string {
-    let id;
-    do {
-      id = this.prefix + base62encode(this.uidCounter++);
-      if (this.uniqueSuffix.length > 0) id += this.uniqueSuffix;
-      if (this.debugNames) {
-        if (debugSuffix) id += "_" + escapeInvalidIdentifierCharacters(debugSuffix);
-        else id += "_";
-      }
-    } while (this.forbiddenNames.has(id));
-    return id;
-  }
-}
-
-export class PreludeGenerator {
-  constructor(debugNames: ?boolean, uniqueSuffix: ?string) {
-    this.prelude = [];
-    this.memoizedRefs = new Map();
-    this.nameGenerator = new NameGenerator(new Set(), !!debugNames, uniqueSuffix || "", "_$");
-    this.usesThis = false;
-    this.declaredGlobals = new Set();
-    this.nextInvariantId = 0;
-  }
-
-  prelude: Array<BabelNodeStatement>;
-  memoizedRefs: Map<string, BabelNodeIdentifier>;
-  nameGenerator: NameGenerator;
-  usesThis: boolean;
-  declaredGlobals: Set<string>;
-  nextInvariantId: number;
-
-  createNameGenerator(prefix: string): NameGenerator {
-    return new NameGenerator(
-      this.nameGenerator.forbiddenNames,
-      this.nameGenerator.debugNames,
-      this.nameGenerator.uniqueSuffix,
-      prefix
-    );
-  }
-
-  convertStringToMember(str: string): BabelNodeIdentifier | BabelNodeThisExpression | BabelNodeMemberExpression {
-    return str
-      .split(".")
-      .map(name => {
-        if (name === "global") {
-          return this.memoizeReference(name);
-        } else if (name === "this") {
-          return t.thisExpression();
-        } else {
-          return t.identifier(name);
-        }
-      })
-      .reduce((obj, prop) => t.memberExpression(obj, prop));
-  }
-
-  globalReference(key: string, globalScope: boolean = false): BabelNodeIdentifier | BabelNodeMemberExpression {
-    if (globalScope && t.isValidIdentifier(key)) return t.identifier(key);
-    return memberExpressionHelper(this.memoizeReference("global"), key);
-  }
-
-  memoizeReference(key: string): BabelNodeIdentifier {
-    let ref = this.memoizedRefs.get(key);
-    if (ref) return ref;
-
-    let init;
-    if (key.includes("(") || key.includes("[")) {
-      // Horrible but effective hack:
-      // Some internal object have intrinsic names such as
-      //    ([][Symbol.iterator]().__proto__.__proto__)
-      // and
-      //    RegExp.prototype[Symbol.match]
-      // which get turned into a babel node here.
-      // TODO: We should properly parse such a string, and memoize all references in it separately.
-      // Instead, we just turn it into a funky identifier, which Babel seems to accept.
-      init = t.identifier(key);
-    } else if (key === "global") {
-      this.usesThis = true;
-      init = t.thisExpression();
-    } else {
-      let i = key.lastIndexOf(".");
-      if (i === -1) {
-        init = t.memberExpression(this.memoizeReference("global"), t.identifier(key));
-      } else {
-        init = t.memberExpression(this.memoizeReference(key.substr(0, i)), t.identifier(key.substr(i + 1)));
-      }
-    }
-    ref = t.identifier(this.nameGenerator.generate(key));
-    this.prelude.push(t.variableDeclaration("var", [t.variableDeclarator(ref, init)]));
-    this.memoizedRefs.set(key, ref);
-    return ref;
-  }
-}
-
-type TemporalBuildNodeEntryOptimizationStatus = "NO_OPTIMIZATION" | "POSSIBLE_OPTIMIZATION";
+type TemporalOperationEntryOptimizationStatus = "NO_OPTIMIZATION" | "POSSIBLE_OPTIMIZATION";
 
 // This function attempts to optimize Object.assign calls, by merging mulitple
 // calls into one another where possible. For example:
@@ -1331,9 +1192,9 @@ type TemporalBuildNodeEntryOptimizationStatus = "NO_OPTIMIZATION" | "POSSIBLE_OP
 export function attemptToMergeEquivalentObjectAssigns(
   realm: Realm,
   callbacks: VisitEntryCallbacks,
-  temporalBuildNodeEntry: TemporalBuildNodeEntry
-): TemporalBuildNodeEntryOptimizationStatus | TemporalObjectAssignEntry {
-  let args = temporalBuildNodeEntry.args;
+  temporalOperationEntry: TemporalOperationEntry
+): TemporalOperationEntryOptimizationStatus | TemporalObjectAssignEntry {
+  let args = temporalOperationEntry.args;
   // If we are Object.assigning 2 or more args
   if (args.length < 2) {
     return "NO_OPTIMIZATION";
@@ -1353,11 +1214,11 @@ export function attemptToMergeEquivalentObjectAssigns(
     // Check if the "to" was definitely an Object.assign, it should
     // be a snapshot AbstractObjectValue
     if (possibleOtherObjectAssignTo instanceof AbstractObjectValue) {
-      let otherTemporalBuildNodeEntry = realm.getTemporalBuildNodeEntryFromDerivedValue(possibleOtherObjectAssignTo);
-      if (!(otherTemporalBuildNodeEntry instanceof TemporalObjectAssignEntry)) {
+      let otherTemporalOperationEntry = realm.getTemporalOperationEntryFromDerivedValue(possibleOtherObjectAssignTo);
+      if (!(otherTemporalOperationEntry instanceof TemporalObjectAssignEntry)) {
         continue;
       }
-      let otherArgs = otherTemporalBuildNodeEntry.args;
+      let otherArgs = otherTemporalOperationEntry.args;
       // Object.assign has at least 1 arg
       if (otherArgs.length < 1) {
         continue;
@@ -1389,8 +1250,8 @@ export function attemptToMergeEquivalentObjectAssigns(
               // because another generator entry may have a dependency on the Object.assign
               // TemporalObjectAssignEntry we're trying to merge.
               if (
-                temporalGeneratorEntry.notEqualToAndDoesNotHappenBefore(otherTemporalBuildNodeEntry) &&
-                temporalGeneratorEntry.notEqualToAndDoesNotHappenAfter(temporalBuildNodeEntry)
+                temporalGeneratorEntry.notEqualToAndDoesNotHappenBefore(otherTemporalOperationEntry) &&
+                temporalGeneratorEntry.notEqualToAndDoesNotHappenAfter(temporalOperationEntry)
               ) {
                 continue loopThroughArgs;
               }
@@ -1414,7 +1275,7 @@ export function attemptToMergeEquivalentObjectAssigns(
         // been merged into a single entry. The previous Object.assign TemporalObjectAssignEntry
         // should dead-code eliminate away once we replace the original TemporalObjectAssignEntry
         // we started with with the new merged on as they will no longer be referenced.
-        let newTemporalObjectAssignEntryArgs = Object.assign({}, temporalBuildNodeEntry, {
+        let newTemporalObjectAssignEntryArgs = Object.assign({}, temporalOperationEntry, {
           args: newArgs,
         });
         return new TemporalObjectAssignEntry(realm, newTemporalObjectAssignEntryArgs);

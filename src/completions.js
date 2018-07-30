@@ -19,7 +19,7 @@ export class Completion {
     let e = precedingEffects;
     if (e !== undefined) {
       if (e.result === undefined) e.result = this;
-      else e = new Effects(this, e.generator, e.modifiedBindings, e.modifiedProperties, e.createdObjects);
+      else e = e.shallowCloneWithResult(this);
     }
     this.value = value;
     this.effects = e;
@@ -133,19 +133,8 @@ export class ReturnCompletion extends AbruptCompletion {
 }
 
 export class ForkedAbruptCompletion extends AbruptCompletion {
-  constructor(
-    realm: Realm,
-    joinCondition: AbstractValue,
-    consequent: AbruptCompletion,
-    consequentEffects: Effects,
-    alternate: AbruptCompletion,
-    alternateEffects: Effects
-  ) {
+  constructor(realm: Realm, joinCondition: AbstractValue, consequent: AbruptCompletion, alternate: AbruptCompletion) {
     super(realm.intrinsics.empty, undefined, consequent.location);
-    invariant(consequentEffects.result === consequent);
-    invariant(consequent.effects === consequentEffects);
-    invariant(alternateEffects.result === alternate);
-    invariant(alternate.effects === alternateEffects);
     this.joinCondition = joinCondition;
     this.consequent = consequent;
     this.alternate = alternate;
@@ -156,16 +145,7 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
   alternate: AbruptCompletion;
 
   shallowCloneWithoutEffects(): ForkedAbruptCompletion {
-    let consequentEffects = this.consequentEffects;
-    let alternateEffects = this.alternateEffects;
-    return new ForkedAbruptCompletion(
-      this.value.$Realm,
-      this.joinCondition,
-      this.consequent,
-      consequentEffects,
-      this.alternate,
-      alternateEffects
-    );
+    return new ForkedAbruptCompletion(this.value.$Realm, this.joinCondition, this.consequent, this.alternate);
   }
 
   // For convenience, this.consequent.effects should always be defined, but accessing it directly requires
@@ -183,13 +163,7 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
   updateConsequentKeepingCurrentEffects(newConsequent: AbruptCompletion): AbruptCompletion {
     let e = this.consequent.effects;
     invariant(e);
-    newConsequent.effects = new Effects(
-      newConsequent,
-      e.generator,
-      e.modifiedBindings,
-      e.modifiedProperties,
-      e.createdObjects
-    );
+    newConsequent.effects = e.shallowCloneWithResult(newConsequent);
     this.consequent = newConsequent;
     return this;
   }
@@ -197,13 +171,7 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
   updateAlternateKeepingCurrentEffects(newAlternate: AbruptCompletion): AbruptCompletion {
     let e = this.alternate.effects;
     invariant(e);
-    newAlternate.effects = new Effects(
-      newAlternate,
-      e.generator,
-      e.modifiedBindings,
-      e.modifiedProperties,
-      e.createdObjects
-    );
+    newAlternate.effects = e.shallowCloneWithResult(newAlternate);
     this.alternate = newAlternate;
     return this;
   }
@@ -245,9 +213,7 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
       this.value.$Realm.intrinsics.empty,
       this.joinCondition,
       this.consequent,
-      this.consequentEffects,
       this.alternate,
-      this.alternateEffects,
       []
     );
   }
@@ -261,16 +227,10 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     value: Value,
     joinCondition: AbstractValue,
     consequent: Completion,
-    consequentEffects: Effects,
     alternate: Completion,
-    alternateEffects: Effects,
     savedPathConditions: Array<AbstractValue>,
     savedEffects: void | Effects = undefined
   ) {
-    invariant(consequent === consequentEffects.result);
-    invariant(consequent.effects === consequentEffects);
-    invariant(alternate === alternateEffects.result);
-    invariant(alternate.effects === alternateEffects);
     invariant(consequent instanceof NormalCompletion || alternate instanceof NormalCompletion);
     super(value, undefined, consequent.location);
     this.joinCondition = joinCondition;
@@ -296,9 +256,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
       this.value,
       this.joinCondition,
       this.consequent,
-      consequentEffects,
       this.alternate,
-      alternateEffects,
       this.savedPathConditions,
       this.savedEffects
     );
@@ -319,7 +277,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   updateConsequentKeepingCurrentEffects(newConsequent: Completion): PossiblyNormalCompletion {
     if (newConsequent instanceof NormalCompletion) this.value = newConsequent.value;
     let e = this.consequentEffects;
-    let effects = new Effects(newConsequent, e.generator, e.modifiedBindings, e.modifiedProperties, e.createdObjects);
+    let effects = e.shallowCloneWithResult(newConsequent);
     this.consequent = effects.result;
     return this;
   }
@@ -327,7 +285,7 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   updateAlternateKeepingCurrentEffects(newAlternate: Completion): PossiblyNormalCompletion {
     if (newAlternate instanceof NormalCompletion) this.value = newAlternate.value;
     let e = this.alternateEffects;
-    let effects = new Effects(newAlternate, e.generator, e.modifiedBindings, e.modifiedProperties, e.createdObjects);
+    let effects = e.shallowCloneWithResult(newAlternate);
     this.alternate = effects.result;
     return this;
   }

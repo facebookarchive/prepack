@@ -19,6 +19,7 @@ import type {
   ReactHint,
   DisplayResult,
   ArgModel,
+  DebugReproManagerType,
 } from "./types.js";
 import { RealmStatistics } from "./statistics.js";
 import {
@@ -65,17 +66,12 @@ import {
 import type { Compatibility, RealmOptions, ReactOutputTypes, InvariantModeTypes } from "./options.js";
 import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
-import {
-  createOperationDescriptor,
-  Generator,
-  PreludeGenerator,
-  type TemporalBuildNodeEntry,
-} from "./utils/generator.js";
+import { createOperationDescriptor, Generator, type TemporalOperationEntry } from "./utils/generator.js";
+import { PreludeGenerator } from "./utils/PreludeGenerator.js";
 import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "@babel/types";
 import { Utils } from "./singletons.js";
-
 export type BindingEntry = {
   hasLeaked: void | boolean,
   value: void | Value,
@@ -128,6 +124,10 @@ export class Effects {
   createdObjects: CreatedObjects;
   canBeApplied: boolean;
   _id: number;
+
+  shallowCloneWithResult(result: Completion): Effects {
+    return new Effects(result, this.generator, this.modifiedBindings, this.modifiedProperties, this.createdObjects);
+  }
 
   toDisplayString(): string {
     return Utils.jsonToDisplayString(this, 10);
@@ -384,8 +384,8 @@ export class Realm {
   $GlobalEnv: LexicalEnvironment;
   intrinsics: Intrinsics;
 
-  derivedIds: Map<string, TemporalBuildNodeEntry>;
-  temporalEntryArgToEntries: Map<Value, Set<TemporalBuildNodeEntry>>;
+  derivedIds: Map<string, TemporalOperationEntry>;
+  temporalEntryArgToEntries: Map<Value, Set<TemporalOperationEntry>>;
   temporalEntryCounter: number;
 
   instantRender: {
@@ -481,6 +481,7 @@ export class Realm {
   globalSymbolRegistry: Array<{ $Key: string, $Symbol: SymbolValue }>;
 
   debuggerInstance: DebugServerType | void;
+  debugReproManager: DebugReproManagerType | void;
 
   nextGeneratorId: number = 0;
   _abstractValuesDefined: Set<string>;
@@ -858,8 +859,32 @@ export class Realm {
     return [effects, nodeAst, nodeIO];
   }
 
+  // Use this to evaluate code for internal purposes, so that the tracked state does not get polluted
+  evaluateWithoutEffects<T>(f: () => T): T {
+    // Save old state and set up undefined state
+    let savedGenerator = this.generator;
+    let savedBindings = this.modifiedBindings;
+    let savedProperties = this.modifiedProperties;
+    let savedCreatedObjects = this.createdObjects;
+    let saved_completion = this.savedCompletion;
+    try {
+      this.generator = undefined;
+      this.modifiedBindings = undefined;
+      this.modifiedProperties = undefined;
+      this.createdObjects = undefined;
+      this.savedCompletion = undefined;
+      return f();
+    } finally {
+      this.generator = savedGenerator;
+      this.modifiedBindings = savedBindings;
+      this.modifiedProperties = savedProperties;
+      this.createdObjects = savedCreatedObjects;
+      this.savedCompletion = saved_completion;
+    }
+  }
+
   evaluateForEffects(f: () => Completion | Value, state: any, generatorName: string): Effects {
-    // Save old state and set up empty state for ast
+    // Save old state and set up empty state
     let [savedBindings, savedProperties] = this.getAndResetModifiedMaps();
     let saved_generator = this.generator;
     let saved_createdObjects = this.createdObjects;
@@ -1176,8 +1201,8 @@ export class Realm {
       if (typeof keyKey === "string") {
         if (path !== undefined) {
           gen.emitStatement(
-            [key.object, tval || value, this.intrinsics.empty],
-            createOperationDescriptor("CONDITIONAL_PROPERTY_ASSIGNMENT", { binding: key, path, value })
+            [key.object, tval || value, this.intrinsics.empty, new StringValue(this, keyKey)],
+            createOperationDescriptor("CONDITIONAL_PROPERTY_ASSIGNMENT", { path, value })
           );
         } else {
           // RH value was not widened, so it must have been a constant. We don't need to assign that inside the loop.
@@ -1666,8 +1691,8 @@ export class Realm {
     if (!propertyValue.isIntrinsic()) {
       propertyValue.intrinsicName = `${path}.${key}`;
       propertyValue.kind = "rebuiltProperty";
-      propertyValue.args = [object];
-      propertyValue.operationDescriptor = createOperationDescriptor("REBUILT_OBJECT", { propName: key });
+      propertyValue.args = [object, new StringValue(this, key)];
+      propertyValue.operationDescriptor = createOperationDescriptor("REBUILT_OBJECT");
       let intrinsicName = propertyValue.intrinsicName;
       invariant(intrinsicName !== undefined);
       this.rebuildNestedProperties(propertyValue, intrinsicName);
@@ -1768,7 +1793,7 @@ export class Realm {
   // Return value indicates whether the caller should try to recover from the error or not.
   handleError(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
     if (!diagnostic.callStack && this.contextStack.length > 0) {
-      let error = Construct(this, this.intrinsics.Error);
+      let error = this.evaluateWithoutEffects(() => Construct(this, this.intrinsics.Error));
       let stack = error._SafeGetDataPropertyValue("stack");
       if (stack instanceof StringValue) diagnostic.callStack = stack.value;
     }
@@ -1777,6 +1802,16 @@ export class Realm {
     // stop execution for debugging before PP exits.
     if (this.debuggerInstance && this.debuggerInstance.shouldStopForSeverity(diagnostic.severity)) {
       this.debuggerInstance.handlePrepackError(diagnostic);
+    }
+
+    // If we're creating a DebugRepro, attach the sourceFile names to the error that is returned.
+    if (this.debugReproManager !== undefined) {
+      let manager = this.debugReproManager;
+      let sourcePaths = {
+        sourceFiles: manager.getSourceFilePaths(),
+        sourceMaps: manager.getSourceMapPaths(),
+      };
+      diagnostic.sourceFilePaths = sourcePaths;
     }
 
     // Default behaviour is to bail on the first error
@@ -1820,21 +1855,21 @@ export class Realm {
     return !this._abstractValuesDefined.has(nameString);
   }
 
-  getTemporalBuildNodeEntryFromDerivedValue(value: Value): void | TemporalBuildNodeEntry {
+  getTemporalOperationEntryFromDerivedValue(value: Value): void | TemporalOperationEntry {
     let name = value.intrinsicName;
     if (!name) {
       return undefined;
     }
-    let temporalBuildNodeEntry = value.$Realm.derivedIds.get(name);
-    return temporalBuildNodeEntry;
+    let temporalOperationEntry = value.$Realm.derivedIds.get(name);
+    return temporalOperationEntry;
   }
 
-  getTemporalGeneratorEntriesReferencingArg(arg: AbstractValue | ObjectValue): void | Set<TemporalBuildNodeEntry> {
+  getTemporalGeneratorEntriesReferencingArg(arg: AbstractValue | ObjectValue): void | Set<TemporalOperationEntry> {
     return this.temporalEntryArgToEntries.get(arg);
   }
 
-  saveTemporalGeneratorEntryArgs(temporalBuildNodeEntry: TemporalBuildNodeEntry): void {
-    let args = temporalBuildNodeEntry.args;
+  saveTemporalGeneratorEntryArgs(temporalOperationEntry: TemporalOperationEntry): void {
+    let args = temporalOperationEntry.args;
     for (let arg of args) {
       let temporalEntries = this.temporalEntryArgToEntries.get(arg);
 
@@ -1842,7 +1877,7 @@ export class Realm {
         temporalEntries = new Set();
         this.temporalEntryArgToEntries.set(arg, temporalEntries);
       }
-      temporalEntries.add(temporalBuildNodeEntry);
+      temporalEntries.add(temporalOperationEntry);
     }
   }
 }

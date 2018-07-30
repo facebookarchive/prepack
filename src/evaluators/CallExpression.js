@@ -12,7 +12,6 @@
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { AbruptCompletion, Completion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
-import { Effects } from "../realm.js";
 import { type LexicalEnvironment, type BaseValue, mightBecomeAnObject } from "../environment.js";
 import { EnvironmentRecord } from "../environment.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
@@ -184,12 +183,7 @@ function callBothFunctionsAndJoinTheirEffects(
   if (r1 instanceof Completion) r1 = r1.shallowCloneWithoutEffects();
   let r2 = e2.result;
   if (r2 instanceof Completion) r2 = r2.shallowCloneWithoutEffects();
-  let joinedEffects = Join.joinForkOrChoose(
-    realm,
-    cond,
-    new Effects(r1, e1.generator, e1.modifiedBindings, e1.modifiedProperties, e1.createdObjects),
-    new Effects(r2, e2.generator, e2.modifiedBindings, e2.modifiedProperties, e2.createdObjects)
-  );
+  let joinedEffects = Join.joinForkOrChoose(realm, cond, e1.shallowCloneWithResult(r1), e2.shallowCloneWithResult(r2));
   let completion = joinedEffects.result;
   if (completion instanceof SimpleNormalCompletion) completion = completion.value;
   if (completion instanceof PossiblyNormalCompletion) {

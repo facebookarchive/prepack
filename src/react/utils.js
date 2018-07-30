@@ -775,6 +775,7 @@ export function convertConfigObjectToReactComponentTreeConfig(
   // defaults
   let firstRenderOnly = false;
   let isRoot = false;
+  let modelString;
 
   if (!(config instanceof UndefinedValue)) {
     for (let [key] of config.properties) {
@@ -782,12 +783,32 @@ export function convertConfigObjectToReactComponentTreeConfig(
       if (propValue instanceof StringValue || propValue instanceof NumberValue || propValue instanceof BooleanValue) {
         let value = propValue.value;
 
-        // boolean options
         if (typeof value === "boolean") {
+          // boolean options
           if (key === "firstRenderOnly") {
             firstRenderOnly = value;
           } else if (key === "isRoot") {
             isRoot = value;
+          }
+        } else if (typeof value === "string") {
+          try {
+            // result here is ignored as the main point here is to
+            // check and produce error
+            JSON.parse(value);
+          } catch (e) {
+            let componentModelError = new CompilerDiagnostic(
+              "Failed to parse model for component",
+              realm.currentLocation,
+              "PP1008",
+              "FatalError"
+            );
+            if (realm.handleError(componentModelError) !== "Recover") {
+              throw new FatalError();
+            }
+          }
+          // string options
+          if (key === "model") {
+            modelString = value;
           }
         }
       } else {
@@ -805,6 +826,7 @@ export function convertConfigObjectToReactComponentTreeConfig(
   return {
     firstRenderOnly,
     isRoot,
+    modelString,
   };
 }
 
@@ -948,12 +970,12 @@ function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps:
     // be a better option.
     invariant(false, "TODO applyClonedTemporalAlias conditional");
   }
-  let temporalBuildNodeEntry = realm.getTemporalBuildNodeEntryFromDerivedValue(temporalAlias);
-  if (!(temporalBuildNodeEntry instanceof TemporalObjectAssignEntry)) {
+  let temporalOperationEntry = realm.getTemporalOperationEntryFromDerivedValue(temporalAlias);
+  if (!(temporalOperationEntry instanceof TemporalObjectAssignEntry)) {
     invariant(false, "TODO nont TemporalObjectAssignEntry");
   }
-  invariant(temporalBuildNodeEntry !== undefined);
-  let temporalArgs = temporalBuildNodeEntry.args;
+  invariant(temporalOperationEntry !== undefined);
+  let temporalArgs = temporalOperationEntry.args;
   // replace the original props with the cloned one
   let [to, ...sources] = temporalArgs.map(arg => (arg === props ? clonedProps : arg));
 

@@ -91,6 +91,7 @@ export type SourceFile = {
   filePath: string,
   fileContents: string,
   sourceMapContents?: string,
+  sourceMapFilename?: string,
 };
 
 export type SourceMap = {
@@ -351,6 +352,7 @@ export type ReactHint = {| firstRenderValue: Value, object: ObjectValue, propert
 export type ReactComponentTreeConfig = {
   firstRenderOnly: boolean,
   isRoot: boolean,
+  modelString: void | string,
 };
 
 export type DebugServerType = {
@@ -371,6 +373,10 @@ export type PathType = {
 
 export type HavocType = {
   value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation): void,
+};
+
+export type MaterializeType = {
+  materialize(realm: Realm, object: ObjectValue): void,
 };
 
 export type PropertiesType = {
@@ -1012,6 +1018,8 @@ export type ToType = {
     hint: "string" | "number"
   ): AbstractValue | PrimitiveValue,
 
+  IsToStringPure(realm: Realm, input: string | Value): boolean,
+
   // ECMA262 7.1.12
   ToString(realm: Realm, val: string | ConcreteValue): string,
 
@@ -1132,4 +1140,16 @@ export type ShapeUniverse = { [string]: ShapeDescriptor };
 export type ArgModel = {
   universe: ShapeUniverse,
   arguments: { [string]: string },
+};
+
+export type DebugReproManagerType = {
+  construct(configArgs: DebugReproArguments): void,
+  addSourceFile(fileName: string): void,
+  getSourceFilePaths(): Array<{ absolute: string, relative: string }>,
+  getSourceMapPaths(): Array<string>,
+};
+
+export type DebugReproArguments = {
+  sourcemaps?: Array<SourceFile>,
+  buckRoot?: string,
 };

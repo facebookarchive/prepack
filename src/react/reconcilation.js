@@ -75,6 +75,7 @@ import {
   SimpleClassBailOut,
   UnsupportedSideEffect,
 } from "./errors.js";
+import { wrapReactElementWithKeyedFragment } from "./elements.js";
 import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
 import { handleReportedSideEffect } from "../serializer/utils.js";
@@ -173,7 +174,7 @@ export class Reconciler {
   ): Effects {
     const resolveComponentTree = () => {
       try {
-        let initialProps = props || getInitialProps(this.realm, componentType);
+        let initialProps = props || getInitialProps(this.realm, componentType, this.componentTreeConfig);
         let initialContext = context || getInitialContext(this.realm, componentType);
         this.alreadyEvaluatedRootNodes.set(componentType, evaluatedRootNode);
         let { result } = this._resolveComponent(componentType, initialProps, initialContext, "ROOT", evaluatedRootNode);
@@ -1086,7 +1087,14 @@ export class Reconciler {
       let childrenValue = Get(this.realm, propsValue, "children");
 
       if (childrenValue instanceof Value) {
-        let resolvedChildren = this._resolveDeeply(componentType, childrenValue, context, branchStatus, evaluatedNode);
+        let resolvedChildren = this._resolveDeeply(
+          componentType,
+          childrenValue,
+          context,
+          branchStatus,
+          evaluatedNode,
+          false
+        );
         // we can optimize further and flatten arrays on non-composite components
         if (resolvedChildren instanceof ArrayValue && !resolvedChildren.intrinsicName) {
           resolvedChildren = flattenChildren(this.realm, resolvedChildren);
@@ -1143,7 +1151,8 @@ export class Reconciler {
     reactElement: ObjectValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
-    evaluatedNode: ReactEvaluatedNode
+    evaluatedNode: ReactEvaluatedNode,
+    needsKey?: boolean
   ) {
     // We create a clone of the ReactElement to be safe. This is because the same
     // ReactElement might be a temporal referenced in other effects and also it allows us to
@@ -1154,6 +1163,7 @@ export class Reconciler {
     let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
     let refValue = getProperty(this.realm, reactElement, "ref");
+    let keyValue = getProperty(this.realm, reactElement, "key");
 
     invariant(
       !(typeValue instanceof AbstractValue && typeValue.kind === "conditional"),
@@ -1174,6 +1184,7 @@ export class Reconciler {
       );
       return reactElement;
     }
+
     let componentResolutionStrategy = this._getComponentResolutionStrategy(typeValue);
 
     // We do not support "ref" on <Component /> ReactElements, unless it's a forwarded ref
@@ -1189,6 +1200,7 @@ export class Reconciler {
     ) {
       this._resolveReactElementBadRef(reactElement, evaluatedNode);
     }
+
     try {
       let result;
 
@@ -1216,7 +1228,8 @@ export class Reconciler {
           break;
         }
         case "FRAGMENT": {
-          return this._resolveFragmentComponent(componentType, reactElement, context, branchStatus, evaluatedNode);
+          result = this._resolveFragmentComponent(componentType, reactElement, context, branchStatus, evaluatedNode);
+          break;
         }
         case "RELAY_QUERY_RENDERER": {
           invariant(typeValue instanceof AbstractObjectValue);
@@ -1224,13 +1237,14 @@ export class Reconciler {
           break;
         }
         case "CONTEXT_PROVIDER": {
-          return this._resolveContextProviderComponent(
+          result = this._resolveContextProviderComponent(
             componentType,
             reactElement,
             context,
             branchStatus,
             evaluatedNode
           );
+          break;
         }
         case "CONTEXT_CONSUMER": {
           result = this._resolveContextConsumerComponent(
@@ -1253,9 +1267,17 @@ export class Reconciler {
       if (result === undefined) {
         result = reactElement;
       }
+
       if (result instanceof UndefinedValue) {
         return this._resolveReactElementUndefinedRender(reactElement, evaluatedNode, branchStatus);
       }
+
+      // If we have a new result and we might have a key value then wrap our inlined result in a
+      // `<React.Fragment key={keyValue}>` so that we may maintain the key.
+      if (!this.componentTreeConfig.firstRenderOnly && needsKey && keyValue.mightNotBeNull()) {
+        result = wrapReactElementWithKeyedFragment(this.realm, keyValue, result);
+      }
+
       return result;
     } catch (error) {
       return this._resolveComponentResolutionFailure(error, reactElement, evaluatedNode, branchStatus);
@@ -1367,7 +1389,8 @@ export class Reconciler {
     value: Value,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
-    evaluatedNode: ReactEvaluatedNode
+    evaluatedNode: ReactEvaluatedNode,
+    needsKey?: boolean
   ): Value {
     if (
       value instanceof StringValue ||
@@ -1387,9 +1410,9 @@ export class Reconciler {
       return this._resolveAbstractValue(componentType, value, context, branchStatus, evaluatedNode);
     } else if (value instanceof ArrayValue) {
       // TODO investigate what about other iterables type objects
-      return this._resolveArray(componentType, value, context, branchStatus, evaluatedNode);
+      return this._resolveArray(componentType, value, context, branchStatus, evaluatedNode, needsKey);
     } else if (value instanceof ObjectValue && isReactElement(value)) {
-      return this._resolveReactElement(componentType, value, context, branchStatus, evaluatedNode);
+      return this._resolveReactElement(componentType, value, context, branchStatus, evaluatedNode, needsKey);
     } else {
       let location = getLocationFromValue(value.expressionLocation);
       throw new ExpectedBailOut(`invalid return value from render${location}`);
@@ -1413,7 +1436,8 @@ export class Reconciler {
     arrayValue: ArrayValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
-    evaluatedNode: ReactEvaluatedNode
+    evaluatedNode: ReactEvaluatedNode,
+    needsKey?: boolean
   ): ArrayValue {
     if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(arrayValue)) {
       let arrayHint = this.realm.react.arrayHints.get(arrayValue);
@@ -1429,8 +1453,9 @@ export class Reconciler {
       }
       return arrayValue;
     }
+    if (needsKey !== false) needsKey = true;
     let children = mapArrayValue(this.realm, arrayValue, elementValue =>
-      this._resolveDeeply(componentType, elementValue, context, "NEW_BRANCH", evaluatedNode)
+      this._resolveDeeply(componentType, elementValue, context, "NEW_BRANCH", evaluatedNode, needsKey)
     );
     children.makeFinal();
     return children;

@@ -10,7 +10,13 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ObjectValue, FunctionValue, AbstractValue, ECMAScriptSourceFunctionValue } from "../../values/index.js";
+import {
+  AbstractValue,
+  ECMAScriptSourceFunctionValue,
+  FunctionValue,
+  ObjectValue,
+  StringValue,
+} from "../../values/index.js";
 import { Create, Environment } from "../../singletons.js";
 import { createAbstract } from "../prepack/utils.js";
 import { Get } from "../../methods/index.js";
@@ -112,8 +118,8 @@ function createReactRelayContainer(
     let value = AbstractValue.createTemporalFromBuildFunction(
       realm,
       FunctionValue,
-      [reactRelay, ...args],
-      createOperationDescriptor("REACT_RELAY_MOCK_CONTAINER", { propName: containerName }),
+      [reactRelay, new StringValue(realm, containerName), ...args],
+      createOperationDescriptor("REACT_RELAY_MOCK_CONTAINER"),
       { skipInvariant: true, isPure: true }
     );
     invariant(value instanceof AbstractValue);

@@ -9,9 +9,8 @@
 
 /* @flow strict-local */
 
-import type { SourceFile } from "./../../types.js";
-import { DebuggerError } from "./../common/DebuggerError.js";
-import invariant from "../common/invariant.js";
+import type { SourceFile } from "../types.js";
+import invariant from "../invariant.js";
 
 /**
  * Sourcemap paths can come in one of two formats:
@@ -33,10 +32,7 @@ export class SourceMapManager {
     // Use presence of buck root argument to indicate which path format sourcemap prefixes take on.
     if (buckRoot !== undefined) {
       if (sourceMaps === undefined) {
-        throw new DebuggerError(
-          "Invalid input",
-          "Can't provide a sourcemap directory root without having sourcemaps present"
-        );
+        throw new Error("Invalid input: Can't provide a sourcemap directory root without having sourcemaps present");
       }
       this._buckRoot = buckRoot;
       if (this._buckRoot[this._buckRoot.length - 1] === "/") {
@@ -45,7 +41,7 @@ export class SourceMapManager {
       }
     } else {
       // If sourcemaps don't exist, set prefixes to undefined and break.
-      if (sourceMaps) {
+      if (sourceMaps && sourceMaps.length > 0) {
         for (let map of sourceMaps) {
           if (map.sourceMapContents === undefined || map.sourceMapContents === "") {
             this._sourcemapCommonPrefix = undefined;

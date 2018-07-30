@@ -249,8 +249,8 @@ export class ModuleTracer extends Tracer {
             result = AbstractValue.createTemporalFromBuildFunction(
               realm,
               Value,
-              [],
-              createOperationDescriptor("MODULES_REQUIRE", { propName })
+              [new StringValue(realm, propName)],
+              createOperationDescriptor("MODULES_REQUIRE")
             );
           } else {
             result = effects.result;

@@ -18,7 +18,8 @@ import type {
 } from "@babel/types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
-import { createOperationDescriptor, PreludeGenerator, type OperationDescriptor } from "../utils/generator.js";
+import { createOperationDescriptor, type OperationDescriptor } from "../utils/generator.js";
+import { PreludeGenerator } from "../utils/PreludeGenerator.js";
 import type { PropertyKeyValue, ShapeInformationInterface } from "../types.js";
 import buildExpressionTemplate from "../utils/builder.js";
 
@@ -128,10 +129,6 @@ export default class AbstractValue extends Value {
   addSourceLocationsTo(locations: Array<BabelNodeSourceLocation>, seenValues?: Set<AbstractValue> = new Set()): void {
     if (seenValues.has(this)) return;
     seenValues.add(this);
-    // TODO: make this work again?
-    // if (this._buildNode && !(this._buildNode instanceof Function)) {
-    //   if (this._buildNode.loc) locations.push(this._buildNode.loc);
-    // }
     for (let val of this.args) {
       if (val instanceof AbstractValue) val.addSourceLocationsTo(locations, seenValues);
     }
@@ -143,9 +140,9 @@ export default class AbstractValue extends Value {
     let realm = this.$Realm;
     function add_intrinsic(name: string) {
       if (name.startsWith("_$")) {
-        let temporalBuildNodeEntryArgs = realm.derivedIds.get(name);
-        invariant(temporalBuildNodeEntryArgs !== undefined);
-        add_args(temporalBuildNodeEntryArgs.args);
+        let temporalOperationEntryArgs = realm.derivedIds.get(name);
+        invariant(temporalOperationEntryArgs !== undefined);
+        add_args(temporalOperationEntryArgs.args);
       } else if (names.indexOf(name) < 0) {
         names.push(name);
       }
@@ -945,13 +942,15 @@ export default class AbstractValue extends Value {
     return realm.reportIntrospectionError(message);
   }
 
-  static createAbstractObject(realm: Realm, name: string, template?: ObjectValue): AbstractObjectValue {
+  static createAbstractObject(
+    realm: Realm,
+    name: string,
+    templateOrShape?: ObjectValue | ShapeInformationInterface
+  ): AbstractObjectValue {
     let value;
-    if (template === undefined) {
-      template = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+    if (templateOrShape === undefined) {
+      templateOrShape = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
     }
-    template.makePartial();
-    template.makeSimple();
     value = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), ObjectValue, [], name);
     if (!realm.isNameStringUnique(name)) {
       value.hashValue = ++realm.objectCount;
@@ -959,8 +958,14 @@ export default class AbstractValue extends Value {
       realm.saveNameString(name);
     }
     value.intrinsicName = name;
-    value.values = new ValuesDomain(new Set([template]));
-    realm.rebuildNestedProperties(value, name);
+    if (templateOrShape instanceof ObjectValue) {
+      templateOrShape.makePartial();
+      templateOrShape.makeSimple();
+      value.values = new ValuesDomain(new Set([templateOrShape]));
+      realm.rebuildNestedProperties(value, name);
+    } else {
+      value.shape = templateOrShape;
+    }
     invariant(value instanceof AbstractObjectValue);
     return value;
   }

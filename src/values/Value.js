@@ -193,4 +193,8 @@ export default class Value {
   _serialize(set: Function, stack: Map<Value, any>): any {
     invariant(false, "abstract method; please override");
   }
+
+  getDebugName(): string | void {
+    return this.intrinsicName || this.__originalName;
+  }
 }
