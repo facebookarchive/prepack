@@ -36,7 +36,7 @@ import { convertConfigObjectToReactComponentTreeConfig, valueIsKnownReactAbstrac
 import { applyOptimizedReactComponents, optimizeReactComponentTreeRoot } from "../react/optimizing.js";
 import { handleReportedSideEffect } from "./utils.js";
 import { stringOfLocation } from "../utils/babelhelpers";
-import { createModelledFunctionCall } from "../utils.js";
+import { Utils } from "../singletons.js";
 
 type AdditionalFunctionEntry = {
   value: ECMAScriptSourceFunctionValue | AbstractValue,
@@ -202,7 +202,7 @@ export class Functions {
         realm.handleError(error);
       };
       for (let t1 of this.realm.tracers) t1.beginOptimizingFunction(currentOptimizedFunctionId, functionValue);
-      let call = createModelledFunctionCall(this.realm, functionValue, argModelString);
+      let call = Utils.createModelledFunctionCall(this.realm, functionValue, argModelString);
       let realm = this.realm;
       let effects: Effects = realm.evaluatePure(
         () => realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
@@ -291,7 +291,7 @@ export class Functions {
             fun2Name,
             conflicts,
             e1.modifiedProperties,
-            createModelledFunctionCall(this.realm, fun2)
+            Utils.createModelledFunctionCall(this.realm, fun2)
           );
           return null;
         };

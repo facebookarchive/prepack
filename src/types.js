@@ -1053,6 +1053,7 @@ export type UtilsType = {|
   describeValue: Value => string,
   jsonToDisplayString: <T: { toDisplayJson(number): DisplayResult }>(T, number) => string,
   verboseToDisplayJson: ({}, number) => DisplayResult,
+  createModelledFunctionCall: (Realm, FunctionValue, void | string, void | Value) => void => Value,
 |};
 
 export type DebuggerConfigArguments = {

@@ -193,10 +193,9 @@ export function createModelledFunctionCall(
       }
     }
   }
-
-  let thisArg = thisValue;
-  if (thisArg === undefined) {
-    thisArg = AbstractValue.createAbstractArgument(realm, "this", funcValue.expressionLocation, ObjectValue);
-  }
+  let thisArg =
+    thisValue !== undefined
+      ? thisValue
+      : AbstractValue.createAbstractArgument(realm, "this", funcValue.expressionLocation, ObjectValue);
   return () => call(thisArg, args);
 }
