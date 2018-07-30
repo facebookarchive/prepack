@@ -9,10 +9,12 @@
 
 /* @flow strict-local */
 
+import type { Realm } from "./realm.js";
 import {
   AbstractValue,
   ArrayValue,
   BooleanValue,
+  ECMAScriptSourceFunctionValue,
   EmptyValue,
   FunctionValue,
   NullValue,
@@ -26,6 +28,10 @@ import {
   Value,
 } from "./values/index.js";
 import invariant from "./invariant.js";
+import { ShapeInformation } from "./utils/ShapeInformation";
+import type { ArgModel } from "./utils/ShapeInformation";
+import { CompilerDiagnostic, FatalError } from "./errors.js";
+import * as t from "@babel/types";
 
 export function typeToString(type: typeof Value): void | string {
   function isInstance(proto, Constructor): boolean {
@@ -93,9 +99,9 @@ export function describeValue(value: Value): string {
     title = "[abstract]";
     if (value.kind !== undefined) title += `, kind: ${value.kind}`;
     for (let arg of value.args) {
-      let t = describeValue(arg);
+      let desc = describeValue(arg);
       suffix +=
-        t
+        desc
           .split("\n")
           .map(u => "  " + u)
           .join("\n") + "\n";
@@ -143,4 +149,54 @@ export function verboseToDisplayJson(obj: {}, depth: number): DisplayResult {
     if (value && value !== "[object Object]") result[key] = value;
   }
   return result;
+}
+
+export function createModelledFunctionCall(
+  realm: Realm,
+  funcValue: FunctionValue,
+  argModelString: void | string,
+  thisValue: void | Value
+): void => Value {
+  let call = funcValue.$Call;
+  invariant(call);
+  let numArgs = funcValue.getLength();
+  let args = [];
+  let argModel = argModelString !== undefined ? (JSON.parse(argModelString): ArgModel) : undefined;
+  invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
+  let params = funcValue.$FormalParameters;
+  if (numArgs && numArgs > 0 && params) {
+    for (let parameterId of params) {
+      if (t.isIdentifier(parameterId)) {
+        // $FlowFixMe: Flow strict file does not allow for casting
+        let paramName = ((parameterId: any): BabelNodeIdentifier).name;
+        let shape = ShapeInformation.createForArgument(argModel, paramName);
+        // Create an AbstractValue similar to __abstract being called
+        args.push(
+          AbstractValue.createAbstractArgument(
+            realm,
+            paramName,
+            funcValue.expressionLocation,
+            shape !== undefined ? shape.getAbstractType() : Value,
+            shape
+          )
+        );
+      } else {
+        realm.handleError(
+          new CompilerDiagnostic(
+            "Non-identifier args to additional functions unsupported",
+            funcValue.expressionLocation,
+            "PP1005",
+            "FatalError"
+          )
+        );
+        throw new FatalError("Non-identifier args to additional functions unsupported");
+      }
+    }
+  }
+
+  let thisArg = thisValue;
+  if (thisArg === undefined) {
+    thisArg = AbstractValue.createAbstractArgument(realm, "this", funcValue.expressionLocation, ObjectValue);
+  }
+  return () => call(thisArg, args);
 }
