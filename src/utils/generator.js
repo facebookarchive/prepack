@@ -259,6 +259,10 @@ export class GeneratorEntry {
     return this.index < entry.index;
   }
 
+  getHash() {
+    invariant(false, "GeneratorEntry is an abstract base class");
+  }
+
   index: number;
 }
 
@@ -360,6 +364,26 @@ export class TemporalOperationEntry extends GeneratorEntry {
   getDependencies(): void | Array<Generator> {
     return this.dependencies;
   }
+
+  getHash(): string {
+    let hashString = "[TemporalOperation";
+
+    if (this.declared !== undefined) {
+      hashString += " Declared";
+    }
+    if (this.operationDescriptor !== undefined) {
+      let { kind, type } = this.operationDescriptor;
+      hashString += ` OperationDescriptor=${kind ? kind : ""}&${type}`;
+    }
+    let dependencies = this.getDependencies();
+    if (dependencies !== undefined) {
+      for (let i = 0; i < dependencies.length; i++) {
+        let dependency = dependencies[i];
+        hashString += ` Dependency_${i}=${dependency.getHash()}`;
+      }
+    }
+    return `${hashString}]`;
+  }
 }
 
 export class TemporalObjectAssignEntry extends TemporalOperationEntry {
@@ -391,6 +415,10 @@ export class TemporalObjectAssignEntry extends TemporalOperationEntry {
       return false;
     }
     return super.visit(callbacks, containingGenerator);
+  }
+
+  getHash(): string {
+    return `[TemporalObjectAssign_${super.getHash()}]`;
   }
 }
 
@@ -437,6 +465,10 @@ class ModifiedPropertyEntry extends GeneratorEntry {
   getDependencies(): void | Array<Generator> {
     return undefined;
   }
+
+  getHash(): string {
+    return `${this.toDisplayString()}`;
+  }
 }
 
 type ModifiedBindingEntryArgs = {|
@@ -473,6 +505,10 @@ class ModifiedBindingEntry extends GeneratorEntry {
   getDependencies(): void | Array<Generator> {
     return undefined;
   }
+
+  getHash(): string {
+    return `${this.toDisplayString()}`;
+  }
 }
 
 class ReturnValueEntry extends GeneratorEntry {
@@ -504,6 +540,10 @@ class ReturnValueEntry extends GeneratorEntry {
 
   getDependencies(): void | Array<Generator> {
     return undefined;
+  }
+
+  getHash(): string {
+    return `${this.toDisplayString()}`;
   }
 }
 
@@ -560,6 +600,19 @@ class IfThenElseEntry extends GeneratorEntry {
   getDependencies(): void | Array<Generator> {
     return [this.consequentGenerator, this.alternateGenerator];
   }
+
+  getHash(): string {
+    let hashString = "[IfThenElseEntry";
+
+    let dependencies = this.getDependencies();
+    if (dependencies !== undefined) {
+      for (let i = 0; i < dependencies.length; i++) {
+        let dependency = dependencies[i];
+        hashString += ` Dependency_${i}=${dependency.getHash()}`;
+      }
+    }
+    return `${hashString}]`;
+  }
 }
 
 class BindingAssignmentEntry extends GeneratorEntry {
@@ -587,6 +640,10 @@ class BindingAssignmentEntry extends GeneratorEntry {
 
   getDependencies(): void | Array<Generator> {
     return undefined;
+  }
+
+  getHash(): string {
+    return `${this.toDisplayString()}`;
   }
 }
 
@@ -1105,6 +1162,15 @@ export class Generator {
     } else {
       visitFn();
     }
+  }
+
+  getHash(): string {
+    let hashString = "[Generator";
+    for (let i = 0; i < this._entries.length; i++) {
+      let entry = this._entries[i];
+      hashString += ` Entry_${i}=${entry.getHash()}`;
+    }
+    return hashString + "]";
   }
 
   serialize(context: SerializationContext): void {
