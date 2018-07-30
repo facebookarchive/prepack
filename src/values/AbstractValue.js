@@ -25,6 +25,7 @@ import buildExpressionTemplate from "../utils/builder.js";
 
 import {
   AbstractObjectValue,
+  ArrayValue,
   BooleanValue,
   ConcreteValue,
   NullValue,
@@ -729,7 +730,7 @@ export default class AbstractValue extends Value {
     let labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     invariant(labels.length >= operands.length);
     let operationDescriptor = createOperationDescriptor("ABSTRACT_FROM_TEMPLATE", { template });
-    if (resultType === ObjectValue || resultType.prototype instanceof ObjectValue) hash = ++realm.objectCount;
+    if (resultType === ObjectValue || resultType === ArrayValue) hash = ++realm.objectCount;
     let result = new Constructor(realm, resultTypes, resultValues, hash, operands, operationDescriptor);
     result.kind = kind;
     result.expressionLocation = loc || realm.currentLocation;
@@ -745,7 +746,7 @@ export default class AbstractValue extends Value {
     let types = new TypesDomain(resultType);
     let Constructor = Value.isTypeCompatibleWith(resultType, ObjectValue) ? AbstractObjectValue : AbstractValue;
     let [hash, args] = hashCall(resultType.name + (kind || ""), ...(operands || []));
-    if (resultType === ObjectValue || resultType.prototype instanceof ObjectValue) hash = ++realm.objectCount;
+    if (resultType === ObjectValue || resultType === ArrayValue) hash = ++realm.objectCount;
     let result = new Constructor(realm, types, ValuesDomain.topVal, hash, args);
     if (kind) result.kind = kind;
     result.expressionLocation = realm.currentLocation;

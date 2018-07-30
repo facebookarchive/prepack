@@ -551,17 +551,17 @@ export default class AbstractObjectValue extends AbstractValue {
             propertyGetter = propertyShape.getGetter();
           }
         }
+        // P can also be a SymbolValue
+        if (typeof P === "string") {
+          P = new StringValue(this.$Realm, P);
+        }
         // Create an unknown array temporal
         if (type === ArrayValue) {
           return ArrayValue.createTemporalWithWidenedNumericProperty(
             realm,
-            [ob, new StringValue(realm, P)],
+            [ob, P],
             createOperationDescriptor("ABSTRACT_OBJECT_GET", { propertyGetter })
           );
-        }
-        // P can also be a SymbolValue
-        if (typeof P === "string") {
-          P = new StringValue(this.$Realm, P);
         }
         let propAbsVal = AbstractValue.createTemporalFromBuildFunction(
           realm,
