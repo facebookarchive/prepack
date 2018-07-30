@@ -18,12 +18,12 @@ function fn(cond, obj1, obj2) {
   return null;
 }
 
-var cond = global.__abstract ? __abstract("boolean", "(false)") : false
+var cond = global.__abstract ? __abstract("boolean", "(false)") : false;
 var obj1 = global.__abstract
   ? __abstract({ x: global.__abstract ? __abstract("boolean", "obj1.x") : false }, "({ x: false })")
   : { x: false };
 
-var obj2 = global.__abstract 
+var obj2 = global.__abstract
   ? __abstract({ x: global.__abstract ? __abstract("boolean", "obj2.x") : false }, "({ x: false  })")
   : { x: false };
 
