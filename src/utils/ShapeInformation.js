@@ -13,7 +13,7 @@ import { Utils } from "../singletons.js";
 import { Value } from "../values/index.js";
 import type { SupportedGraphQLGetters, ShapeInformationInterface } from "../types.js";
 
-type ECMAScriptType =
+export type ECMAScriptType =
   | "void"
   | "null"
   | "boolean"
@@ -25,48 +25,48 @@ type ECMAScriptType =
   | "function"
   | "integral";
 
-type ShapeDescriptorCommon = {
+export type ShapeDescriptorCommon = {
   jsType: ECMAScriptType,
   graphQLType?: string,
 };
 
-type ShapePropertyDescriptor = {
+export type ShapePropertyDescriptor = {
   shape: ShapeDescriptor,
   optional: boolean,
 };
 
-type ShapeDescriptorOfObject = ShapeDescriptorCommon & {
+export type ShapeDescriptorOfObject = ShapeDescriptorCommon & {
   kind: "object",
   properties: { [string]: void | ShapePropertyDescriptor },
 };
 
-type ShapeDescriptorOfArray = ShapeDescriptorCommon & {
+export type ShapeDescriptorOfArray = ShapeDescriptorCommon & {
   kind: "array",
   elementShape: void | ShapePropertyDescriptor,
 };
 
-type ShapeDescriptorOfLink = ShapeDescriptorCommon & {
-  kind: "link",
-  shapeName: string,
-};
-
-type ShapeDescriptorOfPrimitive = ShapeDescriptorCommon & {
+export type ShapeDescriptorOfScalar = ShapeDescriptorCommon & {
   kind: "scalar",
 };
 
-type ShapeDescriptorOfEnum = ShapeDescriptorCommon & {
+export type ShapeDescriptorOfEnum = ShapeDescriptorCommon & {
   kind: "enum",
+};
+
+export type ShapeDescriptorOfLink = {
+  kind: "link",
+  shapeName: string,
 };
 
 export type ShapeDescriptorNonLink =
   | ShapeDescriptorOfObject
   | ShapeDescriptorOfArray
-  | ShapeDescriptorOfPrimitive
+  | ShapeDescriptorOfScalar
   | ShapeDescriptorOfEnum;
 
 export type ShapeDescriptor = ShapeDescriptorNonLink | ShapeDescriptorOfLink;
 
-export type ShapeUniverse = { [string]: ShapeDescriptor };
+export type ShapeUniverse = { [string]: void | ShapeDescriptor };
 
 export type ArgModel = {
   universe: ShapeUniverse,

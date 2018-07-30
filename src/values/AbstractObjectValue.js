@@ -536,12 +536,16 @@ export default class AbstractObjectValue extends AbstractValue {
         // shape logic
         let shapeContainer = this.kind === "explicit conversion to object" ? this.args[0] : this;
         invariant(shapeContainer instanceof AbstractValue);
-        invariant(typeof P === "string");
         let realm = this.$Realm;
         let shape = shapeContainer.shape;
         let propertyShape, propertyGetter;
-        if ((realm.instantRender.enabled || realm.react.enabled) && shape !== undefined) {
-          propertyShape = shape.getPropertyShape(P);
+        // propertyShape expects only a string value
+        if (
+          (realm.instantRender.enabled || realm.react.enabled) &&
+          shape !== undefined &&
+          (typeof P === "string" || P instanceof StringValue)
+        ) {
+          propertyShape = shape.getPropertyShape(P instanceof StringValue ? P.value : P);
           if (propertyShape !== undefined) {
             type = propertyShape.getAbstractType();
             propertyGetter = propertyShape.getGetter();
@@ -555,10 +559,14 @@ export default class AbstractObjectValue extends AbstractValue {
             createOperationDescriptor("ABSTRACT_OBJECT_GET", { propertyGetter })
           );
         }
+        // P can also be a SymbolValue
+        if (typeof P === "string") {
+          P = new StringValue(this.$Realm, P);
+        }
         let propAbsVal = AbstractValue.createTemporalFromBuildFunction(
           realm,
           type,
-          [ob, new StringValue(realm, P)],
+          [ob, P],
           createOperationDescriptor("ABSTRACT_OBJECT_GET", { propertyGetter }),
           {
             skipInvariant: true,
