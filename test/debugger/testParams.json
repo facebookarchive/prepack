@@ -1,0 +1,10 @@
+
+{ "DebuggerTestParameters": [
+    { "name": "Breakpoint Test 1",
+      "prepackArgs": [],
+      "sourceFiles": ["test/debugger/sample1.js"],
+      "commands": ["breakpoint add test/debugger/sample1.js 8", "run", "run"],
+      "expectedOutput": ["Breakpoint: test/debugger/sample1.js 8:2"]
+    }
+  ]
+}
