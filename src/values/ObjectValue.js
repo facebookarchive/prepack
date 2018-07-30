@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Realm, ExecutionContext } from "../realm.js";
-import { TypesDomain, ValuesDomain } from "../domains/index.js";
+import { ValuesDomain } from "../domains/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type {
   DataBlock,
@@ -35,7 +35,6 @@ import {
   SymbolValue,
   UndefinedValue,
   Value,
-  PrimitiveValue,
 } from "./index.js";
 import { isReactElement } from "../react/utils.js";
 import buildExpressionTemplate from "../utils/builder.js";
@@ -49,7 +48,6 @@ import {
   OrdinaryHasProperty,
   OrdinaryIsExtensible,
   OrdinaryPreventExtensions,
-  HasCompatibleType,
 } from "../methods/index.js";
 import { Havoc, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
@@ -913,158 +911,7 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   $SetPartial(P: AbstractValue | PropertyKeyValue, V: Value, Receiver: Value): boolean {
-    if (!(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
-    let pIsLoopVar = isWidenedValue(P);
-    let pIsNumeric = Value.isTypeCompatibleWith(P.getType(), NumberValue);
-
-    // A string coercion might have side-effects.
-    // TODO #1682: We assume that simple objects mean that they don't have a
-    // side-effectful valueOf and toString but that's not enforced.
-    if (P.mightNotBeString() && P.mightNotBeNumber() && !P.isSimpleObject()) {
-      if (this.$Realm.isInPureScope()) {
-        // If we're in pure scope, we can havoc the key and keep going.
-        // Coercion can only have effects on anything reachable from the key.
-        Havoc.value(this.$Realm, P);
-      } else {
-        let error = new CompilerDiagnostic(
-          "property key might not have a well behaved toString or be a symbol",
-          this.$Realm.currentLocation,
-          "PP0002",
-          "RecoverableError"
-        );
-        if (this.$Realm.handleError(error) !== "Recover") {
-          throw new FatalError();
-        }
-      }
-    }
-
-    // We assume that simple objects have no getter/setter properties and
-    // that all properties are writable.
-    if (!this.isSimpleObject()) {
-      if (this.$Realm.isInPureScope()) {
-        // If we're in pure scope, we can havoc the object and leave an
-        // assignment in place.
-        Havoc.value(this.$Realm, Receiver);
-        // We also need to havoc the value since it might leak to a setter.
-        Havoc.value(this.$Realm, V);
-        this.$Realm.evaluateWithPossibleThrowCompletion(
-          () => {
-            let generator = this.$Realm.generator;
-            invariant(generator);
-            invariant(P instanceof AbstractValue);
-            generator.emitPropertyAssignment(Receiver, P, V);
-            return this.$Realm.intrinsics.undefined;
-          },
-          TypesDomain.topVal,
-          ValuesDomain.topVal
-        );
-        // The emitted assignment might throw at runtime but if it does, that
-        // is handled by evaluateWithPossibleThrowCompletion. Anything that
-        // happens after this, can assume we didn't throw and therefore,
-        // we return true here.
-        return true;
-      } else {
-        let error = new CompilerDiagnostic(
-          "unknown property access might need to invoke a setter",
-          this.$Realm.currentLocation,
-          "PP0030",
-          "RecoverableError"
-        );
-        if (this.$Realm.handleError(error) !== "Recover") {
-          throw new FatalError();
-        }
-      }
-    }
-
-    // We should never consult the prototype chain for unknown properties.
-    // If it was simple, it would've been an assignment to the receiver.
-    // The only case the Receiver isn't this, if this was a ToObject
-    // coercion from a PrimitiveValue.
-    invariant(this === Receiver || HasCompatibleType(Receiver, PrimitiveValue));
-
-    P = To.ToStringAbstract(this.$Realm, P);
-
-    function createTemplate(realm: Realm, propName: AbstractValue) {
-      return AbstractValue.createFromBinaryOp(
-        realm,
-        "===",
-        propName,
-        new StringValue(realm, ""),
-        undefined,
-        "template for property name condition"
-      );
-    }
-
-    let prop;
-    if (this.unknownProperty === undefined) {
-      prop = {
-        descriptor: undefined,
-        object: this,
-        key: P,
-      };
-      this.unknownProperty = prop;
-    } else {
-      prop = this.unknownProperty;
-    }
-    this.$Realm.recordModifiedProperty(prop);
-    let desc = prop.descriptor;
-    if (desc === undefined) {
-      let newVal = V;
-      if (!(V instanceof UndefinedValue) && !isWidenedValue(P)) {
-        // join V with sentinel, using a property name test as the condition
-        let cond = createTemplate(this.$Realm, P);
-        let sentinel = AbstractValue.createFromType(this.$Realm, Value, "template for prototype member expression", [
-          Receiver,
-          P,
-        ]);
-        newVal = AbstractValue.createFromConditionalOp(this.$Realm, cond, V, sentinel);
-      }
-      prop.descriptor = {
-        writable: true,
-        enumerable: true,
-        configurable: true,
-        value: newVal,
-      };
-    } else {
-      // join V with current value of this.unknownProperty. I.e. weak update.
-      let oldVal = desc.value;
-      invariant(oldVal instanceof Value);
-      let newVal = oldVal;
-      if (!(V instanceof UndefinedValue)) {
-        if (isWidenedValue(P)) {
-          newVal = V; // It will be widened later on
-        } else {
-          let cond = createTemplate(this.$Realm, P);
-          newVal = AbstractValue.createFromConditionalOp(this.$Realm, cond, V, oldVal);
-        }
-      }
-      desc.value = newVal;
-    }
-
-    // Since we don't know the name of the property we are writing to, we also need
-    // to perform weak updates of all of the known properties.
-    // First clear out this.unknownProperty so that helper routines know its OK to update the properties
-    let savedUnknownProperty = this.unknownProperty;
-    this.unknownProperty = undefined;
-    for (let [key, propertyBinding] of this.properties) {
-      if (pIsLoopVar && pIsNumeric) {
-        // Delete numeric properties and don't do weak updates on other properties.
-        if (key !== +key + "") continue;
-        this.properties.delete(key);
-        continue;
-      }
-      let oldVal = this.$Realm.intrinsics.empty;
-      if (propertyBinding.descriptor && propertyBinding.descriptor.value) {
-        oldVal = propertyBinding.descriptor.value;
-        invariant(oldVal instanceof Value); // otherwise this is not simple
-      }
-      let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", P, new StringValue(this.$Realm, key));
-      let newVal = AbstractValue.createFromConditionalOp(this.$Realm, cond, V, oldVal);
-      Properties.OrdinarySet(this.$Realm, this, key, newVal, Receiver);
-    }
-    this.unknownProperty = savedUnknownProperty;
-
-    return true;
+    return Properties.OrdinarySetPartial(this.$Realm, this, P, V, Receiver);
   }
 
   // ECMA262 9.1.10
