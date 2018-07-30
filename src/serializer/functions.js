@@ -35,10 +35,8 @@ import type { AdditionalFunctionEffects, WriteEffects } from "./types";
 import { convertConfigObjectToReactComponentTreeConfig, valueIsKnownReactAbstraction } from "../react/utils.js";
 import { applyOptimizedReactComponents, optimizeReactComponentTreeRoot } from "../react/optimizing.js";
 import { handleReportedSideEffect } from "./utils.js";
-import { ShapeInformation } from "../utils/ShapeInformation";
-import type { ArgModel } from "../utils/ShapeInformation";
-import * as t from "@babel/types";
 import { stringOfLocation } from "../utils/babelhelpers";
+import { Utils } from "../singletons.js";
 
 type AdditionalFunctionEntry = {
   value: ECMAScriptSourceFunctionValue | AbstractValue,
@@ -170,47 +168,6 @@ export class Functions {
     applyOptimizedReactComponents(this.realm, this.writeEffects, environmentRecordIdAfterGlobalCode);
   }
 
-  _callOfFunction(funcValue: FunctionValue, argModelString: void | string): void => Value {
-    let call = funcValue.$Call;
-    invariant(call);
-    let numArgs = funcValue.getLength();
-    let args = [];
-    let argModel = argModelString !== undefined ? (JSON.parse(argModelString): ArgModel) : undefined;
-    invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
-    let params = funcValue.$FormalParameters;
-    if (numArgs && numArgs > 0 && params) {
-      for (let parameterId of params) {
-        if (t.isIdentifier(parameterId)) {
-          let paramName = ((parameterId: any): BabelNodeIdentifier).name;
-          let shape = ShapeInformation.createForArgument(argModel, paramName);
-          // Create an AbstractValue similar to __abstract being called
-          args.push(
-            AbstractValue.createAbstractArgument(
-              this.realm,
-              paramName,
-              funcValue.expressionLocation,
-              shape !== undefined ? shape.getAbstractType() : Value,
-              shape
-            )
-          );
-        } else {
-          this.realm.handleError(
-            new CompilerDiagnostic(
-              "Non-identifier args to additional functions unsupported",
-              funcValue.expressionLocation,
-              "PP1005",
-              "FatalError"
-            )
-          );
-          throw new FatalError("Non-identifier args to additional functions unsupported");
-        }
-      }
-    }
-
-    let thisArg = AbstractValue.createAbstractArgument(this.realm, "this", funcValue.expressionLocation, ObjectValue);
-    return call.bind(this, thisArg, args);
-  }
-
   checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode: number): void {
     let additionalFunctionsToProcess = this.__generateInitialAdditionalFunctions("__optimizedFunctions");
     // When we find declarations of nested optimized functions, we need to apply the parent
@@ -245,7 +202,7 @@ export class Functions {
         realm.handleError(error);
       };
       for (let t1 of this.realm.tracers) t1.beginOptimizingFunction(currentOptimizedFunctionId, functionValue);
-      let call = this._callOfFunction(functionValue, argModelString);
+      let call = Utils.createModelledFunctionCall(this.realm, functionValue, argModelString);
       let realm = this.realm;
       let effects: Effects = realm.evaluatePure(
         () => realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
@@ -329,7 +286,13 @@ export class Functions {
           fun2.getDebugName() ||
           `(unknown function ${fun2Location ? stringOfLocation(fun2Location) : ""})`;
         let reportFn = () => {
-          this.reportWriteConflicts(fun1Name, fun2Name, conflicts, e1.modifiedProperties, this._callOfFunction(fun2));
+          this.reportWriteConflicts(
+            fun1Name,
+            fun2Name,
+            conflicts,
+            e1.modifiedProperties,
+            Utils.createModelledFunctionCall(this.realm, fun2)
+          );
           return null;
         };
         let fun2Effects = this.writeEffects.get(fun2);
