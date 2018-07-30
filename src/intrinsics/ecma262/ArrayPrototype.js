@@ -419,8 +419,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         args,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL"),
-        { func: callbackfn, thisVal: thisArg }
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -992,11 +991,12 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (thisArg) {
         args.push(thisArg);
       }
+      let possibleNestedOptimizedFunctions = [{ func: callbackfn, thisValue: thisArg || realm.intrinsics.undefined }];
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         args,
         createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL"),
-        { func: callbackfn, thisVal: thisArg }
+        possibleNestedOptimizedFunctions
       );
     }
 

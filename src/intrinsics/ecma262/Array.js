@@ -247,8 +247,7 @@ export default function(realm: Realm): NativeFunctionValue {
         return ArrayValue.createTemporalWithWidenedNumericProperty(
           realm,
           args,
-          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL"),
-          { func: mapfn, thisVal: thisArg }
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
         );
       }
 

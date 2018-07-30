@@ -340,11 +340,12 @@ class ReactDOMServerRenderer {
 
   _renderArrayValue(value: ArrayValue, namespace: string, depth: number): Array<ReactNode> | ReactNode {
     if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(value)) {
-      let arrayHint = this.realm.react.arrayHints.get(value);
+      debugger;
+      // let arrayHint = this.realm.react.arrayHints.get(value);
 
-      if (arrayHint !== undefined) {
-        return renderValueWithHelper(this.realm, value, this.arrayHelper);
-      }
+      // if (arrayHint !== undefined) {
+      //   return renderValueWithHelper(this.realm, value, this.arrayHelper);
+      // }
     }
     let elements = [];
     forEachArrayValue(this.realm, value, elementValue => {

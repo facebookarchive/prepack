@@ -1440,17 +1440,18 @@ export class Reconciler {
     needsKey?: boolean
   ): ArrayValue {
     if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(arrayValue)) {
-      let arrayHint = this.realm.react.arrayHints.get(arrayValue);
+      debugger;
+      // let arrayHint = this.realm.react.arrayHints.get(arrayValue);
 
-      if (arrayHint !== undefined) {
-        let { func, thisVal } = arrayHint;
-        if (func instanceof ECMAScriptSourceFunctionValue || func instanceof BoundFunctionValue) {
-          if (thisVal && thisVal !== this.realm.intrinsics.undefined) {
-            throw new ExpectedBailOut(`abstract mapped arrays with "this" argument are not yet supported`);
-          }
-          this._queueOptimizedClosure(func, evaluatedNode, componentType, context);
-        }
-      }
+      // if (arrayHint !== undefined) {
+      //   let { func, thisVal } = arrayHint;
+      //   if (func instanceof ECMAScriptSourceFunctionValue || func instanceof BoundFunctionValue) {
+      //     if (thisVal && thisVal !== this.realm.intrinsics.undefined) {
+      //       throw new ExpectedBailOut(`abstract mapped arrays with "this" argument are not yet supported`);
+      //     }
+      //     this._queueOptimizedClosure(func, evaluatedNode, componentType, context);
+      //   }
+      // }
       return arrayValue;
     }
     if (needsKey !== false) needsKey = true;

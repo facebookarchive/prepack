@@ -98,7 +98,7 @@ export default class ArrayValue extends ObjectValue {
     realm: Realm,
     args: Array<Value>,
     operationDescriptor: OperationDescriptor,
-    reactArrayHint?: { func: Value, thisVal: Value }
+    possibleNestedOptimizedFunctions?: [{ func: FunctionValue, thisArg: Value }]
   ): ArrayValue {
     invariant(realm.generator !== undefined);
 
@@ -118,8 +118,22 @@ export default class ArrayValue extends ObjectValue {
       },
       object: value,
     };
-    if (realm.react.enabled && reactArrayHint !== undefined) {
-      realm.react.arrayHints.set(value, reactArrayHint);
+    if (possibleNestedOptimizedFunctions !== undefined) {
+      for (let { func, thisValue } of possibleNestedOptimizedFunctions) {
+        let abstractArgs = [];
+
+        let effects = realm.evaluateForEffects(
+          () => {
+            let funcCall = func.$Call;
+            debugger;
+            funcCall(thisValue, abstractArgs);
+            debugger;
+          },
+          null,
+          "temporalArray arrayMapFunc"
+        );
+        debugger;
+      }
     }
     return value;
   }
