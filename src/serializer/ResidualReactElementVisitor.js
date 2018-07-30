@@ -36,11 +36,18 @@ import { ReactPropsSet } from "../react/ReactPropsSet.js";
 import type { ReactOutputTypes } from "../options.js";
 import { Get } from "../methods/index.js";
 
+export opaque type ReactEquivalenceSetSave = {|
+  +reactEquivalenceSet: ReactEquivalenceSet,
+  +reactElementEquivalenceSet: ReactElementSet,
+  +reactPropsEquivalenceSet: ReactPropsSet,
+|};
+
 export class ResidualReactElementVisitor {
   constructor(realm: Realm, residualHeapVisitor: ResidualHeapVisitor) {
     this.realm = realm;
     this.residualHeapVisitor = residualHeapVisitor;
     this.reactOutput = realm.react.output || "create-element";
+    this.defaultEquivalenceSet = true;
     this.reactEquivalenceSet = new ReactEquivalenceSet(realm, this);
     this.reactElementEquivalenceSet = new ReactElementSet(realm, this.reactEquivalenceSet);
     this.reactPropsEquivalenceSet = new ReactPropsSet(realm, this.reactEquivalenceSet);
@@ -49,6 +56,7 @@ export class ResidualReactElementVisitor {
   realm: Realm;
   residualHeapVisitor: ResidualHeapVisitor;
   reactOutput: ReactOutputTypes;
+  defaultEquivalenceSet: boolean;
   reactEquivalenceSet: ReactEquivalenceSet;
   reactElementEquivalenceSet: ReactElementSet;
   reactPropsEquivalenceSet: ReactPropsSet;
@@ -138,17 +146,43 @@ export class ResidualReactElementVisitor {
   }
 
   withCleanEquivalenceSet(func: () => void): void {
+    let defaultEquivalenceSet = this.defaultEquivalenceSet;
     let reactEquivalenceSet = this.reactEquivalenceSet;
     let reactElementEquivalenceSet = this.reactElementEquivalenceSet;
     let reactPropsEquivalenceSet = this.reactPropsEquivalenceSet;
+    this.defaultEquivalenceSet = false;
     this.reactEquivalenceSet = new ReactEquivalenceSet(this.realm, this);
     this.reactElementEquivalenceSet = new ReactElementSet(this.realm, this.reactEquivalenceSet);
     this.reactPropsEquivalenceSet = new ReactPropsSet(this.realm, this.reactEquivalenceSet);
     func();
     // Cleanup
+    this.defaultEquivalenceSet = defaultEquivalenceSet;
     this.reactEquivalenceSet = reactEquivalenceSet;
     this.reactElementEquivalenceSet = reactElementEquivalenceSet;
     this.reactPropsEquivalenceSet = reactPropsEquivalenceSet;
+  }
+
+  saveEquivalenceSet(): ReactEquivalenceSetSave {
+    const { reactEquivalenceSet, reactElementEquivalenceSet, reactPropsEquivalenceSet } = this;
+    return { reactEquivalenceSet, reactElementEquivalenceSet, reactPropsEquivalenceSet };
+  }
+
+  loadEquivalenceSet<T>(save: ReactEquivalenceSetSave, func: () => T): T {
+    const defaultEquivalenceSet = this.defaultEquivalenceSet;
+    const reactEquivalenceSet = this.reactEquivalenceSet;
+    const reactElementEquivalenceSet = this.reactElementEquivalenceSet;
+    const reactPropsEquivalenceSet = this.reactPropsEquivalenceSet;
+    this.defaultEquivalenceSet = false;
+    this.reactEquivalenceSet = save.reactEquivalenceSet;
+    this.reactElementEquivalenceSet = save.reactElementEquivalenceSet;
+    this.reactPropsEquivalenceSet = save.reactPropsEquivalenceSet;
+    const result = func();
+    // Cleanup
+    this.defaultEquivalenceSet = defaultEquivalenceSet;
+    this.reactEquivalenceSet = reactEquivalenceSet;
+    this.reactElementEquivalenceSet = reactElementEquivalenceSet;
+    this.reactPropsEquivalenceSet = reactPropsEquivalenceSet;
+    return result;
   }
 
   wasTemporalAliasDeclaredInCurrentScope(temporalAlias: AbstractObjectValue): boolean {

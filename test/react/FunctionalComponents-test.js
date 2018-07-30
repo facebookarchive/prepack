@@ -323,3 +323,19 @@ it("Hoist Fragment", () => {
 it("Pathological case", () => {
   runTest(__dirname + "/FunctionalComponents/pathological-case.js");
 });
+
+it("Model props", () => {
+  runTest(__dirname + "/FunctionalComponents/model-props.js");
+});
+
+it("Inline keys", () => {
+  runTest(__dirname + "/FunctionalComponents/keyed.js");
+});
+
+it("Inline unnecessary keys", () => {
+  runTest(__dirname + "/FunctionalComponents/keyed-unnecessarily.js");
+});
+
+it("Inline key on component that does not return element", () => {
+  runTest(__dirname + "/FunctionalComponents/keyed-non-element.js");
+});
