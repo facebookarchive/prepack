@@ -555,7 +555,7 @@ export default class AbstractObjectValue extends AbstractValue {
         if (typeof P === "string") {
           P = new StringValue(this.$Realm, P);
         }
-        // Create an unknown array temporal
+        // Create an temporal array with widened properties
         if (type === ArrayValue) {
           return ArrayValue.createTemporalWithWidenedNumericProperty(
             realm,

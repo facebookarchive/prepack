@@ -65,7 +65,7 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
   }
 }
 
-function createUnknownArrayWithWidenedNumericProperty(
+function createArrayWithWidenedNumericProperty(
   realm: Realm,
   intrinsicName: string,
   possibleNestedOptimizedFunctions?: PossibleNestedOptimizedFunctions
@@ -176,8 +176,7 @@ export default class ArrayValue extends ObjectValue {
   ): ArrayValue {
     invariant(realm.generator !== undefined);
     let value = realm.generator.deriveConcreteObject(
-      intrinsicName =>
-        createUnknownArrayWithWidenedNumericProperty(realm, intrinsicName, possibleNestedOptimizedFunctions),
+      intrinsicName => createArrayWithWidenedNumericProperty(realm, intrinsicName, possibleNestedOptimizedFunctions),
       args,
       operationDescriptor,
       { isPure: true }

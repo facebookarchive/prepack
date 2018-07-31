@@ -708,7 +708,7 @@ export class Realm {
     invariant(!this.neverCheckProperty(object, P));
     let objectId = this._checkedObjectIds.get(object);
     if (objectId === undefined) this._checkedObjectIds.set(object, (objectId = this._checkedObjectIds.size));
-    let id = `__markPropertyAsChecked__${objectId}:${P}`;
+    let id = `__propertyHasBeenChecked__${objectId}:${P}`;
     let checkedBindings = this._getCheckedBindings();
     checkedBindings.$Set(id, this.intrinsics.true, checkedBindings);
   }
@@ -717,7 +717,7 @@ export class Realm {
     if (this.neverCheckProperty(object, P)) return true;
     let objectId = this._checkedObjectIds.get(object);
     if (objectId === undefined) return false;
-    let id = `__markPropertyAsChecked__${objectId}:${P}`;
+    let id = `__propertyHasBeenChecked__${objectId}:${P}`;
     let binding = this._getCheckedBindings().properties.get(id);
     if (binding === undefined) return false;
     let value = binding.descriptor && binding.descriptor.value;
@@ -1599,7 +1599,7 @@ export class Realm {
         createdObjectsTrackedForLeaks !== undefined &&
         !createdObjectsTrackedForLeaks.has(object) &&
         // __markPropertyAsChecked__ is set by realm.markPropertyAsChecked
-        (typeof binding.key !== "string" || !binding.key.includes("__markPropertyAsChecked__"))
+        (typeof binding.key !== "string" || !binding.key.includes("__propertyHasBeenChecked__"))
       ) {
         if (binding.object === this.$GlobalObject) {
           for (let callback of this.reportSideEffectCallbacks) {
