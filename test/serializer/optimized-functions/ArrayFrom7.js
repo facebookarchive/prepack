@@ -1,6 +1,11 @@
 // does not contain:// this function should be inlined
 
 (function() {
+  var obj = {
+    c: 5,
+    d: 11,
+  };
+
   function add(a, b) {
     // this function should be inlined
     return a + b;
@@ -9,7 +14,7 @@
   function fn(x) {
     var arr = Array.from(x);
     return arr.map(function(item) {
-      return add(item.a, item.b) + 1 + 2;
+      return add(item.a, item.b) + obj.c + obj.d;
     });
   }
 
