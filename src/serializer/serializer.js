@@ -160,6 +160,10 @@ export class Serializer {
         });
       }
 
+      statistics.processCollectedNestedOptimizedFunctions.measure(() =>
+        this.functions.processCollectedNestedOptimizedFunctions(environmentRecordIdAfterGlobalCode)
+      );
+
       if (this.options.initializeMoreModules) {
         statistics.initializeMoreModules.measure(() => this.modules.initializeMoreModules());
         if (this.logger.hasErrors()) return undefined;

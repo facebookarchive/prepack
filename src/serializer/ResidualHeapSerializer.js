@@ -925,7 +925,7 @@ export class ResidualHeapSerializer {
       onArrayWithWidenedNumericProperty: dependency => {
         if (trace) {
           console.log(
-            `  depending on unknown array with numeric properties and an identifier ${dependency.intrinsicName || "?"}`
+            `  depending on array with widened numeric properties and an identifier ${dependency.intrinsicName || "?"}`
           );
         }
         invariant(
