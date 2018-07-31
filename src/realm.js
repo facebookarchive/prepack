@@ -1599,7 +1599,7 @@ export class Realm {
         createdObjectsTrackedForLeaks !== undefined &&
         !createdObjectsTrackedForLeaks.has(object) &&
         // __prepack_internal__ is set by realm.markPropertyAsChecked
-        (binding.key !== "string" || !binding.key.includes("__prepack_internal__"))
+        (typeof binding.key !== "string" || !binding.key.includes("__prepack_internal__"))
       ) {
         if (binding.object === this.$GlobalObject) {
           for (let callback of this.reportSideEffectCallbacks) {
