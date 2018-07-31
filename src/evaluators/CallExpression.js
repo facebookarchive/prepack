@@ -107,7 +107,8 @@ function evaluateReference(
     // on an abstract value as the value is immutable and can't have a property
     // that matches the prototype method (unless the prototype was modified).
     // We assume the global prototype of built-ins has not been altered since
-    // global code has finished.
+    // global code has finished. See #1233 for more context in regards to unmodified
+    // global prototypes.
     let prototypeIfPrimitive = getPrimitivePrototypeFromType(realm, base);
     if (prototypeIfPrimitive !== undefined && typeof referencedName === "string") {
       let possibleMethodValue = prototypeIfPrimitive._SafeGetDataPropertyValue(referencedName);

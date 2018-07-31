@@ -992,8 +992,6 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (thisArg) {
         args.push(thisArg);
       }
-      // We need to materialize here, but there's no way of doing it without
-      // havocing, which brings about even more issues. :/
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         args,
