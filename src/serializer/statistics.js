@@ -29,6 +29,7 @@ export class SerializerStatistics extends RealmStatistics {
     this.initializeMoreModules = new PerformanceTracker(getTime, getMemory);
     this.optimizeReactComponentTreeRoots = new PerformanceTracker(getTime, getMemory);
     this.checkThatFunctionsAreIndependent = new PerformanceTracker(getTime, getMemory);
+    this.processCollectedNestedOptimizedFunctions = new PerformanceTracker(getTime, getMemory);
     this.deepTraversal = new PerformanceTracker(getTime, getMemory);
     this.referenceCounts = new PerformanceTracker(getTime, getMemory);
     this.serializePass = new PerformanceTracker(getTime, getMemory);

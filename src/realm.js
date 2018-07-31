@@ -274,6 +274,7 @@ export class Realm {
       ObjectValue.setupTrackedPropertyAccessors(ProxyValue.trackedPropertyNames);
     }
 
+    this.collectedNestedOptimizedFunctionEffects = new Map();
     this.tracers = [];
 
     // These get initialized in construct_realm to avoid the dependency
@@ -461,6 +462,7 @@ export class Realm {
   simplifyAndRefineAbstractValue: AbstractValue => Value;
   simplifyAndRefineAbstractCondition: AbstractValue => Value;
 
+  collectedNestedOptimizedFunctionEffects: Map<ECMAScriptSourceFunctionValue, Effects>;
   tracers: Array<Tracer>;
 
   MOBILE_JSC_VERSION = "jsc-600-1-4-17";

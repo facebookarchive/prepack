@@ -237,17 +237,20 @@ export default function(realm: Realm): NativeFunctionValue {
       // then create an abstract temporal with an array kind
       if (realm.isInPureScope() && items instanceof AbstractValue && items.values.isTop()) {
         let args = [arrayFrom, items];
+        let possibleNestedOptimizedFunctions;
         if (mapfn) {
           args.push(mapfn);
           if (thisArg) {
             args.push(thisArg);
           }
+          possibleNestedOptimizedFunctions = [{ func: mapfn, thisValue: thisArg || realm.intrinsics.undefined }];
         }
         Havoc.value(realm, items);
         return ArrayValue.createTemporalWithWidenedNumericProperty(
           realm,
           args,
-          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL"),
+          possibleNestedOptimizedFunctions
         );
       }
 

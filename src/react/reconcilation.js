@@ -57,7 +57,7 @@ import {
   getValueWithBranchingLogicApplied,
   wrapReactElementInBranchOrReturnValue,
 } from "./branching.js";
-import { Completion } from "../completions.js";
+import { Completion, SimpleNormalCompletion } from "../completions.js";
 import {
   getInitialProps,
   getInitialContext,
@@ -1440,18 +1440,27 @@ export class Reconciler {
     needsKey?: boolean
   ): ArrayValue {
     if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(arrayValue)) {
-      debugger;
-      // let arrayHint = this.realm.react.arrayHints.get(arrayValue);
+      if (arrayValue.nestedOptimizedFunctionEffects !== undefined) {
+        for (let [func, effects] of arrayValue.nestedOptimizedFunctionEffects) {
+          let resolvedEffects = this.realm.evaluateForEffects(
+            () => {
+              let result = effects.result;
+              this.realm.applyEffects(effects);
 
-      // if (arrayHint !== undefined) {
-      //   let { func, thisVal } = arrayHint;
-      //   if (func instanceof ECMAScriptSourceFunctionValue || func instanceof BoundFunctionValue) {
-      //     if (thisVal && thisVal !== this.realm.intrinsics.undefined) {
-      //       throw new ExpectedBailOut(`abstract mapped arrays with "this" argument are not yet supported`);
-      //     }
-      //     this._queueOptimizedClosure(func, evaluatedNode, componentType, context);
-      //   }
-      // }
+              if (result instanceof SimpleNormalCompletion) {
+                result = result.value;
+              }
+              invariant(result instanceof Value);
+              return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode, needsKey);
+            },
+            /*state*/ null,
+            `react nested optimized closure`
+          );
+          this.statistics.optimizedNestedClosures++;
+          arrayValue.nestedOptimizedFunctionEffects.set(func, resolvedEffects);
+          this.realm.collectedNestedOptimizedFunctionEffects.set(func, resolvedEffects);
+        }
+      }
       return arrayValue;
     }
     if (needsKey !== false) needsKey = true;

@@ -11,9 +11,17 @@
 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor, ObjectKind } from "../types.js";
-import { AbstractValue, ObjectValue, StringValue, NumberValue, Value } from "./index.js";
+import {
+  AbstractValue,
+  BoundFunctionValue,
+  ECMAScriptSourceFunctionValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
+  Value,
+} from "./index.js";
 import { IsAccessorDescriptor, IsPropertyKey, IsArrayIndex } from "../methods/is.js";
-import { Properties, To } from "../singletons.js";
+import { Properties, To, Utils } from "../singletons.js";
 import { type OperationDescriptor } from "../utils/generator.js";
 import invariant from "../invariant.js";
 
@@ -21,6 +29,7 @@ export default class ArrayValue extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {
     super(realm, realm.intrinsics.ArrayPrototype, intrinsicName);
   }
+  nestedOptimizedFunctionEffects: void | Map<ECMAScriptSourceFunctionValue, Effects>;
 
   getKind(): ObjectKind {
     return "Array";
@@ -98,7 +107,7 @@ export default class ArrayValue extends ObjectValue {
     realm: Realm,
     args: Array<Value>,
     operationDescriptor: OperationDescriptor,
-    possibleNestedOptimizedFunctions?: [{ func: FunctionValue, thisArg: Value }]
+    possibleNestedOptimizedFunctions?: [{ func: ECMAScriptSourceFunctionValue, thisArg: Value }]
   ): ArrayValue {
     invariant(realm.generator !== undefined);
 
@@ -118,21 +127,24 @@ export default class ArrayValue extends ObjectValue {
       },
       object: value,
     };
-    if (possibleNestedOptimizedFunctions !== undefined) {
+    if (
+      possibleNestedOptimizedFunctions !== undefined &&
+      (!realm.react.enabled || realm.react.optimizeNestedFunctions)
+    ) {
       for (let { func, thisValue } of possibleNestedOptimizedFunctions) {
-        let abstractArgs = [];
-
-        let effects = realm.evaluateForEffects(
-          () => {
-            let funcCall = func.$Call;
-            debugger;
-            funcCall(thisValue, abstractArgs);
-            debugger;
-          },
-          null,
-          "temporalArray arrayMapFunc"
-        );
-        debugger;
+        let funcToModel = func;
+        if (func instanceof BoundFunctionValue) {
+          funcToModel = func.$BoundTargetFunction;
+          thisValue = func.$BoundThis;
+        }
+        let funcCall = Utils.createModelledFunctionCall(realm, funcToModel, undefined, thisValue);
+        let effects = realm.evaluateForEffects(funcCall, null, "temporalArray nestedOptimizedFunction");
+        // Check if effects were pure then add them
+        if (value.nestedOptimizedFunctionEffects === undefined) {
+          value.nestedOptimizedFunctionEffects = new Map();
+        }
+        value.nestedOptimizedFunctionEffects.set(funcToModel, effects);
+        realm.collectedNestedOptimizedFunctionEffects.set(funcToModel, effects);
       }
     }
     return value;
