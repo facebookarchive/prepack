@@ -176,7 +176,8 @@ export default class ArrayValue extends ObjectValue {
   ): ArrayValue {
     invariant(realm.generator !== undefined);
     let value = realm.generator.deriveConcreteObject(
-      intrinsicName => createUnknownArrayWithWidenedNumericProperty(realm, intrinsicName, possibleNestedOptimizedFunctions),
+      intrinsicName =>
+        createUnknownArrayWithWidenedNumericProperty(realm, intrinsicName, possibleNestedOptimizedFunctions),
       args,
       operationDescriptor,
       { isPure: true }
