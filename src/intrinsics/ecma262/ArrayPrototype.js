@@ -14,7 +14,9 @@ import {
   AbstractValue,
   ArrayValue,
   BooleanValue,
+  BoundFunctionValue,
   ConcreteValue,
+  ECMAScriptSourceFunctionValue,
   NullValue,
   NumberValue,
   ObjectValue,
@@ -991,6 +993,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (thisArg) {
         args.push(thisArg);
       }
+      invariant(callbackfn instanceof ECMAScriptSourceFunctionValue || callbackfn instanceof BoundFunctionValue);
       let possibleNestedOptimizedFunctions = [{ func: callbackfn, thisValue: thisArg || realm.intrinsics.undefined }];
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,

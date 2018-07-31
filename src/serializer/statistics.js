@@ -95,6 +95,7 @@ export class SerializerStatistics extends RealmStatistics {
   initializeMoreModules: PerformanceTracker;
   optimizeReactComponentTreeRoots: PerformanceTracker;
   checkThatFunctionsAreIndependent: PerformanceTracker;
+  processCollectedNestedOptimizedFunctions: PerformanceTracker;
   deepTraversal: PerformanceTracker;
   referenceCounts: PerformanceTracker;
   serializePass: PerformanceTracker;

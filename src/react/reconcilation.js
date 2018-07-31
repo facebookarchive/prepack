@@ -1440,8 +1440,10 @@ export class Reconciler {
     needsKey?: boolean
   ): ArrayValue {
     if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(arrayValue)) {
-      if (arrayValue.nestedOptimizedFunctionEffects !== undefined) {
-        for (let [func, effects] of arrayValue.nestedOptimizedFunctionEffects) {
+      let nestedOptimizedFunctionEffects = arrayValue.nestedOptimizedFunctionEffects;
+
+      if (nestedOptimizedFunctionEffects !== undefined) {
+        for (let [func, effects] of nestedOptimizedFunctionEffects) {
           let resolvedEffects = this.realm.evaluateForEffects(
             () => {
               let result = effects.result;
@@ -1457,7 +1459,7 @@ export class Reconciler {
             `react nested optimized closure`
           );
           this.statistics.optimizedNestedClosures++;
-          arrayValue.nestedOptimizedFunctionEffects.set(func, resolvedEffects);
+          nestedOptimizedFunctionEffects.set(func, resolvedEffects);
           this.realm.collectedNestedOptimizedFunctionEffects.set(func, resolvedEffects);
         }
       }

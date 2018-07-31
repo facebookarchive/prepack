@@ -187,6 +187,7 @@ export class Functions {
         environmentRecordIdAfterGlobalCode,
         this.getDeclaringAdditionalFunction(functionValue)
       );
+      invariant(additionalFunctionEffects !== null);
       this.writeEffects.set(functionValue, additionalFunctionEffects);
     }
   }

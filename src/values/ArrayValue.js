@@ -9,7 +9,7 @@
 
 /* @flow strict-local */
 
-import type { Realm } from "../realm.js";
+import type { Effects, Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor, ObjectKind } from "../types.js";
 import {
   AbstractValue,
@@ -107,7 +107,7 @@ export default class ArrayValue extends ObjectValue {
     realm: Realm,
     args: Array<Value>,
     operationDescriptor: OperationDescriptor,
-    possibleNestedOptimizedFunctions?: [{ func: ECMAScriptSourceFunctionValue, thisArg: Value }]
+    possibleNestedOptimizedFunctions?: [{ func: BoundFunctionValue | ECMAScriptSourceFunctionValue, thisValue: Value }]
   ): ArrayValue {
     invariant(realm.generator !== undefined);
 
@@ -137,6 +137,7 @@ export default class ArrayValue extends ObjectValue {
           funcToModel = func.$BoundTargetFunction;
           thisValue = func.$BoundThis;
         }
+        invariant(funcToModel instanceof ECMAScriptSourceFunctionValue);
         let funcCall = Utils.createModelledFunctionCall(realm, funcToModel, undefined, thisValue);
         let effects = realm.evaluateForEffects(funcCall, null, "temporalArray nestedOptimizedFunction");
         // Check if effects were pure then add them

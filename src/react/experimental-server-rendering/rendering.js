@@ -340,8 +340,10 @@ class ReactDOMServerRenderer {
 
   _renderArrayValue(arrayValue: ArrayValue, namespace: string, depth: number): Array<ReactNode> | ReactNode {
     if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(arrayValue)) {
-      if (arrayValue.nestedOptimizedFunctionEffects !== undefined) {
-        for (let [func, effects] of arrayValue.nestedOptimizedFunctionEffects) {
+      let nestedOptimizedFunctionEffects = arrayValue.nestedOptimizedFunctionEffects;
+
+      if (nestedOptimizedFunctionEffects !== undefined) {
+        for (let [func, effects] of nestedOptimizedFunctionEffects) {
           let resolvedEffects = this.realm.evaluateForEffects(
             () => {
               let result = effects.result;
@@ -356,7 +358,7 @@ class ReactDOMServerRenderer {
             /*state*/ null,
             `react nested optimized closure`
           );
-          arrayValue.nestedOptimizedFunctionEffects.set(func, resolvedEffects);
+          nestedOptimizedFunctionEffects.set(func, resolvedEffects);
           this.realm.collectedNestedOptimizedFunctionEffects.set(func, resolvedEffects);
         }
         return renderValueWithHelper(this.realm, arrayValue, this.arrayHelper);

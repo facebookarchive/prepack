@@ -14,7 +14,6 @@ import {
   AbstractValue,
   ArrayValue,
   BooleanValue,
-  BoundFunctionValue,
   ECMAScriptSourceFunctionValue,
   EmptyValue,
   FunctionValue,
