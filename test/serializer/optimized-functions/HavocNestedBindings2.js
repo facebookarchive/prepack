@@ -6,7 +6,7 @@
         x = x + 42;
       }
 
-      __optimize(incrementX);
+      global.__optimize && __optimize(incrementX);
       return [incrementX, x];
     }
     let [f1, x1] = definesX();

@@ -4,7 +4,7 @@
     function incrementX() {
       x = x + 42;
     }
-    __optimize(incrementX);
+    global.__optimize && __optimize(incrementX);
 
     g(incrementX);
     return x;
