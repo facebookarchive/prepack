@@ -8,6 +8,8 @@ function f(x) {
   }
 }
 
+global.__optimize && __optimize(f);
+
 function g(x) {
   switch (x) {
     case 0:
@@ -19,6 +21,8 @@ function g(x) {
   }
 }
 
+global.__optimize && __optimize(g);
+
 function h(x, c) {
   switch (x) {
     case 0:
@@ -29,6 +33,8 @@ function h(x, c) {
   }
 }
 
+global.__optimize && __optimize(h);
+
 inspect = function() {
-  return "" + f(x) + " " + g(x) + " " + h(x, c);
+  return JSON.stringify([f(x), g(x), h(x, c)]);
 };

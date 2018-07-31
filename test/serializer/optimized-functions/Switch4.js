@@ -11,6 +11,8 @@ function f(x) {
   }
 }
 
+global.__optimize && __optimize(f);
+
 inspect = function() {
-  return "" + f(x);
+  return f(x);
 };

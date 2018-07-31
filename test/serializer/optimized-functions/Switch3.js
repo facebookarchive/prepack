@@ -21,6 +21,9 @@ function f() {
   }
 }
 
+global.__optimize && __optimize(f);
+
+// expected FatalError: PP0037
 function g(max) {
   let counter = 0;
   for (let i = 0; i < max; i++) {
@@ -42,6 +45,8 @@ function g(max) {
   }
 }
 
+global.__optimize && __optimize(g);
+
 inspect = function() {
-  return "" + f() + " " + g(x);
+  return JSON.stringify([f(), g()]);
 };
