@@ -52,7 +52,9 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
       });
     let effects = realm.evaluateForEffects(pureFuncCall, null, "temporalArray nestedOptimizedFunction");
     if (hadSideEffects) {
-      // If the nested optimized function had side-effects, then havoc the function value
+      // If the nested optimized function had side-effects, we need to fallback to
+      // the default behaviour and havoc the nested functions so any bindings
+      // within the function properly leak and materialize.
       Havoc.value(realm, func);
     } else {
       // Check if effects were pure then add them
@@ -72,12 +74,21 @@ function createArrayWithWidenedNumericProperty(
 ): ArrayValue {
   let abstractArrayValue = new ArrayValue(realm, intrinsicName);
 
-  if (possibleNestedOptimizedFunctions !== undefined && (!realm.react.enabled || realm.react.optimizeNestedFunctions)) {
-    evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
-      realm,
-      abstractArrayValue,
-      possibleNestedOptimizedFunctions
-    );
+  if (possibleNestedOptimizedFunctions !== undefined) {
+    if (!realm.react.enabled || realm.react.optimizeNestedFunctions) {
+      evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
+        realm,
+        abstractArrayValue,
+        possibleNestedOptimizedFunctions
+      );
+    } else {
+      // If nested optimized functions are disabled, we need to fallback to
+      // the default behaviour and havoc the nested functions so any bindings
+      // within the function properly leak and materialize.
+      for (let { func } of possibleNestedOptimizedFunctions) {
+        Havoc.value(realm, func);
+      }
+    }
   }
   // Add unknownProperty so we manually handle this object property access
   abstractArrayValue.unknownProperty = {
