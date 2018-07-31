@@ -12,5 +12,5 @@ function fn(x) {
 this.__optimize && __optimize(fn);
 
 inspect = function() {
-  return JSON.stringify(fn([{a: 1, b: 2}, {a: 5, b: 6}]));
-}
+  return JSON.stringify(fn([{ a: 1, b: 2 }, { a: 5, b: 6 }]));
+};
