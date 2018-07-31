@@ -29,7 +29,7 @@ type PossibleNestedOptimizedFunctions = [
   { func: BoundFunctionValue | ECMAScriptSourceFunctionValue, thisValue: Value },
 ];
 
-function handleNestedOptimizedFunctions(
+function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
   realm: Realm,
   abstractArrayValue: ArrayValue,
   possibleNestedOptimizedFunctions: PossibleNestedOptimizedFunctions
@@ -65,7 +65,7 @@ function handleNestedOptimizedFunctions(
   }
 }
 
-function createAbstractArrayValue(
+function createUnknownArrayWithWidenedNumericProperty(
   realm: Realm,
   intrinsicName: string,
   possibleNestedOptimizedFunctions?: PossibleNestedOptimizedFunctions
@@ -73,7 +73,11 @@ function createAbstractArrayValue(
   let abstractArrayValue = new ArrayValue(realm, intrinsicName);
 
   if (possibleNestedOptimizedFunctions !== undefined && (!realm.react.enabled || realm.react.optimizeNestedFunctions)) {
-    handleNestedOptimizedFunctions(realm, abstractArrayValue, possibleNestedOptimizedFunctions);
+    evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
+      realm,
+      abstractArrayValue,
+      possibleNestedOptimizedFunctions
+    );
   }
   // Add unknownProperty so we manually handle this object property access
   abstractArrayValue.unknownProperty = {
@@ -172,7 +176,7 @@ export default class ArrayValue extends ObjectValue {
   ): ArrayValue {
     invariant(realm.generator !== undefined);
     let value = realm.generator.deriveConcreteObject(
-      intrinsicName => createAbstractArrayValue(realm, intrinsicName, possibleNestedOptimizedFunctions),
+      intrinsicName => createUnknownArrayWithWidenedNumericProperty(realm, intrinsicName, possibleNestedOptimizedFunctions),
       args,
       operationDescriptor,
       { isPure: true }

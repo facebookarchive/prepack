@@ -168,12 +168,12 @@ export class Functions {
     applyOptimizedReactComponents(this.realm, this.writeEffects, environmentRecordIdAfterGlobalCode);
   }
 
-  getDeclaringAdditionalFunction(functionValue: ECMAScriptSourceFunctionValue) {
-    for (let [additionalFunctionValue, additionalEffects] of this.writeEffects) {
-      // CreatedObjects is all objects created by this additional function but not
-      // nested additional functions.
+  getDeclaringOptimizedFunction(functionValue: ECMAScriptSourceFunctionValue) {
+    for (let [optimizedFunctionValue, additionalEffects] of this.writeEffects) {
+      // CreatedObjects is all objects created by this optimized function but not
+      // nested optimized functions.
       let createdObjects = additionalEffects.effects.createdObjects;
-      if (createdObjects.has(functionValue)) return additionalFunctionValue;
+      if (createdObjects.has(functionValue)) return optimizedFunctionValue;
     }
   }
 
@@ -185,7 +185,7 @@ export class Functions {
         true,
         "AdditionalFunctionEffects",
         environmentRecordIdAfterGlobalCode,
-        this.getDeclaringAdditionalFunction(functionValue)
+        this.getDeclaringOptimizedFunction(functionValue)
       );
       invariant(additionalFunctionEffects !== null);
       this.writeEffects.set(functionValue, additionalFunctionEffects);
@@ -231,7 +231,7 @@ export class Functions {
         true,
         "AdditionalFunctionEffects",
         environmentRecordIdAfterGlobalCode,
-        this.getDeclaringAdditionalFunction(functionValue)
+        this.getDeclaringOptimizedFunction(functionValue)
       );
       invariant(additionalFunctionEffects);
       effects = additionalFunctionEffects.effects;
