@@ -80,7 +80,7 @@ import { canHoistFunction } from "../react/hoisting.js";
 import { To } from "../singletons.js";
 import { ResidualReactElementSerializer } from "./ResidualReactElementSerializer.js";
 import type { Binding } from "../environment.js";
-import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord, FunctionEnvironmentRecord } from "../environment.js";
+import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
 import type { Referentializer } from "./Referentializer.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
 import { type Replacement, getReplacement } from "./ResidualFunctionInstantiator.js";
@@ -754,13 +754,10 @@ export class ResidualHeapSerializer {
       if (childFunction === maybeParentFunction) {
         continue;
       }
-      let env = childFunction.$Environment;
-      while (env.parent !== null) {
-        let envRecord = env.environmentRecord;
-        if (envRecord instanceof FunctionEnvironmentRecord && envRecord.$FunctionObject === maybeParentFunction) {
-          return true;
-        }
-        env = env.parent;
+      let additionalFVEffects = this.additionalFunctionValuesAndEffects;
+      if (additionalFVEffects) {
+        let maybeParentFunctionInfo = additionalFVEffects.get(maybeParentFunction);
+        if (maybeParentFunctionInfo && maybeParentFunctionInfo.effects.createdObjects.has(childFunction)) return true;
       }
     }
     return false;
