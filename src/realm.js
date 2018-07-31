@@ -708,7 +708,7 @@ export class Realm {
     invariant(!this.neverCheckProperty(object, P));
     let objectId = this._checkedObjectIds.get(object);
     if (objectId === undefined) this._checkedObjectIds.set(object, (objectId = this._checkedObjectIds.size));
-    let id = `__${objectId}:${P}`;
+    let id = `__prepack_internal__${objectId}:${P}`;
     let checkedBindings = this._getCheckedBindings();
     checkedBindings.$Set(id, this.intrinsics.true, checkedBindings);
   }
@@ -717,7 +717,7 @@ export class Realm {
     if (this.neverCheckProperty(object, P)) return true;
     let objectId = this._checkedObjectIds.get(object);
     if (objectId === undefined) return false;
-    let id = `__${objectId}:${P}`;
+    let id = `__prepack_internal__${objectId}:${P}`;
     let binding = this._getCheckedBindings().properties.get(id);
     if (binding === undefined) return false;
     let value = binding.descriptor && binding.descriptor.value;
@@ -1595,7 +1595,12 @@ export class Realm {
       invariant(object instanceof ObjectValue);
       const createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
 
-      if (createdObjectsTrackedForLeaks !== undefined && !createdObjectsTrackedForLeaks.has(object)) {
+      if (
+        createdObjectsTrackedForLeaks !== undefined &&
+        !createdObjectsTrackedForLeaks.has(object) &&
+        // __prepack_internal__ is set by realm.markPropertyAsChecked
+        !binding.key.includes("__prepack_internal__")
+      ) {
         if (binding.object === this.$GlobalObject) {
           for (let callback of this.reportSideEffectCallbacks) {
             callback("MODIFIED_GLOBAL", binding, object.expressionLocation);
