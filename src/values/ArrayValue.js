@@ -139,6 +139,7 @@ export default class ArrayValue extends ObjectValue {
         }
         invariant(funcToModel instanceof ECMAScriptSourceFunctionValue);
         let funcCall = Utils.createModelledFunctionCall(realm, funcToModel, undefined, thisValue);
+        // TODO: ensure that the funcCall was pure and had no side-effects
         let effects = realm.evaluateForEffects(funcCall, null, "temporalArray nestedOptimizedFunction");
         // Check if effects were pure then add them
         if (value.nestedOptimizedFunctionEffects === undefined) {
