@@ -328,7 +328,10 @@ function getErrorHandlerWithWarningCapture(
       errorCodeSet.add(diagnostic.errorCode);
     }
     try {
-      switch (diagnostic.severity) {
+      if (verbose && !suppressDiagnostics) console.log(`${diagnostic.severity}: ${msg}`);
+      return "Recover";
+
+      /*switch (diagnostic.severity) {
         case "Information":
           if (verbose && !suppressDiagnostics) console.log(`Info: ${msg}`);
           return "Recover";
@@ -340,10 +343,10 @@ function getErrorHandlerWithWarningCapture(
           return "Recover";
         case "FatalError":
           if (verbose && !suppressDiagnostics) console.error(`Fatal Error: ${msg}`);
-          return "Fail";
+          return "Recover";
         default:
           invariant(false, "Unexpected error type");
-      }
+      }*/
     } finally {
       if (verbose && !suppressDiagnostics) console.log(diagnostic.callStack);
     }
