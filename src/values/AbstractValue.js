@@ -68,7 +68,7 @@ export type AbstractValueKind =
   | "JSResource"
   | "Bootloader"
   | "(A).length"
-  | "(A).toString()"
+  | "('' + A)"
   | "(A).slice(B,C)"
   | "(A).split(B,C)"
   | "global.JSON.stringify(A)"
@@ -729,6 +729,9 @@ export default class AbstractValue extends Value {
     let labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     invariant(labels.length >= operands.length);
     let operationDescriptor = createOperationDescriptor("ABSTRACT_FROM_TEMPLATE", { template });
+    // This doesn't mean that the function is not pure, just that it creates
+    // a new object on each call and thus is a future optimization opportunity.
+    if (Value.isTypeCompatibleWith(resultType, ObjectValue)) hash = ++realm.objectCount;
     let result = new Constructor(realm, resultTypes, resultValues, hash, operands, operationDescriptor);
     result.kind = kind;
     result.expressionLocation = loc || realm.currentLocation;
@@ -744,7 +747,7 @@ export default class AbstractValue extends Value {
     let types = new TypesDomain(resultType);
     let Constructor = Value.isTypeCompatibleWith(resultType, ObjectValue) ? AbstractObjectValue : AbstractValue;
     let [hash, args] = hashCall(resultType.name + (kind || ""), ...(operands || []));
-    if (resultType === ObjectValue) hash = ++realm.objectCount;
+    if (Value.isTypeCompatibleWith(resultType, ObjectValue)) hash = ++realm.objectCount;
     let result = new Constructor(realm, types, ValuesDomain.topVal, hash, args);
     if (kind) result.kind = kind;
     result.expressionLocation = realm.currentLocation;
