@@ -555,6 +555,14 @@ export default class AbstractObjectValue extends AbstractValue {
         if (typeof P === "string") {
           P = new StringValue(this.$Realm, P);
         }
+        // Create an unknown array temporal
+        if (type === ArrayValue) {
+          return ArrayValue.createTemporalWithWidenedNumericProperty(
+            realm,
+            [ob, P],
+            createOperationDescriptor("ABSTRACT_OBJECT_GET", { propertyGetter })
+          );
+        }
         let propAbsVal = AbstractValue.createTemporalFromBuildFunction(
           realm,
           type,
