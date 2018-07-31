@@ -38,7 +38,7 @@ type EmitterDependenciesVisitorCallbacks<T> = {
   // Callback invoked whenever a dependency is visited that is an abstract value with an identifier.
   // A return value that is not undefined indicates that the visitor should stop, and return the value as the overall result.
   onAbstractValueWithIdentifier?: AbstractValue => void | T,
-  // Callback invoked whenever a dependency is visited that is an unknown array value with a widened numeric property.
+  // Callback invoked whenever a dependency is visited that is an array value with a widened numeric property.
   // A return value that is not undefined indicates that the visitor should stop, and return the value as the overall result.
   onArrayWithWidenedNumericProperty?: ArrayValue => void | T,
 };

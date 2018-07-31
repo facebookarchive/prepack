@@ -517,7 +517,7 @@ class ObjectValueHavocingVisitor {
     if (val instanceof AbstractValue) {
       if (this.mustVisit(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
-      // All intrinsic values exist from the beginning of time (except unknown arrays)...
+      // All intrinsic values exist from the beginning of time (except arrays with widened properties)...
       // ...except for a few that come into existance as templates for abstract objects.
       if (val instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(val)) {
         if (this.mustVisit(val)) this.visitValueObject(val);

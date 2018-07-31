@@ -142,7 +142,7 @@ export function getValueWithBranchingLogicApplied(
       ArrayValue.isIntrinsicAndHasWidenedNumericProperty(x) ||
       ArrayValue.isIntrinsicAndHasWidenedNumericProperty(y)
     ) {
-      // If either case is an unknown array, we do not know
+      // If either case is an array with wideneded properties, we do not know
       // the contents of the array, so we cannot add keys
     } else if (x instanceof ArrayValue && arrayDepth === 0) {
       forEachArrayValue(realm, x, (xElem, index) => {

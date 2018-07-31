@@ -28,7 +28,7 @@ export default function(realm: Realm): NativeFunctionValue {
       // 1. Let array be ? ToObject(this value).
       let array = To.ToObject(realm, context);
 
-      // If we have an object that is an unknown array with numeric properties, then
+      // If we have an object that is an array with widened numeric properties, then
       // we can return a temporal here as we know nothing of the array's properties.
       // This should be safe to do, as we never expose the internals of the array.
       if (

@@ -338,16 +338,34 @@ class ReactDOMServerRenderer {
     }
   }
 
-  _renderArrayValue(value: ArrayValue, namespace: string, depth: number): Array<ReactNode> | ReactNode {
-    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(value)) {
-      let arrayHint = this.realm.react.arrayHints.get(value);
+  _renderArrayValue(arrayValue: ArrayValue, namespace: string, depth: number): Array<ReactNode> | ReactNode {
+    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(arrayValue)) {
+      let nestedOptimizedFunctionEffects = arrayValue.nestedOptimizedFunctionEffects;
 
-      if (arrayHint !== undefined) {
-        return renderValueWithHelper(this.realm, value, this.arrayHelper);
+      if (nestedOptimizedFunctionEffects !== undefined) {
+        for (let [func, effects] of nestedOptimizedFunctionEffects) {
+          let resolvedEffects = this.realm.evaluateForEffects(
+            () => {
+              let result = effects.result;
+              this.realm.applyEffects(effects);
+
+              if (result instanceof SimpleNormalCompletion) {
+                result = result.value;
+              }
+              invariant(result instanceof Value);
+              return this.render(result, namespace, depth);
+            },
+            /*state*/ null,
+            `react nested optimized closure`
+          );
+          nestedOptimizedFunctionEffects.set(func, resolvedEffects);
+          this.realm.collectedNestedOptimizedFunctionEffects.set(func, resolvedEffects);
+        }
+        return renderValueWithHelper(this.realm, arrayValue, this.arrayHelper);
       }
     }
     let elements = [];
-    forEachArrayValue(this.realm, value, elementValue => {
+    forEachArrayValue(this.realm, arrayValue, elementValue => {
       let renderedElement = this._renderValue(elementValue, namespace, depth);
       if (Array.isArray(renderedElement)) {
         elements.push(...renderedElement);
