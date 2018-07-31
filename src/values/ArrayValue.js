@@ -21,7 +21,7 @@ import {
   Value,
 } from "./index.js";
 import { IsAccessorDescriptor, IsPropertyKey, IsArrayIndex } from "../methods/is.js";
-import { Properties, To, Utils } from "../singletons.js";
+import { Havoc, Properties, To, Utils } from "../singletons.js";
 import { type OperationDescriptor } from "../utils/generator.js";
 import invariant from "../invariant.js";
 
@@ -139,14 +139,26 @@ export default class ArrayValue extends ObjectValue {
         }
         invariant(funcToModel instanceof ECMAScriptSourceFunctionValue);
         let funcCall = Utils.createModelledFunctionCall(realm, funcToModel, undefined, thisValue);
-        // TODO: ensure that the funcCall was pure and had no side-effects
-        let effects = realm.evaluateForEffects(funcCall, null, "temporalArray nestedOptimizedFunction");
-        // Check if effects were pure then add them
-        if (value.nestedOptimizedFunctionEffects === undefined) {
-          value.nestedOptimizedFunctionEffects = new Map();
+        let hadSideEffects = false;
+        // We take the modelled function and wrap it in a pure evaluation so we can check for
+        // side-effects that occur when evaluating the function. If there are side-effects, then
+        // we don't try and optimize the nested function.
+        let pureFuncCall = () =>
+          realm.evaluatePure(funcCall, () => {
+            hadSideEffects = true;
+          });
+        let effects = realm.evaluateForEffects(pureFuncCall, null, "temporalArray nestedOptimizedFunction");
+        if (hadSideEffects) {
+          // If the nested optimized function had side-effects, then havoc the function value
+          Havoc.value(realm, func);
+        } else {
+          // Check if effects were pure then add them
+          if (value.nestedOptimizedFunctionEffects === undefined) {
+            value.nestedOptimizedFunctionEffects = new Map();
+          }
+          value.nestedOptimizedFunctionEffects.set(funcToModel, effects);
+          realm.collectedNestedOptimizedFunctionEffects.set(funcToModel, effects);
         }
-        value.nestedOptimizedFunctionEffects.set(funcToModel, effects);
-        realm.collectedNestedOptimizedFunctionEffects.set(funcToModel, effects);
       }
     }
     return value;
