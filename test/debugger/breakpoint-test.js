@@ -1,4 +1,3 @@
-
 /**
  * Copyright (c) 2017-present, Facebook, Inc.
  * All rights reserved.
@@ -17,5 +16,12 @@ const { runTest } = setupDebuggerTests();
 const { it } = global;
 
 it("debugger-breakpoint-test", done => {
-  runTest("Breakpoint Test 1", [], ["test/debugger/sample1.js"], ["breakpoint add test/debugger/sample1.js 8", "run", "run"], ["Breakpoint: test/debugger/sample1.js 8:2"], done);
+  runTest(
+    "Breakpoint Test 1",
+    [],
+    ["test/debugger/sample1.js"],
+    ["breakpoint add test/debugger/sample1.js 8", "run", "run"],
+    ["Breakpoint: test/debugger/sample1.js 8:2"],
+    done
+  );
 });

@@ -15,7 +15,6 @@ import type { DebuggerCLIArguments } from "../../lib/debugger/mock-ui/UISession.
 import fs from "fs";
 
 function setupDebuggerTests() {
-
   let expectedOutputsPrefix = ["Debugger is starting up Prepack...", "Prepack is ready"];
   let expectedOutputsSuffix = ["Prepack exited! Shutting down..."];
 
@@ -36,7 +35,14 @@ function setupDebuggerTests() {
     };
   }
 
-  function runTest(name: string, prepackArgs: Array<string>, inputSourceFiles: Array<string>, commands: Array<string>, expected: Array<string>, doneCallback: any): void {
+  function runTest(
+    name: string,
+    prepackArgs: Array<string>,
+    inputSourceFiles: Array<string>,
+    commands: Array<string>,
+    expected: Array<string>,
+    doneCallback: any
+  ): void {
     let args = generateArgs(prepackArgs, inputSourceFiles);
     let commandIndex = 0;
     let debuggerOutputs = [];
