@@ -9,11 +9,7 @@
 
 /* @flow */
 
-import {
-  GlobalEnvironmentRecord,
-  DeclarativeEnvironmentRecord,
-  EnvironmentRecord,
-} from "../environment.js";
+import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord, EnvironmentRecord } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { type Effects, Realm } from "../realm.js";
 import { Path } from "../singletons.js";
@@ -1213,22 +1209,11 @@ export class ResidualHeapVisitor {
         // This may not have been referentialized if the binding is a local of an optimized function.
         // in that case, we need to figure out which optimized function it is, and referentialize it in that scope.
         let optimizedFunctionScope = this._getAdditionalFunctionOfScope();
-        invariant(optimizedFunctionScope);
-        let fixpoint_rerun = () => {
-          // NB: we wait out the first iteration to make sure that any residual functions that would add a
-          // referentialization scope, it has done so.
-          this._enqueueWithUnrelatedScope(this.scope, () => {
-            if (residualBinding.potentialReferentializationScopes.size === 0) {
-              this._enqueueWithUnrelatedScope(optimizedFunctionScope, () =>
-                this.visitBinding(optimizedFunctionScope, residualBinding)
-              );
-              return true;
-            }
-            return false;
-          });
-          return true;
-        };
-        this._enqueueWithUnrelatedScope(this.scope, fixpoint_rerun);
+        if (residualBinding.potentialReferentializationScopes.size === 0) {
+          this._enqueueWithUnrelatedScope(optimizedFunctionScope, () =>
+            this.visitBinding(optimizedFunctionScope, residualBinding)
+          );
+        }
         return this.visitEquivalentValue(value);
       },
     };
