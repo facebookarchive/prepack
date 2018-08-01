@@ -330,23 +330,6 @@ function getErrorHandlerWithWarningCapture(
     try {
       if (verbose && !suppressDiagnostics) console.log(`${diagnostic.severity}: ${msg}`);
       return "Recover";
-
-      /*switch (diagnostic.severity) {
-        case "Information":
-          if (verbose && !suppressDiagnostics) console.log(`Info: ${msg}`);
-          return "Recover";
-        case "Warning":
-          if (verbose && !suppressDiagnostics) console.warn(`Warn: ${msg}`);
-          return "Recover";
-        case "RecoverableError":
-          if (verbose && !suppressDiagnostics) console.error(`Error: ${msg}`);
-          return "Recover";
-        case "FatalError":
-          if (verbose && !suppressDiagnostics) console.error(`Fatal Error: ${msg}`);
-          return "Recover";
-        default:
-          invariant(false, "Unexpected error type");
-      }*/
     } finally {
       if (verbose && !suppressDiagnostics) console.log(diagnostic.callStack);
     }
