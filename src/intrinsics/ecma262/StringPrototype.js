@@ -11,7 +11,7 @@
 
 import { Realm } from "../../realm.js";
 import { FatalError } from "../../errors.js";
-import { AbstractValue, UndefinedValue, NumberValue, ObjectValue, StringValue, NullValue } from "../../values/index.js";
+import { AbstractValue, NullValue, NumberValue, ObjectValue, StringValue, UndefinedValue } from "../../values/index.js";
 import { IsCallable, IsRegExp } from "../../methods/is.js";
 import { GetMethod, GetSubstitution } from "../../methods/get.js";
 import { Call, Invoke } from "../../methods/call.js";
@@ -614,7 +614,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
       return AbstractValue.createFromTemplate(
         realm,
         splitTemplate,
-        StringValue,
+        ObjectValue,
         [O, separator, limit],
         splitTemplateSrc
       );

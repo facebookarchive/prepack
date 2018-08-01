@@ -18,7 +18,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.3.1
   obj.$BooleanData = realm.intrinsics.false;
 
-  const tsTemplateSrc = "(A).toString()";
+  const tsTemplateSrc = "('' + A)";
   const tsTemplate = buildExpressionTemplate(tsTemplateSrc);
 
   // ECMA262 19.3.3.3

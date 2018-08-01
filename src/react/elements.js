@@ -170,7 +170,13 @@ function createPropsObject(
         // exist
         for (let [propName, binding] of props.properties) {
           if (binding.descriptor !== undefined && binding.descriptor.value === realm.intrinsics.undefined) {
-            hardModifyReactObjectPropertyBinding(realm, props, propName, AbstractValue.createFromType(realm, Value));
+            let kind = AbstractValue.makeKind("abstractCounted", (realm.objectCount++).toString()); // need not be an object, but must be unique
+            hardModifyReactObjectPropertyBinding(
+              realm,
+              props,
+              propName,
+              AbstractValue.createFromType(realm, Value, kind)
+            );
           }
         }
         // if we have children and they are abstract, they might be undefined at runtime

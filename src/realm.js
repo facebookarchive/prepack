@@ -275,6 +275,7 @@ export class Realm {
       ObjectValue.setupTrackedPropertyAccessors(ProxyValue.trackedPropertyNames);
     }
 
+    this.collectedNestedOptimizedFunctionEffects = new Map();
     this.tracers = [];
 
     // These get initialized in construct_realm to avoid the dependency
@@ -295,7 +296,6 @@ export class Realm {
     this.react = {
       abstractHints: new WeakMap(),
       activeReconciler: undefined,
-      arrayHints: new WeakMap(),
       classComponentMetadata: new Map(),
       currentOwner: undefined,
       defaultPropsHelper: undefined,
@@ -399,7 +399,6 @@ export class Realm {
     // we need to know what React component was passed to this AbstractObjectValue so we can visit it next)
     abstractHints: WeakMap<AbstractValue | ObjectValue, ReactHint>,
     activeReconciler: any, // inentionally "any", importing the React reconciler class increases Flow's cylic count
-    arrayHints: WeakMap<ArrayValue, { func: Value, thisVal: Value }>,
     classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
     currentOwner?: ObjectValue,
     defaultPropsHelper?: ECMAScriptSourceFunctionValue,
@@ -465,6 +464,7 @@ export class Realm {
   simplifyAndRefineAbstractValue: AbstractValue => Value;
   simplifyAndRefineAbstractCondition: AbstractValue => Value;
 
+  collectedNestedOptimizedFunctionEffects: Map<ECMAScriptSourceFunctionValue, Effects>;
   tracers: Array<Tracer>;
 
   MOBILE_JSC_VERSION = "jsc-600-1-4-17";
@@ -712,7 +712,7 @@ export class Realm {
     invariant(!this.neverCheckProperty(object, P));
     let objectId = this._checkedObjectIds.get(object);
     if (objectId === undefined) this._checkedObjectIds.set(object, (objectId = this._checkedObjectIds.size));
-    let id = `__${objectId}:${P}`;
+    let id = `__propertyHasBeenChecked__${objectId}:${P}`;
     let checkedBindings = this._getCheckedBindings();
     checkedBindings.$Set(id, this.intrinsics.true, checkedBindings);
   }
@@ -721,7 +721,7 @@ export class Realm {
     if (this.neverCheckProperty(object, P)) return true;
     let objectId = this._checkedObjectIds.get(object);
     if (objectId === undefined) return false;
-    let id = `__${objectId}:${P}`;
+    let id = `__propertyHasBeenChecked__${objectId}:${P}`;
     let binding = this._getCheckedBindings().properties.get(id);
     if (binding === undefined) return false;
     let value = binding.descriptor && binding.descriptor.value;
@@ -1599,7 +1599,12 @@ export class Realm {
       invariant(object instanceof ObjectValue);
       const createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
 
-      if (createdObjectsTrackedForLeaks !== undefined && !createdObjectsTrackedForLeaks.has(object)) {
+      if (
+        createdObjectsTrackedForLeaks !== undefined &&
+        !createdObjectsTrackedForLeaks.has(object) &&
+        // __markPropertyAsChecked__ is set by realm.markPropertyAsChecked
+        (typeof binding.key !== "string" || !binding.key.includes("__propertyHasBeenChecked__"))
+      ) {
         if (binding.object === this.$GlobalObject) {
           for (let callback of this.reportSideEffectCallbacks) {
             callback("MODIFIED_GLOBAL", binding, object.expressionLocation);

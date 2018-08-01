@@ -18,10 +18,15 @@ import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import {
   AbstractValue,
   AbstractObjectValue,
+  BooleanValue,
   ConcreteValue,
   FunctionValue,
+  IntegralValue,
   NativeFunctionValue,
+  NumberValue,
   ObjectValue,
+  StringValue,
+  SymbolValue,
   Value,
 } from "../values/index.js";
 import { Reference } from "../environment.js";
@@ -61,6 +66,22 @@ export default function(
   }
 }
 
+function getPrimitivePrototypeFromType(realm: Realm, value: AbstractValue): void | ObjectValue {
+  switch (value.getType()) {
+    case IntegralValue:
+    case NumberValue:
+      return realm.intrinsics.NumberPrototype;
+    case StringValue:
+      return realm.intrinsics.StringPrototype;
+    case BooleanValue:
+      return realm.intrinsics.BooleanPrototype;
+    case SymbolValue:
+      return realm.intrinsics.SymbolPrototype;
+    default:
+      return undefined;
+  }
+}
+
 function evaluateReference(
   ref: Reference | Value,
   ast: BabelNodeCallExpression,
@@ -78,6 +99,23 @@ function evaluateReference(
     let base = ref.base;
     if (base.kind === "conditional") {
       return evaluateConditionalReferenceBase(ref, ast, strictCode, env, realm);
+    }
+    let referencedName = ref.referencedName;
+
+    // When dealing with a PrimitiveValue, like StringValue, NumberValue, IntegralValue etc
+    // if we are referencing a prototype method, then it's safe to access, even
+    // on an abstract value as the value is immutable and can't have a property
+    // that matches the prototype method (unless the prototype was modified).
+    // We assume the global prototype of built-ins has not been altered since
+    // global code has finished. See #1233 for more context in regards to unmodified
+    // global prototypes.
+    let prototypeIfPrimitive = getPrimitivePrototypeFromType(realm, base);
+    if (prototypeIfPrimitive !== undefined && typeof referencedName === "string") {
+      let possibleMethodValue = prototypeIfPrimitive._SafeGetDataPropertyValue(referencedName);
+
+      if (possibleMethodValue instanceof FunctionValue) {
+        return EvaluateCall(ref, possibleMethodValue, ast, strictCode, env, realm);
+      }
     }
     // avoid explicitly converting ref.base to an object because that will create a generator entry
     // leading to two object allocations rather than one.

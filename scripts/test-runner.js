@@ -466,6 +466,9 @@ function runTest(name, code, options: PrepackOptions, args) {
     if (compileJSXWithBabel) {
       expectedCode = transformWithBabel(expectedCode, ["@babel/plugin-transform-react-jsx"]);
     }
+    // For some tests (e.g. nested optimized function definition) there is no way to pass lint due to undefined global
+    // __optimize
+    let runLint = !code.includes("// skip lint");
 
     return execInContext(
       `${addedCode}\n(function () {${expectedCode} // keep newline here as code may end with comment
@@ -592,7 +595,7 @@ function runTest(name, code, options: PrepackOptions, args) {
               );
             }
             // lint output
-            lintCompiledSource(codeToRun);
+            if (runLint) lintCompiledSource(codeToRun);
             let actualPromise;
             if (execSpec) {
               actualPromise = execExternal(execSpec, codeToRun);

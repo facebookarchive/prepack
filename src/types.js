@@ -382,6 +382,13 @@ export type MaterializeType = {
 export type PropertiesType = {
   // ECMA262 9.1.9.1
   OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value, Receiver: Value): boolean,
+  OrdinarySetPartial(
+    realm: Realm,
+    O: ObjectValue,
+    P: AbstractValue | PropertyKeyValue,
+    V: Value,
+    Receiver: Value
+  ): boolean,
 
   // ECMA262 6.2.4.4
   FromPropertyDescriptor(realm: Realm, Desc: ?Descriptor): Value,
@@ -1053,6 +1060,7 @@ export type UtilsType = {|
   describeValue: Value => string,
   jsonToDisplayString: <T: { toDisplayJson(number): DisplayResult }>(T, number) => string,
   verboseToDisplayJson: ({}, number) => DisplayResult,
+  createModelledFunctionCall: (Realm, FunctionValue, void | string | ArgModel, void | Value) => void => Value,
 |};
 
 export type DebuggerConfigArguments = {
