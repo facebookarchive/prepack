@@ -24,10 +24,13 @@ import { IsAccessorDescriptor, IsPropertyKey, IsArrayIndex } from "../methods/is
 import { Havoc, Properties, To, Utils } from "../singletons.js";
 import { type OperationDescriptor } from "../utils/generator.js";
 import invariant from "../invariant.js";
+import { FatalError } from "../errors.js";
 
 type PossibleNestedOptimizedFunctions = [
   { func: BoundFunctionValue | ECMAScriptSourceFunctionValue, thisValue: Value },
 ];
+
+class SideEffects extends FatalError {}
 
 function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
   realm: Realm,
@@ -42,28 +45,32 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
     }
     invariant(funcToModel instanceof ECMAScriptSourceFunctionValue);
     let funcCall = Utils.createModelledFunctionCall(realm, funcToModel, undefined, thisValue);
-    let hadSideEffects = false;
     // We take the modelled function and wrap it in a pure evaluation so we can check for
     // side-effects that occur when evaluating the function. If there are side-effects, then
     // we don't try and optimize the nested function.
     let pureFuncCall = () =>
       realm.evaluatePure(funcCall, /*bubbles*/ false, () => {
-        hadSideEffects = true;
+        throw new SideEffects();
       });
-    let effects = realm.evaluateForEffects(pureFuncCall, null, "temporalArray nestedOptimizedFunction");
-    if (hadSideEffects) {
+    let effects;
+    try {
+      effects = realm.evaluateForEffects(pureFuncCall, null, "temporalArray nestedOptimizedFunction");
+    } catch (e) {
       // If the nested optimized function had side-effects, we need to fallback to
       // the default behaviour and havoc the nested functions so any bindings
       // within the function properly leak and materialize.
-      Havoc.value(realm, func);
-    } else {
-      // Check if effects were pure then add them
-      if (abstractArrayValue.nestedOptimizedFunctionEffects === undefined) {
-        abstractArrayValue.nestedOptimizedFunctionEffects = new Map();
+      if (e instanceof SideEffects) {
+        Havoc.value(realm, func);
+        return;
       }
-      abstractArrayValue.nestedOptimizedFunctionEffects.set(funcToModel, effects);
-      realm.collectedNestedOptimizedFunctionEffects.set(funcToModel, effects);
+      throw e;
     }
+    // Check if effects were pure then add them
+    if (abstractArrayValue.nestedOptimizedFunctionEffects === undefined) {
+      abstractArrayValue.nestedOptimizedFunctionEffects = new Map();
+    }
+    abstractArrayValue.nestedOptimizedFunctionEffects.set(funcToModel, effects);
+    realm.collectedNestedOptimizedFunctionEffects.set(funcToModel, effects);
   }
 }
 

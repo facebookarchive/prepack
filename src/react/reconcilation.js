@@ -110,6 +110,8 @@ export type ComponentTreeState = {
   contextNodeReferences: Map<ObjectValue | AbstractObjectValue, number>,
 };
 
+class SideEffects extends FatalError {}
+
 function setContextCurrentValue(contextObject: ObjectValue | AbstractObjectValue, value: Value): void {
   if (contextObject instanceof AbstractObjectValue && !contextObject.values.isTop()) {
     let elements = contextObject.values.getElements();
@@ -1542,30 +1544,34 @@ export class Reconciler {
     }
     invariant(funcToModel instanceof ECMAScriptSourceFunctionValue);
     let funcCall = Utils.createModelledFunctionCall(this.realm, funcToModel, undefined, thisValue);
-    let hadSideEffects = false;
     // We take the modelled function and wrap it in a pure evaluation so we can check for
     // side-effects that occur when evaluating the function. If there are side-effects, then
     // we don't try and optimize the nested function.
     let pureFuncCall = () =>
       this.realm.evaluatePure(funcCall, /*bubbles*/ false, () => {
-        hadSideEffects = true;
+        throw new SideEffects();
       });
-    let effects = this.realm.evaluateForEffects(
-      () => {
-        let result = pureFuncCall();
-        return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode, false);
-      },
-      null,
-      "React possibleNestedOptimizedFunction"
-    );
-    if (hadSideEffects) {
+    let effects;
+    try {
+      effects = this.realm.evaluateForEffects(
+        () => {
+          let result = pureFuncCall();
+          return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode, false);
+        },
+        null,
+        "React nestedOptimizedFunction"
+      );
+    } catch (e) {
       // If the nested optimized function had side-effects, we need to fallback to
       // the default behaviour and havoc the nested functions so any bindings
       // within the function properly leak and materialize.
-      Havoc.value(this.realm, func);
-    } else {
-      this.statistics.optimizedNestedClosures++;
-      this.realm.collectedNestedOptimizedFunctionEffects.set(funcToModel, effects);
+      if (e instanceof SideEffects) {
+        Havoc.value(this.realm, func);
+        return;
+      }
+      throw e;
     }
+    this.statistics.optimizedNestedClosures++;
+    this.realm.collectedNestedOptimizedFunctionEffects.set(funcToModel, effects);
   }
 }
