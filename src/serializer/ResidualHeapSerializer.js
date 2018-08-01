@@ -64,7 +64,13 @@ import { HeapInspector } from "../utils/HeapInspector.js";
 import { ResidualFunctions } from "./ResidualFunctions.js";
 import type { Scope } from "./ResidualHeapVisitor.js";
 import { factorifyObjects } from "./factorify.js";
-import { voidExpression, emptyExpression, constructorExpression, protoExpression } from "../utils/babelhelpers.js";
+import {
+  voidExpression,
+  emptyExpression,
+  constructorExpression,
+  protoExpression,
+  instantRenderEmptyBuiltIn,
+} from "../utils/babelhelpers.js";
 import { Emitter } from "./Emitter.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import {
@@ -1241,9 +1247,28 @@ export class ResidualHeapSerializer {
           let elemVal = descriptor.value;
           invariant(elemVal instanceof Value);
           let mightHaveBeenDeleted = elemVal.mightHaveBeenDeleted();
-          let delayReason =
-            this.emitter.getReasonToWaitForDependencies(elemVal) ||
-            this.emitter.getReasonToWaitForActiveValue(array, mightHaveBeenDeleted);
+          let instantRenderMode = this.realm.instantRender.enabled;
+
+          let delayReason;
+          /* In Instant Render mode, deleted indices are initialized
+          to the __empty built-in */
+          if (instantRenderMode) {
+            if (this.emitter.getReasonToWaitForDependencies(elemVal)) {
+              let error = new CompilerDiagnostic(
+                "InstantRender does not yet support cyclical arrays or objects",
+                array.expressionLocation,
+                "PP0038",
+                "FatalError"
+              );
+              this.realm.handleError(error);
+              throw new FatalError();
+            }
+            delayReason = undefined;
+          } else {
+            delayReason =
+              this.emitter.getReasonToWaitForDependencies(elemVal) ||
+              this.emitter.getReasonToWaitForActiveValue(array, mightHaveBeenDeleted);
+          }
           if (!delayReason) {
             elem = this.serializeValue(elemVal);
             remainingProperties.delete(key);
@@ -1728,12 +1753,31 @@ export class ResidualHeapSerializer {
           invariant(propValue instanceof Value);
           if (this.residualHeapInspector.canIgnoreProperty(val, key)) continue;
           let mightHaveBeenDeleted = propValue.mightHaveBeenDeleted();
-          let delayReason =
-            this.emitter.getReasonToWaitForDependencies(propValue) ||
-            this.emitter.getReasonToWaitForActiveValue(val, mightHaveBeenDeleted);
+
+          let instantRenderMode = this.realm.instantRender.enabled;
+
+          let delayReason;
+          if (instantRenderMode) {
+            if (this.emitter.getReasonToWaitForDependencies(propValue)) {
+              let error = new CompilerDiagnostic(
+                "InstantRender does not yet support cyclical arays or objects",
+                val.expressionLocation,
+                "PP0038",
+                "FatalError"
+              );
+              this.realm.handleError(error);
+              throw new FatalError();
+            }
+            delayReason = undefined;
+          } else {
+            delayReason =
+              this.emitter.getReasonToWaitForDependencies(propValue) ||
+              this.emitter.getReasonToWaitForActiveValue(val, mightHaveBeenDeleted);
+          }
+
           // Although the property needs to be delayed, we still want to emit dummy "undefined"
           // value as part of the object literal to ensure a consistent property ordering.
-          let serializedValue = voidExpression;
+          let serializedValue = !instantRenderMode ? voidExpression : instantRenderEmptyBuiltIn;
           if (delayReason) {
             // May need to be cleaned up later.
             dummyProperties.add(key);
@@ -1989,7 +2033,7 @@ export class ResidualHeapSerializer {
   }
 
   _serializeEmptyValue(): BabelNodeExpression {
-    this.needsEmptyVar = true;
+    this.needsEmptyVar = !this.realm.instantRender.enabled;
     return emptyExpression;
   }
 

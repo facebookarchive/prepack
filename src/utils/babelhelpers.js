@@ -21,6 +21,7 @@ import * as t from "@babel/types";
 export const voidExpression: BabelNodeExpression = t.unaryExpression("void", t.numericLiteral(0), true);
 export const nullExpression: BabelNodeExpression = t.nullLiteral();
 export const emptyExpression: BabelNodeIdentifier = t.identifier("__empty");
+export const instantRenderEmptyBuiltIn: BabelNodeIdentifier = t.identifier("__empty");
 export const constructorExpression: BabelNodeIdentifier = t.identifier("__constructor");
 export const protoExpression: BabelNodeIdentifier = t.identifier("__proto__");
 
