@@ -356,7 +356,6 @@ function runTest(name, code, options: PrepackOptions, args) {
   let initializeMoreModules = code.includes("// initialize more modules");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   if (args.verbose || code.includes("// inline expressions")) options.inlineExpressions = true;
-  if (code.includes("// do not inline expressions")) options.inlineExpressions = false;
   options.invariantLevel = code.includes("// omit invariants") || args.verbose ? 0 : 99;
   if (code.includes("// emit concrete model")) options.emitConcreteModel = true;
   if (code.includes("// exceeds stack limit")) options.maxStackDepth = 10;
@@ -776,7 +775,6 @@ function run(args) {
         const isAdditionalFunctionTest = test.file.includes("__optimize");
         const isPureFunctionTest = test.name.includes("pure-functions");
         const isCaptureTest = test.name.includes("Closure") || test.name.includes("Capture");
-        const isSimpleClosureTest = test.file.includes("// simple closures");
         // Skip lazy objects mode for certain known incompatible tests, react compiler and additional-functions tests.
         const skipLazyObjects =
           test.file.includes("// skip lazy objects") ||
@@ -785,15 +783,15 @@ function run(args) {
           test.name.includes("react");
 
         let flagPermutations = [
-          [false, false, undefined, isSimpleClosureTest],
-          [true, true, undefined, isSimpleClosureTest],
-          [false, false, args.lazyObjectsRuntime, isSimpleClosureTest],
+          [false, false, undefined],
+          [true, true, undefined],
+          [false, false, args.lazyObjectsRuntime],
         ];
         if (isAdditionalFunctionTest || isCaptureTest) {
-          flagPermutations.push([false, false, undefined, true]);
-          flagPermutations.push([false, true, undefined, true]);
+          flagPermutations.push([false, false, undefined]);
+          flagPermutations.push([false, true, undefined]);
         }
-        if (args.fast) flagPermutations = [[false, false, undefined, isSimpleClosureTest]];
+        if (args.fast) flagPermutations = [[false, false, undefined]];
         return () =>
           SerialPromises(
             flagPermutations
