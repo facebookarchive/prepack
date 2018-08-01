@@ -60,5 +60,7 @@ export function memberExpressionHelper(
 }
 
 export function stringOfLocation(location: BabelNodeSourceLocation): string {
-  return `${location.start.line}:${location.start.column} ${location.end.line}:${location.end.line}`;
+  return `${location.source || "(unknown source file)"}(${location.start.line}:${location.start.column} ${
+    location.end.line
+  }:${location.end.column})`;
 }
