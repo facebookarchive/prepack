@@ -581,14 +581,19 @@ function run(
   if (!success && reproMode === undefined) {
     process.exit(1);
   } else if ((!success && reproMode === "reproOnFatalError") || reproMode === "reproUnconditionally") {
-    debugReproPackager.generateDebugRepro(
-      !success,
-      debugReproSourceFiles,
-      debugReproSourceMaps,
-      reproFilePath,
-      reproFileNames,
-      reproArguments
-    );
+    if (debugReproPackager) {
+      debugReproPackager.generateDebugRepro(
+        !success,
+        debugReproSourceFiles,
+        debugReproSourceMaps,
+        reproFilePath,
+        reproFileNames,
+        reproArguments
+      );
+    } else {
+      console.error("Debug Repro Packager was not initialized.");
+      process.exit(1);
+    }
   }
 }
 
