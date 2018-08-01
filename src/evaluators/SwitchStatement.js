@@ -73,8 +73,11 @@ function AbstractCaseBlockEvaluation(
             "PP0027",
             "FatalError"
           );
-          realm.handleError(diagnostic);
-          throw new FatalError();
+          if (realm.handleError(diagnostic) === "Recover") {
+            throw r;
+          } else {
+            throw new FatalError();
+          }
         }
 
         result = UpdateEmpty(realm, r, result);
@@ -95,8 +98,11 @@ function AbstractCaseBlockEvaluation(
         "PP0027",
         "FatalError"
       );
-      realm.handleError(diagnostic);
-      throw new FatalError();
+      if (realm.handleError(diagnostic) === "Recover") {
+        throw result;
+      } else {
+        throw new FatalError();
+      }
     } else {
       invariant(result instanceof Value);
       return result;
