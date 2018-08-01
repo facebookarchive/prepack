@@ -47,7 +47,7 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
     // side-effects that occur when evaluating the function. If there are side-effects, then
     // we don't try and optimize the nested function.
     let pureFuncCall = () =>
-      realm.evaluatePure(funcCall, () => {
+      realm.evaluatePure(funcCall, /*bubbles*/ false, () => {
         hadSideEffects = true;
       });
     let effects = realm.evaluateForEffects(pureFuncCall, null, "temporalArray nestedOptimizedFunction");

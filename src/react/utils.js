@@ -9,8 +9,8 @@
 
 /* @flow */
 
-import { Realm, Effects } from "../realm.js";
-import { AbruptCompletion, Completion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
+import { Realm } from "../realm.js";
+import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "@babel/types";
 import { parseExpression } from "@babel/parser";
 import {
@@ -29,7 +29,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { Generator, TemporalObjectAssignEntry } from "../utils/generator.js";
+import { TemporalObjectAssignEntry } from "../utils/generator.js";
 import type {
   Descriptor,
   FunctionBodyAstNode,
@@ -607,48 +607,6 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   recursivelyFlattenArray(realm, array, flattenedChildren);
   flattenedChildren.makeFinal();
   return flattenedChildren;
-}
-
-export function evaluateWithNestedParentEffects(
-  realm: Realm,
-  nestedEffects: Array<Effects>,
-  f: () => Effects
-): Effects {
-  let nextEffects = nestedEffects.slice();
-  let modifiedBindings;
-  let modifiedProperties;
-  let createdObjects;
-  let value;
-
-  if (nextEffects.length !== 0) {
-    let effects = nextEffects.shift();
-    value = effects.result;
-    if (value instanceof Completion) value = value.shallowCloneWithoutEffects();
-    createdObjects = effects.createdObjects;
-    modifiedBindings = effects.modifiedBindings;
-    modifiedProperties = effects.modifiedProperties;
-    realm.applyEffects(
-      new Effects(
-        value,
-        new Generator(realm, "evaluateWithNestedEffects", effects.generator.pathConditions),
-        modifiedBindings,
-        modifiedProperties,
-        createdObjects
-      )
-    );
-  }
-  try {
-    if (nextEffects.length === 0) {
-      return f();
-    } else {
-      return evaluateWithNestedParentEffects(realm, nextEffects, f);
-    }
-  } finally {
-    if (modifiedBindings && modifiedProperties) {
-      realm.undoBindings(modifiedBindings);
-      realm.restoreProperties(modifiedProperties);
-    }
-  }
 }
 
 // This function is mainly use to get internal properties

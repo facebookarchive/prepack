@@ -32,7 +32,6 @@ import {
   AbstractObjectValue,
   AbstractValue,
   ArrayValue,
-  BoundFunctionValue,
   ConcreteValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
@@ -304,7 +303,6 @@ export class Realm {
       hoistableFunctions: new WeakMap(),
       hoistableReactElements: new WeakMap(),
       noopFunction: undefined,
-      optimizedNestedClosuresToWrite: [],
       optimizeNestedFunctions: opts.reactOptimizeNestedFunctions || false,
       output: opts.reactOutput || "create-element",
       propsWithNoPartialKeyOrRef: new WeakSet(),
@@ -406,10 +404,6 @@ export class Realm {
     hoistableFunctions: WeakMap<FunctionValue, boolean>,
     hoistableReactElements: WeakMap<ObjectValue, boolean>,
     noopFunction: void | ECMAScriptSourceFunctionValue,
-    optimizedNestedClosuresToWrite: Array<{
-      effects: Effects,
-      func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
-    }>,
     optimizeNestedFunctions: boolean,
     output?: ReactOutputTypes,
     propsWithNoPartialKeyOrRef: WeakSet<ObjectValue | AbstractObjectValue>,
@@ -730,17 +724,23 @@ export class Realm {
   // call.
   evaluatePure<T>(
     f: () => T,
+    bubbleSideEffectReports: boolean,
     reportSideEffectFunc:
       | null
       | ((sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, value: void | Value) => void)
   ): T {
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
+    let saved_reportSideEffectCallbacks;
     // Track all objects (including function closures) created during
     // this call. This will be used to make the assumption that every
     // *other* object is unchanged (pure). These objects are marked
     // as leaked if they're passed to abstract functions.
     this.createdObjectsTrackedForLeaks = new Set();
     if (reportSideEffectFunc !== null) {
+      if (!bubbleSideEffectReports) {
+        saved_reportSideEffectCallbacks = this.reportSideEffectCallbacks;
+        this.reportSideEffectCallbacks = new Set();
+      }
       this.reportSideEffectCallbacks.add(reportSideEffectFunc);
     }
     try {
@@ -748,6 +748,9 @@ export class Realm {
     } finally {
       this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
       if (reportSideEffectFunc !== null) {
+        if (!bubbleSideEffectReports) {
+          this.reportSideEffectCallbacks = saved_reportSideEffectCallbacks;
+        }
         this.reportSideEffectCallbacks.delete(reportSideEffectFunc);
       }
     }

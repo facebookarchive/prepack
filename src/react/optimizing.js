@@ -10,7 +10,7 @@
 /* @flow strict-local */
 
 import { type Effects, Realm } from "../realm.js";
-import { AbstractValue, ECMAScriptSourceFunctionValue, BoundFunctionValue, ObjectValue } from "../values/index.js";
+import { AbstractValue, ECMAScriptSourceFunctionValue, ObjectValue } from "../values/index.js";
 import { createAdditionalEffects } from "../serializer/utils.js";
 import {
   convertFunctionalComponentToComplexClassComponent,
@@ -148,53 +148,6 @@ function optimizeReactComponentTreeBranches(
   }
 }
 
-function optimizeReactNestedClosures(
-  realm: Realm,
-  reconciler: Reconciler,
-  writeEffects: WriteEffects,
-  environmentRecordIdAfterGlobalCode: number,
-  logger: Logger
-): void {
-  if (realm.react.verbose && reconciler.nestedOptimizedClosures.length > 0) {
-    logger.logInformation(`  Evaluating nested closures...`);
-  }
-  for (let { func, evaluatedNode, nestedEffects, componentType, context } of reconciler.nestedOptimizedClosures) {
-    if (reconciler.hasEvaluatedNestedClosure(func)) {
-      continue;
-    }
-    if (func instanceof ECMAScriptSourceFunctionValue && reconciler.hasEvaluatedRootNode(func, evaluatedNode)) {
-      continue;
-    }
-    if (realm.react.verbose) {
-      logger.logInformation(`    Evaluating function "${getComponentName(realm, func)}"`);
-    }
-    let closureEffects = reconciler.resolveNestedOptimizedClosure(
-      func,
-      nestedEffects,
-      componentType,
-      context,
-      evaluatedNode
-    );
-    if (realm.react.verbose) {
-      logger.logInformation(`    ✔ function "${getComponentName(realm, func)}"`);
-    }
-    let additionalFunctionEffects = createAdditionalEffects(
-      realm,
-      closureEffects,
-      true,
-      "ReactNestedAdditionalFunctionEffects",
-      environmentRecordIdAfterGlobalCode
-    );
-    invariant(additionalFunctionEffects);
-    if (func instanceof BoundFunctionValue) {
-      invariant(func.$BoundTargetFunction instanceof ECMAScriptSourceFunctionValue);
-      writeEffects.set(func.$BoundTargetFunction, additionalFunctionEffects);
-    } else {
-      writeEffects.set(func, additionalFunctionEffects);
-    }
-  }
-}
-
 export function optimizeReactComponentTreeRoot(
   realm: Realm,
   componentRoot: ECMAScriptSourceFunctionValue | AbstractValue,
@@ -236,31 +189,5 @@ export function optimizeReactComponentTreeRoot(
   do {
     startingComponentTreeBranches = reconciler.branchedComponentTrees.length;
     optimizeReactComponentTreeBranches(realm, reconciler, writeEffects, environmentRecordIdAfterGlobalCode, logger);
-    if (realm.react.optimizeNestedFunctions) {
-      optimizeReactNestedClosures(realm, reconciler, writeEffects, environmentRecordIdAfterGlobalCode, logger);
-    }
   } while (startingComponentTreeBranches !== reconciler.branchedComponentTrees.length);
-}
-
-export function applyOptimizedReactComponents(
-  realm: Realm,
-  writeEffects: WriteEffects,
-  environmentRecordIdAfterGlobalCode: number
-): void {
-  for (let { effects, func } of realm.react.optimizedNestedClosuresToWrite) {
-    let additionalFunctionEffects = createAdditionalEffects(
-      realm,
-      effects,
-      true,
-      "ReactNestedAdditionalFunctionEffects",
-      environmentRecordIdAfterGlobalCode
-    );
-    invariant(additionalFunctionEffects);
-    if (func instanceof BoundFunctionValue) {
-      invariant(func.$BoundTargetFunction instanceof ECMAScriptSourceFunctionValue);
-      writeEffects.set(func.$BoundTargetFunction, additionalFunctionEffects);
-    } else {
-      writeEffects.set(func, additionalFunctionEffects);
-    }
-  }
 }

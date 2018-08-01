@@ -468,33 +468,6 @@ class ReactDOMServerRenderer {
   }
 }
 
-function handleNestedOptimizedFunctions(realm: Realm, reconciler: Reconciler, staticMarkup: boolean): void {
-  for (let { func, evaluatedNode, componentType, context } of reconciler.nestedOptimizedClosures) {
-    if (reconciler.hasEvaluatedNestedClosure(func)) {
-      continue;
-    }
-    if (func instanceof ECMAScriptSourceFunctionValue && reconciler.hasEvaluatedRootNode(func, evaluatedNode)) {
-      continue;
-    }
-    let closureEffects = reconciler.resolveNestedOptimizedClosure(func, [], componentType, context, evaluatedNode);
-
-    let closureEffectsRenderedToString = realm.evaluateForEffectsWithPriorEffects(
-      [closureEffects],
-      () => {
-        let serverRenderer = new ReactDOMServerRenderer(realm, staticMarkup);
-        invariant(closureEffects.result instanceof SimpleNormalCompletion);
-        return serverRenderer.render(closureEffects.result.value);
-      },
-      "handleNestedOptimizedFunctions"
-    );
-
-    realm.react.optimizedNestedClosuresToWrite.push({
-      effects: closureEffectsRenderedToString,
-      func,
-    });
-  }
-}
-
 export function renderToString(
   realm: Realm,
   reactElement: ObjectValue,
@@ -527,6 +500,5 @@ export function renderToString(
   invariant(effects.result instanceof SimpleNormalCompletion);
   let serverRenderer = new ReactDOMServerRenderer(realm, staticMarkup);
   let renderValue = serverRenderer.render(effects.result.value);
-  handleNestedOptimizedFunctions(realm, reconciler, staticMarkup);
   return renderValue;
 }

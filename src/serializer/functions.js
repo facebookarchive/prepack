@@ -33,7 +33,7 @@ import { createAdditionalEffects } from "./utils.js";
 import { ReactStatistics } from "./types";
 import type { AdditionalFunctionEffects, WriteEffects } from "./types";
 import { convertConfigObjectToReactComponentTreeConfig, valueIsKnownReactAbstraction } from "../react/utils.js";
-import { applyOptimizedReactComponents, optimizeReactComponentTreeRoot } from "../react/optimizing.js";
+import { optimizeReactComponentTreeRoot } from "../react/optimizing.js";
 import { handleReportedSideEffect } from "./utils.js";
 import { stringOfLocation } from "../utils/babelhelpers";
 import { Utils } from "../singletons.js";
@@ -165,7 +165,6 @@ export class Functions {
         statistics
       );
     }
-    applyOptimizedReactComponents(this.realm, this.writeEffects, environmentRecordIdAfterGlobalCode);
   }
 
   getDeclaringOptimizedFunction(functionValue: ECMAScriptSourceFunctionValue) {
@@ -221,6 +220,7 @@ export class Functions {
       let realm = this.realm;
       let effects: Effects = realm.evaluatePure(
         () => realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
+        /*bubbles*/ true,
         (sideEffectType, binding, expressionLocation) =>
           handleReportedSideEffect(logCompilerDiagnostic, sideEffectType, binding, expressionLocation)
       );
