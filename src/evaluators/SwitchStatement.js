@@ -88,7 +88,15 @@ function AbstractCaseBlockEvaluation(
     if (result instanceof BreakCompletion) {
       return result.value;
     } else if (result instanceof AbruptCompletion) {
-      throw result;
+      // TODO correct handling of PossiblyNormal and AbruptCompletion
+      let diagnostic = new CompilerDiagnostic(
+        "case block containing a throw, return or continue is not yet supported",
+        result.location,
+        "PP0027",
+        "FatalError"
+      );
+      realm.handleError(diagnostic);
+      throw new FatalError();
     } else {
       invariant(result instanceof Value);
       return result;
