@@ -996,7 +996,7 @@ export class Reconciler {
     componentType: Value,
     reactElement: ObjectValue,
     context: ObjectValue | AbstractObjectValue,
-    branchStatus: BranchStatusEnu,
+    branchStatus: BranchStatusEnum,
     evaluatedNode: ReactEvaluatedNode
   ): ObjectValue {
     let typeValue = getProperty(this.realm, reactElement, "type");
@@ -1491,7 +1491,6 @@ export class Reconciler {
           context,
           branchStatus,
           evaluatedChildNode,
-          evaluatedNode,
           value
         );
       }

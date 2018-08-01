@@ -748,7 +748,7 @@ export class Realm {
     } finally {
       this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
       if (reportSideEffectFunc !== null) {
-        if (!bubbleSideEffectReports) {
+        if (!bubbleSideEffectReports && saved_reportSideEffectCallbacks !== undefined) {
           this.reportSideEffectCallbacks = saved_reportSideEffectCallbacks;
         }
         this.reportSideEffectCallbacks.delete(reportSideEffectFunc);
