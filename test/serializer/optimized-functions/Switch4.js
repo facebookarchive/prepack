@@ -1,5 +1,6 @@
 let x = global.__abstract ? __abstract("number", "1") : 1;
 
+// expected FatalError: PP0027
 function f(x) {
   switch (x) {
     case 0:

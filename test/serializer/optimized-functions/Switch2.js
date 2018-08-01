@@ -1,6 +1,7 @@
 let x = global.__abstract ? __abstract("number", "1") : 1;
 let c = global.__abstract ? __abstract("boolean", "true") : true;
 
+// expected FatalError: PP0027
 function f(x) {
   switch (x) {
     default:
@@ -10,6 +11,7 @@ function f(x) {
 
 global.__optimize && __optimize(f);
 
+// expected FatalError: PP0027
 function g(x) {
   switch (x) {
     case 0:
@@ -23,6 +25,7 @@ function g(x) {
 
 global.__optimize && __optimize(g);
 
+// expected FatalError: PP0027
 function h(x, c) {
   switch (x) {
     case 0:
