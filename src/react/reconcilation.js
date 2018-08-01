@@ -419,7 +419,14 @@ export class Reconciler {
       if (propsValue instanceof ObjectValue && propsValue.properties.has("children")) {
         let renderProp = getProperty(this.realm, propsValue, "children");
 
-        this._findReactComponentTrees(propsValue, evaluatedChildNode, "NORMAL_FUNCTIONS");
+        this._findReactComponentTrees(
+          propsValue,
+          evaluatedChildNode,
+          "NORMAL_FUNCTIONS",
+          componentType,
+          context,
+          branchStatus
+        );
         if (renderProp instanceof ECMAScriptSourceFunctionValue) {
           if (typeValue instanceof ObjectValue || typeValue instanceof AbstractObjectValue) {
             // make sure this context is in our tree
@@ -447,7 +454,14 @@ export class Reconciler {
           );
           return;
         } else {
-          this._findReactComponentTrees(renderProp, evaluatedChildNode, "NESTED_CLOSURES", branchStatus);
+          this._findReactComponentTrees(
+            renderProp,
+            evaluatedChildNode,
+            "NESTED_CLOSURES",
+            componentType,
+            context,
+            branchStatus
+          );
         }
       }
     }
@@ -510,10 +524,24 @@ export class Reconciler {
             renderProp
           );
         } else if (renderProp instanceof AbstractValue) {
-          this._findReactComponentTrees(renderProp, evaluatedChildNode, "NESTED_CLOSURES", componentType, context);
+          this._findReactComponentTrees(
+            renderProp,
+            evaluatedChildNode,
+            "NESTED_CLOSURES",
+            componentType,
+            context,
+            branchStatus
+          );
         }
       }
-      this._findReactComponentTrees(propsValue, evaluatedChildNode, "NORMAL_FUNCTIONS", branchStatus);
+      this._findReactComponentTrees(
+        propsValue,
+        evaluatedChildNode,
+        "NORMAL_FUNCTIONS",
+        componentType,
+        context,
+        branchStatus
+      );
       return;
     }
     // this is the worst case, we were unable to find the render prop function
@@ -912,16 +940,25 @@ export class Reconciler {
   }
 
   _resolveUnknownComponentType(
+    componentType: Value,
     reactElement: ObjectValue,
+    context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
     evaluatedNode: ReactEvaluatedNode
   ): ObjectValue {
     let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
 
-    this._findReactComponentTrees(propsValue, evaluatedNode, "NORMAL_FUNCTIONS", branchStatus);
+    this._findReactComponentTrees(propsValue, evaluatedNode, "NORMAL_FUNCTIONS", componentType, context, branchStatus);
     if (typeValue instanceof AbstractValue) {
-      this._findReactComponentTrees(typeValue, evaluatedNode, "FUNCTIONAL_COMPONENTS", branchStatus);
+      this._findReactComponentTrees(
+        typeValue,
+        evaluatedNode,
+        "FUNCTIONAL_COMPONENTS",
+        componentType,
+        context,
+        branchStatus
+      );
       return reactElement;
     } else {
       let evaluatedChildNode = createReactEvaluatedNode("BAIL-OUT", getComponentName(this.realm, typeValue));
@@ -934,7 +971,13 @@ export class Reconciler {
     }
   }
 
-  _resolveReactElementBadRef(reactElement: ObjectValue, evaluatedNode: ReactEvaluatedNode): ObjectValue {
+  _resolveReactElementBadRef(
+    componentType: Value,
+    reactElement: ObjectValue,
+    context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnum,
+    evaluatedNode: ReactEvaluatedNode
+  ): ObjectValue {
     let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
 
@@ -944,15 +987,17 @@ export class Reconciler {
     evaluatedChildNode.message = bailOutMessage;
 
     this._queueNewComponentTree(typeValue, evaluatedChildNode);
-    this._findReactComponentTrees(propsValue, evaluatedNode, "NORMAL_FUNCTIONS");
+    this._findReactComponentTrees(propsValue, evaluatedNode, "NORMAL_FUNCTIONS", componentType, context, branchStatus);
     this._assignBailOutMessage(reactElement, bailOutMessage);
     return reactElement;
   }
 
   _resolveReactElementUndefinedRender(
+    componentType: Value,
     reactElement: ObjectValue,
-    evaluatedNode: ReactEvaluatedNode,
-    branchStatus: BranchStatusEnum
+    context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnu,
+    evaluatedNode: ReactEvaluatedNode
   ): ObjectValue {
     let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
@@ -963,7 +1008,7 @@ export class Reconciler {
     evaluatedChildNode.message = bailOutMessage;
 
     this._assignBailOutMessage(reactElement, bailOutMessage);
-    this._findReactComponentTrees(propsValue, evaluatedNode, "NORMAL_FUNCTIONS", branchStatus);
+    this._findReactComponentTrees(propsValue, evaluatedNode, "NORMAL_FUNCTIONS", componentType, context, branchStatus);
     return reactElement;
   }
 
@@ -1091,7 +1136,7 @@ export class Reconciler {
       // point, so if we're here, then the FatalError has been recovered explicitly
       !(refValue instanceof AbstractValue)
     ) {
-      this._resolveReactElementBadRef(reactElement, evaluatedNode);
+      this._resolveReactElementBadRef(componentType, reactElement, context, branchStatus, evaluatedNode);
     }
 
     try {
@@ -1102,7 +1147,7 @@ export class Reconciler {
           if (
             !(typeValue instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(this.realm, typeValue))
           ) {
-            return this._resolveUnknownComponentType(reactElement, branchStatus, evaluatedNode);
+            return this._resolveUnknownComponentType(componentType, reactElement, context, branchStatus, evaluatedNode);
           }
           let evaluatedChildNode = createReactEvaluatedNode("INLINED", getComponentName(this.realm, typeValue));
           let render = this._resolveComponent(
@@ -1168,7 +1213,13 @@ export class Reconciler {
       }
 
       if (result instanceof UndefinedValue) {
-        return this._resolveReactElementUndefinedRender(reactElement, evaluatedNode, branchStatus);
+        return this._resolveReactElementUndefinedRender(
+          componentType,
+          reactElement,
+          context,
+          branchStatus,
+          evaluatedNode
+        );
       }
 
       // If we have a new result and we might have a key value then wrap our inlined result in a
@@ -1179,7 +1230,14 @@ export class Reconciler {
 
       return result;
     } catch (error) {
-      return this._resolveComponentResolutionFailure(error, reactElement, evaluatedNode, branchStatus);
+      return this._resolveComponentResolutionFailure(
+        componentType,
+        error,
+        reactElement,
+        context,
+        evaluatedNode,
+        branchStatus
+      );
     }
   }
 
@@ -1224,8 +1282,10 @@ export class Reconciler {
   }
 
   _resolveComponentResolutionFailure(
+    componentType: Value,
     error: Error | Completion,
     reactElement: ObjectValue,
+    context: ObjectValue | AbstractObjectValue,
     evaluatedNode: ReactEvaluatedNode,
     branchStatus: BranchStatusEnum
   ): Value {
@@ -1256,7 +1316,14 @@ export class Reconciler {
     let propsValue = getProperty(this.realm, reactElement, "props");
     // assign a bail out message
     if (error instanceof NewComponentTreeBranch) {
-      this._findReactComponentTrees(propsValue, evaluatedNode, "NORMAL_FUNCTIONS");
+      this._findReactComponentTrees(
+        propsValue,
+        evaluatedNode,
+        "NORMAL_FUNCTIONS",
+        componentType,
+        context,
+        branchStatus
+      );
       evaluatedNode.children.push(error.evaluatedNode);
       // NO-OP (we don't queue a newComponentTree as this was already done)
     } else {
@@ -1266,7 +1333,14 @@ export class Reconciler {
       }
       evaluatedNode.children.push(evaluatedChildNode);
       this._queueNewComponentTree(typeValue, evaluatedChildNode);
-      this._findReactComponentTrees(propsValue, evaluatedNode, "NORMAL_FUNCTIONS", branchStatus);
+      this._findReactComponentTrees(
+        propsValue,
+        evaluatedNode,
+        "NORMAL_FUNCTIONS",
+        componentType,
+        context,
+        branchStatus
+      );
       if (error instanceof ExpectedBailOut) {
         evaluatedChildNode.message = error.message;
         this._assignBailOutMessage(reactElement, error.message);
