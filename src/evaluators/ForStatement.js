@@ -433,8 +433,7 @@ function generateRuntimeForStatement(
       "PP0037",
       "FatalError"
     );
-    if (realm.handleError(diagnostic) !== "Recover")
-      throw new FatalError();
+    if (realm.handleError(diagnostic) !== "Recover") throw new FatalError();
   }
   let args = [wrapperFunction];
 
