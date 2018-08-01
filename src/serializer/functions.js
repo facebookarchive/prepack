@@ -168,6 +168,30 @@ export class Functions {
     applyOptimizedReactComponents(this.realm, this.writeEffects, environmentRecordIdAfterGlobalCode);
   }
 
+  getDeclaringOptimizedFunction(functionValue: ECMAScriptSourceFunctionValue) {
+    for (let [optimizedFunctionValue, additionalEffects] of this.writeEffects) {
+      // CreatedObjects is all objects created by this optimized function but not
+      // nested optimized functions.
+      let createdObjects = additionalEffects.effects.createdObjects;
+      if (createdObjects.has(functionValue)) return optimizedFunctionValue;
+    }
+  }
+
+  processCollectedNestedOptimizedFunctions(environmentRecordIdAfterGlobalCode: number): void {
+    for (let [functionValue, effects] of this.realm.collectedNestedOptimizedFunctionEffects) {
+      let additionalFunctionEffects = createAdditionalEffects(
+        this.realm,
+        effects,
+        true,
+        "AdditionalFunctionEffects",
+        environmentRecordIdAfterGlobalCode,
+        this.getDeclaringOptimizedFunction(functionValue)
+      );
+      invariant(additionalFunctionEffects !== null);
+      this.writeEffects.set(functionValue, additionalFunctionEffects);
+    }
+  }
+
   checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode: number): void {
     let additionalFunctionsToProcess = this.__generateInitialAdditionalFunctions("__optimizedFunctions");
     // When we find declarations of nested optimized functions, we need to apply the parent
@@ -183,15 +207,6 @@ export class Functions {
     // If there's an additional function that delcared functionValue, it must be
     // have already been evaluated for the __optimize call to have happened, so
     // this should always return either the defining additional function or void
-    let getDeclaringAdditionalFunction = functionValue => {
-      for (let [additionalFunctionValue, additionalEffects] of this.writeEffects) {
-        // CreatedObjects is all objects created by this additional function but not
-        // nested additional functions.
-        let createdObjects = additionalEffects.effects.createdObjects;
-        if (createdObjects.has(functionValue)) return additionalFunctionValue;
-      }
-    };
-
     let optimizedFunctionId = 0;
     let getEffectsFromAdditionalFunctionAndNestedFunctions = (functionValue, argModelString) => {
       let currentOptimizedFunctionId = optimizedFunctionId++;
@@ -216,7 +231,7 @@ export class Functions {
         true,
         "AdditionalFunctionEffects",
         environmentRecordIdAfterGlobalCode,
-        getDeclaringAdditionalFunction(functionValue)
+        this.getDeclaringOptimizedFunction(functionValue)
       );
       invariant(additionalFunctionEffects);
       effects = additionalFunctionEffects.effects;
