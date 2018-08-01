@@ -74,7 +74,7 @@ function AbstractCaseBlockEvaluation(
             "FatalError"
           );
           if (realm.handleError(diagnostic) === "Recover") {
-            throw r;
+            throw r; // Allows tests to pass
           } else {
             throw new FatalError();
           }
@@ -99,7 +99,7 @@ function AbstractCaseBlockEvaluation(
         "FatalError"
       );
       if (realm.handleError(diagnostic) === "Recover") {
-        throw result;
+        throw result; // Allows tests to pass
       } else {
         throw new FatalError();
       }
