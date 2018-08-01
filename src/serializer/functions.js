@@ -306,8 +306,7 @@ export class Functions {
       invariant(additionalFunctionStack.pop() === functionValue);
     };
 
-    while (additionalFunctionsToProcess.length > 0) {
-      let funcObject = additionalFunctionsToProcess.shift();
+    for (let funcObject of additionalFunctionsToProcess) {
       this._withEmptyOptimizedFunctionList(funcObject, recordWriteEffectsForOptimizedFunctionAndNestedFunctions);
     }
     invariant(additionalFunctionStack.length === 0);
