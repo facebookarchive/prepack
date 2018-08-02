@@ -1,5 +1,6 @@
 let x = global.__abstract ? __abstract("number", "5") : 5;
 
+// throws introspection error
 function f() {
   let counter = 0;
   for (let i = 0; i < 5; i++) {
@@ -23,7 +24,7 @@ function f() {
 
 global.__optimize && __optimize(f);
 
-// expected FatalError: PP0037
+// throws introspection error
 function g(max) {
   let counter = 0;
   for (let i = 0; i < max; i++) {

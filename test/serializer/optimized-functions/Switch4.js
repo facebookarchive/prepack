@@ -1,7 +1,6 @@
 let x = global.__abstract ? __abstract("number", "1") : 1;
 
-// expected Warning: PP0023, PP1007
-// expected FatalError: PP0027
+// throws introspection error
 function f(x) {
   switch (x) {
     case 0:
