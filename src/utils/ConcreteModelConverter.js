@@ -34,7 +34,6 @@ import {
 } from "../values/index.js";
 import * as t from "@babel/types";
 import invariant from "../invariant.js";
-import type { FunctionBodyAstNode } from "../types.js";
 import { CompilerDiagnostic } from "../errors.js";
 import { EnumerableOwnProperties, Get } from "../methods/index.js";
 import { Create } from "../singletons.js";
@@ -46,9 +45,7 @@ function reportCompileError(realm: Realm, message: string, loc: ?BabelNodeSource
 
 function createEmptyFunction(realm: Realm) {
   const concreteFunction = new ECMAScriptSourceFunctionValue(realm);
-  concreteFunction.$ECMAScriptCode = t.blockStatement([]);
-  concreteFunction.$FormalParameters = [];
-  ((concreteFunction.$ECMAScriptCode: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
+  concreteFunction.initialize([], t.blockStatement([]));
   return concreteFunction;
 }
 
