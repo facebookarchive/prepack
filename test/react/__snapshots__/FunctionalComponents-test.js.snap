@@ -9626,7 +9626,7 @@ ReactStatistics {
 
 exports[`Simple 5: (JSX => JSX) 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -9641,22 +9641,16 @@ ReactStatistics {
       "name": "App",
       "status": "ROOT",
     },
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "Child",
-      "status": "ROOT",
-    },
   ],
   "inlinedComponents": 0,
   "optimizedNestedClosures": 0,
-  "optimizedTrees": 3,
+  "optimizedTrees": 2,
 }
 `;
 
 exports[`Simple 5: (JSX => createElement) 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -9671,22 +9665,16 @@ ReactStatistics {
       "name": "App",
       "status": "ROOT",
     },
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "Child",
-      "status": "ROOT",
-    },
   ],
   "inlinedComponents": 0,
   "optimizedNestedClosures": 0,
-  "optimizedTrees": 3,
+  "optimizedTrees": 2,
 }
 `;
 
 exports[`Simple 5: (createElement => JSX) 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -9701,22 +9689,16 @@ ReactStatistics {
       "name": "App",
       "status": "ROOT",
     },
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "Child",
-      "status": "ROOT",
-    },
   ],
   "inlinedComponents": 0,
   "optimizedNestedClosures": 0,
-  "optimizedTrees": 3,
+  "optimizedTrees": 2,
 }
 `;
 
 exports[`Simple 5: (createElement => createElement) 1`] = `
 ReactStatistics {
-  "componentsEvaluated": 4,
+  "componentsEvaluated": 3,
   "evaluatedRootNodes": Array [
     Object {
       "children": Array [
@@ -9731,16 +9713,10 @@ ReactStatistics {
       "name": "App",
       "status": "ROOT",
     },
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "Child",
-      "status": "ROOT",
-    },
   ],
   "inlinedComponents": 0,
   "optimizedNestedClosures": 0,
-  "optimizedTrees": 3,
+  "optimizedTrees": 2,
 }
 `;
 
