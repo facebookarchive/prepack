@@ -153,7 +153,8 @@ export default function(realm: Realm): void {
             realm.currentLocation,
             "PP0033",
             "Warning"
-          ));
+          )
+        );
         if (result !== "Recover") throw new FatalError();
         else return;
       }
