@@ -351,10 +351,6 @@ export default class ObjectValue extends ConcreteValue {
     return this;
   }
 
-  makeNotPartial(): void {
-    this._isPartial = this.$Realm.intrinsics.false;
-  }
-
   makePartial(): void {
     this._isPartial = this.$Realm.intrinsics.true;
   }
@@ -520,8 +516,15 @@ export default class ObjectValue extends ConcreteValue {
     });
   }
 
-  getOwnPropertyKeysArray(allowAbstractKeys: boolean = false): Array<string> {
-    if (this.isPartialObject() || this.mightBeHavocedObject() || this.unknownProperty !== undefined) {
+  getOwnPropertyKeysArray(
+    allowAbstractKeys: boolean = false,
+    getOwnPropertyKeysEvenIfPartial?: boolean = false
+  ): Array<string> {
+    if (
+      (this.isPartialObject() && !getOwnPropertyKeysEvenIfPartial) ||
+      this.mightBeHavocedObject() ||
+      this.unknownProperty !== undefined
+    ) {
       AbstractValue.reportIntrospectionError(this);
       throw new FatalError();
     }
@@ -551,9 +554,8 @@ export default class ObjectValue extends ConcreteValue {
   getSnapshot(options?: { removeProperties: boolean }): AbstractObjectValue {
     try {
       if (this.temporalAlias !== undefined) return this.temporalAlias;
-      invariant(!this.isPartialObject());
       let template = new ObjectValue(this.$Realm, this.$Realm.intrinsics.ObjectPrototype);
-      this.copyKeys(this.$OwnPropertyKeys(), this, template);
+      this.copyKeys(this.$OwnPropertyKeys(true), this, template);
       let realm = this.$Realm;
       // The snapshot is an immutable object snapshot
       template.makeFinal();
@@ -720,8 +722,8 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   // ECMA262 9.1.11
-  $OwnPropertyKeys(): Array<PropertyKeyValue> {
-    return OrdinaryOwnPropertyKeys(this.$Realm, this);
+  $OwnPropertyKeys(getOwnPropertyKeysEvenIfPartial?: boolean = false): Array<PropertyKeyValue> {
+    return OrdinaryOwnPropertyKeys(this.$Realm, this, getOwnPropertyKeysEvenIfPartial);
   }
 
   static refuseSerializationOnPropertyBinding(pb: PropertyBinding): boolean {
