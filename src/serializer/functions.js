@@ -32,7 +32,7 @@ import { createAdditionalEffects } from "./utils.js";
 import { ReactStatistics } from "./types";
 import type { AdditionalFunctionEffects, WriteEffects } from "./types";
 import { convertConfigObjectToReactComponentTreeConfig, valueIsKnownReactAbstraction } from "../react/utils.js";
-import { applyOptimizedReactComponents, optimizeReactComponentTreeRoot } from "../react/optimizing.js";
+import { optimizeReactComponentTreeRoot } from "../react/optimizing.js";
 import { handleReportedSideEffect } from "./utils.js";
 import type { ArgModel } from "../types.js";
 import { stringOfLocation } from "../utils/babelhelpers";
@@ -161,6 +161,7 @@ export class Functions {
     if (this.realm.react.verbose) {
       logger.logInformation(`Evaluating ${recordedReactRootValues.length} React component tree roots...`);
     }
+    let alreadyEvaluated = new Map();
     for (let { value: componentRoot, config } of recordedReactRootValues) {
       invariant(config);
       optimizeReactComponentTreeRoot(
@@ -170,10 +171,10 @@ export class Functions {
         this.writeEffects,
         environmentRecordIdAfterGlobalCode,
         logger,
-        statistics
+        statistics,
+        alreadyEvaluated
       );
     }
-    applyOptimizedReactComponents(this.realm, this.writeEffects, environmentRecordIdAfterGlobalCode);
   }
 
   getDeclaringOptimizedFunction(functionValue: ECMAScriptSourceFunctionValue) {
@@ -235,6 +236,7 @@ export class Functions {
       };
       let effects: Effects = realm.evaluatePure(
         () => realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
+        /*bubbles*/ true,
         (sideEffectType, binding, expressionLocation) =>
           handleReportedSideEffect(logCompilerDiagnostic, sideEffectType, binding, expressionLocation)
       );

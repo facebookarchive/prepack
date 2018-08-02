@@ -306,6 +306,7 @@ export function evaluateClassConstructor(
         /*state*/ null,
         `react component constructor: ${constructorFunc.getName()}`
       ),
+    /*bubbles*/ true,
     /*reportSideEffectFunc*/ null
   );
 
