@@ -77,7 +77,7 @@ function handleObjectAssignSnapshot(
         // Make it implicit again since it is getting delayed into an Object.assign call.
         delayedSources.push(frm.args[0]);
       } else {
-        let frmSnapshot = frm.getSnapshot({ getOwnPropertyKeysEvenIfPartial: true });
+        let frmSnapshot = frm.getSnapshot();
         frm.temporalAlias = frmSnapshot;
         frm.makePartial();
         delayedSources.push(frmSnapshot);
