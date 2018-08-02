@@ -223,24 +223,10 @@ export class Functions {
     let additionalFunctionStack = [];
     let additionalFunctions = new Set(additionalFunctionsToProcess.map(entry => entry.value));
 
-    // If there's an additional function that delcared functionValue, it must be
-    // have already been evaluated for the __optimize call to have happened, so
-    // this should always return either the defining additional function or void
-    let getDeclaringAdditionalFunction = functionValue => {
-      for (let [additionalFunctionValue, additionalEffects] of this.writeEffects) {
-        // CreatedObjects is all objects created by this additional function but not
-        // nested additional functions.
-        let createdObjects = additionalEffects.effects.createdObjects;
-        if (createdObjects.has(functionValue)) return additionalFunctionValue;
-      }
-    };
-
-    let optimizedFunctionId = 0;
     let recordWriteEffectsForOptimizedFunctionAndNestedFunctions = (
       functionValue: ECMAScriptSourceFunctionValue,
       argModel: ArgModel | void
     ) => {
-      let currentOptimizedFunctionId = optimizedFunctionId++;
       additionalFunctionStack.push(functionValue);
       let call = Utils.createModelledFunctionCall(this.realm, functionValue, argModel);
       let realm = this.realm;
