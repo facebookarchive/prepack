@@ -92,7 +92,7 @@ function run(
   let check: void | Array<number>;
   let compatibility: Compatibility;
   let mathRandomSeed;
-  let inputSourceMap;
+  let inputSourceMapFilenames = [];
   let outputSourceMap;
   let statsFileName;
   let maxStackDepth: number;
@@ -166,7 +166,8 @@ function run(
           reproArguments.push("--mathRandomSeed", mathRandomSeed);
           break;
         case "srcmapIn":
-          inputSourceMap = args.shift();
+          let inputSourceMap = args.shift();
+          inputSourceMapFilenames.push(inputSourceMap);
           reproArguments.push("--srcmapIn", inputFile(inputSourceMap));
           break;
         case "srcmapOut":
@@ -344,7 +345,7 @@ function run(
     {
       compatibility,
       mathRandomSeed,
-      inputSourceMapFilename: inputSourceMap,
+      inputSourceMapFilenames,
       errorHandler,
       sourceMaps: !!outputSourceMap,
       maxStackDepth,

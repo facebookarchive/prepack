@@ -24,7 +24,7 @@ export type PrepackOptions = {|
   delayInitializations?: boolean,
   delayUnsupportedRequires?: boolean,
   accelerateUnsupportedRequires?: boolean,
-  inputSourceMapFilename?: string,
+  inputSourceMapFilenames?: Array<string>,
   internalDebug?: boolean,
   debugScopes?: boolean,
   debugIdentifiers?: Array<string>,

@@ -23,6 +23,7 @@ import { type SerializedResult } from "./serializer/types.js";
 import { SerializerStatistics } from "./serializer/statistics.js";
 
 import fs from "fs";
+import path from "path";
 
 export * from "./prepack-standalone";
 
@@ -45,7 +46,10 @@ export function prepackStdin(
   processSerializedCode: SerializedResult => void,
   printDiagnostics: boolean => boolean
 ): void | SerializedResult {
-  let sourceMapFilename = options.inputSourceMapFilename || "";
+  let sourceMapFilename =
+    options.inputSourceMapFilenames && options.inputSourceMapFilenames.length > 0
+      ? options.inputSourceMapFilenames[0]
+      : "";
   process.stdin.setEncoding("utf8");
   process.stdin.resume();
   process.stdin.on("data", function(code) {
@@ -78,14 +82,28 @@ export function prepackStdin(
   });
 }
 
+function getSourceMapFilename(filename: string, options: PrepackOptions): [string, boolean] {
+  if (options.inputSourceMapFilenames !== undefined) {
+    // The convention is that the source map has the same basename as the javascript
+    // source file, except that .map is appended. We look for a match with the
+    // supplied source file names.
+    for (let sourceMapFilename of options.inputSourceMapFilenames) {
+      if (path.basename(filename) + ".map" === path.basename(sourceMapFilename)) {
+        return [sourceMapFilename, true];
+      }
+    }
+  }
+
+  return [filename + ".map", false];
+}
 export function prepackFile(
   filename: string,
   options: PrepackOptions = defaultOptions,
   callback: (any, ?{ code: string, map?: SourceMap }) => void,
   fileErrorHandler?: (err: ?Error) => void
 ): void {
-  let sourceMapFilename =
-    options.inputSourceMapFilename !== undefined ? options.inputSourceMapFilename : filename + ".map";
+  let [sourceMapFilename] = getSourceMapFilename(filename, options);
+
   fs.readFile(filename, "utf8", function(fileErr, code) {
     if (fileErr) {
       if (fileErrorHandler) fileErrorHandler(fileErr);
@@ -117,12 +135,13 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
   const sourceFiles = filenames.map(filename => {
     let code = fs.readFileSync(filename, "utf8");
     let sourceMap = "";
-    let sourceMapFilename =
-      options.inputSourceMapFilename !== undefined ? options.inputSourceMapFilename : filename + ".map";
+    let [sourceMapFilename, matchedSourceMapFilename] = getSourceMapFilename(filename, options);
+
     try {
       sourceMap = fs.readFileSync(sourceMapFilename, "utf8");
+      if (matchedSourceMapFilename) console.info(`Matching sourcemap found at ${sourceMapFilename}.`);
     } catch (_e) {
-      if (options.inputSourceMapFilename !== undefined) console.warn(`No sourcemap found at ${sourceMapFilename}.`);
+      if (matchedSourceMapFilename) console.warn(`No sourcemap found at ${sourceMapFilename}.`);
     }
     return {
       filePath: filename,
