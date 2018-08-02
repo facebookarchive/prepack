@@ -1,3 +1,4 @@
+// expected Warning: PP1007
 // does not contain:x = 5;
 // does not contain:y = 10;
 // add at runtime: global.a = {}; global.b = {};
@@ -30,4 +31,4 @@ inspect = function() {
   additional2();
   additional1();
   return JSON.stringify(global.a) + JSON.stringify(global.b);
-}
+};

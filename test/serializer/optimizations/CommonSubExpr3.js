@@ -1,13 +1,13 @@
-var x = global.__abstract ? __abstract('number', '1') : 1;
-var y = global.__abstract ? __abstract('number', '2') : 2;
+var x = global.__abstract ? __abstract("number", "1") : 1;
+var y = global.__abstract ? __abstract("number", "2") : 2;
 
 var useFoo = true;
 
 function foo(v) {
   if (v > 2) {
-    return 'hello';
+    return "hello";
   } else {
-    return 'world';
+    return "world";
   }
 }
 
@@ -22,4 +22,6 @@ if (x > 100) {
   a = foo(y);
 }
 
-inspect = function() { return a; }
+inspect = function() {
+  return a;
+};

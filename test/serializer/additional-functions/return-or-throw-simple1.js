@@ -1,4 +1,4 @@
-var x = global.__abstract ? x = __abstract("number", "(23)") : 23;
+var x = global.__abstract ? (x = __abstract("number", "(23)")) : 23;
 
 function func1() {
   let z = 5;
@@ -12,8 +12,7 @@ function func1() {
   return x;
 }
 
-if (global.__optimize)
-  __optimize(func1);
+if (global.__optimize) __optimize(func1);
 
 inspect = function() {
   let error;
@@ -23,5 +22,5 @@ inspect = function() {
   } catch (e) {
     error = e.message;
   }
-  return 'err: ' + error + ' ret ' + ret;
-}
+  return "err: " + error + " ret " + ret;
+};

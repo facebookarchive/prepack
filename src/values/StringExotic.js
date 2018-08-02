@@ -11,10 +11,10 @@
 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor } from "../types.js";
-import { ObjectValue, NumberValue, StringValue } from "../values/index.js";
+import { ObjectValue, NumberValue, StringValue } from "./index.js";
 import { IsInteger, IsArrayIndex } from "../methods/is.js";
 import { Properties, To } from "../singletons.js";
-import invariant from "../invariant";
+import invariant from "../invariant.js";
 
 export default class StringExotic extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {

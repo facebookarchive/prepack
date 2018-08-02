@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "@babel/types";
 import { Completion, PossiblyNormalCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
@@ -21,6 +21,7 @@ import {
   AbstractValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
+  StringValue,
   ObjectValue,
   UndefinedValue,
   EmptyValue,
@@ -33,11 +34,14 @@ import { ReactStatistics } from "./types";
 import type { AdditionalFunctionEffects, WriteEffects } from "./types";
 import { convertConfigObjectToReactComponentTreeConfig, valueIsKnownReactAbstraction } from "../react/utils.js";
 import { applyOptimizedReactComponents, optimizeReactComponentTreeRoot } from "../react/optimizing.js";
-import * as t from "babel-types";
+import { handleReportedSideEffect } from "./utils.js";
+import { stringOfLocation } from "../utils/babelhelpers";
+import { Utils } from "../singletons.js";
 
 type AdditionalFunctionEntry = {
   value: ECMAScriptSourceFunctionValue | AbstractValue,
   config?: ReactComponentTreeConfig,
+  argModelString?: string,
 };
 
 export class Functions {
@@ -56,26 +60,40 @@ export class Functions {
   writeEffects: WriteEffects;
   _noopFunction: void | ECMAScriptSourceFunctionValue;
 
-  __optimizedFunctionEntryOfValue(value: Value): AdditionalFunctionEntry | void {
-    let realm = this.realm;
-
-    if (value instanceof AbstractValue) {
-      // if we conditionally called __optimize, we may have an AbstractValue that is the union of Empty or Undefined and
-      // a function/component to optimize
-      let elements = value.values.getElements();
-      if (elements) {
-        let possibleValues = [...elements].filter(
-          element => !(element instanceof EmptyValue || element instanceof UndefinedValue)
-        );
-        if (possibleValues.length === 1) {
-          value = possibleValues[0];
-        }
+  _unwrapAbstract(value: AbstractValue): Value {
+    let elements = value.values.getElements();
+    if (elements) {
+      let possibleValues = [...elements].filter(
+        element => !(element instanceof EmptyValue || element instanceof UndefinedValue)
+      );
+      if (possibleValues.length === 1) {
+        return possibleValues[0];
       }
     }
-    if (value instanceof ECMAScriptSourceFunctionValue) {
-      // additional function logic
-      return { value };
-    } else if (value instanceof ObjectValue) {
+    return value;
+  }
+
+  __optimizedFunctionEntryOfValue(value: Value): AdditionalFunctionEntry | void {
+    let realm = this.realm;
+    // if we conditionally called __optimize, we may have an AbstractValue that is the union of Empty or Undefined and
+    // a function/component to optimize
+    if (value instanceof AbstractValue) {
+      value = this._unwrapAbstract(value);
+    }
+    invariant(value instanceof ObjectValue);
+    let funcValue = Get(realm, value, "funcValue");
+    if (funcValue !== realm.intrinsics.undefined) {
+      // unwrap from this side
+      if (funcValue instanceof AbstractValue) {
+        funcValue = this._unwrapAbstract(funcValue);
+      }
+      // regular case with __optimized with type information
+      invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
+      let argModelString = Get(realm, value, "argModelString");
+      return argModelString instanceof StringValue
+        ? { value: funcValue, argModelString: argModelString.value }
+        : { value: funcValue };
+    } else {
       // React component tree logic
       let config = Get(realm, value, "config");
       let rootComponent = Get(realm, value, "rootComponent");
@@ -107,7 +125,7 @@ export class Functions {
     throw new FatalError("Optimized Function Values must be functions or react elements");
   }
 
-  __generateInitialAdditionalFunctions(globalKey: string) {
+  __generateInitialAdditionalFunctions(globalKey: string): Array<AdditionalFunctionEntry> {
     let recordedAdditionalFunctions: Array<AdditionalFunctionEntry> = [];
     let realm = this.realm;
     let globalRecordedAdditionalFunctionsMap = this.moduleTracer.modules.logger.tryQuery(
@@ -150,43 +168,31 @@ export class Functions {
     applyOptimizedReactComponents(this.realm, this.writeEffects, environmentRecordIdAfterGlobalCode);
   }
 
-  _callOfFunction(funcValue: FunctionValue): void => Value {
-    let call = funcValue.$Call;
-    invariant(call);
-    let numArgs = funcValue.getLength();
-    let args = [];
-    invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
-    let params = funcValue.$FormalParameters;
-    if (numArgs && numArgs > 0 && params) {
-      for (let parameterId of params) {
-        if (t.isIdentifier(parameterId)) {
-          // Create an AbstractValue similar to __abstract being called
-          args.push(
-            AbstractValue.createAbstractArgument(
-              this.realm,
-              ((parameterId: any): BabelNodeIdentifier).name,
-              funcValue.expressionLocation
-            )
-          );
-        } else {
-          this.realm.handleError(
-            new CompilerDiagnostic(
-              "Non-identifier args to additional functions unsupported",
-              funcValue.expressionLocation,
-              "PP1005",
-              "FatalError"
-            )
-          );
-          throw new FatalError("Non-identifier args to additional functions unsupported");
-        }
-      }
+  getDeclaringOptimizedFunction(functionValue: ECMAScriptSourceFunctionValue) {
+    for (let [optimizedFunctionValue, additionalEffects] of this.writeEffects) {
+      // CreatedObjects is all objects created by this optimized function but not
+      // nested optimized functions.
+      let createdObjects = additionalEffects.effects.createdObjects;
+      if (createdObjects.has(functionValue)) return optimizedFunctionValue;
     }
-
-    let thisArg = AbstractValue.createAbstractArgument(this.realm, "this", funcValue.expressionLocation, ObjectValue);
-    return call.bind(this, thisArg, args);
   }
 
-  checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode: number) {
+  processCollectedNestedOptimizedFunctions(environmentRecordIdAfterGlobalCode: number): void {
+    for (let [functionValue, effects] of this.realm.collectedNestedOptimizedFunctionEffects) {
+      let additionalFunctionEffects = createAdditionalEffects(
+        this.realm,
+        effects,
+        true,
+        "AdditionalFunctionEffects",
+        environmentRecordIdAfterGlobalCode,
+        this.getDeclaringOptimizedFunction(functionValue)
+      );
+      invariant(additionalFunctionEffects !== null);
+      this.writeEffects.set(functionValue, additionalFunctionEffects);
+    }
+  }
+
+  checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode: number): void {
     let additionalFunctionsToProcess = this.__generateInitialAdditionalFunctions("__optimizedFunctions");
     // When we find declarations of nested optimized functions, we need to apply the parent
     // effects.
@@ -201,25 +207,22 @@ export class Functions {
     // If there's an additional function that delcared functionValue, it must be
     // have already been evaluated for the __optimize call to have happened, so
     // this should always return either the defining additional function or void
-    let getDeclaringAdditionalFunction = functionValue => {
-      for (let [additionalFunctionValue, additionalEffects] of this.writeEffects) {
-        // CreatedObjects is all objects created by this additional function but not
-        // nested additional functions.
-        let createdObjects = additionalEffects.effects.createdObjects;
-        if (createdObjects.has(functionValue)) return additionalFunctionValue;
-      }
-    };
-
     let optimizedFunctionId = 0;
-    let getEffectsFromAdditionalFunctionAndNestedFunctions = functionValue => {
+    let getEffectsFromAdditionalFunctionAndNestedFunctions = (functionValue, argModelString) => {
       let currentOptimizedFunctionId = optimizedFunctionId++;
       additionalFunctionStack.push(functionValue);
       invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+      let logCompilerDiagnostic = (msg: string) => {
+        let error = new CompilerDiagnostic(msg, undefined, "PP1007", "Warning");
+        realm.handleError(error);
+      };
       for (let t1 of this.realm.tracers) t1.beginOptimizingFunction(currentOptimizedFunctionId, functionValue);
-      let call = this._callOfFunction(functionValue);
-      let effects: Effects = this.realm.evaluatePure(
-        () => this.realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
-        /*reportSideEffectFunc*/ null
+      let call = Utils.createModelledFunctionCall(this.realm, functionValue, argModelString);
+      let realm = this.realm;
+      let effects: Effects = realm.evaluatePure(
+        () => realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
+        (sideEffectType, binding, expressionLocation) =>
+          handleReportedSideEffect(logCompilerDiagnostic, sideEffectType, binding, expressionLocation)
       );
       invariant(effects);
       let additionalFunctionEffects = createAdditionalEffects(
@@ -228,7 +231,7 @@ export class Functions {
         true,
         "AdditionalFunctionEffects",
         environmentRecordIdAfterGlobalCode,
-        getDeclaringAdditionalFunction(functionValue)
+        this.getDeclaringOptimizedFunction(functionValue)
       );
       invariant(additionalFunctionEffects);
       effects = additionalFunctionEffects.effects;
@@ -247,7 +250,7 @@ export class Functions {
             let newEntry = this.__optimizedFunctionEntryOfValue(newValue);
             if (newEntry) {
               additionalFunctions.add(newEntry.value);
-              getEffectsFromAdditionalFunctionAndNestedFunctions(newEntry.value);
+              getEffectsFromAdditionalFunctionAndNestedFunctions(newEntry.value, newEntry.argModelString);
               // Now we have to rember the stack of effects that need to be applied to deal with
               // this additional function.
             }
@@ -260,8 +263,8 @@ export class Functions {
     };
 
     while (additionalFunctionsToProcess.length > 0) {
-      let funcValue = additionalFunctionsToProcess.shift().value;
-      getEffectsFromAdditionalFunctionAndNestedFunctions(funcValue);
+      let funcObject = additionalFunctionsToProcess.shift();
+      getEffectsFromAdditionalFunctionAndNestedFunctions(funcObject.value, funcObject.argModelString);
     }
     invariant(additionalFunctionStack.length === 0);
 
@@ -269,7 +272,11 @@ export class Functions {
     let conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
     for (let fun1 of additionalFunctions) {
       invariant(fun1 instanceof FunctionValue);
-      let fun1Name = this.functionExpressions.get(fun1) || fun1.intrinsicName || "(unknown function)";
+      let fun1Location = fun1.expressionLocation;
+      let fun1Name =
+        this.functionExpressions.get(fun1) ||
+        fun1.getDebugName() ||
+        `(unknown function ${fun1Location ? stringOfLocation(fun1Location) : ""})`;
       // Also do argument validation here
       let additionalFunctionEffects = this.writeEffects.get(fun1);
       invariant(additionalFunctionEffects !== undefined);
@@ -288,8 +295,19 @@ export class Functions {
       for (let fun2 of additionalFunctions) {
         if (fun1 === fun2) continue;
         invariant(fun2 instanceof FunctionValue);
+        let fun2Location = fun2.expressionLocation;
+        let fun2Name =
+          this.functionExpressions.get(fun2) ||
+          fun2.getDebugName() ||
+          `(unknown function ${fun2Location ? stringOfLocation(fun2Location) : ""})`;
         let reportFn = () => {
-          this.reportWriteConflicts(fun1Name, conflicts, e1.modifiedProperties, this._callOfFunction(fun2));
+          this.reportWriteConflicts(
+            fun1Name,
+            fun2Name,
+            conflicts,
+            e1.modifiedProperties,
+            Utils.createModelledFunctionCall(this.realm, fun2)
+          );
           return null;
         };
         let fun2Effects = this.writeEffects.get(fun2);
@@ -314,14 +332,26 @@ export class Functions {
   }
 
   reportWriteConflicts(
-    fname: string,
+    f1name: string,
+    f2name: string,
     conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic>,
     pbs: PropertyBindings,
     call2: void => Value
-  ) {
-    let reportConflict = (location: BabelNodeSourceLocation) => {
+  ): void {
+    let reportConflict = (
+      location: BabelNodeSourceLocation,
+      object: string = "",
+      key?: string,
+      originalLocation: BabelNodeSourceLocation | void | null
+    ) => {
+      let firstLocationString = originalLocation ? `${stringOfLocation(originalLocation)}` : "";
+      let propString = key ? ` "${key}"` : "";
+      let objectString = object ? ` on object "${object}" ` : "";
+      if (!objectString && key) objectString = " on <unnamed object> ";
       let error = new CompilerDiagnostic(
-        `Property access conflicts with write in optimized function ${fname}`,
+        `Write to property${propString}${objectString}at optimized function ${f1name}[${firstLocationString}] conflicts with access in function ${f2name}[${
+          location.start.line
+        }:${location.start.column}]`,
         location,
         "PP1003",
         "FatalError"
@@ -336,14 +366,22 @@ export class Functions {
     this.realm.reportObjectGetOwnProperties = (ob: ObjectValue) => {
       let location = this.realm.currentLocation;
       invariant(location);
-      if (writtenObjects.has(ob) && !conflicts.has(location)) reportConflict(location);
+      if (writtenObjects.has(ob) && !conflicts.has(location))
+        reportConflict(location, ob.getDebugName(), undefined, ob.expressionLocation);
     };
     let oldReportPropertyAccess = this.realm.reportPropertyAccess;
     this.realm.reportPropertyAccess = (pb: PropertyBinding) => {
-      if (pb.object.refuseSerialization) return;
+      if (ObjectValue.refuseSerializationOnPropertyBinding(pb)) return;
       let location = this.realm.currentLocation;
       if (!location) return; // happens only when accessing an additional function property
-      if (pbs.has(pb) && !conflicts.has(location)) reportConflict(location);
+      if (pbs.has(pb) && !conflicts.has(location)) {
+        let originalLocation =
+          pb.descriptor && pb.descriptor.value && !Array.isArray(pb.descriptor.value)
+            ? pb.descriptor.value.expressionLocation
+            : undefined;
+        let keyString = pb.key instanceof Value ? pb.key.toDisplayString() : pb.key;
+        reportConflict(location, pb.object ? pb.object.getDebugName() : undefined, keyString, originalLocation);
+      }
     };
     try {
       ignoreErrorsIn(this.realm, () => this.realm.evaluateForEffectsInGlobalEnv(call2));

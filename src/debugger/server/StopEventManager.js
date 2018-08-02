@@ -12,7 +12,7 @@
 import invariant from "./../common/invariant.js";
 import { Breakpoint } from "./Breakpoint.js";
 import { Stepper, StepIntoStepper, StepOverStepper, StepOutStepper } from "./Stepper.js";
-import { BabelNode } from "babel-types";
+import { BabelNode } from "@babel/types";
 import type { StoppedReason } from "./../common/types.js";
 
 export type StoppableObject = Breakpoint | Stepper;

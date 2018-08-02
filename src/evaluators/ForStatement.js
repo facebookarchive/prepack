@@ -29,17 +29,18 @@ import {
   SimpleNormalCompletion,
   ThrowCompletion,
 } from "../completions.js";
-import traverse from "babel-traverse";
-import type { BabelTraversePath } from "babel-traverse";
+import traverse from "@babel/traverse";
+import type { BabelTraversePath } from "@babel/traverse";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { UpdateEmpty } from "../methods/index.js";
 import { LoopContinues, InternalGetResultValue, TryToApplyEffectsOfJoiningBranches } from "./ForOfStatement.js";
 import { Environment, Functions, Havoc, Join, To } from "../singletons.js";
 import invariant from "../invariant.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import type { FunctionBodyAstNode } from "../types.js";
-import type { BabelNodeExpression, BabelNodeForStatement, BabelNodeBlockStatement } from "babel-types";
+import type { BabelNodeExpression, BabelNodeForStatement, BabelNodeBlockStatement } from "@babel/types";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 type BailOutWrapperInfo = {
   usesArguments: boolean,
@@ -99,6 +100,7 @@ function ForBodyEvaluation(
   // 2. Perform ? CreatePerIterationEnvironment(perIterationBindings).
   CreatePerIterationEnvironment(realm, perIterationBindings);
   let env = realm.getRunningContext().lexicalEnvironment;
+  let possibleInfiniteLoopIterations = 0;
 
   // 3. Repeat
   while (true) {
@@ -159,9 +161,38 @@ function ForBodyEvaluation(
 
       // ii. Perform ? GetValue(incRef).
       Environment.GetValue(realm, incRef);
+    } else if (realm.useAbstractInterpretation) {
+      // If we have no increment and we've hit 100 iterations of trying to evaluate
+      // this loop body, then see if we have a break, return or throw completion in a
+      // guarded condition and fail if it does. We already have logic to guard
+      // against loops that are actually infinite. However, because there may be so
+      // many forked execution paths, and they're non linear, then it might
+      // computationally lead to a something that seems like an infinite loop.
+      possibleInfiniteLoopIterations++;
+      if (possibleInfiniteLoopIterations > 100) {
+        failIfContainsBreakOrReturnOrThrowCompletion(realm.savedCompletion);
+      }
     }
   }
   invariant(false);
+
+  function failIfContainsBreakOrReturnOrThrowCompletion(c: void | Completion | Value) {
+    if (c === undefined) return;
+    if (c instanceof ThrowCompletion || c instanceof BreakCompletion || c instanceof ReturnCompletion) {
+      let diagnostic = new CompilerDiagnostic(
+        "break, throw or return cannot be guarded by abstract condition",
+        c.location,
+        "PP0035",
+        "FatalError"
+      );
+      realm.handleError(diagnostic);
+      throw new FatalError();
+    }
+    if (c instanceof PossiblyNormalCompletion || c instanceof ForkedAbruptCompletion) {
+      failIfContainsBreakOrReturnOrThrowCompletion(c.consequent);
+      failIfContainsBreakOrReturnOrThrowCompletion(c.alternate);
+    }
+  }
 
   function failIfContainsBreakOrContinueCompletionWithNonLocalTarget(c: void | Completion | Value) {
     if (c === undefined) return;
@@ -211,7 +242,7 @@ function ForBodyEvaluation(
     // Incorporate the savedCompletion (we should only get called if there is one).
     invariant(realm.savedCompletion !== undefined);
     if (valueOrCompletionAtLoopContinuePoint instanceof Value)
-      valueOrCompletionAtLoopContinuePoint = new ContinueCompletion(valueOrCompletionAtLoopContinuePoint);
+      valueOrCompletionAtLoopContinuePoint = new ContinueCompletion(valueOrCompletionAtLoopContinuePoint, undefined);
     let abruptCompletion = Functions.incorporateSavedCompletion(realm, valueOrCompletionAtLoopContinuePoint);
     invariant(abruptCompletion instanceof AbruptCompletion);
 
@@ -251,7 +282,7 @@ function ForBodyEvaluation(
 
     // Incorporate the savedCompletion if there is one.
     if (valueOrCompletionAtUnconditionalExit instanceof Value)
-      valueOrCompletionAtUnconditionalExit = new BreakCompletion(valueOrCompletionAtUnconditionalExit);
+      valueOrCompletionAtUnconditionalExit = new BreakCompletion(valueOrCompletionAtUnconditionalExit, undefined);
     let abruptCompletion = Functions.incorporateSavedCompletion(realm, valueOrCompletionAtUnconditionalExit);
     invariant(abruptCompletion instanceof AbruptCompletion);
 
@@ -322,6 +353,11 @@ let BailOutWrapperClosureRefVisitor = {
       let { id, init } = node.declarations[index];
 
       if (t.isIdentifier(id)) {
+        // If init is undefined, then we need to ensure we provide
+        // an actual Babel undefined node for it.
+        if (init === null) {
+          init = t.identifier("undefined");
+        }
         return t.assignmentExpression("=", id, init);
       } else {
         // We do not currently support ObjectPattern, SpreadPattern and ArrayPattern
@@ -387,7 +423,7 @@ function generateRuntimeForStatement(
     null,
     functionInfo
   );
-  traverse.clearCache();
+  traverse.cache.clear();
   let { usesReturn, usesThrow, usesArguments, usesGotoToLabel, varPatternUnsupported, usesThis } = functionInfo;
 
   if (usesReturn || usesThrow || usesArguments || usesGotoToLabel || varPatternUnsupported) {
@@ -420,10 +456,7 @@ function generateRuntimeForStatement(
     realm,
     Value,
     args,
-    ([func, thisExpr]) =>
-      usesThis
-        ? t.callExpression(t.memberExpression(func, t.identifier("call")), [thisExpr])
-        : t.callExpression(func, [])
+    createOperationDescriptor("FOR_STATEMENT_FUNC", { usesThis })
   );
   invariant(wrapperValue instanceof AbstractValue);
   return wrapperValue;

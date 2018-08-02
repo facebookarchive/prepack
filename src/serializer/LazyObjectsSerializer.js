@@ -11,14 +11,14 @@
 
 import { Realm } from "../realm.js";
 import { AbstractValue, FunctionValue, Value, ObjectValue } from "../values/index.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import type {
   BabelNodeExpression,
   BabelNodeStatement,
   BabelNodeIdentifier,
   BabelNodeBlockStatement,
   BabelNodeSwitchCase,
-} from "babel-types";
+} from "@babel/types";
 import type {
   SerializedBody,
   FunctionInfo,
@@ -70,6 +70,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
     additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
     declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
+    globalBindings: Map<string, ResidualFunctionBinding>,
     referentializer: Referentializer,
     generatorDAG: GeneratorDAG,
     conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>,
@@ -90,6 +91,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
       additionalFunctionValuesAndEffects,
       additionalFunctionValueInfos,
       declarativeEnvironmentRecordsBindings,
+      globalBindings,
       referentializer,
       generatorDAG,
       conditionalFeasibility,
@@ -192,7 +194,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
    * The offspring checking is needed because object may be emitting in a "ConditionalAssignmentBranch" of
    * lazy object's initializer body.
    */
-  _isEmittingIntoLazyObjectInitializerBody(obj: ObjectValue) {
+  _isEmittingIntoLazyObjectInitializerBody(obj: ObjectValue): boolean {
     const objLazyBody = this._lazyObjectInitializers.get(obj);
     return objLazyBody !== undefined && this.emitter.isCurrentBodyOffspringOf(objLazyBody);
   }

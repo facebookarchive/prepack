@@ -15,9 +15,9 @@ import type { Realm } from "../realm.js";
 import { ThrowCompletion } from "../completions.js";
 import { StringValue } from "../values/index.js";
 import { Construct } from "../methods/construct.js";
-import traverseFast from "../utils/traverse-fast.js";
-import { parse } from "babylon";
-import type { BabelNodeFile } from "babel-types";
+import traverseFast from "./traverse-fast.js";
+import { parse } from "@babel/parser";
+import type { BabelNodeFile } from "@babel/types";
 
 export default function(
   realm: Realm,
@@ -67,7 +67,7 @@ export default function(
         loc: e.loc,
         stackDecorated: false,
       };
-      throw new ThrowCompletion(error, e.loc);
+      throw new ThrowCompletion(error, undefined, e.loc);
     } else {
       throw e;
     }

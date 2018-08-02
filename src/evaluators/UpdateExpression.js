@@ -15,11 +15,11 @@ import type { Value } from "../values/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Add } from "../methods/index.js";
 import { AbstractValue, NumberValue, IntegralValue } from "../values/index.js";
-import type { BabelNodeUpdateExpression } from "babel-types";
+import type { BabelNodeUpdateExpression } from "@babel/types";
 import { Environment, Havoc, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
-import * as t from "babel-types";
 import { ValuesDomain, TypesDomain } from "../domains/index.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 export default function(
   ast: BabelNodeUpdateExpression,
@@ -46,8 +46,11 @@ export default function(
         Havoc.value(realm, oldExpr);
         newAbstractValue = realm.evaluateWithPossibleThrowCompletion(
           () =>
-            AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, [oldExpr], ([oldValNode]) =>
-              t.binaryExpression(op, oldValNode, t.numericLiteral(1))
+            AbstractValue.createTemporalFromBuildFunction(
+              realm,
+              NumberValue,
+              [oldExpr],
+              createOperationDescriptor("UPDATE_INCREMENTOR", { op })
             ),
           TypesDomain.topVal,
           ValuesDomain.topVal

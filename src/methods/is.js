@@ -30,7 +30,7 @@ import { To } from "../singletons.js";
 import { Value } from "../values/index.js";
 import invariant from "../invariant.js";
 import { HasName, HasCompatibleType } from "./has.js";
-import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeLVal, BabelNodeClassMethod } from "babel-types";
+import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeLVal, BabelNodeClassMethod } from "@babel/types";
 
 // ECMA262 22.1.3.1.1
 export function IsConcatSpreadable(realm: Realm, _O: Value): boolean {
@@ -107,6 +107,16 @@ export function IsCallable(realm: Realm, _func: Value): boolean {
   if (!func.mightBeObject()) return false;
   if (HasCompatibleType(func, FunctionValue)) return true;
   if (func.isSimpleObject()) return false;
+
+  if (func instanceof AbstractObjectValue && !func.values.isTop()) {
+    let result;
+    for (let element of func.values.getElements()) {
+      let isCallable = IsCallable(realm, element);
+      if (result === undefined) result = isCallable;
+      else if (result !== isCallable) func.throwIfNotConcreteObject();
+    }
+    if (result !== undefined) return result;
+  }
 
   // 2. If argument has a [[Call]] internal method, return true.
   func = func.throwIfNotConcreteObject();

@@ -18,8 +18,5 @@ function fn2(arg) {
 global.__optimize && __optimize(fn);
 
 inspect = function() {
-  return JSON.stringify([
-    fn(0),
-    fn(1),
-  ]);
+  return JSON.stringify([fn(0), fn(1)]);
 };

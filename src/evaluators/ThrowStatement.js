@@ -14,7 +14,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { ThrowCompletion } from "../completions.js";
 import { Environment } from "../singletons.js";
-import type { BabelNodeThrowStatement } from "babel-types";
+import type { BabelNodeThrowStatement } from "@babel/types";
 
 export default function(
   ast: BabelNodeThrowStatement,
@@ -24,5 +24,5 @@ export default function(
 ): Value {
   let exprRef = env.evaluate(ast.argument, strictCode);
   let exprValue = Environment.GetValue(realm, exprRef);
-  throw new ThrowCompletion(exprValue, ast.loc);
+  throw new ThrowCompletion(exprValue, undefined, ast.loc);
 }

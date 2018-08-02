@@ -9,12 +9,12 @@
 
 /* @flow */
 
-import * as t from "babel-types";
-import generate from "babel-generator";
+import * as t from "@babel/types";
+import generate from "@babel/generator";
 import traverseFast from "../lib/utils/traverse-fast.js";
-import { parse } from "babylon";
+import { parse } from "@babel/parser";
 let fs = require("fs");
-import type { BabelNodeSourceLocation, BabelNodeBlockStatement } from "babel-types";
+import type { BabelNodeSourceLocation, BabelNodeBlockStatement } from "@babel/types";
 
 function createLogStatement(loc: BabelNodeSourceLocation) {
   return t.expressionStatement(

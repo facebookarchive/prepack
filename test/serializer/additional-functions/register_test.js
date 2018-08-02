@@ -19,4 +19,4 @@ if (global.__optimize) {
 
 inspect = function() {
   return func1() + func2();
-}
+};

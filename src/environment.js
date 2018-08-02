@@ -17,13 +17,14 @@ import type {
   BabelNodePosition,
   BabelNodeStatement,
   BabelNodeSourceLocation,
-} from "babel-types";
+} from "@babel/types";
 import type { Realm } from "./realm.js";
 import type { SourceFile, SourceMap, SourceType } from "./types.js";
+import * as t from "@babel/types";
 
 import { AbruptCompletion, Completion, ThrowCompletion } from "./completions.js";
 import { CompilerDiagnostic, FatalError } from "./errors.js";
-import { defaultOptions } from "./options";
+import { defaultOptions } from "./options.js";
 import type { PartialEvaluatorOptions } from "./options";
 import { ExecutionContext } from "./realm.js";
 import {
@@ -40,15 +41,15 @@ import {
   UndefinedValue,
   Value,
 } from "./values/index.js";
-import generate from "babel-generator";
+import generate from "@babel/generator";
 import parse from "./utils/parse.js";
 import invariant from "./invariant.js";
 import traverseFast from "./utils/traverse-fast.js";
 import { HasProperty, Get, IsExtensible, HasOwnProperty, IsDataDescriptor } from "./methods/index.js";
 import { Environment, Havoc, Properties, To } from "./singletons.js";
-import * as t from "babel-types";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
-import PrimitiveValue from "./values/PrimitiveValue";
+import PrimitiveValue from "./values/PrimitiveValue.js";
+import { createOperationDescriptor } from "./utils/generator.js";
 
 const sourceMap = require("source-map");
 
@@ -56,7 +57,7 @@ function deriveGetBinding(realm: Realm, binding: Binding) {
   let types = TypesDomain.topVal;
   let values = ValuesDomain.topVal;
   invariant(realm.generator !== undefined);
-  return realm.generator.deriveAbstract(types, values, [], (_, context) => context.serializeBinding(binding));
+  return realm.generator.deriveAbstract(types, values, [], createOperationDescriptor("GET_BINDING", { binding }));
 }
 
 export function havocBinding(binding: Binding): void {
@@ -999,7 +1000,7 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
   }
 
   // ECMA262 8.1.1.4.18
-  CreateGlobalFunctionBinding(N: string, V: Value, D: boolean) {
+  CreateGlobalFunctionBinding(N: string, V: Value, D: boolean): void {
     // 1. Let envRec be the global Environment Record for which the method was invoked.
     let envRec = this;
 
@@ -1062,7 +1063,7 @@ export class LexicalEnvironment {
   parent: null | LexicalEnvironment;
   realm: Realm;
 
-  destroy() {
+  destroy(): void {
     this.destroyed = true;
     // Once the containing environment is destroyed, we can no longer add or remove entries from the environmentRecord
     // (but we can update existing values).
@@ -1071,7 +1072,7 @@ export class LexicalEnvironment {
     }
   }
 
-  assignToGlobal(globalAst: BabelNodeLVal, rvalue: Value) {
+  assignToGlobal(globalAst: BabelNodeLVal, rvalue: Value): void {
     let globalValue = this.evaluate(globalAst, false);
     Properties.PutValue(this.realm, globalValue, rvalue);
   }
@@ -1288,7 +1289,7 @@ export class LexicalEnvironment {
     return Environment.GetValue(this.realm, res);
   }
 
-  fixup_source_locations(ast: BabelNode, map: string) {
+  fixup_source_locations(ast: BabelNode, map: string): void {
     const smc = new sourceMap.SourceMapConsumer(map);
     traverseFast(ast, node => {
       let loc = node.loc;
@@ -1320,7 +1321,7 @@ export class LexicalEnvironment {
     });
   }
 
-  fixup_filenames(ast: BabelNode) {
+  fixup_filenames(ast: BabelNode): void {
     traverseFast(ast, node => {
       let loc = node.loc;
       if (!loc || !loc.source) {
@@ -1353,6 +1354,12 @@ export class LexicalEnvironment {
     if (this.realm.debuggerInstance) {
       this.realm.debuggerInstance.checkForActions(ast);
     }
+    if (this.realm.debugReproManager) {
+      if (ast.loc !== undefined && ast.loc !== null && ast.loc.source) {
+        this.realm.debugReproManager.addSourceFile(ast.loc.source);
+      }
+    }
+
     let res = this.evaluateAbstract(ast, strictCode, metadata);
     invariant(res instanceof Value || res instanceof Reference, ast.type);
     return res;

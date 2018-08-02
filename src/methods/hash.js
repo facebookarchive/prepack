@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelBinaryOperator, BabelUnaryOperator } from "babel-types";
+import type { BabelBinaryOperator, BabelUnaryOperator } from "@babel/types";
 import invariant from "../invariant.js";
 
 interface Hashable {
@@ -109,7 +109,7 @@ export class HashSet<T: Equatable & Hashable> {
     invariant(false); // otherwise Flow thinks this method can return undefined
   }
 
-  expand() {
+  expand(): void {
     let oldEntries = this._entries;
     let n = oldEntries.length;
     let m = n * 2;

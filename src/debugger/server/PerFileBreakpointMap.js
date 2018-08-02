@@ -23,7 +23,7 @@ export class PerFileBreakpointMap {
   //map of line:column to Breakpoint objects
   _breakpoints: Map<string, Breakpoint>;
 
-  addBreakpoint(line: number, column: number = 0, temporary?: boolean, enabled?: boolean) {
+  addBreakpoint(line: number, column: number = 0, temporary?: boolean, enabled?: boolean): void {
     let breakpoint = new Breakpoint(this._filePath, line, column, temporary, enabled);
     let key = this._getKey(line, column);
     this._breakpoints.set(key, breakpoint);
@@ -51,20 +51,20 @@ export class PerFileBreakpointMap {
     return undefined;
   }
 
-  removeBreakpoint(line: number, column: number = 0) {
+  removeBreakpoint(line: number, column: number = 0): void {
     let key = this._getKey(line, column);
     if (this._breakpoints.has(key)) {
       this._breakpoints.delete(key);
     }
   }
 
-  enableBreakpoint(line: number, column: number = 0) {
+  enableBreakpoint(line: number, column: number = 0): void {
     let key = this._getKey(line, column);
     let breakpoint = this._breakpoints.get(key);
     if (breakpoint) breakpoint.enabled = true;
   }
 
-  disableBreakpoint(line: number, column: number = 0) {
+  disableBreakpoint(line: number, column: number = 0): void {
     let key = this._getKey(line, column);
     let breakpoint = this._breakpoints.get(key);
     if (breakpoint) breakpoint.enabled = false;

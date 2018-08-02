@@ -1,7 +1,7 @@
 // add at runtime:global.__obj1 = { a: Math.random(), b: 10 }; global.__obj2 = { a: Math.random(), b: 10 };
 
-let obj1 = global.__abstract ? __abstract({}, 'global.__obj1') : { a: Math.random(), b: 10 };
-let obj2 = global.__abstract ? __abstract({}, 'global.__obj2') : { a: Math.random(), b: 10 };
+let obj1 = global.__abstract ? __abstract({}, "global.__obj1") : { a: Math.random(), b: 10 };
+let obj2 = global.__abstract ? __abstract({}, "global.__obj2") : { a: Math.random(), b: 10 };
 
 if (global.__makePartial) {
   __makePartial(obj1);
@@ -40,4 +40,4 @@ inspect = function() {
   result += ret1.b;
   result += ret2.b;
   return result;
-}
+};

@@ -19,7 +19,7 @@ import { Generator } from "../utils/generator.js";
 import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import traverseFast from "../utils/traverse-fast.js";
-import type { BabelNodeProgram, BabelNodeVariableDeclaration } from "babel-types";
+import type { BabelNodeProgram, BabelNodeVariableDeclaration } from "@babel/types";
 
 // ECMA262 15.1.11
 export function GlobalDeclarationInstantiation(
@@ -273,7 +273,7 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
         // Join e with the remaining completions
         let normalGenerator = e.generator;
         e.generator = new Generator(realm, "dummy", normalGenerator.pathConditions); // This generator comes after everything else.
-        let r = (e.result = new ThrowCompletion(realm.intrinsics.empty));
+        let r = new ThrowCompletion(realm.intrinsics.empty, e);
         let fc = Join.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, res, r, e);
         let allEffects = Join.extractAndJoinCompletionsOfType(ThrowCompletion, realm, fc);
         realm.applyEffects(allEffects, "all code", true);

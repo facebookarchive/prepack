@@ -30,7 +30,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let g = context;
 
     // 2. Let C be Completion{[[Type]]: return, [[Value]]: value, [[Target]]: empty}.
-    let C = new ReturnCompletion(value, realm.currentLocation);
+    let C = new ReturnCompletion(value, undefined, realm.currentLocation);
 
     // 3. Return ? GeneratorResumeAbrupt(g, C).
     return GeneratorResumeAbrupt(realm, g, C);
@@ -42,7 +42,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let g = context;
 
     // 2. Let C be Completion{[[Type]]: throw, [[Value]]: exception, [[Target]]: empty}.
-    let C = new ReturnCompletion(exception, realm.currentLocation);
+    let C = new ReturnCompletion(exception, undefined, realm.currentLocation);
 
     // 3. Return ? GeneratorResumeAbrupt(g, C).
     return GeneratorResumeAbrupt(realm, g, C);

@@ -4,7 +4,13 @@ let toCapture1 = {};
 let toCapture2 = 5;
 let toCapture3 = {};
 Object.defineProperty(global, "foo", { configurable: true, enumerable: false, value: 42 });
-Object.defineProperty(global, "bar", { configurable: true, enumerable: false, get: function () { return 43; } });
+Object.defineProperty(global, "bar", {
+  configurable: true,
+  enumerable: false,
+  get: function() {
+    return 43;
+  },
+});
 
 function additional1() {
   toCapture1 = 5;
@@ -36,5 +42,7 @@ inspect = function inspect() {
   let z2 = toCapture1;
   additional2();
 
-  return '' + z + z2 + x + y + toCapture1 + toCapture2 + toCapture3 + global.foo + global.bar + (global.foo === global.bar);
-}
+  return (
+    "" + z + z2 + x + y + toCapture1 + toCapture2 + toCapture3 + global.foo + global.bar + (global.foo === global.bar)
+  );
+};

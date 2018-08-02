@@ -6,4 +6,6 @@ let p = x ? 1 : {};
 
 var z = isFinite(p);
 
-inspect = function() { return "" + z; }
+inspect = function() {
+  return "" + z;
+};

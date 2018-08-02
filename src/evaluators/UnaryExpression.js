@@ -32,7 +32,7 @@ import { Reference, EnvironmentRecord } from "../environment.js";
 import invariant from "../invariant.js";
 import { IsCallable } from "../methods/index.js";
 import { Environment, To } from "../singletons.js";
-import type { BabelNodeUnaryExpression } from "babel-types";
+import type { BabelNodeUnaryExpression } from "@babel/types";
 
 function isInstance(proto, Constructor): boolean {
   return proto instanceof Constructor || proto === Constructor.prototype;
@@ -154,7 +154,11 @@ function evaluateOperation(
   strictCode: boolean,
   realm: Realm
 ): Value {
-  function reportError() {
+  function reportError(value: Value) {
+    if (value.getType() === SymbolValue) {
+      // Symbols never implicitly coerce to primitives.
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+    }
     let error = new CompilerDiagnostic(
       "might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method",
       ast.argument.loc,
@@ -173,7 +177,7 @@ function evaluateOperation(
     // 2. Return ? ToNumber(? GetValue(expr)).
     let value = Environment.GetValue(realm, expr);
     if (value instanceof AbstractValue) {
-      if (!To.IsToNumberPure(realm, value)) reportError();
+      if (!To.IsToNumberPure(realm, value)) reportError(value);
       return AbstractValue.createFromUnaryOp(realm, "+", value);
     }
     invariant(value instanceof ConcreteValue);
@@ -188,7 +192,7 @@ function evaluateOperation(
     // 2. Let oldValue be ? ToNumber(? GetValue(expr)).
     let value = Environment.GetValue(realm, expr);
     if (value instanceof AbstractValue) {
-      if (!To.IsToNumberPure(realm, value)) reportError();
+      if (!To.IsToNumberPure(realm, value)) reportError(value);
       return AbstractValue.createFromUnaryOp(realm, "-", value);
     }
     invariant(value instanceof ConcreteValue);
@@ -210,7 +214,7 @@ function evaluateOperation(
     // 2. Let oldValue be ? ToInt32(? GetValue(expr)).
     let value = Environment.GetValue(realm, expr);
     if (value instanceof AbstractValue) {
-      if (!To.IsToNumberPure(realm, value)) reportError();
+      if (!To.IsToNumberPure(realm, value)) reportError(value);
       return AbstractValue.createFromUnaryOp(realm, "~", value);
     }
     invariant(value instanceof ConcreteValue);

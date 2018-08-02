@@ -33,10 +33,10 @@ import {
   Value,
 } from "../values/index.js";
 import { TestIntegrityLevel } from "../methods/index.js";
-import * as t from "babel-types";
-import traverse from "babel-traverse";
-import type { BabelTraversePath } from "babel-traverse";
-import type { BabelNodeSourceLocation } from "babel-types";
+import * as t from "@babel/types";
+import traverse from "@babel/traverse";
+import type { BabelTraversePath } from "@babel/traverse";
+import type { BabelNodeSourceLocation } from "@babel/types";
 import invariant from "../invariant.js";
 import { HeapInspector } from "../utils/HeapInspector.js";
 import { Logger } from "../utils/logger.js";
@@ -47,7 +47,13 @@ type HavocedFunctionInfo = {
   unboundWrites: Set<string>,
 };
 
-function visitName(path: BabelTraversePath, state: HavocedFunctionInfo, name: string, read: boolean, write: boolean) {
+function visitName(
+  path: BabelTraversePath,
+  state: HavocedFunctionInfo,
+  name: string,
+  read: boolean,
+  write: boolean
+): void {
   // Is the name bound to some local identifier? If so, we don't need to do anything
   if (path.scope.hasBinding(name, /*noGlobals*/ true)) return;
 
@@ -56,13 +62,13 @@ function visitName(path: BabelTraversePath, state: HavocedFunctionInfo, name: st
   if (write) state.unboundWrites.add(name);
 }
 
-function ignorePath(path: BabelTraversePath) {
+function ignorePath(path: BabelTraversePath): boolean {
   let parent = path.parent;
   return t.isLabeledStatement(parent) || t.isBreakStatement(parent) || t.isContinueStatement(parent);
 }
 
 let HavocedClosureRefVisitor = {
-  ReferencedIdentifier(path: BabelTraversePath, state: HavocedFunctionInfo) {
+  ReferencedIdentifier(path: BabelTraversePath, state: HavocedFunctionInfo): void {
     if (ignorePath(path)) return;
 
     let innerName = path.node.name;
@@ -72,7 +78,7 @@ let HavocedClosureRefVisitor = {
     visitName(path, state, innerName, true, false);
   },
 
-  "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: HavocedFunctionInfo) {
+  "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: HavocedFunctionInfo): void {
     let doesRead = path.node.operator !== "=";
     for (let name in path.getBindingIdentifiers()) {
       visitName(path, state, name, doesRead, true);
@@ -101,10 +107,67 @@ function getHavocedFunctionInfo(value: FunctionValue) {
     null,
     functionInfo
   );
-  traverse.clearCache();
+  traverse.cache.clear();
   return functionInfo;
 }
 
+function materializeObject(realm: Realm, object: ObjectValue, getCachingHeapInspector?: () => HeapInspector): void {
+  let generator = realm.generator;
+
+  if (object.symbols.size > 0) {
+    throw new FatalError("TODO: Support havocing objects with symbols");
+  }
+
+  if (object.unknownProperty !== undefined) {
+    // TODO: Support unknown properties, or throw FatalError.
+    // We have repros, e.g. test/serializer/additional-functions/ArrayConcat.js.
+  }
+
+  let getHeapInspector =
+    getCachingHeapInspector || (() => new HeapInspector(realm, new Logger(realm, /*internalDebug*/ false)));
+
+  // TODO: We should emit current value and then reset value for all *internal slots*; this will require deep serializer support; or throw FatalError when we detect any non-initial values in internal slots.
+  for (let [name, propertyBinding] of object.properties) {
+    // ignore properties with their correct default values
+    if (getHeapInspector().canIgnoreProperty(object, name)) continue;
+
+    let descriptor = propertyBinding.descriptor;
+    if (descriptor === undefined) {
+      // TODO: This happens, e.g. test/serializer/pure-functions/ObjectAssign2.js
+      // If it indeed means deleted binding, should we initialize descriptor with a deleted value?
+      if (generator !== undefined) generator.emitPropertyDelete(object, name);
+    } else {
+      let value = descriptor.value;
+      invariant(
+        value === undefined || value instanceof Value,
+        "cannot be an array because we are not dealing with intrinsics here"
+      );
+      if (value === undefined) {
+        // TODO: Deal with accessor properties
+        // We have repros, e.g. test/serializer/pure-functions/AbstractPropertyObjectKeyAssignment.js
+      } else {
+        invariant(value instanceof Value);
+        if (value instanceof EmptyValue) {
+          if (generator !== undefined) generator.emitPropertyDelete(object, name);
+        } else {
+          if (generator !== undefined) {
+            let targetDescriptor = getHeapInspector().getTargetIntegrityDescriptor(object);
+            if (!isReactElement(object)) {
+              if (
+                descriptor.writable !== targetDescriptor.writable ||
+                descriptor.configurable !== targetDescriptor.configurable
+              ) {
+                generator.emitDefineProperty(object, name, descriptor);
+              } else {
+                generator.emitPropertyAssignment(object, name, value);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
 class ObjectValueHavocingVisitor {
   realm: Realm;
   // ObjectValues to visit if they're reachable.
@@ -119,12 +182,6 @@ class ObjectValueHavocingVisitor {
     this.visitedValues = new Set();
   }
 
-  getHeapInspector(): HeapInspector {
-    if (this._heapInspector === undefined)
-      this._heapInspector = new HeapInspector(this.realm, new Logger(this.realm, /*internalDebug*/ false));
-    return this._heapInspector;
-  }
-
   mustVisit(val: Value): boolean {
     if (val instanceof ObjectValue) {
       // For Objects we only need to visit it if it is tracked
@@ -137,7 +194,7 @@ class ObjectValueHavocingVisitor {
     return true;
   }
 
-  visitObjectProperty(binding: PropertyBinding) {
+  visitObjectProperty(binding: PropertyBinding): void {
     let desc = binding.descriptor;
     if (desc === undefined) return; //deleted
     this.visitDescriptor(desc);
@@ -175,59 +232,28 @@ class ObjectValueHavocingVisitor {
     // so that any mutation and property access get tracked after this.
     if (obj.mightNotBeHavocedObject()) {
       obj.havoc();
-      if (obj.symbols.size > 0) {
-        throw new FatalError("TODO: Support havocing objects with symbols");
-      }
-      if (obj.unknownProperty !== undefined) {
-        // TODO: Support unknown properties, or throw FatalError.
-        // We have repros, e.g. test/serializer/additional-functions/ArrayConcat.js.
-      }
-      // TODO: We should emit current value and then reset value for all *internal slots*; this will require deep serializer support; or throw FatalError when we detect any non-initial values in internal slots.
-      let realmGenerator = this.realm.generator;
-      for (let [name, propertyBinding] of obj.properties) {
-        // ignore properties with their correct default values
-        if (this.getHeapInspector().canIgnoreProperty(obj, name)) continue;
 
-        let descriptor = propertyBinding.descriptor;
-        if (descriptor === undefined) {
-          // TODO: This happens, e.g. test/serializer/pure-functions/ObjectAssign2.js
-          // If it indeed means deleted binding, should we initialize descriptor with a deleted value?
-          if (realmGenerator !== undefined) realmGenerator.emitPropertyDelete(obj, name);
-        } else {
-          let value = descriptor.value;
-          invariant(
-            value === undefined || value instanceof Value,
-            "cannot be an array because we are not dealing with intrinsics here"
-          );
-          if (value === undefined) {
-            // TODO: Deal with accessor properties
-            // We have repros, e.g. test/serializer/pure-functions/AbstractPropertyObjectKeyAssignment.js
-          } else {
-            invariant(value instanceof Value);
-            if (value instanceof EmptyValue) {
-              if (realmGenerator !== undefined) realmGenerator.emitPropertyDelete(obj, name);
-            } else {
-              if (realmGenerator !== undefined) {
-                let targetDescriptor = this.getHeapInspector().getTargetIntegrityDescriptor(obj);
-                if (!isReactElement(obj)) {
-                  if (
-                    descriptor.writable !== targetDescriptor.writable ||
-                    descriptor.configurable !== targetDescriptor.configurable
-                  ) {
-                    realmGenerator.emitDefineProperty(obj, name, descriptor);
-                  } else {
-                    realmGenerator.emitPropertyAssignment(obj, name, value);
-                  }
-                }
-              }
-            }
-          }
+      // materialization is a common operation and needs to be invoked
+      // whenever non-final values need to be made available at intermediate
+      // points in a program's control flow. An object can be materialized by
+      // calling materializeObject(). Sometimes, objects
+      // are materialized in cohorts (such as during leaking and havocing).
+      // In these cases, we provide a caching mechanism for HeapInspector().
+      let makeAndCacheHeapInspector = () => {
+        let heapInspector = this._heapInspector;
+        if (heapInspector !== undefined) return heapInspector;
+        else {
+          heapInspector = new HeapInspector(this.realm, new Logger(this.realm, /*internalDebug*/ false));
+          this._heapInspector = heapInspector;
+          return heapInspector;
         }
-      }
+      };
+      invariant(this.realm.generator !== undefined);
+      materializeObject(this.realm, obj, makeAndCacheHeapInspector);
     }
   }
 
-  visitObjectPrototype(obj: ObjectValue) {
+  visitObjectPrototype(obj: ObjectValue): void {
     let proto = obj.$Prototype;
     this.visitValue(proto);
   }
@@ -273,7 +299,7 @@ class ObjectValueHavocingVisitor {
   visitDeclarativeEnvironmentRecordBinding(
     record: DeclarativeEnvironmentRecord,
     remainingHavocedBindings: HavocedFunctionInfo
-  ) {
+  ): void {
     let bindings = record.bindings;
     for (let bindingName of Object.keys(bindings)) {
       let binding = bindings[bindingName];
@@ -491,7 +517,7 @@ class ObjectValueHavocingVisitor {
     if (val instanceof AbstractValue) {
       if (this.mustVisit(val)) this.visitAbstractValue(val);
     } else if (val.isIntrinsic()) {
-      // All intrinsic values exist from the beginning of time (except unknown arrays)...
+      // All intrinsic values exist from the beginning of time (except arrays with widened properties)...
       // ...except for a few that come into existance as templates for abstract objects.
       if (val instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(val)) {
         if (this.mustVisit(val)) this.visitValueObject(val);
@@ -514,7 +540,7 @@ class ObjectValueHavocingVisitor {
   }
 }
 
-function ensureFrozenValue(realm, value, loc) {
+function ensureFrozenValue(realm, value, loc): void {
   // TODO: This should really check if it is recursively immutability.
   if (value instanceof ObjectValue && !TestIntegrityLevel(realm, value, "frozen")) {
     let diag = new CompilerDiagnostic(
@@ -530,7 +556,7 @@ function ensureFrozenValue(realm, value, loc) {
 // Ensure that a value is immutable. If it is not, set all its properties to abstract values
 // and all reachable bindings to abstract values.
 export class HavocImplementation {
-  value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation) {
+  value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation): void {
     if (realm.instantRender.enabled) {
       // TODO: For InstantRender...
       // - For declarative bindings, we do want proper materialization/leaking/havocing
@@ -556,5 +582,11 @@ export class HavocImplementation {
       let visitor = new ObjectValueHavocingVisitor(realm, objectsTrackedForHavoc);
       visitor.visitValue(value);
     }
+  }
+}
+
+export class MaterializeImplementation {
+  materialize(realm: Realm, val: ObjectValue) {
+    materializeObject(realm, val);
   }
 }

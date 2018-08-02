@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import type {
   BabelNodeExpression,
   BabelNodeJSXMemberExpression,
@@ -17,9 +17,9 @@ import type {
   BabelNodeIdentifier,
   BabelNodeMemberExpression,
   BabelNodeStringLiteral,
-} from "babel-types";
+} from "@babel/types";
 import invariant from "../invariant.js";
-import { isReactComponent } from "./utils";
+import { isReactComponent } from "./utils.js";
 
 export function convertExpressionToJSXIdentifier(
   expr: BabelNodeExpression,

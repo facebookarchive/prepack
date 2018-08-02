@@ -1,5 +1,5 @@
 this.glob = 123;
-let b = global.__abstract ? __abstract("boolean", "true"): true;
+let b = global.__abstract ? __abstract("boolean", "true") : true;
 let y;
 if (b) {
   y = glob;
@@ -9,4 +9,6 @@ if (b) {
   z = glob;
 }
 
-inspect = function () { return y + " " + z; }
+inspect = function() {
+  return y + " " + z;
+};

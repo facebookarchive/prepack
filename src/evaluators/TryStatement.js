@@ -13,7 +13,6 @@ import type { Effects, Realm } from "../realm.js";
 import { type LexicalEnvironment } from "../environment.js";
 import {
   AbruptCompletion,
-  ErasedAbruptCompletion,
   ForkedAbruptCompletion,
   PossiblyNormalCompletion,
   ThrowCompletion,
@@ -23,7 +22,7 @@ import {
 import { UpdateEmpty } from "../methods/index.js";
 import { Functions, Join } from "../singletons.js";
 import { Value } from "../values/index.js";
-import type { BabelNodeTryStatement } from "babel-types";
+import type { BabelNodeTryStatement } from "@babel/types";
 import invariant from "../invariant.js";
 
 export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: LexicalEnvironment, realm: Realm): Value {
@@ -113,7 +112,6 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
         },
         "composeNestedThrowEffectsWithHandler/1"
       );
-      c.updateConsequentKeepingCurrentEffects(new ErasedAbruptCompletion(realm.intrinsics.empty));
     }
     priorEffects.pop();
     let alternate = c.alternate;
@@ -130,7 +128,6 @@ export default function(ast: BabelNodeTryStatement, strictCode: boolean, env: Le
         },
         "composeNestedThrowEffectsWithHandler/2"
       );
-      c.updateAlternateKeepingCurrentEffects(new ErasedAbruptCompletion(realm.intrinsics.empty));
     }
     priorEffects.pop();
     return Join.joinForkOrChoose(realm, c.joinCondition, consequentEffects, alternateEffects);

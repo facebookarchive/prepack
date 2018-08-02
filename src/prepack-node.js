@@ -15,7 +15,6 @@
 import { defaultOptions } from "./options";
 import { FatalError } from "./errors.js";
 import { type PrepackOptions } from "./prepack-options";
-import { prepackNodeCLI, prepackNodeCLISync } from "./prepack-node-environment.js";
 import { prepackSources } from "./prepack-standalone.js";
 import { type SourceMap } from "./types.js";
 import { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
@@ -25,7 +24,6 @@ import { SerializerStatistics } from "./serializer/statistics.js";
 
 import fs from "fs";
 
-export * from "./prepack-node-environment";
 export * from "./prepack-standalone";
 
 function createStatistics(options: PrepackOptions) {
@@ -63,7 +61,6 @@ export function prepackStdin(
         serialized = prepackSources(
           [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
           options,
-          undefined,
           createStatistics(options)
         );
         processSerializedCode(serialized);
@@ -87,10 +84,6 @@ export function prepackFile(
   callback: (any, ?{ code: string, map?: SourceMap }) => void,
   fileErrorHandler?: (err: ?Error) => void
 ): void {
-  if (options.compatibility === "node-cli") {
-    prepackNodeCLI(filename, options, callback);
-    return;
-  }
   let sourceMapFilename =
     options.inputSourceMapFilename !== undefined ? options.inputSourceMapFilename : filename + ".map";
   fs.readFile(filename, "utf8", function(fileErr, code) {
@@ -109,7 +102,6 @@ export function prepackFile(
         serialized = prepackSources(
           [{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }],
           options,
-          undefined,
           createStatistics(options)
         );
       } catch (err) {
@@ -122,13 +114,6 @@ export function prepackFile(
 }
 
 export function prepackFileSync(filenames: Array<string>, options: PrepackOptions = defaultOptions): SerializedResult {
-  if (options.compatibility === "node-cli") {
-    if (filenames.length !== 1) {
-      console.error(`Does not support multiple file prepack in node-cli mode.`);
-      process.exit(1);
-    }
-    return prepackNodeCLISync(filenames[0], options);
-  }
   const sourceFiles = filenames.map(filename => {
     let code = fs.readFileSync(filename, "utf8");
     let sourceMap = "";
@@ -139,8 +124,16 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     } catch (_e) {
       if (options.inputSourceMapFilename !== undefined) console.warn(`No sourcemap found at ${sourceMapFilename}.`);
     }
-    return { filePath: filename, fileContents: code, sourceMapContents: sourceMap };
+    return {
+      filePath: filename,
+      fileContents: code,
+      sourceMapContents: sourceMap,
+      sourceMapFilename: sourceMapFilename,
+    };
   });
+
+  // Don't include sourcemaps that weren't found
+  let validSourceFiles = sourceFiles.filter(sf => sf.sourceMapContents !== "");
 
   // The existence of debug[In/Out]FilePath represents the desire to use the debugger.
   if (options.debugInFilePath !== undefined && options.debugOutFilePath !== undefined) {
@@ -148,7 +141,10 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
 
     let ioWrapper = new FileIOWrapper(false, options.debugInFilePath, options.debugOutFilePath);
     options.debuggerConfigArgs.debugChannel = new DebugChannel(ioWrapper);
-    options.debuggerConfigArgs.sourcemaps = sourceFiles;
+    options.debuggerConfigArgs.sourcemaps = validSourceFiles;
   }
-  return prepackSources(sourceFiles, options, options.debuggerConfigArgs, createStatistics(options));
+
+  if (options.debugReproArgs) options.debugReproArgs.sourcemaps = validSourceFiles;
+
+  return prepackSources(sourceFiles, options, createStatistics(options));
 }

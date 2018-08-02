@@ -95,7 +95,7 @@ export class DebugChannel {
     this.writeOut(this._marshaller.marshallEvaluateResponse(requestID, evalResult));
   }
 
-  shutdown() {
+  shutdown(): void {
     this._ioWrapper.clearInFile();
     this._ioWrapper.clearOutFile();
   }

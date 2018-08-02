@@ -7,8 +7,8 @@ try {
   } else {
     y = 0;
   }
-}
-catch(e) {
-}
+} catch (e) {}
 
-inspect = function(){return y}
+inspect = function() {
+  return y;
+};

@@ -15,7 +15,7 @@ import { Reference } from "../environment.js";
 import { StringValue } from "../values/index.js";
 import { RequireObjectCoercible } from "../methods/index.js";
 import { Environment, To } from "../singletons.js";
-import type { BabelNodeMemberExpression } from "babel-types";
+import type { BabelNodeMemberExpression } from "@babel/types";
 import SuperProperty from "./SuperProperty";
 
 // ECMA262 12.3.2.1

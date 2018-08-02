@@ -1,2 +1,4 @@
 let y = 14 >= 3;
-inspect = function() { return y; }
+inspect = function() {
+  return y;
+};

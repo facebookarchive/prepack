@@ -22,7 +22,7 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
-import { hardModifyReactObjectPropertyBinding, isReactElement, isReactPropsObject, getProperty } from "./utils";
+import { hardModifyReactObjectPropertyBinding, isReactElement, isReactPropsObject, getProperty } from "./utils.js";
 import { ResidualReactElementVisitor } from "../serializer/ResidualReactElementVisitor.js";
 
 export type ReactSetValueMapKey = Value | number | string;
@@ -79,7 +79,7 @@ export class ReactEquivalenceSet {
     return ((map.get(key): any): ReactSetValueMap);
   }
 
-  getValue(val: ReactSetValueMapKey, map: ReactSetValueMap, visitedValues: Set<Value>): ReactSetNode {
+  _getValue(val: ReactSetValueMapKey, map: ReactSetValueMap, visitedValues: Set<Value>): ReactSetNode {
     if (val instanceof StringValue || val instanceof NumberValue) {
       val = val.value;
     } else if (val instanceof AbstractValue) {
@@ -108,14 +108,13 @@ export class ReactEquivalenceSet {
 
     for (let [propName] of object.properties) {
       currentMap = this.getKey(propName, currentMap, visitedValues);
-      let prop = this.getEquivalentPropertyValue(object, propName);
-      result = this.getValue(prop, currentMap, visitedValues);
+      result = this.getEquivalentPropertyValue(object, propName, currentMap, visitedValues);
       currentMap = result.map;
     }
     for (let [symbol] of object.symbols) {
       currentMap = this.getKey(symbol, currentMap, visitedValues);
       let prop = getProperty(this.realm, object, symbol);
-      result = this.getValue(prop, currentMap, visitedValues);
+      result = this._getValue(prop, currentMap, visitedValues);
       currentMap = result.map;
     }
     let temporalAlias = object.temporalAlias;
@@ -143,12 +142,12 @@ export class ReactEquivalenceSet {
     if (!this.residualReactElementVisitor.wasTemporalAliasDeclaredInCurrentScope(temporalAlias)) {
       return temporalAlias;
     }
-    let temporalBuildNodeEntry = this.realm.getTemporalBuildNodeEntryFromDerivedValue(temporalAlias);
+    let temporalOperationEntry = this.realm.getTemporalOperationEntryFromDerivedValue(temporalAlias);
 
-    if (temporalBuildNodeEntry === undefined) {
+    if (temporalOperationEntry === undefined) {
       return temporalAlias;
     }
-    let temporalArgs = temporalBuildNodeEntry.args;
+    let temporalArgs = temporalOperationEntry.args;
     if (temporalArgs.length === 0) {
       return temporalAlias;
     }
@@ -169,9 +168,9 @@ export class ReactEquivalenceSet {
         }
       } else if (arg instanceof AbstractObjectValue && !arg.values.isTop() && arg.kind !== "conditional") {
         // Might be a temporal, so let's check
-        let childTemporalBuildNodeEntry = this.realm.getTemporalBuildNodeEntryFromDerivedValue(arg);
+        let childTemporalOperationEntry = this.realm.getTemporalOperationEntryFromDerivedValue(arg);
 
-        if (childTemporalBuildNodeEntry !== undefined) {
+        if (childTemporalOperationEntry !== undefined) {
           equivalenceArg = this._getTemporalValue(arg, visitedValues);
           invariant(equivalenceArg instanceof AbstractObjectValue);
 
@@ -188,7 +187,7 @@ export class ReactEquivalenceSet {
       }
       currentMap = this.getKey(i, (currentMap: any), visitedValues);
       invariant(arg instanceof Value && (equivalenceArg instanceof Value || equivalenceArg === undefined));
-      result = this.getValue(equivalenceArg || arg, currentMap, visitedValues);
+      result = this._getValue(equivalenceArg || arg, currentMap, visitedValues);
       currentMap = result.map;
     }
     invariant(result !== undefined);
@@ -230,8 +229,7 @@ export class ReactEquivalenceSet {
 
     for (let i = 0; i < length; i++) {
       currentMap = this.getKey(i, currentMap, visitedValues);
-      let element = this.getEquivalentPropertyValue(array, "" + i);
-      result = this.getValue(element, currentMap, visitedValues);
+      result = this.getEquivalentPropertyValue(array, "" + i, currentMap, visitedValues);
       currentMap = result.map;
     }
     if (result === undefined) {
@@ -246,30 +244,34 @@ export class ReactEquivalenceSet {
     return result.value;
   }
 
-  getEquivalentPropertyValue(object: ObjectValue, propName: string): Value {
+  getEquivalentPropertyValue(
+    object: ObjectValue,
+    propName: string,
+    map: ReactSetValueMap,
+    visitedValues: Set<Value>
+  ): ReactSetNode {
     let prop = getProperty(this.realm, object, propName);
     let isFinal = object.mightBeFinalObject();
     let equivalentProp;
 
     if (prop instanceof ObjectValue && isReactElement(prop)) {
       equivalentProp = this.residualReactElementVisitor.reactElementEquivalenceSet.add(prop);
-
-      if (prop !== equivalentProp && isFinal) {
-        hardModifyReactObjectPropertyBinding(this.realm, object, propName, equivalentProp);
-      }
     } else if (prop instanceof ObjectValue && isReactPropsObject(prop)) {
       equivalentProp = this.residualReactElementVisitor.reactPropsEquivalenceSet.add(prop);
-
-      if (prop !== equivalentProp && isFinal) {
-        hardModifyReactObjectPropertyBinding(this.realm, object, propName, equivalentProp);
-      }
     } else if (prop instanceof AbstractValue) {
       equivalentProp = this.residualReactElementVisitor.residualHeapVisitor.equivalenceSet.add(prop);
+    }
 
+    if (equivalentProp !== undefined) {
       if (prop !== equivalentProp && isFinal) {
         hardModifyReactObjectPropertyBinding(this.realm, object, propName, equivalentProp);
       }
+      if (!map.has(equivalentProp)) {
+        map.set(equivalentProp, this._createNode());
+      }
+      return ((map.get(equivalentProp): any): ReactSetNode);
+    } else {
+      return this._getValue(prop, map, visitedValues);
     }
-    return equivalentProp || prop;
   }
 }

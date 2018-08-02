@@ -4,4 +4,6 @@ let ob = x ? { a: 1 } : { b: 2 };
 
 var z = ob.a;
 
-inspect = function() { return z; }
+inspect = function() {
+  return z;
+};

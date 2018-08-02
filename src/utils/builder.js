@@ -9,15 +9,26 @@
 
 /* @flow */
 
-import buildTemplate from "babel-template";
-import type { BabelNodeExpression } from "babel-types";
-import type { PreludeGenerator } from "./generator.js";
+import buildTemplate from "@babel/template";
+import type { BabelNodeExpression } from "@babel/types";
+import type { PreludeGenerator } from "./PreludeGenerator.js";
 import invariant from "../invariant.js";
 
-export default function buildExpressionTemplate(code: string): (void | PreludeGenerator) => any => BabelNodeExpression {
+const placeholders = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const placeholderDefaultWhiteList = new Set(["global"]);
+const placeholderWhitelist = new Set([...placeholderDefaultWhiteList, ...placeholders]);
+
+export default function buildExpressionTemplate(
+  code: string,
+  { disablePlaceholders }: { disablePlaceholders?: boolean } = {}
+): (void | PreludeGenerator) => any => BabelNodeExpression {
   let template;
   return (preludeGenerator: void | PreludeGenerator) => (obj: any): BabelNodeExpression => {
-    if (template === undefined) template = buildTemplate(code);
+    if (template === undefined)
+      template = buildTemplate(code, {
+        placeholderPattern: false,
+        placeholderWhitelist: disablePlaceholders ? placeholderDefaultWhiteList : placeholderWhitelist,
+      });
     if (preludeGenerator !== undefined && code.includes("global"))
       obj = Object.assign(
         {

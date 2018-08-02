@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "@babel/types";
 import type { Realm } from "../realm.js";
 import {
   AbstractObjectValue,
@@ -192,5 +192,9 @@ export default class Value {
 
   _serialize(set: Function, stack: Map<Value, any>): any {
     invariant(false, "abstract method; please override");
+  }
+
+  getDebugName(): string | void {
+    return this.intrinsicName || this.__originalName;
   }
 }

@@ -8,4 +8,6 @@ for (var p in ob) {
   tgt[p] = ob2[p];
 }
 
-inspect = function() { return tgt.x; }
+inspect = function() {
+  return tgt.x;
+};

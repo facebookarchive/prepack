@@ -7,4 +7,6 @@ a.x = 42;
 var y = o1.x;
 o1.x = 99;
 
-inspect = function() { return "" + y + "-" + o1.x + "-" + o2.x; };
+inspect = function() {
+  return "" + y + "-" + o1.x + "-" + o2.x;
+};

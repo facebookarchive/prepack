@@ -22,18 +22,14 @@ import {
   IntegralValue,
   ObjectValue,
   StringValue,
+  SymbolValue,
   UndefinedValue,
   Value,
 } from "../values/index.js";
 import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { Environment, Havoc, To } from "../singletons.js";
-import type {
-  BabelBinaryOperator,
-  BabelNodeBinaryExpression,
-  BabelNodeExpression,
-  BabelNodeSourceLocation,
-} from "babel-types";
-import * as t from "babel-types";
+import type { BabelBinaryOperator, BabelNodeBinaryExpression, BabelNodeSourceLocation } from "@babel/types";
+import { createOperationDescriptor } from "../utils/generator.js";
 import invariant from "../invariant.js";
 
 export default function(
@@ -79,7 +75,28 @@ export function getPureBinaryOperationResultType(
   if (op === "+") {
     let ltype = To.GetToPrimitivePureResultType(realm, lval);
     let rtype = To.GetToPrimitivePureResultType(realm, rval);
+    if (ltype === StringValue || rtype === StringValue) {
+      // If either type is a string, the other one will be called with ToString, so that has to be pure.
+      if (!To.IsToStringPure(realm, rval)) {
+        rtype = undefined;
+      }
+      if (!To.IsToStringPure(realm, lval)) {
+        ltype = undefined;
+      }
+    } else {
+      // Otherwise, they will be called with ToNumber, so that has to be pure.
+      if (!To.IsToNumberPure(realm, rval)) {
+        rtype = undefined;
+      }
+      if (!To.IsToNumberPure(realm, lval)) {
+        ltype = undefined;
+      }
+    }
     if (ltype === undefined || rtype === undefined) {
+      if (lval.getType() === SymbolValue || rval.getType() === SymbolValue) {
+        // Symbols never implicitly coerce to primitives.
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+      }
       let loc = ltype === undefined ? lloc : rloc;
       let error = new CompilerDiagnostic(unknownValueOfOrToString, loc, "PP0002", "RecoverableError");
       if (realm.handleError(error) === "Recover") {
@@ -120,6 +137,9 @@ export function getPureBinaryOperationResultType(
     op === "*" ||
     op === "-"
   ) {
+    if (lval.getType() === SymbolValue || rval.getType() === SymbolValue) {
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+    }
     return reportErrorIfNotPure(To.IsToNumberPure.bind(To), NumberValue);
   } else if (op === "in" || op === "instanceof") {
     if (rval.mightNotBeObject()) {
@@ -176,9 +196,56 @@ export function computeBinary(
   let resultType;
   const compute = () => {
     if (lval instanceof AbstractValue || rval instanceof AbstractValue) {
-      // generate error if binary operation might throw or have side effects
-      resultType = getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
-      return AbstractValue.createFromBinaryOp(realm, op, lval, rval, loc);
+      try {
+        // generate error if binary operation might throw or have side effects
+        resultType = getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
+        return AbstractValue.createFromBinaryOp(realm, op, lval, rval, loc);
+      } catch (x) {
+        if (x instanceof FatalError) {
+          // There is no need to revert any effects, because the above operation is pure.
+          // If this failed and one of the arguments was conditional, try each value
+          // and join the effects based on the condition.
+          if (lval instanceof AbstractValue && lval.kind === "conditional") {
+            let [condition, consequentL, alternateL] = lval.args;
+            invariant(condition instanceof AbstractValue);
+            return realm.evaluateWithAbstractConditional(
+              condition,
+              () =>
+                realm.evaluateForEffects(
+                  () => computeBinary(realm, op, consequentL, rval, lloc, rloc, loc),
+                  undefined,
+                  "ConditionalBinaryExpression/1"
+                ),
+              () =>
+                realm.evaluateForEffects(
+                  () => computeBinary(realm, op, alternateL, rval, lloc, rloc, loc),
+                  undefined,
+                  "ConditionalBinaryExpression/2"
+                )
+            );
+          }
+          if (rval instanceof AbstractValue && rval.kind === "conditional") {
+            let [condition, consequentR, alternateR] = rval.args;
+            invariant(condition instanceof AbstractValue);
+            return realm.evaluateWithAbstractConditional(
+              condition,
+              () =>
+                realm.evaluateForEffects(
+                  () => computeBinary(realm, op, lval, consequentR, lloc, rloc, loc),
+                  undefined,
+                  "ConditionalBinaryExpression/3"
+                ),
+              () =>
+                realm.evaluateForEffects(
+                  () => computeBinary(realm, op, lval, alternateR, lloc, rloc, loc),
+                  undefined,
+                  "ConditionalBinaryExpression/4"
+                )
+            );
+          }
+        }
+        throw x;
+      }
     } else {
       // ECMA262 12.10.3
 
@@ -251,7 +318,7 @@ export function computeBinary(
           realm,
           resultType,
           [lval, rval],
-          ([lnode, rnode]: Array<BabelNodeExpression>) => t.binaryExpression(op, lnode, rnode)
+          createOperationDescriptor("BINARY_EXPRESSION", { op })
         ),
       TypesDomain.topVal,
       ValuesDomain.topVal

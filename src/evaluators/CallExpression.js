@@ -10,18 +10,23 @@
 /* @flow */
 
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
+import { AbruptCompletion, Completion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
-import { Effects } from "../realm.js";
 import { type LexicalEnvironment, type BaseValue, mightBecomeAnObject } from "../environment.js";
 import { EnvironmentRecord } from "../environment.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import {
   AbstractValue,
   AbstractObjectValue,
+  BooleanValue,
   ConcreteValue,
   FunctionValue,
+  IntegralValue,
+  NativeFunctionValue,
+  NumberValue,
   ObjectValue,
+  StringValue,
+  SymbolValue,
   Value,
 } from "../values/index.js";
 import { Reference } from "../environment.js";
@@ -33,11 +38,10 @@ import {
   IsInTailPosition,
   SameValue,
 } from "../methods/index.js";
-import type { BabelNodeCallExpression, BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
+import type { BabelNodeCallExpression } from "@babel/types";
 import invariant from "../invariant.js";
-import * as t from "babel-types";
-import SuperCall from "./SuperCall";
-import { memberExpressionHelper } from "../utils/babelhelpers.js";
+import SuperCall from "./SuperCall.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 export default function(
   ast: BabelNodeCallExpression,
@@ -62,6 +66,22 @@ export default function(
   }
 }
 
+function getPrimitivePrototypeFromType(realm: Realm, value: AbstractValue): void | ObjectValue {
+  switch (value.getType()) {
+    case IntegralValue:
+    case NumberValue:
+      return realm.intrinsics.NumberPrototype;
+    case StringValue:
+      return realm.intrinsics.StringPrototype;
+    case BooleanValue:
+      return realm.intrinsics.BooleanPrototype;
+    case SymbolValue:
+      return realm.intrinsics.SymbolPrototype;
+    default:
+      return undefined;
+  }
+}
+
 function evaluateReference(
   ref: Reference | Value,
   ast: BabelNodeCallExpression,
@@ -79,6 +99,23 @@ function evaluateReference(
     let base = ref.base;
     if (base.kind === "conditional") {
       return evaluateConditionalReferenceBase(ref, ast, strictCode, env, realm);
+    }
+    let referencedName = ref.referencedName;
+
+    // When dealing with a PrimitiveValue, like StringValue, NumberValue, IntegralValue etc
+    // if we are referencing a prototype method, then it's safe to access, even
+    // on an abstract value as the value is immutable and can't have a property
+    // that matches the prototype method (unless the prototype was modified).
+    // We assume the global prototype of built-ins has not been altered since
+    // global code has finished. See #1233 for more context in regards to unmodified
+    // global prototypes.
+    let prototypeIfPrimitive = getPrimitivePrototypeFromType(realm, base);
+    if (prototypeIfPrimitive !== undefined && typeof referencedName === "string") {
+      let possibleMethodValue = prototypeIfPrimitive._SafeGetDataPropertyValue(referencedName);
+
+      if (possibleMethodValue instanceof FunctionValue) {
+        return EvaluateCall(ref, possibleMethodValue, ast, strictCode, env, realm);
+      }
     }
     // avoid explicitly converting ref.base to an object because that will create a generator entry
     // leading to two object allocations rather than one.
@@ -180,12 +217,11 @@ function callBothFunctionsAndJoinTheirEffects(
     "callBothFunctionsAndJoinTheirEffects/2"
   );
 
-  let joinedEffects = Join.joinForkOrChoose(
-    realm,
-    cond,
-    new Effects(e1.result, e1.generator, e1.modifiedBindings, e1.modifiedProperties, e1.createdObjects),
-    new Effects(e2.result, e2.generator, e2.modifiedBindings, e2.modifiedProperties, e2.createdObjects)
-  );
+  let r1 = e1.result;
+  if (r1 instanceof Completion) r1 = r1.shallowCloneWithoutEffects();
+  let r2 = e2.result;
+  if (r2 instanceof Completion) r2 = r2.shallowCloneWithoutEffects();
+  let joinedEffects = Join.joinForkOrChoose(realm, cond, e1.shallowCloneWithResult(r1), e2.shallowCloneWithResult(r2));
   let completion = joinedEffects.result;
   if (completion instanceof SimpleNormalCompletion) completion = completion.value;
   if (completion instanceof PossiblyNormalCompletion) {
@@ -230,22 +266,12 @@ function generateRuntimeCall(
     }
   }
   let resultType = (func instanceof AbstractObjectValue ? func.functionResultType : undefined) || Value;
-  return AbstractValue.createTemporalFromBuildFunction(realm, resultType, args, nodes => {
-    let callFunc;
-    let argStart = 1;
-    if (thisArg instanceof Value) {
-      if (typeof propName === "string") {
-        callFunc = memberExpressionHelper(nodes[0], propName);
-      } else {
-        callFunc = memberExpressionHelper(nodes[0], nodes[1]);
-        argStart = 2;
-      }
-    } else {
-      callFunc = nodes[0];
-    }
-    let fun_args = ((nodes.slice(argStart): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
-    return t.callExpression(callFunc, fun_args);
-  });
+  return AbstractValue.createTemporalFromBuildFunction(
+    realm,
+    resultType,
+    args,
+    createOperationDescriptor("CALL_BAILOUT", { propRef: propName, thisArg })
+  );
 }
 
 function tryToEvaluateCallOrLeaveAsAbstract(
@@ -262,7 +288,7 @@ function tryToEvaluateCallOrLeaveAsAbstract(
   let effects;
   let savedSuppressDiagnostics = realm.suppressDiagnostics;
   try {
-    realm.suppressDiagnostics = true;
+    realm.suppressDiagnostics = !(func instanceof NativeFunctionValue) || func.name !== "__optimize";
     effects = realm.evaluateForEffects(
       () => EvaluateDirectCall(realm, strictCode, env, ref, func, thisValue, ast.arguments, tailCall),
       undefined,

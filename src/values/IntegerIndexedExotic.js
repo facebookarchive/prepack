@@ -11,13 +11,13 @@
 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor } from "../types.js";
-import { ObjectValue, NumberValue, StringValue, Value, UndefinedValue } from "../values/index.js";
+import { ObjectValue, NumberValue, StringValue, Value, UndefinedValue } from "./index.js";
 import { IsInteger, IsArrayIndex, IsAccessorDescriptor, IsDetachedBuffer, IsPropertyKey } from "../methods/is.js";
 import { OrdinaryGet } from "../methods/get.js";
 import { OrdinaryHasProperty } from "../methods/has.js";
 import { IntegerIndexedElementSet, IntegerIndexedElementGet } from "../methods/typedarray.js";
 import { Properties, To } from "../singletons.js";
-import invariant from "../invariant";
+import invariant from "../invariant.js";
 
 export default class IntegerIndexedExotic extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {

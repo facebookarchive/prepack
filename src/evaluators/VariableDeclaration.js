@@ -16,7 +16,7 @@ import { ObjectValue, StringValue } from "../values/index.js";
 import { IsAnonymousFunctionDefinition, HasOwnProperty } from "../methods/index.js";
 import { Environment, Functions, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
-import type { BabelNodeVariableDeclaration } from "babel-types";
+import type { BabelNodeVariableDeclaration } from "@babel/types";
 
 // ECMA262 13.3.1.4
 function letAndConst(

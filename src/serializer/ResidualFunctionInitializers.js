@@ -10,9 +10,9 @@
 /* @flow strict-local */
 
 import { FunctionValue, Value } from "../values/index.js";
-import * as t from "babel-types";
-import type { BabelNodeStatement } from "babel-types";
-import { NameGenerator } from "../utils/generator.js";
+import * as t from "@babel/types";
+import type { BabelNodeStatement } from "@babel/types";
+import { NameGenerator } from "../utils/NameGenerator.js";
 import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import { voidExpression, nullExpression } from "../utils/babelhelpers.js";
@@ -69,7 +69,7 @@ export class ResidualFunctionInitializers {
     return initializer.body;
   }
 
-  scrubFunctionInitializers() {
+  scrubFunctionInitializers(): void {
     // Deleting trivial entries in order to avoid creating empty initialization functions that serve no purpose.
     for (let initializer of this.initializers.values())
       if (initializer.body.entries.length === 0) this.initializers.delete(initializer.id);
@@ -122,7 +122,7 @@ export class ResidualFunctionInitializers {
     return !!this.functionInitializerInfos.get(functionValue);
   }
 
-  factorifyInitializers(nameGenerator: NameGenerator) {
+  factorifyInitializers(nameGenerator: NameGenerator): void {
     for (const initializer of this.initializers.values()) {
       factorifyObjects(initializer.body.entries, nameGenerator);
     }

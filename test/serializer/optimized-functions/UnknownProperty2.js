@@ -1,7 +1,7 @@
 var cache = {};
 function f(x, y) {
   cache[x] = y;
-  cache[x+1] = y*2;
+  cache[x + 1] = y * 2;
 }
 if (global.__optimize) __optimize(f);
 

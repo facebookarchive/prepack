@@ -15,8 +15,8 @@ import type {
   BabelNodeStringLiteral,
   BabelNodeIdentifier,
   BabelNodeSourceLocation,
-} from "babel-types";
-import * as t from "babel-types";
+} from "@babel/types";
+import * as t from "@babel/types";
 
 export const voidExpression: BabelNodeExpression = t.unaryExpression("void", t.numericLiteral(0), true);
 export const nullExpression: BabelNodeExpression = t.nullLiteral();

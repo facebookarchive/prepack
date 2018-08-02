@@ -1,1 +1,3 @@
-{let __result = 1;}
+{
+  let __result = 1;
+}

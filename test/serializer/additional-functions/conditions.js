@@ -1,5 +1,14 @@
-
-function getURL(getProtocol, getIsGeneric, getDomain, getPort, getPath, serialize, getQueryData, getFragment, getForceFragmentSeparator) {
+function getURL(
+  getProtocol,
+  getIsGeneric,
+  getDomain,
+  getPort,
+  getPath,
+  serialize,
+  getQueryData,
+  getFragment,
+  getForceFragmentSeparator
+) {
   var str = "";
   var protocol = getProtocol();
   if (protocol) {
@@ -20,9 +29,7 @@ function getURL(getProtocol, getIsGeneric, getDomain, getPort, getPath, serializ
   } else if (str) {
     str += "/";
   }
-  var queryStr = serialize(
-    getQueryData()
-  );
+  var queryStr = serialize(getQueryData());
   if (queryStr) {
     str += "?" + queryStr;
   }
@@ -40,31 +47,31 @@ global.__optimize && __optimize(getURL);
 inspect = function inspect() {
   var getProtocol = function() {
     return "http://";
-  }
+  };
   var getIsGeneric = function() {
     return true;
-  }
+  };
   var getPort = function() {
     return 80;
-  }
+  };
   var getDomain = function() {
     return "foobar.com";
-  }
+  };
   var getPath = function() {
     return "test";
-  }
+  };
   var serialize = function(a) {
     return a;
-  }
+  };
   var getQueryData = function() {
     return "test";
-  }
+  };
   var getFragment = function() {
-    return "frag"
-  }
+    return "frag";
+  };
   var getForceFragmentSeparator = function() {
     return false;
-  }
+  };
   return getURL(
     getProtocol,
     getIsGeneric,
@@ -76,4 +83,4 @@ inspect = function inspect() {
     getFragment,
     getForceFragmentSeparator
   );
-}
+};

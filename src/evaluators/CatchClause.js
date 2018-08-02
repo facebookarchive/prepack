@@ -15,7 +15,7 @@ import { Value } from "../values/index.js";
 import { ThrowCompletion } from "../completions.js";
 import invariant from "../invariant.js";
 import { Environment } from "../singletons.js";
-import type { BabelNodeCatchClause } from "babel-types";
+import type { BabelNodeCatchClause } from "@babel/types";
 
 // ECAM262 13.15.7
 export default function(

@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { BabelNodeProgram, BabelNodeStatement, BabelNodeModuleDeclaration } from "babel-types";
+import type { BabelNodeProgram, BabelNodeStatement, BabelNodeModuleDeclaration } from "@babel/types";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 
@@ -18,7 +18,7 @@ import { EmptyValue, Value } from "../values/index.js";
 import { GlobalDeclarationInstantiation } from "../evaluators/Program.js";
 
 import IsStrict from "../utils/strict.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 
 export default function(
   ast: BabelNodeProgram,

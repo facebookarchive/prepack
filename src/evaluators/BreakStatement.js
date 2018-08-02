@@ -13,7 +13,7 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { BreakCompletion } from "../completions.js";
-import type { BabelNodeBreakStatement } from "babel-types";
+import type { BabelNodeBreakStatement } from "@babel/types";
 
 export default function(
   ast: BabelNodeBreakStatement,
@@ -21,5 +21,5 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm
 ): Value {
-  throw new BreakCompletion(realm.intrinsics.empty, ast.loc, ast.label && ast.label.name);
+  throw new BreakCompletion(realm.intrinsics.empty, undefined, ast.loc, ast.label && ast.label.name);
 }

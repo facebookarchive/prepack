@@ -1,5 +1,5 @@
 [ignore]
-.*/node_modules/babel.*
+.*/node_modules/@babel/.*
 .*/test262/.*
 .*/node_modules/.*\.json
 .*/lib/.*
@@ -8,6 +8,7 @@
 .*/test/serializer/.*
 .*/scripts/prettier.js
 .*/tmp_website_build/.*
+babel.config.js
 
 [include]
 
@@ -15,6 +16,7 @@
 flow-libs
 
 [options]
+merge_timeout=0
 suppress_comment= \\(.\\|\n\\)*\\$FlowFixMe
 esproposal.class_static_fields=enable
 esproposal.class_instance_fields=enable

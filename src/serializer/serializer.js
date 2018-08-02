@@ -15,7 +15,7 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { SourceFile } from "../types.js";
 import { AbruptCompletion } from "../completions.js";
 import { Generator } from "../utils/generator.js";
-import generate from "babel-generator";
+import generate from "@babel/generator";
 import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import type { SerializerOptions } from "../options.js";
@@ -30,7 +30,8 @@ import { ResidualHeapVisitor } from "./ResidualHeapVisitor.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { LazyObjectsSerializer } from "./LazyObjectsSerializer.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
+import type { BabelNodeFile } from "@babel/types";
 import { ResidualHeapRefCounter } from "./ResidualHeapRefCounter";
 import { ResidualHeapGraphGenerator } from "./ResidualHeapGraphGenerator";
 import { Referentializer } from "./Referentializer.js";
@@ -67,7 +68,11 @@ export class Serializer {
   modules: Modules;
   options: SerializerOptions;
 
-  _execute(sources: Array<SourceFile>, sourceMaps?: boolean = false): { [string]: string } {
+  _execute(
+    sources: Array<SourceFile>,
+    sourceMaps?: boolean = false,
+    onParse?: BabelNodeFile => void
+  ): { [string]: string } {
     let realm = this.realm;
     let [res, code] = realm.$GlobalEnv.executeSources(sources, "script", ast => {
       let realmPreludeGenerator = realm.preludeGenerator;
@@ -79,6 +84,7 @@ export class Serializer {
         forbiddenNames.add(((node: any): BabelNodeIdentifier).name);
         return true;
       });
+      if (onParse) onParse(ast);
     });
 
     if (res instanceof AbruptCompletion) {
@@ -118,7 +124,11 @@ export class Serializer {
     return true;
   }
 
-  init(sources: Array<SourceFile>, sourceMaps?: boolean = false): void | SerializedResult {
+  init(
+    sources: Array<SourceFile>,
+    sourceMaps?: boolean = false,
+    onParse?: BabelNodeFile => void
+  ): void | SerializedResult {
     let realmStatistics = this.realm.statistics;
     invariant(realmStatistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
     let statistics: SerializerStatistics = realmStatistics;
@@ -129,7 +139,7 @@ export class Serializer {
         this.logger.logInformation(`Evaluating initialization path...`);
       }
 
-      let code = this._execute(sources);
+      let code = this._execute(sources, sourceMaps, onParse);
       let environmentRecordIdAfterGlobalCode = EnvironmentRecord.nextId;
 
       if (this.logger.hasErrors()) return undefined;
@@ -149,6 +159,10 @@ export class Serializer {
           this.functions.optimizeReactComponentTreeRoots(reactStatistics, environmentRecordIdAfterGlobalCode);
         });
       }
+
+      statistics.processCollectedNestedOptimizedFunctions.measure(() =>
+        this.functions.processCollectedNestedOptimizedFunctions(environmentRecordIdAfterGlobalCode)
+      );
 
       if (this.options.initializeMoreModules) {
         statistics.initializeMoreModules.measure(() => this.modules.initializeMoreModules());
@@ -241,6 +255,7 @@ export class Serializer {
               additionalFunctionValuesAndEffects,
               residualHeapVisitor.additionalFunctionValueInfos,
               residualHeapVisitor.declarativeEnvironmentRecordsBindings,
+              residualHeapVisitor.globalBindings,
               referentializer,
               residualHeapVisitor.generatorDAG,
               residualHeapVisitor.conditionalFeasibility,
@@ -271,6 +286,7 @@ export class Serializer {
             additionalFunctionValuesAndEffects,
             residualHeapVisitor.additionalFunctionValueInfos,
             residualHeapVisitor.declarativeEnvironmentRecordsBindings,
+            residualHeapVisitor.globalBindings,
             referentializer,
             residualHeapVisitor.generatorDAG,
             residualHeapVisitor.conditionalFeasibility,

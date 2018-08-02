@@ -60,7 +60,7 @@ export class ResidualHeapRefCounter extends ResidualHeapVisitor {
     return this._updateValueIncomingEdgeCount(val);
   }
 
-  _updateParentOutgoingEdgeCount() {
+  _updateParentOutgoingEdgeCount(): void {
     const parent = this._path[this._path.length - 1];
     const edgeRecord = this._valueToEdgeRecord.get(parent);
     invariant(edgeRecord);
@@ -82,7 +82,7 @@ export class ResidualHeapRefCounter extends ResidualHeapVisitor {
   }
 
   // Override.
-  postProcessValue(val: Value) {
+  postProcessValue(val: Value): void {
     if (this._shouldIgnore(val)) {
       return;
     }

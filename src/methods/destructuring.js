@@ -33,15 +33,15 @@ import type {
   BabelNodeIdentifier,
   BabelNodeAssignmentPattern,
   BabelNodeObjectProperty,
-  BabelNodeRestProperty,
+  BabelNodeRestElement,
   BabelNodeLVal,
   BabelNodeArrayPattern,
   BabelNodeObjectPattern,
-} from "babel-types";
+} from "@babel/types";
 
 function RestDestructuringAssignmentEvaluation(
   realm: Realm,
-  property: BabelNodeRestProperty,
+  property: BabelNodeRestElement,
   value: Value,
   excludedNames: Array<PropertyKeyValue>,
   strictCode: boolean,
@@ -72,7 +72,7 @@ function RestDestructuringAssignmentEvaluation(
     return Properties.PutValue(realm, lref, restObj);
   }
 
-  // 6. Let nestedAssignmentPattern be the parse of the source text corresponding to DestructuringAssignmentTarget using either AssignmentPattern[?Yield, ?Await] as the goal symbol, adopting the parameter values from AssignmentRestProperty.
+  // 6. Let nestedAssignmentPattern be the parse of the source text corresponding to DestructuringAssignmentTarget using either AssignmentPattern[?Yield, ?Await] as the goal symbol, adopting the parameter values from AssignmentRestElement.
   let nestedAssignmentPattern = DestructuringAssignmentTarget;
 
   return DestructuringAssignmentEvaluation(realm, nestedAssignmentPattern, restObj, strictCode, env);
@@ -197,11 +197,11 @@ export function DestructuringAssignmentEvaluation(
 ): void | boolean | Value {
   if (pattern.type === "ObjectPattern") {
     let AssignmentPropertyList = [],
-      AssignmentRestProperty = null;
+      AssignmentRestElement = null;
 
     for (let property of pattern.properties) {
-      if (property.type === "RestProperty") {
-        AssignmentRestProperty = property;
+      if (property.type === "RestElement") {
+        AssignmentRestElement = property;
       } else {
         AssignmentPropertyList.push(property);
       }
@@ -210,7 +210,7 @@ export function DestructuringAssignmentEvaluation(
     // ObjectAssignmentPattern:
     //   { AssignmentPropertyList }
     //   { AssignmentPropertyList, }
-    if (!AssignmentRestProperty) {
+    if (!AssignmentRestElement) {
       // 1. Perform ? RequireObjectCoercible(value).
       RequireObjectCoercible(realm, value);
 
@@ -221,22 +221,15 @@ export function DestructuringAssignmentEvaluation(
       return realm.intrinsics.empty;
     }
 
-    // ObjectAssignmentPattern : { AssignmentRestProperty }
+    // ObjectAssignmentPattern : { AssignmentRestElement }
     if (AssignmentPropertyList.length === 0) {
       // 1. Let excludedNames be a new empty List.
       let excludedNames = [];
 
-      // 2. Return the result of performing RestDestructuringAssignmentEvaluation of AssignmentRestProperty with value and excludedNames as the arguments.
-      return RestDestructuringAssignmentEvaluation(
-        realm,
-        AssignmentRestProperty,
-        value,
-        excludedNames,
-        strictCode,
-        env
-      );
+      // 2. Return the result of performing RestDestructuringAssignmentEvaluation of AssignmentRestElement with value and excludedNames as the arguments.
+      return RestDestructuringAssignmentEvaluation(realm, AssignmentRestElement, value, excludedNames, strictCode, env);
     } else {
-      // ObjectAssignmentPattern : { AssignmentPropertyList, AssignmentRestProperty }
+      // ObjectAssignmentPattern : { AssignmentPropertyList, AssignmentRestElement }
       // 1. Let excludedNames be the result of performing ? PropertyDestructuringAssignmentEvaluation for AssignmentPropertyList using value as the argument.
       let excludedNames = PropertyDestructuringAssignmentEvaluation(
         realm,
@@ -246,15 +239,8 @@ export function DestructuringAssignmentEvaluation(
         env
       );
 
-      // 2. Return the result of performing RestDestructuringAssignmentEvaluation of AssignmentRestProperty with value and excludedNames as the arguments.
-      return RestDestructuringAssignmentEvaluation(
-        realm,
-        AssignmentRestProperty,
-        value,
-        excludedNames,
-        strictCode,
-        env
-      );
+      // 2. Return the result of performing RestDestructuringAssignmentEvaluation of AssignmentRestElement with value and excludedNames as the arguments.
+      return RestDestructuringAssignmentEvaluation(realm, AssignmentRestElement, value, excludedNames, strictCode, env);
     }
   } else if (pattern.type === "ArrayPattern") {
     // 1. Let iterator be ? GetIterator(value).

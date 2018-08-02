@@ -5,7 +5,7 @@ class Foo {
   constructor(x) {
     this.x = x;
   }
-  ['method'](y) {
+  ["method"](y) {
     return this.x + y;
   }
 }
@@ -23,9 +23,9 @@ global.Bar = class extends Foo {
   set [global.y](x) {
     // NO-OP
   }
-}
+};
 
-inspect = function() { 
-  var foo = new global.Bar(); 
-  return [foo, foo[global.method1](10)]
-}
+inspect = function() {
+  var foo = new global.Bar();
+  return [foo, foo[global.method1](10)];
+};

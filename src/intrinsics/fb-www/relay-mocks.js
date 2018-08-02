@@ -10,15 +10,21 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { ObjectValue, FunctionValue, AbstractValue, ECMAScriptSourceFunctionValue } from "../../values/index.js";
+import {
+  AbstractValue,
+  ECMAScriptSourceFunctionValue,
+  FunctionValue,
+  ObjectValue,
+  StringValue,
+} from "../../values/index.js";
 import { Create, Environment } from "../../singletons.js";
 import { createAbstract } from "../prepack/utils.js";
 import { Get } from "../../methods/index.js";
-import * as t from "babel-types";
-import invariant from "../../invariant";
+import invariant from "../../invariant.js";
 import { createReactHintObject } from "../../react/utils.js";
-import { parseExpression } from "babylon";
+import { parseExpression } from "@babel/parser";
 import { addMockFunctionToObject } from "./utils.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 let reactRelayCode = `
   function createReactRelay(React) {
@@ -112,15 +118,8 @@ function createReactRelayContainer(
     let value = AbstractValue.createTemporalFromBuildFunction(
       realm,
       FunctionValue,
-      [reactRelay, ...args],
-      _args => {
-        let [reactRelayIdent, ...otherArgs] = _args;
-
-        return t.callExpression(
-          t.memberExpression(reactRelayIdent, t.identifier(containerName)),
-          ((otherArgs: any): Array<any>)
-        );
-      },
+      [reactRelay, new StringValue(realm, containerName), ...args],
+      createOperationDescriptor("REACT_RELAY_MOCK_CONTAINER"),
       { skipInvariant: true, isPure: true }
     );
     invariant(value instanceof AbstractValue);

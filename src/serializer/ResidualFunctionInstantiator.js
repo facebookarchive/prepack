@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import { convertExpressionToJSXIdentifier } from "../react/jsx";
 import type Value from "../values/Value.js";
 import type {
@@ -34,10 +34,10 @@ import type {
   BabelNodeArrayExpression,
   BabelNodeSpreadElement,
   BabelNodeLabeledStatement,
-} from "babel-types";
+} from "@babel/types";
 import type { FunctionBodyAstNode } from "../types.js";
 import type { FactoryFunctionInfo } from "./types.js";
-import { nullExpression } from "../utils/babelhelpers.js";
+import { nullExpression } from "../utils/babelhelpers";
 
 function canShareFunctionBody(duplicateFunctionInfo: FactoryFunctionInfo): boolean {
   if (duplicateFunctionInfo.anyContainingAdditionalFunction) {

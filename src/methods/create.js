@@ -37,7 +37,7 @@ import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
 import traverseFast from "../utils/traverse-fast.js";
-import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeFunctionDeclaration } from "babel-types";
+import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeFunctionDeclaration } from "@babel/types";
 
 const allElementTypes = ["Undefined", "Null", "Boolean", "String", "Symbol", "Number", "Object"];
 
@@ -561,7 +561,7 @@ export class CreateImplementation {
     return O.$DefineOwnProperty(P, newDesc);
   }
 
-  CopyDataProperties(realm: Realm, target: ObjectValue, source: Value, excluded: Array<PropertyKeyValue>) {
+  CopyDataProperties(realm: Realm, target: ObjectValue, source: Value, excluded: Array<PropertyKeyValue>): ObjectValue {
     // Assert: Type(target) is Object.
     invariant(target instanceof ObjectValue, "Not an object value");
 

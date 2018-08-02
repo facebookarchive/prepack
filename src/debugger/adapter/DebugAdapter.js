@@ -114,10 +114,9 @@ class PrepackDebugSession extends DebugSession {
     let adapterChannel = new AdapterChannel(inFilePath, outFilePath);
     this._adapterChannel = adapterChannel;
     this._registerMessageCallbacks();
-    let separatedSourceFiles = args.sourceFile.trim().split(/\s+/g); // Split on all whitespace
     let launchArgs: PrepackLaunchArguments = {
       kind: "launch",
-      sourceFiles: separatedSourceFiles,
+      sourceFiles: args.sourceFiles,
       prepackRuntime: args.prepackRuntime,
       prepackArguments: args.prepackArguments,
       debugInFilePath: inFilePath,

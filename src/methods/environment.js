@@ -10,7 +10,6 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import * as t from "babel-types";
 import invariant from "../invariant.js";
 import type { PropertyKeyValue } from "../types.js";
 import {
@@ -57,25 +56,25 @@ import type {
   BabelNodeVariableDeclaration,
   BabelNodeIdentifier,
   BabelNodeRestElement,
-  BabelNodeRestProperty,
   BabelNodeObjectProperty,
   BabelNodeObjectPattern,
   BabelNodeArrayPattern,
   BabelNodeStatement,
   BabelNodeLVal,
   BabelNodePattern,
-} from "babel-types";
+} from "@babel/types";
+import * as t from "@babel/types";
 
 export class EnvironmentImplementation {
   // 2.6 RestBindingInitialization (please suggest an appropriate section name)
   RestBindingInitialization(
     realm: Realm,
-    property: BabelNodeRestProperty,
+    property: BabelNodeRestElement,
     value: Value,
     excludedNames: Array<PropertyKeyValue>,
     strictCode: boolean,
     environment: ?LexicalEnvironment
-  ) {
+  ): void | boolean | Value {
     let BindingIdentifier = ((property.argument: any): BabelNodeIdentifier);
 
     // 1. Let restObj be ObjectCreate(%ObjectPrototype%).
@@ -110,7 +109,7 @@ export class EnvironmentImplementation {
     value: Value,
     strictCode: boolean,
     environment: ?LexicalEnvironment
-  ) {
+  ): Array<PropertyKeyValue> {
     // Base condition for recursive call below
     if (properties.length === 0) {
       return [];
@@ -403,7 +402,7 @@ export class EnvironmentImplementation {
     strictCode: boolean,
     body: Array<BabelNodeStatement>,
     env: LexicalEnvironment
-  ) {
+  ): void {
     // 1. Let envRec be env's EnvironmentRecord.
     let envRec = env.environmentRecord;
 
@@ -461,7 +460,7 @@ export class EnvironmentImplementation {
     realm: Realm,
     G: ObjectValue | AbstractObjectValue,
     thisValue: ObjectValue | AbstractObjectValue
-  ) {
+  ): LexicalEnvironment {
     // 1. Let env be a new Lexical Environment.
     let env = new LexicalEnvironment(realm);
 
@@ -565,7 +564,7 @@ export class EnvironmentImplementation {
   }
 
   // ECMA262 8.3.1
-  GetActiveScriptOrModule(realm: Realm) {
+  GetActiveScriptOrModule(realm: Realm): any {
     // The GetActiveScriptOrModule abstract operation is used to determine the running script or module, based on the active function object.
     // GetActiveScriptOrModule performs the following steps:
     //
@@ -671,11 +670,11 @@ export class EnvironmentImplementation {
       RequireObjectCoercible(realm, value);
 
       let BindingPropertyList = [],
-        BindingRestProperty = null;
+        BindingRestElement = null;
 
       for (let property of node.properties) {
-        if (property.type === "RestProperty") {
-          BindingRestProperty = property;
+        if (property.type === "RestElement") {
+          BindingRestElement = property;
         } else {
           BindingPropertyList.push(property);
         }
@@ -685,7 +684,7 @@ export class EnvironmentImplementation {
       //   { BindingPropertyList }
       //   { BindingPropertyList, }
 
-      if (!BindingRestProperty) {
+      if (!BindingRestElement) {
         // 1. Let excludedNames be the result of performing PropertyBindingInitialization for BindingPropertyList using value and environment as the argument.
         /* let excludedNames = */ this.PropertyBindingInitialization(
           realm,
@@ -701,22 +700,15 @@ export class EnvironmentImplementation {
         return realm.intrinsics.empty;
       }
 
-      // ObjectBindingPattern : { BindingRestProperty }
+      // ObjectBindingPattern : { BindingRestElement }
       if (BindingPropertyList.length === 0) {
         // 1. Let excludedNames be a new empty List.
         let excludedNames = [];
 
-        // 2. Return the result of performing RestBindingInitialization of BindingRestProperty with value, environment and excludedNames as the arguments.
-        return this.RestBindingInitialization(
-          realm,
-          BindingRestProperty,
-          value,
-          excludedNames,
-          strictCode,
-          environment
-        );
+        // 2. Return the result of performing RestBindingInitialization of BindingRestElement with value, environment and excludedNames as the arguments.
+        return this.RestBindingInitialization(realm, BindingRestElement, value, excludedNames, strictCode, environment);
       } else {
-        // ObjectBindingPattern : { BindingPropertyList, BindingRestProperty }
+        // ObjectBindingPattern : { BindingPropertyList, BindingRestElement }
 
         // 1. Let excludedNames be the result of performing PropertyBindingInitialization of BindingPropertyList using value and environment as arguments.
         let excludedNames = this.PropertyBindingInitialization(
@@ -729,15 +721,8 @@ export class EnvironmentImplementation {
 
         // 2. ReturnIfAbrupt(excludedNames).
 
-        // 3. Return the result of performing RestBindingInitialization of BindingRestProperty with value, environment and excludedNames as the arguments.
-        return this.RestBindingInitialization(
-          realm,
-          BindingRestProperty,
-          value,
-          excludedNames,
-          strictCode,
-          environment
-        );
+        // 3. Return the result of performing RestBindingInitialization of BindingRestElement with value, environment and excludedNames as the arguments.
+        return this.RestBindingInitialization(realm, BindingRestElement, value, excludedNames, strictCode, environment);
       }
     } else if (node.type === "Identifier") {
       // ECMA262 12.1.5
@@ -763,7 +748,7 @@ export class EnvironmentImplementation {
     iteratorRecord: { $Iterator: ObjectValue, $Done: boolean },
     strictCode: boolean,
     environment: void | LexicalEnvironment
-  ) {
+  ): void {
     let env = environment ? environment : realm.getRunningContext().lexicalEnvironment;
 
     // Check if the last formal is a rest element. If so then we want to save the

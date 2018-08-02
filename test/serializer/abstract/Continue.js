@@ -4,9 +4,12 @@ let arr = [];
 
 for (let i of [1, 2, 3]) {
   arr[i] = i * 10;
-  if (x) continue; else continue;
+  if (x) continue;
+  else continue;
 }
 
 z = arr;
 
-inspect = function() { return "" + global.z; }
+inspect = function() {
+  return "" + global.z;
+};

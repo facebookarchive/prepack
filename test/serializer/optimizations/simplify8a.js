@@ -5,4 +5,6 @@ let c = !b;
 let ob = b ? null : { bar: 1 };
 let obstr = ob ? "ob" : "str";
 
-inspect = function() { return obstr; }
+inspect = function() {
+  return obstr;
+};

@@ -6,4 +6,6 @@ do {
   if (i > 5) break;
 } while (i < n);
 
-inspect = function() { return i; }
+inspect = function() {
+  return i;
+};

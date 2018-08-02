@@ -39,7 +39,7 @@ import {
   getReactSymbol,
   isReactElement,
 } from "../utils.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import invariant from "../../invariant.js";
 import {
   convertValueToNode,
@@ -68,13 +68,17 @@ import {
 // $FlowFixMe: flow complains that this isn't a module but it is, and it seems to load fine
 import hyphenateStyleName from "fbjs/lib/hyphenateStyleName";
 import { To } from "../../singletons.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 export type ReactNode = Array<ReactNode> | string | AbstractValue | ArrayValue;
 
 function renderValueWithHelper(realm: Realm, value: Value, helper: ECMAScriptSourceFunctionValue): AbstractValue {
   // given we know nothing of this value, we need to escape the contents of it at runtime
-  let val = AbstractValue.createFromBuildFunction(realm, Value, [helper, value], ([helperNode, valueNode]) =>
-    t.callExpression(helperNode, [valueNode])
+  let val = AbstractValue.createFromBuildFunction(
+    realm,
+    Value,
+    [helper, value],
+    createOperationDescriptor("REACT_SSR_RENDER_VALUE_HELPER")
   );
   invariant(val instanceof AbstractValue);
   return val;
@@ -252,8 +256,11 @@ function renderReactNode(realm: Realm, reactNode: ReactNode): StringValue | Abst
       args.push(element);
     }
   }
-  let val = AbstractValue.createFromBuildFunction(realm, StringValue, args, valueNodes =>
-    t.templateLiteral(((quasis: any): Array<any>), valueNodes)
+  let val = AbstractValue.createFromBuildFunction(
+    realm,
+    StringValue,
+    args,
+    createOperationDescriptor("REACT_SSR_TEMPLATE_LITERAL", { quasis })
   );
   invariant(val instanceof AbstractValue);
   return val;
@@ -331,16 +338,34 @@ class ReactDOMServerRenderer {
     }
   }
 
-  _renderArrayValue(value: ArrayValue, namespace: string, depth: number): Array<ReactNode> | ReactNode {
-    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(value)) {
-      let arrayHint = this.realm.react.arrayHints.get(value);
+  _renderArrayValue(arrayValue: ArrayValue, namespace: string, depth: number): Array<ReactNode> | ReactNode {
+    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(arrayValue)) {
+      let nestedOptimizedFunctionEffects = arrayValue.nestedOptimizedFunctionEffects;
 
-      if (arrayHint !== undefined) {
-        return renderValueWithHelper(this.realm, value, this.arrayHelper);
+      if (nestedOptimizedFunctionEffects !== undefined) {
+        for (let [func, effects] of nestedOptimizedFunctionEffects) {
+          let resolvedEffects = this.realm.evaluateForEffects(
+            () => {
+              let result = effects.result;
+              this.realm.applyEffects(effects);
+
+              if (result instanceof SimpleNormalCompletion) {
+                result = result.value;
+              }
+              invariant(result instanceof Value);
+              return this.render(result, namespace, depth);
+            },
+            /*state*/ null,
+            `react nested optimized closure`
+          );
+          nestedOptimizedFunctionEffects.set(func, resolvedEffects);
+          this.realm.collectedNestedOptimizedFunctionEffects.set(func, resolvedEffects);
+        }
+        return renderValueWithHelper(this.realm, arrayValue, this.arrayHelper);
       }
     }
     let elements = [];
-    forEachArrayValue(this.realm, value, elementValue => {
+    forEachArrayValue(this.realm, arrayValue, elementValue => {
       let renderedElement = this._renderValue(elementValue, namespace, depth);
       if (Array.isArray(renderedElement)) {
         elements.push(...renderedElement);
@@ -476,7 +501,11 @@ export function renderToString(
   staticMarkup: boolean
 ): StringValue | AbstractValue {
   let reactStatistics = new ReactStatistics();
-  let reconciler = new Reconciler(realm, { firstRenderOnly: true, isRoot: true }, reactStatistics);
+  let reconciler = new Reconciler(
+    realm,
+    { firstRenderOnly: true, isRoot: true, modelString: undefined },
+    reactStatistics
+  );
   let typeValue = getProperty(realm, reactElement, "type");
   let propsValue = getProperty(realm, reactElement, "props");
   let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(realm, typeValue));
@@ -490,13 +519,9 @@ export function renderToString(
   invariant(realm.generator);
   // create a single regex used for the escape functions
   // by hoisting it, it gets cached by the VM JITs
-  realm.generator.emitStatement([], () =>
-    t.variableDeclaration("var", [t.variableDeclarator(t.identifier("matchHtmlRegExp"), t.regExpLiteral("[\"'&<>]"))])
-  );
+  realm.generator.emitStatement([], createOperationDescriptor("REACT_SSR_REGEX_CONSTANT"));
   invariant(realm.generator);
-  realm.generator.emitStatement([], () =>
-    t.variableDeclaration("var", [t.variableDeclarator(t.identifier("previousWasTextNode"), t.booleanLiteral(false))])
-  );
+  realm.generator.emitStatement([], createOperationDescriptor("REACT_SSR_PREV_TEXT_NODE"));
   invariant(effects);
   realm.applyEffects(effects);
   invariant(effects.result instanceof SimpleNormalCompletion);

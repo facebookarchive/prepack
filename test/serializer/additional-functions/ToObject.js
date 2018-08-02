@@ -21,5 +21,7 @@
 
   global.App = App;
 
-  inspect = function() { return true; } // just make sure Prepack doesn't crash while generating code
+  inspect = function() {
+    return true;
+  }; // just make sure Prepack doesn't crash while generating code
 })();

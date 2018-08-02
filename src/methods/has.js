@@ -16,7 +16,7 @@ import { IsPropertyKey } from "./index.js";
 import { Value, AbstractValue, ObjectValue, NullValue, AbstractObjectValue } from "../values/index.js";
 import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
-import type { BabelNodeExpression } from "babel-types";
+import type { BabelNodeExpression } from "@babel/types";
 
 // 12.2.1.2 Static Semantics: HasName
 // 14.1.9 Static Semantics: HasName

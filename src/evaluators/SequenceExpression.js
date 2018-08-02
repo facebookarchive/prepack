@@ -13,7 +13,7 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { Environment } from "../singletons.js";
-import type { BabelNodeSequenceExpression } from "babel-types";
+import type { BabelNodeSequenceExpression } from "@babel/types";
 import invariant from "../invariant.js";
 
 export default function(

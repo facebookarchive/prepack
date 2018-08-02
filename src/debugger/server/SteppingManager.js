@@ -9,7 +9,7 @@
 
 /* @flow strict-local */
 
-import { BabelNodeSourceLocation } from "babel-types";
+import { BabelNodeSourceLocation } from "@babel/types";
 import invariant from "./../common/invariant.js";
 import { Stepper, StepIntoStepper, StepOverStepper, StepOutStepper } from "./Stepper.js";
 import type { Realm } from "./../../realm.js";
@@ -26,7 +26,7 @@ export class SteppingManager {
   _keepOldSteppers: boolean;
   _steppers: Array<Stepper>;
 
-  processStepCommand(kind: "in" | "over" | "out", currentNodeLocation: BabelNodeSourceLocation) {
+  processStepCommand(kind: "in" | "over" | "out", currentNodeLocation: BabelNodeSourceLocation): void {
     if (kind === "in") {
       this._processStepIn(currentNodeLocation);
     } else if (kind === "over") {
@@ -38,7 +38,7 @@ export class SteppingManager {
     }
   }
 
-  _processStepIn(loc: BabelNodeSourceLocation) {
+  _processStepIn(loc: BabelNodeSourceLocation): void {
     invariant(loc && loc.source);
     if (!this._keepOldSteppers) {
       this._steppers = [];
@@ -48,7 +48,7 @@ export class SteppingManager {
     );
   }
 
-  _processStepOver(loc: BabelNodeSourceLocation) {
+  _processStepOver(loc: BabelNodeSourceLocation): void {
     invariant(loc && loc.source);
     if (!this._keepOldSteppers) {
       this._steppers = [];
@@ -58,7 +58,7 @@ export class SteppingManager {
     );
   }
 
-  _processStepOut(loc: BabelNodeSourceLocation) {
+  _processStepOut(loc: BabelNodeSourceLocation): void {
     invariant(loc && loc.source);
     if (!this._keepOldSteppers) {
       this._steppers = [];

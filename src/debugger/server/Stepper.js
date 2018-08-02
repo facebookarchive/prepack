@@ -9,7 +9,7 @@
 
 /* @flow strict-local */
 import type { SourceData } from "./../common/types.js";
-import { BabelNode } from "babel-types";
+import { BabelNode } from "@babel/types";
 import invariant from "./../common/invariant.js";
 
 export class Stepper {
@@ -30,7 +30,7 @@ export class Stepper {
   // NOTE: Only checks if a node has changed within the same callstack.
   // The same node in two different excutions contexts (e.g. recursive call)
   // will not be detected. Check the stackSize (via realm) in those cases.
-  isAstLocationChanged(ast: BabelNode) {
+  isAstLocationChanged(ast: BabelNode): boolean {
     let loc = ast.loc;
     if (!loc) return false;
     let filePath = loc.source;

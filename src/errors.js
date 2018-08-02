@@ -9,7 +9,7 @@
 
 /* @flow strict */
 
-import type { BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "@babel/types";
 
 // Information: Just an informative message with no semantic implications whatsoever.
 // Warning: Prepack will produce code that matches the behavior of the original code, but the original code might have an error.
@@ -22,18 +22,27 @@ export type ErrorCode = "PP0001";
 // This is the error format used to report errors to the caller-supplied
 // error-handler
 export class CompilerDiagnostic extends Error {
-  constructor(message: string, location: ?BabelNodeSourceLocation, errorCode: string, severity: Severity) {
+  constructor(
+    message: string,
+    location: ?BabelNodeSourceLocation,
+    errorCode: string,
+    severity: Severity,
+    sourceFilePaths?: { sourceMaps: Array<string>, sourceFiles: Array<{ absolute: string, relative: string }> }
+  ) {
     super(message);
 
     this.location = location;
     this.severity = severity;
     this.errorCode = errorCode;
+    this.sourceFilePaths = sourceFilePaths;
   }
 
   callStack: void | string;
   location: ?BabelNodeSourceLocation;
   severity: Severity;
   errorCode: string;
+  // For repro bundles, we need to pass the names of all sourcefiles/sourcemaps touched by Prepack back to the CLI.
+  sourceFilePaths: void | { sourceMaps: Array<string>, sourceFiles: Array<{ absolute: string, relative: string }> };
 }
 
 // This error is thrown to exit Prepack when an ErrorHandler returns 'FatalError'
@@ -60,4 +69,4 @@ export class InvariantError extends Error {
   }
 }
 
-export type ErrorHandler = (error: CompilerDiagnostic) => ErrorHandlerResult;
+export type ErrorHandler = (error: CompilerDiagnostic, suppressDiagnostics: boolean) => ErrorHandlerResult;

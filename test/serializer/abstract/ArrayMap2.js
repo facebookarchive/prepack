@@ -4,9 +4,14 @@ let a = [1];
 if (c) a.push(2);
 let x;
 try {
-  x = a.map(x => { if (x === 2) throw x; else return x + 42; } );
+  x = a.map(x => {
+    if (x === 2) throw x;
+    else return x + 42;
+  });
 } catch (e) {
   x = e;
 }
 
-global.inspect = function() { JSON.stringify(x); }
+global.inspect = function() {
+  JSON.stringify(x);
+};

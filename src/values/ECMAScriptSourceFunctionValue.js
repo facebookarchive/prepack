@@ -10,11 +10,11 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import type { BabelNodeBlockStatement, BabelNodeSourceLocation, BabelNodeLVal } from "babel-types";
+import type { BabelNodeBlockStatement, BabelNodeSourceLocation, BabelNodeLVal } from "@babel/types";
 import type { FunctionBodyAstNode } from "../types.js";
 import { ECMAScriptFunctionValue } from "./index.js";
-import * as t from "babel-types";
-import invariant from "../invariant";
+import * as t from "@babel/types";
+import invariant from "../invariant.js";
 
 /* Non built-in ECMAScript function objects with source code */
 export default class ECMAScriptSourceFunctionValue extends ECMAScriptFunctionValue {

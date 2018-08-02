@@ -12,10 +12,10 @@
 import type { Realm } from "../../realm.js";
 import { ObjectValue, AbstractObjectValue, AbstractValue, FunctionValue } from "../../values/index.js";
 import { createReactHintObject, isReactElement } from "../../react/utils.js";
-import * as t from "babel-types";
-import invariant from "../../invariant";
+import invariant from "../../invariant.js";
 import { updateIntrinsicNames, addMockFunctionToObject } from "./utils.js";
 import { renderToString } from "../../react/experimental-server-rendering/rendering.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 export function createMockReactDOM(realm: Realm, reactDomRequireName: string): ObjectValue {
   let reactDomValue = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
@@ -28,9 +28,7 @@ export function createMockReactDOM(realm: Realm, reactDomRequireName: string): O
       realm,
       FunctionValue,
       [funcVal, ...args],
-      ([renderNode, ..._args]) => {
-        return t.callExpression(renderNode, ((_args: any): Array<any>));
-      },
+      createOperationDescriptor("REACT_TEMPORAL_FUNC"),
       { skipInvariant: true, isPure: true }
     );
     invariant(reactDomMethod instanceof AbstractObjectValue);
@@ -47,9 +45,7 @@ export function createMockReactDOM(realm: Realm, reactDomRequireName: string): O
       realm,
       ObjectValue,
       [funcVal, reactPortalValue, domNodeValue],
-      ([renderNode, ..._args]) => {
-        return t.callExpression(renderNode, ((_args: any): Array<any>));
-      },
+      createOperationDescriptor("REACT_TEMPORAL_FUNC"),
       { skipInvariant: true, isPure: true }
     );
     invariant(reactDomMethod instanceof AbstractObjectValue);
@@ -78,9 +74,7 @@ export function createMockReactDOMServer(realm: Realm, requireName: string): Obj
       realm,
       FunctionValue,
       [funcVal, ...args],
-      ([renderNode, ..._args]) => {
-        return t.callExpression(renderNode, ((_args: any): Array<any>));
-      },
+      createOperationDescriptor("REACT_TEMPORAL_FUNC"),
       { skipInvariant: true, isPure: true }
     );
     invariant(reactDomMethod instanceof AbstractObjectValue);

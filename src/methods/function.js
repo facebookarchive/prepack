@@ -41,7 +41,6 @@ import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
 import IsStrict from "../utils/strict.js";
-import * as t from "babel-types";
 import type {
   BabelNode,
   BabelNodeBlockStatement,
@@ -61,7 +60,8 @@ import type {
   BabelNodeVariableDeclaration,
   BabelNodeWhileStatement,
   BabelNodeWithStatement,
-} from "babel-types";
+} from "@babel/types";
+import * as t from "@babel/types";
 
 function InternalCall(
   realm: Realm,

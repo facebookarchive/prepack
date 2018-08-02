@@ -30,17 +30,20 @@ import { Modules } from "./utils/modules.js";
 import { Logger } from "./utils/logger.js";
 import { Generator } from "./utils/generator.js";
 import { AbstractObjectValue, AbstractValue, ObjectValue } from "./values/index.js";
-import type { DebuggerConfigArguments } from "./types";
 
 export function prepackSources(
   sources: Array<SourceFile>,
   options: PrepackOptions = defaultOptions,
-  debuggerConfigArgs: void | DebuggerConfigArguments,
   statistics: SerializerStatistics | void = undefined
 ): SerializedResult {
   let realmOptions = getRealmOptions(options);
   realmOptions.errorHandler = options.errorHandler;
-  let realm = construct_realm(realmOptions, debuggerConfigArgs, statistics || new SerializerStatistics());
+  let realm = construct_realm(
+    realmOptions,
+    options.debuggerConfigArgs,
+    statistics || new SerializerStatistics(),
+    options.debugReproArgs
+  );
   initializeGlobals(realm);
   if (typeof options.additionalGlobals === "function") {
     options.additionalGlobals(realm);
@@ -63,7 +66,7 @@ export function prepackSources(
     return { code: "", map: undefined };
   } else if (options.serialize === true || options.residual !== true) {
     let serializer = new Serializer(realm, getSerializerOptions(options));
-    let serialized = serializer.init(sources, options.sourceMaps);
+    let serialized = serializer.init(sources, options.sourceMaps, options.onParse);
 
     //Turn off the debugger if there is one
     if (realm.debuggerInstance) {
@@ -74,6 +77,15 @@ export function prepackSources(
       throw new FatalError("serializer failed");
     }
 
+    if (realm.debugReproManager) {
+      let localManager = realm.debugReproManager;
+      let sourcePaths = {
+        sourceFiles: localManager.getSourceFilePaths(),
+        sourceMaps: localManager.getSourceMapPaths(),
+      };
+      serialized.sourceFilePaths = sourcePaths;
+    }
+
     if (!options.residual) return serialized;
     let residualSources = [
       {
@@ -82,7 +94,7 @@ export function prepackSources(
         sourceMapContents: serialized.map && JSON.stringify(serialized.map),
       },
     ];
-    let debugChannel = debuggerConfigArgs ? debuggerConfigArgs.debugChannel : undefined;
+    let debugChannel = options.debuggerConfigArgs ? options.debuggerConfigArgs.debugChannel : undefined;
     realm = construct_realm(realmOptions, debugChannel);
     initializeGlobals(realm);
     if (typeof options.additionalGlobals === "function") {
@@ -106,10 +118,10 @@ function checkResidualFunctions(modules: Modules, startFunc: number, totalToAnal
   let env = realm.$GlobalEnv;
   realm.$GlobalObject.makeSimple();
   let errorHandler = realm.errorHandler;
-  if (!errorHandler) errorHandler = diag => realm.handleError(diag);
-  realm.errorHandler = diag => {
+  if (!errorHandler) errorHandler = (diag, suppressDiagnostics) => realm.handleError(diag);
+  realm.errorHandler = (diag, suppressDiagnostics) => {
     invariant(errorHandler);
-    if (diag.severity === "FatalError") return errorHandler(diag);
+    if (diag.severity === "FatalError") return errorHandler(diag, realm.suppressDiagnostics);
     else return "Recover";
   };
   modules.resolveInitializedModules();

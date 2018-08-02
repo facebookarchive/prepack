@@ -19,9 +19,9 @@ import {
   SymbolValue,
   Value,
 } from "../values/index.js";
-import type { BabelNodeStatement } from "babel-types";
+import type { BabelNodeStatement } from "@babel/types";
 import type { SerializedBody } from "./types.js";
-import { Generator, type TemporalBuildNodeEntry } from "../utils/generator.js";
+import { Generator, type TemporalOperationEntry } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import { BodyReference } from "./types.js";
 import { ResidualFunctions } from "./ResidualFunctions.js";
@@ -38,7 +38,7 @@ type EmitterDependenciesVisitorCallbacks<T> = {
   // Callback invoked whenever a dependency is visited that is an abstract value with an identifier.
   // A return value that is not undefined indicates that the visitor should stop, and return the value as the overall result.
   onAbstractValueWithIdentifier?: AbstractValue => void | T,
-  // Callback invoked whenever a dependency is visited that is an unknown array value with a widened numeric property.
+  // Callback invoked whenever a dependency is visited that is an array value with a widened numeric property.
   // A return value that is not undefined indicates that the visitor should stop, and return the value as the overall result.
   onArrayWithWidenedNumericProperty?: ArrayValue => void | T,
 };
@@ -67,7 +67,7 @@ export class Emitter {
     residualFunctions: ResidualFunctions,
     referencedDeclaredValues: Map<Value, void | FunctionValue>,
     conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>,
-    derivedIds: Map<string, TemporalBuildNodeEntry>
+    derivedIds: Map<string, TemporalOperationEntry>
   ) {
     this._mainBody = { type: "MainGenerator", parentBody: undefined, entries: [], done: false };
     this._waitingForValues = new Map();
@@ -88,7 +88,7 @@ export class Emitter {
       onAbstractValueWithIdentifier: val => {
         // If the value hasn't been declared yet, then we should wait for it.
         if (
-          derivedIds.has(val.getIdentifier().name) &&
+          derivedIds.has(val.getIdentifier()) &&
           !this.cannotDeclare() &&
           !this.hasBeenDeclared(val) &&
           (!this.emittingToAdditionalFunction() || referencedDeclaredValues.get(val) !== undefined)
@@ -128,7 +128,11 @@ export class Emitter {
   // The dependency indicates what is being emitted; until this emission ends, other parties might have to wait for the dependency.
   // The targetBody is a wrapper that holds the sequence of statements that are going to be emitted.
   // If isChild, then we are starting a new emitting session as a branch off the previously active emitting session.
-  beginEmitting(dependency: string | Generator | Value, targetBody: SerializedBody, isChild: boolean = false) {
+  beginEmitting(
+    dependency: string | Generator | Value,
+    targetBody: SerializedBody,
+    isChild: boolean = false
+  ): SerializedBody {
     invariant(!this._finalized);
     this._activeStack.push(dependency);
     if (dependency instanceof Value) {
@@ -146,12 +150,12 @@ export class Emitter {
     this._body = targetBody;
     return oldBody;
   }
-  emit(statement: BabelNodeStatement) {
+  emit(statement: BabelNodeStatement): void {
     invariant(!this._finalized);
     this._body.entries.push(statement);
     this._processCurrentBody();
   }
-  finalizeCurrentBody() {
+  finalizeCurrentBody(): void {
     invariant(!this._finalized);
     this._processCurrentBody();
   }
@@ -165,7 +169,7 @@ export class Emitter {
     oldBody: SerializedBody,
     valuesToProcess: void | Set<AbstractValue | ObjectValue>,
     isChild: boolean = false
-  ) {
+  ): SerializedBody {
     invariant(!this._finalized);
     let lastDependency = this._activeStack.pop();
     invariant(dependency === lastDependency);
@@ -206,10 +210,10 @@ export class Emitter {
 
     return lastBody;
   }
-  processValues(valuesToProcess: Set<AbstractValue | ObjectValue>) {
+  processValues(valuesToProcess: Set<AbstractValue | ObjectValue>): void {
     for (let value of valuesToProcess) this._processValue(value);
   }
-  finalize() {
+  finalize(): void {
     invariant(!this._finalized);
     invariant(this._activeGeneratorStack.length === 1);
     invariant(this._activeGeneratorStack[0] === this._body);
@@ -236,7 +240,7 @@ export class Emitter {
   _isGeneratorBody(body: SerializedBody): boolean {
     return body.type === "MainGenerator" || body.type === "Generator" || body.type === "AdditionalFunction";
   }
-  _processCurrentBody() {
+  _processCurrentBody(): void {
     if (!this._isEmittingActiveGenerator() || this._body.processing) {
       return;
     }
@@ -250,7 +254,7 @@ export class Emitter {
     this._waitingForBodies.delete(this._body);
     this._body.processing = false;
   }
-  _processValue(value: Value) {
+  _processValue(value: Value): void {
     let a = this._waitingForValues.get(value);
     if (a === undefined) return;
     let currentBody = this._body;
@@ -416,7 +420,7 @@ export class Emitter {
     dependencies: Array<Value>,
     func: () => void,
     targetBody: SerializedBody
-  ) {
+  ): void {
     if (delayReason === undefined && this._isGeneratorBody(targetBody)) {
       delayReason = targetBody;
     }
@@ -447,14 +451,19 @@ export class Emitter {
       }
     }
   }
-  _emitAfterWaitingForValue(reason: Value, dependencies: Array<Value>, targetBody: SerializedBody, func: () => void) {
+  _emitAfterWaitingForValue(
+    reason: Value,
+    dependencies: Array<Value>,
+    targetBody: SerializedBody,
+    func: () => void
+  ): void {
     invariant(!this._finalized);
     invariant(!(reason instanceof AbstractValue && this.hasBeenDeclared(reason)) || this._activeValues.has(reason));
     let a = this._waitingForValues.get(reason);
     if (a === undefined) this._waitingForValues.set(reason, (a = []));
     a.push({ body: targetBody, dependencies, func });
   }
-  _emitAfterWaitingForGeneratorBody(reason: SerializedBody, dependencies: Array<Value>, func: () => void) {
+  _emitAfterWaitingForGeneratorBody(reason: SerializedBody, dependencies: Array<Value>, func: () => void): void {
     invariant(this._isGeneratorBody(reason));
     invariant(!this._finalized);
     invariant(this._activeGeneratorStack.includes(reason));
@@ -464,10 +473,10 @@ export class Emitter {
     }
     b.push({ dependencies, func });
   }
-  emitNowOrAfterWaitingForDependencies(dependencies: Array<Value>, func: () => void, targetBody: SerializedBody) {
+  emitNowOrAfterWaitingForDependencies(dependencies: Array<Value>, func: () => void, targetBody: SerializedBody): void {
     this.emitAfterWaiting(this.getReasonToWaitForDependencies(dependencies), dependencies, func, targetBody);
   }
-  declare(value: AbstractValue | ObjectValue) {
+  declare(value: AbstractValue | ObjectValue): void {
     invariant(!this._finalized);
     invariant(!this._activeValues.has(value));
     invariant(value instanceof ObjectValue || value.hasIdentifier());
@@ -478,7 +487,7 @@ export class Emitter {
     this._body.declaredValues.set(value, this._body);
     this._processValue(value);
   }
-  emittingToAdditionalFunction() {
+  emittingToAdditionalFunction(): boolean {
     // Whether we are directly or indirectly emitting to an additional function
     for (let b = this._body; b !== undefined; b = b.parentBody) if (b.type === "AdditionalFunction") return true;
     return false;
@@ -498,7 +507,7 @@ export class Emitter {
     }
     return undefined;
   }
-  declaredCount() {
+  declaredCount(): number {
     let declaredValues = this._body.declaredValues;
     return declaredValues === undefined ? 0 : declaredValues.size;
   }
@@ -515,7 +524,7 @@ export class Emitter {
     }
     return false;
   }
-  getBodyReference() {
+  getBodyReference(): BodyReference {
     invariant(!this._finalized);
     return new BodyReference(this._body, this._body.entries.length);
   }

@@ -19,8 +19,7 @@ else x = 11;
   }
   global.func1 = func1;
 
-  if (global.__optimize)
-    __optimize(func1);
+  if (global.__optimize) __optimize(func1);
 
   global.inspect = function() {
     let prevfoo = foo;
@@ -31,6 +30,6 @@ else x = 11;
     } catch (e) {
       error = e.message;
     }
-    return 'prevfoo: ' + prevfoo + ' err: ' + error + ' ret ' + ret + ' foo ' + foo;
-  }
-}());
+    return "prevfoo: " + prevfoo + " err: " + error + " ret " + ret + " foo " + foo;
+  };
+})();

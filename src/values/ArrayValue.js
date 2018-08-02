@@ -9,18 +9,103 @@
 
 /* @flow strict-local */
 
-import type { Realm } from "../realm.js";
+import type { Effects, Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor, ObjectKind } from "../types.js";
-import { AbstractValue, ObjectValue, StringValue, NumberValue, Value } from "./index.js";
+import {
+  AbstractValue,
+  BoundFunctionValue,
+  ECMAScriptSourceFunctionValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
+  Value,
+} from "./index.js";
 import { IsAccessorDescriptor, IsPropertyKey, IsArrayIndex } from "../methods/is.js";
-import { Properties, To } from "../singletons.js";
+import { Havoc, Properties, To, Utils } from "../singletons.js";
+import { type OperationDescriptor } from "../utils/generator.js";
 import invariant from "../invariant.js";
-import type { BabelNodeExpression } from "babel-types";
+
+type PossibleNestedOptimizedFunctions = [
+  { func: BoundFunctionValue | ECMAScriptSourceFunctionValue, thisValue: Value },
+];
+
+function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
+  realm: Realm,
+  abstractArrayValue: ArrayValue,
+  possibleNestedOptimizedFunctions: PossibleNestedOptimizedFunctions
+): void {
+  for (let { func, thisValue } of possibleNestedOptimizedFunctions) {
+    let funcToModel = func;
+    if (func instanceof BoundFunctionValue) {
+      funcToModel = func.$BoundTargetFunction;
+      thisValue = func.$BoundThis;
+    }
+    invariant(funcToModel instanceof ECMAScriptSourceFunctionValue);
+    let funcCall = Utils.createModelledFunctionCall(realm, funcToModel, undefined, thisValue);
+    let hadSideEffects = false;
+    // We take the modelled function and wrap it in a pure evaluation so we can check for
+    // side-effects that occur when evaluating the function. If there are side-effects, then
+    // we don't try and optimize the nested function.
+    let pureFuncCall = () =>
+      realm.evaluatePure(funcCall, () => {
+        hadSideEffects = true;
+      });
+    let effects = realm.evaluateForEffects(pureFuncCall, null, "temporalArray nestedOptimizedFunction");
+    if (hadSideEffects) {
+      // If the nested optimized function had side-effects, we need to fallback to
+      // the default behaviour and havoc the nested functions so any bindings
+      // within the function properly leak and materialize.
+      Havoc.value(realm, func);
+    } else {
+      // Check if effects were pure then add them
+      if (abstractArrayValue.nestedOptimizedFunctionEffects === undefined) {
+        abstractArrayValue.nestedOptimizedFunctionEffects = new Map();
+      }
+      abstractArrayValue.nestedOptimizedFunctionEffects.set(funcToModel, effects);
+      realm.collectedNestedOptimizedFunctionEffects.set(funcToModel, effects);
+    }
+  }
+}
+
+function createArrayWithWidenedNumericProperty(
+  realm: Realm,
+  intrinsicName: string,
+  possibleNestedOptimizedFunctions?: PossibleNestedOptimizedFunctions
+): ArrayValue {
+  let abstractArrayValue = new ArrayValue(realm, intrinsicName);
+
+  if (possibleNestedOptimizedFunctions !== undefined) {
+    if (!realm.react.enabled || realm.react.optimizeNestedFunctions) {
+      evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
+        realm,
+        abstractArrayValue,
+        possibleNestedOptimizedFunctions
+      );
+    } else {
+      // If nested optimized functions are disabled, we need to fallback to
+      // the default behaviour and havoc the nested functions so any bindings
+      // within the function properly leak and materialize.
+      for (let { func } of possibleNestedOptimizedFunctions) {
+        Havoc.value(realm, func);
+      }
+    }
+  }
+  // Add unknownProperty so we manually handle this object property access
+  abstractArrayValue.unknownProperty = {
+    key: undefined,
+    descriptor: {
+      value: AbstractValue.createFromType(realm, Value, "widened numeric property"),
+    },
+    object: abstractArrayValue,
+  };
+  return abstractArrayValue;
+}
 
 export default class ArrayValue extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {
     super(realm, realm.intrinsics.ArrayPrototype, intrinsicName);
   }
+  nestedOptimizedFunctionEffects: void | Map<ECMAScriptSourceFunctionValue, Effects>;
 
   getKind(): ObjectKind {
     return "Array";
@@ -97,30 +182,17 @@ export default class ArrayValue extends ObjectValue {
   static createTemporalWithWidenedNumericProperty(
     realm: Realm,
     args: Array<Value>,
-    buildFunction: (Array<BabelNodeExpression>) => BabelNodeExpression,
-    reactArrayHint?: { func: Value, thisVal: Value }
+    operationDescriptor: OperationDescriptor,
+    possibleNestedOptimizedFunctions?: PossibleNestedOptimizedFunctions
   ): ArrayValue {
     invariant(realm.generator !== undefined);
-
     let value = realm.generator.deriveConcreteObject(
-      intrinsicName => new ArrayValue(realm, intrinsicName),
+      intrinsicName => createArrayWithWidenedNumericProperty(realm, intrinsicName, possibleNestedOptimizedFunctions),
       args,
-      buildFunction,
+      operationDescriptor,
       { isPure: true }
     );
-
     invariant(value instanceof ArrayValue);
-    // Add unknownProperty so we manually handle this object property access
-    value.unknownProperty = {
-      key: undefined,
-      descriptor: {
-        value: AbstractValue.createFromType(realm, Value, "widened numeric property"),
-      },
-      object: value,
-    };
-    if (realm.react.enabled && reactArrayHint !== undefined) {
-      realm.react.arrayHints.set(value, reactArrayHint);
-    }
     return value;
   }
 

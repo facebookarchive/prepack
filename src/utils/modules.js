@@ -27,7 +27,7 @@ import {
   UndefinedValue,
   NullValue,
 } from "../values/index.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 import type {
   BabelNodeIdentifier,
   BabelNodeLVal,
@@ -35,10 +35,11 @@ import type {
   BabelNodeNumericLiteral,
   BabelNodeStringLiteral,
   BabelNodeMemberExpression,
-} from "babel-types";
+} from "@babel/types";
 import invariant from "../invariant.js";
 import { Logger } from "./logger.js";
 import { SerializerStatistics } from "../serializer/statistics.js";
+import { createOperationDescriptor } from "./generator.js";
 
 function downgradeErrorsToWarnings(realm: Realm, f: () => any) {
   let savedHandler = realm.errorHandler;
@@ -83,11 +84,11 @@ export class ModuleTracer extends Tracer {
     return this.modules.getStatistics();
   }
 
-  log(message: string) {
+  log(message: string): void {
     if (this.logModules) console.log(`[modules] ${this.requireStack.map(_ => "  ").join("")}${message}`);
   }
 
-  beginEvaluateForEffects(state: any) {
+  beginEvaluateForEffects(state: any): void {
     if (state !== this) {
       this.log(">evaluate for effects");
       this.evaluateForEffectsNesting++;
@@ -95,7 +96,7 @@ export class ModuleTracer extends Tracer {
     }
   }
 
-  endEvaluateForEffects(state: any, effects: void | Effects) {
+  endEvaluateForEffects(state: any, effects: void | Effects): void {
     if (state !== this) {
       let popped = this.requireStack.pop();
       invariant(popped === undefined);
@@ -106,7 +107,7 @@ export class ModuleTracer extends Tracer {
 
   // If we don't delay unsupported requires, we simply want to record here
   // when a module gets initialized, and then we return.
-  _callRequireAndRecord(moduleIdValue: number | string, performCall: () => Value) {
+  _callRequireAndRecord(moduleIdValue: number | string, performCall: () => Value): void | Value {
     if (this.requireStack.length === 0 || this.requireStack[this.requireStack.length - 1] !== moduleIdValue) {
       this.requireStack.push(moduleIdValue);
       try {
@@ -183,7 +184,7 @@ export class ModuleTracer extends Tracer {
 
   // If a require fails, recover from it and delay the factory call until runtime
   // Also, only in this mode, consider "accelerating" require calls, see below.
-  _callRequireAndDelayIfNeeded(moduleIdValue: number | string, performCall: () => Value) {
+  _callRequireAndDelayIfNeeded(moduleIdValue: number | string, performCall: () => Value): void | Value {
     let realm = this.modules.realm;
     this.log(`>require(${moduleIdValue})`);
     let isTopLevelRequire = this.requireStack.length === 0;
@@ -243,8 +244,13 @@ export class ModuleTracer extends Tracer {
               );
             }
 
-            result = AbstractValue.createTemporalFromBuildFunction(realm, Value, [], ([]) =>
-              t.callExpression(t.identifier("require"), [t.valueToNode(moduleIdValue)])
+            let propName = moduleIdValue + "";
+            invariant(typeof propName === "string");
+            result = AbstractValue.createTemporalFromBuildFunction(
+              realm,
+              Value,
+              [new StringValue(realm, propName)],
+              createOperationDescriptor("MODULES_REQUIRE")
             );
           } else {
             result = effects.result;
@@ -577,7 +583,7 @@ export class Modules {
     };
   }
 
-  recordModuleInitialized(moduleId: number | string, value: Value) {
+  recordModuleInitialized(moduleId: number | string, value: Value): void {
     this.realm.assignToGlobal(
       t.memberExpression(
         t.memberExpression(t.identifier("global"), t.identifier("__initializedModules")),
@@ -607,7 +613,7 @@ export class Modules {
     });
   }
 
-  initializeMoreModules() {
+  initializeMoreModules(): void {
     // partially evaluate all factory methods by calling require
     let count = 0;
     for (let moduleId of this.moduleIds) {

@@ -10,10 +10,11 @@
 /* @flow strict-local */
 
 import { Value } from "../values/index.js";
-import type { BabelNodeIdentifier } from "babel-types";
+import type { BabelNodeIdentifier } from "@babel/types";
 import invariant from "../invariant.js";
-import type { NameGenerator, PreludeGenerator } from "../utils/generator";
-import * as t from "babel-types";
+import type { PreludeGenerator } from "../utils/PreludeGenerator.js";
+import type { NameGenerator } from "../utils/NameGenerator.js";
+import * as t from "@babel/types";
 
 // This class maintains a map of values to babel identifiers.
 // This class can optionally track how often such value identifiers are referenced
@@ -27,12 +28,12 @@ export class ResidualHeapValueIdentifiers {
     this._populateIdentifierMap(values);
   }
 
-  initPass1() {
+  initPass1(): void {
     this.collectValToRefCountOnly = true;
     this.valToRefCount = new Map();
   }
 
-  initPass2() {
+  initPass2(): void {
     this.collectValToRefCountOnly = false;
   }
 
@@ -41,7 +42,7 @@ export class ResidualHeapValueIdentifiers {
   refs: Map<Value, BabelNodeIdentifier>;
   _valueNameGenerator: NameGenerator;
 
-  _populateIdentifierMap(values: Iterator<Value>) {
+  _populateIdentifierMap(values: Iterator<Value>): void {
     this.refs = new Map();
     for (const val of values) {
       this._setIdentifier(val, this._createNewIdentifier(val));
@@ -68,7 +69,7 @@ export class ResidualHeapValueIdentifiers {
     return id;
   }
 
-  deleteIdentifier(val: Value) {
+  deleteIdentifier(val: Value): void {
     invariant(this.refs.has(val));
     this.refs.delete(val);
   }
@@ -80,7 +81,7 @@ export class ResidualHeapValueIdentifiers {
     return id;
   }
 
-  incrementReferenceCount(val: Value) {
+  incrementReferenceCount(val: Value): void {
     if (this.collectValToRefCountOnly) {
       let valToRefCount = this.valToRefCount;
       invariant(valToRefCount !== undefined);
@@ -94,7 +95,7 @@ export class ResidualHeapValueIdentifiers {
     }
   }
 
-  needsIdentifier(val: Value) {
+  needsIdentifier(val: Value): boolean {
     if (this.collectValToRefCountOnly || this.valToRefCount === undefined) return true;
     let refCount = this.valToRefCount.get(val);
     invariant(refCount !== undefined && refCount > 0);

@@ -11,10 +11,10 @@
 
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import type { SerializerOptions } from "../options.js";
-import * as t from "babel-types";
-import generate from "babel-generator";
-import type { BabelNodeStatement, BabelNodeExpression, BabelNodeIdentifier } from "babel-types";
-import { NameGenerator } from "../utils/generator.js";
+import * as t from "@babel/types";
+import generate from "@babel/generator";
+import type { BabelNodeStatement, BabelNodeExpression, BabelNodeIdentifier } from "@babel/types";
+import { NameGenerator } from "../utils/NameGenerator";
 import invariant from "../invariant.js";
 import type { ResidualFunctionBinding, ScopeBinding, FunctionInstance } from "./types.js";
 import { type ReferentializationScope } from "./types.js";
@@ -278,7 +278,7 @@ export class Referentializer {
   }
 
   // Cleans all scopes between passes of the serializer
-  cleanInstance(instance: FunctionInstance) {
+  cleanInstance(instance: FunctionInstance): void {
     instance.initializationStatements = [];
     for (let b of ((instance: any): FunctionInstance).residualFunctionBindings.values()) {
       let binding = ((b: any): ResidualFunctionBinding);

@@ -9,24 +9,33 @@
 
 /* @flow */
 
-import type { BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "@babel/types";
 import invariant from "./invariant.js";
-import type { Effects, Realm } from "./realm.js";
+import { Effects, Realm } from "./realm.js";
 import { AbstractValue, EmptyValue, Value } from "./values/index.js";
 
 export class Completion {
-  constructor(value: Value, location: ?BabelNodeSourceLocation, target?: ?string) {
+  constructor(value: Value, precedingEffects: void | Effects, location: ?BabelNodeSourceLocation, target?: ?string) {
+    let e = precedingEffects;
+    if (e !== undefined) {
+      if (e.result === undefined) e.result = this;
+      else e = e.shallowCloneWithResult(this);
+    }
     this.value = value;
+    this.effects = e;
     this.target = target;
     this.location = location;
     invariant(this.constructor !== Completion, "Completion is an abstract base class");
   }
 
   value: Value;
+  effects: void | Effects;
   target: ?string;
   location: ?BabelNodeSourceLocation;
 
-  effects: ?Effects;
+  shallowCloneWithoutEffects(): Completion {
+    invariant(false, "Completion.shallowCloneWithoutEffects is an abstract base method and should not be called");
+  }
 
   toDisplayString(): string {
     return "[" + this.constructor.name + " value " + (this.value ? this.value.toDisplayString() : "undefined") + "]";
@@ -35,83 +44,109 @@ export class Completion {
 
 // Normal completions are returned just like spec completions
 export class NormalCompletion extends Completion {
-  constructor(value: Value, location: ?BabelNodeSourceLocation, target?: ?string) {
-    super(value, location, target);
+  constructor(value: Value, precedingEffects: void | Effects, location: ?BabelNodeSourceLocation, target?: ?string) {
+    super(value, precedingEffects, location, target);
     invariant(this.constructor !== NormalCompletion, "NormalCompletion is an abstract base class");
+  }
+
+  shallowCloneWithoutEffects(): NormalCompletion {
+    invariant(false, "NormalCompletion.shallowCloneWithoutEffects is an abstract base method and should not be called");
   }
 }
 
 // SimpleNormalCompletions are returned just like spec completions. This class exists as the parallel for
 // PossiblyNormalCompletion to make comparisons easier.
-export class SimpleNormalCompletion extends NormalCompletion {}
+export class SimpleNormalCompletion extends NormalCompletion {
+  shallowCloneWithoutEffects(): SimpleNormalCompletion {
+    return new SimpleNormalCompletion(this.value, undefined, this.location, this.target);
+  }
+}
 
 // Abrupt completions are thrown as exeptions, to make it a easier
 // to quickly get to the matching high level construct.
 export class AbruptCompletion extends Completion {
-  constructor(value: Value, location: ?BabelNodeSourceLocation, target?: ?string) {
-    super(value, location, target);
+  constructor(value: Value, precedingEffects: void | Effects, location: ?BabelNodeSourceLocation, target?: ?string) {
+    super(value, precedingEffects, location, target);
     invariant(this.constructor !== AbruptCompletion, "AbruptCompletion is an abstract base class");
+  }
+
+  shallowCloneWithoutEffects(): AbruptCompletion {
+    invariant(false, "AbruptCompletion.shallowCloneWithoutEffects is an abstract base method and should not be called");
   }
 }
 
 export class ThrowCompletion extends AbruptCompletion {
-  constructor(value: Value, location: ?BabelNodeSourceLocation, nativeStack?: ?string) {
-    super(value, location);
+  constructor(
+    value: Value,
+    precedingEffects: void | Effects,
+    location: ?BabelNodeSourceLocation,
+    nativeStack?: ?string
+  ) {
+    super(value, precedingEffects, location);
     this.nativeStack = nativeStack || new Error().stack;
     let realm = value.$Realm;
-    if (realm.isInPureScope() && realm.reportSideEffectCallback !== undefined) {
-      realm.reportSideEffectCallback("EXCEPTION_THROWN", undefined, location);
+    if (realm.isInPureScope()) {
+      for (let callback of realm.reportSideEffectCallbacks) {
+        callback("EXCEPTION_THROWN", undefined, location);
+      }
     }
   }
 
   nativeStack: string;
+
+  shallowCloneWithoutEffects(): ThrowCompletion {
+    return new ThrowCompletion(this.value, undefined, this.location, this.nativeStack);
+  }
 }
 
 export class ContinueCompletion extends AbruptCompletion {
-  constructor(value: Value, location: ?BabelNodeSourceLocation, target: ?string) {
-    super(value, location, target || null);
+  constructor(value: Value, precedingEffects: void | Effects, location: ?BabelNodeSourceLocation, target: ?string) {
+    super(value, precedingEffects, location, target || null);
+  }
+
+  shallowCloneWithoutEffects(): ContinueCompletion {
+    return new ContinueCompletion(this.value, undefined, this.location, this.target);
   }
 }
 
 export class BreakCompletion extends AbruptCompletion {
-  constructor(value: Value, location: ?BabelNodeSourceLocation, target: ?string) {
-    super(value, location, target || null);
+  constructor(value: Value, precedingEffects: void | Effects, location: ?BabelNodeSourceLocation, target: ?string) {
+    super(value, precedingEffects, location, target || null);
+  }
+
+  shallowCloneWithoutEffects(): BreakCompletion {
+    return new BreakCompletion(this.value, undefined, this.location, this.target);
   }
 }
 
 export class ReturnCompletion extends AbruptCompletion {
-  constructor(value: Value, location: ?BabelNodeSourceLocation) {
-    super(value, location);
+  constructor(value: Value, precedingEffects: void | Effects, location: ?BabelNodeSourceLocation) {
+    super(value, precedingEffects, location);
+    if (value instanceof EmptyValue) {
+      this.value = value.$Realm.intrinsics.undefined;
+    }
+  }
+
+  shallowCloneWithoutEffects(): ReturnCompletion {
+    return new ReturnCompletion(this.value, undefined, this.location);
   }
 }
 
-// An erased abrupt completion arises when an abrupt completion reaches a join point.
-// Ideally we should use a SimpleNormalCompletion in its place, but that can only
-// happen after ForkedAbruptCompletion and PossiblyNormalCompletion are unified.
-export class ErasedAbruptCompletion extends AbruptCompletion {}
-
 export class ForkedAbruptCompletion extends AbruptCompletion {
-  constructor(
-    realm: Realm,
-    joinCondition: AbstractValue,
-    consequent: AbruptCompletion,
-    consequentEffects: Effects,
-    alternate: AbruptCompletion,
-    alternateEffects: Effects
-  ) {
-    super(realm.intrinsics.empty, consequent.location);
-    invariant(consequentEffects);
-    invariant(alternateEffects);
+  constructor(realm: Realm, joinCondition: AbstractValue, consequent: AbruptCompletion, alternate: AbruptCompletion) {
+    super(realm.intrinsics.empty, undefined, consequent.location);
     this.joinCondition = joinCondition;
-    consequent.effects = consequentEffects;
     this.consequent = consequent;
-    alternate.effects = alternateEffects;
     this.alternate = alternate;
   }
 
   joinCondition: AbstractValue;
   consequent: AbruptCompletion;
   alternate: AbruptCompletion;
+
+  shallowCloneWithoutEffects(): ForkedAbruptCompletion {
+    return new ForkedAbruptCompletion(this.value.$Realm, this.joinCondition, this.consequent, this.alternate);
+  }
 
   // For convenience, this.consequent.effects should always be defined, but accessing it directly requires
   // verifying that with an invariant.
@@ -125,22 +160,20 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
     return this.alternate.effects;
   }
 
-  updateConsequentKeepingCurrentEffects(newConsequent: AbruptCompletion) {
-    let effects = this.consequent.effects;
-    invariant(effects);
-    newConsequent.effects = effects;
-    newConsequent.effects.result = newConsequent;
+  updateConsequentKeepingCurrentEffects(newConsequent: AbruptCompletion): AbruptCompletion {
+    let e = this.consequent.effects;
+    invariant(e);
+    newConsequent.effects = e.shallowCloneWithResult(newConsequent);
     this.consequent = newConsequent;
-    return newConsequent;
+    return this;
   }
 
-  updateAlternateKeepingCurrentEffects(newAlternate: AbruptCompletion) {
-    let effects = this.alternate.effects;
-    invariant(effects);
-    newAlternate.effects = effects;
-    newAlternate.effects.result = newAlternate;
+  updateAlternateKeepingCurrentEffects(newAlternate: AbruptCompletion): AbruptCompletion {
+    let e = this.alternate.effects;
+    invariant(e);
+    newAlternate.effects = e.shallowCloneWithResult(newAlternate);
     this.alternate = newAlternate;
-    return newAlternate;
+    return this;
   }
 
   toDisplayString(): string {
@@ -180,9 +213,7 @@ export class ForkedAbruptCompletion extends AbruptCompletion {
       this.value.$Realm.intrinsics.empty,
       this.joinCondition,
       this.consequent,
-      this.consequentEffects,
       this.alternate,
-      this.alternateEffects,
       []
     );
   }
@@ -196,32 +227,13 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     value: Value,
     joinCondition: AbstractValue,
     consequent: Completion,
-    consequentEffects: Effects,
     alternate: Completion,
-    alternateEffects: Effects,
     savedPathConditions: Array<AbstractValue>,
     savedEffects: void | Effects = undefined
   ) {
-    invariant(consequent === consequentEffects.result);
-    invariant(alternate === alternateEffects.result);
     invariant(consequent instanceof NormalCompletion || alternate instanceof NormalCompletion);
-    invariant(consequent instanceof AbruptCompletion || alternate instanceof AbruptCompletion);
-    invariant(
-      consequent instanceof AbruptCompletion || (consequent instanceof NormalCompletion && value === consequent.value)
-    );
-    invariant(
-      alternate instanceof AbruptCompletion || (alternate instanceof NormalCompletion && value === alternate.value)
-    );
-    let loc =
-      consequent instanceof AbruptCompletion
-        ? consequent.location
-        : alternate instanceof Completion
-          ? alternate.location
-          : alternate.expressionLocation;
-    super(value, loc);
+    super(value, undefined, consequent.location);
     this.joinCondition = joinCondition;
-    consequent.effects = consequentEffects;
-    alternate.effects = alternateEffects;
     this.consequent = consequent;
     this.alternate = alternate;
     this.savedEffects = savedEffects;
@@ -235,6 +247,21 @@ export class PossiblyNormalCompletion extends NormalCompletion {
   // The path conditions that applied at the time of the oldest fork that caused this completion to arise.
   savedPathConditions: Array<AbstractValue>;
 
+  shallowCloneWithoutEffects(): PossiblyNormalCompletion {
+    let consequentEffects = this.consequentEffects;
+    let alternateEffects = this.alternateEffects;
+    invariant(this.consequent === consequentEffects.result);
+    invariant(this.alternate === alternateEffects.result);
+    return new PossiblyNormalCompletion(
+      this.value,
+      this.joinCondition,
+      this.consequent,
+      this.alternate,
+      this.savedPathConditions,
+      this.savedEffects
+    );
+  }
+
   // For convenience, this.consequent.effects should always be defined, but accessing it directly requires
   // verifying that with an invariant.
   get consequentEffects(): Effects {
@@ -247,24 +274,20 @@ export class PossiblyNormalCompletion extends NormalCompletion {
     return this.alternate.effects;
   }
 
-  // TODO blappert: these functions are a copy of those in ForkedAbruptCompletion, but the two classes will be unified
-  // soon
-  updateConsequentKeepingCurrentEffects(newConsequent: Completion) {
+  updateConsequentKeepingCurrentEffects(newConsequent: Completion): PossiblyNormalCompletion {
     if (newConsequent instanceof NormalCompletion) this.value = newConsequent.value;
-    let effects = this.consequentEffects;
-    newConsequent.effects = effects;
-    newConsequent.effects.result = newConsequent;
-    this.consequent = newConsequent;
-    return newConsequent;
+    let e = this.consequentEffects;
+    let effects = e.shallowCloneWithResult(newConsequent);
+    this.consequent = effects.result;
+    return this;
   }
 
-  updateAlternateKeepingCurrentEffects(newAlternate: Completion) {
+  updateAlternateKeepingCurrentEffects(newAlternate: Completion): PossiblyNormalCompletion {
     if (newAlternate instanceof NormalCompletion) this.value = newAlternate.value;
-    let effects = this.alternateEffects;
-    newAlternate.effects = effects;
-    newAlternate.effects.result = newAlternate;
-    this.alternate = newAlternate;
-    return newAlternate;
+    let e = this.alternateEffects;
+    let effects = e.shallowCloneWithResult(newAlternate);
+    this.alternate = effects.result;
+    return this;
   }
 
   toDisplayString(): string {

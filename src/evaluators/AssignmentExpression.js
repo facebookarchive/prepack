@@ -21,7 +21,7 @@ import {
 } from "../methods/index.js";
 import { Environment, Functions, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
-import type { BabelNodeAssignmentExpression, BabelBinaryOperator } from "babel-types";
+import type { BabelNodeAssignmentExpression, BabelBinaryOperator } from "@babel/types";
 import { computeBinary } from "./BinaryExpression.js";
 
 // ECMA262 12.15 Assignment Operators

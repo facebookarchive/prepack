@@ -9,15 +9,15 @@
 
 /* @flow */
 
-import type { BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "@babel/types";
 import { FatalError, InfeasiblePathError } from "../errors.js";
 import { ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
 import { Realm } from "../realm.js";
 import { AbstractValue, BooleanValue, ConcreteValue, Value } from "../values/index.js";
 import { Path, To } from "../singletons.js";
-import EmptyValue from "../values/EmptyValue";
-import * as t from "babel-types";
+import EmptyValue from "../values/EmptyValue.js";
+import { createOperationDescriptor } from "./generator.js";
 
 export default function simplifyAndRefineAbstractValue(
   realm: Realm,
@@ -128,10 +128,7 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
                 realm,
                 BooleanValue,
                 [xa],
-                ([n]) => {
-                  let callFunc = t.identifier("global.__cannotBecomeObject");
-                  return t.callExpression(callFunc, [n]);
-                },
+                createOperationDescriptor("CANNOT_BECOME_OBJECT"),
                 { kind: "global.__cannotBecomeObject(A)" }
               );
             }

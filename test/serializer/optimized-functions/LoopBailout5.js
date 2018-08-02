@@ -11,6 +11,6 @@ function Model(x, oldItems) {
 global.__optimize && __optimize(Model);
 
 inspect = function() {
-  var model = new Model(5, [1,2,3,4,5]);
+  var model = new Model(5, [1, 2, 3, 4, 5]);
   return JSON.stringify(model.items);
 };

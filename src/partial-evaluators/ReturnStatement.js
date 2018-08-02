@@ -9,7 +9,7 @@
 
 /* @flow strict-local */
 
-import type { BabelNodeReturnStatement, BabelNodeStatement } from "babel-types";
+import type { BabelNodeReturnStatement, BabelNodeStatement } from "@babel/types";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 
@@ -27,6 +27,6 @@ export default function(
   } else {
     result = realm.intrinsics.undefined;
   }
-  if (!(result instanceof AbruptCompletion)) result = new ReturnCompletion(result, ast.loc);
+  if (!(result instanceof AbruptCompletion)) result = new ReturnCompletion(result, undefined, ast.loc);
   return [result, ast, []];
 }

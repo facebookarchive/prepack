@@ -9,4 +9,6 @@ function foo() {
 
 var z = foo();
 
-inspect = function() { return z; }
+inspect = function() {
+  return z;
+};

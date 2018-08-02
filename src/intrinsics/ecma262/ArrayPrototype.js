@@ -14,7 +14,9 @@ import {
   AbstractValue,
   ArrayValue,
   BooleanValue,
+  BoundFunctionValue,
   ConcreteValue,
+  ECMAScriptSourceFunctionValue,
   NullValue,
   NumberValue,
   ObjectValue,
@@ -23,7 +25,6 @@ import {
   Value,
 } from "../../values/index.js";
 import invariant from "../../invariant.js";
-import * as t from "babel-types";
 import { SameValueZeroPartial, AbstractRelationalComparison } from "../../methods/abstract.js";
 import {
   StrictEqualityComparisonPartial,
@@ -38,6 +39,7 @@ import {
   HasSomeCompatibleType,
 } from "../../methods/index.js";
 import { Create, Join, Properties, To } from "../../singletons.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.31
@@ -56,9 +58,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("concat") === undefined
     ) {
-      let newArgs = [O, ...args];
-      return ArrayValue.createTemporalWithWidenedNumericProperty(realm, newArgs, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("concat")), ((_args: any): Array<any>))
+      let newArgs = [O, new StringValue(realm, "concat"), ...args];
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
+        realm,
+        newArgs,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -146,7 +150,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       // 1. Let O be ? ToObject(this value).
       let O = To.ToObject(realm, context);
 
-      // If we have an object that is an unknown array with numeric properties, then
+      // If we have an object that is an array with widened numeric properties, then
       // we can return a temporal here as we know nothing of the array's properties.
       // This should be safe to do, as we never expose the internals of the array.
       if (
@@ -154,15 +158,18 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm.isInPureScope() &&
         O.$GetOwnProperty("copyWithin") === undefined
       ) {
-        let args = [O, target];
+        let args = [O, new StringValue(realm, "copyWithin"), target];
         if (start) {
           args.push(start);
         }
         if (end) {
           args.push(end);
         }
-        AbstractValue.createTemporalFromBuildFunction(realm, BooleanValue, args, ([objNode, ..._args]) =>
-          t.callExpression(t.memberExpression(objNode, t.identifier("copyWithin")), ((_args: any): Array<any>))
+        AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          BooleanValue,
+          args,
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
         );
         return O;
       }
@@ -250,7 +257,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -258,8 +265,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("entries") === undefined
     ) {
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, [O], ([objNode]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("entries")), [])
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        [O, new StringValue(realm, "entries")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -272,7 +282,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -280,12 +290,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("every") === undefined
     ) {
-      let args = [O, callbackfn];
+      let args = [O, new StringValue(realm, "every"), callbackfn];
       if (thisArg) {
         args.push(thisArg);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, BooleanValue, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("every")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        BooleanValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -336,7 +349,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -344,15 +357,18 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("fill") === undefined
     ) {
-      let args = [O, value];
+      let args = [O, new StringValue(realm, "fill"), value];
       if (start) {
         args.push(start);
       }
       if (end) {
         args.push(end);
       }
-      AbstractValue.createTemporalFromBuildFunction(realm, Value, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("fill")), ((_args: any): Array<any>))
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
       return O;
     }
@@ -398,16 +414,14 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("filter") === undefined
     ) {
-      let args = [O, callbackfn];
+      let args = [O, new StringValue(realm, "filter"), callbackfn];
       if (thisArg) {
         args.push(thisArg);
       }
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         args,
-        ([objNode, ..._args]) =>
-          t.callExpression(t.memberExpression(objNode, t.identifier("filter")), ((_args: any): Array<any>)),
-        { func: callbackfn, thisVal: thisArg }
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -470,7 +484,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -478,12 +492,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("find") === undefined
     ) {
-      let args = [O, predicate];
+      let args = [O, new StringValue(realm, "find"), predicate];
       if (thisArg) {
         args.push(thisArg);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("find")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -528,7 +545,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -536,12 +553,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("findIndex") === undefined
     ) {
-      let args = [O, predicate];
+      let args = [O, new StringValue(realm, "findIndex"), predicate];
       if (thisArg) {
         args.push(thisArg);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("findIndex")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        NumberValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -586,7 +606,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -594,12 +614,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("forEach") === undefined
     ) {
-      let args = [O, callbackfn];
+      let args = [O, new StringValue(realm, "forEach"), callbackfn];
       if (thisArg) {
         args.push(thisArg);
       }
-      AbstractValue.createTemporalFromBuildFunction(realm, BooleanValue, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("forEach")), ((_args: any): Array<any>))
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        BooleanValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
       return realm.intrinsics.undefined;
     }
@@ -649,7 +672,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       // 1. Let O be ? ToObject(this value).
       let O = To.ToObject(realm, context);
 
-      // If we have an object that is an unknown array with numeric properties, then
+      // If we have an object that is an array with widened numeric properties, then
       // we can return a temporal here as we know nothing of the array's properties.
       // This should be safe to do, as we never expose the internals of the array.
       if (
@@ -657,12 +680,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
         realm.isInPureScope() &&
         O.$GetOwnProperty("includes") === undefined
       ) {
-        let args = [O, searchElement];
+        let args = [O, new StringValue(realm, "includes"), searchElement];
         if (fromIndex) {
           args.push(fromIndex);
         }
-        return AbstractValue.createTemporalFromBuildFunction(realm, BooleanValue, args, ([objNode, ..._args]) =>
-          t.callExpression(t.memberExpression(objNode, t.identifier("includes")), ((_args: any): Array<any>))
+        return AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          BooleanValue,
+          args,
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
         );
       }
 
@@ -709,7 +735,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -717,12 +743,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("indexOf") === undefined
     ) {
-      let args = [O, searchElement];
+      let args = [O, new StringValue(realm, "indexOf"), searchElement];
       if (fromIndex) {
         args.push(fromIndex);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("indexOf")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        NumberValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -782,7 +811,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -790,12 +819,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("join") === undefined
     ) {
-      let args = [O];
+      let args = [O, new StringValue(realm, "join")];
       if (separator) {
         args.push(separator);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, StringValue, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("join")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        StringValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -857,7 +889,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -865,8 +897,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("keys") === undefined
     ) {
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, [O], ([objNode]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("keys")), [])
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        [O, new StringValue(realm, "keys")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -879,7 +914,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -887,12 +922,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("lastIndexOf") === undefined
     ) {
-      let args = [O, searchElement];
+      let args = [O, new StringValue(realm, "lastIndexOf"), searchElement];
       if (fromIndex) {
         args.push(fromIndex);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("lastIndexOf")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        NumberValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -951,16 +989,17 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("map") === undefined
     ) {
-      let args = [O, callbackfn];
+      let args = [O, new StringValue(realm, "map"), callbackfn];
       if (thisArg) {
         args.push(thisArg);
       }
+      invariant(callbackfn instanceof ECMAScriptSourceFunctionValue || callbackfn instanceof BoundFunctionValue);
+      let possibleNestedOptimizedFunctions = [{ func: callbackfn, thisValue: thisArg || realm.intrinsics.undefined }];
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         args,
-        ([objNode, ..._args]) =>
-          t.callExpression(t.memberExpression(objNode, t.identifier("map")), ((_args: any): Array<any>)),
-        { func: callbackfn, thisVal: thisArg }
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL"),
+        possibleNestedOptimizedFunctions
       );
     }
 
@@ -1037,7 +1076,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -1045,8 +1084,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("pop") === undefined
     ) {
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, [O], ([objNode]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("pop")), [])
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        [O, new StringValue(realm, "pop")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -1087,7 +1129,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -1095,8 +1137,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("push") === undefined
     ) {
-      return AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, [O, ...args], ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("push")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        NumberValue,
+        [O, new StringValue(realm, "push"), ...args],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -1138,7 +1183,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -1146,12 +1191,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("reduce") === undefined
     ) {
-      let args = [O, callbackfn];
+      let args = [O, new StringValue(realm, "reduce"), callbackfn];
       if (initialValue) {
         args.push(initialValue);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("reduce")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -1242,7 +1290,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -1250,12 +1298,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("reduceRight") === undefined
     ) {
-      let args = [O, callbackfn];
+      let args = [O, new StringValue(realm, "reduceRight"), callbackfn];
       if (initialValue) {
         args.push(initialValue);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("reduceRight")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -1344,7 +1395,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -1352,8 +1403,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("reverse") === undefined
     ) {
-      AbstractValue.createTemporalFromBuildFunction(realm, ArrayValue, [O], ([objNode]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("reverse")), [])
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        ArrayValue,
+        [O, new StringValue(realm, "reverse")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
       return O;
     }
@@ -1444,7 +1498,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -1452,8 +1506,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("shift") === undefined
     ) {
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, [O], ([objNode]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("shift")), [])
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        [O, new StringValue(realm, "shift")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -1523,9 +1580,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("slice") === undefined
     ) {
-      let newArgs = [O, start, end];
-      return ArrayValue.createTemporalWithWidenedNumericProperty(realm, newArgs, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("slice")), ((_args: any): Array<any>))
+      let newArgs = [O, new StringValue(realm, "slice"), start, end];
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
+        realm,
+        newArgs,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -1589,7 +1648,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -1597,12 +1656,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("some") === undefined
     ) {
-      let args = [O, callbackfn];
+      let args = [O, new StringValue(realm, "some"), callbackfn];
       if (thisArg) {
         args.push(thisArg);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, BooleanValue, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("some")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        BooleanValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -1656,7 +1718,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let obj be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -1664,9 +1726,12 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("sort") === undefined
     ) {
-      let args = [O, comparefn];
-      AbstractValue.createTemporalFromBuildFunction(realm, Value, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("sort")), ((_args: any): Array<any>))
+      let args = [O, new StringValue(realm, "sort"), comparefn];
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
       // context is returned instead of O at the end of this method
       // so we do the same here
@@ -1839,7 +1904,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -1847,15 +1912,18 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("splice") === undefined
     ) {
-      let args = [O, start];
+      let args = [O, new StringValue(realm, "splice"), start];
       if (deleteCount) {
         args.push(deleteCount);
       }
       if (items && items.length > 0) {
         args.push(...items);
       }
-      return AbstractValue.createTemporalFromBuildFunction(realm, ArrayValue, args, ([objNode, ..._args]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("splice")), ((_args: any): Array<any>))
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        ArrayValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -2044,7 +2112,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let array be ? ToObject(this value).
     let array = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -2052,8 +2120,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       array.$GetOwnProperty("toLocaleString") === undefined
     ) {
-      return AbstractValue.createTemporalFromBuildFunction(realm, StringValue, [array], ([objNode]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("toLocaleString")), [])
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        StringValue,
+        [array, new StringValue(realm, "toLocaleString")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 
@@ -2121,7 +2192,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 1. Let O be ? ToObject(this value).
     let O = To.ToObject(realm, context);
 
-    // If we have an object that is an unknown array with numeric properties, then
+    // If we have an object that is an array with widened numeric properties, then
     // we can return a temporal here as we know nothing of the array's properties.
     // This should be safe to do, as we never expose the internals of the array.
     if (
@@ -2129,8 +2200,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
       realm.isInPureScope() &&
       O.$GetOwnProperty("unshift") === undefined
     ) {
-      return AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, [O], ([objNode]) =>
-        t.callExpression(t.memberExpression(objNode, t.identifier("unshift")), [])
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        NumberValue,
+        [O, new StringValue(realm, "unshift")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
       );
     }
 

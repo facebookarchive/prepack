@@ -29,13 +29,14 @@ export class SerializerStatistics extends RealmStatistics {
     this.initializeMoreModules = new PerformanceTracker(getTime, getMemory);
     this.optimizeReactComponentTreeRoots = new PerformanceTracker(getTime, getMemory);
     this.checkThatFunctionsAreIndependent = new PerformanceTracker(getTime, getMemory);
+    this.processCollectedNestedOptimizedFunctions = new PerformanceTracker(getTime, getMemory);
     this.deepTraversal = new PerformanceTracker(getTime, getMemory);
     this.referenceCounts = new PerformanceTracker(getTime, getMemory);
     this.serializePass = new PerformanceTracker(getTime, getMemory);
     this.babelGenerate = new PerformanceTracker(getTime, getMemory);
   }
 
-  resetBeforePass() {
+  resetBeforePass(): void {
     this.objects = 0;
     this.objectProperties = 0;
     this.functionClones = 0;
@@ -94,12 +95,13 @@ export class SerializerStatistics extends RealmStatistics {
   initializeMoreModules: PerformanceTracker;
   optimizeReactComponentTreeRoots: PerformanceTracker;
   checkThatFunctionsAreIndependent: PerformanceTracker;
+  processCollectedNestedOptimizedFunctions: PerformanceTracker;
   deepTraversal: PerformanceTracker;
   referenceCounts: PerformanceTracker;
   serializePass: PerformanceTracker;
   babelGenerate: PerformanceTracker;
 
-  log() {
+  log(): void {
     super.log();
     console.log(`=== serialization statistics`);
     console.log(`${this.objects} objects with ${this.objectProperties} properties`);
@@ -123,7 +125,7 @@ export class SerializerStatistics extends RealmStatistics {
     console.log(`${this.generators} generators`);
   }
 
-  logSerializerPerformanceTrackers(title: string, note: void | string, format: PerformanceTracker => string) {
+  logSerializerPerformanceTrackers(title: string, note: void | string, format: PerformanceTracker => string): void {
     console.log(`=== ${title}: ${format(this.total)} total`);
     if (note !== undefined) console.log(`NOTE: ${note}`);
     this.logPerformanceTrackers(format);
