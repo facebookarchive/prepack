@@ -59,8 +59,11 @@ export function memberExpressionHelper(
   return t.memberExpression(object, propertyExpression, computed);
 }
 
+export function optionalStringOfLocation(location: ?BabelNodeSourceLocation): string {
+  // if we can't get a value, then it's likely that the source file was not given
+  return location ? ` at location ${stringOfLocation(location)}` : "";
+}
+
 export function stringOfLocation(location: BabelNodeSourceLocation): string {
-  return `${location.source || "(unknown source file)"}(${location.start.line}:${location.start.column} ${
-    location.end.line
-  }:${location.end.column})`;
+  return `${location.source || "(unknown source file)"}[${location.start.line}:${location.start.column}]`;
 }

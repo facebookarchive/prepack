@@ -28,7 +28,7 @@ import { Logger } from "../utils/logger.js";
 import { Generator } from "../utils/generator.js";
 import type { AdditionalFunctionEffects } from "./types";
 import type { Binding } from "../environment.js";
-import { getLocationFromValue } from "../react/utils.js";
+import { optionalStringOfLocation } from "../utils/babelHelpers.js";
 
 /**
  * Get index property list length by searching array properties list for the max index key value plus 1.
@@ -210,7 +210,7 @@ export function handleReportedSideEffect(
 ): void {
   // This causes an infinite recursion because creating a callstack causes internal-only side effects
   if (binding && binding.object && binding.object.intrinsicName === "__checkedBindings") return;
-  let location = getLocationFromValue(expressionLocation);
+  let location = optionalStringOfLocation(expressionLocation);
 
   if (sideEffectType === "MODIFIED_BINDING") {
     let name = binding ? `"${((binding: any): Binding).name}"` : "unknown";

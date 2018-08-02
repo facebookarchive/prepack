@@ -1292,7 +1292,6 @@ export class LexicalEnvironment {
     invariant(ast.loc);
     const source = ast.loc.source;
     invariant(source !== undefined);
-    const realm = this.realm;
     const positionInfos = new Map();
     traverseFast(ast, node => {
       fixupLocation(node.loc);
@@ -1338,33 +1337,6 @@ export class LexicalEnvironment {
       let endInfo = getPositionInfo(locEnd);
       let startOriginalPosition = startInfo.originalPosition;
       let endOriginalPosition = endInfo.originalPosition;
-      if (startOriginalPosition.source != null && endOriginalPosition.source != null) {
-        if (startOriginalPosition.source !== endOriginalPosition.source) {
-          let diagnostic = new CompilerDiagnostic(
-            `Inconsistent source map data: Node starts and ends in two files (${startOriginalPosition.source} vs ${
-              endOriginalPosition.source
-            })`,
-            loc,
-            "PP0038",
-            "Warning"
-          );
-          realm.handleError(diagnostic);
-        } else if (
-          startOriginalPosition.line > endOriginalPosition.line ||
-          (startOriginalPosition.line === endOriginalPosition.line &&
-            startOriginalPosition.column > endOriginalPosition.column)
-        ) {
-          let diagnostic = new CompilerDiagnostic(
-            `Inconsistent source map data: end before start: ${startOriginalPosition.source}[${
-              startOriginalPosition.line
-            }:${startOriginalPosition.column} ${endOriginalPosition.line}:${endOriginalPosition.column}]`,
-            loc,
-            "PP0038",
-            "Warning"
-          );
-          realm.handleError(diagnostic);
-        }
-      }
 
       // Sanity checks on the positions supplied directly by the Babel parser
       invariant(startInfo.newLine <= endInfo.newLine);
@@ -1374,20 +1346,11 @@ export class LexicalEnvironment {
         fixupPosition(locStart, startInfo, endInfo);
         fixupPosition(locEnd, endInfo, startInfo);
 
-        if (locStart.line > locEnd.line || (locStart.line === locEnd.line && locStart.column > locEnd.column)) {
-          // TODO: This could be due to a bug in Babel or the source-map library. This triggers even for test-sourcemaps
-          let diagnostic = new CompilerDiagnostic(
-            `Inconsistent source map data: end before start after update: ${loc.source || "?"}[${startInfo.newLine}:${
-              startInfo.newColumn
-            } ${endInfo.newLine}:${endInfo.newColumn}] => ${startOriginalPosition.source || "?"}[${locStart.line}:${
-              locStart.column
-            } ${locEnd.line}:${locEnd.column}]`,
-            loc,
-            "PP0038",
-            "Warning"
-          );
-          realm.handleError(diagnostic);
-        }
+        // NOTE: The end position seems to be sometimes wrong, probably due to a limitation of
+        // what's persisted in the sourcemaps. In fact, the end position maybe so wrong that
+        // it points to before the start position.
+        // The best way to deal with that is to never print end positions in user-facing
+        // messages.
 
         invariant(loc.source !== startOriginalPosition.source);
         loc.source = startOriginalPosition.source;
