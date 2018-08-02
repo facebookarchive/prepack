@@ -349,13 +349,7 @@ function InternalJSONClone(realm: Realm, val: Value): Value {
       }
     } else {
       clonedObj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-      let valIsPartial = false;
-      if (val.isPartialObject()) {
-        valIsPartial = true;
-        val.makeNotPartial();
-      }
-      let keys = EnumerableOwnProperties(realm, val, "key");
-      if (valIsPartial) val.makePartial();
+      let keys = EnumerableOwnProperties(realm, val, "key", true);
       for (let P of keys) {
         invariant(P instanceof StringValue);
         let newElement = Get(realm, val, P);

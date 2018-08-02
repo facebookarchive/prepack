@@ -77,7 +77,7 @@ function handleObjectAssignSnapshot(
         // Make it implicit again since it is getting delayed into an Object.assign call.
         delayedSources.push(frm.args[0]);
       } else {
-        let frmSnapshot = frm.getSnapshot();
+        let frmSnapshot = frm.getSnapshot({ getOwnPropertyKeysEvenIfPartial: true });
         frm.temporalAlias = frmSnapshot;
         frm.makePartial();
         delayedSources.push(frmSnapshot);
@@ -137,20 +137,11 @@ function applyObjectAssignSource(
     }
 
     to_must_be_partial = true;
-    // Make this temporarily not partial
-    // so that we can call frm.$OwnPropertyKeys below.
-    frm.makeNotPartial();
   }
 
-  try {
-    keys = frm.$OwnPropertyKeys();
-    if (to_must_be_partial) {
-      handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
-    }
-  } finally {
-    if (frm_was_partial) {
-      frm.makePartial();
-    }
+  keys = frm.$OwnPropertyKeys(true);
+  if (to_must_be_partial) {
+    handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
   }
 
   // c. Repeat for each element nextKey of keys in List order,

@@ -692,6 +692,7 @@ function runTest(name, code, options: PrepackOptions, args) {
         });
       })
       .catch(function(err) {
+        console.log(name);
         console.error(err);
         console.error(err.stack);
       });
