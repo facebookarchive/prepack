@@ -1206,6 +1206,15 @@ export class ResidualHeapVisitor {
         let residualBinding = this.getBinding(binding.environment, binding.name);
         residualBinding.modified = true;
         residualBinding.hasLeaked = true;
+        // This may not have been referentialized if the binding is a local of an optimized function.
+        // in that case, we need to figure out which optimized function it is, and referentialize it in that scope.
+        let optimizedFunctionScope = this._getAdditionalFunctionOfScope();
+        if (residualBinding.potentialReferentializationScopes.size === 0) {
+          invariant(optimizedFunctionScope !== undefined);
+          this._enqueueWithUnrelatedScope(optimizedFunctionScope, () =>
+            this.visitBinding(optimizedFunctionScope, residualBinding)
+          );
+        }
         return this.visitEquivalentValue(value);
       },
     };
