@@ -53,6 +53,8 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
         throw new SideEffects();
       });
     let effects;
+    let saved_pathConditions = realm.pathConditions;
+    realm.pathConditions = [];
     try {
       effects = realm.evaluateForEffects(pureFuncCall, null, "temporalArray nestedOptimizedFunction");
     } catch (e) {
@@ -64,6 +66,8 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
         return;
       }
       throw e;
+    } finally {
+      realm.pathConditions = saved_pathConditions;
     }
     // Check if effects were pure then add them
     if (abstractArrayValue.nestedOptimizedFunctionEffects === undefined) {

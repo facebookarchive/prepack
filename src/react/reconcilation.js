@@ -1564,6 +1564,8 @@ export class Reconciler {
         throw new SideEffects();
       });
     let effects;
+    let saved_pathConditions = this.realm.pathConditions;
+    this.realm.pathConditions = [];
     try {
       effects = this.realm.evaluateForEffects(
         () => {
@@ -1582,6 +1584,8 @@ export class Reconciler {
         return;
       }
       throw e;
+    } finally {
+      this.realm.pathConditions = saved_pathConditions;
     }
     this.statistics.optimizedNestedClosures++;
     this.realm.collectedNestedOptimizedFunctionEffects.set(funcToModel, effects);
