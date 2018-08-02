@@ -118,6 +118,7 @@ export default function(realm: Realm): void {
   // NB: If we interpret one of these calls in an evaluateForEffects context
   //     that is not subsequently applied, the function will not be registered
   //     (because prepack won't have a correct value for the FunctionValue itself)
+  // If we encounter an invalid input, we will emit a warning and not optimize the function
   global.$DefineOwnProperty("__optimize", {
     value: new NativeFunctionValue(realm, "global.__optimize", "__optimize", 1, (context, [value, argModelString]) => {
       let argModel;
@@ -134,9 +135,10 @@ export default function(realm: Realm): void {
               "__optimize called twice with different argModelStrings",
               realm.currentLocation,
               "PP1008",
-              "FatalError"
+              "Warning"
             );
             if (realm.handleError(argModelError) !== "Recover") throw new FatalError();
+            else return;
           }
         }
         realm.optimizedFunctions.set(value, argModel);
@@ -150,10 +152,10 @@ export default function(realm: Realm): void {
             `Optimized Function Value ${location} is an not a function or react element`,
             realm.currentLocation,
             "PP0033",
-            "FatalError"
-          )
-        );
+            "Warning"
+          );
         if (result !== "Recover") throw new FatalError();
+        else return;
       }
       return value;
     }),
