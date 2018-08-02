@@ -32,6 +32,7 @@ import { valueIsKnownReactAbstraction } from "../../react/utils.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
 import * as t from "@babel/types";
 import { createOperationDescriptor, type OperationDescriptor } from "../../utils/generator.js";
+import { createAndValidateArgModel } from "../../utils/ShapeInformation";
 
 export function createAbstractFunction(realm: Realm, ...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
   return new NativeFunctionValue(
@@ -112,19 +113,6 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  global.$DefineOwnProperty("__optimizedFunctions", {
-    value: new ObjectValue(
-      realm,
-      realm.intrinsics.ObjectPrototype,
-      "__optimizedFunctions",
-      /* refuseSerialization */ true
-    ),
-    writable: true,
-    enumerable: false,
-    configurable: true,
-  });
-
-  let additionalFunctionUid = 0;
   // Allows dynamically registering optimized functions.
   // WARNING: these functions will get exposed at global scope and called there.
   // NB: If we interpret one of these calls in an evaluateForEffects context
@@ -132,48 +120,40 @@ export default function(realm: Realm): void {
   //     (because prepack won't have a correct value for the FunctionValue itself)
   global.$DefineOwnProperty("__optimize", {
     value: new NativeFunctionValue(realm, "global.__optimize", "__optimize", 1, (context, [value, argModelString]) => {
-      // only optimize functions for now
+      let argModel;
       if (argModelString !== undefined) {
-        let argModelError;
-        if (argModelString instanceof StringValue) {
-          try {
-            // result here is ignored as the main point here is to
-            // check and produce error
-            JSON.parse(argModelString.value);
-          } catch (e) {
-            argModelError = new CompilerDiagnostic(
-              "Failed to parse model for arguments",
+        argModel = createAndValidateArgModel(realm, argModelString);
+      }
+      if (value instanceof ECMAScriptSourceFunctionValue || value instanceof AbstractValue) {
+        let currentArgModel = realm.optimizedFunctions.get(value);
+        // Verify that if there is an existing argModel, that it is the same as the new one.
+        if (currentArgModel) {
+          let currentString = argModelString instanceof StringValue ? argModelString.value : argModelString;
+          if (JSON.stringify(currentArgModel) !== currentString) {
+            let argModelError = new CompilerDiagnostic(
+              "__optimize called twice with different argModelStrings",
               realm.currentLocation,
               "PP1008",
               "FatalError"
             );
+            if (realm.handleError(argModelError) !== "Recover") throw new FatalError();
           }
-        } else {
-          argModelError = new CompilerDiagnostic(
-            "String expected as a model",
-            realm.currentLocation,
-            "PP1008",
-            "FatalError"
-          );
         }
-        if (argModelError !== undefined && realm.handleError(argModelError) !== "Recover") {
-          throw new FatalError();
-        }
-      }
-      if (value instanceof ECMAScriptSourceFunctionValue || value instanceof AbstractValue) {
-        let functionDescriptor = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
-        functionDescriptor.$Set("funcValue", value, functionDescriptor);
-        functionDescriptor.$Set("argModelString", argModelString || realm.intrinsics.undefined, functionDescriptor);
-        // add to the todo list
-        realm.assignToGlobal(
-          t.memberExpression(
-            t.memberExpression(t.identifier("global"), t.identifier("__optimizedFunctions")),
-            t.identifier("" + additionalFunctionUid++)
-          ),
-          functionDescriptor
-        );
+        realm.optimizedFunctions.set(value, argModel);
       } else {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Called __optimize on an invalid type");
+        let location = value.expressionLocation
+          ? `${value.expressionLocation.start.line}:${value.expressionLocation.start.column} ` +
+            `${value.expressionLocation.end.line}:${value.expressionLocation.end.line}`
+          : "location unknown";
+        let result = realm.handleError(
+          new CompilerDiagnostic(
+            `Optimized Function Value ${location} is an not a function or react element`,
+            realm.currentLocation,
+            "PP0033",
+            "FatalError"
+          )
+        );
+        if (result !== "Recover") throw new FatalError();
       }
       return value;
     }),

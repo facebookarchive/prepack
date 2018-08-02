@@ -38,7 +38,6 @@ import { LoopContinues, InternalGetResultValue, TryToApplyEffectsOfJoiningBranch
 import { Environment, Functions, Havoc, Join, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import * as t from "@babel/types";
-import type { FunctionBodyAstNode } from "../types.js";
 import type { BabelNodeExpression, BabelNodeForStatement, BabelNodeBlockStatement } from "@babel/types";
 import { createOperationDescriptor } from "../utils/generator.js";
 
@@ -403,9 +402,7 @@ function generateRuntimeForStatement(
 ): AbstractValue {
   let wrapperFunction = new ECMAScriptSourceFunctionValue(realm);
   let body = ((t.cloneDeep(t.blockStatement([ast])): any): BabelNodeBlockStatement);
-  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
-  wrapperFunction.$ECMAScriptCode = body;
-  wrapperFunction.$FormalParameters = [];
+  wrapperFunction.initialize([], body);
   wrapperFunction.$Environment = env;
   // We need to scan to AST looking for "this", "return", "throw", labels and "arguments"
   let functionInfo = {

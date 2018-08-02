@@ -1060,7 +1060,7 @@ export type UtilsType = {|
   describeValue: Value => string,
   jsonToDisplayString: <T: { toDisplayJson(number): DisplayResult }>(T, number) => string,
   verboseToDisplayJson: ({}, number) => DisplayResult,
-  createModelledFunctionCall: (Realm, FunctionValue, void | string, void | Value) => void => Value,
+  createModelledFunctionCall: (Realm, FunctionValue, void | string | ArgModel, void | Value) => void => Value,
 |};
 
 export type DebuggerConfigArguments = {
@@ -1089,6 +1089,66 @@ export interface ShapeInformationInterface {
   getGetter(): void | SupportedGraphQLGetters;
   getAbstractType(): typeof Value;
 }
+
+type ECMAScriptType =
+  | "void"
+  | "null"
+  | "boolean"
+  | "string"
+  | "symbol"
+  | "number"
+  | "object"
+  | "array"
+  | "function"
+  | "integral";
+
+type ShapeDescriptorCommon = {
+  jsType: ECMAScriptType,
+  graphQLType?: string,
+};
+
+export type ShapePropertyDescriptor = {
+  shape: ShapeDescriptor,
+  optional: boolean,
+};
+
+type ShapeDescriptorOfObject = ShapeDescriptorCommon & {
+  kind: "object",
+  properties: { [string]: void | ShapePropertyDescriptor },
+};
+
+type ShapeDescriptorOfArray = ShapeDescriptorCommon & {
+  kind: "array",
+  elementShape: void | ShapePropertyDescriptor,
+};
+
+type ShapeDescriptorOfLink = ShapeDescriptorCommon & {
+  kind: "link",
+  shapeName: string,
+};
+
+type ShapeDescriptorOfPrimitive = ShapeDescriptorCommon & {
+  kind: "scalar",
+};
+
+type ShapeDescriptorOfEnum = ShapeDescriptorCommon & {
+  kind: "enum",
+};
+
+export type ShapeDescriptorNonLink =
+  | ShapeDescriptorOfObject
+  | ShapeDescriptorOfArray
+  | ShapeDescriptorOfPrimitive
+  | ShapeDescriptorOfEnum;
+
+export type ShapeDescriptor = ShapeDescriptorNonLink | ShapeDescriptorOfLink;
+
+export type ShapeUniverse = { [string]: ShapeDescriptor };
+
+export type ArgModel = {
+  universe: ShapeUniverse,
+  arguments: { [string]: string },
+};
 
 export type DebugReproManagerType = {
   construct(configArgs: DebugReproArguments): void,

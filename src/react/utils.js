@@ -30,13 +30,7 @@ import {
   Value,
 } from "../values/index.js";
 import { TemporalObjectAssignEntry } from "../utils/generator.js";
-import type {
-  Descriptor,
-  FunctionBodyAstNode,
-  ReactComponentTreeConfig,
-  ReactHint,
-  PropertyBinding,
-} from "../types.js";
+import type { Descriptor, ReactComponentTreeConfig, ReactHint, PropertyBinding } from "../types.js";
 import { Get, cloneDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import type { AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
@@ -845,10 +839,7 @@ export function createNoopFunction(realm: Realm): ECMAScriptSourceFunctionValue 
     return realm.react.noopFunction;
   }
   let noOpFunc = new ECMAScriptSourceFunctionValue(realm);
-  let body = t.blockStatement([]);
-  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
-  noOpFunc.$FormalParameters = [];
-  noOpFunc.$ECMAScriptCode = body;
+  noOpFunc.initialize([], t.blockStatement([]));
   realm.react.noopFunction = noOpFunc;
   return noOpFunc;
 }
@@ -878,10 +869,7 @@ export function createDefaultPropsHelper(realm: Realm): ECMAScriptSourceFunction
 
   let escapeHelperAst = parseExpression(defaultPropsHelper, { plugins: ["flow"] });
   let helper = new ECMAScriptSourceFunctionValue(realm);
-  let body = escapeHelperAst.body;
-  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
-  helper.$ECMAScriptCode = body;
-  helper.$FormalParameters = escapeHelperAst.params;
+  helper.initialize(escapeHelperAst.params, escapeHelperAst.body);
   return helper;
 }
 
