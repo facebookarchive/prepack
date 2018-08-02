@@ -61,7 +61,8 @@ export class DebugReproPackager {
     sourceMaps: Array<string>,
     reproFilePath: string,
     reproFileNames: Array<string>,
-    reproArguments: Array<string>
+    reproArguments: Array<string>,
+    prepackPath?: string
   ): void {
     if (reproFilePath === undefined) process.exit(1);
 
@@ -100,32 +101,42 @@ export class DebugReproPackager {
       }
     }
 
-    // Copy Prepack lib and package.json to install dependencies.
-    // The `yarn pack` command finds all necessary files automatically.
-    // The following steps need to be sequential, hence the series of `.on("exit")` callbacks.
-    console.log(__dirname);
-    console.log(path.resolve(process.cwd(), "prepack-bundled.tgz"));
-    let yarnRuntime = "yarn";
-    let yarnCommand = ["pack", "--filename", path.resolve(process.cwd(), "prepack-bundled.tgz")];
-    child_process.spawnSync(yarnRuntime, yarnCommand, { cwd: __dirname });
-    // Because zipping the .tgz causes corruption issues when unzipping, we will
-    // unpack the .tgz, then zip those contents.
-    let unzipRuntime = "tar";
-    let unzipCommand = ["-xzf", path.resolve(`.`, "prepack-bundled.tgz")];
-    child_process.spawnSync(unzipRuntime, unzipCommand);
+    // If not told where to copy prepack from, try to yarn pack it up.
+    if (prepackPath === undefined) {
+      // Copy Prepack lib and package.json to install dependencies.
+      // The `yarn pack` command finds all necessary files automatically.
+      // The following steps need to be sequential, hence the series of `.on("exit")` callbacks.
+      let yarnRuntime = "yarn";
+      let yarnCommand = ["pack", "--filename", path.resolve(process.cwd(), "prepack-bundled.tgz")];
+      child_process.spawnSync(yarnRuntime, yarnCommand, { cwd: __dirname });
+      // Because zipping the .tgz causes corruption issues when unzipping, we will
+      // unpack the .tgz, then zip those contents.
+      let unzipRuntime = "tar";
+      let unzipCommand = ["-xzf", path.resolve(`.`, "prepack-bundled.tgz")];
+      child_process.spawnSync(unzipRuntime, unzipCommand);
+      // Note that this process is asynchronous. A process.exit() elsewhere in this cli code
+      // might cause the whole process (including an ongoing zip) to prematurely terminate.
+      zipdir(path.resolve(".", "package"), (err, buffer) => {
+        if (err) {
+          console.error(`Could not zip Prepack ${err}`);
+          process.exit(1);
+        }
 
-    // Note that this process is asynchronous. A process.exit() elsewhere in this cli code
-    // might cause the whole process (including an ongoing zip) to prematurely terminate.
-    zipdir(path.resolve(".", "package"), (err, buffer) => {
-      if (err) {
-        console.error(`Could not zip Prepack ${err}`);
+        this._reproZip.file("prepack-runtime-bundle.zip", buffer);
+        this._generateZip(reproArguments, reproFileNames, reproFilePath);
+
+        if (shouldExitWithError) process.exit(1);
+      });
+    } else {
+      try {
+        let prepackContent = fs.readFileSync(prepackPath);
+        this._reproZip.file("prepack-runtime-bundle.zip", prepackContent);
+        this._generateZip(reproArguments, reproFileNames, reproFilePath);
+      } catch (err) {
+        console.error(`Could not zip prepack from given path: ${err}`);
         process.exit(1);
       }
-
-      this._reproZip.file("prepack-runtime-bundle.zip", buffer);
-      this._generateZip(reproArguments, reproFileNames, reproFilePath);
-
       if (shouldExitWithError) process.exit(1);
-    });
+    }
   }
 }

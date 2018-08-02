@@ -107,6 +107,7 @@ function run(
   let invariantLevel: void | number;
   let reproMode: void | "reproUnconditionally" | "reproOnFatalError";
   let debugReproPackager: void | DebugReproPackager;
+  let debugReproPrepackPath: void | string;
   let flags = {
     initializeMoreModules: false,
     trace: false,
@@ -294,6 +295,9 @@ function run(
           // any computer, not just the one it was generated on.
           // All sourcefiles are placed directly in the repro, so the repro folder is the buckRoot.
           reproArguments.push("--debugBuckRoot", "$(pwd)");
+          break;
+        case "debugReproPrepackPath":
+          debugReproPrepackPath = args.shift();
           break;
         case "help":
           const options = [
@@ -588,7 +592,8 @@ function run(
         debugReproSourceMaps,
         reproFilePath,
         reproFileNames,
-        reproArguments
+        reproArguments,
+        debugReproPrepackPath
       );
     } else {
       console.error("Debug Repro Packager was not initialized.");
