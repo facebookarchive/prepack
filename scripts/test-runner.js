@@ -328,22 +328,8 @@ function getErrorHandlerWithWarningCapture(
       errorCodeSet.add(diagnostic.errorCode);
     }
     try {
-      switch (diagnostic.severity) {
-        case "Information":
-          if (verbose && !suppressDiagnostics) console.log(`Info: ${msg}`);
-          return "Recover";
-        case "Warning":
-          if (verbose && !suppressDiagnostics) console.warn(`Warn: ${msg}`);
-          return "Recover";
-        case "RecoverableError":
-          if (verbose && !suppressDiagnostics) console.error(`Error: ${msg}`);
-          return "Recover";
-        case "FatalError":
-          if (verbose && !suppressDiagnostics) console.error(`Fatal Error: ${msg}`);
-          return "Fail";
-        default:
-          invariant(false, "Unexpected error type");
-      }
+      if (verbose && !suppressDiagnostics) console.log(`${diagnostic.severity}: ${msg}`);
+      return "Recover";
     } finally {
       if (verbose && !suppressDiagnostics) console.log(diagnostic.callStack);
     }
@@ -508,15 +494,18 @@ function runTest(name, code, options: PrepackOptions, args) {
               let diagnosticExpectedComment = `// expected ${severity}:`;
               if (code.includes(diagnosticExpectedComment)) {
                 let idx = code.indexOf(diagnosticExpectedComment);
-                let errorCodeString = code.substring(idx + diagnosticExpectedComment.length, code.indexOf("\n", idx));
-                if (errorCodeString.trim() !== "") {
+                let errorCodeString = code
+                  .substring(idx + diagnosticExpectedComment.length, code.indexOf("\n", idx))
+                  .trim();
+                if (errorCodeString !== "") {
                   let errorCodeSet = new Set();
                   expectedDiagnostics.set(severity, errorCodeSet);
                   errorCodeString.split(",").forEach(errorCode => errorCodeSet.add(errorCode.trim()));
                 }
                 options.residual = false;
-                options.errorHandler = getErrorHandlerWithWarningCapture(diagnosticOutput, args.verbose);
               }
+              if (expectedDiagnostics.size > 0)
+                options.errorHandler = getErrorHandlerWithWarningCapture(diagnosticOutput, args.verbose);
             }
 
             let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);

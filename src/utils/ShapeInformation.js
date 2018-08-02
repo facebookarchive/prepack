@@ -10,68 +10,18 @@
 /* @flow */
 
 import { Utils } from "../singletons.js";
-import { Value } from "../values/index.js";
-import type { SupportedGraphQLGetters, ShapeInformationInterface } from "../types.js";
-
-export type ECMAScriptType =
-  | "void"
-  | "null"
-  | "boolean"
-  | "string"
-  | "symbol"
-  | "number"
-  | "object"
-  | "array"
-  | "function"
-  | "integral";
-
-export type ShapeDescriptorCommon = {
-  jsType: ECMAScriptType,
-  graphQLType?: string,
-};
-
-export type ShapePropertyDescriptor = {
-  shape: ShapeDescriptor,
-  optional: boolean,
-};
-
-export type ShapeDescriptorOfObject = ShapeDescriptorCommon & {
-  kind: "object",
-  properties: { [string]: void | ShapePropertyDescriptor },
-};
-
-export type ShapeDescriptorOfArray = ShapeDescriptorCommon & {
-  kind: "array",
-  elementShape: void | ShapePropertyDescriptor,
-};
-
-export type ShapeDescriptorOfScalar = ShapeDescriptorCommon & {
-  kind: "scalar",
-};
-
-export type ShapeDescriptorOfEnum = ShapeDescriptorCommon & {
-  kind: "enum",
-};
-
-export type ShapeDescriptorOfLink = {
-  kind: "link",
-  shapeName: string,
-};
-
-export type ShapeDescriptorNonLink =
-  | ShapeDescriptorOfObject
-  | ShapeDescriptorOfArray
-  | ShapeDescriptorOfScalar
-  | ShapeDescriptorOfEnum;
-
-export type ShapeDescriptor = ShapeDescriptorNonLink | ShapeDescriptorOfLink;
-
-export type ShapeUniverse = { [string]: void | ShapeDescriptor };
-
-export type ArgModel = {
-  universe: ShapeUniverse,
-  arguments: { [string]: string },
-};
+import { Value, StringValue } from "../values/index.js";
+import type {
+  SupportedGraphQLGetters,
+  ShapeInformationInterface,
+  ShapeUniverse,
+  ShapeDescriptorNonLink,
+  ArgModel,
+  ShapeDescriptor,
+  ShapePropertyDescriptor,
+} from "../types.js";
+import { FatalError, CompilerDiagnostic } from "../errors.js";
+import { Realm } from "../realm.js";
 
 export type ComponentModel = {
   universe: ShapeUniverse,
@@ -259,4 +209,42 @@ export class ShapeInformation implements ShapeInformationInterface {
     },
     optional: false,
   };
+}
+
+// TODO: do more full validation walking the whole shape
+export function createAndValidateArgModel(realm: Realm, argModelString: Value): ArgModel | void {
+  let argModelError;
+  if (argModelString instanceof StringValue) {
+    try {
+      let argModel = JSON.parse(argModelString.value);
+      if (!argModel.universe)
+        argModelError = new CompilerDiagnostic(
+          "ArgModel must contain a universe property containing a ShapeUniverse",
+          realm.currentLocation,
+          "PP1008",
+          "FatalError"
+        );
+      if (!argModel.arguments)
+        argModelError = new CompilerDiagnostic(
+          "ArgModel must contain an arguments property.",
+          realm.currentLocation,
+          "PP1008",
+          "FatalError"
+        );
+      return (argModel: ArgModel);
+    } catch (e) {
+      argModelError = new CompilerDiagnostic(
+        "Failed to parse model for arguments",
+        realm.currentLocation,
+        "PP1008",
+        "FatalError"
+      );
+    }
+  } else {
+    argModelError = new CompilerDiagnostic("String expected as a model", realm.currentLocation, "PP1008", "FatalError");
+  }
+  if (argModelError !== undefined && realm.handleError(argModelError) !== "Recover") {
+    throw new FatalError();
+  }
+  return undefined;
 }

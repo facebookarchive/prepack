@@ -28,8 +28,8 @@ import {
   Value,
 } from "./values/index.js";
 import invariant from "./invariant.js";
-import { ShapeInformation } from "./utils/ShapeInformation";
-import type { ArgModel } from "./utils/ShapeInformation";
+import { ShapeInformation } from "./utils/ShapeInformation.js";
+import type { ArgModel } from "./types.js";
 import { CompilerDiagnostic, FatalError } from "./errors.js";
 import * as t from "@babel/types";
 
@@ -154,14 +154,14 @@ export function verboseToDisplayJson(obj: {}, depth: number): DisplayResult {
 export function createModelledFunctionCall(
   realm: Realm,
   funcValue: FunctionValue,
-  argModelString: void | string,
+  argModelInput: void | string | ArgModel,
   thisValue: void | Value
 ): void => Value {
   let call = funcValue.$Call;
   invariant(call);
   let numArgs = funcValue.getLength();
   let args = [];
-  let argModel = argModelString !== undefined ? (JSON.parse(argModelString): ArgModel) : undefined;
+  let argModel = typeof argModelInput === "string" ? (JSON.parse(argModelInput): ArgModel) : argModelInput;
   invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
   let params = funcValue.$FormalParameters;
   if (numArgs && numArgs > 0 && params) {

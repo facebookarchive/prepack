@@ -18,6 +18,7 @@ import type {
   PropertyBinding,
   ReactHint,
   DisplayResult,
+  ArgModel,
   DebugReproManagerType,
 } from "./types.js";
 import { RealmStatistics } from "./statistics.js";
@@ -337,6 +338,7 @@ export class Realm {
     this._abstractValuesDefined = new Set(); // A set of nameStrings to ensure abstract values have unique names
     this.debugNames = opts.debugNames;
     this._checkedObjectIds = new Map();
+    this.optimizedFunctions = new Map();
   }
 
   statistics: RealmStatistics;
@@ -484,6 +486,8 @@ export class Realm {
   nextGeneratorId: number = 0;
   _abstractValuesDefined: Set<string>;
   _checkedObjectIds: Map<ObjectValue | AbstractObjectValue, number>;
+
+  optimizedFunctions: Map<FunctionValue | AbstractValue, ArgModel | void>;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
