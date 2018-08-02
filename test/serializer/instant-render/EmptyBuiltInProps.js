@@ -12,8 +12,13 @@ function f(c) {
 
 global.__optimize && __optimize(f);
 
-inspect = function() {
+let real_inspect = function() {
   let result = f(false);
-  if (!global.__optimize) result.foo = {};
   return JSON.stringify(result);
 };
+
+let fake_inspect = function() {
+  return JSON.stringify({ foo: {} });
+};
+
+inspect = global.__optimize ? real_inspect : fake_inspect;

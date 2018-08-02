@@ -64,13 +64,7 @@ import { HeapInspector } from "../utils/HeapInspector.js";
 import { ResidualFunctions } from "./ResidualFunctions.js";
 import type { Scope } from "./ResidualHeapVisitor.js";
 import { factorifyObjects } from "./factorify.js";
-import {
-  voidExpression,
-  emptyExpression,
-  constructorExpression,
-  protoExpression,
-  instantRenderEmptyBuiltIn,
-} from "../utils/babelhelpers.js";
+import { voidExpression, emptyExpression, constructorExpression, protoExpression } from "../utils/babelhelpers.js";
 import { Emitter } from "./Emitter.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import {
@@ -1777,7 +1771,7 @@ export class ResidualHeapSerializer {
 
           // Although the property needs to be delayed, we still want to emit dummy "undefined"
           // value as part of the object literal to ensure a consistent property ordering.
-          let serializedValue = !instantRenderMode ? voidExpression : instantRenderEmptyBuiltIn;
+          let serializedValue = !instantRenderMode ? voidExpression : emptyExpression;
           if (delayReason) {
             // May need to be cleaned up later.
             dummyProperties.add(key);

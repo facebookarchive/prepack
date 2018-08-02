@@ -3,6 +3,7 @@
 
 function f(c) {
   var a = [];
+  a[1] = 42;
   if (c) {
     a[0] = 42;
   }
@@ -12,8 +13,13 @@ function f(c) {
 
 global.__optimize && __optimize(f);
 
-inspect = function() {
+let real_inspect = function() {
   let result = f(false);
-  if (!global.__optimize) result[0] = {};
   return JSON.stringify(result);
 };
+
+let fake_inspect = function() {
+  return JSON.stringify([{}, 42]);
+};
+
+inspect = global.__optimize ? real_inspect : fake_inspect;
