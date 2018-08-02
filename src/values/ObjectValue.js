@@ -509,7 +509,10 @@ export default class ObjectValue extends ConcreteValue {
     });
   }
 
-  getOwnPropertyKeysArray(allowAbstractKeys: boolean = false, getOwnPropertyKeysEvenIfPartial? = false): Array<string> {
+  getOwnPropertyKeysArray(
+    allowAbstractKeys: boolean = false,
+    getOwnPropertyKeysEvenIfPartial?: boolean = false
+  ): Array<string> {
     if (
       (this.isPartialObject() && !getOwnPropertyKeysEvenIfPartial) ||
       this.mightBeHavocedObject() ||

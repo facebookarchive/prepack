@@ -81,7 +81,7 @@ export function EnumerableOwnProperties(
   realm: Realm,
   O: ObjectValue,
   kind: string,
-  getOwnPropertyKeysEvenIfPartial: boolean
+  getOwnPropertyKeysEvenIfPartial?: boolean = false
 ): Array<Value> {
   // 1. Assert: Type(O) is Object.
   invariant(O instanceof ObjectValue, "expected object");
