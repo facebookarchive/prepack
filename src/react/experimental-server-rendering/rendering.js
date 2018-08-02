@@ -69,8 +69,11 @@ import {
 import hyphenateStyleName from "fbjs/lib/hyphenateStyleName";
 import { To } from "../../singletons.js";
 import { createOperationDescriptor } from "../../utils/generator.js";
+import { FatalError } from "../../errors.js";
 
 export type ReactNode = Array<ReactNode> | string | AbstractValue | ArrayValue;
+
+class SideEffects extends FatalError {}
 
 function renderValueWithHelper(realm: Realm, value: Value, helper: ECMAScriptSourceFunctionValue): AbstractValue {
   // given we know nothing of this value, we need to escape the contents of it at runtime
@@ -344,20 +347,32 @@ class ReactDOMServerRenderer {
 
       if (nestedOptimizedFunctionEffects !== undefined) {
         for (let [func, effects] of nestedOptimizedFunctionEffects) {
-          let resolvedEffects = this.realm.evaluateForEffects(
-            () => {
-              let result = effects.result;
-              this.realm.applyEffects(effects);
+          let funcCall = () => {
+            let result = effects.result;
+            this.realm.applyEffects(effects);
+            if (result instanceof SimpleNormalCompletion) {
+              result = result.value;
+            }
+            invariant(result instanceof Value);
+            return this.render(result, namespace, depth);
+          };
+          let pureFuncCall = () =>
+            this.realm.evaluatePure(funcCall, /*bubbles*/ true, () => {
+              throw new SideEffects();
+            });
 
-              if (result instanceof SimpleNormalCompletion) {
-                result = result.value;
-              }
-              invariant(result instanceof Value);
-              return this.render(result, namespace, depth);
-            },
-            /*state*/ null,
-            `react nested optimized closure`
-          );
+          let resolvedEffects;
+          let saved_pathConditions = this.realm.pathConditions;
+          this.realm.pathConditions = [];
+          try {
+            resolvedEffects = this.realm.evaluateForEffects(
+              pureFuncCall,
+              /*state*/ null,
+              `react SSR resolve nested optimized closure`
+            );
+          } finally {
+            this.realm.pathConditions = saved_pathConditions;
+          }
           nestedOptimizedFunctionEffects.set(func, resolvedEffects);
           this.realm.collectedNestedOptimizedFunctionEffects.set(func, resolvedEffects);
         }
