@@ -379,6 +379,13 @@ export default class ObjectValue extends ConcreteValue {
     return this._isPartial.mightBeTrue();
   }
 
+  // When this object was created in an evaluateForEffects context and the effects have not been applied, the
+  // value is not valid (and we shouldn't try to access any properties on it). isPartial should always be set
+  // except when reverted by effects.
+  isValid(): boolean {
+    return this._isPartial !== undefined;
+  }
+
   mightBeFinalObject(): boolean {
     return this._isFinal.mightBeTrue();
   }
