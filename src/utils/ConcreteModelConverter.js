@@ -105,23 +105,12 @@ export function concretize(realm: Realm, val: Value): ConcreteValue {
       return new ObjectValue(realm);
     } else {
       let template = val.getTemplate();
-      let valIsPartial = false;
-      if (val.isPartialObject()) {
-        valIsPartial = true;
-        val.makeNotPartial();
-      }
       let concreteObj = Create.ObjectCreate(realm, template.$GetPrototypeOf());
-      try {
-        let keys = EnumerableOwnProperties(realm, template, "key");
-        for (let P of keys) {
-          invariant(P instanceof StringValue);
-          let newElement = Get(realm, template, P);
-          Create.CreateDataProperty(realm, concreteObj, P, concretize(realm, newElement));
-        }
-      } finally {
-        if (valIsPartial) {
-          val.makePartial();
-        }
+      let keys = EnumerableOwnProperties(realm, template, "key", true);
+      for (let P of keys) {
+        invariant(P instanceof StringValue);
+        let newElement = Get(realm, template, P);
+        Create.CreateDataProperty(realm, concreteObj, P, concretize(realm, newElement));
       }
       return concreteObj;
     }
