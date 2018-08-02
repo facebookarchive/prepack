@@ -153,6 +153,7 @@ export class Functions {
     if (this.realm.react.verbose) {
       logger.logInformation(`Evaluating ${recordedReactRootValues.length} React component tree roots...`);
     }
+    let alreadyEvaluated = new Map();
     for (let { value: componentRoot, config } of recordedReactRootValues) {
       invariant(config);
       optimizeReactComponentTreeRoot(
@@ -162,7 +163,8 @@ export class Functions {
         this.writeEffects,
         environmentRecordIdAfterGlobalCode,
         logger,
-        statistics
+        statistics,
+        alreadyEvaluated
       );
     }
   }

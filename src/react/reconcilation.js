@@ -142,6 +142,7 @@ export class Reconciler {
   constructor(
     realm: Realm,
     componentTreeConfig: ReactComponentTreeConfig,
+    alreadyEvaluated: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>,
     statistics: ReactStatistics,
     logger?: Logger
   ) {
@@ -150,7 +151,7 @@ export class Reconciler {
     this.logger = logger;
     this.componentTreeConfig = componentTreeConfig;
     this.componentTreeState = this._createComponentTreeState();
-    this.alreadyEvaluatedRootNodes = new Map();
+    this.alreadyEvaluated = alreadyEvaluated;
     this.branchedComponentTrees = [];
   }
 
@@ -158,7 +159,7 @@ export class Reconciler {
   statistics: ReactStatistics;
   logger: void | Logger;
   componentTreeState: ComponentTreeState;
-  alreadyEvaluatedRootNodes: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>;
+  alreadyEvaluated: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>;
   componentTreeConfig: ReactComponentTreeConfig;
   currentEffectsStack: Array<Effects>;
   branchedComponentTrees: Array<BranchReactComponentTree>;
@@ -173,7 +174,6 @@ export class Reconciler {
       try {
         let initialProps = props || getInitialProps(this.realm, componentType, this.componentTreeConfig);
         let initialContext = context || getInitialContext(this.realm, componentType);
-        this.alreadyEvaluatedRootNodes.set(componentType, evaluatedRootNode);
         let { result } = this._resolveComponent(componentType, initialProps, initialContext, "ROOT", evaluatedRootNode);
         this.statistics.optimizedTrees++;
         return result;
@@ -220,7 +220,7 @@ export class Reconciler {
     invariant(rootValue instanceof ECMAScriptSourceFunctionValue || rootValue instanceof AbstractValue);
     this.componentTreeState.deadEnds++;
     let componentType = getComponentTypeFromRootValue(this.realm, rootValue);
-    if (componentType !== null && !this.hasEvaluatedRootNode(componentType, evaluatedNode)) {
+    if (componentType !== null && !this.alreadyEvaluated.has(componentType)) {
       this.branchedComponentTrees.push({
         context,
         evaluatedNode,
@@ -241,7 +241,7 @@ export class Reconciler {
     if (branchStatus !== "ROOT") {
       // if the tree is simple and we're not in a branch, we can make this tree complex
       // and make this complex component the root
-      let evaluatedComplexNode = this.alreadyEvaluatedRootNodes.get(componentType);
+      let evaluatedComplexNode = this.alreadyEvaluated.get(componentType);
       if (
         branchStatus === "NO_BRANCH" &&
         this.componentTreeState.status === "SIMPLE" &&
@@ -1457,18 +1457,6 @@ export class Reconciler {
     );
     children.makeFinal();
     return children;
-  }
-
-  hasEvaluatedRootNode(componentType: ECMAScriptSourceFunctionValue, evaluateNode: ReactEvaluatedNode): boolean {
-    if (this.alreadyEvaluatedRootNodes.has(componentType)) {
-      let alreadyEvaluatedNode = this.alreadyEvaluatedRootNodes.get(componentType);
-      invariant(alreadyEvaluatedNode);
-      evaluateNode.children = alreadyEvaluatedNode.children;
-      evaluateNode.status = alreadyEvaluatedNode.status;
-      evaluateNode.name = alreadyEvaluatedNode.name;
-      return true;
-    }
-    return false;
   }
 
   _findReactComponentTrees(

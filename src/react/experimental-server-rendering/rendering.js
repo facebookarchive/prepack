@@ -486,9 +486,11 @@ export function renderToString(
   staticMarkup: boolean
 ): StringValue | AbstractValue {
   let reactStatistics = new ReactStatistics();
+  let alreadyEvaluated = new Map();
   let reconciler = new Reconciler(
     realm,
     { firstRenderOnly: true, isRoot: true, modelString: undefined },
+    alreadyEvaluated,
     reactStatistics
   );
   let typeValue = getProperty(realm, reactElement, "type");

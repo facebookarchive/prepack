@@ -110,7 +110,8 @@ function optimizeReactComponentTreeBranches(
   reconciler: Reconciler,
   writeEffects: WriteEffects,
   environmentRecordIdAfterGlobalCode: number,
-  logger: Logger
+  logger: Logger,
+  alreadyEvaluated: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>
 ): void {
   if (realm.react.verbose && reconciler.branchedComponentTrees.length > 0) {
     logger.logInformation(`  Evaluating React component tree branches...`);
@@ -123,10 +124,10 @@ function optimizeReactComponentTreeBranches(
       evaluatedNode.status = "UNKNOWN_TYPE";
       continue;
     }
-    // so we don't process the same component multiple times (we might change this logic later)
-    if (reconciler.hasEvaluatedRootNode(branchComponentType, evaluatedNode)) {
-      continue;
+    if (alreadyEvaluated.has(branchComponentType)) {
+      return;
     }
+    alreadyEvaluated.set(branchComponentType, evaluatedNode);
     reconciler.clearComponentTreeState();
     if (realm.react.verbose) {
       logger.logInformation(`    Evaluating ${evaluatedNode.name} (branch)`);
@@ -155,18 +156,20 @@ export function optimizeReactComponentTreeRoot(
   writeEffects: WriteEffects,
   environmentRecordIdAfterGlobalCode: number,
   logger: Logger,
-  statistics: ReactStatistics
+  statistics: ReactStatistics,
+  alreadyEvaluated: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>
 ): void {
-  let reconciler = new Reconciler(realm, config, statistics, logger);
+  let reconciler = new Reconciler(realm, config, alreadyEvaluated, statistics, logger);
   let componentType = getComponentTypeFromRootValue(realm, componentRoot);
   if (componentType === null) {
     return;
   }
-  let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(realm, componentType));
-  statistics.evaluatedRootNodes.push(evaluatedRootNode);
-  if (reconciler.hasEvaluatedRootNode(componentType, evaluatedRootNode)) {
+  if (alreadyEvaluated.has(componentType)) {
     return;
   }
+  let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(realm, componentType));
+  statistics.evaluatedRootNodes.push(evaluatedRootNode);
+  alreadyEvaluated.set(componentType, evaluatedRootNode);
   if (realm.react.verbose) {
     logger.logInformation(`  Evaluating ${evaluatedRootNode.name} (root)`);
   }
@@ -184,10 +187,16 @@ export function optimizeReactComponentTreeRoot(
     writeEffects,
     environmentRecordIdAfterGlobalCode
   );
-
   let startingComponentTreeBranches = 0;
   do {
     startingComponentTreeBranches = reconciler.branchedComponentTrees.length;
-    optimizeReactComponentTreeBranches(realm, reconciler, writeEffects, environmentRecordIdAfterGlobalCode, logger);
+    optimizeReactComponentTreeBranches(
+      realm,
+      reconciler,
+      writeEffects,
+      environmentRecordIdAfterGlobalCode,
+      logger,
+      alreadyEvaluated
+    );
   } while (startingComponentTreeBranches !== reconciler.branchedComponentTrees.length);
 }

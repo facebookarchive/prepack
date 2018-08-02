@@ -1602,7 +1602,8 @@ export class Realm {
         createdObjectsTrackedForLeaks !== undefined &&
         !createdObjectsTrackedForLeaks.has(object) &&
         // __markPropertyAsChecked__ is set by realm.markPropertyAsChecked
-        (typeof binding.key !== "string" || !binding.key.includes("__propertyHasBeenChecked__"))
+        (typeof binding.key !== "string" || !binding.key.includes("__propertyHasBeenChecked__")) &&
+        binding.key !== "_temporalAlias"
       ) {
         if (binding.object === this.$GlobalObject) {
           for (let callback of this.reportSideEffectCallbacks) {
