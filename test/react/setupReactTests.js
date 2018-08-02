@@ -11,7 +11,7 @@
 
 let fs = require("fs");
 let path = require("path");
-let { prepackSources } = require("../../lib/prepack-node.js");
+let { prepackSources } = require("../../src/prepack-node.js");
 let babel = require("babel-core");
 let React = require("react");
 let ReactDOM = require("react-dom");
@@ -20,7 +20,7 @@ let ReactNative = require("react-native");
 let PropTypes = require("prop-types");
 let ReactRelay = require("react-relay");
 let ReactTestRenderer = require("react-test-renderer");
-let { mergeAdjacentJSONTextNodes } = require("../../lib/utils/json.js");
+let { mergeAdjacentJSONTextNodes } = require("../../src/utils/json.js");
 
 /* eslint-disable no-undef */
 const { expect } = global;
