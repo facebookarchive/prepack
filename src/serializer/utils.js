@@ -28,7 +28,7 @@ import { Logger } from "../utils/logger.js";
 import { Generator } from "../utils/generator.js";
 import type { AdditionalFunctionEffects } from "./types";
 import type { Binding } from "../environment.js";
-import { optionalStringOfLocation } from "../utils/babelHelpers.js";
+import { optionalStringOfLocation } from "../utils/babelhelpers.js";
 
 /**
  * Get index property list length by searching array properties list for the max index key value plus 1.
