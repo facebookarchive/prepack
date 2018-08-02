@@ -1419,20 +1419,32 @@ export class Reconciler {
 
       if (nestedOptimizedFunctionEffects !== undefined) {
         for (let [func, effects] of nestedOptimizedFunctionEffects) {
-          let resolvedEffects = this.realm.evaluateForEffects(
-            () => {
-              let result = effects.result;
-              this.realm.applyEffects(effects);
+          let funcCall = () => {
+            let result = effects.result;
+            this.realm.applyEffects(effects);
+            if (result instanceof SimpleNormalCompletion) {
+              result = result.value;
+            }
+            invariant(result instanceof Value);
+            return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode, needsKey);
+          };
+          let pureFuncCall = () =>
+            this.realm.evaluatePure(funcCall, /*bubbles*/ true, () => {
+              throw new SideEffects();
+            });
 
-              if (result instanceof SimpleNormalCompletion) {
-                result = result.value;
-              }
-              invariant(result instanceof Value);
-              return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode, needsKey);
-            },
-            /*state*/ null,
-            `react nested optimized closure`
-          );
+          let resolvedEffects;
+          let saved_pathConditions = this.realm.pathConditions;
+          this.realm.pathConditions = [];
+          try {
+            resolvedEffects = this.realm.evaluateForEffects(
+              pureFuncCall,
+              /*state*/ null,
+              `react resolve nested optimized closure`
+            );
+          } finally {
+            this.realm.pathConditions = saved_pathConditions;
+          }
           this.statistics.optimizedNestedClosures++;
           nestedOptimizedFunctionEffects.set(func, resolvedEffects);
           this.realm.collectedNestedOptimizedFunctionEffects.set(func, resolvedEffects);
