@@ -1154,12 +1154,10 @@ export class LexicalEnvironment {
 
         let sourceMapContents = source.sourceMapContents;
         if (sourceMapContents && sourceMapContents.length > 0) {
-          this.realm.statistics.fixupSourceLocations.measure(() =>
-            this.fixup_source_locations(node, sourceMapContents)
-          );
+          this.realm.statistics.fixupSourceLocations.measure(() => this.fixupSourceLocations(node, sourceMapContents));
         }
 
-        this.realm.statistics.fixupFilenames.measure(() => this.fixup_filenames(node));
+        this.realm.statistics.fixupFilenames.measure(() => this.fixupFilenames(node));
 
         asts = asts.concat(node.program.body);
         code[source.filePath] = source.fileContents;
@@ -1244,7 +1242,7 @@ export class LexicalEnvironment {
     invariant(partialAST.type === "File");
     let fileAst = ((partialAST: any): BabelNodeFile);
     let prog = t.program(fileAst.program.body, ast.program.directives);
-    this.fixup_filenames(prog);
+    this.fixupFilenames(prog);
     // The type signature for generate is not complete, hence the any
     return generate(prog, { sourceMaps: options.sourceMaps }, (code: any));
   }
@@ -1272,8 +1270,8 @@ export class LexicalEnvironment {
         throw e;
       }
       if (onParse) onParse(ast);
-      if (map.length > 0) this.fixup_source_locations(ast, map);
-      this.fixup_filenames(ast);
+      if (map.length > 0) this.fixupSourceLocations(ast, map);
+      this.fixupFilenames(ast);
       res = this.evaluateCompletion(ast, false);
     } finally {
       this.realm.popContext(context);
@@ -1289,65 +1287,137 @@ export class LexicalEnvironment {
     return Environment.GetValue(this.realm, res);
   }
 
-  fixup_source_locations(ast: BabelNode, map: string): void {
+  fixupSourceLocations(ast: BabelNode, map: string): void {
     const smc = new sourceMap.SourceMapConsumer(map);
+    invariant(ast.loc);
+    const source = ast.loc.source;
+    invariant(source !== undefined);
+    const realm = this.realm;
+    const positionInfos = new Map();
     traverseFast(ast, node => {
-      let loc = node.loc;
-      if (!loc) return false;
-      fixup(loc, loc.start);
-      fixup(loc, loc.end);
-      fixup_comments(node.leadingComments);
-      fixup_comments(node.innerComments);
-      fixup_comments(node.trailingComments);
+      fixupLocation(node.loc);
+      fixupComments(node.leadingComments);
+      fixupComments(node.innerComments);
+      fixupComments(node.trailingComments);
       return false;
-
-      function fixup(new_loc: BabelNodeSourceLocation, new_pos: BabelNodePosition) {
-        let old_pos = smc.originalPositionFor({ line: new_pos.line, column: new_pos.column });
-        if (old_pos.source === null) return;
-        new_pos.line = old_pos.line;
-        new_pos.column = old_pos.column;
-        new_loc.source = old_pos.source;
+    });
+    function getPositionInfo(position: BabelNodePosition) {
+      let info = positionInfos.get(position);
+      if (info === undefined)
+        positionInfos.set(
+          position,
+          (info = {
+            originalPosition: smc.originalPositionFor(position),
+            newLine: position.line,
+            newColumn: position.column,
+            rewritten: false,
+          })
+        );
+      return info;
+    }
+    function fixupPosition(pos: BabelNodePosition, posInfo, otherInfo) {
+      if (posInfo.rewritten) return;
+      if (posInfo.originalPosition.source == null) {
+        invariant(otherInfo.originalPosition.source != null);
+        pos.line = Math.max(0, pos.line + otherInfo.originalPosition.line - otherInfo.newLine);
+        pos.column = Math.max(0, pos.column + otherInfo.originalPosition.column - otherInfo.newColumn);
+      } else {
+        pos.line = posInfo.originalPosition.line;
+        pos.column = posInfo.originalPosition.column;
       }
+      posInfo.rewritten = true;
+    }
+    function fixupLocation(loc: ?BabelNodeSourceLocation) {
+      if (loc == null) return;
+      if (loc.source === undefined || loc.source !== source) return;
+      // TODO: Ensure that loc.source corresponds to map. See #2353.
 
-      function fixup_comments(comments: ?Array<BabelNodeComment>) {
-        if (!comments) return;
-        for (let c of comments) {
-          let cloc = c.loc;
-          if (!cloc) continue;
-          fixup(cloc, cloc.start);
-          fixup(cloc, cloc.end);
+      let locStart = loc.start;
+      let locEnd = loc.end;
+      let startInfo = getPositionInfo(locStart);
+      let endInfo = getPositionInfo(locEnd);
+      let startOriginalPosition = startInfo.originalPosition;
+      let endOriginalPosition = endInfo.originalPosition;
+      if (startOriginalPosition.source != null && endOriginalPosition.source != null) {
+        if (startOriginalPosition.source !== endOriginalPosition.source) {
+          let diagnostic = new CompilerDiagnostic(
+            `Inconsistent source map data: Node starts and ends in two files (${startOriginalPosition.source} vs ${
+              endOriginalPosition.source
+            })`,
+            loc,
+            "PP0038",
+            "Warning"
+          );
+          realm.handleError(diagnostic);
+        } else if (
+          startOriginalPosition.line > endOriginalPosition.line ||
+          (startOriginalPosition.line === endOriginalPosition.line &&
+            startOriginalPosition.column > endOriginalPosition.column)
+        ) {
+          let diagnostic = new CompilerDiagnostic(
+            `Inconsistent source map data: end before start: ${startOriginalPosition.source}[${
+              startOriginalPosition.line
+            }:${startOriginalPosition.column} ${endOriginalPosition.line}:${endOriginalPosition.column}]`,
+            loc,
+            "PP0038",
+            "Warning"
+          );
+          realm.handleError(diagnostic);
         }
       }
-    });
+
+      // Sanity checks on the positions supplied directly by the Babel parser
+      invariant(startInfo.newLine <= endInfo.newLine);
+      invariant(startInfo.newLine !== endInfo.newLine || startInfo.newColumn <= endInfo.newColumn);
+
+      if (startOriginalPosition.source != null || endOriginalPosition.source != null) {
+        fixupPosition(locStart, startInfo, endInfo);
+        fixupPosition(locEnd, endInfo, startInfo);
+
+        if (locStart.line > locEnd.line || (locStart.line === locEnd.line && locStart.column > locEnd.column)) {
+          // TODO: This could be due to a bug in Babel or the source-map library. This triggers even for test-sourcemaps
+          let diagnostic = new CompilerDiagnostic(
+            `Inconsistent source map data: end before start after update: ${loc.source || "?"}[${startInfo.newLine}:${
+              startInfo.newColumn
+            } ${endInfo.newLine}:${endInfo.newColumn}] => ${startOriginalPosition.source || "?"}[${locStart.line}:${
+              locStart.column
+            } ${locEnd.line}:${locEnd.column}]`,
+            loc,
+            "PP0038",
+            "Warning"
+          );
+          realm.handleError(diagnostic);
+        }
+
+        invariant(loc.source !== startOriginalPosition.source);
+        loc.source = startOriginalPosition.source;
+      }
+    }
+    function fixupComments(comments: ?Array<BabelNodeComment>) {
+      if (!comments) return;
+      for (let c of comments) fixupLocation(c.loc);
+    }
   }
 
-  fixup_filenames(ast: BabelNode): void {
+  fixupFilenames(ast: BabelNode): void {
     traverseFast(ast, node => {
       let loc = node.loc;
-      if (!loc || !loc.source) {
-        node.leadingComments = null;
-        node.innerComments = null;
-        node.trailingComments = null;
-        node.loc = null;
-      } else {
-        let filename = loc.source;
-        (loc: any).filename = filename;
-        fixup_comments(node.leadingComments, filename);
-        fixup_comments(node.innerComments, filename);
-        fixup_comments(node.trailingComments, filename);
-      }
+      if (loc && loc.source) (loc: any).filename = loc.source;
+      else node.loc = null;
+      fixupComments(node.leadingComments);
+      fixupComments(node.innerComments);
+      fixupComments(node.trailingComments);
       return false;
-
-      function fixup_comments(comments: ?Array<BabelNodeComment>, filename: string) {
-        if (!comments) return;
-        for (let c of comments) {
-          if (c.loc) {
-            (c.loc: any).filename = filename;
-            c.loc.source = filename;
-          }
-        }
-      }
     });
+
+    function fixupComments(comments: ?Array<BabelNodeComment>) {
+      if (!comments) return;
+      for (let c of comments) {
+        let loc = c.loc;
+        if (loc && loc.source) (loc: any).filename = loc.source;
+        else (c: any).loc = null;
+      }
+    }
   }
 
   evaluate(ast: BabelNode, strictCode: boolean, metadata?: any): Value | Reference {
