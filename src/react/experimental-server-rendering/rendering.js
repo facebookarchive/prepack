@@ -69,11 +69,8 @@ import {
 import hyphenateStyleName from "fbjs/lib/hyphenateStyleName";
 import { To } from "../../singletons.js";
 import { createOperationDescriptor } from "../../utils/generator.js";
-import { FatalError } from "../../errors.js";
 
 export type ReactNode = Array<ReactNode> | string | AbstractValue | ArrayValue;
-
-class SideEffects extends FatalError {}
 
 function renderValueWithHelper(realm: Realm, value: Value, helper: ECMAScriptSourceFunctionValue): AbstractValue {
   // given we know nothing of this value, we need to escape the contents of it at runtime
@@ -358,7 +355,7 @@ class ReactDOMServerRenderer {
           };
           let pureFuncCall = () =>
             this.realm.evaluatePure(funcCall, /*bubbles*/ true, () => {
-              throw new SideEffects();
+              invariant(false, "SSR _renderArrayValue side-effect should have been caught in main React reconciler");
             });
 
           let resolvedEffects;

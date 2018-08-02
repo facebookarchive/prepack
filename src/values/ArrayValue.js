@@ -24,13 +24,11 @@ import { IsAccessorDescriptor, IsPropertyKey, IsArrayIndex } from "../methods/is
 import { Havoc, Properties, To, Utils } from "../singletons.js";
 import { type OperationDescriptor } from "../utils/generator.js";
 import invariant from "../invariant.js";
-import { FatalError } from "../errors.js";
+import { NestedOptimizedFunctionSideEffect } from "../errors.js";
 
 type PossibleNestedOptimizedFunctions = [
   { func: BoundFunctionValue | ECMAScriptSourceFunctionValue, thisValue: Value },
 ];
-
-class SideEffects extends FatalError {}
 
 function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
   realm: Realm,
@@ -50,7 +48,7 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
     // we don't try and optimize the nested function.
     let pureFuncCall = () =>
       realm.evaluatePure(funcCall, /*bubbles*/ false, () => {
-        throw new SideEffects();
+        throw new NestedOptimizedFunctionSideEffect();
       });
     let effects;
     let saved_pathConditions = realm.pathConditions;
@@ -61,7 +59,7 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
       // If the nested optimized function had side-effects, we need to fallback to
       // the default behaviour and havoc the nested functions so any bindings
       // within the function properly leak and materialize.
-      if (e instanceof SideEffects) {
+      if (e instanceof NestedOptimizedFunctionSideEffect) {
         Havoc.value(realm, func);
         return;
       }

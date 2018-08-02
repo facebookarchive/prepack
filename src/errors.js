@@ -70,3 +70,10 @@ export class InvariantError extends Error {
 }
 
 export type ErrorHandler = (error: CompilerDiagnostic, suppressDiagnostics: boolean) => ErrorHandlerResult;
+
+// When a side-effect occurs when evaluating a pure nested optimized function, we stop execution of that function
+// and catch the error to properly handle the according logic (either bail-out or report the error).
+// Ideally this should extend FatalError, but that will mean re-working every call-site that catches FatalError
+// and make it treat NestedOptimizedFunctionSideEffect errors differently, which isn't ideal so maybe a better
+// FatalError catching/handling process is needed throughout the codebase at some point.
+export class NestedOptimizedFunctionSideEffect extends Error {}

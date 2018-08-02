@@ -49,7 +49,7 @@ import {
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { Havoc, Properties, Utils } from "../singletons.js";
-import { FatalError } from "../errors.js";
+import { FatalError, NestedOptimizedFunctionSideEffect } from "../errors.js";
 import {
   type BranchStatusEnum,
   getValueWithBranchingLogicApplied,
@@ -110,8 +110,6 @@ export type ComponentTreeState = {
   contextNodeReferences: Map<ObjectValue | AbstractObjectValue, number>,
 };
 
-class SideEffects extends FatalError {}
-
 function setContextCurrentValue(contextObject: ObjectValue | AbstractObjectValue, value: Value): void {
   if (contextObject instanceof AbstractObjectValue && !contextObject.values.isTop()) {
     let elements = contextObject.values.getElements();
@@ -134,6 +132,10 @@ function setContextCurrentValue(contextObject: ObjectValue | AbstractObjectValue
   } else {
     invariant(false, "setContextCurrentValue failed to set the currentValue");
   }
+}
+
+function throwUnsupportedSideEffectError(msg: string) {
+  throw new UnsupportedSideEffect(msg);
 }
 
 export class Reconciler {
@@ -184,9 +186,6 @@ export class Reconciler {
 
     try {
       this.realm.react.activeReconciler = this;
-      let throwUnsupportedSideEffectError = (msg: string) => {
-        throw new UnsupportedSideEffect(msg);
-      };
       return this.realm.wrapInGlobalEnv(() =>
         this.realm.evaluatePure(
           () =>
@@ -1429,9 +1428,9 @@ export class Reconciler {
             return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode, needsKey);
           };
           let pureFuncCall = () =>
-            this.realm.evaluatePure(funcCall, /*bubbles*/ true, () => {
-              throw new SideEffects();
-            });
+            this.realm.evaluatePure(funcCall, /*bubbles*/ true, (sideEffectType, binding, expressionLocation) =>
+              handleReportedSideEffect(throwUnsupportedSideEffectError, sideEffectType, binding, expressionLocation)
+            );
 
           let resolvedEffects;
           let saved_pathConditions = this.realm.pathConditions;
@@ -1561,7 +1560,7 @@ export class Reconciler {
     // we don't try and optimize the nested function.
     let pureFuncCall = () =>
       this.realm.evaluatePure(funcCall, /*bubbles*/ false, () => {
-        throw new SideEffects();
+        throw new NestedOptimizedFunctionSideEffect();
       });
     let effects;
     let saved_pathConditions = this.realm.pathConditions;
@@ -1579,7 +1578,7 @@ export class Reconciler {
       // If the nested optimized function had side-effects, we need to fallback to
       // the default behaviour and havoc the nested functions so any bindings
       // within the function properly leak and materialize.
-      if (e instanceof SideEffects) {
+      if (e instanceof NestedOptimizedFunctionSideEffect) {
         Havoc.value(this.realm, func);
         return;
       }
