@@ -515,7 +515,6 @@ export default class ObjectValue extends ConcreteValue {
       this.mightBeHavocedObject() ||
       this.unknownProperty !== undefined
     ) {
-      debugger;
       AbstractValue.reportIntrospectionError(this);
       throw new FatalError();
     }
@@ -542,10 +541,9 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   // Note that internal properties will not be copied to the snapshot, nor will they be removed.
-  getSnapshot(options?: { removeProperties: boolean, getOwnPropertyKeysEvenIfPartial: boolean }): AbstractObjectValue {
+  getSnapshot(options?: { removeProperties: boolean }): AbstractObjectValue {
     try {
       if (this.temporalAlias !== undefined) return this.temporalAlias;
-      invariant(!this.isPartialObject() || options.getOwnPropertyKeysEvenIfPartial);
       let template = new ObjectValue(this.$Realm, this.$Realm.intrinsics.ObjectPrototype);
       this.copyKeys(this.$OwnPropertyKeys(true), this, template);
       let realm = this.$Realm;
