@@ -100,7 +100,6 @@ export class Emitter {
       onArrayWithWidenedNumericProperty: val => {
         // If the value hasn't been declared yet, then we should wait for it.
         if (
-          !this.cannotDeclare() &&
           !this.hasBeenDeclared(val) &&
           (!this.emittingToAdditionalFunction() || referencedDeclaredValues.get(val) !== undefined)
         ) {
