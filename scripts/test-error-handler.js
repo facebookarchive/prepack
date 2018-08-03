@@ -9,23 +9,33 @@
 
 /* @flow */
 
-import { type CompilerDiagnostic, type ErrorHandlerResult, FatalError } from "../lib/errors.js";
-import { prepackFileSync } from "../lib/prepack-node.js";
-import invariant from "../lib/invariant.js";
+import { type CompilerDiagnostic, type ErrorHandlerResult, FatalError } from "../src/errors.js";
+import { prepackFileSync } from "../src/prepack-node.js";
+import path from "path";
+import fs from "fs";
 
-let chalk = require("chalk");
-let path = require("path");
-let fs = require("fs");
+/* eslint-disable no-undef */
+const { expect } = global;
 
-function search(dir, relative) {
-  let tests = [];
+type Test = {|
+  file: string,
+  name: string,
+|};
+
+function search(dir: string, relative: string): Array<Test> {
+  let tests: Array<Test> = [];
 
   if (fs.existsSync(dir)) {
     for (let name of fs.readdirSync(dir)) {
       let loc = path.join(dir, name);
       let stat = fs.statSync(loc);
 
-      if (stat.isFile()) {
+      if (
+        stat.isFile() &&
+        // Ignore temporary emacs and vim files
+        name[0] !== "." &&
+        !name.endsWith("~")
+      ) {
         tests.push({
           file: fs.readFileSync(loc, "utf8"),
           name: path.join(relative, name),
@@ -39,8 +49,6 @@ function search(dir, relative) {
   return tests;
 }
 
-let tests = search(`${__dirname}/../test/error-handler`, "test/error-handler");
-
 function errorHandler(
   retval: ErrorHandlerResult,
   errors: Array<CompilerDiagnostic>,
@@ -50,19 +58,10 @@ function errorHandler(
   return retval;
 }
 
-function runTest(name: string, code: string): boolean {
-  console.log(chalk.inverse(name));
-
+function runTest(name: string, code: string) {
   let recover = code.includes("// recover-from-errors");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
-
-  let expectedErrors = code.match(/\/\/\s*expected errors:\s*(.*)/);
-  invariant(expectedErrors);
-  invariant(expectedErrors.length > 1);
-  expectedErrors = expectedErrors[1];
-  expectedErrors = eval(expectedErrors); // eslint-disable-line no-eval
-  invariant(expectedErrors.constructor === Array);
 
   let errors = [];
   try {
@@ -75,58 +74,15 @@ function runTest(name: string, code: string): boolean {
       initializeMoreModules: false,
       compatibility,
     };
-    prepackFileSync([name], options);
+    let result = prepackFileSync([name], options);
     if (!recover) {
-      console.error(chalk.red("Serialization succeeded though it should have failed"));
-      return false;
+      expect(result).toBeUndefined();
     }
   } catch (e) {
-    if (!(e instanceof FatalError)) {
-      console.error(chalk.red(`Unexpected error: ${e.message}`));
-      return false;
-    }
-  }
-  if (errors.length !== expectedErrors.length) {
-    console.error(chalk.red(`Expected ${expectedErrors.length} errors, but found ${errors.length}`));
-    return false;
+    expect(e).toBeInstanceOf(FatalError);
   }
 
-  for (let i = 0; i < expectedErrors.length; ++i) {
-    for (let prop in expectedErrors[i]) {
-      let expected = expectedErrors[i][prop];
-      let actual = (errors[i]: any)[prop];
-      if (prop === "location") {
-        if (actual) delete actual.filename;
-        actual = JSON.stringify(actual);
-        expected = JSON.stringify(expected);
-      }
-      if (expected !== actual) {
-        console.error(chalk.red(`Error ${i + 1}: Expected ${expected} errors, but found ${actual}`));
-        return false;
-      }
-    }
-  }
-
-  return true;
+  expect(errors).toMatchSnapshot(name);
 }
 
-function run() {
-  let failed = 0;
-  let passed = 0;
-  let total = 0;
-
-  for (let test of tests) {
-    // filter hidden files
-    if (path.basename(test.name)[0] === ".") continue;
-    if (test.name.endsWith("~")) continue;
-
-    total++;
-    if (runTest(test.name, test.file)) passed++;
-    else failed++;
-  }
-
-  console.log("Passed:", `${passed}/${total}`, (Math.floor((passed / total) * 100) || 0) + "%");
-  return failed === 0;
-}
-
-if (!run()) process.exit(1);
+module.exports = { search, runTest };

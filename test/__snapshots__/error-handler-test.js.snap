@@ -1,0 +1,260 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`test/error-handler/FinalObjectCannotBeMutated.js: test/error-handler/FinalObjectCannotBeMutated.js 1`] = `
+Array [
+  [Error: Mutating a final object, or an object with unknown properties, after some of those properties have already been used, is not supported.],
+]
+`;
+
+exports[`test/error-handler/ModifiedObjectPropertyLimitation.js: test/error-handler/ModifiedObjectPropertyLimitation.js 1`] = `
+Array [
+  [Error: Program may terminate with exception],
+  [Error: Internal slot $Prototype modified in a nested context. This is not yet supported.],
+]
+`;
+
+exports[`test/error-handler/Set.js: test/error-handler/Set.js 1`] = `
+Array [
+  [Error: This version of JSC ignores the argument to Set, require the polyfill before doing this],
+]
+`;
+
+exports[`test/error-handler/abstract-value-check-dup-name-string.js: test/error-handler/abstract-value-check-dup-name-string.js 1`] = `
+Array [
+  [Error: An abstract value with the same name exists],
+]
+`;
+
+exports[`test/error-handler/bad-functions.js: test/error-handler/bad-functions.js 1`] = `
+Array [
+  [Error: Program may terminate with exception: Exception is not defined
+  ReferenceError
+    at additional1 (test/error-handler/bad-functions.js:7:27)],
+  [Error: Property access conflicts with write in optimized function (unknown function)],
+  [Error: Property access conflicts with write in optimized function (unknown function)],
+]
+`;
+
+exports[`test/error-handler/binaryExpression.js: test/error-handler/binaryExpression.js 1`] = `
+Array [
+  [Error: might be an object with an unknown valueOf or toString or Symbol.toPrimitive method],
+  [Error: might be an object with an unknown valueOf or toString or Symbol.toPrimitive method],
+  [Error: might be an object with an unknown valueOf or toString or Symbol.toPrimitive method],
+  [Error: might be an object with an unknown valueOf or toString or Symbol.toPrimitive method],
+]
+`;
+
+exports[`test/error-handler/call.js: test/error-handler/call.js 1`] = `
+Array [
+  [Error: might not be a function],
+  [Error: might not be a function],
+  [Error: eval argument must be a known value],
+]
+`;
+
+exports[`test/error-handler/call2.js: test/error-handler/call2.js 1`] = `
+Array [
+  [Error: Unfrozen object leaked before end of global code],
+]
+`;
+
+exports[`test/error-handler/class.js: test/error-handler/class.js 1`] = `
+Array [
+  [Error: unknown super class],
+  [Error: unknown super class prototype],
+]
+`;
+
+exports[`test/error-handler/conditional-return.js: test/error-handler/conditional-return.js 1`] = `
+Array [
+  [Error: might be an object with an unknown valueOf or toString or Symbol.toPrimitive method],
+]
+`;
+
+exports[`test/error-handler/forInStatement.js: test/error-handler/forInStatement.js 1`] = `
+Array [
+  [Error: for in loops over unknown objects are not yet supported],
+]
+`;
+
+exports[`test/error-handler/forLoop1.js: test/error-handler/forLoop1.js 1`] = `
+Array [
+  [Error: break or continue with target cannot be guarded by abstract condition],
+]
+`;
+
+exports[`test/error-handler/forOfStatement.js: test/error-handler/forOfStatement.js 1`] = `
+Array [
+  [Error: for of loops over unknown collections are not yet supported],
+]
+`;
+
+exports[`test/error-handler/in1.js: test/error-handler/in1.js 1`] = `
+Array [
+  [Error: might not be an object, hence the in operator might throw a TypeError],
+  [Error: might not be an object, hence the in operator might throw a TypeError],
+]
+`;
+
+exports[`test/error-handler/in2.js: test/error-handler/in2.js 1`] = `
+Array [
+  [Error: might be an object that behaves badly for the in operator],
+]
+`;
+
+exports[`test/error-handler/instanceof.js: test/error-handler/instanceof.js 1`] = `
+Array [
+  [Error: might be an object that behaves badly for the instanceof operator],
+  [Error: might not be an object, hence the instanceof operator might throw a TypeError],
+  [Error: might be an object that behaves badly for the instanceof operator],
+]
+`;
+
+exports[`test/error-handler/member.js: test/error-handler/member.js 1`] = `
+Array [
+  [Error: member expression object abstract values true and ({})  is unknown],
+]
+`;
+
+exports[`test/error-handler/member2.js: test/error-handler/member2.js 1`] = `
+Array [
+  [Error: member expression object abstract values true and ({})  is unknown],
+]
+`;
+
+exports[`test/error-handler/object-assign.js: test/error-handler/object-assign.js 1`] = `
+Array [
+  [Error: This operation is not yet supported on abstract value ({foo:1}) ],
+]
+`;
+
+exports[`test/error-handler/objectExpression.js: test/error-handler/objectExpression.js 1`] = `
+Array [
+  [Error: property key value is unknown],
+  [Error: property key value is unknown],
+]
+`;
+
+exports[`test/error-handler/objectExpression2.js: test/error-handler/objectExpression2.js 1`] = `
+Array [
+  [Error: property key value is unknown],
+]
+`;
+
+exports[`test/error-handler/objectpattern.js: test/error-handler/objectpattern.js 1`] = `
+Array [
+  [Error: unknown computed property name],
+]
+`;
+
+exports[`test/error-handler/require_throws2.js: test/error-handler/require_throws2.js 1`] = `
+Array [
+  [Error: Module import may fail with an exception],
+]
+`;
+
+exports[`test/error-handler/syntaxError.js: test/error-handler/syntaxError.js 1`] = `
+Array [
+  [Error: Syntax error: Unexpected token, expected ( (4:3)],
+]
+`;
+
+exports[`test/error-handler/testErrorHandlerCalled.js: test/error-handler/testErrorHandlerCalled.js 1`] = `
+Array [
+  [Error: This operation is not yet supported on abstract value  ],
+]
+`;
+
+exports[`test/error-handler/try-and-access-abstract-property.js: test/error-handler/try-and-access-abstract-property.js 1`] = `
+Array [
+  [Error: Possible throw inside try/catch is not yet supported],
+  [Error: Possible throw inside try/catch is not yet supported],
+]
+`;
+
+exports[`test/error-handler/try-and-call-abstract-function.js: test/error-handler/try-and-call-abstract-function.js 1`] = `
+Array [
+  [Error: Possible throw inside try/catch is not yet supported],
+]
+`;
+
+exports[`test/error-handler/unaryExpression.js: test/error-handler/unaryExpression.js 1`] = `
+Array [
+  [Error: might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method],
+  [Error: might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method],
+  [Error: might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method],
+]
+`;
+
+exports[`test/error-handler/updateExpression.js: test/error-handler/updateExpression.js 1`] = `
+Array [
+  [Error: might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method],
+  [Error: might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method],
+]
+`;
+
+exports[`test/error-handler/with.js: test/error-handler/with.js 1`] = `
+Array [
+  [Error: with object must be a known value],
+]
+`;
+
+exports[`test/error-handler/with2.js: test/error-handler/with2.js 1`] = `
+Array [
+  [Error: with object must be a known value],
+  [Error: This operation is not yet supported on (some value) at z],
+]
+`;
+
+exports[`test/error-handler/write-forin-conflict.js: test/error-handler/write-forin-conflict.js 1`] = `
+Array [
+  [Error: Property access conflicts with write in optimized function (unknown function)],
+]
+`;
+
+exports[`test/error-handler/write-in-conflict.js: test/error-handler/write-in-conflict.js 1`] = `
+Array [
+  [Error: Property access conflicts with write in optimized function (unknown function)],
+]
+`;
+
+exports[`test/error-handler/write-reflect-conflict.js: test/error-handler/write-reflect-conflict.js 1`] = `
+Array [
+  [Error: Property access conflicts with write in optimized function (unknown function)],
+]
+`;
+
+exports[`test/error-handler/write-write-conflict.js: test/error-handler/write-write-conflict.js 1`] = `
+Array [
+  [Error: Property access conflicts with write in optimized function (unknown function)],
+  [Error: Property access conflicts with write in optimized function (unknown function)],
+]
+`;
+
+exports[`test/error-handler/write-write-conflict2.js: test/error-handler/write-write-conflict2.js 1`] = `
+Array [
+  [Error: Property access conflicts with write in optimized function (unknown function)],
+  [Error: Property access conflicts with write in optimized function (unknown function)],
+]
+`;
+
+exports[`test/error-handler/write-write-conflict3.js: test/error-handler/write-write-conflict3.js 1`] = `
+Array [
+  [Error: Property access conflicts with write in optimized function (unknown function)],
+  [Error: Property access conflicts with write in optimized function (unknown function)],
+]
+`;
+
+exports[`test/error-handler/write-write-conflict4.js: test/error-handler/write-write-conflict4.js 1`] = `
+Array [
+  [Error: Property access conflicts with write in optimized function (unknown function)],
+  [Error: Property access conflicts with write in optimized function (unknown function)],
+]
+`;
+
+exports[`test/error-handler/write-write-unknown-prop-conflict.js: test/error-handler/write-write-unknown-prop-conflict.js 1`] = `
+Array [
+  [Error: Property access conflicts with write in optimized function (unknown function)],
+  [Error: Property access conflicts with write in optimized function (unknown function)],
+]
+`;
