@@ -52,6 +52,7 @@ import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObje
 import { CompilerDiagnostic } from "./errors.js";
 import type { Severity } from "./errors.js";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
+import invariant from "./invariant.js";
 
 export const ElementSize = {
   Float32: 4,
@@ -94,6 +95,19 @@ export type SourceFile = {
   sourceMapFilename?: string,
 };
 
+export class SourceFileCollection {
+  constructor(sourceFiles: Array<SourceFile>) {
+    this._sourceFiles = sourceFiles;
+  }
+  _sourceFiles: void | Array<SourceFile>;
+  toArray(): Array<SourceFile> {
+    invariant(this._sourceFiles !== undefined);
+    return this._sourceFiles;
+  }
+  destroy(): void {
+    this._sourceFiles = undefined;
+  }
+}
 export type SourceMap = {
   sources: Array<string>,
   names: Array<string>,

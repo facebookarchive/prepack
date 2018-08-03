@@ -16,7 +16,7 @@ import { defaultOptions } from "./options";
 import { FatalError } from "./errors.js";
 import { type PrepackOptions } from "./prepack-options";
 import { prepackSources } from "./prepack-standalone.js";
-import { type SourceMap } from "./types.js";
+import { type SourceMap, SourceFileCollection } from "./types.js";
 import { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
 import { FileIOWrapper } from "./debugger/common/channel/FileIOWrapper.js";
 import { type SerializedResult } from "./serializer/types.js";
@@ -131,7 +131,7 @@ export function prepackFile(
   });
 }
 
-export function prepackFileSync(filenames: Array<string>, options: PrepackOptions = defaultOptions): SerializedResult {
+function getSourceFileCollection(filenames: Array<string>, options: PrepackOptions) {
   const sourceFiles = filenames.map(filename => {
     let code = fs.readFileSync(filename, "utf8");
     let sourceMap = "";
@@ -151,19 +151,27 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     };
   });
 
-  // Don't include sourcemaps that weren't found
-  let validSourceFiles = sourceFiles.filter(sf => sf.sourceMapContents !== "");
+  return new SourceFileCollection(sourceFiles);
+}
+
+export function prepackFileSync(filenames: Array<string>, options: PrepackOptions = defaultOptions): SerializedResult {
+  let sourceFileCollection = getSourceFileCollection(filenames, options);
+
+  // Filter to not include sourcemaps that weren't found
+  let filterValidSourceMaps = a => a.filter(sf => sf.sourceMapContents !== "");
 
   // The existence of debug[In/Out]FilePath represents the desire to use the debugger.
   if (options.debugInFilePath !== undefined && options.debugOutFilePath !== undefined) {
     if (options.debuggerConfigArgs === undefined) options.debuggerConfigArgs = {};
+    let debuggerConfigArgs = options.debuggerConfigArgs;
 
     let ioWrapper = new FileIOWrapper(false, options.debugInFilePath, options.debugOutFilePath);
-    options.debuggerConfigArgs.debugChannel = new DebugChannel(ioWrapper);
-    options.debuggerConfigArgs.sourcemaps = validSourceFiles;
+    debuggerConfigArgs.debugChannel = new DebugChannel(ioWrapper);
+    debuggerConfigArgs.sourcemaps = filterValidSourceMaps(sourceFileCollection.toArray());
   }
 
-  if (options.debugReproArgs) options.debugReproArgs.sourcemaps = validSourceFiles;
+  let debugReproArgs = options.debugReproArgs;
+  if (debugReproArgs) debugReproArgs.sourcemaps = filterValidSourceMaps(sourceFileCollection.toArray());
 
-  return prepackSources(sourceFiles, options, createStatistics(options));
+  return prepackSources(sourceFileCollection, options, createStatistics(options));
 }
