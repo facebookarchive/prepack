@@ -51,7 +51,7 @@ export function OrdinaryOwnPropertyKeys(
   let keys = [];
 
   // 2. For each own property key P of O that is an integer index, in ascending numeric index order
-  let properties = o.getOwnPropertyKeysArray(undefined, getOwnPropertyKeysEvenIfPartial);
+  let properties = Properties.getOwnPropertyKeysArray(realm, o, false, getOwnPropertyKeysEvenIfPartial);
   for (let key of properties
     .filter(x => IsArrayIndex(realm, x))
     .map(x => parseInt(x, 10))

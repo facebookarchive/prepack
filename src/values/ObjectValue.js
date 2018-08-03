@@ -516,47 +516,13 @@ export default class ObjectValue extends ConcreteValue {
     });
   }
 
-  getOwnPropertyKeysArray(
-    allowAbstractKeys: boolean = false,
-    getOwnPropertyKeysEvenIfPartial?: boolean = false
-  ): Array<string> {
-    if (
-      (this.isPartialObject() && !getOwnPropertyKeysEvenIfPartial) ||
-      this.mightBeHavocedObject() ||
-      this.unknownProperty !== undefined
-    ) {
-      AbstractValue.reportIntrospectionError(this);
-      throw new FatalError();
-    }
-
-    let keyArray = Array.from(this.properties.keys());
-    keyArray = keyArray.filter(x => {
-      let pb = this.properties.get(x);
-      if (!pb || pb.descriptor === undefined) return false;
-      let pv = pb.descriptor.value;
-      if (pv === undefined) return true;
-      invariant(pv instanceof Value);
-      if (!pv.mightHaveBeenDeleted()) return true;
-      // The property may or may not be there at runtime.
-      // We can at best return an abstract keys array.
-      // For now, unless the caller has told us that is okay,
-      // just terminate.
-      invariant(pv instanceof AbstractValue);
-      if (allowAbstractKeys) return true;
-      AbstractValue.reportIntrospectionError(pv);
-      throw new FatalError();
-    });
-    this.$Realm.callReportObjectGetOwnProperties(this);
-    return keyArray;
-  }
-
   // Note that internal properties will not be copied to the snapshot, nor will they be removed.
   getSnapshot(options?: { removeProperties: boolean }): AbstractObjectValue {
     try {
       if (this.temporalAlias !== undefined) return this.temporalAlias;
-      let template = new ObjectValue(this.$Realm, this.$Realm.intrinsics.ObjectPrototype);
-      this.copyKeys(this.$OwnPropertyKeys(true), this, template);
       let realm = this.$Realm;
+      let template = new ObjectValue(this.$Realm, this.$Realm.intrinsics.ObjectPrototype);
+      this.copyKeys(Properties.getOwnPropertyKeysArray(realm, this, false, true), this, template);
       // The snapshot is an immutable object snapshot
       template.makeFinal();
       // The original object might be a React props object, thus

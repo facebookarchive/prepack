@@ -1848,4 +1848,40 @@ export class PropertiesImplementation {
       return this.DefinePropertyOrThrow(realm, object, propKey, desc);
     }
   }
+
+  getOwnPropertyKeysArray(
+    realm: Realm,
+    O: ObjectValue,
+    allowAbstractKeys: boolean = false,
+    getOwnPropertyKeysEvenIfPartial: boolean = false
+  ): Array<string> {
+    if (
+      (O.isPartialObject() && !getOwnPropertyKeysEvenIfPartial) ||
+      O.mightBeHavocedObject() ||
+      O.unknownProperty !== undefined
+    ) {
+      AbstractValue.reportIntrospectionError(O);
+      throw new FatalError();
+    }
+
+    let keyArray = Array.from(O.properties.keys());
+    keyArray = keyArray.filter(x => {
+      let pb = O.properties.get(x);
+      if (!pb || pb.descriptor === undefined) return false;
+      let pv = pb.descriptor.value;
+      if (pv === undefined) return true;
+      invariant(pv instanceof Value);
+      if (!pv.mightHaveBeenDeleted()) return true;
+      // The property may or may not be there at runtime.
+      // We can at best return an abstract keys array.
+      // For now, unless the caller has told us that is okay,
+      // just terminate.
+      invariant(pv instanceof AbstractValue);
+      if (allowAbstractKeys) return true;
+      AbstractValue.reportIntrospectionError(pv);
+      throw new FatalError();
+    });
+    realm.callReportObjectGetOwnProperties(O);
+    return keyArray;
+  }
 }
