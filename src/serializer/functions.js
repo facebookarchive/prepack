@@ -36,7 +36,7 @@ import { optimizeReactComponentTreeRoot } from "../react/optimizing.js";
 import { handleReportedSideEffect } from "./utils.js";
 import type { ArgModel } from "../types.js";
 import { stringOfLocation } from "../utils/babelhelpers";
-import { Utils } from "../singletons.js";
+import { Properties, Utils } from "../singletons.js";
 
 type AdditionalFunctionEntry = {
   value: ECMAScriptSourceFunctionValue | AbstractValue,
@@ -119,7 +119,7 @@ export class Functions {
       realm.intrinsics.undefined
     );
     invariant(globalRecordedAdditionalFunctionsMap instanceof ObjectValue);
-    for (let funcId of globalRecordedAdditionalFunctionsMap.getOwnPropertyKeysArray(true)) {
+    for (let funcId of Properties.GetOwnPropertyKeysArray(realm, globalRecordedAdditionalFunctionsMap, true, false)) {
       let property = globalRecordedAdditionalFunctionsMap.properties.get(funcId);
       if (property) {
         let value = property.descriptor && property.descriptor.value;

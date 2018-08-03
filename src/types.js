@@ -476,6 +476,13 @@ export type PropertiesType = {
     strictCode: boolean,
     enumerable: boolean
   ): boolean,
+
+  GetOwnPropertyKeysArray(
+    realm: Realm,
+    O: ObjectValue,
+    allowAbstractKeys: boolean,
+    getOwnPropertyKeysEvenIfPartial: boolean
+  ): Array<string>,
 };
 
 export type FunctionType = {
