@@ -1944,7 +1944,7 @@ export class ResidualHeapSerializer {
       let id = ((serializedValue: any): BabelNodeIdentifier);
       invariant(
         !this.realm.derivedIds.has(id.name) ||
-          this.emitter.cannotDeclare(val) ||
+          this.emitter.cannotDeclare() ||
           this.emitter.hasBeenDeclared(val) ||
           this.emitter.emittingToAdditionalFunction(),
         `an abstract value with an identifier "${id.name}" was referenced before being declared`
