@@ -20,5 +20,7 @@ function fn(arr, abstractFunc) {
 global.__optimize && __optimize(fn);
 
 global.inspect = function() {
-  return fn([1, 2], function(argF) { argF(); });
+  return fn([1, 2], function(argF) {
+    argF();
+  });
 };
