@@ -66,7 +66,7 @@ const prepackOptions = {
   reactVerbose: true,
   reactOptimizeNestedFunctions: false,
   inlineExpressions: true,
-  invariantLevel: 0,
+  invariantLevel: 3,
   abstractValueImpliesMax: 1000,
 };
 
