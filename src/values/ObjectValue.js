@@ -522,7 +522,8 @@ export default class ObjectValue extends ConcreteValue {
       if (this.temporalAlias !== undefined) return this.temporalAlias;
       let realm = this.$Realm;
       let template = new ObjectValue(this.$Realm, this.$Realm.intrinsics.ObjectPrototype);
-      this.copyKeys(Properties.getOwnPropertyKeysArray(realm, this, false, true), this, template);
+      let keys = Properties.GetOwnPropertyKeysArray(realm, this, false, true);
+      this.copyKeys(((keys: any): Array<PropertyKeyValue>), this, template);
       // The snapshot is an immutable object snapshot
       template.makeFinal();
       // The original object might be a React props object, thus

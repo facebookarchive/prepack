@@ -264,7 +264,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
 
     let realm = this.$Realm;
     // 5. For each own property key P of O such that Type(P) is String and P is not an integer index, in ascending chronological order of property creation
-    let properties = Properties.getOwnPropertyKeysArray(realm, O, false, false);
+    let properties = Properties.GetOwnPropertyKeysArray(realm, O, false, false);
     for (let key of properties.filter(x => !IsArrayIndex(realm, x))) {
       // i. Add P as the last element of keys.
       keys.push(new StringValue(realm, key));

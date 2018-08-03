@@ -119,7 +119,7 @@ export class Functions {
       realm.intrinsics.undefined
     );
     invariant(globalRecordedAdditionalFunctionsMap instanceof ObjectValue);
-    for (let funcId of Properties.getOwnPropertyKeysArray(realm, globalRecordedAdditionalFunctionsMap, true, false)) {
+    for (let funcId of Properties.GetOwnPropertyKeysArray(realm, globalRecordedAdditionalFunctionsMap, true, false)) {
       let property = globalRecordedAdditionalFunctionsMap.properties.get(funcId);
       if (property) {
         let value = property.descriptor && property.descriptor.value;

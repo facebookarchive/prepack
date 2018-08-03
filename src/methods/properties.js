@@ -1849,11 +1849,11 @@ export class PropertiesImplementation {
     }
   }
 
-  getOwnPropertyKeysArray(
+  GetOwnPropertyKeysArray(
     realm: Realm,
     O: ObjectValue,
-    allowAbstractKeys: boolean = false,
-    getOwnPropertyKeysEvenIfPartial: boolean = false
+    allowAbstractKeys: boolean,
+    getOwnPropertyKeysEvenIfPartial: boolean
   ): Array<string> {
     if (
       (O.isPartialObject() && !getOwnPropertyKeysEvenIfPartial) ||

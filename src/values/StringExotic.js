@@ -96,7 +96,7 @@ export default class StringExotic extends ObjectValue {
     }
 
     // 5. For each own property key P of O such that P is an integer index and ToInteger(P) ≥ len, in ascending numeric index order,
-    let properties = Properties.getOwnPropertyKeysArray(realm, this, false, false);
+    let properties = Properties.GetOwnPropertyKeysArray(realm, this, false, false);
     for (let key of properties
       .filter(x => IsArrayIndex(realm, x))
       .map(x => parseInt(x, 10))

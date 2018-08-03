@@ -37,6 +37,7 @@ import { ResidualHeapGraphGenerator } from "./ResidualHeapGraphGenerator";
 import { Referentializer } from "./Referentializer.js";
 import { Get } from "../methods/index.js";
 import { ObjectValue, Value } from "../values/index.js";
+import { Properties } from "../singletons.js";
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
@@ -114,7 +115,7 @@ export class Serializer {
     if (generator === undefined || preludeGenerator === undefined) return false;
     generator._entries.length = 0;
     preludeGenerator.declaredGlobals.clear();
-    for (let name of output.getOwnPropertyKeysArray()) {
+    for (let name of Properties.GetOwnPropertyKeysArray(realm, output, false, false)) {
       let property = output.properties.get(name);
       if (!property) continue;
       let value = property.descriptor && property.descriptor.value;
