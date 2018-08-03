@@ -56,13 +56,12 @@ import type {
   AdditionalFunctionEffects,
 } from "./types.js";
 import type { SerializerOptions } from "../options.js";
-import { BodyReference } from "./types.js";
+import { type Scope, BodyReference, type ResidualHeapInfo } from "./types.js";
 import { SerializerStatistics } from "./statistics.js";
 import { Logger } from "../utils/logger.js";
 import { Modules } from "../utils/modules.js";
 import { HeapInspector } from "../utils/HeapInspector.js";
 import { ResidualFunctions } from "./ResidualFunctions.js";
-import type { Scope } from "./ResidualHeapVisitor.js";
 import { factorifyObjects } from "./factorify.js";
 import { voidExpression, emptyExpression, constructorExpression, protoExpression } from "../utils/babelhelpers.js";
 import { Emitter } from "./Emitter.js";
@@ -118,20 +117,11 @@ export class ResidualHeapSerializer {
     modules: Modules,
     residualHeapValueIdentifiers: ResidualHeapValueIdentifiers,
     residualHeapInspector: HeapInspector,
-    residualValues: Map<Value, Set<Scope>>,
-    residualFunctionInstances: Map<FunctionValue, FunctionInstance>,
-    residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>,
-    residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
+    residualHeapInfo: ResidualHeapInfo,
     options: SerializerOptions,
-    referencedDeclaredValues: Map<Value, void | FunctionValue>,
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
-    additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
-    declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
-    globalBindings: Map<string, ResidualFunctionBinding>,
     referentializer: Referentializer,
-    generatorDAG: GeneratorDAG,
-    conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>,
-    additionalGeneratorRoots: Map<Generator, Set<ObjectValue>>
+    generatorDAG: GeneratorDAG
   ) {
     this.realm = realm;
     this.logger = logger;
@@ -190,39 +180,39 @@ export class ResidualHeapSerializer {
       },
       this.prelude,
       this.factoryNameGenerator,
-      residualFunctionInfos,
-      residualFunctionInstances,
-      residualClassMethodInstances,
-      additionalFunctionValueInfos,
+      residualHeapInfo.functionInfos,
+      residualHeapInfo.functionInstances,
+      residualHeapInfo.classMethodInstances,
+      residualHeapInfo.additionalFunctionValueInfos,
       this.additionalFunctionValueNestedFunctions,
       referentializer
     );
     this.emitter = new Emitter(
       this.residualFunctions,
-      referencedDeclaredValues,
-      conditionalFeasibility,
+      residualHeapInfo.referencedDeclaredValues,
+      residualHeapInfo.conditionalFeasibility,
       this.realm.derivedIds
     );
     this.mainBody = this.emitter.getBody();
     this.residualHeapInspector = residualHeapInspector;
-    this.residualValues = residualValues;
-    this.residualFunctionInstances = residualFunctionInstances;
-    this.residualClassMethodInstances = residualClassMethodInstances;
-    this.residualFunctionInfos = residualFunctionInfos;
+    this.residualValues = residualHeapInfo.values;
+    this.residualFunctionInstances = residualHeapInfo.functionInstances;
+    this.residualClassMethodInstances = residualHeapInfo.classMethodInstances;
+    this.residualFunctionInfos = residualHeapInfo.functionInfos;
     this._options = options;
-    this.referencedDeclaredValues = referencedDeclaredValues;
+    this.referencedDeclaredValues = residualHeapInfo.referencedDeclaredValues;
     this.activeGeneratorBodies = new Map();
     this.additionalFunctionValuesAndEffects = additionalFunctionValuesAndEffects;
-    this.additionalFunctionValueInfos = additionalFunctionValueInfos;
+    this.additionalFunctionValueInfos = residualHeapInfo.additionalFunctionValueInfos;
     this.rewrittenAdditionalFunctions = new Map();
-    this.declarativeEnvironmentRecordsBindings = declarativeEnvironmentRecordsBindings;
-    this.globalBindings = globalBindings;
+    this.declarativeEnvironmentRecordsBindings = residualHeapInfo.declarativeEnvironmentRecordsBindings;
+    this.globalBindings = residualHeapInfo.globalBindings;
     this.generatorDAG = generatorDAG;
-    this.conditionalFeasibility = conditionalFeasibility;
+    this.conditionalFeasibility = residualHeapInfo.conditionalFeasibility;
     this.additionalFunctionGenerators = new Map();
     this.declaredGlobalLets = new Map();
     this._objectSemaphores = new Map();
-    this.additionalGeneratorRoots = additionalGeneratorRoots;
+    this.additionalGeneratorRoots = residualHeapInfo.additionalGeneratorRoots;
     let environment = realm.$GlobalEnv.environmentRecord;
     invariant(environment instanceof GlobalEnvironmentRecord);
     this.globalEnvironmentRecord = environment;

@@ -46,6 +46,8 @@ import type {
   FunctionInstance,
   ResidualFunctionBinding,
   ReferentializationScope,
+  Scope,
+  ResidualHeapInfo,
 } from "./types.js";
 import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "../utils/logger.js";
@@ -64,8 +66,6 @@ import { Environment, To } from "../singletons.js";
 import { isReactElement, isReactPropsObject, valueIsReactLibraryObject } from "../react/utils.js";
 import { ResidualReactElementVisitor } from "./ResidualReactElementVisitor.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
-
-export type Scope = FunctionValue | Generator;
 
 type BindingState = {|
   capturedBindings: Set<ResidualFunctionBinding>,
@@ -1371,5 +1371,20 @@ export class ResidualHeapVisitor {
         this.logger.logInformation(`  (${actual} items processed)`);
       }
     }
+  }
+
+  toInfo(): ResidualHeapInfo {
+    return {
+      values: this.values,
+      functionInstances: this.functionInstances,
+      classMethodInstances: this.classMethodInstances,
+      functionInfos: this.functionInfos,
+      referencedDeclaredValues: this.referencedDeclaredValues,
+      additionalFunctionValueInfos: this.additionalFunctionValueInfos,
+      declarativeEnvironmentRecordsBindings: this.declarativeEnvironmentRecordsBindings,
+      globalBindings: this.globalBindings,
+      conditionalFeasibility: this.conditionalFeasibility,
+      additionalGeneratorRoots: this.additionalGeneratorRoots,
+    };
   }
 }
