@@ -1,19 +1,19 @@
 let x = global.__abstract ? __abstract("number", "1") : 1;
 
 // throws introspection error
-function g(x) {
+function f(x) {
   switch (x) {
     case 0:
-      return 12;
+      throw 12;
     case 1:
-      return 24;
+      throw 24;
     default:
-      return 42;
+      throw 42;
   }
 }
 
-global.__optimize && __optimize(g);
+global.__optimize && __optimize(f);
 
 inspect = function() {
-  return g(x);
+  return f(x);
 };
