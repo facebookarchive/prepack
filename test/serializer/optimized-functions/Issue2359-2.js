@@ -11,7 +11,7 @@ function fn(arr, abstractFunc) {
     return z;
   };
 
-  __optimize(mapper);
+  global.__optimize && __optimize(mapper);
   var res = arr.map(mapper);
 
   return res;
@@ -20,5 +20,5 @@ function fn(arr, abstractFunc) {
 global.__optimize && __optimize(fn);
 
 global.inspect = function() {
-  return true;
+  return fn([1, 2], function(argF) { argF(); });
 };

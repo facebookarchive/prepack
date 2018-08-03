@@ -21,5 +21,5 @@ function fn(x, cond, abstractFunc) {
 global.__optimize && __optimize(fn);
 
 global.inspect = function() {
-  return true;
+  return fn([1, 2], true, function(argF) { argF(); });
 };
