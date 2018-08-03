@@ -27,12 +27,10 @@ import fs from "fs";
 import v8 from "v8";
 import { version } from "../package.json";
 import invariant from "./invariant";
-import zipFactory from "node-zip";
-import zipdir from "zip-dir";
 import path from "path";
 import JSONTokenizer from "./utils/JSONTokenizer.js";
 import type { DebuggerConfigArguments, DebugReproArguments } from "./types";
-import child_process from "child_process";
+import { DebugReproPackager } from "./utils/DebugReproPackager.js";
 
 // Prepack helper
 declare var __residual: any;
@@ -108,6 +106,10 @@ function run(
   let invariantMode: void | InvariantModeTypes;
   let invariantLevel: void | number;
   let reproMode: void | "reproUnconditionally" | "reproOnFatalError";
+  let debugReproPackager: void | DebugReproPackager;
+  // Indicates where to find a zip with prepack runtime. Used in environments where
+  // the `yarn pack` strategy doesn't work.
+  let externalPrepackPath: void | string;
   let flags = {
     initializeMoreModules: false,
     trace: false,
@@ -142,7 +144,8 @@ function run(
       let inputs = arg.trim().split(/\s+/g); // Split on all whitespace
       for (let input of inputs) {
         inputFilenames.push(input);
-        reproFileNames.push(input);
+        if (!input.includes(".map")) reproFileNames.push(input);
+        // Don't include sourcemaps in reproFiles because they will be captured later on in prepack-node
       }
     } else {
       arg = arg.slice(2);
@@ -168,7 +171,8 @@ function run(
         case "srcmapIn":
           let inputSourceMap = args.shift();
           inputSourceMapFilenames.push(inputSourceMap);
-          reproArguments.push("--srcmapIn", inputFile(inputSourceMap));
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as path is likely not portable between environments
+          // Furthermore, this is covered when sourcemaps are discovered in prepack-node
           break;
         case "srcmapOut":
           outputSourceMap = args.shift();
@@ -249,6 +253,7 @@ function run(
           break;
         case "reproOnFatalError":
         case "reproUnconditionally":
+          debugReproPackager = new DebugReproPackager();
           reproMode = arg;
           reproFilePath = args.shift();
           debugReproArgs = {};
@@ -295,6 +300,9 @@ function run(
           // any computer, not just the one it was generated on.
           // All sourcefiles are placed directly in the repro, so the repro folder is the buckRoot.
           reproArguments.push("--debugBuckRoot", "$(pwd)");
+          break;
+        case "externalPrepackPath":
+          externalPrepackPath = args.shift();
           break;
         case "help":
           const options = [
@@ -453,104 +461,6 @@ function run(
     return fatalErrors === 0;
   }
 
-  // Returns true on success, false on failure
-  function generateDebugRepro(
-    sourceFiles: Array<{ absolute: string, relative: string }>,
-    sourceMaps: Array<string>,
-    shouldExitWithError: boolean
-  ) {
-    if (reproFilePath === undefined) process.exit(1);
-    let reproZip = zipFactory();
-
-    // Copy all input files. Input files are saved during CLI parsing, so they
-    // don't need to be passed as a parameter.
-    for (let file of reproFileNames) {
-      try {
-        let content = fs.readFileSync(file, "utf8");
-        reproZip.file(path.basename(file), content);
-      } catch (err) {
-        console.error(`Could not zip input file ${err}`);
-        process.exit(1);
-      }
-    }
-
-    // Copy all sourcemaps (discovered while prepacking)
-    for (let map of sourceMaps) {
-      try {
-        let content = fs.readFileSync(map, "utf8");
-        reproZip.file(path.basename(map), content);
-      } catch (err) {
-        console.error(`Could not zip sourcemap: ${err}`);
-        process.exit(1);
-      }
-    }
-
-    // Copy all original sourcefiles used while Prepacking.
-    for (let file of sourceFiles) {
-      try {
-        // To avoid copying the "/User/name/..." version of the bundle/map/model included in originalSourceFiles
-        if (!reproFileNames.includes(file.relative)) {
-          let content = fs.readFileSync(file.absolute, "utf8");
-          reproZip.file(file.relative, content);
-        }
-      } catch (err) {
-        console.error(`Could not zip source file: ${err}. Proceeding...`);
-      }
-    }
-
-    // Copy Prepack lib and package.json to install dependencies.
-    // The `yarn pack` command finds all necessary files automatically.
-    // The following steps need to be sequential, hence the series of `.on("exit")` callbacks.
-    let yarnRuntime = "yarn";
-    let yarnCommand = ["pack", "--filename", "prepack-bundled.tgz"];
-    child_process.spawnSync(yarnRuntime, yarnCommand);
-    // Because zipping the .tgz causes corruption issues when unzipping, we will
-    // unpack the .tgz, then zip those contents.
-    let unzipRuntime = "tar";
-    let unzipCommand = ["-xzf", "prepack-bundled.tgz"];
-    child_process.spawnSync(unzipRuntime, unzipCommand);
-
-    // Note that this process is asynchronous. A process.exit() elsewhere in this cli code
-    // might cause the whole process (including an ongoing zip) to prematurely terminate.
-    zipdir(path.resolve(path.dirname(__dirname), "package"), function(err, buffer) {
-      if (err) {
-        console.error(`Could not zip Prepack ${err}`);
-        process.exit(1);
-      }
-
-      reproZip.file("prepack-runtime-bundle.zip", buffer);
-
-      // Programatically assemble parameters to debugger.
-      let reproScriptArguments = `prepackArguments=${reproArguments.map(a => `${a}`).join("&prepackArguments=")}`;
-      let reproScriptSourceFiles = `sourceFiles=$(pwd)/${reproFileNames
-        .map(f => `${path.basename(f)}`)
-        .join("&sourceFiles=$(pwd)/")}`;
-
-      // Generating script that `yarn install`s prepack dependencies.
-      // Then assembles a Nuclide deeplink that reflects the copy of Prepack in the package,
-      // the prepack arguments that this run was started with, and the input files being prepacked.
-      // The link is then called to open the Nuclide debugger.
-      reproZip.file(
-        "repro.sh",
-        `#!/bin/bash
-    unzip prepack-runtime-bundle.zip
-    yarn install
-    PREPACK_RUNTIME="prepackRuntime=$(pwd)/lib/prepack-cli.js"
-    PREPACK_ARGUMENTS="${reproScriptArguments}"
-    PREPACK_SOURCEFILES="${reproScriptSourceFiles}"
-    atom \"atom://nuclide/prepack-debugger?$PREPACK_SOURCEFILES&$PREPACK_RUNTIME&$PREPACK_ARGUMENTS\"
-    `
-      );
-      const data = reproZip.generate({ base64: false, compression: "DEFLATE" });
-      if (reproFilePath) {
-        fs.writeFileSync(reproFilePath, data, "binary");
-        console.log(`ReproBundle written to ${reproFilePath}`);
-      }
-
-      if (shouldExitWithError) process.exit(1);
-    });
-  }
-
   let profiler;
   let success;
   let debugReproSourceFiles = [];
@@ -680,7 +590,20 @@ function run(
   if (!success && reproMode === undefined) {
     process.exit(1);
   } else if ((!success && reproMode === "reproOnFatalError") || reproMode === "reproUnconditionally") {
-    generateDebugRepro(debugReproSourceFiles, debugReproSourceMaps, !success);
+    if (debugReproPackager) {
+      debugReproPackager.generateDebugRepro(
+        !success,
+        debugReproSourceFiles,
+        debugReproSourceMaps,
+        reproFilePath,
+        reproFileNames,
+        reproArguments,
+        externalPrepackPath
+      );
+    } else {
+      console.error("Debug Repro Packager was not initialized.");
+      process.exit(1);
+    }
   }
 }
 
