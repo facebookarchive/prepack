@@ -72,9 +72,12 @@ function runTest(name: string, code: string): boolean {
       mathRandomSeed: "0",
       errorHandler: errorHandler.bind(null, recover ? "Recover" : "Fail", errors),
       serialize: true,
+      instantRender: false,
       initializeMoreModules: false,
       compatibility,
     };
+
+    if (code.includes("// instant render")) options.instantRender = true;
     prepackFileSync([name], options);
     if (!recover) {
       console.error(chalk.red("Serialization succeeded though it should have failed"));
