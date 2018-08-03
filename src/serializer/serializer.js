@@ -193,14 +193,17 @@ export class Serializer {
         if (this.realm.react.verbose) {
           this.logger.logInformation(`Visiting evaluated nodes...`);
         }
-        let residualHeapVisitor = new ResidualHeapVisitor(
-          this.realm,
-          this.logger,
-          this.modules,
-          additionalFunctionValuesAndEffects,
-          referentializer
-        );
-        statistics.deepTraversal.measure(() => residualHeapVisitor.visitRoots());
+        let [residualHeapInfo, generatorDAG, inspector] = (() => {
+          let residualHeapVisitor = new ResidualHeapVisitor(
+            this.realm,
+            this.logger,
+            this.modules,
+            additionalFunctionValuesAndEffects,
+            referentializer
+          );
+          statistics.deepTraversal.measure(() => residualHeapVisitor.visitRoots());
+          return [residualHeapVisitor.toInfo(), residualHeapVisitor.generatorDAG, residualHeapVisitor.inspector];
+        })();
         if (this.logger.hasErrors()) return undefined;
 
         if (this.realm.react.verbose) {
@@ -209,7 +212,7 @@ export class Serializer {
         const realmPreludeGenerator = this.realm.preludeGenerator;
         invariant(realmPreludeGenerator);
         const residualHeapValueIdentifiers = new ResidualHeapValueIdentifiers(
-          residualHeapVisitor.values.keys(),
+          residualHeapInfo.values.keys(),
           realmPreludeGenerator
         );
 
@@ -248,21 +251,12 @@ export class Serializer {
               this.logger,
               this.modules,
               residualHeapValueIdentifiers,
-              residualHeapVisitor.inspector,
-              residualHeapVisitor.values,
-              residualHeapVisitor.functionInstances,
-              residualHeapVisitor.classMethodInstances,
-              residualHeapVisitor.functionInfos,
+              inspector,
+              residualHeapInfo,
               this.options,
-              residualHeapVisitor.referencedDeclaredValues,
               additionalFunctionValuesAndEffects,
-              residualHeapVisitor.additionalFunctionValueInfos,
-              residualHeapVisitor.declarativeEnvironmentRecordsBindings,
-              residualHeapVisitor.globalBindings,
               referentializer,
-              residualHeapVisitor.generatorDAG,
-              residualHeapVisitor.conditionalFeasibility,
-              residualHeapVisitor.additionalGeneratorRoots
+              generatorDAG
             ).serialize();
           });
           if (this.logger.hasErrors()) return undefined;
@@ -279,21 +273,12 @@ export class Serializer {
             this.logger,
             this.modules,
             residualHeapValueIdentifiers,
-            residualHeapVisitor.inspector,
-            residualHeapVisitor.values,
-            residualHeapVisitor.functionInstances,
-            residualHeapVisitor.classMethodInstances,
-            residualHeapVisitor.functionInfos,
+            inspector,
+            residualHeapInfo,
             this.options,
-            residualHeapVisitor.referencedDeclaredValues,
             additionalFunctionValuesAndEffects,
-            residualHeapVisitor.additionalFunctionValueInfos,
-            residualHeapVisitor.declarativeEnvironmentRecordsBindings,
-            residualHeapVisitor.globalBindings,
             referentializer,
-            residualHeapVisitor.generatorDAG,
-            residualHeapVisitor.conditionalFeasibility,
-            residualHeapVisitor.additionalGeneratorRoots
+            generatorDAG
           ).serialize()
         );
       })();
