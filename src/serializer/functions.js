@@ -304,8 +304,7 @@ export class Functions {
           "RecoverableError"
         );
         // We generate correct code in this case, but the user probably doesn't want us to emit an unconditional throw
-        this.realm.handleError(error);
-        throw new FatalError();
+        if (this.realm.handleError(error) !== "Recover") throw new FatalError();
       }
       for (let fun2 of additionalFunctions) {
         if (fun1 === fun2) continue;
@@ -335,8 +334,8 @@ export class Functions {
       }
     }
     if (conflicts.size > 0) {
-      for (let diagnostic of conflicts.values()) this.realm.handleError(diagnostic);
-      throw new FatalError();
+      for (let diagnostic of conflicts.values())
+        if (this.realm.handleError(diagnostic) !== "Recover") throw new FatalError();
     }
   }
 

@@ -138,7 +138,7 @@ export default function(realm: Realm): void {
               "Warning"
             );
             if (realm.handleError(argModelError) !== "Recover") throw new FatalError();
-            else return;
+            else return realm.intrinsics.undefined;
           }
         }
         realm.optimizedFunctions.set(value, argModel);
@@ -156,7 +156,7 @@ export default function(realm: Realm): void {
           )
         );
         if (result !== "Recover") throw new FatalError();
-        else return;
+        else return realm.intrinsics.undefined;
       }
       return value;
     }),
