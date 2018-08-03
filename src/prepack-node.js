@@ -151,12 +151,14 @@ function getSourceFileCollection(filenames: Array<string>, options: PrepackOptio
     };
   });
 
-  // Don't include sourcemaps that weren't found
-  return new SourceFileCollection(sourceFiles.filter(sf => sf.sourceMapContents !== ""));
+  return new SourceFileCollection(sourceFiles);
 }
 
 export function prepackFileSync(filenames: Array<string>, options: PrepackOptions = defaultOptions): SerializedResult {
   let sourceFileCollection = getSourceFileCollection(filenames, options);
+
+  // Filter to not include sourcemaps that weren't found
+  let filterValidSourceMaps = a => a.filter(sf => sf.sourceMapContents !== "");
 
   // The existence of debug[In/Out]FilePath represents the desire to use the debugger.
   if (options.debugInFilePath !== undefined && options.debugOutFilePath !== undefined) {
@@ -165,11 +167,11 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
 
     let ioWrapper = new FileIOWrapper(false, options.debugInFilePath, options.debugOutFilePath);
     debuggerConfigArgs.debugChannel = new DebugChannel(ioWrapper);
-    debuggerConfigArgs.sourcemaps = sourceFileCollection.toArray();
+    debuggerConfigArgs.sourcemaps = filterValidSourceMaps(sourceFileCollection.toArray());
   }
 
   let debugReproArgs = options.debugReproArgs;
-  if (debugReproArgs) debugReproArgs.sourcemaps = sourceFileCollection.toArray();
+  if (debugReproArgs) debugReproArgs.sourcemaps = filterValidSourceMaps(sourceFileCollection.toArray());
 
   return prepackSources(sourceFileCollection, options, createStatistics(options));
 }
