@@ -689,8 +689,8 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   // ECMA262 9.1.11
-  $OwnPropertyKeys(getOwnPropertyKeysEvenIfPartial?: boolean = false): Array<PropertyKeyValue> {
-    return OrdinaryOwnPropertyKeys(this.$Realm, this, getOwnPropertyKeysEvenIfPartial);
+  $OwnPropertyKeys(): Array<PropertyKeyValue> {
+    return OrdinaryOwnPropertyKeys(this.$Realm, this);
   }
 
   static refuseSerializationOnPropertyBinding(pb: PropertyBinding): boolean {

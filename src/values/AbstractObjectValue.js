@@ -944,7 +944,7 @@ export default class AbstractObjectValue extends AbstractValue {
     }
   }
 
-  $OwnPropertyKeys(getOwnPropertyKeysEvenIfPartial?: boolean = false): Array<PropertyKeyValue> {
+  $OwnPropertyKeys(): Array<PropertyKeyValue> {
     if (this.values.isTop()) {
       AbstractValue.reportIntrospectionError(this);
       throw new FatalError();
@@ -953,7 +953,7 @@ export default class AbstractObjectValue extends AbstractValue {
     if (elements.size === 1) {
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
-        return cv.$OwnPropertyKeys(getOwnPropertyKeysEvenIfPartial);
+        return cv.$OwnPropertyKeys();
       }
       invariant(false);
     } else {

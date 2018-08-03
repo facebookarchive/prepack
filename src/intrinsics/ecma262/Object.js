@@ -139,7 +139,7 @@ function applyObjectAssignSource(
     to_must_be_partial = true;
   }
 
-  keys = frm.$OwnPropertyKeys(true);
+  keys = Props.GetOwnPropertyKeysArray(realm, frm, false, true);
   if (to_must_be_partial) {
     handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
   }
