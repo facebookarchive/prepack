@@ -87,7 +87,7 @@ export function EnumerableOwnProperties(
   invariant(O instanceof ObjectValue, "expected object");
 
   // 2. Let ownKeys be ? O.[[OwnPropertyKeys]]().
-  let ownKeys = Properties.GetOwnPropertyKeysArray(realm, O, false, getOwnPropertyKeysEvenIfPartial);
+  let ownKeys = O.$OwnPropertyKeys(getOwnPropertyKeysEvenIfPartial);
 
   // 3. Let properties be a new empty List.
   let properties = [];
