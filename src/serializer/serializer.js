@@ -12,7 +12,7 @@
 import { EnvironmentRecord } from "../environment.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import type { SourceFile } from "../types.js";
+import { SourceFileCollection } from "../types.js";
 import { AbruptCompletion } from "../completions.js";
 import { Generator } from "../utils/generator.js";
 import generate from "@babel/generator";
@@ -69,12 +69,12 @@ export class Serializer {
   options: SerializerOptions;
 
   _execute(
-    sources: Array<SourceFile>,
+    sourceFileCollection: SourceFileCollection,
     sourceMaps?: boolean = false,
     onParse?: BabelNodeFile => void
   ): { [string]: string } {
     let realm = this.realm;
-    let [res, code] = realm.$GlobalEnv.executeSources(sources, "script", ast => {
+    let [res, code] = realm.$GlobalEnv.executeSources(sourceFileCollection.toArray(), "script", ast => {
       let realmPreludeGenerator = realm.preludeGenerator;
       invariant(realmPreludeGenerator);
       let forbiddenNames = realmPreludeGenerator.nameGenerator.forbiddenNames;
@@ -86,6 +86,9 @@ export class Serializer {
       });
       if (onParse) onParse(ast);
     });
+
+    // Release memory of source files and their source maps
+    sourceFileCollection.destroy();
 
     if (res instanceof AbruptCompletion) {
       let context = new ExecutionContext();
@@ -125,7 +128,7 @@ export class Serializer {
   }
 
   init(
-    sources: Array<SourceFile>,
+    sourceFileCollection: SourceFileCollection,
     sourceMaps?: boolean = false,
     onParse?: BabelNodeFile => void
   ): void | SerializedResult {
@@ -139,7 +142,7 @@ export class Serializer {
         this.logger.logInformation(`Evaluating initialization path...`);
       }
 
-      let code = this._execute(sources, sourceMaps, onParse);
+      let code = this._execute(sourceFileCollection, sourceMaps, onParse);
       let environmentRecordIdAfterGlobalCode = EnvironmentRecord.nextId;
 
       if (this.logger.hasErrors()) return undefined;
