@@ -1211,9 +1211,12 @@ export class ResidualHeapVisitor {
         let optimizedFunctionScope = this._getAdditionalFunctionOfScope();
         if (residualBinding.potentialReferentializationScopes.size === 0) {
           invariant(optimizedFunctionScope !== undefined);
-          this._enqueueWithUnrelatedScope(optimizedFunctionScope, () =>
-            this.visitBinding(optimizedFunctionScope, residualBinding)
-          );
+          this._enqueueWithUnrelatedScope(optimizedFunctionScope, () => {
+            let funcInstance = additionalFunctionInfo.instance;
+            invariant(funcInstance !== undefined);
+            funcInstance.residualFunctionBindings.set(residualBinding.name, residualBinding);
+            this.visitBinding(optimizedFunctionScope, residualBinding);
+          });
         }
         return this.visitEquivalentValue(value);
       },
