@@ -1216,7 +1216,6 @@ export class ResidualHeapVisitor {
             invariant(funcInstance !== undefined);
             funcInstance.residualFunctionBindings.set(residualBinding.name, residualBinding);
             this.visitBinding(optimizedFunctionScope, residualBinding);
-            return true; // ??
           });
         }
         return this.visitEquivalentValue(value);
