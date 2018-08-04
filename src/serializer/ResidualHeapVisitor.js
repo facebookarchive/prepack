@@ -1212,6 +1212,7 @@ export class ResidualHeapVisitor {
         if (residualBinding.potentialReferentializationScopes.size === 0) {
           invariant(optimizedFunctionScope !== undefined);
           this._enqueueWithUnrelatedScope(optimizedFunctionScope, () => {
+            invariant(additionalFunctionInfo !== undefined);
             let funcInstance = additionalFunctionInfo.instance;
             invariant(funcInstance !== undefined);
             funcInstance.residualFunctionBindings.set(residualBinding.name, residualBinding);

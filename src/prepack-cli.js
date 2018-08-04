@@ -27,7 +27,6 @@ import fs from "fs";
 import v8 from "v8";
 import { version } from "../package.json";
 import invariant from "./invariant";
-import path from "path";
 import JSONTokenizer from "./utils/JSONTokenizer.js";
 import type { DebuggerConfigArguments, DebugReproArguments } from "./types";
 import { DebugReproPackager } from "./utils/DebugReproPackager.js";
@@ -132,10 +131,6 @@ function run(
 
   let reproArguments = [];
   let reproFileNames = [];
-  let inputFile = fileName => {
-    reproFileNames.push(fileName);
-    return path.basename(fileName);
-  };
   let debuggerConfigArgs: DebuggerConfigArguments = {};
   let debugReproArgs: void | DebugReproArguments;
   while (args.length) {

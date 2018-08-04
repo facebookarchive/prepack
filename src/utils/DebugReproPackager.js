@@ -25,7 +25,12 @@ export class DebugReproPackager {
 
   _reproZip: zipFactory;
 
-  _generateZip(reproArguments: Array<string>, reproFileNames: Array<string>, reproFilePath: string, runtimeDir: string): void {
+  _generateZip(
+    reproArguments: Array<string>,
+    reproFileNames: Array<string>,
+    reproFilePath: string,
+    runtimeDir: string
+  ): void {
     // Programatically assemble parameters to debugger.
     let reproScriptArguments = `prepackArguments=${reproArguments.map(a => `${a}`).join("&prepackArguments=")}`;
     let reproScriptSourceFiles = `sourceFiles=$(pwd)/${reproFileNames
