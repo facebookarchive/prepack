@@ -37,7 +37,7 @@ import { getLocationFromValue } from "../react/utils.js";
  */
 export function getSuggestedArrayLiteralLength(realm: Realm, val: ObjectValue): [number, boolean] {
   invariant(IsArray(realm, val));
-
+  let instantRenderMode = realm.instantRender.enabled;
   let minLength = 0,
     maxLength = 0;
   let actualLength;
@@ -46,7 +46,7 @@ export function getSuggestedArrayLiteralLength(realm: Realm, val: ObjectValue): 
       let prevMax = maxLength;
       maxLength = Number(key) + 1;
       let elem = val._SafeGetDataPropertyValue(key);
-      if (!elem.mightHaveBeenDeleted()) minLength = maxLength;
+      if (instantRenderMode || !elem.mightHaveBeenDeleted()) minLength = maxLength;
       else if (elem instanceof AbstractValue && elem.kind === "conditional") {
         let maxLengthVal = new IntegralValue(realm, maxLength);
         let [c, x, y] = elem.args;
