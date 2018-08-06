@@ -35,7 +35,6 @@ import {
   hardModifyReactObjectPropertyBinding,
   getComponentName,
   getComponentTypeFromRootValue,
-  getLocationFromValue,
   getProperty,
   getReactSymbol,
   getValueFromFunctionCall,
@@ -78,6 +77,7 @@ import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
 import { handleReportedSideEffect } from "../serializer/utils.js";
 import { createOperationDescriptor } from "../utils/generator.js";
+import { optionalStringOfLocation } from "../utils/babelhelpers.js";
 
 type ComponentResolutionStrategy =
   | "NORMAL"
@@ -1388,7 +1388,7 @@ export class Reconciler {
     } else if (value instanceof ObjectValue && isReactElement(value)) {
       return this._resolveReactElement(componentType, value, context, branchStatus, evaluatedNode, needsKey);
     } else {
-      let location = getLocationFromValue(value.expressionLocation);
+      let location = optionalStringOfLocation(value.expressionLocation);
       throw new ExpectedBailOut(`invalid return value from render${location}`);
     }
   }
