@@ -169,6 +169,7 @@ function createPropsObject(
         // exist
         for (let [propName, binding] of props.properties) {
           if (binding.descriptor !== undefined && binding.descriptor.value === realm.intrinsics.undefined) {
+            invariant(defaultProps instanceof AbstractObjectValue || defaultProps instanceof ObjectValue);
             hardModifyReactObjectPropertyBinding(realm, props, propName, Get(realm, defaultProps, propName));
           }
         }
