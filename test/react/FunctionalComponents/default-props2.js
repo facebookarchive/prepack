@@ -4,22 +4,23 @@ function Child(props) {
   return <span>{props.children}</span>;
 }
 
-Child.defaultProps = {
+var defaultProps = {
   children: "default text",
 };
 
+this.__makePartial && __makePartial(defaultProps);
+
+Child.defaultProps = defaultProps;
+
 function App(props) {
-  return <Child {...props.foo}>{props.bar}</Child>;
+  var newProps = Object.assign({}, props, { children: undefined });
+  return <Child {...newProps} />;
 }
 
 App.getTrials = function(renderer, Root) {
   let results = [];
-  renderer.update(<Root foo={{ children: undefined }} bar={undefined} />);
-  results.push(["defaultProps", renderer.toJSON()]);
-  renderer.update(<Root foo={{ children: "prop children text" }} bar={undefined} />);
-  results.push(["defaultProps", renderer.toJSON()]);
   renderer.update(<Root foo={{ children: undefined }} bar={"children prop text"} />);
-  results.push(["defaultProps", renderer.toJSON()]);
+  results.push(["defaultProps 2", renderer.toJSON()]);
   return results;
 };
 

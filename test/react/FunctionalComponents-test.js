@@ -206,6 +206,10 @@ it("defaultProps", () => {
   runTest(__dirname + "/FunctionalComponents/default-props.js");
 });
 
+it("defaultProps 2", () => {
+  runTest(__dirname + "/FunctionalComponents/default-props2.js");
+});
+
 it("Simple with abstract props", () => {
   runTest(__dirname + "/FunctionalComponents/simple-with-abstract-props.js");
 });
