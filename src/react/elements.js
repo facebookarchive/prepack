@@ -131,7 +131,6 @@ function createPropsObject(
     if (children !== undefined) {
       hardModifyReactObjectPropertyBinding(realm, props, "children", children);
     }
-
     // handle default props on a partial/abstract config
     if (defaultProps !== realm.intrinsics.undefined) {
       let defaultPropsEvaluated = 0;
@@ -170,13 +169,7 @@ function createPropsObject(
         // exist
         for (let [propName, binding] of props.properties) {
           if (binding.descriptor !== undefined && binding.descriptor.value === realm.intrinsics.undefined) {
-            let kind = AbstractValue.makeKind("abstractCounted", (realm.objectCount++).toString()); // need not be an object, but must be unique
-            hardModifyReactObjectPropertyBinding(
-              realm,
-              props,
-              propName,
-              AbstractValue.createFromType(realm, Value, kind)
-            );
+            hardModifyReactObjectPropertyBinding(realm, props, propName, Get(realm, defaultProps, propName));
           }
         }
         // if we have children and they are abstract, they might be undefined at runtime
@@ -202,7 +195,7 @@ function createPropsObject(
           ObjectValue,
           temporalArgs,
           createOperationDescriptor("REACT_DEFAULT_PROPS_HELPER"),
-          { skipInvariant: true }
+          { skipInvariant: true, mutatesOnly: [snapshot] }
         );
         invariant(temporalTo instanceof AbstractObjectValue);
         if (props instanceof AbstractObjectValue) {
@@ -220,8 +213,9 @@ function createPropsObject(
     if (children !== undefined) {
       setProp("children", children);
     }
-
-    if (defaultProps instanceof ObjectValue) {
+    if (defaultProps instanceof AbstractObjectValue || defaultProps.isPartialObject()) {
+      invariant(false, "TODO: we need to eventually support this");
+    } else if (defaultProps instanceof ObjectValue) {
       for (let [propKey, binding] of defaultProps.properties) {
         if (binding && binding.descriptor && binding.descriptor.enumerable) {
           if (Get(realm, props, propKey) === realm.intrinsics.undefined) {
@@ -229,8 +223,6 @@ function createPropsObject(
           }
         }
       }
-    } else if (defaultProps instanceof AbstractObjectValue) {
-      invariant(false, "TODO: we need to eventually support this");
     }
   }
   invariant(props instanceof ObjectValue);
