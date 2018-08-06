@@ -1398,7 +1398,6 @@ export class PropertiesImplementation {
           if (P instanceof StringValue) P = P.value;
           if (typeof P === "string") {
             // In this case it is safe to defer the property access to runtime (at this point in time)
-            invariant(realm.generator);
             let absVal;
             function createAbstractPropertyValue(type: typeof Value) {
               invariant(typeof P === "string");
@@ -1410,13 +1409,25 @@ export class PropertiesImplementation {
                   createOperationDescriptor("ABSTRACT_PROPERTY"),
                   { kind: AbstractValue.makeKind("property", P) }
                 );
-              } else {
+              } else if (realm.generator) {
                 return AbstractValue.createTemporalFromBuildFunction(
                   realm,
                   type,
                   [O._templateFor || O, new StringValue(realm, P)],
                   createOperationDescriptor("ABSTRACT_PROPERTY"),
                   { skipInvariant: true, isPure: true }
+                );
+              } else {
+                // During environment initialization we'll call Set and DefineOwnProperty
+                // to initialize objects. Since these needs to introspect the descriptor,
+                // we need some kind of value as its placeholder. This value should never
+                // leak to the serialized environment.
+                return AbstractValue.createFromBuildFunction(
+                  realm,
+                  type,
+                  [O._templateFor || O, new StringValue(realm, P)],
+                  createOperationDescriptor("ABSTRACT_PROPERTY"),
+                  { kind: "environment initialization expression" }
                 );
               }
             }

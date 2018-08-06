@@ -59,6 +59,7 @@ export type AbstractValueKind =
   | "explicit conversion to object"
   | "check for known property"
   | "sentinel member expression"
+  | "environment initialization expression"
   | "template for property name condition"
   | "template for prototype member expression"
   | "this"
