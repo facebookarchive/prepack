@@ -1329,7 +1329,7 @@ export class LexicalEnvironment {
         invariant(otherInfo.originalPosition.source != null);
 
         let deltaLine = posInfo.newLine - otherInfo.newLine;
-        pos.line = Math.max(0, otherInfo.originalPosition.line + deltaLine);
+        pos.line = Math.max(1, otherInfo.originalPosition.line + deltaLine);
 
         let deltaColumn = posInfo.newColumn - otherInfo.newColumn;
         pos.column = Math.max(0, otherInfo.originalPosition.column + deltaColumn);
