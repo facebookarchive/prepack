@@ -950,8 +950,20 @@ export default class AbstractObjectValue extends AbstractValue {
       invariant(oldVal2 instanceof Value);
       let newVal1 = AbstractValue.createFromConditionalOp(this.$Realm, cond, this.$Realm.intrinsics.empty, oldVal1);
       let newVal2 = AbstractValue.createFromConditionalOp(this.$Realm, cond, oldVal2, this.$Realm.intrinsics.empty);
-      let result1 = ob1.$Set(P, newVal1, this);
-      let result2 = ob2.$Set(P, newVal2, this);
+      let result1 = true;
+      let result2 = true;
+      if (d1 !== undefined) {
+        let newDesc1 = cloneDescriptor(d1);
+        invariant(newDesc1);
+        newDesc1.value = newVal1;
+        result1 = ob1.$DefineOwnProperty(P, newDesc1);
+      }
+      if (d2 !== undefined) {
+        let newDesc2 = cloneDescriptor(d2);
+        invariant(newDesc2);
+        newDesc2.value = newVal2;
+        result2 = ob2.$DefineOwnProperty(P, newDesc2);
+      }
       if (result1 !== result2) {
         AbstractValue.reportIntrospectionError(this, P);
         throw new FatalError();
@@ -972,7 +984,10 @@ export default class AbstractObjectValue extends AbstractValue {
         let dval = d.value;
         invariant(dval instanceof Value);
         let v = AbstractValue.createFromConditionalOp(this.$Realm, cond, this.$Realm.intrinsics.empty, dval);
-        if (cv.$Set(P, v, this)) sawTrue = true;
+        let newDesc = cloneDescriptor(d);
+        invariant(newDesc);
+        newDesc.value = v;
+        if (cv.$DefineOwnProperty(P, newDesc)) sawTrue = true;
         else sawFalse = true;
       }
       if (sawTrue && sawFalse) {
