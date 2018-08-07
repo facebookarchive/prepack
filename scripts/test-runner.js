@@ -30,6 +30,7 @@ function SerialPromises(promises: Array<() => Promise<void>>) {
 }
 
 let Serializer = require("../lib/serializer/index.js").default;
+let SourceFileCollection = require("../lib/types.js").SourceFileCollection;
 let SerializerStatistics = require("../lib/serializer/statistics.js").SerializerStatistics;
 let construct_realm = require("../lib/construct_realm.js").default;
 let initializeGlobals = require("../lib/globals.js").default;
@@ -381,8 +382,8 @@ function runTest(name, code, options: PrepackOptions, args) {
         lazyObjectsRuntime: options.lazyObjectsRuntime,
       };
       let serializer = new Serializer(realm, serializerOptions);
-      let sources = [{ filePath: name, fileContents: code }];
-      let serialized = serializer.init(sources, false);
+      let sourceFileCollection = new SourceFileCollection([{ filePath: name, fileContents: code }]);
+      let serialized = serializer.init(sourceFileCollection, false);
       if (!serialized) {
         console.error(chalk.red("Error during serialization"));
       } else {

@@ -46,6 +46,8 @@ import type {
   FunctionInstance,
   ResidualFunctionBinding,
   ReferentializationScope,
+  Scope,
+  ResidualHeapInfo,
 } from "./types.js";
 import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "../utils/logger.js";
@@ -64,8 +66,6 @@ import { Environment, To } from "../singletons.js";
 import { isReactElement, isReactPropsObject, valueIsReactLibraryObject } from "../react/utils.js";
 import { ResidualReactElementVisitor } from "./ResidualReactElementVisitor.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
-
-export type Scope = FunctionValue | Generator;
 
 type BindingState = {|
   capturedBindings: Set<ResidualFunctionBinding>,
@@ -1211,9 +1211,13 @@ export class ResidualHeapVisitor {
         let optimizedFunctionScope = this._getAdditionalFunctionOfScope();
         if (residualBinding.potentialReferentializationScopes.size === 0) {
           invariant(optimizedFunctionScope !== undefined);
-          this._enqueueWithUnrelatedScope(optimizedFunctionScope, () =>
-            this.visitBinding(optimizedFunctionScope, residualBinding)
-          );
+          this._enqueueWithUnrelatedScope(optimizedFunctionScope, () => {
+            invariant(additionalFunctionInfo !== undefined);
+            let funcInstance = additionalFunctionInfo.instance;
+            invariant(funcInstance !== undefined);
+            funcInstance.residualFunctionBindings.set(residualBinding.name, residualBinding);
+            this.visitBinding(optimizedFunctionScope, residualBinding);
+          });
         }
         return this.visitEquivalentValue(value);
       },
@@ -1371,5 +1375,20 @@ export class ResidualHeapVisitor {
         this.logger.logInformation(`  (${actual} items processed)`);
       }
     }
+  }
+
+  toInfo(): ResidualHeapInfo {
+    return {
+      values: this.values,
+      functionInstances: this.functionInstances,
+      classMethodInstances: this.classMethodInstances,
+      functionInfos: this.functionInfos,
+      referencedDeclaredValues: this.referencedDeclaredValues,
+      additionalFunctionValueInfos: this.additionalFunctionValueInfos,
+      declarativeEnvironmentRecordsBindings: this.declarativeEnvironmentRecordsBindings,
+      globalBindings: this.globalBindings,
+      conditionalFeasibility: this.conditionalFeasibility,
+      additionalGeneratorRoots: this.additionalGeneratorRoots,
+    };
   }
 }

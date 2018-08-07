@@ -17,7 +17,7 @@ import initializeGlobals from "./globals.js";
 import { EvaluateDirectCallWithArgList } from "./methods/index.js";
 import { getRealmOptions, getSerializerOptions } from "./prepack-options";
 import { FatalError } from "./errors.js";
-import type { SourceFile } from "./types.js";
+import { SourceFileCollection, type SourceFile } from "./types.js";
 import { AbruptCompletion } from "./completions.js";
 import type { PrepackOptions } from "./prepack-options";
 import { defaultOptions } from "./options";
@@ -32,10 +32,12 @@ import { Generator } from "./utils/generator.js";
 import { AbstractObjectValue, AbstractValue, ObjectValue } from "./values/index.js";
 
 export function prepackSources(
-  sources: Array<SourceFile>,
+  sourceFileCollection: SourceFileCollection | Array<SourceFile>,
   options: PrepackOptions = defaultOptions,
   statistics: SerializerStatistics | void = undefined
 ): SerializedResult {
+  if (Array.isArray(sourceFileCollection)) sourceFileCollection = new SourceFileCollection(sourceFileCollection);
+
   let realmOptions = getRealmOptions(options);
   realmOptions.errorHandler = options.errorHandler;
   let realm = construct_realm(
@@ -59,14 +61,14 @@ export function prepackSources(
       !!options.delayUnsupportedRequires,
       !!options.accelerateUnsupportedRequires
     );
-    let [result] = realm.$GlobalEnv.executeSources(sources);
+    let [result] = realm.$GlobalEnv.executeSources(sourceFileCollection.toArray());
     if (result instanceof AbruptCompletion) throw result;
     invariant(options.check);
     checkResidualFunctions(modules, options.check[0], options.check[1]);
     return { code: "", map: undefined };
   } else if (options.serialize === true || options.residual !== true) {
     let serializer = new Serializer(realm, getSerializerOptions(options));
-    let serialized = serializer.init(sources, options.sourceMaps, options.onParse);
+    let serialized = serializer.init(sourceFileCollection, options.sourceMaps, options.onParse);
 
     //Turn off the debugger if there is one
     if (realm.debuggerInstance) {
@@ -107,7 +109,7 @@ export function prepackSources(
   } else {
     invariant(options.residual);
     realm.generator = new Generator(realm, "main", realm.pathConditions);
-    let result = realm.$GlobalEnv.executePartialEvaluator(sources, options);
+    let result = realm.$GlobalEnv.executePartialEvaluator(sourceFileCollection.toArray(), options);
     if (result instanceof AbruptCompletion) throw result;
     return { ...result };
   }

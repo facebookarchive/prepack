@@ -825,15 +825,6 @@ function isEventProp(name: string): boolean {
   return name.length > 2 && name[0].toLowerCase() === "o" && name[1].toLowerCase() === "n";
 }
 
-export function getLocationFromValue(expressionLocation: any): string {
-  // if we can't get a value, then it's likely that the source file was not given
-  // (this happens in React tests) so instead don't print any location
-  return expressionLocation
-    ? ` at location: ${expressionLocation.start.line}:${expressionLocation.start.column} ` +
-        `- ${expressionLocation.end.line}:${expressionLocation.end.line}`
-    : "";
-}
-
 export function createNoopFunction(realm: Realm): ECMAScriptSourceFunctionValue {
   if (realm.react.noopFunction !== undefined) {
     return realm.react.noopFunction;

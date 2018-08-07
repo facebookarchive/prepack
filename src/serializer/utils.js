@@ -28,7 +28,7 @@ import { Logger } from "../utils/logger.js";
 import { Generator } from "../utils/generator.js";
 import type { AdditionalFunctionEffects } from "./types";
 import type { Binding } from "../environment.js";
-import { getLocationFromValue } from "../react/utils.js";
+import { optionalStringOfLocation } from "../utils/babelhelpers.js";
 
 /**
  * Get index property list length by searching array properties list for the max index key value plus 1.
@@ -37,7 +37,7 @@ import { getLocationFromValue } from "../react/utils.js";
  */
 export function getSuggestedArrayLiteralLength(realm: Realm, val: ObjectValue): [number, boolean] {
   invariant(IsArray(realm, val));
-
+  let instantRenderMode = realm.instantRender.enabled;
   let minLength = 0,
     maxLength = 0;
   let actualLength;
@@ -46,7 +46,7 @@ export function getSuggestedArrayLiteralLength(realm: Realm, val: ObjectValue): 
       let prevMax = maxLength;
       maxLength = Number(key) + 1;
       let elem = val._SafeGetDataPropertyValue(key);
-      if (!elem.mightHaveBeenDeleted()) minLength = maxLength;
+      if (instantRenderMode || !elem.mightHaveBeenDeleted()) minLength = maxLength;
       else if (elem instanceof AbstractValue && elem.kind === "conditional") {
         let maxLengthVal = new IntegralValue(realm, maxLength);
         let [c, x, y] = elem.args;
@@ -210,7 +210,7 @@ export function handleReportedSideEffect(
 ): void {
   // This causes an infinite recursion because creating a callstack causes internal-only side effects
   if (binding && binding.object && binding.object.intrinsicName === "__checkedBindings") return;
-  let location = getLocationFromValue(expressionLocation);
+  let location = optionalStringOfLocation(expressionLocation);
 
   if (sideEffectType === "MODIFIED_BINDING") {
     let name = binding ? `"${((binding: any): Binding).name}"` : "unknown";

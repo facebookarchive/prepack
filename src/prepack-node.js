@@ -16,13 +16,14 @@ import { defaultOptions } from "./options";
 import { FatalError } from "./errors.js";
 import { type PrepackOptions } from "./prepack-options";
 import { prepackSources } from "./prepack-standalone.js";
-import { type SourceMap } from "./types.js";
+import { type SourceMap, SourceFileCollection } from "./types.js";
 import { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
 import { FileIOWrapper } from "./debugger/common/channel/FileIOWrapper.js";
 import { type SerializedResult } from "./serializer/types.js";
 import { SerializerStatistics } from "./serializer/statistics.js";
 
 import fs from "fs";
+import path from "path";
 
 export * from "./prepack-standalone";
 
@@ -45,7 +46,10 @@ export function prepackStdin(
   processSerializedCode: SerializedResult => void,
   printDiagnostics: boolean => boolean
 ): void | SerializedResult {
-  let sourceMapFilename = options.inputSourceMapFilename || "";
+  let sourceMapFilename =
+    options.inputSourceMapFilenames && options.inputSourceMapFilenames.length > 0
+      ? options.inputSourceMapFilenames[0]
+      : "";
   process.stdin.setEncoding("utf8");
   process.stdin.resume();
   process.stdin.on("data", function(code) {
@@ -78,14 +82,28 @@ export function prepackStdin(
   });
 }
 
+function getSourceMapFilename(filename: string, options: PrepackOptions): [string, boolean] {
+  if (options.inputSourceMapFilenames !== undefined) {
+    // The convention is that the source map has the same basename as the javascript
+    // source file, except that .map is appended. We look for a match with the
+    // supplied source file names.
+    for (let sourceMapFilename of options.inputSourceMapFilenames) {
+      if (path.basename(filename) + ".map" === path.basename(sourceMapFilename)) {
+        return [sourceMapFilename, true];
+      }
+    }
+  }
+
+  return [filename + ".map", false];
+}
 export function prepackFile(
   filename: string,
   options: PrepackOptions = defaultOptions,
   callback: (any, ?{ code: string, map?: SourceMap }) => void,
   fileErrorHandler?: (err: ?Error) => void
 ): void {
-  let sourceMapFilename =
-    options.inputSourceMapFilename !== undefined ? options.inputSourceMapFilename : filename + ".map";
+  let [sourceMapFilename] = getSourceMapFilename(filename, options);
+
   fs.readFile(filename, "utf8", function(fileErr, code) {
     if (fileErr) {
       if (fileErrorHandler) fileErrorHandler(fileErr);
@@ -113,16 +131,17 @@ export function prepackFile(
   });
 }
 
-export function prepackFileSync(filenames: Array<string>, options: PrepackOptions = defaultOptions): SerializedResult {
+function getSourceFileCollection(filenames: Array<string>, options: PrepackOptions) {
   const sourceFiles = filenames.map(filename => {
     let code = fs.readFileSync(filename, "utf8");
     let sourceMap = "";
-    let sourceMapFilename =
-      options.inputSourceMapFilename !== undefined ? options.inputSourceMapFilename : filename + ".map";
+    let [sourceMapFilename, matchedSourceMapFilename] = getSourceMapFilename(filename, options);
+
     try {
       sourceMap = fs.readFileSync(sourceMapFilename, "utf8");
+      if (matchedSourceMapFilename) console.info(`Matching sourcemap found at ${sourceMapFilename}.`);
     } catch (_e) {
-      if (options.inputSourceMapFilename !== undefined) console.warn(`No sourcemap found at ${sourceMapFilename}.`);
+      if (matchedSourceMapFilename) console.warn(`No sourcemap found at ${sourceMapFilename}.`);
     }
     return {
       filePath: filename,
@@ -132,19 +151,27 @@ export function prepackFileSync(filenames: Array<string>, options: PrepackOption
     };
   });
 
-  // Don't include sourcemaps that weren't found
-  let validSourceFiles = sourceFiles.filter(sf => sf.sourceMapContents !== "");
+  return new SourceFileCollection(sourceFiles);
+}
+
+export function prepackFileSync(filenames: Array<string>, options: PrepackOptions = defaultOptions): SerializedResult {
+  let sourceFileCollection = getSourceFileCollection(filenames, options);
+
+  // Filter to not include sourcemaps that weren't found
+  let filterValidSourceMaps = a => a.filter(sf => sf.sourceMapContents !== "");
 
   // The existence of debug[In/Out]FilePath represents the desire to use the debugger.
   if (options.debugInFilePath !== undefined && options.debugOutFilePath !== undefined) {
     if (options.debuggerConfigArgs === undefined) options.debuggerConfigArgs = {};
+    let debuggerConfigArgs = options.debuggerConfigArgs;
 
     let ioWrapper = new FileIOWrapper(false, options.debugInFilePath, options.debugOutFilePath);
-    options.debuggerConfigArgs.debugChannel = new DebugChannel(ioWrapper);
-    options.debuggerConfigArgs.sourcemaps = validSourceFiles;
+    debuggerConfigArgs.debugChannel = new DebugChannel(ioWrapper);
+    debuggerConfigArgs.sourcemaps = filterValidSourceMaps(sourceFileCollection.toArray());
   }
 
-  if (options.debugReproArgs) options.debugReproArgs.sourcemaps = validSourceFiles;
+  let debugReproArgs = options.debugReproArgs;
+  if (debugReproArgs) debugReproArgs.sourcemaps = filterValidSourceMaps(sourceFileCollection.toArray());
 
-  return prepackSources(sourceFiles, options, createStatistics(options));
+  return prepackSources(sourceFileCollection, options, createStatistics(options));
 }

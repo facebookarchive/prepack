@@ -14,7 +14,161 @@
  */
 
 declare module 'source-map' {
-  declare module.exports: any;
+  // Adapted from https://raw.githubusercontent.com/mozilla/source-map/c73baa52dedcbb77af97d90390d9def4d594c75f/source-map.d.ts
+
+  // Type definitions for source-map
+  // Project: https://github.com/mozilla/source-map
+  // Definitions by: Morten Houston Ludvigsen <https://github.com/MortenHoustonLudvigsen>,
+  //                 Ron Buckton <https://github.com/rbuckton>,
+  //                 John Vilk <https://github.com/jvilk>
+  // Definitions: https://github.com/mozilla/source-map
+  declare type SourceMapUrl = string;
+
+  declare interface Position {
+      line: number;
+      column: number;
+  }
+
+  declare interface NullablePosition {
+      line: number | null;
+      column: number | null;
+      lastColumn: number | null;
+  }
+
+  declare interface MappedPosition {
+      source: string;
+      line: number;
+      column: number;
+      name?: string;
+  }
+
+  declare interface NullableMappedPosition {
+      source: string | null;
+      line: number | null;
+      column: number | null;
+      name: string | null;
+  }
+
+  declare interface MappingItem {
+      source: string;
+      generatedLine: number;
+      generatedColumn: number;
+      originalLine: number;
+      originalColumn: number;
+      name: string;
+  }
+
+  declare interface Mapping {
+      generated: Position;
+      original: Position;
+      source: string;
+      name?: string;
+  }
+
+  declare class SourceMapConsumer {
+      constructor (rawSourceMap: string, sourceMapUrl?: SourceMapUrl): void;
+
+      /**
+       * Compute the last column for each generated mapping. The last column is
+       * inclusive.
+       */
+      computeColumnSpans(): void;
+
+      /**
+       * Returns the original source, line, and column information for the generated
+       * source's line and column positions provided. The only argument is an object
+       * with the following properties:
+       *
+       *   - line: The line number in the generated source.
+       *   - column: The column number in the generated source.
+       *   - bias: Either 'SourceMapConsumer.GREATEST_LOWER_BOUND' or
+       *     'SourceMapConsumer.LEAST_UPPER_BOUND'. Specifies whether to return the
+       *     closest element that is smaller than or greater than the one we are
+       *     searching for, respectively, if the exact element cannot be found.
+       *     Defaults to 'SourceMapConsumer.GREATEST_LOWER_BOUND'.
+       *
+       * and an object is returned with the following properties:
+       *
+       *   - source: The original source file, or null.
+       *   - line: The line number in the original source, or null.
+       *   - column: The column number in the original source, or null.
+       *   - name: The original identifier, or null.
+       */
+      originalPositionFor(generatedPosition: Position & { bias?: number }): NullableMappedPosition;
+
+      /**
+       * Returns the generated line and column information for the original source,
+       * line, and column positions provided. The only argument is an object with
+       * the following properties:
+       *
+       *   - source: The filename of the original source.
+       *   - line: The line number in the original source.
+       *   - column: The column number in the original source.
+       *   - bias: Either 'SourceMapConsumer.GREATEST_LOWER_BOUND' or
+       *     'SourceMapConsumer.LEAST_UPPER_BOUND'. Specifies whether to return the
+       *     closest element that is smaller than or greater than the one we are
+       *     searching for, respectively, if the exact element cannot be found.
+       *     Defaults to 'SourceMapConsumer.GREATEST_LOWER_BOUND'.
+       *
+       * and an object is returned with the following properties:
+       *
+       *   - line: The line number in the generated source, or null.
+       *   - column: The column number in the generated source, or null.
+       */
+      generatedPositionFor(originalPosition: MappedPosition & { bias?: number }): NullablePosition;
+
+      /**
+       * Returns all generated line and column information for the original source,
+       * line, and column provided. If no column is provided, returns all mappings
+       * corresponding to a either the line we are searching for or the next
+       * closest line that has any mappings. Otherwise, returns all mappings
+       * corresponding to the given line and either the column we are searching for
+       * or the next closest column that has any offsets.
+       *
+       * The only argument is an object with the following properties:
+       *
+       *   - source: The filename of the original source.
+       *   - line: The line number in the original source.
+       *   - column: Optional. the column number in the original source.
+       *
+       * and an array of objects is returned, each with the following properties:
+       *
+       *   - line: The line number in the generated source, or null.
+       *   - column: The column number in the generated source, or null.
+       */
+      allGeneratedPositionsFor(originalPosition: MappedPosition): NullablePosition[];
+
+      /**
+       * Return true if we have the source content for every source in the source
+       * map, false otherwise.
+       */
+      hasContentsOfAllSources(): boolean;
+
+      /**
+       * Returns the original source content. The only argument is the url of the
+       * original source file. Returns null if no original source content is
+       * available.
+       */
+      sourceContentFor(source: string, returnNullOnMissing?: boolean): string | null;
+
+      /**
+       * Iterate over each mapping between an original source/line/column and a
+       * generated line/column in this source map.
+       *
+       * @param callback
+       *        The function that is called with each mapping.
+       * @param context
+       *        Optional. If specified, this object will be the value of `this` every
+       *        time that `aCallback` is called.
+       * @param order
+       *        Either `SourceMapConsumer.GENERATED_ORDER` or
+       *        `SourceMapConsumer.ORIGINAL_ORDER`. Specifies whether you want to
+       *        iterate over the mappings sorted by the generated file's line/column
+       *        order or the original's source/line/column order, respectively. Defaults to
+       *        `SourceMapConsumer.GENERATED_ORDER`.
+       */
+      eachMapping(callback: (mapping: MappingItem) => void, context?: any, order?: number): void;
+  }
 }
 
 /**
