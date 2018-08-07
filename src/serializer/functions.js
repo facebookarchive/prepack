@@ -35,7 +35,7 @@ import { convertConfigObjectToReactComponentTreeConfig, valueIsKnownReactAbstrac
 import { optimizeReactComponentTreeRoot } from "../react/optimizing.js";
 import { handleReportedSideEffect } from "./utils.js";
 import type { ArgModel } from "../types.js";
-import { stringOfLocation } from "../utils/babelhelpers";
+import { optionalStringOfLocation } from "../utils/babelhelpers";
 import { Properties, Utils } from "../singletons.js";
 
 type AdditionalFunctionEntry = {
@@ -96,10 +96,7 @@ export class Functions {
       };
     }
 
-    let location = value.expressionLocation
-      ? `${value.expressionLocation.start.line}:${value.expressionLocation.start.column} ` +
-        `${value.expressionLocation.end.line}:${value.expressionLocation.end.line}`
-      : "location unknown";
+    let location = optionalStringOfLocation(value.expressionLocation);
     realm.handleError(
       new CompilerDiagnostic(
         `Optimized Function Value ${location} is an not a function or react element`,
@@ -287,7 +284,7 @@ export class Functions {
     for (let fun1 of additionalFunctions) {
       invariant(fun1 instanceof FunctionValue);
       let fun1Location = fun1.expressionLocation;
-      let fun1Name = fun1.getDebugName() || `(unknown function ${fun1Location ? stringOfLocation(fun1Location) : ""})`;
+      let fun1Name = fun1.getDebugName() || optionalStringOfLocation(fun1Location);
       // Also do argument validation here
       let additionalFunctionEffects = this.writeEffects.get(fun1);
       invariant(additionalFunctionEffects !== undefined);
@@ -307,8 +304,7 @@ export class Functions {
         if (fun1 === fun2) continue;
         invariant(fun2 instanceof FunctionValue);
         let fun2Location = fun2.expressionLocation;
-        let fun2Name =
-          fun2.getDebugName() || `(unknown function ${fun2Location ? stringOfLocation(fun2Location) : ""})`;
+        let fun2Name = fun2.getDebugName() || optionalStringOfLocation(fun2Location);
         let reportFn = () => {
           this.reportWriteConflicts(
             fun1Name,
@@ -353,13 +349,13 @@ export class Functions {
       key?: string,
       originalLocation: BabelNodeSourceLocation | void | null
     ) => {
-      let firstLocationString = originalLocation ? `${stringOfLocation(originalLocation)}` : "";
-      let secondLocationString = `${stringOfLocation(location)}`;
+      let firstLocationString = optionalStringOfLocation(originalLocation);
+      let secondLocationString = optionalStringOfLocation(location);
       let propString = key ? ` "${key}"` : "";
       let objectString = object ? ` on object "${object}" ` : "";
       if (!objectString && key) objectString = " on <unnamed object> ";
       let error = new CompilerDiagnostic(
-        `Write to property${propString}${objectString}at optimized function ${f1name}[${firstLocationString}] conflicts with access in function ${f2name}[${secondLocationString}]`,
+        `Write to property${propString}${objectString}at optimized function ${f1name}${firstLocationString} conflicts with access in function ${f2name}${secondLocationString}`,
         location,
         "PP1003",
         "RecoverableError"
