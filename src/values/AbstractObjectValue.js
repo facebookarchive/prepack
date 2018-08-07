@@ -314,16 +314,18 @@ export default class AbstractObjectValue extends AbstractValue {
       invariant(ob2 instanceof ObjectValue || ob2 instanceof AbstractObjectValue);
       let d1 = ob1.$GetOwnProperty(P);
       let d2 = ob2.$GetOwnProperty(P);
-      if (d1 === undefined || d2 === undefined || !equalDescriptors(d1, d2)) {
+      if (d1 !== undefined && d2 !== undefined && !equalDescriptors(d1, d2)) {
         AbstractValue.reportIntrospectionError(this, P);
         throw new FatalError();
       }
-      let desc = cloneDescriptor(d1);
-      invariant(desc !== undefined);
+      let desc = d1 ? cloneDescriptor(d1) : d2 ? cloneDescriptor(d2) : undefined;
+      if (desc === undefined) {
+        return undefined;
+      }
       if (IsDataDescriptor(this.$Realm, desc)) {
-        let d1Value = d1.value;
+        let d1Value = d1 ? d1.value : this.$Realm.intrinsics.empty;
         invariant(d1Value === undefined || d1Value instanceof Value);
-        let d2Value = d2.value;
+        let d2Value = d2 ? d2.value : this.$Realm.intrinsics.empty;
         invariant(d2Value === undefined || d2Value instanceof Value);
         desc.value = AbstractValue.createFromConditionalOp(this.$Realm, cond, d1Value, d2Value);
       }
@@ -356,36 +358,36 @@ export default class AbstractObjectValue extends AbstractValue {
       }
       return desc;
     } else {
-      let hasProp = false;
-      let doesNotHaveProp = false;
+      let value;
       let desc;
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
         let d = cv.$GetOwnProperty(P);
-        if (d === undefined) doesNotHaveProp = true;
-        else {
-          hasProp = true;
+        let dval;
+        if (d !== undefined) {
           if (desc === undefined) {
             desc = cloneDescriptor(d);
             invariant(desc !== undefined);
-            if (!IsDataDescriptor(this.$Realm, d)) continue;
-          } else {
-            if (!equalDescriptors(d, desc)) {
-              AbstractValue.reportIntrospectionError(this, P);
-              throw new FatalError();
-            }
-            if (!IsDataDescriptor(this.$Realm, desc)) continue;
-            // values may be different
-            let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
-            let dval = d.value;
-            invariant(dval instanceof Value);
-            desc.value = AbstractValue.createFromConditionalOp(this.$Realm, cond, dval, desc.value);
+          } else if (!equalDescriptors(d, desc)) {
+            AbstractValue.reportIntrospectionError(this, P);
+            throw new FatalError();
           }
+          if (!IsDataDescriptor(this.$Realm, desc)) continue;
+          dval = d.value;
+        } else {
+          dval = this.$Realm.intrinsics.empty;
         }
-      }
-      if (hasProp && doesNotHaveProp) {
-        AbstractValue.reportIntrospectionError(this, P);
-        throw new FatalError();
+        invariant(dval instanceof Value);
+        if (value === undefined) {
+          value = dval;
+        } else {
+          // values may be different
+          let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
+          value = AbstractValue.createFromConditionalOp(this.$Realm, cond, dval, value);
+        }
+        if (desc !== undefined) {
+          desc.value = value;
+        }
       }
       return desc;
     }
