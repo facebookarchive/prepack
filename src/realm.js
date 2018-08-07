@@ -1534,6 +1534,9 @@ export class Realm {
       if (root instanceof FunctionEnvironmentRecord && func === root.$FunctionObject) {
         return true;
       }
+      if (root === env.environmentRecord) {
+        return true;
+      }
       if (this.createdObjectsTrackedForLeaks !== undefined && !this.createdObjectsTrackedForLeaks.has(func)) {
         return false;
       }
