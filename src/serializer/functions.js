@@ -97,15 +97,16 @@ export class Functions {
     }
 
     let location = optionalStringOfLocation(value.expressionLocation);
-    realm.handleError(
+    let result = realm.handleError(
       new CompilerDiagnostic(
         `Optimized Function Value ${location} is an not a function or react element`,
         realm.currentLocation,
         "PP0033",
-        "FatalError"
+        "Warning"
       )
     );
-    throw new FatalError("Optimized Function Values must be functions or react elements");
+    // Here we can recover by ignoring the __optimize call and emit correct code
+    if (result !== "Recover") throw new FatalError("Optimized Function Values must be functions or react elements");
   }
 
   _generateInitialAdditionalFunctions(globalKey: string): Array<AdditionalFunctionEntry> {
@@ -253,11 +254,13 @@ export class Functions {
           "Trying to optimize a function with two parent optimized functions, which is not currently allowed.",
           functionValue.expressionLocation,
           "PP1009",
-          "FatalError"
+          "RecoverableError"
         );
+        // we can recover by assuming one set of effects to show further diagnostics
         if (realm.handleError(error) !== "Recover") throw new FatalError();
+      } else {
+        this.writeEffects.set(functionValue, additionalFunctionEffects);
       }
-      this.writeEffects.set(functionValue, additionalFunctionEffects);
 
       // Conceptually this will ensure that the nested additional function is defined
       // although for later cases, we'll apply the effects of the parents only.
@@ -292,13 +295,13 @@ export class Functions {
       invariant(e1 !== undefined);
       if (e1.result instanceof Completion && !e1.result instanceof PossiblyNormalCompletion) {
         let error = new CompilerDiagnostic(
-          `Additional function ${fun1Name} may terminate abruptly`,
+          `Additional function ${fun1Name} will terminate abruptly`,
           e1.result.location,
           "PP1002",
-          "FatalError"
+          "RecoverableError"
         );
-        this.realm.handleError(error);
-        throw new FatalError();
+        // We generate correct code in this case, but the user probably doesn't want us to emit an unconditional throw
+        if (this.realm.handleError(error) !== "Recover") throw new FatalError();
       }
       for (let fun2 of additionalFunctions) {
         if (fun1 === fun2) continue;
@@ -327,8 +330,8 @@ export class Functions {
       }
     }
     if (conflicts.size > 0) {
-      for (let diagnostic of conflicts.values()) this.realm.handleError(diagnostic);
-      throw new FatalError();
+      for (let diagnostic of conflicts.values())
+        if (this.realm.handleError(diagnostic) !== "Recover") throw new FatalError();
     }
   }
 
