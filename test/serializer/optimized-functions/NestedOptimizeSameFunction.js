@@ -1,4 +1,4 @@
-// expected FatalError: PP1009
+// expected RecoverableError: PP1009
 // does not contain: = 5
 
 function fn() {
