@@ -410,11 +410,21 @@ export default class AbstractObjectValue extends AbstractValue {
         AbstractValue.reportIntrospectionError(this, P);
         throw new FatalError();
       }
+      // Extract the first existing descriptor to get its existing attributes as defaults.
+      let firstExistingDesc;
+      for (let cv of elements) {
+        invariant(cv instanceof ObjectValue);
+        firstExistingDesc = cv.$GetOwnProperty(P);
+        if (firstExistingDesc) {
+          break;
+        }
+      }
       let desc = {
         value: "value" in Desc ? Desc.value : this.$Realm.intrinsics.undefined,
-        writable: "writable" in Desc ? Desc.writable : false,
-        enumerable: "enumerable" in Desc ? Desc.enumerable : false,
-        configurable: "configurable" in Desc ? Desc.configurable : false,
+        writable: "writable" in Desc ? Desc.writable : firstExistingDesc ? firstExistingDesc.writable : false,
+        enumerable: "enumerable" in Desc ? Desc.enumerable : firstExistingDesc ? firstExistingDesc.enumerable : false,
+        configurable:
+          "configurable" in Desc ? Desc.configurable : firstExistingDesc ? firstExistingDesc.configurable : false,
       };
       let newVal = desc.value;
       if (this.kind === "conditional") {
