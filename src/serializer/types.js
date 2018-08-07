@@ -26,11 +26,10 @@ import { type SerializerStatistics } from "./statistics.js";
 
 export type TryQuery<T> = (f: () => T, defaultValue: T) => T;
 
-// TODO: add type for additional functions.
 export type SerializedBodyType =
   | "MainGenerator"
   | "Generator"
-  | "AdditionalFunction"
+  | "OptimizedFunction"
   | "DelayInitializations"
   | "ConditionalAssignmentBranch"
   | "LazyObjectInitializer";
@@ -43,6 +42,7 @@ export type SerializedBody = {
   parentBody?: SerializedBody,
   nestingLevel?: number,
   processing?: boolean,
+  optimizedFunction?: FunctionValue, // defined if any only if type is OptimizedFunction
 };
 
 export type AdditionalFunctionEffects = {
