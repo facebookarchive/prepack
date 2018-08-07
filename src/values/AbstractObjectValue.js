@@ -794,7 +794,15 @@ export default class AbstractObjectValue extends AbstractValue {
           )
       );
       if (!(result instanceof BooleanValue)) {
-        AbstractValue.reportIntrospectionError(this, P);
+        let error = new CompilerDiagnostic(
+          "object could have both succeeded and failed updating",
+          realm.currentLocation,
+          "PP0041",
+          "RecoverableError"
+        );
+        if (realm.handleError(error) === "Recover") {
+          return true;
+        }
         throw new FatalError();
       }
       return result.value;
@@ -825,8 +833,15 @@ export default class AbstractObjectValue extends AbstractValue {
         );
       }
       if (sawTrue && sawFalse) {
-        AbstractValue.reportIntrospectionError(this, P);
-        throw new FatalError();
+        let error = new CompilerDiagnostic(
+          "object could have both succeeded and failed updating",
+          realm.currentLocation,
+          "PP0041",
+          "RecoverableError"
+        );
+        if (realm.handleError(error) === "Recover") {
+          return true;
+        }
       }
       return sawTrue;
     }
@@ -835,7 +850,7 @@ export default class AbstractObjectValue extends AbstractValue {
   $SetPartial(_P: AbstractValue | PropertyKeyValue, V: Value, Receiver: Value): boolean {
     let P = _P;
     if (!this.values.isTop() && !(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
-    if (this.values.isTop() || !this.isSimpleObject()) {
+    if (this.values.isTop()) {
       if (this.$Realm.isInPureScope()) {
         // If we're in a pure scope, we can leak the key and the instance,
         // and leave the residual property assignment in place.
@@ -879,7 +894,9 @@ export default class AbstractObjectValue extends AbstractValue {
       throw new FatalError();
     }
 
+    let realm = this.$Realm;
     let elements = this.values.getElements();
+
     if (elements.size === 1) {
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
@@ -893,23 +910,73 @@ export default class AbstractObjectValue extends AbstractValue {
       invariant(cond instanceof AbstractValue);
       invariant(ob1 instanceof ObjectValue || ob1 instanceof AbstractObjectValue);
       invariant(ob2 instanceof ObjectValue || ob2 instanceof AbstractObjectValue);
-      let oldVal1 = ob1.$GetPartial(P, Receiver);
-      let oldVal2 = ob2.$GetPartial(P, Receiver);
-      let newVal1 = AbstractValue.createFromConditionalOp(this.$Realm, cond, V, oldVal1);
-      let newVal2 = AbstractValue.createFromConditionalOp(this.$Realm, cond, oldVal2, V);
-      let result1 = ob1.$SetPartial(P, newVal1, Receiver);
-      let result2 = ob2.$SetPartial(P, newVal2, Receiver);
-      invariant(result1 && result2, "a simple object must be writable");
-      return result1;
+      // Evaluate the effect of each setter separately and join the effects.
+      let result = realm.evaluateWithAbstractConditional(
+        cond,
+        () =>
+          realm.evaluateForEffects(
+            () => new BooleanValue(realm, ob1.$SetPartial(P, V, Receiver)),
+            undefined,
+            "ConditionalSet/1"
+          ),
+        () =>
+          realm.evaluateForEffects(
+            () => new BooleanValue(realm, ob2.$SetPartial(P, V, Receiver)),
+            undefined,
+            "ConditionalSet/2"
+          )
+      );
+      if (!(result instanceof BooleanValue)) {
+        let error = new CompilerDiagnostic(
+          "object could have both succeeded and failed updating",
+          realm.currentLocation,
+          "PP0041",
+          "RecoverableError"
+        );
+        if (realm.handleError(error) === "Recover") {
+          return true;
+        }
+        throw new FatalError();
+      }
+      return result.value;
     } else {
+      let sawTrue = false;
+      let sawFalse = false;
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
-        let oldVal = this.$GetPartial(P, Receiver);
+        // Evaluate the effect of each setter separately and join the effects.
         let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
-        let v = AbstractValue.createFromConditionalOp(this.$Realm, cond, V, oldVal);
-        cv.$SetPartial(P, v, Receiver);
+        invariant(cond instanceof AbstractValue);
+        realm.evaluateWithAbstractConditional(
+          cond,
+          () =>
+            realm.evaluateForEffects(
+              () => {
+                if (cv.$SetPartial(P, V, Receiver)) {
+                  sawTrue = true;
+                } else {
+                  sawFalse = true;
+                }
+                return realm.intrinsics.empty;
+              },
+              undefined,
+              "AbstractSet"
+            ),
+          () => construct_empty_effects(realm)
+        );
       }
-      return true;
+      if (sawTrue && sawFalse) {
+        let error = new CompilerDiagnostic(
+          "object could have both succeeded and failed updating",
+          realm.currentLocation,
+          "PP0041",
+          "RecoverableError"
+        );
+        if (realm.handleError(error) === "Recover") {
+          return true;
+        }
+      }
+      return sawTrue;
     }
   }
 
@@ -991,8 +1058,15 @@ export default class AbstractObjectValue extends AbstractValue {
         else sawFalse = true;
       }
       if (sawTrue && sawFalse) {
-        AbstractValue.reportIntrospectionError(this, P);
-        throw new FatalError();
+        let error = new CompilerDiagnostic(
+          "object could have both succeeded and failed updating",
+          this.$Realm.currentLocation,
+          "PP0041",
+          "RecoverableError"
+        );
+        if (this.$Realm.handleError(error) === "Recover") {
+          return true;
+        }
       }
       return sawTrue;
     }

@@ -522,7 +522,15 @@ export class PropertiesImplementation {
     // If it was simple, it would've been an assignment to the receiver.
     // The only case the Receiver isn't this, if this was a ToObject
     // coercion from a PrimitiveValue.
-    invariant(O === Receiver || HasCompatibleType(Receiver, PrimitiveValue));
+    let abstractOverO = false;
+    if (Receiver instanceof AbstractObjectValue && !Receiver.values.isTop()) {
+      let elements = Receiver.values.getElements();
+      invariant(elements);
+      if (elements.has(O)) {
+        abstractOverO = true;
+      }
+    }
+    invariant(O === Receiver || HasCompatibleType(Receiver, PrimitiveValue) || abstractOverO);
 
     P = To.ToStringAbstract(realm, P);
 
