@@ -919,7 +919,7 @@ export class ResidualHeapSerializer {
           );
         }
         invariant(
-          referencingOnlyOptimizedFunction === undefined || this.emitter.emittingToAdditionalFunction(),
+          referencingOnlyOptimizedFunction === undefined || !!this.emitter.getActiveOptimizedFunction(),
           "additional function inconsistency"
         );
         let declarationBody = this.emitter.getDeclarationBody(dependency);
@@ -934,7 +934,7 @@ export class ResidualHeapSerializer {
       onAbstractValueWithIdentifier: dependency => {
         if (trace) console.log(`  depending on abstract value with identifier ${dependency.intrinsicName || "?"}`);
         invariant(
-          referencingOnlyOptimizedFunction === undefined || this.emitter.emittingToAdditionalFunction(),
+          referencingOnlyOptimizedFunction === undefined || !!this.emitter.getActiveOptimizedFunction(),
           "additional function inconsistency"
         );
         let declarationBody = this.emitter.getDeclarationBody(dependency);
@@ -1134,7 +1134,7 @@ export class ResidualHeapSerializer {
       // The intrinsic conceptually exists ahead of time.
       invariant(
         this.emitter.getBody().type === "MainGenerator" ||
-          this.emitter.getBody().type === "AdditionalFunction" ||
+          this.emitter.getBody().type === "OptimizedFunction" ||
           this.emitter.getBody().type === "DelayInitializations"
       );
       return this.preludeGenerator.memoizeReference(intrinsicName);
@@ -1974,7 +1974,7 @@ export class ResidualHeapSerializer {
         !this.realm.derivedIds.has(id.name) ||
           this.emitter.cannotDeclare() ||
           this.emitter.hasBeenDeclared(val) ||
-          this.emitter.emittingToAdditionalFunction(),
+          !!this.emitter.getActiveOptimizedFunction(),
         `an abstract value with an identifier "${id.name}" was referenced before being declared`
       );
     }
@@ -2154,14 +2154,16 @@ export class ResidualHeapSerializer {
   }
 
   _withGeneratorScope(
-    type: "Generator" | "AdditionalFunction",
+    type: "Generator" | "OptimizedFunction",
     generator: Generator,
     valuesToProcess: void | Set<AbstractValue | ObjectValue>,
     callback: SerializedBody => void,
-    isChildOverride?: boolean
+    optimizedFunction?: void | FunctionValue
   ): Array<BabelNodeStatement> {
-    let newBody = { type, parentBody: undefined, entries: [], done: false };
-    let isChild = isChildOverride || type === "Generator";
+    let newBody = { type, parentBody: undefined, entries: [], done: false, optimizedFunction };
+    let optimizedFunctionRoot =
+      optimizedFunction === undefined ? undefined : this.tryGetOptimizedFunctionRoot(optimizedFunction);
+    let isChild = !!optimizedFunctionRoot || type === "Generator";
     let oldBody = this.emitter.beginEmitting(generator, newBody, /*isChild*/ isChild);
     invariant(!this.activeGeneratorBodies.has(generator));
     this.activeGeneratorBodies.set(generator, newBody);
@@ -2338,9 +2340,8 @@ export class ResidualHeapSerializer {
     functionValue: FunctionValue,
     additionalEffects: AdditionalFunctionEffects
   ): Array<BabelNodeStatement> {
-    let inAdditionalFunction = this.tryGetOptimizedFunctionRoot(functionValue);
     return this._withGeneratorScope(
-      "AdditionalFunction",
+      "OptimizedFunction",
       generator,
       /*valuesToProcess*/ undefined,
       newBody => {
@@ -2353,7 +2354,7 @@ export class ResidualHeapSerializer {
           return null;
         }, additionalEffects.effects);
       },
-      !!inAdditionalFunction
+      functionValue
     );
   }
 
