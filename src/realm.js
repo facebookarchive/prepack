@@ -1534,18 +1534,14 @@ export class Realm {
       if (root instanceof FunctionEnvironmentRecord && func === root.$FunctionObject) {
         return true;
       }
-      if (root === env.environmentRecord) {
-        return true;
-      }
-      if (this.createdObjectsTrackedForLeaks !== undefined && !this.createdObjectsTrackedForLeaks.has(func)) {
-        return false;
-      }
-      env = env.parent;
       while (env) {
-        if (env.environmentRecord === root) {
+        if (env.environmentRecord === root && !env.destroyed) {
           return true;
         }
         env = env.parent;
+      }
+      if (this.createdObjectsTrackedForLeaks !== undefined && !this.createdObjectsTrackedForLeaks.has(func)) {
+        return false;
       }
       return false;
     };
