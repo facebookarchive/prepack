@@ -1540,9 +1540,6 @@ export class Realm {
         }
         env = env.parent;
       }
-      if (this.createdObjectsTrackedForLeaks !== undefined && !this.createdObjectsTrackedForLeaks.has(func)) {
-        return false;
-      }
       return false;
     };
 
