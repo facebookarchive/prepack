@@ -782,6 +782,9 @@ export class ResidualHeapSerializer {
       } else {
         let f = this.tryGetOptimizedFunctionRoot(functionValue);
         if (f === undefined) return undefined;
+        if (this.isDefinedInsideFunction(f, functionValues)) {
+          continue;
+        }
         if (additionalFunction !== undefined && additionalFunction !== f) return undefined;
         additionalFunction = f;
       }
