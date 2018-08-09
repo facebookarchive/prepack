@@ -256,7 +256,7 @@ export class PropertiesImplementation {
       Havoc.value(realm, V);
       // The receiver might leak to a getter so if it's not already havoced, we need to havoc it.
       Havoc.value(realm, Receiver);
-      if (realm.generator) {
+      if (realm.generator !== undefined) {
         realm.generator.emitPropertyAssignment(Receiver, StringKey(P), V);
       }
       return true;
@@ -431,10 +431,10 @@ export class PropertiesImplementation {
 
           // iv. Return ? Receiver.[[DefineOwnProperty]](P, valueDesc).
           if (weakDeletion || existingDescValue.mightHaveBeenDeleted()) {
-            // At this point we are not actually sure that Receiver actually has
-            // a property P, however, if it has, we are sure that its a data property,
-            // and that redefining the property with valueDesc will not change the
-            // attributes of the property, so we can reuse the existing
+            // At this point we are not sure that Receiver actually has a property P.
+            // If, however, it has -> P. If, however, it has, we are sure that its a
+            // data property, and that redefining the property with valueDesc will not
+            // change the attributes of the property, so we can reuse the existing
             // descriptor.
             valueDesc = existingDescriptor;
             valueDesc.value = V;
@@ -702,7 +702,7 @@ export class PropertiesImplementation {
     if (!desc) {
       ensureIsNotFinal(realm, O, P);
       if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
-        if (realm.generator) {
+        if (realm.generator !== undefined) {
           realm.generator.emitPropertyDelete(O, StringKey(P));
         }
       }
@@ -713,7 +713,7 @@ export class PropertiesImplementation {
     if (desc.configurable) {
       ensureIsNotFinal(realm, O, P);
       if (O.mightBeHavocedObject()) {
-        if (realm.generator) {
+        if (realm.generator !== undefined) {
           realm.generator.emitPropertyDelete(O, StringKey(P));
         }
         return true;
@@ -841,7 +841,7 @@ export class PropertiesImplementation {
         ensureIsNotFinal(realm, O, P);
         if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
           havocDescriptor(realm, Desc);
-          if (realm.generator) {
+          if (realm.generator !== undefined) {
             realm.generator.emitDefineProperty(O, StringKey(P), Desc);
           }
           return true;
@@ -933,7 +933,7 @@ export class PropertiesImplementation {
       ensureIsNotFinal(realm, O, P);
       if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
         havocDescriptor(realm, Desc);
-        if (realm.generator) {
+        if (realm.generator !== undefined) {
           realm.generator.emitDefineProperty(O, StringKey(P), Desc);
         }
         return true;
@@ -1409,7 +1409,7 @@ export class PropertiesImplementation {
                   createOperationDescriptor("ABSTRACT_PROPERTY"),
                   { kind: AbstractValue.makeKind("property", P) }
                 );
-              } else if (realm.generator) {
+              } else if (realm.generator !== undefined) {
                 return AbstractValue.createTemporalFromBuildFunction(
                   realm,
                   type,
