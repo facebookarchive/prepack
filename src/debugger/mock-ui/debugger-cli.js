@@ -19,7 +19,7 @@ function run(process, console) {
   let args = readCLIArguments(process, console);
   let session = new UISession(process, args);
   try {
-    session.serve();
+    session.serve(false);
   } catch (e) {
     console.error(e);
     session.shutdown();
@@ -47,7 +47,7 @@ function readCLIArguments(process, console): DebuggerCLIArguments {
     } else if (arg === "prepackRuntime") {
       prepackRuntime = args.shift();
     } else if (arg === "prepackArguments") {
-      prepackArguments = args.shift().split(" ");
+      prepackArguments.push(args.shift());
     } else if (arg === "sourceFiles") {
       // Support multiple source files.
       // Assumes everything between --sourceFile and the next --[flag] is a source file.
