@@ -717,6 +717,8 @@ export class JoinImplementation {
     let join = (b: Binding, b1: void | BindingEntry, b2: void | BindingEntry) => {
       let l1 = b1 === undefined ? b.hasLeaked : b1.hasLeaked;
       let l2 = b2 === undefined ? b.hasLeaked : b2.hasLeaked;
+      let ls1 = b1 === undefined ? b.leakStatus : b1.leakStatus;
+      let ls2 = b2 === undefined ? b.leakStatus : b2.leakStatus;
       let v1 = b1 === undefined ? b.value : b1.value;
       let v2 = b2 === undefined ? b.value : b2.value;
       // ensure that if either none or both sides have leaked
@@ -724,22 +726,30 @@ export class JoinImplementation {
       if (!l1 && l2) [g1, rewritten1] = leak(b, g1, v1, rewritten1);
       else if (l1 && !l2) [g2, rewritten2] = leak(b, g2, v2, rewritten2);
       let hasLeaked = l1 || l2;
-      // For leaked (and mutable) bindings, the actual value is no longer directly available.
+      // If either binding has a READ_WRITE status, then always use that
+      let leakStatus = ls1 === "READ_WRITE" || ls2 === "READ_WRITE" ? "READ_WRITE" : ls1 || ls2;
+      // For leaked (and mutable) bindings that are READ_WRITE, the actual value is no longer directly available.
       // In that case, we reset the value to undefined to prevent any use of the last known value.
-      let value = hasLeaked ? undefined : this.joinValues(realm, v1, v2, getAbstractValue);
+      let value =
+        hasLeaked && leakStatus === "READ_WRITE" ? undefined : this.joinValues(realm, v1, v2, getAbstractValue);
       invariant(value === undefined || value instanceof Value);
-      let previousHasLeaked, previousValue;
+      let previousHasLeaked, previousValue, previousLeakStatus;
       if (b1 !== undefined) {
         previousHasLeaked = b1.previousHasLeaked;
+        previousLeakStatus = b1.previousLeakStatus;
         previousValue = b1.previousValue;
         invariant(
-          b2 === undefined || (previousHasLeaked === b2.previousHasLeaked && previousValue === b2.previousValue)
+          b2 === undefined ||
+            (previousHasLeaked === b2.previousHasLeaked &&
+              previousLeakStatus === b2.previousLeakStatus &&
+              previousValue === b2.previousValue)
         );
       } else if (b2 !== undefined) {
         previousHasLeaked = b2.previousHasLeaked;
+        previousLeakStatus = b2.previousLeakStatus;
         previousValue = b2.previousValue;
       }
-      return { hasLeaked, value, previousHasLeaked, previousValue };
+      return { hasLeaked, leakStatus, value, previousHasLeaked, previousLeakStatus, previousValue };
     };
     let joinedBindings = this.joinMaps(m1, m2, join);
     return [g1, g2, joinedBindings];

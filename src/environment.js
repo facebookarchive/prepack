@@ -53,6 +53,8 @@ import { createOperationDescriptor } from "./utils/generator.js";
 
 import { SourceMapConsumer, type NullableMappedPosition } from "source-map";
 
+export type LeakStatus = "READ_ONLY" | "READ_WRITE";
+
 function deriveGetBinding(realm: Realm, binding: Binding) {
   let types = TypesDomain.topVal;
   let values = ValuesDomain.topVal;
@@ -60,16 +62,17 @@ function deriveGetBinding(realm: Realm, binding: Binding) {
   return realm.generator.deriveAbstract(types, values, [], createOperationDescriptor("GET_BINDING", { binding }));
 }
 
-export function havocBinding(binding: Binding): void {
+export function leakBinding(binding: Binding, leakStatus: LeakStatus): void {
   let realm = binding.environment.realm;
   let value = binding.value;
   if (!binding.hasLeaked) {
     realm.recordModifiedBinding(binding).hasLeaked = true;
+    realm.recordModifiedBinding(binding).leakStatus = leakStatus;
     if (value !== undefined) {
       let realmGenerator = realm.generator;
       if (realmGenerator !== undefined && value !== realm.intrinsics.undefined)
         realmGenerator.emitBindingAssignment(binding, value);
-      if (binding.mutable === true) {
+      if (binding.mutable === true && leakStatus === "READ_WRITE") {
         // For mutable, i.e. non-const bindings, the actual value is no longer directly available.
         // Thus, we reset the value to undefined to prevent any use of the last known value.
         binding.value = undefined;
@@ -160,6 +163,7 @@ export type Binding = {
   // bindings that are assigned to inside loops with abstract termination conditions need temporal locations
   phiNode?: AbstractValue,
   hasLeaked: boolean,
+  leakStatus?: LeakStatus,
 };
 
 // ECMA262 8.1.1.1
@@ -207,6 +211,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       isGlobal: isGlobal,
       mightHaveBeenCaptured: false,
       hasLeaked: false,
+      leakStatus: undefined,
     });
 
     // 4. Return NormalCompletion(empty).
@@ -234,6 +239,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
       isGlobal: isGlobal,
       mightHaveBeenCaptured: false,
       hasLeaked: false,
+      leakStatus: undefined,
     };
     this.bindings[N] = skipRecord ? binding : realm.recordModifiedBinding(binding);
 
@@ -337,7 +343,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     }
 
     // 4. Return the value currently bound to N in envRec.
-    if (binding.hasLeaked && binding.mutable) {
+    if (binding.hasLeaked && binding.mutable && binding.leakStatus === "READ_WRITE") {
       return deriveGetBinding(realm, binding);
     }
     invariant(binding.value);

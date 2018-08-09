@@ -16,6 +16,7 @@ import type {
   FunctionType,
   HavocType,
   JoinType,
+  LeakType,
   MaterializeType,
   PathType,
   PropertiesType,
@@ -29,6 +30,7 @@ export let Create: CreateType = (null: any);
 export let Environment: EnvironmentType = (null: any);
 export let Functions: FunctionType = (null: any);
 export let Havoc: HavocType = (null: any);
+export let Leak: LeakType = (null: any);
 export let Materialize: MaterializeType = (null: any);
 export let Join: JoinType = (null: any);
 export let Path: PathType = (null: any);
@@ -54,6 +56,10 @@ export function setFunctions(singleton: FunctionType): void {
 
 export function setHavoc(singleton: HavocType): void {
   Havoc = singleton;
+}
+
+export function setLeak(singleton: LeakType): void {
+  Leak = singleton;
 }
 
 export function setMaterialize(singleton: MaterializeType): void {

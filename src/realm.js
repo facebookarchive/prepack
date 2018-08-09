@@ -51,6 +51,7 @@ import {
   GlobalEnvironmentRecord,
   FunctionEnvironmentRecord,
   DeclarativeEnvironmentRecord,
+  type LeakStatus,
 } from "./environment.js";
 import type { Binding } from "./environment.js";
 import { cloneDescriptor, Construct } from "./methods/index.js";
@@ -73,8 +74,10 @@ import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatem
 import { Utils } from "./singletons.js";
 export type BindingEntry = {
   hasLeaked: void | boolean,
+  leakStatus: void | LeakStatus,
   value: void | Value,
   previousHasLeaked: void | boolean,
+  previousLeakStatus: void | LeakStatus,
   previousValue: void | Value,
 };
 export type Bindings = Map<Binding, BindingEntry>;
@@ -238,7 +241,7 @@ export class Realm {
     this.statistics = statistics;
     this.isReadOnly = false;
     this.useAbstractInterpretation = opts.serialize === true || opts.residual === true || Array.isArray(opts.check);
-    this.ignoreLeakLogic = false;
+    this.ignoreHavocLogic = false;
     this.isInPureTryStatement = false;
     if (opts.mathRandomSeed !== undefined) {
       this.mathRandomGenerator = seedrandom(opts.mathRandomSeed);
@@ -352,7 +355,7 @@ export class Realm {
   maxStackDepth: number;
   invariantLevel: number;
   invariantMode: InvariantModeTypes;
-  ignoreLeakLogic: boolean;
+  ignoreHavocLogic: boolean;
   emitConcreteModel: boolean;
 
   abstractValueImpliesMax: number;
@@ -764,13 +767,13 @@ export class Realm {
     return !!this.createdObjectsTrackedForLeaks;
   }
 
-  evaluateWithoutLeakLogic(f: () => Value): Value {
-    invariant(!this.ignoreLeakLogic, "Nesting evaluateWithoutLeakLogic() calls is not supported.");
-    this.ignoreLeakLogic = true;
+  evaluateWithoutHavocLogic(f: () => Value): Value {
+    invariant(!this.ignoreHavocLogic, "Nesting evaluateWithoutHavocLogic() calls is not supported.");
+    this.ignoreHavocLogic = true;
     try {
       return f();
     } finally {
-      this.ignoreLeakLogic = false;
+      this.ignoreHavocLogic = false;
     }
   }
 
@@ -1573,8 +1576,10 @@ export class Realm {
     if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding)) {
       this.modifiedBindings.set(binding, {
         hasLeaked: undefined,
+        leakStatus: undefined,
         value: undefined,
         previousHasLeaked: binding.hasLeaked,
+        previousLeakStatus: binding.leakStatus,
         previousValue: binding.value,
       });
     }
@@ -1655,8 +1660,9 @@ export class Realm {
 
   redoBindings(modifiedBindings: void | Bindings): void {
     if (modifiedBindings === undefined) return;
-    modifiedBindings.forEach(({ hasLeaked, value }, binding, m) => {
+    modifiedBindings.forEach(({ hasLeaked, leakStatus, value }, binding, m) => {
       binding.hasLeaked = hasLeaked || false;
+      binding.leakStatus = leakStatus || undefined;
       binding.value = value;
     });
   }
@@ -1665,8 +1671,10 @@ export class Realm {
     if (modifiedBindings === undefined) return;
     modifiedBindings.forEach((entry, binding, m) => {
       if (entry.hasLeaked === undefined) entry.hasLeaked = binding.hasLeaked;
+      if (entry.leakStatus === undefined) entry.leakStatus = binding.leakStatus;
       if (entry.value === undefined) entry.value = binding.value;
       binding.hasLeaked = entry.previousHasLeaked || false;
+      binding.leakStatus = entry.previousLeakStatus || undefined;
       binding.value = entry.previousValue;
     });
   }
