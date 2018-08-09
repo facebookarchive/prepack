@@ -1528,15 +1528,12 @@ export class Realm {
   recordModifiedBinding(binding: Binding, value?: Value): Binding {
     const isDefinedInsidePureFn = root => {
       let context = this.getRunningContext();
-      let { lexicalEnvironment: env, function: func } = context;
-
-      invariant(func instanceof FunctionValue);
-      if (root instanceof FunctionEnvironmentRecord && func === root.$FunctionObject) {
-        return true;
-      }
+      let { lexicalEnvironment: env } = context;
       while (env) {
-        if (env.environmentRecord === root && !env.destroyed) {
-          return true;
+        if (env.environmentRecord === root) {
+          // We can look at whether the lexical environment of the binding was destroyed to
+          // determine if it was defined outside the current pure running context.
+          return !env.destroyed;
         }
         env = env.parent;
       }
