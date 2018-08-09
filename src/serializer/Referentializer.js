@@ -291,7 +291,6 @@ export class Referentializer {
           let scope = refState.serializedScopes.get(declarativeEnvironmentRecord);
           if (scope) {
             scope.initializationValues = [];
-            scope.leakedIds = [];
           }
         }
       }
