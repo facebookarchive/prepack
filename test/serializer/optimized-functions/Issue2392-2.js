@@ -1,3 +1,5 @@
+// arrayNestedOptimizedFunctionsEnabled
+
 function fn(x, obj, cond, cond2, cond3, cond4) {
   var arr = Array.from(x);
   var a;
