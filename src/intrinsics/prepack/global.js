@@ -227,14 +227,19 @@ export default function(realm: Realm): void {
       "__evaluatePureFunction",
       0,
       (context, [functionValue]) => {
-        invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
-        invariant(typeof functionValue.$Call === "function");
-        let functionCall: Function = functionValue.$Call;
-        return realm.evaluatePure(
-          () => functionCall(realm.intrinsics.undefined, []),
-          /*bubbles*/ true,
-          /*reportSideEffectFunc*/ null
-        );
+        if (functionValue instanceof ECMAScriptSourceFunctionValue && typeof functionValue.$Call === "function") {
+          let functionCall: Function = functionValue.$Call;
+          return realm.evaluatePure(
+            () => functionCall(realm.intrinsics.undefined, []),
+            /*bubbles*/ true,
+            /*reportSideEffectFunc*/ null
+          );
+        } else {
+          realm.handleError(
+            new CompilerDiagnostic(`CompilerDiagnostic Error`, realm.currentLocation, "PP1005", "FatalError")
+          );
+          throw new FatalError("CompilerDiagnostic Error");
+        }
       }
     ),
     writable: true,
