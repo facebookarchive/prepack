@@ -798,7 +798,8 @@ export class ResidualHeapSerializer {
           outermostAdditionalFunctions.add(functionValue);
       } else {
         let f = this.tryGetOptimizedFunctionRoot(functionValue);
-        if (f && !this.isDefinedInsideFunction(f, functionValues)) outermostAdditionalFunctions.add(f);
+        if (f === undefined) return undefined;
+        if (!this.isDefinedInsideFunction(f, functionValues)) outermostAdditionalFunctions.add(f);
       }
     }
     if (outermostAdditionalFunctions.size === 1) return [...outermostAdditionalFunctions][0];
