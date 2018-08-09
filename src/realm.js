@@ -1529,7 +1529,7 @@ export class Realm {
     const isDefinedInsidePureFn = root => {
       let context = this.getRunningContext();
       let { lexicalEnvironment: env } = context;
-      while (env) {
+      while (env !== null) {
         if (env.environmentRecord === root) {
           // We can look at whether the lexical environment of the binding was destroyed to
           // determine if it was defined outside the current pure running context.
