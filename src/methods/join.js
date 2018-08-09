@@ -727,11 +727,11 @@ export class JoinImplementation {
       else if (l1 && !l2) [g2, rewritten2] = leak(b, g2, v2, rewritten2);
       let hasLeaked = l1 || l2;
       // If either binding has a READ_WRITE status, then always use that
-      let leakStatus = ls1 === "READ_WRITE" || ls2 === "READ_WRITE" ? "READ_WRITE" : ls1 || ls2;
+      let leakStatus = ls1 === "NO_READ_WRITE" || ls2 === "NO_READ_WRITE" ? "NO_READ_WRITE" : ls1 || ls2;
       // For leaked (and mutable) bindings that are READ_WRITE, the actual value is no longer directly available.
       // In that case, we reset the value to undefined to prevent any use of the last known value.
       let value =
-        hasLeaked && leakStatus === "READ_WRITE" ? undefined : this.joinValues(realm, v1, v2, getAbstractValue);
+        hasLeaked && leakStatus === "NO_READ_WRITE" ? undefined : this.joinValues(realm, v1, v2, getAbstractValue);
       invariant(value === undefined || value instanceof Value);
       let previousHasLeaked, previousValue, previousLeakStatus;
       if (b1 !== undefined) {

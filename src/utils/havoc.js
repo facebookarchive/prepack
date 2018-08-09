@@ -328,7 +328,7 @@ class ObjectValueVisitor {
         // If this binding could have been mutated from the closure, then the
         // binding itself has now leaked, but not necessarily the value in it.
         if (this.operation === "HAVOC") {
-          leakBinding(binding, "READ_WRITE");
+          leakBinding(binding, "NO_READ_WRITE");
         } else if (this.operation === "LEAK_ONLY") {
           leakBinding(binding, "READ_ONLY");
         }

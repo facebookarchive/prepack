@@ -53,7 +53,7 @@ import { createOperationDescriptor } from "./utils/generator.js";
 
 import { SourceMapConsumer, type NullableMappedPosition } from "source-map";
 
-export type LeakStatus = "READ_ONLY" | "READ_WRITE";
+export type LeakStatus = "READ_ONLY" | "NO_READ_WRITE";
 
 function deriveGetBinding(realm: Realm, binding: Binding) {
   let types = TypesDomain.topVal;
@@ -72,7 +72,7 @@ export function leakBinding(binding: Binding, leakStatus: LeakStatus): void {
       let realmGenerator = realm.generator;
       if (realmGenerator !== undefined && value !== realm.intrinsics.undefined)
         realmGenerator.emitBindingAssignment(binding, value);
-      if (binding.mutable === true && leakStatus === "READ_WRITE") {
+      if (binding.mutable === true && leakStatus === "NO_READ_WRITE") {
         // For mutable, i.e. non-const bindings, the actual value is no longer directly available.
         // Thus, we reset the value to undefined to prevent any use of the last known value.
         binding.value = undefined;
@@ -343,7 +343,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     }
 
     // 4. Return the value currently bound to N in envRec.
-    if (binding.hasLeaked && binding.mutable && binding.leakStatus === "READ_WRITE") {
+    if (binding.hasLeaked && binding.mutable && binding.leakStatus === "NO_READ_WRITE") {
       return deriveGetBinding(realm, binding);
     }
     invariant(binding.value);
