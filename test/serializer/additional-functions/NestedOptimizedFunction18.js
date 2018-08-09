@@ -1,5 +1,5 @@
 function Component(x) {
-  this.val = x
+  this.val = x;
 }
 
 function foo(a, b, c, d) {
@@ -8,12 +8,7 @@ function foo(a, b, c, d) {
   }
   var arr = Array.from(c);
   var _ref11;
-  var x =
-    (_ref11 = b) != null
-      ? (_ref11 = _ref11.feedback) != null
-        ? _ref11.display_comments
-        : _ref11
-      : _ref11;
+  var x = (_ref11 = b) != null ? ((_ref11 = _ref11.feedback) != null ? _ref11.display_comments : _ref11) : _ref11;
 
   var a = new Component(x);
   var mappedArr = arr.map(function() {
@@ -33,10 +28,10 @@ inspect = function() {
     {
       feedback: {
         display_comments: 5,
-      }
+      },
     },
-    [,,,],
+    [, , ,],
     func
   );
   return JSON.stringify(val);
-}
+};
