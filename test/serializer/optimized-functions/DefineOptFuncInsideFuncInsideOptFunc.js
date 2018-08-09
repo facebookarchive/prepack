@@ -1,3 +1,4 @@
+// arrayNestedOptimizedFunctionsEnabled
 // skip lint
 // The original issue here was that nested is defined inside of fn2 which is a non-optimized function
 // called by fn (an optimized function). That caused Prepack to not detect that nested was nested
