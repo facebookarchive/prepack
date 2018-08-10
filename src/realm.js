@@ -340,6 +340,7 @@ export class Realm {
     this.debugNames = opts.debugNames;
     this._checkedObjectIds = new Map();
     this.optimizedFunctions = new Map();
+    this.arrayNestedOptimizedFunctionsEnabled = opts.arrayNestedOptimizedFunctionsEnabled || false;
   }
 
   statistics: RealmStatistics;
@@ -485,6 +486,7 @@ export class Realm {
   _checkedObjectIds: Map<ObjectValue | AbstractObjectValue, number>;
 
   optimizedFunctions: Map<FunctionValue | AbstractValue, ArgModel | void>;
+  arrayNestedOptimizedFunctionsEnabled: boolean;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
@@ -1531,19 +1533,12 @@ export class Realm {
   recordModifiedBinding(binding: Binding, value?: Value): Binding {
     const isDefinedInsidePureFn = root => {
       let context = this.getRunningContext();
-      let { lexicalEnvironment: env, function: func } = context;
-
-      invariant(func instanceof FunctionValue);
-      if (root instanceof FunctionEnvironmentRecord && func === root.$FunctionObject) {
-        return true;
-      }
-      if (this.createdObjectsTrackedForLeaks !== undefined && !this.createdObjectsTrackedForLeaks.has(func)) {
-        return false;
-      }
-      env = env.parent;
-      while (env) {
+      let { lexicalEnvironment: env } = context;
+      while (env !== null) {
         if (env.environmentRecord === root) {
-          return true;
+          // We can look at whether the lexical environment of the binding was destroyed to
+          // determine if it was defined outside the current pure running context.
+          return !env.destroyed;
         }
         env = env.parent;
       }

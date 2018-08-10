@@ -61,6 +61,7 @@ export type PrepackOptions = {|
   debuggerConfigArgs?: DebuggerConfigArguments,
   debugReproArgs?: DebugReproArguments,
   onParse?: BabelNodeFile => void,
+  arrayNestedOptimizedFunctionsEnabled?: boolean,
 |};
 
 export function getRealmOptions({
@@ -87,6 +88,7 @@ export function getRealmOptions({
   abstractValueImpliesMax,
   debuggerConfigArgs,
   debugReproArgs,
+  arrayNestedOptimizedFunctionsEnabled,
 }: PrepackOptions): RealmOptions {
   return {
     compatibility,
@@ -112,6 +114,7 @@ export function getRealmOptions({
     abstractValueImpliesMax,
     debuggerConfigArgs,
     debugReproArgs,
+    arrayNestedOptimizedFunctionsEnabled,
   };
 }
 

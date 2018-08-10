@@ -1,4 +1,5 @@
 // does not contain:// this function should be inlined
+// arrayNestedOptimizedFunctionsEnabled
 
 (function() {
   var obj = {

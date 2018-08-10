@@ -51,8 +51,6 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
         throw new NestedOptimizedFunctionSideEffect();
       });
     let effects;
-    let saved_pathConditions = realm.pathConditions;
-    realm.pathConditions = [];
     try {
       effects = realm.evaluateForEffects(pureFuncCall, null, "temporalArray nestedOptimizedFunction");
     } catch (e) {
@@ -64,8 +62,6 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
         return;
       }
       throw e;
-    } finally {
-      realm.pathConditions = saved_pathConditions;
     }
     // We need to leak to function, as the bindings/objects need to be materialized
     Leak.value(realm, func);
@@ -86,7 +82,7 @@ function createArrayWithWidenedNumericProperty(
   let abstractArrayValue = new ArrayValue(realm, intrinsicName);
 
   if (possibleNestedOptimizedFunctions !== undefined) {
-    if (!realm.react.enabled || realm.react.optimizeNestedFunctions) {
+    if (realm.arrayNestedOptimizedFunctionsEnabled && (!realm.react.enabled || realm.react.optimizeNestedFunctions)) {
       evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
         realm,
         abstractArrayValue,

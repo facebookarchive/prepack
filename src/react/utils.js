@@ -793,6 +793,7 @@ export function getValueFromFunctionCall(
   let funcCall = func.$Call;
   let newCall = func.$Construct;
   let completion;
+  let createdObjects = realm.createdObjects;
   try {
     if (isConstructor) {
       invariant(newCall);
@@ -806,6 +807,8 @@ export function getValueFromFunctionCall(
     } else {
       throw error;
     }
+  } finally {
+    invariant(createdObjects === realm.createdObjects, "realm.createdObjects was not correctly restored");
   }
   if (completion instanceof PossiblyNormalCompletion) {
     // in this case one of the branches may complete abruptly, which means that
