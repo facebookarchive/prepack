@@ -10,36 +10,19 @@
 /* @flow strict-local */
 
 import { Realm } from "../realm.js";
-import { AbstractValue, FunctionValue, Value, ObjectValue } from "../values/index.js";
+import { FunctionValue, Value, ObjectValue } from "../values/index.js";
 import * as t from "@babel/types";
-import type {
-  BabelNodeExpression,
-  BabelNodeStatement,
-  BabelNodeIdentifier,
-  BabelNodeBlockStatement,
-  BabelNodeSwitchCase,
-} from "@babel/types";
-import type {
-  SerializedBody,
-  FunctionInfo,
-  FunctionInstance,
-  AdditionalFunctionInfo,
-  ClassMethodInstance,
-  AdditionalFunctionEffects,
-  ResidualFunctionBinding,
-} from "./types.js";
+import type { BabelNodeExpression, BabelNodeStatement, BabelNodeIdentifier, BabelNodeSwitchCase } from "@babel/types";
+import type { SerializedBody, AdditionalFunctionEffects, ResidualHeapInfo } from "./types.js";
 import type { SerializerOptions } from "../options.js";
 import invariant from "../invariant.js";
 import { Logger } from "../utils/logger.js";
 import { Modules } from "../utils/modules.js";
 import { HeapInspector } from "../utils/HeapInspector.js";
-import type { Scope } from "./ResidualHeapVisitor.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { getOrDefault } from "./utils.js";
-import type { DeclarativeEnvironmentRecord } from "../environment.js";
 import type { Referentializer } from "./Referentializer.js";
-import { Generator } from "../utils/generator.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
 
 const LAZY_OBJECTS_SERIALIZER_BODY_TYPE = "LazyObjectInitializer";
@@ -61,19 +44,11 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     modules: Modules,
     residualHeapValueIdentifiers: ResidualHeapValueIdentifiers,
     residualHeapInspector: HeapInspector,
-    residualValues: Map<Value, Set<Scope>>,
-    residualFunctionInstances: Map<FunctionValue, FunctionInstance>,
-    residualClassMethodInstances: Map<FunctionValue, ClassMethodInstance>,
-    residualFunctionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
+    residualHeapInfo: ResidualHeapInfo,
     options: SerializerOptions,
-    referencedDeclaredValues: Map<Value, void | FunctionValue>,
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
-    additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
-    declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
     referentializer: Referentializer,
-    generatorDAG: GeneratorDAG,
-    conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>,
-    additionalGeneratorRoots: Map<Generator, Set<ObjectValue>>
+    generatorDAG: GeneratorDAG
   ) {
     super(
       realm,
@@ -81,20 +56,13 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
       modules,
       residualHeapValueIdentifiers,
       residualHeapInspector,
-      residualValues,
-      residualFunctionInstances,
-      residualClassMethodInstances,
-      residualFunctionInfos,
+      residualHeapInfo,
       options,
-      referencedDeclaredValues,
       additionalFunctionValuesAndEffects,
-      additionalFunctionValueInfos,
-      declarativeEnvironmentRecordsBindings,
       referentializer,
-      generatorDAG,
-      conditionalFeasibility,
-      additionalGeneratorRoots
+      generatorDAG
     );
+
     this._lazyObjectIdSeed = 1;
     this._valueLazyIds = new Map();
     this._lazyObjectInitializers = new Map();

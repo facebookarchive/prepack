@@ -52,6 +52,7 @@ import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObje
 import { CompilerDiagnostic } from "./errors.js";
 import type { Severity } from "./errors.js";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
+import invariant from "./invariant.js";
 
 export const ElementSize = {
   Float32: 4,
@@ -91,8 +92,22 @@ export type SourceFile = {
   filePath: string,
   fileContents: string,
   sourceMapContents?: string,
+  sourceMapFilename?: string,
 };
 
+export class SourceFileCollection {
+  constructor(sourceFiles: Array<SourceFile>) {
+    this._sourceFiles = sourceFiles;
+  }
+  _sourceFiles: void | Array<SourceFile>;
+  toArray(): Array<SourceFile> {
+    invariant(this._sourceFiles !== undefined);
+    return this._sourceFiles;
+  }
+  destroy(): void {
+    this._sourceFiles = undefined;
+  }
+}
 export type SourceMap = {
   sources: Array<string>,
   names: Array<string>,
@@ -157,7 +172,7 @@ export type PropertyBinding = {
   descriptor?: Descriptor,
   object: ObjectValue,
   key: void | string | SymbolValue | AbstractValue, // where an abstract value must be of type String or Number or Symbol
-  // contains a build node that produces a member expression that resolves to this property binding (location)
+  // contains a operation descriptor that produces a member expression that resolves to this property binding (location)
   pathNode?: AbstractValue,
   internalSlot?: boolean,
 };
@@ -351,6 +366,7 @@ export type ReactHint = {| firstRenderValue: Value, object: ObjectValue, propert
 export type ReactComponentTreeConfig = {
   firstRenderOnly: boolean,
   isRoot: boolean,
+  modelString: void | string,
 };
 
 export type DebugServerType = {
@@ -373,9 +389,20 @@ export type HavocType = {
   value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation): void,
 };
 
+export type MaterializeType = {
+  materialize(realm: Realm, object: ObjectValue): void,
+};
+
 export type PropertiesType = {
   // ECMA262 9.1.9.1
   OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value, Receiver: Value): boolean,
+  OrdinarySetPartial(
+    realm: Realm,
+    O: ObjectValue,
+    P: AbstractValue | PropertyKeyValue,
+    V: Value,
+    Receiver: Value
+  ): boolean,
 
   // ECMA262 6.2.4.4
   FromPropertyDescriptor(realm: Realm, Desc: ?Descriptor): Value,
@@ -449,6 +476,13 @@ export type PropertiesType = {
     strictCode: boolean,
     enumerable: boolean
   ): boolean,
+
+  GetOwnPropertyKeysArray(
+    realm: Realm,
+    O: ObjectValue,
+    allowAbstractKeys: boolean,
+    getOwnPropertyKeysEvenIfPartial: boolean
+  ): Array<string>,
 };
 
 export type FunctionType = {
@@ -1012,6 +1046,8 @@ export type ToType = {
     hint: "string" | "number"
   ): AbstractValue | PrimitiveValue,
 
+  IsToStringPure(realm: Realm, input: string | Value): boolean,
+
   // ECMA262 7.1.12
   ToString(realm: Realm, val: string | ConcreteValue): string,
 
@@ -1037,10 +1073,15 @@ export type ToType = {
 
 export type ConcretizeType = (realm: Realm, val: Value) => ConcreteValue;
 
+export type DisplayResult = {} | string;
+
 export type UtilsType = {|
   typeToString: (typeof Value) => void | string,
   getTypeFromName: string => void | typeof Value,
   describeValue: Value => string,
+  jsonToDisplayString: <T: { toDisplayJson(number): DisplayResult }>(T, number) => string,
+  verboseToDisplayJson: ({}, number) => DisplayResult,
+  createModelledFunctionCall: (Realm, FunctionValue, void | string | ArgModel, void | Value) => void => Value,
 |};
 
 export type DebuggerConfigArguments = {
@@ -1048,4 +1089,96 @@ export type DebuggerConfigArguments = {
   sourcemaps?: Array<SourceFile>,
   buckRoot?: string,
   debugChannel?: DebugChannel,
+};
+
+export type SupportedGraphQLGetters =
+  | "bool"
+  | "double"
+  | "int"
+  | "time"
+  | "string"
+  | "tree"
+  | "bool_list"
+  | "double_list"
+  | "int_list"
+  | "time_list"
+  | "string_list"
+  | "tree_list";
+
+export interface ShapeInformationInterface {
+  getPropertyShape(key: string): void | ShapeInformationInterface;
+  getGetter(): void | SupportedGraphQLGetters;
+  getAbstractType(): typeof Value;
+}
+
+type ECMAScriptType =
+  | "void"
+  | "null"
+  | "boolean"
+  | "string"
+  | "symbol"
+  | "number"
+  | "object"
+  | "array"
+  | "function"
+  | "integral";
+
+type ShapeDescriptorCommon = {
+  jsType: ECMAScriptType,
+  graphQLType?: string,
+};
+
+export type ShapePropertyDescriptor = {
+  shape: ShapeDescriptor,
+  optional: boolean,
+};
+
+type ShapeDescriptorOfObject = ShapeDescriptorCommon & {
+  kind: "object",
+  properties: { [string]: void | ShapePropertyDescriptor },
+};
+
+type ShapeDescriptorOfArray = ShapeDescriptorCommon & {
+  kind: "array",
+  elementShape: void | ShapePropertyDescriptor,
+};
+
+type ShapeDescriptorOfLink = ShapeDescriptorCommon & {
+  kind: "link",
+  shapeName: string,
+};
+
+type ShapeDescriptorOfPrimitive = ShapeDescriptorCommon & {
+  kind: "scalar",
+};
+
+type ShapeDescriptorOfEnum = ShapeDescriptorCommon & {
+  kind: "enum",
+};
+
+export type ShapeDescriptorNonLink =
+  | ShapeDescriptorOfObject
+  | ShapeDescriptorOfArray
+  | ShapeDescriptorOfPrimitive
+  | ShapeDescriptorOfEnum;
+
+export type ShapeDescriptor = ShapeDescriptorNonLink | ShapeDescriptorOfLink;
+
+export type ShapeUniverse = { [string]: ShapeDescriptor };
+
+export type ArgModel = {
+  universe: ShapeUniverse,
+  arguments: { [string]: string },
+};
+
+export type DebugReproManagerType = {
+  construct(configArgs: DebugReproArguments): void,
+  addSourceFile(fileName: string): void,
+  getSourceFilePaths(): Array<{ absolute: string, relative: string }>,
+  getSourceMapPaths(): Array<string>,
+};
+
+export type DebugReproArguments = {
+  sourcemaps?: Array<SourceFile>,
+  buckRoot?: string,
 };

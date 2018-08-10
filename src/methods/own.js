@@ -42,12 +42,16 @@ export function GetOwnPropertyKeys(realm: Realm, O: Value, Type: Function): Arra
 }
 
 // ECMA262 9.1.11.1
-export function OrdinaryOwnPropertyKeys(realm: Realm, o: ObjectValue): Array<PropertyKeyValue> {
+export function OrdinaryOwnPropertyKeys(
+  realm: Realm,
+  o: ObjectValue,
+  getOwnPropertyKeysEvenIfPartial?: boolean = false
+): Array<PropertyKeyValue> {
   // 1. Let keys be a new empty List.
   let keys = [];
 
   // 2. For each own property key P of O that is an integer index, in ascending numeric index order
-  let properties = o.getOwnPropertyKeysArray();
+  let properties = Properties.GetOwnPropertyKeysArray(realm, o, false, getOwnPropertyKeysEvenIfPartial);
   for (let key of properties
     .filter(x => IsArrayIndex(realm, x))
     .map(x => parseInt(x, 10))
@@ -73,12 +77,17 @@ export function OrdinaryOwnPropertyKeys(realm: Realm, o: ObjectValue): Array<Pro
 }
 
 // ECMA262 7.3.21
-export function EnumerableOwnProperties(realm: Realm, O: ObjectValue, kind: string): Array<Value> {
+export function EnumerableOwnProperties(
+  realm: Realm,
+  O: ObjectValue,
+  kind: string,
+  getOwnPropertyKeysEvenIfPartial?: boolean = false
+): Array<Value> {
   // 1. Assert: Type(O) is Object.
   invariant(O instanceof ObjectValue, "expected object");
 
   // 2. Let ownKeys be ? O.[[OwnPropertyKeys]]().
-  let ownKeys = O.$OwnPropertyKeys();
+  let ownKeys = O.$OwnPropertyKeys(getOwnPropertyKeysEvenIfPartial);
 
   // 3. Let properties be a new empty List.
   let properties = [];

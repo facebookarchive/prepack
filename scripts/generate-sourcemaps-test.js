@@ -67,7 +67,7 @@ function generateTest(name: string, test_path: string, code: string): boolean {
     fs.writeFileSync(name + ".new1.js.map", JSON.stringify(newMap1));
     s = prepackFileSync([name + ".new1.js"], {
       compatibility: "node-source-maps",
-      inputSourceMapFilename: name + ".new1.js.map",
+      inputSourceMapFilenames: [name + ".new1.js.map"],
       internalDebug: true,
       errorHandler: errorHandler,
       sourceMaps: true,

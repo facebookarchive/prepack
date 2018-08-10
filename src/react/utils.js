@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { Realm, Effects } from "../realm.js";
+import { Realm } from "../realm.js";
 import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "@babel/types";
 import { parseExpression } from "@babel/parser";
@@ -29,14 +29,8 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { Generator, TemporalObjectAssignEntry } from "../utils/generator.js";
-import type {
-  Descriptor,
-  FunctionBodyAstNode,
-  ReactComponentTreeConfig,
-  ReactHint,
-  PropertyBinding,
-} from "../types.js";
+import { TemporalObjectAssignEntry } from "../utils/generator.js";
+import type { Descriptor, ReactComponentTreeConfig, ReactHint, PropertyBinding } from "../types.js";
 import { Get, cloneDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import type { AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
@@ -609,47 +603,6 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   return flattenedChildren;
 }
 
-export function evaluateWithNestedParentEffects(
-  realm: Realm,
-  nestedEffects: Array<Effects>,
-  f: () => Effects
-): Effects {
-  let nextEffects = nestedEffects.slice();
-  let modifiedBindings;
-  let modifiedProperties;
-  let createdObjects;
-  let value;
-
-  if (nextEffects.length !== 0) {
-    let effects = nextEffects.shift();
-    value = effects.result;
-    createdObjects = effects.createdObjects;
-    modifiedBindings = effects.modifiedBindings;
-    modifiedProperties = effects.modifiedProperties;
-    realm.applyEffects(
-      new Effects(
-        value,
-        new Generator(realm, "evaluateWithNestedEffects", effects.generator.pathConditions),
-        modifiedBindings,
-        modifiedProperties,
-        createdObjects
-      )
-    );
-  }
-  try {
-    if (nextEffects.length === 0) {
-      return f();
-    } else {
-      return evaluateWithNestedParentEffects(realm, nextEffects, f);
-    }
-  } finally {
-    if (modifiedBindings && modifiedProperties) {
-      realm.undoBindings(modifiedBindings);
-      realm.restoreProperties(modifiedProperties);
-    }
-  }
-}
-
 // This function is mainly use to get internal properties
 // on objects that we know are safe to access internally
 // such as ReactElements. Getting properties here does
@@ -774,6 +727,7 @@ export function convertConfigObjectToReactComponentTreeConfig(
   // defaults
   let firstRenderOnly = false;
   let isRoot = false;
+  let modelString;
 
   if (!(config instanceof UndefinedValue)) {
     for (let [key] of config.properties) {
@@ -781,12 +735,32 @@ export function convertConfigObjectToReactComponentTreeConfig(
       if (propValue instanceof StringValue || propValue instanceof NumberValue || propValue instanceof BooleanValue) {
         let value = propValue.value;
 
-        // boolean options
         if (typeof value === "boolean") {
+          // boolean options
           if (key === "firstRenderOnly") {
             firstRenderOnly = value;
           } else if (key === "isRoot") {
             isRoot = value;
+          }
+        } else if (typeof value === "string") {
+          try {
+            // result here is ignored as the main point here is to
+            // check and produce error
+            JSON.parse(value);
+          } catch (e) {
+            let componentModelError = new CompilerDiagnostic(
+              "Failed to parse model for component",
+              realm.currentLocation,
+              "PP1008",
+              "FatalError"
+            );
+            if (realm.handleError(componentModelError) !== "Recover") {
+              throw new FatalError();
+            }
+          }
+          // string options
+          if (key === "model") {
+            modelString = value;
           }
         }
       } else {
@@ -804,6 +778,7 @@ export function convertConfigObjectToReactComponentTreeConfig(
   return {
     firstRenderOnly,
     isRoot,
+    modelString,
   };
 }
 
@@ -850,24 +825,12 @@ function isEventProp(name: string): boolean {
   return name.length > 2 && name[0].toLowerCase() === "o" && name[1].toLowerCase() === "n";
 }
 
-export function getLocationFromValue(expressionLocation: any): string {
-  // if we can't get a value, then it's likely that the source file was not given
-  // (this happens in React tests) so instead don't print any location
-  return expressionLocation
-    ? ` at location: ${expressionLocation.start.line}:${expressionLocation.start.column} ` +
-        `- ${expressionLocation.end.line}:${expressionLocation.end.line}`
-    : "";
-}
-
 export function createNoopFunction(realm: Realm): ECMAScriptSourceFunctionValue {
   if (realm.react.noopFunction !== undefined) {
     return realm.react.noopFunction;
   }
   let noOpFunc = new ECMAScriptSourceFunctionValue(realm);
-  let body = t.blockStatement([]);
-  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
-  noOpFunc.$FormalParameters = [];
-  noOpFunc.$ECMAScriptCode = body;
+  noOpFunc.initialize([], t.blockStatement([]));
   realm.react.noopFunction = noOpFunc;
   return noOpFunc;
 }
@@ -897,10 +860,7 @@ export function createDefaultPropsHelper(realm: Realm): ECMAScriptSourceFunction
 
   let escapeHelperAst = parseExpression(defaultPropsHelper, { plugins: ["flow"] });
   let helper = new ECMAScriptSourceFunctionValue(realm);
-  let body = escapeHelperAst.body;
-  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
-  helper.$ECMAScriptCode = body;
-  helper.$FormalParameters = escapeHelperAst.params;
+  helper.initialize(escapeHelperAst.params, escapeHelperAst.body);
   return helper;
 }
 
@@ -947,12 +907,12 @@ function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps:
     // be a better option.
     invariant(false, "TODO applyClonedTemporalAlias conditional");
   }
-  let temporalBuildNodeEntry = realm.getTemporalBuildNodeEntryFromDerivedValue(temporalAlias);
-  if (!(temporalBuildNodeEntry instanceof TemporalObjectAssignEntry)) {
+  let temporalOperationEntry = realm.getTemporalOperationEntryFromDerivedValue(temporalAlias);
+  if (!(temporalOperationEntry instanceof TemporalObjectAssignEntry)) {
     invariant(false, "TODO nont TemporalObjectAssignEntry");
   }
-  invariant(temporalBuildNodeEntry !== undefined);
-  let temporalArgs = temporalBuildNodeEntry.args;
+  invariant(temporalOperationEntry !== undefined);
+  let temporalArgs = temporalOperationEntry.args;
   // replace the original props with the cloned one
   let [to, ...sources] = temporalArgs.map(arg => (arg === props ? clonedProps : arg));
 

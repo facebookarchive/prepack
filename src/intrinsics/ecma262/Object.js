@@ -38,7 +38,7 @@ import {
   HasSomeCompatibleType,
 } from "../../methods/index.js";
 import { Create, Havoc, Properties as Props, To } from "../../singletons.js";
-import * as t from "@babel/types";
+import { createOperationDescriptor } from "../../utils/generator.js";
 import invariant from "../../invariant.js";
 
 function snapshotToObjectAndRemoveProperties(
@@ -137,20 +137,11 @@ function applyObjectAssignSource(
     }
 
     to_must_be_partial = true;
-    // Make this temporarily not partial
-    // so that we can call frm.$OwnPropertyKeys below.
-    frm.makeNotPartial();
   }
 
-  try {
-    keys = frm.$OwnPropertyKeys();
-    if (to_must_be_partial) {
-      handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
-    }
-  } finally {
-    if (frm_was_partial) {
-      frm.makePartial();
-    }
+  keys = frm.$OwnPropertyKeys(true);
+  if (to_must_be_partial) {
+    handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
   }
 
   // c. Repeat for each element nextKey of keys in List order,
@@ -234,7 +225,7 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.1
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
     func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
       // 1. Let to be ? ToObject(target).
       let to = To.ToObject(realm, target);
@@ -381,7 +372,7 @@ export default function(realm: Realm): NativeFunctionValue {
         realm,
         ObjectValue,
         [getOwnPropertyDescriptor, obj, P],
-        ([methodNode, objNode, keyNode]) => t.callExpression(methodNode, [objNode, keyNode])
+        createOperationDescriptor("OBJECT_PROTO_GET_OWN_PROPERTY_DESCRIPTOR")
       );
       invariant(result instanceof AbstractObjectValue);
       result.makeSimple();
@@ -500,12 +491,14 @@ export default function(realm: Realm): NativeFunctionValue {
       let array = ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         [objectKeys, obj],
-        ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
       );
       return array;
     } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
-      return ArrayValue.createTemporalWithWidenedNumericProperty(realm, [objectKeys, obj], ([methodNode, objNode]) =>
-        t.callExpression(methodNode, [objNode])
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
+        realm,
+        [objectKeys, obj],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
       );
     }
 
@@ -529,14 +522,14 @@ export default function(realm: Realm): NativeFunctionValue {
           let array = ArrayValue.createTemporalWithWidenedNumericProperty(
             realm,
             [objectValues, obj],
-            ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+            createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
           );
           return array;
         } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
           return ArrayValue.createTemporalWithWidenedNumericProperty(
             realm,
             [objectValues, obj],
-            ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+            createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
           );
         }
       }
@@ -561,14 +554,14 @@ export default function(realm: Realm): NativeFunctionValue {
         let array = ArrayValue.createTemporalWithWidenedNumericProperty(
           realm,
           [objectEntries, obj],
-          ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
         );
         return array;
       } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
         return ArrayValue.createTemporalWithWidenedNumericProperty(
           realm,
           [objectEntries, obj],
-          ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
         );
       }
 

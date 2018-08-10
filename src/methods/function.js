@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { LexicalEnvironment } from "../environment.js";
-import type { PropertyKeyValue, FunctionBodyAstNode } from "../types.js";
+import type { PropertyKeyValue } from "../types.js";
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
@@ -41,7 +41,6 @@ import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
 import IsStrict from "../utils/strict.js";
-import * as t from "@babel/types";
 import type {
   BabelNode,
   BabelNodeBlockStatement,
@@ -62,6 +61,7 @@ import type {
   BabelNodeWhileStatement,
   BabelNodeWithStatement,
 } from "@babel/types";
+import * as t from "@babel/types";
 
 function InternalCall(
   realm: Realm,
@@ -785,12 +785,8 @@ export class FunctionImplementation {
     // 5. Set the [[Environment]] internal slot of F to the value of Scope.
     F.$Environment = Scope;
 
-    // 6. Set the [[FormalParameters]] internal slot of F to ParameterList.
-    F.$FormalParameters = ParameterList;
-
-    // 7. Set the [[ECMAScriptCode]] internal slot of F to Body.
-    ((Body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
-    F.$ECMAScriptCode = Body;
+    // 6. Set the [[FormalParameters]] internal slot of F to ParameterList. + 7. Set the [[ECMAScriptCode]] internal slot of F to Body.
+    F.initialize(ParameterList, Body);
 
     // 8. Set the [[ScriptOrModule]] internal slot of F to GetActiveScriptOrModule().
     F.$ScriptOrModule = Environment.GetActiveScriptOrModule(realm);

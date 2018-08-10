@@ -12,7 +12,12 @@
 import { DeclarativeEnvironmentRecord, type Binding } from "../environment.js";
 import { AbstractValue, ConcreteValue, ObjectValue, Value } from "../values/index.js";
 import type { ECMAScriptSourceFunctionValue, FunctionValue } from "../values/index.js";
-import type { BabelNodeExpression, BabelNodeStatement, BabelNodeMemberExpression } from "@babel/types";
+import type {
+  BabelNodeExpression,
+  BabelNodeStatement,
+  BabelNodeMemberExpression,
+  BabelNodeBlockStatement,
+} from "@babel/types";
 import { SameValue } from "../methods/abstract.js";
 import { Realm, type Effects } from "../realm.js";
 import invariant from "../invariant.js";
@@ -21,11 +26,10 @@ import { type SerializerStatistics } from "./statistics.js";
 
 export type TryQuery<T> = (f: () => T, defaultValue: T) => T;
 
-// TODO: add type for additional functions.
 export type SerializedBodyType =
   | "MainGenerator"
   | "Generator"
-  | "AdditionalFunction"
+  | "OptimizedFunction"
   | "DelayInitializations"
   | "ConditionalAssignmentBranch"
   | "LazyObjectInitializer";
@@ -38,6 +42,7 @@ export type SerializedBody = {
   parentBody?: SerializedBody,
   nestingLevel?: number,
   processing?: boolean,
+  optimizedFunction?: FunctionValue, // defined if any only if type is OptimizedFunction
 };
 
 export type AdditionalFunctionEffects = {
@@ -205,4 +210,23 @@ export type SerializedResult = {
   statistics?: SerializerStatistics,
   reactStatistics?: ReactStatistics,
   heapGraph?: string,
+  sourceFilePaths?: { sourceMaps: Array<string>, sourceFiles: Array<{ absolute: string, relative: string }> },
+};
+
+export type Scope = FunctionValue | Generator;
+
+export type ResidualHeapInfo = {
+  values: Map<Value, Set<Scope>>,
+  functionInstances: Map<FunctionValue, FunctionInstance>,
+  classMethodInstances: Map<FunctionValue, ClassMethodInstance>,
+  functionInfos: Map<BabelNodeBlockStatement, FunctionInfo>,
+  referencedDeclaredValues: Map<Value, void | FunctionValue>,
+  additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>,
+  // Caches that ensure one ResidualFunctionBinding exists per (record, name) pair
+  declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>,
+  globalBindings: Map<string, ResidualFunctionBinding>,
+  // For every abstract value of kind "conditional", this map keeps track of whether the consequent and/or alternate is feasible in any scope
+  conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>,
+  // Parents will always be a generator, optimized function value or "GLOBAL"
+  additionalGeneratorRoots: Map<Generator, Set<ObjectValue>>,
 };

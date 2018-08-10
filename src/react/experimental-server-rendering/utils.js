@@ -14,7 +14,6 @@
 // security holes in the string escaping because of this.
 
 import type { Realm } from "../../realm.js";
-import type { FunctionBodyAstNode } from "../../types.js";
 import { parseExpression } from "@babel/parser";
 import {
   AbstractObjectValue,
@@ -155,10 +154,7 @@ export function convertValueToNode(value: Value): ReactNode {
 export function createHtmlEscapeHelper(realm: Realm): ECMAScriptSourceFunctionValue {
   let escapeHelperAst = parseExpression(escapeHtml.toString(), { plugins: ["flow"] });
   let helper = new ECMAScriptSourceFunctionValue(realm);
-  let body = escapeHelperAst.body;
-  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
-  helper.$ECMAScriptCode = body;
-  helper.$FormalParameters = escapeHelperAst.params;
+  helper.initialize(escapeHelperAst.params, escapeHelperAst.body);
   return helper;
 }
 
@@ -185,10 +181,7 @@ export function createArrayHelper(realm: Realm): ECMAScriptSourceFunctionValue {
 
   let escapeHelperAst = parseExpression(arrayHelper, { plugins: ["flow"] });
   let helper = new ECMAScriptSourceFunctionValue(realm);
-  let body = escapeHelperAst.body;
-  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
-  helper.$ECMAScriptCode = body;
-  helper.$FormalParameters = escapeHelperAst.params;
+  helper.initialize(escapeHelperAst.params, escapeHelperAst.body);
   return helper;
 }
 

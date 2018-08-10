@@ -30,6 +30,7 @@ function SerialPromises(promises: Array<() => Promise<void>>) {
 }
 
 let Serializer = require("../lib/serializer/index.js").default;
+let SourceFileCollection = require("../lib/types.js").SourceFileCollection;
 let SerializerStatistics = require("../lib/serializer/statistics.js").SerializerStatistics;
 let construct_realm = require("../lib/construct_realm.js").default;
 let initializeGlobals = require("../lib/globals.js").default;
@@ -328,22 +329,8 @@ function getErrorHandlerWithWarningCapture(
       errorCodeSet.add(diagnostic.errorCode);
     }
     try {
-      switch (diagnostic.severity) {
-        case "Information":
-          if (verbose && !suppressDiagnostics) console.log(`Info: ${msg}`);
-          return "Recover";
-        case "Warning":
-          if (verbose && !suppressDiagnostics) console.warn(`Warn: ${msg}`);
-          return "Recover";
-        case "RecoverableError":
-          if (verbose && !suppressDiagnostics) console.error(`Error: ${msg}`);
-          return "Recover";
-        case "FatalError":
-          if (verbose && !suppressDiagnostics) console.error(`Fatal Error: ${msg}`);
-          return "Fail";
-        default:
-          invariant(false, "Unexpected error type");
-      }
+      if (verbose && !suppressDiagnostics) console.log(`${diagnostic.severity}: ${msg}`);
+      return "Recover";
     } finally {
       if (verbose && !suppressDiagnostics) console.log(diagnostic.callStack);
     }
@@ -351,12 +338,11 @@ function getErrorHandlerWithWarningCapture(
 }
 
 function runTest(name, code, options: PrepackOptions, args) {
-  console.log(chalk.inverse(name) + " " + JSON.stringify(options));
+  if (!args.fast && args.filter === "") console.log(chalk.inverse(name) + " " + JSON.stringify(options));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
   let initializeMoreModules = code.includes("// initialize more modules");
   let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   if (args.verbose || code.includes("// inline expressions")) options.inlineExpressions = true;
-  if (code.includes("// do not inline expressions")) options.inlineExpressions = false;
   options.invariantLevel = code.includes("// omit invariants") || args.verbose ? 0 : 99;
   if (code.includes("// emit concrete model")) options.emitConcreteModel = true;
   if (code.includes("// exceeds stack limit")) options.maxStackDepth = 10;
@@ -396,8 +382,8 @@ function runTest(name, code, options: PrepackOptions, args) {
         lazyObjectsRuntime: options.lazyObjectsRuntime,
       };
       let serializer = new Serializer(realm, serializerOptions);
-      let sources = [{ filePath: name, fileContents: code }];
-      let serialized = serializer.init(sources, false);
+      let sourceFileCollection = new SourceFileCollection([{ filePath: name, fileContents: code }]);
+      let serialized = serializer.init(sourceFileCollection, false);
       if (!serialized) {
         console.error(chalk.red("Error during serialization"));
       } else {
@@ -446,8 +432,7 @@ function runTest(name, code, options: PrepackOptions, args) {
     let codeIterations = [];
     let markersToFind = [];
     for (let [positive, marker] of [[true, "// does contain:"], [false, "// does not contain:"]]) {
-      if (code.includes(marker)) {
-        let i = code.indexOf(marker);
+      for (let i = code.indexOf(marker); i >= 0; i = code.indexOf(marker, i + 1)) {
         let value = code.substring(i + marker.length, code.indexOf("\n", i));
         markersToFind.push({ positive, value });
       }
@@ -481,6 +466,9 @@ function runTest(name, code, options: PrepackOptions, args) {
     if (compileJSXWithBabel) {
       expectedCode = transformWithBabel(expectedCode, ["@babel/plugin-transform-react-jsx"]);
     }
+    // For some tests (e.g. nested optimized function definition) there is no way to pass lint due to undefined global
+    // __optimize
+    let runLint = !code.includes("// skip lint");
 
     return execInContext(
       `${addedCode}\n(function () {${expectedCode} // keep newline here as code may end with comment
@@ -507,13 +495,18 @@ function runTest(name, code, options: PrepackOptions, args) {
               let diagnosticExpectedComment = `// expected ${severity}:`;
               if (code.includes(diagnosticExpectedComment)) {
                 let idx = code.indexOf(diagnosticExpectedComment);
-                let errorCodeString = code.substring(idx + diagnosticExpectedComment.length, code.indexOf("\n", idx));
-                let errorCodeSet = new Set();
-                expectedDiagnostics.set(severity, errorCodeSet);
-                errorCodeString.split(",").forEach(errorCode => errorCodeSet.add(errorCode.trim()));
+                let errorCodeString = code
+                  .substring(idx + diagnosticExpectedComment.length, code.indexOf("\n", idx))
+                  .trim();
+                if (errorCodeString !== "") {
+                  let errorCodeSet = new Set();
+                  expectedDiagnostics.set(severity, errorCodeSet);
+                  errorCodeString.split(",").forEach(errorCode => errorCodeSet.add(errorCode.trim()));
+                }
                 options.residual = false;
-                options.errorHandler = getErrorHandlerWithWarningCapture(diagnosticOutput, args.verbose);
               }
+              if (expectedDiagnostics.size > 0)
+                options.errorHandler = getErrorHandlerWithWarningCapture(diagnosticOutput, args.verbose);
             }
 
             let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
@@ -602,7 +595,7 @@ function runTest(name, code, options: PrepackOptions, args) {
               );
             }
             // lint output
-            lintCompiledSource(codeToRun);
+            if (runLint) lintCompiledSource(codeToRun);
             let actualPromise;
             if (execSpec) {
               actualPromise = execExternal(execSpec, codeToRun);
@@ -666,17 +659,17 @@ function runTest(name, code, options: PrepackOptions, args) {
               console.error(chalk.red(`Code generation did not reach fixed point after ${max} iterations!`));
             }
 
-            console.log(chalk.underline("original code"));
-            console.log(code);
-            console.log(chalk.underline("output of inspect() on original code"));
-            console.log(expected);
+            console.error(chalk.underline("original code"));
+            console.error(code);
+            console.error(chalk.underline("output of inspect() on original code"));
+            console.error(expected);
             for (let ii = 0; ii < codeIterations.length; ii++) {
-              console.log(chalk.underline(`generated code in iteration ${ii}`));
-              console.log(codeIterations[ii]);
+              console.error(chalk.underline(`generated code in iteration ${ii}`));
+              console.error(codeIterations[ii]);
             }
-            console.log(chalk.underline("output of inspect() on last generated code iteration"));
-            console.log(actual);
-            if (actualStack) console.log(actualStack);
+            console.error(chalk.underline("output of inspect() on last generated code iteration"));
+            console.error(actual);
+            if (actualStack) console.error(actualStack);
             return Promise.resolve(false);
           } else if (type === "RETURN") {
             return value;
@@ -689,6 +682,7 @@ function runTest(name, code, options: PrepackOptions, args) {
         });
       })
       .catch(function(err) {
+        console.log(name);
         console.error(err);
         console.error(err.stack);
       });
@@ -772,7 +766,6 @@ function run(args) {
         const isAdditionalFunctionTest = test.file.includes("__optimize");
         const isPureFunctionTest = test.name.includes("pure-functions");
         const isCaptureTest = test.name.includes("Closure") || test.name.includes("Capture");
-        const isSimpleClosureTest = test.file.includes("// simple closures");
         // Skip lazy objects mode for certain known incompatible tests, react compiler and additional-functions tests.
         const skipLazyObjects =
           test.file.includes("// skip lazy objects") ||
@@ -781,15 +774,15 @@ function run(args) {
           test.name.includes("react");
 
         let flagPermutations = [
-          [false, false, undefined, isSimpleClosureTest],
-          [true, true, undefined, isSimpleClosureTest],
-          [false, false, args.lazyObjectsRuntime, isSimpleClosureTest],
+          [false, false, undefined],
+          [true, true, undefined],
+          [false, false, args.lazyObjectsRuntime],
         ];
         if (isAdditionalFunctionTest || isCaptureTest) {
-          flagPermutations.push([false, false, undefined, true]);
-          flagPermutations.push([false, true, undefined, true]);
+          flagPermutations.push([false, false, undefined]);
+          flagPermutations.push([false, true, undefined]);
         }
-        if (args.fast) flagPermutations = [[false, false, undefined, isSimpleClosureTest]];
+        if (args.fast) flagPermutations = [[false, false, undefined]];
         return () =>
           SerialPromises(
             flagPermutations
@@ -880,6 +873,7 @@ function main(): void {
     }
     process.exit(1);
   }
+  if (args.fast && args.filter === "") (console: any).error = function() {};
   (args && args.cpuprofilePath ? runWithCpuProfiler : run)(args)
     .then(function(result) {
       if (!result) {
