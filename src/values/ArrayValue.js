@@ -21,7 +21,7 @@ import {
   Value,
 } from "./index.js";
 import { IsAccessorDescriptor, IsPropertyKey, IsArrayIndex } from "../methods/is.js";
-import { Havoc, Properties, To, Utils } from "../singletons.js";
+import { Havoc, Leak, Properties, To, Utils } from "../singletons.js";
 import { type OperationDescriptor } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import { NestedOptimizedFunctionSideEffect } from "../errors.js";
@@ -63,6 +63,8 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
       }
       throw e;
     }
+    // We need to leak to function, as the bindings/objects need to be materialized
+    Leak.value(realm, func);
     // Check if effects were pure then add them
     if (abstractArrayValue.nestedOptimizedFunctionEffects === undefined) {
       abstractArrayValue.nestedOptimizedFunctionEffects = new Map();

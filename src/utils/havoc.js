@@ -13,7 +13,7 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { Descriptor, PropertyBinding, ObjectKind } from "../types.js";
 import {
-  havocBinding,
+  leakBinding,
   DeclarativeEnvironmentRecord,
   FunctionEnvironmentRecord,
   ObjectEnvironmentRecord,
@@ -46,6 +46,8 @@ type HavocedFunctionInfo = {
   unboundReads: Set<string>,
   unboundWrites: Set<string>,
 };
+
+type OperationType = "HAVOC" | "LEAK_ONLY";
 
 function visitName(
   path: BabelTraversePath,
@@ -168,18 +170,20 @@ function materializeObject(realm: Realm, object: ObjectValue, getCachingHeapInsp
     }
   }
 }
-class ObjectValueHavocingVisitor {
+class ObjectValueVisitor {
   realm: Realm;
   // ObjectValues to visit if they're reachable.
-  objectsTrackedForHavoc: Set<ObjectValue>;
+  objectsTrackedForLeaks: Set<ObjectValue>;
   // Values that has been visited.
   visitedValues: Set<Value>;
+  operation: OperationType;
   _heapInspector: HeapInspector;
 
-  constructor(realm: Realm, objectsTrackedForHavoc: Set<ObjectValue>) {
+  constructor(realm: Realm, objectsTrackedForLeaks: Set<ObjectValue>, operation: OperationType) {
     this.realm = realm;
-    this.objectsTrackedForHavoc = objectsTrackedForHavoc;
+    this.objectsTrackedForLeaks = objectsTrackedForLeaks;
     this.visitedValues = new Set();
+    this.operation = operation;
   }
 
   mustVisit(val: Value): boolean {
@@ -187,7 +191,7 @@ class ObjectValueHavocingVisitor {
       // For Objects we only need to visit it if it is tracked
       // as a newly created object that might still be mutated.
       // Abstract values gets their arguments visited.
-      if (!this.objectsTrackedForHavoc.has(val)) return false;
+      if (!this.objectsTrackedForLeaks.has(val)) return false;
     }
     if (this.visitedValues.has(val)) return false;
     this.visitedValues.add(val);
@@ -228,11 +232,18 @@ class ObjectValueHavocingVisitor {
 
     if (TestIntegrityLevel(this.realm, obj, "frozen")) return;
 
+    let shouldMaterialize = false;
     // if this object wasn't already havoced, we need mark it as havoced
     // so that any mutation and property access get tracked after this.
-    if (obj.mightNotBeHavocedObject()) {
+    if (this.operation === "HAVOC" && obj.mightNotBeHavocedObject()) {
+      shouldMaterialize = true;
       obj.havoc();
+    } else if (this.operation === "LEAK_ONLY" && obj.mightNotBeLeakedObject()) {
+      shouldMaterialize = true;
+      obj.leak();
+    }
 
+    if (shouldMaterialize) {
       // materialization is a common operation and needs to be invoked
       // whenever non-final values need to be made available at intermediate
       // points in a program's control flow. An object can be materialized by
@@ -316,11 +327,11 @@ class ObjectValueHavocingVisitor {
       if (isWritten || isRead) {
         // If this binding could have been mutated from the closure, then the
         // binding itself has now leaked, but not necessarily the value in it.
-        // TODO: We could tag a leaked binding as read and/or write. That way
-        // we don't have to havoc values written to this binding if only the binding
-        // has been written to. We also don't have to havoc reads from this binding
-        // if it is only read from.
-        havocBinding(binding);
+        if (this.operation === "HAVOC") {
+          leakBinding(binding, "NO_READ_WRITE");
+        } else if (this.operation === "LEAK_ONLY") {
+          leakBinding(binding, "READ_ONLY");
+        }
       }
     }
   }
@@ -369,7 +380,7 @@ class ObjectValueHavocingVisitor {
   }
 
   visitValueFunction(val: FunctionValue): void {
-    if (!val.mightNotBeHavocedObject()) {
+    if (!val.mightNotBeLeakedObject()) {
       return;
     }
     this.visitObjectProperties(val);
@@ -407,7 +418,7 @@ class ObjectValueHavocingVisitor {
         // we can bail out because its bindings should not be mutated in a
         // pure function.
         let fn = record.$FunctionObject;
-        if (!this.objectsTrackedForHavoc.has(fn)) {
+        if (!this.objectsTrackedForLeaks.has(fn)) {
           break;
         }
       }
@@ -416,7 +427,7 @@ class ObjectValueHavocingVisitor {
   }
 
   visitValueObject(val: ObjectValue): void {
-    if (!val.mightNotBeHavocedObject()) {
+    if (!val.mightNotBeLeakedObject()) {
       return;
     }
 
@@ -553,40 +564,50 @@ function ensureFrozenValue(realm, value, loc): void {
   }
 }
 
+function havocOrLeakValue(realm: Realm, value: Value, operation: OperationType, loc: ?BabelNodeSourceLocation): void {
+  if (realm.instantRender.enabled) {
+    // TODO: For InstantRender...
+    // - For declarative bindings, we do want proper materialization/leaking/havocing
+    // - For object properties, we conceptually want materialization
+    //   (however, not via statements that mutate the objects,
+    //   but only as part of the initial object literals),
+    //   but actual no leaking or havocing as there should be a way to annotate/enforce
+    //   that external/abstract functions are pure with regards to heap objects
+    return;
+  }
+  let objectsTrackedForLeaks = realm.createdObjectsTrackedForLeaks;
+  if (objectsTrackedForLeaks === undefined) {
+    // We're not tracking a pure function. That means that we would track
+    // everything as havoced. We'll assume that any object argument
+    // is invalid unless it's frozen.
+    ensureFrozenValue(realm, value, loc);
+  } else {
+    // If we're tracking a pure function, we can assume that only newly
+    // created objects and bindings, within it, are mutable. Any other
+    // object can safely be assumed to be deeply immutable as far as this
+    // pure function is concerned. However, any mutable object needs to
+    // be tainted as possibly having changed to anything.
+    let visitor = new ObjectValueVisitor(realm, objectsTrackedForLeaks, operation);
+    visitor.visitValue(value);
+  }
+}
+
 // Ensure that a value is immutable. If it is not, set all its properties to abstract values
 // and all reachable bindings to abstract values.
 export class HavocImplementation {
   value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation): void {
-    if (realm.instantRender.enabled) {
-      // TODO: For InstantRender...
-      // - For declarative bindings, we do want proper materialization/leaking/havocing
-      // - For object properties, we conceptually want materialization
-      //   (however, not via statements that mutate the objects,
-      //   but only as part of the initial object literals),
-      //   but actual no leaking or havocing as there should be a way to annotate/enforce
-      //   that external/abstract functions are pure with regards to heap objects
-      return;
-    }
-    let objectsTrackedForHavoc = realm.createdObjectsTrackedForLeaks;
-    if (objectsTrackedForHavoc === undefined) {
-      // We're not tracking a pure function. That means that we would track
-      // everything as havoced. We'll assume that any object argument
-      // is invalid unless it's frozen.
-      ensureFrozenValue(realm, value, loc);
-    } else {
-      // If we're tracking a pure function, we can assume that only newly
-      // created objects and bindings, within it, are mutable. Any other
-      // object can safely be assumed to be deeply immutable as far as this
-      // pure function is concerned. However, any mutable object needs to
-      // be tainted as possibly having changed to anything.
-      let visitor = new ObjectValueHavocingVisitor(realm, objectsTrackedForHavoc);
-      visitor.visitValue(value);
-    }
+    havocOrLeakValue(realm, value, "HAVOC", loc);
   }
 }
 
 export class MaterializeImplementation {
   materialize(realm: Realm, val: ObjectValue) {
     materializeObject(realm, val);
+  }
+}
+
+export class LeakImplementation {
+  value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation): void {
+    havocOrLeakValue(realm, value, "LEAK_ONLY", loc);
   }
 }

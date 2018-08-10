@@ -66,6 +66,7 @@ export default class ObjectValue extends ConcreteValue {
     this.$Extensible = realm.intrinsics.true;
     this._isPartial = realm.intrinsics.false;
     this._isHavoced = realm.intrinsics.false;
+    this._isLeaked = realm.intrinsics.false;
     this._isSimple = realm.intrinsics.false;
     this._simplicityIsTransitive = realm.intrinsics.false;
     this._isFinal = realm.intrinsics.false;
@@ -82,6 +83,7 @@ export default class ObjectValue extends ConcreteValue {
   static trackedPropertyNames = [
     "_isPartial",
     "_isHavoced",
+    "_isLeaked",
     "_isSimple",
     "_isFinal",
     "_simplicityIsTransitive",
@@ -139,14 +141,14 @@ export default class ObjectValue extends ConcreteValue {
           invariant(
             // We're still initializing so we can set a property.
             this.$IsClassPrototype === undefined ||
-              // It's not havoced so we can set a property.
-              this.mightNotBeHavocedObject() ||
+              // It's not leaked so we can set a property.
+              this.mightNotBeLeakedObject() ||
               // Object.assign() implementation needs to temporarily
               // make potentially havoced objects non-partial and back.
               // We don't gain anything from checking whether it's havoced
               // before calling makePartial() so we'll whitelist this property.
               propBindingName === "_isPartial_binding",
-            "cannot mutate a havoced object"
+            "cannot mutate a leaked object"
           );
           let binding = this[propBindingName];
           if (binding === undefined) {
@@ -267,6 +269,7 @@ export default class ObjectValue extends ConcreteValue {
 
   // tainted objects
   _isHavoced: AbstractValue | BooleanValue;
+  _isLeaked: AbstractValue | BooleanValue;
 
   // If true, the object has no property getters or setters and it is safe
   // to return AbstractValue for unknown properties.
@@ -392,6 +395,8 @@ export default class ObjectValue extends ConcreteValue {
 
   havoc(): void {
     this._isHavoced = this.$Realm.intrinsics.true;
+    // Havoced objects are always leaked too
+    this.leak();
   }
 
   mightBeHavocedObject(): boolean {
@@ -400,6 +405,18 @@ export default class ObjectValue extends ConcreteValue {
 
   mightNotBeHavocedObject(): boolean {
     return this._isHavoced.mightNotBeTrue();
+  }
+
+  leak(): void {
+    this._isLeaked = this.$Realm.intrinsics.true;
+  }
+
+  mightBeLeakedObject(): boolean {
+    return this._isLeaked.mightBeTrue();
+  }
+
+  mightNotBeLeakedObject(): boolean {
+    return this._isLeaked.mightNotBeTrue();
   }
 
   isSimpleObject(): boolean {

@@ -169,11 +169,14 @@ export class WidenImplementation {
       }
       invariant(result instanceof Value);
       let previousHasLeaked = b2.previousHasLeaked;
+      let previousLeakStatus = b2.previousLeakStatus;
       let previousValue = b2.previousValue;
       return {
         hasLeaked: previousHasLeaked,
+        leakStatus: previousLeakStatus,
         value: result,
         previousHasLeaked,
+        previousLeakStatus,
         previousValue,
       };
     };

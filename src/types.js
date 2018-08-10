@@ -389,6 +389,10 @@ export type HavocType = {
   value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation): void,
 };
 
+export type LeakType = {
+  value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation): void,
+};
+
 export type MaterializeType = {
   materialize(realm: Realm, object: ObjectValue): void,
 };
