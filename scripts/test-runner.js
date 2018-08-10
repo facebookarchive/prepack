@@ -363,7 +363,11 @@ function runTest(name, code, options: PrepackOptions, args) {
     internalDebug: true,
     serialize: true,
     uniqueSuffix: "",
+    arrayNestedOptimizedFunctionsEnabled: false,
   }): any): PrepackOptions); // Since PrepackOptions is an exact type I have to cast
+  if (code.includes("// arrayNestedOptimizedFunctionsEnabled")) {
+    options.arrayNestedOptimizedFunctionsEnabled = true;
+  }
   if (code.includes("// throws introspection error")) {
     try {
       let realmOptions = {

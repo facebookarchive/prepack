@@ -1,4 +1,5 @@
 // does contain:// this function should not be inlined
+// arrayNestedOptimizedFunctionsEnabled
 
 (function() {
   function add(a, b) {

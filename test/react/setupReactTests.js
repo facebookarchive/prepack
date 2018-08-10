@@ -133,6 +133,7 @@ ${source}
       reactEnabled: true,
       reactOutput: useJSXOutput ? "jsx" : "create-element",
       reactOptimizeNestedFunctions: true,
+      arrayNestedOptimizedFunctionsEnabled: true,
       inlineExpressions: true,
       invariantLevel: 0,
       stripFlow: true,
