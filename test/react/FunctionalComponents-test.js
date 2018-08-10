@@ -158,6 +158,10 @@ it("Mutations - safe 3", () => {
   runTest(__dirname + "/FunctionalComponents/safe3.js");
 });
 
+it("Mutations - safe 4", () => {
+  runTest(__dirname + "/FunctionalComponents/safe4.js");
+});
+
 it("Handle mapped arrays", () => {
   runTest(__dirname + "/FunctionalComponents/array-map.js");
 });
