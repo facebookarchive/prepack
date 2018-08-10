@@ -811,6 +811,7 @@ export class ResidualHeapVisitor {
   }
 
   visitValueObject(val: ObjectValue): void {
+    invariant(val.isValid());
     this._registerAdditionalRoot(val);
     if (isReactElement(val)) {
       this.residualReactElementVisitor.visitReactElement(val);
@@ -1000,17 +1001,20 @@ export class ResidualHeapVisitor {
       this.postProcessValue(equivalentValue);
       return (equivalentValue: any);
     }
-    if (val instanceof ObjectValue && isReactElement(val)) {
-      if (val.temporalAlias !== undefined) {
-        return this.visitEquivalentValue(val.temporalAlias);
+    if (val instanceof ObjectValue) {
+      invariant(val.isValid());
+      if (isReactElement(val)) {
+        if (val.temporalAlias !== undefined) {
+          return this.visitEquivalentValue(val.temporalAlias);
+        }
+        let equivalentReactElementValue = this.residualReactElementVisitor.reactElementEquivalenceSet.add(val);
+        if (this._mark(equivalentReactElementValue)) this.visitValueObject(equivalentReactElementValue);
+        return (equivalentReactElementValue: any);
+      } else if (isReactPropsObject(val)) {
+        let equivalentReactPropsValue = this.residualReactElementVisitor.reactPropsEquivalenceSet.add(val);
+        if (this._mark(equivalentReactPropsValue)) this.visitValueObject(equivalentReactPropsValue);
+        return (equivalentReactPropsValue: any);
       }
-      let equivalentReactElementValue = this.residualReactElementVisitor.reactElementEquivalenceSet.add(val);
-      if (this._mark(equivalentReactElementValue)) this.visitValueObject(equivalentReactElementValue);
-      return (equivalentReactElementValue: any);
-    } else if (val instanceof ObjectValue && isReactPropsObject(val)) {
-      let equivalentReactPropsValue = this.residualReactElementVisitor.reactPropsEquivalenceSet.add(val);
-      if (this._mark(equivalentReactPropsValue)) this.visitValueObject(equivalentReactPropsValue);
-      return (equivalentReactPropsValue: any);
     }
     this.visitValue(val);
     return val;
