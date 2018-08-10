@@ -2141,11 +2141,11 @@ export class ResidualHeapSerializer {
     }
     let beginComments = [commentStatement("begin " + comment)];
     let effects = generator.effectsToApply;
+    let valueToString = value =>
+      this.residualHeapValueIdentifiers.hasIdentifier(value)
+        ? this.residualHeapValueIdentifiers.getIdentifier(value).name
+        : "?";
     if (effects) {
-      let valueToString = value =>
-        this.residualHeapValueIdentifiers.hasIdentifier(value)
-          ? this.residualHeapValueIdentifiers.getIdentifier(value).name
-          : "?";
       let keyToString = key => (typeof key === "string" ? key : key instanceof Value ? valueToString(key) : "?");
 
       beginComments.push(
@@ -2179,6 +2179,13 @@ export class ResidualHeapSerializer {
               .join(", ")}`
           )
         );
+    }
+    if (generator.pathConditions.length > 0) {
+      beginComments.push(commentStatement(`    path conditions: ${generator.pathConditions.length}`));
+      for (let pc of generator.pathConditions) {
+        for (let line of describeValue(pc, valueToString).split("\n"))
+          beginComments.push(commentStatement(`    * ${line}`));
+      }
     }
     statements.unshift(...beginComments);
     statements.push(commentStatement("end " + comment));

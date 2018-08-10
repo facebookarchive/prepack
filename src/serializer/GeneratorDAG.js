@@ -76,6 +76,22 @@ export class GeneratorDAG {
         this.createdObjects.set(createdObject, generator);
       }
 
+    if (parent instanceof Generator) {
+      // We'd like to ensure at this point that the path conditions
+      // of a nested generator imply the path conditions of its parent
+      // generator.
+      // Without a fancy solver, we simply rely on a very simple check
+      // whether the conditions of the parent generator are all
+      // present in the nested generator.
+      // TODO: This relies on path conditions not being simplified, which seems to be the case so far.
+      function isSubset(parentPathConditions, currentPathConditions) {
+        let set = new Set(currentPathConditions);
+        for (let parentPathCondition of parentPathConditions) if (!set.has(parentPathCondition)) return false;
+        return true;
+      }
+      invariant(isSubset(parent.pathConditions, generator.pathConditions), generator.getName());
+    }
+
     for (let dependency of generator.getDependencies()) this._add(generator, dependency);
   }
 }
