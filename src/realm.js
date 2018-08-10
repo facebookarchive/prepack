@@ -967,13 +967,6 @@ export class Realm {
       }
     } finally {
       for (let t2 of this.tracers) t2.endEvaluateForEffects(state, result);
-      if (saved_createdObjects) {
-        for (let obj of saved_createdObjects) {
-          if (!this.createdObjects.has(obj)) {
-            debugger;
-          }
-        }
-      }
     }
   }
 
