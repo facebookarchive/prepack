@@ -1,4 +1,4 @@
-// does not contain:(props).x
+// throws introspection error
 (function() {
   function URIBase(uri) {
     if (uri instanceof URIBase) {

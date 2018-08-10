@@ -307,7 +307,7 @@ function verifyFunctionOrderings(code: string): boolean {
   return true;
 }
 
-function unescapleUniqueSuffix(code: string, uniqueSuffix?: string) {
+function unescapeUniqueSuffix(code: string, uniqueSuffix?: string) {
   return uniqueSuffix != null ? code.replace(new RegExp(uniqueSuffix, "g"), "") : code;
 }
 
@@ -341,7 +341,6 @@ function runTest(name, code, options: PrepackOptions, args) {
   if (!args.fast && args.filter === "") console.log(chalk.inverse(name) + " " + JSON.stringify(options));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
   let initializeMoreModules = code.includes("// initialize more modules");
-  let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   if (args.verbose || code.includes("// inline expressions")) options.inlineExpressions = true;
   options.invariantLevel = code.includes("// omit invariants") || args.verbose ? 0 : 99;
   if (code.includes("// emit concrete model")) options.emitConcreteModel = true;
@@ -354,11 +353,11 @@ function runTest(name, code, options: PrepackOptions, args) {
   let compileJSXWithBabel = code.includes("// babel:jsx");
   let functionCloneCountMatch = code.match(/\/\/ serialized function clone count: (\d+)/);
   options = ((Object.assign({}, options, {
+    abstractValueImpliesMax: 2000,
     compatibility,
     debugNames: args.debugNames,
     debugScopes: args.debugScopes,
     initializeMoreModules,
-    delayUnsupportedRequires,
     errorHandler: diag => "Fail",
     internalDebug: true,
     serialize: true,
@@ -381,7 +380,6 @@ function runTest(name, code, options: PrepackOptions, args) {
       initializeGlobals(realm);
       let serializerOptions = {
         initializeMoreModules,
-        delayUnsupportedRequires,
         internalDebug: true,
         lazyObjectsRuntime: options.lazyObjectsRuntime,
       };
@@ -459,7 +457,6 @@ function runTest(name, code, options: PrepackOptions, args) {
       addedCode = code.substring(i + injectAtRuntime.length, code.indexOf("\n", i));
       options.residual = false;
     }
-    if (delayUnsupportedRequires) options.residual = false;
     if (args.es5) {
       code = transformWithBabel(code, [], [["@babel/env", { forceAllTransforms: true, modules: false }]]);
     }
@@ -590,7 +587,7 @@ function runTest(name, code, options: PrepackOptions, args) {
               codeToRun = augmentCodeWithLazyObjectSupport(codeToRun, args.lazyObjectsRuntime);
             }
             if (args.verbose) console.log(codeToRun);
-            codeIterations.push(unescapleUniqueSuffix(codeToRun, options.uniqueSuffix));
+            codeIterations.push(unescapeUniqueSuffix(codeToRun, options.uniqueSuffix));
             if (args.es5) {
               codeToRun = transformWithBabel(
                 codeToRun,
@@ -640,9 +637,7 @@ function runTest(name, code, options: PrepackOptions, args) {
                   }
                   if (singleIterationOnly) return Promise.reject({ type: "RETURN", value: true });
                   if (
-                    unescapleUniqueSuffix(oldCode, oldUniqueSuffix) ===
-                      unescapleUniqueSuffix(newCode, newUniqueSuffix) ||
-                    delayUnsupportedRequires
+                    unescapeUniqueSuffix(oldCode, oldUniqueSuffix) === unescapeUniqueSuffix(newCode, newUniqueSuffix)
                   ) {
                     // The generated code reached a fixed point!
                     return Promise.reject({ type: "RETURN", value: true });
@@ -922,7 +917,7 @@ function argsParse(): ProgramArgs {
       es5: false, // if true test marked as es6 only are not run
       filter: "",
       outOfProcessRuntime: "", // if set, assumed to be a JS runtime and is used
-      // to run tests. If not a seperate node context used.
+      // to run tests. If not a separate node context used.
       lazyObjectsRuntime: LAZY_OBJECTS_RUNTIME_NAME,
       noLazySupport: false,
       fast: false,

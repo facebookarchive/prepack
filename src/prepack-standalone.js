@@ -54,19 +54,13 @@ export function prepackSources(
   if (options.check) {
     realm.generator = new Generator(realm, "main", realm.pathConditions);
     let logger = new Logger(realm, !!options.internalDebug);
-    let modules = new Modules(
-      realm,
-      logger,
-      !!options.logModules,
-      !!options.delayUnsupportedRequires,
-      !!options.accelerateUnsupportedRequires
-    );
+    let modules = new Modules(realm, logger, !!options.logModules, !!options.accelerateUnsupportedRequires);
     let [result] = realm.$GlobalEnv.executeSources(sourceFileCollection.toArray());
     if (result instanceof AbruptCompletion) throw result;
     invariant(options.check);
     checkResidualFunctions(modules, options.check[0], options.check[1]);
     return { code: "", map: undefined };
-  } else if (options.serialize === true || options.residual !== true) {
+  } else {
     let serializer = new Serializer(realm, getSerializerOptions(options));
     let serialized = serializer.init(sourceFileCollection, options.sourceMaps, options.onParse);
 
@@ -88,30 +82,7 @@ export function prepackSources(
       serialized.sourceFilePaths = sourcePaths;
     }
 
-    if (!options.residual) return serialized;
-    let residualSources = [
-      {
-        filePath: options.outputFilename || "unknown",
-        fileContents: serialized.code,
-        sourceMapContents: serialized.map && JSON.stringify(serialized.map),
-      },
-    ];
-    let debugChannel = options.debuggerConfigArgs ? options.debuggerConfigArgs.debugChannel : undefined;
-    realm = construct_realm(realmOptions, debugChannel);
-    initializeGlobals(realm);
-    if (typeof options.additionalGlobals === "function") {
-      options.additionalGlobals(realm);
-    }
-    realm.generator = new Generator(realm, "main", realm.pathConditions);
-    let result = realm.$GlobalEnv.executePartialEvaluator(residualSources, options);
-    if (result instanceof AbruptCompletion) throw result;
-    return { ...result };
-  } else {
-    invariant(options.residual);
-    realm.generator = new Generator(realm, "main", realm.pathConditions);
-    let result = realm.$GlobalEnv.executePartialEvaluator(sourceFileCollection.toArray(), options);
-    if (result instanceof AbruptCompletion) throw result;
-    return { ...result };
+    return serialized;
   }
 }
 

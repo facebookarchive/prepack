@@ -28,6 +28,7 @@ import { Logger } from "../utils/logger.js";
 import { Generator } from "../utils/generator.js";
 import type { AdditionalFunctionEffects } from "./types";
 import type { Binding } from "../environment.js";
+import type { BabelNodeSourceLocation } from "@babel/types";
 import { optionalStringOfLocation } from "../utils/babelhelpers.js";
 
 /**
@@ -203,10 +204,10 @@ export function createAdditionalEffects(
 }
 
 export function handleReportedSideEffect(
-  exceptionHandler: string => void,
+  exceptionHandler: (string, ?BabelNodeSourceLocation) => void,
   sideEffectType: SideEffectType,
   binding: void | Binding | PropertyBinding,
-  expressionLocation: any
+  expressionLocation: ?BabelNodeSourceLocation
 ): void {
   // This causes an infinite recursion because creating a callstack causes internal-only side effects
   if (binding && binding.object && binding.object.intrinsicName === "__checkedBindings") return;
@@ -214,7 +215,7 @@ export function handleReportedSideEffect(
 
   if (sideEffectType === "MODIFIED_BINDING") {
     let name = binding ? `"${((binding: any): Binding).name}"` : "unknown";
-    exceptionHandler(`side-effects from mutating the binding ${name}${location}`);
+    exceptionHandler(`side-effects from mutating the binding ${name}${location}`, expressionLocation);
   } else if (sideEffectType === "MODIFIED_PROPERTY" || sideEffectType === "MODIFIED_GLOBAL") {
     let name = "";
     let pb = ((binding: any): PropertyBinding);
@@ -224,11 +225,11 @@ export function handleReportedSideEffect(
     }
     if (sideEffectType === "MODIFIED_PROPERTY") {
       if (!ObjectValue.refuseSerializationOnPropertyBinding(pb))
-        exceptionHandler(`side-effects from mutating a property ${name}${location}`);
+        exceptionHandler(`side-effects from mutating a property ${name}${location}`, expressionLocation);
     } else {
-      exceptionHandler(`side-effects from mutating the global object property ${name}${location}`);
+      exceptionHandler(`side-effects from mutating the global object property ${name}${location}`, expressionLocation);
     }
   } else if (sideEffectType === "EXCEPTION_THROWN") {
-    exceptionHandler(`side-effects from throwing exception${location}`);
+    exceptionHandler(`side-effects from throwing exception${location}`, expressionLocation);
   }
 }

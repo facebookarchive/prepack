@@ -10,7 +10,6 @@
 /* @flow */
 
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { AbruptCompletion, Completion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
 import { type LexicalEnvironment, type BaseValue, mightBecomeAnObject } from "../environment.js";
 import { EnvironmentRecord } from "../environment.js";
@@ -217,29 +216,9 @@ function callBothFunctionsAndJoinTheirEffects(
     "callBothFunctionsAndJoinTheirEffects/2"
   );
 
-  let r1 = e1.result;
-  if (r1 instanceof Completion) r1 = r1.shallowCloneWithoutEffects();
-  let r2 = e2.result;
-  if (r2 instanceof Completion) r2 = r2.shallowCloneWithoutEffects();
-  let joinedEffects = Join.joinForkOrChoose(realm, cond, e1.shallowCloneWithResult(r1), e2.shallowCloneWithResult(r2));
-  let completion = joinedEffects.result;
-  if (completion instanceof SimpleNormalCompletion) completion = completion.value;
-  if (completion instanceof PossiblyNormalCompletion) {
-    // in this case one of the branches may complete abruptly, which means that
-    // not all control flow branches join into one flow at this point.
-    // Consequently we have to continue tracking changes until the point where
-    // all the branches come together into one.
-    completion = realm.composeWithSavedCompletion(completion);
-  }
-
-  // Note that the effects of (non joining) abrupt branches are not included
-  // in joinedEffects, but are tracked separately inside completion.
+  let joinedEffects = Join.joinEffects(cond, e1, e2);
   realm.applyEffects(joinedEffects);
-
-  // return or throw completion
-  if (completion instanceof AbruptCompletion) throw completion;
-  invariant(completion instanceof Value);
-  return completion;
+  return realm.returnOrThrowCompletion(joinedEffects.result);
 }
 
 function generateRuntimeCall(
@@ -308,22 +287,8 @@ function tryToEvaluateCallOrLeaveAsAbstract(
   } finally {
     realm.suppressDiagnostics = savedSuppressDiagnostics;
   }
-  // Note that the effects of (non joining) abrupt branches are not included
-  // in effects, but are tracked separately inside completion.
   realm.applyEffects(effects);
-  let completion = effects.result;
-  if (completion instanceof PossiblyNormalCompletion) {
-    // in this case one of the branches may complete abruptly, which means that
-    // not all control flow branches join into one flow at this point.
-    // Consequently we have to continue tracking changes until the point where
-    // all the branches come together into one.
-    completion = realm.composeWithSavedCompletion(completion);
-  }
-  // return or throw completion
-  if (completion instanceof AbruptCompletion) throw completion;
-  if (completion instanceof SimpleNormalCompletion) completion = completion.value;
-  invariant(completion instanceof Value);
-  return completion;
+  return realm.returnOrThrowCompletion(effects.result);
 }
 
 function EvaluateCall(

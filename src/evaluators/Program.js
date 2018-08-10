@@ -9,13 +9,18 @@
 
 /* @flow */
 
-import { AbruptCompletion, ForkedAbruptCompletion, PossiblyNormalCompletion, ThrowCompletion } from "../completions.js";
+import {
+  AbruptCompletion,
+  Completion,
+  JoinedAbruptCompletions,
+  JoinedNormalAndAbruptCompletions,
+  ThrowCompletion,
+} from "../completions.js";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { Value, EmptyValue } from "../values/index.js";
 import { GlobalEnvironmentRecord } from "../environment.js";
 import { Environment, Functions, Join } from "../singletons.js";
-import { Generator } from "../utils/generator.js";
 import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import traverseFast from "../utils/traverse-fast.js";
@@ -223,30 +228,17 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
 
   GlobalDeclarationInstantiation(realm, ast, env, strictCode);
 
-  let val;
+  let val, res;
 
   for (let node of ast.body) {
     if (node.type !== "FunctionDeclaration") {
-      let res = env.evaluateCompletionDeref(node, strictCode);
-      if (res instanceof AbruptCompletion) {
-        if (!realm.useAbstractInterpretation) throw res;
-        let generator = realm.generator;
-        invariant(generator !== undefined);
-        // We are about the leave this program and this presents a join point where all control flows
-        // converge into a single flow using the joined effects as the new state.
-        res = Functions.incorporateSavedCompletion(realm, res);
-        if (res instanceof ForkedAbruptCompletion && res.containsCompletion(ThrowCompletion)) {
-          // The global state is now at the point where the first fork occurred.
-          let joinedEffects = Join.joinNestedEffects(realm, res);
-          realm.applyEffects(joinedEffects);
-          res = joinedEffects.result;
-        } else if (res instanceof ThrowCompletion) {
-          generator.emitThrow(res.value);
-          res = realm.intrinsics.undefined;
-        } else {
-          invariant(false); // other kinds of abrupt completions should not get this far
-        }
-        break;
+      res = env.evaluateCompletionDeref(node, strictCode);
+      if (res instanceof AbruptCompletion && !realm.useAbstractInterpretation) throw res;
+      res = Functions.incorporateSavedCompletion(realm, res);
+      if (res instanceof Completion) {
+        emitThrowStatementsIfNeeded(res);
+        if (res instanceof ThrowCompletion) return res.value; // Program ends here at runtime, so don't carry on
+        res = res.value;
       }
       if (!(res instanceof EmptyValue)) {
         val = res;
@@ -262,35 +254,33 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
 
   // We are about to leave this program and this presents a join point where all control flows
   // converge into a single flow and the joined effects become the final state.
+  invariant(val === undefined || val instanceof Value);
   if (val instanceof Value) {
-    let res = Functions.incorporateSavedCompletion(realm, val);
-    if (res instanceof PossiblyNormalCompletion) {
-      // Get state to be joined in
-      let e = realm.getCapturedEffects();
-      realm.stopEffectCaptureAndUndoEffects(res);
-      // The global state is now at the point where the last fork occurred.
-      if (res.containsCompletion(ThrowCompletion)) {
-        // Join e with the remaining completions
-        let normalGenerator = e.generator;
-        e.generator = new Generator(realm, "dummy", normalGenerator.pathConditions); // This generator comes after everything else.
-        let r = new ThrowCompletion(realm.intrinsics.empty, e);
-        let fc = Join.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, res, r, e);
-        let allEffects = Join.extractAndJoinCompletionsOfType(ThrowCompletion, realm, fc);
-        realm.applyEffects(allEffects, "all code", true);
-        r = allEffects.result;
-        invariant(r instanceof ThrowCompletion);
-        let generator = realm.generator;
-        invariant(generator !== undefined);
-        generator.emitConditionalThrow(r.value);
-        realm.appendGenerator(normalGenerator);
-      } else {
-        realm.applyEffects(e, "all code", true);
-      }
-    }
-  } else {
-    // program was empty. Nothing to do.
+    res = Functions.incorporateSavedCompletion(realm, val);
+    if (res instanceof Completion) emitThrowStatementsIfNeeded(res);
   }
 
-  invariant(val === undefined || val instanceof Value);
   return val || realm.intrinsics.empty;
+
+  function emitThrowStatementsIfNeeded(completion: Completion): void {
+    let generator = realm.generator;
+    invariant(generator !== undefined);
+    if (
+      res instanceof ThrowCompletion &&
+      res.value !== realm.intrinsics.__bottomValue &&
+      !(res.value instanceof EmptyValue)
+    ) {
+      generator.emitThrow(res.value);
+    } else if (
+      (res instanceof JoinedAbruptCompletions || res instanceof JoinedNormalAndAbruptCompletions) &&
+      res.containsSelectedCompletion(c => c instanceof ThrowCompletion)
+    ) {
+      let selector = c =>
+        c instanceof ThrowCompletion && c.value !== realm.intrinsics.__bottomValue && !(c.value instanceof EmptyValue);
+      generator.emitConditionalThrow(Join.joinValuesOfSelectedCompletions(selector, res));
+      res = realm.intrinsics.undefined;
+    } else {
+      invariant(res instanceof Value); // other kinds of abrupt completions should not get this far
+    }
+  }
 }

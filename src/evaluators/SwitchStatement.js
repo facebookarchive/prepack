@@ -11,21 +11,19 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { CompilerDiagnostic, InfeasiblePathError } from "../errors.js";
-import { Reference } from "../environment.js";
+import { InfeasiblePathError } from "../errors.js";
 import { computeBinary } from "./BinaryExpression.js";
 import {
   AbruptCompletion,
   BreakCompletion,
-  SimpleNormalCompletion,
-  PossiblyNormalCompletion,
   Completion,
+  JoinedAbruptCompletions,
+  JoinedNormalAndAbruptCompletions,
 } from "../completions.js";
 import { InternalGetResultValue } from "./ForOfStatement.js";
 import { EmptyValue, AbstractValue, Value } from "../values/index.js";
 import { StrictEqualityComparisonPartial, UpdateEmpty } from "../methods/index.js";
-import { Environment, Path, Join } from "../singletons.js";
-import { FatalError } from "../errors.js";
+import { Environment, Functions, Join, Path } from "../singletons.js";
 import type { BabelNodeSwitchStatement, BabelNodeSwitchCase, BabelNodeExpression } from "@babel/types";
 import invariant from "../invariant.js";
 
@@ -62,19 +60,10 @@ function AbstractCaseBlockEvaluation(
       let c = cases[caseIndex];
       for (let i = 0; i < c.consequent.length; i += 1) {
         let node = c.consequent[i];
-        let r = env.evaluateCompletion(node, strictCode);
-        invariant(!(r instanceof Reference));
+        let r = env.evaluateCompletionDeref(node, strictCode);
 
-        if (r instanceof PossiblyNormalCompletion) {
-          // TODO correct handling of PossiblyNormal and AbruptCompletion
-          let diagnostic = new CompilerDiagnostic(
-            "case block containing a throw, return or continue is not yet supported",
-            r.location,
-            "PP0027",
-            "FatalError"
-          );
-          realm.handleError(diagnostic);
-          throw new FatalError();
+        if (r instanceof JoinedNormalAndAbruptCompletions) {
+          r = realm.composeWithSavedCompletion(r);
         }
 
         result = UpdateEmpty(realm, r, result);
@@ -84,19 +73,21 @@ function AbstractCaseBlockEvaluation(
       if (result instanceof Completion) break;
       caseIndex++;
     }
+    let sc = Functions.incorporateSavedCompletion(realm, result);
+    invariant(sc !== undefined);
+    result = sc;
 
-    if (result instanceof BreakCompletion) {
+    if (result instanceof JoinedAbruptCompletions || result instanceof JoinedNormalAndAbruptCompletions) {
+      let selector = c => c instanceof BreakCompletion && !c.target;
+      let jc = AbstractValue.createJoinConditionForSelectedCompletions(selector, result);
+      let jv = AbstractValue.createFromConditionalOp(realm, jc, realm.intrinsics.empty, result.value);
+      result = Completion.normalizeSelectedCompletions(selector, result);
+      realm.composeWithSavedCompletion(result);
+      return jv;
+    } else if (result instanceof BreakCompletion) {
       return result.value;
     } else if (result instanceof AbruptCompletion) {
-      // TODO correct handling of PossiblyNormal and AbruptCompletion
-      let diagnostic = new CompilerDiagnostic(
-        "case block containing a throw, return or continue is not yet supported",
-        result.location,
-        "PP0027",
-        "FatalError"
-      );
-      realm.handleError(diagnostic);
-      throw new FatalError();
+      throw result;
     } else {
       invariant(result instanceof Value);
       return result;
@@ -177,26 +168,10 @@ function AbstractCaseBlockEvaluation(
 
       invariant(trueEffects !== undefined);
       invariant(falseEffects !== undefined);
-      let joinedEffects = Join.joinForkOrChoose(realm, selectionResult, trueEffects, falseEffects);
-      let completion = joinedEffects.result;
-      if (completion instanceof PossiblyNormalCompletion) {
-        // in this case one of the branches may complete abruptly, which means that
-        // not all control flow branches join into one flow at this point.
-        // Consequently we have to continue tracking changes until the point where
-        // all the branches come together into one.
-        completion = realm.composeWithSavedCompletion(completion);
-      }
-      // Note that the effects of (non joining) abrupt branches are not included
-      // in joinedEffects, but are tracked separately inside completion.
+      let joinedEffects = Join.joinEffects(selectionResult, trueEffects, falseEffects);
       realm.applyEffects(joinedEffects);
 
-      // return or throw completion
-      if (completion instanceof AbruptCompletion) throw completion;
-      if (completion instanceof SimpleNormalCompletion) {
-        completion = completion.value;
-      }
-      invariant(completion instanceof Value);
-      return completion;
+      return realm.returnOrThrowCompletion(joinedEffects.result);
     }
   };
 

@@ -1,4 +1,5 @@
-// expected errors: [{"severity":"Warning","errorCode":"PP1007","callStack":"Error\n    "},{"location":{"start":{"line":5,"column":12},"end":{"line":5,"column":14},"source":"test/error-handler/ModifiedObjectPropertyLimitation.js"},"severity":"Warning","errorCode":"PP0023","callStack":"Error\n    "},{"location":{"start":{"line":5,"column":12},"end":{"line":5,"column":14},"source":"test/error-handler/ModifiedObjectPropertyLimitation.js"},"severity":"FatalError","errorCode":"PP1006","callStack":"Error\n    "}]
+// recover-from-errors
+// expected errors: [{"severity":"Warning","errorCode":"PP1007","callStack":"Error\n    "},{"severity":"Warning","errorCode":"PP0023","callStack":"Error\n    "}]
 (function() {
   let p = {};
   function f(c) {

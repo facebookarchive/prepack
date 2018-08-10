@@ -118,7 +118,6 @@ function run(
     logStatistics: false,
     logModules: false,
     delayInitializations: false,
-    delayUnsupportedRequires: false,
     accelerateUnsupportedRequires: true,
     internalDebug: false,
     debugScopes: false,
