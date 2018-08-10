@@ -1,3 +1,5 @@
+// arrayNestedOptimizedFunctionsEnabled
+
 function Component(x) {
   this.val = x;
 }
