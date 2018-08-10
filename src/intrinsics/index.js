@@ -9,18 +9,20 @@
 
 /* @flow strict-local */
 
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import type { Intrinsics } from "../types.js";
 import type { Realm } from "../realm.js";
 import {
-  NumberValue,
-  StringValue,
-  NullValue,
-  UndefinedValue,
-  EmptyValue,
-  ObjectValue,
-  SymbolValue,
+  AbstractValue,
   BooleanValue,
+  EmptyValue,
   NativeFunctionValue,
+  NullValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
+  SymbolValue,
+  UndefinedValue,
 } from "../values/index.js";
 import { Functions } from "../singletons.js";
 
@@ -466,6 +468,22 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
 
   // 8.2.2, step 12
   Functions.AddRestrictedFunctionProperties(i.FunctionPrototype, realm);
+
+  //
+  if (realm.useAbstractInterpretation) {
+    TypesDomain.topVal = new TypesDomain(undefined);
+    ValuesDomain.topVal = new ValuesDomain(undefined);
+    i.__topValue = new AbstractValue(realm, TypesDomain.topVal, ValuesDomain.topVal, Number.MAX_SAFE_INTEGER, []);
+    TypesDomain.bottomVal = new TypesDomain(EmptyValue);
+    ValuesDomain.bottomVal = new ValuesDomain(new Set());
+    i.__bottomValue = new AbstractValue(
+      realm,
+      TypesDomain.bottomVal,
+      ValuesDomain.bottomVal,
+      Number.MIN_SAFE_INTEGER,
+      []
+    );
+  }
 
   return i;
 }

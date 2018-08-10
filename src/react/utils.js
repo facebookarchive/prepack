@@ -10,7 +10,7 @@
 /* @flow */
 
 import { Realm } from "../realm.js";
-import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
+import { AbruptCompletion, SimpleNormalCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "@babel/types";
 import { parseExpression } from "@babel/parser";
 import {
@@ -794,12 +794,14 @@ export function getValueFromFunctionCall(
   let newCall = func.$Construct;
   let completion;
   try {
+    let value;
     if (isConstructor) {
       invariant(newCall);
-      completion = newCall(args, func);
+      value = newCall(args, func);
     } else {
-      completion = funcCall(funcThis, args);
+      value = funcCall(funcThis, args);
     }
+    completion = new SimpleNormalCompletion(value);
   } catch (error) {
     if (error instanceof AbruptCompletion) {
       completion = error;
@@ -807,18 +809,7 @@ export function getValueFromFunctionCall(
       throw error;
     }
   }
-  if (completion instanceof PossiblyNormalCompletion) {
-    // in this case one of the branches may complete abruptly, which means that
-    // not all control flow branches join into one flow at this point.
-    // Consequently we have to continue tracking changes until the point where
-    // all the branches come together into one.
-    completion = realm.composeWithSavedCompletion(completion);
-  }
-  // return or throw completion
-  if (completion instanceof AbruptCompletion) throw completion;
-  if (completion instanceof SimpleNormalCompletion) completion = completion.value;
-  invariant(completion instanceof Value);
-  return completion;
+  return realm.returnOrThrowCompletion(completion);
 }
 
 function isEventProp(name: string): boolean {

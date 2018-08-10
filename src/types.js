@@ -28,15 +28,8 @@ import type {
   UndefinedValue,
 } from "./values/index.js";
 import { Value } from "./values/index.js";
-import {
-  AbruptCompletion,
-  Completion,
-  ForkedAbruptCompletion,
-  PossiblyNormalCompletion,
-  NormalCompletion,
-} from "./completions.js";
+import { Completion } from "./completions.js";
 import { EnvironmentRecord, LexicalEnvironment, Reference } from "./environment.js";
-import { Generator } from "./utils/generator.js";
 import { ObjectValue } from "./values/index.js";
 import type {
   BabelNode,
@@ -48,7 +41,7 @@ import type {
   BabelNodeVariableDeclaration,
   BabelNodeSourceLocation,
 } from "@babel/types";
-import type { Bindings, Effects, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "./realm.js";
+import type { Effects, Realm } from "./realm.js";
 import { CompilerDiagnostic } from "./errors.js";
 import type { Severity } from "./errors.js";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
@@ -307,6 +300,8 @@ export type Intrinsics = {
 
   __IntrospectionError: NativeFunctionValue,
   __IntrospectionErrorPrototype: ObjectValue,
+  __topValue: AbstractValue,
+  __bottomValue: AbstractValue,
 };
 
 export type PromiseCapability = {
@@ -551,13 +546,9 @@ export type FunctionType = {
   // ECMA262 18.2.1.1
   PerformEval(realm: Realm, x: Value, evalRealm: Realm, strictCaller: boolean, direct: boolean): Value,
 
-  // If c is an abrupt completion and realm.savedCompletion is defined, the result is an instance of
-  // ForkedAbruptCompletion and the effects that have been captured since the PossiblyNormalCompletion instance
-  // in realm.savedCompletion has been created, becomes the effects of the branch that terminates in c.
-  // If c is a normal completion, the result is realm.savedCompletion, with its value updated to c.
-  // If c is undefined, the result is just realm.savedCompletion.
+  // Composes realm.savedCompletion with c, clears realm.savedCompletion and return the composition.
   // Call this only when a join point has been reached.
-  incorporateSavedCompletion(realm: Realm, c: void | AbruptCompletion | Value): void | Completion | Value,
+  incorporateSavedCompletion(realm: Realm, c: void | Completion | Value): void | Completion | Value,
 
   EvaluateStatements(
     body: Array<BabelNodeStatement>,
@@ -566,14 +557,6 @@ export type FunctionType = {
     blockEnv: LexicalEnvironment,
     realm: Realm
   ): Value,
-
-  PartiallyEvaluateStatements(
-    body: Array<BabelNodeStatement>,
-    blockValue: void | NormalCompletion | Value,
-    strictCode: boolean,
-    blockEnv: LexicalEnvironment,
-    realm: Realm
-  ): [Completion | Value, Array<BabelNodeStatement>],
 
   // ECMA262 9.2.5
   FunctionCreate(
@@ -732,117 +715,15 @@ export type EnvironmentType = {
 };
 
 export type JoinType = {
-  stopEffectCaptureJoinApplyAndReturnCompletion(
-    c1: PossiblyNormalCompletion,
-    c2: AbruptCompletion,
-    realm: Realm
-  ): ForkedAbruptCompletion,
+  composeCompletions(leftCompletion: void | Completion | Value, rightCompletion: Completion | Value): Completion,
 
-  unbundleNormalCompletion(
-    completionOrValue: Completion | Value | Reference
-  ): [void | NormalCompletion, Value | Reference],
+  composeWithEffects(completion: Completion, effects: Effects): Effects,
 
-  composeNormalCompletions(
-    leftCompletion: void | NormalCompletion,
-    rightCompletion: void | NormalCompletion,
-    resultValue: Value,
-    realm: Realm
-  ): PossiblyNormalCompletion | Value,
+  joinCompletions(joinCondition: Value, c1: Completion, c2: Completion): Completion,
 
-  composePossiblyNormalCompletions(
-    realm: Realm,
-    pnc: PossiblyNormalCompletion,
-    c: PossiblyNormalCompletion,
-    priorEffects?: Effects
-  ): PossiblyNormalCompletion,
+  joinEffects(joinCondition: Value, e1: Effects, e2: Effects): Effects,
 
-  updatePossiblyNormalCompletionWithSubsequentEffects(
-    realm: Realm,
-    pnc: PossiblyNormalCompletion,
-    subsequentEffects: Effects
-  ): void,
-
-  updatePossiblyNormalCompletionWithValue(realm: Realm, pnc: PossiblyNormalCompletion, v: Value): void,
-
-  replacePossiblyNormalCompletionWithForkedAbruptCompletion(
-    realm: Realm,
-    // a forked path with a non abrupt (normal) component
-    pnc: PossiblyNormalCompletion,
-    // an abrupt completion that completes the normal path
-    ac: AbruptCompletion,
-    // effects collected after pnc was constructed
-    e: Effects
-  ): ForkedAbruptCompletion,
-
-  extractAndJoinCompletionsOfType(CompletionType: typeof AbruptCompletion, realm: Realm, c: AbruptCompletion): Effects,
-
-  joinForkOrChoose(realm: Realm, joinCondition: Value, e1: Effects, e2: Effects): Effects,
-
-  joinNestedEffects(realm: Realm, c: Completion, precedingEffects?: Effects): Effects,
-
-  collapseResults(
-    realm: Realm,
-    joinCondition: AbstractValue,
-    precedingEffects: Effects,
-    result1: EvaluationResult,
-    result2: EvaluationResult
-  ): Completion,
-
-  joinOrForkResults(
-    realm: Realm,
-    joinCondition: AbstractValue,
-    result1: EvaluationResult,
-    result2: EvaluationResult,
-    e1: Effects,
-    e2: Effects
-  ): Completion,
-
-  composeGenerators(realm: Realm, generator1: Generator, generator2: Generator): Generator,
-
-  // Creates a single map that joins together maps m1 and m2 using the given join
-  // operator. If an entry is present in one map but not the other, the missing
-  // entry is treated as if it were there and its value were undefined.
-  joinMaps<K, V>(m1: Map<K, V>, m2: Map<K, V>, join: (K, void | V, void | V) => V): Map<K, V>,
-
-  // Creates a single map that has an key, value pair for the union of the key
-  // sets of m1 and m2. The value of a pair is the join of m1[key] and m2[key]
-  // where the join is defined to be just m1[key] if m1[key] === m2[key] and
-  // and abstract value with expression "joinCondition ? m1[key] : m2[key]" if not.
-  joinBindings(
-    realm: Realm,
-    joinCondition: AbstractValue,
-    g1: Generator,
-    m1: Bindings,
-    g2: Generator,
-    m2: Bindings
-  ): [Generator, Generator, Bindings],
-
-  // If v1 is known and defined and v1 === v2 return v1,
-  // otherwise return getAbstractValue(v1, v2)
-  joinValues(
-    realm: Realm,
-    v1: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
-    v2: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
-    getAbstractValue: (void | Value, void | Value) => Value
-  ): Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>,
-
-  joinPropertyBindings(
-    realm: Realm,
-    joinCondition: AbstractValue,
-    m1: PropertyBindings,
-    m2: PropertyBindings,
-    c1: CreatedObjects,
-    c2: CreatedObjects
-  ): PropertyBindings,
-
-  // Returns a field by field join of two descriptors.
-  // Descriptors with get/set are not yet supported.
-  joinDescriptors(
-    realm: Realm,
-    joinCondition: AbstractValue,
-    d1: void | Descriptor,
-    d2: void | Descriptor
-  ): void | Descriptor,
+  joinValuesOfSelectedCompletions(selector: (Completion) => boolean, completion: Completion): Value,
 
   mapAndJoin(
     realm: Realm,

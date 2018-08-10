@@ -8,9 +8,7 @@
  */
 
 /* @flow */
-// This file just runs the 4 test runners in one file for coverage
-require("./test-residual.js");
-
+// This file just runs the 3 test runners in one file for coverage
 require("./test-runner.js");
 
 require("./generate-sourcemaps-test.js");

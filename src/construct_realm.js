@@ -16,7 +16,6 @@ import initializeGlobal from "./intrinsics/ecma262/global.js";
 import type { RealmOptions } from "./options.js";
 import { RealmStatistics } from "./statistics.js";
 import * as evaluators from "./evaluators/index.js";
-import * as partialEvaluators from "./partial-evaluators/index.js";
 import { Environment, DebugReproManager } from "./singletons.js";
 import { ObjectValue } from "./values/index.js";
 import { DebugServer } from "./debugger/server/Debugger.js";
@@ -50,7 +49,6 @@ export default function(
   r.$GlobalObject = new ObjectValue(r, i.ObjectPrototype, "global");
   initializeGlobal(r);
   for (let name in evaluators) r.evaluators[name] = evaluators[name];
-  for (let name in partialEvaluators) r.partialEvaluators[name] = partialEvaluators[name];
   r.simplifyAndRefineAbstractValue = simplifyAndRefineAbstractValue.bind(null, r, false);
   r.simplifyAndRefineAbstractCondition = simplifyAndRefineAbstractValue.bind(null, r, true);
   r.$GlobalEnv = Environment.NewGlobalEnvironment(r, r.$GlobalObject, r.$GlobalObject);

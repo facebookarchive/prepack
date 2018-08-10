@@ -16,6 +16,7 @@ import type {
   BabelNodeSourceLocation,
   BabelUnaryOperator,
 } from "@babel/types";
+import { Completion, JoinedAbruptCompletions, JoinedNormalAndAbruptCompletions } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import { createOperationDescriptor, type OperationDescriptor } from "../utils/generator.js";
@@ -51,7 +52,6 @@ export type AbstractValueKind =
   | "abstractConcreteUnion"
   | "build function"
   | "widened property"
-  | "widened return result"
   | "widened numeric property"
   | "conditional"
   | "resolved"
@@ -554,6 +554,49 @@ export default class AbstractValue extends Value {
     invariant(!(this instanceof AbstractObjectValue));
     AbstractValue.reportIntrospectionError(this);
     throw new FatalError();
+  }
+
+  static createJoinConditionForSelectedCompletions(
+    selector: Completion => boolean,
+    completion: JoinedAbruptCompletions | JoinedNormalAndAbruptCompletions
+  ): AbstractValue {
+    let jc = completion.joinCondition;
+    let realm = jc.$Realm;
+    let c = completion.consequent;
+    let a = completion.alternate;
+    let cContains = c.containsSelectedCompletion(selector);
+    let aContains = a.containsSelectedCompletion(selector);
+    invariant(cContains || aContains);
+    if (cContains && !aContains) return jc;
+    if (!cContains && aContains) return negate(jc);
+    invariant(cContains && aContains);
+    let cCond;
+    if (selector(c)) cCond = jc;
+    else {
+      invariant(c instanceof JoinedAbruptCompletions || c instanceof JoinedNormalAndAbruptCompletions);
+      cCond = AbstractValue.createJoinConditionForSelectedCompletions(selector, c);
+    }
+    let aCond;
+    if (selector(a)) aCond = negate(jc);
+    else {
+      invariant(a instanceof JoinedAbruptCompletions || a instanceof JoinedNormalAndAbruptCompletions);
+      aCond = AbstractValue.createJoinConditionForSelectedCompletions(selector, a);
+    }
+    let or = AbstractValue.createFromLogicalOp(realm, "||", cCond, aCond, undefined, true, true);
+    invariant(or instanceof AbstractValue);
+    if (completion instanceof JoinedNormalAndAbruptCompletions && completion.composedWith !== undefined) {
+      let composedCond = AbstractValue.createJoinConditionForSelectedCompletions(selector, completion.composedWith);
+      let and = AbstractValue.createFromLogicalOp(realm, "&&", composedCond, or);
+      invariant(and instanceof AbstractValue);
+      return and;
+    }
+    return or;
+
+    function negate(v: AbstractValue): AbstractValue {
+      let nv = AbstractValue.createFromUnaryOp(realm, "!", v, true, v.expressionLocation, true, true);
+      invariant(nv instanceof AbstractValue);
+      return nv;
+    }
   }
 
   static createFromBinaryOp(

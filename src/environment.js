@@ -15,17 +15,14 @@ import type {
   BabelNodeFile,
   BabelNodeLVal,
   BabelNodePosition,
-  BabelNodeStatement,
   BabelNodeSourceLocation,
 } from "@babel/types";
 import type { Realm } from "./realm.js";
-import type { SourceFile, SourceMap, SourceType } from "./types.js";
+import type { SourceFile, SourceType } from "./types.js";
 import * as t from "@babel/types";
 
 import { AbruptCompletion, Completion, ThrowCompletion } from "./completions.js";
 import { CompilerDiagnostic, FatalError } from "./errors.js";
-import { defaultOptions } from "./options.js";
-import type { PartialEvaluatorOptions } from "./options";
 import { ExecutionContext } from "./realm.js";
 import {
   AbstractValue,
@@ -41,7 +38,6 @@ import {
   UndefinedValue,
   Value,
 } from "./values/index.js";
-import generate from "@babel/generator";
 import parse from "./utils/parse.js";
 import invariant from "./invariant.js";
 import traverseFast from "./utils/traverse-fast.js";
@@ -1077,35 +1073,6 @@ export class LexicalEnvironment {
     Properties.PutValue(this.realm, globalValue, rvalue);
   }
 
-  partiallyEvaluateCompletionDeref(
-    ast: BabelNode,
-    strictCode: boolean,
-    metadata?: any
-  ): [Completion | Value, BabelNode, Array<BabelNodeStatement>] {
-    let [result, partial_ast, partial_io] = this.partiallyEvaluateCompletion(ast, strictCode, metadata);
-    if (result instanceof Reference) {
-      result = Environment.GetValue(this.realm, result);
-    }
-    return [result, partial_ast, partial_io];
-  }
-
-  partiallyEvaluateCompletion(
-    ast: BabelNode,
-    strictCode: boolean,
-    metadata?: any
-  ): [Completion | Reference | Value, BabelNode, Array<BabelNodeStatement>] {
-    try {
-      return this.partiallyEvaluate(ast, strictCode, metadata);
-    } catch (err) {
-      if (err instanceof Completion) return [err, ast, []];
-      if (err instanceof Error)
-        // rethrowing Error should preserve stack trace
-        throw err;
-      // let's wrap into a proper Error to create stack trace
-      throw new FatalError(err);
-    }
-  }
-
   evaluateCompletionDeref(ast: BabelNode, strictCode: boolean, metadata?: any): AbruptCompletion | Value {
     let result = this.evaluateCompletion(ast, strictCode, metadata);
     if (result instanceof Reference) result = Environment.GetValue(this.realm, result);
@@ -1214,37 +1181,6 @@ export class LexicalEnvironment {
     if (res instanceof AbruptCompletion) return [res, code];
 
     return [Environment.GetValue(this.realm, res), code];
-  }
-
-  executePartialEvaluator(
-    sources: Array<SourceFile>,
-    options: PartialEvaluatorOptions = defaultOptions,
-    sourceType: SourceType = "script"
-  ): AbruptCompletion | { code: string, map?: SourceMap } {
-    let [ast, code] = this.concatenateAndParse(sources, sourceType);
-    let context = new ExecutionContext();
-    context.lexicalEnvironment = this;
-    context.variableEnvironment = this;
-    context.realm = this.realm;
-    this.realm.pushContext(context);
-    let partialAST;
-    try {
-      [, partialAST] = this.partiallyEvaluateCompletionDeref(ast, false);
-    } finally {
-      this.realm.popContext(context);
-      this.realm.onDestroyScope(context.lexicalEnvironment);
-      if (!this.destroyed) this.realm.onDestroyScope(this);
-      invariant(
-        this.realm.activeLexicalEnvironments.size === 0,
-        `expected 0 active lexical environments, got ${this.realm.activeLexicalEnvironments.size}`
-      );
-    }
-    invariant(partialAST.type === "File");
-    let fileAst = ((partialAST: any): BabelNodeFile);
-    let prog = t.program(fileAst.program.body, ast.program.directives);
-    this.fixupFilenames(prog);
-    // The type signature for generate is not complete, hence the any
-    return generate(prog, { sourceMaps: options.sourceMaps }, (code: any));
   }
 
   execute(
@@ -1433,20 +1369,6 @@ export class LexicalEnvironment {
     let result = this.evaluate(ast, strictCode, metadata);
     if (result instanceof Reference) result = Environment.GetValue(this.realm, result);
     return result;
-  }
-
-  partiallyEvaluate(
-    ast: BabelNode,
-    strictCode: boolean,
-    metadata?: any
-  ): [Completion | Reference | Value, BabelNode, Array<BabelNodeStatement>] {
-    let partialEvaluator = this.realm.partialEvaluators[(ast.type: string)];
-    if (partialEvaluator) {
-      return partialEvaluator(ast, strictCode, this, this.realm, metadata);
-    }
-
-    let err = new TypeError(`Unsupported node type ${ast.type}`);
-    throw err;
   }
 }
 

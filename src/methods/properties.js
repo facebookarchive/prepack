@@ -9,7 +9,6 @@
 
 /* @flow */
 
-import { AbruptCompletion, Completion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { construct_empty_effects, type Realm, Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding, PropertyKeyValue } from "../types.js";
 import {
@@ -309,57 +308,41 @@ export class PropertiesImplementation {
     if (joinCondition !== undefined) {
       let descriptor2 = ownDesc.descriptor2;
       ownDesc = ownDesc.descriptor1;
+      let e1 = Path.withCondition(joinCondition, () => {
+        return ownDesc !== undefined
+          ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/1")
+          : construct_empty_effects(realm);
+      });
       let {
         result: result1,
         generator: generator1,
         modifiedBindings: modifiedBindings1,
         modifiedProperties: modifiedProperties1,
         createdObjects: createdObjects1,
-      } = Path.withCondition(joinCondition, () => {
+      } = e1;
+      ownDesc = descriptor2;
+      let e2 = Path.withInverseCondition(joinCondition, () => {
         return ownDesc !== undefined
-          ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/1")
+          ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/2")
           : construct_empty_effects(realm);
       });
-      ownDesc = descriptor2;
       let {
         result: result2,
         generator: generator2,
         modifiedBindings: modifiedBindings2,
         modifiedProperties: modifiedProperties2,
         createdObjects: createdObjects2,
-      } = Path.withInverseCondition(joinCondition, () => {
-        return ownDesc !== undefined
-          ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/2")
-          : construct_empty_effects(realm);
-      });
+      } = e2;
 
       // Join the effects, creating an abstract view of what happened, regardless
       // of the actual value of ownDesc.joinCondition.
-      if (result1 instanceof Completion) result1 = result1.shallowCloneWithoutEffects();
-      if (result2 instanceof Completion) result2 = result2.shallowCloneWithoutEffects();
-      let joinedEffects = Join.joinForkOrChoose(
-        realm,
+      let joinedEffects = Join.joinEffects(
         joinCondition,
         new Effects(result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
         new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
       );
-      let completion = joinedEffects.result;
-      if (completion instanceof PossiblyNormalCompletion) {
-        // in this case one of the branches may complete abruptly, which means that
-        // not all control flow branches join into one flow at this point.
-        // Consequently we have to continue tracking changes until the point where
-        // all the branches come together into one.
-        completion = realm.composeWithSavedCompletion(completion);
-      }
-      // Note that the effects of (non joining) abrupt branches are not included
-      // in joinedEffects, but are tracked separately inside completion.
       realm.applyEffects(joinedEffects);
-
-      // return or throw completion
-      if (completion instanceof AbruptCompletion) throw completion;
-      if (completion instanceof SimpleNormalCompletion) completion = completion.value;
-      invariant(completion instanceof Value);
-      return To.ToBooleanPartial(realm, completion);
+      return To.ToBooleanPartial(realm, realm.returnOrThrowCompletion(joinedEffects.result));
     }
 
     return OrdinarySetHelper();

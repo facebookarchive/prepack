@@ -503,7 +503,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
 
     // 7. Search string for the first occurrence of searchString and
     //    let pos be the index within string of the first code unit of the matched substring and
-    let pos = string.search(searchString);
+    let pos = string.indexOf(searchString);
 
     //    let matched be searchString.
     let matched = searchString;

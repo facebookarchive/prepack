@@ -54,7 +54,6 @@ function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
 
   let recover = code.includes("// recover-from-errors");
-  let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
 
   let expectedErrors = code.match(/\/\/\s*expected errors:\s*(.*)/);
@@ -68,7 +67,6 @@ function runTest(name: string, code: string): boolean {
   try {
     let options = {
       internalDebug: false,
-      delayUnsupportedRequires,
       mathRandomSeed: "0",
       errorHandler: errorHandler.bind(null, recover ? "Recover" : "Fail", errors),
       serialize: true,
