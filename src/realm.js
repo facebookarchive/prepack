@@ -888,6 +888,7 @@ export class Realm {
 
   evaluateForEffects(f: () => Completion | Value, state: any, generatorName: string): Effects {
     // Save old state and set up empty state
+    invariant(this.createdObjects !== undefined, "created objects should never be undefined");
     let [savedBindings, savedProperties] = this.getAndResetModifiedMaps();
     let saved_generator = this.generator;
     let saved_createdObjects = this.createdObjects;
@@ -966,6 +967,13 @@ export class Realm {
       }
     } finally {
       for (let t2 of this.tracers) t2.endEvaluateForEffects(state, result);
+      if (saved_createdObjects) {
+        for (let obj of saved_createdObjects) {
+          if (!this.createdObjects.has(obj)) {
+            debugger;
+          }
+        }
+      }
     }
   }
 
