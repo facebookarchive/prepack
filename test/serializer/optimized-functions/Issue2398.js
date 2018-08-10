@@ -1,3 +1,5 @@
+// arrayNestedOptimizedFunctionsEnabled
+
 function fn(props, cond) {
   var arr = Array.from(props.x);
   var newObj;

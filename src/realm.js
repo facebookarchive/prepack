@@ -337,6 +337,7 @@ export class Realm {
     this.debugNames = opts.debugNames;
     this._checkedObjectIds = new Map();
     this.optimizedFunctions = new Map();
+    this.arrayNestedOptimizedFunctionsEnabled = opts.arrayNestedOptimizedFunctionsEnabled || false;
   }
 
   statistics: RealmStatistics;
@@ -482,6 +483,7 @@ export class Realm {
   _checkedObjectIds: Map<ObjectValue | AbstractObjectValue, number>;
 
   optimizedFunctions: Map<FunctionValue | AbstractValue, ArgModel | void>;
+  arrayNestedOptimizedFunctionsEnabled: boolean;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {

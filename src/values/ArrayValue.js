@@ -80,7 +80,7 @@ function createArrayWithWidenedNumericProperty(
   let abstractArrayValue = new ArrayValue(realm, intrinsicName);
 
   if (possibleNestedOptimizedFunctions !== undefined) {
-    if (!realm.react.enabled || realm.react.optimizeNestedFunctions) {
+    if (realm.arrayNestedOptimizedFunctionsEnabled && (!realm.react.enabled || realm.react.optimizeNestedFunctions)) {
       evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
         realm,
         abstractArrayValue,
