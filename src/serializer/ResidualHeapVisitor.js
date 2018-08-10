@@ -1001,6 +1001,8 @@ export class ResidualHeapVisitor {
   visitAbstractValue(val: AbstractValue): void {
     if (val.kind === "sentinel member expression") {
       this.logger.logError(val, "expressions of type o[p] are not yet supported for partially known o and unknown p");
+    } else if (val.kind === "environment initialization expression") {
+      this.logger.logError(val, "reads during environment initialization should never leak to serialization");
     } else if (val.kind === "conditional") {
       this._visitAbstractValueConditional(val);
       return;
