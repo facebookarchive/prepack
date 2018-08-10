@@ -5,4 +5,6 @@ var c = __abstract("boolean", "(true)");
 var obj = { x: 1 };
 if (c) delete obj.x;
 Object.defineProperty(obj, "x", { value: 2 });
-result = obj;
+inspect = function() {
+  return Object.getOwnPropertyDescriptor(obj, "x").enumerable;
+};
