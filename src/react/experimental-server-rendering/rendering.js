@@ -359,17 +359,11 @@ class ReactDOMServerRenderer {
             });
 
           let resolvedEffects;
-          let saved_pathConditions = this.realm.pathConditions;
-          this.realm.pathConditions = [];
-          try {
-            resolvedEffects = this.realm.evaluateForEffects(
-              pureFuncCall,
-              /*state*/ null,
-              `react SSR resolve nested optimized closure`
-            );
-          } finally {
-            this.realm.pathConditions = saved_pathConditions;
-          }
+          resolvedEffects = this.realm.evaluateForEffects(
+            pureFuncCall,
+            /*state*/ null,
+            `react SSR resolve nested optimized closure`
+          );
           nestedOptimizedFunctionEffects.set(func, resolvedEffects);
           this.realm.collectedNestedOptimizedFunctionEffects.set(func, resolvedEffects);
         }

@@ -1433,17 +1433,11 @@ export class Reconciler {
             );
 
           let resolvedEffects;
-          let saved_pathConditions = this.realm.pathConditions;
-          this.realm.pathConditions = [];
-          try {
-            resolvedEffects = this.realm.evaluateForEffects(
-              pureFuncCall,
-              /*state*/ null,
-              `react resolve nested optimized closure`
-            );
-          } finally {
-            this.realm.pathConditions = saved_pathConditions;
-          }
+          resolvedEffects = this.realm.evaluateForEffects(
+            pureFuncCall,
+            /*state*/ null,
+            `react resolve nested optimized closure`
+          );
           this.statistics.optimizedNestedClosures++;
           nestedOptimizedFunctionEffects.set(func, resolvedEffects);
           this.realm.collectedNestedOptimizedFunctionEffects.set(func, resolvedEffects);
@@ -1551,8 +1545,6 @@ export class Reconciler {
         throw new NestedOptimizedFunctionSideEffect();
       });
     let effects;
-    let saved_pathConditions = this.realm.pathConditions;
-    this.realm.pathConditions = [];
     try {
       effects = this.realm.evaluateForEffects(
         () => {
@@ -1571,8 +1563,6 @@ export class Reconciler {
         return;
       }
       throw e;
-    } finally {
-      this.realm.pathConditions = saved_pathConditions;
     }
     this.statistics.optimizedNestedClosures++;
     this.realm.collectedNestedOptimizedFunctionEffects.set(funcToModel, effects);
