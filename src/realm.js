@@ -888,7 +888,6 @@ export class Realm {
 
   evaluateForEffects(f: () => Completion | Value, state: any, generatorName: string): Effects {
     // Save old state and set up empty state
-    invariant(this.createdObjects !== undefined, "created objects should never be undefined");
     let [savedBindings, savedProperties] = this.getAndResetModifiedMaps();
     let saved_generator = this.generator;
     let saved_createdObjects = this.createdObjects;
