@@ -11,7 +11,6 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { ObjectValue, Value, AbstractObjectValue, AbstractValue } from "../values/index.js";
 import { Environment, Havoc } from "../singletons.js";
@@ -113,21 +112,8 @@ function tryToEvaluateConstructOrLeaveAsAbstract(
       throw error;
     }
   }
-  // Note that the effects of (non joining) abrupt branches are not included
-  // in joinedEffects, but are tracked separately inside completion.
   realm.applyEffects(effects);
-  let completion = effects.result;
-  if (completion instanceof PossiblyNormalCompletion) {
-    // in this case one of the branches may complete abruptly, which means that
-    // not all control flow branches join into one flow at this point.
-    // Consequently we have to continue tracking changes until the point where
-    // all the branches come together into one.
-    completion = realm.composeWithSavedCompletion(completion);
-  }
-
-  // return or throw completion
-  if (completion instanceof AbruptCompletion) throw completion;
-  if (completion instanceof SimpleNormalCompletion) completion = completion.value;
+  let completion = realm.returnOrThrowCompletion(effects.result);
   invariant(completion instanceof ObjectValue || completion instanceof AbstractObjectValue);
   return completion;
 }

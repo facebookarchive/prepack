@@ -24,6 +24,7 @@ import {
   type AbstractValueKind,
   BooleanValue,
   ConcreteValue,
+  EmptyValue,
   FunctionValue,
   NullValue,
   NumberValue,
@@ -37,14 +38,7 @@ import {
 import { CompilerDiagnostic } from "../errors.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
-import {
-  AbruptCompletion,
-  ForkedAbruptCompletion,
-  ThrowCompletion,
-  ReturnCompletion,
-  PossiblyNormalCompletion,
-  SimpleNormalCompletion,
-} from "../completions.js";
+import { JoinedNormalAndAbruptCompletions, SimpleNormalCompletion, ThrowCompletion } from "../completions.js";
 import type {
   BabelNodeExpression,
   BabelNodeIdentifier,
@@ -54,7 +48,7 @@ import type {
   BabelNodeBlockStatement,
   BabelNodeLVal,
 } from "@babel/types";
-import { concretize, Utils } from "../singletons.js";
+import { concretize, Join, Utils } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";
 import type { ShapeInformationInterface } from "../types.js";
 import { PreludeGenerator } from "./PreludeGenerator.js";
@@ -507,61 +501,6 @@ class ReturnValueEntry extends GeneratorEntry {
   }
 }
 
-class IfThenElseEntry extends GeneratorEntry {
-  constructor(generator: Generator, completion: PossiblyNormalCompletion | ForkedAbruptCompletion, realm: Realm) {
-    super(realm);
-    this.completion = completion;
-    this.containingGenerator = generator;
-    this.condition = completion.joinCondition;
-
-    this.consequentGenerator = Generator.fromEffects(completion.consequentEffects, realm, "ConsequentEffects");
-    this.alternateGenerator = Generator.fromEffects(completion.alternateEffects, realm, "AlternateEffects");
-  }
-
-  completion: PossiblyNormalCompletion | ForkedAbruptCompletion;
-  containingGenerator: Generator;
-
-  condition: Value;
-  consequentGenerator: Generator;
-  alternateGenerator: Generator;
-
-  toDisplayJson(depth: number): DisplayResult {
-    if (depth <= 0) return `IfThenElseEntry${this.index}`;
-    return Utils.verboseToDisplayJson(
-      {
-        type: "IfThenElse",
-        condition: this.condition,
-        consequent: this.consequentGenerator,
-        alternate: this.alternateGenerator,
-      },
-      depth
-    );
-  }
-
-  visit(context: VisitEntryCallbacks, containingGenerator: Generator): boolean {
-    invariant(
-      containingGenerator === this.containingGenerator,
-      "This entry requires effects to be applied and may not be moved"
-    );
-    this.condition = context.visitEquivalentValue(this.condition);
-    context.visitGenerator(this.consequentGenerator, containingGenerator);
-    context.visitGenerator(this.alternateGenerator, containingGenerator);
-    return true;
-  }
-
-  serialize(context: SerializationContext): void {
-    let valuesToProcess = new Set();
-    context.emit(
-      context.serializeCondition(this.condition, this.consequentGenerator, this.alternateGenerator, valuesToProcess)
-    );
-    context.processValues(valuesToProcess);
-  }
-
-  getDependencies(): void | Array<Generator> {
-    return [this.consequentGenerator, this.alternateGenerator];
-  }
-}
-
 class BindingAssignmentEntry extends GeneratorEntry {
   constructor(realm: Realm, binding: Binding, value: Value) {
     super(realm);
@@ -651,14 +590,15 @@ export class Generator {
     }
 
     if (result instanceof UndefinedValue) return output;
-    if (result instanceof SimpleNormalCompletion || result instanceof ReturnCompletion) {
+    if (result instanceof SimpleNormalCompletion) {
       output.emitReturnValue(result.value);
-    } else if (result instanceof PossiblyNormalCompletion || result instanceof ForkedAbruptCompletion) {
-      output.emitIfThenElse(result, realm);
     } else if (result instanceof ThrowCompletion) {
       output.emitThrow(result.value);
-    } else if (result instanceof AbruptCompletion) {
-      // no-op
+    } else if (result instanceof JoinedNormalAndAbruptCompletions) {
+      let selector = c =>
+        c instanceof ThrowCompletion && c.value !== realm.intrinsics.__bottomValue && !(c.value instanceof EmptyValue);
+      output.emitConditionalThrow(Join.joinValuesOfSelectedCompletions(selector, result));
+      output.emitReturnValue(result.value);
     } else {
       invariant(false);
     }
@@ -724,10 +664,6 @@ export class Generator {
 
   emitReturnValue(result: Value): void {
     this._entries.push(new ReturnValueEntry(this.realm, this, result));
-  }
-
-  emitIfThenElse(result: PossiblyNormalCompletion | ForkedAbruptCompletion, realm: Realm): void {
-    this._entries.push(new IfThenElseEntry(this, result, realm));
   }
 
   getName(): string {
@@ -839,6 +775,8 @@ export class Generator {
   }
 
   emitConditionalThrow(value: Value): void {
+    if (value instanceof EmptyValue) return;
+    this._issueThrowCompilerDiagnostic(value);
     this._addEntry({
       args: [value],
       operationDescriptor: createOperationDescriptor("CONDITIONAL_THROW", { value }),

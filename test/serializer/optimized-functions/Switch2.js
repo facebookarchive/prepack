@@ -1,6 +1,5 @@
 let x = global.__abstract ? __abstract("number", "1") : 1;
 
-// throws introspection error
 function f(x) {
   switch (x) {
     default:

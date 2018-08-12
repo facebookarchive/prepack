@@ -26,7 +26,6 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { Environment, Havoc, To } from "../singletons.js";
 import type { BabelBinaryOperator, BabelNodeBinaryExpression, BabelNodeSourceLocation } from "@babel/types";
 import { createOperationDescriptor } from "../utils/generator.js";
@@ -284,23 +283,8 @@ export function computeBinary(
     }
 
     if (isPure && effects) {
-      // Note that the effects of (non joining) abrupt branches are not included
-      // in effects, but are tracked separately inside completion.
       realm.applyEffects(effects);
-      let completion = effects.result;
-      if (completion instanceof PossiblyNormalCompletion) {
-        // in this case one of the branches may complete abruptly, which means that
-        // not all control flow branches join into one flow at this point.
-        // Consequently we have to continue tracking changes until the point where
-        // all the branches come together into one.
-        completion = realm.composeWithSavedCompletion(completion);
-      } else if (completion instanceof SimpleNormalCompletion) {
-        completion = completion.value;
-      }
-      // return or throw completion
-      if (completion instanceof AbruptCompletion) throw completion;
-      invariant(completion instanceof Value);
-      return completion;
+      return realm.returnOrThrowCompletion(effects.result);
     }
 
     // If this ended up reporting an error, it might not be pure, so we'll leave it in

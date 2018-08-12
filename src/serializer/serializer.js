@@ -51,7 +51,6 @@ export class Serializer {
       this.realm,
       this.logger,
       !!serializerOptions.logModules,
-      !!serializerOptions.delayUnsupportedRequires,
       !!serializerOptions.accelerateUnsupportedRequires
     );
     this.functions = new Functions(this.realm, this.modules.moduleTracer);

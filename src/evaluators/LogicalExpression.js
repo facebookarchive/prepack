@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import { Effects } from "../realm.js";
-import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
+import { SimpleNormalCompletion } from "../completions.js";
 import { InfeasiblePathError } from "../errors.js";
 import { construct_empty_effects } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
@@ -89,22 +89,14 @@ export default function(
   // use lval as is for the join condition.
   let joinedEffects;
   if (ast.operator === "&&") {
-    joinedEffects = Join.joinForkOrChoose(
-      realm,
-      lval,
-      new Effects(
-        result2.shallowCloneWithoutEffects(),
-        generator2,
-        modifiedBindings2,
-        modifiedProperties2,
-        createdObjects2
-      ),
+    joinedEffects = Join.joinEffects(
+      lcond,
+      new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2),
       new Effects(new SimpleNormalCompletion(lval), generator1, modifiedBindings1, modifiedProperties1, createdObjects1)
     );
   } else {
-    joinedEffects = Join.joinForkOrChoose(
-      realm,
-      lval,
+    joinedEffects = Join.joinEffects(
+      lcond,
       new Effects(
         new SimpleNormalCompletion(lval),
         generator1,
@@ -112,38 +104,18 @@ export default function(
         modifiedProperties1,
         createdObjects1
       ),
-      new Effects(
-        result2.shallowCloneWithoutEffects(),
-        generator2,
-        modifiedBindings2,
-        modifiedProperties2,
-        createdObjects2
-      )
+      new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
     );
   }
-  let completion = joinedEffects.result;
-  if (completion instanceof PossiblyNormalCompletion) {
-    // in this case the evaluation of ast.right may complete abruptly, which means that
-    // not all control flow branches join into one flow at this point.
-    // Consequently we have to continue tracking changes until the point where
-    // all the branches come together into one.
-    completion = realm.composeWithSavedCompletion(completion);
-  }
-  // Note that the effects of (non joining) abrupt branches are not included
-  // in joinedEffects, but are tracked separately inside completion.
-  realm.applyEffects(joinedEffects);
 
-  // return or throw completion
-  if (completion instanceof AbruptCompletion) throw completion;
-  if (completion instanceof SimpleNormalCompletion) completion = completion.value;
-  if (result2 instanceof SimpleNormalCompletion) result2 = result2.value;
-  invariant(completion instanceof Value);
-  if (lval instanceof Value && result2 instanceof Value) {
-    // joinForkOrChoose does the right thing for the side effects of the second expression but for the result the join
+  realm.applyEffects(joinedEffects);
+  let completion = realm.returnOrThrowCompletion(joinedEffects.result);
+  if (lval instanceof Value && result2.value instanceof Value) {
+    // joinEffects does the right thing for the side effects of the second expression but for the result the join
     // produces a conditional expressions of the form (a ? b : a) for a && b and (a ? a : b) for a || b
     // Rather than look for this pattern everywhere, we override this behavior and replace the completion with
     // the actual logical operator. This helps with simplification and reasoning when dealing with path conditions.
-    completion = AbstractValue.createFromLogicalOp(realm, ast.operator, lval, result2, ast.loc);
+    completion = AbstractValue.createFromLogicalOp(realm, ast.operator, lval, result2.value, ast.loc);
   }
   return completion;
 }
