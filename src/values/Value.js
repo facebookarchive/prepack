@@ -73,6 +73,10 @@ export default class Value {
     return !!this.intrinsicName;
   }
 
+  isTemporal() {
+    invariant(false, "abstract method; please override");
+  }
+
   isPartialObject(): boolean {
     return false;
   }

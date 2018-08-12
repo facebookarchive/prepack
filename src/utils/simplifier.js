@@ -234,6 +234,8 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
       }
       if (remainingConcreteValues.length === 0) return abstractValue;
       if (remainingConcreteValues.length === concreteValues.length) return value;
+
+      // This abstractValue was extracted from an abstract concrete union, and must be temporal
       return AbstractValue.createAbstractConcreteUnion(realm, abstractValue, ...remainingConcreteValues);
     }
     default:

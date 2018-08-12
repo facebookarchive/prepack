@@ -194,11 +194,28 @@ export function computeBinary(
 
   let resultType;
   const compute = () => {
-    if (lval instanceof AbstractValue || rval instanceof AbstractValue) {
+    let lvalIsAbstract = lval instanceof AbstractValue;
+    let rvalIsAbstract = rval instanceof AbstractValue;
+
+    if (lvalIsAbstract || rvalIsAbstract) {
       try {
         // generate error if binary operation might throw or have side effects
         resultType = getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
-        return AbstractValue.createFromBinaryOp(realm, op, lval, rval, loc);
+
+        // We have determined that it is safe to assume the type of this operation,
+        // but there is one last check. If the operation can throw, then our assumption
+        // may rely on a dynamic condition. We express this condition as an implication,
+        // rval is temporal => this operation is temporal
+        // See #2327
+        if ((op === "in" || op === "instanceof") && (rvalIsAbstract && rval.isTemporal()))
+          return AbstractValue.createTemporalFromBuildFunction(
+            realm,
+            resultType,
+            [lval, rval],
+            createOperationDescriptor("BINARY_EXPRESSION", { op }),
+            { isPure: true, skipInvariant: true }
+          );
+        else return AbstractValue.createFromBinaryOp(realm, op, lval, rval, loc);
       } catch (x) {
         if (x instanceof FatalError) {
           // There is no need to revert any effects, because the above operation is pure.

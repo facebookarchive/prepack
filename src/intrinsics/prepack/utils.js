@@ -29,7 +29,6 @@ import { Utils } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 const throwTemplateSrc = "(function(){throw new global.Error('abstract value defined at ' + A);})()";
-const throwTemplate = buildExpressionTemplate(throwTemplateSrc);
 
 export function parseTypeNameOrTemplate(
   realm: Realm,
@@ -77,9 +76,12 @@ export function createAbstract(
   let { type, template, functionResultType } = parseTypeNameOrTemplate(realm, typeNameOrTemplate);
   let optionsMap = options ? options.properties : new Map();
 
-  let result;
+  let abstractValue;
   let locString,
     loc = null;
+
+  let resultIsAbstractConcreteUnion = additionalValues.length > 0;
+
   for (let executionContext of realm.contextStack.slice().reverse()) {
     let caller = executionContext.caller;
     loc = executionContext.loc;
@@ -91,12 +93,23 @@ export function createAbstract(
     );
     if (locString !== undefined) break;
   }
+
+  if (locString === undefined) locString = "(unknown location)";
+
+  let locVal, kind, templateSrc, disablePlaceholdersOption;
+
   if (name === undefined) {
-    let locVal = new StringValue(realm, locString !== undefined ? locString : "(unknown location)");
-    let kind = AbstractValue.makeKind("abstractCounted", (realm.objectCount++).toString()); // need not be an object, but must be unique
-    result = AbstractValue.createFromTemplate(realm, throwTemplate, type, [locVal], kind);
+    locVal = [new StringValue(realm, locString)];
+    kind = AbstractValue.makeKind("abstractCounted", (realm.objectCount++).toString()); // need not be an object, but must be unique
+    templateSrc = throwTemplateSrc;
+    disablePlaceholdersOption = undefined;
   } else {
-    let kind = AbstractValue.makeKind("abstract", name);
+    locVal = [];
+    kind = AbstractValue.makeKind("abstract", name);
+    templateSrc = name;
+    disablePlaceholdersOption = {
+      disablePlaceholders: !!optionsMap.get("disablePlaceholders"),
+    };
     if (!optionsMap.get("allowDuplicateNames") && !realm.isNameStringUnique(name)) {
       let error = new CompilerDiagnostic("An abstract value with the same name exists", loc, "PP0019", "FatalError");
       realm.handleError(error);
@@ -104,28 +117,36 @@ export function createAbstract(
     } else {
       realm.saveNameString(name);
     }
-    result = AbstractValue.createFromTemplate(
-      realm,
-      buildExpressionTemplate(name, { disablePlaceholders: !!optionsMap.get("disablePlaceholders") }),
-      type,
-      [],
-      kind
-    );
-    result.intrinsicName = name;
   }
 
-  if (template) result.values = new ValuesDomain(new Set([template]));
+  let buildTemplate = buildExpressionTemplate(templateSrc, disablePlaceholdersOption);
+
+  // Abstract values in an abstract concrete union are temporal, as they are predicated
+  // on the conditions that preclude the concrete values in the union. The type invariant
+  // also only applies in that condition, so it is skipped when deriving the value.
+  if (resultIsAbstractConcreteUnion)
+    abstractValue = AbstractValue.createTemporalFromTemplate(realm, buildTemplate, type, locVal, {
+      skipInvariant: true,
+    });
+  else {
+    abstractValue = AbstractValue.createFromTemplate(realm, buildTemplate, type, locVal, kind);
+    if (name !== undefined) abstractValue.intrinsicName = name;
+  }
+
+  if (template) abstractValue.values = new ValuesDomain(new Set([template]));
+
   if (template && !(template instanceof FunctionValue)) {
     // why exclude functions?
     template.makePartial();
-    if (name !== undefined) realm.rebuildNestedProperties(result, name);
-  }
-  if (functionResultType) {
-    invariant(result instanceof AbstractObjectValue);
-    result.functionResultType = functionResultType;
+    if (name !== undefined) realm.rebuildNestedProperties(abstractValue, name);
   }
 
-  if (additionalValues.length > 0)
-    result = AbstractValue.createAbstractConcreteUnion(realm, result, ...additionalValues);
-  return result;
+  if (functionResultType) {
+    invariant(abstractValue instanceof AbstractObjectValue);
+    abstractValue.functionResultType = functionResultType;
+  }
+
+  if (resultIsAbstractConcreteUnion)
+    return AbstractValue.createAbstractConcreteUnion(realm, abstractValue, ...additionalValues);
+  else return abstractValue;
 }
