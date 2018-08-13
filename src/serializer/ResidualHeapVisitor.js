@@ -1211,8 +1211,7 @@ export class ResidualHeapVisitor {
         // This may not have been referentialized if the binding is a local of an optimized function.
         // in that case, we need to figure out which optimized function it is, and referentialize it in that scope.
         let optimizedFunctionScope = this._getAdditionalFunctionOfScope();
-        if (residualBinding.potentialReferentializationScopes.size === 0) {
-          invariant(optimizedFunctionScope !== undefined);
+        if (residualBinding.potentialReferentializationScopes.size === 0 && optimizedFunctionScope !== undefined) {
           this._enqueueWithUnrelatedScope(optimizedFunctionScope, () => {
             invariant(additionalFunctionInfo !== undefined);
             let funcInstance = additionalFunctionInfo.instance;
