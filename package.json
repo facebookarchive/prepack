@@ -50,7 +50,7 @@
     "test-all-coverage": "./node_modules/.bin/istanbul --stack_size=10000 --max_old_space_size=16384 cover ./lib/multi-runner.js --dir coverage.most && ./node_modules/.bin/istanbul --stack_size=10000 --max_old_space_size=16384 cover ./lib/test262-runner.js --timeout 50 --singleThreaded && ./node_modules/.bin/remap-istanbul -i coverage/coverage.json -i coverage.most/coverage.json -o coverage-sourcemapped -t html",
     "repl": "node lib/repl-cli.js",
     "precheck": "yarn prepack-cli --check",
-    "prepack-cli": "node --stack_size=10000 --stack_trace_limit=200 --max_old_space_size=16384 lib/prepack-cli.js --accelerateUnsupportedRequires --compatibility jsc-600-1-4-17 --delayUnsupportedRequires --mathRandomSeed 0",
+    "prepack-cli": "node --stack_size=10000 --stack_trace_limit=200 --max_old_space_size=16384 lib/prepack-cli.js --accelerateUnsupportedRequires --compatibility jsc-600-1-4-17 --mathRandomSeed 0",
     "validate": "yarn install --frozen-lockfile && yarn build && yarn build-scripts && yarn lint && yarn depcheck && yarn flow && yarn test",
     "prepublishOnly": "yarn build",
     "depcheck": "babel-node scripts/detect_bad_deps.js",
