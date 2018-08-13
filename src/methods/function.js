@@ -10,11 +10,17 @@
 /* @flow */
 
 import type { LexicalEnvironment } from "../environment.js";
-import type { PropertyKeyValue, FunctionBodyAstNode } from "../types.js";
+import type { PropertyKeyValue } from "../types.js";
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
-import { Completion, ReturnCompletion, AbruptCompletion, NormalCompletion } from "../completions.js";
+import {
+  AbruptCompletion,
+  Completion,
+  JoinedNormalAndAbruptCompletions,
+  ReturnCompletion,
+  SimpleNormalCompletion,
+} from "../completions.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord } from "../environment.js";
 import {
   AbstractValue,
@@ -121,8 +127,8 @@ function InternalCall(
     return result.value;
   }
 
-  // 10. ReturnIfAbrupt(result).  or if possibly abrupt
-  if (result instanceof Completion) {
+  // 10. ReturnIfAbrupt(result).
+  if (result instanceof AbruptCompletion) {
     throw result;
   }
 
@@ -785,12 +791,8 @@ export class FunctionImplementation {
     // 5. Set the [[Environment]] internal slot of F to the value of Scope.
     F.$Environment = Scope;
 
-    // 6. Set the [[FormalParameters]] internal slot of F to ParameterList.
-    F.$FormalParameters = ParameterList;
-
-    // 7. Set the [[ECMAScriptCode]] internal slot of F to Body.
-    ((Body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
-    F.$ECMAScriptCode = Body;
+    // 6. Set the [[FormalParameters]] internal slot of F to ParameterList. + 7. Set the [[ECMAScriptCode]] internal slot of F to Body.
+    F.initialize(ParameterList, Body);
 
     // 8. Set the [[ScriptOrModule]] internal slot of F to GetActiveScriptOrModule().
     F.$ScriptOrModule = Environment.GetActiveScriptOrModule(realm);
@@ -1117,31 +1119,25 @@ export class FunctionImplementation {
     }
   }
 
-  // If c is an abrupt completion and realm.savedCompletion is defined, the result is an instance of
-  // ForkedAbruptCompletion and the effects that have been captured since the PossiblyNormalCompletion instance
-  // in realm.savedCompletion has been created, becomes the effects of the branch that terminates in c.
-  // If c is a normal completion, the result is realm.savedCompletion, with its value updated to c.
-  // If c is undefined, the result is just realm.savedCompletion.
+  // Composes realm.savedCompletion with c, clears realm.savedCompletion and return the composition.
   // Call this only when a join point has been reached.
-  incorporateSavedCompletion(realm: Realm, c: void | AbruptCompletion | Value): void | Completion | Value {
+  incorporateSavedCompletion(realm: Realm, c: void | Completion | Value): void | Completion | Value {
     let savedCompletion = realm.savedCompletion;
     if (savedCompletion !== undefined) {
-      if (savedCompletion.savedPathConditions) {
-        // Since we are joining several control flow paths, we need the curent path conditions to reflect
-        // only the refinements that applied at the corresponding fork point.
-        realm.pathConditions = savedCompletion.savedPathConditions;
-        savedCompletion.savedPathConditions = [];
-      }
       realm.savedCompletion = undefined;
-      if (c === undefined) return savedCompletion;
-      if (c instanceof Value) {
-        Join.updatePossiblyNormalCompletionWithValue(realm, savedCompletion, c);
-        return savedCompletion;
-      } else {
-        let e = realm.getCapturedEffects();
+      realm.pathConditions = [].concat(savedCompletion.pathConditionsAtCreation);
+      if (c === undefined) c = realm.intrinsics.empty;
+      if (c instanceof Value) c = new SimpleNormalCompletion(c);
+      if (savedCompletion instanceof JoinedNormalAndAbruptCompletions) {
+        let subsequentEffects = realm.getCapturedEffects(c);
         realm.stopEffectCaptureAndUndoEffects(savedCompletion);
-        return Join.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, savedCompletion, c, e);
+        let joinedEffects = Join.composeWithEffects(savedCompletion, subsequentEffects);
+        realm.applyEffects(joinedEffects);
+        realm.savedCompletion = savedCompletion.composedWith;
+        if (realm.savedCompletion !== undefined) return this.incorporateSavedCompletion(realm, joinedEffects.result);
+        return joinedEffects.result;
       }
+      return Join.composeCompletions(savedCompletion, c);
     }
     return c;
   }
@@ -1167,34 +1163,6 @@ export class FunctionImplementation {
 
     // 7. Return blockValue.
     return blockValue || realm.intrinsics.empty;
-  }
-
-  PartiallyEvaluateStatements(
-    body: Array<BabelNodeStatement>,
-    blockValue: void | NormalCompletion | Value,
-    strictCode: boolean,
-    blockEnv: LexicalEnvironment,
-    realm: Realm
-  ): [Completion | Value, Array<BabelNodeStatement>] {
-    let statementAsts = [];
-    for (let node of body) {
-      if (node.type !== "FunctionDeclaration") {
-        let [res, nast, nio] = blockEnv.partiallyEvaluateCompletionDeref(node, strictCode);
-        for (let ioAst of nio) statementAsts.push(ioAst);
-        statementAsts.push((nast: any));
-        if (!(res instanceof EmptyValue)) {
-          if (blockValue === undefined || blockValue instanceof Value) {
-            if (res instanceof AbruptCompletion)
-              return [UpdateEmpty(realm, res, blockValue || realm.intrinsics.empty), statementAsts];
-            invariant(res instanceof NormalCompletion || res instanceof Value);
-            blockValue = res;
-          }
-        }
-      }
-    }
-
-    // 7. Return blockValue.
-    return [blockValue || realm.intrinsics.empty, statementAsts];
   }
 
   // ECMA262 9.2.5

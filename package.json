@@ -1,6 +1,6 @@
 {
   "name": "prepack",
-  "version": "0.2.45-alpha.0",
+  "version": "0.2.48-alpha.0",
   "description": "Execute a JS bundle, serialize global state and side effects to a snapshot that can be quickly restored.",
   "homepage": "https://github.com/facebook/prepack",
   "repository": {
@@ -31,9 +31,8 @@
     "lint": "eslint src scripts",
     "flow": "flow",
     "flow-ci": "flow version; flow check",
-    "test-residual": "babel-node scripts/test-residual.js",
-    "test-residual-with-coverage": "./node_modules/.bin/istanbul cover ./lib/test-residual.js --dir coverage.residual && ./node_modules/.bin/remap-istanbul -i coverage.residual/coverage.json -o coverage-sourcemapped.residual -t html",
     "test-serializer": "babel-node --stack_trace_limit=200 --stack_size=10000 scripts/test-runner.js",
+    "test-serializer-single": "yarn test-serializer --debugNames --verbose --fast --filter",
     "test-serializer-with-coverage": "./node_modules/.bin/istanbul cover ./lib/test-error-handler.js --dir coverage.error && ./node_modules/.bin/istanbul cover ./lib/test-runner.js && ./node_modules/.bin/remap-istanbul -i coverage.error/coverage.json -i coverage/coverage.json -o coverage-sourcemapped -t html",
     "test-sourcemaps": "babel-node scripts/generate-sourcemaps-test.js && bash < scripts/test-sourcemaps.sh",
     "test-test262": "babel-node scripts/test262-runner.js",
@@ -47,19 +46,22 @@
     "test-react": "jest",
     "test-debugger": "jest debugger",
     "test-react-fast": "SKIP_REACT_JSX_TESTS=true jest",
-    "test": "yarn test-residual && yarn test-serializer && yarn test-sourcemaps && yarn test-error-handler && yarn test-std-in && yarn test-test262 && yarn test-internal && yarn test-internal-react && yarn test-react && yarn test-debugger",
+    "test": "yarn test-serializer && yarn test-sourcemaps && yarn test-error-handler && yarn test-std-in && yarn test-test262 && yarn test-internal && yarn test-internal-react && yarn test-react && yarn test-debugger",
     "test-coverage-most": "./node_modules/.bin/istanbul --stack_size=10000 --max_old_space_size=16384 cover ./lib/multi-runner.js --dir coverage.most && ./node_modules/.bin/remap-istanbul -i coverage.most/coverage.json -o coverage-sourcemapped -t html",
     "test-all-coverage": "./node_modules/.bin/istanbul --stack_size=10000 --max_old_space_size=16384 cover ./lib/multi-runner.js --dir coverage.most && ./node_modules/.bin/istanbul --stack_size=10000 --max_old_space_size=16384 cover ./lib/test262-runner.js --timeout 50 --singleThreaded && ./node_modules/.bin/remap-istanbul -i coverage/coverage.json -i coverage.most/coverage.json -o coverage-sourcemapped -t html",
     "repl": "node lib/repl-cli.js",
     "precheck": "yarn prepack-cli --check",
-    "prepack-cli": "node --stack_size=10000 --stack_trace_limit=200 --max_old_space_size=16384 lib/prepack-cli.js --accelerateUnsupportedRequires --compatibility jsc-600-1-4-17 --delayUnsupportedRequires --mathRandomSeed 0",
+    "prepack-cli": "node --stack_size=10000 --stack_trace_limit=200 --max_old_space_size=16384 lib/prepack-cli.js --accelerateUnsupportedRequires --compatibility jsc-600-1-4-17 --mathRandomSeed 0",
     "validate": "yarn install --frozen-lockfile && yarn build && yarn build-scripts && yarn lint && yarn depcheck && yarn flow && yarn test",
     "prepublishOnly": "yarn build",
     "depcheck": "babel-node scripts/detect_bad_deps.js",
     "prettier": "node ./scripts/prettier.js write-changed",
     "prettier-all": "node ./scripts/prettier.js write",
     "prettier-ci": "node ./scripts/prettier.js",
-    "debug-fb-www": "node --stack_trace_limit=200 --stack_size=10000 --max_old_space_size=16384 ./scripts/debug-fb-www.js"
+    "debug-fb-www": "node --stack_trace_limit=200 --stack_size=10000 --max_old_space_size=16384 ./scripts/debug-fb-www.js",
+    "fuzz": "cd fuzzer && yarn && yarn test",
+    "fuzz-sample": "cd fuzzer && yarn && yarn sample",
+    "fuzz-overnight": "cd fuzzer && yarn && yarn overnight"
   },
   "dependencies": {
     "@babel/core": "^7.0.0-beta.53",
@@ -76,7 +78,8 @@
     "seedrandom": "^2.4.2",
     "source-map": "^0.5.6",
     "vscode-debugadapter": "^1.24.0",
-    "vscode-debugprotocol": "^1.24.0"
+    "vscode-debugprotocol": "^1.24.0",
+    "zip-dir": "^1.0.2"
   },
   "devDependencies": {
     "@babel/cli": "^7.0.0-beta.53",
@@ -104,7 +107,7 @@
     "eslint-plugin-flowtype": "^2.40.0",
     "eslint-plugin-header": "^1.0.0",
     "eslint-plugin-prettier": "^2.1.2",
-    "flow-bin": "^0.76.0",
+    "flow-bin": "^0.78.0",
     "flow-typed": "^2.3.0",
     "graceful-fs": "^4.1.11",
     "invariant": "^2.2.0",

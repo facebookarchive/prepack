@@ -38,7 +38,7 @@ type EmitterDependenciesVisitorCallbacks<T> = {
   // Callback invoked whenever a dependency is visited that is an abstract value with an identifier.
   // A return value that is not undefined indicates that the visitor should stop, and return the value as the overall result.
   onAbstractValueWithIdentifier?: AbstractValue => void | T,
-  // Callback invoked whenever a dependency is visited that is an unknown array value with a widened numeric property.
+  // Callback invoked whenever a dependency is visited that is an array value with a widened numeric property.
   // A return value that is not undefined indicates that the visitor should stop, and return the value as the overall result.
   onArrayWithWidenedNumericProperty?: ArrayValue => void | T,
 };
@@ -78,6 +78,14 @@ export class Emitter {
     this._activeValues = new Set();
     this._activeGeneratorStack = [this._mainBody];
     this._finalized = false;
+    let mustWaitForValue = (val: AbstractValue | ArrayValue) => {
+      if (this.cannotDeclare()) return false;
+      if (this.hasBeenDeclared(val)) return false;
+      let activeOptimizedFunction = this.getActiveOptimizedFunction();
+      if (activeOptimizedFunction === undefined) return true;
+      let optimizedFunctionWhereValueWasDeclared = referencedDeclaredValues.get(val);
+      return optimizedFunctionWhereValueWasDeclared === activeOptimizedFunction;
+    };
     this._getReasonToWaitForDependenciesCallbacks = {
       onActive: val => val, // cyclic dependency; we need to wait until this value has finished emitting
       onFunction: val => {
@@ -85,29 +93,9 @@ export class Emitter {
         this._residualFunctions.addFunctionUsage(val, this.getBodyReference());
         return undefined;
       },
-      onAbstractValueWithIdentifier: val => {
-        // If the value hasn't been declared yet, then we should wait for it.
-        if (
-          derivedIds.has(val.getIdentifier()) &&
-          !this.cannotDeclare() &&
-          !this.hasBeenDeclared(val) &&
-          (!this.emittingToAdditionalFunction() || referencedDeclaredValues.get(val) !== undefined)
-        ) {
-          return val;
-        }
-        return undefined;
-      },
-      onArrayWithWidenedNumericProperty: val => {
-        // If the value hasn't been declared yet, then we should wait for it.
-        if (
-          !this.cannotDeclare() &&
-          !this.hasBeenDeclared(val) &&
-          (!this.emittingToAdditionalFunction() || referencedDeclaredValues.get(val) !== undefined)
-        ) {
-          return val;
-        }
-        return undefined;
-      },
+      onAbstractValueWithIdentifier: val =>
+        derivedIds.has(val.getIdentifier()) && mustWaitForValue(val) ? val : undefined,
+      onArrayWithWidenedNumericProperty: val => (mustWaitForValue(val) ? val : undefined),
     };
     this._conditionalFeasibility = conditionalFeasibility;
   }
@@ -134,6 +122,7 @@ export class Emitter {
     isChild: boolean = false
   ): SerializedBody {
     invariant(!this._finalized);
+    invariant((targetBody.type === "OptimizedFunction") === !!targetBody.optimizedFunction);
     this._activeStack.push(dependency);
     if (dependency instanceof Value) {
       invariant(!this._activeValues.has(dependency));
@@ -238,7 +227,7 @@ export class Emitter {
     return this._activeGeneratorStack[this._activeGeneratorStack.length - 1] === this._body;
   }
   _isGeneratorBody(body: SerializedBody): boolean {
-    return body.type === "MainGenerator" || body.type === "Generator" || body.type === "AdditionalFunction";
+    return body.type === "MainGenerator" || body.type === "Generator" || body.type === "OptimizedFunction";
   }
   _processCurrentBody(): void {
     if (!this._isEmittingActiveGenerator() || this._body.processing) {
@@ -487,10 +476,11 @@ export class Emitter {
     this._body.declaredValues.set(value, this._body);
     this._processValue(value);
   }
-  emittingToAdditionalFunction(): boolean {
-    // Whether we are directly or indirectly emitting to an additional function
-    for (let b = this._body; b !== undefined; b = b.parentBody) if (b.type === "AdditionalFunction") return true;
-    return false;
+  getActiveOptimizedFunction(): void | FunctionValue {
+    // Whether we are directly or indirectly emitting to an optimized function
+    for (let b = this._body; b !== undefined; b = b.parentBody)
+      if (b.type === "OptimizedFunction") return b.optimizedFunction;
+    return undefined;
   }
   cannotDeclare(): boolean {
     // Bodies of the following types will never contain any (temporal) abstract value declarations.

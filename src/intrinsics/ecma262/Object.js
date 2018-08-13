@@ -13,7 +13,7 @@ import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import { FatalError } from "../../errors.js";
 import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { AbruptCompletion, PossiblyNormalCompletion } from "../../completions.js";
+//import { AbruptCompletion } from "../../completions.js";
 import {
   AbstractValue,
   AbstractObjectValue,
@@ -137,20 +137,11 @@ function applyObjectAssignSource(
     }
 
     to_must_be_partial = true;
-    // Make this temporarily not partial
-    // so that we can call frm.$OwnPropertyKeys below.
-    frm.makeNotPartial();
   }
 
-  try {
-    keys = frm.$OwnPropertyKeys();
-    if (to_must_be_partial) {
-      handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
-    }
-  } finally {
-    if (frm_was_partial) {
-      frm.makePartial();
-    }
+  keys = frm.$OwnPropertyKeys(true);
+  if (to_must_be_partial) {
+    handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
   }
 
   // c. Repeat for each element nextKey of keys in List order,
@@ -199,19 +190,8 @@ function tryAndApplySourceOrRecover(
   } finally {
     realm.suppressDiagnostics = savedSuppressDiagnostics;
   }
-  // Note that the effects of (non joining) abrupt branches are not included
-  // in effects, but are tracked separately inside completion.
   realm.applyEffects(effects);
-  let completion = effects.result;
-  if (completion instanceof PossiblyNormalCompletion) {
-    // in this case one of the branches may complete abruptly, which means that
-    // not all control flow branches join into one flow at this point.
-    // Consequently we have to continue tracking changes until the point where
-    // all the branches come together into one.
-    completion = realm.composeWithSavedCompletion(completion);
-  }
-  // return or throw completion
-  if (completion instanceof AbruptCompletion) throw completion;
+  realm.returnOrThrowCompletion(effects.result);
   return to_must_be_partial;
 }
 

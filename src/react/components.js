@@ -34,9 +34,10 @@ import { Get, Construct } from "../methods/index.js";
 import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import traverse from "@babel/traverse";
-import type { ClassComponentMetadata } from "../types.js";
+import type { ClassComponentMetadata, ReactComponentTreeConfig } from "../types.js";
 import type { ReactEvaluatedNode } from "../serializer/types.js";
 import { FatalError } from "../errors.js";
+import { type ComponentModel, ShapeInformation } from "../utils/ShapeInformation.js";
 
 const lifecycleMethods = new Set([
   "componentWillUnmount",
@@ -52,8 +53,11 @@ const whitelistedProperties = new Set(["props", "context", "refs", "setState"]);
 
 export function getInitialProps(
   realm: Realm,
-  componentType: ECMAScriptSourceFunctionValue | null
+  componentType: ECMAScriptSourceFunctionValue | null,
+  { modelString }: ReactComponentTreeConfig
 ): AbstractObjectValue {
+  let componentModel = modelString !== undefined ? (JSON.parse(modelString): ComponentModel) : undefined;
+  let shape = ShapeInformation.createForReactComponentProps(componentModel);
   let propsName = null;
   if (componentType !== null) {
     if (valueIsClassComponent(realm, componentType)) {
@@ -68,11 +72,11 @@ export function getInitialProps(
       }
     }
   }
-  let value = AbstractValue.createAbstractObject(realm, propsName || "props");
-  invariant(value instanceof AbstractObjectValue);
-  flagPropsWithNoPartialKeyOrRef(realm, value);
-  value.makeFinal();
-  return value;
+  let abstractPropsObject = AbstractValue.createAbstractObject(realm, propsName || "props", shape);
+  invariant(abstractPropsObject instanceof AbstractObjectValue);
+  flagPropsWithNoPartialKeyOrRef(realm, abstractPropsObject);
+  abstractPropsObject.makeFinal();
+  return abstractPropsObject;
 }
 
 export function getInitialContext(realm: Realm, componentType: ECMAScriptSourceFunctionValue): AbstractObjectValue {
@@ -302,6 +306,7 @@ export function evaluateClassConstructor(
         /*state*/ null,
         `react component constructor: ${constructorFunc.getName()}`
       ),
+    /*bubbles*/ true,
     /*reportSideEffectFunc*/ null
   );
 

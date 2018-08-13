@@ -349,13 +349,7 @@ function InternalJSONClone(realm: Realm, val: Value): Value {
       }
     } else {
       clonedObj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-      let valIsPartial = false;
-      if (val.isPartialObject()) {
-        valIsPartial = true;
-        val.makeNotPartial();
-      }
-      let keys = EnumerableOwnProperties(realm, val, "key");
-      if (valIsPartial) val.makePartial();
+      let keys = EnumerableOwnProperties(realm, val, "key", true);
       for (let P of keys) {
         invariant(P instanceof StringValue);
         let newElement = Get(realm, val, P);
@@ -484,8 +478,16 @@ export default function(realm: Realm): ObjectValue {
     // 9. Let wrapper be ObjectCreate(%ObjectPrototype%).
     let wrapper = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
+    let isAbstract = value instanceof AbstractValue;
+
+    // #2411
+    if (isAbstract && value.values.isTop()) {
+      AbstractValue.reportIntrospectionError(value);
+      throw new FatalError();
+    }
+
     // TODO #1012: Make result abstract if any nested element is an abstract value.
-    if (value instanceof AbstractValue || (value instanceof ObjectValue && value.isPartialObject())) {
+    if (isAbstract || (value instanceof ObjectValue && value.isPartialObject())) {
       // Return abstract result. This enables cloning via JSON.parse(JSON.stringify(...)).
       let clonedValue = InternalJSONClone(realm, value);
       let result = AbstractValue.createTemporalFromTemplate(realm, JSONStringify, StringValue, [clonedValue], {

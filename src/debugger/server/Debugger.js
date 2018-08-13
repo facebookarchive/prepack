@@ -41,7 +41,7 @@ import {
 } from "./../../environment.js";
 import { CompilerDiagnostic } from "../../errors.js";
 import type { Severity } from "../../errors.js";
-import { SourceMapManager } from "./SourceMapManager.js";
+import { SourceMapManager } from "../../utils/SourceMapManager.js";
 import type { DebuggerConfigArguments } from "../../types";
 
 export class DebugServer {

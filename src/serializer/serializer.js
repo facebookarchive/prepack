@@ -12,7 +12,7 @@
 import { EnvironmentRecord } from "../environment.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import type { SourceFile } from "../types.js";
+import { SourceFileCollection } from "../types.js";
 import { AbruptCompletion } from "../completions.js";
 import { Generator } from "../utils/generator.js";
 import generate from "@babel/generator";
@@ -37,6 +37,7 @@ import { ResidualHeapGraphGenerator } from "./ResidualHeapGraphGenerator";
 import { Referentializer } from "./Referentializer.js";
 import { Get } from "../methods/index.js";
 import { ObjectValue, Value } from "../values/index.js";
+import { Properties } from "../singletons.js";
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
@@ -50,7 +51,6 @@ export class Serializer {
       this.realm,
       this.logger,
       !!serializerOptions.logModules,
-      !!serializerOptions.delayUnsupportedRequires,
       !!serializerOptions.accelerateUnsupportedRequires
     );
     this.functions = new Functions(this.realm, this.modules.moduleTracer);
@@ -69,12 +69,12 @@ export class Serializer {
   options: SerializerOptions;
 
   _execute(
-    sources: Array<SourceFile>,
+    sourceFileCollection: SourceFileCollection,
     sourceMaps?: boolean = false,
     onParse?: BabelNodeFile => void
   ): { [string]: string } {
     let realm = this.realm;
-    let [res, code] = realm.$GlobalEnv.executeSources(sources, "script", ast => {
+    let [res, code] = realm.$GlobalEnv.executeSources(sourceFileCollection.toArray(), "script", ast => {
       let realmPreludeGenerator = realm.preludeGenerator;
       invariant(realmPreludeGenerator);
       let forbiddenNames = realmPreludeGenerator.nameGenerator.forbiddenNames;
@@ -86,6 +86,9 @@ export class Serializer {
       });
       if (onParse) onParse(ast);
     });
+
+    // Release memory of source files and their source maps
+    sourceFileCollection.destroy();
 
     if (res instanceof AbruptCompletion) {
       let context = new ExecutionContext();
@@ -114,7 +117,7 @@ export class Serializer {
     if (generator === undefined || preludeGenerator === undefined) return false;
     generator._entries.length = 0;
     preludeGenerator.declaredGlobals.clear();
-    for (let name of output.getOwnPropertyKeysArray()) {
+    for (let name of Properties.GetOwnPropertyKeysArray(realm, output, false, false)) {
       let property = output.properties.get(name);
       if (!property) continue;
       let value = property.descriptor && property.descriptor.value;
@@ -125,7 +128,7 @@ export class Serializer {
   }
 
   init(
-    sources: Array<SourceFile>,
+    sourceFileCollection: SourceFileCollection,
     sourceMaps?: boolean = false,
     onParse?: BabelNodeFile => void
   ): void | SerializedResult {
@@ -139,7 +142,7 @@ export class Serializer {
         this.logger.logInformation(`Evaluating initialization path...`);
       }
 
-      let code = this._execute(sources, sourceMaps, onParse);
+      let code = this._execute(sourceFileCollection, sourceMaps, onParse);
       let environmentRecordIdAfterGlobalCode = EnvironmentRecord.nextId;
 
       if (this.logger.hasErrors()) return undefined;
@@ -159,6 +162,10 @@ export class Serializer {
           this.functions.optimizeReactComponentTreeRoots(reactStatistics, environmentRecordIdAfterGlobalCode);
         });
       }
+
+      statistics.processCollectedNestedOptimizedFunctions.measure(() =>
+        this.functions.processCollectedNestedOptimizedFunctions(environmentRecordIdAfterGlobalCode)
+      );
 
       if (this.options.initializeMoreModules) {
         statistics.initializeMoreModules.measure(() => this.modules.initializeMoreModules());
@@ -186,14 +193,17 @@ export class Serializer {
         if (this.realm.react.verbose) {
           this.logger.logInformation(`Visiting evaluated nodes...`);
         }
-        let residualHeapVisitor = new ResidualHeapVisitor(
-          this.realm,
-          this.logger,
-          this.modules,
-          additionalFunctionValuesAndEffects,
-          referentializer
-        );
-        statistics.deepTraversal.measure(() => residualHeapVisitor.visitRoots());
+        let [residualHeapInfo, generatorDAG, inspector] = (() => {
+          let residualHeapVisitor = new ResidualHeapVisitor(
+            this.realm,
+            this.logger,
+            this.modules,
+            additionalFunctionValuesAndEffects,
+            referentializer
+          );
+          statistics.deepTraversal.measure(() => residualHeapVisitor.visitRoots());
+          return [residualHeapVisitor.toInfo(), residualHeapVisitor.generatorDAG, residualHeapVisitor.inspector];
+        })();
         if (this.logger.hasErrors()) return undefined;
 
         if (this.realm.react.verbose) {
@@ -202,7 +212,7 @@ export class Serializer {
         const realmPreludeGenerator = this.realm.preludeGenerator;
         invariant(realmPreludeGenerator);
         const residualHeapValueIdentifiers = new ResidualHeapValueIdentifiers(
-          residualHeapVisitor.values.keys(),
+          residualHeapInfo.values.keys(),
           realmPreludeGenerator
         );
 
@@ -241,21 +251,12 @@ export class Serializer {
               this.logger,
               this.modules,
               residualHeapValueIdentifiers,
-              residualHeapVisitor.inspector,
-              residualHeapVisitor.values,
-              residualHeapVisitor.functionInstances,
-              residualHeapVisitor.classMethodInstances,
-              residualHeapVisitor.functionInfos,
+              inspector,
+              residualHeapInfo,
               this.options,
-              residualHeapVisitor.referencedDeclaredValues,
               additionalFunctionValuesAndEffects,
-              residualHeapVisitor.additionalFunctionValueInfos,
-              residualHeapVisitor.declarativeEnvironmentRecordsBindings,
-              residualHeapVisitor.globalBindings,
               referentializer,
-              residualHeapVisitor.generatorDAG,
-              residualHeapVisitor.conditionalFeasibility,
-              residualHeapVisitor.additionalGeneratorRoots
+              generatorDAG
             ).serialize();
           });
           if (this.logger.hasErrors()) return undefined;
@@ -272,21 +273,12 @@ export class Serializer {
             this.logger,
             this.modules,
             residualHeapValueIdentifiers,
-            residualHeapVisitor.inspector,
-            residualHeapVisitor.values,
-            residualHeapVisitor.functionInstances,
-            residualHeapVisitor.classMethodInstances,
-            residualHeapVisitor.functionInfos,
+            inspector,
+            residualHeapInfo,
             this.options,
-            residualHeapVisitor.referencedDeclaredValues,
             additionalFunctionValuesAndEffects,
-            residualHeapVisitor.additionalFunctionValueInfos,
-            residualHeapVisitor.declarativeEnvironmentRecordsBindings,
-            residualHeapVisitor.globalBindings,
             referentializer,
-            residualHeapVisitor.generatorDAG,
-            residualHeapVisitor.conditionalFeasibility,
-            residualHeapVisitor.additionalGeneratorRoots
+            generatorDAG
           ).serialize()
         );
       })();

@@ -10,14 +10,13 @@
 /* @flow */
 
 import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
-import { CompilerDiagnostic, FatalError } from "../errors.js";
+import { FatalError } from "../errors.js";
 import { Realm, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
 import { Get } from "../methods/index.js";
-import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
+import { AbruptCompletion, SimpleNormalCompletion } from "../completions.js";
 import { Environment } from "../singletons.js";
 import {
-  AbstractValue,
   Value,
   FunctionValue,
   ObjectValue,
@@ -39,7 +38,6 @@ import type {
 import invariant from "../invariant.js";
 import { Logger } from "./logger.js";
 import { SerializerStatistics } from "../serializer/statistics.js";
-import { createOperationDescriptor } from "./generator.js";
 
 function downgradeErrorsToWarnings(realm: Realm, f: () => any) {
   let savedHandler = realm.errorHandler;
@@ -182,107 +180,6 @@ export class ModuleTracer extends Tracer {
     return effects;
   }
 
-  // If a require fails, recover from it and delay the factory call until runtime
-  // Also, only in this mode, consider "accelerating" require calls, see below.
-  _callRequireAndDelayIfNeeded(moduleIdValue: number | string, performCall: () => Value): void | Value {
-    let realm = this.modules.realm;
-    this.log(`>require(${moduleIdValue})`);
-    let isTopLevelRequire = this.requireStack.length === 0;
-    if (this.evaluateForEffectsNesting > 0) {
-      if (isTopLevelRequire) {
-        let diagnostic = new CompilerDiagnostic(
-          "Non-deterministically conditional top-level require not currently supported",
-          realm.currentLocation,
-          "PP0017",
-          "FatalError"
-        );
-        realm.handleError(diagnostic);
-        throw new FatalError();
-      } else if (!this.modules.isModuleInitialized(moduleIdValue))
-        // Nested require call: We record that this happened. Just so that
-        // if we discover later this this require call needs to get delayed,
-        // then we still know (some of) which modules it in turn required,
-        // and then we'll later "accelerate" requiring them to preserve the
-        // require ordering. See below for more details on acceleration.
-        this.uninitializedModuleIdsRequiredInEvaluateForEffects.add(moduleIdValue);
-
-      return undefined;
-    } else {
-      return downgradeErrorsToWarnings(realm, () => {
-        let result;
-        try {
-          this.requireStack.push(moduleIdValue);
-          let requireSequenceStart = this.requireSequence.length;
-          this.requireSequence.push(moduleIdValue);
-          const previousNumDelayedModules = this.getStatistics().delayedModules;
-          let effects = this._callRequireAndAccelerate(isTopLevelRequire, moduleIdValue, performCall);
-          if (effects === undefined || effects.result instanceof AbruptCompletion) {
-            console.log(`delaying require(${moduleIdValue})`);
-            this.getStatistics().delayedModules = previousNumDelayedModules + 1;
-            // So we are about to emit a delayed require(...) call.
-            // However, before we do that, let's try to require all modules that we
-            // know this delayed require call will require.
-            // This way, we ensure that those modules will be fully initialized
-            // before the require call executes.
-            // TODO #690: More needs to be done to make the delayUnsupportedRequires
-            // feature completely safe. Open issues are:
-            // 1) Side-effects on the heap of delayed factory functions are not discovered or rejected.
-            // 2) While we do process an appropriate list of transitively required modules here,
-            //    it's likely just a subset / prefix of all transivitely required modules, as
-            //    more modules would have been required if the Introspection exception had not been thrown.
-            //    To be correct, those modules would have to be prepacked here as well.
-            //    TODO #798: Watch out for an upcoming change to the __d module declaration where the statically known
-            //    list of dependencies will be announced, so we'll no longer have to guess.
-            let nestedModulesIds = new Set();
-            for (let i = requireSequenceStart; i < this.requireSequence.length; i++) {
-              let nestedModuleId = this.requireSequence[i];
-              if (nestedModulesIds.has(nestedModuleId)) continue;
-              nestedModulesIds.add(nestedModuleId);
-              this.modules.tryInitializeModule(
-                nestedModuleId,
-                `initialization of module ${nestedModuleId} as it's required by module ${moduleIdValue}`
-              );
-            }
-
-            let propName = moduleIdValue + "";
-            invariant(typeof propName === "string");
-            result = AbstractValue.createTemporalFromBuildFunction(
-              realm,
-              Value,
-              [new StringValue(realm, propName)],
-              createOperationDescriptor("MODULES_REQUIRE")
-            );
-          } else {
-            result = effects.result;
-            if (result instanceof SimpleNormalCompletion) {
-              realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
-              this.modules.recordModuleInitialized(moduleIdValue, result.value);
-            } else if (result instanceof PossiblyNormalCompletion) {
-              let warning = new CompilerDiagnostic(
-                "Module import may fail with an exception",
-                result.location,
-                "PP0018",
-                "Warning"
-              );
-              realm.handleError(warning);
-              result = result.value;
-              realm.applyEffects(effects, `initialization of module ${moduleIdValue}`);
-            } else {
-              invariant(false);
-            }
-          }
-        } finally {
-          let popped = this.requireStack.pop();
-          invariant(popped === moduleIdValue);
-          this.log(`<require(${moduleIdValue})`);
-        }
-        if (result instanceof SimpleNormalCompletion) result = result.value;
-        invariant(result instanceof Value);
-        return result;
-      });
-    }
-  }
-
   _tryExtractDependencies(value: void | Value): void | Array<Value> {
     if (value === undefined || value instanceof NullValue || value instanceof UndefinedValue) return [];
     if (value instanceof ArrayValue) {
@@ -324,18 +221,10 @@ export class ModuleTracer extends Tracer {
       // Do some sanity checks and request require(...) calls with bad arguments
       if (moduleId instanceof NumberValue || moduleId instanceof StringValue) {
         moduleIdValue = moduleId.value;
-        if (!this.modules.moduleIds.has(moduleIdValue) && this.modules.delayUnsupportedRequires) {
-          this.modules.logger.logError(moduleId, "Module referenced by require call has not been defined.");
-        }
       } else {
-        if (this.modules.delayUnsupportedRequires) {
-          this.modules.logger.logError(moduleId, "First argument to require function is not a number or string value.");
-        }
         return undefined;
       }
-
-      if (this.modules.delayUnsupportedRequires) return this._callRequireAndDelayIfNeeded(moduleIdValue, performCall);
-      else return this._callRequireAndRecord(moduleIdValue, performCall);
+      return this._callRequireAndRecord(moduleIdValue, performCall);
     } else if (F === this.modules.getDefine()) {
       // Here, we handle calls of the form
       //   __d(factoryFunction, moduleId, dependencyArray)
@@ -385,13 +274,7 @@ export class ModuleTracer extends Tracer {
 }
 
 export class Modules {
-  constructor(
-    realm: Realm,
-    logger: Logger,
-    logModules: boolean,
-    delayUnsupportedRequires: boolean,
-    accelerateUnsupportedRequires: boolean
-  ) {
+  constructor(realm: Realm, logger: Logger, logModules: boolean, accelerateUnsupportedRequires: boolean) {
     this.realm = realm;
     this.logger = logger;
     this._require = realm.intrinsics.undefined;
@@ -400,7 +283,6 @@ export class Modules {
     this.moduleIds = new Set();
     this.initializedModules = new Map();
     realm.tracers.push((this.moduleTracer = new ModuleTracer(this, logModules)));
-    this.delayUnsupportedRequires = delayUnsupportedRequires;
     this.accelerateUnsupportedRequires = accelerateUnsupportedRequires;
     this.disallowDelayingRequiresOverride = false;
   }
@@ -413,7 +295,6 @@ export class Modules {
   moduleIds: Set<number | string>;
   initializedModules: Map<number | string, Value>;
   active: boolean;
-  delayUnsupportedRequires: boolean;
   accelerateUnsupportedRequires: boolean;
   disallowDelayingRequiresOverride: boolean;
   moduleTracer: ModuleTracer;

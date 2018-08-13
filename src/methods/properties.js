@@ -9,7 +9,6 @@
 
 /* @flow */
 
-import { AbruptCompletion, Completion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { construct_empty_effects, type Realm, Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding, PropertyKeyValue } from "../types.js";
 import {
@@ -24,6 +23,7 @@ import {
   StringValue,
   SymbolValue,
   UndefinedValue,
+  PrimitiveValue,
   Value,
 } from "../values/index.js";
 import { EvalPropertyName } from "../evaluators/ObjectExpression.js";
@@ -37,6 +37,7 @@ import {
   Get,
   GetGlobalObject,
   GetThisValue,
+  HasCompatibleType,
   HasSomeCompatibleType,
   IsAccessorDescriptor,
   IsDataDescriptor,
@@ -51,6 +52,7 @@ import type { LexicalEnvironment } from "../environment.js";
 import { Create, Environment, Functions, Havoc, Join, Path, To } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import { createOperationDescriptor } from "../utils/generator.js";
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
 
 function StringKey(key: PropertyKeyValue): string {
   if (key instanceof StringValue) key = key.value;
@@ -177,6 +179,13 @@ function havocDescriptor(realm: Realm, desc: Descriptor) {
 
 // Determines if an object with parent O may create its own property P.
 function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: PropertyKeyValue): boolean {
+  if (O.isSimpleObject()) {
+    // Simple object always allow property creation since there are no setters.
+    // Object.prototype is considered simple even though __proto__ is a setter.
+    // TODO: That is probably the incorrect assumption but that is implied everywhere.
+    return true;
+  }
+
   let ownDesc = O.$GetOwnProperty(P);
   let ownDescValue = !ownDesc
     ? realm.intrinsics.undefined
@@ -228,6 +237,15 @@ function ensureIsNotFinal(realm: Realm, O: ObjectValue, P: void | PropertyKeyVal
   throw new FatalError();
 }
 
+function isWidenedValue(v: void | Value) {
+  if (!(v instanceof AbstractValue)) return false;
+  if (v.kind === "widened" || v.kind === "widened property") return true;
+  for (let a of v.args) {
+    if (isWidenedValue(a)) return true;
+  }
+  return false;
+}
+
 export class PropertiesImplementation {
   // ECMA262 9.1.9.1
   OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
@@ -235,8 +253,10 @@ export class PropertiesImplementation {
     if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
       // Writing a value to a havoced (because leaked) object leaks the value, so havoc it.
       Havoc.value(realm, V);
-      if (realm.generator) {
-        realm.generator.emitPropertyAssignment(O, StringKey(P), V);
+      // The receiver might leak to a getter so if it's not already havoced, we need to havoc it.
+      Havoc.value(realm, Receiver);
+      if (realm.generator !== undefined) {
+        realm.generator.emitPropertyAssignment(Receiver, StringKey(P), V);
       }
       return true;
     }
@@ -247,9 +267,7 @@ export class PropertiesImplementation {
     invariant(IsPropertyKey(realm, P), "expected property key");
 
     // 2. Let ownDesc be ? O.[[GetOwnProperty]](P).
-    let ownDesc;
-    let existingBinding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
-    if (existingBinding !== undefined || !(O.isPartialObject() && O.isSimpleObject())) ownDesc = O.$GetOwnProperty(P);
+    let ownDesc = O.$GetOwnProperty(P);
     let ownDescValue = !ownDesc
       ? realm.intrinsics.undefined
       : ownDesc.value === undefined
@@ -295,57 +313,41 @@ export class PropertiesImplementation {
     if (joinCondition !== undefined) {
       let descriptor2 = ownDesc.descriptor2;
       ownDesc = ownDesc.descriptor1;
+      let e1 = Path.withCondition(joinCondition, () => {
+        return ownDesc !== undefined
+          ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/1")
+          : construct_empty_effects(realm);
+      });
       let {
         result: result1,
         generator: generator1,
         modifiedBindings: modifiedBindings1,
         modifiedProperties: modifiedProperties1,
         createdObjects: createdObjects1,
-      } = Path.withCondition(joinCondition, () => {
+      } = e1;
+      ownDesc = descriptor2;
+      let e2 = Path.withInverseCondition(joinCondition, () => {
         return ownDesc !== undefined
-          ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/1")
+          ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/2")
           : construct_empty_effects(realm);
       });
-      ownDesc = descriptor2;
       let {
         result: result2,
         generator: generator2,
         modifiedBindings: modifiedBindings2,
         modifiedProperties: modifiedProperties2,
         createdObjects: createdObjects2,
-      } = Path.withInverseCondition(joinCondition, () => {
-        return ownDesc !== undefined
-          ? realm.evaluateForEffects(() => new BooleanValue(realm, OrdinarySetHelper()), undefined, "OrdinarySet/2")
-          : construct_empty_effects(realm);
-      });
+      } = e2;
 
       // Join the effects, creating an abstract view of what happened, regardless
       // of the actual value of ownDesc.joinCondition.
-      if (result1 instanceof Completion) result1 = result1.shallowCloneWithoutEffects();
-      if (result2 instanceof Completion) result2 = result2.shallowCloneWithoutEffects();
-      let joinedEffects = Join.joinForkOrChoose(
-        realm,
+      let joinedEffects = Join.joinEffects(
         joinCondition,
         new Effects(result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
         new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
       );
-      let completion = joinedEffects.result;
-      if (completion instanceof PossiblyNormalCompletion) {
-        // in this case one of the branches may complete abruptly, which means that
-        // not all control flow branches join into one flow at this point.
-        // Consequently we have to continue tracking changes until the point where
-        // all the branches come together into one.
-        completion = realm.composeWithSavedCompletion(completion);
-      }
-      // Note that the effects of (non joining) abrupt branches are not included
-      // in joinedEffects, but are tracked separately inside completion.
       realm.applyEffects(joinedEffects);
-
-      // return or throw completion
-      if (completion instanceof AbruptCompletion) throw completion;
-      if (completion instanceof SimpleNormalCompletion) completion = completion.value;
-      invariant(completion instanceof Value);
-      return To.ToBooleanPartial(realm, completion);
+      return To.ToBooleanPartial(realm, realm.returnOrThrowCompletion(joinedEffects.result));
     }
 
     return OrdinarySetHelper();
@@ -373,10 +375,7 @@ export class PropertiesImplementation {
         if (!(Receiver instanceof ObjectValue)) return false;
 
         // c. Let existingDescriptor be ? Receiver.[[GetOwnProperty]](P).
-        let existingDescriptor;
-        let binding = InternalGetPropertiesMap(Receiver, P).get(InternalGetPropertiesKey(P));
-        if (binding !== undefined || !(Receiver.isPartialObject() && Receiver.isSimpleObject()))
-          existingDescriptor = Receiver.$GetOwnProperty(P);
+        let existingDescriptor = Receiver.$GetOwnProperty(P);
         if (existingDescriptor !== undefined) {
           if (existingDescriptor.descriptor1 === ownDesc) existingDescriptor = ownDesc;
           else if (existingDescriptor.descriptor2 === ownDesc) existingDescriptor = ownDesc;
@@ -415,11 +414,11 @@ export class PropertiesImplementation {
 
           // iv. Return ? Receiver.[[DefineOwnProperty]](P, valueDesc).
           if (weakDeletion || existingDescValue.mightHaveBeenDeleted()) {
-            // At this point we are not actually sure that Receiver actually has
-            // a property P, however, if it has, we are sure that its a data property,
-            // and that redefining the property with valueDesc will not change the
-            // attributes of the property, so we delete it to make things nice for $DefineOwnProperty.
-            Receiver.$Delete(P);
+            // At this point we are not sure that Receiver actually has a property P.
+            // If, however, it has -> P. If, however, it has, we are sure that its a
+            // data property, and that redefining the property with valueDesc will not
+            // change the attributes of the property, so we can reuse the existing
+            // descriptor.
             valueDesc = existingDescriptor;
             valueDesc.value = V;
           }
@@ -447,6 +446,167 @@ export class PropertiesImplementation {
       // 9. Return true.
       return true;
     }
+  }
+
+  OrdinarySetPartial(
+    realm: Realm,
+    O: ObjectValue,
+    P: AbstractValue | PropertyKeyValue,
+    V: Value,
+    Receiver: Value
+  ): boolean {
+    if (!(P instanceof AbstractValue)) return O.$Set(P, V, Receiver);
+    let pIsLoopVar = isWidenedValue(P);
+    let pIsNumeric = Value.isTypeCompatibleWith(P.getType(), NumberValue);
+
+    // A string coercion might have side-effects.
+    // TODO #1682: We assume that simple objects mean that they don't have a
+    // side-effectful valueOf and toString but that's not enforced.
+    if (P.mightNotBeString() && P.mightNotBeNumber() && !P.isSimpleObject()) {
+      if (realm.isInPureScope()) {
+        // If we're in pure scope, we can havoc the key and keep going.
+        // Coercion can only have effects on anything reachable from the key.
+        Havoc.value(realm, P);
+      } else {
+        let error = new CompilerDiagnostic(
+          "property key might not have a well behaved toString or be a symbol",
+          realm.currentLocation,
+          "PP0002",
+          "RecoverableError"
+        );
+        if (realm.handleError(error) !== "Recover") {
+          throw new FatalError();
+        }
+      }
+    }
+
+    // We assume that simple objects have no getter/setter properties and
+    // that all properties are writable.
+    if (!O.isSimpleObject()) {
+      if (realm.isInPureScope()) {
+        // If we're in pure scope, we can havoc the object and leave an
+        // assignment in place.
+        Havoc.value(realm, Receiver);
+        // We also need to havoc the value since it might leak to a setter.
+        Havoc.value(realm, V);
+        realm.evaluateWithPossibleThrowCompletion(
+          () => {
+            let generator = realm.generator;
+            invariant(generator);
+            invariant(P instanceof AbstractValue);
+            generator.emitPropertyAssignment(Receiver, P, V);
+            return realm.intrinsics.undefined;
+          },
+          TypesDomain.topVal,
+          ValuesDomain.topVal
+        );
+        // The emitted assignment might throw at runtime but if it does, that
+        // is handled by evaluateWithPossibleThrowCompletion. Anything that
+        // happens after this, can assume we didn't throw and therefore,
+        // we return true here.
+        return true;
+      } else {
+        let error = new CompilerDiagnostic(
+          "unknown property access might need to invoke a setter",
+          realm.currentLocation,
+          "PP0030",
+          "RecoverableError"
+        );
+        if (realm.handleError(error) !== "Recover") {
+          throw new FatalError();
+        }
+      }
+    }
+
+    // We should never consult the prototype chain for unknown properties.
+    // If it was simple, it would've been an assignment to the receiver.
+    // The only case the Receiver isn't this, if this was a ToObject
+    // coercion from a PrimitiveValue.
+    invariant(O === Receiver || HasCompatibleType(Receiver, PrimitiveValue));
+
+    P = To.ToStringAbstract(realm, P);
+
+    function createTemplate(propName: AbstractValue) {
+      return AbstractValue.createFromBinaryOp(
+        realm,
+        "===",
+        propName,
+        new StringValue(realm, ""),
+        undefined,
+        "template for property name condition"
+      );
+    }
+
+    let prop;
+    if (O.unknownProperty === undefined) {
+      prop = {
+        descriptor: undefined,
+        object: O,
+        key: P,
+      };
+      O.unknownProperty = prop;
+    } else {
+      prop = O.unknownProperty;
+    }
+    realm.recordModifiedProperty(prop);
+    let desc = prop.descriptor;
+    if (desc === undefined) {
+      let newVal = V;
+      if (!(V instanceof UndefinedValue) && !isWidenedValue(P)) {
+        // join V with sentinel, using a property name test as the condition
+        let cond = createTemplate(P);
+        let sentinel = AbstractValue.createFromType(realm, Value, "template for prototype member expression", [
+          Receiver,
+          P,
+        ]);
+        newVal = AbstractValue.createFromConditionalOp(realm, cond, V, sentinel);
+      }
+      prop.descriptor = {
+        writable: true,
+        enumerable: true,
+        configurable: true,
+        value: newVal,
+      };
+    } else {
+      // join V with current value of O.unknownProperty. I.e. weak update.
+      let oldVal = desc.value;
+      invariant(oldVal instanceof Value);
+      let newVal = oldVal;
+      if (!(V instanceof UndefinedValue)) {
+        if (isWidenedValue(P)) {
+          newVal = V; // It will be widened later on
+        } else {
+          let cond = createTemplate(P);
+          newVal = AbstractValue.createFromConditionalOp(realm, cond, V, oldVal);
+        }
+      }
+      desc.value = newVal;
+    }
+
+    // Since we don't know the name of the property we are writing to, we also need
+    // to perform weak updates of all of the known properties.
+    // First clear out O.unknownProperty so that helper routines know its OK to update the properties
+    let savedUnknownProperty = O.unknownProperty;
+    O.unknownProperty = undefined;
+    for (let [key, propertyBinding] of O.properties) {
+      if (pIsLoopVar && pIsNumeric) {
+        // Delete numeric properties and don't do weak updates on other properties.
+        if (key !== +key + "") continue;
+        O.properties.delete(key);
+        continue;
+      }
+      let oldVal = realm.intrinsics.empty;
+      if (propertyBinding.descriptor && propertyBinding.descriptor.value) {
+        oldVal = propertyBinding.descriptor.value;
+        invariant(oldVal instanceof Value); // otherwise this is not simple
+      }
+      let cond = AbstractValue.createFromBinaryOp(realm, "===", P, new StringValue(realm, key));
+      let newVal = AbstractValue.createFromConditionalOp(realm, cond, V, oldVal);
+      this.OrdinarySet(realm, O, key, newVal, Receiver);
+    }
+    O.unknownProperty = savedUnknownProperty;
+
+    return true;
   }
 
   // ECMA262 6.2.4.4
@@ -525,7 +685,7 @@ export class PropertiesImplementation {
     if (!desc) {
       ensureIsNotFinal(realm, O, P);
       if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
-        if (realm.generator) {
+        if (realm.generator !== undefined) {
           realm.generator.emitPropertyDelete(O, StringKey(P));
         }
       }
@@ -536,7 +696,7 @@ export class PropertiesImplementation {
     if (desc.configurable) {
       ensureIsNotFinal(realm, O, P);
       if (O.mightBeHavocedObject()) {
-        if (realm.generator) {
+        if (realm.generator !== undefined) {
           realm.generator.emitPropertyDelete(O, StringKey(P));
         }
         return true;
@@ -664,7 +824,7 @@ export class PropertiesImplementation {
         ensureIsNotFinal(realm, O, P);
         if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
           havocDescriptor(realm, Desc);
-          if (realm.generator) {
+          if (realm.generator !== undefined) {
             realm.generator.emitDefineProperty(O, StringKey(P), Desc);
           }
           return true;
@@ -708,7 +868,6 @@ export class PropertiesImplementation {
       // e. Return true.
       return true;
     }
-    this.ThrowIfMightHaveBeenDeleted(current.value);
 
     // 3. Return true, if every field in Desc is absent.
     if (!Object.keys(Desc).length) return true;
@@ -738,8 +897,12 @@ export class PropertiesImplementation {
       return true;
     }
 
+    let mightHaveBeenDeleted = current.value instanceof Value && current.value.mightHaveBeenDeleted();
+
     // 5. If the [[Configurable]] field of current is false, then
     if (!current.configurable) {
+      invariant(!mightHaveBeenDeleted, "a non-configurable property can't be deleted");
+
       // a. Return false, if the [[Configurable]] field of Desc is true.
       if (Desc.configurable) return false;
 
@@ -753,7 +916,7 @@ export class PropertiesImplementation {
       ensureIsNotFinal(realm, O, P);
       if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
         havocDescriptor(realm, Desc);
-        if (realm.generator) {
+        if (realm.generator !== undefined) {
           realm.generator.emitDefineProperty(O, StringKey(P), Desc);
         }
         return true;
@@ -777,9 +940,6 @@ export class PropertiesImplementation {
         // Preserve the existing values of the converted property's [[Configurable]] and [[Enumerable]] attributes and set the rest of the property's attributes to their default values.
         if (O !== undefined) {
           invariant(P !== undefined);
-          let key = InternalGetPropertiesKey(P);
-          let propertyBinding = InternalGetPropertiesMap(O, P).get(key);
-          invariant(propertyBinding !== undefined);
           delete current.writable;
           delete current.value;
           current.get = realm.intrinsics.undefined;
@@ -790,9 +950,6 @@ export class PropertiesImplementation {
         // i. If O is not undefined, convert the property named P of object O from an accessor property to a data property. Preserve the existing values of the converted property's [[Configurable]] and [[Enumerable]] attributes and set the rest of the property's attributes to their default values.
         if (O !== undefined) {
           invariant(P !== undefined);
-          let key = InternalGetPropertiesKey(P);
-          let propertyBinding = InternalGetPropertiesMap(O, P).get(key);
-          invariant(propertyBinding !== undefined);
           delete current.get;
           delete current.set;
           current.writable = false;
@@ -832,6 +989,25 @@ export class PropertiesImplementation {
       }
     }
 
+    if (mightHaveBeenDeleted) {
+      // If the property might have been deleted, we need to ensure that either
+      // the new descriptor overrides any existing values, or always results in
+      // the default value.
+      let unknownEnumerable = !("enumerable" in Desc) && !!current.enumerable;
+      let unknownWritable = !("writable" in Desc) && !!current.writable;
+      if (unknownEnumerable || unknownWritable) {
+        let error = new CompilerDiagnostic(
+          "unknown descriptor attributes on deleted property",
+          realm.currentLocation,
+          "PP0038",
+          "RecoverableError"
+        );
+        if (realm.handleError(error) !== "Recover") {
+          throw new FatalError();
+        }
+      }
+    }
+
     // 10. If O is not undefined, then
     if (O !== undefined) {
       invariant(P !== undefined);
@@ -866,9 +1042,7 @@ export class PropertiesImplementation {
     invariant(O instanceof ObjectValue);
 
     // 1. Let current be ? O.[[GetOwnProperty]](P).
-    let current;
-    let binding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
-    if (binding !== undefined || !(O.isPartialObject() && O.isSimpleObject())) current = O.$GetOwnProperty(P);
+    let current = O.$GetOwnProperty(P);
 
     // 2. Let extensible be the value of the [[Extensible]] internal slot of O.
     let extensible = O.getExtensible();
@@ -1207,7 +1381,6 @@ export class PropertiesImplementation {
           if (P instanceof StringValue) P = P.value;
           if (typeof P === "string") {
             // In this case it is safe to defer the property access to runtime (at this point in time)
-            invariant(realm.generator);
             let absVal;
             function createAbstractPropertyValue(type: typeof Value) {
               invariant(typeof P === "string");
@@ -1219,13 +1392,25 @@ export class PropertiesImplementation {
                   createOperationDescriptor("ABSTRACT_PROPERTY"),
                   { kind: AbstractValue.makeKind("property", P) }
                 );
-              } else {
+              } else if (realm.generator !== undefined) {
                 return AbstractValue.createTemporalFromBuildFunction(
                   realm,
                   type,
                   [O._templateFor || O, new StringValue(realm, P)],
                   createOperationDescriptor("ABSTRACT_PROPERTY"),
                   { skipInvariant: true, isPure: true }
+                );
+              } else {
+                // During environment initialization we'll call Set and DefineOwnProperty
+                // to initialize objects. Since these needs to introspect the descriptor,
+                // we need some kind of value as its placeholder. This value should never
+                // leak to the serialized environment.
+                return AbstractValue.createFromBuildFunction(
+                  realm,
+                  type,
+                  [O._templateFor || O, new StringValue(realm, P)],
+                  createOperationDescriptor("ABSTRACT_PROPERTY"),
+                  { kind: "environment initialization expression" }
                 );
               }
             }
@@ -1672,5 +1857,41 @@ export class PropertiesImplementation {
       // 9. Return ? DefinePropertyOrThrow(object, propKey, desc).
       return this.DefinePropertyOrThrow(realm, object, propKey, desc);
     }
+  }
+
+  GetOwnPropertyKeysArray(
+    realm: Realm,
+    O: ObjectValue,
+    allowAbstractKeys: boolean,
+    getOwnPropertyKeysEvenIfPartial: boolean
+  ): Array<string> {
+    if (
+      (O.isPartialObject() && !getOwnPropertyKeysEvenIfPartial) ||
+      O.mightBeHavocedObject() ||
+      O.unknownProperty !== undefined
+    ) {
+      AbstractValue.reportIntrospectionError(O);
+      throw new FatalError();
+    }
+
+    let keyArray = Array.from(O.properties.keys());
+    keyArray = keyArray.filter(x => {
+      let pb = O.properties.get(x);
+      if (!pb || pb.descriptor === undefined) return false;
+      let pv = pb.descriptor.value;
+      if (pv === undefined) return true;
+      invariant(pv instanceof Value);
+      if (!pv.mightHaveBeenDeleted()) return true;
+      // The property may or may not be there at runtime.
+      // We can at best return an abstract keys array.
+      // For now, unless the caller has told us that is okay,
+      // just terminate.
+      invariant(pv instanceof AbstractValue);
+      if (allowAbstractKeys) return true;
+      AbstractValue.reportIntrospectionError(pv);
+      throw new FatalError();
+    });
+    realm.callReportObjectGetOwnProperties(O);
+    return keyArray;
   }
 }

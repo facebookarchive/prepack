@@ -338,16 +338,40 @@ class ReactDOMServerRenderer {
     }
   }
 
-  _renderArrayValue(value: ArrayValue, namespace: string, depth: number): Array<ReactNode> | ReactNode {
-    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(value)) {
-      let arrayHint = this.realm.react.arrayHints.get(value);
+  _renderArrayValue(arrayValue: ArrayValue, namespace: string, depth: number): Array<ReactNode> | ReactNode {
+    if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(arrayValue)) {
+      let nestedOptimizedFunctionEffects = arrayValue.nestedOptimizedFunctionEffects;
 
-      if (arrayHint !== undefined) {
-        return renderValueWithHelper(this.realm, value, this.arrayHelper);
+      if (nestedOptimizedFunctionEffects !== undefined) {
+        for (let [func, effects] of nestedOptimizedFunctionEffects) {
+          let funcCall = () => {
+            let result = effects.result;
+            this.realm.applyEffects(effects);
+            if (result instanceof SimpleNormalCompletion) {
+              result = result.value;
+            }
+            invariant(result instanceof Value);
+            return this.render(result, namespace, depth);
+          };
+          let pureFuncCall = () =>
+            this.realm.evaluatePure(funcCall, /*bubbles*/ true, () => {
+              invariant(false, "SSR _renderArrayValue side-effect should have been caught in main React reconciler");
+            });
+
+          let resolvedEffects;
+          resolvedEffects = this.realm.evaluateForEffects(
+            pureFuncCall,
+            /*state*/ null,
+            `react SSR resolve nested optimized closure`
+          );
+          nestedOptimizedFunctionEffects.set(func, resolvedEffects);
+          this.realm.collectedNestedOptimizedFunctionEffects.set(func, resolvedEffects);
+        }
+        return renderValueWithHelper(this.realm, arrayValue, this.arrayHelper);
       }
     }
     let elements = [];
-    forEachArrayValue(this.realm, value, elementValue => {
+    forEachArrayValue(this.realm, arrayValue, elementValue => {
       let renderedElement = this._renderValue(elementValue, namespace, depth);
       if (Array.isArray(renderedElement)) {
         elements.push(...renderedElement);
@@ -450,40 +474,19 @@ class ReactDOMServerRenderer {
   }
 }
 
-function handleNestedOptimizedFunctions(realm: Realm, reconciler: Reconciler, staticMarkup: boolean): void {
-  for (let { func, evaluatedNode, componentType, context } of reconciler.nestedOptimizedClosures) {
-    if (reconciler.hasEvaluatedNestedClosure(func)) {
-      continue;
-    }
-    if (func instanceof ECMAScriptSourceFunctionValue && reconciler.hasEvaluatedRootNode(func, evaluatedNode)) {
-      continue;
-    }
-    let closureEffects = reconciler.resolveNestedOptimizedClosure(func, [], componentType, context, evaluatedNode);
-
-    let closureEffectsRenderedToString = realm.evaluateForEffectsWithPriorEffects(
-      [closureEffects],
-      () => {
-        let serverRenderer = new ReactDOMServerRenderer(realm, staticMarkup);
-        invariant(closureEffects.result instanceof SimpleNormalCompletion);
-        return serverRenderer.render(closureEffects.result.value);
-      },
-      "handleNestedOptimizedFunctions"
-    );
-
-    realm.react.optimizedNestedClosuresToWrite.push({
-      effects: closureEffectsRenderedToString,
-      func,
-    });
-  }
-}
-
 export function renderToString(
   realm: Realm,
   reactElement: ObjectValue,
   staticMarkup: boolean
 ): StringValue | AbstractValue {
   let reactStatistics = new ReactStatistics();
-  let reconciler = new Reconciler(realm, { firstRenderOnly: true, isRoot: true }, reactStatistics);
+  let alreadyEvaluated = new Map();
+  let reconciler = new Reconciler(
+    realm,
+    { firstRenderOnly: true, isRoot: true, modelString: undefined },
+    alreadyEvaluated,
+    reactStatistics
+  );
   let typeValue = getProperty(realm, reactElement, "type");
   let propsValue = getProperty(realm, reactElement, "props");
   let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(realm, typeValue));
@@ -505,6 +508,5 @@ export function renderToString(
   invariant(effects.result instanceof SimpleNormalCompletion);
   let serverRenderer = new ReactDOMServerRenderer(realm, staticMarkup);
   let renderValue = serverRenderer.render(effects.result.value);
-  handleNestedOptimizedFunctions(realm, reconciler, staticMarkup);
   return renderValue;
 }

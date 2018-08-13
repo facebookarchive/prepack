@@ -16,6 +16,7 @@ import type {
   BabelNodeSourceLocation,
   BabelUnaryOperator,
 } from "@babel/types";
+import { Completion, JoinedAbruptCompletions, JoinedNormalAndAbruptCompletions } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import { createOperationDescriptor, type OperationDescriptor } from "../utils/generator.js";
@@ -51,7 +52,6 @@ export type AbstractValueKind =
   | "abstractConcreteUnion"
   | "build function"
   | "widened property"
-  | "widened return result"
   | "widened numeric property"
   | "conditional"
   | "resolved"
@@ -59,6 +59,7 @@ export type AbstractValueKind =
   | "explicit conversion to object"
   | "check for known property"
   | "sentinel member expression"
+  | "environment initialization expression"
   | "template for property name condition"
   | "template for prototype member expression"
   | "this"
@@ -68,7 +69,7 @@ export type AbstractValueKind =
   | "JSResource"
   | "Bootloader"
   | "(A).length"
-  | "(A).toString()"
+  | "('' + A)"
   | "(A).slice(B,C)"
   | "(A).split(B,C)"
   | "global.JSON.stringify(A)"
@@ -556,6 +557,49 @@ export default class AbstractValue extends Value {
     throw new FatalError();
   }
 
+  static createJoinConditionForSelectedCompletions(
+    selector: Completion => boolean,
+    completion: JoinedAbruptCompletions | JoinedNormalAndAbruptCompletions
+  ): AbstractValue {
+    let jc = completion.joinCondition;
+    let realm = jc.$Realm;
+    let c = completion.consequent;
+    let a = completion.alternate;
+    let cContains = c.containsSelectedCompletion(selector);
+    let aContains = a.containsSelectedCompletion(selector);
+    invariant(cContains || aContains);
+    if (cContains && !aContains) return jc;
+    if (!cContains && aContains) return negate(jc);
+    invariant(cContains && aContains);
+    let cCond;
+    if (selector(c)) cCond = jc;
+    else {
+      invariant(c instanceof JoinedAbruptCompletions || c instanceof JoinedNormalAndAbruptCompletions);
+      cCond = AbstractValue.createJoinConditionForSelectedCompletions(selector, c);
+    }
+    let aCond;
+    if (selector(a)) aCond = negate(jc);
+    else {
+      invariant(a instanceof JoinedAbruptCompletions || a instanceof JoinedNormalAndAbruptCompletions);
+      aCond = AbstractValue.createJoinConditionForSelectedCompletions(selector, a);
+    }
+    let or = AbstractValue.createFromLogicalOp(realm, "||", cCond, aCond, undefined, true, true);
+    invariant(or instanceof AbstractValue);
+    if (completion instanceof JoinedNormalAndAbruptCompletions && completion.composedWith !== undefined) {
+      let composedCond = AbstractValue.createJoinConditionForSelectedCompletions(selector, completion.composedWith);
+      let and = AbstractValue.createFromLogicalOp(realm, "&&", composedCond, or);
+      invariant(and instanceof AbstractValue);
+      return and;
+    }
+    return or;
+
+    function negate(v: AbstractValue): AbstractValue {
+      let nv = AbstractValue.createFromUnaryOp(realm, "!", v, true, v.expressionLocation, true, true);
+      invariant(nv instanceof AbstractValue);
+      return nv;
+    }
+  }
+
   static createFromBinaryOp(
     realm: Realm,
     op: BabelBinaryOperator,
@@ -729,6 +773,9 @@ export default class AbstractValue extends Value {
     let labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     invariant(labels.length >= operands.length);
     let operationDescriptor = createOperationDescriptor("ABSTRACT_FROM_TEMPLATE", { template });
+    // This doesn't mean that the function is not pure, just that it creates
+    // a new object on each call and thus is a future optimization opportunity.
+    if (Value.isTypeCompatibleWith(resultType, ObjectValue)) hash = ++realm.objectCount;
     let result = new Constructor(realm, resultTypes, resultValues, hash, operands, operationDescriptor);
     result.kind = kind;
     result.expressionLocation = loc || realm.currentLocation;
@@ -744,7 +791,7 @@ export default class AbstractValue extends Value {
     let types = new TypesDomain(resultType);
     let Constructor = Value.isTypeCompatibleWith(resultType, ObjectValue) ? AbstractObjectValue : AbstractValue;
     let [hash, args] = hashCall(resultType.name + (kind || ""), ...(operands || []));
-    if (resultType === ObjectValue) hash = ++realm.objectCount;
+    if (Value.isTypeCompatibleWith(resultType, ObjectValue)) hash = ++realm.objectCount;
     let result = new Constructor(realm, types, ValuesDomain.topVal, hash, args);
     if (kind) result.kind = kind;
     result.expressionLocation = realm.currentLocation;
@@ -942,13 +989,15 @@ export default class AbstractValue extends Value {
     return realm.reportIntrospectionError(message);
   }
 
-  static createAbstractObject(realm: Realm, name: string, template?: ObjectValue): AbstractObjectValue {
+  static createAbstractObject(
+    realm: Realm,
+    name: string,
+    templateOrShape?: ObjectValue | ShapeInformationInterface
+  ): AbstractObjectValue {
     let value;
-    if (template === undefined) {
-      template = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+    if (templateOrShape === undefined) {
+      templateOrShape = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
     }
-    template.makePartial();
-    template.makeSimple();
     value = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), ObjectValue, [], name);
     if (!realm.isNameStringUnique(name)) {
       value.hashValue = ++realm.objectCount;
@@ -956,8 +1005,14 @@ export default class AbstractValue extends Value {
       realm.saveNameString(name);
     }
     value.intrinsicName = name;
-    value.values = new ValuesDomain(new Set([template]));
-    realm.rebuildNestedProperties(value, name);
+    if (templateOrShape instanceof ObjectValue) {
+      templateOrShape.makePartial();
+      templateOrShape.makeSimple();
+      value.values = new ValuesDomain(new Set([templateOrShape]));
+      realm.rebuildNestedProperties(value, name);
+    } else {
+      value.shape = templateOrShape;
+    }
     invariant(value instanceof AbstractObjectValue);
     return value;
   }
