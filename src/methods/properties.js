@@ -1353,7 +1353,6 @@ export class PropertiesImplementation {
         }
       }
 
-      invariant(realm.generator);
       let propName = P;
       if (typeof propName === "string") {
         propName = new StringValue(realm, propName);
