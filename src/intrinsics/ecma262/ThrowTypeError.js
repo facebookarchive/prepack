@@ -14,7 +14,7 @@ import { NativeFunctionValue } from "../../values/index.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 9.2.7.1
-  let func = new NativeFunctionValue(realm, "", "", 0, context => {
+  let func = new NativeFunctionValue(realm, "(function() { throw new TypeError(); })", "", 0, context => {
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
   });
 
