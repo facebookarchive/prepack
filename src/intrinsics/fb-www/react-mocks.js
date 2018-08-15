@@ -540,6 +540,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
       { skipInvariant: true, isPure: true }
     );
     invariant(forwardedRef instanceof AbstractObjectValue);
+    forwardedRef.makeSimple();
     realm.react.abstractHints.set(
       forwardedRef,
       createReactHintObject(reactValue, "forwardRef", [func], realm.intrinsics.undefined)

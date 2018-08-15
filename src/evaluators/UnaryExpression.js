@@ -265,7 +265,7 @@ function evaluateOperation(
       return new StringValue(realm, "number");
     } else if (isInstance(proto, SymbolValue)) {
       return new StringValue(realm, "symbol");
-    } else if (isInstance(proto, ObjectValue) && !(val instanceof AbstractValue)) {
+    } else if (isInstance(proto, ObjectValue)) {
       if (IsCallable(realm, val)) {
         return new StringValue(realm, "function");
       }
