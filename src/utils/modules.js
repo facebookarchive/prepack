@@ -331,7 +331,10 @@ export class Modules {
   }
 
   getRequire(): Value {
-    if (!(this._require instanceof FunctionValue)) this._require = this._getGlobalProperty("require");
+    if (!(this._require instanceof FunctionValue)) {
+      this._require = this._getGlobalProperty("require");
+      if (!(this._require instanceof FunctionValue)) this._require = this._getGlobalProperty("__r");
+    }
     return this._require;
   }
 
