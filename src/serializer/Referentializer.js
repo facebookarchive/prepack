@@ -161,7 +161,7 @@ export class Referentializer {
   _getReferentializationScope(residualBinding: ResidualFunctionBinding): ReferentializationScope {
     if (residualBinding.potentialReferentializationScopes.has("GLOBAL")) return "GLOBAL";
     if (residualBinding.potentialReferentializationScopes.size > 1) {
-      // TODO Revisit for nested optimized functions.
+      // TODO #2428: Revisit for nested optimized functions.
       return "GLOBAL";
     }
     for (let scope of residualBinding.potentialReferentializationScopes) return scope;
