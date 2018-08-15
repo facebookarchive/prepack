@@ -581,7 +581,7 @@ export class Generator {
     }
 
     for (let modifiedBinding of modifiedBindings.keys()) {
-      // TODO: Instead of looking at the environment ids, keep instead track of a createdEnvironmentRecords set,
+      // TODO #2430: Instead of looking at the environment ids, keep instead track of a createdEnvironmentRecords set,
       // and only consider bindings here from environment records that already existed, or even better,
       // ensure upstream that only such bindings are ever added to the modified-bindings set.
       if (modifiedBinding.environment.id >= environmentRecordIdAfterGlobalCode) continue;
