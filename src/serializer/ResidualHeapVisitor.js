@@ -1194,7 +1194,7 @@ export class ResidualHeapVisitor {
             }
             residualBinding.additionalFunctionOverridesValue = functionValue;
             additionalFunctionInfo.modifiedBindings.set(modifiedBinding, residualBinding);
-            // TODO nested optimized functions: revisit adding GLOBAL as outer optimized function
+            // TODO #2430 nested optimized functions: revisit adding GLOBAL as outer optimized function
             residualBinding.potentialReferentializationScopes.add("GLOBAL");
             return true;
           } else {
