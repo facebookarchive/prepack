@@ -193,7 +193,7 @@ export class Serializer {
         if (this.realm.react.verbose) {
           this.logger.logInformation(`Visiting evaluated nodes...`);
         }
-        let [residualHeapInfo, generatorDAG, inspector] = (() => {
+        let [residualHeapInfo, generatorTree, inspector] = (() => {
           let residualHeapVisitor = new ResidualHeapVisitor(
             this.realm,
             this.logger,
@@ -201,12 +201,12 @@ export class Serializer {
             additionalFunctionValuesAndEffects
           );
           statistics.deepTraversal.measure(() => residualHeapVisitor.visitRoots());
-          return [residualHeapVisitor.toInfo(), residualHeapVisitor.generatorDAG, residualHeapVisitor.inspector];
+          return [residualHeapVisitor.toInfo(), residualHeapVisitor.generatorTree, residualHeapVisitor.inspector];
         })();
         if (this.logger.hasErrors()) return undefined;
 
         let residualOptimizedFunctions = new ResidualOptimizedFunctions(
-          generatorDAG,
+          generatorTree,
           additionalFunctionValuesAndEffects,
           residualHeapInfo.values
         );
@@ -270,7 +270,7 @@ export class Serializer {
               this.options,
               additionalFunctionValuesAndEffects,
               referentializer,
-              generatorDAG,
+              generatorTree,
               residualOptimizedFunctions
             ).serialize();
           });
@@ -293,7 +293,7 @@ export class Serializer {
             this.options,
             additionalFunctionValuesAndEffects,
             referentializer,
-            generatorDAG,
+            generatorTree,
             residualOptimizedFunctions
           ).serialize()
         );
