@@ -224,31 +224,56 @@ let BailOutWrapperClosureRefVisitor = {
   },
   VariableDeclaration(path: BabelTraversePath, state: BailOutWrapperInfo) {
     let node = path.node;
-    // If our parent is a for loop (there are 3 kinds) we do not need a wrapper
-    // i.e. for (var x of y) for (var x in y) for (var x; x < y; x++)
-    let needsExpressionWrapper =
-      !t.isForStatement(path.parentPath.node) &&
-      !t.isForOfStatement(path.parentPath.node) &&
-      !t.isForInStatement(path.parentPath.node);
 
-    const getConvertedDeclarator = index => {
-      let { id, init } = node.declarations[index];
+    // `let` and `const` are lexically scoped. We only need to change `var`s into assignments. Since we hoist the loop
+    // into its own function `var`s (which are function scoped) need to be made available outside the loop.
+    if (node.kind !== "var") return;
 
-      if (t.isIdentifier(id)) {
-        // If init is undefined, then we need to ensure we provide
-        // an actual Babel undefined node for it.
-        if (init === null) {
-          init = t.identifier("undefined");
-        }
-        return t.assignmentExpression("=", id, init);
-      } else {
+    if (t.isForOfStatement(path.parentPath.node) || t.isForInStatement(path.parentPath.node)) {
+      // For-of and for-in variable declarations behave a bit differently. There is only one declarator and there is
+      // never an initializer. Furthermore we can’t replace with an expression or statement, only a
+      // `LeftHandSideExpression`. However, that `LeftHandSideExpression` will perform a `DestructuringAssignment`
+      // operation which is what we want.
+
+      invariant(node.declarations.length === 1);
+      invariant(node.declarations[0].init == null);
+
+      const { id } = node.declarations[0];
+
+      if (!t.isIdentifier(id)) {
         // We do not currently support ObjectPattern, SpreadPattern and ArrayPattern
         // see: https://github.com/babel/babylon/blob/master/ast/spec.md#patterns
         state.varPatternUnsupported = true;
+        return;
       }
-    };
 
-    if (node.kind === "var") {
+      // Replace with the id directly since it is a `LeftHandSideExpression`.
+      path.replaceWith(id);
+    } else {
+      // Change all variable declarations into assignment statements. We assign to capture variables made available
+      // outside of this scope.
+
+      // If our parent is a `for (var x; x < y; x++)` loop we do not need a wrapper.
+      // i.e. for (var x of y) for (var x in y) for (var x; x < y; x++)
+      let needsExpressionWrapper = !t.isForStatement(path.parentPath.node);
+
+      const getConvertedDeclarator = index => {
+        let { id, init } = node.declarations[index];
+
+        if (t.isIdentifier(id)) {
+          // If init is undefined, then we need to ensure we provide
+          // an actual Babel undefined node for it.
+          if (init === null) {
+            init = t.identifier("undefined");
+          }
+          return t.assignmentExpression("=", id, init);
+        } else {
+          // We do not currently support ObjectPattern, SpreadPattern and ArrayPattern
+          // see: https://github.com/babel/babylon/blob/master/ast/spec.md#patterns
+          state.varPatternUnsupported = true;
+        }
+      };
+
       if (node.declarations.length === 1) {
         let convertedNodeOrUndefined = getConvertedDeclarator(0);
         if (convertedNodeOrUndefined === undefined) {

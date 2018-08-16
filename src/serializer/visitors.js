@@ -97,4 +97,15 @@ export let ClosureRefVisitor = {
       visitName(path, state, ids[name], true);
     }
   },
+
+  "ForInStatement|ForOfStatement"(path: BabelTraversePath, state: ClosureRefVisitorState) {
+    if (path.node.left !== "VariableDeclaration") {
+      // `LeftHandSideExpression`s in a for-in/for-of statement perform `DestructuringAssignment` on the current loop
+      // value so we need to make sure we visit these bindings and mark them as modified.
+      const ids = path.get("left").getBindingIdentifiers();
+      for (const name in ids) {
+        visitName(path, state, ids[name], true);
+      }
+    }
+  },
 };
