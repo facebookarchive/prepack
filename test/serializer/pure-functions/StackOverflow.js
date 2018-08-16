@@ -9,9 +9,10 @@ global.__d = () => {};
 const result = global.__evaluatePureFunction(() => {
   function loop(i) {
     if (i === 9999) {
-      return "Hello, world!";
+      return "Hello, world";
     }
-    return loop(i + 1);
+    // Prevent tail recursion optimizations from applying.
+    return loop(i + 1) + "!";
   }
   return loop(0);
 });
