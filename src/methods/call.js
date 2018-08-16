@@ -232,7 +232,13 @@ export function PrepareForOrdinaryCall(
   callerContext.suspend();
 
   // 12. Push calleeContext onto the execution context stack; calleeContext is now the running execution context.
-  realm.pushContext(calleeContext);
+  try {
+    realm.pushContext(calleeContext);
+  } catch (error) {
+    // `realm.pushContext` may throw if we have exceeded the maximum stack size.
+    realm.onDestroyScope(localEnv);
+    throw error;
+  }
 
   // 13. NOTE Any exception objects produced after this point are associated with calleeRealm.
 
