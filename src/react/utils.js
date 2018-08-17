@@ -543,9 +543,6 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
           );
       }
     }
-    if (reactHint.object === realm.fbLibraries.react && reactHint.propertyName === "forwardRef") {
-      return null;
-    }
     invariant(false, "unsupported known React abstraction");
   } else {
     invariant(value instanceof ECMAScriptSourceFunctionValue);
@@ -706,11 +703,10 @@ export function getComponentName(realm: Realm, componentType: Value): string {
       return boundText + name.value;
     }
   }
-  if (realm.react.abstractHints.has(componentType)) {
-    let reactHint = realm.react.abstractHints.get(componentType);
+  if (componentType instanceof ObjectValue) {
+    let $$typeof = getProperty(realm, componentType, "$$typeof");
 
-    invariant(reactHint !== undefined);
-    if (reactHint.object === realm.fbLibraries.react && reactHint.propertyName === "forwardRef") {
+    if ($$typeof === getReactSymbol("react.forward_ref", realm)) {
       return "forwarded ref";
     }
   }

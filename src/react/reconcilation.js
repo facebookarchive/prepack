@@ -481,10 +481,7 @@ export class Reconciler {
     let propsValue = getProperty(this.realm, reactElement, "props");
     let refValue = getProperty(this.realm, reactElement, "ref");
     invariant(typeValue instanceof AbstractValue || typeValue instanceof ObjectValue);
-    let reactHint = this.realm.react.abstractHints.get(typeValue);
-
-    invariant(reactHint !== undefined);
-    let [forwardedComponent] = reactHint.args;
+    let forwardedComponent = getProperty(this.realm, typeValue, "render");
     let evaluatedChildNode = createReactEvaluatedNode("FORWARD_REF", getComponentName(this.realm, forwardedComponent));
     evaluatedNode.children.push(evaluatedChildNode);
     invariant(
@@ -772,14 +769,6 @@ export class Reconciler {
     if (value === getReactSymbol("react.fragment", this.realm)) {
       return "FRAGMENT";
     }
-    if (value instanceof AbstractValue && this.realm.react.abstractHints.has(value)) {
-      let reactHint = this.realm.react.abstractHints.get(value);
-
-      invariant(reactHint !== undefined);
-      if (reactHint.object === this.realm.fbLibraries.react && reactHint.propertyName === "forwardRef") {
-        return "FORWARD_REF";
-      }
-    }
     if ((value instanceof ObjectValue || value instanceof AbstractObjectValue) && value.kind !== "conditional") {
       let $$typeof = getProperty(this.realm, value, "$$typeof");
 
@@ -788,6 +777,9 @@ export class Reconciler {
       }
       if ($$typeof === getReactSymbol("react.provider", this.realm)) {
         return "CONTEXT_PROVIDER";
+      }
+      if ($$typeof === getReactSymbol("react.forward_ref", this.realm)) {
+        return "FORWARD_REF";
       }
     }
     return "NORMAL";
