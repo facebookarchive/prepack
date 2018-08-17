@@ -60,7 +60,11 @@ export function havocBinding(binding: Binding): void {
   let realm = binding.environment.realm;
   let value = binding.value;
   if (!binding.hasLeaked) {
-    if (binding.mutable) realm.recordModifiedBinding(binding).hasLeaked = true;
+    if (binding.mutable) {
+      realm.recordModifiedBinding(binding).hasLeaked = true;
+    } else {
+      binding.hasLeaked = true;
+    }
     if (value !== undefined) {
       let realmGenerator = realm.generator;
       if (realmGenerator !== undefined && value !== realm.intrinsics.undefined)
