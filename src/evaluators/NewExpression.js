@@ -13,7 +13,7 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { ObjectValue, Value, AbstractObjectValue, AbstractValue } from "../values/index.js";
-import { Environment, Havoc } from "../singletons.js";
+import { Environment, Leak } from "../singletons.js";
 import { IsConstructor, ArgumentListEvaluation } from "../methods/index.js";
 import { Construct } from "../methods/index.js";
 import invariant from "../invariant.js";
@@ -90,10 +90,10 @@ function tryToEvaluateConstructOrLeaveAsAbstract(
     // if a FatalError occurs when constructing the constructor
     // then try and recover and create an abstract for this construct
     if (error instanceof FatalError) {
-      // we need to havoc all the arguments and the constructor
-      Havoc.value(realm, constructor);
+      // we need to leak all the arguments and the constructor
+      Leak.value(realm, constructor);
       for (let arg of argsList) {
-        Havoc.value(realm, arg);
+        Leak.value(realm, arg);
       }
       let abstractValue = realm.evaluateWithPossibleThrowCompletion(
         () =>

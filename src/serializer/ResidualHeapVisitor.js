@@ -318,7 +318,7 @@ export class ResidualHeapVisitor {
       // Leaked object. Properties are set via assignments
       // TODO #2259: Make deduplication in the face of leaking work for custom accessors
       if (
-        !obj.mightNotBeHavocedObject() &&
+        !obj.mightNotBeLeakedObject() &&
         (descriptor !== undefined && (descriptor.get === undefined && descriptor.set === undefined))
       )
         continue;
@@ -424,7 +424,7 @@ export class ResidualHeapVisitor {
     this.visitObjectProperties(val);
     const realm = this.realm;
     let lenProperty;
-    if (val.mightBeHavocedObject()) {
+    if (val.mightBeLeakedObject()) {
       lenProperty = this.realm.evaluateWithoutLeakLogic(() => Get(realm, val, "length"));
     } else {
       lenProperty = Get(realm, val, "length");

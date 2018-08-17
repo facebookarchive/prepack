@@ -35,7 +35,7 @@ import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { UpdateEmpty } from "../methods/index.js";
 import { LoopContinues, InternalGetResultValue } from "./ForOfStatement.js";
-import { Environment, Functions, Havoc, To } from "../singletons.js";
+import { Environment, Functions, Leak, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import * as t from "@babel/types";
 import type { BabelNodeExpression, BabelNodeForStatement, BabelNodeBlockStatement } from "@babel/types";
@@ -322,15 +322,15 @@ function generateRuntimeForStatement(
   if (usesThis) {
     let thisRef = env.evaluate(t.thisExpression(), strictCode);
     let thisVal = Environment.GetValue(realm, thisRef);
-    Havoc.value(realm, thisVal);
+    Leak.value(realm, thisVal);
     args.push(thisVal);
   }
 
-  // We havoc the wrapping function value, which in turn invokes the havocing
-  // logic which is transitive. The havocing logic should recursively visit
+  // We leak the wrapping function value, which in turn invokes the leak
+  // logic which is transitive. The leaking logic should recursively visit
   // all bindings/objects in the loop and its body and mark the associated
-  // bindings/objects that do havoc appropiately.
-  Havoc.value(realm, wrapperFunction);
+  // bindings/objects as leaked
+  Leak.value(realm, wrapperFunction);
 
   let wrapperValue = AbstractValue.createTemporalFromBuildFunction(
     realm,

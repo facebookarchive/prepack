@@ -26,7 +26,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { Environment, Havoc, To } from "../singletons.js";
+import { Environment, Leak, To } from "../singletons.js";
 import type { BabelBinaryOperator, BabelNodeBinaryExpression, BabelNodeSourceLocation } from "@babel/types";
 import { createOperationDescriptor } from "../utils/generator.js";
 import invariant from "../invariant.js";
@@ -290,11 +290,11 @@ export function computeBinary(
     // If this ended up reporting an error, it might not be pure, so we'll leave it in
     // as a temporal operation with a known return type.
     // Some of these values may trigger side-effectful user code such as valueOf.
-    // To be safe, we have to Havoc them.
-    Havoc.value(realm, lval, loc);
+    // To be safe, we have to leak them.
+    Leak.value(realm, lval, loc);
     if (op !== "in") {
       // The "in" operator have side-effects on its right val other than throw.
-      Havoc.value(realm, rval, loc);
+      Leak.value(realm, rval, loc);
     }
     return realm.evaluateWithPossibleThrowCompletion(
       () =>

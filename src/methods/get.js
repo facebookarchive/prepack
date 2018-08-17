@@ -38,7 +38,7 @@ import {
   IsDataDescriptor,
   IsPropertyKey,
 } from "./index.js";
-import { Create, Environment, Join, Havoc, Path, To } from "../singletons.js";
+import { Create, Environment, Join, Leak, Path, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeTemplateLiteral } from "@babel/types";
 import { createOperationDescriptor } from "../utils/generator.js";
@@ -336,9 +336,9 @@ export function OrdinaryGetPartial(
   // side-effectful valueOf and toString but that's not enforced.
   if (P.mightNotBeString() && P.mightNotBeNumber() && !P.isSimpleObject()) {
     if (realm.isInPureScope()) {
-      // If we're in pure scope, we can havoc the key and keep going.
+      // If we're in pure scope, we can leak the key and keep going.
       // Coercion can only have effects on anything reachable from the key.
-      Havoc.value(realm, P);
+      Leak.value(realm, P);
     } else {
       let error = new CompilerDiagnostic(
         "property key might not have a well behaved toString or be a symbol",
@@ -355,13 +355,13 @@ export function OrdinaryGetPartial(
   // We assume that simple objects have no getter/setter properties.
   if (!O.isSimpleObject()) {
     if (realm.isInPureScope()) {
-      // If we're in pure scope, we can havoc the object. Coercion
+      // If we're in pure scope, we can leak the object. Coercion
       // can only have effects on anything reachable from this object.
       // We assume that if the receiver is different than this object,
       // then we only got here because there were no other keys with
       // this name on other parts of the prototype chain.
       // TODO #1675: A fix to 1675 needs to take this into account.
-      Havoc.value(realm, Receiver);
+      Leak.value(realm, Receiver);
       return AbstractValue.createTemporalFromBuildFunction(
         realm,
         Value,
@@ -389,7 +389,7 @@ export function OrdinaryGetPartial(
   let result;
   if (O.isPartialObject()) {
     if (isWidenedValue(P)) {
-      // TODO #1678: Use a snapshot or havoc this object.
+      // TODO #1678: Use a snapshot or leak this object.
       return AbstractValue.createTemporalFromBuildFunction(
         realm,
         Value,

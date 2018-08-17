@@ -315,7 +315,7 @@ export class ResidualHeapSerializer {
     }
 
     // TODO #2259: Make deduplication in the face of leaking work for custom accessors
-    let isCertainlyLeaked = !obj.mightNotBeHavocedObject();
+    let isCertainlyLeaked = !obj.mightNotBeLeakedObject();
     let shouldDropAsAssignedProp = (descriptor: Descriptor | void) =>
       isCertainlyLeaked && (descriptor !== undefined && (descriptor.get === undefined && descriptor.set === undefined));
 
@@ -1299,7 +1299,7 @@ export class ResidualHeapSerializer {
   ): void {
     const realm = this.realm;
     let lenProperty;
-    if (val.mightBeHavocedObject()) {
+    if (val.mightBeLeakedObject()) {
       lenProperty = this.realm.evaluateWithoutLeakLogic(() => Get(realm, val, "length"));
     } else {
       lenProperty = Get(realm, val, "length");
@@ -1740,7 +1740,7 @@ export class ResidualHeapSerializer {
     let remainingProperties = new Map(val.properties);
     const dummyProperties = new Set();
     let props = [];
-    let isCertainlyLeaked = !val.mightNotBeHavocedObject();
+    let isCertainlyLeaked = !val.mightNotBeLeakedObject();
 
     // TODO #2259: Make deduplication in the face of leaking work for custom accessors
     let shouldDropAsAssignedProp = (descriptor: Descriptor | void) =>
