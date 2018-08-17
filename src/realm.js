@@ -1343,6 +1343,9 @@ export class Realm {
   // Record the current value of binding in this.modifiedBindings unless
   // there is already an entry for binding.
   recordModifiedBinding(binding: Binding, value?: Value): Binding {
+    // If the binding is immutable, don’t record it as a modified binding.
+    if (!binding.mutable) return binding;
+
     const isDefinedInsidePureFn = root => {
       let context = this.getRunningContext();
       let { lexicalEnvironment: env } = context;
