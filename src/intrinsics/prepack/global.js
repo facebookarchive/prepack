@@ -335,7 +335,7 @@ export default function(realm: Realm): void {
           let error = new CompilerDiagnostic(
             `Assumed condition cannot hold`,
             realm.currentLocation,
-            "PP0038",
+            "PP0040",
             "FatalError"
           );
           realm.handleError(error);
