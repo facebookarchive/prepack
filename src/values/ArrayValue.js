@@ -21,7 +21,7 @@ import {
   Value,
 } from "./index.js";
 import { IsAccessorDescriptor, IsPropertyKey, IsArrayIndex } from "../methods/is.js";
-import { Havoc, Properties, To, Utils } from "../singletons.js";
+import { Leak, Properties, To, Utils } from "../singletons.js";
 import { type OperationDescriptor } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import { NestedOptimizedFunctionSideEffect } from "../errors.js";
@@ -55,10 +55,10 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
       effects = realm.evaluateForEffects(pureFuncCall, null, "temporalArray nestedOptimizedFunction");
     } catch (e) {
       // If the nested optimized function had side-effects, we need to fallback to
-      // the default behaviour and havoc the nested functions so any bindings
+      // the default behaviour and leaked the nested functions so any bindings
       // within the function properly leak and materialize.
       if (e instanceof NestedOptimizedFunctionSideEffect) {
-        Havoc.value(realm, func);
+        Leak.value(realm, func);
         return;
       }
       throw e;
@@ -88,10 +88,10 @@ function createArrayWithWidenedNumericProperty(
       );
     } else {
       // If nested optimized functions are disabled, we need to fallback to
-      // the default behaviour and havoc the nested functions so any bindings
+      // the default behaviour and leaked the nested functions so any bindings
       // within the function properly leak and materialize.
       for (let { func } of possibleNestedOptimizedFunctions) {
-        Havoc.value(realm, func);
+        Leak.value(realm, func);
       }
     }
   }

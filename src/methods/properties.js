@@ -49,7 +49,7 @@ import {
 } from "./index.js";
 import { type BabelNodeObjectMethod, type BabelNodeClassMethod, isValidIdentifier } from "@babel/types";
 import type { LexicalEnvironment } from "../environment.js";
-import { Create, Environment, Functions, Havoc, Join, Path, To } from "../singletons.js";
+import { Create, Environment, Functions, Leak, Join, Path, To } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import { createOperationDescriptor } from "../utils/generator.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
@@ -109,7 +109,7 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
   if (!O.isIntrinsic() && O.temporalAlias === undefined) return;
   if (P instanceof SymbolValue) return;
   if (P instanceof StringValue) P = P.value;
-  invariant(!O.mightBeHavocedObject()); // havoced objects are never updated
+  invariant(!O.mightBeLeakedObject()); // leaked objects are never updated
   invariant(!O.mightBeFinalObject()); // final objects are never updated
   invariant(typeof P === "string");
   let propertyBinding = InternalGetPropertiesMap(O, P).get(P);
@@ -162,18 +162,18 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
   }
 }
 
-function havocDescriptor(realm: Realm, desc: Descriptor) {
+function leakDescriptor(realm: Realm, desc: Descriptor) {
   if (desc.value) {
-    if (desc.value instanceof Value) Havoc.value(realm, desc.value);
+    if (desc.value instanceof Value) Leak.value(realm, desc.value);
     else if (desc.value !== undefined) {
-      for (let val of desc.value) Havoc.value(realm, val);
+      for (let val of desc.value) Leak.value(realm, val);
     }
   }
   if (desc.get) {
-    Havoc.value(realm, desc.get);
+    Leak.value(realm, desc.get);
   }
   if (desc.set) {
-    Havoc.value(realm, desc.set);
+    Leak.value(realm, desc.set);
   }
 }
 
@@ -250,11 +250,11 @@ export class PropertiesImplementation {
   // ECMA262 9.1.9.1
   OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
     ensureIsNotFinal(realm, O, P);
-    if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
-      // Writing a value to a havoced (because leaked) object leaks the value, so havoc it.
-      Havoc.value(realm, V);
-      // The receiver might leak to a getter so if it's not already havoced, we need to havoc it.
-      Havoc.value(realm, Receiver);
+    if (!realm.ignoreLeakLogic && O.mightBeLeakedObject()) {
+      // Leaking is transitive, hence writing a value to a leaked object leaks the value
+      Leak.value(realm, V);
+      // The receiver might leak to a getter so if it's not already leaked, we need to leak it.
+      Leak.value(realm, Receiver);
       if (realm.generator !== undefined) {
         realm.generator.emitPropertyAssignment(Receiver, StringKey(P), V);
       }
@@ -464,9 +464,9 @@ export class PropertiesImplementation {
     // side-effectful valueOf and toString but that's not enforced.
     if (P.mightNotBeString() && P.mightNotBeNumber() && !P.isSimpleObject()) {
       if (realm.isInPureScope()) {
-        // If we're in pure scope, we can havoc the key and keep going.
+        // If we're in pure scope, we can leak the key and keep going.
         // Coercion can only have effects on anything reachable from the key.
-        Havoc.value(realm, P);
+        Leak.value(realm, P);
       } else {
         let error = new CompilerDiagnostic(
           "property key might not have a well behaved toString or be a symbol",
@@ -484,11 +484,11 @@ export class PropertiesImplementation {
     // that all properties are writable.
     if (!O.isSimpleObject()) {
       if (realm.isInPureScope()) {
-        // If we're in pure scope, we can havoc the object and leave an
+        // If we're in pure scope, we can leak the object and leave an
         // assignment in place.
-        Havoc.value(realm, Receiver);
-        // We also need to havoc the value since it might leak to a setter.
-        Havoc.value(realm, V);
+        Leak.value(realm, Receiver);
+        // We also need to leak the value since it might leak to a setter.
+        Leak.value(realm, V);
         realm.evaluateWithPossibleThrowCompletion(
           () => {
             let generator = realm.generator;
@@ -684,7 +684,7 @@ export class PropertiesImplementation {
     // 3. If desc is undefined, return true.
     if (!desc) {
       ensureIsNotFinal(realm, O, P);
-      if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
+      if (!realm.ignoreLeakLogic && O.mightBeLeakedObject()) {
         if (realm.generator !== undefined) {
           realm.generator.emitPropertyDelete(O, StringKey(P));
         }
@@ -695,7 +695,7 @@ export class PropertiesImplementation {
     // 4. If desc.[[Configurable]] is true, then
     if (desc.configurable) {
       ensureIsNotFinal(realm, O, P);
-      if (O.mightBeHavocedObject()) {
+      if (O.mightBeLeakedObject()) {
         if (realm.generator !== undefined) {
           realm.generator.emitPropertyDelete(O, StringKey(P));
         }
@@ -822,8 +822,8 @@ export class PropertiesImplementation {
 
       if (O !== undefined && P !== undefined) {
         ensureIsNotFinal(realm, O, P);
-        if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
-          havocDescriptor(realm, Desc);
+        if (!realm.ignoreLeakLogic && O.mightBeLeakedObject()) {
+          leakDescriptor(realm, Desc);
           if (realm.generator !== undefined) {
             realm.generator.emitDefineProperty(O, StringKey(P), Desc);
           }
@@ -914,8 +914,8 @@ export class PropertiesImplementation {
 
     if (O !== undefined && P !== undefined) {
       ensureIsNotFinal(realm, O, P);
-      if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
-        havocDescriptor(realm, Desc);
+      if (!realm.ignoreLeakLogic && O.mightBeLeakedObject()) {
+        leakDescriptor(realm, Desc);
         if (realm.generator !== undefined) {
           realm.generator.emitDefineProperty(O, StringKey(P), Desc);
         }
@@ -1342,8 +1342,8 @@ export class PropertiesImplementation {
 
   // ECMA262 9.1.5.1
   OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue): Descriptor | void {
-    // if the object is havoced and final, then it's still safe to read the value from the object
-    if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
+    // if the object is leaked and final, then it's still safe to read the value from the object
+    if (!realm.ignoreLeakLogic && O.mightBeLeakedObject()) {
       if (!O.mightNotBeFinalObject()) {
         let existingBinding = InternalGetPropertiesMap(O, P).get(InternalGetPropertiesKey(P));
         if (existingBinding && existingBinding.descriptor) {
@@ -1575,7 +1575,7 @@ export class PropertiesImplementation {
   // ECMA262 9.1.2.1
   OrdinarySetPrototypeOf(realm: Realm, O: ObjectValue, V: ObjectValue | NullValue): boolean {
     ensureIsNotFinal(realm, O);
-    if (!realm.ignoreLeakLogic && O.mightBeHavocedObject()) {
+    if (!realm.ignoreLeakLogic && O.mightBeLeakedObject()) {
       throw new FatalError();
     }
 
@@ -1867,7 +1867,7 @@ export class PropertiesImplementation {
   ): Array<string> {
     if (
       (O.isPartialObject() && !getOwnPropertyKeysEvenIfPartial) ||
-      O.mightBeHavocedObject() ||
+      O.mightBeLeakedObject() ||
       O.unknownProperty !== undefined
     ) {
       AbstractValue.reportIntrospectionError(O);

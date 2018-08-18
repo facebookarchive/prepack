@@ -47,7 +47,7 @@ import {
 } from "./utils.js";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
-import { Havoc, Properties, Utils } from "../singletons.js";
+import { Leak, Properties, Utils } from "../singletons.js";
 import { FatalError, NestedOptimizedFunctionSideEffect } from "../errors.js";
 import {
   type BranchStatusEnum,
@@ -1556,10 +1556,10 @@ export class Reconciler {
       );
     } catch (e) {
       // If the nested optimized function had side-effects, we need to fallback to
-      // the default behaviour and havoc the nested functions so any bindings
+      // the default behaviour and leak the nested functions so any bindings
       // within the function properly leak and materialize.
       if (e instanceof NestedOptimizedFunctionSideEffect) {
-        Havoc.value(this.realm, func);
+        Leak.value(this.realm, func);
         return;
       }
       throw e;
