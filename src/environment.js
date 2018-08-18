@@ -58,9 +58,9 @@ function deriveGetBinding(realm: Realm, binding: Binding) {
 
 export function materializeBinding(realm: Realm, binding: Binding): void {
   let realmGenerator = realm.generator;
+  invariant(realmGenerator !== undefined);
   let value = binding.value;
-  if (value !== undefined && realmGenerator !== undefined && value !== realm.intrinsics.undefined)
-    realmGenerator.emitBindingAssignment(binding, value);
+  if (value !== undefined && value !== realm.intrinsics.undefined) realmGenerator.emitBindingAssignment(binding, value);
 }
 export function leakBinding(binding: Binding): void {
   let realm = binding.environment.realm;
