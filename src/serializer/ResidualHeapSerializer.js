@@ -1269,7 +1269,7 @@ export class ResidualHeapSerializer {
               let error = new CompilerDiagnostic(
                 "InstantRender does not yet support cyclical arrays or objects",
                 array.expressionLocation,
-                "PP0038",
+                "PP0039",
                 "FatalError"
               );
               this.realm.handleError(error);
@@ -1774,7 +1774,7 @@ export class ResidualHeapSerializer {
               let error = new CompilerDiagnostic(
                 "InstantRender does not yet support cyclical arays or objects",
                 val.expressionLocation,
-                "PP0038",
+                "PP0039",
                 "FatalError"
               );
               this.realm.handleError(error);
