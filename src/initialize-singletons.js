@@ -13,7 +13,7 @@ import * as Singletons from "./singletons.js";
 import { CreateImplementation } from "./methods/create.js";
 import { EnvironmentImplementation } from "./methods/environment.js";
 import { FunctionImplementation } from "./methods/function.js";
-import { HavocImplementation, MaterializeImplementation } from "./utils/havoc.js";
+import { LeakImplementation, MaterializeImplementation } from "./utils/leak.js";
 import { JoinImplementation } from "./methods/join.js";
 import { PathImplementation } from "./utils/paths.js";
 import { PropertiesImplementation } from "./methods/properties.js";
@@ -27,7 +27,7 @@ export default function() {
   Singletons.setCreate(new CreateImplementation());
   Singletons.setEnvironment(new EnvironmentImplementation());
   Singletons.setFunctions(new FunctionImplementation());
-  Singletons.setHavoc(new HavocImplementation());
+  Singletons.setLeak(new LeakImplementation());
   Singletons.setMaterialize(new MaterializeImplementation());
   Singletons.setJoin(new JoinImplementation());
   Singletons.setPath(new PathImplementation());

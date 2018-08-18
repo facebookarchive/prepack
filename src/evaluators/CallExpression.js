@@ -29,7 +29,7 @@ import {
   Value,
 } from "../values/index.js";
 import { Reference } from "../environment.js";
-import { Environment, Functions, Havoc, Join } from "../singletons.js";
+import { Environment, Functions, Leak, Join } from "../singletons.js";
 import {
   ArgumentListEvaluation,
   EvaluateDirectCall,
@@ -237,11 +237,10 @@ function generateRuntimeCall(
   for (let arg of args) {
     if (arg !== func) {
       // Since we don't know which function we are calling, we assume that any unfrozen object
-      // passed as an argument has leaked to the environment and is henceforth in an unknown (havoced) state,
-      // as is any other object that is known to be reachable from this object.
+      // passed as an argument has leaked to the environment as is any other object that is known to be reachable from this object.
       // NB: Note that this is still optimistic, particularly if the environment exposes the same object
       // to Prepack via alternative means, thus creating aliasing that is not tracked by Prepack.
-      Havoc.value(realm, arg, ast.loc);
+      Leak.value(realm, arg, ast.loc);
     }
   }
   let resultType = (func instanceof AbstractObjectValue ? func.functionResultType : undefined) || Value;

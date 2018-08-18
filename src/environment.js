@@ -42,7 +42,7 @@ import parse from "./utils/parse.js";
 import invariant from "./invariant.js";
 import traverseFast from "./utils/traverse-fast.js";
 import { HasProperty, Get, IsExtensible, HasOwnProperty, IsDataDescriptor } from "./methods/index.js";
-import { Environment, Havoc, Properties, To } from "./singletons.js";
+import { Environment, Leak, Properties, To } from "./singletons.js";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
 import PrimitiveValue from "./values/PrimitiveValue.js";
 import { createOperationDescriptor } from "./utils/generator.js";
@@ -56,21 +56,24 @@ function deriveGetBinding(realm: Realm, binding: Binding) {
   return realm.generator.deriveAbstract(types, values, [], createOperationDescriptor("GET_BINDING", { binding }));
 }
 
-export function havocBinding(binding: Binding): void {
-  let realm = binding.environment.realm;
+export function materializeBinding(realm: Realm, binding: Binding): void {
+  let realmGenerator = realm.generator;
+  invariant(realmGenerator !== undefined);
   let value = binding.value;
+  if (value !== undefined && value !== realm.intrinsics.undefined) realmGenerator.emitBindingAssignment(binding, value);
+}
+export function leakBinding(binding: Binding): void {
+  let realm = binding.environment.realm;
   if (!binding.hasLeaked) {
     realm.recordModifiedBinding(binding).hasLeaked = true;
-    if (value !== undefined) {
-      let realmGenerator = realm.generator;
-      if (realmGenerator !== undefined && value !== realm.intrinsics.undefined)
-        realmGenerator.emitBindingAssignment(binding, value);
-      if (binding.mutable === true) {
-        // For mutable, i.e. non-const bindings, the actual value is no longer directly available.
-        // Thus, we reset the value to undefined to prevent any use of the last known value.
-        binding.value = undefined;
-      }
-    }
+    materializeBinding(realm, binding);
+  }
+
+  // Havoc the binding
+  if (binding.mutable === true) {
+    // For mutable, i.e. non-const bindings, the actual value is no longer directly available.
+    // Thus, we reset the value to undefined to prevent any use of the last known value.
+    binding.value = undefined;
   }
 }
 
@@ -295,7 +298,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     } else if (binding.mutable) {
       // 5. Else if the binding for N in envRec is a mutable binding, change its bound value to V.
       if (binding.hasLeaked) {
-        Havoc.value(realm, V);
+        Leak.value(realm, V);
         invariant(realm.generator);
         realm.generator.emitBindingAssignment(binding, V);
       } else {

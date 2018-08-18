@@ -43,7 +43,7 @@ import {
   ThrowCompletion,
 } from "../completions.js";
 import { GetTemplateObject, GetV, GetThisValue } from "./get.js";
-import { Create, Environment, Functions, Havoc, Join, To, Widen } from "../singletons.js";
+import { Create, Environment, Functions, Leak, Join, To, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
 import { createOperationDescriptor } from "../utils/generator.js";
 import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "@babel/types";
@@ -587,9 +587,9 @@ export function Call(realm: Realm, F: Value, V: Value, argsList?: Array<Value>):
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
   }
   if (F instanceof AbstractValue && Value.isTypeCompatibleWith(F.getType(), FunctionValue)) {
-    Havoc.value(realm, V);
+    Leak.value(realm, V);
     for (let arg of argsList) {
-      Havoc.value(realm, arg);
+      Leak.value(realm, arg);
     }
     if (V === realm.intrinsics.undefined) {
       let fullArgs = [F].concat(argsList);
