@@ -132,6 +132,12 @@ export default class ArrayValue extends ObjectValue {
       // a. Return ? ArraySetLength(A, Desc).
       return Properties.ArraySetLength(this.$Realm, A, Desc);
     } else if (IsArrayIndex(this.$Realm, P)) {
+      if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(this)) {
+        // The length of an array with widenend numeric properties is always abstract
+        let succeeded = Properties.OrdinaryDefineOwnProperty(this.$Realm, A, P, Desc);
+        if (succeeded === false) return false;
+        return true;
+      }
       // 3. Else if P is an array index, then
 
       // a. Let oldLenDesc be OrdinaryGetOwnProperty(A, "length").
