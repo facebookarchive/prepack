@@ -48,7 +48,8 @@ export type ReactSymbolTypes =
   | "react.fragment"
   | "react.portal"
   | "react.return"
-  | "react.call";
+  | "react.call"
+  | "react.forward_ref";
 
 export function isReactElement(val: Value): boolean {
   if (!(val instanceof ObjectValue)) {

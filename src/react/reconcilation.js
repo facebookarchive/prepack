@@ -480,7 +480,7 @@ export class Reconciler {
     let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
     let refValue = getProperty(this.realm, reactElement, "ref");
-    invariant(typeValue instanceof AbstractValue || typeValue instanceof ObjectValue);
+    invariant(typeValue instanceof AbstractObjectValue || typeValue instanceof ObjectValue);
     let forwardedComponent = getProperty(this.realm, typeValue, "render");
     let evaluatedChildNode = createReactEvaluatedNode("FORWARD_REF", getComponentName(this.realm, forwardedComponent));
     evaluatedNode.children.push(evaluatedChildNode);
