@@ -1265,6 +1265,11 @@ export class Realm {
     } else {
       invariant(false);
     }
+
+    // Undo the effects from completions we are composed with
+    if (completion.composedWith) {
+      this.stopEffectCaptureAndUndoEffects(completion.composedWith);
+    }
   }
 
   // Apply the given effects to the global state
