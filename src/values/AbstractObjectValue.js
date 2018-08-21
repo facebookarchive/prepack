@@ -25,12 +25,7 @@ import {
   Value,
 } from "./index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import {
-  GetFromArrayWithWidenedNumericProperty,
-  IsDataDescriptor,
-  cloneDescriptor,
-  equalDescriptors,
-} from "../methods/index.js";
+import { IsDataDescriptor, cloneDescriptor, equalDescriptors } from "../methods/index.js";
 import { Leak, Properties, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
 import { createOperationDescriptor, type OperationDescriptor } from "../utils/generator.js";
@@ -602,21 +597,7 @@ export default class AbstractObjectValue extends AbstractValue {
       throw new FatalError();
     }
 
-    let $GetHelper = ob => {
-      if (ob instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(ob) && typeof P === "string") {
-        return {
-          configurable: true,
-          enumerable: P === "length" ? false : true,
-          value: GetFromArrayWithWidenedNumericProperty(this.$Realm, ob, P),
-          writable: true,
-        };
-      }
-      let d = ob.$GetOwnProperty(P);
-      if (d !== undefined) return d;
-      let proto = ob.$GetPrototypeOf();
-      return proto instanceof NullValue ? undefined : $GetHelper(proto);
-    };
-
+    let realm = this.$Realm;
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {
@@ -631,37 +612,23 @@ export default class AbstractObjectValue extends AbstractValue {
       invariant(cond instanceof AbstractValue);
       invariant(ob1 instanceof ObjectValue || ob1 instanceof AbstractObjectValue);
       invariant(ob2 instanceof ObjectValue || ob2 instanceof AbstractObjectValue);
-      let d1 = $GetHelper(ob1);
-      let d1val =
-        d1 === undefined ? this.$Realm.intrinsics.undefined : IsDataDescriptor(this.$Realm, d1) ? d1.value : undefined;
-      let d2 = $GetHelper(ob2);
-      let d2val =
-        d2 === undefined ? this.$Realm.intrinsics.undefined : IsDataDescriptor(this.$Realm, d2) ? d2.value : undefined;
-      // We do not currently join property getters
-      if (d1val === undefined || d2val === undefined) {
-        AbstractValue.reportIntrospectionError(this, P);
-        throw new FatalError();
-      }
-      invariant(d1val instanceof Value);
-      invariant(d2val instanceof Value);
-      return AbstractValue.createFromConditionalOp(this.$Realm, cond, d1val, d2val);
+      // Evaluate the effect of each getter separately and join the result.
+      return realm.evaluateWithAbstractConditional(
+        cond,
+        () => realm.evaluateForEffects(() => ob1.$Get(P, Receiver), undefined, "ConditionalGet/1"),
+        () => realm.evaluateForEffects(() => ob2.$Get(P, Receiver), undefined, "ConditionalGet/2")
+      );
     } else {
       let result;
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
-        let d = $GetHelper(cv);
-        // We do not currently join property getters
-        if (d !== undefined && !IsDataDescriptor(this.$Realm, d)) {
-          AbstractValue.reportIntrospectionError(this, P);
-          throw new FatalError();
-        }
-        let cvVal = d === undefined ? this.$Realm.intrinsics.undefined : d.value;
-        invariant(cvVal instanceof Value);
-        if (result === undefined) result = cvVal;
-        else {
-          let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
-          result = AbstractValue.createFromConditionalOp(this.$Realm, cond, cvVal, result);
-        }
+        let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
+        invariant(cond instanceof AbstractValue);
+        result = realm.evaluateWithAbstractConditional(
+          cond,
+          () => realm.evaluateForEffects(() => cv.$Get(P, Receiver), undefined, "AbstractGet"),
+          () => construct_empty_effects(realm, result === undefined ? undefined : new SimpleNormalCompletion(result))
+        );
       }
       invariant(result !== undefined);
       return result;
