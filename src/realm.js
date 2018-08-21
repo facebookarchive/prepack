@@ -1255,15 +1255,13 @@ export class Realm {
     this.restoreProperties(this.modifiedProperties);
 
     // Restore saved state
-    if (completion.savedEffects !== undefined) {
+    if (completion.savedEffects) {
       const savedEffects = completion.savedEffects;
       completion.savedEffects = undefined;
       this.generator = savedEffects.generator;
       this.modifiedBindings = savedEffects.modifiedBindings;
       this.modifiedProperties = savedEffects.modifiedProperties;
       this.createdObjects = savedEffects.createdObjects;
-    } else {
-      invariant(false);
     }
 
     // Undo the effects from completions we are composed with
