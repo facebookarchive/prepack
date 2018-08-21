@@ -35,6 +35,7 @@ import { Leak, Properties, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
 import { createOperationDescriptor, type OperationDescriptor } from "../utils/generator.js";
 import { construct_empty_effects } from "../realm.js";
+import { SimpleNormalCompletion } from "../completions.js";
 
 export default class AbstractObjectValue extends AbstractValue {
   constructor(
@@ -709,6 +710,8 @@ export default class AbstractObjectValue extends AbstractValue {
       throw new FatalError();
     }
 
+    let realm = this.$Realm;
+
     let elements = this.values.getElements();
     if (elements.size === 1) {
       for (let cv of elements) {
@@ -723,19 +726,23 @@ export default class AbstractObjectValue extends AbstractValue {
       invariant(cond instanceof AbstractValue);
       invariant(ob1 instanceof ObjectValue || ob1 instanceof AbstractObjectValue);
       invariant(ob2 instanceof ObjectValue || ob2 instanceof AbstractObjectValue);
-      let d1val = ob1.$GetPartial(P, Receiver);
-      let d2val = ob2.$GetPartial(P, Receiver);
-      return AbstractValue.createFromConditionalOp(this.$Realm, cond, d1val, d2val);
+      // Evaluate the effect of each getter separately and join the result.
+      return realm.evaluateWithAbstractConditional(
+        cond,
+        () => realm.evaluateForEffects(() => ob1.$GetPartial(P, Receiver), undefined, "ConditionalGet/1"),
+        () => realm.evaluateForEffects(() => ob2.$GetPartial(P, Receiver), undefined, "ConditionalGet/2")
+      );
     } else {
       let result;
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
-        let cvVal = cv.$GetPartial(P, Receiver);
-        if (result === undefined) result = cvVal;
-        else {
-          let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
-          result = AbstractValue.createFromConditionalOp(this.$Realm, cond, cvVal, result);
-        }
+        let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
+        invariant(cond instanceof AbstractValue);
+        result = realm.evaluateWithAbstractConditional(
+          cond,
+          () => realm.evaluateForEffects(() => cv.$GetPartial(P, Receiver), undefined, "AbstractGet"),
+          () => construct_empty_effects(realm, result === undefined ? undefined : new SimpleNormalCompletion(result))
+        );
       }
       invariant(result !== undefined);
       return result;

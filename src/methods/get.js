@@ -353,7 +353,7 @@ export function OrdinaryGetPartial(
   }
 
   // We assume that simple objects have no getter/setter properties.
-  if (!O.isSimpleObject()) {
+  if (!O.isSimpleObject() || O.mightBeLeakedObject()) {
     if (realm.isInPureScope()) {
       // If we're in pure scope, we can leak the object. Coercion
       // can only have effects on anything reachable from this object.
