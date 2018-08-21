@@ -789,7 +789,7 @@ export class Realm {
     let savedCreatedObjects = this.createdObjects;
     let saved_completion = this.savedCompletion;
     try {
-      this.generator = undefined;
+      this.generator = new Generator(this, "evaluateIgnoringEffects", this.pathConditions);
       this.modifiedBindings = undefined;
       this.modifiedProperties = undefined;
       this.createdObjects = undefined;
