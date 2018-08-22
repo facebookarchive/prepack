@@ -109,13 +109,14 @@ export function OrdinaryGet(
     }
 
     if (val.kind === "widened numeric property") {
-      invariant(Receiver instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(Receiver));
+      invariant(O instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O));
       let propName;
       if (P instanceof StringValue) {
         propName = P.value;
       } else {
         propName = P;
       }
+      invariant(Receiver instanceof ObjectValue || Receiver instanceof AbstractObjectValue);
       return GetFromArrayWithWidenedNumericProperty(realm, Receiver, propName);
     } else if (!propValue) {
       AbstractValue.reportIntrospectionError(val, "abstract computed property name");
@@ -426,7 +427,8 @@ export function OrdinaryGetPartial(
       let val = desc.value;
       invariant(val instanceof AbstractValue);
       if (val.kind === "widened numeric property") {
-        invariant(Receiver instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(Receiver));
+        invariant(O instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O));
+        invariant(Receiver instanceof ObjectValue || Receiver instanceof AbstractObjectValue);
         return GetFromArrayWithWidenedNumericProperty(realm, Receiver, P instanceof StringValue ? P.value : P);
       }
       result = specializeJoin(realm, val, P);
@@ -760,7 +762,11 @@ export function GetTemplateObject(realm: Realm, templateLiteral: BabelNodeTempla
   return template;
 }
 
-export function GetFromArrayWithWidenedNumericProperty(realm: Realm, arr: ArrayValue, P: string | Value): Value {
+export function GetFromArrayWithWidenedNumericProperty(
+  realm: Realm,
+  arr: AbstractObjectValue | ObjectValue,
+  P: string | Value
+): Value {
   let proto = arr.$GetPrototypeOf();
   invariant(proto instanceof ObjectValue && proto === realm.intrinsics.ArrayPrototype);
   if (typeof P === "string") {
