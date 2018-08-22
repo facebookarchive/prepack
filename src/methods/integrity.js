@@ -15,6 +15,7 @@ import { IsExtensible, IsDataDescriptor, IsAccessorDescriptor } from "./index.js
 import { Properties } from "../singletons.js";
 import { FatalError } from "../errors.js";
 import invariant from "../invariant.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 type IntegrityLevels = "sealed" | "frozen";
 
@@ -54,9 +55,14 @@ export function SetIntegrityLevel(realm: Realm, O: ObjectValue, level: Integrity
     // a. Repeat for each element k of keys,
     for (let k of keys) {
       // i. Perform ? DefinePropertyOrThrow(O, k, PropertyDescriptor{[[Configurable]]: false}).
-      Properties.DefinePropertyOrThrow(realm, O, k, {
-        configurable: false,
-      });
+      Properties.DefinePropertyOrThrow(
+        realm,
+        O,
+        k,
+        new PropertyDescriptor({
+          configurable: false,
+        })
+      );
     }
   } else if (level === "frozen") {
     // 7. Else level is "frozen",

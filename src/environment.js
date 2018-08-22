@@ -48,6 +48,7 @@ import PrimitiveValue from "./values/PrimitiveValue.js";
 import { createOperationDescriptor } from "./utils/generator.js";
 
 import { SourceMapConsumer, type NullableMappedPosition } from "source-map";
+import { PropertyDescriptor } from "./descriptors.js";
 
 function deriveGetBinding(realm: Realm, binding: Binding) {
   let types = TypesDomain.topVal;
@@ -448,12 +449,17 @@ export class ObjectEnvironmentRecord extends EnvironmentRecord {
     // 4. Return ? DefinePropertyOrThrow(bindings, N, PropertyDescriptor{[[Value]]: undefined, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: configValue}).
     return new BooleanValue(
       realm,
-      Properties.DefinePropertyOrThrow(realm, bindings, N, {
-        value: realm.intrinsics.undefined,
-        writable: true,
-        enumerable: true,
-        configurable: configValue,
-      })
+      Properties.DefinePropertyOrThrow(
+        realm,
+        bindings,
+        N,
+        new PropertyDescriptor({
+          value: realm.intrinsics.undefined,
+          writable: true,
+          enumerable: true,
+          configurable: configValue,
+        })
+      )
     );
   }
 

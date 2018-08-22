@@ -38,6 +38,7 @@ import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
 import traverseFast from "../utils/traverse-fast.js";
 import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeFunctionDeclaration } from "@babel/types";
+import { PropertyDescriptor } from "../descriptors.js";
 
 const allElementTypes = ["Undefined", "Null", "Boolean", "String", "Symbol", "Number", "Object"];
 
@@ -69,12 +70,17 @@ export class CreateImplementation {
     let length = value.value.length;
 
     // 10. Perform ! DefinePropertyOrThrow(S, "length", PropertyDescriptor{[[Value]]: length, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }).
-    Properties.DefinePropertyOrThrow(realm, S, "length", {
-      value: new NumberValue(realm, length),
-      writable: false,
-      enumerable: false,
-      configurable: false,
-    });
+    Properties.DefinePropertyOrThrow(
+      realm,
+      S,
+      "length",
+      new PropertyDescriptor({
+        value: new NumberValue(realm, length),
+        writable: false,
+        enumerable: false,
+        configurable: false,
+      })
+    );
 
     // 11. Return S.
     return S;
@@ -363,12 +369,17 @@ export class CreateImplementation {
 
     // 4. Perform DefinePropertyOrThrow(obj, "length", PropertyDescriptor{[[Value]]: len,
     //    [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}).
-    Properties.DefinePropertyOrThrow(realm, obj, "length", {
-      value: new NumberValue(realm, len),
-      writable: true,
-      enumerable: false,
-      configurable: true,
-    });
+    Properties.DefinePropertyOrThrow(
+      realm,
+      obj,
+      "length",
+      new PropertyDescriptor({
+        value: new NumberValue(realm, len),
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      })
+    );
 
     // 5. Let index be 0.
     let index = 0;
@@ -387,21 +398,31 @@ export class CreateImplementation {
 
     // 7. Perform ! DefinePropertyOrThrow(obj, @@iterator, PropertyDescriptor {[[Value]]:
     //    %ArrayProto_values%, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}).
-    Properties.DefinePropertyOrThrow(realm, obj, realm.intrinsics.SymbolIterator, {
-      value: realm.intrinsics.ArrayProto_values,
-      writable: true,
-      enumerable: false,
-      configurable: true,
-    });
+    Properties.DefinePropertyOrThrow(
+      realm,
+      obj,
+      realm.intrinsics.SymbolIterator,
+      new PropertyDescriptor({
+        value: realm.intrinsics.ArrayProto_values,
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      })
+    );
 
     // 8. Perform ! DefinePropertyOrThrow(obj, "callee", PropertyDescriptor {[[Get]]:
     // %ThrowTypeError%, [[Set]]: %ThrowTypeError%, [[Enumerable]]: false, [[Configurable]]: false}).
-    Properties.DefinePropertyOrThrow(realm, obj, "callee", {
-      get: realm.intrinsics.ThrowTypeError,
-      set: realm.intrinsics.ThrowTypeError,
-      enumerable: false,
-      configurable: false,
-    });
+    Properties.DefinePropertyOrThrow(
+      realm,
+      obj,
+      "callee",
+      new PropertyDescriptor({
+        get: realm.intrinsics.ThrowTypeError,
+        set: realm.intrinsics.ThrowTypeError,
+        enumerable: false,
+        configurable: false,
+      })
+    );
 
     // 10. Return obj.
     return obj;
@@ -478,12 +499,17 @@ export class CreateImplementation {
 
     // 18. Perform DefinePropertyOrThrow(obj, "length", PropertyDescriptor{[[Value]]: len,
     //     [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}).
-    Properties.DefinePropertyOrThrow(realm, obj, "length", {
-      value: new NumberValue(realm, len),
-      writable: true,
-      enumerable: false,
-      configurable: true,
-    });
+    Properties.DefinePropertyOrThrow(
+      realm,
+      obj,
+      "length",
+      new PropertyDescriptor({
+        value: new NumberValue(realm, len),
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      })
+    );
 
     // 19. Let mappedNames be an empty List.
     let mappedNames = [];
@@ -526,21 +552,31 @@ export class CreateImplementation {
 
     // 22. Perform ! DefinePropertyOrThrow(obj, @@iterator, PropertyDescriptor {[[Value]]:
     //     %ArrayProto_values%, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}).
-    Properties.DefinePropertyOrThrow(realm, obj, realm.intrinsics.SymbolIterator, {
-      value: realm.intrinsics.ArrayProto_values,
-      writable: true,
-      enumerable: false,
-      configurable: true,
-    });
+    Properties.DefinePropertyOrThrow(
+      realm,
+      obj,
+      realm.intrinsics.SymbolIterator,
+      new PropertyDescriptor({
+        value: realm.intrinsics.ArrayProto_values,
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      })
+    );
 
     // 23. Perform ! DefinePropertyOrThrow(obj, "callee", PropertyDescriptor {[[Value]]:
     //     func, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}).
-    Properties.DefinePropertyOrThrow(realm, obj, "callee", {
-      value: func,
-      writable: true,
-      enumerable: false,
-      configurable: true,
-    });
+    Properties.DefinePropertyOrThrow(
+      realm,
+      obj,
+      "callee",
+      new PropertyDescriptor({
+        value: func,
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      })
+    );
 
     // 24. Return obj.
     return obj;
@@ -908,12 +944,17 @@ export class CreateImplementation {
       prototype.originalConstructor = F;
 
       // b. Perform DefinePropertyOrThrow(F, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
-      Properties.DefinePropertyOrThrow(realm, F, "prototype", {
-        value: prototype,
-        writable: true,
-        enumerable: false,
-        configurable: false,
-      });
+      Properties.DefinePropertyOrThrow(
+        realm,
+        F,
+        "prototype",
+        new PropertyDescriptor({
+          value: prototype,
+          writable: true,
+          enumerable: false,
+          configurable: false,
+        })
+      );
     } else {
       // 28. Else, perform MakeConstructor(F).
       MakeConstructor(realm, F);
