@@ -243,7 +243,11 @@ export default class AbstractObjectValue extends AbstractValue {
       let p1 = ob1.$GetPrototypeOf();
       let p2 = ob2.$GetPrototypeOf();
       let joinedObject = AbstractValue.createFromConditionalOp(realm, cond, p1, p2);
-      invariant(joinedObject instanceof AbstractObjectValue);
+      invariant(
+        joinedObject instanceof AbstractObjectValue ||
+          joinedObject instanceof ObjectValue ||
+          joinedObject instanceof NullValue
+      );
       return joinedObject;
     } else if (this.kind === "explicit conversion to object") {
       let primitiveValue = this.args[0];
@@ -268,7 +272,11 @@ export default class AbstractObjectValue extends AbstractValue {
           joinedObject = AbstractValue.createFromConditionalOp(realm, cond, p, joinedObject);
         }
       }
-      invariant(joinedObject instanceof AbstractObjectValue);
+      invariant(
+        joinedObject instanceof AbstractObjectValue ||
+          joinedObject instanceof ObjectValue ||
+          joinedObject instanceof NullValue
+      );
       return joinedObject;
     }
   }
