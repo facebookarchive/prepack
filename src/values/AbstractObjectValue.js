@@ -24,12 +24,7 @@ import {
   Value,
 } from "./index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import {
-  GetFromArrayWithWidenedNumericProperty,
-  IsDataDescriptor,
-  cloneDescriptor,
-  equalDescriptors,
-} from "../methods/index.js";
+import { IsDataDescriptor, cloneDescriptor, equalDescriptors } from "../methods/index.js";
 import { Leak, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
 import { createOperationDescriptor, type OperationDescriptor } from "../utils/generator.js";
@@ -598,13 +593,6 @@ export default class AbstractObjectValue extends AbstractValue {
     }
 
     let $GetHelper = ob => {
-      if (ob instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(ob) && typeof P === "string") {
-        return {
-          object: ob,
-          key: P,
-          value: GetFromArrayWithWidenedNumericProperty(this.$Realm, ob, P),
-        };
-      }
       let d = ob.$GetOwnProperty(P);
       if (d !== undefined) return d;
       let proto = ob.$GetPrototypeOf();
