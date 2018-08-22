@@ -863,11 +863,16 @@ export class Realm {
           this.restoreBindings(result.modifiedBindings);
           this.restoreProperties(result.modifiedProperties);
         } else {
-          if (this.savedCompletion !== undefined) {
-            this.stopEffectCaptureAndUndoEffects(this.savedCompletion);
-          }
           this.restoreBindings(this.modifiedBindings);
           this.restoreProperties(this.modifiedProperties);
+          let completion = this.savedCompletion;
+          while (completion !== undefined) {
+            if (completion.savedEffects !== undefined) {
+              this.restoreBindings(completion.savedEffects.modifiedBindings);
+              this.restoreProperties(completion.savedEffects.modifiedProperties);
+            }
+            completion = completion.composedWith;
+          }
         }
         this.generator = saved_generator;
         this.modifiedBindings = savedBindings;
