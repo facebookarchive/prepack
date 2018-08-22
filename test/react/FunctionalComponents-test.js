@@ -206,6 +206,10 @@ it("16.3 refs 3", () => {
   runTest(__dirname + "/FunctionalComponents/refs3.js");
 });
 
+it("refs typeof", () => {
+  runTest(__dirname + "/FunctionalComponents/refs-typeof.js");
+});
+
 it("defaultProps", () => {
   runTest(__dirname + "/FunctionalComponents/default-props.js");
 });
