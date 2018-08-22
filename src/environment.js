@@ -65,7 +65,11 @@ export function materializeBinding(realm: Realm, binding: Binding): void {
 export function leakBinding(binding: Binding): void {
   let realm = binding.environment.realm;
   if (!binding.hasLeaked) {
-    realm.recordModifiedBinding(binding).hasLeaked = true;
+    if (binding.mutable) {
+      realm.recordModifiedBinding(binding).hasLeaked = true;
+    } else {
+      binding.hasLeaked = true;
+    }
     materializeBinding(realm, binding);
   }
 
