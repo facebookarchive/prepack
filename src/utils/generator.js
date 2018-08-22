@@ -59,7 +59,6 @@ export type OperationDescriptorType =
   | "ABSTRACT_OBJECT_GET_PARTIAL"
   | "ABSTRACT_OBJECT_GET_PROTO_OF"
   | "ABSTRACT_PROPERTY"
-  | "APPEND_GENERATOR"
   | "ASSUME_CALL"
   | "BABEL_HELPERS_OBJECT_WITHOUT_PROPERTIES"
   | "BINARY_EXPRESSION"
@@ -1090,18 +1089,10 @@ export class Generator {
     invariant(other !== this);
     invariant(other.realm === this.realm);
     invariant(other.preludeGenerator === this.preludeGenerator);
+    invariant(other.effectsToApply === undefined);
 
     if (other.empty()) return;
-    if (other.effectsToApply === undefined) {
-      this._entries.push(...other._entries);
-    } else {
-      this._addEntry({
-        args: [new StringValue(this.realm, leadingComment)],
-        operationDescriptor: createOperationDescriptor("APPEND_GENERATOR", {
-          generator: other,
-        }),
-      });
-    }
+    this._entries.push(...other._entries);
   }
 
   joinGenerators(joinCondition: AbstractValue, generator1: Generator, generator2: Generator): void {

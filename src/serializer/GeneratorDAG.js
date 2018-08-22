@@ -53,7 +53,8 @@ export class GeneratorDAG {
     if (a === undefined) this.parents.set(generator, (a = []));
     if (!a.includes(parent)) a.push(parent);
     let effects = generator.effectsToApply;
-    if (effects !== undefined)
+    if (effects !== undefined) {
+      invariant(parent instanceof FunctionValue);
       for (let createdObject of effects.createdObjects) {
         let isValidPreviousCreator = previousCreator => {
           // It's okay if we don't know about any previous creator.
@@ -75,6 +76,7 @@ export class GeneratorDAG {
         // Update the created objects mapping to the most specific generator
         this.createdObjects.set(createdObject, generator);
       }
+    }
 
     for (let dependency of generator.getDependencies()) this._add(generator, dependency);
   }
