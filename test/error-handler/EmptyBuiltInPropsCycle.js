@@ -1,5 +1,5 @@
 // instant render
-// expected errors: [{"location":{"start":{"line":5,"column":10},"end":{"line":5,"column":12},"source":"test/error-handler/EmptyBuiltInPropsCycle.js"},"severity":"FatalError","errorCode":"PP0038"}]
+// expected errors: [{"location":{"start":{"line":5,"column":10},"end":{"line":5,"column":12},"source":"test/error-handler/EmptyBuiltInPropsCycle.js"},"severity":"FatalError","errorCode":"PP0039"}]
 
 (function() {
   var a = {};

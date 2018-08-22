@@ -292,7 +292,7 @@ export class JoinImplementation {
     let rewritten1 = false;
     let rewritten2 = false;
     let leak = (b: Binding, g: Generator, v: void | Value, rewritten: boolean) => {
-      // just like to what happens in havocBinding, we are going to append a
+      // just like to what happens in leakBinding, we are going to append a
       // binding-assignment generator entry; however, we play it safe and don't
       // mutate the generator; instead, we create a new one that wraps around the old one.
       if (!rewritten) {

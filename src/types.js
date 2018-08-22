@@ -380,7 +380,7 @@ export type PathType = {
   pushInverseAndRefine(condition: Value): void,
 };
 
-export type HavocType = {
+export type LeakType = {
   value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation): void,
 };
 

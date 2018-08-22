@@ -30,7 +30,7 @@ import {
   cloneDescriptor,
   equalDescriptors,
 } from "../methods/index.js";
-import { Havoc, Widen } from "../singletons.js";
+import { Leak, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
 import { createOperationDescriptor, type OperationDescriptor } from "../utils/generator.js";
 
@@ -579,7 +579,7 @@ export default class AbstractObjectValue extends AbstractValue {
         return generateAbstractGet();
       } else if (this.$Realm.isInPureScope()) {
         // This object might have leaked to a getter.
-        Havoc.value(this.$Realm, Receiver);
+        Leak.value(this.$Realm, Receiver);
         // The getter might throw anything.
         return this.$Realm.evaluateWithPossibleThrowCompletion(
           generateAbstractGet,
@@ -675,17 +675,17 @@ export default class AbstractObjectValue extends AbstractValue {
         );
       }
       if (this.$Realm.isInPureScope()) {
-        // If we're in a pure scope, we can havoc the key and the instance,
+        // If we're in a pure scope, we can leak the key and the instance,
         // and leave the residual property access in place.
         // We assume that if the receiver is different than this object,
         // then we only got here because there can be no other keys with
         // this name on earlier parts of the prototype chain.
-        // We have to havoc since the property may be a getter or setter,
+        // We have to leak since the property may be a getter or setter,
         // which can run unknown code that has access to Receiver and
         // (even in pure mode) can modify it in unknown ways.
-        Havoc.value(this.$Realm, Receiver);
+        Leak.value(this.$Realm, Receiver);
         // Coercion can only have effects on anything reachable from the key.
-        Havoc.value(this.$Realm, P);
+        Leak.value(this.$Realm, P);
         return AbstractValue.createTemporalFromBuildFunction(
           this.$Realm,
           Value,
@@ -808,17 +808,17 @@ export default class AbstractObjectValue extends AbstractValue {
     if (!this.values.isTop() && !(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
     if (this.values.isTop() || !this.isSimpleObject()) {
       if (this.$Realm.isInPureScope()) {
-        // If we're in a pure scope, we can havoc the key and the instance,
+        // If we're in a pure scope, we can leak the key and the instance,
         // and leave the residual property assignment in place.
         // We assume that if the receiver is different than this object,
         // then we only got here because there can be no other keys with
         // this name on earlier parts of the prototype chain.
-        // We have to havoc since the property may be a getter or setter,
+        // We have to leak since the property may be a getter or setter,
         // which can run unknown code that has access to Receiver and
         // (even in pure mode) can modify it in unknown ways.
-        Havoc.value(this.$Realm, Receiver);
-        // We also need to havoc the value since it might leak to a setter.
-        Havoc.value(this.$Realm, V);
+        Leak.value(this.$Realm, Receiver);
+        // We also need to leaked the value since it might leak to a setter.
+        Leak.value(this.$Realm, V);
         this.$Realm.evaluateWithPossibleThrowCompletion(
           () => {
             let generator = this.$Realm.generator;
@@ -826,7 +826,7 @@ export default class AbstractObjectValue extends AbstractValue {
 
             if (typeof P !== "string" && !(P instanceof StringValue)) {
               // Coercion can only have effects on anything reachable from the key.
-              Havoc.value(this.$Realm, P);
+              Leak.value(this.$Realm, P);
             }
             generator.emitPropertyAssignment(Receiver, P, V);
             return this.$Realm.intrinsics.undefined;

@@ -32,7 +32,7 @@ import {
   IsCallable,
 } from "../../methods/index.js";
 import { GetIterator, IteratorClose, IteratorStep, IteratorValue } from "../../methods/iterator.js";
-import { Create, Havoc, Properties, To } from "../../singletons.js";
+import { Create, Leak, Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
 import { createOperationDescriptor } from "../../utils/generator.js";
 
@@ -245,7 +245,7 @@ export default function(realm: Realm): NativeFunctionValue {
           }
           possibleNestedOptimizedFunctions = [{ func: mapfn, thisValue: thisArg || realm.intrinsics.undefined }];
         }
-        Havoc.value(realm, items);
+        Leak.value(realm, items);
         return ArrayValue.createTemporalWithWidenedNumericProperty(
           realm,
           args,
