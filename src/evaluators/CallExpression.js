@@ -276,6 +276,7 @@ function tryToEvaluateCallOrLeaveAsAbstract(
     if (error instanceof FatalError) {
       if (func instanceof NativeFunctionValue && func.name === "__fatal") throw error;
       realm.suppressDiagnostics = savedSuppressDiagnostics;
+      Leak.value(realm, func, ast.loc);
       return realm.evaluateWithPossibleThrowCompletion(
         () => generateRuntimeCall(ref, func, ast, strictCode, env, realm),
         TypesDomain.topVal,
