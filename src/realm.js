@@ -867,9 +867,10 @@ export class Realm {
           this.restoreProperties(this.modifiedProperties);
           let completion = this.savedCompletion;
           while (completion !== undefined) {
-            if (completion.savedEffects !== undefined) {
-              this.restoreBindings(completion.savedEffects.modifiedBindings);
-              this.restoreProperties(completion.savedEffects.modifiedProperties);
+            const { savedEffects } = completion;
+            if (savedEffects !== undefined) {
+              this.restoreBindings(savedEffects.modifiedBindings);
+              this.restoreProperties(savedEffects.modifiedProperties);
             }
             completion = completion.composedWith;
           }
