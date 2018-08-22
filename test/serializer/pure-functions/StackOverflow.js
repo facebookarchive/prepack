@@ -8,7 +8,7 @@ global.__d = () => {};
 
 const result = global.__evaluatePureFunction(() => {
   function loop(i) {
-    if (i === 300) {
+    if (i === 260) {
       return "Hello, world";
     }
     // Prevent tail recursion optimizations from applying.
