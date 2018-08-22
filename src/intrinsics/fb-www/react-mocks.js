@@ -23,7 +23,7 @@ import {
   Value,
 } from "../../values/index.js";
 import { Environment } from "../../singletons.js";
-import { createReactHintObject, getReactSymbol } from "../../react/utils.js";
+import { getReactSymbol } from "../../react/utils.js";
 import { cloneReactElement, createReactElement } from "../../react/elements.js";
 import { Properties, Create, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
@@ -32,7 +32,13 @@ import { createOperationDescriptor } from "../../utils/generator.js";
 
 // most of the code here was taken from https://github.com/facebook/react/blob/master/packages/react/src/ReactElement.js
 let reactCode = `
-  function createReact(REACT_ELEMENT_TYPE, REACT_FRAGMENT_TYPE, REACT_PORTAL_TYPE, ReactCurrentOwner) {
+  function createReact(
+    REACT_ELEMENT_TYPE,
+    REACT_FRAGMENT_TYPE,
+    REACT_PORTAL_TYPE,
+    REACT_FORWARD_REF_TYPE,
+    ReactCurrentOwner
+  ) {
     function makeEmptyFunction(arg) {
       return function() {
         return arg;
@@ -83,6 +89,17 @@ let reactCode = `
 
     PureComponent.prototype.isReactComponent = {};
     PureComponent.prototype.isPureReactComponent = true;
+
+    function forwardRef(render) {
+      // NOTE: In development there are a bunch of warnings which will be logged to validate the \`render\` function.
+      // Since Prepack is a production only tool (for now) we don’t include these warnings.
+      //
+      // https://github.com/facebook/react/blob/f9358c51c8de93abe3cdd0f4720b489befad8c48/packages/react/src/forwardRef.js
+      return {
+        $$typeof: REACT_FORWARD_REF_TYPE,
+        render,
+      };
+    }
 
     var userProvidedKeyEscapeRegex = /\/+/g;
 
@@ -364,6 +381,7 @@ let reactCode = `
       },
       Component,
       PureComponent,
+      forwardRef,
       Fragment: REACT_FRAGMENT_TYPE,
       isValidElement,
       version: "16.2.0",
@@ -390,6 +408,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
     getReactSymbol("react.element", realm),
     getReactSymbol("react.fragment", realm),
     getReactSymbol("react.portal", realm),
+    getReactSymbol("react.forward_ref", realm),
     currentOwner,
   ]);
   invariant(reactValue instanceof ObjectValue);
@@ -529,23 +548,6 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
     );
     invariant(createRef instanceof AbstractObjectValue);
     return createRef;
-  });
-
-  addMockFunctionToObject(realm, reactValue, reactRequireName, "forwardRef", (funcVal, [func]) => {
-    let forwardedRef = AbstractValue.createTemporalFromBuildFunction(
-      realm,
-      ObjectValue,
-      [funcVal, func],
-      createOperationDescriptor("REACT_TEMPORAL_FUNC"),
-      { skipInvariant: true, isPure: true }
-    );
-    invariant(forwardedRef instanceof AbstractObjectValue);
-    forwardedRef.makeSimple();
-    realm.react.abstractHints.set(
-      forwardedRef,
-      createReactHintObject(reactValue, "forwardRef", [func], realm.intrinsics.undefined)
-    );
-    return forwardedRef;
   });
 
   reactValue.refuseSerialization = false;
