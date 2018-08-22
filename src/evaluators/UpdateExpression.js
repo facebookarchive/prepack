@@ -16,7 +16,7 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Add } from "../methods/index.js";
 import { AbstractValue, NumberValue, IntegralValue } from "../values/index.js";
 import type { BabelNodeUpdateExpression } from "@babel/types";
-import { Environment, Havoc, Properties, To } from "../singletons.js";
+import { Environment, Leak, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import { ValuesDomain, TypesDomain } from "../domains/index.js";
 import { createOperationDescriptor } from "../utils/generator.js";
@@ -41,9 +41,9 @@ export default function(
     if (!To.IsToNumberPure(realm, oldExpr)) {
       if (realm.isInPureScope()) {
         // In pure scope we have to treat the ToNumber operation as temporal since it
-        // might throw or mutate something. We also need to havoc the argument due to the
+        // might throw or mutate something. We also need to leak the argument due to the
         // possible mutations.
-        Havoc.value(realm, oldExpr);
+        Leak.value(realm, oldExpr);
         newAbstractValue = realm.evaluateWithPossibleThrowCompletion(
           () =>
             AbstractValue.createTemporalFromBuildFunction(

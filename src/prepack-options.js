@@ -22,7 +22,6 @@ export type PrepackOptions = {|
   compatibility?: Compatibility,
   debugNames?: boolean,
   delayInitializations?: boolean,
-  delayUnsupportedRequires?: boolean,
   accelerateUnsupportedRequires?: boolean,
   inputSourceMapFilenames?: Array<string>,
   internalDebug?: boolean,
@@ -61,6 +60,7 @@ export type PrepackOptions = {|
   debuggerConfigArgs?: DebuggerConfigArguments,
   debugReproArgs?: DebugReproArguments,
   onParse?: BabelNodeFile => void,
+  arrayNestedOptimizedFunctionsEnabled?: boolean,
 |};
 
 export function getRealmOptions({
@@ -87,6 +87,7 @@ export function getRealmOptions({
   abstractValueImpliesMax,
   debuggerConfigArgs,
   debugReproArgs,
+  arrayNestedOptimizedFunctionsEnabled,
 }: PrepackOptions): RealmOptions {
   return {
     compatibility,
@@ -112,6 +113,7 @@ export function getRealmOptions({
     abstractValueImpliesMax,
     debuggerConfigArgs,
     debugReproArgs,
+    arrayNestedOptimizedFunctionsEnabled,
   };
 }
 
@@ -119,7 +121,6 @@ export function getSerializerOptions({
   lazyObjectsRuntime,
   heapGraphFormat,
   delayInitializations = false,
-  delayUnsupportedRequires = false,
   accelerateUnsupportedRequires = true,
   internalDebug = false,
   debugScopes = false,
@@ -133,7 +134,6 @@ export function getSerializerOptions({
 }: PrepackOptions): SerializerOptions {
   let result: SerializerOptions = {
     delayInitializations,
-    delayUnsupportedRequires,
     accelerateUnsupportedRequires,
     initializeMoreModules,
     internalDebug,

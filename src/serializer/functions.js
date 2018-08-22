@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { BabelNodeSourceLocation } from "@babel/types";
-import { Completion, PossiblyNormalCompletion } from "../completions.js";
+import { AbruptCompletion } from "../completions.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import { type Effects, type PropertyBindings, Realm } from "../realm.js";
@@ -228,8 +228,8 @@ export class Functions {
       let call = Utils.createModelledFunctionCall(this.realm, functionValue, argModel);
       let realm = this.realm;
 
-      let logCompilerDiagnostic = (msg: string) => {
-        let error = new CompilerDiagnostic(msg, undefined, "PP1007", "Warning");
+      let logCompilerDiagnostic = (msg: string, location: ?BabelNodeSourceLocation) => {
+        let error = new CompilerDiagnostic(msg, location, "PP1007", "Warning");
         realm.handleError(error);
       };
       let effects: Effects = realm.evaluatePure(
@@ -293,7 +293,7 @@ export class Functions {
       invariant(additionalFunctionEffects !== undefined);
       let e1 = additionalFunctionEffects.effects;
       invariant(e1 !== undefined);
-      if (e1.result instanceof Completion && !e1.result instanceof PossiblyNormalCompletion) {
+      if (e1.result instanceof AbruptCompletion) {
         let error = new CompilerDiagnostic(
           `Additional function ${fun1Name} will terminate abruptly`,
           e1.result.location,

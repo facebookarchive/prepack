@@ -1,5 +1,5 @@
 let x = global.__abstract ? __abstract("number", "1") : 1;
-z1 = z2 = z3 = z4 = z5 = z6 = z7 = z8 = z9 = z10 = z11 = 10;
+global.z1 = global.z2 = global.z3 = global.z4 = global.z5 = global.z6 = global.z7 = global.z8 = global.z9 = global.z10 = global.z11 = 10;
 
 switch (x) {
 }
@@ -103,7 +103,6 @@ switch (x) {
     break;
 }
 
-// throws introspection error
 switch (x) {
   case 0:
     throw 1;
@@ -117,7 +116,6 @@ switch (x) {
     throw 2;
 }
 
-// throws introspection error
 switch (x) {
   case 1:
     if (z10 === 13) z11 = 12;
@@ -137,26 +135,26 @@ switch (x) {
 inspect = function() {
   return (
     "" +
-    z1 +
+    global.z1 +
     " " +
-    z2 +
+    global.z2 +
     " " +
-    z3 +
+    global.z3 +
     " " +
-    z4 +
+    global.z4 +
     " " +
-    z5 +
+    global.z5 +
     " " +
-    z6 +
+    global.z6 +
     " " +
-    z7 +
+    global.z7 +
     " " +
-    z8 +
+    global.z8 +
     " " +
-    z9 +
+    global.z9 +
     " " +
-    z10 +
+    global.z10 +
     " " +
-    z11
+    global.z11
   );
 };

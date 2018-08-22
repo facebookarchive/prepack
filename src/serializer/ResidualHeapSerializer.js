@@ -315,7 +315,7 @@ export class ResidualHeapSerializer {
     }
 
     // TODO #2259: Make deduplication in the face of leaking work for custom accessors
-    let isCertainlyLeaked = !obj.mightNotBeHavocedObject();
+    let isCertainlyLeaked = !obj.mightNotBeLeakedObject();
     let shouldDropAsAssignedProp = (descriptor: Descriptor | void) =>
       isCertainlyLeaked && (descriptor !== undefined && (descriptor.get === undefined && descriptor.set === undefined));
 
@@ -831,7 +831,7 @@ export class ResidualHeapSerializer {
   ): {
     body: SerializedBody,
     usedOnlyByResidualFunctions?: true,
-    referencingOnlyOptimizedFunction?: void | FunctionValue,
+    optimizedFunctionRoot?: void | FunctionValue,
     commonAncestor?: Scope,
     description?: string,
   } {
@@ -857,12 +857,12 @@ export class ResidualHeapSerializer {
       }
     }
 
-    let referencingOnlyOptimizedFunction = this.tryGetOptimizedFunctionRoot(val);
+    let optimizedFunctionRoot = this.tryGetOptimizedFunctionRoot(val);
     if (generators.length === 0) {
       // This value is only referenced from residual functions.
       if (
         this._options.delayInitializations &&
-        (referencingOnlyOptimizedFunction === undefined || !functionValues.includes(referencingOnlyOptimizedFunction))
+        (optimizedFunctionRoot === undefined || !functionValues.includes(optimizedFunctionRoot))
       ) {
         // We can delay the initialization, and move it into a conditional code block in the residual functions!
         let body = this.residualFunctions.residualFunctionInitializers.registerValueOnlyReferencedByResidualFunctions(
@@ -873,24 +873,21 @@ export class ResidualHeapSerializer {
         return {
           body,
           usedOnlyByResidualFunctions: true,
-          referencingOnlyOptimizedFunction,
+          optimizedFunctionRoot,
           description: "delay_initializer",
         };
       }
     }
 
-    if (trace)
-      console.log(
-        `  is referenced only by additional function? ${referencingOnlyOptimizedFunction !== undefined ? "yes" : "no"}`
-      );
+    if (trace) console.log(`  has optimized function root? ${optimizedFunctionRoot !== undefined ? "yes" : "no"}`);
 
     // flatten all function values into the scopes that use them
-    generators = this._getReferencingGenerators(generators, functionValues, referencingOnlyOptimizedFunction);
+    generators = this._getReferencingGenerators(generators, functionValues, optimizedFunctionRoot);
 
-    if (referencingOnlyOptimizedFunction === undefined) {
-      // Remove all generators rooted in additional functions,
-      // since we know that there's at least one root that's not in an additional function
-      // which requires the value to be emitted outside of the additional function.
+    if (optimizedFunctionRoot === undefined) {
+      // Remove all generators rooted in optimized functions,
+      // since we know that there's at least one root that's not in an optimized function
+      // which requires the value to be emitted outside of the optimized function.
       generators = generators.filter(generator => {
         let s = generator;
         while (s instanceof Generator) {
@@ -899,9 +896,12 @@ export class ResidualHeapSerializer {
         return s === "GLOBAL";
       });
       if (generators.length === 0) {
-        // This means that the value was referenced by multiple additional functions, and thus it must have existed at the end of global code execution.
+        // This means that the value was referenced by multiple optimized functions (but not by global code itself),
+        // and thus it must have existed at the end of global code execution.
         // TODO: Emit to the end, not somewhere in the middle of the mainBody.
-        // TODO: Revisit for nested additional functions
+
+        if (trace) console.log(`  no filtered generators`);
+        // TODO #2426: Revisit for nested optimized functions
         return { body: this.mainBody };
       }
     }
@@ -918,8 +918,8 @@ export class ResidualHeapSerializer {
     );
     // In the case where we have no common ancestor but we have an optimized function reference,
     // we can attempt to use the generator of the single optimized function
-    if (commonAncestor === undefined && referencingOnlyOptimizedFunction !== undefined) {
-      commonAncestor = this.additionalFunctionGenerators.get(referencingOnlyOptimizedFunction);
+    if (commonAncestor === undefined && optimizedFunctionRoot !== undefined) {
+      commonAncestor = this.additionalFunctionGenerators.get(optimizedFunctionRoot);
     }
     invariant(commonAncestor !== undefined, "there must always be a common generator ancestor");
     if (trace) console.log(`  common ancestor: ${commonAncestor.getName()}`);
@@ -950,8 +950,8 @@ export class ResidualHeapSerializer {
           );
         }
         invariant(
-          referencingOnlyOptimizedFunction === undefined || !!this.emitter.getActiveOptimizedFunction(),
-          "additional function inconsistency"
+          optimizedFunctionRoot === undefined || !!this.emitter.getActiveOptimizedFunction(),
+          "optimized function inconsistency"
         );
         let declarationBody = this.emitter.getDeclarationBody(dependency);
         if (declarationBody !== undefined) {
@@ -965,8 +965,8 @@ export class ResidualHeapSerializer {
       onAbstractValueWithIdentifier: dependency => {
         if (trace) console.log(`  depending on abstract value with identifier ${dependency.intrinsicName || "?"}`);
         invariant(
-          referencingOnlyOptimizedFunction === undefined || !!this.emitter.getActiveOptimizedFunction(),
-          "additional function inconsistency"
+          optimizedFunctionRoot === undefined || !!this.emitter.getActiveOptimizedFunction(),
+          "optimized function inconsistency"
         );
         let declarationBody = this.emitter.getDeclarationBody(dependency);
         if (declarationBody !== undefined) {
@@ -1033,9 +1033,9 @@ export class ResidualHeapSerializer {
     return location;
   }
 
-  getPrelude(additionalFunction: void | FunctionValue): Array<BabelNodeStatement> {
-    if (additionalFunction !== undefined) {
-      let body = this.residualFunctions.additionalFunctionPreludes.get(additionalFunction);
+  getPrelude(optimizedFunction: void | FunctionValue): Array<BabelNodeStatement> {
+    if (optimizedFunction !== undefined) {
+      let body = this.residualFunctions.additionalFunctionPreludes.get(optimizedFunction);
       invariant(body !== undefined);
       return body;
     } else {
@@ -1045,14 +1045,14 @@ export class ResidualHeapSerializer {
 
   _declare(
     emittingToResidualFunction: boolean,
-    referencingOnlyOptimizedFunction: void | FunctionValue,
+    optimizedFunctionRoot: void | FunctionValue,
     bindingType: BabelVariableKind,
     id: BabelNodeLVal,
     init: BabelNodeExpression
   ): void {
     if (emittingToResidualFunction) {
       let declar = t.variableDeclaration(bindingType, [t.variableDeclarator(id)]);
-      this.getPrelude(referencingOnlyOptimizedFunction).push(declar);
+      this.getPrelude(optimizedFunctionRoot).push(declar);
       let assignment = t.expressionStatement(t.assignmentExpression("=", id, init));
       this.emitter.emit(assignment);
     } else {
@@ -1134,7 +1134,7 @@ export class ResidualHeapSerializer {
         if (init !== id) {
           this._declare(
             !!target.usedOnlyByResidualFunctions,
-            target.referencingOnlyOptimizedFunction,
+            target.optimizedFunctionRoot,
             bindingType || "var",
             id,
             init
@@ -1269,7 +1269,7 @@ export class ResidualHeapSerializer {
               let error = new CompilerDiagnostic(
                 "InstantRender does not yet support cyclical arrays or objects",
                 array.expressionLocation,
-                "PP0038",
+                "PP0039",
                 "FatalError"
               );
               this.realm.handleError(error);
@@ -1299,7 +1299,7 @@ export class ResidualHeapSerializer {
   ): void {
     const realm = this.realm;
     let lenProperty;
-    if (val.mightBeHavocedObject()) {
+    if (val.mightBeLeakedObject()) {
       lenProperty = this.realm.evaluateWithoutLeakLogic(() => Get(realm, val, "length"));
     } else {
       lenProperty = Get(realm, val, "length");
@@ -1740,7 +1740,7 @@ export class ResidualHeapSerializer {
     let remainingProperties = new Map(val.properties);
     const dummyProperties = new Set();
     let props = [];
-    let isCertainlyLeaked = !val.mightNotBeHavocedObject();
+    let isCertainlyLeaked = !val.mightNotBeLeakedObject();
 
     // TODO #2259: Make deduplication in the face of leaking work for custom accessors
     let shouldDropAsAssignedProp = (descriptor: Descriptor | void) =>
@@ -1774,7 +1774,7 @@ export class ResidualHeapSerializer {
               let error = new CompilerDiagnostic(
                 "InstantRender does not yet support cyclical arays or objects",
                 val.expressionLocation,
-                "PP0038",
+                "PP0039",
                 "FatalError"
               );
               this.realm.handleError(error);

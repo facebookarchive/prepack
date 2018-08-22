@@ -69,7 +69,7 @@ import { GeneratorDAG } from "./GeneratorDAG.js";
 
 type BindingState = {|
   capturedBindings: Set<ResidualFunctionBinding>,
-  capturingFunctions: Set<FunctionValue>,
+  capturingScopes: Set<Scope>,
 |};
 
 /* This class visits all values that are reachable in the residual heap.
@@ -318,7 +318,7 @@ export class ResidualHeapVisitor {
       // Leaked object. Properties are set via assignments
       // TODO #2259: Make deduplication in the face of leaking work for custom accessors
       if (
-        !obj.mightNotBeHavocedObject() &&
+        !obj.mightNotBeLeakedObject() &&
         (descriptor !== undefined && (descriptor.get === undefined && descriptor.set === undefined))
       )
         continue;
@@ -424,7 +424,7 @@ export class ResidualHeapVisitor {
     this.visitObjectProperties(val);
     const realm = this.realm;
     let lenProperty;
-    if (val.mightBeHavocedObject()) {
+    if (val.mightBeLeakedObject()) {
       lenProperty = this.realm.evaluateWithoutLeakLogic(() => Get(realm, val, "length"));
     } else {
       lenProperty = Get(realm, val, "length");
@@ -648,10 +648,10 @@ export class ResidualHeapVisitor {
   // function c() { return x.length + y.length; }
   // Here we need to make sure that a and b both initialize x and y because x and y will be in the same
   // captured scope because c captures both x and y.
-  visitBinding(val: FunctionValue, residualFunctionBinding: ResidualFunctionBinding): void {
+  visitBinding(scope: Scope, residualFunctionBinding: ResidualFunctionBinding): void {
     let environment = residualFunctionBinding.declarativeEnvironmentRecord;
     if (environment === null) return;
-    invariant(this.scope === val);
+    invariant(this.scope === scope);
 
     let refScope = this._getAdditionalFunctionOfScope() || "GLOBAL";
     residualFunctionBinding.potentialReferentializationScopes.add(refScope);
@@ -661,20 +661,20 @@ export class ResidualHeapVisitor {
     invariant(envRec !== null);
     let bindingState = getOrDefault(funcToScopes, envRec, () => ({
       capturedBindings: new Set(),
-      capturingFunctions: new Set(),
+      capturingScopes: new Set(),
     }));
     // If the binding is new for this bindingState, have all functions capturing bindings from that scope visit it
     if (!bindingState.capturedBindings.has(residualFunctionBinding)) {
-      for (let functionValue of bindingState.capturingFunctions) {
-        this._enqueueWithUnrelatedScope(functionValue, () => this._visitBindingHelper(residualFunctionBinding));
+      for (let capturingScope of bindingState.capturingScopes) {
+        this._enqueueWithUnrelatedScope(capturingScope, () => this._visitBindingHelper(residualFunctionBinding));
       }
       bindingState.capturedBindings.add(residualFunctionBinding);
     }
     // If the function is new for this bindingState, visit all existent bindings in this scope
-    if (!bindingState.capturingFunctions.has(val)) {
-      invariant(this.scope === val);
+    if (!bindingState.capturingScopes.has(scope)) {
+      invariant(this.scope === scope);
       for (let residualBinding of bindingState.capturedBindings) this._visitBindingHelper(residualBinding);
-      bindingState.capturingFunctions.add(val);
+      bindingState.capturingScopes.add(scope);
     }
   }
 
@@ -1002,6 +1002,8 @@ export class ResidualHeapVisitor {
   visitAbstractValue(val: AbstractValue): void {
     if (val.kind === "sentinel member expression") {
       this.logger.logError(val, "expressions of type o[p] are not yet supported for partially known o and unknown p");
+    } else if (val.kind === "environment initialization expression") {
+      this.logger.logError(val, "reads during environment initialization should never leak to serialization");
     } else if (val.kind === "conditional") {
       this._visitAbstractValueConditional(val);
       return;
@@ -1212,15 +1214,15 @@ export class ResidualHeapVisitor {
         residualBinding.hasLeaked = true;
         // This may not have been referentialized if the binding is a local of an optimized function.
         // in that case, we need to figure out which optimized function it is, and referentialize it in that scope.
-        let optimizedFunctionScope = this._getAdditionalFunctionOfScope();
+        let commonScope = this._getCommonScope();
         if (residualBinding.potentialReferentializationScopes.size === 0) {
-          invariant(optimizedFunctionScope !== undefined);
-          this._enqueueWithUnrelatedScope(optimizedFunctionScope, () => {
-            invariant(additionalFunctionInfo !== undefined);
-            let funcInstance = additionalFunctionInfo.instance;
-            invariant(funcInstance !== undefined);
-            funcInstance.residualFunctionBindings.set(residualBinding.name, residualBinding);
-            this.visitBinding(optimizedFunctionScope, residualBinding);
+          this._enqueueWithUnrelatedScope(commonScope, () => {
+            if (additionalFunctionInfo !== undefined) {
+              let funcInstance = additionalFunctionInfo.instance;
+              invariant(funcInstance !== undefined);
+              funcInstance.residualFunctionBindings.set(residualBinding.name, residualBinding);
+            }
+            this.visitBinding(commonScope, residualBinding);
           });
         }
         return this.visitEquivalentValue(value);

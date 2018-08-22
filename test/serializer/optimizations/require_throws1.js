@@ -1,4 +1,3 @@
-// delay unsupported requires
 let b = global.__abstract ? __abstract("boolean", "true") : true;
 
 var modules = Object.create(null);

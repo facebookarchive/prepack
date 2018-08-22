@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { LexicalEnvironment } from "../environment.js";
-import type { Realm } from "../realm.js";
+import { Realm } from "../realm.js";
 import {
   AbstractValue,
   Value,
@@ -23,19 +23,19 @@ import {
   BreakCompletion,
   Completion,
   ContinueCompletion,
-  ForkedAbruptCompletion,
-  PossiblyNormalCompletion,
+  JoinedAbruptCompletions,
+  JoinedNormalAndAbruptCompletions,
   ReturnCompletion,
-  SimpleNormalCompletion,
   ThrowCompletion,
+  SimpleNormalCompletion,
 } from "../completions.js";
 import traverse from "@babel/traverse";
 import type { BabelTraversePath } from "@babel/traverse";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { UpdateEmpty } from "../methods/index.js";
-import { LoopContinues, InternalGetResultValue, TryToApplyEffectsOfJoiningBranches } from "./ForOfStatement.js";
-import { Environment, Functions, Havoc, Join, To } from "../singletons.js";
+import { LoopContinues, InternalGetResultValue } from "./ForOfStatement.js";
+import { Environment, Functions, Leak, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import * as t from "@babel/types";
 import type { BabelNodeExpression, BabelNodeForStatement, BabelNodeBlockStatement } from "@babel/types";
@@ -103,6 +103,7 @@ function ForBodyEvaluation(
 
   // 3. Repeat
   while (true) {
+    let result;
     // a. If test is not [empty], then
     if (test) {
       // i. Let testRef be the result of evaluating test.
@@ -113,37 +114,44 @@ function ForBodyEvaluation(
 
       // iii. If ToBoolean(testValue) is false, return NormalCompletion(V).
       if (!To.ToBooleanPartial(realm, testValue)) {
-        // joinAllLoopExits does not handle labeled break/continue, so only use it when doing AI
-        if (realm.useAbstractInterpretation) return joinAllLoopExits(V);
+        result = Functions.incorporateSavedCompletion(realm, V);
+        if (result instanceof JoinedNormalAndAbruptCompletions) {
+          let selector = c => c instanceof BreakCompletion && !c.target;
+          result = Completion.normalizeSelectedCompletions(selector, result);
+          result = realm.composeWithSavedCompletion(result);
+        }
         return V;
       }
     }
 
     // b. Let result be the result of evaluating stmt.
-    let result = env.evaluateCompletion(stmt, strictCode);
+    result = env.evaluateCompletion(stmt, strictCode);
     invariant(result instanceof Value || result instanceof AbruptCompletion);
-    if (result instanceof ForkedAbruptCompletion) result = TryToApplyEffectsOfJoiningBranches(realm, result);
+
+    // this is a join point for break and continue completions
+    result = Functions.incorporateSavedCompletion(realm, result);
+    invariant(result !== undefined);
+    if (result instanceof Value) result = new SimpleNormalCompletion(result);
 
     // c. If LoopContinues(result, labelSet) is false, return Completion(UpdateEmpty(result, V)).
     if (!LoopContinues(realm, result, labelSet)) {
       invariant(result instanceof AbruptCompletion);
-      // joinAllLoopExits does not handle labeled break/continue, so only use it when doing AI
-      if (realm.useAbstractInterpretation) {
-        result = UpdateEmpty(realm, result, V);
-        invariant(result instanceof AbruptCompletion);
-        return joinAllLoopExits(result);
-      }
       // ECMA262 13.1.7
       if (result instanceof BreakCompletion) {
         if (!result.target) return (UpdateEmpty(realm, result, V): any).value;
+      } else if (result instanceof JoinedAbruptCompletions) {
+        let selector = c => c instanceof BreakCompletion && !c.target;
+        if (result.containsSelectedCompletion(selector)) {
+          result = Completion.normalizeSelectedCompletions(selector, result);
+        }
       }
-      throw UpdateEmpty(realm, result, V);
-    } else if (realm.useAbstractInterpretation) {
-      // This is a join point for conditional continue completions lurking in realm.savedCompletion
-      if (containsContinueCompletion(realm.savedCompletion)) {
-        result = joinAllLoopContinues(result);
-      }
+      return realm.returnOrThrowCompletion(result);
     }
+    if (result instanceof JoinedNormalAndAbruptCompletions) {
+      result = Completion.normalizeSelectedCompletions(c => c instanceof ContinueCompletion, result);
+    }
+    invariant(result instanceof Completion);
+    result = realm.composeWithSavedCompletion(result);
 
     // d. If result.[[Value]] is not empty, let V be result.[[Value]].
     let resultValue = InternalGetResultValue(realm, result);
@@ -161,14 +169,14 @@ function ForBodyEvaluation(
       // ii. Perform ? GetValue(incRef).
       Environment.GetValue(realm, incRef);
     } else if (realm.useAbstractInterpretation) {
-      // If we have no increment and we've hit 100 iterations of trying to evaluate
+      // If we have no increment and we've hit 12 iterations of trying to evaluate
       // this loop body, then see if we have a break, return or throw completion in a
       // guarded condition and fail if it does. We already have logic to guard
       // against loops that are actually infinite. However, because there may be so
       // many forked execution paths, and they're non linear, then it might
       // computationally lead to a something that seems like an infinite loop.
       possibleInfiniteLoopIterations++;
-      if (possibleInfiniteLoopIterations > 100) {
+      if (possibleInfiniteLoopIterations > 12) {
         failIfContainsBreakOrReturnOrThrowCompletion(realm.savedCompletion);
       }
     }
@@ -187,135 +195,10 @@ function ForBodyEvaluation(
       realm.handleError(diagnostic);
       throw new FatalError();
     }
-    if (c instanceof PossiblyNormalCompletion || c instanceof ForkedAbruptCompletion) {
+    if (c instanceof JoinedAbruptCompletions || c instanceof JoinedNormalAndAbruptCompletions) {
       failIfContainsBreakOrReturnOrThrowCompletion(c.consequent);
       failIfContainsBreakOrReturnOrThrowCompletion(c.alternate);
     }
-  }
-
-  function failIfContainsBreakOrContinueCompletionWithNonLocalTarget(c: void | Completion | Value) {
-    if (c === undefined) return;
-    if (c instanceof ContinueCompletion || c instanceof BreakCompletion) {
-      if (!c.target) return;
-      if (labelSet && labelSet.indexOf(c.target) >= 0) {
-        c.target = null;
-        return;
-      }
-      let diagnostic = new CompilerDiagnostic(
-        "break or continue with target cannot be guarded by abstract condition",
-        c.location,
-        "PP0034",
-        "FatalError"
-      );
-      realm.handleError(diagnostic);
-      throw new FatalError();
-    }
-    if (c instanceof PossiblyNormalCompletion || c instanceof ForkedAbruptCompletion) {
-      failIfContainsBreakOrContinueCompletionWithNonLocalTarget(c.consequent);
-      failIfContainsBreakOrContinueCompletionWithNonLocalTarget(c.alternate);
-    }
-  }
-
-  function containsContinueCompletion(c: void | Completion | Value) {
-    if (c === undefined) return false;
-    if (c instanceof ContinueCompletion) {
-      if (!c.target) return true;
-      if (labelSet && labelSet.indexOf(c.target) >= 0) {
-        c.target = null;
-        return true;
-      }
-      return false;
-    }
-    if (c instanceof PossiblyNormalCompletion || c instanceof ForkedAbruptCompletion)
-      return containsContinueCompletion(c.consequent) || containsContinueCompletion(c.alternate);
-    return false;
-  }
-
-  function joinAllLoopContinues(
-    valueOrCompletionAtLoopContinuePoint: Value | AbruptCompletion
-  ): Value | AbruptCompletion {
-    // We are about start the next loop iteration and this presents a join point where all non loop breaking abrupt
-    // control flows converge into a single flow using their joined effects as the new state.
-    failIfContainsBreakOrContinueCompletionWithNonLocalTarget(realm.savedCompletion);
-
-    // Incorporate the savedCompletion (we should only get called if there is one).
-    invariant(realm.savedCompletion !== undefined);
-    if (valueOrCompletionAtLoopContinuePoint instanceof Value)
-      valueOrCompletionAtLoopContinuePoint = new ContinueCompletion(valueOrCompletionAtLoopContinuePoint, undefined);
-    let abruptCompletion = Functions.incorporateSavedCompletion(realm, valueOrCompletionAtLoopContinuePoint);
-    invariant(abruptCompletion instanceof AbruptCompletion);
-
-    // If there is now a single completion, we don't need to join
-    if (!(abruptCompletion instanceof ForkedAbruptCompletion)) return abruptCompletion;
-    invariant(containsContinueCompletion(abruptCompletion));
-
-    // Apply the joined effects of continue completions to the current state since these now join the normal path
-    let joinedContinueEffects = Join.extractAndJoinCompletionsOfType(ContinueCompletion, realm, abruptCompletion);
-    realm.applyEffects(joinedContinueEffects);
-    let c = joinedContinueEffects.result;
-    invariant(c instanceof ContinueCompletion);
-
-    // We now make a PossiblyNormalCompletion out of abruptCompletion.
-    // extractAndJoinCompletionsOfType helped with this by cheating and turning all of its nested completions
-    // that contain continue completions into PossiblyNormalCompletions.
-    let remainingCompletions = abruptCompletion.transferChildrenToPossiblyNormalCompletion();
-
-    // At this stage there can still be other kinds of abrupt completions left inside abruptCompletion. If not just return.
-    let stillAbrupt =
-      remainingCompletions.containsCompletion(BreakCompletion) ||
-      remainingCompletions.containsCompletion(ReturnCompletion) ||
-      remainingCompletions.containsCompletion(ThrowCompletion);
-    if (!stillAbrupt) return c;
-
-    // Stash the remaining completions in the realm start tracking the effects that need to be appended
-    // to the normal branch at the next join point.
-    realm.savedCompletion = remainingCompletions;
-    realm.captureEffects(remainingCompletions); // so that we can join the normal path wtih them later on
-    return c;
-  }
-
-  function joinAllLoopExits(valueOrCompletionAtUnconditionalExit: Value | AbruptCompletion): Value {
-    // We are about the leave this loop and this presents a join point where all loop breaking control flows
-    // converge into a single flow using their joined effects as the new state.
-    failIfContainsBreakOrContinueCompletionWithNonLocalTarget(realm.savedCompletion);
-
-    // Incorporate the savedCompletion if there is one.
-    if (valueOrCompletionAtUnconditionalExit instanceof Value)
-      valueOrCompletionAtUnconditionalExit = new BreakCompletion(valueOrCompletionAtUnconditionalExit, undefined);
-    let abruptCompletion = Functions.incorporateSavedCompletion(realm, valueOrCompletionAtUnconditionalExit);
-    invariant(abruptCompletion instanceof AbruptCompletion);
-
-    // If there is now a single completion, we don't need to join
-    if (abruptCompletion instanceof BreakCompletion) return (UpdateEmpty(realm, abruptCompletion, V): any).value;
-    if (!(abruptCompletion instanceof ForkedAbruptCompletion)) throw abruptCompletion;
-
-    // If there are no breaks, we don't need to join
-    if (!abruptCompletion.containsCompletion(BreakCompletion)) throw abruptCompletion;
-
-    // Apply the joined effects of break completions to the current state since these now join the normal path
-    let joinedBreakEffects = Join.extractAndJoinCompletionsOfType(BreakCompletion, realm, abruptCompletion);
-    realm.applyEffects(joinedBreakEffects);
-    let c = joinedBreakEffects.result;
-    invariant(c instanceof BreakCompletion);
-
-    // We now make a PossiblyNormalCompletion out of abruptCompletion.
-    // extractAndJoinCompletionsOfType helped with this by cheating and turning all of its nested completions
-    // that contain continue completions into PossiblyNormalCompletions.
-    let remainingCompletions = abruptCompletion.transferChildrenToPossiblyNormalCompletion();
-
-    // At this stage there can still be other kinds of abrupt completions left inside abruptCompletion. If not just return.
-    let stillAbrupt =
-      remainingCompletions.containsCompletion(ReturnCompletion) ||
-      remainingCompletions.containsCompletion(ThrowCompletion);
-    if (!stillAbrupt) return (UpdateEmpty(realm, c, V): any).value;
-
-    // Stash the remaining completions in the realm start tracking the effects that need to be appended
-    // to the normal branch at the next join point.
-    realm.savedCompletion = remainingCompletions;
-    realm.captureEffects(remainingCompletions); // so that we can join the normal path wtih them later on
-
-    // ECMA262 13.1.7
-    return (UpdateEmpty(realm, c, V): any).value;
   }
 }
 
@@ -341,31 +224,56 @@ let BailOutWrapperClosureRefVisitor = {
   },
   VariableDeclaration(path: BabelTraversePath, state: BailOutWrapperInfo) {
     let node = path.node;
-    // If our parent is a for loop (there are 3 kinds) we do not need a wrapper
-    // i.e. for (var x of y) for (var x in y) for (var x; x < y; x++)
-    let needsExpressionWrapper =
-      !t.isForStatement(path.parentPath.node) &&
-      !t.isForOfStatement(path.parentPath.node) &&
-      !t.isForInStatement(path.parentPath.node);
 
-    const getConvertedDeclarator = index => {
-      let { id, init } = node.declarations[index];
+    // `let` and `const` are lexically scoped. We only need to change `var`s into assignments. Since we hoist the loop
+    // into its own function `var`s (which are function scoped) need to be made available outside the loop.
+    if (node.kind !== "var") return;
 
-      if (t.isIdentifier(id)) {
-        // If init is undefined, then we need to ensure we provide
-        // an actual Babel undefined node for it.
-        if (init === null) {
-          init = t.identifier("undefined");
-        }
-        return t.assignmentExpression("=", id, init);
-      } else {
+    if (t.isForOfStatement(path.parentPath.node) || t.isForInStatement(path.parentPath.node)) {
+      // For-of and for-in variable declarations behave a bit differently. There is only one declarator and there is
+      // never an initializer. Furthermore we can’t replace with an expression or statement, only a
+      // `LeftHandSideExpression`. However, that `LeftHandSideExpression` will perform a `DestructuringAssignment`
+      // operation which is what we want.
+
+      invariant(node.declarations.length === 1);
+      invariant(node.declarations[0].init == null);
+
+      const { id } = node.declarations[0];
+
+      if (!t.isIdentifier(id)) {
         // We do not currently support ObjectPattern, SpreadPattern and ArrayPattern
         // see: https://github.com/babel/babylon/blob/master/ast/spec.md#patterns
         state.varPatternUnsupported = true;
+        return;
       }
-    };
 
-    if (node.kind === "var") {
+      // Replace with the id directly since it is a `LeftHandSideExpression`.
+      path.replaceWith(id);
+    } else {
+      // Change all variable declarations into assignment statements. We assign to capture variables made available
+      // outside of this scope.
+
+      // If our parent is a `for (var x; x < y; x++)` loop we do not need a wrapper.
+      // i.e. for (var x of y) for (var x in y) for (var x; x < y; x++)
+      let needsExpressionWrapper = !t.isForStatement(path.parentPath.node);
+
+      const getConvertedDeclarator = index => {
+        let { id, init } = node.declarations[index];
+
+        if (t.isIdentifier(id)) {
+          // If init is undefined, then we need to ensure we provide
+          // an actual Babel undefined node for it.
+          if (init === null) {
+            init = t.identifier("undefined");
+          }
+          return t.assignmentExpression("=", id, init);
+        } else {
+          // We do not currently support ObjectPattern, SpreadPattern and ArrayPattern
+          // see: https://github.com/babel/babylon/blob/master/ast/spec.md#patterns
+          state.varPatternUnsupported = true;
+        }
+      };
+
       if (node.declarations.length === 1) {
         let convertedNodeOrUndefined = getConvertedDeclarator(0);
         if (convertedNodeOrUndefined === undefined) {
@@ -439,15 +347,15 @@ function generateRuntimeForStatement(
   if (usesThis) {
     let thisRef = env.evaluate(t.thisExpression(), strictCode);
     let thisVal = Environment.GetValue(realm, thisRef);
-    Havoc.value(realm, thisVal);
+    Leak.value(realm, thisVal);
     args.push(thisVal);
   }
 
-  // We havoc the wrapping function value, which in turn invokes the havocing
-  // logic which is transitive. The havocing logic should recursively visit
+  // We leak the wrapping function value, which in turn invokes the leak
+  // logic which is transitive. The leaking logic should recursively visit
   // all bindings/objects in the loop and its body and mark the associated
-  // bindings/objects that do havoc appropiately.
-  Havoc.value(realm, wrapperFunction);
+  // bindings/objects as leaked
+  Leak.value(realm, wrapperFunction);
 
   let wrapperValue = AbstractValue.createTemporalFromBuildFunction(
     realm,
@@ -490,22 +398,8 @@ function tryToEvaluateForStatementOrLeaveAsAbstract(
   } finally {
     realm.suppressDiagnostics = savedSuppressDiagnostics;
   }
-  // Note that the effects of (non joining) abrupt branches are not included
-  // in effects, but are tracked separately inside completion.
   realm.applyEffects(effects);
-  let completion = effects.result;
-  if (completion instanceof PossiblyNormalCompletion) {
-    // in this case one of the branches may complete abruptly, which means that
-    // not all control flow branches join into one flow at this point.
-    // Consequently we have to continue tracking changes until the point where
-    // all the branches come together into one.
-    completion = realm.composeWithSavedCompletion(completion);
-  }
-  // return or throw completion
-  if (completion instanceof AbruptCompletion) throw completion;
-  if (completion instanceof SimpleNormalCompletion) completion = completion.value;
-  invariant(completion instanceof Value);
-  return completion;
+  return realm.returnOrThrowCompletion(effects.result);
 }
 
 // ECMA262 13.7.4.7

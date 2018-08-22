@@ -13,7 +13,7 @@ import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import { FatalError } from "../../errors.js";
 import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { AbruptCompletion, PossiblyNormalCompletion } from "../../completions.js";
+//import { AbruptCompletion } from "../../completions.js";
 import {
   AbstractValue,
   AbstractObjectValue,
@@ -37,7 +37,7 @@ import {
   SetIntegrityLevel,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
-import { Create, Havoc, Properties as Props, To } from "../../singletons.js";
+import { Create, Leak, Properties as Props, To } from "../../singletons.js";
 import { createOperationDescriptor } from "../../utils/generator.js";
 import invariant from "../../invariant.js";
 
@@ -63,8 +63,8 @@ function handleObjectAssignSnapshot(
     AbstractValue.reportIntrospectionError(to);
     throw new FatalError();
   } else {
-    if (frm instanceof ObjectValue && frm.mightBeHavocedObject()) {
-      // "frm" is havoced, so it might contain properties that potentially overwrite
+    if (frm instanceof ObjectValue && frm.mightBeLeakedObject()) {
+      // "frm" is leaked, so it might contain properties that potentially overwrite
       // properties already on the "to" object.
       snapshotToObjectAndRemoveProperties(to, delayedSources);
       // it's not safe to trust any of its values
@@ -182,27 +182,16 @@ function tryAndApplySourceOrRecover(
       if (!didSnapshot) {
         delayedSources.push(frm);
       }
-      // Havoc the frm value because it can have getters on it
-      Havoc.value(realm, frm);
+      // Leak the frm value because it can have getters on it
+      Leak.value(realm, frm);
       return to_must_be_partial;
     }
     throw e;
   } finally {
     realm.suppressDiagnostics = savedSuppressDiagnostics;
   }
-  // Note that the effects of (non joining) abrupt branches are not included
-  // in effects, but are tracked separately inside completion.
   realm.applyEffects(effects);
-  let completion = effects.result;
-  if (completion instanceof PossiblyNormalCompletion) {
-    // in this case one of the branches may complete abruptly, which means that
-    // not all control flow branches join into one flow at this point.
-    // Consequently we have to continue tracking changes until the point where
-    // all the branches come together into one.
-    completion = realm.composeWithSavedCompletion(completion);
-  }
-  // return or throw completion
-  if (completion instanceof AbruptCompletion) throw completion;
+  realm.returnOrThrowCompletion(effects.result);
   return to_must_be_partial;
 }
 

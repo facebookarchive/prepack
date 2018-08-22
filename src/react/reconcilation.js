@@ -47,7 +47,7 @@ import {
 } from "./utils.js";
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
-import { Havoc, Properties, Utils } from "../singletons.js";
+import { Leak, Properties, Utils } from "../singletons.js";
 import { FatalError, NestedOptimizedFunctionSideEffect } from "../errors.js";
 import {
   type BranchStatusEnum,
@@ -480,11 +480,8 @@ export class Reconciler {
     let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
     let refValue = getProperty(this.realm, reactElement, "ref");
-    invariant(typeValue instanceof AbstractValue || typeValue instanceof ObjectValue);
-    let reactHint = this.realm.react.abstractHints.get(typeValue);
-
-    invariant(reactHint !== undefined);
-    let [forwardedComponent] = reactHint.args;
+    invariant(typeValue instanceof AbstractObjectValue || typeValue instanceof ObjectValue);
+    let forwardedComponent = getProperty(this.realm, typeValue, "render");
     let evaluatedChildNode = createReactEvaluatedNode("FORWARD_REF", getComponentName(this.realm, forwardedComponent));
     evaluatedNode.children.push(evaluatedChildNode);
     invariant(
@@ -772,14 +769,6 @@ export class Reconciler {
     if (value === getReactSymbol("react.fragment", this.realm)) {
       return "FRAGMENT";
     }
-    if (value instanceof AbstractValue && this.realm.react.abstractHints.has(value)) {
-      let reactHint = this.realm.react.abstractHints.get(value);
-
-      invariant(reactHint !== undefined);
-      if (reactHint.object === this.realm.fbLibraries.react && reactHint.propertyName === "forwardRef") {
-        return "FORWARD_REF";
-      }
-    }
     if ((value instanceof ObjectValue || value instanceof AbstractObjectValue) && value.kind !== "conditional") {
       let $$typeof = getProperty(this.realm, value, "$$typeof");
 
@@ -788,6 +777,9 @@ export class Reconciler {
       }
       if ($$typeof === getReactSymbol("react.provider", this.realm)) {
         return "CONTEXT_PROVIDER";
+      }
+      if ($$typeof === getReactSymbol("react.forward_ref", this.realm)) {
+        return "FORWARD_REF";
       }
     }
     return "NORMAL";
@@ -1433,17 +1425,11 @@ export class Reconciler {
             );
 
           let resolvedEffects;
-          let saved_pathConditions = this.realm.pathConditions;
-          this.realm.pathConditions = [];
-          try {
-            resolvedEffects = this.realm.evaluateForEffects(
-              pureFuncCall,
-              /*state*/ null,
-              `react resolve nested optimized closure`
-            );
-          } finally {
-            this.realm.pathConditions = saved_pathConditions;
-          }
+          resolvedEffects = this.realm.evaluateForEffects(
+            pureFuncCall,
+            /*state*/ null,
+            `react resolve nested optimized closure`
+          );
           this.statistics.optimizedNestedClosures++;
           nestedOptimizedFunctionEffects.set(func, resolvedEffects);
           this.realm.collectedNestedOptimizedFunctionEffects.set(func, resolvedEffects);
@@ -1551,8 +1537,6 @@ export class Reconciler {
         throw new NestedOptimizedFunctionSideEffect();
       });
     let effects;
-    let saved_pathConditions = this.realm.pathConditions;
-    this.realm.pathConditions = [];
     try {
       effects = this.realm.evaluateForEffects(
         () => {
@@ -1564,15 +1548,13 @@ export class Reconciler {
       );
     } catch (e) {
       // If the nested optimized function had side-effects, we need to fallback to
-      // the default behaviour and havoc the nested functions so any bindings
+      // the default behaviour and leak the nested functions so any bindings
       // within the function properly leak and materialize.
       if (e instanceof NestedOptimizedFunctionSideEffect) {
-        Havoc.value(this.realm, func);
+        Leak.value(this.realm, func);
         return;
       }
       throw e;
-    } finally {
-      this.realm.pathConditions = saved_pathConditions;
     }
     this.statistics.optimizedNestedClosures++;
     this.realm.collectedNestedOptimizedFunctionEffects.set(funcToModel, effects);

@@ -26,8 +26,7 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
-import { Environment, Havoc, To } from "../singletons.js";
+import { Environment, Leak, To } from "../singletons.js";
 import type { BabelBinaryOperator, BabelNodeBinaryExpression, BabelNodeSourceLocation } from "@babel/types";
 import { createOperationDescriptor } from "../utils/generator.js";
 import invariant from "../invariant.js";
@@ -284,33 +283,18 @@ export function computeBinary(
     }
 
     if (isPure && effects) {
-      // Note that the effects of (non joining) abrupt branches are not included
-      // in effects, but are tracked separately inside completion.
       realm.applyEffects(effects);
-      let completion = effects.result;
-      if (completion instanceof PossiblyNormalCompletion) {
-        // in this case one of the branches may complete abruptly, which means that
-        // not all control flow branches join into one flow at this point.
-        // Consequently we have to continue tracking changes until the point where
-        // all the branches come together into one.
-        completion = realm.composeWithSavedCompletion(completion);
-      } else if (completion instanceof SimpleNormalCompletion) {
-        completion = completion.value;
-      }
-      // return or throw completion
-      if (completion instanceof AbruptCompletion) throw completion;
-      invariant(completion instanceof Value);
-      return completion;
+      return realm.returnOrThrowCompletion(effects.result);
     }
 
     // If this ended up reporting an error, it might not be pure, so we'll leave it in
     // as a temporal operation with a known return type.
     // Some of these values may trigger side-effectful user code such as valueOf.
-    // To be safe, we have to Havoc them.
-    Havoc.value(realm, lval, loc);
+    // To be safe, we have to leak them.
+    Leak.value(realm, lval, loc);
     if (op !== "in") {
       // The "in" operator have side-effects on its right val other than throw.
-      Havoc.value(realm, rval, loc);
+      Leak.value(realm, rval, loc);
     }
     return realm.evaluateWithPossibleThrowCompletion(
       () =>

@@ -1,3 +1,5 @@
+// expected Warning,RecoverableError: PP1007, PP0023, PP1002
+// throws introspection error
 (function() {
   function fn(arg) {
     if (arg.foo()) {

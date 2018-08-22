@@ -11,10 +11,9 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { ObjectValue, Value, AbstractObjectValue, AbstractValue } from "../values/index.js";
-import { Environment, Havoc } from "../singletons.js";
+import { Environment, Leak } from "../singletons.js";
 import { IsConstructor, ArgumentListEvaluation } from "../methods/index.js";
 import { Construct } from "../methods/index.js";
 import invariant from "../invariant.js";
@@ -91,10 +90,10 @@ function tryToEvaluateConstructOrLeaveAsAbstract(
     // if a FatalError occurs when constructing the constructor
     // then try and recover and create an abstract for this construct
     if (error instanceof FatalError) {
-      // we need to havoc all the arguments and the constructor
-      Havoc.value(realm, constructor);
+      // we need to leak all the arguments and the constructor
+      Leak.value(realm, constructor);
       for (let arg of argsList) {
-        Havoc.value(realm, arg);
+        Leak.value(realm, arg);
       }
       let abstractValue = realm.evaluateWithPossibleThrowCompletion(
         () =>
@@ -113,21 +112,8 @@ function tryToEvaluateConstructOrLeaveAsAbstract(
       throw error;
     }
   }
-  // Note that the effects of (non joining) abrupt branches are not included
-  // in joinedEffects, but are tracked separately inside completion.
   realm.applyEffects(effects);
-  let completion = effects.result;
-  if (completion instanceof PossiblyNormalCompletion) {
-    // in this case one of the branches may complete abruptly, which means that
-    // not all control flow branches join into one flow at this point.
-    // Consequently we have to continue tracking changes until the point where
-    // all the branches come together into one.
-    completion = realm.composeWithSavedCompletion(completion);
-  }
-
-  // return or throw completion
-  if (completion instanceof AbruptCompletion) throw completion;
-  if (completion instanceof SimpleNormalCompletion) completion = completion.value;
+  let completion = realm.returnOrThrowCompletion(effects.result);
   invariant(completion instanceof ObjectValue || completion instanceof AbstractObjectValue);
   return completion;
 }

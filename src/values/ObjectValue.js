@@ -65,7 +65,7 @@ export default class ObjectValue extends ConcreteValue {
     this.$Prototype = proto || realm.intrinsics.null;
     this.$Extensible = realm.intrinsics.true;
     this._isPartial = realm.intrinsics.false;
-    this._isHavoced = realm.intrinsics.false;
+    this._isLeaked = realm.intrinsics.false;
     this._isSimple = realm.intrinsics.false;
     this._simplicityIsTransitive = realm.intrinsics.false;
     this._isFinal = realm.intrinsics.false;
@@ -81,7 +81,7 @@ export default class ObjectValue extends ConcreteValue {
 
   static trackedPropertyNames = [
     "_isPartial",
-    "_isHavoced",
+    "_isLeaked",
     "_isSimple",
     "_isFinal",
     "_simplicityIsTransitive",
@@ -129,24 +129,24 @@ export default class ObjectValue extends ConcreteValue {
           return binding === undefined ? undefined : binding.descriptor.value;
         },
         set: function(v) {
-          // Let's make sure that the object is not havoced.
-          // To that end, we'd like to call this.isHavocedObject().
+          // Let's make sure that the object is not leaked.
+          // To that end, we'd like to call this.isLeakedObject().
           // However, while the object is still being initialized,
-          // properties may be set, but this.isHavocedObject() may not be called yet.
+          // properties may be set, but this.isLeakedObject() may not be called yet.
           // To check if we are still initializing, guard the call by looking at
           // whether this.$IsClassPrototype has been initialized as a proxy for
           // object initialization in general.
           invariant(
             // We're still initializing so we can set a property.
             this.$IsClassPrototype === undefined ||
-              // It's not havoced so we can set a property.
-              this.mightNotBeHavocedObject() ||
+              // It's not leaked so we can set a property.
+              this.mightNotBeLeakedObject() ||
               // Object.assign() implementation needs to temporarily
-              // make potentially havoced objects non-partial and back.
-              // We don't gain anything from checking whether it's havoced
+              // make potentially leaked objects non-partial and back.
+              // We don't gain anything from checking whether it's leaked
               // before calling makePartial() so we'll whitelist this property.
               propBindingName === "_isPartial_binding",
-            "cannot mutate a havoced object"
+            "cannot mutate a leaked object"
           );
           let binding = this[propBindingName];
           if (binding === undefined) {
@@ -266,7 +266,7 @@ export default class ObjectValue extends ConcreteValue {
   _isPartial: AbstractValue | BooleanValue;
 
   // tainted objects
-  _isHavoced: AbstractValue | BooleanValue;
+  _isLeaked: AbstractValue | BooleanValue;
 
   // If true, the object has no property getters or setters and it is safe
   // to return AbstractValue for unknown properties.
@@ -395,19 +395,20 @@ export default class ObjectValue extends ConcreteValue {
     return this._isFinal.mightNotBeTrue();
   }
 
-  havoc(): void {
-    this._isHavoced = this.$Realm.intrinsics.true;
+  leak(): void {
+    this._isLeaked = this.$Realm.intrinsics.true;
   }
 
-  mightBeHavocedObject(): boolean {
-    return this._isHavoced.mightBeTrue();
+  mightBeLeakedObject(): boolean {
+    return this._isLeaked.mightBeTrue();
   }
 
-  mightNotBeHavocedObject(): boolean {
-    return this._isHavoced.mightNotBeTrue();
+  mightNotBeLeakedObject(): boolean {
+    return this._isLeaked.mightNotBeTrue();
   }
 
   isSimpleObject(): boolean {
+    if (this === this.$Realm.intrinsics.ObjectPrototype) return true;
     if (!this._isSimple.mightNotBeTrue()) return true;
     if (this.isPartialObject()) return false;
     if (this.symbols.size > 0) return false;
@@ -418,7 +419,6 @@ export default class ObjectValue extends ConcreteValue {
       if (!desc.writable) return false;
     }
     if (this.$Prototype instanceof NullValue) return true;
-    if (this.$Prototype === this.$Realm.intrinsics.ObjectPrototype) return true;
     invariant(this.$Prototype);
     return this.$Prototype.isSimpleObject();
   }

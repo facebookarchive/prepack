@@ -10,7 +10,7 @@
 /* @flow */
 
 import { Realm } from "../realm.js";
-import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
+import { AbruptCompletion, SimpleNormalCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "@babel/types";
 import { parseExpression } from "@babel/parser";
 import {
@@ -48,7 +48,8 @@ export type ReactSymbolTypes =
   | "react.fragment"
   | "react.portal"
   | "react.return"
-  | "react.call";
+  | "react.call"
+  | "react.forward_ref";
 
 export function isReactElement(val: Value): boolean {
   if (!(val instanceof ObjectValue)) {
@@ -543,9 +544,6 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
           );
       }
     }
-    if (reactHint.object === realm.fbLibraries.react && reactHint.propertyName === "forwardRef") {
-      return null;
-    }
     invariant(false, "unsupported known React abstraction");
   } else {
     invariant(value instanceof ECMAScriptSourceFunctionValue);
@@ -706,11 +704,10 @@ export function getComponentName(realm: Realm, componentType: Value): string {
       return boundText + name.value;
     }
   }
-  if (realm.react.abstractHints.has(componentType)) {
-    let reactHint = realm.react.abstractHints.get(componentType);
+  if (componentType instanceof ObjectValue) {
+    let $$typeof = getProperty(realm, componentType, "$$typeof");
 
-    invariant(reactHint !== undefined);
-    if (reactHint.object === realm.fbLibraries.react && reactHint.propertyName === "forwardRef") {
+    if ($$typeof === getReactSymbol("react.forward_ref", realm)) {
       return "forwarded ref";
     }
   }
@@ -793,32 +790,26 @@ export function getValueFromFunctionCall(
   let funcCall = func.$Call;
   let newCall = func.$Construct;
   let completion;
+  let createdObjects = realm.createdObjects;
   try {
+    let value;
     if (isConstructor) {
       invariant(newCall);
-      completion = newCall(args, func);
+      value = newCall(args, func);
     } else {
-      completion = funcCall(funcThis, args);
+      value = funcCall(funcThis, args);
     }
+    completion = new SimpleNormalCompletion(value);
   } catch (error) {
     if (error instanceof AbruptCompletion) {
       completion = error;
     } else {
       throw error;
     }
+  } finally {
+    invariant(createdObjects === realm.createdObjects, "realm.createdObjects was not correctly restored");
   }
-  if (completion instanceof PossiblyNormalCompletion) {
-    // in this case one of the branches may complete abruptly, which means that
-    // not all control flow branches join into one flow at this point.
-    // Consequently we have to continue tracking changes until the point where
-    // all the branches come together into one.
-    completion = realm.composeWithSavedCompletion(completion);
-  }
-  // return or throw completion
-  if (completion instanceof AbruptCompletion) throw completion;
-  if (completion instanceof SimpleNormalCompletion) completion = completion.value;
-  invariant(completion instanceof Value);
-  return completion;
+  return realm.returnOrThrowCompletion(completion);
 }
 
 function isEventProp(name: string): boolean {

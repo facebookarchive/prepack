@@ -21,7 +21,7 @@ import {
   Value,
 } from "./index.js";
 import { IsAccessorDescriptor, IsPropertyKey, IsArrayIndex } from "../methods/is.js";
-import { Havoc, Properties, To, Utils } from "../singletons.js";
+import { Leak, Properties, To, Utils } from "../singletons.js";
 import { type OperationDescriptor } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import { NestedOptimizedFunctionSideEffect } from "../errors.js";
@@ -51,21 +51,17 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
         throw new NestedOptimizedFunctionSideEffect();
       });
     let effects;
-    let saved_pathConditions = realm.pathConditions;
-    realm.pathConditions = [];
     try {
       effects = realm.evaluateForEffects(pureFuncCall, null, "temporalArray nestedOptimizedFunction");
     } catch (e) {
       // If the nested optimized function had side-effects, we need to fallback to
-      // the default behaviour and havoc the nested functions so any bindings
+      // the default behaviour and leaked the nested functions so any bindings
       // within the function properly leak and materialize.
       if (e instanceof NestedOptimizedFunctionSideEffect) {
-        Havoc.value(realm, func);
+        Leak.value(realm, func);
         return;
       }
       throw e;
-    } finally {
-      realm.pathConditions = saved_pathConditions;
     }
     // Check if effects were pure then add them
     if (abstractArrayValue.nestedOptimizedFunctionEffects === undefined) {
@@ -84,7 +80,7 @@ function createArrayWithWidenedNumericProperty(
   let abstractArrayValue = new ArrayValue(realm, intrinsicName);
 
   if (possibleNestedOptimizedFunctions !== undefined) {
-    if (!realm.react.enabled || realm.react.optimizeNestedFunctions) {
+    if (realm.arrayNestedOptimizedFunctionsEnabled && (!realm.react.enabled || realm.react.optimizeNestedFunctions)) {
       evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
         realm,
         abstractArrayValue,
@@ -92,10 +88,10 @@ function createArrayWithWidenedNumericProperty(
       );
     } else {
       // If nested optimized functions are disabled, we need to fallback to
-      // the default behaviour and havoc the nested functions so any bindings
+      // the default behaviour and leaked the nested functions so any bindings
       // within the function properly leak and materialize.
       for (let { func } of possibleNestedOptimizedFunctions) {
-        Havoc.value(realm, func);
+        Leak.value(realm, func);
       }
     }
   }
@@ -136,6 +132,12 @@ export default class ArrayValue extends ObjectValue {
       // a. Return ? ArraySetLength(A, Desc).
       return Properties.ArraySetLength(this.$Realm, A, Desc);
     } else if (IsArrayIndex(this.$Realm, P)) {
+      if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(this)) {
+        // The length of an array with widenend numeric properties is always abstract
+        let succeeded = Properties.OrdinaryDefineOwnProperty(this.$Realm, A, P, Desc);
+        if (succeeded === false) return false;
+        return true;
+      }
       // 3. Else if P is an array index, then
 
       // a. Let oldLenDesc be OrdinaryGetOwnProperty(A, "length").

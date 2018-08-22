@@ -44,7 +44,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (realm.isInPureScope() && x instanceof FatalError) {
         // If we're in pure scope we can try to recover from any fatals by
         // leaving the call in place which we do by default, but we don't
-        // have to havoc the state of any arguments since this function is pure.
+        // have to leak the state of any arguments since this function is pure.
         // This also lets us define the return type properly.
         const key = typeof P === "string" ? new StringValue(realm, P) : P;
         return realm.evaluateWithPossibleThrowCompletion(

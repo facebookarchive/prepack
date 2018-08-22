@@ -44,7 +44,7 @@ import {
   UndefinedValue,
   Value,
 } from "./values/index.js";
-import type { TypesDomain, ValuesDomain } from "./domains/index.js";
+import { TypesDomain, ValuesDomain } from "./domains/index.js";
 import {
   LexicalEnvironment,
   Reference,
@@ -57,8 +57,9 @@ import { cloneDescriptor, Construct } from "./methods/index.js";
 import {
   AbruptCompletion,
   Completion,
-  ForkedAbruptCompletion,
-  PossiblyNormalCompletion,
+  JoinedAbruptCompletions,
+  JoinedNormalAndAbruptCompletions,
+  NormalCompletion,
   SimpleNormalCompletion,
   ThrowCompletion,
 } from "./completions.js";
@@ -67,16 +68,10 @@ import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { createOperationDescriptor, Generator, type TemporalOperationEntry } from "./utils/generator.js";
 import { PreludeGenerator } from "./utils/PreludeGenerator.js";
-import { Environment, Functions, Join, Properties, To, Widen, Path } from "./singletons.js";
+import { Environment, Functions, Join, Path, Properties, To, Utils, Widen } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
-import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal, BabelNodeStatement } from "@babel/types";
-import { Utils } from "./singletons.js";
-export type BindingEntry = {
-  hasLeaked: void | boolean,
-  value: void | Value,
-  previousHasLeaked: void | boolean,
-  previousValue: void | Value,
-};
+import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal } from "@babel/types";
+export type BindingEntry = { hasLeaked: boolean, value: void | Value };
 export type Bindings = Map<Binding, BindingEntry>;
 export type EvaluationResult = Completion | Reference;
 export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
@@ -95,7 +90,7 @@ export class Effects {
     propertyBindings: PropertyBindings,
     createdObjects: CreatedObjects
   ) {
-    this._result = result;
+    this.result = result;
     this.generator = generator;
     this.modifiedBindings = bindings;
     this.modifiedProperties = propertyBindings;
@@ -103,20 +98,9 @@ export class Effects {
 
     this.canBeApplied = true;
     this._id = effects_uid++;
-    invariant(result.effects === undefined);
-    result.effects = this;
   }
 
-  _result: Completion;
-  get result(): Completion {
-    return this._result;
-  }
-  set result(completion: Completion): void {
-    invariant(completion.effects === undefined);
-    if (completion.effects === undefined) completion.effects = this; //todo: require callers to ensure this
-    this._result = completion;
-  }
-
+  result: Completion;
   generator: Generator;
   modifiedBindings: Bindings;
   modifiedProperties: PropertyBindings;
@@ -219,11 +203,8 @@ export class ExecutionContext {
 
 export function construct_empty_effects(
   realm: Realm,
-  c: Completion = new SimpleNormalCompletion(realm.intrinsics.empty, undefined)
+  c: Completion = new SimpleNormalCompletion(realm.intrinsics.empty)
 ): Effects {
-  // TODO #2222: Check if `realm.pathConditions` is always correct here.
-  // The path conditions here should probably be empty.
-  // Picking up the current path conditions from the Realm might be the reason why composition does not work.
   return new Effects(
     c,
     new Generator(realm, "construct_empty_effects", realm.pathConditions),
@@ -281,7 +262,6 @@ export class Realm {
     this.intrinsics = ({}: any);
     this.$GlobalObject = (({}: any): ObjectValue);
     this.evaluators = (Object.create(null): any);
-    this.partialEvaluators = (Object.create(null): any);
     this.$GlobalEnv = ((undefined: any): LexicalEnvironment);
 
     this.derivedIds = new Map();
@@ -337,6 +317,7 @@ export class Realm {
     this.debugNames = opts.debugNames;
     this._checkedObjectIds = new Map();
     this.optimizedFunctions = new Map();
+    this.arrayNestedOptimizedFunctionsEnabled = opts.arrayNestedOptimizedFunctionsEnabled || false;
   }
 
   statistics: RealmStatistics;
@@ -368,7 +349,7 @@ export class Realm {
     (sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, expressionLocation: any) => void
   >;
   reportPropertyAccess: void | (PropertyBinding => void);
-  savedCompletion: void | PossiblyNormalCompletion;
+  savedCompletion: void | JoinedNormalAndAbruptCompletions;
 
   activeLexicalEnvironments: Set<LexicalEnvironment>;
 
@@ -446,15 +427,6 @@ export class Realm {
       metadata?: any
     ) => Value | Reference,
   };
-  partialEvaluators: {
-    [key: string]: (
-      ast: BabelNode,
-      strictCode: boolean,
-      env: LexicalEnvironment,
-      realm: Realm,
-      metadata?: any
-    ) => [Completion | Reference | Value, BabelNode, Array<BabelNodeStatement>],
-  };
   simplifyAndRefineAbstractValue: AbstractValue => Value;
   simplifyAndRefineAbstractCondition: AbstractValue => Value;
 
@@ -482,6 +454,7 @@ export class Realm {
   _checkedObjectIds: Map<ObjectValue | AbstractObjectValue, number>;
 
   optimizedFunctions: Map<FunctionValue | AbstractValue, ArgModel | void>;
+  arrayNestedOptimizedFunctionsEnabled: boolean;
 
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
@@ -558,26 +531,6 @@ export class Realm {
     }
   }
 
-  clearBlockBindingsFromCompletion(completion: Completion, environmentRecord: DeclarativeEnvironmentRecord): void {
-    if (completion instanceof PossiblyNormalCompletion) {
-      this.clearBlockBindings(completion.alternateEffects.modifiedBindings, environmentRecord);
-      this.clearBlockBindings(completion.consequentEffects.modifiedBindings, environmentRecord);
-      if (completion.savedEffects !== undefined)
-        this.clearBlockBindings(completion.savedEffects.modifiedBindings, environmentRecord);
-      if (completion.alternate instanceof Completion)
-        this.clearBlockBindingsFromCompletion(completion.alternate, environmentRecord);
-      if (completion.consequent instanceof Completion)
-        this.clearBlockBindingsFromCompletion(completion.consequent, environmentRecord);
-    } else if (completion instanceof ForkedAbruptCompletion) {
-      this.clearBlockBindings(completion.alternateEffects.modifiedBindings, environmentRecord);
-      this.clearBlockBindings(completion.consequentEffects.modifiedBindings, environmentRecord);
-      if (completion.alternate instanceof Completion)
-        this.clearBlockBindingsFromCompletion(completion.alternate, environmentRecord);
-      if (completion.consequent instanceof Completion)
-        this.clearBlockBindingsFromCompletion(completion.consequent, environmentRecord);
-    }
-  }
-
   // Call when a scope falls out of scope and should be destroyed.
   // Clears the Bindings corresponding to the disappearing Scope from ModifiedBindings
   onDestroyScope(lexicalEnvironment: LexicalEnvironment): void {
@@ -588,8 +541,6 @@ export class Realm {
       let environmentRecord = lexicalEnvironment.environmentRecord;
       if (environmentRecord instanceof DeclarativeEnvironmentRecord) {
         this.clearBlockBindings(modifiedBindings, environmentRecord);
-        if (this.savedCompletion !== undefined)
-          this.clearBlockBindingsFromCompletion(this.savedCompletion, environmentRecord);
       }
     }
 
@@ -631,31 +582,10 @@ export class Realm {
     }
   }
 
-  clearFunctionBindingsFromCompletion(completion: Completion, funcVal: FunctionValue): void {
-    if (completion instanceof PossiblyNormalCompletion) {
-      this.clearFunctionBindings(completion.alternateEffects.modifiedBindings, funcVal);
-      this.clearFunctionBindings(completion.consequentEffects.modifiedBindings, funcVal);
-      if (completion.savedEffects !== undefined)
-        this.clearFunctionBindings(completion.savedEffects.modifiedBindings, funcVal);
-      if (completion.alternate instanceof Completion)
-        this.clearFunctionBindingsFromCompletion(completion.alternate, funcVal);
-      if (completion.consequent instanceof Completion)
-        this.clearFunctionBindingsFromCompletion(completion.consequent, funcVal);
-    } else if (completion instanceof ForkedAbruptCompletion) {
-      this.clearFunctionBindings(completion.alternateEffects.modifiedBindings, funcVal);
-      this.clearFunctionBindings(completion.consequentEffects.modifiedBindings, funcVal);
-      if (completion.alternate instanceof Completion)
-        this.clearFunctionBindingsFromCompletion(completion.alternate, funcVal);
-      if (completion.consequent instanceof Completion)
-        this.clearFunctionBindingsFromCompletion(completion.consequent, funcVal);
-    }
-  }
-
   popContext(context: ExecutionContext): void {
     let funcVal = context.function;
     if (funcVal) {
       this.clearFunctionBindings(this.modifiedBindings, funcVal);
-      if (this.savedCompletion !== undefined) this.clearFunctionBindingsFromCompletion(this.savedCompletion, funcVal);
     }
     let c = this.contextStack.pop();
     invariant(c === context);
@@ -731,7 +661,11 @@ export class Realm {
     bubbleSideEffectReports: boolean,
     reportSideEffectFunc:
       | null
-      | ((sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, value: void | Value) => void)
+      | ((
+          sideEffectType: SideEffectType,
+          binding: void | Binding | PropertyBinding,
+          location: ?BabelNodeSourceLocation
+        ) => void)
   ): T {
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
     let saved_reportSideEffectCallbacks;
@@ -785,7 +719,7 @@ export class Realm {
     invariant(this.isInPureScope(), "only abstract abrupt completion in pure functions");
 
     // TODO(1264): We should create a new generator for this scope and wrap it in a try/catch.
-    // We could use the outcome of that as the join condition for a PossiblyNormalCompletion.
+    // We could use the outcome of that as the join condition for a JoinedNormalAndAbruptCompletions.
     // We should then compose that with the saved completion and move on to the normal route.
     // Currently we just issue a recoverable error instead if this might matter.
     let value = f();
@@ -832,7 +766,7 @@ export class Realm {
         result = func(effects);
         return this.intrinsics.undefined;
       } finally {
-        this.undoBindings(effects.modifiedBindings);
+        this.restoreBindings(effects.modifiedBindings);
         this.restoreProperties(effects.modifiedProperties);
         invariant(!effects.canBeApplied);
         effects.canBeApplied = true;
@@ -846,22 +780,6 @@ export class Realm {
     return this.wrapInGlobalEnv(() => this.evaluateNodeForEffects(node, false, this.$GlobalEnv, state, generatorName));
   }
 
-  partiallyEvaluateNodeForEffects(
-    ast: BabelNode,
-    strictCode: boolean,
-    env: LexicalEnvironment
-  ): [Effects, BabelNode, Array<BabelNodeStatement>] {
-    let nodeAst, nodeIO;
-    function partialEval() {
-      let result;
-      [result, nodeAst, nodeIO] = env.partiallyEvaluateCompletionDeref(ast, strictCode);
-      return result;
-    }
-    let effects = this.evaluateForEffects(partialEval, undefined, "partiallyEvaluateNodeForEffects");
-    invariant(nodeAst !== undefined && nodeIO !== undefined);
-    return [effects, nodeAst, nodeIO];
-  }
-
   // Use this to evaluate code for internal purposes, so that the tracked state does not get polluted
   evaluateWithoutEffects<T>(f: () => T): T {
     // Save old state and set up undefined state
@@ -871,7 +789,7 @@ export class Realm {
     let savedCreatedObjects = this.createdObjects;
     let saved_completion = this.savedCompletion;
     try {
-      this.generator = undefined;
+      this.generator = new Generator(this, "evaluateIgnoringEffects", this.pathConditions);
       this.modifiedBindings = undefined;
       this.modifiedProperties = undefined;
       this.createdObjects = undefined;
@@ -910,21 +828,9 @@ export class Realm {
           if (e instanceof AbruptCompletion) c = e;
           else throw e;
         }
-        // This is a join point for the normal branch of a PossiblyNormalCompletion.
-        if (c instanceof Value || c instanceof AbruptCompletion) {
-          c = Functions.incorporateSavedCompletion(this, c);
-          if (c instanceof Completion && c.effects !== undefined) c = c.shallowCloneWithoutEffects();
-        }
+        // This is a join point for any normal completions inside realm.savedCompletion
+        c = Functions.incorporateSavedCompletion(this, c);
         invariant(c !== undefined);
-        if (c instanceof PossiblyNormalCompletion) {
-          // The current state may have advanced since the time control forked into the various paths recorded in c.
-          // Update the normal path and restore the global state to what it was at the time of the fork.
-          let subsequentEffects = this.getCapturedEffects(c.value);
-          this.stopEffectCaptureAndUndoEffects(c);
-          Join.updatePossiblyNormalCompletionWithSubsequentEffects(this, c, subsequentEffects);
-          this.savedCompletion = undefined;
-          this.applyEffects(subsequentEffects, "subsequentEffects", true);
-        }
 
         invariant(this.generator !== undefined);
         invariant(this.modifiedBindings !== undefined);
@@ -950,12 +856,14 @@ export class Realm {
         return result;
       } finally {
         // Roll back the state changes
-        if (this.savedCompletion !== undefined) this.stopEffectCaptureAndUndoEffects(this.savedCompletion);
         if (result !== undefined) {
-          this.undoBindings(result.modifiedBindings);
+          this.restoreBindings(result.modifiedBindings);
           this.restoreProperties(result.modifiedProperties);
         } else {
-          this.undoBindings(this.modifiedBindings);
+          if (this.savedCompletion !== undefined) {
+            this.stopEffectCaptureAndUndoEffects(this.savedCompletion);
+          }
+          this.restoreBindings(this.modifiedBindings);
           this.restoreProperties(this.modifiedProperties);
         }
         this.generator = saved_generator;
@@ -1013,14 +921,6 @@ export class Realm {
       this.applyEffects(effects);
       let resultVal = effects.result;
       if (resultVal instanceof AbruptCompletion) throw resultVal;
-      if (resultVal instanceof PossiblyNormalCompletion) {
-        // in this case one of the branches may complete abruptly, which means that
-        // not all control flow branches join into one flow at this point.
-        // Consequently we have to continue tracking changes until the point where
-        // all the branches come together into one.
-        resultVal = this.composeWithSavedCompletion(resultVal);
-      }
-      invariant(resultVal instanceof SimpleNormalCompletion);
       return resultVal.value;
     } catch (e) {
       if (diagnostic !== undefined) return diagnostic;
@@ -1042,10 +942,10 @@ export class Realm {
       };
       let effects1 = this.evaluateForEffects(f, undefined, "evaluateForFixpointEffects/1");
       while (true) {
-        this.redoBindings(effects1.modifiedBindings);
+        this.restoreBindings(effects1.modifiedBindings);
         this.restoreProperties(effects1.modifiedProperties);
         let effects2 = this.evaluateForEffects(f, undefined, "evaluateForFixpointEffects/2");
-        this.undoBindings(effects1.modifiedBindings);
+        this.restoreBindings(effects1.modifiedBindings);
         this.restoreProperties(effects1.modifiedProperties);
         if (Widen.containsEffects(effects1, effects2)) {
           // effects1 includes every value present in effects2, so doing another iteration using effects2 will not
@@ -1085,7 +985,6 @@ export class Realm {
     } catch (e) {
       if (!(e instanceof InfeasiblePathError)) throw e;
     }
-    invariant(effects1 === undefined || effects1.result.effects === effects1);
 
     let effects2;
     try {
@@ -1093,41 +992,20 @@ export class Realm {
     } catch (e) {
       if (!(e instanceof InfeasiblePathError)) throw e;
     }
-    invariant(effects2 === undefined || effects2.result.effects === effects2);
 
-    let joinedEffects, completion;
+    let effects;
     if (effects1 === undefined || effects2 === undefined) {
       if (effects1 === undefined && effects2 === undefined) throw new InfeasiblePathError();
-      joinedEffects = effects1 || effects2;
-      invariant(joinedEffects !== undefined);
-      completion = joinedEffects.result;
-      this.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
+      effects = effects1 || effects2;
+      invariant(effects !== undefined);
     } else {
       // Join the effects, creating an abstract view of what happened, regardless
       // of the actual value of condValue.
-      joinedEffects = Join.joinForkOrChoose(this, condValue, effects1, effects2);
-      completion = joinedEffects.result;
-      if (completion instanceof ForkedAbruptCompletion) {
-        // Note that the effects are tracked separately inside completion and will be applied later.
-        throw completion;
-      }
-      if (completion instanceof PossiblyNormalCompletion) {
-        // in this case one of the branches may complete abruptly, which means that
-        // not all control flow branches join into one flow at this point.
-        // Consequently we have to continue tracking changes until the point where
-        // all the branches come together into one.
-        this.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
-        completion = this.composeWithSavedCompletion(completion);
-      } else {
-        this.applyEffects(joinedEffects, "evaluateWithAbstractConditional");
-      }
+      effects = Join.joinEffects(condValue, effects1, effects2);
     }
+    this.applyEffects(effects);
 
-    // return or throw completion
-    if (completion instanceof AbruptCompletion) throw completion;
-    if (completion instanceof SimpleNormalCompletion) completion = completion.value;
-    invariant(completion instanceof Value);
-    return completion;
+    return condValue.$Realm.returnOrThrowCompletion(effects.result);
   }
 
   _applyPropertiesToNewlyCreatedObjects(
@@ -1223,187 +1101,126 @@ export class Realm {
     });
   }
 
-  composeEffects(priorEffects: Effects, subsequentEffects: Effects): Effects {
-    let result = construct_empty_effects(this, subsequentEffects.result.shallowCloneWithoutEffects());
-
-    result.generator = Join.composeGenerators(
-      this,
-      priorEffects.generator || result.generator,
-      subsequentEffects.generator
-    );
-
-    if (priorEffects.modifiedBindings) {
-      priorEffects.modifiedBindings.forEach((val, key, m) => result.modifiedBindings.set(key, val));
+  returnOrThrowCompletion(completion: Completion | Value): Value {
+    if (completion instanceof Value) completion = new SimpleNormalCompletion(completion);
+    if (completion instanceof AbruptCompletion) {
+      let c = Functions.incorporateSavedCompletion(this, completion);
+      invariant(c instanceof Completion);
+      completion = c;
     }
-    subsequentEffects.modifiedBindings.forEach((val, key, m) => result.modifiedBindings.set(key, val));
-
-    if (priorEffects.modifiedProperties) {
-      priorEffects.modifiedProperties.forEach((desc, propertyBinding, m) =>
-        result.modifiedProperties.set(propertyBinding, desc)
-      );
-    }
-    subsequentEffects.modifiedProperties.forEach((val, key, m) => result.modifiedProperties.set(key, val));
-
-    if (priorEffects.createdObjects) {
-      priorEffects.createdObjects.forEach((ob, a) => result.createdObjects.add(ob));
-    }
-    subsequentEffects.createdObjects.forEach((ob, a) => result.createdObjects.add(ob));
-
-    return result;
+    let cc = this.composeWithSavedCompletion(completion);
+    if (cc instanceof AbruptCompletion) throw cc;
+    return cc.value;
   }
 
-  updateAbruptCompletions(priorEffects: Effects, c: PossiblyNormalCompletion): void {
-    if (c.consequent instanceof AbruptCompletion) {
-      c.consequent.effects = this.composeEffects(priorEffects, c.consequentEffects);
-      let alternate = c.alternate;
-      if (alternate instanceof PossiblyNormalCompletion) this.updateAbruptCompletions(priorEffects, alternate);
-    } else {
-      invariant(c.alternate instanceof AbruptCompletion);
-      c.alternate.effects = this.composeEffects(priorEffects, c.alternateEffects);
-      let consequent = c.consequent;
-      if (consequent instanceof PossiblyNormalCompletion) this.updateAbruptCompletions(priorEffects, consequent);
-    }
-  }
-
-  wrapSavedCompletion(completion: PossiblyNormalCompletion): void {
-    if (this.savedCompletion !== undefined) {
-      if (completion.consequent instanceof AbruptCompletion) {
-        completion.alternate = this.savedCompletion;
-      } else {
-        completion.consequent = this.savedCompletion;
-      }
-      completion.savedEffects = this.savedCompletion.savedEffects;
-    } else {
-      this.captureEffects(completion);
-    }
-    this.savedCompletion = completion;
-  }
-
-  composeWithSavedCompletion(completion: PossiblyNormalCompletion): Value {
+  composeWithSavedCompletion(completion: Completion): Completion {
     if (this.savedCompletion === undefined) {
-      this.savedCompletion = completion;
-      this.savedCompletion.savedPathConditions = this.pathConditions;
-      this.pathConditions = [].concat(this.pathConditions);
-      this.captureEffects(completion);
+      if (completion instanceof JoinedNormalAndAbruptCompletions) {
+        this.savedCompletion = completion;
+        this.pushPathConditionsLeadingToCompletionOfType(NormalCompletion, completion);
+        this.captureEffects(completion);
+      }
+      return completion;
     } else {
-      let savedCompletion = this.savedCompletion;
-      let e = this.getCapturedEffects();
-      this.stopEffectCaptureAndUndoEffects(savedCompletion);
-      savedCompletion = Join.composePossiblyNormalCompletions(this, savedCompletion, completion, e);
-      this.applyEffects(e);
-      this.captureEffects(savedCompletion);
-      this.savedCompletion = savedCompletion;
+      let cc = Join.composeCompletions(this.savedCompletion, completion);
+      if (cc instanceof JoinedNormalAndAbruptCompletions) {
+        this.savedCompletion = cc;
+        this.pushPathConditionsLeadingToCompletionOfType(NormalCompletion, completion);
+        if (cc.savedEffects === undefined) this.captureEffects(cc);
+      } else {
+        this.savedCompletion = undefined;
+      }
+      return cc;
     }
-    let realm = this;
-    pushPathConditionsLeadingToNormalCompletion(completion);
-    return completion.value;
+  }
 
-    function pushPathConditionsLeadingToNormalCompletion(c: ForkedAbruptCompletion | PossiblyNormalCompletion) {
-      if (allPathsAreAbrupt(c.consequent)) {
-        Path.pushInverseAndRefine(c.joinCondition);
-        if (c.alternate instanceof PossiblyNormalCompletion || c.alternate instanceof ForkedAbruptCompletion)
-          pushPathConditionsLeadingToNormalCompletion(c.alternate);
-      } else if (allPathsAreAbrupt(c.alternate)) {
-        Path.pushAndRefine(c.joinCondition);
-        if (c.consequent instanceof PossiblyNormalCompletion || c.consequent instanceof ForkedAbruptCompletion)
-          pushPathConditionsLeadingToNormalCompletion(c.consequent);
-      } else if (allPathsAreNormal(c.consequent)) {
-        if (!allPathsAreNormal(c.alternate)) {
-          let alternatePC = getNormalPathConditionFor(c.alternate);
-          let disjunct = AbstractValue.createFromLogicalOp(realm, "||", c.joinCondition, alternatePC);
+  pushPathConditionsLeadingToCompletionOfType(CompletionType: typeof Completion, completion: Completion): void {
+    let realm = this;
+    let bottomValue = realm.intrinsics.__bottomValue;
+    // Note that if a completion of type CompletionType has a value is that is bottom, that completion is unreachable
+    // and pushing its corresponding path condition would cause an InfeasiblePathError to be thrown.
+    if (completion instanceof JoinedAbruptCompletions || completion instanceof JoinedNormalAndAbruptCompletions) {
+      if (completion.consequent.value === bottomValue || allPathsAreDifferent(completion.consequent)) {
+        if (completion.alternate.value === bottomValue || allPathsAreDifferent(completion.alternate)) return;
+        Path.pushInverseAndRefine(completion.joinCondition);
+        this.pushPathConditionsLeadingToCompletionOfType(CompletionType, completion.alternate);
+      } else if (completion.alternate.value === bottomValue || allPathsAreDifferent(completion.alternate)) {
+        if (completion.consequent.value === bottomValue) return;
+        Path.pushAndRefine(completion.joinCondition);
+        this.pushPathConditionsLeadingToCompletionOfType(CompletionType, completion.consequent);
+      } else if (allPathsAreTheSame(completion.consequent)) {
+        if (!allPathsAreTheSame(completion.alternate)) {
+          let alternatePC = getPathConditionForSame(completion.alternate);
+          let disjunct = AbstractValue.createFromLogicalOp(realm, "||", completion.joinCondition, alternatePC);
           Path.pushAndRefine(disjunct);
         }
-      } else if (allPathsAreNormal(c.alternate)) {
-        let consequentPC = getNormalPathConditionFor(c.consequent);
-        let inverse = AbstractValue.createFromUnaryOp(realm, "!", c.joinCondition);
+      } else if (allPathsAreTheSame(completion.alternate)) {
+        let consequentPC = getPathConditionForSame(completion.consequent);
+        let inverse = AbstractValue.createFromUnaryOp(realm, "!", completion.joinCondition);
         let disjunct = AbstractValue.createFromLogicalOp(realm, "||", inverse, consequentPC);
         Path.pushAndRefine(disjunct);
       } else {
-        let jc = c.joinCondition;
-        let consequentPC = AbstractValue.createFromLogicalOp(realm, "&&", jc, getNormalPathConditionFor(c.consequent));
+        let jc = completion.joinCondition;
+        let cpc = AbstractValue.createFromLogicalOp(realm, "&&", jc, getPathConditionForSame(completion.consequent));
         let ijc = AbstractValue.createFromUnaryOp(realm, "!", jc);
-        let alternatePC = AbstractValue.createFromLogicalOp(realm, "&&", ijc, getNormalPathConditionFor(c.alternate));
-        let disjunct = AbstractValue.createFromLogicalOp(realm, "||", consequentPC, alternatePC);
+        let apc = AbstractValue.createFromLogicalOp(realm, "&&", ijc, getPathConditionForSame(completion.alternate));
+        let disjunct = AbstractValue.createFromLogicalOp(realm, "||", cpc, apc);
         Path.pushAndRefine(disjunct);
       }
     }
+    return;
 
-    function allPathsAreAbrupt(c: Completion): boolean {
-      if (c instanceof ForkedAbruptCompletion) return allPathsAreAbrupt(c.consequent) && allPathsAreAbrupt(c.alternate);
-      if (c instanceof AbruptCompletion) return true;
-      return false;
-    }
-
-    function allPathsAreNormal(c: Completion): boolean {
-      if (c instanceof PossiblyNormalCompletion || c instanceof ForkedAbruptCompletion)
-        return allPathsAreNormal(c.consequent) && allPathsAreNormal(c.alternate);
-      if (c instanceof AbruptCompletion) return false;
+    function allPathsAreDifferent(c: Completion): boolean {
+      if (c instanceof JoinedAbruptCompletions || c instanceof JoinedNormalAndAbruptCompletions)
+        return allPathsAreDifferent(c.consequent) && allPathsAreDifferent(c.alternate);
+      if (c instanceof CompletionType) return false;
       return true;
     }
 
-    function getNormalPathConditionFor(c: Completion): Value {
-      invariant(c instanceof PossiblyNormalCompletion || c instanceof ForkedAbruptCompletion);
-      if (allPathsAreAbrupt(c.consequent)) {
-        invariant(!allPathsAreAbrupt(c.alternate));
+    function allPathsAreTheSame(c: Completion): boolean {
+      if (c instanceof JoinedAbruptCompletions || c instanceof JoinedNormalAndAbruptCompletions)
+        return allPathsAreTheSame(c.consequent) && allPathsAreTheSame(c.alternate);
+      if (c instanceof CompletionType) return true;
+      return false;
+    }
+
+    function getPathConditionForSame(c: Completion): Value {
+      invariant(c instanceof JoinedAbruptCompletions || c instanceof JoinedNormalAndAbruptCompletions);
+      if (c.consequent.value === bottomValue || allPathsAreDifferent(c.consequent)) {
+        invariant(!allPathsAreDifferent(c.alternate));
         let inverse = AbstractValue.createFromUnaryOp(realm, "!", c.joinCondition);
-        if (allPathsAreNormal(c.alternate)) return inverse;
-        return AbstractValue.createFromLogicalOp(realm, "&&", inverse, getNormalPathConditionFor(c.alternate));
-      } else if (allPathsAreAbrupt(c.alternate)) {
-        invariant(!allPathsAreAbrupt(c.consequent));
-        if (allPathsAreNormal(c.consequent)) return c.joinCondition;
-        return AbstractValue.createFromLogicalOp(realm, "&&", c.joinCondition, getNormalPathConditionFor(c.consequent));
-      } else if (allPathsAreNormal(c.consequent)) {
+        if (allPathsAreTheSame(c.alternate)) return inverse;
+        return AbstractValue.createFromLogicalOp(realm, "&&", inverse, getPathConditionForSame(c.alternate));
+      } else if (c.alternate.value === bottomValue || allPathsAreDifferent(c.alternate)) {
+        invariant(!allPathsAreDifferent(c.consequent));
+        if (allPathsAreTheSame(c.consequent)) return c.joinCondition;
+        return AbstractValue.createFromLogicalOp(realm, "&&", c.joinCondition, getPathConditionForSame(c.consequent));
+      } else if (allPathsAreTheSame(c.consequent)) {
         // In principle the simplifier shoud reduce the result of the else clause to this case. This does less work.
-        invariant(!allPathsAreNormal(c.alternate));
-        invariant(!allPathsAreAbrupt(c.alternate));
+        invariant(!allPathsAreTheSame(c.alternate));
+        invariant(!allPathsAreDifferent(c.alternate));
         let ijc = AbstractValue.createFromUnaryOp(realm, "!", c.joinCondition);
-        let alternatePC = AbstractValue.createFromLogicalOp(realm, "&&", ijc, getNormalPathConditionFor(c.alternate));
+        let alternatePC = AbstractValue.createFromLogicalOp(realm, "&&", ijc, getPathConditionForSame(c.alternate));
         return AbstractValue.createFromLogicalOp(realm, "||", c.joinCondition, alternatePC);
-      } else if (allPathsAreNormal(c.alternate)) {
+      } else if (allPathsAreTheSame(c.alternate)) {
         // In principle the simplifier shoud reduce the result of the else clause to this case. This does less work.
-        invariant(!allPathsAreNormal(c.consequent));
-        invariant(!allPathsAreAbrupt(c.consequent));
+        invariant(!allPathsAreTheSame(c.consequent));
+        invariant(!allPathsAreDifferent(c.consequent));
         let jc = c.joinCondition;
-        let consequentPC = AbstractValue.createFromLogicalOp(realm, "&&", jc, getNormalPathConditionFor(c.consequent));
+        let consequentPC = AbstractValue.createFromLogicalOp(realm, "&&", jc, getPathConditionForSame(c.consequent));
         let ijc = AbstractValue.createFromUnaryOp(realm, "!", jc);
         return AbstractValue.createFromLogicalOp(realm, "||", consequentPC, ijc);
       } else {
         let jc = c.joinCondition;
-        let consequentPC = AbstractValue.createFromLogicalOp(realm, "&&", jc, getNormalPathConditionFor(c.consequent));
+        let consequentPC = AbstractValue.createFromLogicalOp(realm, "&&", jc, getPathConditionForSame(c.consequent));
         let ijc = AbstractValue.createFromUnaryOp(realm, "!", jc);
-        let alternatePC = AbstractValue.createFromLogicalOp(realm, "&&", ijc, getNormalPathConditionFor(c.alternate));
+        let alternatePC = AbstractValue.createFromLogicalOp(realm, "&&", ijc, getPathConditionForSame(c.alternate));
         return AbstractValue.createFromLogicalOp(realm, "||", consequentPC, alternatePC);
       }
     }
   }
 
-  incorporatePriorSavedCompletion(priorCompletion: void | PossiblyNormalCompletion): void {
-    if (priorCompletion === undefined) return;
-    // A completion that has been saved and that is still active, will always have savedEffects.
-    invariant(priorCompletion.savedEffects !== undefined);
-    if (this.savedCompletion === undefined) {
-      // priorCompletion must be a previous savedCompletion, so the corresponding tracking maps would have been
-      // captured in priorCompletion.savedEffects and restored to the realm when clearing out this.savedCompletion.
-      // Since there is curently no savedCompletion, all the forks subsequent to the last normal fork in
-      // priorCompletion will have joined up again and their effects will have been applied to the current
-      // tracking maps.
-      invariant(this.modifiedBindings !== undefined);
-      this.savedCompletion = priorCompletion;
-    } else {
-      let savedEffects = this.savedCompletion.savedEffects;
-      invariant(savedEffects !== undefined);
-      this.redoBindings(savedEffects.modifiedBindings);
-      this.restoreProperties(savedEffects.modifiedProperties);
-      Join.updatePossiblyNormalCompletionWithSubsequentEffects(this, priorCompletion, savedEffects);
-      this.undoBindings(savedEffects.modifiedBindings);
-      this.restoreProperties(savedEffects.modifiedProperties);
-      invariant(this.savedCompletion !== undefined);
-      this.savedCompletion.savedEffects = undefined;
-      this.savedCompletion = Join.composePossiblyNormalCompletions(this, priorCompletion, this.savedCompletion);
-    }
-  }
-
-  captureEffects(completion: PossiblyNormalCompletion): void {
+  captureEffects(completion: JoinedNormalAndAbruptCompletions): void {
     invariant(completion.savedEffects === undefined);
     completion.savedEffects = new Effects(
       new SimpleNormalCompletion(this.intrinsics.undefined),
@@ -1418,13 +1235,13 @@ export class Realm {
     this.createdObjects = new Set();
   }
 
-  getCapturedEffects(v?: Value = this.intrinsics.undefined): Effects {
+  getCapturedEffects(v?: Completion | Value = this.intrinsics.undefined): Effects {
     invariant(this.generator !== undefined);
     invariant(this.modifiedBindings !== undefined);
     invariant(this.modifiedProperties !== undefined);
     invariant(this.createdObjects !== undefined);
     return new Effects(
-      new SimpleNormalCompletion(v),
+      v instanceof Completion ? v : new SimpleNormalCompletion(v),
       this.generator,
       this.modifiedBindings,
       this.modifiedProperties,
@@ -1432,9 +1249,9 @@ export class Realm {
     );
   }
 
-  stopEffectCaptureAndUndoEffects(completion: PossiblyNormalCompletion): void {
+  stopEffectCaptureAndUndoEffects(completion: JoinedNormalAndAbruptCompletions): void {
     // Roll back the state changes
-    this.undoBindings(this.modifiedBindings);
+    this.restoreBindings(this.modifiedBindings);
     this.restoreProperties(this.modifiedProperties);
 
     // Restore saved state
@@ -1463,7 +1280,7 @@ export class Realm {
     if (appendGenerator) this.appendGenerator(generator, leadingComment);
 
     // Restore modifiedBindings
-    this.redoBindings(modifiedBindings);
+    this.restoreBindings(modifiedBindings);
     this.restoreProperties(modifiedProperties);
 
     // track modifiedBindings
@@ -1565,10 +1382,8 @@ export class Realm {
 
     if (this.modifiedBindings !== undefined && !this.modifiedBindings.has(binding)) {
       this.modifiedBindings.set(binding, {
-        hasLeaked: undefined,
-        value: undefined,
-        previousHasLeaked: binding.hasLeaked,
-        previousValue: binding.value,
+        hasLeaked: binding.hasLeaked,
+        value: binding.value,
       });
     }
     return binding;
@@ -1646,21 +1461,17 @@ export class Realm {
     return result;
   }
 
-  redoBindings(modifiedBindings: void | Bindings): void {
+  // Restores each Binding in the given map to the value it
+  // had when it was entered into the map and updates the map to record
+  // the value the Binding had just before the call to this method.
+  restoreBindings(modifiedBindings: void | Bindings) {
     if (modifiedBindings === undefined) return;
     modifiedBindings.forEach(({ hasLeaked, value }, binding, m) => {
-      binding.hasLeaked = hasLeaked || false;
+      let l = binding.hasLeaked;
+      let v = binding.value;
+      binding.hasLeaked = hasLeaked;
       binding.value = value;
-    });
-  }
-
-  undoBindings(modifiedBindings: void | Bindings): void {
-    if (modifiedBindings === undefined) return;
-    modifiedBindings.forEach((entry, binding, m) => {
-      if (entry.hasLeaked === undefined) entry.hasLeaked = binding.hasLeaked;
-      if (entry.value === undefined) entry.value = binding.value;
-      binding.hasLeaked = entry.previousHasLeaked || false;
-      binding.value = entry.previousValue;
+      m.set(binding, { hasLeaked: l, value: v });
     });
   }
 
@@ -1753,7 +1564,7 @@ export class Realm {
     if (typeof message === "string") message = new StringValue(this, message);
     invariant(message instanceof StringValue);
     this.nextContextLocation = this.currentLocation;
-    return new ThrowCompletion(Construct(this, type, [message]), undefined, this.currentLocation);
+    return new ThrowCompletion(Construct(this, type, [message]), this.currentLocation);
   }
 
   appendGenerator(generator: Generator, leadingComment: string = ""): void {
