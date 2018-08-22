@@ -600,9 +600,10 @@ export default class AbstractObjectValue extends AbstractValue {
     let $GetHelper = ob => {
       if (ob instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(ob) && typeof P === "string") {
         return {
-          object: ob,
-          key: P,
+          configurable: true,
+          enumerable: P === "length" ? false : true,
           value: GetFromArrayWithWidenedNumericProperty(this.$Realm, ob, P),
+          writable: true,
         };
       }
       let d = ob.$GetOwnProperty(P);
