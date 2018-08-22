@@ -32,14 +32,14 @@ import { createOperationDescriptor } from "../../utils/generator.js";
 
 // most of the code here was taken from https://github.com/facebook/react/blob/master/packages/react/src/ReactElement.js
 let reactCode = `
-  function createReact(REACT_ELEMENT_TYPE, REACT_FRAGMENT_TYPE, REACT_PORTAL_TYPE, ReactCurrentOwner, create) {
+  function createReact(REACT_ELEMENT_TYPE, REACT_FRAGMENT_TYPE, REACT_PORTAL_TYPE, ReactCurrentOwner) {
     function makeEmptyFunction(arg) {
       return function() {
         return arg;
       };
     }
     var emptyFunction = function() {};
-    
+
     emptyFunction.thatReturns = makeEmptyFunction;
     emptyFunction.thatReturnsFalse = makeEmptyFunction(false);
     emptyFunction.thatReturnsTrue = makeEmptyFunction(true);
@@ -58,7 +58,7 @@ let reactCode = `
     function hasValidRef(config) {
       return config.ref !== undefined;
     }
-    
+
     function hasValidKey(config) {
       return config.key !== undefined;
     }
@@ -70,7 +70,7 @@ let reactCode = `
       this.setState = function () {}; // NO-OP
       this.setState.__PREPACK_MOCK__ = true;
     }
-    
+
     Component.prototype.isReactComponent = {};
 
     function PureComponent(props, context) {
@@ -99,7 +99,7 @@ let reactCode = `
       const escapedString = ('' + key).replace(escapeRegex, function(match) {
         return escaperLookup[match];
       });
-    
+
       return '$' + escapedString;
     }
 
@@ -147,7 +147,7 @@ let reactCode = `
       if (children == null) {
         return 0;
       }
-    
+
       return traverseAllChildrenImpl(children, '', callback, traverseContext);
     }
 
@@ -173,14 +173,14 @@ let reactCode = `
       traverseContext,
     ) {
       const type = typeof children;
-    
+
       if (type === 'undefined' || type === 'boolean') {
         // All of the above are perceived as null.
         children = null;
       }
-    
+
       let invokeCallback = false;
-    
+
       if (children === null) {
         invokeCallback = true;
       } else {
@@ -197,7 +197,7 @@ let reactCode = `
             }
         }
       }
-    
+
       if (invokeCallback) {
         callback(
           traverseContext,
@@ -208,13 +208,13 @@ let reactCode = `
         );
         return 1;
       }
-    
+
       let child;
       let nextName;
       let subtreeCount = 0; // Count of children found in the current subtree.
       const nextNamePrefix =
         nameSoFar === '' ? SEPARATOR : nameSoFar + SUBSEPARATOR;
-    
+
       if (Array.isArray(children)) {
         for (let i = 0; i < children.length; i++) {
           child = children[i];
@@ -228,7 +228,7 @@ let reactCode = `
         }
       } else {
         const iteratorFn = getIteratorFn(children);
-        if (typeof iteratorFn === 'function') {    
+        if (typeof iteratorFn === 'function') {
           var iterator = iteratorFn.call(children);
           let step;
           let ii = 0;
@@ -247,7 +247,7 @@ let reactCode = `
           var childrenString = '' + children;
         }
       }
-    
+
       return subtreeCount;
     }
 
@@ -338,7 +338,7 @@ let reactCode = `
       object: shim,
       string: shim,
       symbol: shim,
-  
+
       any: shim,
       arrayOf: getShim,
       element: shim,
@@ -534,12 +534,13 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
   addMockFunctionToObject(realm, reactValue, reactRequireName, "forwardRef", (funcVal, [func]) => {
     let forwardedRef = AbstractValue.createTemporalFromBuildFunction(
       realm,
-      FunctionValue,
+      ObjectValue,
       [funcVal, func],
       createOperationDescriptor("REACT_TEMPORAL_FUNC"),
       { skipInvariant: true, isPure: true }
     );
     invariant(forwardedRef instanceof AbstractObjectValue);
+    forwardedRef.makeSimple();
     realm.react.abstractHints.set(
       forwardedRef,
       createReactHintObject(reactValue, "forwardRef", [func], realm.intrinsics.undefined)
