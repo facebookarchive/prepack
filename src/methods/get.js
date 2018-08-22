@@ -42,6 +42,7 @@ import { Create, Environment, Join, Leak, Path, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeTemplateLiteral } from "@babel/types";
 import { createOperationDescriptor } from "../utils/generator.js";
+import { PropertyDescriptor, AbstractJoinedDescriptor } from "../descriptors.js";
 
 // ECMA262 7.3.22
 export function GetFunctionRealm(realm: Realm, obj: ObjectValue): Realm {
@@ -129,7 +130,7 @@ export function OrdinaryGet(
 
   // 2. Let desc be ? O.[[GetOwnProperty]](P).
   let desc = O.$GetOwnProperty(P);
-  if (desc === undefined || desc.joinCondition === undefined) return OrdinaryGetHelper();
+  if (desc === undefined || !(desc instanceof AbstractJoinedDescriptor)) return OrdinaryGetHelper();
 
   // joined descriptors need special treatment
   let joinCondition = desc.joinCondition;

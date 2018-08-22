@@ -163,6 +163,16 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
 }
 
 function leakDescriptor(realm: Realm, desc: Descriptor) {
+  if (desc instanceof AbstractJoinedDescriptor) {
+    if (desc.descriptor1) {
+      leakDescriptor(realm, desc.descriptor1);
+    }
+    if (desc.descriptor2) {
+      leakDescriptor(realm, desc.descriptor2);
+    }
+  }
+  invariant(desc instanceof PropertyDescriptor);
+
   if (desc.value) {
     if (desc.value instanceof Value) Leak.value(realm, desc.value);
     else if (desc.value !== undefined) {
@@ -309,8 +319,8 @@ export class PropertiesImplementation {
     }
 
     // joined descriptors need special treatment
-    let joinCondition = ownDesc.joinCondition;
-    if (joinCondition !== undefined) {
+    if (ownDesc instanceof AbstractJoinedDescriptor) {
+      let joinCondition = ownDesc.joinCondition;
       let descriptor2 = ownDesc.descriptor2;
       ownDesc = ownDesc.descriptor1;
       let e1 = Path.withCondition(joinCondition, () => {
@@ -376,7 +386,7 @@ export class PropertiesImplementation {
 
         // c. Let existingDescriptor be ? Receiver.[[GetOwnProperty]](P).
         let existingDescriptor = Receiver.$GetOwnProperty(P);
-        if (existingDescriptor !== undefined) {
+        if (existingDescriptor instanceof AbstractJoinedDescriptor) {
           if (existingDescriptor.descriptor1 === ownDesc) existingDescriptor = ownDesc;
           else if (existingDescriptor.descriptor2 === ownDesc) existingDescriptor = ownDesc;
         }
@@ -622,7 +632,7 @@ export class PropertiesImplementation {
     // 1. If Desc is undefined, return undefined.
     if (!Desc) return realm.intrinsics.undefined;
 
-    if (Desc.joinCondition) {
+    if (Desc instanceof AbstractJoinedDescriptor) {
       return AbstractValue.createFromConditionalOp(
         realm,
         Desc.joinCondition,
@@ -630,6 +640,7 @@ export class PropertiesImplementation {
         this.FromPropertyDescriptor(realm, Desc.descriptor2)
       );
     }
+    invariant(Desc instanceof PropertyDescriptor);
 
     // 2. Let obj be ObjectCreate(%ObjectPrototype%).
     let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
@@ -896,8 +907,8 @@ export class PropertiesImplementation {
       if (!(field in current)) {
         identical = false;
       } else {
-        let dval = InternalDescriptorPropertyToValue(realm, Desc[field]);
-        let cval = InternalDescriptorPropertyToValue(realm, current[field]);
+        let dval = InternalDescriptorPropertyToValue(realm, (Desc: any)[field]);
+        let cval = InternalDescriptorPropertyToValue(realm, (current: any)[field]);
         if (dval instanceof ConcreteValue && cval instanceof ConcreteValue) identical = SameValue(realm, dval, cval);
         else {
           identical = dval === cval;
@@ -1046,7 +1057,7 @@ export class PropertiesImplementation {
 
       // a. For each field of Desc that is present, set the corresponding attribute of the property named P of
       //    object O to the value of the field.
-      for (let field in Desc) current[field] = Desc[field];
+      for (let field in Desc) (current: any)[field] = (Desc: any)[field];
       InternalUpdatedProperty(realm, O, P, oldDesc);
     }
 
@@ -1496,12 +1507,11 @@ export class PropertiesImplementation {
     let X = existingBinding.descriptor;
     invariant(X !== undefined);
 
-    if (X.joinCondition !== undefined) {
-      D.joinCondition = X.joinCondition;
-      D.descriptor1 = X.descriptor1;
-      D.descriptor2 = X.descriptor2;
-      return D;
+    if (X instanceof AbstractJoinedDescriptor) {
+      return new AbstractJoinedDescriptor(X.joinCondition, X.descriptor1, X.descriptor2);
     }
+    invariant(X instanceof PropertyDescriptor);
+
     // 5. If X is a data property, then
     if (IsDataDescriptor(realm, X)) {
       let value = X.value;

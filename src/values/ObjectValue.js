@@ -14,7 +14,6 @@ import { ValuesDomain } from "../domains/index.js";
 import { FatalError } from "../errors.js";
 import type {
   DataBlock,
-  Descriptor,
   IterationKind,
   ObjectKind,
   PromiseReaction,
@@ -51,6 +50,7 @@ import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { typeAnnotation } from "@babel/types";
 import { createOperationDescriptor } from "../utils/generator.js";
+import { Descriptor, PropertyDescriptor, type DescriptorInitializer, InternalSlotDescriptor } from "../descriptors.js";
 
 export default class ObjectValue extends ConcreteValue {
   constructor(
@@ -126,6 +126,7 @@ export default class ObjectValue extends ConcreteValue {
         configurable: true,
         get: function() {
           let binding = this[propBindingName];
+          invariant(binding === undefined || binding.descriptor instanceof InternalSlotDescriptor);
           return binding === undefined ? undefined : binding.descriptor.value;
         },
         set: function(v) {
@@ -150,7 +151,7 @@ export default class ObjectValue extends ConcreteValue {
           );
           let binding = this[propBindingName];
           if (binding === undefined) {
-            let desc = { writeable: true, value: undefined };
+            let desc = new InternalSlotDescriptor(undefined);
             this[propBindingName] = binding = {
               descriptor: desc,
               object: this,
@@ -454,7 +455,7 @@ export default class ObjectValue extends ConcreteValue {
     name: SymbolValue | string,
     length: number,
     callback: NativeFunctionCallback,
-    desc?: Descriptor = {}
+    desc?: DescriptorInitializer
   ): Value {
     let intrinsicName;
     if (typeof name === "string") {
@@ -469,18 +470,29 @@ export default class ObjectValue extends ConcreteValue {
     return fnValue;
   }
 
-  defineNativeProperty(name: SymbolValue | string, value?: Value | Array<Value>, desc?: Descriptor = {}): void {
+  defineNativeProperty(
+    name: SymbolValue | string,
+    value?: Value | Array<Value>,
+    desc?: DescriptorInitializer
+  ): void {
     invariant(!value || value instanceof Value);
-    this.$DefineOwnProperty(name, {
-      value,
-      writable: true,
-      enumerable: false,
-      configurable: true,
-      ...desc,
-    });
+    this.$DefineOwnProperty(
+      name,
+      new PropertyDescriptor({
+        value,
+        writable: true,
+        enumerable: false,
+        configurable: true,
+        ...desc,
+      })
+    );
   }
 
-  defineNativeGetter(name: SymbolValue | string, callback: NativeFunctionCallback, desc?: Descriptor = {}): void {
+  defineNativeGetter(
+    name: SymbolValue | string,
+    callback: NativeFunctionCallback,
+    desc?: DescriptorInitializer
+  ): void {
     let intrinsicName, funcName;
     if (typeof name === "string") {
       funcName = `get ${name}`;
@@ -496,24 +508,34 @@ export default class ObjectValue extends ConcreteValue {
     }
 
     let func = new NativeFunctionValue(this.$Realm, intrinsicName, funcName, 0, callback);
-    this.$DefineOwnProperty(name, {
-      get: func,
-      set: this.$Realm.intrinsics.undefined,
-      enumerable: false,
-      configurable: true,
-      ...desc,
-    });
+    this.$DefineOwnProperty(
+      name,
+      new PropertyDescriptor({
+        get: func,
+        set: this.$Realm.intrinsics.undefined,
+        enumerable: false,
+        configurable: true,
+        ...desc,
+      })
+    );
   }
 
-  defineNativeConstant(name: SymbolValue | string, value?: Value | Array<Value>, desc?: Descriptor = {}): void {
+  defineNativeConstant(
+    name: SymbolValue | string,
+    value?: Value | Array<Value>,
+    desc?: DescriptorInitializer
+  ): void {
     invariant(!value || value instanceof Value);
-    this.$DefineOwnProperty(name, {
-      value,
-      writable: false,
-      enumerable: false,
-      configurable: false,
-      ...desc,
-    });
+    this.$DefineOwnProperty(
+      name,
+      new PropertyDescriptor({
+        value,
+        writable: false,
+        enumerable: false,
+        configurable: false,
+        ...desc,
+      })
+    );
   }
 
   // Note that internal properties will not be copied to the snapshot, nor will they be removed.
@@ -577,6 +599,7 @@ export default class ObjectValue extends ConcreteValue {
       let desc = propertyBinding.descriptor;
       if (desc === undefined) continue; // deleted
       Properties.ThrowIfMightHaveBeenDeleted(desc.value);
+      desc = desc.throwIfNotConcrete(this.$Realm);
       let serializedDesc: any = { enumerable: desc.enumerable, configurable: desc.configurable };
       if (desc.value) {
         serializedDesc.writable = desc.writable;

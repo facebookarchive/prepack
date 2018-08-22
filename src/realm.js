@@ -70,6 +70,7 @@ import { createOperationDescriptor, Generator, type TemporalOperationEntry } fro
 import { PreludeGenerator } from "./utils/PreludeGenerator.js";
 import { Environment, Functions, Join, Path, Properties, To, Utils, Widen } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
+import { AbstractJoinedDescriptor, InternalSlotDescriptor, PropertyDescriptor } from "./descriptors.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal } from "@babel/types";
 export type BindingEntry = { hasLeaked: boolean, value: void | Value };
 export type Bindings = Map<Binding, BindingEntry>;
@@ -1443,7 +1444,20 @@ export class Realm {
     }
     this.callReportPropertyAccess(binding);
     if (this.modifiedProperties !== undefined && !this.modifiedProperties.has(binding)) {
-      this.modifiedProperties.set(binding, cloneDescriptor(binding.descriptor));
+      let clone;
+      let desc = binding.descriptor;
+      if (desc === undefined) {
+        clone = undefined;
+      } else if (desc instanceof AbstractJoinedDescriptor) {
+        clone = new AbstractJoinedDescriptor(desc.joinCondition, desc.descriptor1, desc.descriptor2);
+      } else if (desc instanceof PropertyDescriptor) {
+        clone = cloneDescriptor(desc);
+      } else if (desc instanceof InternalSlotDescriptor) {
+        clone = new InternalSlotDescriptor(desc.value);
+      } else {
+        invariant(false, "unknown descriptor");
+      }
+      this.modifiedProperties.set(binding, clone);
     }
   }
 

@@ -9,38 +9,15 @@
 
 /* @flow strict-local */
 
-import type { Descriptor } from "../types.js";
+import { PropertyDescriptor } from "../descriptors";
 
-export function cloneDescriptor(d: void | Descriptor): void | Descriptor {
+export function cloneDescriptor(d: void | PropertyDescriptor): void | PropertyDescriptor {
   if (d === undefined) return undefined;
-  let clone = {};
-  copyDescriptor(d, clone);
-  return clone;
-}
-
-export function clearDescriptor(d: Descriptor): void {
-  delete d.writable;
-  delete d.enumerable;
-  delete d.configurable;
-  delete d.value;
-  delete d.get;
-  delete d.set;
-}
-
-export function copyDescriptor(from: Descriptor, to: Descriptor): void {
-  if (from.hasOwnProperty("writable")) to.writable = from.writable;
-  if (from.hasOwnProperty("enumerable")) to.enumerable = from.enumerable;
-  if (from.hasOwnProperty("configurable")) to.configurable = from.configurable;
-  if (from.hasOwnProperty("value")) {
-    if (from.value instanceof Array) to.value = from.value.slice();
-    else to.value = from.value;
-  }
-  if (from.hasOwnProperty("get")) to.get = from.get;
-  if (from.hasOwnProperty("set")) to.set = from.set;
+  return new PropertyDescriptor(d);
 }
 
 // does not check if the contents of value properties are the same
-export function equalDescriptors(d1: Descriptor, d2: Descriptor): boolean {
+export function equalDescriptors(d1: PropertyDescriptor, d2: PropertyDescriptor): boolean {
   if (d1.hasOwnProperty("writable")) {
     if (!d2.hasOwnProperty("writable")) return false;
     if (d1.writable !== d2.writable) return false;
