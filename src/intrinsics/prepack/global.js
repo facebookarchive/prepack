@@ -507,4 +507,13 @@ export default function(realm: Realm): void {
     enumerable: false,
     configurable: true,
   });
+
+  global.$DefineOwnProperty("__fatal", {
+    value: new NativeFunctionValue(realm, "global.__fatal", "__fatal", 0, (context, []) => {
+      throw new FatalError();
+    }),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
 }
