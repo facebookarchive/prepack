@@ -2208,9 +2208,6 @@ export class ResidualHeapSerializer {
   }
 
   _getContext(): SerializationContext {
-    // TODO #482: Values serialized by nested generators would currently only get defined
-    // along the code of the nested generator; their definitions need to get hoisted
-    // or repeated so that they are accessible and defined from all using scopes
     let context = {
       serializeOperationDescriptor: (
         operationDescriptor: OperationDescriptor,
