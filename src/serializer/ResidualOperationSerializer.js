@@ -106,9 +106,6 @@ export class ResidualOperationSerializer {
       case "DO_WHILE":
         babelNode = this._serializeDoWhile(data, nodes, context, valuesToProcess);
         break;
-      case "APPEND_GENERATOR":
-        babelNode = this._serializeAppendGenerator(data, nodes, context, valuesToProcess);
-        break;
       case "JOIN_GENERATORS":
         babelNode = this._serializeJoinGenerators(data, nodes, context, valuesToProcess);
         break;
@@ -339,30 +336,6 @@ export class ResidualOperationSerializer {
       return this._serializeVoidOperationDescriptor(((babelNode: any): BabelNodeExpression));
     }
     return babelNode;
-  }
-
-  _serializeAppendGenerator(
-    { generator }: OperationDescriptorData,
-    [leadingCommentNode]: Array<BabelNodeExpression>,
-    context?: SerializationContext,
-    valuesToProcess?: Set<AbstractValue | ObjectValue>
-  ) {
-    invariant(context !== undefined);
-    invariant(generator !== undefined);
-    invariant(valuesToProcess !== undefined);
-    let leadingComment = ((leadingCommentNode: any): BabelNodeStringLiteral).value;
-    let statements = context.serializeGenerator(generator, valuesToProcess);
-    if (statements.length === 1) {
-      let statement = statements[0];
-      if (leadingComment.length > 0)
-        statement.leadingComments = [({ type: "BlockComment", value: leadingComment }: any)];
-      return statement;
-    }
-    let block = t.blockStatement(statements);
-    if (leadingComment.length > 0) {
-      block.leadingComments = [({ type: "BlockComment", value: leadingComment }: any)];
-    }
-    return block;
   }
 
   _serializeAssumeCall(data: OperationDescriptorData, [c, s]: Array<BabelNodeExpression>) {
