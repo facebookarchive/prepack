@@ -631,16 +631,16 @@ export class Generator {
   emitPropertyModification(propertyBinding: PropertyBinding): void {
     invariant(this.effectsToApply !== undefined);
     let desc = propertyBinding.descriptor;
-    if (desc !== undefined) {
+    if (desc !== undefined && desc instanceof PropertyDescriptor) {
       let value = desc.value;
       if (value instanceof AbstractValue) {
         if (value.kind === "conditional") {
           let [c, x, y] = value.args;
           if (c instanceof AbstractValue && c.kind === "template for property name condition") {
-            let ydesc = new PropertyDescriptor(Object.assign({}, desc, { value: y }));
+            let ydesc = new PropertyDescriptor(Object.assign({}, (desc: any), { value: y }));
             let yprop = Object.assign({}, propertyBinding, { descriptor: ydesc });
             this.emitPropertyModification(yprop);
-            let xdesc = new PropertyDescriptor(Object.assign({}, desc, { value: x }));
+            let xdesc = new PropertyDescriptor(Object.assign({}, (desc: any), { value: x }));
             let key = c.args[0];
             invariant(key instanceof AbstractValue);
             let xprop = Object.assign({}, propertyBinding, { key, descriptor: xdesc });
@@ -726,7 +726,7 @@ export class Generator {
     });
   }
 
-  emitDefineProperty(object: ObjectValue, key: string, desc: Descriptor, isDescChanged: boolean = true): void {
+  emitDefineProperty(object: ObjectValue, key: string, desc: PropertyDescriptor, isDescChanged: boolean = true): void {
     if (object.refuseSerialization) return;
     if (desc.enumerable && desc.configurable && desc.writable && desc.value && !isDescChanged) {
       let descValue = desc.value;
