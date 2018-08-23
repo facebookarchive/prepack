@@ -85,10 +85,11 @@ export class ResidualOperationSerializer {
   serializeStatement(
     operationDescriptor: OperationDescriptor,
     nodes: Array<BabelNodeExpression>,
-    context?: SerializationContext,
-    valuesToProcess?: Set<AbstractValue | ObjectValue>
+    context: SerializationContext,
+    valuesToProcess: Set<AbstractValue | ObjectValue>,
+    declaredId: void | string
   ): BabelNodeStatement {
-    let { data, kind, type } = operationDescriptor;
+    let { data, type } = operationDescriptor;
     let babelNode;
 
     switch (type) {
@@ -164,20 +165,13 @@ export class ResidualOperationSerializer {
 
       default:
         let babelNodeExpression = this.serializeExpression(operationDescriptor, nodes, context);
-        switch (kind) {
-          case "DERIVED":
-            babelNode = this._serializeDerivedOperationDescriptor(data, babelNodeExpression);
-            break;
-          case "VOID":
-            babelNode = this._serializeVoidOperationDescriptor(babelNodeExpression);
-            break;
-          default:
-            invariant(false, `operation descriptor "kind" not recognized when serializing operation descriptor`);
-        }
+        if (declaredId !== undefined)
+          babelNode = this._serializeDerivedOperationDescriptor(declaredId, babelNodeExpression);
+        else babelNode = this._serializeVoidOperationDescriptor(babelNodeExpression);
         return babelNode;
     }
 
-    invariant(kind === undefined);
+    invariant(declaredId === undefined);
     return babelNode;
   }
 
@@ -1043,11 +1037,7 @@ export class ResidualOperationSerializer {
     return t.conditionalExpression(c, x, y);
   }
 
-  _serializeDerivedOperationDescriptor(
-    { id }: OperationDescriptorData,
-    babelNode: BabelNodeExpression
-  ): BabelNodeStatement {
-    invariant(id !== undefined);
+  _serializeDerivedOperationDescriptor(id: string, babelNode: BabelNodeExpression): BabelNodeStatement {
     return t.variableDeclaration("var", [t.variableDeclarator(t.identifier(id), babelNode)]);
   }
 
