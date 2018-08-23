@@ -54,7 +54,7 @@ export function prepackSources(
   if (options.check) {
     realm.generator = new Generator(realm, "main", realm.pathConditions);
     let logger = new Logger(realm, !!options.internalDebug);
-    let modules = new Modules(realm, logger, !!options.logModules, !!options.accelerateUnsupportedRequires);
+    let modules = new Modules(realm, logger, !!options.logModules);
     let [result] = realm.$GlobalEnv.executeSources(sourceFileCollection.toArray());
     if (result instanceof AbruptCompletion) throw result;
     invariant(options.check);
