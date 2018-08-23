@@ -33,7 +33,7 @@
     "flow-ci": "flow version; flow check",
     "test-serializer": "babel-node --stack_trace_limit=200 --stack_size=10000 scripts/test-runner.js",
     "test-serializer-single": "yarn test-serializer --debugNames --verbose --fast --filter",
-    "test-serializer-with-coverage": "./node_modules/.bin/istanbul cover ./lib/test-error-handler.js --dir coverage.error && ./node_modules/.bin/istanbul cover ./lib/test-runner.js && ./node_modules/.bin/remap-istanbul -i coverage.error/coverage.json -i coverage/coverage.json -o coverage-sourcemapped -t html",
+    "test-serializer-with-coverage": "./node_modules/.bin/istanbul cover ./lib/test-error-handler.js --dir coverage.error && node --stack_trace_limit=200 --stack_size=10000 ./node_modules/istanbul/lib/cli.js cover ./lib/test-runner.js && ./node_modules/.bin/remap-istanbul -i coverage.error/coverage.json -i coverage/coverage.json -o coverage-sourcemapped -t html",
     "test-sourcemaps": "babel-node scripts/generate-sourcemaps-test.js && bash < scripts/test-sourcemaps.sh",
     "test-test262": "babel-node scripts/test262-runner.js",
     "test-test262-nightly": "NIGHTLY_BUILD=true babel-node scripts/test262-runner.js",
