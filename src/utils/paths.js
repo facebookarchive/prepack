@@ -36,8 +36,11 @@ export class PathImplementation {
   }
 
   withCondition<T>(condition: Value, evaluate: () => T): T {
-    if (!condition.mightNotBeFalse()) throw new InfeasiblePathError();
     let realm = condition.$Realm;
+    if (!condition.mightNotBeFalse()) {
+      if (realm.impliesCounterOverflowed) throw new InfeasiblePathError();
+      invariant(false, "assuming that false equals true is asking for trouble");
+    }
     let savedPath = realm.pathConditions;
     realm.pathConditions = [];
     try {
@@ -58,8 +61,11 @@ export class PathImplementation {
   }
 
   withInverseCondition<T>(condition: Value, evaluate: () => T): T {
-    if (!condition.mightNotBeTrue()) throw new InfeasiblePathError();
     let realm = condition.$Realm;
+    if (!condition.mightNotBeTrue()) {
+      if (realm.impliesCounterOverflowed) throw new InfeasiblePathError();
+      invariant(false, "assuming that false equals true is asking for trouble");
+    }
     let savedPath = realm.pathConditions;
     realm.pathConditions = [];
     try {
@@ -100,11 +106,14 @@ export class PathImplementation {
 
 // A path condition is an abstract value that must be true in this particular code path, so we want to assume as much
 function pushPathCondition(condition: Value): void {
-  invariant(condition.mightNotBeFalse(), "pushing false"); // it is mistake to assume that false is true
+  let realm = condition.$Realm;
+  if (!condition.mightNotBeFalse()) {
+    if (realm.impliesCounterOverflowed) throw new InfeasiblePathError();
+    invariant(false, "assuming that false equals true is asking for trouble");
+  }
   if (condition instanceof ConcreteValue) return;
   if (!condition.mightNotBeTrue()) return;
   invariant(condition instanceof AbstractValue);
-  let realm = condition.$Realm;
   if (condition.kind === "&&") {
     let left = condition.args[0];
     let right = condition.args[1];
@@ -147,8 +156,11 @@ function pushPathCondition(condition: Value): void {
 
 // An inverse path condition is an abstract value that must be false in this particular code path, so we want to assume as much
 function pushInversePathCondition(condition: Value): void {
-  // it is mistake to assume that true is false.
-  invariant(condition.mightNotBeTrue());
+  let realm = condition.$Realm;
+  if (!condition.mightNotBeTrue()) {
+    if (realm.impliesCounterOverflowed) throw new InfeasiblePathError();
+    invariant(false, "assuming that false equals true is asking for trouble");
+  }
   if (condition instanceof ConcreteValue) return;
   invariant(condition instanceof AbstractValue);
   if (condition.kind === "||") {
@@ -158,7 +170,6 @@ function pushInversePathCondition(condition: Value): void {
     pushInversePathCondition(left);
     if (right.mightNotBeTrue()) pushInversePathCondition(right);
   } else {
-    let realm = condition.$Realm;
     if (condition.kind === "!=" || condition.kind === "==") {
       let left = condition.args[0];
       let right = condition.args[1];
