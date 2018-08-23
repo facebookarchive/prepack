@@ -101,7 +101,7 @@ export function EnumerableOwnProperties(
 
       // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
       if (desc && desc.enumerable) {
-        Properties.ThrowIfMightHaveBeenDeleted(desc.value);
+        Properties.ThrowIfMightHaveBeenDeleted(desc);
 
         // 1. If kind is "key", append key to properties.
         if (kind === "key") {

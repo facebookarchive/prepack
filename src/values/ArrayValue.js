@@ -149,7 +149,7 @@ export default class ArrayValue extends ObjectValue {
         oldLenDesc !== undefined && !IsAccessorDescriptor(this.$Realm, oldLenDesc),
         "cannot be undefined or an accessor descriptor"
       );
-      Properties.ThrowIfMightHaveBeenDeleted(oldLenDesc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(oldLenDesc);
 
       // c. Let oldLen be oldLenDesc.[[Value]].
       let oldLen = oldLenDesc.value;

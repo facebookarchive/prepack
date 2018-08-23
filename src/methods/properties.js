@@ -53,6 +53,7 @@ import { Create, Environment, Functions, Leak, Join, Path, To } from "../singlet
 import IsStrict from "../utils/strict.js";
 import { createOperationDescriptor } from "../utils/generator.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
+import { PropertyDescriptor, AbstractJoinedDescriptor } from "../descriptors.js";
 
 function StringKey(key: PropertyKeyValue): string {
   if (key instanceof StringValue) key = key.value;
@@ -1104,7 +1105,7 @@ export class PropertiesImplementation {
 
       // b. If propDesc is not undefined and propDesc.[[Enumerable]] is true, then
       if (propDesc && propDesc.enumerable) {
-        this.ThrowIfMightHaveBeenDeleted(propDesc.value);
+        this.ThrowIfMightHaveBeenDeleted(propDesc);
 
         // i. Let descObj be ? Get(props, nextKey).
         let descObj = Get(realm, props, nextKey);
@@ -1689,7 +1690,7 @@ export class PropertiesImplementation {
         // Omit non-enumerable properties.
         let desc = obj.$GetOwnProperty(key);
         if (desc && !desc.enumerable) {
-          this.ThrowIfMightHaveBeenDeleted(desc.value);
+          this.ThrowIfMightHaveBeenDeleted(desc);
           index += 1;
           visited.add(key.value);
           continue;
@@ -1709,10 +1710,20 @@ export class PropertiesImplementation {
     return iterator;
   }
 
-  ThrowIfMightHaveBeenDeleted(
-    value: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
-  ): void {
-    if (!(value instanceof Value)) return;
+  ThrowIfMightHaveBeenDeleted(desc: Descriptor): void {
+    if (desc instanceof AbstractJoinedDescriptor) {
+      if (desc.descriptor1) {
+        this.ThrowIfMightHaveBeenDeleted(desc.descriptor1);
+      }
+      if (desc.descriptor2) {
+        this.ThrowIfMightHaveBeenDeleted(desc.descriptor2);
+      }
+    }
+    invariant(desc instanceof PropertyDescriptor, "internal slots should never assert using this");
+    let value = desc.value;
+    if (value === undefined) {
+      return;
+    }
     if (!value.mightHaveBeenDeleted()) return;
     invariant(value instanceof AbstractValue); // real empty values should never get here
     let v = value.$Realm.simplifyAndRefineAbstractValue(value);

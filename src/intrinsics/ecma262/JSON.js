@@ -294,7 +294,7 @@ function InternalCloneObject(realm: Realm, val: ObjectValue): ObjectValue {
     if (binding === undefined || binding.descriptor === undefined) continue; // deleted
     invariant(binding.descriptor !== undefined);
     let value = binding.descriptor.value;
-    Properties.ThrowIfMightHaveBeenDeleted(value);
+    Properties.ThrowIfMightHaveBeenDeleted(binding.descriptor);
     if (value === undefined) {
       AbstractValue.reportIntrospectionError(val, key); // cannot handle accessors
       throw new FatalError();

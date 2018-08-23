@@ -30,7 +30,7 @@ export default class StringExotic extends ObjectValue {
 
     // 3. If desc is not undefined, return desc.
     if (desc !== undefined) {
-      Properties.ThrowIfMightHaveBeenDeleted(desc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(desc);
       return desc;
     }
 

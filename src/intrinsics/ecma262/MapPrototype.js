@@ -307,7 +307,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 23.1.3.12
   let entriesPropertyDescriptor = obj.$GetOwnProperty("entries");
   invariant(entriesPropertyDescriptor);
-  Properties.ThrowIfMightHaveBeenDeleted(entriesPropertyDescriptor.value);
+  Properties.ThrowIfMightHaveBeenDeleted(entriesPropertyDescriptor);
   obj.$DefineOwnProperty(realm.intrinsics.SymbolIterator, entriesPropertyDescriptor);
 
   // ECMA262 23.1.3.13

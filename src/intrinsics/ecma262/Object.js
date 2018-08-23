@@ -97,7 +97,7 @@ function copyKeys(realm: Realm, keys, from, to): void {
 
     // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
     if (desc && desc.enumerable) {
-      Props.ThrowIfMightHaveBeenDeleted(desc.value);
+      Props.ThrowIfMightHaveBeenDeleted(desc);
 
       // 1. Let propValue be ? Get(from, nextKey).
       let propValue = Get(realm, from, nextKey);
@@ -404,7 +404,7 @@ export default function(realm: Realm): NativeFunctionValue {
     for (let key of ownKeys) {
       // a. Let desc be ? obj.[[GetOwnProperty]](key).
       let desc = obj.$GetOwnProperty(key);
-      if (desc !== undefined) Props.ThrowIfMightHaveBeenDeleted(desc.value);
+      if (desc !== undefined) Props.ThrowIfMightHaveBeenDeleted(desc);
 
       // b. Let descriptor be ! FromPropertyDescriptor(desc).
       let descriptor = Props.FromPropertyDescriptor(realm, desc);

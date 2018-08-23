@@ -904,7 +904,7 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
 
     // 5. If existingProp is undefined, return false.
     if (!existingProp) return false;
-    Properties.ThrowIfMightHaveBeenDeleted(existingProp.value);
+    Properties.ThrowIfMightHaveBeenDeleted(existingProp);
 
     // 6. If existingProp.[[Configurable]] is true, return false.
     if (existingProp.configurable) return false;
@@ -954,7 +954,7 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
 
     // 5. If existingProp is undefined, return ? IsExtensible(globalObject).
     if (!existingProp) return IsExtensible(realm, globalObject);
-    Properties.ThrowIfMightHaveBeenDeleted(existingProp.value);
+    Properties.ThrowIfMightHaveBeenDeleted(existingProp);
 
     // 6. If existingProp.[[Configurable]] is true, return true.
     if (existingProp.configurable) return true;
@@ -1029,7 +1029,7 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
       desc = { value: V, writable: true, enumerable: true, configurable: D };
     } else {
       // 6. Else,
-      Properties.ThrowIfMightHaveBeenDeleted(existingProp.value);
+      Properties.ThrowIfMightHaveBeenDeleted(existingProp);
       // a. Let desc be the PropertyDescriptor{[[Value]]: V }.
       desc = { value: V };
     }

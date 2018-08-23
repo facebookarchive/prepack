@@ -249,7 +249,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 23.2.3.8
   let valuesPropertyDescriptor = obj.$GetOwnProperty("values");
   invariant(valuesPropertyDescriptor);
-  Properties.ThrowIfMightHaveBeenDeleted(valuesPropertyDescriptor.value);
+  Properties.ThrowIfMightHaveBeenDeleted(valuesPropertyDescriptor);
   obj.$DefineOwnProperty("keys", valuesPropertyDescriptor);
 
   // ECMA262 23.2.3.11

@@ -36,7 +36,7 @@ export default class ArgumentsExotic extends ObjectValue {
 
     // 3. If desc is undefined, return desc.
     if (desc === undefined) return undefined;
-    Properties.ThrowIfMightHaveBeenDeleted(desc.value);
+    Properties.ThrowIfMightHaveBeenDeleted(desc);
 
     // 4. Let map be args.[[ParameterMap]].
     let map = args.$ParameterMap;

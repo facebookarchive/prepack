@@ -569,7 +569,7 @@ export default class ObjectValue extends ConcreteValue {
 
       // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
       if (desc && desc.enumerable) {
-        Properties.ThrowIfMightHaveBeenDeleted(desc.value);
+        Properties.ThrowIfMightHaveBeenDeleted(desc);
 
         // 1. Let propValue be ? Get(from, nextKey).
         let propValue = Get(this.$Realm, from, nextKey);
@@ -586,7 +586,7 @@ export default class ObjectValue extends ConcreteValue {
     for (let [key, propertyBinding] of this.properties) {
       let desc = propertyBinding.descriptor;
       if (desc === undefined) continue; // deleted
-      Properties.ThrowIfMightHaveBeenDeleted(desc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(desc);
       desc = desc.throwIfNotConcrete(this.$Realm);
       let serializedDesc: any = { enumerable: desc.enumerable, configurable: desc.configurable };
       if (desc.value) {

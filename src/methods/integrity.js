@@ -73,7 +73,7 @@ export function SetIntegrityLevel(realm: Realm, O: ObjectValue, level: Integrity
 
       // ii. If currentDesc is not undefined, then
       if (currentDesc) {
-        Properties.ThrowIfMightHaveBeenDeleted(currentDesc.value);
+        Properties.ThrowIfMightHaveBeenDeleted(currentDesc);
         let desc;
 
         // 1. If IsAccessorDescriptor(currentDesc) is true, then
@@ -122,7 +122,7 @@ export function TestIntegrityLevel(realm: Realm, O: ObjectValue, level: Integrit
 
     // b. If currentDesc is not undefined, then
     if (currentDesc) {
-      Properties.ThrowIfMightHaveBeenDeleted(currentDesc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(currentDesc);
 
       // i. If currentDesc.[[Configurable]] is true, return false.
       if (currentDesc.configurable === true) return false;

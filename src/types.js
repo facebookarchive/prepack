@@ -438,9 +438,7 @@ export type PropertiesType = {
   // ECMA262 13.7.5.15
   EnumerateObjectProperties(realm: Realm, O: ObjectValue): ObjectValue,
 
-  ThrowIfMightHaveBeenDeleted(
-    value: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
-  ): void,
+  ThrowIfMightHaveBeenDeleted(desc: Descriptor): void,
 
   ThrowIfInternalSlotNotWritable<T: ObjectValue>(realm: Realm, object: T, key: string): T,
 
