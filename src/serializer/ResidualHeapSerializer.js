@@ -44,7 +44,7 @@ import type {
 import { Generator } from "../utils/generator.js";
 import { PreludeGenerator } from "../utils/PreludeGenerator.js";
 import { NameGenerator } from "../utils/NameGenerator.js";
-import type { OperationDescriptor, SerializationContext } from "../utils/generator.js";
+import type { SerializationContext } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import type {
   ResidualFunctionBinding,
@@ -1998,7 +1998,7 @@ export class ResidualHeapSerializer {
       return t.memberExpression(obj, prop, true);
     }
     invariant(val.operationDescriptor !== undefined);
-    let serializedValue = this.residualOperationSerializer.serialize(val.operationDescriptor, serializedArgs);
+    let serializedValue = this.residualOperationSerializer.serializeExpression(val.operationDescriptor, serializedArgs);
     if (serializedValue.type === "Identifier") {
       let id = ((serializedValue: any): BabelNodeIdentifier);
       invariant(
@@ -2212,21 +2212,9 @@ export class ResidualHeapSerializer {
     // along the code of the nested generator; their definitions need to get hoisted
     // or repeated so that they are accessible and defined from all using scopes
     let context = {
-      serializeOperationDescriptor: (
-        operationDescriptor: OperationDescriptor,
-        nodes: Array<BabelNodeExpression>,
-        _context: SerializationContext,
-        valuesToProcess: Set<AbstractValue | ObjectValue>
-      ) => {
-        let serializedValue = this.residualOperationSerializer.serialize(
-          operationDescriptor,
-          nodes,
-          _context,
-          valuesToProcess
-        );
-
-        return ((serializedValue: any): BabelNodeStatement);
-      },
+      serializeOperationDescriptor: this.residualOperationSerializer.serializeStatement.bind(
+        this.residualOperationSerializer
+      ),
       serializeBinding: this.serializeBinding.bind(this),
       serializeBindingAssignment: (binding: Binding, bindingValue: Value) => {
         let serializeBinding = this.serializeBinding(binding);
