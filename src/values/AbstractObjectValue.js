@@ -404,13 +404,13 @@ export default class AbstractObjectValue extends AbstractValue {
           break;
         }
       }
-      let desc = {
+      let desc = new PropertyDescriptor({
         value: "value" in Desc ? Desc.value : this.$Realm.intrinsics.undefined,
         writable: "writable" in Desc ? Desc.writable : firstExistingDesc ? firstExistingDesc.writable : false,
         enumerable: "enumerable" in Desc ? Desc.enumerable : firstExistingDesc ? firstExistingDesc.enumerable : false,
         configurable:
           "configurable" in Desc ? Desc.configurable : firstExistingDesc ? firstExistingDesc.configurable : false,
-      };
+      });
       let newVal = desc.value;
       if (this.kind === "conditional") {
         // this is the join of two concrete/abstract objects

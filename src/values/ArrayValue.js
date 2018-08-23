@@ -25,6 +25,7 @@ import { Leak, Properties, To, Utils } from "../singletons.js";
 import { type OperationDescriptor } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import { NestedOptimizedFunctionSideEffect } from "../errors.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 type PossibleNestedOptimizedFunctions = [
   { func: BoundFunctionValue | ECMAScriptSourceFunctionValue, thisValue: Value },
@@ -98,9 +99,9 @@ function createArrayWithWidenedNumericProperty(
   // Add unknownProperty so we manually handle this object property access
   abstractArrayValue.unknownProperty = {
     key: undefined,
-    descriptor: {
+    descriptor: new PropertyDescriptor({
       value: AbstractValue.createFromType(realm, Value, "widened numeric property"),
-    },
+    }),
     object: abstractArrayValue,
   };
   return abstractArrayValue;

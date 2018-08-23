@@ -40,6 +40,7 @@ import {
 import { Create, Leak, Properties as Props, To } from "../../singletons.js";
 import { createOperationDescriptor } from "../../utils/generator.js";
 import invariant from "../../invariant.js";
+import { PropertyDescriptor } from "../../descriptors.js";
 
 function snapshotToObjectAndRemoveProperties(
   to: ObjectValue | AbstractObjectValue,
@@ -369,12 +370,12 @@ export default function(realm: Realm): NativeFunctionValue {
       let set = Get(realm, result, "set");
       invariant(get instanceof AbstractValue);
       invariant(set instanceof AbstractValue);
-      desc = {
+      desc = new PropertyDescriptor({
         get,
         set,
         enumerable: false,
         configurable: true,
-      };
+      });
     }
 
     // 4. Return FromPropertyDescriptor(desc).

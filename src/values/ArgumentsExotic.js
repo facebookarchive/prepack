@@ -18,6 +18,7 @@ import { SameValuePartial } from "../methods/abstract.js";
 import { Get, OrdinaryGet } from "../methods/get.js";
 import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 export default class ArgumentsExotic extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {
@@ -75,7 +76,7 @@ export default class ArgumentsExotic extends ObjectValue {
       // a. If Desc.[[Value]] is not present and Desc.[[Writable]] is present and its value is false, then
       if (Desc.value === undefined && Desc.writable === false) {
         // i. Let newArgDesc be a copy of Desc.
-        newArgDesc = Object.assign({}, Desc);
+        newArgDesc = new PropertyDescriptor(Desc);
 
         // ii. Set newArgDesc.[[Value]] to Get(map, P).
         newArgDesc.value = Get(this.$Realm, map, P);

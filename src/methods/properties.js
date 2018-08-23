@@ -311,12 +311,12 @@ export class PropertiesImplementation {
 
       // i. Let ownDesc be the PropertyDescriptor{[[Value]]: undefined, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: true}.
       if (!ownDesc)
-        ownDesc = ({
+        ownDesc = new PropertyDescriptor({
           value: realm.intrinsics.undefined,
           writable: true,
           enumerable: true,
           configurable: true,
-        }: any);
+        });
     }
 
     // joined descriptors need special treatment
@@ -421,7 +421,7 @@ export class PropertiesImplementation {
           }
 
           // iii. Let valueDesc be the PropertyDescriptor{[[Value]]: V}.
-          let valueDesc = { value: V };
+          let valueDesc = new PropertyDescriptor({ value: V });
 
           // iv. Return ? Receiver.[[DefineOwnProperty]](P, valueDesc).
           if (weakDeletion || existingDescValue.mightHaveBeenDeleted()) {
@@ -580,12 +580,12 @@ export class PropertiesImplementation {
         ]);
         newVal = AbstractValue.createFromConditionalOp(realm, cond, V, sentinel);
       }
-      prop.descriptor = {
+      prop.descriptor = new PropertyDescriptor({
         writable: true,
         enumerable: true,
         configurable: true,
         value: newVal,
-      };
+      });
     } else {
       // join V with current value of O.unknownProperty. I.e. weak update.
       let oldVal = desc.value;
@@ -868,12 +868,17 @@ export class PropertiesImplementation {
         //    to its default value.
         if (O !== undefined) {
           invariant(P !== undefined);
-          InternalSetProperty(realm, O, P, {
-            value: "value" in Desc ? Desc.value : realm.intrinsics.undefined,
-            writable: "writable" in Desc ? Desc.writable : false,
-            enumerable: "enumerable" in Desc ? Desc.enumerable : false,
-            configurable: "configurable" in Desc ? Desc.configurable : false,
-          });
+          InternalSetProperty(
+            realm,
+            O,
+            P,
+            new PropertyDescriptor({
+              value: "value" in Desc ? Desc.value : realm.intrinsics.undefined,
+              writable: "writable" in Desc ? Desc.writable : false,
+              enumerable: "enumerable" in Desc ? Desc.enumerable : false,
+              configurable: "configurable" in Desc ? Desc.configurable : false,
+            })
+          );
           InternalUpdatedProperty(realm, O, P, undefined);
         }
       } else {
@@ -884,12 +889,17 @@ export class PropertiesImplementation {
         //    default value.
         if (O !== undefined) {
           invariant(P !== undefined);
-          InternalSetProperty(realm, O, P, {
-            get: "get" in Desc ? Desc.get : realm.intrinsics.undefined,
-            set: "set" in Desc ? Desc.set : realm.intrinsics.undefined,
-            enumerable: "enumerable" in Desc ? Desc.enumerable : false,
-            configurable: "configurable" in Desc ? Desc.configurable : false,
-          });
+          InternalSetProperty(
+            realm,
+            O,
+            P,
+            new PropertyDescriptor({
+              get: "get" in Desc ? Desc.get : realm.intrinsics.undefined,
+              set: "set" in Desc ? Desc.set : realm.intrinsics.undefined,
+              enumerable: "enumerable" in Desc ? Desc.enumerable : false,
+              configurable: "configurable" in Desc ? Desc.configurable : false,
+            })
+          );
           InternalUpdatedProperty(realm, O, P, undefined);
         }
       }
@@ -1261,7 +1271,7 @@ export class PropertiesImplementation {
     invariant(DescValue instanceof Value);
 
     // 2. Let newLenDesc be a copy of Desc.
-    let newLenDesc = Object.assign({}, Desc);
+    let newLenDesc = new PropertyDescriptor(Desc);
 
     // 3. Let newLen be ? ToUint32(Desc.[[Value]]).
     let newLen = To.ToUint32(realm, DescValue);
@@ -1394,7 +1404,7 @@ export class PropertiesImplementation {
         { isPure: true }
       );
       // TODO: We can't be sure what the descriptor will be, but the value will be abstract.
-      return { configurable: true, enumerable: true, value: absVal, writable: true };
+      return new PropertyDescriptor({ configurable: true, enumerable: true, value: absVal, writable: true });
     }
 
     // 1. Assert: IsPropertyKey(P) is true.
@@ -1455,7 +1465,7 @@ export class PropertiesImplementation {
             } else {
               absVal = createAbstractPropertyValue(Value);
             }
-            return { configurable: true, enumerable: true, value: absVal, writable: true };
+            return new PropertyDescriptor({ configurable: true, enumerable: true, value: absVal, writable: true });
           } else {
             invariant(P instanceof SymbolValue);
             // Simple objects don't have symbol properties
@@ -1502,7 +1512,7 @@ export class PropertiesImplementation {
     }
 
     // 3. Let D be a newly created Property Descriptor with no fields.
-    let D = {};
+    let D = new PropertyDescriptor({});
 
     // 4. Let X be O's own property whose key is P.
     let X = existingBinding.descriptor;
@@ -1547,12 +1557,17 @@ export class PropertiesImplementation {
               realm.markPropertyAsChecked(O, P);
               realmGenerator.emitFullInvariant(O, P, value);
             }
-            InternalSetProperty(realm, O, P, {
-              value: value,
-              writable: "writable" in X ? X.writable : false,
-              enumerable: "enumerable" in X ? X.enumerable : false,
-              configurable: "configurable" in X ? X.configurable : false,
-            });
+            InternalSetProperty(
+              realm,
+              O,
+              P,
+              new PropertyDescriptor({
+                value: value,
+                writable: "writable" in X ? X.writable : false,
+                enumerable: "enumerable" in X ? X.enumerable : false,
+                configurable: "configurable" in X ? X.configurable : false,
+              })
+            );
           }
         } else if (realm.invariantLevel >= 1 && value instanceof Value && !(value instanceof AbstractValue)) {
           let realmGenerator = realm.generator;
@@ -1763,7 +1778,12 @@ export class PropertiesImplementation {
       methodDef.$Closure.$HasComputedName = !!MethodDefinition.computed;
 
       // 4. Let desc be the Property Descriptor{[[Value]]: methodDef.[[closure]], [[Writable]]: true, [[Enumerable]]: enumerable, [[Configurable]]: true}.
-      let desc: Descriptor = { value: methodDef.$Closure, writable: true, enumerable: enumerable, configurable: true };
+      let desc: Descriptor = new PropertyDescriptor({
+        value: methodDef.$Closure,
+        writable: true,
+        enumerable: enumerable,
+        configurable: true,
+      });
 
       // 5. Return DefinePropertyOrThrow(object, methodDef.[[key]], desc).
       return this.DefinePropertyOrThrow(realm, object, methodDef.$Key, desc);
@@ -1805,7 +1825,12 @@ export class PropertiesImplementation {
       Functions.SetFunctionName(realm, closure, propKey);
 
       // 10. Let desc be the Property Descriptor{[[Value]]: closure, [[Writable]]: true, [[Enumerable]]: enumerable, [[Configurable]]: true}.
-      let desc: Descriptor = { value: closure, writable: true, enumerable: enumerable, configurable: true };
+      let desc: Descriptor = new PropertyDescriptor({
+        value: closure,
+        writable: true,
+        enumerable: enumerable,
+        configurable: true,
+      });
 
       // 11. Return DefinePropertyOrThrow(object, propKey, desc).
       return this.DefinePropertyOrThrow(realm, object, propKey, desc);
@@ -1844,11 +1869,11 @@ export class PropertiesImplementation {
       closure.$HasComputedName = !!MethodDefinition.computed;
 
       // 9. Let desc be the PropertyDescriptor{[[Get]]: closure, [[Enumerable]]: enumerable, [[Configurable]]: true}.
-      let desc = {
+      let desc = new PropertyDescriptor({
         get: closure,
         enumerable: true,
         configurable: true,
-      };
+      });
 
       // 10. Return ? DefinePropertyOrThrow(object, propKey, desc).
       return this.DefinePropertyOrThrow(realm, object, propKey, desc);
@@ -1885,11 +1910,11 @@ export class PropertiesImplementation {
       closure.$HasComputedName = !!MethodDefinition.computed;
 
       // 8. Let desc be the PropertyDescriptor{[[Set]]: closure, [[Enumerable]]: enumerable, [[Configurable]]: true}.
-      let desc = {
+      let desc = new PropertyDescriptor({
         set: closure,
         enumerable: true,
         configurable: true,
-      };
+      });
 
       // 9. Return ? DefinePropertyOrThrow(object, propKey, desc).
       return this.DefinePropertyOrThrow(realm, object, propKey, desc);

@@ -468,7 +468,7 @@ export class CreateImplementation {
     obj.setExtensible(true);
 
     // 12. Let map be ObjectCreate(null).
-    let map = new ObjectValue(realm);
+    let map: ObjectValue = new ObjectValue(realm);
 
     // 13. Set the [[ParameterMap]] internal slot of obj to map.
     obj.$ParameterMap = map;
@@ -537,12 +537,15 @@ export class CreateImplementation {
 
           // 3. Perform map.[[DefineOwnProperty]](! ToString(index), PropertyDescriptor{[[Set]]: p, [[Get]]: g,
           //    [[Enumerable]]: false, [[Configurable]]: true}).
-          map.$DefineOwnProperty(new StringValue(realm, index + ""), {
-            set: p,
-            get: g,
-            enumerable: false,
-            configurable: true,
-          });
+          map.$DefineOwnProperty(
+            new StringValue(realm, index + ""),
+            new PropertyDescriptor({
+              set: p,
+              get: g,
+              enumerable: false,
+              configurable: true,
+            })
+          );
         }
       }
 
@@ -590,12 +593,12 @@ export class CreateImplementation {
     invariant(IsPropertyKey(realm, P), "Not a property key");
 
     // 3. Let newDesc be the PropertyDescriptor{[[Value]]: V, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: true}.
-    let newDesc = {
+    let newDesc = new PropertyDescriptor({
       value: V,
       writable: true,
       enumerable: true,
       configurable: true,
-    };
+    });
 
     // 4. Return ? O.[[DefineOwnProperty]](P, newDesc).
     return O.$DefineOwnProperty(P, newDesc);

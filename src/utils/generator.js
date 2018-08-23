@@ -56,6 +56,7 @@ import { concretize, Join, Utils } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";
 import type { ShapeInformationInterface } from "../types.js";
 import { PreludeGenerator } from "./PreludeGenerator.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 export type OperationDescriptorType =
   | "ABSTRACT_FROM_TEMPLATE"
@@ -636,10 +637,10 @@ export class Generator {
         if (value.kind === "conditional") {
           let [c, x, y] = value.args;
           if (c instanceof AbstractValue && c.kind === "template for property name condition") {
-            let ydesc = Object.assign({}, desc, { value: y });
+            let ydesc = new PropertyDescriptor(Object.assign({}, desc, { value: y }));
             let yprop = Object.assign({}, propertyBinding, { descriptor: ydesc });
             this.emitPropertyModification(yprop);
-            let xdesc = Object.assign({}, desc, { value: x });
+            let xdesc = new PropertyDescriptor(Object.assign({}, desc, { value: x }));
             let key = c.args[0];
             invariant(key instanceof AbstractValue);
             let xprop = Object.assign({}, propertyBinding, { key, descriptor: xdesc });
@@ -732,7 +733,7 @@ export class Generator {
       invariant(descValue instanceof Value);
       this.emitPropertyAssignment(object, key, descValue);
     } else {
-      desc = Object.assign({}, desc);
+      desc = new PropertyDescriptor(desc);
       let descValue = desc.value || object.$Realm.intrinsics.undefined;
       invariant(descValue instanceof Value);
       this._addEntry({

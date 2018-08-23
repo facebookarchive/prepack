@@ -79,11 +79,11 @@ export function SetIntegrityLevel(realm: Realm, O: ObjectValue, level: Integrity
         // 1. If IsAccessorDescriptor(currentDesc) is true, then
         if (IsAccessorDescriptor(realm, currentDesc)) {
           // a. Let desc be the PropertyDescriptor{[[Configurable]]: false}.
-          desc = { configurable: false };
+          desc = new PropertyDescriptor({ configurable: false });
         } else {
           // 2. Else,
           // b. Let desc be the PropertyDescriptor { [[Configurable]]: false, [[Writable]]: false }.
-          desc = { configurable: false, writable: false };
+          desc = new PropertyDescriptor({ configurable: false, writable: false });
         }
 
         // 3. Perform ? DefinePropertyOrThrow(O, k, desc).

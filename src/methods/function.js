@@ -854,12 +854,12 @@ export class FunctionImplementation {
     let thrower = realm.intrinsics.ThrowTypeError;
     invariant(thrower);
 
-    let desc = {
+    let desc = new PropertyDescriptor({
       get: thrower,
       set: thrower,
       enumerable: false,
       configurable: true,
-    };
+    });
     // 3. Perform ! DefinePropertyOrThrow(F, "caller", PropertyDescriptor {[[Get]]: thrower, [[Set]]: thrower, [[Enumerable]]: false, [[Configurable]]: true}).
     Properties.DefinePropertyOrThrow(realm, F, "caller", desc);
     // 4. Return ! DefinePropertyOrThrow(F, "arguments", PropertyDescriptor {[[Get]]: thrower, [[Set]]: thrower, [[Enumerable]]: false, [[Configurable]]: true}).
