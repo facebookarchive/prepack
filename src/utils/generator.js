@@ -134,7 +134,6 @@ export type OperationDescriptorType =
 
 export type OperationDescriptor = {
   data: OperationDescriptorData,
-  kind: void | OperationDescriptorKind,
   type: OperationDescriptorType,
 };
 
@@ -150,7 +149,7 @@ export type OperationDescriptorData = {
   desc?: Descriptor, // used by DEFINE_PROPERTY
   generator?: Generator, // used by DO_WHILE
   generators?: Array<Generator>, // used by JOIN_GENERATORS
-  id?: string, // used by IDENTIFIER and DERIVED
+  id?: string, // used by IDENTIFIER
   lh?: BabelNodeVariableDeclaration, // used by FOR_IN
   unaryOperator?: BabelUnaryOperator, // used by UNARY_EXPRESSION
   binaryOperator?: BabelBinaryOperator, // used by BINARY_EXPRESSION
@@ -171,16 +170,12 @@ export type OperationDescriptorData = {
   violationConditionOperationDescriptor?: OperationDescriptor, // used by INVARIANT
 };
 
-export type OperationDescriptorKind = "DERIVED" | "VOID";
-
 export function createOperationDescriptor(
   type: OperationDescriptorType,
-  data?: OperationDescriptorData = {},
-  kind?: OperationDescriptorKind
+  data?: OperationDescriptorData = {}
 ): OperationDescriptor {
   return {
     data,
-    kind,
     type,
   };
 }
@@ -190,7 +185,8 @@ export type SerializationContext = {|
     OperationDescriptor,
     Array<BabelNodeExpression>,
     SerializationContext,
-    Set<AbstractValue | ObjectValue>
+    Set<AbstractValue | ObjectValue>,
+    void | string
   ) => BabelNodeStatement,
   serializeBinding: Binding => BabelNodeIdentifier | BabelNodeMemberExpression,
   serializeBindingAssignment: (Binding, Value) => BabelNodeStatement,
@@ -335,7 +331,14 @@ export class TemporalOperationEntry extends GeneratorEntry {
     if (!omit) {
       let nodes = this.args.map((boundArg, i) => context.serializeValue(boundArg));
       let valuesToProcess = new Set();
-      let node = context.serializeOperationDescriptor(this.operationDescriptor, nodes, context, valuesToProcess);
+      let declaredId = this.declared !== undefined ? this.declared.intrinsicName : undefined;
+      let node = context.serializeOperationDescriptor(
+        this.operationDescriptor,
+        nodes,
+        context,
+        valuesToProcess,
+        declaredId
+      );
       if (node.type === "BlockStatement") {
         let block: BabelNodeBlockStatement = (node: any);
         let statements = block.body;
@@ -924,10 +927,9 @@ export class Generator {
     args: Array<Value>,
     operationDescriptor: OperationDescriptor
   ): UndefinedValue {
-    let voidOperationDescriptor = createOperationDescriptor(operationDescriptor.type, operationDescriptor.data, "VOID");
     this._addEntry({
       args,
-      operationDescriptor: voidOperationDescriptor,
+      operationDescriptor,
     });
     return this.realm.intrinsics.undefined;
   }
@@ -956,17 +958,12 @@ export class Generator {
     let value = buildValue(id);
     value.intrinsicNameGenerated = true;
     value._isScopedTemplate = true; // because this object doesn't exist ahead of time, and the visitor would otherwise declare it in the common scope
-    // Operation descriptors are immutable so we need create a new version to update properties
-    let derivedOperationDescriptor = createOperationDescriptor(
-      operationDescriptor.type,
-      Object.assign({}, operationDescriptor.data, { id }),
-      "DERIVED"
-    );
-    this._addDerivedEntry(id, {
+    invariant(value.intrinsicName === id);
+    this._addDerivedEntry({
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: value,
       args,
-      operationDescriptor: derivedOperationDescriptor,
+      operationDescriptor,
     });
     return value;
   }
@@ -998,21 +995,15 @@ export class Generator {
       createOperationDescriptor("IDENTIFIER", { id }),
       options
     );
-    // Operation descriptor are immutable so we need create a new version to update properties
-    let derivedOperationDescriptor = createOperationDescriptor(
-      operationDescriptor.type,
-      Object.assign({}, operationDescriptor.data, { id }),
-      "DERIVED"
-    );
-    this._addDerivedEntry(id, {
+    res.intrinsicName = id;
+    this._addDerivedEntry({
       isPure: optionalArgs ? optionalArgs.isPure : undefined,
       declared: res,
       args,
-      operationDescriptor: derivedOperationDescriptor,
+      operationDescriptor,
       mutatesOnly: optionalArgs ? optionalArgs.mutatesOnly : undefined,
     });
     let type = types.getType();
-    res.intrinsicName = id;
     if (optionalArgs && optionalArgs.skipInvariant) return res;
     let typeofString;
     if (type instanceof FunctionValue) typeofString = "function";
@@ -1085,7 +1076,11 @@ export class Generator {
     return entry;
   }
 
-  _addDerivedEntry(id: string, entryArgs: TemporalOperationEntryArgs): void {
+  _addDerivedEntry(entryArgs: TemporalOperationEntryArgs): void {
+    let declared = entryArgs.declared;
+    invariant(declared !== undefined);
+    let id = declared.intrinsicName;
+    invariant(id !== undefined);
     let entry = this._addEntry(entryArgs);
     this.realm.derivedIds.set(id, entry);
   }
