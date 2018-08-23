@@ -47,6 +47,9 @@ import type {
   BabelNodeVariableDeclaration,
   BabelNodeBlockStatement,
   BabelNodeLVal,
+  BabelUnaryOperator,
+  BabelBinaryOperator,
+  BabelLogicalOperator,
 } from "@babel/types";
 import { concretize, Join, Utils } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";
@@ -138,30 +141,34 @@ export type OperationDescriptor = {
 // TODO: gradually remove all these, currently it's a random bag of values
 // that should be in args or in other places rather than here.
 export type OperationDescriptorData = {
-  appendLastToInvariantOperationDescriptor?: OperationDescriptor,
-  binding?: Binding | PropertyBinding,
-  boundName?: BabelNodeIdentifier,
-  callTemplate?: () => BabelNodeExpression,
-  concreteComparisons?: Array<Value>,
-  desc?: Descriptor,
-  generator?: Generator,
-  generators?: Array<Generator>,
-  id?: string,
-  lh?: BabelNodeVariableDeclaration,
-  op?: any, // TODO: This is a union of Babel operators, refactor to not use "any" at some point
-  prefix?: boolean,
-  path?: Value,
-  propertyGetter?: SupportedGraphQLGetters,
-  propRef?: ReferenceName | AbstractValue,
-  object?: ObjectValue,
-  quasis?: Array<any>,
-  state?: "MISSING" | "PRESENT" | "DEFINED",
-  thisArg?: BaseValue | Value,
-  template?: PreludeGenerator => ({}) => BabelNodeExpression,
-  typeComparisons?: Set<typeof Value>,
-  usesThis?: boolean,
-  value?: Value,
-  violationConditionOperationDescriptor?: OperationDescriptor,
+  appendLastToInvariantOperationDescriptor?: OperationDescriptor, // used by INVARIANT
+  binding?: Binding, // used by GET_BINDING
+  propertyBinding?: PropertyBinding, // used by LOGICAL_PROPERTY_ASSIGNMENT
+  boundName?: BabelNodeIdentifier, // used by FOR_IN
+  callTemplate?: () => BabelNodeExpression, // used by EMIT_CALL and EMIT_CALL_AND_CAPTURE_RESULT
+  concreteComparisons?: Array<Value>, // used by FULL_INVARIANT_ABSTRACT
+  desc?: Descriptor, // used by DEFINE_PROPERTY
+  generator?: Generator, // used by DO_WHILE
+  generators?: Array<Generator>, // used by JOIN_GENERATORS
+  id?: string, // used by IDENTIFIER and DERIVED
+  lh?: BabelNodeVariableDeclaration, // used by FOR_IN
+  unaryOperator?: BabelUnaryOperator, // used by UNARY_EXPRESSION
+  binaryOperator?: BabelBinaryOperator, // used by BINARY_EXPRESSION
+  logicalOperator?: BabelLogicalOperator, // used by LOGICAL_EXPRESSION
+  incrementor?: "+" | "-", // used by UPDATE_INCREMENTOR
+  prefix?: boolean, // used by UNARY_EXPRESSION
+  path?: Value, // used by PROPERTY_ASSIGNMENT, CONDITIONAL_PROPERTY_ASSIGNMENT
+  propertyGetter?: SupportedGraphQLGetters, // used by ABSTRACT_OBJECT_GET
+  propRef?: ReferenceName | AbstractValue, // used by CALL_BAILOUT, and then only if string
+  object?: ObjectValue, // used by DEFINE_PROPERTY
+  quasis?: Array<any>, // used by REACT_SSR_TEMPLATE_LITERAL
+  state?: "MISSING" | "PRESENT" | "DEFINED", // used by PROPERTY_INVARIANT
+  thisArg?: BaseValue | Value, // used by CALL_BAILOUT
+  template?: PreludeGenerator => ({}) => BabelNodeExpression, // used by ABSTRACT_FROM_TEMPLATE
+  typeComparisons?: Set<typeof Value>, // used by FULL_INVARIANT_ABSTRACT
+  usesThis?: boolean, // used by FOR_STATEMENT_FUNC
+  value?: Value, // used by DO_WHILE, CONDITIONAL_PROPERTY_ASSIGNMENT, LOGICAL_PROPERTY_ASSIGNMENT, LOCAL_ASSIGNMENT, CONDITIONAL_THROW, EMIT_PROPERTY_ASSIGNMENT
+  violationConditionOperationDescriptor?: OperationDescriptor, // used by INVARIANT
 };
 
 export type OperationDescriptorKind = "DERIVED" | "VOID";
@@ -258,8 +265,7 @@ export class GeneratorEntry {
 export type TemporalOperationEntryArgs = {
   declared?: AbstractValue | ObjectValue,
   args: Array<Value>,
-  // If we're just trying to add roots for the serializer to notice, we don't need an operationDescriptor.
-  operationDescriptor?: OperationDescriptor,
+  operationDescriptor: OperationDescriptor,
   dependencies?: Array<Generator>,
   isPure?: boolean,
   mutatesOnly?: Array<Value>,
@@ -275,12 +281,12 @@ export class TemporalOperationEntry extends GeneratorEntry {
         invariant(this.args.includes(arg));
       }
     }
+    invariant(this.operationDescriptor !== undefined);
   }
 
   declared: void | AbstractValue | ObjectValue;
   args: Array<Value>;
-  // If we're just trying to add roots for the serializer to notice, we don't need an operationDescriptor.
-  operationDescriptor: void | OperationDescriptor;
+  operationDescriptor: OperationDescriptor;
   dependencies: void | Array<Generator>;
   isPure: void | boolean;
   mutatesOnly: void | Array<Value>;
@@ -328,24 +334,23 @@ export class TemporalOperationEntry extends GeneratorEntry {
     }
     if (!omit) {
       let nodes = this.args.map((boundArg, i) => context.serializeValue(boundArg));
-      if (this.operationDescriptor !== undefined) {
-        let valuesToProcess = new Set();
-        let node = context.serializeOperationDescriptor(this.operationDescriptor, nodes, context, valuesToProcess);
-        if (node.type === "BlockStatement") {
-          let block: BabelNodeBlockStatement = (node: any);
-          let statements = block.body;
-          if (statements.length === 0) return;
-          if (statements.length === 1) {
-            node = statements[0];
-          }
+      let valuesToProcess = new Set();
+      let node = context.serializeOperationDescriptor(this.operationDescriptor, nodes, context, valuesToProcess);
+      if (node.type === "BlockStatement") {
+        let block: BabelNodeBlockStatement = (node: any);
+        let statements = block.body;
+        if (statements.length === 0) return;
+        if (statements.length === 1) {
+          node = statements[0];
         }
-        let declared = this.declared;
-        if (declared !== undefined && context.options.debugScopes) {
-          context.emit(context.serializeDebugScopeComment(declared));
-        }
-        context.emit(node);
-        context.processValues(valuesToProcess);
       }
+      let declared = this.declared;
+      if (declared !== undefined && context.options.debugScopes) {
+        context.emit(context.serializeDebugScopeComment(declared));
+      }
+      context.emit(node);
+      context.processValues(valuesToProcess);
+
       if (this.declared !== undefined) context.declare(this.declared);
     }
   }

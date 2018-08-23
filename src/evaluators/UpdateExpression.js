@@ -50,7 +50,7 @@ export default function(
               realm,
               NumberValue,
               [oldExpr],
-              createOperationDescriptor("UPDATE_INCREMENTOR", { op })
+              createOperationDescriptor("UPDATE_INCREMENTOR", { incrementor: op })
             ),
           TypesDomain.topVal,
           ValuesDomain.topVal
