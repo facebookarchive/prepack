@@ -222,6 +222,7 @@ export default class AbstractValue extends Value {
     // if abstractValueImpliesMax is 0, then the counter is disabled
     if (abstractValueImpliesMax !== 0 && realm.abstractValueImpliesCounter++ > abstractValueImpliesMax) {
       realm.abstractValueImpliesCounter = 0;
+      realm.impliesCounterOverflowed = true;
       let diagnostic = new CompilerDiagnostic(
         `the implies counter has exceeded the maximum value when trying to simplify abstract values`,
         realm.currentLocation,

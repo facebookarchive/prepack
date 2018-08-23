@@ -338,6 +338,7 @@ export class Realm {
 
   abstractValueImpliesMax: number;
   abstractValueImpliesCounter: number;
+  impliesCounterOverflowed: boolean;
   inSimplificationPath: boolean;
 
   modifiedBindings: void | Bindings;
