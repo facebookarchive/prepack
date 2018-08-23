@@ -9,7 +9,7 @@
 
 /* @flow strict-local */
 
-import type { BabelBinaryOperator, BabelNodeLogicalOperator, BabelUnaryOperator } from "@babel/types";
+import type { BabelBinaryOperator, BabelLogicalOperator, BabelUnaryOperator } from "@babel/types";
 import { AbruptCompletion } from "../completions.js";
 import { FatalError } from "../errors.js";
 import invariant from "../invariant.js";
@@ -307,7 +307,7 @@ export default class ValuesDomain {
     invariant(false, "unimplemented " + op);
   }
 
-  static logicalOp(realm: Realm, op: BabelNodeLogicalOperator, left: ValuesDomain, right: ValuesDomain): ValuesDomain {
+  static logicalOp(realm: Realm, op: BabelLogicalOperator, left: ValuesDomain, right: ValuesDomain): ValuesDomain {
     let leftElements = left._elements;
     let rightElements = right._elements;
     // Return top if left and/or right are top or if the size of the value set would get to be quite large.
@@ -342,7 +342,7 @@ export default class ValuesDomain {
   // If that is not the desired behavior, mark the realm as read-only for the duration of the call.
   static computeLogical(
     realm: Realm,
-    op: BabelNodeLogicalOperator,
+    op: BabelLogicalOperator,
     lval: ConcreteValue,
     rval: ConcreteValue
   ): ConcreteValue {
