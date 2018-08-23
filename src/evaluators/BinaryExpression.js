@@ -302,7 +302,7 @@ export function computeBinary(
           realm,
           resultType,
           [lval, rval],
-          createOperationDescriptor("BINARY_EXPRESSION", { op }),
+          createOperationDescriptor("BINARY_EXPRESSION", { binaryOperator: op }),
           { isPure: true }
         ),
       TypesDomain.topVal,

@@ -12,7 +12,7 @@
 import type {
   BabelBinaryOperator,
   BabelNodeExpression,
-  BabelNodeLogicalOperator,
+  BabelLogicalOperator,
   BabelNodeSourceLocation,
   BabelUnaryOperator,
 } from "@babel/types";
@@ -637,7 +637,7 @@ export default class AbstractValue extends Value {
         ? ValuesDomain.topVal
         : ValuesDomain.binaryOp(realm, op, leftValues, rightValues);
     let [hash, args] = kind === undefined ? hashBinary(op, left, right) : hashCall(kind, left, right);
-    let operationDescriptor = createOperationDescriptor("BINARY_EXPRESSION", { op });
+    let operationDescriptor = createOperationDescriptor("BINARY_EXPRESSION", { binaryOperator: op });
     let result = new AbstractValue(realm, resultTypes, resultValues, hash, args, operationDescriptor);
     result.kind = kind || op;
     result.expressionLocation = loc;
@@ -649,7 +649,7 @@ export default class AbstractValue extends Value {
 
   static createFromLogicalOp(
     realm: Realm,
-    op: BabelNodeLogicalOperator,
+    op: BabelLogicalOperator,
     left: Value,
     right: Value,
     loc?: ?BabelNodeSourceLocation,
@@ -682,7 +682,7 @@ export default class AbstractValue extends Value {
     let Constructor = Value.isTypeCompatibleWith(resultTypes.getType(), ObjectValue)
       ? AbstractObjectValue
       : AbstractValue;
-    let operationDescriptor = createOperationDescriptor("LOGICAL_EXPRESSION", { op });
+    let operationDescriptor = createOperationDescriptor("LOGICAL_EXPRESSION", { logicalOperator: op });
     let result = new Constructor(realm, resultTypes, resultValues, hash, args, operationDescriptor);
     result.kind = op;
     result.expressionLocation = loc;
@@ -736,7 +736,7 @@ export default class AbstractValue extends Value {
     invariant(op !== "delete" && op !== "++" && op !== "--"); // The operation must be pure
     let resultTypes = TypesDomain.unaryOp(op, new TypesDomain(operand.getType()));
     let resultValues = ValuesDomain.unaryOp(realm, op, operand.values);
-    let operationDescriptor = createOperationDescriptor("UNARY_EXPRESSION", { op, prefix });
+    let operationDescriptor = createOperationDescriptor("UNARY_EXPRESSION", { unaryOperator: op, prefix });
     let result = new AbstractValue(
       realm,
       resultTypes,

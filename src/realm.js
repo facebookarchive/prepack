@@ -1062,7 +1062,7 @@ export class Realm {
           value.types,
           value.values,
           [key.object, value],
-          createOperationDescriptor("LOGICAL_PROPERTY_ASSIGNMENT", { binding: key, value }),
+          createOperationDescriptor("LOGICAL_PROPERTY_ASSIGNMENT", { propertyBinding: key, value }),
           {
             skipInvariant: true,
           }

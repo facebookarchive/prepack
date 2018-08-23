@@ -10,7 +10,7 @@
 /* @flow strict-local */
 
 import invariant from "../invariant.js";
-import type { BabelBinaryOperator, BabelNodeLogicalOperator, BabelUnaryOperator } from "@babel/types";
+import type { BabelBinaryOperator, BabelLogicalOperator, BabelUnaryOperator } from "@babel/types";
 import {
   AbstractValue,
   BooleanValue,
@@ -130,7 +130,7 @@ export default class TypesDomain {
     return TypesDomain.topVal;
   }
 
-  static logicalOp(op: BabelNodeLogicalOperator, left: TypesDomain, right: TypesDomain): TypesDomain {
+  static logicalOp(op: BabelLogicalOperator, left: TypesDomain, right: TypesDomain): TypesDomain {
     return left.joinWith(right.getType());
   }
 
