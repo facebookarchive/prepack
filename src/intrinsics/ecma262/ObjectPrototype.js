@@ -102,6 +102,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 4. If desc is undefined, return false.
     if (!desc) return realm.intrinsics.false;
     Properties.ThrowIfMightHaveBeenDeleted(desc);
+    desc = desc.throwIfNotConcrete(realm);
 
     // 5. Return the value of desc.[[Enumerable]].
     return desc.enumerable === undefined ? realm.intrinsics.undefined : new BooleanValue(realm, desc.enumerable);

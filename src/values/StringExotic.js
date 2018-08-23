@@ -15,6 +15,7 @@ import { ObjectValue, NumberValue, StringValue } from "./index.js";
 import { IsInteger, IsArrayIndex } from "../methods/is.js";
 import { Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 export default class StringExotic extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {
@@ -67,12 +68,12 @@ export default class StringExotic extends ObjectValue {
     let resultStr = new StringValue(this.$Realm, str.value.charAt(index));
 
     // 13. Return a PropertyDescriptor{[[Value]]: resultStr, [[Writable]]: false, [[Enumerable]]: true, [[Configurable]]: false}.
-    return {
+    return new PropertyDescriptor({
       value: resultStr,
       writable: false,
       enumerable: true,
       configurable: false,
-    };
+    });
   }
 
   // ECMA262 9.4.3.2

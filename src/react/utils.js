@@ -349,7 +349,10 @@ function createBinding(descriptor: void | Descriptor, key: string | SymbolValue,
 function cloneProperties(realm: Realm, properties: Map<string, any>, object: ObjectValue): Map<string, any> {
   let newProperties = new Map();
   for (let [propertyName, { descriptor }] of properties) {
-    newProperties.set(propertyName, createBinding(cloneDescriptor(descriptor), propertyName, object));
+    newProperties.set(
+      propertyName,
+      createBinding(cloneDescriptor(descriptor.throwIfNotConcrete(realm)), propertyName, object)
+    );
   }
   return newProperties;
 }
@@ -357,7 +360,7 @@ function cloneProperties(realm: Realm, properties: Map<string, any>, object: Obj
 function cloneSymbols(realm: Realm, symbols: Map<SymbolValue, any>, object: ObjectValue): Map<SymbolValue, any> {
   let newSymbols = new Map();
   for (let [symbol, { descriptor }] of symbols) {
-    newSymbols.set(symbol, createBinding(cloneDescriptor(descriptor), symbol, object));
+    newSymbols.set(symbol, createBinding(cloneDescriptor(descriptor.throwIfNotConcrete(realm)), symbol, object));
   }
   return newSymbols;
 }

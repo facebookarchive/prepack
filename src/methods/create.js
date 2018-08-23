@@ -645,7 +645,7 @@ export class CreateImplementation {
           let desc = from.$GetOwnProperty(nextKey);
 
           // If desc is not undefined and desc.[[Enumerable]] is true, then
-          if (desc !== undefined && desc.enumerable === true) {
+          if (desc !== undefined && desc.throwIfNotConcrete(realm).enumerable === true) {
             // Let propValue be ? Get(from, nextKey).
             let propValue = Get(realm, from, nextKey);
             // Perform ! CreateDataProperty(target, nextKey, propValue).

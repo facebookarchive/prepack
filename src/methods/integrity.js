@@ -123,6 +123,7 @@ export function TestIntegrityLevel(realm: Realm, O: ObjectValue, level: Integrit
     // b. If currentDesc is not undefined, then
     if (currentDesc) {
       Properties.ThrowIfMightHaveBeenDeleted(currentDesc);
+      currentDesc = currentDesc.throwIfNotConcrete(realm);
 
       // i. If currentDesc.[[Configurable]] is true, return false.
       if (currentDesc.configurable === true) return false;

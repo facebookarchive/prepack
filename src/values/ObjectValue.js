@@ -568,7 +568,7 @@ export default class ObjectValue extends ConcreteValue {
       let desc = from.$GetOwnProperty(nextKey);
 
       // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
-      if (desc && desc.enumerable) {
+      if (desc && desc.throwIfNotConcrete(this.$Realm).enumerable) {
         Properties.ThrowIfMightHaveBeenDeleted(desc);
 
         // 1. Let propValue be ? Get(from, nextKey).
@@ -667,7 +667,11 @@ export default class ObjectValue extends ConcreteValue {
     try {
       this.$Realm.invariantLevel = 0;
       let desc = this.$GetOwnProperty(P);
-      return desc !== undefined && desc.value instanceof Value ? desc.value : this.$Realm.intrinsics.undefined;
+      if (desc === undefined) {
+        return this.$Realm.intrinsics.undefined;
+      }
+      desc = desc.throwIfNotConcrete(this.$Realm);
+      return desc.value ? desc.value : this.$Realm.intrinsics.undefined;
     } finally {
       this.$Realm.invariantLevel = savedInvariantLevel;
     }

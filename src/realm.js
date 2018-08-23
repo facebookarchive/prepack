@@ -631,7 +631,7 @@ export class Realm {
     invariant(globalObject instanceof ObjectValue);
     let binding = globalObject.properties.get("__checkedBindings");
     invariant(binding !== undefined);
-    let checkedBindingsObject = binding.descriptor && binding.descriptor.value;
+    let checkedBindingsObject = binding.descriptor && binding.descriptor.throwIfNotConcrete(this).value;
     invariant(checkedBindingsObject instanceof ObjectValue);
     return checkedBindingsObject;
   }
@@ -652,7 +652,7 @@ export class Realm {
     let id = `__propertyHasBeenChecked__${objectId}:${P}`;
     let binding = this._getCheckedBindings().properties.get(id);
     if (binding === undefined) return false;
-    let value = binding.descriptor && binding.descriptor.value;
+    let value = binding.descriptor && binding.descriptor.throwIfNotConcrete(this).value;
     return value instanceof Value && !value.mightNotBeTrue();
   }
 
@@ -1064,7 +1064,7 @@ export class Realm {
       if (newlyCreatedObjects.has(key.object) || key.object.refuseSerialization) {
         return;
       }
-      let value = val && val.value;
+      let value = val && val.throwIfNotConcrete(this).value;
       if (value instanceof AbstractValue) {
         invariant(value.operationDescriptor !== undefined);
         let tval = gen.deriveAbstract(
@@ -1086,7 +1086,7 @@ export class Realm {
       let path = key.pathNode;
       let tval = tvalFor.get(key);
       invariant(val !== undefined);
-      let value = val.value;
+      let value = val.throwIfNotConcrete(this).value;
       invariant(value instanceof Value);
       let keyKey = key.key;
       if (typeof keyKey === "string") {
@@ -1545,8 +1545,9 @@ export class Realm {
     for (let [key, binding] of template.properties) {
       if (binding === undefined || binding.descriptor === undefined) continue; // deleted
       invariant(binding.descriptor !== undefined);
-      let value = binding.descriptor.value;
-      Properties.ThrowIfMightHaveBeenDeleted(binding.descriptor);
+      let desc = binding.descriptor.throwIfNotConcrete(this);
+      let value = desc.value;
+      Properties.ThrowIfMightHaveBeenDeleted(desc);
       if (value === undefined) {
         AbstractValue.reportIntrospectionError(abstractValue, key);
         throw new FatalError();

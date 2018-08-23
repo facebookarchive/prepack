@@ -38,6 +38,7 @@ export default class ArgumentsExotic extends ObjectValue {
     // 3. If desc is undefined, return desc.
     if (desc === undefined) return undefined;
     Properties.ThrowIfMightHaveBeenDeleted(desc);
+    desc = desc.throwIfNotConcrete(this.$Realm);
 
     // 4. Let map be args.[[ParameterMap]].
     let map = args.$ParameterMap;
@@ -57,7 +58,9 @@ export default class ArgumentsExotic extends ObjectValue {
   }
 
   // ECMA262 9.4.4.2
-  $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
+  $DefineOwnProperty(P: PropertyKeyValue, _Desc: Descriptor): boolean {
+    let Desc = _Desc.throwIfNotConcrete(this.$Realm);
+
     // 1. Let args be the arguments object.
     let args = this;
 

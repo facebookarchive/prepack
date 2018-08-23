@@ -100,7 +100,7 @@ export function EnumerableOwnProperties(
       let desc = O.$GetOwnProperty(key);
 
       // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
-      if (desc && desc.enumerable) {
+      if (desc && desc.throwIfNotConcrete(realm).enumerable) {
         Properties.ThrowIfMightHaveBeenDeleted(desc);
 
         // 1. If kind is "key", append key to properties.

@@ -92,7 +92,7 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
     let newObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
     for (let [propName, binding] of obj.properties) {
       if (!removeKeys.has(propName)) {
-        if (binding && binding.descriptor && binding.descriptor.enumerable) {
+        if (binding && binding.descriptor && binding.descriptor.throwIfNotConcrete(realm).enumerable) {
           let value = Get(realm, obj, propName);
           Properties.Set(realm, newObject, propName, value, true);
         }

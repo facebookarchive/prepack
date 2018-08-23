@@ -438,6 +438,7 @@ export function OrdinaryGetPartial(
   for (let [key, propertyBinding] of O.properties) {
     let desc = propertyBinding.descriptor;
     if (desc === undefined) continue; // deleted
+    desc = desc.throwIfNotConcrete(realm); // TODO: Join descriptor values based on condition
     invariant(desc.value !== undefined); // otherwise this is not simple
     let val = desc.value;
     invariant(val instanceof Value);

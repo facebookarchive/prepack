@@ -305,6 +305,7 @@ export default class ProxyValue extends ObjectValue {
       // a. If targetDesc is undefined, return undefined.
       if (!targetDesc) return undefined;
       Properties.ThrowIfMightHaveBeenDeleted(targetDesc);
+      targetDesc = targetDesc.throwIfNotConcrete(realm);
 
       // b. If targetDesc.[[Configurable]] is false, throw a TypeError exception.
       if (!targetDesc.configurable) {
@@ -344,9 +345,10 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 17. If resultDesc.[[Configurable]] is false, then
+    resultDesc = resultDesc.throwIfNotConcrete(realm);
     if (!resultDesc.configurable) {
       // a. If targetDesc is undefined or targetDesc.[[Configurable]] is true, then
-      if (!targetDesc || targetDesc.configurable) {
+      if (!targetDesc || targetDesc.throwIfNotConcrete(realm).configurable) {
         // i. Throw a TypeError exception.
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
       }
@@ -407,7 +409,7 @@ export default class ProxyValue extends ObjectValue {
 
     // 13. If Desc has a [[Configurable]] field and if Desc.[[Configurable]] is false, then
     let settingConfigFalse;
-    if ("configurable" in Desc && !Desc.configurable) {
+    if ("configurable" in Desc && !Desc.throwIfNotConcrete(realm).configurable) {
       // a. Let settingConfigFalse be true.
       settingConfigFalse = true;
     } else {
@@ -436,7 +438,7 @@ export default class ProxyValue extends ObjectValue {
       }
 
       // b. If settingConfigFalse is true and targetDesc.[[Configurable]] is true, throw a TypeError exception.
-      if (settingConfigFalse && targetDesc.configurable) {
+      if (settingConfigFalse && targetDesc.throwIfNotConcrete(realm).configurable) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
       }
     }
@@ -490,6 +492,7 @@ export default class ProxyValue extends ObjectValue {
       // b. If targetDesc is not undefined, then
       if (targetDesc) {
         Properties.ThrowIfMightHaveBeenDeleted(targetDesc);
+        targetDesc = targetDesc.throwIfNotConcrete(realm);
 
         // i. If targetDesc.[[Configurable]] is false, throw a TypeError exception.
         if (!targetDesc.configurable) {
@@ -700,6 +703,7 @@ export default class ProxyValue extends ObjectValue {
     // 11. If targetDesc is undefined, return true.
     if (!targetDesc) return true;
     Properties.ThrowIfMightHaveBeenDeleted(targetDesc);
+    targetDesc = targetDesc.throwIfNotConcrete(realm);
 
     // 12. If targetDesc.[[Configurable]] is false, throw a TypeError exception.
     if (!targetDesc.configurable) {
@@ -771,7 +775,7 @@ export default class ProxyValue extends ObjectValue {
       if (desc) Properties.ThrowIfMightHaveBeenDeleted(desc);
 
       // b. If desc is not undefined and desc.[[Configurable]] is false, then
-      if (desc && desc.configurable === false) {
+      if (desc && desc.throwIfNotConcrete(realm).configurable === false) {
         // i. Append key as an element of targetNonconfigurableKeys.
         targetNonconfigurableKeys.push(key);
       } else {

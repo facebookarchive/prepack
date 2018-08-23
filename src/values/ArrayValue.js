@@ -151,6 +151,7 @@ export default class ArrayValue extends ObjectValue {
         "cannot be undefined or an accessor descriptor"
       );
       Properties.ThrowIfMightHaveBeenDeleted(oldLenDesc);
+      oldLenDesc = oldLenDesc.throwIfNotConcrete(this.$Realm);
 
       // c. Let oldLen be oldLenDesc.[[Value]].
       let oldLen = oldLenDesc.value;
@@ -212,8 +213,7 @@ export default class ArrayValue extends ObjectValue {
     if (obj instanceof ArrayValue && obj.intrinsicName) {
       const prop = obj.unknownProperty;
       if (prop !== undefined && prop.descriptor !== undefined) {
-        const desc = prop.descriptor;
-
+        const desc = prop.descriptor.throwIfNotConcrete(obj.$Realm);
         return desc.value instanceof AbstractValue && desc.value.kind === "widened numeric property";
       }
     }

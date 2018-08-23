@@ -97,7 +97,7 @@ function copyKeys(realm: Realm, keys, from, to): void {
     let desc = from.$GetOwnProperty(nextKey);
 
     // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
-    if (desc && desc.enumerable) {
+    if (desc && desc.throwIfNotConcrete(realm).enumerable) {
       Props.ThrowIfMightHaveBeenDeleted(desc);
 
       // 1. Let propValue be ? Get(from, nextKey).
@@ -347,7 +347,7 @@ export default function(realm: Realm): NativeFunctionValue {
     // 3. Let desc be ? obj.[[GetOwnProperty]](key).
     let desc = obj.$GetOwnProperty(key);
 
-    let getterFunc = desc && desc.get;
+    let getterFunc = desc && desc.throwIfNotConcrete(realm).get;
     // If we are returning a descriptor with a NativeFunctionValue
     // and it has no intrinsic name, then we create a temporal as this
     // can only be done at runtime

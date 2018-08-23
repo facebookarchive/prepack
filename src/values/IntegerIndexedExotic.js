@@ -119,7 +119,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
   }
 
   // ECMA262 9.4.5.3
-  $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
+  $DefineOwnProperty(P: PropertyKeyValue, _Desc: Descriptor): boolean {
     let O = this;
 
     // 1. Assert: IsPropertyKey(P) is true.
@@ -154,6 +154,8 @@ export default class IntegerIndexedExotic extends ObjectValue {
         // v. If numericIndex ≥ length, return false.
         if (numericIndex >= length) return false;
 
+        let Desc = _Desc.throwIfNotConcrete(this.$Realm);
+
         // vi. If IsAccessorDescriptor(Desc) is true, return false.
         if (IsAccessorDescriptor(this.$Realm, Desc) === true) return false;
 
@@ -182,7 +184,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
     }
 
     // 4. Return ! OrdinaryDefineOwnProperty(O, P, Desc).
-    return Properties.OrdinaryDefineOwnProperty(this.$Realm, O, P, Desc);
+    return Properties.OrdinaryDefineOwnProperty(this.$Realm, O, P, _Desc);
   }
 
   // ECMA262 9.4.5.4
