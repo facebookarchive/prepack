@@ -158,6 +158,10 @@ it("Mutations - safe 3", () => {
   runTest(__dirname + "/FunctionalComponents/safe3.js");
 });
 
+it("Mutations - safe 4", () => {
+  runTest(__dirname + "/FunctionalComponents/safe4.js");
+});
+
 it("Handle mapped arrays", () => {
   runTest(__dirname + "/FunctionalComponents/array-map.js");
 });
@@ -202,8 +206,16 @@ it("16.3 refs 3", () => {
   runTest(__dirname + "/FunctionalComponents/refs3.js");
 });
 
+it("refs typeof", () => {
+  runTest(__dirname + "/FunctionalComponents/refs-typeof.js");
+});
+
 it("defaultProps", () => {
   runTest(__dirname + "/FunctionalComponents/default-props.js");
+});
+
+it("defaultProps 2", () => {
+  runTest(__dirname + "/FunctionalComponents/default-props2.js");
 });
 
 it("Simple with abstract props", () => {
@@ -322,4 +334,20 @@ it("Hoist Fragment", () => {
 
 it("Pathological case", () => {
   runTest(__dirname + "/FunctionalComponents/pathological-case.js");
+});
+
+it("Model props", () => {
+  runTest(__dirname + "/FunctionalComponents/model-props.js");
+});
+
+it("Inline keys", () => {
+  runTest(__dirname + "/FunctionalComponents/keyed.js");
+});
+
+it("Inline unnecessary keys", () => {
+  runTest(__dirname + "/FunctionalComponents/keyed-unnecessarily.js");
+});
+
+it("Inline key on component that does not return element", () => {
+  runTest(__dirname + "/FunctionalComponents/keyed-non-element.js");
 });

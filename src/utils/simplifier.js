@@ -16,8 +16,9 @@ import invariant from "../invariant.js";
 import { Realm } from "../realm.js";
 import { AbstractValue, BooleanValue, ConcreteValue, Value } from "../values/index.js";
 import { Path, To } from "../singletons.js";
-import EmptyValue from "../values/EmptyValue";
-import * as t from "@babel/types";
+import EmptyValue from "../values/EmptyValue.js";
+import { createOperationDescriptor } from "./generator.js";
+import { NullValue, NumberValue, ObjectValue, PrimitiveValue, UndefinedValue } from "../values/index.js";
 
 export default function simplifyAndRefineAbstractValue(
   realm: Realm,
@@ -128,10 +129,7 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
                 realm,
                 BooleanValue,
                 [xa],
-                ([n]) => {
-                  let callFunc = t.identifier("global.__cannotBecomeObject");
-                  return t.callExpression(callFunc, [n]);
-                },
+                createOperationDescriptor("CANNOT_BECOME_OBJECT"),
                 { kind: "global.__cannotBecomeObject(A)" }
               );
             }
@@ -338,7 +336,17 @@ function simplifyEquality(realm: Realm, equality: AbstractValue): Value {
     }
   } else {
     if (op === "===") {
-      if (x instanceof AbstractValue && x.kind === "conditional") {
+      let xType = x.getType();
+      let yType = y.getType();
+      if (xType !== yType) {
+        if (xType === Value || xType === PrimitiveValue || yType === Value || yType === PrimitiveValue) return equality;
+        if (
+          (Value.isTypeCompatibleWith(xType, NumberValue) && Value.isTypeCompatibleWith(yType, NumberValue)) ||
+          (Value.isTypeCompatibleWith(xType, ObjectValue) && Value.isTypeCompatibleWith(yType, ObjectValue))
+        )
+          return equality;
+        return realm.intrinsics.false;
+      } else if (x instanceof AbstractValue && x.kind === "conditional") {
         let [cond, xx, xy] = x.args;
         // ((cond ? xx : xy) === y) && xx === y && xy !== y <=> cond
         if (xx.equals(y) && !xy.equals(y)) return cond;
@@ -350,6 +358,19 @@ function simplifyEquality(realm: Realm, equality: AbstractValue): Value {
         if (yx.equals(x) && !yy.equals(x)) return cond;
         // (x === (!cond ? yx : yy) === y) && x !== yx && x === yy <=> !cond
         if (!x.equals(yx) && x.equals(yy)) return negate(realm, cond, loc);
+      }
+    } else if (op === "==") {
+      let xType = x.getType();
+      let xIsNullOrUndefined = xType === NullValue || xType === UndefinedValue;
+      let yType = y.getType();
+      let yIsNullOrUndefined = yType === NullValue || yType === UndefinedValue;
+      // If x and y are both known to be null/undefined we should never get here because both should be concrete values.
+      invariant(!xIsNullOrUndefined || !yIsNullOrUndefined);
+      if (xIsNullOrUndefined) {
+        return yType === Value || yType === PrimitiveValue ? equality : realm.intrinsics.false;
+      }
+      if (yIsNullOrUndefined) {
+        return xType === Value || xType === PrimitiveValue ? equality : realm.intrinsics.false;
       }
     }
   }

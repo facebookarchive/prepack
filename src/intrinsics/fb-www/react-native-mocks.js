@@ -12,14 +12,14 @@
 import type { Realm } from "../../realm.js";
 import { AbstractValue, ECMAScriptSourceFunctionValue, ObjectValue, StringValue } from "../../values/index.js";
 import { Environment } from "../../singletons.js";
-import invariant from "../../invariant";
-import * as t from "@babel/types";
+import invariant from "../../invariant.js";
 import { parseExpression } from "@babel/parser";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 let reactNativeCode = `
   function createReactNative(React, reactNameRequireName) {
     var Platform = __abstract("object", 'require("' + reactNameRequireName + '").Platform');
-    
+
     var NativeModules = __abstract({
       nativePerformanceNow: __abstract("function"),
       nativeTraceBeginAsyncSection: __abstract("function"),
@@ -160,6 +160,8 @@ let reactNativeCode = `
       accessibilityLabel: true,
       accessibilityComponentType: true,
       accessibilityLiveRegion: true,
+      accessibilityRole: true,
+      accessibilityStates: true,
       accessibilityTraits: true,
       importantForAccessibility: true,
       nativeID: true,
@@ -200,7 +202,7 @@ let reactNativeCode = `
       createIdentityMatrix: function() {
         return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
       },
-    
+
       createCopy: function(m) {
         return [
           m[0],
@@ -221,19 +223,19 @@ let reactNativeCode = `
           m[15],
         ];
       },
-    
+
       createOrthographic: function(left, right, bottom, top, near, far) {
         const a = 2 / (right - left);
         const b = 2 / (top - bottom);
         const c = -2 / (far - near);
-    
+
         const tx = -(right + left) / (right - left);
         const ty = -(top + bottom) / (top - bottom);
         const tz = -(far + near) / (far - near);
-    
+
         return [a, 0, 0, 0, 0, b, 0, 0, 0, 0, c, 0, tx, ty, tz, 1];
       },
-    
+
       createFrustum: function(left, right, bottom, top, near, far) {
         const r_width = 1 / (right - left);
         const r_height = 1 / (top - bottom);
@@ -246,7 +248,7 @@ let reactNativeCode = `
         const D = 2 * (far * near * r_depth);
         return [x, 0, 0, 0, 0, y, 0, 0, A, B, C, -1, 0, 0, D, 0];
       },
-    
+
       /**
        * This create a perspective projection towards negative z
        * Clipping the z range of [-near, -far]
@@ -260,71 +262,71 @@ let reactNativeCode = `
         const D = 2 * (far * near * r_depth);
         return [h / aspect, 0, 0, 0, 0, h, 0, 0, 0, 0, C, -1, 0, 0, D, 0];
       },
-    
+
       createTranslate2d: function(x, y) {
         const mat = MatrixMath.createIdentityMatrix();
         MatrixMath.reuseTranslate2dCommand(mat, x, y);
         return mat;
       },
-    
+
       reuseTranslate2dCommand: function(matrixCommand, x, y) {
         matrixCommand[12] = x;
         matrixCommand[13] = y;
       },
-    
+
       reuseTranslate3dCommand: function(matrixCommand, x, y, z) {
         matrixCommand[12] = x;
         matrixCommand[13] = y;
         matrixCommand[14] = z;
       },
-    
+
       createScale: function(factor) {
         const mat = MatrixMath.createIdentityMatrix();
         MatrixMath.reuseScaleCommand(mat, factor);
         return mat;
       },
-    
+
       reuseScaleCommand: function(matrixCommand, factor) {
         matrixCommand[0] = factor;
         matrixCommand[5] = factor;
       },
-    
+
       reuseScale3dCommand: function(matrixCommand, x, y, z) {
         matrixCommand[0] = x;
         matrixCommand[5] = y;
         matrixCommand[10] = z;
       },
-    
+
       reusePerspectiveCommand: function(matrixCommand, p) {
         matrixCommand[11] = -1 / p;
       },
-    
+
       reuseScaleXCommand(matrixCommand, factor) {
         matrixCommand[0] = factor;
       },
-    
+
       reuseScaleYCommand(matrixCommand, factor) {
         matrixCommand[5] = factor;
       },
-    
+
       reuseScaleZCommand(matrixCommand, factor) {
         matrixCommand[10] = factor;
       },
-    
+
       reuseRotateXCommand: function(matrixCommand, radians) {
         matrixCommand[5] = Math.cos(radians);
         matrixCommand[6] = Math.sin(radians);
         matrixCommand[9] = -Math.sin(radians);
         matrixCommand[10] = Math.cos(radians);
       },
-    
+
       reuseRotateYCommand: function(matrixCommand, amount) {
         matrixCommand[0] = Math.cos(amount);
         matrixCommand[2] = -Math.sin(amount);
         matrixCommand[8] = Math.sin(amount);
         matrixCommand[10] = Math.cos(amount);
       },
-    
+
       // http://www.w3.org/TR/css3-transforms/#recomposing-to-a-2d-matrix
       reuseRotateZCommand: function(matrixCommand, radians) {
         matrixCommand[0] = Math.cos(radians);
@@ -332,21 +334,21 @@ let reactNativeCode = `
         matrixCommand[4] = -Math.sin(radians);
         matrixCommand[5] = Math.cos(radians);
       },
-    
+
       createRotateZ: function(radians) {
         const mat = MatrixMath.createIdentityMatrix();
         MatrixMath.reuseRotateZCommand(mat, radians);
         return mat;
       },
-    
+
       reuseSkewXCommand: function(matrixCommand, radians) {
         matrixCommand[4] = Math.tan(radians);
       },
-    
+
       reuseSkewYCommand: function(matrixCommand, radians) {
         matrixCommand[1] = Math.tan(radians);
       },
-    
+
       multiplyInto: function(out, a, b) {
         const a00 = a[0],
           a01 = a[1],
@@ -364,7 +366,7 @@ let reactNativeCode = `
           a31 = a[13],
           a32 = a[14],
           a33 = a[15];
-    
+
         let b0 = b[0],
           b1 = b[1],
           b2 = b[2],
@@ -373,7 +375,7 @@ let reactNativeCode = `
         out[1] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
         out[2] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
         out[3] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
-    
+
         b0 = b[4];
         b1 = b[5];
         b2 = b[6];
@@ -382,7 +384,7 @@ let reactNativeCode = `
         out[5] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
         out[6] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
         out[7] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
-    
+
         b0 = b[8];
         b1 = b[9];
         b2 = b[10];
@@ -391,7 +393,7 @@ let reactNativeCode = `
         out[9] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
         out[10] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
         out[11] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
-    
+
         b0 = b[12];
         b1 = b[13];
         b2 = b[14];
@@ -401,7 +403,7 @@ let reactNativeCode = `
         out[14] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
         out[15] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
       },
-    
+
       determinant(matrix) {
         const [
           m00,
@@ -448,7 +450,7 @@ let reactNativeCode = `
           m00 * m11 * m22 * m33
         );
       },
-    
+
       /**
        * Inverse of a matrix. Multiplying by the inverse is used in matrix math
        * instead of division.
@@ -594,7 +596,7 @@ let reactNativeCode = `
             det,
         ];
       },
-    
+
       /**
        * Turns columns into rows and rows into columns.
        */
@@ -618,7 +620,7 @@ let reactNativeCode = `
           m[15],
         ];
       },
-    
+
       /**
        * Based on: http://tog.acm.org/resources/GraphicsGems/gemsii/unmatrix.c
        */
@@ -631,14 +633,14 @@ let reactNativeCode = `
           vx * m[3] + vy * m[7] + vz * m[11] + vw * m[15],
         ];
       },
-    
+
       /**
        * From: https://code.google.com/p/webgl-mjs/source/browse/mjs.js
        */
       v3Length(a: Array<number>): number {
         return Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
       },
-    
+
       /**
        * Based on: https://code.google.com/p/webgl-mjs/source/browse/mjs.js
        */
@@ -646,7 +648,7 @@ let reactNativeCode = `
         const im = 1 / (v3Length || MatrixMath.v3Length(vector));
         return [vector[0] * im, vector[1] * im, vector[2] * im];
       },
-    
+
       /**
        * The dot product of a and b, two 3-element vectors.
        * From: https://code.google.com/p/webgl-mjs/source/browse/mjs.js
@@ -654,7 +656,7 @@ let reactNativeCode = `
       v3Dot(a, b) {
         return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
       },
-    
+
       /**
        * From:
        * http://www.opensource.apple.com/source/WebCore/WebCore-514/platform/graphics/transforms/TransformationMatrix.cpp
@@ -671,7 +673,7 @@ let reactNativeCode = `
           aScale * a[2] + bScale * b[2],
         ];
       },
-    
+
       /**
        * From:
        * http://www.opensource.apple.com/source/WebCore/WebCore-514/platform/graphics/transforms/TransformationMatrix.cpp
@@ -683,7 +685,7 @@ let reactNativeCode = `
           a[0] * b[1] - a[1] * b[0],
         ];
       },
-    
+
       /**
        * Based on:
        * http://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToEuler/
@@ -709,14 +711,14 @@ let reactNativeCode = `
         const test = qx * qy + qz * qw;
         const unit = qw2 + qx2 + qy2 + qz2;
         const conv = 180 / Math.PI;
-    
+
         if (test > 0.49999 * unit) {
           return [0, 2 * Math.atan2(qx, qw) * conv, 90];
         }
         if (test < -0.49999 * unit) {
           return [0, -2 * Math.atan2(qx, qw) * conv, -90];
         }
-    
+
         return [
           MatrixMath.roundTo3Places(
             Math.atan2(2 * qx * qw - 2 * qy * qz, 1 - 2 * qx2 - 2 * qz2) * conv,
@@ -727,7 +729,7 @@ let reactNativeCode = `
           MatrixMath.roundTo3Places(Math.asin(2 * qx * qy + 2 * qz * qw) * conv),
         ];
       },
-    
+
       /**
        * Based on:
        * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/round
@@ -736,7 +738,7 @@ let reactNativeCode = `
         const arr = n.toString().split('e');
         return Math.round(arr[0] + 'e' + (arr[1] ? +arr[1] - 3 : 3)) * 0.001;
       },
-    
+
       /**
        * Decompose a matrix into separate transform values, for use on platforms
        * where applying a precomposed matrix is not possible, and transforms are
@@ -749,14 +751,14 @@ let reactNativeCode = `
        * http://tog.acm.org/resources/GraphicsGems/gemsii/unmatrix.c
        */
       decomposeMatrix(transformMatrix: Array<number>): ?Object {
-    
+
         // output values
         var perspective = [];
         const quaternion = [];
         const scale = [];
         const skew = [];
         const translation = [];
-    
+
         // create normalized, 2d array matrix
         // and normalized 1d array perspectiveMatrix with redefined 4th column
         if (!transformMatrix[15]) {
@@ -773,12 +775,12 @@ let reactNativeCode = `
           }
         }
         perspectiveMatrix[15] = 1;
-    
+
         // test for singularity of upper 3x3 part of the perspective matrix
         if (!MatrixMath.determinant(perspectiveMatrix)) {
           return;
         }
-    
+
         // isolate perspective
         if (matrix[0][3] !== 0 || matrix[1][3] !== 0 || matrix[2][3] !== 0) {
           // rightHandSide is the right hand side of the equation.
@@ -789,7 +791,7 @@ let reactNativeCode = `
             matrix[2][3],
             matrix[3][3],
           ];
-    
+
           // Solve the equation by inverting perspectiveMatrix and multiplying
           // rightHandSide by the inverse.
           const inversePerspectiveMatrix = MatrixMath.inverse(perspectiveMatrix);
@@ -805,48 +807,48 @@ let reactNativeCode = `
           perspective[0] = perspective[1] = perspective[2] = 0;
           perspective[3] = 1;
         }
-    
+
         // translation is simple
         for (var i = 0; i < 3; i++) {
           translation[i] = matrix[3][i];
         }
-    
+
         // Now get scale and shear.
         // 'row' is a 3 element array of 3 component vectors
         const row = [];
         for (i = 0; i < 3; i++) {
           row[i] = [matrix[i][0], matrix[i][1], matrix[i][2]];
         }
-    
+
         // Compute X scale factor and normalize first row.
         scale[0] = MatrixMath.v3Length(row[0]);
         row[0] = MatrixMath.v3Normalize(row[0], scale[0]);
-    
+
         // Compute XY shear factor and make 2nd row orthogonal to 1st.
         skew[0] = MatrixMath.v3Dot(row[0], row[1]);
         row[1] = MatrixMath.v3Combine(row[1], row[0], 1.0, -skew[0]);
-    
+
         // Compute XY shear factor and make 2nd row orthogonal to 1st.
         skew[0] = MatrixMath.v3Dot(row[0], row[1]);
         row[1] = MatrixMath.v3Combine(row[1], row[0], 1.0, -skew[0]);
-    
+
         // Now, compute Y scale and normalize 2nd row.
         scale[1] = MatrixMath.v3Length(row[1]);
         row[1] = MatrixMath.v3Normalize(row[1], scale[1]);
         skew[0] /= scale[1];
-    
+
         // Compute XZ and YZ shears, orthogonalize 3rd row
         skew[1] = MatrixMath.v3Dot(row[0], row[2]);
         row[2] = MatrixMath.v3Combine(row[2], row[0], 1.0, -skew[1]);
         skew[2] = MatrixMath.v3Dot(row[1], row[2]);
         row[2] = MatrixMath.v3Combine(row[2], row[1], 1.0, -skew[2]);
-    
+
         // Next, get Z scale and normalize 3rd row.
         scale[2] = MatrixMath.v3Length(row[2]);
         row[2] = MatrixMath.v3Normalize(row[2], scale[2]);
         skew[1] /= scale[2];
         skew[2] /= scale[2];
-    
+
         // At this point, the matrix (in rows) is orthonormal.
         // Check for a coordinate system flip.  If the determinant
         // is -1, then negate the matrix and the scaling factors.
@@ -859,7 +861,7 @@ let reactNativeCode = `
             row[i][2] *= -1;
           }
         }
-    
+
         // Now, get the rotations out
         quaternion[0] =
           0.5 * Math.sqrt(Math.max(1 + row[0][0] - row[1][1] - row[2][2], 0));
@@ -869,7 +871,7 @@ let reactNativeCode = `
           0.5 * Math.sqrt(Math.max(1 - row[0][0] - row[1][1] + row[2][2], 0));
         quaternion[3] =
           0.5 * Math.sqrt(Math.max(1 + row[0][0] + row[1][1] + row[2][2], 0));
-    
+
         if (row[2][1] > row[1][2]) {
           quaternion[0] = -quaternion[0];
         }
@@ -879,7 +881,7 @@ let reactNativeCode = `
         if (row[1][0] > row[0][1]) {
           quaternion[2] = -quaternion[2];
         }
-    
+
         // correct for occasional, weird Euler synonyms for 2d rotation
         let rotationDegrees;
         if (
@@ -903,7 +905,7 @@ let reactNativeCode = `
             row,
           );
         }
-    
+
         // expose both base data and convenience names
         return {
           rotationDegrees,
@@ -912,7 +914,7 @@ let reactNativeCode = `
           scale,
           skew,
           translation,
-    
+
           rotate: rotationDegrees[2],
           rotateX: rotationDegrees[0],
           rotateY: rotationDegrees[1],
@@ -936,20 +938,20 @@ let reactNativeCode = `
       return value.indexOf('rad') > -1 ? floatValue : floatValue * Math.PI / 180;
     }
 
-    function processTransform(transform) {    
+    function processTransform(transform) {
       // Android & iOS implementations of transform property accept the list of
       // transform properties as opposed to a transform Matrix. This is necessary
       // to control transform property updates completely on the native thread.
       if (Platform.OS === 'android' || Platform.OS === 'ios') {
         return transform;
       }
-    
+
       const result = MatrixMath.createIdentityMatrix();
-    
+
       transform.forEach(transformation => {
         const key = Object.keys(transformation)[0];
         const value = transformation[key];
-    
+
         switch (key) {
           case 'matrix':
             MatrixMath.multiplyInto(result, result, value);
@@ -1015,7 +1017,7 @@ let reactNativeCode = `
             throw new Error('Invalid transform name: ' + key);
         }
       });
-    
+
       return result;
     }
 
@@ -1046,23 +1048,23 @@ let reactNativeCode = `
     function normalizeColor(color) {
       const matchers = getMatchers();
       let match;
-    
+
       if (typeof color === 'number') {
         if (color >>> 0 === color && color >= 0 && color <= 0xffffffff) {
           return color;
         }
         return null;
       }
-    
+
       // Ordered based on occurrences on Facebook codebase
       if ((match = matchers.hex6.exec(color))) {
         return parseInt(match[1] + 'ff', 16) >>> 0;
       }
-    
+
       if (names.hasOwnProperty(color)) {
         return names[color];
       }
-    
+
       if ((match = matchers.rgb.exec(color))) {
         return (
           // b
@@ -1073,7 +1075,7 @@ let reactNativeCode = `
           0
         );
       }
-    
+
       if ((match = matchers.rgba.exec(color))) {
         return (
           // b
@@ -1084,7 +1086,7 @@ let reactNativeCode = `
           0
         );
       }
-    
+
       if ((match = matchers.hex3.exec(color))) {
         return (
           parseInt(
@@ -1099,12 +1101,12 @@ let reactNativeCode = `
           ) >>> 0
         );
       }
-    
+
       // https://drafts.csswg.org/css-color-4/#hex-notation
       if ((match = matchers.hex8.exec(color))) {
         return parseInt(match[1], 16) >>> 0;
       }
-    
+
       if ((match = matchers.hex4.exec(color))) {
         return (
           parseInt(
@@ -1120,7 +1122,7 @@ let reactNativeCode = `
           ) >>> 0
         );
       }
-    
+
       if ((match = matchers.hsl.exec(color))) {
         return (
           (hslToRgb(
@@ -1132,7 +1134,7 @@ let reactNativeCode = `
           0
         );
       }
-    
+
       if ((match = matchers.hsla.exec(color))) {
         return (
           (hslToRgb(
@@ -1144,7 +1146,7 @@ let reactNativeCode = `
           0
         );
       }
-    
+
       return null;
     }
 
@@ -1166,25 +1168,25 @@ let reactNativeCode = `
       }
       return p;
     }
-    
+
     function hslToRgb(h, s, l) {
       const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
       const p = 2 * l - q;
       const r = hue2rgb(p, q, h + 1 / 3);
       const g = hue2rgb(p, q, h);
       const b = hue2rgb(p, q, h - 1 / 3);
-    
+
       return (
         (Math.round(r * 255) << 24) |
         (Math.round(g * 255) << 16) |
         (Math.round(b * 255) << 8)
       );
     }
-    
+
     // var INTEGER = '[-+]?\\d+';
     const NUMBER = '[-+]?\\d*\\.?\\d+';
     const PERCENTAGE = NUMBER + '%';
-    
+
     function call(...args) {
       return '\\(\\s*(' + args.join(')\\s*,\\s*(') + ')\\s*\\)';
     }
@@ -1401,15 +1403,15 @@ let reactNativeCode = `
       if (color === undefined || color === null) {
         return color;
       }
-    
+
       var int32Color = normalizeColor(color);
       if (int32Color === null || int32Color === undefined) {
         return undefined;
       }
-    
+
       // Converts 0xrrggbbaa into 0xaarrggbb
       int32Color = ((int32Color << 24) | (int32Color >>> 8)) >>> 0;
-    
+
       if (Platform.OS === 'android') {
         // Android use 32 bit *signed* integer to represent the color
         // We utilize the fact that bitwise operations in JS also operates on
@@ -1523,12 +1525,12 @@ let reactNativeCode = `
       if (!destination) {
         return source;
       }
-    
+
       for (const key in source) {
         if (!source.hasOwnProperty(key)) {
           continue;
         }
-    
+
         let sourceValue = source[key];
         if (destination.hasOwnProperty(key)) {
           const destinationValue = destination[key];
@@ -1569,7 +1571,7 @@ let reactNativeCode = `
           const typeName = nativeProps[key];
           const diff = getDifferForType(typeName);
           const process = getProcessorForType(typeName);
-    
+
           viewAttributes[key] =
             diff == null && process == null ? true : {diff, process};
         }
@@ -1581,12 +1583,12 @@ let reactNativeCode = `
           bubblingEventTypes,
           directEventTypes,
         });
-    
+
         if (!hasAttachedDefaultEventTypes) {
           attachDefaultEventTypes(viewConfig);
           hasAttachedDefaultEventTypes = true;
         }
-    
+
         return viewConfig;
       });
     }
@@ -1659,8 +1661,8 @@ export function createMockReactNative(realm: Realm, reactNativeRequireName: stri
   let RCTViewDerivedReference = AbstractValue.createTemporalFromBuildFunction(
     realm,
     StringValue,
-    [],
-    () => t.stringLiteral("RCTView"),
+    [new StringValue(realm, "RCTView")],
+    createOperationDescriptor("REACT_NATIVE_STRING_LITERAL"),
     { skipInvariant: true, isPure: true }
   );
   invariant(RCTViewDerivedReference instanceof AbstractValue);
@@ -1669,8 +1671,8 @@ export function createMockReactNative(realm: Realm, reactNativeRequireName: stri
   let RCTTextDerivedReference = AbstractValue.createTemporalFromBuildFunction(
     realm,
     StringValue,
-    [],
-    () => t.stringLiteral("RCTText"),
+    [new StringValue(realm, "RCTText")],
+    createOperationDescriptor("REACT_NATIVE_STRING_LITERAL"),
     { skipInvariant: true, isPure: true }
   );
   invariant(RCTTextDerivedReference instanceof AbstractValue);

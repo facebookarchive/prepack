@@ -210,10 +210,8 @@ function emitResidualLoopIfSafe(
         if (sourceObject === o) {
           // Known enumerable properties of sourceObject can become known properties of targetObject.
           invariant(sourceObject.isPartialObject());
-          sourceObject.makeNotPartial();
           // EnumerableOwnProperties is sufficient because sourceObject is simple
-          let keyValPairs = EnumerableOwnProperties(realm, sourceObject, "key+value");
-          sourceObject.makePartial();
+          let keyValPairs = EnumerableOwnProperties(realm, sourceObject, "key+value", true);
           for (let keyVal of keyValPairs) {
             invariant(keyVal instanceof ArrayValue);
             let key = keyVal.$Get("0", keyVal);

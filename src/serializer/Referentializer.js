@@ -14,7 +14,7 @@ import type { SerializerOptions } from "../options.js";
 import * as t from "@babel/types";
 import generate from "@babel/generator";
 import type { BabelNodeStatement, BabelNodeExpression, BabelNodeIdentifier } from "@babel/types";
-import { NameGenerator } from "../utils/generator.js";
+import { NameGenerator } from "../utils/NameGenerator";
 import invariant from "../invariant.js";
 import type { ResidualFunctionBinding, ScopeBinding, FunctionInstance } from "./types.js";
 import { type ReferentializationScope } from "./types.js";
@@ -161,7 +161,7 @@ export class Referentializer {
   _getReferentializationScope(residualBinding: ResidualFunctionBinding): ReferentializationScope {
     if (residualBinding.potentialReferentializationScopes.has("GLOBAL")) return "GLOBAL";
     if (residualBinding.potentialReferentializationScopes.size > 1) {
-      // TODO Revisit for nested optimized functions.
+      // TODO #2428: Revisit for nested optimized functions.
       return "GLOBAL";
     }
     for (let scope of residualBinding.potentialReferentializationScopes) return scope;

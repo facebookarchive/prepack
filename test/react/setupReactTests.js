@@ -133,6 +133,7 @@ ${source}
       reactEnabled: true,
       reactOutput: useJSXOutput ? "jsx" : "create-element",
       reactOptimizeNestedFunctions: true,
+      arrayNestedOptimizedFunctionsEnabled: true,
       inlineExpressions: true,
       invariantLevel: 0,
       stripFlow: true,
@@ -268,7 +269,7 @@ ${source}
       let B = runSource(compiledSource);
 
       expect(typeof A).toBe(typeof B);
-      if (typeof A !== "function") {
+      if (A == null || B == null) {
         // Test without exports just verifies that the file compiles.
         return;
       }
@@ -280,9 +281,6 @@ ${source}
       };
       let rendererA = ReactTestRenderer.create(null, config);
       let rendererB = ReactTestRenderer.create(null, config);
-      if (A == null || B == null) {
-        throw new Error("React test runner issue");
-      }
 
       // Use the original version of the test in case transforming messes it up.
       let { getTrials: getTrialsA, independent } = A;

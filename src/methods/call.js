@@ -22,23 +22,31 @@ import { FatalError } from "../errors.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import Value from "../values/Value.js";
 import {
-  FunctionValue,
-  ECMAScriptSourceFunctionValue,
-  ObjectValue,
-  NullValue,
-  UndefinedValue,
-  NativeFunctionValue,
   AbstractObjectValue,
   AbstractValue,
+  ECMAScriptSourceFunctionValue,
+  FunctionValue,
+  NativeFunctionValue,
+  NullValue,
+  ObjectValue,
+  UndefinedValue,
 } from "../values/index.js";
 import { GetIterator, HasSomeCompatibleType, IsCallable, IsPropertyKey, IteratorStep, IteratorValue } from "./index.js";
-import { GeneratorStart } from "../methods/generator.js";
-import { ReturnCompletion, AbruptCompletion, ThrowCompletion, ForkedAbruptCompletion } from "../completions.js";
-import { GetTemplateObject, GetV, GetThisValue } from "../methods/get.js";
-import { Create, Environment, Functions, Join, Havoc, To, Widen } from "../singletons.js";
+import { GeneratorStart } from "./generator.js";
+import {
+  AbruptCompletion,
+  Completion,
+  JoinedAbruptCompletions,
+  JoinedNormalAndAbruptCompletions,
+  NormalCompletion,
+  ReturnCompletion,
+  ThrowCompletion,
+} from "../completions.js";
+import { GetTemplateObject, GetV, GetThisValue } from "./get.js";
+import { Create, Environment, Functions, Leak, Join, To, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 import type { BabelNodeExpression, BabelNodeSpreadElement, BabelNodeTemplateLiteral } from "@babel/types";
-import * as t from "@babel/types";
 
 // ECMA262 12.3.6.1
 export function ArgumentListEvaluation(
@@ -291,7 +299,7 @@ function callNativeFunctionValue(
   realm: Realm,
   f: NativeFunctionValue,
   argumentsList: Array<Value>
-): Value | AbruptCompletion {
+): void | AbruptCompletion {
   let env = realm.getRunningContext().lexicalEnvironment;
   let context = env.environmentRecord.GetThisBinding();
 
@@ -306,7 +314,7 @@ function callNativeFunctionValue(
           mightBecomeAnObject(contextVal)
       );
       let completion = f.callCallback(
-        // this is to get around Flow not understanding the above invariant
+        // TODO: this is not right. Either fix the type signature of callCallback or wrap contextVal in a coercion
         ((contextVal: any): AbstractObjectValue | ObjectValue | NullValue | UndefinedValue),
         argumentsList,
         env.environmentRecord.$NewTarget
@@ -323,7 +331,7 @@ function callNativeFunctionValue(
     }
   };
 
-  const wrapInReturnCompletion = contextVal => new ReturnCompletion(contextVal, undefined, realm.currentLocation);
+  const wrapInReturnCompletion = contextVal => new ReturnCompletion(contextVal, realm.currentLocation);
 
   if (context instanceof AbstractObjectValue && context.kind === "conditional") {
     let [condValue, consequentVal, alternateVal] = context.args;
@@ -349,7 +357,9 @@ function callNativeFunctionValue(
       )
     );
   }
-  return functionCall(context, false);
+  let c = functionCall(context, false);
+  if (c instanceof AbruptCompletion) return c;
+  return undefined;
 }
 
 // ECMA262 9.2.1.3
@@ -357,7 +367,7 @@ export function OrdinaryCallEvaluateBody(
   realm: Realm,
   f: ECMAScriptFunctionValue,
   argumentsList: Array<Value>
-): Reference | Value | AbruptCompletion {
+): void | AbruptCompletion {
   if (f instanceof NativeFunctionValue) {
     return callNativeFunctionValue(realm, f, argumentsList);
   } else {
@@ -379,7 +389,7 @@ export function OrdinaryCallEvaluateBody(
       GeneratorStart(realm, G, code);
 
       // 4. Return Completion{[[Type]]: return, [[Value]]: G, [[Target]]: empty}.
-      return new ReturnCompletion(G, undefined, realm.currentLocation);
+      return new ReturnCompletion(G, realm.currentLocation);
     } else {
       // TODO #1586: abstractRecursionSummarization is disabled for now, as it is likely too limiting
       // (as observed in large internal tests).
@@ -398,15 +408,15 @@ export function OrdinaryCallEvaluateBody(
           realm.applyEffects(effects);
           let c = effects.result;
           return processResult(() => {
-            invariant(c instanceof Value || c instanceof AbruptCompletion);
-            return c;
+            if (c instanceof AbruptCompletion || c instanceof JoinedNormalAndAbruptCompletions) return c;
+            return undefined;
           });
         }
       } finally {
         F.isSelfRecursive = savedIsSelfRecursive;
       }
 
-      function guardedCall() {
+      function guardedCall(): Value | Completion {
         let currentLocation = realm.currentLocation;
         if (F.activeArguments !== undefined && F.activeArguments.has(currentLocation)) {
           let [previousPathLength, previousArguments] = F.activeArguments.get(currentLocation);
@@ -418,7 +428,7 @@ export function OrdinaryCallEvaluateBody(
             if (Widen.containsArraysOfValue(realm, previousArguments, widenedArgumentsList)) {
               // Reached a fixed point. Executing this call will not add any knowledge
               // about the effects of the original call.
-              return AbstractValue.createFromType(realm, Value, "widened return result");
+              return realm.intrinsics.undefined;
             } else {
               argumentsList = widenedArgumentsList;
             }
@@ -427,13 +437,13 @@ export function OrdinaryCallEvaluateBody(
         try {
           if (F.activeArguments === undefined) F.activeArguments = new Map();
           F.activeArguments.set(currentLocation, [realm.pathConditions.length, argumentsList]);
-          return normalCall();
+          return normalCall() || realm.intrinsics.undefined;
         } finally {
           F.activeArguments.delete(currentLocation);
         }
       }
 
-      function normalCall() {
+      function normalCall(): void | AbruptCompletion {
         // 1. Perform ? FunctionDeclarationInstantiation(F, argumentsList).
         Functions.FunctionDeclarationInstantiation(realm, F, argumentsList);
 
@@ -442,55 +452,47 @@ export function OrdinaryCallEvaluateBody(
         let code = F.$ECMAScriptCode;
         invariant(code !== undefined);
         let context = realm.getRunningContext();
-        return processResult(() => context.lexicalEnvironment.evaluateCompletionDeref(code, F.$Strict));
+        return processResult(() => {
+          let c = context.lexicalEnvironment.evaluateCompletionDeref(code, F.$Strict);
+          if (c instanceof AbruptCompletion || c instanceof JoinedNormalAndAbruptCompletions) return c;
+          return undefined;
+        });
       }
 
-      function processResult(getCompletion: () => AbruptCompletion | Value): AbruptCompletion | Value {
+      function processResult(
+        getCompletion: () => void | AbruptCompletion | JoinedNormalAndAbruptCompletions
+      ): void | AbruptCompletion {
+        // We don't want the callee to see abrupt completions from the caller.
         let priorSavedCompletion = realm.savedCompletion;
+        realm.savedCompletion = undefined;
+
+        let c;
         try {
-          realm.savedCompletion = undefined;
-          let c = getCompletion();
-
-          // We are about the leave this function and this presents a join point where all non exceptional control flows
-          // converge into a single flow using their joint effects to update the post join point state.
-          if (!(c instanceof ReturnCompletion)) {
-            if (!(c instanceof AbruptCompletion)) {
-              c = new ReturnCompletion(realm.intrinsics.undefined, undefined, realm.currentLocation);
-            }
-          }
-          invariant(c instanceof AbruptCompletion);
-
-          // If there is a saved completion (i.e. unjoined abruptly completing control flows) then combine them with c
-          let abruptCompletion = Functions.incorporateSavedCompletion(realm, c);
-          invariant(abruptCompletion instanceof AbruptCompletion);
-
-          // If there is single completion, we don't need to join
-          if (!(abruptCompletion instanceof ForkedAbruptCompletion)) return abruptCompletion;
-
-          // If none of the completions are return completions, there is no need to join either
-          if (!abruptCompletion.containsCompletion(ReturnCompletion)) return abruptCompletion;
-
-          // Apply the joined effects of return completions to the current state since these now join the normal path
-          let joinedReturnEffects = Join.extractAndJoinCompletionsOfType(ReturnCompletion, realm, abruptCompletion);
-          realm.applyEffects(joinedReturnEffects);
-          c = joinedReturnEffects.result;
-          invariant(c instanceof ReturnCompletion);
-
-          // We now make a PossiblyNormalCompletion out of abruptCompletion.
-          // extractAndJoinCompletionsOfType helped with this by cheating and turning all of its nested completions
-          // that contain return completions into PossiblyNormalCompletions.
-          let remainingCompletions = abruptCompletion.transferChildrenToPossiblyNormalCompletion();
-
-          // If there are no throw completions left inside remainingCompletions, just return.
-          if (!remainingCompletions.containsCompletion(ThrowCompletion)) return c;
-
-          // Stash the remaining completions in the realm start tracking the effects that need to be appended
-          // to the normal branch at the next join point.
-          realm.composeWithSavedCompletion(remainingCompletions);
-          return c;
-        } finally {
-          realm.incorporatePriorSavedCompletion(priorSavedCompletion);
+          c = getCompletion();
+        } catch (e) {
+          invariant(!(e instanceof AbruptCompletion));
+          throw e;
         }
+        c = Functions.incorporateSavedCompletion(realm, c); // in case the callee had conditional abrupt completions
+        realm.savedCompletion = priorSavedCompletion;
+        if (c === undefined) return undefined; // the callee had no returns or throws
+        if (c instanceof ThrowCompletion || c instanceof ReturnCompletion) return c;
+        // Non mixed completions will not be joined completions, but single completions with joined values.
+        // At this point it must be true that
+        // c contains return completions and possibly also normal completions (which are implicitly "return undefined;")
+        // and c also contains throw completions. Hence we assert:
+        invariant(c instanceof JoinedAbruptCompletions || c instanceof JoinedNormalAndAbruptCompletions);
+
+        // We want to add only the throw completions to priorSavedCompletion (but must keep their conditions in tact).
+        // The (joined) return completions must be returned to our caller
+        let rc = c;
+        Completion.makeAllNormalCompletionsResultInUndefined(c);
+        c = Completion.normalizeSelectedCompletions(r => r instanceof ReturnCompletion, c);
+        invariant(c.containsSelectedCompletion(r => r instanceof NormalCompletion));
+        let rv = Join.joinValuesOfSelectedCompletions(r => r instanceof NormalCompletion, c);
+        rc = new ReturnCompletion(rv);
+        if (c.containsSelectedCompletion(r => r instanceof ThrowCompletion)) realm.composeWithSavedCompletion(c);
+        return rc;
       }
     }
   }
@@ -528,10 +530,7 @@ export function EvaluateDirectCallWithArgList(
       realm,
       func.functionResultType || Value,
       [func].concat(argList),
-      (nodes: Array<BabelNodeExpression>) => {
-        let fun_args = nodes.slice(1);
-        return t.callExpression(nodes[0], ((fun_args: any): Array<BabelNodeExpression | BabelNodeSpreadElement>));
-      }
+      createOperationDescriptor("DIRECT_CALL_WITH_ARG_LIST")
     );
   }
   func = func.throwIfNotConcrete();
@@ -588,22 +587,26 @@ export function Call(realm: Realm, F: Value, V: Value, argsList?: Array<Value>):
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
   }
   if (F instanceof AbstractValue && Value.isTypeCompatibleWith(F.getType(), FunctionValue)) {
-    Havoc.value(realm, V);
+    Leak.value(realm, V);
     for (let arg of argsList) {
-      Havoc.value(realm, arg);
+      Leak.value(realm, arg);
     }
     if (V === realm.intrinsics.undefined) {
       let fullArgs = [F].concat(argsList);
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, fullArgs, nodes => {
-        let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
-        return t.callExpression(nodes[0], fun_args);
-      });
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        fullArgs,
+        createOperationDescriptor("CALL_ABSTRACT_FUNC")
+      );
     } else {
       let fullArgs = [F, V].concat(argsList);
-      return AbstractValue.createTemporalFromBuildFunction(realm, Value, fullArgs, nodes => {
-        let fun_args = ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
-        return t.callExpression(t.memberExpression(nodes[0], t.identifier("call")), fun_args);
-      });
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        fullArgs,
+        createOperationDescriptor("CALL_ABSTRACT_FUNC_THIS")
+      );
     }
   }
   invariant(F instanceof ObjectValue);

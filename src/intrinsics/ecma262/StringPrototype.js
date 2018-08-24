@@ -11,7 +11,7 @@
 
 import { Realm } from "../../realm.js";
 import { FatalError } from "../../errors.js";
-import { AbstractValue, UndefinedValue, NumberValue, ObjectValue, StringValue, NullValue } from "../../values/index.js";
+import { AbstractValue, NullValue, NumberValue, ObjectValue, StringValue, UndefinedValue } from "../../values/index.js";
 import { IsCallable, IsRegExp } from "../../methods/is.js";
 import { GetMethod, GetSubstitution } from "../../methods/get.js";
 import { Call, Invoke } from "../../methods/call.js";
@@ -503,7 +503,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
 
     // 7. Search string for the first occurrence of searchString and
     //    let pos be the index within string of the first code unit of the matched substring and
-    let pos = string.search(searchString);
+    let pos = string.indexOf(searchString);
 
     //    let matched be searchString.
     let matched = searchString;
@@ -614,7 +614,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
       return AbstractValue.createFromTemplate(
         realm,
         splitTemplate,
-        StringValue,
+        ObjectValue,
         [O, separator, limit],
         splitTemplateSrc
       );

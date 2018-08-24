@@ -13,7 +13,7 @@ import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import { FatalError } from "../../errors.js";
 import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { AbruptCompletion, PossiblyNormalCompletion } from "../../completions.js";
+//import { AbruptCompletion } from "../../completions.js";
 import {
   AbstractValue,
   AbstractObjectValue,
@@ -37,8 +37,8 @@ import {
   SetIntegrityLevel,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
-import { Create, Havoc, Properties as Props, To } from "../../singletons.js";
-import * as t from "@babel/types";
+import { Create, Leak, Properties as Props, To } from "../../singletons.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
 import invariant from "../../invariant.js";
 
 function snapshotToObjectAndRemoveProperties(
@@ -63,8 +63,8 @@ function handleObjectAssignSnapshot(
     AbstractValue.reportIntrospectionError(to);
     throw new FatalError();
   } else {
-    if (frm instanceof ObjectValue && frm.mightBeHavocedObject()) {
-      // "frm" is havoced, so it might contain properties that potentially overwrite
+    if (frm instanceof ObjectValue && frm.mightBeLeakedObject()) {
+      // "frm" is leaked, so it might contain properties that potentially overwrite
       // properties already on the "to" object.
       snapshotToObjectAndRemoveProperties(to, delayedSources);
       // it's not safe to trust any of its values
@@ -137,20 +137,11 @@ function applyObjectAssignSource(
     }
 
     to_must_be_partial = true;
-    // Make this temporarily not partial
-    // so that we can call frm.$OwnPropertyKeys below.
-    frm.makeNotPartial();
   }
 
-  try {
-    keys = frm.$OwnPropertyKeys();
-    if (to_must_be_partial) {
-      handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
-    }
-  } finally {
-    if (frm_was_partial) {
-      frm.makePartial();
-    }
+  keys = frm.$OwnPropertyKeys(true);
+  if (to_must_be_partial) {
+    handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
   }
 
   // c. Repeat for each element nextKey of keys in List order,
@@ -191,27 +182,16 @@ function tryAndApplySourceOrRecover(
       if (!didSnapshot) {
         delayedSources.push(frm);
       }
-      // Havoc the frm value because it can have getters on it
-      Havoc.value(realm, frm);
+      // Leak the frm value because it can have getters on it
+      Leak.value(realm, frm);
       return to_must_be_partial;
     }
     throw e;
   } finally {
     realm.suppressDiagnostics = savedSuppressDiagnostics;
   }
-  // Note that the effects of (non joining) abrupt branches are not included
-  // in effects, but are tracked separately inside completion.
   realm.applyEffects(effects);
-  let completion = effects.result;
-  if (completion instanceof PossiblyNormalCompletion) {
-    // in this case one of the branches may complete abruptly, which means that
-    // not all control flow branches join into one flow at this point.
-    // Consequently we have to continue tracking changes until the point where
-    // all the branches come together into one.
-    completion = realm.composeWithSavedCompletion(completion);
-  }
-  // return or throw completion
-  if (completion instanceof AbruptCompletion) throw completion;
+  realm.returnOrThrowCompletion(effects.result);
   return to_must_be_partial;
 }
 
@@ -234,7 +214,7 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.1
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
     func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
       // 1. Let to be ? ToObject(target).
       let to = To.ToObject(realm, target);
@@ -381,7 +361,7 @@ export default function(realm: Realm): NativeFunctionValue {
         realm,
         ObjectValue,
         [getOwnPropertyDescriptor, obj, P],
-        ([methodNode, objNode, keyNode]) => t.callExpression(methodNode, [objNode, keyNode])
+        createOperationDescriptor("OBJECT_PROTO_GET_OWN_PROPERTY_DESCRIPTOR")
       );
       invariant(result instanceof AbstractObjectValue);
       result.makeSimple();
@@ -500,12 +480,14 @@ export default function(realm: Realm): NativeFunctionValue {
       let array = ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         [objectKeys, obj],
-        ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
       );
       return array;
     } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
-      return ArrayValue.createTemporalWithWidenedNumericProperty(realm, [objectKeys, obj], ([methodNode, objNode]) =>
-        t.callExpression(methodNode, [objNode])
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
+        realm,
+        [objectKeys, obj],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
       );
     }
 
@@ -529,14 +511,14 @@ export default function(realm: Realm): NativeFunctionValue {
           let array = ArrayValue.createTemporalWithWidenedNumericProperty(
             realm,
             [objectValues, obj],
-            ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+            createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
           );
           return array;
         } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
           return ArrayValue.createTemporalWithWidenedNumericProperty(
             realm,
             [objectValues, obj],
-            ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+            createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
           );
         }
       }
@@ -561,14 +543,14 @@ export default function(realm: Realm): NativeFunctionValue {
         let array = ArrayValue.createTemporalWithWidenedNumericProperty(
           realm,
           [objectEntries, obj],
-          ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
         );
         return array;
       } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
         return ArrayValue.createTemporalWithWidenedNumericProperty(
           realm,
           [objectEntries, obj],
-          ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
         );
       }
 

@@ -9,7 +9,7 @@
 
 /* @flow strict-local */
 
-import type { BabelBinaryOperator, BabelNodeLogicalOperator, BabelUnaryOperator } from "@babel/types";
+import type { BabelBinaryOperator, BabelLogicalOperator, BabelUnaryOperator } from "@babel/types";
 import { AbruptCompletion } from "../completions.js";
 import { FatalError } from "../errors.js";
 import invariant from "../invariant.js";
@@ -54,7 +54,8 @@ export default class ValuesDomain {
     this._elements = values;
   }
 
-  static topVal = new ValuesDomain(undefined);
+  static topVal: ValuesDomain;
+  static bottomVal: ValuesDomain;
 
   _elements: void | Set<ConcreteValue>;
 
@@ -79,6 +80,10 @@ export default class ValuesDomain {
     return elems.has(x);
   }
 
+  isBottom(): boolean {
+    return this._elements !== undefined && this._elements.size === 0;
+  }
+
   isTop(): boolean {
     return this._elements === undefined;
   }
@@ -91,6 +96,7 @@ export default class ValuesDomain {
   // return a set of values that may be result of performing the given operation on each pair in the
   // Cartesian product of the value sets of the operands.
   static binaryOp(realm: Realm, op: BabelBinaryOperator, left: ValuesDomain, right: ValuesDomain): ValuesDomain {
+    if (left.isBottom() || right.isBottom()) return ValuesDomain.bottomVal;
     let leftElements = left._elements;
     let rightElements = right._elements;
     // Return top if left and/or right are top or if the size of the value set would get to be quite large.
@@ -301,7 +307,7 @@ export default class ValuesDomain {
     invariant(false, "unimplemented " + op);
   }
 
-  static logicalOp(realm: Realm, op: BabelNodeLogicalOperator, left: ValuesDomain, right: ValuesDomain): ValuesDomain {
+  static logicalOp(realm: Realm, op: BabelLogicalOperator, left: ValuesDomain, right: ValuesDomain): ValuesDomain {
     let leftElements = left._elements;
     let rightElements = right._elements;
     // Return top if left and/or right are top or if the size of the value set would get to be quite large.
@@ -336,7 +342,7 @@ export default class ValuesDomain {
   // If that is not the desired behavior, mark the realm as read-only for the duration of the call.
   static computeLogical(
     realm: Realm,
-    op: BabelNodeLogicalOperator,
+    op: BabelLogicalOperator,
     lval: ConcreteValue,
     rval: ConcreteValue
   ): ConcreteValue {
@@ -413,6 +419,7 @@ export default class ValuesDomain {
   }
 
   static unaryOp(realm: Realm, op: BabelUnaryOperator, operandValues: ValuesDomain): ValuesDomain {
+    if (operandValues.isBottom()) return ValuesDomain.bottomVal;
     let operandElements = operandValues._elements;
     if (operandElements === undefined) return ValuesDomain.topVal;
     let resultSet = new Set();
@@ -503,6 +510,7 @@ export default class ValuesDomain {
       invariant(y instanceof ConcreteValue);
       union.add(y);
     }
+    if (union.size === 0) return ValuesDomain.bottomVal;
     return new ValuesDomain(union);
   }
 
@@ -517,6 +525,7 @@ export default class ValuesDomain {
     invariant(v1 instanceof ConcreteValue);
     invariant(v2 instanceof ConcreteValue);
     if (v1 === v2) intersection.add(v1);
+    if (intersection.size === 0) return ValuesDomain.bottomVal;
     return new ValuesDomain(intersection);
   }
 
@@ -532,11 +541,12 @@ export default class ValuesDomain {
       invariant(y instanceof ConcreteValue);
       if (elements === undefined || elements.has(y)) intersection.add(y);
     }
+    if (intersection.size === 0) return ValuesDomain.bottomVal;
     return new ValuesDomain(intersection);
   }
 
   promoteEmptyToUndefined(): ValuesDomain {
-    if (this.isTop()) return this;
+    if (this.isTop() || this.isBottom()) return this;
     let newSet = new Set();
     for (let cval of this.getElements()) {
       if (cval instanceof EmptyValue) newSet.add(cval.$Realm.intrinsics.undefined);

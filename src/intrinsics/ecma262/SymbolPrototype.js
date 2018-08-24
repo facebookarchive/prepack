@@ -16,7 +16,7 @@ import buildExpressionTemplate from "../../utils/builder.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
-  const tsTemplateSrc = "(A).toString()";
+  const tsTemplateSrc = "('' + A)";
   const tsTemplate = buildExpressionTemplate(tsTemplateSrc);
 
   // ECMA262 19.4.3.2

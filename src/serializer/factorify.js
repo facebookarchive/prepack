@@ -11,7 +11,7 @@
 
 import * as t from "@babel/types";
 import type { BabelNodeStatement, BabelNodeObjectExpression, BabelNodeLVal } from "@babel/types";
-import { NameGenerator } from "../utils/generator.js";
+import { NameGenerator } from "../utils/NameGenerator";
 
 function isLiteral(node) {
   switch (node.type) {
@@ -139,7 +139,6 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
 
     let keys = signatureKey.split("|");
 
-    //
     let rootFactoryParams: Array<BabelNodeLVal> = [];
     let rootFactoryProps = [];
     for (let keyIndex = 0; keyIndex < keys.length; keyIndex++) {
@@ -155,7 +154,6 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
     let rootFactory = t.functionDeclaration(rootFactoryId, rootFactoryParams, rootFactoryBody);
     body.unshift(rootFactory);
 
-    //
     for (let { declar, initializerAstNodeName } of declars) {
       let args = [];
       for (let prop of declar[initializerAstNodeName].properties) {
@@ -165,13 +163,12 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
       declar[initializerAstNodeName] = t.callExpression(rootFactoryId, args);
     }
 
-    //
     let seen = new Set();
     for (let { declar, initializerAstNodeName } of declars) {
       if (seen.has(declar)) continue;
 
       // build up a map containing the arguments that are shared
-      let common = new Map();
+      let common = [];
       let mostSharedArgsLength = 0;
       for (let { declar: declar2, initializerAstNodeName: initializerAstNodeName2 } of declars) {
         if (seen.has(declar2)) continue;
@@ -186,16 +183,16 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
         if (!sharedArgs.length) continue;
 
         mostSharedArgsLength = Math.max(mostSharedArgsLength, sharedArgs.length);
-        common.set(declar2, sharedArgs);
+        common.push({ declar: declar2, initializerAstNodeName: initializerAstNodeName2, sharedArgs });
       }
 
       // build up a mapping of the argument positions that are shared so we can pick the top one
       let sharedPairs = Object.create(null);
-      for (let [declar2, args] of common.entries()) {
-        if (args.length === mostSharedArgsLength) {
-          args = args.join(",");
-          let pair = (sharedPairs[args] = sharedPairs[args] || []);
-          pair.push(declar2);
+      for (let { declar: declar2, initializerAstNodeName: initializerAstNodeName2, sharedArgs } of common) {
+        if (sharedArgs.length === mostSharedArgsLength) {
+          sharedArgs = sharedArgs.join(",");
+          let pair = (sharedPairs[sharedArgs] = sharedPairs[sharedArgs] || [{ declar, initializerAstNodeName }]);
+          pair.push({ declar: declar2, initializerAstNodeName: initializerAstNodeName2 });
         }
       }
 
@@ -211,13 +208,12 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
       }
       if (highestPairArgs === undefined) continue;
 
-      //
-      let declarsSub = sharedPairs[highestPairArgs].concat(declar);
+      let declarsSub = sharedPairs[highestPairArgs];
       let removeArgs = highestPairArgs.split(",");
 
       let subFactoryArgs = [];
       let subFactoryParams = [];
-      let sharedArgs = declarsSub[0][initializerAstNodeName].arguments;
+      let sharedArgs = declar[initializerAstNodeName].arguments;
       for (let i = 0; i < sharedArgs.length; i++) {
         let arg = sharedArgs[i];
         if (removeArgs.indexOf(i + "") >= 0) {
@@ -234,10 +230,10 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
       let subFactory = t.functionDeclaration(subFactoryId, subFactoryParams, subFactoryBody);
       body.unshift(subFactory);
 
-      for (let declarSub of declarsSub) {
-        seen.add(declarSub);
+      for (let { declar: declar2, initializerAstNodeName: initializerAstNodeName2 } of declarsSub) {
+        seen.add(declar2);
 
-        let call = declarSub[initializerAstNodeName];
+        let call = declar2[initializerAstNodeName2];
         call.callee = subFactoryId;
         call.arguments = call.arguments.filter(function(val, i) {
           return removeArgs.indexOf(i + "") < 0;

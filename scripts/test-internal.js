@@ -68,8 +68,6 @@ function runTest(name: string, code: string): boolean {
     let options = {
       internalDebug: true,
       compatibility: "jsc-600-1-4-17",
-      delayUnsupportedRequires: true,
-      accelerateUnsupportedRequires: true,
       mathRandomSeed: "0",
       errorHandler,
       serialize: true,

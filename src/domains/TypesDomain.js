@@ -10,11 +10,12 @@
 /* @flow strict-local */
 
 import invariant from "../invariant.js";
-import type { BabelBinaryOperator, BabelNodeLogicalOperator, BabelUnaryOperator } from "@babel/types";
+import type { BabelBinaryOperator, BabelLogicalOperator, BabelUnaryOperator } from "@babel/types";
 import {
   AbstractValue,
   BooleanValue,
   ConcreteValue,
+  EmptyValue,
   FunctionValue,
   NumberValue,
   IntegralValue,
@@ -33,9 +34,14 @@ export default class TypesDomain {
     this._type = type === Value ? undefined : type;
   }
 
-  static topVal: TypesDomain = new TypesDomain(undefined);
+  static topVal: TypesDomain;
+  static bottomVal: TypesDomain;
 
   _type: void | typeof Value;
+
+  isBottom(): boolean {
+    return this._type instanceof EmptyValue;
+  }
 
   isTop(): boolean {
     return this._type === undefined;
@@ -47,6 +53,7 @@ export default class TypesDomain {
 
   // return the type of the result in the case where there is no exception
   static binaryOp(op: BabelBinaryOperator, left: TypesDomain, right: TypesDomain): TypesDomain {
+    if (left.isBottom() || right.isBottom()) return TypesDomain.bottomVal;
     let lType = left._type;
     let rType = right._type;
     let resultType = Value;
@@ -105,8 +112,9 @@ export default class TypesDomain {
   }
 
   joinWith(t: typeof Value): TypesDomain {
+    if (this.isBottom()) return t === EmptyValue ? TypesDomain.bottomVal : new TypesDomain(t);
     let type = this.getType();
-    if (type === t) return this;
+    if (type === t || t instanceof EmptyValue) return this;
     if (Value.isTypeCompatibleWith(type, NumberValue) && Value.isTypeCompatibleWith(t, NumberValue)) {
       return new TypesDomain(NumberValue);
     }
@@ -122,13 +130,14 @@ export default class TypesDomain {
     return TypesDomain.topVal;
   }
 
-  static logicalOp(op: BabelNodeLogicalOperator, left: TypesDomain, right: TypesDomain): TypesDomain {
+  static logicalOp(op: BabelLogicalOperator, left: TypesDomain, right: TypesDomain): TypesDomain {
     return left.joinWith(right.getType());
   }
 
   // return the type of the result in the case where there is no exception
   // note that the type of the operand has no influence on the type of the non exceptional result
   static unaryOp(op: BabelUnaryOperator, operand: TypesDomain): TypesDomain {
+    if (operand.isBottom()) return TypesDomain.bottomVal;
     const type = operand._type;
     let resultType = Value;
     switch (op) {

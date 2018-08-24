@@ -27,10 +27,9 @@ import fs from "fs";
 import v8 from "v8";
 import { version } from "../package.json";
 import invariant from "./invariant";
-import zipFactory from "node-zip";
-import path from "path";
 import JSONTokenizer from "./utils/JSONTokenizer.js";
-import type { DebuggerConfigArguments } from "./types";
+import type { DebuggerConfigArguments, DebugReproArguments } from "./types";
+import { DebugReproPackager } from "./utils/DebugReproPackager.js";
 
 // Prepack helper
 declare var __residual: any;
@@ -77,7 +76,8 @@ function run(
     --invariantMode          Whether to throw an exception or call a console function to log an invariant violation; default = throw.
     --emitConcreteModel      Synthesize concrete model values for abstract models(defined by __assumeDataProperty).
     --version                Output the version number.
-    --repro                  Create a zip file with all information needed to reproduce a Prepack run.
+    --reproOnFatalError      Create a zip file with all information needed to reproduce a Prepack run if Prepacking fails with a FatalError.
+    --reproUnconditionally   Create a zip file with all information needed to reproduce a Prepack run, regardless of success of Prepack.
     --cpuprofile             Create a CPU profile file for the run that can be loaded into the Chrome JavaScript CPU Profile viewer.
     --debugDiagnosticSeverity  FatalError | RecoverableError | Warning | Information (default = FatalError). Diagnostic level at which debugger will stop.
     --debugBuckRoot          Root directory that buck assumes when creating sourcemap paths.
@@ -89,7 +89,7 @@ function run(
   let check: void | Array<number>;
   let compatibility: Compatibility;
   let mathRandomSeed;
-  let inputSourceMap;
+  let inputSourceMapFilenames = [];
   let outputSourceMap;
   let statsFileName;
   let maxStackDepth: number;
@@ -104,6 +104,11 @@ function run(
   let cpuprofilePath: void | string;
   let invariantMode: void | InvariantModeTypes;
   let invariantLevel: void | number;
+  let reproMode: void | "reproUnconditionally" | "reproOnFatalError";
+  let debugReproPackager: void | DebugReproPackager;
+  // Indicates where to find a zip with prepack runtime. Used in environments where
+  // the `yarn pack` strategy doesn't work.
+  let externalPrepackPath: void | string;
   let flags = {
     initializeMoreModules: false,
     trace: false,
@@ -113,8 +118,6 @@ function run(
     logStatistics: false,
     logModules: false,
     delayInitializations: false,
-    delayUnsupportedRequires: false,
-    accelerateUnsupportedRequires: true,
     internalDebug: false,
     debugScopes: false,
     serialize: false,
@@ -126,18 +129,16 @@ function run(
 
   let reproArguments = [];
   let reproFileNames = [];
-  let inputFile = fileName => {
-    reproFileNames.push(fileName);
-    return path.basename(fileName);
-  };
   let debuggerConfigArgs: DebuggerConfigArguments = {};
+  let debugReproArgs: void | DebugReproArguments;
   while (args.length) {
     let arg = args.shift();
     if (!arg.startsWith("--")) {
       let inputs = arg.trim().split(/\s+/g); // Split on all whitespace
       for (let input of inputs) {
         inputFilenames.push(input);
-        reproArguments.push(inputFile(input));
+        if (!input.includes(".map")) reproFileNames.push(input);
+        // Don't include sourcemaps in reproFiles because they will be captured later on in prepack-node
       }
     } else {
       arg = arg.slice(2);
@@ -145,7 +146,7 @@ function run(
         case "out":
           arg = args.shift();
           outputFilename = arg;
-          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as path is likely not portable between environments
           break;
         case "compatibility":
           arg = args.shift();
@@ -161,16 +162,18 @@ function run(
           reproArguments.push("--mathRandomSeed", mathRandomSeed);
           break;
         case "srcmapIn":
-          inputSourceMap = args.shift();
-          reproArguments.push("--srcmapIn", inputFile(inputSourceMap));
+          let inputSourceMap = args.shift();
+          inputSourceMapFilenames.push(inputSourceMap);
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as path is likely not portable between environments
+          // Furthermore, this is covered when sourcemaps are discovered in prepack-node
           break;
         case "srcmapOut":
           outputSourceMap = args.shift();
-          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as path is likely not portable between environments
           break;
         case "statsFile":
           statsFileName = args.shift();
-          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as path is likely not portable between environments
           break;
         case "maxStackDepth":
           let value = args.shift();
@@ -218,11 +221,11 @@ function run(
           break;
         case "debugInFilePath":
           debugInFilePath = args.shift();
-          // do not include this in reproArguments needed by --repro, as debugger behavior is not currently supported for repros
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally] as the field is not visable to the user
           break;
         case "debugOutFilePath":
           debugOutFilePath = args.shift();
-          // do not include this in reproArguments needed by --repro, as debugger behavior is not currently supported for repros
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally] as the field is not visable to the user
           break;
         case "lazyObjectsRuntime":
           lazyObjectsRuntime = args.shift();
@@ -230,7 +233,7 @@ function run(
           break;
         case "heapGraphFilePath":
           heapGraphFilePath = args.shift();
-          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as path is likely not portable between environments
           break;
         case "reactOutput":
           arg = args.shift();
@@ -241,13 +244,19 @@ function run(
           reactOutput = (arg: any);
           reproArguments.push("--reactOutput", reactOutput);
           break;
-        case "repro":
+        case "reproOnFatalError":
+        case "reproUnconditionally":
+          debugReproPackager = new DebugReproPackager();
+          reproMode = arg;
           reproFilePath = args.shift();
-          // do not include this in reproArguments needed by --repro, as we don't need to create a repro from the repro...
+          debugReproArgs = {};
+          debugReproArgs.sourcemaps = [];
+          if (debuggerConfigArgs.buckRoot) debugReproArgs.buckRoot = debuggerConfigArgs.buckRoot;
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as we don't need to create a repro from the repro...
           break;
         case "cpuprofile":
           cpuprofilePath = args.shift();
-          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as path is likely not portable between environments
           break;
         case "invariantMode":
           arg = args.shift();
@@ -274,9 +283,19 @@ function run(
             `Invalid debugger diagnostic severity: ${arg}`
           );
           debuggerConfigArgs.diagnosticSeverity = arg;
+          reproArguments.push("--debugDiagnosticSeverity", arg);
           break;
         case "debugBuckRoot":
-          debuggerConfigArgs.buckRoot = args.shift();
+          let buckRoot = args.shift();
+          debuggerConfigArgs.buckRoot = buckRoot;
+          if (debugReproArgs) debugReproArgs.buckRoot = buckRoot;
+          // Use $(pwd)  instead of argument so repro script can be run from
+          // any computer, not just the one it was generated on.
+          // All sourcefiles are placed directly in the repro, so the repro folder is the buckRoot.
+          reproArguments.push("--debugBuckRoot", "$(pwd)");
+          break;
+        case "externalPrepackPath":
+          externalPrepackPath = args.shift();
           break;
         case "help":
           const options = [
@@ -316,26 +335,6 @@ function run(
     }
   }
 
-  if (reproFilePath !== undefined) {
-    const zip = zipFactory();
-    for (let fileName of reproFileNames) {
-      let content = fs.readFileSync(fileName, "utf8");
-      zip.file(path.basename(fileName), content);
-    }
-    zip.file(
-      "repro.sh",
-      `#!/bin/bash
-if [ -z "$PREPACK" ]; then
-  echo "Set environment variable PREPACK to bin/prepack.js in your Prepack directory."
-else
-  node "$PREPACK" ${reproArguments.map(a => `"${a}"`).join(" ")}
-fi
-`
-    );
-    const data = zip.generate({ base64: false, compression: "DEFLATE" });
-    fs.writeFileSync(reproFilePath, data, "binary");
-  }
-
   if (!flags.serialize && !flags.residual) flags.serialize = true;
   if (check) {
     flags.serialize = false;
@@ -347,7 +346,7 @@ fi
     {
       compatibility,
       mathRandomSeed,
-      inputSourceMapFilename: inputSourceMap,
+      inputSourceMapFilenames,
       errorHandler,
       sourceMaps: !!outputSourceMap,
       maxStackDepth,
@@ -361,6 +360,7 @@ fi
       invariantMode,
       invariantLevel,
       debuggerConfigArgs,
+      debugReproArgs,
     },
     flags
   );
@@ -456,6 +456,9 @@ fi
 
   let profiler;
   let success;
+  let debugReproSourceFiles = [];
+  let debugReproSourceMaps = [];
+
   try {
     if (cpuprofilePath !== undefined) {
       try {
@@ -475,6 +478,18 @@ fi
         return;
       }
       let serialized = prepackFileSync(inputFilenames, resolvedOptions);
+      if (reproMode === "reproUnconditionally") {
+        if (serialized.sourceFilePaths) {
+          debugReproSourceFiles = serialized.sourceFilePaths.sourceFiles;
+          debugReproSourceMaps = serialized.sourceFilePaths.sourceMaps;
+        } else {
+          // An input can have no sourcemap/sourcefiles, but we can still package
+          // the input files, prepack runtime, and generate the script.
+          debugReproSourceFiles = [];
+          debugReproSourceMaps = [];
+        }
+      }
+
       success = printDiagnostics(false);
       if (resolvedOptions.serialize && serialized) processSerializedCode(serialized);
     } catch (err) {
@@ -482,6 +497,26 @@ fi
       if (!(err instanceof FatalError)) {
         // if it is not a FatalError, it means prepack failed, and we should display the Prepack stack trace.
         console.error(err.stack);
+      }
+      if (reproMode) {
+        // Get largest list of original sources from all diagnostics.
+        // Must iterate through both because maps are ordered so we can't tell which diagnostic is most recent.
+        let largestLength = 0;
+
+        let allDiagnostics = Array.from(compilerDiagnostics.values()).concat(compilerDiagnosticsList);
+        allDiagnostics.forEach(diagnostic => {
+          if (
+            diagnostic.sourceFilePaths &&
+            diagnostic.sourceFilePaths.sourceFiles &&
+            diagnostic.sourceFilePaths.sourceMaps
+          ) {
+            if (diagnostic.sourceFilePaths.sourceFiles.length > largestLength) {
+              debugReproSourceFiles = diagnostic.sourceFilePaths.sourceFiles;
+              largestLength = diagnostic.sourceFilePaths.sourceFiles.length;
+              debugReproSourceMaps = diagnostic.sourceFilePaths.sourceMaps;
+            }
+          }
+        });
       }
       success = false;
     }
@@ -541,7 +576,28 @@ fi
     }
   }
 
-  if (!success) process.exit(1);
+  // If there will be a repro going on, don't exit.
+  // The repro involves an async directory zip, so exiting here will cause the repro
+  // to not complete. Instead, all calls to repro include a flag to indicate
+  // whether or not it should process.exit() upon completion.
+  if (!success && reproMode === undefined) {
+    process.exit(1);
+  } else if ((!success && reproMode === "reproOnFatalError") || reproMode === "reproUnconditionally") {
+    if (debugReproPackager) {
+      debugReproPackager.generateDebugRepro(
+        !success,
+        debugReproSourceFiles,
+        debugReproSourceMaps,
+        reproFilePath,
+        reproFileNames,
+        reproArguments,
+        externalPrepackPath
+      );
+    } else {
+      console.error("Debug Repro Packager was not initialized.");
+      process.exit(1);
+    }
+  }
 }
 
 if (typeof __residual === "function") {

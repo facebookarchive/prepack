@@ -66,3 +66,11 @@ it("Complex class components folding into functional root component #4", () => {
 it("Complex class components folding into functional root component #5", () => {
   runTest(__dirname + "/ClassComponents/complex-class-into-functional-root5.js");
 });
+
+it("Complex class component rendering equivalent node to functional root component", () => {
+  runTest(__dirname + "/ClassComponents/complex-class-with-equivalent-node.js");
+});
+
+it("Complex class component hoists nodes independently of functional root component", () => {
+  runTest(__dirname + "/ClassComponents/complex-class-proper-hoisting.js");
+});
