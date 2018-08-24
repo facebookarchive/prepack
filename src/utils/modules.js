@@ -14,7 +14,6 @@ import { FatalError } from "../errors.js";
 import { Realm, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
 import { Get } from "../methods/index.js";
-import { AbruptCompletion, SimpleNormalCompletion } from "../completions.js";
 import { Environment } from "../singletons.js";
 import {
   Value,
@@ -103,8 +102,6 @@ export class ModuleTracer extends Tracer {
     }
   }
 
-  // If we don't delay unsupported requires, we simply want to record here
-  // when a module gets initialized, and then we return.
   _callRequireAndRecord(moduleIdValue: number | string, performCall: () => Value): void | Value {
     if (this.requireStack.length === 0 || this.requireStack[this.requireStack.length - 1] !== moduleIdValue) {
       this.requireStack.push(moduleIdValue);
@@ -117,67 +114,6 @@ export class ModuleTracer extends Tracer {
       }
     }
     return undefined;
-  }
-
-  _callRequireAndAccelerate(
-    isTopLevelRequire: boolean,
-    moduleIdValue: number | string,
-    performCall: () => Value
-  ): void | Effects {
-    let realm = this.modules.realm;
-    let acceleratedModuleIds, effects;
-    do {
-      try {
-        effects = realm.evaluateForEffects(() => performCall(), this, "_callRequireAndAccelerate");
-      } catch (e) {
-        e;
-      }
-
-      acceleratedModuleIds = [];
-      if (isTopLevelRequire && effects !== undefined && !(effects.result instanceof AbruptCompletion)) {
-        // We gathered all effects, but didn't apply them yet.
-        // Let's check if there was any call to `require` in a
-        // evaluate-for-effects context. If so, try to initialize
-        // that module right now. Acceleration module initialization in this
-        // way might not actually be desirable, but it works around
-        // general prepack-limitations around joined abstract values involving
-        // conditionals. Long term, Prepack needs to implement a notion of refinement
-        // of conditional abstract values under the known path condition.
-        // Example:
-        //   if (*) require(1); else require(2);
-        //   let x = require(1).X;
-        // =>
-        //   require(1);
-        //   require(2);
-        //   if (*) require(1); else require(2);
-        //   let x = require(1).X;
-
-        for (let nestedModuleId of this.uninitializedModuleIdsRequiredInEvaluateForEffects) {
-          let nestedEffects = this.modules.tryInitializeModule(
-            nestedModuleId,
-            `accelerated initialization of conditional module ${nestedModuleId} as it's required in an evaluate-for-effects context by module ${moduleIdValue}`
-          );
-          if (
-            this.modules.accelerateUnsupportedRequires &&
-            nestedEffects !== undefined &&
-            nestedEffects.result instanceof Value &&
-            this.modules.isModuleInitialized(nestedModuleId)
-          ) {
-            acceleratedModuleIds.push(nestedModuleId);
-          }
-        }
-        this.uninitializedModuleIdsRequiredInEvaluateForEffects.clear();
-        // Keep restarting for as long as we find additional modules to accelerate.
-        if (acceleratedModuleIds.length > 0) {
-          console.log(
-            `restarting require(${moduleIdValue}) after accelerating conditional require calls for ${acceleratedModuleIds.join()}`
-          );
-          this.getStatistics().acceleratedModules += acceleratedModuleIds.length;
-        }
-      }
-    } while (acceleratedModuleIds.length > 0);
-
-    return effects;
   }
 
   _tryExtractDependencies(value: void | Value): void | Array<Value> {
@@ -208,95 +144,87 @@ export class ModuleTracer extends Tracer {
     newTarget: void | ObjectValue,
     performCall: () => Value
   ): void | Value {
-    if (
-      F === this.modules.getRequire() &&
-      !this.modules.disallowDelayingRequiresOverride &&
-      argumentsList.length === 1
-    ) {
+    let requireInfo = this.modules.getRequireInfo();
+    if (requireInfo !== undefined && F === requireInfo.value && argumentsList.length === 1) {
       // Here, we handle calls of the form
       //   require(42)
 
       let moduleId = argumentsList[0];
       let moduleIdValue;
       // Do some sanity checks and request require(...) calls with bad arguments
-      if (moduleId instanceof NumberValue || moduleId instanceof StringValue) {
-        moduleIdValue = moduleId.value;
-      } else {
-        return undefined;
+      if (moduleId instanceof NumberValue || moduleId instanceof StringValue) moduleIdValue = moduleId.value;
+      else return performCall();
+      // call require(...); this might cause calls to the define function
+      let res = this._callRequireAndRecord(moduleIdValue, performCall);
+      if (F.$Realm.eagerlyRequireModuleDependencies) {
+        // all dependencies of the required module should now be known
+        let dependencies = this.modules.moduleDependencies.get(moduleIdValue);
+        if (dependencies === undefined)
+          this.modules.logger.logError(moduleId, `Cannot resolve module dependencies for ${moduleIdValue.toString()}.`);
+        else
+          for (let dependency of dependencies) {
+            // We'll try to initialize module dependency on a best-effort basis,
+            // ignoring any errors. Note that tryInitializeModule applies effects on success.
+            if (dependency instanceof NumberValue || dependency instanceof StringValue)
+              this.modules.tryInitializeModule(dependency.value, `Eager initialization of module ${dependency.value}`);
+          }
       }
-      return this._callRequireAndRecord(moduleIdValue, performCall);
+      return res;
     } else if (F === this.modules.getDefine()) {
       // Here, we handle calls of the form
       //   __d(factoryFunction, moduleId, dependencyArray)
 
-      let factoryFunction = argumentsList[0];
-      if (factoryFunction instanceof FunctionValue) {
-        let dependencies = this._tryExtractDependencies(argumentsList[2]);
-        if (dependencies !== undefined) {
-          let previousDependencies = this.modules.factoryFunctionDependencies.get(factoryFunction);
-          if (previousDependencies) {
-            // Verify that they are the same
-            let logError = () => {
-              let moduleId = argumentsList[1];
-              let moduleString =
-                moduleId instanceof StringValue || moduleId instanceof NumberValue ? moduleId.value : "unknown";
-              this.modules.logger.logError(
-                factoryFunction,
-                `Called define on the same module ${moduleString} twice with different dependencies each time.`
-              );
-            };
-            if (previousDependencies.length !== dependencies.length) {
-              logError();
-            } else {
-              let previousDependenciesSet = new Set(previousDependencies);
-              dependencies.forEach(dependency => {
-                if (!previousDependenciesSet.has(dependency)) logError();
-              });
-            }
-          } else {
-            this.modules.factoryFunctionDependencies.set(factoryFunction, dependencies);
-          }
-        } else
-          this.modules.logger.logError(
-            argumentsList[2],
-            "Third argument to define function is present but not a concrete array."
-          );
-      } else
-        this.modules.logger.logError(factoryFunction, "First argument to define function is not a function value.");
       let moduleId = argumentsList[1];
-      if (moduleId instanceof NumberValue || moduleId instanceof StringValue)
-        this.modules.moduleIds.add(moduleId.value);
-      else
+      if (moduleId instanceof NumberValue || moduleId instanceof StringValue) {
+        let moduleIdValue = moduleId.value;
+        let factoryFunction = argumentsList[0];
+        if (factoryFunction instanceof FunctionValue) {
+          let dependencies = this._tryExtractDependencies(argumentsList[2]);
+          if (dependencies !== undefined) {
+            this.modules.moduleDependencies.set(moduleIdValue, dependencies);
+            this.modules.factoryFunctionDependencies.set(factoryFunction, dependencies);
+          } else
+            this.modules.logger.logError(
+              argumentsList[2],
+              "Third argument to define function is present but not a concrete array."
+            );
+        } else
+          this.modules.logger.logError(factoryFunction, "First argument to define function is not a function value.");
+
+        this.modules.moduleIds.add(moduleIdValue);
+      } else
         this.modules.logger.logError(moduleId, "Second argument to define function is not a number or string value.");
     }
     return undefined;
   }
 }
 
+export type RequireInfo = {
+  value: FunctionValue,
+  globalName: string,
+};
+
 export class Modules {
-  constructor(realm: Realm, logger: Logger, logModules: boolean, accelerateUnsupportedRequires: boolean) {
+  constructor(realm: Realm, logger: Logger, logModules: boolean) {
     this.realm = realm;
     this.logger = logger;
-    this._require = realm.intrinsics.undefined;
     this._define = realm.intrinsics.undefined;
     this.factoryFunctionDependencies = new Map();
+    this.moduleDependencies = new Map();
     this.moduleIds = new Set();
     this.initializedModules = new Map();
     realm.tracers.push((this.moduleTracer = new ModuleTracer(this, logModules)));
-    this.accelerateUnsupportedRequires = accelerateUnsupportedRequires;
-    this.disallowDelayingRequiresOverride = false;
   }
 
   realm: Realm;
   logger: Logger;
-  _require: Value;
+  _requireInfo: void | RequireInfo;
   _define: Value;
   factoryFunctionDependencies: Map<FunctionValue, Array<Value>>;
+  moduleDependencies: Map<number | string, Array<Value>>;
   moduleIds: Set<number | string>;
   initializedModules: Map<number | string, Value>;
   active: boolean;
-  accelerateUnsupportedRequires: boolean;
-  disallowDelayingRequiresOverride: boolean;
   moduleTracer: ModuleTracer;
 
   getStatistics(): SerializerStatistics {
@@ -330,12 +258,16 @@ export class Modules {
     }
   }
 
-  getRequire(): Value {
-    if (!(this._require instanceof FunctionValue)) {
-      this._require = this._getGlobalProperty("require");
-      if (!(this._require instanceof FunctionValue)) this._require = this._getGlobalProperty("__r");
-    }
-    return this._require;
+  getRequireInfo(): void | RequireInfo {
+    if (this._requireInfo === undefined)
+      for (let globalName of ["require", "__r"]) {
+        let value = this._getGlobalProperty(globalName);
+        if (value instanceof FunctionValue) {
+          this._requireInfo = { value, globalName };
+          break;
+        }
+      }
+    return this._requireInfo;
   }
 
   getDefine(): Value {
@@ -457,7 +389,8 @@ export class Modules {
           if (!binding.initialized) return undefined;
           value = binding.value;
         }
-        if (value !== modules.getRequire()) return undefined;
+        let requireInfo = modules.getRequireInfo();
+        if (requireInfo === undefined || value !== requireInfo.value) return undefined;
         const newModuleId = getModuleId();
         invariant(newModuleId !== undefined);
         if (!updateModuleId(newModuleId)) return undefined;
@@ -479,11 +412,11 @@ export class Modules {
 
   tryInitializeModule(moduleId: number | string, message: string): void | Effects {
     let realm = this.realm;
-    let previousDisallowDelayingRequiresOverride = this.disallowDelayingRequiresOverride;
-    this.disallowDelayingRequiresOverride = true;
+    let requireInfo = this.getRequireInfo();
+    if (requireInfo === undefined) return undefined;
     return downgradeErrorsToWarnings(realm, () => {
       try {
-        let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
+        let node = t.callExpression(t.identifier(requireInfo.globalName), [t.valueToNode(moduleId)]);
 
         let effects = realm.evaluateNodeForEffectsInGlobalEnv(node);
         realm.applyEffects(effects, message);
@@ -491,8 +424,6 @@ export class Modules {
       } catch (err) {
         if (err instanceof FatalError) return undefined;
         else throw err;
-      } finally {
-        this.disallowDelayingRequiresOverride = previousDisallowDelayingRequiresOverride;
       }
     });
   }
@@ -510,47 +441,5 @@ export class Modules {
       this.initializedModules.set(moduleId, result);
     }
     if (count > 0) console.log(`=== speculatively initialized ${count} additional modules`);
-  }
-
-  isModuleInitialized(moduleId: number | string): void | Value {
-    let realm = this.realm;
-    let oldReadOnly = realm.setReadOnly(true);
-    let oldDisallowDelayingRequiresOverride = this.disallowDelayingRequiresOverride;
-    this.disallowDelayingRequiresOverride = true;
-    try {
-      let node = t.callExpression(t.identifier("require"), [t.valueToNode(moduleId)]);
-
-      let {
-        result,
-        generator,
-        modifiedBindings,
-        modifiedProperties,
-        createdObjects,
-      } = realm.evaluateNodeForEffectsInGlobalEnv(node);
-      // for lint unused
-      invariant(modifiedBindings);
-
-      if (result instanceof AbruptCompletion) return undefined;
-      if (result instanceof SimpleNormalCompletion) result = result.value;
-      invariant(result instanceof Value);
-
-      if (!generator.empty() || (result instanceof ObjectValue && createdObjects.has(result))) return undefined;
-      // Check for escaping property assignments, if none escape, we got an existing object
-      let escapes = false;
-      for (let [binding] of modifiedProperties) {
-        let object = binding.object;
-        invariant(object instanceof ObjectValue);
-        if (!createdObjects.has(object)) escapes = true;
-      }
-      if (escapes) return undefined;
-
-      return result;
-    } catch (err) {
-      if (err instanceof FatalError) return undefined;
-      throw err;
-    } finally {
-      realm.setReadOnly(oldReadOnly);
-      this.disallowDelayingRequiresOverride = oldDisallowDelayingRequiresOverride;
-    }
   }
 }

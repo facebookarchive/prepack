@@ -22,7 +22,6 @@ export type PrepackOptions = {|
   compatibility?: Compatibility,
   debugNames?: boolean,
   delayInitializations?: boolean,
-  accelerateUnsupportedRequires?: boolean,
   inputSourceMapFilenames?: Array<string>,
   internalDebug?: boolean,
   debugScopes?: boolean,
@@ -121,7 +120,6 @@ export function getSerializerOptions({
   lazyObjectsRuntime,
   heapGraphFormat,
   delayInitializations = false,
-  accelerateUnsupportedRequires = true,
   internalDebug = false,
   debugScopes = false,
   debugIdentifiers,
@@ -134,7 +132,6 @@ export function getSerializerOptions({
 }: PrepackOptions): SerializerOptions {
   let result: SerializerOptions = {
     delayInitializations,
-    accelerateUnsupportedRequires,
     initializeMoreModules,
     internalDebug,
     debugScopes,
