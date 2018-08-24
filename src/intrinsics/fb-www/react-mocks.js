@@ -371,6 +371,10 @@ let reactCode = `
     ReactPropTypes.checkPropTypes = shim;
     ReactPropTypes.PropTypes = ReactPropTypes;
 
+    var ReactSharedInternals = {
+      ReactCurrentOwner,
+    };
+
     return {
       Children: {
         forEach: forEachChildren,
@@ -386,6 +390,7 @@ let reactCode = `
       isValidElement,
       version: "16.2.0",
       PropTypes: ReactPropTypes,
+      __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED: ReactSharedInternals,
     };
   }
 `;
