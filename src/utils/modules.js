@@ -162,9 +162,12 @@ export class ModuleTracer extends Tracer {
         if (dependencies === undefined)
           this.modules.logger.logError(moduleId, `Cannot resolve module dependencies for ${moduleIdValue.toString()}.`);
         else
-          for (let dependency of dependencies)
+          for (let dependency of dependencies) {
+            // We'll try to initialize module dependency on a best-effort basis,
+            // ignoring any errors. Note that tryInitializeModule applies effects on success.
             if (dependency instanceof NumberValue || dependency instanceof StringValue)
               this.modules.tryInitializeModule(dependency.value, `Eager initialization of module ${dependency.value}`);
+          }
       }
       return res;
     } else if (F === this.modules.getDefine()) {
@@ -205,7 +208,6 @@ export class Modules {
   constructor(realm: Realm, logger: Logger, logModules: boolean) {
     this.realm = realm;
     this.logger = logger;
-    this._requireInfo = undefined;
     this._define = realm.intrinsics.undefined;
     this.factoryFunctionDependencies = new Map();
     this.moduleDependencies = new Map();
