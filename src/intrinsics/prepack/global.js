@@ -24,6 +24,7 @@ import {
   Value,
 } from "../../values/index.js";
 import { To, Path } from "../../singletons.js";
+import { IsCallable } from "../../methods/index.js";
 import { ValuesDomain } from "../../domains/index.js";
 import invariant from "../../invariant.js";
 import { createAbstract, parseTypeNameOrTemplate } from "./utils.js";
@@ -512,6 +513,33 @@ export default function(realm: Realm): void {
     value: new NativeFunctionValue(realm, "global.__fatal", "__fatal", 0, (context, []) => {
       throw new FatalError();
     }),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__eagerlyRequireModuleDependencies", {
+    value: new NativeFunctionValue(
+      realm,
+      "global.__eagerlyRequireModuleDependencies",
+      "__eagerlyRequireModuleDependencies",
+      1,
+      (context, [functionValue]) => {
+        if (!IsCallable(realm, functionValue) || !(functionValue instanceof FunctionValue))
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "argument must be callable function");
+        let functionCall: void | ((thisArgument: Value, argumentsList: Array<Value>) => Value) = functionValue.$Call;
+        if (typeof functionCall !== "function") {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "argument must be directly callable");
+        }
+        let old = realm.eagerlyRequireModuleDependencies;
+        realm.eagerlyRequireModuleDependencies = true;
+        try {
+          return functionCall(realm.intrinsics.undefined, []);
+        } finally {
+          realm.eagerlyRequireModuleDependencies = old;
+        }
+      }
+    ),
     writable: true,
     enumerable: false,
     configurable: true,

@@ -47,12 +47,7 @@ export class Serializer {
 
     this.realm = realm;
     this.logger = new Logger(this.realm, !!serializerOptions.internalDebug);
-    this.modules = new Modules(
-      this.realm,
-      this.logger,
-      !!serializerOptions.logModules,
-      !!serializerOptions.accelerateUnsupportedRequires
-    );
+    this.modules = new Modules(this.realm, this.logger, !!serializerOptions.logModules);
     this.functions = new Functions(this.realm, this.modules.moduleTracer);
     if (serializerOptions.trace) {
       let loggingTracer = new LoggingTracer(this.realm);

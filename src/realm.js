@@ -457,6 +457,8 @@ export class Realm {
   optimizedFunctions: Map<FunctionValue | AbstractValue, ArgModel | void>;
   arrayNestedOptimizedFunctionsEnabled: boolean;
 
+  eagerlyRequireModuleDependencies: void | boolean;
+
   // to force flow to type the annotations
   isCompatibleWith(compatibility: Compatibility): boolean {
     return compatibility === this.compatibility;
