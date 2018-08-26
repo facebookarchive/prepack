@@ -26,7 +26,7 @@ import {
 } from "./index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { IsDataDescriptor, cloneDescriptor, equalDescriptors } from "../methods/index.js";
-import { Leak, Properties, Join, Widen } from "../singletons.js";
+import { Leak, Join, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
 import { createOperationDescriptor, type OperationDescriptor } from "../utils/generator.js";
 import { construct_empty_effects } from "../realm.js";
@@ -700,19 +700,6 @@ export default class AbstractObjectValue extends AbstractValue {
 
     let realm = this.$Realm;
     let elements = this.values.getElements();
-
-    if (this.isSimpleObject()) {
-      // If this is a simple object, we know that we won't invoke any special
-      // logic so we can fast path it through the ordinary object model which
-      // will call $GetOwnProperty and $DefineOwnProperty on the Receiver.
-      // These will ensure that all possible values and descriptors are
-      // represented.
-      for (let cv of elements) {
-        invariant(cv instanceof ObjectValue);
-        return Properties.OrdinarySet(realm, cv, P, V, Receiver);
-      }
-      invariant(false, "there is always at least one element in non-top");
-    }
 
     if (elements.size === 1) {
       for (let cv of elements) {
