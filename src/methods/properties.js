@@ -622,6 +622,15 @@ export class PropertiesImplementation {
     // 1. If Desc is undefined, return undefined.
     if (!Desc) return realm.intrinsics.undefined;
 
+    if (Desc.joinCondition) {
+      return AbstractValue.createFromConditionalOp(
+        realm,
+        Desc.joinCondition,
+        this.FromPropertyDescriptor(realm, Desc.descriptor1),
+        this.FromPropertyDescriptor(realm, Desc.descriptor2)
+      );
+    }
+
     // 2. Let obj be ObjectCreate(%ObjectPrototype%).
     let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 

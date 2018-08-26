@@ -1,5 +1,4 @@
-// throws introspection error
-let x = __abstract("boolean", "true");
+let x = global.__abstract ? __abstract("boolean", "true") : true;
 let nonEnumerableA = { a: 1 };
 Object.defineProperty(nonEnumerableA, "a", { enumerable: false });
 let ob = x ? nonEnumerableA : { a: 2 };

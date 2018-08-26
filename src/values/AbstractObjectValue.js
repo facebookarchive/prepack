@@ -26,7 +26,7 @@ import {
 } from "./index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import { IsDataDescriptor, cloneDescriptor, equalDescriptors } from "../methods/index.js";
-import { Leak, Properties, Widen } from "../singletons.js";
+import { Leak, Properties, Join, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
 import { createOperationDescriptor, type OperationDescriptor } from "../utils/generator.js";
 import { construct_empty_effects } from "../realm.js";
@@ -318,22 +318,7 @@ export default class AbstractObjectValue extends AbstractValue {
       invariant(ob2 instanceof ObjectValue || ob2 instanceof AbstractObjectValue);
       let d1 = ob1.$GetOwnProperty(P);
       let d2 = ob2.$GetOwnProperty(P);
-      if (d1 !== undefined && d2 !== undefined && !equalDescriptors(d1, d2)) {
-        AbstractValue.reportIntrospectionError(this, P);
-        throw new FatalError();
-      }
-      let desc = d1 ? cloneDescriptor(d1) : d2 ? cloneDescriptor(d2) : undefined;
-      if (desc === undefined) {
-        return undefined;
-      }
-      if (IsDataDescriptor(this.$Realm, desc)) {
-        let d1Value = d1 ? d1.value : this.$Realm.intrinsics.empty;
-        invariant(d1Value === undefined || d1Value instanceof Value);
-        let d2Value = d2 ? d2.value : this.$Realm.intrinsics.empty;
-        invariant(d2Value === undefined || d2Value instanceof Value);
-        desc.value = AbstractValue.createFromConditionalOp(this.$Realm, cond, d1Value, d2Value);
-      }
-      return desc;
+      return Join.joinDescriptors(this.$Realm, cond, d1, d2);
     } else if (this.kind === "widened") {
       // This abstract object was created by repeated assignments of freshly allocated objects to the same binding inside a loop
       let [ob1, ob2] = this.args; // ob1: summary of iterations 1...n, ob2: summary of iteration n+1
@@ -362,38 +347,21 @@ export default class AbstractObjectValue extends AbstractValue {
       }
       return desc;
     } else {
-      let value;
-      let desc;
+      let first = true;
+      let joinedDescriptor;
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
-        let d = cv.$GetOwnProperty(P);
-        let dval;
-        if (d !== undefined) {
-          if (desc === undefined) {
-            desc = cloneDescriptor(d);
-            invariant(desc !== undefined);
-          } else if (!equalDescriptors(d, desc)) {
-            AbstractValue.reportIntrospectionError(this, P);
-            throw new FatalError();
-          }
-          if (!IsDataDescriptor(this.$Realm, desc)) continue;
-          dval = d.value;
+        let desc = cv.$GetOwnProperty(P);
+        if (first) {
+          first = false;
+          joinedDescriptor = desc;
         } else {
-          dval = this.$Realm.intrinsics.empty;
-        }
-        invariant(dval instanceof Value);
-        if (value === undefined) {
-          value = dval;
-        } else {
-          // values may be different
           let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
-          value = AbstractValue.createFromConditionalOp(this.$Realm, cond, dval, value);
-        }
-        if (desc !== undefined) {
-          desc.value = value;
+          invariant(cond instanceof AbstractValue);
+          joinedDescriptor = Join.joinDescriptors(this.$Realm, cond, desc, joinedDescriptor);
         }
       }
-      return desc;
+      return joinedDescriptor;
     }
   }
 

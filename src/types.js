@@ -723,6 +723,13 @@ export type JoinType = {
 
   joinEffects(joinCondition: Value, e1: Effects, e2: Effects): Effects,
 
+  joinDescriptors(
+    realm: Realm,
+    joinCondition: AbstractValue,
+    d1: void | Descriptor,
+    d2: void | Descriptor
+  ): void | Descriptor,
+
   joinValuesOfSelectedCompletions(selector: (Completion) => boolean, completion: Completion): Value,
 
   mapAndJoin(
