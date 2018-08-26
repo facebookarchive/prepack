@@ -371,8 +371,8 @@ export class PropertiesImplementation {
         }
 
         // b. If Type(Receiver) is not Object, return false.
-        Receiver = Receiver.throwIfNotConcrete();
-        if (!(Receiver instanceof ObjectValue)) return false;
+        if (!Receiver.mightBeObject()) return false;
+        invariant(Receiver instanceof ObjectValue || Receiver instanceof AbstractObjectValue);
 
         // c. Let existingDescriptor be ? Receiver.[[GetOwnProperty]](P).
         let existingDescriptor = Receiver.$GetOwnProperty(P);
@@ -522,7 +522,15 @@ export class PropertiesImplementation {
     // If it was simple, it would've been an assignment to the receiver.
     // The only case the Receiver isn't this, if this was a ToObject
     // coercion from a PrimitiveValue.
-    invariant(O === Receiver || HasCompatibleType(Receiver, PrimitiveValue));
+    let abstractOverO = false;
+    if (Receiver instanceof AbstractObjectValue && !Receiver.values.isTop()) {
+      let elements = Receiver.values.getElements();
+      invariant(elements);
+      if (elements.has(O)) {
+        abstractOverO = true;
+      }
+    }
+    invariant(O === Receiver || HasCompatibleType(Receiver, PrimitiveValue) || abstractOverO);
 
     P = To.ToStringAbstract(realm, P);
 
@@ -613,6 +621,15 @@ export class PropertiesImplementation {
   FromPropertyDescriptor(realm: Realm, Desc: ?Descriptor): Value {
     // 1. If Desc is undefined, return undefined.
     if (!Desc) return realm.intrinsics.undefined;
+
+    if (Desc.joinCondition) {
+      return AbstractValue.createFromConditionalOp(
+        realm,
+        Desc.joinCondition,
+        this.FromPropertyDescriptor(realm, Desc.descriptor1),
+        this.FromPropertyDescriptor(realm, Desc.descriptor2)
+      );
+    }
 
     // 2. Let obj be ObjectCreate(%ObjectPrototype%).
     let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);

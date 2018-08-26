@@ -723,6 +723,13 @@ export type JoinType = {
 
   joinEffects(joinCondition: Value, e1: Effects, e2: Effects): Effects,
 
+  joinDescriptors(
+    realm: Realm,
+    joinCondition: AbstractValue,
+    d1: void | Descriptor,
+    d2: void | Descriptor
+  ): void | Descriptor,
+
   joinValuesOfSelectedCompletions(selector: (Completion) => boolean, completion: Completion): Value,
 
   mapAndJoin(
@@ -780,7 +787,7 @@ export type CreateType = {
   CopyDataProperties(realm: Realm, target: ObjectValue, source: Value, excluded: Array<PropertyKeyValue>): ObjectValue,
 
   // ECMA262 7.3.4
-  CreateDataProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value): boolean,
+  CreateDataProperty(realm: Realm, O: ObjectValue | AbstractObjectValue, P: PropertyKeyValue, V: Value): boolean,
 
   // ECMA262 7.3.5
   CreateMethodProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value): boolean,
