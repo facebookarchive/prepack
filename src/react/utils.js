@@ -31,7 +31,7 @@ import {
 } from "../values/index.js";
 import { TemporalObjectAssignEntry } from "../utils/generator.js";
 import type { Descriptor, ReactComponentTreeConfig, ReactHint, PropertyBinding } from "../types.js";
-import { Get, cloneDescriptor } from "../methods/index.js";
+import { Get, cloneDescriptor, IsDataDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import type { AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
 import invariant from "../invariant.js";
@@ -40,6 +40,7 @@ import traverse from "@babel/traverse";
 import * as t from "@babel/types";
 import type { BabelNodeStatement } from "@babel/types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 export type ReactSymbolTypes =
   | "react.element"
@@ -109,6 +110,7 @@ export function getReactSymbol(symbolKey: ReactSymbolTypes, realm: Realm): Symbo
     let SymbolForDescriptor = SymbolFor.descriptor;
 
     if (SymbolForDescriptor !== undefined) {
+      invariant(SymbolForDescriptor instanceof PropertyDescriptor);
       let SymbolForValue = SymbolForDescriptor.value;
       if (SymbolForValue instanceof ObjectValue && typeof SymbolForValue.$Call === "function") {
         reactSymbol = SymbolForValue.$Call(realm.intrinsics.Symbol, [new StringValue(realm, symbolKey)]);
@@ -243,6 +245,7 @@ export function forEachArrayValue(
     let elementProperty = array.properties.get("" + i);
     let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
     if (elementPropertyDescriptor) {
+      invariant(elementPropertyDescriptor instanceof PropertyDescriptor);
       let elementValue = elementPropertyDescriptor.value;
       if (elementValue instanceof Value) {
         mapFunc(elementValue, i);
@@ -266,6 +269,7 @@ export function mapArrayValue(
     let elementProperty = array.properties.get("" + i);
     let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
     if (elementPropertyDescriptor) {
+      invariant(elementPropertyDescriptor instanceof PropertyDescriptor);
       let elementValue = elementPropertyDescriptor.value;
       if (elementValue instanceof Value) {
         let newElement = mapFunc(elementValue, elementPropertyDescriptor);
@@ -294,7 +298,7 @@ export function convertSimpleClassComponentToFunctionalComponent(
 ): void {
   let prototype = complexComponentType.properties.get("prototype");
   invariant(prototype);
-  invariant(prototype.descriptor);
+  invariant(prototype.descriptor instanceof PropertyDescriptor);
   prototype.descriptor.configurable = true;
   Properties.DeletePropertyOrThrow(realm, complexComponentType, "prototype");
 
@@ -485,7 +489,7 @@ export function convertFunctionalComponentToComplexClassComponent(
 export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFunctionValue): void {
   // fix the length as we may change the arguments
   let lengthProperty = GetDescriptorForProperty(func, "length");
-  invariant(lengthProperty);
+  invariant(lengthProperty instanceof PropertyDescriptor);
   lengthProperty.writable = false;
   lengthProperty.enumerable = false;
   lengthProperty.configurable = true;
@@ -640,6 +644,7 @@ export function getProperty(
   if (!descriptor) {
     return realm.intrinsics.undefined;
   }
+  invariant(descriptor instanceof PropertyDescriptor);
   let value = descriptor.value;
   if (value === undefined) {
     AbstractValue.reportIntrospectionError(object, `react/utils/getProperty unsupported getter/setter property`);
@@ -918,11 +923,14 @@ export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value
   let clonedProps = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
 
   for (let [propName, binding] of props.properties) {
-    if (binding && binding.descriptor && binding.descriptor.enumerable) {
-      if (newChildren !== undefined && propName === "children") {
-        Properties.Set(realm, clonedProps, propName, newChildren, true);
-      } else {
-        Properties.Set(realm, clonedProps, propName, getProperty(realm, props, propName), true);
+    if (binding && binding.descriptor) {
+      invariant(binding.descriptor instanceof PropertyDescriptor);
+      if (binding.descriptor.enumerable) {
+        if (newChildren !== undefined && propName === "children") {
+          Properties.Set(realm, clonedProps, propName, newChildren, true);
+        } else {
+          Properties.Set(realm, clonedProps, propName, getProperty(realm, props, propName), true);
+        }
       }
     }
   }
@@ -1005,20 +1013,19 @@ export function hardModifyReactObjectPropertyBinding(
   if (binding === undefined) {
     binding = {
       object,
-      descriptor: {
+      descriptor: new PropertyDescriptor({
         configurable: true,
         enumerable: true,
         value: undefined,
         writable: true,
-      },
+      }),
       key: propName,
     };
   }
   let descriptor = binding.descriptor;
-  invariant(descriptor !== undefined);
-  let newDescriptor = Object.assign({}, descriptor, {
-    value,
-  });
+  invariant(descriptor instanceof PropertyDescriptor && IsDataDescriptor(realm, descriptor));
+  let newDescriptor = new PropertyDescriptor(descriptor);
+  newDescriptor.value = value;
   let newBinding = Object.assign({}, binding, {
     descriptor: newDescriptor,
   });
