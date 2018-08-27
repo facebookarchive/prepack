@@ -149,6 +149,7 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
         }
       }
     } else {
+      invariant(oldDesc instanceof PropertyDescriptor);
       // The property is being modified
       if (equalDescriptors(desc, oldDesc)) {
         invariant(IsDataDescriptor(realm, desc));
