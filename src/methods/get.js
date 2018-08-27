@@ -799,7 +799,7 @@ export function GetFromArrayWithWidenedNumericProperty(
     if (prototypeBinding !== undefined) {
       let descriptor = prototypeBinding.descriptor;
       // ensure we are accessing a built-in native function
-      if (descriptor !== undefined && descriptor.value instanceof NativeFunctionValue) {
+      if (descriptor instanceof PropertyDescriptor && descriptor.value instanceof NativeFunctionValue) {
         return descriptor.value;
       }
     }

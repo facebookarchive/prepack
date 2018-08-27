@@ -347,35 +347,37 @@ export default function(realm: Realm): NativeFunctionValue {
     // 3. Let desc be ? obj.[[GetOwnProperty]](key).
     let desc = obj.$GetOwnProperty(key);
 
-    let getterFunc = desc && desc.throwIfNotConcrete(realm).get;
     // If we are returning a descriptor with a NativeFunctionValue
     // and it has no intrinsic name, then we create a temporal as this
     // can only be done at runtime
-    if (
-      getterFunc instanceof NativeFunctionValue &&
-      getterFunc.intrinsicName === undefined &&
-      realm.useAbstractInterpretation
-    ) {
-      invariant(P instanceof Value);
-      // this will create a property descriptor at runtime
-      let result = AbstractValue.createTemporalFromBuildFunction(
-        realm,
-        ObjectValue,
-        [getOwnPropertyDescriptor, obj, P],
-        createOperationDescriptor("OBJECT_PROTO_GET_OWN_PROPERTY_DESCRIPTOR")
-      );
-      invariant(result instanceof AbstractObjectValue);
-      result.makeSimple();
-      let get = Get(realm, result, "get");
-      let set = Get(realm, result, "set");
-      invariant(get instanceof AbstractValue);
-      invariant(set instanceof AbstractValue);
-      desc = new PropertyDescriptor({
-        get,
-        set,
-        enumerable: false,
-        configurable: true,
-      });
+    if (desc instanceof PropertyDescriptor) {
+      let getterFunc = desc.get;
+      if (
+        getterFunc instanceof NativeFunctionValue &&
+        getterFunc.intrinsicName === undefined &&
+        realm.useAbstractInterpretation
+      ) {
+        invariant(P instanceof Value);
+        // this will create a property descriptor at runtime
+        let result = AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          ObjectValue,
+          [getOwnPropertyDescriptor, obj, P],
+          createOperationDescriptor("OBJECT_PROTO_GET_OWN_PROPERTY_DESCRIPTOR")
+        );
+        invariant(result instanceof AbstractObjectValue);
+        result.makeSimple();
+        let get = Get(realm, result, "get");
+        let set = Get(realm, result, "set");
+        invariant(get instanceof AbstractValue);
+        invariant(set instanceof AbstractValue);
+        desc = new PropertyDescriptor({
+          get,
+          set,
+          enumerable: false,
+          configurable: true,
+        });
+      }
     }
 
     // 4. Return FromPropertyDescriptor(desc).
