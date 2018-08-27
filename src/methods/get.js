@@ -718,23 +718,29 @@ export function GetTemplateObject(realm: Realm, templateLiteral: BabelNodeTempla
     let cookedValue = new StringValue(realm, cookedStrings[index]);
 
     // c. Call template.[[DefineOwnProperty]](prop, PropertyDescriptor{[[Value]]: cookedValue, [[Writable]]: false, [[Enumerable]]: true, [[Configurable]]: false}).
-    template.$DefineOwnProperty(prop, {
-      value: cookedValue,
-      writable: false,
-      enumerable: true,
-      configurable: false,
-    });
+    template.$DefineOwnProperty(
+      prop,
+      new PropertyDescriptor({
+        value: cookedValue,
+        writable: false,
+        enumerable: true,
+        configurable: false,
+      })
+    );
 
     // d. Let rawValue be the String value rawStrings[index].
     let rawValue = new StringValue(realm, rawStrings[index]);
 
     // e. Call rawObj.[[DefineOwnProperty]](prop, PropertyDescriptor{[[Value]]: rawValue, [[Writable]]: false, [[Enumerable]]: true, [[Configurable]]: false}).
-    rawObj.$DefineOwnProperty(prop, {
-      value: rawValue,
-      writable: false,
-      enumerable: true,
-      configurable: false,
-    });
+    rawObj.$DefineOwnProperty(
+      prop,
+      new PropertyDescriptor({
+        value: rawValue,
+        writable: false,
+        enumerable: true,
+        configurable: false,
+      })
+    );
 
     // f. Let index be index+1.
     index = index + 1;
@@ -744,12 +750,15 @@ export function GetTemplateObject(realm: Realm, templateLiteral: BabelNodeTempla
   SetIntegrityLevel(realm, rawObj, "frozen");
 
   // 12. Call template.[[DefineOwnProperty]]("raw", PropertyDescriptor{[[Value]]: rawObj, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false}).
-  template.$DefineOwnProperty("raw", {
-    value: rawObj,
-    writable: false,
-    enumerable: false,
-    configurable: false,
-  });
+  template.$DefineOwnProperty(
+    "raw",
+    new PropertyDescriptor({
+      value: rawObj,
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    })
+  );
 
   // 13. Perform SetIntegrityLevel(template, "frozen").
   SetIntegrityLevel(realm, template, "frozen");

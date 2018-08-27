@@ -1781,7 +1781,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       // Any integer index property of obj whose name is a nonnegative integer less than len
       for (let j = 0; j < len; j++) {
         // is a data property whose [[Configurable]] attribute is false.
-        let prop = O.$GetOwnProperty(j.toString());
+        let prop = O.$GetOwnProperty(j.toString()).throwIfNotConcrete(realm);
         if (prop !== undefined && !prop.configurable) {
           Properties.ThrowIfMightHaveBeenDeleted(prop.value);
           throw Error(
@@ -1794,7 +1794,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // Any integer index property of obj whose name is a nonnegative integer less than len
     for (let j = 0; j < len; j++) {
       //is a data property whose [[writable]] attribute is false.
-      let prop = O.$GetOwnProperty(j.toString());
+      let prop = O.$GetOwnProperty(j.toString()).throwIfNotConcrete(realm);
       if (prop !== undefined && !prop.writable) {
         Properties.ThrowIfMightHaveBeenDeleted(prop.value);
         throw Error("Implementation defined behavior : property " + j.toString() + "is non writable : ");

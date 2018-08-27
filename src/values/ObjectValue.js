@@ -470,11 +470,7 @@ export default class ObjectValue extends ConcreteValue {
     return fnValue;
   }
 
-  defineNativeProperty(
-    name: SymbolValue | string,
-    value?: Value | Array<Value>,
-    desc?: DescriptorInitializer
-  ): void {
+  defineNativeProperty(name: SymbolValue | string, value?: Value | Array<Value>, desc?: DescriptorInitializer): void {
     invariant(!value || value instanceof Value);
     this.$DefineOwnProperty(
       name,
@@ -488,11 +484,7 @@ export default class ObjectValue extends ConcreteValue {
     );
   }
 
-  defineNativeGetter(
-    name: SymbolValue | string,
-    callback: NativeFunctionCallback,
-    desc?: DescriptorInitializer
-  ): void {
+  defineNativeGetter(name: SymbolValue | string, callback: NativeFunctionCallback, desc?: DescriptorInitializer): void {
     let intrinsicName, funcName;
     if (typeof name === "string") {
       funcName = `get ${name}`;
@@ -520,11 +512,7 @@ export default class ObjectValue extends ConcreteValue {
     );
   }
 
-  defineNativeConstant(
-    name: SymbolValue | string,
-    value?: Value | Array<Value>,
-    desc?: DescriptorInitializer
-  ): void {
+  defineNativeConstant(name: SymbolValue | string, value?: Value | Array<Value>, desc?: DescriptorInitializer): void {
     invariant(!value || value instanceof Value);
     this.$DefineOwnProperty(
       name,

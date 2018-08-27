@@ -307,12 +307,17 @@ export class CreateImplementation {
     A.setExtensible(true);
 
     // 10. Perform ! OrdinaryDefineOwnProperty(A, "length", PropertyDescriptor{[[Value]]: length, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
-    Properties.OrdinaryDefineOwnProperty(realm, A, "length", {
-      value: new NumberValue(realm, length),
-      writable: true,
-      enumerable: false,
-      configurable: false,
-    });
+    Properties.OrdinaryDefineOwnProperty(
+      realm,
+      A,
+      "length",
+      new PropertyDescriptor({
+        value: new NumberValue(realm, length),
+        writable: true,
+        enumerable: false,
+        configurable: false,
+      })
+    );
 
     // 11. Return A.
     return A;
@@ -624,12 +629,12 @@ export class CreateImplementation {
     invariant(IsPropertyKey(realm, P), "Not a property key");
 
     // 3. Let newDesc be the PropertyDescriptor{[[Value]]: V, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}.
-    let newDesc = {
+    let newDesc = new PropertyDescriptor({
       value: V,
       writable: true,
       enumerable: false,
       configurable: true,
-    };
+    });
 
     // 4. Return ? O.[[DefineOwnProperty]](P, newDesc).
     return O.$DefineOwnProperty(P, newDesc);
