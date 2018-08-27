@@ -237,7 +237,7 @@ export class CreateImplementation {
     }
 
     // 8. Return ? Construct(C, « length »).
-    return Construct(realm, C.throwIfNotConcreteObject(), [new NumberValue(realm, length)]);
+    return Construct(realm, C.throwIfNotConcreteObject(), [new NumberValue(realm, length)]).throwIfNotConcreteObject();
   }
 
   // ECMA262 7.4.7

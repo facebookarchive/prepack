@@ -4,10 +4,10 @@
     if (other.foo) {
       setBarFrom(this, other.bar);
       serialize(other.foo);
-      return true;
+      return;
     }
     this.foo = other.noSuchMethod() || {};
-    return true;
+    return;
   }
 
   function setBarFrom(uri, bar) {

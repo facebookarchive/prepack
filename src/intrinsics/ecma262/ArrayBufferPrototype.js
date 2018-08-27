@@ -93,7 +93,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let ctor = SpeciesConstructor(realm, O, realm.intrinsics.ArrayBuffer);
 
     // 12. Let New be ? Construct(ctor, « newLen »).
-    let New = Construct(realm, ctor, [new NumberValue(realm, newLen)]);
+    let New = Construct(realm, ctor, [new NumberValue(realm, newLen)]).throwIfNotConcreteObject();
 
     // 13. If New does not have an [[ArrayBufferData]] internal slot, throw a TypeError exception.
     if (!("$ArrayBufferData" in New)) {
