@@ -332,7 +332,7 @@ export function AllocateTypedArrayBuffer(realm: Realm, O: ObjectValue, length: n
 // ECMA262 22.2.4.6
 export function TypedArrayCreate(realm: Realm, constructor: ObjectValue, argumentList: Array<Value>): ObjectValue {
   // 1. Let newTypedArray be ? Construct(constructor, argumentList).
-  let newTypedArray = Construct(realm, constructor, argumentList);
+  let newTypedArray = Construct(realm, constructor, argumentList).throwIfNotConcreteObject();
 
   // 2. Perform ? ValidateTypedArray(newTypedArray).
   ValidateTypedArray(realm, newTypedArray);

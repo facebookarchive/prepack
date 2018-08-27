@@ -161,7 +161,7 @@ function $BoundConstruct(
   F: BoundFunctionValue,
   argumentsList: Array<Value>,
   newTarget: ObjectValue
-): ObjectValue {
+): Value {
   // 1. Let target be the value of F's [[BoundTargetFunction]] internal slot.
   let target = F.$BoundTargetFunction;
 
@@ -189,7 +189,7 @@ function InternalConstruct(
   newTarget: ObjectValue,
   thisArgument: void | ObjectValue,
   tracerIndex: number
-): ObjectValue {
+): Value {
   // 1. Assert: F is an ECMAScript function object.
   invariant(F instanceof FunctionValue, "expected function");
 
@@ -261,21 +261,31 @@ function InternalConstruct(
 
   // 13. If result.[[Type]] is return, then
   if (result instanceof ReturnCompletion) {
-    // a. If Type(result.[[Value]]) is Object, return NormalCompletion(result.[[Value]]).
-    if (result.value.mightBeObject()) {
-      return result.value.throwIfNotConcreteObject();
-    }
+    return map(result.value);
 
-    // b. If kind is "base", return NormalCompletion(thisArgument).
-    if (kind === "base") {
-      invariant(thisArgument, "this wasn't initialized for some reason");
-      return thisArgument;
-    }
+    function map(value: Value) {
+      if (value === realm.intrinsics.__bottomValue) return value;
 
-    // c. If result.[[Value]] is not undefined, throw a TypeError exception.
-    if (!result.value.mightBeUndefined())
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "constructor must return Object");
-    result.value.throwIfNotConcrete();
+      if (value instanceof AbstractValue && value.kind === "conditional") {
+        const [condition, consequent, alternate] = value.args;
+        return AbstractValue.createFromConditionalOp(realm, condition, map(consequent), map(alternate));
+      }
+
+      // a. If Type(result.[[Value]]) is Object, return NormalCompletion(result.[[Value]]).
+      if (value.mightBeObject()) return value.throwIfNotConcreteObject();
+
+      // c. If result.[[Value]] is not undefined, throw a TypeError exception.
+      if (!value.mightBeUndefined()) {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "constructor must return Object");
+      }
+
+      value.throwIfNotConcrete();
+
+      // 15. Return ? envRec.GetThisBinding().
+      let envRecThisBinding = envRec.GetThisBinding();
+      invariant(envRecThisBinding instanceof ObjectValue);
+      return envRecThisBinding;
+    }
   } else if (result instanceof AbruptCompletion) {
     // 14. Else, ReturnIfAbrupt(result).
     throw result;
@@ -856,12 +866,7 @@ export class FunctionImplementation {
   }
 
   // ECMA262 9.2.2
-  $Construct(
-    realm: Realm,
-    F: ECMAScriptFunctionValue,
-    argumentsList: Array<Value>,
-    newTarget: ObjectValue
-  ): ObjectValue {
+  $Construct(realm: Realm, F: ECMAScriptFunctionValue, argumentsList: Array<Value>, newTarget: ObjectValue): Value {
     return InternalConstruct(realm, F, argumentsList, newTarget, undefined, 0);
   }
 
