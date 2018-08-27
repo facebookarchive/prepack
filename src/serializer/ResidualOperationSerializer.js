@@ -16,7 +16,7 @@ import {
   type OperationDescriptor,
   type OperationDescriptorData,
 } from "../utils/generator.js";
-import { PreludeGenerator } from "../utils/PreludeGenerator.js";
+import { PreludeGenerator, Placeholders } from "../utils/PreludeGenerator.js";
 import {
   emptyExpression,
   memberExpressionHelper,
@@ -34,8 +34,6 @@ import type {
   BabelNodeStringLiteral,
 } from "@babel/types";
 import { Utils } from "../singletons.js";
-
-const labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 function serializeBody(
   generator: Generator,
@@ -1046,14 +1044,14 @@ export class ResidualOperationSerializer {
   }
 
   _serializeAbstractFromTemplate(
-    { template }: OperationDescriptorData,
+    { templateSource }: OperationDescriptorData,
     nodes: Array<BabelNodeExpression>
   ): BabelNodeExpression {
-    let generatorArgs = {};
+    let templateArguments = {};
     let i = 0;
-    for (let node of nodes) generatorArgs[labels.charAt(i++)] = node;
-    invariant(typeof template === "function");
-    return template(this.preludeGenerator)(generatorArgs);
+    for (let node of nodes) templateArguments[Placeholders[i++]] = node;
+    invariant(templateSource !== undefined);
+    return this.preludeGenerator.buildExpression(templateSource, templateArguments);
   }
 
   _serializeObjectAssign(

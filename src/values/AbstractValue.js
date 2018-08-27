@@ -11,7 +11,6 @@
 
 import type {
   BabelBinaryOperator,
-  BabelNodeExpression,
   BabelLogicalOperator,
   BabelNodeSourceLocation,
   BabelUnaryOperator,
@@ -20,10 +19,8 @@ import { Completion, JoinedAbruptCompletions, JoinedNormalAndAbruptCompletions }
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import { createOperationDescriptor, type OperationDescriptor } from "../utils/generator.js";
-import { PreludeGenerator } from "../utils/PreludeGenerator.js";
 import type { PropertyKeyValue, ShapeInformationInterface } from "../types.js";
-import buildExpressionTemplate from "../utils/builder.js";
-
+import { Placeholders } from "../utils/PreludeGenerator.js";
 import {
   AbstractObjectValue,
   BooleanValue,
@@ -759,21 +756,19 @@ export default class AbstractValue extends Value {
      that is incorporated into the AST produced by the serializer. */
   static createFromTemplate(
     realm: Realm,
-    template: PreludeGenerator => ({}) => BabelNodeExpression,
+    templateSource: string,
     resultType: typeof Value,
     operands: Array<Value>,
-    kindSuffix: string,
     loc?: ?BabelNodeSourceLocation
   ): AbstractValue {
-    let kind = AbstractValue.makeKind("template", kindSuffix);
+    let kind = AbstractValue.makeKind("template", templateSource);
     let resultTypes = new TypesDomain(resultType);
     let resultValues = ValuesDomain.topVal;
     let hash;
     [hash, operands] = hashCall(kind, ...operands);
     let Constructor = Value.isTypeCompatibleWith(resultType, ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    invariant(labels.length >= operands.length);
-    let operationDescriptor = createOperationDescriptor("ABSTRACT_FROM_TEMPLATE", { template });
+    invariant(Placeholders.length >= operands.length);
+    let operationDescriptor = createOperationDescriptor("ABSTRACT_FROM_TEMPLATE", { templateSource });
     // This doesn't mean that the function is not pure, just that it creates
     // a new object on each call and thus is a future optimization opportunity.
     if (Value.isTypeCompatibleWith(resultType, ObjectValue)) hash = ++realm.objectCount;
@@ -807,7 +802,7 @@ export default class AbstractValue extends Value {
      on the native state unless the isPure option is specified.  */
   static createTemporalFromTemplate(
     realm: Realm,
-    template: PreludeGenerator => ({}) => BabelNodeExpression,
+    templateSource: string,
     resultType: typeof Value,
     operands: Array<Value>,
     optionalArgs?: {|
@@ -819,7 +814,7 @@ export default class AbstractValue extends Value {
     |}
   ): AbstractValue {
     invariant(resultType !== UndefinedValue);
-    let temp = AbstractValue.createFromTemplate(realm, template, resultType, operands, "");
+    let temp = AbstractValue.createFromTemplate(realm, templateSource, resultType, operands);
     let types = temp.types;
     let values = temp.values;
     let args = temp.args;
@@ -999,7 +994,7 @@ export default class AbstractValue extends Value {
     if (templateOrShape === undefined) {
       templateOrShape = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
     }
-    value = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), ObjectValue, [], name);
+    value = AbstractValue.createFromTemplate(realm, name, ObjectValue, []);
     if (!realm.isNameStringUnique(name)) {
       value.hashValue = ++realm.objectCount;
     } else {

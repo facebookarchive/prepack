@@ -163,7 +163,7 @@ export type OperationDescriptorData = {
   quasis?: Array<any>, // used by REACT_SSR_TEMPLATE_LITERAL
   state?: "MISSING" | "PRESENT" | "DEFINED", // used by PROPERTY_INVARIANT
   thisArg?: BaseValue | Value, // used by CALL_BAILOUT
-  template?: PreludeGenerator => ({}) => BabelNodeExpression, // used by ABSTRACT_FROM_TEMPLATE
+  templateSource?: string, // used by ABSTRACT_FROM_TEMPLATE
   typeComparisons?: Set<typeof Value>, // used by FULL_INVARIANT_ABSTRACT
   usesThis?: boolean, // used by FOR_STATEMENT_FUNC
   value?: Value, // used by DO_WHILE, CONDITIONAL_PROPERTY_ASSIGNMENT, LOGICAL_PROPERTY_ASSIGNMENT, LOCAL_ASSIGNMENT, CONDITIONAL_THROW, EMIT_PROPERTY_ASSIGNMENT

@@ -20,12 +20,9 @@ import { RegExpCreate } from "../../methods/regexp.js";
 import { SplitMatch, RequireObjectCoercible } from "../../methods/abstract.js";
 import { HasSomeCompatibleType } from "../../methods/has.js";
 import invariant from "../../invariant.js";
-import buildExpressionTemplate from "../../utils/builder.js";
 
 const sliceTemplateSrc = "(A).slice(B,C)";
-const sliceTemplate = buildExpressionTemplate(sliceTemplateSrc);
 const splitTemplateSrc = "(A).split(B,C)";
-const splitTemplate = buildExpressionTemplate(splitTemplateSrc);
 
 export default function(realm: Realm, obj: ObjectValue): ObjectValue {
   // ECMA262 21.1.3
@@ -577,7 +574,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     if (O instanceof AbstractValue && O.getType() === StringValue) {
-      return AbstractValue.createFromTemplate(realm, sliceTemplate, StringValue, [O, start, end], sliceTemplateSrc);
+      return AbstractValue.createFromTemplate(realm, sliceTemplateSrc, StringValue, [O, start, end]);
     }
 
     // 2. Let S be ? ToString(O).
@@ -611,13 +608,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     if (O instanceof AbstractValue && O.getType() === StringValue) {
-      return AbstractValue.createFromTemplate(
-        realm,
-        splitTemplate,
-        ObjectValue,
-        [O, separator, limit],
-        splitTemplateSrc
-      );
+      return AbstractValue.createFromTemplate(realm, splitTemplateSrc, ObjectValue, [O, separator, limit]);
     }
 
     // 2. If separator is neither undefined nor null, then
