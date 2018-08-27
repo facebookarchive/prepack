@@ -520,12 +520,7 @@ export type FunctionType = {
   $Call(realm: Realm, F: ECMAScriptFunctionValue, thisArgument: Value, argsList: Array<Value>): Value,
 
   // ECMA262 9.2.2
-  $Construct(
-    realm: Realm,
-    F: ECMAScriptFunctionValue,
-    argumentsList: Array<Value>,
-    newTarget: ObjectValue
-  ): ObjectValue,
+  $Construct(realm: Realm, F: ECMAScriptFunctionValue, argumentsList: Array<Value>, newTarget: ObjectValue): Value,
 
   // ECMA262 9.2.3
   FunctionAllocate(

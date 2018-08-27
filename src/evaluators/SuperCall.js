@@ -69,7 +69,7 @@ export default function SuperCall(
   // 6. ReturnIfAbrupt(argList).
 
   // 7. Let result be Construct(func, argList, newTarget).
-  let result = Construct(realm, func, argList, newTarget);
+  let result = Construct(realm, func, argList, newTarget).throwIfNotConcreteObject();
 
   // 8. ReturnIfAbrupt(result).
 

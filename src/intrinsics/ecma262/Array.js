@@ -20,6 +20,7 @@ import {
   ObjectValue,
   StringValue,
   UndefinedValue,
+  AbstractObjectValue,
 } from "../../values/index.js";
 import {
   Construct,
@@ -175,6 +176,7 @@ export default function(realm: Realm): NativeFunctionValue {
         invariant(C instanceof ObjectValue);
         // a. Let A be ? Construct(C, « len »).
         A = Construct(realm, C, [new NumberValue(realm, len)]);
+        invariant(A instanceof ObjectValue || A instanceof AbstractObjectValue);
       } else {
         // 5. Else,
         // a. Let A be ? ArrayCreate(len).
@@ -265,6 +267,7 @@ export default function(realm: Realm): NativeFunctionValue {
           invariant(C instanceof ObjectValue);
           // i. Let A be ? Construct(C).
           A = Construct(realm, C);
+          invariant(A instanceof ObjectValue || A instanceof AbstractObjectValue);
         } else {
           // b. Else,
           // i. Let A be ArrayCreate(0).
@@ -360,6 +363,7 @@ export default function(realm: Realm): NativeFunctionValue {
         invariant(C instanceof ObjectValue);
         // a. Let A be ? Construct(C, « len »).
         A = Construct(realm, C, [new NumberValue(realm, len)]);
+        invariant(A instanceof ObjectValue || A instanceof AbstractObjectValue);
       } else {
         // 10. Else,
         // a. Let A be ? ArrayCreate(len).

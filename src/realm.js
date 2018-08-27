@@ -1615,7 +1615,7 @@ export class Realm {
   // Return value indicates whether the caller should try to recover from the error or not.
   handleError(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
     if (!diagnostic.callStack && this.contextStack.length > 0) {
-      let error = this.evaluateWithoutEffects(() => Construct(this, this.intrinsics.Error));
+      let error = this.evaluateWithoutEffects(() => Construct(this, this.intrinsics.Error).throwIfNotConcreteObject());
       let stack = error._SafeGetDataPropertyValue("stack");
       if (stack instanceof StringValue) diagnostic.callStack = stack.value;
     }
