@@ -1175,7 +1175,7 @@ declare module "@babel/types" {
   declare function switchStatement(discriminant: BabelNodeExpression, cases: Array<BabelNodeSwitchCase>): BabelNodeSwitchStatement;
   declare function taggedTemplateExpression(tag: BabelNodeExpression, quasi: BabelNodeTemplateLiteral): BabelNodeTaggedTemplateExpression;
   declare function templateElement(value: any, tail?: boolean): BabelNodeTemplateElement;
-  declare function templateLiteral(quasis: Array<BabelNodeTemplateLiteral>, expressions: Array<BabelNodeExpression>): BabelNodeTemplateLiteral;
+  declare function templateLiteral(quasis: Array<BabelNodeTemplateElement>, expressions: Array<BabelNodeExpression>): BabelNodeTemplateLiteral;
   declare function thisExpression(): BabelNodeThisExpression;
   declare function thisTypeAnnotation(): BabelNodeThisTypeAnnotation;
   declare function throwStatement(argument: BabelNodeExpression): BabelNodeThrowStatement;
