@@ -202,14 +202,7 @@ function parentPermitsChildPropertyCreation(realm: Realm, O: ObjectValue, P: Pro
   }
 
   let ownDesc = O.$GetOwnProperty(P);
-  let ownDescValue = !ownDesc
-    ? realm.intrinsics.undefined
-    : ownDesc.value === undefined
-      ? realm.intrinsics.undefined
-      : ownDesc.value;
-  invariant(ownDescValue instanceof Value);
-
-  if (!ownDesc || ownDescValue.mightHaveBeenDeleted()) {
+  if (!ownDesc || ownDesc.mightHaveBeenDeleted()) {
     // O might not object, so first ask its parent
     let parent = O.$GetPrototypeOf();
     if (!(parent instanceof NullValue)) {
@@ -283,15 +276,9 @@ export class PropertiesImplementation {
 
     // 2. Let ownDesc be ? O.[[GetOwnProperty]](P).
     let ownDesc = O.$GetOwnProperty(P);
-    let ownDescValue = !ownDesc
-      ? realm.intrinsics.undefined
-      : ownDesc.value === undefined
-        ? realm.intrinsics.undefined
-        : ownDesc.value;
-    invariant(ownDescValue instanceof Value);
 
     // 3. If ownDesc is undefined (or might be), then
-    if (!ownDesc || ownDescValue.mightHaveBeenDeleted()) {
+    if (!ownDesc || ownDesc.mightHaveBeenDeleted()) {
       // a. Let parent be ? O.[[GetPrototypeOf]]().
       let parent = O.$GetPrototypeOf();
 
@@ -305,9 +292,17 @@ export class PropertiesImplementation {
         // But since we don't know if O has its own property P, the parent might
         // actually have a say. Give up, unless the parent would be OK with it.
         if (!parentPermitsChildPropertyCreation(realm, parent, P)) {
-          invariant(ownDescValue instanceof AbstractValue);
-          AbstractValue.reportIntrospectionError(ownDescValue);
-          throw new FatalError();
+          // TODO: Join the effects depending on if the property was deleted or not.
+          let error = new CompilerDiagnostic(
+            "assignment might or might not invoke a setter",
+            realm.currentLocation,
+            "PP0043",
+            "RecoverableError"
+          );
+          if (realm.handleError(error) !== "Recover") {
+            throw new FatalError();
+          }
+          // If we recover, we assume that the parent would've been fine creating the property.
         }
         // Since the parent is OK with us creating a local property for O
         // we can carry on as if there were no parent.
@@ -369,18 +364,25 @@ export class PropertiesImplementation {
 
     function OrdinarySetHelper(): boolean {
       invariant(ownDesc !== undefined);
-      invariant(ownDescValue instanceof Value);
       // 4. If IsDataDescriptor(ownDesc) is true, then
       if (IsDataDescriptor(realm, ownDesc)) {
         // a. If ownDesc.[[Writable]] is false, return false.
         if (!ownDesc.writable && !weakDeletion) {
           // The write will fail if the property actually exists
-          if (ownDescValue.mightHaveBeenDeleted()) {
+          if (ownDesc.value && ownDesc.value.mightHaveBeenDeleted()) {
             // But maybe it does not and thus would succeed.
             // Since we don't know what will happen, give up for now.
-            invariant(ownDescValue instanceof AbstractValue);
-            AbstractValue.reportIntrospectionError(ownDescValue);
-            throw new FatalError();
+            // TODO: Join the effects depending on if the property was deleted or not.
+            let error = new CompilerDiagnostic(
+              "assignment might or might not invoke a setter",
+              realm.currentLocation,
+              "PP0043",
+              "RecoverableError"
+            );
+            if (realm.handleError(error) !== "Recover") {
+              throw new FatalError();
+            }
+            // If we recover we assume that the property was there.
           }
           return false;
         }

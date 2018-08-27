@@ -29,6 +29,9 @@ export class Descriptor {
     realm.handleError(error);
     throw new FatalError();
   }
+  mightHaveBeenDeleted(): boolean {
+    invariant(false, "should have been overridden by subclass");
+  }
 }
 
 export type DescriptorInitializer = {|
@@ -68,6 +71,10 @@ export class PropertyDescriptor extends Descriptor {
   throwIfNotConcrete(realm: Realm): PropertyDescriptor {
     return this;
   }
+  mightHaveBeenDeleted(): boolean {
+    if (this.value === undefined) return false;
+    return this.value.mightHaveBeenDeleted();
+  }
 }
 
 // Only internal properties (those starting with $ / where internalSlot of owning property binding is true) will ever have array values.
@@ -77,6 +84,10 @@ export class InternalSlotDescriptor extends Descriptor {
   constructor(value?: void | Value | Array<any>) {
     super();
     this.value = Array.isArray(value) ? value.slice(0) : value;
+  }
+
+  mightHaveBeenDeleted(): boolean {
+    return false;
   }
 }
 
@@ -93,5 +104,14 @@ export class AbstractJoinedDescriptor extends Descriptor {
     this.joinCondition = joinCondition;
     this.descriptor1 = descriptor1;
     this.descriptor2 = descriptor2;
+  }
+  mightHaveBeenDeleted(): boolean {
+    if (this.descriptor1 && this.descriptor1.mightHaveBeenDeleted()) {
+      return true;
+    }
+    if (this.descriptor2 && this.descriptor2.mightHaveBeenDeleted()) {
+      return true;
+    }
+    return false;
   }
 }
