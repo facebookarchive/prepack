@@ -888,10 +888,6 @@ export default class AbstractValue extends Value {
     let abstractValue = elements.find(e => e instanceof AbstractValue);
     invariant(abstractValue instanceof AbstractValue);
 
-    // Abstract values in an abstract concrete union are temporal, as they are predicated
-    // on the conditions that preclude the concrete values in the union.
-    // invariant(abstractValue.isTemporal());
-
     let values;
     if (!abstractValue.values.isTop()) {
       abstractValue.values.getElements().forEach(v => concreteSet.add(v));

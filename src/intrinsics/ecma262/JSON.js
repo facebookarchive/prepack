@@ -320,14 +320,8 @@ function InternalJSONClone(realm: Realm, val: Value): Value {
       let strVal;
       let obVal;
 
-      // If val is temporal, then this operation is also temporal. See #2327.
-      if (val.isTemporal()) {
-        strVal = AbstractValue.createFromTemplate(realm, JSONStringify, StringValue, [val], JSONStringifyStr);
-        obVal = AbstractValue.createFromTemplate(realm, JSONParse, ObjectValue, [strVal], JSONParseStr);
-      } else {
-        strVal = AbstractValue.createTemporalFromTemplate(realm, JSONStringify, StringValue, [val]);
-        obVal = AbstractValue.createTemporalFromTemplate(realm, JSONParse, ObjectValue, [strVal]);
-      }
+      strVal = AbstractValue.createFromTemplate(realm, JSONStringify, StringValue, [val], JSONStringifyStr);
+      obVal = AbstractValue.createFromTemplate(realm, JSONParse, ObjectValue, [strVal], JSONParseStr);
       obVal.values = new ValuesDomain(new Set([InternalCloneObject(realm, val.getTemplate())]));
       return obVal;
     }
