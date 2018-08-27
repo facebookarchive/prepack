@@ -98,7 +98,10 @@ export function OrdinaryGet(
   let prop = O.unknownProperty;
   if (prop !== undefined && prop.descriptor !== undefined && O.$GetOwnProperty(P) === undefined) {
     let desc = prop.descriptor;
-    invariant(desc !== undefined);
+    invariant(
+      desc instanceof PropertyDescriptor,
+      "unknown properties are only created with Set and have equal descriptors"
+    );
     let val = desc.value;
     invariant(val instanceof AbstractValue);
     let propValue;
@@ -423,6 +426,10 @@ export function OrdinaryGetPartial(
   if (prop !== undefined) {
     let desc = prop.descriptor;
     if (desc !== undefined) {
+      invariant(
+        desc instanceof PropertyDescriptor,
+        "unknown properties are only created with Set and have equal descriptors"
+      );
       let val = desc.value;
       invariant(val instanceof AbstractValue);
       if (val.kind === "widened numeric property") {

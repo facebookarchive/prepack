@@ -590,9 +590,13 @@ export class PropertiesImplementation {
         value: newVal,
       });
     } else {
+      invariant(
+        desc instanceof PropertyDescriptor,
+        "unknown properties are only created with Set and have equal descriptors"
+      );
       // join V with current value of O.unknownProperty. I.e. weak update.
       let oldVal = desc.value;
-      invariant(oldVal instanceof Value);
+      invariant(oldVal);
       let newVal = oldVal;
       if (!(V instanceof UndefinedValue)) {
         if (isWidenedValue(P)) {
