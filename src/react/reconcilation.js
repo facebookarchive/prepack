@@ -77,7 +77,6 @@ import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
 import { handleReportedSideEffect } from "../serializer/utils.js";
 import { createOperationDescriptor } from "../utils/generator.js";
-import { optionalStringOfLocation } from "../utils/babelhelpers.js";
 
 type ComponentResolutionStrategy =
   | "NORMAL"
@@ -1379,10 +1378,12 @@ export class Reconciler {
       return this._resolveArray(componentType, value, context, branchStatus, evaluatedNode, needsKey);
     } else if (value instanceof ObjectValue && isReactElement(value)) {
       return this._resolveReactElement(componentType, value, context, branchStatus, evaluatedNode, needsKey);
-    } else {
-      let location = optionalStringOfLocation(value.expressionLocation);
-      throw new ExpectedBailOut(`invalid return value from render${location}`);
     }
+    // This value is not a valid return value of a render, but given we might be
+    // in a "&&"" condition, it may never result in a runtime error. Still, if it does
+    // result in a runtime error, it would have been the same error before compilation.
+    // See issue #2497 for more context.
+    return value;
   }
 
   _assignBailOutMessage(reactElement: ObjectValue, message: string): void {
