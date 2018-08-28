@@ -55,7 +55,6 @@ export class Functions {
   }
 
   realm: Realm;
-  // maps back from FunctionValue to the expression string
   moduleTracer: ModuleTracer;
   writeEffects: WriteEffects;
   _noopFunction: void | ECMAScriptSourceFunctionValue;
@@ -176,7 +175,7 @@ export class Functions {
     }
   }
 
-  getDeclaringOptimizedFunction(functionValue: ECMAScriptSourceFunctionValue) {
+  getDeclaringOptimizedFunction(functionValue: ECMAScriptSourceFunctionValue): void | FunctionValue {
     for (let [optimizedFunctionValue, additionalEffects] of this.writeEffects) {
       // CreatedObjects is all objects created by this optimized function but not
       // nested optimized functions.

@@ -59,6 +59,7 @@ export type PrepackOptions = {|
   debuggerConfigArgs?: DebuggerConfigArguments,
   debugReproArgs?: DebugReproArguments,
   onParse?: BabelNodeFile => void,
+  onExecute?: Realm => void,
   arrayNestedOptimizedFunctionsEnabled?: boolean,
 |};
 

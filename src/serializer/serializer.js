@@ -126,7 +126,8 @@ export class Serializer {
   init(
     sourceFileCollection: SourceFileCollection,
     sourceMaps?: boolean = false,
-    onParse?: BabelNodeFile => void
+    onParse?: BabelNodeFile => void,
+    onExecute?: Realm => void
   ): void | SerializedResult {
     let realmStatistics = this.realm.statistics;
     invariant(realmStatistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
@@ -150,6 +151,10 @@ export class Serializer {
       statistics.checkThatFunctionsAreIndependent.measure(() =>
         this.functions.checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode)
       );
+
+      statistics.dumpIR.measure(() => {
+        if (onExecute !== undefined) onExecute(this.realm);
+      });
 
       let reactStatistics;
       if (this.realm.react.enabled) {
