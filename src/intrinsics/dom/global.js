@@ -58,12 +58,7 @@ export default function(realm: Realm): void {
       if (!realm.useAbstractInterpretation) throw new FatalError("TODO #1003: implement global.setTimeout");
       invariant(realm.generator !== undefined);
       let generator = realm.generator;
-      return generator.emitCallAndCaptureResult(
-        TypesDomain.topVal,
-        ValuesDomain.topVal,
-        () => generator.preludeGenerator.memoizeReference("global.setTimeout"),
-        args
-      );
+      return generator.emitCallAndCaptureResult(TypesDomain.topVal, ValuesDomain.topVal, "global.setTimeout", args);
     }),
     writable: true,
     enumerable: true,
@@ -75,7 +70,7 @@ export default function(realm: Realm): void {
       if (!realm.useAbstractInterpretation) throw new FatalError("TODO #1003: implement global.clearTimeout");
       invariant(realm.generator !== undefined);
       let generator = realm.generator;
-      generator.emitCall(() => generator.preludeGenerator.memoizeReference("global.clearTimeout"), args);
+      generator.emitCall("global.clearTimeout", args);
       return realm.intrinsics.undefined;
     }),
     writable: true,
@@ -91,12 +86,7 @@ export default function(realm: Realm): void {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "callback arguments must be function");
       invariant(realm.generator !== undefined);
       let generator = realm.generator;
-      return generator.emitCallAndCaptureResult(
-        TypesDomain.topVal,
-        ValuesDomain.topVal,
-        () => generator.preludeGenerator.memoizeReference("global.setInterval"),
-        args
-      );
+      return generator.emitCallAndCaptureResult(TypesDomain.topVal, ValuesDomain.topVal, "global.setInterval", args);
     }),
     writable: true,
     enumerable: true,
@@ -108,7 +98,7 @@ export default function(realm: Realm): void {
       if (!realm.useAbstractInterpretation) throw new FatalError("TODO #1003: implement global.clearInterval");
       invariant(realm.generator !== undefined);
       let generator = realm.generator;
-      generator.emitCall(() => generator.preludeGenerator.memoizeReference("global.clearInterval"), args);
+      generator.emitCall("global.clearInterval", args);
       return realm.intrinsics.undefined;
     }),
     writable: true,

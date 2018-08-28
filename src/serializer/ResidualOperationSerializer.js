@@ -868,7 +868,7 @@ export class ResidualOperationSerializer {
     valueNodes: Array<BabelNodeExpression>
   ): BabelNodeExpression {
     invariant(quasis !== undefined);
-    return t.templateLiteral(((quasis: any): Array<any>), valueNodes);
+    return t.templateLiteral(quasis, valueNodes);
   }
 
   _serializeReactRenderValueHelper(
@@ -911,17 +911,22 @@ export class ResidualOperationSerializer {
     return t.newExpression(constructorNode, argListNodes);
   }
 
-  _serializeEmitCall({ callTemplate }: OperationDescriptorData, nodes: Array<BabelNodeExpression>): BabelNodeStatement {
-    invariant(typeof callTemplate === "function");
-    return t.expressionStatement(t.callExpression(callTemplate(), [...nodes]));
+  _serializeEmitCall(
+    { callFunctionRef }: OperationDescriptorData,
+    nodes: Array<BabelNodeExpression>
+  ): BabelNodeStatement {
+    invariant(callFunctionRef !== undefined);
+    let callFunction = this.preludeGenerator.memoizeReference(callFunctionRef);
+    return t.expressionStatement(t.callExpression(callFunction, [...nodes]));
   }
 
   _serializeEmitCallAndCaptureResults(
-    { callTemplate }: OperationDescriptorData,
+    { callFunctionRef }: OperationDescriptorData,
     nodes: Array<BabelNodeExpression>
   ): BabelNodeExpression {
-    invariant(typeof callTemplate === "function");
-    return t.callExpression(callTemplate(), ((nodes: any): Array<BabelNodeExpression | BabelNodeSpreadElement>));
+    invariant(callFunctionRef !== undefined);
+    let callFunction = this.preludeGenerator.memoizeReference(callFunctionRef);
+    return t.callExpression(callFunction, ((nodes: any): Array<BabelNodeExpression | BabelNodeSpreadElement>));
   }
 
   _serializeObjectProtoGetOwnPropertyDescriptor(

@@ -50,6 +50,7 @@ import type {
   BabelUnaryOperator,
   BabelBinaryOperator,
   BabelLogicalOperator,
+  BabelNodeTemplateElement,
 } from "@babel/types";
 import { concretize, Join, Utils } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";
@@ -144,7 +145,7 @@ export type OperationDescriptorData = {
   binding?: Binding, // used by GET_BINDING
   propertyBinding?: PropertyBinding, // used by LOGICAL_PROPERTY_ASSIGNMENT
   boundName?: BabelNodeIdentifier, // used by FOR_IN
-  callTemplate?: () => BabelNodeExpression, // used by EMIT_CALL and EMIT_CALL_AND_CAPTURE_RESULT
+  callFunctionRef?: string, // used by EMIT_CALL and EMIT_CALL_AND_CAPTURE_RESULT
   concreteComparisons?: Array<Value>, // used by FULL_INVARIANT_ABSTRACT
   desc?: Descriptor, // used by DEFINE_PROPERTY
   generator?: Generator, // used by DO_WHILE
@@ -160,7 +161,7 @@ export type OperationDescriptorData = {
   propertyGetter?: SupportedGraphQLGetters, // used by ABSTRACT_OBJECT_GET
   propRef?: ReferenceName | AbstractValue, // used by CALL_BAILOUT, and then only if string
   object?: ObjectValue, // used by DEFINE_PROPERTY
-  quasis?: Array<any>, // used by REACT_SSR_TEMPLATE_LITERAL
+  quasis?: Array<BabelNodeTemplateElement>, // used by REACT_SSR_TEMPLATE_LITERAL
   state?: "MISSING" | "PRESENT" | "DEFINED", // used by PROPERTY_INVARIANT
   thisArg?: BaseValue | Value, // used by CALL_BAILOUT
   templateSource?: string, // used by ABSTRACT_FROM_TEMPLATE
@@ -755,10 +756,10 @@ export class Generator {
     });
   }
 
-  emitCall(callTemplate: () => BabelNodeExpression, args: Array<Value>): void {
+  emitCall(callFunctionRef: string, args: Array<Value>): void {
     this._addEntry({
       args,
-      operationDescriptor: createOperationDescriptor("EMIT_CALL", { callTemplate }),
+      operationDescriptor: createOperationDescriptor("EMIT_CALL", { callFunctionRef }),
     });
   }
 
@@ -900,7 +901,7 @@ export class Generator {
   emitCallAndCaptureResult(
     types: TypesDomain,
     values: ValuesDomain,
-    callTemplate: () => BabelNodeExpression,
+    callFunctionRef: string,
     args: Array<Value>,
     kind?: AbstractValueKind
   ): AbstractValue {
@@ -908,7 +909,7 @@ export class Generator {
       types,
       values,
       args,
-      createOperationDescriptor("EMIT_CALL_AND_CAPTURE_RESULT", { callTemplate }),
+      createOperationDescriptor("EMIT_CALL_AND_CAPTURE_RESULT", { callFunctionRef }),
       { kind }
     );
   }
