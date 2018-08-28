@@ -2,7 +2,7 @@ var React = require("react");
 
 function App(props) {
   if (props.neverHappens) {
-    return <Bad />
+    return <Bad />;
   }
   return null;
 }
