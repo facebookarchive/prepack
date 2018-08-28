@@ -20,6 +20,9 @@ import {
   type CustomGeneratorEntryType,
   type OperationDescriptorData,
 } from "./generator.js";
+import * as t from "@babel/types";
+
+const indent = "  ";
 
 export class TextPrinter implements Printer {
   constructor(printLine: string => void) {
@@ -33,10 +36,10 @@ export class TextPrinter implements Printer {
   _abstractValueIds: Map<AbstractValue, number>;
 
   _nest(): void {
-    this._indent += " ";
+    this._indent += indent;
   }
   _unnest(): void {
-    this._indent = this._indent.substring(0, this._indent.length - 1);
+    this._indent = this._indent.substring(0, this._indent.length - indent.length);
   }
 
   _print(text: string): void {
@@ -50,99 +53,131 @@ export class TextPrinter implements Printer {
     data: OperationDescriptorData,
     metadata: { isPure: boolean, mutatesOnly: void | Array<Value> }
   ): void {
-    let text;
-    if (declared !== undefined) {
-      invariant(declared.intrinsicName !== undefined);
-      text = `${declared.intrinsicName} := `;
-    } else {
-      text = "";
-    }
-    text += type;
-
-    let dataTexts = [];
-    if (args.length > 0) dataTexts.push(`args ${this.describeValues(args)}`);
-    if (data.unaryOperator !== undefined) dataTexts.push(data.unaryOperator); // used by UNARY_EXPRESSION
-    if (data.binaryOperator !== undefined) dataTexts.push(data.binaryOperator); // used by BINARY_EXPRESSION
-    if (data.logicalOperator !== undefined) dataTexts.push(data.logicalOperator); // used by LOGICAL_EXPRESSION
-    if (data.incrementor !== undefined) dataTexts.push(data.incrementor); // used by UPDATE_INCREMENTOR
-    if (data.prefix !== undefined) dataTexts.push("prefix"); // used by UNARY_EXPRESSION
-    if (data.binding !== undefined) dataTexts.push(`binding ${this.describeBinding(data.binding)}`); // used by GET_BINDING
-    if (data.propertyBinding !== undefined)
-      dataTexts.push(`property binding ${this.describePropertyBinding(data.propertyBinding)}`); // used by LOGICAL_PROPERTY_ASSIGNMENT
-    if (data.object !== undefined) dataTexts.push(`object ${this.describeValue(data.object)}`); // used by DEFINE_PROPERTY
-    if (data.descriptor !== undefined) dataTexts.push(`desc ${this.describeDescriptor(data.descriptor)}`); // used by DEFINE_PROPERTY
-    if (data.value !== undefined) dataTexts.push(`value ${this.describeValue(data.value)}`); // used by DO_WHILE, CONDITIONAL_PROPERTY_ASSIGNMENT, LOGICAL_PROPERTY_ASSIGNMENT, LOCAL_ASSIGNMENT, CONDITIONAL_THROW, EMIT_PROPERTY_ASSIGNMENT
-    if (data.id !== undefined) dataTexts.push(`id ${data.id}`); // used by IDENTIFIER
-    if (data.thisArg !== undefined) dataTexts.push(`this arg ${this.describeBaseValue(data.thisArg)}`); // used by CALL_BAILOUT
-    if (data.propRef !== undefined) dataTexts.push(`prop ref ${this.describeKey(data.propRef)}`); // used by CALL_BAILOUT, and then only if string
-    if (data.state !== undefined) dataTexts.push(`state ${data.state}`); // used by PROPERTY_INVARIANT
-    if (data.usesThis !== undefined) dataTexts.push(`usesThis`); // used by FOR_STATEMENT_FUNC
-    if (data.path !== undefined) dataTexts.push(`path ${this.describeValue(data.path)}`); // used by PROPERTY_ASSIGNMENT, CONDITIONAL_PROPERTY_ASSIGNMENT
-    if (data.callFunctionRef !== undefined) dataTexts.push(`call function ref ${data.callFunctionRef}`); // used by EMIT_CALL and EMIT_CALL_AND_CAPTURE_RESULT
-    if (data.templateSource !== undefined) dataTexts.push(`template source ${data.templateSource}`); // used by ABSTRACT_FROM_TEMPLATE
-
-    // TODO:
-    // appendLastToInvariantOperationDescriptor?: OperationDescriptor, // used by INVARIANT
-    // concreteComparisons?: Array<Value>, // used by FULL_INVARIANT_ABSTRACT
-    // boundName?: BabelNodeIdentifier, // used by FOR_IN
-    // lh?: BabelNodeVariableDeclaration, // used by FOR_IN
-    // propertyGetter?: SupportedGraphQLGetters, // used by ABSTRACT_OBJECT_GET
-    // quasis?: Array<BabelNodeTemplateElement>, // used by REACT_SSR_TEMPLATE_LITERAL
-    // typeComparisons?: Set<typeof Value>, // used by FULL_INVARIANT_ABSTRACT
-    // violationConditionOperationDescriptor?: OperationDescriptor, // used by INVARIANT
-    if (dataTexts.length > 0) text += `(${dataTexts.join("; ")})`;
-
-    let metadataTexts = [];
-    if (metadata.isPure) metadataTexts.push("isPure");
-    if (metadata.mutatesOnly !== undefined && metadata.mutatesOnly.length > 0)
-      metadataTexts.push(`mutates only: ${this.describeValues(metadata.mutatesOnly)}`);
-    if (metadataTexts.length > 0) text += `[${metadataTexts.join("; ")}]`;
-
-    this._printLine(text);
-
     switch (type) {
       case "DO_WHILE":
+        invariant(data.value !== undefined);
+        this._print(`do while ${this.describeValue(data.value)}`);
+        this._nest();
         let generator = data.generator;
         invariant(generator !== undefined);
         this.printGenerator(generator, "body");
+        this._unnest();
         break;
       case "JOIN_GENERATORS":
+        invariant(args.length === 1);
+        this._print(`if ${this.describeValue(args[0])}`);
+        this._nest();
         let generators = data.generators;
         invariant(generators !== undefined && generators.length === 2);
-        this.printGenerator(generators[0], "consequent");
-        this.printGenerator(generators[1], "alternate");
+        this.printGenerator(generators[0], "then");
+        this.printGenerator(generators[1], "else");
+        this._unnest();
         break;
       default:
+        let text;
+        if (declared !== undefined) {
+          invariant(declared.intrinsicName !== undefined);
+          text = `${this.describeExpression(declared.intrinsicName)} := `;
+        } else {
+          text = "";
+        }
+        text += type;
+
+        let dataTexts = [];
+        if (data.unaryOperator !== undefined) dataTexts.push(data.unaryOperator); // used by UNARY_EXPRESSION
+        if (data.binaryOperator !== undefined) dataTexts.push(data.binaryOperator); // used by BINARY_EXPRESSION
+        if (data.logicalOperator !== undefined) dataTexts.push(data.logicalOperator); // used by LOGICAL_EXPRESSION
+        if (data.incrementor !== undefined) dataTexts.push(data.incrementor); // used by UPDATE_INCREMENTOR
+        if (data.prefix !== undefined) dataTexts.push("prefix"); // used by UNARY_EXPRESSION
+        if (data.binding !== undefined) dataTexts.push(`binding ${this.describeBinding(data.binding)}`); // used by GET_BINDING
+        if (data.propertyBinding !== undefined)
+          dataTexts.push(`property binding ${this.describePropertyBinding(data.propertyBinding)}`); // used by LOGICAL_PROPERTY_ASSIGNMENT
+        if (data.object !== undefined) dataTexts.push(`object ${this.describeValue(data.object)}`); // used by DEFINE_PROPERTY
+        if (data.descriptor !== undefined) dataTexts.push(`desc ${this.describeDescriptor(data.descriptor)}`); // used by DEFINE_PROPERTY
+        if (data.value !== undefined) dataTexts.push(`value ${this.describeValue(data.value)}`); // used by DO_WHILE, CONDITIONAL_PROPERTY_ASSIGNMENT, LOGICAL_PROPERTY_ASSIGNMENT, LOCAL_ASSIGNMENT, CONDITIONAL_THROW, EMIT_PROPERTY_ASSIGNMENT
+        if (data.id !== undefined) dataTexts.push(`id ${this.describeExpression(data.id)}`); // used by IDENTIFIER
+        if (data.thisArg !== undefined) dataTexts.push(`this arg ${this.describeBaseValue(data.thisArg)}`); // used by CALL_BAILOUT
+        if (data.propRef !== undefined) dataTexts.push(`prop ref ${this.describeKey(data.propRef)}`); // used by CALL_BAILOUT, and then only if string
+        if (data.state !== undefined) dataTexts.push(`state ${data.state}`); // used by PROPERTY_INVARIANT
+        if (data.usesThis !== undefined) dataTexts.push(`usesThis`); // used by FOR_STATEMENT_FUNC
+        if (data.path !== undefined) dataTexts.push(`path ${this.describeValue(data.path)}`); // used by PROPERTY_ASSIGNMENT, CONDITIONAL_PROPERTY_ASSIGNMENT
+        if (data.callFunctionRef !== undefined)
+          dataTexts.push(`call function ref ${this.describeExpression(data.callFunctionRef)}`); // used by EMIT_CALL and EMIT_CALL_AND_CAPTURE_RESULT
+        if (data.templateSource !== undefined)
+          dataTexts.push(`template source ${this.describeExpression(data.templateSource)}`); // used by ABSTRACT_FROM_TEMPLATE
+        if (data.propertyGetter !== undefined) dataTexts.push(`property getter ${data.propertyGetter}`); // used by ABSTRACT_OBJECT_GET
+
+        // TODO:
+        // appendLastToInvariantOperationDescriptor?: OperationDescriptor, // used by INVARIANT
+        // concreteComparisons?: Array<Value>, // used by FULL_INVARIANT_ABSTRACT
+        // boundName?: BabelNodeIdentifier, // used by FOR_IN
+        // lh?: BabelNodeVariableDeclaration, // used by FOR_IN
+        // quasis?: Array<BabelNodeTemplateElement>, // used by REACT_SSR_TEMPLATE_LITERAL
+        // typeComparisons?: Set<typeof Value>, // used by FULL_INVARIANT_ABSTRACT
+        // violationConditionOperationDescriptor?: OperationDescriptor, // used by INVARIANT
+        if (dataTexts.length > 0) text += `<${dataTexts.join("; ")}>`;
+
+        if (args.length > 0) text += `(${this.describeValues(args)})`;
+
+        let metadataTexts = [];
+        if (metadata.isPure) metadataTexts.push("isPure");
+        if (metadata.mutatesOnly !== undefined && metadata.mutatesOnly.length > 0)
+          metadataTexts.push(`mutates only: ${this.describeValues(metadata.mutatesOnly)}`);
+        if (metadataTexts.length > 0) text += `[${metadataTexts.join("; ")}]`;
+
+        this._print(text);
         break;
     }
   }
 
   printGenerator(generator: Generator, label?: string = "(entry point)"): void {
-    this._print(`${label}: ${generator.getName()}`);
+    this._print(`${label}: ${JSON.stringify(generator.getName())}`);
     this._nest();
     if (generator.pathConditions.length > 0)
-      this._print(`path conditions: ${this.describeValues(generator.pathConditions)}`);
+      this._print(`path conditions ${this.describeValues(generator.pathConditions)}`);
     generator.print(this);
     this._unnest();
+  }
+
+  describeExpression(expression: string) {
+    if (t.isValidIdentifier(expression)) return expression;
+    else return "@" + JSON.stringify(expression);
   }
 
   describeValues<V: Value>(values: Array<V>): string {
     return values.map(value => this.describeValue(value)).join(", ");
   }
 
+  abstractValueName(value: AbstractValue): string {
+    let id = this._abstractValueIds.get(value);
+    invariant(id !== undefined);
+    return `value#${id}`;
+  }
+
+  printAbstractValue(value: AbstractValue) {
+    invariant(value.intrinsicName === undefined);
+    invariant(value.kind !== undefined);
+    let text = `${this.abstractValueName(value)} = ${value.kind}(${this.describeValues(value.args)})`;
+    this._print(text);
+  }
+
   describeValue(value: Value): string {
     if (value instanceof PrimitiveValue) return value.toDisplayString();
+    if (value.intrinsicName !== undefined) return this.describeExpression(value.intrinsicName);
     let text;
-    if (value instanceof ObjectValue) text = `object#${value.getHash()}`;
-    else {
+    if (value instanceof ObjectValue) {
+      text = `object#${value.getHash()}`;
+      if (value.intrinsicName) text += `[${this.describeExpression(value.intrinsicName)}]`;
+    } else {
       invariant(value instanceof AbstractValue, value.constructor.name);
       let id = this._abstractValueIds.get(value);
-      if (id === undefined) this._abstractValueIds.set(value, (id = this._abstractValueIds.size));
-      text = `abstract#${id}`;
+      if (id === undefined) {
+        this._abstractValueIds.set(value, (id = this._abstractValueIds.size));
+        this.printAbstractValue(value);
+      }
+      text = this.abstractValueName(value);
     }
-    if (value.intrinsicName) text += `[${value.intrinsicName}]`;
     // TODO: For objects, print all properties
-    // TODO: For abstract values, "recurse" into arguments
     return text;
   }
 
@@ -178,7 +213,7 @@ export class TextPrinter implements Printer {
 
   describeKey(key: void | string | Value): string {
     if (key === undefined) return "(undefined)";
-    else if (typeof key === "string") return key;
+    else if (typeof key === "string") return this.describeExpression(key);
     else {
       invariant(key instanceof Value);
       return this.describeValue(key);
@@ -202,6 +237,6 @@ export class TextPrinter implements Printer {
     invariant(value instanceof EnvironmentRecord);
     // TODO: Consider emitting just the environment identity here, and print actual environments separately
     // TODO: Print all entries
-    return "environment record";
+    return "(environment record)";
   }
 }
