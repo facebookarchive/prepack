@@ -92,10 +92,11 @@ export class InternalSlotDescriptor extends Descriptor {
 }
 
 // Only used if the result of a join of two descriptors is not a data descriptor with identical attribute values.
-// When present, any update to the property must produce effects that are the join of updating both desriptors,
+// When present, any update to the property must produce effects that are the join of updating both descriptors,
 // using joinCondition as the condition of the join.
 export class AbstractJoinedDescriptor extends Descriptor {
   joinCondition: AbstractValue;
+  // An undefined descriptor means it might be empty in this branch.
   descriptor1: void | Descriptor;
   descriptor2: void | Descriptor;
 
@@ -106,10 +107,10 @@ export class AbstractJoinedDescriptor extends Descriptor {
     this.descriptor2 = descriptor2;
   }
   mightHaveBeenDeleted(): boolean {
-    if (this.descriptor1 && this.descriptor1.mightHaveBeenDeleted()) {
+    if (!this.descriptor1 || this.descriptor1.mightHaveBeenDeleted()) {
       return true;
     }
-    if (this.descriptor2 && this.descriptor2.mightHaveBeenDeleted()) {
+    if (!this.descriptor2 || this.descriptor2.mightHaveBeenDeleted()) {
       return true;
     }
     return false;
