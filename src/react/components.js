@@ -38,6 +38,7 @@ import type { ClassComponentMetadata, ReactComponentTreeConfig } from "../types.
 import type { ReactEvaluatedNode } from "../serializer/types.js";
 import { FatalError } from "../errors.js";
 import { type ComponentModel, ShapeInformation } from "../utils/ShapeInformation.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 const lifecycleMethods = new Set([
   "componentWillUnmount",
@@ -231,9 +232,12 @@ export function createClassInstanceForFirstRenderOnly(
       newState.makeFinal();
 
       for (let [key, binding] of stateToUpdate.properties) {
-        if (binding && binding.descriptor && binding.descriptor.enumerable) {
-          let value = getProperty(realm, stateToUpdate, key);
-          hardModifyReactObjectPropertyBinding(realm, newState, key, value);
+        if (binding && binding.descriptor) {
+          invariant(binding.descriptor instanceof PropertyDescriptor);
+          if (binding.descriptor.enumerable) {
+            let value = getProperty(realm, stateToUpdate, key);
+            hardModifyReactObjectPropertyBinding(realm, newState, key, value);
+          }
         }
       }
 
