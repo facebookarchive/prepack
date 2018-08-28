@@ -84,10 +84,10 @@ export class TextPrinter implements Printer {
         text += type;
 
         let dataTexts = [];
-        if (data.unaryOperator !== undefined) dataTexts.push(data.unaryOperator); // used by UNARY_EXPRESSION
-        if (data.binaryOperator !== undefined) dataTexts.push(data.binaryOperator); // used by BINARY_EXPRESSION
-        if (data.logicalOperator !== undefined) dataTexts.push(data.logicalOperator); // used by LOGICAL_EXPRESSION
-        if (data.incrementor !== undefined) dataTexts.push(data.incrementor); // used by UPDATE_INCREMENTOR
+        if (data.unaryOperator !== undefined) dataTexts.push(`unary ${data.unaryOperator}`); // used by UNARY_EXPRESSION
+        if (data.binaryOperator !== undefined) dataTexts.push(`binary ${data.binaryOperator}`); // used by BINARY_EXPRESSION
+        if (data.logicalOperator !== undefined) dataTexts.push(`logical ${data.logicalOperator}`); // used by LOGICAL_EXPRESSION
+        if (data.incrementor !== undefined) dataTexts.push(`incrementor ${data.incrementor}`); // used by UPDATE_INCREMENTOR
         if (data.prefix !== undefined) dataTexts.push("prefix"); // used by UNARY_EXPRESSION
         if (data.binding !== undefined) dataTexts.push(`binding ${this.describeBinding(data.binding)}`); // used by GET_BINDING
         if (data.propertyBinding !== undefined)
@@ -156,8 +156,9 @@ export class TextPrinter implements Printer {
 
   printAbstractValue(value: AbstractValue) {
     invariant(value.intrinsicName === undefined);
-    invariant(value.kind !== undefined);
-    let text = `${this.abstractValueName(value)} = ${value.kind}(${this.describeValues(value.args)})`;
+    const kind = value.kind;
+    invariant(kind !== undefined);
+    let text = `${this.abstractValueName(value)} = ${JSON.stringify(kind)}(${this.describeValues(value.args)})`;
     this._print(text);
   }
 
