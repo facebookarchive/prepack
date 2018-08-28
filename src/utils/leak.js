@@ -41,6 +41,7 @@ import invariant from "../invariant.js";
 import { HeapInspector } from "../utils/HeapInspector.js";
 import { Logger } from "../utils/logger.js";
 import { isReactElement } from "../react/utils.js";
+import { PropertyDescriptor, AbstractJoinedDescriptor } from "../descriptors.js";
 
 type LeakedFunctionInfo = {
   unboundReads: Set<string>,
@@ -137,6 +138,7 @@ function materializeObject(realm: Realm, object: ObjectValue, getCachingHeapInsp
       // If it indeed means deleted binding, should we initialize descriptor with a deleted value?
       if (generator !== undefined) generator.emitPropertyDelete(object, name);
     } else {
+      invariant(descriptor instanceof PropertyDescriptor); // TODO: Deal with joined descriptors.
       let value = descriptor.value;
       invariant(
         value === undefined || value instanceof Value,
@@ -216,11 +218,7 @@ class ObjectValueLeakingVisitor {
     // inject properties with computed names
     if (obj.unknownProperty !== undefined) {
       let desc = obj.unknownProperty.descriptor;
-      if (desc !== undefined) {
-        let val = desc.value;
-        invariant(val instanceof AbstractValue);
-        this.visitObjectPropertiesWithComputedNames(val);
-      }
+      this.visitObjectPropertiesWithComputedNamesDescriptor(desc);
     }
 
     // prototype
@@ -258,6 +256,22 @@ class ObjectValueLeakingVisitor {
     this.visitValue(proto);
   }
 
+  visitObjectPropertiesWithComputedNamesDescriptor(desc: void | Descriptor): void {
+    if (desc !== undefined) {
+      if (desc instanceof PropertyDescriptor) {
+        let val = desc.value;
+        invariant(val instanceof AbstractValue);
+        this.visitObjectPropertiesWithComputedNames(val);
+      } else if (desc instanceof AbstractJoinedDescriptor) {
+        this.visitValue(desc.joinCondition);
+        this.visitObjectPropertiesWithComputedNamesDescriptor(desc.descriptor1);
+        this.visitObjectPropertiesWithComputedNamesDescriptor(desc.descriptor2);
+      } else {
+        invariant(false, "unknown descriptor");
+      }
+    }
+  }
+
   visitObjectPropertiesWithComputedNames(absVal: AbstractValue): void {
     if (absVal.kind === "widened property") return;
     if (absVal.kind === "template for prototype member expression") return;
@@ -289,11 +303,19 @@ class ObjectValueLeakingVisitor {
     }
   }
 
-  visitDescriptor(desc: Descriptor): void {
-    invariant(desc.value === undefined || desc.value instanceof Value);
-    if (desc.value !== undefined) this.visitValue(desc.value);
-    if (desc.get !== undefined) this.visitValue(desc.get);
-    if (desc.set !== undefined) this.visitValue(desc.set);
+  visitDescriptor(desc: void | Descriptor): void {
+    if (desc === undefined) {
+    } else if (desc instanceof PropertyDescriptor) {
+      if (desc.value !== undefined) this.visitValue(desc.value);
+      if (desc.get !== undefined) this.visitValue(desc.get);
+      if (desc.set !== undefined) this.visitValue(desc.set);
+    } else if (desc instanceof AbstractJoinedDescriptor) {
+      this.visitValue(desc.joinCondition);
+      if (desc.descriptor1 !== undefined) this.visitDescriptor(desc.descriptor1);
+      if (desc.descriptor2 !== undefined) this.visitDescriptor(desc.descriptor2);
+    } else {
+      invariant(false, "unknown descriptor");
+    }
   }
 
   visitDeclarativeEnvironmentRecordBinding(

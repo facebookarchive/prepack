@@ -13,6 +13,7 @@ import type { Realm } from "../realm.js";
 import { FatalError } from "../errors.js";
 import { Value, StringValue, NumberValue, ObjectValue } from "../values/index.js";
 import { Create } from "../singletons.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 export default function convert(realm: Realm, val: any): Value {
   if (typeof val === "number") {
@@ -33,12 +34,15 @@ export default function convert(realm: Realm, val: any): Value {
     let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
 
     for (let key in val) {
-      obj.$DefineOwnProperty(key, {
-        enumerable: true,
-        writable: true,
-        configurable: true,
-        value: convert(realm, val[key]),
-      });
+      obj.$DefineOwnProperty(
+        key,
+        new PropertyDescriptor({
+          enumerable: true,
+          writable: true,
+          configurable: true,
+          value: convert(realm, val[key]),
+        })
+      );
     }
 
     return obj;
