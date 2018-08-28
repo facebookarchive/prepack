@@ -10,6 +10,7 @@
 /* @flow */
 
 import type { Descriptor, PropertyBinding } from "../types.js";
+import { PropertyDescriptor, InternalSlotDescriptor, AbstractJoinedDescriptor } from "../descriptors.js";
 import {
   EnvironmentRecord,
   type Binding,
@@ -198,7 +199,7 @@ export class TextPrinter implements Printer {
     if (kind === undefined) kind = "(no kind)";
     this._printDefinition(
       this.abstractValueName(value),
-      JSON.stringify(kind),
+      this.describeExpression(kind),
       value.args.map(arg => this.describeValue(arg))
     );
   }
@@ -312,9 +313,12 @@ export class TextPrinter implements Printer {
           invariant(weakSetDataEntries !== undefined);
           args.push(`$WeakSetData [${this.describeSetEntries(weakSetDataEntries)}]`);
           break;
-        default:
-          invariant(kind === "Object" || kind === "Array", kind);
+        case "ReactElement":
+        case "Object":
+        case "Array":
           break;
+        default:
+          invariant(false);
       }
     }
 
@@ -385,18 +389,36 @@ export class TextPrinter implements Printer {
   }
 
   describeDescriptor(desc: Descriptor): string {
+    if (desc instanceof PropertyDescriptor) return this.describePropertyDescriptor(desc);
+    else if (desc instanceof InternalSlotDescriptor) return this.describeInternalSlotDescriptor(desc);
+    else {
+      invariant(desc instanceof AbstractJoinedDescriptor, desc.constructor.name);
+      return this.describeAbstractJoinedDescriptor(desc);
+    }
+  }
+
+  describePropertyDescriptor(desc: PropertyDescriptor) {
     const args = [];
     if (desc.writable) args.push("writable");
     if (desc.enumerable) args.push("enumerable");
     if (desc.configurable) args.push("configurable");
-    if (desc.value !== undefined)
-      if (desc.value instanceof Value) args.push(`value ${this.describeValue(desc.value)}`);
-      else args.push(`value of internal slot`); // TODO
+    if (desc.value !== undefined) args.push(`value ${this.describeValue(desc.value)}`);
     if (desc.get !== undefined) args.push(`get ${this.describeValue(desc.get)}`);
     if (desc.set !== undefined) args.push(`set ${this.describeValue(desc.set)}`);
+    return `PropertyDescriptor(${args.join(", ")})`;
+  }
 
-    // TODO: joinCondition, descriptor1, descriptor2
-    return `descriptor(${args.join(", ")})`;
+  describeInternalSlotDescriptor(desc: InternalSlotDescriptor) {
+    // TODO
+    return `InternalSlotDescriptor(...)`;
+  }
+
+  describeAbstractJoinedDescriptor(desc: AbstractJoinedDescriptor) {
+    const args = [];
+    args.push(`join condition ${this.describeValue(desc.joinCondition)}`);
+    if (desc.descriptor1 !== undefined) args.push(`descriptor1 ${this.describeDescriptor(desc.descriptor1)}`);
+    if (desc.descriptor2 !== undefined) args.push(`descriptor2 ${this.describeDescriptor(desc.descriptor2)}`);
+    return `AbstractJoinedDescriptor(${args.join(", ")})`;
   }
 
   bindingName(binding: Binding): string {
@@ -444,8 +466,7 @@ export class TextPrinter implements Printer {
     if (propertyBinding.internalSlot) args.push("internal slot");
     if (propertyBinding.descriptor !== undefined)
       args.push(`descriptor ${this.describeDescriptor(propertyBinding.descriptor)}`);
-    if (propertyBinding.pathNode !== undefined)
-      args.push(`path node ${this.describeDescriptor(propertyBinding.pathNode)}`);
+    if (propertyBinding.pathNode !== undefined) args.push(`path node ${this.describeValue(propertyBinding.pathNode)}`);
     this._printDefinition(this.propertyBindingName(propertyBinding), "PropertyBinding", args);
   }
 
