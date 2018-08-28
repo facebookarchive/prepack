@@ -16,8 +16,16 @@ import type {
   BabelNodeThisExpression,
   BabelNodeStatement,
   BabelNodeMemberExpression,
+  BabelNodeExpression,
 } from "@babel/types";
 import { NameGenerator } from "./NameGenerator.js";
+import buildTemplate from "@babel/template";
+import invariant from "../invariant.js";
+
+export const Placeholders = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const placeholderDefaultWhiteList = new Set(["global"]);
+const placeholderWhitelist = new Set([...placeholderDefaultWhiteList, ...Placeholders]);
+export const DisablePlaceholderSuffix = "// disable placeholders";
 
 export class PreludeGenerator {
   constructor(debugNames: ?boolean, uniqueSuffix: ?string) {
@@ -27,6 +35,7 @@ export class PreludeGenerator {
     this.usesThis = false;
     this.declaredGlobals = new Set();
     this.nextInvariantId = 0;
+    this._expressionTemplates = new Map();
   }
 
   prelude: Array<BabelNodeStatement>;
@@ -35,6 +44,7 @@ export class PreludeGenerator {
   usesThis: boolean;
   declaredGlobals: Set<string>;
   nextInvariantId: number;
+  _expressionTemplates: Map<string, ({}) => BabelNodeExpression>;
 
   createNameGenerator(prefix: string): NameGenerator {
     return new NameGenerator(
@@ -95,5 +105,36 @@ export class PreludeGenerator {
     this.prelude.push(t.variableDeclaration("var", [t.variableDeclarator(ref, init)]));
     this.memoizedRefs.set(key, ref);
     return ref;
+  }
+
+  buildExpression(code: string, templateArguments: {}): BabelNodeExpression {
+    let disablePlaceholders = false;
+    const key = code;
+    let template = this._expressionTemplates.get(key);
+    if (template === undefined) {
+      if (code.endsWith(DisablePlaceholderSuffix)) {
+        code = code.substring(0, code.length - DisablePlaceholderSuffix.length);
+        disablePlaceholders = true;
+      }
+
+      template = buildTemplate(code, {
+        placeholderPattern: false,
+        placeholderWhitelist: disablePlaceholders ? placeholderDefaultWhiteList : placeholderWhitelist,
+      });
+
+      this._expressionTemplates.set(key, template);
+    }
+
+    if (code.includes("global"))
+      templateArguments = Object.assign(
+        {
+          global: this.memoizeReference("global"),
+        },
+        templateArguments
+      );
+
+    let result = (template(templateArguments): any).expression;
+    invariant(result !== undefined, "Code does not represent an expression: " + code);
+    return result;
   }
 }

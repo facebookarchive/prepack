@@ -42,7 +42,6 @@ import { Create, Environment, Join, Leak, Path, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeTemplateLiteral } from "@babel/types";
 import { createOperationDescriptor } from "../utils/generator.js";
-import buildExpressionTemplate from "../utils/builder.js";
 
 // ECMA262 7.3.22
 export function GetFunctionRealm(realm: Realm, obj: ObjectValue): Realm {
@@ -272,7 +271,6 @@ function isWidenedValue(v: void | Value) {
 }
 
 const lengthTemplateSrc = "(A).length";
-const lengthTemplate = buildExpressionTemplate(lengthTemplateSrc);
 
 function specializeJoin(realm: Realm, absVal: AbstractValue, propName: Value): Value {
   if (absVal.kind === "widened property") {
@@ -327,7 +325,7 @@ export function OrdinaryGetPartial(
   Receiver: Value
 ): Value {
   if (Receiver instanceof AbstractValue && Receiver.getType() === StringValue && P === "length") {
-    return AbstractValue.createFromTemplate(realm, lengthTemplate, NumberValue, [Receiver], lengthTemplateSrc);
+    return AbstractValue.createFromTemplate(realm, lengthTemplateSrc, NumberValue, [Receiver]);
   }
 
   if (!(P instanceof AbstractValue)) return O.$Get(P, Receiver);
