@@ -1,17 +1,18 @@
 var React = require("react");
 
-function Child() {
-  return <div>This should be inlined</div>;
-}
-
 function App(props) {
-  var a = props.x ? null : function() {};
-  return a && <Child />;
+  if (props.neverHappens) {
+    return <Bad />
+  }
+  return null;
 }
 
+function Bad() {
+  return {}; // Invalid
+}
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
-  return [["simple conditions #2", renderer.toJSON()]];
+  return [["simple conditions #3", renderer.toJSON()]];
 };
 
 if (this.__optimizeReactComponentTree) {

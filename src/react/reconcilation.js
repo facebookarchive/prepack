@@ -1380,9 +1380,9 @@ export class Reconciler {
       return this._resolveReactElement(componentType, value, context, branchStatus, evaluatedNode, needsKey);
     }
     // This value is not a valid return value of a render, but given we might be
-    // in a && condition,  it may never result in a runtime error. Still, if it does
+    // in a "&&"" condition, it may never result in a runtime error. Still, if it does
     // result in a runtime error, it would have been the same error before compilation.
-    // See issue #https://github.com/facebook/prepack/issues/2497 for more context.
+    // See issue #2497 for more context.
     return value;
   }
 

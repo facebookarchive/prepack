@@ -124,6 +124,10 @@ it("Simple 23", () => {
   runTest(__dirname + "/FunctionalComponents/simple-23.js");
 });
 
+it("Simple 24", () => {
+  runTest(__dirname + "/FunctionalComponents/simple-24.js");
+});
+
 it("Two roots", () => {
   runTest(__dirname + "/FunctionalComponents/two-roots.js");
 });
