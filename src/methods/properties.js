@@ -32,8 +32,6 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import invariant from "../invariant.js";
 import {
   Call,
-  cloneDescriptor,
-  equalDescriptors,
   Get,
   GetGlobalObject,
   GetThisValue,
@@ -53,7 +51,7 @@ import { Create, Environment, Functions, Leak, Join, Path, To } from "../singlet
 import IsStrict from "../utils/strict.js";
 import { createOperationDescriptor } from "../utils/generator.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import { PropertyDescriptor, AbstractJoinedDescriptor } from "../descriptors.js";
+import { cloneDescriptor, equalDescriptors, PropertyDescriptor, AbstractJoinedDescriptor } from "../descriptors.js";
 
 function StringKey(key: PropertyKeyValue): string {
   if (key instanceof StringValue) key = key.value;

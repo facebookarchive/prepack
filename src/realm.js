@@ -53,7 +53,7 @@ import {
   DeclarativeEnvironmentRecord,
 } from "./environment.js";
 import type { Binding } from "./environment.js";
-import { cloneDescriptor, Construct } from "./methods/index.js";
+import { Construct } from "./methods/index.js";
 import {
   AbruptCompletion,
   Completion,
@@ -70,7 +70,12 @@ import { createOperationDescriptor, Generator, type TemporalOperationEntry } fro
 import { PreludeGenerator } from "./utils/PreludeGenerator.js";
 import { Environment, Functions, Join, Path, Properties, To, Utils, Widen } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
-import { AbstractJoinedDescriptor, InternalSlotDescriptor, PropertyDescriptor } from "./descriptors.js";
+import {
+  cloneDescriptor,
+  AbstractJoinedDescriptor,
+  InternalSlotDescriptor,
+  PropertyDescriptor,
+} from "./descriptors.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal } from "@babel/types";
 export type BindingEntry = { hasLeaked: boolean, value: void | Value };
 export type Bindings = Map<Binding, BindingEntry>;

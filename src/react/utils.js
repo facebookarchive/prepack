@@ -31,7 +31,7 @@ import {
 } from "../values/index.js";
 import { TemporalObjectAssignEntry } from "../utils/generator.js";
 import type { Descriptor, ReactComponentTreeConfig, ReactHint, PropertyBinding } from "../types.js";
-import { Get, cloneDescriptor, IsDataDescriptor } from "../methods/index.js";
+import { Get, IsDataDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import type { AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
 import invariant from "../invariant.js";
@@ -40,7 +40,7 @@ import traverse from "@babel/traverse";
 import * as t from "@babel/types";
 import type { BabelNodeStatement } from "@babel/types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { PropertyDescriptor } from "../descriptors.js";
+import { cloneDescriptor, PropertyDescriptor } from "../descriptors.js";
 
 export type ReactSymbolTypes =
   | "react.element"

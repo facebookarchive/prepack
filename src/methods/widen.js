@@ -14,11 +14,11 @@ import { FatalError } from "../errors.js";
 import type { Bindings, BindingEntry, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
 import { Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
-import { PropertyDescriptor } from "../descriptors.js";
+import { cloneDescriptor, equalDescriptors, PropertyDescriptor } from "../descriptors.js";
 
 import { AbruptCompletion, JoinedNormalAndAbruptCompletions, SimpleNormalCompletion } from "../completions.js";
 import { Reference } from "../environment.js";
-import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComparison } from "./index.js";
+import { IsDataDescriptor, StrictEqualityComparison } from "./index.js";
 import { Generator, createOperationDescriptor } from "../utils/generator.js";
 import { AbstractValue, ArrayValue, EmptyValue, Value, StringValue } from "../values/index.js";
 

@@ -25,13 +25,13 @@ import {
   Value,
 } from "./index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import { IsDataDescriptor, cloneDescriptor, equalDescriptors } from "../methods/index.js";
+import { IsDataDescriptor } from "../methods/index.js";
 import { Leak, Join, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
 import { createOperationDescriptor, type OperationDescriptor } from "../utils/generator.js";
 import { construct_empty_effects } from "../realm.js";
 import { SimpleNormalCompletion } from "../completions.js";
-import { PropertyDescriptor } from "../descriptors.js";
+import { cloneDescriptor, equalDescriptors, PropertyDescriptor } from "../descriptors.js";
 
 export default class AbstractObjectValue extends AbstractValue {
   constructor(

@@ -13,7 +13,13 @@ import type { Binding } from "../environment.js";
 import type { Bindings, BindingEntry, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
 import { construct_empty_effects, Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
-import { PropertyDescriptor, AbstractJoinedDescriptor, InternalSlotDescriptor } from "../descriptors.js";
+import {
+  cloneDescriptor,
+  equalDescriptors,
+  PropertyDescriptor,
+  AbstractJoinedDescriptor,
+  InternalSlotDescriptor,
+} from "../descriptors.js";
 
 import {
   AbruptCompletion,
@@ -27,7 +33,7 @@ import {
   ReturnCompletion,
   ThrowCompletion,
 } from "../completions.js";
-import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
+import { IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
 import { Path } from "../singletons.js";
 import { Generator } from "../utils/generator.js";
 import { AbstractValue, ConcreteValue, EmptyValue, Value } from "../values/index.js";
