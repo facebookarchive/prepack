@@ -167,6 +167,9 @@ export default function(realm: Realm): ObjectValue {
           let template = buildExpressionTemplate(templateSource);
           buildMathTemplates.set(name, (r = { template, templateSource }));
         }
+        /* Functions in the Math module cannot throw, so if we ever end up supporting these calls on AbstractValues,
+        using createFromTemplate instead of createTemporalFromTemplate should be safe.
+        This makes the function amenable to CSE, which is a good thing for Math.* */
         return AbstractValue.createFromTemplate(realm, r.template, NumberValue, args, r.templateSource);
       }
 

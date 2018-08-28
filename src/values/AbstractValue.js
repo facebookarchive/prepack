@@ -355,6 +355,9 @@ export default class AbstractValue extends Value {
     return false;
   }
 
+  isTemporal(): boolean {
+    return this.$Realm.getTemporalOperationEntryFromDerivedValue(this) !== undefined;
+  }
   // todo: abstract values should never be of type UndefinedValue or NullValue, assert this
   mightBeFalse(): boolean {
     let valueType = this.getType();
@@ -756,7 +759,13 @@ export default class AbstractValue extends Value {
   /* Note that the template is parameterized by the names A, B, C and so on.
      When the abstract value is serialized, the serialized operations are substituted
      for the corresponding parameters and the resulting template is parsed into an AST subtree
-     that is incorporated into the AST produced by the serializer. */
+     that is incorporated into the AST produced by the serializer.
+
+     NOTE: Only call this function if you can guarantee that the template you pass to it will not
+     generate code that is a-temporal. Code is a-temporal if it cannot throw or cause side effects.
+     If there is a possibility that it might exhibit this behavior, then use the safer
+     createTemporalFromTemplate call instead. */
+
   static createFromTemplate(
     realm: Realm,
     template: PreludeGenerator => ({}) => BabelNodeExpression,
@@ -878,6 +887,7 @@ export default class AbstractValue extends Value {
     let concreteSet = new Set(concreteValues);
     let abstractValue = elements.find(e => e instanceof AbstractValue);
     invariant(abstractValue instanceof AbstractValue);
+
     let values;
     if (!abstractValue.values.isTop()) {
       abstractValue.values.getElements().forEach(v => concreteSet.add(v));

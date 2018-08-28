@@ -577,7 +577,14 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     if (O instanceof AbstractValue && O.getType() === StringValue) {
-      return AbstractValue.createFromTemplate(realm, sliceTemplate, StringValue, [O, start, end], sliceTemplateSrc);
+      // If O is temporal, this operation is also temporal. See #2327.
+      if (O.isTemporal())
+        return AbstractValue.createTemporalFromTemplate(realm, sliceTemplate, StringValue, [O, start, end], {
+          isPure: true,
+          skipInvariant: true,
+        });
+      else
+        return AbstractValue.createFromTemplate(realm, sliceTemplate, StringValue, [O, start, end], sliceTemplateSrc);
     }
 
     // 2. Let S be ? ToString(O).
@@ -611,13 +618,20 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     if (O instanceof AbstractValue && O.getType() === StringValue) {
-      return AbstractValue.createFromTemplate(
-        realm,
-        splitTemplate,
-        ObjectValue,
-        [O, separator, limit],
-        splitTemplateSrc
-      );
+      // If O is temporal, this operation is also temporal. See #2327.
+      if (O.isTemporal())
+        return AbstractValue.createTemporalFromTemplate(realm, splitTemplate, ObjectValue, [O, separator, limit], {
+          isPure: true,
+          skipInvariant: true,
+        });
+      else
+        return AbstractValue.createFromTemplate(
+          realm,
+          splitTemplate,
+          ObjectValue,
+          [O, separator, limit],
+          splitTemplateSrc
+        );
     }
 
     // 2. If separator is neither undefined nor null, then

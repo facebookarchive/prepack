@@ -317,8 +317,11 @@ const JSONParse = buildExpressionTemplate(JSONParseStr);
 function InternalJSONClone(realm: Realm, val: Value): Value {
   if (val instanceof AbstractValue) {
     if (val instanceof AbstractObjectValue) {
-      let strVal = AbstractValue.createFromTemplate(realm, JSONStringify, StringValue, [val], JSONStringifyStr);
-      let obVal = AbstractValue.createFromTemplate(realm, JSONParse, ObjectValue, [strVal], JSONParseStr);
+      let strVal;
+      let obVal;
+
+      strVal = AbstractValue.createFromTemplate(realm, JSONStringify, StringValue, [val], JSONStringifyStr);
+      obVal = AbstractValue.createFromTemplate(realm, JSONParse, ObjectValue, [strVal], JSONParseStr);
       obVal.values = new ValuesDomain(new Set([InternalCloneObject(realm, val.getTemplate())]));
       return obVal;
     }

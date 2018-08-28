@@ -327,7 +327,14 @@ export function OrdinaryGetPartial(
   Receiver: Value
 ): Value {
   if (Receiver instanceof AbstractValue && Receiver.getType() === StringValue && P === "length") {
-    return AbstractValue.createFromTemplate(realm, lengthTemplate, NumberValue, [Receiver], lengthTemplateSrc);
+    if (Receiver.isTemporal()) {
+      return AbstractValue.createTemporalFromTemplate(realm, lengthTemplate, NumberValue, [Receiver], {
+        isPure: true,
+        skipInvariant: true,
+      });
+    } else {
+      return AbstractValue.createFromTemplate(realm, lengthTemplate, NumberValue, [Receiver], lengthTemplateSrc);
+    }
   }
 
   if (!(P instanceof AbstractValue)) return O.$Get(P, Receiver);
