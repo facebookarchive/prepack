@@ -161,6 +161,8 @@ ${source}
 
   function runSource(source) {
     let transformedSource = `
+      // Add global variable for spec compliance.
+      let global = this;
       // Inject React since compiled JSX would reference it.
       let React = require('react');
       (function() {

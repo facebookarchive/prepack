@@ -48,13 +48,13 @@ import {
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { Leak, Properties, Utils } from "../singletons.js";
-import { FatalError, NestedOptimizedFunctionSideEffect } from "../errors.js";
+import { CompilerDiagnostic, FatalError, NestedOptimizedFunctionSideEffect } from "../errors.js";
 import {
   type BranchStatusEnum,
   getValueWithBranchingLogicApplied,
   wrapReactElementInBranchOrReturnValue,
 } from "./branching.js";
-import { Completion, SimpleNormalCompletion } from "../completions.js";
+import { SimpleNormalCompletion, AbruptCompletion } from "../completions.js";
 import {
   getInitialProps,
   getInitialContext,
@@ -135,8 +135,20 @@ function setContextCurrentValue(contextObject: ObjectValue | AbstractObjectValue
   }
 }
 
-function throwUnsupportedSideEffectError(msg: string) {
-  throw new UnsupportedSideEffect(msg);
+function reportSideEffect(realm, sideEffectType, binding, expressionLocation) {
+  handleReportedSideEffect(
+    (msg, loc) => {
+      if (sideEffectType === "EXCEPTION_THROWN") {
+        let error = new CompilerDiagnostic(msg, loc, "PP1007", "Warning");
+        realm.handleError(error);
+        return;
+      }
+      throw new UnsupportedSideEffect(msg);
+    },
+    sideEffectType,
+    binding,
+    expressionLocation
+  );
 }
 
 export class Reconciler {
@@ -179,6 +191,7 @@ export class Reconciler {
         this.statistics.optimizedTrees++;
         return result;
       } catch (error) {
+        if (error instanceof AbruptCompletion) throw error;
         this._handleComponentTreeRootFailure(error, evaluatedRootNode);
         // flow belives we can get here, when it should never be possible
         invariant(false, "resolveReactComponentTree error not handled correctly");
@@ -196,8 +209,7 @@ export class Reconciler {
               `react component: ${getComponentName(this.realm, componentType)}`
             ),
           /*bubbles*/ true,
-          (sideEffectType, binding, expressionLocation) =>
-            handleReportedSideEffect(throwUnsupportedSideEffectError, sideEffectType, binding, expressionLocation)
+          (...args) => reportSideEffect(this.realm, ...args)
         )
       );
     } finally {
@@ -1224,6 +1236,7 @@ export class Reconciler {
 
       return result;
     } catch (error) {
+      if (error instanceof AbruptCompletion) throw error;
       return this._resolveComponentResolutionFailure(
         componentType,
         error,
@@ -1235,7 +1248,7 @@ export class Reconciler {
     }
   }
 
-  _handleComponentTreeRootFailure(error: Error | Completion, evaluatedRootNode: ReactEvaluatedNode): void {
+  _handleComponentTreeRootFailure(error: Error, evaluatedRootNode: ReactEvaluatedNode): void {
     if (error.name === "Invariant Violation") {
       throw error;
     } else if (error instanceof ReconcilerFatalError) {
@@ -1243,19 +1256,6 @@ export class Reconciler {
     } else if (error instanceof UnsupportedSideEffect || error instanceof DoNotOptimize) {
       throw new ReconcilerFatalError(
         `Failed to render React component root "${evaluatedRootNode.name}" due to ${error.message}`,
-        evaluatedRootNode
-      );
-    } else if (error instanceof Completion) {
-      let value = error.value;
-      invariant(value instanceof ObjectValue);
-      let message = getProperty(this.realm, value, "message");
-      let stack = getProperty(this.realm, value, "stack");
-      invariant(message instanceof StringValue);
-      invariant(stack instanceof StringValue);
-      throw new ReconcilerFatalError(
-        `Failed to render React component "${evaluatedRootNode.name}" due to a JS error: ${message.value}\n${
-          stack.value
-        }`,
         evaluatedRootNode
       );
     }
@@ -1277,7 +1277,7 @@ export class Reconciler {
 
   _resolveComponentResolutionFailure(
     componentType: Value,
-    error: Error | Completion,
+    error: Error,
     reactElement: ObjectValue,
     context: ObjectValue | AbstractObjectValue,
     evaluatedNode: ReactEvaluatedNode,
@@ -1294,17 +1294,6 @@ export class Reconciler {
       );
     } else if (error instanceof DoNotOptimize) {
       return reactElement;
-    } else if (error instanceof Completion) {
-      let value = error.value;
-      invariant(value instanceof ObjectValue);
-      let message = getProperty(this.realm, value, "message");
-      let stack = getProperty(this.realm, value, "stack");
-      invariant(message instanceof StringValue);
-      invariant(stack instanceof StringValue);
-      throw new ReconcilerFatalError(
-        `Failed to render React component "${evaluatedNode.name}" due to a JS error: ${message.value}\n${stack.value}`,
-        evaluatedNode
-      );
     }
     let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
@@ -1423,9 +1412,7 @@ export class Reconciler {
             return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode, needsKey);
           };
           let pureFuncCall = () =>
-            this.realm.evaluatePure(funcCall, /*bubbles*/ true, (sideEffectType, binding, expressionLocation) =>
-              handleReportedSideEffect(throwUnsupportedSideEffectError, sideEffectType, binding, expressionLocation)
-            );
+            this.realm.evaluatePure(funcCall, /*bubbles*/ true, (...args) => reportSideEffect(this.realm, ...args));
 
           let resolvedEffects;
           resolvedEffects = this.realm.evaluateForEffects(
