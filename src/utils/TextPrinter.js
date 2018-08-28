@@ -73,20 +73,21 @@ export class TextPrinter implements Printer {
     if (data.descriptor !== undefined) dataTexts.push(`desc ${this.describeDescriptor(data.descriptor)}`); // used by DEFINE_PROPERTY
     if (data.value !== undefined) dataTexts.push(`value ${this.describeValue(data.value)}`); // used by DO_WHILE, CONDITIONAL_PROPERTY_ASSIGNMENT, LOGICAL_PROPERTY_ASSIGNMENT, LOCAL_ASSIGNMENT, CONDITIONAL_THROW, EMIT_PROPERTY_ASSIGNMENT
     if (data.id !== undefined) dataTexts.push(`id ${data.id}`); // used by IDENTIFIER
-    if (data.boundName !== undefined) dataTexts.push(`bound name ${data.boundName.name}`); // used by FOR_IN
     if (data.thisArg !== undefined) dataTexts.push(`this arg ${this.describeBaseValue(data.thisArg)}`); // used by CALL_BAILOUT
     if (data.propRef !== undefined) dataTexts.push(`prop ref ${this.describeKey(data.propRef)}`); // used by CALL_BAILOUT, and then only if string
     if (data.state !== undefined) dataTexts.push(`state ${data.state}`); // used by PROPERTY_INVARIANT
     if (data.usesThis !== undefined) dataTexts.push(`usesThis`); // used by FOR_STATEMENT_FUNC
     if (data.path !== undefined) dataTexts.push(`path ${this.describeValue(data.path)}`); // used by PROPERTY_ASSIGNMENT, CONDITIONAL_PROPERTY_ASSIGNMENT
+    if (data.callFunctionRef !== undefined) dataTexts.push(`call function ref ${data.callFunctionRef}`); // used by EMIT_CALL and EMIT_CALL_AND_CAPTURE_RESULT
+    if (data.templateSource !== undefined) dataTexts.push(`template source ${data.templateSource}`); // used by ABSTRACT_FROM_TEMPLATE
+
     // TODO:
     // appendLastToInvariantOperationDescriptor?: OperationDescriptor, // used by INVARIANT
-    // callTemplate?: () => BabelNodeExpression, // used by EMIT_CALL and EMIT_CALL_AND_CAPTURE_RESULT
     // concreteComparisons?: Array<Value>, // used by FULL_INVARIANT_ABSTRACT
+    // boundName?: BabelNodeIdentifier, // used by FOR_IN
     // lh?: BabelNodeVariableDeclaration, // used by FOR_IN
     // propertyGetter?: SupportedGraphQLGetters, // used by ABSTRACT_OBJECT_GET
-    // quasis?: Array<any>, // used by REACT_SSR_TEMPLATE_LITERAL
-    // template?: PreludeGenerator => ({}) => BabelNodeExpression, // used by ABSTRACT_FROM_TEMPLATE
+    // quasis?: Array<BabelNodeTemplateElement>, // used by REACT_SSR_TEMPLATE_LITERAL
     // typeComparisons?: Set<typeof Value>, // used by FULL_INVARIANT_ABSTRACT
     // violationConditionOperationDescriptor?: OperationDescriptor, // used by INVARIANT
     if (dataTexts.length > 0) text += `(${dataTexts.join("; ")})`;
@@ -161,6 +162,7 @@ export class TextPrinter implements Printer {
   }
 
   describeBinding(binding: Binding): string {
+    // TODO: Consider emitting just the binding identity here, and print actual bindings separately
     let text = `${binding.name}: ${this.describeBaseValue(binding.environment)} `;
     if (binding.isGlobal) text += "is global ";
     if (binding.mightHaveBeenCaptured) text += "might have been captured ";
@@ -184,6 +186,7 @@ export class TextPrinter implements Printer {
   }
 
   describePropertyBinding(propertyBinding: PropertyBinding): string {
+    // TODO: Consider emitting just the property binding identity here, and print actual property bindings separately
     let text = `${this.describeValue(propertyBinding.object)}.${this.describeKey(propertyBinding.key)}: `;
     if (propertyBinding.internalSlot) text += "internal slot ";
     if (propertyBinding.descriptor !== undefined)
@@ -197,6 +200,7 @@ export class TextPrinter implements Printer {
     if (value === undefined) return "(undefined)";
     else if (value instanceof Value) return this.describeValue(value);
     invariant(value instanceof EnvironmentRecord);
+    // TODO: Consider emitting just the environment identity here, and print actual environments separately
     // TODO: Print all entries
     return "environment record";
   }

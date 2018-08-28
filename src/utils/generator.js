@@ -545,13 +545,7 @@ class ReturnValueEntry extends GeneratorEntry {
   containingGenerator: Generator;
 
   print(printer: Printer): void {
-    printer.printGeneratorEntry(
-      undefined,
-      "RETURN",
-      [this.returnValue],
-      {},
-      { isPure: false, mutatesOnly: undefined }
-    );
+    printer.printGeneratorEntry(undefined, "RETURN", [this.returnValue], {}, { isPure: false, mutatesOnly: undefined });
   }
 
   toDisplayString(): string {
