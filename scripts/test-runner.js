@@ -47,6 +47,7 @@ let execSpec;
 let JSONTokenizer = require("../lib/utils/JSONTokenizer.js").default;
 let { Linter } = require("eslint");
 let lintConfig = require("./lint-config");
+let TextPrinter = require("../lib/utils/TextPrinter.js").TextPrinter;
 
 function transformWithBabel(code, plugins, presets) {
   return babel.transform(code, {
@@ -432,6 +433,7 @@ function runTest(name, code, options: PrepackOptions, args) {
     return Promise.resolve(false);
   } else {
     let codeIterations = [];
+    let irIterations = [];
     let markersToFind = [];
     for (let [positive, marker] of [[true, "// does contain:"], [false, "// does not contain:"]]) {
       for (let i = code.indexOf(marker); i >= 0; i = code.indexOf(marker, i + 1)) {
@@ -510,6 +512,18 @@ function runTest(name, code, options: PrepackOptions, args) {
                 options.errorHandler = getErrorHandlerWithWarningCapture(diagnosticOutput, args.verbose);
             }
 
+            let ir = "";
+            if (args.ir)
+              options.onExecute = realm => {
+                let generator = realm.generator;
+                if (generator !== undefined) {
+                  let textPrinter = new TextPrinter(line => {
+                    ir += line + "\n";
+                  });
+                  textPrinter.printGenerator(generator);
+                }
+              };
+
             let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
             if (serialized.statistics && serialized.statistics.delayedValues > 0) anyDelayedValues = true;
             if (!serialized) {
@@ -586,7 +600,11 @@ function runTest(name, code, options: PrepackOptions, args) {
             if (!execSpec && options.lazyObjectsRuntime !== undefined) {
               codeToRun = augmentCodeWithLazyObjectSupport(codeToRun, args.lazyObjectsRuntime);
             }
-            if (args.verbose) console.log(codeToRun);
+            if (args.verbose) {
+              if (args.ir) console.log(`=== ir\n${ir}\n`);
+              console.log(`=== generated code\n${codeToRun}\n`);
+            }
+            irIterations.push(unescapeUniqueSuffix(ir, options.uniqueSuffix));
             codeIterations.push(unescapeUniqueSuffix(codeToRun, options.uniqueSuffix));
             if (args.es5) {
               codeToRun = transformWithBabel(
@@ -663,6 +681,10 @@ function runTest(name, code, options: PrepackOptions, args) {
             console.error(chalk.underline("output of inspect() on original code"));
             console.error(expected);
             for (let ii = 0; ii < codeIterations.length; ii++) {
+              if (args.ir) {
+                console.error(chalk.underline(`ir in iteration ${ii}`));
+                console.error(irIterations[ii]);
+              }
               console.error(chalk.underline(`generated code in iteration ${ii}`));
               console.error(codeIterations[ii]);
             }
@@ -834,6 +856,7 @@ class ProgramArgs {
   fast: boolean;
   residual: boolean;
   cpuprofilePath: string;
+  ir: boolean;
   constructor(
     debugNames: boolean,
     debugScopes: boolean,
@@ -845,7 +868,8 @@ class ProgramArgs {
     noLazySupport: boolean,
     fast: boolean,
     residual: boolean,
-    cpuProfilePath: string
+    cpuProfilePath: string,
+    ir: boolean
   ) {
     this.debugNames = debugNames;
     this.debugScopes = debugScopes;
@@ -858,6 +882,7 @@ class ProgramArgs {
     this.fast = fast;
     this.residual = residual;
     this.cpuprofilePath = cpuProfilePath;
+    this.ir = ir;
   }
 }
 
@@ -892,7 +917,7 @@ function usage(): string {
   return (
     `Usage: ${process.argv[0]} ${process.argv[1]} ` +
     EOL +
-    `[--debugNames] [--debugScopes] [--es5] [--fast] [--noLazySupport] [--verbose] [--filter <string>] [--outOfProcessRuntime <path>] `
+    `[--debugNames] [--debugScopes] [--es5] [--fast] [--noLazySupport] [--verbose] [--ir] [--filter <string>] [--outOfProcessRuntime <path>] `
   );
 }
 
@@ -920,6 +945,7 @@ function argsParse(): ProgramArgs {
       // to run tests. If not a separate node context used.
       lazyObjectsRuntime: LAZY_OBJECTS_RUNTIME_NAME,
       noLazySupport: false,
+      ir: false,
       fast: false,
       residual: false,
       cpuprofilePath: "",
@@ -954,6 +980,9 @@ function argsParse(): ProgramArgs {
   if (typeof parsedArgs.noLazySupport !== "boolean") {
     throw new ArgsParseError("noLazySupport must be a boolean (either --noLazySupport or not)");
   }
+  if (typeof parsedArgs.ir !== "boolean") {
+    throw new ArgsParseError("ir must be a boolean (either --ir or not)");
+  }
   if (typeof parsedArgs.residual !== "boolean") {
     throw new ArgsParseError("residual must be a boolean (either --residual or not)");
   }
@@ -971,7 +1000,8 @@ function argsParse(): ProgramArgs {
     parsedArgs.noLazySupport,
     parsedArgs.fast,
     parsedArgs.residual,
-    parsedArgs.cpuprofilePath
+    parsedArgs.cpuprofilePath,
+    parsedArgs.ir
   );
   return programArgs;
 }
