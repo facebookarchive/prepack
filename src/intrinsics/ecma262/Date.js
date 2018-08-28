@@ -15,18 +15,16 @@ import { Create, To } from "../../singletons.js";
 import { MakeTime, MakeDate, MakeDay, TimeClip, UTC, ToDateString, thisTimeValue } from "../../methods/date.js";
 import { FatalError } from "../../errors.js";
 import invariant from "../../invariant.js";
-import buildExpressionTemplate from "../../utils/builder.js";
 import seedrandom from "seedrandom";
 
 const buildDateNowSrc = "global.Date.now()";
-const buildDateNow = buildExpressionTemplate(buildDateNowSrc);
 
 export default function(realm: Realm): NativeFunctionValue {
   let lastNow;
   let offsetGenerator;
   function getCurrentTime(): AbstractValue | NumberValue {
     if (realm.useAbstractInterpretation) {
-      return AbstractValue.createTemporalFromTemplate(realm, buildDateNow, NumberValue, [], {
+      return AbstractValue.createTemporalFromTemplate(realm, buildDateNowSrc, NumberValue, [], {
         isPure: true,
         skipInvariant: true,
       });

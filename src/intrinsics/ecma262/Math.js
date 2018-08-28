@@ -13,10 +13,10 @@ import type { Realm } from "../../realm.js";
 import { StringValue, ObjectValue, NumberValue, AbstractValue } from "../../values/index.js";
 import { To } from "../../singletons.js";
 import invariant from "../../invariant.js";
-import buildExpressionTemplate from "../../utils/builder.js";
 import { CompilerDiagnostic } from "../../errors.js";
+import { Placeholders } from "../../utils/PreludeGenerator.js";
 
-let buildMathTemplates: Map<string, { template: Function, templateSource: string }> = new Map();
+let buildMathTemplates: Map<string, string> = new Map();
 
 export default function(realm: Realm): ObjectValue {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "Math");
@@ -160,14 +160,13 @@ export default function(realm: Realm): ObjectValue {
         args.some(arg => arg instanceof AbstractValue) &&
         args.every(arg => To.IsToNumberPure(realm, arg))
       ) {
-        let r = buildMathTemplates.get(name);
-        if (r === undefined) {
-          let params = "A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z".substring(0, originalLength * 2 - 1);
-          let templateSource = `Math.${name}(${params})`;
-          let template = buildExpressionTemplate(templateSource);
-          buildMathTemplates.set(name, (r = { template, templateSource }));
+        let templateSource = buildMathTemplates.get(name);
+        if (templateSource === undefined) {
+          let params = Placeholders.slice(0, originalLength).join(",");
+          templateSource = `global.Math.${name}(${params})`;
+          buildMathTemplates.set(name, templateSource);
         }
-        return AbstractValue.createFromTemplate(realm, r.template, NumberValue, args, r.templateSource);
+        return AbstractValue.createFromTemplate(realm, templateSource, NumberValue, args);
       }
 
       return new NumberValue(
@@ -178,7 +177,6 @@ export default function(realm: Realm): ObjectValue {
   }
 
   const imulTemplateSrc = "global.Math.imul(A, B)";
-  const imulTemplate = buildExpressionTemplate(imulTemplateSrc);
 
   // ECMA262 20.2.2.19
   obj.defineNativeMethod("imul", 2, (context, [x, y]) => {
@@ -187,7 +185,7 @@ export default function(realm: Realm): ObjectValue {
       To.IsToNumberPure(realm, x) &&
       To.IsToNumberPure(realm, y)
     ) {
-      return AbstractValue.createFromTemplate(realm, imulTemplate, NumberValue, [x, y], imulTemplateSrc);
+      return AbstractValue.createFromTemplate(realm, imulTemplateSrc, NumberValue, [x, y]);
     }
 
     return new NumberValue(
@@ -197,7 +195,6 @@ export default function(realm: Realm): ObjectValue {
   });
 
   const mathRandomTemplateSrc = "global.Math.random()";
-  const mathRandomTemplate = buildExpressionTemplate(mathRandomTemplateSrc);
 
   // ECMA262 20.2.2.27
   obj.defineNativeMethod("random", 0, context => {
@@ -214,7 +211,7 @@ export default function(realm: Realm): ObjectValue {
 
       return new NumberValue(realm, mathRandomGenerator());
     } else if (realm.useAbstractInterpretation) {
-      return AbstractValue.createTemporalFromTemplate(realm, mathRandomTemplate, NumberValue, [], {
+      return AbstractValue.createTemporalFromTemplate(realm, mathRandomTemplateSrc, NumberValue, [], {
         isPure: true,
         skipInvariant: true,
       });
