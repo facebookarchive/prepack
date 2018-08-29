@@ -319,7 +319,8 @@ export function cloneReactElement(
     }
   };
 
-  applyObjectAssignConfigsForReactElement(realm, props, [config]);
+  let elementProps = getProperty(realm, reactElement, "props");
+  applyObjectAssignConfigsForReactElement(realm, props, [elementProps, config]);
   props.makeFinal();
 
   let key = getProperty(realm, reactElement, "key");
@@ -378,7 +379,6 @@ export function cloneReactElement(
   if (children !== undefined) {
     hardModifyReactObjectPropertyBinding(realm, props, "children", children);
   } else {
-    let elementProps = getProperty(realm, reactElement, "props");
     invariant(elementProps instanceof ObjectValue);
     let elementChildren = getProperty(realm, elementProps, "children");
     hardModifyReactObjectPropertyBinding(realm, props, "children", elementChildren);

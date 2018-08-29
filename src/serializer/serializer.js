@@ -36,7 +36,7 @@ import { ResidualHeapRefCounter } from "./ResidualHeapRefCounter";
 import { ResidualHeapGraphGenerator } from "./ResidualHeapGraphGenerator";
 import { Referentializer } from "./Referentializer.js";
 import { Get } from "../methods/index.js";
-import { ObjectValue, Value } from "../values/index.js";
+import { ObjectValue, Value, FunctionValue } from "../values/index.js";
 import { Properties } from "../singletons.js";
 import { PropertyDescriptor } from "../descriptors.js";
 
@@ -126,7 +126,8 @@ export class Serializer {
   init(
     sourceFileCollection: SourceFileCollection,
     sourceMaps?: boolean = false,
-    onParse?: BabelNodeFile => void
+    onParse?: BabelNodeFile => void,
+    onExecute?: (Realm, Map<FunctionValue, Generator>) => void
   ): void | SerializedResult {
     let realmStatistics = this.realm.statistics;
     invariant(realmStatistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
@@ -158,6 +159,15 @@ export class Serializer {
           this.functions.optimizeReactComponentTreeRoots(reactStatistics, environmentRecordIdAfterGlobalCode);
         });
       }
+
+      statistics.dumpIR.measure(() => {
+        if (onExecute !== undefined) {
+          let optimizedFunctions = new Map();
+          for (let [functionValue, additionalFunctionEffects] of this.functions.writeEffects)
+            optimizedFunctions.set(functionValue, additionalFunctionEffects.generator);
+          onExecute(this.realm, optimizedFunctions);
+        }
+      });
 
       statistics.processCollectedNestedOptimizedFunctions.measure(() =>
         this.functions.processCollectedNestedOptimizedFunctions(environmentRecordIdAfterGlobalCode)
