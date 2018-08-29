@@ -3468,209 +3468,29 @@ ReactStatistics {
 }
 `;
 
-exports[`Mutations - not-safe 1: (JSX => JSX) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "Bar",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Mutations - not-safe 1: (JSX => JSX) 1`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
 
-exports[`Mutations - not-safe 1: (JSX => createElement) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "Bar",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Mutations - not-safe 1: (JSX => createElement) 1`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
 
-exports[`Mutations - not-safe 1: (createElement => JSX) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "Bar",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Mutations - not-safe 1: (createElement => JSX) 1`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
 
-exports[`Mutations - not-safe 1: (createElement => createElement) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "Bar",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Mutations - not-safe 1: (createElement => createElement) 1`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
 
-exports[`Mutations - not-safe 2: (JSX => JSX) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "Bar",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Mutations - not-safe 2: (JSX => JSX) 1`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
 
-exports[`Mutations - not-safe 2: (JSX => createElement) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "Bar",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Mutations - not-safe 2: (JSX => createElement) 1`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
 
-exports[`Mutations - not-safe 2: (createElement => JSX) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "Bar",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Mutations - not-safe 2: (createElement => JSX) 1`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
 
-exports[`Mutations - not-safe 2: (createElement => createElement) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "Bar",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Mutations - not-safe 2: (createElement => createElement) 1`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
 
-exports[`Mutations - not-safe 3: (JSX => JSX) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Mutations - not-safe 3: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
 
-exports[`Mutations - not-safe 3: (JSX => createElement) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Mutations - not-safe 3: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
 
-exports[`Mutations - not-safe 3: (createElement => JSX) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Mutations - not-safe 3: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
 
-exports[`Mutations - not-safe 3: (createElement => createElement) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Mutations - not-safe 3: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
 
 exports[`Mutations - safe 1: (JSX => JSX) 1`] = `
 ReactStatistics {
@@ -9517,28 +9337,80 @@ ReactStatistics {
 `;
 
 exports[`Runtime error: (JSX => JSX) 1`] = `
-"Failed to render React component \\"App\\" due to a JS error: null or undefined
-TypeError: null or undefined
-    "
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
 `;
+
+exports[`Runtime error: (JSX => JSX) 2`] = `"Cannot read property 'push' of undefined"`;
 
 exports[`Runtime error: (JSX => createElement) 1`] = `
-"Failed to render React component \\"App\\" due to a JS error: null or undefined
-TypeError: null or undefined
-    "
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
 `;
+
+exports[`Runtime error: (JSX => createElement) 2`] = `"Cannot read property 'push' of undefined"`;
 
 exports[`Runtime error: (createElement => JSX) 1`] = `
-"Failed to render React component \\"App\\" due to a JS error: null or undefined
-TypeError: null or undefined
-    "
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
 `;
 
+exports[`Runtime error: (createElement => JSX) 2`] = `"Cannot read property 'push' of undefined"`;
+
 exports[`Runtime error: (createElement => createElement) 1`] = `
-"Failed to render React component \\"App\\" due to a JS error: null or undefined
-TypeError: null or undefined
-    "
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
 `;
+
+exports[`Runtime error: (createElement => createElement) 2`] = `"Cannot read property 'push' of undefined"`;
 
 exports[`Simple 2: (JSX => JSX) 1`] = `
 ReactStatistics {
@@ -10060,589 +9932,37 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 8: (JSX => JSX) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Simple 8: (JSX => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 8: (JSX => createElement) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Simple 8: (JSX => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 8: (createElement => JSX) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Simple 8: (createElement => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 8: (createElement => createElement) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Simple 8: (createElement => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 9: (JSX => JSX) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Simple 9: (JSX => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 9: (JSX => createElement) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Simple 9: (JSX => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 9: (createElement => JSX) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Simple 9: (createElement => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 9: (createElement => createElement) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 3,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
+exports[`Simple 9: (createElement => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 10: (JSX => JSX) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App2",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 2,
-}
-`;
+exports[`Simple 10: (JSX => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 10: (JSX => createElement) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App2",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 2,
-}
-`;
+exports[`Simple 10: (JSX => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 10: (createElement => JSX) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App2",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 2,
-}
-`;
+exports[`Simple 10: (createElement => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 10: (createElement => createElement) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App2",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 2,
-}
-`;
+exports[`Simple 10: (createElement => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 11: (JSX => JSX) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App2",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 2,
-}
-`;
+exports[`Simple 11: (JSX => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 11: (JSX => createElement) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App2",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 2,
-}
-`;
+exports[`Simple 11: (JSX => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 11: (createElement => JSX) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App2",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 2,
-}
-`;
+exports[`Simple 11: (createElement => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 11: (createElement => createElement) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 4,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-    Object {
-      "children": Array [
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "A",
-          "status": "INLINED",
-        },
-      ],
-      "message": "",
-      "name": "App2",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 2,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 2,
-}
-`;
+exports[`Simple 11: (createElement => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
 exports[`Simple 12: (JSX => JSX) 1`] = `
 ReactStatistics {

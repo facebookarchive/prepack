@@ -74,7 +74,7 @@ it("Simple 12", () => {
 
 it("Runtime error", () => {
   runTest(__dirname + "/FunctionalComponents/runtime-error.js", {
-    expectReconcilerError: true,
+    expectRuntimeError: true,
   });
 });
 

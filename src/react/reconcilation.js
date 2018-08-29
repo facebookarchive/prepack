@@ -48,13 +48,13 @@ import {
 import { Get } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { Leak, Properties, Utils } from "../singletons.js";
-import { CompilerDiagnostic, FatalError, NestedOptimizedFunctionSideEffect } from "../errors.js";
+import { FatalError, NestedOptimizedFunctionSideEffect } from "../errors.js";
 import {
   type BranchStatusEnum,
   getValueWithBranchingLogicApplied,
   wrapReactElementInBranchOrReturnValue,
 } from "./branching.js";
-import { SimpleNormalCompletion, AbruptCompletion } from "../completions.js";
+import { AbruptCompletion, SimpleNormalCompletion } from "../completions.js";
 import {
   getInitialProps,
   getInitialContext,
@@ -135,20 +135,8 @@ function setContextCurrentValue(contextObject: ObjectValue | AbstractObjectValue
   }
 }
 
-function reportSideEffect(realm, sideEffectType, binding, expressionLocation) {
-  handleReportedSideEffect(
-    (msg, loc) => {
-      if (sideEffectType === "EXCEPTION_THROWN") {
-        let error = new CompilerDiagnostic(msg, loc, "PP1007", "Warning");
-        realm.handleError(error);
-        return;
-      }
-      throw new UnsupportedSideEffect(msg);
-    },
-    sideEffectType,
-    binding,
-    expressionLocation
-  );
+function throwUnsupportedSideEffectError(msg: string) {
+  throw new UnsupportedSideEffect(msg);
 }
 
 export class Reconciler {
@@ -209,7 +197,8 @@ export class Reconciler {
               `react component: ${getComponentName(this.realm, componentType)}`
             ),
           /*bubbles*/ true,
-          (...args) => reportSideEffect(this.realm, ...args)
+          (sideEffectType, binding, expressionLocation) =>
+            handleReportedSideEffect(throwUnsupportedSideEffectError, sideEffectType, binding, expressionLocation)
         )
       );
     } finally {
@@ -1407,12 +1396,16 @@ export class Reconciler {
             this.realm.applyEffects(effects);
             if (result instanceof SimpleNormalCompletion) {
               result = result.value;
+            } else {
+              invariant(false, "TODO support other types of completion");
             }
             invariant(result instanceof Value);
             return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode, needsKey);
           };
           let pureFuncCall = () =>
-            this.realm.evaluatePure(funcCall, /*bubbles*/ true, (...args) => reportSideEffect(this.realm, ...args));
+            this.realm.evaluatePure(funcCall, /*bubbles*/ true, (sideEffectType, binding, expressionLocation) =>
+              handleReportedSideEffect(throwUnsupportedSideEffectError, sideEffectType, binding, expressionLocation)
+            );
 
           let resolvedEffects;
           resolvedEffects = this.realm.evaluateForEffects(
