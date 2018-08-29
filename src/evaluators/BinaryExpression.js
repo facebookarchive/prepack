@@ -21,6 +21,7 @@ import {
   NumberValue,
   IntegralValue,
   ObjectValue,
+  PrimitiveValue,
   StringValue,
   SymbolValue,
   UndefinedValue,
@@ -195,6 +196,11 @@ export function computeBinary(
   let resultType;
   const compute = () => {
     if (lval instanceof AbstractValue || rval instanceof AbstractValue) {
+      // If the left-hand side of an instanceof operation is a primitive,
+      // it can never be true.
+      if (op === "instanceof" && lval instanceof PrimitiveValue) {
+        return realm.intrinsics.false;
+      }
       try {
         // generate error if binary operation might throw or have side effects
         resultType = getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
