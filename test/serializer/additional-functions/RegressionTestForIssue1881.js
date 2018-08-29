@@ -1,4 +1,4 @@
-// expected Warning: PP1007, PP0023
+// expected Warning: PP0023
 (function() {
   function f(c) {
     let o = {};
