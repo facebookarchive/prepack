@@ -54,7 +54,7 @@ import type {
 } from "@babel/types";
 import { concretize, Join, Utils } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";
-import type { ShapeInformationInterface } from "../types.js";
+import type { PathConditions, ShapeInformationInterface } from "../types.js";
 import { PreludeGenerator } from "./PreludeGenerator.js";
 import { PropertyDescriptor } from "../descriptors.js";
 
@@ -539,7 +539,7 @@ class BindingAssignmentEntry extends GeneratorEntry {
 }
 
 export class Generator {
-  constructor(realm: Realm, name: string, pathConditions: Array<AbstractValue>, effects?: Effects) {
+  constructor(realm: Realm, name: string, pathConditions: PathConditions, effects?: Effects) {
     invariant(realm.useAbstractInterpretation);
     let realmPreludeGenerator = realm.preludeGenerator;
     invariant(realmPreludeGenerator);
@@ -558,7 +558,7 @@ export class Generator {
   effectsToApply: void | Effects;
   id: number;
   _name: string;
-  pathConditions: Array<AbstractValue>;
+  pathConditions: PathConditions;
 
   toDisplayString(): string {
     return Utils.jsonToDisplayString(this, 2);

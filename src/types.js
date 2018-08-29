@@ -362,6 +362,28 @@ export type PathType = {
   pushInverseAndRefine(condition: Value): void,
 };
 
+export class PathConditions {
+  add(c: AbstractValue): void {}
+
+  implies(e: AbstractValue): boolean {
+    return false;
+  }
+
+  impliesNot(e: AbstractValue): boolean {
+    return false;
+  }
+
+  isEmpty(): boolean {
+    return false;
+  }
+
+  getLength(): number {
+    return 0;
+  }
+
+  refineBaseConditons(realm: Realm, depth?: number = 0): void {}
+}
+
 export type LeakType = {
   value(realm: Realm, value: Value, loc: ?BabelNodeSourceLocation): void,
 };
