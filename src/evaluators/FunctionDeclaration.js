@@ -16,7 +16,6 @@ import { MakeConstructor } from "../methods/construct.js";
 import { Create, Functions, Properties } from "../singletons.js";
 import { StringValue } from "../values/index.js";
 import IsStrict from "../utils/strict.js";
-import { PropertyDescriptor } from "../descriptors.js";
 import type { BabelNodeFunctionDeclaration } from "@babel/types";
 
 // ECMA262 14.1.20
@@ -45,16 +44,11 @@ export default function(
     let prototype = Create.ObjectCreate(realm, realm.intrinsics.GeneratorPrototype);
 
     // 5. Perform DefinePropertyOrThrow(F, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
-    Properties.DefinePropertyOrThrow(
-      realm,
-      F,
-      "prototype",
-      new PropertyDescriptor({
-        value: prototype,
-        writable: true,
-        configurable: false,
-      })
-    );
+    Properties.DefinePropertyOrThrow(realm, F, "prototype", {
+      value: prototype,
+      writable: true,
+      configurable: false,
+    });
 
     // 6. Perform SetFunctionName(F, name).
     Functions.SetFunctionName(realm, F, name);

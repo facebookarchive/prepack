@@ -14,6 +14,7 @@ import { ValuesDomain } from "../domains/index.js";
 import { FatalError } from "../errors.js";
 import type {
   DataBlock,
+  Descriptor,
   IterationKind,
   ObjectKind,
   PromiseReaction,
@@ -50,7 +51,6 @@ import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { typeAnnotation } from "@babel/types";
 import { createOperationDescriptor } from "../utils/generator.js";
-import { Descriptor, PropertyDescriptor, type DescriptorInitializer, InternalSlotDescriptor } from "../descriptors.js";
 
 export default class ObjectValue extends ConcreteValue {
   constructor(
@@ -126,7 +126,6 @@ export default class ObjectValue extends ConcreteValue {
         configurable: true,
         get: function() {
           let binding = this[propBindingName];
-          invariant(binding === undefined || binding.descriptor instanceof InternalSlotDescriptor);
           return binding === undefined ? undefined : binding.descriptor.value;
         },
         set: function(v) {
@@ -151,7 +150,7 @@ export default class ObjectValue extends ConcreteValue {
           );
           let binding = this[propBindingName];
           if (binding === undefined) {
-            let desc = new InternalSlotDescriptor(undefined);
+            let desc = { writeable: true, value: undefined };
             this[propBindingName] = binding = {
               descriptor: desc,
               object: this,
@@ -455,7 +454,7 @@ export default class ObjectValue extends ConcreteValue {
     name: SymbolValue | string,
     length: number,
     callback: NativeFunctionCallback,
-    desc?: DescriptorInitializer
+    desc?: Descriptor = {}
   ): Value {
     let intrinsicName;
     if (typeof name === "string") {
@@ -470,21 +469,18 @@ export default class ObjectValue extends ConcreteValue {
     return fnValue;
   }
 
-  defineNativeProperty(name: SymbolValue | string, value?: Value | Array<Value>, desc?: DescriptorInitializer): void {
+  defineNativeProperty(name: SymbolValue | string, value?: Value | Array<Value>, desc?: Descriptor = {}): void {
     invariant(!value || value instanceof Value);
-    this.$DefineOwnProperty(
-      name,
-      new PropertyDescriptor({
-        value,
-        writable: true,
-        enumerable: false,
-        configurable: true,
-        ...desc,
-      })
-    );
+    this.$DefineOwnProperty(name, {
+      value,
+      writable: true,
+      enumerable: false,
+      configurable: true,
+      ...desc,
+    });
   }
 
-  defineNativeGetter(name: SymbolValue | string, callback: NativeFunctionCallback, desc?: DescriptorInitializer): void {
+  defineNativeGetter(name: SymbolValue | string, callback: NativeFunctionCallback, desc?: Descriptor = {}): void {
     let intrinsicName, funcName;
     if (typeof name === "string") {
       funcName = `get ${name}`;
@@ -500,30 +496,24 @@ export default class ObjectValue extends ConcreteValue {
     }
 
     let func = new NativeFunctionValue(this.$Realm, intrinsicName, funcName, 0, callback);
-    this.$DefineOwnProperty(
-      name,
-      new PropertyDescriptor({
-        get: func,
-        set: this.$Realm.intrinsics.undefined,
-        enumerable: false,
-        configurable: true,
-        ...desc,
-      })
-    );
+    this.$DefineOwnProperty(name, {
+      get: func,
+      set: this.$Realm.intrinsics.undefined,
+      enumerable: false,
+      configurable: true,
+      ...desc,
+    });
   }
 
-  defineNativeConstant(name: SymbolValue | string, value?: Value | Array<Value>, desc?: DescriptorInitializer): void {
+  defineNativeConstant(name: SymbolValue | string, value?: Value | Array<Value>, desc?: Descriptor = {}): void {
     invariant(!value || value instanceof Value);
-    this.$DefineOwnProperty(
-      name,
-      new PropertyDescriptor({
-        value,
-        writable: false,
-        enumerable: false,
-        configurable: false,
-        ...desc,
-      })
-    );
+    this.$DefineOwnProperty(name, {
+      value,
+      writable: false,
+      enumerable: false,
+      configurable: false,
+      ...desc,
+    });
   }
 
   // Note that internal properties will not be copied to the snapshot, nor will they be removed.
@@ -568,8 +558,8 @@ export default class ObjectValue extends ConcreteValue {
       let desc = from.$GetOwnProperty(nextKey);
 
       // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
-      if (desc && desc.throwIfNotConcrete(this.$Realm).enumerable) {
-        Properties.ThrowIfMightHaveBeenDeleted(desc);
+      if (desc && desc.enumerable) {
+        Properties.ThrowIfMightHaveBeenDeleted(desc.value);
 
         // 1. Let propValue be ? Get(from, nextKey).
         let propValue = Get(this.$Realm, from, nextKey);
@@ -586,8 +576,7 @@ export default class ObjectValue extends ConcreteValue {
     for (let [key, propertyBinding] of this.properties) {
       let desc = propertyBinding.descriptor;
       if (desc === undefined) continue; // deleted
-      Properties.ThrowIfMightHaveBeenDeleted(desc);
-      desc = desc.throwIfNotConcrete(this.$Realm);
+      Properties.ThrowIfMightHaveBeenDeleted(desc.value);
       let serializedDesc: any = { enumerable: desc.enumerable, configurable: desc.configurable };
       if (desc.value) {
         serializedDesc.writable = desc.writable;
@@ -667,11 +656,7 @@ export default class ObjectValue extends ConcreteValue {
     try {
       this.$Realm.invariantLevel = 0;
       let desc = this.$GetOwnProperty(P);
-      if (desc === undefined) {
-        return this.$Realm.intrinsics.undefined;
-      }
-      desc = desc.throwIfNotConcrete(this.$Realm);
-      return desc.value ? desc.value : this.$Realm.intrinsics.undefined;
+      return desc !== undefined && desc.value instanceof Value ? desc.value : this.$Realm.intrinsics.undefined;
     } finally {
       this.$Realm.invariantLevel = savedInvariantLevel;
     }

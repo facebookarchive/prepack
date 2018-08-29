@@ -68,7 +68,6 @@ import type {
   BabelNodeWithStatement,
 } from "@babel/types";
 import * as t from "@babel/types";
-import { PropertyDescriptor } from "../descriptors.js";
 
 function InternalCall(
   realm: Realm,
@@ -735,17 +734,12 @@ export class FunctionImplementation {
     }
 
     // 6. Return ! DefinePropertyOrThrow(F, "name", PropertyDescriptor{[[Value]]: name, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true}).
-    return Properties.DefinePropertyOrThrow(
-      realm,
-      F,
-      "name",
-      new PropertyDescriptor({
-        value: name,
-        enumerable: false,
-        writable: false,
-        configurable: true,
-      })
-    );
+    return Properties.DefinePropertyOrThrow(realm, F, "name", {
+      value: name,
+      enumerable: false,
+      writable: false,
+      configurable: true,
+    });
   }
 
   // ECMA262 9.2.3
@@ -776,32 +770,22 @@ export class FunctionImplementation {
     }
 
     // 3. Perform ! DefinePropertyOrThrow(F, "length", PropertyDescriptor{[[Value]]: len, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true}).
-    Properties.DefinePropertyOrThrow(
-      realm,
-      F,
-      "length",
-      new PropertyDescriptor({
-        value: new NumberValue(realm, len),
-        writable: false,
-        enumerable: false,
-        configurable: true,
-      })
-    );
+    Properties.DefinePropertyOrThrow(realm, F, "length", {
+      value: new NumberValue(realm, len),
+      writable: false,
+      enumerable: false,
+      configurable: true,
+    });
 
     // 4. Let Strict be the value of the [[Strict]] internal slot of F.
     let Strict = F.$Strict;
     if (!Strict) {
-      Properties.DefinePropertyOrThrow(
-        realm,
-        F,
-        "caller",
-        new PropertyDescriptor({
-          value: new UndefinedValue(realm),
-          writable: true,
-          enumerable: false,
-          configurable: true,
-        })
-      );
+      Properties.DefinePropertyOrThrow(realm, F, "caller", {
+        value: new UndefinedValue(realm),
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      });
     }
 
     // 5. Set the [[Environment]] internal slot of F to the value of Scope.
@@ -854,12 +838,12 @@ export class FunctionImplementation {
     let thrower = realm.intrinsics.ThrowTypeError;
     invariant(thrower);
 
-    let desc = new PropertyDescriptor({
+    let desc = {
       get: thrower,
       set: thrower,
       enumerable: false,
       configurable: true,
-    });
+    };
     // 3. Perform ! DefinePropertyOrThrow(F, "caller", PropertyDescriptor {[[Get]]: thrower, [[Set]]: thrower, [[Enumerable]]: false, [[Configurable]]: true}).
     Properties.DefinePropertyOrThrow(realm, F, "caller", desc);
     // 4. Return ! DefinePropertyOrThrow(F, "arguments", PropertyDescriptor {[[Get]]: thrower, [[Set]]: thrower, [[Enumerable]]: false, [[Configurable]]: true}).
@@ -1216,17 +1200,12 @@ export class FunctionImplementation {
     // Note: "arguments" ***MUST NOT*** be set if the function is in strict mode or is an arrow, method, constructor, or generator function.
     //   See 16.2 "Forbidden Extensions"
     if (!Strict && kind === "normal") {
-      Properties.DefinePropertyOrThrow(
-        realm,
-        F,
-        "arguments",
-        new PropertyDescriptor({
-          value: realm.intrinsics.undefined,
-          enumerable: false,
-          writable: true,
-          configurable: true,
-        })
-      );
+      Properties.DefinePropertyOrThrow(realm, F, "arguments", {
+        value: realm.intrinsics.undefined,
+        enumerable: false,
+        writable: true,
+        configurable: true,
+      });
     }
 
     // 5. Return FunctionInitialize(F, kind, ParameterList, Body, Scope).
