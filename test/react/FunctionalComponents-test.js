@@ -268,6 +268,10 @@ it("React.cloneElement", () => {
   runTest(__dirname + "/FunctionalComponents/clone-element.js");
 });
 
+it("React.cloneElement 2", () => {
+  runTest(__dirname + "/FunctionalComponents/clone-element2.js");
+});
+
 it("Return text", () => {
   runTest(__dirname + "/FunctionalComponents/return-text.js");
 });
