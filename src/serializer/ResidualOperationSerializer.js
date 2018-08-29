@@ -739,15 +739,15 @@ export class ResidualOperationSerializer {
   }
 
   _serializeDefineProperty(
-    { object, desc }: OperationDescriptorData,
+    { object, descriptor }: OperationDescriptorData,
     [propName]: Array<BabelNodeExpression>,
     context?: SerializationContext
   ): BabelNodeStatement {
     let propString = ((propName: any): BabelNodeStringLiteral).value;
     invariant(object !== undefined);
-    invariant(desc !== undefined);
+    invariant(descriptor !== undefined);
     invariant(context !== undefined);
-    return context.emitDefinePropertyBody(object, propString, desc);
+    return context.emitDefinePropertyBody(object, propString, descriptor);
   }
 
   _serializeFBMocksMagicGlobalFunction(

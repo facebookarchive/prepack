@@ -62,7 +62,7 @@ export function prepackSources(
     return { code: "", map: undefined };
   } else {
     let serializer = new Serializer(realm, getSerializerOptions(options));
-    let serialized = serializer.init(sourceFileCollection, options.sourceMaps, options.onParse);
+    let serialized = serializer.init(sourceFileCollection, options.sourceMaps, options.onParse, options.onExecute);
 
     //Turn off the debugger if there is one
     if (realm.debuggerInstance) {
