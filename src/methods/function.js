@@ -1157,7 +1157,7 @@ export class FunctionImplementation {
     let savedCompletion = realm.savedCompletion;
     if (savedCompletion !== undefined) {
       realm.savedCompletion = undefined;
-      realm.pathConditions = [].concat(savedCompletion.pathConditionsAtCreation);
+      realm.pathConditions = savedCompletion.pathConditionsAtCreation;
       if (c === undefined) c = realm.intrinsics.empty;
       if (c instanceof Value) c = new SimpleNormalCompletion(c);
       if (savedCompletion instanceof JoinedNormalAndAbruptCompletions) {

@@ -400,7 +400,7 @@ export function OrdinaryCallEvaluateBody(
       // TODO #1586: abstractRecursionSummarization is disabled for now, as it is likely too limiting
       // (as observed in large internal tests).
       const abstractRecursionSummarization = false;
-      if (!realm.useAbstractInterpretation || realm.pathConditions.length === 0 || !abstractRecursionSummarization)
+      if (!realm.useAbstractInterpretation || realm.pathConditions.isEmpty() || !abstractRecursionSummarization)
         return normalCall();
       let savedIsSelfRecursive = F.isSelfRecursive;
       try {
@@ -426,7 +426,7 @@ export function OrdinaryCallEvaluateBody(
         let currentLocation = realm.currentLocation;
         if (F.activeArguments !== undefined && F.activeArguments.has(currentLocation)) {
           let [previousPathLength, previousArguments] = F.activeArguments.get(currentLocation);
-          if (realm.pathConditions.length > previousPathLength) {
+          if (realm.pathConditions.getLength() > previousPathLength) {
             invariant(previousArguments !== undefined);
             // F is being called recursively while a call to it is still active
             F.isSelfRecursive = true;
@@ -442,7 +442,7 @@ export function OrdinaryCallEvaluateBody(
         }
         try {
           if (F.activeArguments === undefined) F.activeArguments = new Map();
-          F.activeArguments.set(currentLocation, [realm.pathConditions.length, argumentsList]);
+          F.activeArguments.set(currentLocation, [realm.pathConditions.getLength(), argumentsList]);
           return normalCall() || realm.intrinsics.undefined;
         } finally {
           F.activeArguments.delete(currentLocation);
@@ -496,8 +496,13 @@ export function OrdinaryCallEvaluateBody(
         c = Completion.normalizeSelectedCompletions(r => r instanceof ReturnCompletion, c);
         invariant(c.containsSelectedCompletion(r => r instanceof NormalCompletion));
         let rv = Join.joinValuesOfSelectedCompletions(r => r instanceof NormalCompletion, c);
+        if (c.containsSelectedCompletion(r => r instanceof ThrowCompletion)) {
+          realm.composeWithSavedCompletion(c);
+          if (rv instanceof AbstractValue) {
+            rv = realm.simplifyAndRefineAbstractValue(rv);
+          }
+        }
         rc = new ReturnCompletion(rv);
-        if (c.containsSelectedCompletion(r => r instanceof ThrowCompletion)) realm.composeWithSavedCompletion(c);
         return rc;
       }
     }
