@@ -249,7 +249,7 @@ export default function(realm: Realm): NativeFunctionValue {
         "performConditionalObjectAssign consequent"
       );
 
-    // First evalaute both sides to see if snapshotting occurs on either side
+    // First evaluate both sides to see if snapshotting occurs on either side
     evaluateForEffects(consequentVal, false);
     evaluateForEffects(alternateVal, false);
 
