@@ -23,7 +23,6 @@ import { Get } from "../../methods/index.js";
 import { Create, Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
 import type { BabelNodeSourceLocation } from "@babel/types";
-import { PropertyDescriptor } from "../../descriptors.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   return build("Error", realm, false);
@@ -142,12 +141,12 @@ export function build(name: string, realm: Realm, inheritError?: boolean = true)
       let msg = message.getType() === StringValue ? message : To.ToStringValue(realm, message);
 
       // b. Let msgDesc be the PropertyDescriptor{[[Value]]: msg, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}.
-      let msgDesc = new PropertyDescriptor({
+      let msgDesc = {
         value: msg,
         writable: true,
         enumerable: false,
         configurable: true,
-      });
+      };
 
       // c. Perform ! DefinePropertyOrThrow(O, "message", msgDesc).
       Properties.DefinePropertyOrThrow(realm, O, "message", msgDesc);
@@ -156,12 +155,12 @@ export function build(name: string, realm: Realm, inheritError?: boolean = true)
     }
 
     // Build a text description of the stack.
-    let stackDesc = new PropertyDescriptor({
+    let stackDesc = {
       value: buildStack(realm, O),
       enumerable: false,
       configurable: true,
       writable: true,
-    });
+    };
     Properties.DefinePropertyOrThrow(realm, O, "stack", stackDesc);
 
     // 4. Return O.

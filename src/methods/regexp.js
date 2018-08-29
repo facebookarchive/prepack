@@ -17,7 +17,6 @@ import { IsCallable } from "./is.js";
 import { Call } from "./call.js";
 import { HasCompatibleType, HasSomeCompatibleType } from "./has.js";
 import { Create, Properties, To } from "../singletons.js";
-import { PropertyDescriptor } from "../descriptors.js";
 
 // ECMA262 21.2.3.2.3
 export function RegExpCreate(realm: Realm, P: ?Value, F: ?Value): ObjectValue {
@@ -40,16 +39,11 @@ export function RegExpAlloc(realm: Realm, newTarget: ObjectValue): ObjectValue {
 
   // 2. Perform ! DefinePropertyOrThrow(obj, "lastIndex", PropertyDescriptor {[[Writable]]: true,
   //    [[Enumerable]]: false, [[Configurable]]: false}).
-  Properties.DefinePropertyOrThrow(
-    realm,
-    obj,
-    "lastIndex",
-    new PropertyDescriptor({
-      writable: true,
-      enumerable: false,
-      configurable: false,
-    })
-  );
+  Properties.DefinePropertyOrThrow(realm, obj, "lastIndex", {
+    writable: true,
+    enumerable: false,
+    configurable: false,
+  });
 
   // 3. Return obj.
   return obj;

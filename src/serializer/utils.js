@@ -30,7 +30,6 @@ import type { AdditionalFunctionEffects } from "./types";
 import type { Binding } from "../environment.js";
 import type { BabelNodeSourceLocation } from "@babel/types";
 import { optionalStringOfLocation } from "../utils/babelhelpers.js";
-import { PropertyDescriptor } from "../descriptors.js";
 
 /**
  * Get index property list length by searching array properties list for the max index key value plus 1.
@@ -127,7 +126,6 @@ export function withDescriptorValue(
   func: Function
 ): void {
   if (descriptor !== undefined) {
-    invariant(descriptor instanceof PropertyDescriptor); // TODO: Handle joined descriptors.
     if (descriptor.value !== undefined) {
       func(propertyNameOrSymbol, descriptor.value, "value");
     } else {
@@ -144,17 +142,8 @@ export function withDescriptorValue(
 export const ClassPropertiesToIgnore: Set<string> = new Set(["arguments", "name", "caller"]);
 
 export function canIgnoreClassLengthProperty(val: ObjectValue, desc: void | Descriptor, logger: Logger): boolean {
-  if (desc) {
-    if (desc instanceof PropertyDescriptor) {
-      if (desc.value === undefined) {
-        logger.logError(val, "Functions with length accessor properties are not supported in residual heap.");
-      }
-    } else {
-      logger.logError(
-        val,
-        "Functions with length properties with different attributes are not supported in residual heap."
-      );
-    }
+  if (desc && desc.value === undefined) {
+    logger.logError(val, "Functions with length accessor properties are not supported in residual heap.");
   }
   return true;
 }
@@ -180,11 +169,6 @@ export function getObjectPrototypeMetadata(
       // evluated and thus visited
       if (_constructor.descriptor === undefined) {
         throw new FatalError("TODO #1024: implement object prototype serialization with deleted constructor");
-      }
-      if (!(_constructor.descriptor instanceof PropertyDescriptor)) {
-        throw new FatalError(
-          "TODO #1024: implement object prototype serialization with multiple constructor attributes"
-        );
       }
       let classFunc = _constructor.descriptor.value;
       if (classFunc instanceof ECMAScriptSourceFunctionValue) {

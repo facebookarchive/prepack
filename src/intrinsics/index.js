@@ -158,7 +158,6 @@ import initializeThrowTypeError from "./ecma262/ThrowTypeError.js";
 
 import initialize__IntrospectionError from "./prepack/__IntrospectionError.js";
 import initialize__IntrospectionErrorPrototype from "./prepack/__IntrospectionErrorPrototype.js";
-import { PropertyDescriptor } from "../descriptors.js";
 
 export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.undefined = new UndefinedValue(realm);
@@ -402,35 +401,26 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
     let fn = i[name];
     let proto = i[`${name}Prototype`];
 
-    proto.$DefineOwnProperty(
-      "constructor",
-      new PropertyDescriptor({
-        value: fn,
-        writable: true,
-        enumerable: false,
-        configurable: true,
-      })
-    );
+    proto.$DefineOwnProperty("constructor", {
+      value: fn,
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
 
-    fn.$DefineOwnProperty(
-      "prototype",
-      new PropertyDescriptor({
-        value: proto,
-        writable: false,
-        enumerable: false,
-        configurable: false,
-      })
-    );
+    fn.$DefineOwnProperty("prototype", {
+      value: proto,
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    });
 
-    fn.$DefineOwnProperty(
-      "constructor",
-      new PropertyDescriptor({
-        value: i.Function,
-        writable: true,
-        enumerable: false,
-        configurable: true,
-      })
-    );
+    fn.$DefineOwnProperty("constructor", {
+      value: i.Function,
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
   }
 
   //
@@ -440,43 +430,31 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   initializeGenerator(realm, i.Generator);
   i.GeneratorFunction = initializeGeneratorFunction(realm);
 
-  i.Generator.$DefineOwnProperty(
-    "prototype",
-    new PropertyDescriptor({
-      value: i.GeneratorPrototype,
-      writable: false,
-      enumerable: false,
-      configurable: true,
-    })
-  );
-  i.GeneratorPrototype.$DefineOwnProperty(
-    "constructor",
-    new PropertyDescriptor({
-      value: i.Generator,
-      writable: false,
-      enumerable: false,
-      configurable: true,
-    })
-  );
+  i.Generator.$DefineOwnProperty("prototype", {
+    value: i.GeneratorPrototype,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+  });
+  i.GeneratorPrototype.$DefineOwnProperty("constructor", {
+    value: i.Generator,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+  });
 
-  i.GeneratorFunction.$DefineOwnProperty(
-    "prototype",
-    new PropertyDescriptor({
-      value: i.Generator,
-      writable: false,
-      enumerable: false,
-      configurable: false,
-    })
-  );
-  i.Generator.$DefineOwnProperty(
-    "constructor",
-    new PropertyDescriptor({
-      value: i.GeneratorFunction,
-      writable: false,
-      enumerable: false,
-      configurable: true,
-    })
-  );
+  i.GeneratorFunction.$DefineOwnProperty("prototype", {
+    value: i.Generator,
+    writable: false,
+    enumerable: false,
+    configurable: false,
+  });
+  i.Generator.$DefineOwnProperty("constructor", {
+    value: i.GeneratorFunction,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+  });
 
   //
   i.isNaN = initializeIsNaN(realm);

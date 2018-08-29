@@ -27,7 +27,6 @@ import invariant from "../../invariant.js";
 import { Properties } from "../../singletons.js";
 import { forEachArrayValue } from "../../react/utils.js";
 import { createOperationDescriptor } from "../../utils/generator.js";
-import { PropertyDescriptor } from "../../descriptors.js";
 
 const fbMagicGlobalFunctions = [
   "asset",
@@ -75,7 +74,8 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
 
     return superClass;
   });
-  babelHelpersValue.defineNativeProperty("inherits", inheritsValue, {
+  babelHelpersValue.$DefineOwnProperty("inherits", {
+    value: inheritsValue,
     writable: false,
     enumerable: false,
     configurable: true,
@@ -92,7 +92,7 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
     let newObject = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
     for (let [propName, binding] of obj.properties) {
       if (!removeKeys.has(propName)) {
-        if (binding && binding.descriptor && binding.descriptor.throwIfNotConcrete(realm).enumerable) {
+        if (binding && binding.descriptor && binding.descriptor.enumerable) {
           let value = Get(realm, obj, propName);
           Properties.Set(realm, newObject, propName, value, true);
         }
@@ -134,7 +134,8 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
       }
     }
   );
-  babelHelpersValue.defineNativeProperty("objectWithoutProperties", objectWithoutPropertiesValue, {
+  babelHelpersValue.$DefineOwnProperty("objectWithoutProperties", {
+    value: objectWithoutPropertiesValue,
     writable: false,
     enumerable: false,
     configurable: true,
@@ -153,7 +154,8 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
       return strings;
     }
   );
-  babelHelpersValue.defineNativeProperty("taggedTemplateLiteralLoose", taggedTemplateLiteralLooseValue, {
+  babelHelpersValue.$DefineOwnProperty("taggedTemplateLiteralLoose", {
+    value: taggedTemplateLiteralLooseValue,
     writable: false,
     enumerable: false,
     configurable: true,
@@ -161,13 +163,15 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
   taggedTemplateLiteralLooseValue.intrinsicName = `babelHelpers.taggedTemplateLiteralLoose`;
 
   //babelHelpers.extends & babelHelpers._extends
-  babelHelpersValue.defineNativeProperty("extends", objectAssign, {
+  babelHelpersValue.$DefineOwnProperty("extends", {
+    value: objectAssign,
     writable: true,
     enumerable: true,
     configurable: true,
   });
 
-  babelHelpersValue.defineNativeProperty("_extends", objectAssign, {
+  babelHelpersValue.$DefineOwnProperty("_extends", {
+    value: objectAssign,
     writable: true,
     enumerable: true,
     configurable: true,
@@ -176,59 +180,51 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
   //babelHelpers.bind
   let functionBind = Get(realm, realm.intrinsics.FunctionPrototype, "bind");
 
-  babelHelpersValue.defineNativeProperty("bind", functionBind, {
+  babelHelpersValue.$DefineOwnProperty("bind", {
+    value: functionBind,
     writable: true,
     enumerable: true,
     configurable: true,
   });
 
-  global.$DefineOwnProperty(
-    "babelHelpers",
-    new PropertyDescriptor({
-      value: babelHelpersValue,
-      writable: true,
-      enumerable: true,
-      configurable: true,
-    })
-  );
+  global.$DefineOwnProperty("babelHelpers", {
+    value: babelHelpersValue,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
   babelHelpersValue.refuseSerialization = false;
 }
 
 function createMagicGlobalFunction(realm: Realm, global: ObjectValue | AbstractObjectValue, functionName: string) {
-  global.$DefineOwnProperty(
-    functionName,
-    new PropertyDescriptor({
-      value: new NativeFunctionValue(realm, functionName, functionName, 0, (context, args) => {
-        let val = AbstractValue.createTemporalFromBuildFunction(
-          realm,
-          FunctionValue,
-          [new StringValue(realm, functionName), ...args],
-          createOperationDescriptor("FB_MOCKS_MAGIC_GLOBAL_FUNCTION"),
-          { skipInvariant: true, isPure: true }
-        );
-        invariant(val instanceof AbstractValue);
-        return val;
-      }),
-      writable: true,
-      enumerable: false,
-      configurable: true,
-    })
-  );
+  global.$DefineOwnProperty(functionName, {
+    value: new NativeFunctionValue(realm, functionName, functionName, 0, (context, args) => {
+      let val = AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        FunctionValue,
+        [new StringValue(realm, functionName), ...args],
+        createOperationDescriptor("FB_MOCKS_MAGIC_GLOBAL_FUNCTION"),
+        { skipInvariant: true, isPure: true }
+      );
+      invariant(val instanceof AbstractValue);
+      return val;
+    }),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
 }
 
 function createMagicGlobalObject(realm: Realm, global: ObjectValue | AbstractObjectValue, objectName: string) {
   let globalObject = AbstractValue.createAbstractObject(realm, objectName);
   globalObject.kind = "resolved";
 
-  global.$DefineOwnProperty(
-    objectName,
-    new PropertyDescriptor({
-      value: globalObject,
-      writable: true,
-      enumerable: false,
-      configurable: true,
-    })
-  );
+  global.$DefineOwnProperty(objectName, {
+    value: globalObject,
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
 }
 
 function createBootloader(realm: Realm, global: ObjectValue | AbstractObjectValue) {
@@ -249,30 +245,24 @@ function createBootloader(realm: Realm, global: ObjectValue | AbstractObjectValu
 
   Properties.Set(realm, bootloader, "loadModules", loadModules, false);
 
-  global.$DefineOwnProperty(
-    "Bootloader",
-    new PropertyDescriptor({
-      value: bootloader,
-      writable: true,
-      enumerable: false,
-      configurable: true,
-    })
-  );
+  global.$DefineOwnProperty("Bootloader", {
+    value: bootloader,
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
 
   return AbstractValue.createAbstractObject(realm, "Bootloader", bootloader);
 }
 
 export function createFbMocks(realm: Realm, global: ObjectValue | AbstractObjectValue): void {
-  global.$DefineOwnProperty(
-    "__DEV__",
-    new PropertyDescriptor({
-      // TODO: we'll likely want to make this configurable from the outside.
-      value: realm.intrinsics.false,
-      writable: true,
-      enumerable: false,
-      configurable: true,
-    })
-  );
+  global.$DefineOwnProperty("__DEV__", {
+    // TODO: we'll likely want to make this configurable from the outside.
+    value: realm.intrinsics.false,
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
 
   createBabelHelpers(realm, global);
 

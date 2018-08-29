@@ -77,4 +77,8 @@ export type SerializerOptions = {
   heapGraphFormat?: "DotLanguage" | "VISJS",
 };
 
+export type PartialEvaluatorOptions = {
+  sourceMaps?: boolean,
+};
+
 export const defaultOptions = {};

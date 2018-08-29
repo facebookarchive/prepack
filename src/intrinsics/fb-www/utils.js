@@ -52,7 +52,8 @@ export function addMockFunctionToObject(
 ): void {
   let funcValue = new NativeFunctionValue(realm, undefined, funcName, 0, (context, args) => func(funcValue, args));
 
-  obj.defineNativeProperty(funcName, funcValue, {
+  obj.$DefineOwnProperty(funcName, {
+    value: funcValue,
     writable: false,
     enumerable: false,
     configurable: true,
