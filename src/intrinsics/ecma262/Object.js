@@ -276,21 +276,21 @@ export default function(realm: Realm): NativeFunctionValue {
         if (nextSource.kind === "conditional") {
           let [condValue, consequentVal, alternateVal] = nextSource.args;
           invariant(condValue instanceof AbstractValue);
-          let prefixSources = sources.slice(1, i - 1);
+          let prefixSources = sources.slice(0, i);
           let suffixSources = sources.slice(i + 1);
           performConditionalObjectAssign(condValue, consequentVal, alternateVal, to, prefixSources, suffixSources);
           return to;
         } else if (nextSource.kind === "||") {
           let [leftValue, rightValue] = nextSource.args;
           invariant(leftValue instanceof AbstractValue);
-          let prefixSources = sources.slice(1, i - 1);
+          let prefixSources = sources.slice(0, i);
           let suffixSources = sources.slice(i + 1);
           performConditionalObjectAssign(leftValue, leftValue, rightValue, to, prefixSources, suffixSources);
           return to;
         } else if (nextSource.kind === "&&") {
           let [leftValue, rightValue] = nextSource.args;
           invariant(leftValue instanceof AbstractValue);
-          let prefixSources = sources.slice(1, i - 1);
+          let prefixSources = sources.slice(0, i);
           let suffixSources = sources.slice(i + 1);
           performConditionalObjectAssign(leftValue, rightValue, leftValue, to, prefixSources, suffixSources);
           return to;
