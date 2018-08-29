@@ -34,6 +34,7 @@ import {
   GlobalEnvironmentRecord,
   Reference,
   LexicalEnvironment,
+  mightBecomeAnObject,
 } from "../environment.js";
 import { AbruptCompletion, SimpleNormalCompletion } from "../completions.js";
 import { FatalError } from "../errors.js";
@@ -217,13 +218,20 @@ export class EnvironmentImplementation {
       () => {
         return realm.evaluateForEffects(
           () => {
-            let consequentRef = new Reference(
-              ((consequentVal: any): BaseValue),
-              ref.referencedName,
-              ref.strict,
-              ref.thisValue
-            );
-            return this._dereference(realm, consequentRef);
+            if (
+              consequentVal instanceof AbstractObjectValue ||
+              consequentVal instanceof ObjectValue ||
+              mightBecomeAnObject(consequentVal)
+            ) {
+              let consequentRef = new Reference(
+                ((consequentVal: any): BaseValue),
+                ref.referencedName,
+                ref.strict,
+                ref.thisValue
+              );
+              return this._dereference(realm, consequentRef);
+            }
+            return consequentVal;
           },
           null,
           "_dereferenceConditional consequent"
@@ -232,13 +240,20 @@ export class EnvironmentImplementation {
       () => {
         return realm.evaluateForEffects(
           () => {
-            let alternateRef = new Reference(
-              ((alternateVal: any): BaseValue),
-              ref.referencedName,
-              ref.strict,
-              ref.thisValue
-            );
-            return this._dereference(realm, alternateRef);
+            if (
+              alternateVal instanceof AbstractObjectValue ||
+              alternateVal instanceof ObjectValue ||
+              mightBecomeAnObject(alternateVal)
+            ) {
+              let alternateRef = new Reference(
+                ((alternateVal: any): BaseValue),
+                ref.referencedName,
+                ref.strict,
+                ref.thisValue
+              );
+              return this._dereference(realm, alternateRef);
+            }
+            return alternateVal;
           },
           null,
           "_dereferenceConditional alternate"
