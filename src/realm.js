@@ -989,7 +989,7 @@ export class Realm {
   }
 
   evaluateWithAbstractConditional(
-    condValue: AbstractValue,
+    condValue: Value,
     consequentEffectsFunc: () => Effects,
     alternateEffectsFunc: () => Effects
   ): Value {

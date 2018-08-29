@@ -189,7 +189,7 @@ export default class ObjectValue extends ConcreteValue {
 
   // function
   $Call: void | ((thisArgument: Value, argumentsList: Array<Value>) => Value);
-  $Construct: void | ((argumentsList: Array<Value>, newTarget: ObjectValue) => Value);
+  $Construct: void | ((argumentsList: Array<Value>, newTarget: ObjectValue) => ObjectValue | AbstractObjectValue);
 
   // promise
   $PromiseState: void | "pending" | "fulfilled" | "rejected";

@@ -26,7 +26,7 @@ export default function(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Value {
+): ObjectValue | AbstractObjectValue {
   // ECMA262 12.3.3.1 We just implement this method inline since it's only called here.
   // 1. Return ? EvaluateNew(NewExpression, empty).
 
@@ -78,7 +78,7 @@ function tryToEvaluateConstructOrLeaveAsAbstract(
   argsList: Array<Value>,
   strictCode: boolean,
   realm: Realm
-): Value {
+): ObjectValue | AbstractObjectValue {
   let effects;
   try {
     effects = realm.evaluateForEffects(
@@ -118,7 +118,7 @@ function tryToEvaluateConstructOrLeaveAsAbstract(
   return completion;
 }
 
-function createConstruct(constructor: Value, argsList: Array<Value>, realm: Realm): Value {
+function createConstruct(constructor: Value, argsList: Array<Value>, realm: Realm): ObjectValue | AbstractObjectValue {
   // 7. If IsConstructor(constructor) is false, throw a TypeError exception.
   if (IsConstructor(realm, constructor) === false) {
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);

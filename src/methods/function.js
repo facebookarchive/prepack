@@ -162,7 +162,7 @@ function $BoundConstruct(
   F: BoundFunctionValue,
   argumentsList: Array<Value>,
   newTarget: ObjectValue
-): Value {
+): ObjectValue | AbstractObjectValue {
   // 1. Let target be the value of F's [[BoundTargetFunction]] internal slot.
   let target = F.$BoundTargetFunction;
 
@@ -190,7 +190,7 @@ function InternalConstruct(
   newTarget: ObjectValue,
   thisArgument: void | ObjectValue,
   tracerIndex: number
-): Value {
+): ObjectValue | AbstractObjectValue {
   // 1. Assert: F is an ECMAScript function object.
   invariant(F instanceof FunctionValue, "expected function");
 
@@ -262,7 +262,9 @@ function InternalConstruct(
 
   // 13. If result.[[Type]] is return, then
   if (result instanceof ReturnCompletion) {
-    return map(result.value);
+    const v = map(result.value);
+    invariant(v instanceof ObjectValue || v instanceof AbstractObjectValue);
+    return v;
 
     function map(value: Value) {
       if (value === realm.intrinsics.__bottomValue) return value;
@@ -886,7 +888,12 @@ export class FunctionImplementation {
   }
 
   // ECMA262 9.2.2
-  $Construct(realm: Realm, F: ECMAScriptFunctionValue, argumentsList: Array<Value>, newTarget: ObjectValue): Value {
+  $Construct(
+    realm: Realm,
+    F: ECMAScriptFunctionValue,
+    argumentsList: Array<Value>,
+    newTarget: ObjectValue
+  ): ObjectValue | AbstractObjectValue {
     return InternalConstruct(realm, F, argumentsList, newTarget, undefined, 0);
   }
 
