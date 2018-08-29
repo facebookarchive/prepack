@@ -235,7 +235,7 @@ export class Realm {
   constructor(opts: RealmOptions, statistics: RealmStatistics) {
     this.statistics = statistics;
     this.isReadOnly = false;
-    this.useAbstractInterpretation = opts.serialize === true || opts.residual === true || Array.isArray(opts.check);
+    this.useAbstractInterpretation = opts.serialize === true || Array.isArray(opts.check);
     this.ignoreLeakLogic = false;
     this.isInPureTryStatement = false;
     if (opts.mathRandomSeed !== undefined) {
