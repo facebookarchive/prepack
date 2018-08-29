@@ -319,7 +319,8 @@ export function cloneReactElement(
     }
   };
 
-  applyObjectAssignConfigsForReactElement(realm, props, [config]);
+  let elementProps = getProperty(realm, reactElement, "props");
+  applyObjectAssignConfigsForReactElement(realm, props, [elementProps, config]);
   props.makeFinal();
 
   let key = getProperty(realm, reactElement, "key");
