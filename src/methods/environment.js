@@ -13,28 +13,29 @@ import type { Realm } from "../realm.js";
 import invariant from "../invariant.js";
 import type { PropertyKeyValue } from "../types.js";
 import {
+  AbstractObjectValue,
   AbstractValue,
-  UndefinedValue,
+  BooleanValue,
+  ECMAScriptFunctionValue,
+  IntegralValue,
   NullValue,
   NumberValue,
-  IntegralValue,
-  BooleanValue,
-  SymbolValue,
-  ECMAScriptFunctionValue,
   ObjectValue,
   StringValue,
+  SymbolValue,
   Value,
-  AbstractObjectValue,
+  UndefinedValue,
 } from "../values/index.js";
 import {
-  ObjectEnvironmentRecord,
-  FunctionEnvironmentRecord,
-  EnvironmentRecord,
   DeclarativeEnvironmentRecord,
+  EnvironmentRecord,
+  FunctionEnvironmentRecord,
   GlobalEnvironmentRecord,
-  Reference,
   LexicalEnvironment,
+  ObjectEnvironmentRecord,
+  Reference,
   mightBecomeAnObject,
+  type BaseValue,
 } from "../environment.js";
 import { AbruptCompletion, SimpleNormalCompletion } from "../completions.js";
 import { FatalError } from "../errors.js";
@@ -219,7 +220,7 @@ export class EnvironmentImplementation {
         return realm.evaluateForEffects(
           () => {
             if (
-              consequentVal instanceof AbstractObjectValue ||
+              consequentVal instanceof AbstractValue ||
               consequentVal instanceof ObjectValue ||
               mightBecomeAnObject(consequentVal)
             ) {
@@ -241,7 +242,7 @@ export class EnvironmentImplementation {
         return realm.evaluateForEffects(
           () => {
             if (
-              alternateVal instanceof AbstractObjectValue ||
+              alternateVal instanceof AbstractValue ||
               alternateVal instanceof ObjectValue ||
               mightBecomeAnObject(alternateVal)
             ) {
@@ -286,12 +287,15 @@ export class EnvironmentImplementation {
         if (base.mightNotBeObject()) {
           if (base.kind === "conditional") {
             let [condValue, consequentVal, alternateVal] = base.args;
+            invariant(condValue instanceof AbstractValue);
             return this._dereferenceConditional(realm, V, condValue, consequentVal, alternateVal);
           } else if (base.kind === "||") {
             let [leftValue, rightValue] = base.args;
+            invariant(leftValue instanceof AbstractValue);
             return this._dereferenceConditional(realm, V, leftValue, leftValue, rightValue);
           } else if (base.kind === "&&") {
             let [leftValue, rightValue] = base.args;
+            invariant(leftValue instanceof AbstractValue);
             return this._dereferenceConditional(realm, V, leftValue, rightValue, leftValue);
           }
         }

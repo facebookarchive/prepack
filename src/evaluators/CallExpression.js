@@ -97,7 +97,17 @@ function evaluateReference(
   ) {
     let base = ref.base;
     if (base.kind === "conditional") {
-      return evaluateConditionalReferenceBase(ref, ast, strictCode, env, realm);
+      let [condValue, consequentVal, alternateVal] = base.args;
+      invariant(condValue instanceof AbstractValue);
+      return evaluateConditionalReferenceBase(ref, condValue, consequentVal, alternateVal, ast, strictCode, env, realm);
+    } else if (base.kind === "||") {
+      let [leftValue, rightValue] = base.args;
+      invariant(leftValue instanceof AbstractValue);
+      return evaluateConditionalReferenceBase(ref, leftValue, leftValue, rightValue, ast, strictCode, env, realm);
+    } else if (base.kind === "&&") {
+      let [leftValue, rightValue] = base.args;
+      invariant(leftValue instanceof AbstractValue);
+      return evaluateConditionalReferenceBase(ref, leftValue, rightValue, leftValue, ast, strictCode, env, realm);
     }
     let referencedName = ref.referencedName;
 
@@ -132,24 +142,21 @@ function evaluateReference(
 
 function evaluateConditionalReferenceBase(
   ref: Reference,
+  condValue: AbstractValue,
+  consequentVal: Value,
+  alternateVal: Value,
   ast: BabelNodeCallExpression,
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
 ): Value {
-  let base = ref.base;
-  invariant(base instanceof AbstractValue);
-  invariant(base.kind === "conditional", "evaluateConditionalReferenceBase expects an abstract conditional");
-  let [condValue, consequentVal, alternateVal] = base.args;
-  invariant(condValue instanceof AbstractValue);
-
   return realm.evaluateWithAbstractConditional(
     condValue,
     () => {
       return realm.evaluateForEffects(
         () => {
           if (
-            consequentVal instanceof AbstractObjectValue ||
+            consequentVal instanceof AbstractValue ||
             consequentVal instanceof ObjectValue ||
             mightBecomeAnObject(consequentVal)
           ) {
@@ -171,7 +178,7 @@ function evaluateConditionalReferenceBase(
       return realm.evaluateForEffects(
         () => {
           if (
-            alternateVal instanceof AbstractObjectValue ||
+            alternateVal instanceof AbstractValue ||
             alternateVal instanceof ObjectValue ||
             mightBecomeAnObject(alternateVal)
           ) {
