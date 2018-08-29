@@ -284,7 +284,7 @@ export class EnvironmentImplementation {
     // 5. If IsPropertyReference(V) is true, then
     if (this.IsPropertyReference(realm, V)) {
       if (base instanceof AbstractValue) {
-        if (base.mightNotBeObject()) {
+        if (!(base instanceof AbstractObjectValue)) {
           if (base.kind === "conditional") {
             let [condValue, consequentVal, alternateVal] = base.args;
             invariant(condValue instanceof AbstractValue);
