@@ -353,7 +353,6 @@ function runTest(name, code, options: PrepackOptions, args) {
   let compileJSXWithBabel = code.includes("// babel:jsx");
   let functionCloneCountMatch = code.match(/\/\/ serialized function clone count: (\d+)/);
   options = ((Object.assign({}, options, {
-    abstractValueImpliesMax: 2000,
     compatibility,
     debugNames: args.debugNames,
     debugScopes: args.debugScopes,

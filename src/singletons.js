@@ -18,6 +18,7 @@ import type {
   JoinType,
   MaterializeType,
   PathType,
+  PathConditions,
   PropertiesType,
   ToType,
   UtilsType,
@@ -32,6 +33,7 @@ export let Leak: LeakType = (null: any);
 export let Materialize: MaterializeType = (null: any);
 export let Join: JoinType = (null: any);
 export let Path: PathType = (null: any);
+export let createPathConditions: () => PathConditions = (null: any);
 export let Properties: PropertiesType = (null: any);
 export let To: ToType = (null: any);
 export let Widen: WidenType = (null: any);
@@ -66,6 +68,10 @@ export function setJoin(singleton: JoinType): void {
 
 export function setPath(singleton: PathType): void {
   Path = singleton;
+}
+
+export function setPathConditions(f: () => PathConditions): void {
+  createPathConditions = f;
 }
 
 export function setProperties(singleton: PropertiesType): void {

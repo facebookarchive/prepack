@@ -69,6 +69,13 @@ export default class Value {
     return false;
   }
 
+  impliesNot(val: Value): boolean {
+    if (this.equals(val)) return false;
+    if (!this.mightNotBeFalse()) return true;
+    if (!val.mightNotBeTrue()) return false;
+    return false;
+  }
+
   isIntrinsic(): boolean {
     return !!this.intrinsicName;
   }

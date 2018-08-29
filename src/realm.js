@@ -10,16 +10,17 @@
 /* @flow */
 
 import type {
+  ArgModel,
   ClassComponentMetadata,
   ConsoleMethodTypes,
+  DebugReproManagerType,
   DebugServerType,
   Descriptor,
+  DisplayResult,
   Intrinsics,
+  PathConditions,
   PropertyBinding,
   ReactHint,
-  DisplayResult,
-  ArgModel,
-  DebugReproManagerType,
 } from "./types.js";
 import { RealmStatistics } from "./statistics.js";
 import {
@@ -68,7 +69,17 @@ import invariant from "./invariant.js";
 import seedrandom from "seedrandom";
 import { createOperationDescriptor, Generator, type TemporalOperationEntry } from "./utils/generator.js";
 import { PreludeGenerator } from "./utils/PreludeGenerator.js";
-import { Environment, Functions, Join, Path, Properties, To, Utils, Widen } from "./singletons.js";
+import {
+  createPathConditions,
+  Environment,
+  Functions,
+  Join,
+  Path,
+  Properties,
+  To,
+  Utils,
+  Widen,
+} from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
 import {
   cloneDescriptor,
@@ -252,7 +263,7 @@ export class Realm {
     this.emitConcreteModel = !!opts.emitConcreteModel;
 
     this.$TemplateMap = [];
-    this.pathConditions = [];
+    this.pathConditions = createPathConditions();
 
     if (this.useAbstractInterpretation) {
       this.preludeGenerator = new PreludeGenerator(opts.debugNames, opts.uniqueSuffix);
@@ -360,9 +371,9 @@ export class Realm {
 
   activeLexicalEnvironments: Set<LexicalEnvironment>;
 
-  // A list of abstract conditions that are known to be true in the current execution path.
+  // A set of abstract conditions that are known to be true in the current execution path.
   // For example, the abstract condition of an if statement is known to be true inside its true branch.
-  pathConditions: Array<AbstractValue>;
+  pathConditions: PathConditions;
 
   currentLocation: ?BabelNodeSourceLocation;
   nextContextLocation: ?BabelNodeSourceLocation;
@@ -993,30 +1004,36 @@ export class Realm {
     consequentEffectsFunc: () => Effects,
     alternateEffectsFunc: () => Effects
   ): Value {
-    // Evaluate consequent and alternate in sandboxes and get their effects.
-    let effects1;
-    try {
-      effects1 = Path.withCondition(condValue, consequentEffectsFunc);
-    } catch (e) {
-      if (!(e instanceof InfeasiblePathError)) throw e;
-    }
-
-    let effects2;
-    try {
-      effects2 = Path.withInverseCondition(condValue, alternateEffectsFunc);
-    } catch (e) {
-      if (!(e instanceof InfeasiblePathError)) throw e;
-    }
-
     let effects;
-    if (effects1 === undefined || effects2 === undefined) {
-      if (effects1 === undefined && effects2 === undefined) throw new InfeasiblePathError();
-      effects = effects1 || effects2;
-      invariant(effects !== undefined);
+    if (Path.implies(condValue)) {
+      effects = consequentEffectsFunc();
+    } else if (Path.impliesNot(condValue)) {
+      effects = alternateEffectsFunc();
     } else {
-      // Join the effects, creating an abstract view of what happened, regardless
-      // of the actual value of condValue.
-      effects = Join.joinEffects(condValue, effects1, effects2);
+      // Join effects
+      let effects1;
+      try {
+        effects1 = Path.withCondition(condValue, consequentEffectsFunc);
+      } catch (e) {
+        if (!(e instanceof InfeasiblePathError)) throw e;
+      }
+
+      let effects2;
+      try {
+        effects2 = Path.withInverseCondition(condValue, alternateEffectsFunc);
+      } catch (e) {
+        if (!(e instanceof InfeasiblePathError)) throw e;
+      }
+
+      if (effects1 === undefined || effects2 === undefined) {
+        if (effects1 === undefined && effects2 === undefined) throw new InfeasiblePathError();
+        effects = effects1 || effects2;
+        invariant(effects !== undefined);
+      } else {
+        // Join the effects, creating an abstract view of what happened, regardless
+        // of the actual value of condValue.
+        effects = Join.joinEffects(condValue, effects1, effects2);
+      }
     }
     this.applyEffects(effects);
 

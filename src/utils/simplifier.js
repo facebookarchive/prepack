@@ -104,14 +104,51 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
         // (x: boolean) || false <=> x
         if (!y.mightNotBeFalse()) return op === "||" ? x : realm.intrinsics.false;
       }
-      if (
-        op === "||" &&
-        y instanceof AbstractValue &&
-        y.kind === "||" &&
-        x.equals(y.args[0]) &&
-        !y.args[1].mightNotBeTrue()
-      )
-        return y;
+      if (op === "||") {
+        if (y instanceof AbstractValue && y.kind === "||") {
+          // x || x || y <=> x || y
+          if (x.equals(y.args[0])) return y;
+          if (x instanceof AbstractValue && x.kind === "!") {
+            // !x0 || y0 || x0 <=> true, if isCondition
+            if (isCondition && x.args[0].equals(y.args[1])) return realm.intrinsics.true;
+          }
+        }
+      }
+      if (op === "&&") {
+        if (x instanceof AbstractValue) {
+          if (x.kind === "&&") {
+            // (x && y) && x <=> x && y, if isCondition
+            if (isCondition && x.args[0].equals(y)) return x;
+            // (x && y) && y <=> x && y
+            if (x.args[1].equals(y)) return x;
+          } else if (x.kind === "!") {
+            // !x && x <=> false, if isCondition
+            if (isCondition && x.args[0].equals(y)) return realm.intrinsics.false;
+          }
+        }
+        if (y instanceof AbstractValue && y.kind === "&&") {
+          // x && (x && y) <=> x && y
+          // y && (x && y) <=> x && y
+          if (x.equals(y.args[0]) || x.equals(y.args[1])) return y;
+        }
+        // x && (x && y || x && z) <=> x && (y || z)
+        if (y instanceof AbstractValue && y.kind === "||") {
+          let [yx, yy] = y.args;
+          let yxs, yys;
+          if (yx instanceof AbstractValue && yx.kind === "&&") {
+            if (x.equals(yx.args[0])) yxs = yx.args[1];
+            else if (x.equals(yx.args[1])) yxs = yx.args[0];
+          }
+          if (yy instanceof AbstractValue && yy.kind === "&&") {
+            if (x.equals(yy.args[0])) yys = yy.args[1];
+            else if (x.equals(yy.args[1])) yys = yy.args[0];
+          }
+          if (yxs !== undefined || yys !== undefined) {
+            let ys = AbstractValue.createFromLogicalOp(realm, "||", yxs || yx, yys || yy, undefined, isCondition);
+            return AbstractValue.createFromLogicalOp(realm, "&&", x, ys, undefined, isCondition);
+          }
+        }
+      }
       if (realm.instantRender.enabled) {
         if (op === "||" && x0 instanceof AbstractValue && y0 instanceof AbstractValue) {
           if (x0.kind === "===" && y0.kind === "===") {
@@ -175,10 +212,16 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
           throw e;
         }
       }
-      if (x === undefined) x = simplify(realm, x0, isCondition);
+      let cIsFalse = !c.mightNotBeFalse();
+      let cIsTrue = !c.mightNotBeTrue();
+      if (x === undefined && !cIsFalse) x = simplify(realm, x0, isCondition);
+      if (cIsTrue) {
+        invariant(x !== undefined); // cIsTrue ==> !cIsFalse
+        return x;
+      }
       if (y === undefined) y = simplify(realm, y0, isCondition);
-      if (!c.mightNotBeTrue()) return x;
-      if (!c.mightNotBeFalse()) return y;
+      if (cIsFalse) return y;
+      invariant(x !== undefined); // because !csIsFalse
       invariant(c instanceof AbstractValue);
       if (Path.implies(c)) return x;
       let notc = AbstractValue.createFromUnaryOp(realm, "!", c, true, loc, isCondition, true);
@@ -223,7 +266,7 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
     }
     case "abstractConcreteUnion": {
       // The union of an abstract value with one or more concrete values.
-      if (realm.pathConditions.length === 0) return value;
+      if (realm.pathConditions.isEmpty()) return value;
       let [abstractValue, ...concreteValues] = value.args;
       invariant(abstractValue instanceof AbstractValue);
       let remainingConcreteValues = [];
@@ -280,98 +323,176 @@ function distributeConditional(
   );
 }
 
+function simplifyNullCheck(
+  realm: Realm,
+  op: "===" | "==" | "!==" | "!=",
+  value: Value,
+  loc: ?BabelNodeSourceLocation,
+  depthCounter?: number = 0
+): void | Value {
+  if (op === "==" || op === "!=") {
+    if (!value.mightNotBeNull() || !value.mightNotBeUndefined())
+      return op === "==" ? realm.intrinsics.true : realm.intrinsics.false;
+    if (!value.mightBeNull() && !value.mightBeUndefined())
+      return op === "==" ? realm.intrinsics.false : realm.intrinsics.true;
+  } else {
+    if (!value.mightNotBeNull()) return op === "===" ? realm.intrinsics.true : realm.intrinsics.false;
+    if (!value.mightBeNull()) return op === "===" ? realm.intrinsics.false : realm.intrinsics.true;
+  }
+  invariant(value instanceof AbstractValue); // concrete values will either be null or not null
+  // try to simplify "(cond ? x : y) op null" to just "cond" or "!cond"
+  // failing that, use "cond ? x op null : y op null" if either of the subexpressions simplify
+  if (value.kind === "conditional" && depthCounter < 10) {
+    let [cond, x, y] = value.args;
+    let sx = simplifyNullCheck(realm, op, x, loc, depthCounter + 1);
+    let sy = simplifyNullCheck(realm, op, y, loc, depthCounter + 1);
+    if (sx !== undefined && sy !== undefined) {
+      if (!sx.mightNotBeTrue() && !sy.mightNotBeFalse()) return makeBoolean(realm, cond, loc);
+      if (!sx.mightNotBeFalse() && !sy.mightNotBeTrue()) return negate(realm, cond, loc);
+    }
+    if (sx !== undefined || sy !== undefined) {
+      if (sx === undefined)
+        sx = AbstractValue.createFromBinaryOp(
+          realm,
+          op,
+          x,
+          realm.intrinsics.null,
+          x.expressionLocation,
+          undefined,
+          false,
+          true
+        );
+      if (sy === undefined)
+        sy = AbstractValue.createFromBinaryOp(
+          realm,
+          op,
+          y,
+          realm.intrinsics.null,
+          y.expressionLocation,
+          undefined,
+          false,
+          true
+        );
+      return AbstractValue.createFromConditionalOp(realm, cond, sx, sy, loc, true, true);
+    }
+  }
+}
+
+function simplifyUndefinedCheck(
+  realm: Realm,
+  op: "===" | "==" | "!==" | "!=",
+  value: Value,
+  loc: ?BabelNodeSourceLocation,
+  depthCounter?: number = 0
+): void | Value {
+  if (op === "==" || op === "!=") {
+    if (!value.mightNotBeNull() || !value.mightNotBeUndefined())
+      return op === "==" ? realm.intrinsics.true : realm.intrinsics.false;
+    if (!value.mightBeNull() && !value.mightBeUndefined())
+      return op === "==" ? realm.intrinsics.false : realm.intrinsics.true;
+  } else {
+    if (!value.mightNotBeUndefined()) return op === "===" ? realm.intrinsics.true : realm.intrinsics.false;
+    if (!value.mightBeUndefined()) return op === "===" ? realm.intrinsics.false : realm.intrinsics.true;
+  }
+  invariant(value instanceof AbstractValue); // concrete values will either be undefined or not undefined
+  // try to simplify "(cond ? x : y) op undefined" to just "cond" or "!cond"
+  // failing that, use "cond ? x op undefined : y op undefined" if either of the subexpressions simplify
+  if (value.kind === "conditional" && depthCounter < 10) {
+    let [cond, x, y] = value.args;
+    let sx = simplifyUndefinedCheck(realm, op, x, loc, depthCounter + 1);
+    let sy = simplifyUndefinedCheck(realm, op, y, loc, depthCounter + 1);
+    if (sx !== undefined && sy !== undefined) {
+      if (!sx.mightNotBeTrue() && !sy.mightNotBeFalse()) return makeBoolean(realm, cond, loc);
+      if (!sx.mightNotBeFalse() && !sy.mightNotBeTrue()) return negate(realm, cond, loc);
+    }
+    if (sx !== undefined || sy !== undefined) {
+      if (sx === undefined)
+        sx = AbstractValue.createFromBinaryOp(
+          realm,
+          op,
+          x,
+          realm.intrinsics.undefined,
+          x.expressionLocation,
+          undefined,
+          false,
+          true
+        );
+      if (sy === undefined)
+        sy = AbstractValue.createFromBinaryOp(
+          realm,
+          op,
+          y,
+          realm.intrinsics.undefined,
+          y.expressionLocation,
+          undefined,
+          false,
+          true
+        );
+      return AbstractValue.createFromConditionalOp(realm, cond, sx, sy, loc, true, true);
+    }
+  }
+}
+
 function simplifyEquality(realm: Realm, equality: AbstractValue): Value {
   let loc = equality.expressionLocation;
   let op = equality.kind;
   let [x, y] = equality.args;
   if (y instanceof EmptyValue) return equality;
   if (x instanceof ConcreteValue) [x, y] = [y, x];
-  if (x instanceof AbstractValue && x.kind === "conditional" && (!y.mightNotBeUndefined() || !y.mightNotBeNull())) {
-    function simplified(v: Value) {
-      return v instanceof AbstractValue ? v.kind !== op : true;
+  if (op === "===" || op === "==" || op === "!==" || op === "==") {
+    if (!x.mightNotBeNull()) {
+      let sy = simplifyNullCheck(realm, op, y);
+      if (sy !== undefined) return sy;
     }
-    // try to simplify "(cond ? xx : xy) op undefined/null" to just "cond" or "!cond"
-    let [cond, xx, xy] = x.args;
-    invariant(cond instanceof AbstractValue); // otherwise the the conditional should not have been created
-    if (op === "===" || op === "!==") {
-      if (!y.mightNotBeUndefined()) {
-        // if xx === undefined && xy !== undefined then cond <=> x === undefined
-        if (!xx.mightNotBeUndefined() && !xy.mightBeUndefined())
-          return op === "===" ? makeBoolean(realm, cond, loc) : negate(realm, cond, loc);
-        // if xx !== undefined && xy === undefined then !cond <=> x === undefined
-        if (!xx.mightBeUndefined() && !xy.mightNotBeUndefined())
-          return op === "===" ? negate(realm, cond, loc) : makeBoolean(realm, cond, loc);
-        // distribute equality test, creating more simplication opportunities
-        let sxx = AbstractValue.createFromBinaryOp(realm, op, xx, realm.intrinsics.undefined, xx.expressionLocation);
-        let sxy = AbstractValue.createFromBinaryOp(realm, op, xy, realm.intrinsics.undefined, xy.expressionLocation);
-        if (simplified(sxx) || simplified(sxy))
-          return AbstractValue.createFromConditionalOp(realm, cond, sxx, sxy, equality.expressionLocation, true);
-      }
-      if (!y.mightNotBeNull()) {
-        // if xx === null && xy !== null then cond <=> x === null
-        if (!xx.mightNotBeNull() && !xy.mightBeNull())
-          return op === "===" ? makeBoolean(realm, cond, loc) : negate(realm, cond, loc);
-        // if xx !== null && xy === null then !cond <=> x === null
-        if (!xx.mightBeNull() && !xy.mightNotBeNull())
-          return op === "===" ? negate(realm, cond, loc) : makeBoolean(realm, cond, loc);
-        // distribute equality test, creating more simplication opportunities
-        let sxx = AbstractValue.createFromBinaryOp(realm, op, xx, realm.intrinsics.null, xx.expressionLocation);
-        let sxy = AbstractValue.createFromBinaryOp(realm, op, xy, realm.intrinsics.null, xy.expressionLocation);
-        if (simplified(sxx) || simplified(sxy))
-          return AbstractValue.createFromConditionalOp(realm, cond, sxx, sxy, equality.expressionLocation, true);
-      }
-    } else {
-      invariant(op === "==" || op === "!=");
-      // if xx cannot be undefined/null and xy is undefined/null then !cond <=> x == undefined/null
-      if (!xx.mightBeUndefined() && !xx.mightBeNull() && (!xy.mightNotBeUndefined() || !xy.mightNotBeNull()))
-        return op === "==" ? negate(realm, cond, loc) : makeBoolean(realm, cond, loc);
-      // if xx is undefined/null and xy cannot be undefined/null then cond <=> x == undefined/null
-      if ((!xx.mightNotBeUndefined() || !xx.mightNotBeNull()) && !xy.mightBeUndefined() && !xy.mightBeNull())
-        return op === "==" ? makeBoolean(realm, cond, loc) : negate(realm, cond, loc);
-      // distribute equality test, creating more simplication opportunities
-      let sxx = AbstractValue.createFromBinaryOp(realm, op, xx, y, xx.expressionLocation);
-      let sxy = AbstractValue.createFromBinaryOp(realm, op, xy, y, xy.expressionLocation);
-      if (simplified(sxx) || simplified(sxy))
-        return AbstractValue.createFromConditionalOp(realm, cond, sxx, sxy, equality.expressionLocation, true);
+    if (!y.mightNotBeNull()) {
+      let sx = simplifyNullCheck(realm, op, x);
+      if (sx !== undefined) return sx;
     }
-  } else {
-    if (op === "===") {
-      let xType = x.getType();
-      let yType = y.getType();
-      if (xType !== yType) {
-        if (xType === Value || xType === PrimitiveValue || yType === Value || yType === PrimitiveValue) return equality;
-        if (
-          (Value.isTypeCompatibleWith(xType, NumberValue) && Value.isTypeCompatibleWith(yType, NumberValue)) ||
-          (Value.isTypeCompatibleWith(xType, ObjectValue) && Value.isTypeCompatibleWith(yType, ObjectValue))
-        )
-          return equality;
-        return realm.intrinsics.false;
-      } else if (x instanceof AbstractValue && x.kind === "conditional") {
-        let [cond, xx, xy] = x.args;
-        // ((cond ? xx : xy) === y) && xx === y && xy !== y <=> cond
-        if (xx.equals(y) && !xy.equals(y)) return cond;
-        // ((!cond ? xx : xy) === y) && xx !== y && xy === y <=> !cond
-        if (!xx.equals(y) && xy.equals(y)) return negate(realm, cond, loc);
-      } else if (y instanceof AbstractValue && y.kind === "conditional") {
-        let [cond, yx, yy] = y.args;
-        // (x === (cond ? yx : yy) === y) && x === yx && x !== yy <=> cond
-        if (yx.equals(x) && !yy.equals(x)) return cond;
-        // (x === (!cond ? yx : yy) === y) && x !== yx && x === yy <=> !cond
-        if (!x.equals(yx) && x.equals(yy)) return negate(realm, cond, loc);
-      }
-    } else if (op === "==") {
-      let xType = x.getType();
-      let xIsNullOrUndefined = xType === NullValue || xType === UndefinedValue;
-      let yType = y.getType();
-      let yIsNullOrUndefined = yType === NullValue || yType === UndefinedValue;
-      // If x and y are both known to be null/undefined we should never get here because both should be concrete values.
-      invariant(!xIsNullOrUndefined || !yIsNullOrUndefined);
-      if (xIsNullOrUndefined) {
-        return yType === Value || yType === PrimitiveValue ? equality : realm.intrinsics.false;
-      }
-      if (yIsNullOrUndefined) {
-        return xType === Value || xType === PrimitiveValue ? equality : realm.intrinsics.false;
-      }
+    if (!x.mightNotBeUndefined()) {
+      let sy = simplifyUndefinedCheck(realm, op, y);
+      if (sy !== undefined) return sy;
+    }
+    if (!y.mightNotBeUndefined()) {
+      let sx = simplifyUndefinedCheck(realm, op, x);
+      if (sx !== undefined) return sx;
+    }
+  }
+  if (op === "===") {
+    let xType = x.getType();
+    let yType = y.getType();
+    if (xType !== yType) {
+      if (xType === Value || xType === PrimitiveValue || yType === Value || yType === PrimitiveValue) return equality;
+      if (
+        (Value.isTypeCompatibleWith(xType, NumberValue) && Value.isTypeCompatibleWith(yType, NumberValue)) ||
+        (Value.isTypeCompatibleWith(xType, ObjectValue) && Value.isTypeCompatibleWith(yType, ObjectValue))
+      )
+        return equality;
+      return realm.intrinsics.false;
+    } else if (x instanceof AbstractValue && x.kind === "conditional") {
+      let [cond, xx, xy] = x.args;
+      // ((cond ? xx : xy) === y) && xx === y && xy !== y <=> cond
+      if (xx.equals(y) && !xy.equals(y)) return cond;
+      // ((!cond ? xx : xy) === y) && xx !== y && xy === y <=> !cond
+      if (!xx.equals(y) && xy.equals(y)) return negate(realm, cond, loc);
+    } else if (y instanceof AbstractValue && y.kind === "conditional") {
+      let [cond, yx, yy] = y.args;
+      // (x === (cond ? yx : yy) === y) && x === yx && x !== yy <=> cond
+      if (yx.equals(x) && !yy.equals(x)) return cond;
+      // (x === (!cond ? yx : yy) === y) && x !== yx && x === yy <=> !cond
+      if (!x.equals(yx) && x.equals(yy)) return negate(realm, cond, loc);
+    }
+  } else if (op === "==") {
+    let xType = x.getType();
+    let xIsNullOrUndefined = xType === NullValue || xType === UndefinedValue;
+    let yType = y.getType();
+    let yIsNullOrUndefined = yType === NullValue || yType === UndefinedValue;
+    // If x and y are both known to be null/undefined we should never get here because both should be concrete values.
+    invariant(!xIsNullOrUndefined || !yIsNullOrUndefined);
+    if (xIsNullOrUndefined) {
+      return yType === Value || yType === PrimitiveValue ? equality : realm.intrinsics.false;
+    }
+    if (yIsNullOrUndefined) {
+      return xType === Value || xType === PrimitiveValue ? equality : realm.intrinsics.false;
     }
   }
   return equality;

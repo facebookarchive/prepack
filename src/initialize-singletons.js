@@ -15,7 +15,7 @@ import { EnvironmentImplementation } from "./methods/environment.js";
 import { FunctionImplementation } from "./methods/function.js";
 import { LeakImplementation, MaterializeImplementation } from "./utils/leak.js";
 import { JoinImplementation } from "./methods/join.js";
-import { PathImplementation } from "./utils/paths.js";
+import { PathConditionsImplementation, PathImplementation } from "./utils/paths.js";
 import { PropertiesImplementation } from "./methods/properties.js";
 import { ToImplementation } from "./methods/to.js";
 import { WidenImplementation } from "./methods/widen.js";
@@ -31,6 +31,7 @@ export default function() {
   Singletons.setMaterialize(new MaterializeImplementation());
   Singletons.setJoin(new JoinImplementation());
   Singletons.setPath(new PathImplementation());
+  Singletons.setPathConditions(() => new PathConditionsImplementation());
   Singletons.setProperties((new PropertiesImplementation(): any));
   Singletons.setTo((new ToImplementation(): any));
   Singletons.setWiden((new WidenImplementation(): any));
