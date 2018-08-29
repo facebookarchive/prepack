@@ -9,6 +9,13 @@
 
 /* @flow */
 
+import {
+  Completion,
+  SimpleNormalCompletion,
+  ThrowCompletion,
+  JoinedNormalAndAbruptCompletions,
+} from "../completions.js";
+import type { Realm, Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 import { PropertyDescriptor, InternalSlotDescriptor, AbstractJoinedDescriptor } from "../descriptors.js";
 import {
@@ -26,10 +33,12 @@ import {
   ObjectValue,
   FunctionValue,
   ECMAScriptSourceFunctionValue,
+  NativeFunctionValue,
   BoundFunctionValue,
   SymbolValue,
   ProxyValue,
   Value,
+  UndefinedValue,
 } from "../values/index.js";
 import invariant from "../invariant.js";
 import {
@@ -44,28 +53,32 @@ import * as t from "@babel/types";
 const indent = "  ";
 
 export class TextPrinter implements Printer {
-  constructor(printLine: string => void) {
+  constructor(
+    printLine: string => void,
+    abstractValueIds?: Map<AbstractValue, number> = new Map(),
+    symbolIds?: Map<SymbolValue, number> = new Map()
+  ) {
     this._printLine = printLine;
+    this._abstractValueIds = abstractValueIds;
+    this._symbolIds = symbolIds;
     this._indent = "";
-    this._abstractValueIds = new Map();
     this._objects = new Set();
     this._propertyBindings = new Set();
     this._environmentRecords = new Set();
     this._bindings = new Set();
     this._lexicalEnvironments = new Set();
-    this._symbolIds = new Map();
     this._symbols = new Set();
   }
 
   _printLine: string => void;
-  _indent: string;
   _abstractValueIds: Map<AbstractValue, number>;
+  _symbolIds: Map<SymbolValue, number>;
+  _indent: string;
   _objects: Set<ObjectValue>;
   _propertyBindings: Set<PropertyBinding>;
   _environmentRecords: Set<EnvironmentRecord>;
   _bindings: Set<Binding>;
   _lexicalEnvironments: Set<LexicalEnvironment>;
-  _symbolIds: Map<SymbolValue, number>;
   _symbols: Set<SymbolValue>;
 
   _nest(): void {
@@ -176,7 +189,62 @@ export class TextPrinter implements Printer {
     this._unnest();
   }
 
-  describeExpression(expression: string) {
+  print(realm: Realm, optimizedFunctions: Map<FunctionValue, Generator>): void {
+    const realmGenerator = realm.generator;
+    if (realmGenerator !== undefined) this.printGenerator(realmGenerator);
+    for (const [functionValue, generator] of optimizedFunctions) {
+      const effectsToApply = generator.effectsToApply;
+      invariant(effectsToApply !== undefined);
+      this._print(`=== optimized function ${this.describeValue(functionValue)}`);
+      realm.withEffectsAppliedInGlobalEnv(effects => {
+        const nestedPrinter = new TextPrinter(this._printLine, this._abstractValueIds, this._symbolIds);
+        nestedPrinter.printEffects(effects, generator);
+        return nestedPrinter; // not needed, but withEffectsAppliedInGlobalEnv has an unmotivated invariant that the result must not be undefined
+      }, effectsToApply);
+    }
+  }
+
+  describeCompletion(result: Completion): string {
+    const args = [];
+    if (result instanceof SimpleNormalCompletion) args.push(`value ${this.describeValue(result.value)}`);
+    else if (result instanceof ThrowCompletion) args.push(`value ${this.describeValue(result.value)}`);
+    else {
+      invariant(result instanceof JoinedNormalAndAbruptCompletions);
+      args.push(`join condition ${this.describeValue(result.joinCondition)}`);
+      args.push(`consequent ${this.describeCompletion(result.consequent)}`);
+      args.push(`alternate ${this.describeCompletion(result.alternate)}`);
+      if (result.composedWith !== undefined) args.push(`composed with ${this.describeCompletion(result.composedWith)}`);
+    }
+    return `${result.constructor.name}(${args.join(", ")})`;
+  }
+
+  printEffects(effects: Effects, generator?: Generator): void {
+    this._nest();
+    this.printGenerator(generator || effects.generator);
+    // skip effects.generator
+    if (effects.modifiedProperties.size > 0)
+      this._print(
+        `modified property bindings: [${Array.from(effects.modifiedProperties.keys())
+          .map(propertyBinding => this.describePropertyBinding(propertyBinding))
+          .join(", ")}]`
+      );
+    if (effects.modifiedBindings.size > 0)
+      this._print(
+        `modified bindings: [${Array.from(effects.modifiedBindings.keys())
+          .map(binding => this.describeBinding(binding))
+          .join(", ")}]`
+      );
+    if (effects.createdObjects.size > 0)
+      this._print(
+        `created objects: [${Array.from(effects.createdObjects)
+          .map(object => this.describeValue(object))
+          .join(", ")}]`
+      );
+    if (!(effects.result instanceof UndefinedValue)) this._print(`result: ${this.describeCompletion(effects.result)}`);
+    this._unnest();
+  }
+
+  describeExpression(expression: string): string {
     if (t.isValidIdentifier(expression)) return expression;
     else return "@" + JSON.stringify(expression);
   }
@@ -191,7 +259,7 @@ export class TextPrinter implements Printer {
     return `value#${id}`;
   }
 
-  printAbstractValue(value: AbstractValue) {
+  printAbstractValue(value: AbstractValue): void {
     invariant(value.intrinsicName === undefined);
     let kind = value.kind;
     // TODO: I'd expect kind to be defined in this situation; however, it's not defined for test ForInStatement4.js
@@ -204,7 +272,7 @@ export class TextPrinter implements Printer {
     );
   }
 
-  objectValueName(value: ObjectValue) {
+  objectValueName(value: ObjectValue): string {
     invariant(this._objects.has(value));
     let name;
     if (value instanceof FunctionValue) name = "func";
@@ -218,24 +286,28 @@ export class TextPrinter implements Printer {
 
     if (value.temporalAlias !== undefined) args.push(`temporalAlias ${this.describeValue(value.temporalAlias)}`);
 
-    if (value instanceof BoundFunctionValue) {
-      args.push(`$BoundTargetFunction ${this.describeValue(value.$BoundTargetFunction)}`);
-      args.push(`$BoundThis ${this.describeValue(value.$BoundThis)}`);
-      args.push(`$BoundArguments [${this.describeValues(value.$BoundArguments)}]`);
-    } else if (value instanceof FunctionValue) {
-      invariant(value instanceof ECMAScriptSourceFunctionValue, "all native function values should be intrinsics");
-      args.push(`$ConstructorKind ${value.$ConstructorKind}`);
-      args.push(`$ThisMode ${value.$ThisMode}`);
-      args.push(`$FunctionKind ${value.$FunctionKind}`);
-      if (value.$HomeObject !== undefined) args.push(`$HomeObject ${this.describeValue(value.$HomeObject)}`);
+    if (value instanceof FunctionValue) {
+      if (value instanceof NativeFunctionValue) {
+        // TODO: This shouldn't happen; all native function values should be intrinsics
+      } else if (value instanceof BoundFunctionValue) {
+        args.push(`$BoundTargetFunction ${this.describeValue(value.$BoundTargetFunction)}`);
+        args.push(`$BoundThis ${this.describeValue(value.$BoundThis)}`);
+        args.push(`$BoundArguments [${this.describeValues(value.$BoundArguments)}]`);
+      } else {
+        invariant(value instanceof ECMAScriptSourceFunctionValue);
+        args.push(`$ConstructorKind ${value.$ConstructorKind}`);
+        args.push(`$ThisMode ${value.$ThisMode}`);
+        args.push(`$FunctionKind ${value.$FunctionKind}`);
+        if (value.$HomeObject !== undefined) args.push(`$HomeObject ${this.describeValue(value.$HomeObject)}`);
 
-      // TODO: $Strict should always be defined according to its flow type signature, however, there are some tests where it's not
-      if (value.$Strict) args.push(`$Strict`);
-      args.push(`$FormalParameters ${value.$FormalParameters.length}`);
-      // TODO: pretty-print $ECMAScriptCode
+        // TODO: $Strict should always be defined according to its flow type signature, however, there are some tests where it's not
+        if (value.$Strict) args.push(`$Strict`);
+        args.push(`$FormalParameters ${value.$FormalParameters.length}`);
+        // TODO: pretty-print $ECMAScriptCode
 
-      // TODO: $Environment should always be defined according to its flow type signature, however, it's not in test ConcreteModel2.js
-      if (value.$Environment) args.push(`$Environment ${this.describeLexicalEnvironment(value.$Environment)}`);
+        // TODO: $Environment should always be defined according to its flow type signature, however, it's not in test ConcreteModel2.js
+        if (value.$Environment) args.push(`$Environment ${this.describeLexicalEnvironment(value.$Environment)}`);
+      }
     } else if (value instanceof ProxyValue) {
       args.push(`$ProxyTarget ${this.describeValue(value.$ProxyTarget)}`);
       args.push(`$ProxyHandler ${this.describeValue(value.$ProxyHandler)}`);
@@ -348,8 +420,8 @@ export class TextPrinter implements Printer {
     this._printDefinition(this.objectValueName(value), value.constructor.name, args);
 
     // jull pull on property bindings to get them emitting
-    for (let propertyBinding of value.properties.values()) this.describePropertyBinding(propertyBinding);
-    for (let propertyBinding of value.symbols.values()) this.describePropertyBinding(propertyBinding);
+    for (const propertyBinding of value.properties.values()) this.describePropertyBinding(propertyBinding);
+    for (const propertyBinding of value.symbols.values()) this.describePropertyBinding(propertyBinding);
     if (unknownProperty !== undefined) this.describePropertyBinding(unknownProperty);
   }
 
@@ -397,7 +469,7 @@ export class TextPrinter implements Printer {
     }
   }
 
-  describePropertyDescriptor(desc: PropertyDescriptor) {
+  describePropertyDescriptor(desc: PropertyDescriptor): string {
     const args = [];
     if (desc.writable) args.push("writable");
     if (desc.enumerable) args.push("enumerable");
@@ -408,12 +480,14 @@ export class TextPrinter implements Printer {
     return `PropertyDescriptor(${args.join(", ")})`;
   }
 
-  describeInternalSlotDescriptor(desc: InternalSlotDescriptor) {
-    // TODO
-    return `InternalSlotDescriptor(...)`;
+  describeInternalSlotDescriptor(desc: InternalSlotDescriptor): string {
+    const args = [];
+    if (desc.value instanceof Value) args.push(`value ${this.describeValue(desc.value)}`);
+    else if (Array.isArray(desc.value)) args.push(`some array`); // TODO
+    return `InternalSlotDescriptor(${args.join(", ")})`;
   }
 
-  describeAbstractJoinedDescriptor(desc: AbstractJoinedDescriptor) {
+  describeAbstractJoinedDescriptor(desc: AbstractJoinedDescriptor): string {
     const args = [];
     args.push(`join condition ${this.describeValue(desc.joinCondition)}`);
     if (desc.descriptor1 !== undefined) args.push(`descriptor1 ${this.describeDescriptor(desc.descriptor1)}`);
@@ -505,7 +579,7 @@ export class TextPrinter implements Printer {
       }
       if (environment.$NewTarget !== undefined) args.push(`$NewTarget ${this.describeValue(environment.$NewTarget)}`);
       if (environment.frozen) args.push("frozen");
-      let bindings = Object.keys(environment.bindings);
+      const bindings = Object.keys(environment.bindings);
       if (bindings.length > 0)
         args.push(
           `bindings [${Object.keys(environment.bindings)
@@ -519,14 +593,14 @@ export class TextPrinter implements Printer {
       args.push(`$DeclarativeRecord ${this.describeEnvironmentRecord(environment.$DeclarativeRecord)}`);
       args.push(`$ObjectRecord ${this.describeEnvironmentRecord(environment.$DeclarativeRecord)}`);
       if (environment.$VarNames.length > 0)
-        args.push(`$VarNames [${environment.$VarNames.map(varName => this.describeExpression(varName)).join(",")}]`);
+        args.push(`$VarNames [${environment.$VarNames.map(varName => this.describeExpression(varName)).join(", ")}]`);
       args.push(`$GlobalThisValue ${this.describeValue(environment.$GlobalThisValue)}`);
     }
     this._printDefinition(this.environmentRecordName(environment), environment.constructor.name, args);
 
     // pull on bindings to get them emitted
     if (environment instanceof DeclarativeEnvironmentRecord)
-      for (let bindingName in environment.bindings) this.describeBinding(environment.bindings[bindingName]);
+      for (const bindingName in environment.bindings) this.describeBinding(environment.bindings[bindingName]);
   }
 
   describeEnvironmentRecord(environment: EnvironmentRecord): string {

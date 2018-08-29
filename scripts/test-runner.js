@@ -514,14 +514,10 @@ function runTest(name, code, options: PrepackOptions, args) {
 
             let ir = "";
             if (args.ir)
-              options.onExecute = realm => {
-                let generator = realm.generator;
-                if (generator !== undefined) {
-                  let textPrinter = new TextPrinter(line => {
-                    ir += line + "\n";
-                  });
-                  textPrinter.printGenerator(generator);
-                }
+              options.onExecute = (realm, optimizedFunctions) => {
+                new TextPrinter(line => {
+                  ir += line + "\n";
+                }).print(realm, optimizedFunctions);
               };
 
             let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);

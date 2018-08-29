@@ -374,17 +374,13 @@ function run(
   );
   if (heapGraphFilePath !== undefined) resolvedOptions.heapGraphFormat = "DotLanguage";
   if (dumpIRFilePath !== undefined) {
-    resolvedOptions.onExecute = realm => {
-      let generator = realm.generator;
-      if (generator !== undefined) {
-        let text = "";
-        let textPrinter = new TextPrinter(line => {
-          text += line + "\n";
-        });
-        textPrinter.printGenerator(generator);
-        invariant(dumpIRFilePath !== undefined);
-        fs.writeFileSync(dumpIRFilePath, text);
-      }
+    resolvedOptions.onExecute = (realm, optimizedFunctions) => {
+      let text = "";
+      new TextPrinter(line => {
+        text += line + "\n";
+      }).print(realm, optimizedFunctions);
+      invariant(dumpIRFilePath !== undefined);
+      fs.writeFileSync(dumpIRFilePath, text);
     };
   }
   if (lazyObjectsRuntime !== undefined && (resolvedOptions.delayInitializations || resolvedOptions.inlineExpressions)) {
