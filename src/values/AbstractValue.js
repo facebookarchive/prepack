@@ -16,7 +16,7 @@ import type {
   BabelUnaryOperator,
 } from "@babel/types";
 import { Completion, JoinedAbruptCompletions, JoinedNormalAndAbruptCompletions } from "../completions.js";
-import { CompilerDiagnostic, FatalError } from "../errors.js";
+import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import { createOperationDescriptor, type OperationDescriptor } from "../utils/generator.js";
 import type { PropertyKeyValue, ShapeInformationInterface } from "../types.js";
@@ -213,26 +213,8 @@ export default class AbstractValue extends Value {
     return this.operationDescriptor ? this.operationDescriptor.type === "IDENTIFIER" : false;
   }
 
-  _checkAbstractValueImpliesCounter(): void {
-    let realm = this.$Realm;
-    let abstractValueImpliesMax = realm.abstractValueImpliesMax;
-    // if abstractValueImpliesMax is 0, then the counter is disabled
-    if (abstractValueImpliesMax !== 0 && realm.abstractValueImpliesCounter++ > abstractValueImpliesMax) {
-      realm.abstractValueImpliesCounter = 0;
-      realm.impliesCounterOverflowed = true;
-      let diagnostic = new CompilerDiagnostic(
-        `the implies counter has exceeded the maximum value when trying to simplify abstract values`,
-        realm.currentLocation,
-        "PP0029",
-        "FatalError"
-      );
-      realm.handleError(diagnostic);
-    }
-  }
-
   // this => val. A false value does not imply that !(this => val).
   implies(val: Value): boolean {
-    this._checkAbstractValueImpliesCounter();
     if (this.equals(val)) return true; // x => x regardless of its value
     if (!this.mightNotBeFalse()) return true; // false => val
     if (!val.mightNotBeTrue()) return true; // x => true regardless of the value of x
@@ -251,16 +233,17 @@ export default class AbstractValue extends Value {
         return y.impliesNot(this);
       }
       // x => x !== null && x !== undefined
-      if (val.kind === "!==") {
+      // x => x != null && x != undefined
+      if (val.kind === "!==" || val.kind === "!=") {
         let [x, y] = val.args;
         if (this.implies(x)) return y instanceof NullValue || y instanceof UndefinedValue;
         if (this.implies(y)) return x instanceof NullValue || x instanceof UndefinedValue;
       }
-      // !!x => y if x => y
       if (this.kind === "!") {
         let [nx] = this.args;
         invariant(nx instanceof AbstractValue);
         if (nx.kind === "!") {
+          // !!x => y if x => y
           let [x] = nx.args;
           invariant(x instanceof AbstractValue);
           return x.implies(val);
@@ -317,6 +300,20 @@ export default class AbstractValue extends Value {
           }
         }
       }
+      if (this.kind === "||") {
+        let [x, y] = this.args;
+        let xi = x.implies(val) || (x instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(x));
+        if (!xi) return false;
+        let yi = y.implies(val) || (y instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(y));
+        return yi;
+      }
+      if (this.kind === "&&") {
+        let [x, y] = this.args;
+        let xi = x.implies(val) || (x instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(x));
+        if (xi) return true;
+        let yi = y.implies(val) || (y instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(y));
+        return yi;
+      }
     }
     return false;
   }
@@ -347,6 +344,24 @@ export default class AbstractValue extends Value {
         if (!x.mightNotBeFalse() && !y.mightNotBeTrue()) {
           return c.equals(val);
         }
+      }
+      if (this.kind === "===" && val.kind === "===") {
+        // x === y and y !== z => !(x === z)
+        let [x1, y1] = this.args;
+        let [x2, y2] = val.args;
+        if (x1.equals(x2) && y1 instanceof ConcreteValue && y2 instanceof ConcreteValue && !y1.equals(y2)) return true;
+        // x === y and x !== z => !(z === y)
+        if (y1.equals(y2) && x1 instanceof ConcreteValue && x2 instanceof ConcreteValue && !x1.equals(x2)) {
+          return true;
+        }
+      }
+      if (this.kind === "||") {
+        let [x, y] = this.args;
+        if (x.impliesNot(val) && y.impliesNot(val)) return true;
+      }
+      if (this.kind === "&&") {
+        let [x, y] = this.args;
+        if (x.impliesNot(val) || y.impliesNot(val)) return true;
       }
     }
     return false;
@@ -558,44 +573,47 @@ export default class AbstractValue extends Value {
   static createJoinConditionForSelectedCompletions(
     selector: Completion => boolean,
     completion: JoinedAbruptCompletions | JoinedNormalAndAbruptCompletions
-  ): AbstractValue {
+  ): Value {
+    let jcw;
     let jc = completion.joinCondition;
     let realm = jc.$Realm;
+    let njc = AbstractValue.createFromUnaryOp(realm, "!", jc, true, undefined, true);
+    if (completion instanceof JoinedNormalAndAbruptCompletions && completion.composedWith !== undefined) {
+      jcw = AbstractValue.createJoinConditionForSelectedCompletions(selector, completion.composedWith);
+      jc = AbstractValue.createFromLogicalOp(realm, "&&", jcw, jc, undefined, true);
+      njc = AbstractValue.createFromLogicalOp(realm, "&&", jcw, njc, undefined, true);
+    }
     let c = completion.consequent;
     let a = completion.alternate;
-    let cContains = c.containsSelectedCompletion(selector);
-    let aContains = a.containsSelectedCompletion(selector);
-    invariant(cContains || aContains);
-    if (cContains && !aContains) return jc;
-    if (!cContains && aContains) return negate(jc);
-    invariant(cContains && aContains);
-    let cCond;
-    if (selector(c)) cCond = jc;
-    else {
-      invariant(c instanceof JoinedAbruptCompletions || c instanceof JoinedNormalAndAbruptCompletions);
-      cCond = AbstractValue.createJoinConditionForSelectedCompletions(selector, c);
+    let cContainsSelectedCompletion = c.containsSelectedCompletion(selector);
+    let aContainsSelectedCompletion = a.containsSelectedCompletion(selector);
+    if (!cContainsSelectedCompletion && !aContainsSelectedCompletion) {
+      if (jcw !== undefined) return jcw;
+      return realm.intrinsics.false;
     }
-    let aCond;
-    if (selector(a)) aCond = negate(jc);
-    else {
-      invariant(a instanceof JoinedAbruptCompletions || a instanceof JoinedNormalAndAbruptCompletions);
-      aCond = AbstractValue.createJoinConditionForSelectedCompletions(selector, a);
+    let cCond = jc;
+    if (cContainsSelectedCompletion) {
+      if (c instanceof JoinedAbruptCompletions || c instanceof JoinedNormalAndAbruptCompletions) {
+        let jcc = AbstractValue.createJoinConditionForSelectedCompletions(selector, c);
+        cCond = AbstractValue.createFromLogicalOp(realm, "&&", cCond, jcc, undefined, true);
+      }
+      if (!aContainsSelectedCompletion) return cCond;
     }
-    let or = AbstractValue.createFromLogicalOp(realm, "||", cCond, aCond, undefined, true, true);
-    invariant(or instanceof AbstractValue);
+    let aCond = njc;
+    if (aContainsSelectedCompletion) {
+      if (a instanceof JoinedAbruptCompletions || a instanceof JoinedNormalAndAbruptCompletions) {
+        let jac = AbstractValue.createJoinConditionForSelectedCompletions(selector, a);
+        aCond = AbstractValue.createFromLogicalOp(realm, "&&", aCond, jac, undefined, true);
+      }
+      if (!cContainsSelectedCompletion) return aCond;
+    }
+    let or = AbstractValue.createFromLogicalOp(realm, "||", cCond, aCond, undefined, true);
     if (completion instanceof JoinedNormalAndAbruptCompletions && completion.composedWith !== undefined) {
       let composedCond = AbstractValue.createJoinConditionForSelectedCompletions(selector, completion.composedWith);
-      let and = AbstractValue.createFromLogicalOp(realm, "&&", composedCond, or);
-      invariant(and instanceof AbstractValue);
+      let and = AbstractValue.createFromLogicalOp(realm, "&&", composedCond, or, undefined, true);
       return and;
     }
     return or;
-
-    function negate(v: AbstractValue): AbstractValue {
-      let nv = AbstractValue.createFromUnaryOp(realm, "!", v, true, v.expressionLocation, true, true);
-      invariant(nv instanceof AbstractValue);
-      return nv;
-    }
   }
 
   static createFromBinaryOp(
