@@ -62,7 +62,7 @@ import {
   getSuggestedArrayLiteralLength,
   withDescriptorValue,
 } from "./utils.js";
-import { Environment, To } from "../singletons.js";
+import { createPathConditions, Environment, To } from "../singletons.js";
 import { isReactElement, isReactPropsObject, valueIsReactLibraryObject } from "../react/utils.js";
 import { ResidualReactElementVisitor } from "./ResidualReactElementVisitor.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
@@ -944,7 +944,7 @@ export class ResidualHeapVisitor {
     let feasibleT, feasibleF;
     let savedPath = this.realm.pathConditions;
     try {
-      this.realm.pathConditions = this.scope instanceof Generator ? this.scope.pathConditions : [];
+      this.realm.pathConditions = this.scope instanceof Generator ? this.scope.pathConditions : createPathConditions();
 
       let impliesT = Path.implies(condition);
       let impliesF = Path.impliesNot(condition);

@@ -12,6 +12,7 @@
 import type { BabelNodeSourceLocation } from "@babel/types";
 import invariant from "./invariant.js";
 import type { Effects } from "./realm.js";
+import { PathConditions } from "./types.js";
 import { AbstractValue, EmptyValue, Value } from "./values/index.js";
 
 export class Completion {
@@ -189,14 +190,14 @@ export class JoinedNormalAndAbruptCompletions extends NormalCompletion {
     this.joinCondition = joinCondition;
     this.consequent = consequent;
     this.alternate = alternate;
-    this.pathConditionsAtCreation = [].concat(joinCondition.$Realm.pathConditions);
+    this.pathConditionsAtCreation = joinCondition.$Realm.pathConditions;
   }
 
   joinCondition: AbstractValue;
   consequent: AbruptCompletion | NormalCompletion;
   alternate: AbruptCompletion | NormalCompletion;
   composedWith: void | JoinedNormalAndAbruptCompletions;
-  pathConditionsAtCreation: Array<AbstractValue>;
+  pathConditionsAtCreation: PathConditions;
   savedEffects: void | Effects;
 
   containsSelectedCompletion(selector: Completion => boolean): boolean {
