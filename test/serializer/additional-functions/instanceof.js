@@ -27,5 +27,5 @@ function fn(x) {
 this.__optimize && __optimize(fn);
 
 inspect = function() {
-  return fn(Object)
+  return fn(Object);
 };
