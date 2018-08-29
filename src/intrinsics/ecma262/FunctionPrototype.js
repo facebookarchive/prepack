@@ -61,8 +61,33 @@ export default function(realm: Realm, obj: ObjectValue): void {
     return Call(realm, func, thisArg, argList);
   });
 
-  // ECMA262 19.2.3.1
-  obj.defineNativeMethod("apply", 2, (func, [thisArg, argArray]) => {
+  function conditionalFunctionApply(
+    func,
+    thisArg,
+    condValue: AbstractValue,
+    consequentVal: Value,
+    alternateVal: Value
+  ): Value {
+    return realm.evaluateWithAbstractConditional(
+      condValue,
+      () => {
+        return realm.evaluateForEffects(
+          () => functionApply(func, thisArg, consequentVal),
+          null,
+          "conditionalFunctionApply consequent"
+        );
+      },
+      () => {
+        return realm.evaluateForEffects(
+          () => functionApply(func, thisArg, alternateVal),
+          null,
+          "conditionalFunctionApply alternate"
+        );
+      }
+    );
+  }
+
+  function functionApply(func, thisArg, argArray) {
     // 1. If IsCallable(func) is false, throw a TypeError exception.
     if (IsCallable(realm, func) === false) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
@@ -76,6 +101,22 @@ export default function(realm: Realm, obj: ObjectValue): void {
       return Call(realm, func, thisArg);
     }
 
+    if (argArray instanceof AbstractValue) {
+      if (argArray.kind === "conditional") {
+        let [condValue, consequentVal, alternateVal] = argArray.args;
+        invariant(argArray instanceof AbstractValue);
+        return conditionalFunctionApply(func, thisArg, condValue, consequentVal, alternateVal);
+      } else if (argArray.kind === "||") {
+        let [leftValue, rightValue] = argArray.args;
+        invariant(leftValue instanceof AbstractValue);
+        return conditionalFunctionApply(func, thisArg, leftValue, leftValue, rightValue);
+      } else if (argArray.kind === "&&") {
+        let [leftValue, rightValue] = argArray.args;
+        invariant(leftValue instanceof AbstractValue);
+        return conditionalFunctionApply(func, thisArg, leftValue, rightValue, leftValue);
+      }
+    }
+
     // 3. Let argList be ? CreateListFromArrayLike(argArray).
     let argList = Create.CreateListFromArrayLike(realm, argArray);
 
@@ -83,7 +124,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
     // 5. Return ? Call(func, thisArg, argList).
     return Call(realm, func, thisArg, argList);
-  });
+  }
+
+  // ECMA262 19.2.3.1
+  obj.defineNativeMethod("apply", 2, (func, [thisArg, argArray]) => functionApply(func, thisArg, argArray));
 
   // ECMA262 19.2.3.2
   obj.defineNativeMethod("bind", 1, (context, [thisArg, ...args]) => {

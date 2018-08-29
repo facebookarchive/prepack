@@ -618,6 +618,7 @@ export class Reconciler {
     let instance = createClassInstanceForFirstRenderOnly(this.realm, componentType, props, context, evaluatedNode);
     let getDerivedStateFromProps = Get(this.realm, componentType, "getDerivedStateFromProps");
     let getSnapshotBeforeUpdate = Get(this.realm, instance, "getSnapshotBeforeUpdate");
+    instance.foo = true;
 
     // if either getDerivedStateFromProps or getSnapshotBeforeUpdate exist, then
     // we don't try and execute componentWillMount and UNSAFE_componentWillMount

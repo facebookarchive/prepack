@@ -206,26 +206,25 @@ function callBothFunctionsAndJoinTheirEffects(
   env: LexicalEnvironment,
   realm: Realm
 ): Value {
-  let [cond, func1, func2] = args;
-  invariant(cond instanceof AbstractValue);
-  invariant(Value.isTypeCompatibleWith(func1.getType(), FunctionValue));
-  invariant(Value.isTypeCompatibleWith(func2.getType(), FunctionValue));
+  let [condValue, consequentVal, alternateVal] = args;
+  invariant(condValue instanceof AbstractValue);
 
-  const e1 = realm.evaluateForEffects(
-    () => EvaluateCall(func1, func1, ast, strictCode, env, realm),
-    undefined,
-    "callBothFunctionsAndJoinTheirEffects/1"
+  return realm.evaluateWithAbstractConditional(
+    condValue,
+    () => {
+      return realm.evaluateForEffects(
+        () => EvaluateCall(consequentVal, consequentVal, ast, strictCode, env, realm),
+        "callBothFunctionsAndJoinTheirEffects consequent"
+      );
+    },
+    () => {
+      return realm.evaluateForEffects(
+        () => EvaluateCall(alternateVal, alternateVal, ast, strictCode, env, realm),
+        null,
+        "callBothFunctionsAndJoinTheirEffects alternate"
+      );
+    }
   );
-
-  const e2 = realm.evaluateForEffects(
-    () => EvaluateCall(func2, func2, ast, strictCode, env, realm),
-    undefined,
-    "callBothFunctionsAndJoinTheirEffects/2"
-  );
-
-  let joinedEffects = Join.joinEffects(cond, e1, e2);
-  realm.applyEffects(joinedEffects);
-  return realm.returnOrThrowCompletion(joinedEffects.result);
 }
 
 function generateRuntimeCall(
@@ -309,15 +308,15 @@ function EvaluateCall(
 ): Value {
   if (func instanceof AbstractValue) {
     let loc = ast.callee.type === "MemberExpression" ? ast.callee.property.loc : ast.callee.loc;
-    if (!Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
+    if (func.kind === "conditional") {
+      return callBothFunctionsAndJoinTheirEffects(func.args, ast, strictCode, env, realm);
+    } else if (!Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
       if (!realm.isInPureScope()) {
         // If this is not a function, this call might throw which can change the state of the program.
         // If this is called from a pure function we handle it using evaluateWithPossiblyAbruptCompletion.
         let error = new CompilerDiagnostic("might not be a function", loc, "PP0005", "RecoverableError");
         if (realm.handleError(error) === "Fail") throw new FatalError();
       }
-    } else if (func.kind === "conditional") {
-      return callBothFunctionsAndJoinTheirEffects(func.args, ast, strictCode, env, realm);
     } else {
       // Assume that it is a safe function. TODO #705: really?
     }
