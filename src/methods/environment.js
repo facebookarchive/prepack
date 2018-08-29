@@ -205,6 +205,48 @@ export class EnvironmentImplementation {
     return val;
   }
 
+  _dereferenceConditional(
+    realm: Realm,
+    ref: Reference,
+    condValue: AbstractValue,
+    consequentVal: Value,
+    alternateVal: Value
+  ): Value {
+    return realm.evaluateWithAbstractConditional(
+      condValue,
+      () => {
+        return realm.evaluateForEffects(
+          () => {
+            let consequentRef = new Reference(
+              ((consequentVal: any): BaseValue),
+              ref.referencedName,
+              ref.strict,
+              ref.thisValue
+            );
+            return this._dereference(realm, consequentRef);
+          },
+          null,
+          "_dereferenceConditional consequent"
+        );
+      },
+      () => {
+        return realm.evaluateForEffects(
+          () => {
+            let alternateRef = new Reference(
+              ((alternateVal: any): BaseValue),
+              ref.referencedName,
+              ref.strict,
+              ref.thisValue
+            );
+            return this._dereference(realm, alternateRef);
+          },
+          null,
+          "_dereferenceConditional alternate"
+        );
+      }
+    );
+  }
+
   _dereference(realm: Realm, V: Reference | Value): Value {
     // This step is not necessary as we propagate completions with exceptions.
     // 1. ReturnIfAbrupt(V).
@@ -226,6 +268,18 @@ export class EnvironmentImplementation {
     // 5. If IsPropertyReference(V) is true, then
     if (this.IsPropertyReference(realm, V)) {
       if (base instanceof AbstractValue) {
+        if (base.mightNotBeObject()) {
+          if (base.kind === "conditional") {
+            let [condValue, consequentVal, alternateVal] = base.args;
+            return this._dereferenceConditional(realm, V, condValue, consequentVal, alternateVal);
+          } else if (base.kind === "||") {
+            let [leftValue, rightValue] = base.args;
+            return this._dereferenceConditional(realm, V, leftValue, leftValue, rightValue);
+          } else if (base.kind === "&&") {
+            let [leftValue, rightValue] = base.args;
+            return this._dereferenceConditional(realm, V, leftValue, rightValue, leftValue);
+          }
+        }
         // Ensure that abstract values are coerced to objects. This might yield
         // an operation that might throw.
         base = To.ToObject(realm, base);
