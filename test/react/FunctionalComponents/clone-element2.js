@@ -8,7 +8,7 @@ function App(props) {
 App.getTrials = function(renderer, Root) {
   renderer.update(<Root />);
   return [["clone element 2", renderer.toJSON()]];
-}
+};
 
 if (this.__optimizeReactComponentTree) {
   __optimizeReactComponentTree(App);
