@@ -303,6 +303,7 @@ function EvaluateCall(
     if (func.kind === "conditional") {
       let [condValue, consequentVal, alternateVal] = func.args;
       invariant(condValue instanceof AbstractValue);
+      // If neither values are functions than do not try and call both functions with a conditional
       if (
         Value.isTypeCompatibleWith(consequentVal.getType(), FunctionValue) ||
         Value.isTypeCompatibleWith(alternateVal.getType(), FunctionValue)
@@ -320,11 +321,23 @@ function EvaluateCall(
     } else if (func.kind === "||") {
       let [leftValue, rightValue] = func.args;
       invariant(leftValue instanceof AbstractValue);
-      return callBothFunctionsAndJoinTheirEffects(leftValue, leftValue, rightValue, ast, strictCode, env, realm);
+      // If neither values are functions than do not try and call both functions with a conditional
+      if (
+        Value.isTypeCompatibleWith(leftValue.getType(), FunctionValue) ||
+        Value.isTypeCompatibleWith(rightValue.getType(), FunctionValue)
+      ) {
+        return callBothFunctionsAndJoinTheirEffects(leftValue, leftValue, rightValue, ast, strictCode, env, realm);
+      }
     } else if (func.kind === "&&") {
       let [leftValue, rightValue] = func.args;
       invariant(leftValue instanceof AbstractValue);
-      return callBothFunctionsAndJoinTheirEffects(leftValue, rightValue, leftValue, ast, strictCode, env, realm);
+      // If neither values are functions than do not try and call both functions with a conditional
+      if (
+        Value.isTypeCompatibleWith(leftValue.getType(), FunctionValue) ||
+        Value.isTypeCompatibleWith(rightValue.getType(), FunctionValue)
+      ) {
+        return callBothFunctionsAndJoinTheirEffects(leftValue, rightValue, leftValue, ast, strictCode, env, realm);
+      }
     }
     if (!Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
       if (!realm.isInPureScope()) {

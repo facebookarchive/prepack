@@ -253,7 +253,7 @@ export default function(realm: Realm): NativeFunctionValue {
     evaluateForEffects(consequentVal, false);
     evaluateForEffects(alternateVal, false);
 
-    // Now evalaute both sides again, but this time materialize if snapshotting is
+    // Now evaluate both sides again, but this time materialize if snapshotting is
     // being used conditionally.
     realm.evaluateWithAbstractConditional(
       condValue,
@@ -270,7 +270,7 @@ export default function(realm: Realm): NativeFunctionValue {
     // 2. If only one argument was passed, return to.
     if (!sources.length) return to;
 
-    // Check if any soureces are conditionals and if so, fork the work
+    // Check if any sources are conditionals and if so, fork the work
     // into many subsequent objectAssign calls for each branch of the conditional
     for (let i = 0; i < sources.length; i++) {
       let nextSource = sources[i];
