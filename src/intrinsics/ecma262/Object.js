@@ -231,15 +231,17 @@ export default function(realm: Realm): NativeFunctionValue {
     const evaluateForEffects = (val, materializeIfSnapshottingIsConditional) =>
       realm.evaluateForEffects(
         () => {
-          let wasSnapshotedBeforehand = to.temporalAlias !== undefined;
+          let wasSnapshotedBeforehand = to instanceof ObjectValue && to.temporalAlias !== undefined;
           performObjectAssign(to, [...prefixSources, val, ...suffixSources]);
           // Check if snapshotting occured
-          if (materializeIfSnapshottingIsConditional && to.temporalAlias === undefined && conditionallySnapshotted) {
-            // We don't really want to leak, but rather materialize the object
-            // so we assign its bindings correctly. We need #2456 to do that though.
-            Leak.value(realm, to);
-          } else if (!wasSnapshotedBeforehand && to.temporalAlias !== undefined && !conditionallySnapshotted) {
-            conditionallySnapshotted = true;
+          if (to instanceof ObjectValue) {
+            if (materializeIfSnapshottingIsConditional && to.temporalAlias === undefined && conditionallySnapshotted) {
+              // We don't really want to leak, but rather materialize the object
+              // so we assign its bindings correctly. We need #2456 to do that though.
+              Leak.value(realm, to);
+            } else if (!wasSnapshotedBeforehand && to.temporalAlias !== undefined && !conditionallySnapshotted) {
+              conditionallySnapshotted = true;
+            }
           }
           return realm.intrinsics.undefined;
         },

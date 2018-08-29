@@ -31,10 +31,10 @@ import {
   EnvironmentRecord,
   FunctionEnvironmentRecord,
   GlobalEnvironmentRecord,
+  isValidBaseValue,
   LexicalEnvironment,
   ObjectEnvironmentRecord,
   Reference,
-  mightBecomeAnObject,
   type BaseValue,
 } from "../environment.js";
 import { AbruptCompletion, SimpleNormalCompletion } from "../completions.js";
@@ -219,11 +219,7 @@ export class EnvironmentImplementation {
       () => {
         return realm.evaluateForEffects(
           () => {
-            if (
-              consequentVal instanceof AbstractValue ||
-              consequentVal instanceof ObjectValue ||
-              mightBecomeAnObject(consequentVal)
-            ) {
+            if (isValidBaseValue(consequentVal)) {
               let consequentRef = new Reference(
                 ((consequentVal: any): BaseValue),
                 ref.referencedName,
@@ -232,7 +228,7 @@ export class EnvironmentImplementation {
               );
               return this._dereference(realm, consequentRef);
             }
-            return consequentVal;
+            return this._dereference(realm, ref, false);
           },
           null,
           "_dereferenceConditional consequent"
@@ -241,11 +237,7 @@ export class EnvironmentImplementation {
       () => {
         return realm.evaluateForEffects(
           () => {
-            if (
-              alternateVal instanceof AbstractValue ||
-              alternateVal instanceof ObjectValue ||
-              mightBecomeAnObject(alternateVal)
-            ) {
+            if (isValidBaseValue(alternateVal)) {
               let alternateRef = new Reference(
                 ((alternateVal: any): BaseValue),
                 ref.referencedName,
@@ -254,7 +246,7 @@ export class EnvironmentImplementation {
               );
               return this._dereference(realm, alternateRef);
             }
-            return alternateVal;
+            return this._dereference(realm, ref, false);
           },
           null,
           "_dereferenceConditional alternate"
@@ -263,7 +255,7 @@ export class EnvironmentImplementation {
     );
   }
 
-  _dereference(realm: Realm, V: Reference | Value): Value {
+  _dereference(realm: Realm, V: Reference | Value, deferenceConditionals?: boolean = true): Value {
     // This step is not necessary as we propagate completions with exceptions.
     // 1. ReturnIfAbrupt(V).
 
@@ -284,11 +276,13 @@ export class EnvironmentImplementation {
     // 5. If IsPropertyReference(V) is true, then
     if (this.IsPropertyReference(realm, V)) {
       if (base instanceof AbstractValue) {
-        if (!(base instanceof AbstractObjectValue)) {
+        if (deferenceConditionals && !(base instanceof AbstractObjectValue)) {
           if (base.kind === "conditional") {
             let [condValue, consequentVal, alternateVal] = base.args;
             invariant(condValue instanceof AbstractValue);
-            return this._dereferenceConditional(realm, V, condValue, consequentVal, alternateVal);
+            if (isValidBaseValue(consequentVal) || isValidBaseValue(alternateVal)) {
+              return this._dereferenceConditional(realm, V, condValue, consequentVal, alternateVal);
+            }
           } else if (base.kind === "||") {
             let [leftValue, rightValue] = base.args;
             invariant(leftValue instanceof AbstractValue);

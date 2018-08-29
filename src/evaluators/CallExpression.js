@@ -11,7 +11,7 @@
 
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
-import { type LexicalEnvironment, type BaseValue, mightBecomeAnObject } from "../environment.js";
+import { type LexicalEnvironment, type BaseValue, isValidBaseValue } from "../environment.js";
 import { EnvironmentRecord } from "../environment.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import {
@@ -29,7 +29,7 @@ import {
   Value,
 } from "../values/index.js";
 import { Reference } from "../environment.js";
-import { Environment, Functions, Leak, Join } from "../singletons.js";
+import { Environment, Functions, Leak } from "../singletons.js";
 import {
   ArgumentListEvaluation,
   EvaluateDirectCall,
@@ -155,11 +155,7 @@ function evaluateConditionalReferenceBase(
     () => {
       return realm.evaluateForEffects(
         () => {
-          if (
-            consequentVal instanceof AbstractValue ||
-            consequentVal instanceof ObjectValue ||
-            mightBecomeAnObject(consequentVal)
-          ) {
+          if (isValidBaseValue(consequentVal)) {
             let consequentRef = new Reference(
               ((consequentVal: any): BaseValue),
               ref.referencedName,
@@ -177,11 +173,7 @@ function evaluateConditionalReferenceBase(
     () => {
       return realm.evaluateForEffects(
         () => {
-          if (
-            alternateVal instanceof AbstractValue ||
-            alternateVal instanceof ObjectValue ||
-            mightBecomeAnObject(alternateVal)
-          ) {
+          if (isValidBaseValue(alternateVal)) {
             let alternateRef = new Reference(
               ((alternateVal: any): BaseValue),
               ref.referencedName,
@@ -200,20 +192,20 @@ function evaluateConditionalReferenceBase(
 }
 
 function callBothFunctionsAndJoinTheirEffects(
-  args: Array<Value>,
+  condValue: AbstractValue,
+  consequentVal: Value,
+  alternateVal: Value,
   ast: BabelNodeCallExpression,
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
 ): Value {
-  let [condValue, consequentVal, alternateVal] = args;
-  invariant(condValue instanceof AbstractValue);
-
   return realm.evaluateWithAbstractConditional(
     condValue,
     () => {
       return realm.evaluateForEffects(
         () => EvaluateCall(consequentVal, consequentVal, ast, strictCode, env, realm),
+        null,
         "callBothFunctionsAndJoinTheirEffects consequent"
       );
     },
@@ -309,8 +301,32 @@ function EvaluateCall(
   if (func instanceof AbstractValue) {
     let loc = ast.callee.type === "MemberExpression" ? ast.callee.property.loc : ast.callee.loc;
     if (func.kind === "conditional") {
-      return callBothFunctionsAndJoinTheirEffects(func.args, ast, strictCode, env, realm);
-    } else if (!Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
+      let [condValue, consequentVal, alternateVal] = func.args;
+      invariant(condValue instanceof AbstractValue);
+      if (
+        Value.isTypeCompatibleWith(consequentVal.getType(), FunctionValue) ||
+        Value.isTypeCompatibleWith(alternateVal.getType(), FunctionValue)
+      ) {
+        return callBothFunctionsAndJoinTheirEffects(
+          condValue,
+          consequentVal,
+          alternateVal,
+          ast,
+          strictCode,
+          env,
+          realm
+        );
+      }
+    } else if (func.kind === "||") {
+      let [leftValue, rightValue] = func.args;
+      invariant(leftValue instanceof AbstractValue);
+      return callBothFunctionsAndJoinTheirEffects(leftValue, leftValue, rightValue, ast, strictCode, env, realm);
+    } else if (func.kind === "&&") {
+      let [leftValue, rightValue] = func.args;
+      invariant(leftValue instanceof AbstractValue);
+      return callBothFunctionsAndJoinTheirEffects(leftValue, rightValue, leftValue, ast, strictCode, env, realm);
+    }
+    if (!Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
       if (!realm.isInPureScope()) {
         // If this is not a function, this call might throw which can change the state of the program.
         // If this is called from a pure function we handle it using evaluateWithPossiblyAbruptCompletion.

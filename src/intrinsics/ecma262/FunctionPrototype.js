@@ -14,13 +14,14 @@ import { Functions, Properties } from "../../singletons.js";
 import {
   AbstractValue,
   BooleanValue,
-  NullValue,
-  UndefinedValue,
-  NumberValue,
-  StringValue,
   FunctionValue,
   NativeFunctionValue,
+  NullValue,
+  NumberValue,
   ObjectValue,
+  StringValue,
+  UndefinedValue,
+  Value,
 } from "../../values/index.js";
 import { Call } from "../../methods/call.js";
 import { Create, To } from "../../singletons.js";
@@ -104,7 +105,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     if (argArray instanceof AbstractValue) {
       if (argArray.kind === "conditional") {
         let [condValue, consequentVal, alternateVal] = argArray.args;
-        invariant(argArray instanceof AbstractValue);
+        invariant(condValue instanceof AbstractValue);
         return conditionalFunctionApply(func, thisArg, condValue, consequentVal, alternateVal);
       } else if (argArray.kind === "||") {
         let [leftValue, rightValue] = argArray.args;

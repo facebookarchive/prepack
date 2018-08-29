@@ -1,5 +1,5 @@
 function fn(x, y, z) {
-  var a = x ? y : z || { a : 2 };
+  var a = x ? y : z || { a: 2 };
 
   return Object.assign({}, a, { b: 1 });
 }

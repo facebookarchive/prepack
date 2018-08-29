@@ -1406,6 +1406,10 @@ export type BaseValue =
   | EnvironmentRecord;
 export type ReferenceName = string | SymbolValue;
 
+export function isValidBaseValue(val: Value) {
+  return val instanceof AbstractValue || val instanceof ObjectValue || mightBecomeAnObject(val);
+}
+
 export function mightBecomeAnObject(base: Value): boolean {
   let type = base.getType();
   // The top Value type might be able to become an object. We let it
