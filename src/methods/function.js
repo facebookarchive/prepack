@@ -281,6 +281,12 @@ function InternalConstruct(
       // a. If Type(result.[[Value]]) is Object, return NormalCompletion(result.[[Value]]).
       if (value.mightBeObject()) return value.throwIfNotConcreteObject();
 
+      // b. If kind is "base", return NormalCompletion(thisArgument).
+      if (kind === "base") {
+        invariant(thisArgument, "this wasn't initialized for some reason");
+        return thisArgument;
+      }
+
       // c. If result.[[Value]] is not undefined, throw a TypeError exception.
       if (!value.mightBeUndefined()) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "constructor must return Object");
