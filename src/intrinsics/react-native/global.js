@@ -12,17 +12,21 @@
 import type { Realm } from "../../realm.js";
 
 import initializeConsole from "../common/console.js";
+import { PropertyDescriptor } from "../../descriptors.js";
 
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
 
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
-    global.$DefineOwnProperty("console", {
-      value: initializeConsole(realm),
-      writable: true,
-      enumerable: false,
-      configurable: true,
-    });
+    global.$DefineOwnProperty(
+      "console",
+      new PropertyDescriptor({
+        value: initializeConsole(realm),
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      })
+    );
 
   for (let name of [
     "document",
@@ -58,11 +62,14 @@ export default function(realm: Realm): void {
     "FileReader",
     "XMLHttpRequest",
   ]) {
-    global.$DefineOwnProperty(name, {
-      value: realm.intrinsics.undefined,
-      writable: true,
-      enumerable: false,
-      configurable: true,
-    });
+    global.$DefineOwnProperty(
+      name,
+      new PropertyDescriptor({
+        value: realm.intrinsics.undefined,
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      })
+    );
   }
 }

@@ -25,12 +25,13 @@ import {
   Value,
 } from "./index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
-import { IsDataDescriptor, cloneDescriptor, equalDescriptors } from "../methods/index.js";
+import { IsDataDescriptor } from "../methods/index.js";
 import { Leak, Join, Widen } from "../singletons.js";
 import invariant from "../invariant.js";
 import { createOperationDescriptor, type OperationDescriptor } from "../utils/generator.js";
 import { construct_empty_effects } from "../realm.js";
 import { SimpleNormalCompletion } from "../completions.js";
+import { cloneDescriptor, equalDescriptors, PropertyDescriptor } from "../descriptors.js";
 
 export default class AbstractObjectValue extends AbstractValue {
   constructor(
@@ -326,8 +327,14 @@ export default class AbstractObjectValue extends AbstractValue {
       invariant(ob2 instanceof ObjectValue);
       let d1 = ob1.$GetOwnProperty(P);
       let d2 = ob2.$GetOwnProperty(P);
-      if (d1 === undefined || d2 === undefined || !equalDescriptors(d1, d2)) {
+      if (d1 === undefined || d2 === undefined) {
         // We do not handle the case where different loop iterations result in different kinds of propperties
+        AbstractValue.reportIntrospectionError(this, P);
+        throw new FatalError();
+      }
+      d1 = d1.throwIfNotConcrete(this.$Realm);
+      d2 = d2.throwIfNotConcrete(this.$Realm);
+      if (!equalDescriptors(d1, d2)) {
         AbstractValue.reportIntrospectionError(this, P);
         throw new FatalError();
       }
@@ -340,7 +347,9 @@ export default class AbstractObjectValue extends AbstractValue {
         invariant(d1Value instanceof Value);
         let d2Value = d2.value;
         invariant(d2Value instanceof Value);
-        desc.value = Widen.widenValues(this.$Realm, d1Value, d2Value);
+        let dValue = Widen.widenValues(this.$Realm, d1Value, d2Value);
+        invariant(dValue instanceof Value);
+        desc.value = dValue;
       } else {
         // In this case equalDescriptors guarantees exact equality betwee d1 and d2.
         // Inlining the accessors will eventually bring in data properties if the accessors have loop variant behavior
@@ -366,7 +375,7 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   // ECMA262 9.1.6
-  $DefineOwnProperty(_P: PropertyKeyValue, Desc: Descriptor): boolean {
+  $DefineOwnProperty(_P: PropertyKeyValue, _Desc: Descriptor): boolean {
     let P = _P;
     if (P instanceof StringValue) P = P.value;
     if (this.values.isTop()) {
@@ -378,10 +387,11 @@ export default class AbstractObjectValue extends AbstractValue {
     if (elements.size === 1) {
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
-        return cv.$DefineOwnProperty(P, Desc);
+        return cv.$DefineOwnProperty(P, _Desc);
       }
       invariant(false);
     } else {
+      let Desc = _Desc.throwIfNotConcrete(this.$Realm);
       if (!IsDataDescriptor(this.$Realm, Desc)) {
         AbstractValue.reportIntrospectionError(this, P);
         throw new FatalError();
@@ -395,13 +405,16 @@ export default class AbstractObjectValue extends AbstractValue {
           break;
         }
       }
-      let desc = {
+      if (firstExistingDesc) {
+        firstExistingDesc = firstExistingDesc.throwIfNotConcrete(this.$Realm);
+      }
+      let desc = new PropertyDescriptor({
         value: "value" in Desc ? Desc.value : this.$Realm.intrinsics.undefined,
         writable: "writable" in Desc ? Desc.writable : firstExistingDesc ? firstExistingDesc.writable : false,
         enumerable: "enumerable" in Desc ? Desc.enumerable : firstExistingDesc ? firstExistingDesc.enumerable : false,
         configurable:
           "configurable" in Desc ? Desc.configurable : firstExistingDesc ? firstExistingDesc.configurable : false,
-      };
+      });
       let newVal = desc.value;
       if (this.kind === "conditional") {
         // this is the join of two concrete/abstract objects
@@ -412,9 +425,19 @@ export default class AbstractObjectValue extends AbstractValue {
         invariant(ob2 instanceof ObjectValue || ob2 instanceof AbstractObjectValue);
         let d1 = ob1.$GetOwnProperty(P);
         let d2 = ob2.$GetOwnProperty(P);
-        if ((d1 !== undefined && !equalDescriptors(d1, desc)) || (d2 !== undefined && !equalDescriptors(d2, desc))) {
-          AbstractValue.reportIntrospectionError(this, P);
-          throw new FatalError();
+        if (d1 !== undefined) {
+          d1 = d1.throwIfNotConcrete(this.$Realm);
+          if (!equalDescriptors(d1, desc)) {
+            AbstractValue.reportIntrospectionError(this, P);
+            throw new FatalError();
+          }
+        }
+        if (d2 !== undefined) {
+          d2 = d2.throwIfNotConcrete(this.$Realm);
+          if (!equalDescriptors(d2, desc)) {
+            AbstractValue.reportIntrospectionError(this, P);
+            throw new FatalError();
+          }
         }
         let oldVal1 = d1 === undefined || d1.value === undefined ? this.$Realm.intrinsics.empty : d1.value;
         let oldVal2 = d2 === undefined || d2.value === undefined ? this.$Realm.intrinsics.empty : d2.value;
@@ -438,9 +461,12 @@ export default class AbstractObjectValue extends AbstractValue {
         for (let cv of elements) {
           invariant(cv instanceof ObjectValue);
           let d = cv.$GetOwnProperty(P);
-          if (d !== undefined && !equalDescriptors(d, desc)) {
-            AbstractValue.reportIntrospectionError(this, P);
-            throw new FatalError();
+          if (d !== undefined) {
+            d = d.throwIfNotConcrete(this.$Realm);
+            if (!equalDescriptors(d, desc)) {
+              AbstractValue.reportIntrospectionError(this, P);
+              throw new FatalError();
+            }
           }
           let dval = d === undefined || d.value === undefined ? this.$Realm.intrinsics.empty : d.value;
           invariant(dval instanceof Value);
@@ -957,14 +983,18 @@ export default class AbstractObjectValue extends AbstractValue {
       let result1 = true;
       let result2 = true;
       if (d1 !== undefined) {
+        d1 = d1.throwIfNotConcrete(this.$Realm);
         let newDesc1 = cloneDescriptor(d1);
         invariant(newDesc1);
+        newDesc1 = newDesc1.throwIfNotConcrete(this.$Realm);
         newDesc1.value = newVal1;
         result1 = ob1.$DefineOwnProperty(P, newDesc1);
       }
       if (d2 !== undefined) {
+        d2 = d2.throwIfNotConcrete(this.$Realm);
         let newDesc2 = cloneDescriptor(d2);
         invariant(newDesc2);
+        newDesc2 = newDesc2.throwIfNotConcrete(this.$Realm);
         newDesc2.value = newVal2;
         result2 = ob2.$DefineOwnProperty(P, newDesc2);
       }

@@ -29,6 +29,7 @@ import type {
 } from "./values/index.js";
 import { Value } from "./values/index.js";
 import { Completion } from "./completions.js";
+import type { Descriptor as DescriptorClass } from "./descriptors.js";
 import { EnvironmentRecord, LexicalEnvironment, Reference } from "./environment.js";
 import { ObjectValue } from "./values/index.js";
 import type {
@@ -134,26 +135,7 @@ export type DataBlock = Uint8Array;
 
 //
 
-export type Descriptor = {
-  writable?: boolean,
-  enumerable?: boolean,
-  configurable?: boolean,
-
-  // If value instanceof EmptyValue, then this descriptor indicates that the
-  // corresponding property has been deleted.
-  // Only internal properties (those starting with $ / where internalSlot of owning property binding is true) will ever have array values.
-  value?: Value | Array<any>,
-
-  get?: UndefinedValue | CallableObjectValue | AbstractValue,
-  set?: UndefinedValue | CallableObjectValue | AbstractValue,
-
-  // Only used if the result of a join of two descriptors is not a data descriptor with identical attribute values.
-  // When present, any update to the property must produce effects that are the join of updating both desriptors,
-  // using joinCondition as the condition of the join.
-  joinCondition?: AbstractValue,
-  descriptor1?: Descriptor,
-  descriptor2?: Descriptor,
-};
+export type Descriptor = DescriptorClass;
 
 export type FunctionBodyAstNode = {
   // Function body ast node will have uniqueOrderedTag after being interpreted.
@@ -478,9 +460,7 @@ export type PropertiesType = {
   // ECMA262 13.7.5.15
   EnumerateObjectProperties(realm: Realm, O: ObjectValue): ObjectValue,
 
-  ThrowIfMightHaveBeenDeleted(
-    value: void | Value | Array<Value> | Array<{ $Key: void | Value, $Value: void | Value }>
-  ): void,
+  ThrowIfMightHaveBeenDeleted(desc: Descriptor): void,
 
   ThrowIfInternalSlotNotWritable<T: ObjectValue>(realm: Realm, object: T, key: string): T,
 
