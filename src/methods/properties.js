@@ -1495,12 +1495,10 @@ export class PropertiesImplementation {
               absVal = createAbstractPropertyValue(ObjectValue);
               invariant(absVal instanceof AbstractObjectValue);
               absVal.makeSimple("transitive");
-              absVal = AbstractValue.createAbstractConcreteUnion(
-                realm,
-                absVal,
+              absVal = AbstractValue.createAbstractConcreteUnion(realm, absVal, [
                 realm.intrinsics.undefined,
-                realm.intrinsics.null
-              );
+                realm.intrinsics.null,
+              ]);
             } else {
               absVal = createAbstractPropertyValue(Value);
             }
@@ -1568,12 +1566,11 @@ export class PropertiesImplementation {
       if (O.isIntrinsic() && O.isPartialObject()) {
         if (value instanceof AbstractValue) {
           let savedUnion;
-          let savedIndex;
           if (value.kind === "abstractConcreteUnion") {
+            // TODO: Simplify this code by using helpers from the AbstractValue factory
+            // instead of deriving values directly.
             savedUnion = value;
-            savedIndex = savedUnion.args.findIndex(e => e instanceof AbstractValue);
-            invariant(savedIndex >= 0);
-            value = savedUnion.args[savedIndex];
+            value = savedUnion.args[0];
             invariant(value instanceof AbstractValue);
           }
           if (value.kind !== "resolved") {
@@ -1587,10 +1584,9 @@ export class PropertiesImplementation {
               skipInvariant: true,
             });
             if (savedUnion !== undefined) {
-              invariant(savedIndex !== undefined);
-              let args = savedUnion.args.slice(0);
-              args[savedIndex] = value;
-              value = AbstractValue.createAbstractConcreteUnion(realm, ...args);
+              let concreteValues = savedUnion.args.slice(1);
+              invariant(value instanceof AbstractValue);
+              value = AbstractValue.createAbstractConcreteUnion(realm, value, concreteValues);
             }
             if (realm.invariantLevel >= 1 && typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
               realm.markPropertyAsChecked(O, P);

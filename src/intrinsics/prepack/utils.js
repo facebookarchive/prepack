@@ -10,15 +10,7 @@
 /* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
-import {
-  Value,
-  AbstractValue,
-  ConcreteValue,
-  FunctionValue,
-  StringValue,
-  ObjectValue,
-  UndefinedValue,
-} from "../../values/index.js";
+import { Value, AbstractValue, FunctionValue, StringValue, ObjectValue, UndefinedValue } from "../../values/index.js";
 import { DisablePlaceholderSuffix } from "../../utils/PreludeGenerator.js";
 import { ValuesDomain } from "../../domains/index.js";
 import { describeLocation } from "../ecma262/Error.js";
@@ -67,7 +59,7 @@ export function createAbstract(
   typeNameOrTemplate?: Value | string,
   name?: string,
   options?: ObjectValue,
-  ...additionalValues: Array<ConcreteValue>
+  ...additionalValues: Array<Value>
 ): AbstractValue | AbstractObjectValue {
   if (!realm.useAbstractInterpretation) {
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
@@ -122,7 +114,6 @@ export function createAbstract(
     result.functionResultType = functionResultType;
   }
 
-  if (additionalValues.length > 0)
-    result = AbstractValue.createAbstractConcreteUnion(realm, result, ...additionalValues);
+  if (additionalValues.length > 0) result = AbstractValue.createAbstractConcreteUnion(realm, result, additionalValues);
   return result;
 }

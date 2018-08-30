@@ -30,6 +30,9 @@ export default class ConcreteValue extends Value {
     super(realm, intrinsicName);
   }
 
+  isTemporal(): boolean {
+    return false;
+  }
   mightNotBeFalse(): boolean {
     return !this.mightBeFalse();
   }

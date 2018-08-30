@@ -368,6 +368,9 @@ export default class AbstractValue extends Value {
     return false;
   }
 
+  isTemporal(): boolean {
+    return this.$Realm.getTemporalOperationEntryFromDerivedValue(this) !== undefined;
+  }
   // todo: abstract values should never be of type UndefinedValue or NullValue, assert this
   mightBeFalse(): boolean {
     let valueType = this.getType();
@@ -884,16 +887,68 @@ export default class AbstractValue extends Value {
     }
   }
 
+  static convertToTemporalIfArgsAreTemporal(realm: Realm, val: AbstractValue, condArgs?: Array<Value>): AbstractValue {
+    if (condArgs === undefined) condArgs = val.args;
+
+    let temporalArg = condArgs.find(arg => arg.isTemporal());
+    if (temporalArg !== undefined) {
+      let realmGenerator = realm.generator;
+      invariant(realmGenerator !== undefined);
+      invariant(val.operationDescriptor !== undefined);
+      return realmGenerator.deriveAbstract(val.types, val.values, val.args, val.operationDescriptor);
+    } else {
+      return val;
+    }
+  }
+
+  static dischargeValuesFromUnion(realm: Realm, union: AbstractValue): [AbstractValue, Array<Value>] {
+    invariant(union instanceof AbstractValue && union.kind === "abstractConcreteUnion");
+    invariant(union.args[0] instanceof AbstractValue);
+    invariant(union.args[1] instanceof ConcreteValue);
+
+    let [abstractValue, ...concreteValues] = union.args;
+
+    if (!abstractValue.isTemporal()) {
+      // We make the abstract value in an abstract concrete union temporal, as it is predicated
+      // on the conditions that preclude the concrete values in the union. The type invariant
+      // also only applies in that condition, so it is skipped when deriving the value
+      // See #2327
+      let realmGenerator = realm.generator;
+
+      invariant(realmGenerator !== undefined);
+      invariant(abstractValue.operationDescriptor !== undefined);
+      abstractValue = realmGenerator.deriveAbstract(
+        abstractValue.types,
+        abstractValue.values,
+        abstractValue.args,
+        abstractValue.operationDescriptor,
+        {
+          isPure: true,
+          skipInvariant: true,
+        }
+      );
+    }
+
+    return [abstractValue, concreteValues];
+  }
+
   // Creates a union of an abstract value with one or more concrete values.
   // The operation descriptor for the abstract values becomes the operation descriptor for the union.
   // Use this only to allow instrinsic abstract objects to be null and/or undefined.
-  static createAbstractConcreteUnion(realm: Realm, ...elements: Array<Value>): AbstractValue {
-    let concreteValues: Array<ConcreteValue> = (elements.filter(e => e instanceof ConcreteValue): any);
-    invariant(concreteValues.length > 0 && concreteValues.length === elements.length - 1);
-    let concreteSet = new Set(concreteValues);
-    let abstractValue = elements.find(e => e instanceof AbstractValue);
+  static createAbstractConcreteUnion(
+    realm: Realm,
+    abstractValue: AbstractValue,
+    concreteValues: Array<Value>
+  ): AbstractValue {
+    invariant(concreteValues.length > 0);
     invariant(abstractValue instanceof AbstractValue);
+
+    let checkedConcreteValues: Array<ConcreteValue> = (concreteValues.filter(e => e instanceof ConcreteValue): any);
+    invariant(checkedConcreteValues.length === concreteValues.length);
+
+    let concreteSet: Set<ConcreteValue> = new Set(checkedConcreteValues);
     let values;
+
     if (!abstractValue.values.isTop()) {
       abstractValue.values.getElements().forEach(v => concreteSet.add(v));
       values = new ValuesDomain(concreteSet);
@@ -901,7 +956,7 @@ export default class AbstractValue extends Value {
       values = ValuesDomain.topVal;
     }
     let types = TypesDomain.topVal;
-    let [hash, operands] = hashCall("abstractConcreteUnion", abstractValue, ...concreteValues);
+    let [hash, operands] = hashCall("abstractConcreteUnion", abstractValue, ...checkedConcreteValues);
     let result = new AbstractValue(realm, types, values, hash, operands, createOperationDescriptor("SINGLE_ARG"), {
       kind: "abstractConcreteUnion",
     });
