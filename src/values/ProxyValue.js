@@ -409,7 +409,7 @@ export default class ProxyValue extends ObjectValue {
 
     // 13. If Desc has a [[Configurable]] field and if Desc.[[Configurable]] is false, then
     let settingConfigFalse;
-    if ("configurable" in Desc && !Desc.throwIfNotConcrete(realm).configurable) {
+    if (Desc.throwIfNotConcrete(realm).configurable === false) {
       // a. Let settingConfigFalse be true.
       settingConfigFalse = true;
     } else {

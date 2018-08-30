@@ -409,11 +409,16 @@ export default class AbstractObjectValue extends AbstractValue {
         firstExistingDesc = firstExistingDesc.throwIfNotConcrete(this.$Realm);
       }
       let desc = new PropertyDescriptor({
-        value: "value" in Desc ? Desc.value : this.$Realm.intrinsics.undefined,
-        writable: "writable" in Desc ? Desc.writable : firstExistingDesc ? firstExistingDesc.writable : false,
-        enumerable: "enumerable" in Desc ? Desc.enumerable : firstExistingDesc ? firstExistingDesc.enumerable : false,
+        value: Desc.value !== undefined ? Desc.value : this.$Realm.intrinsics.undefined,
+        writable: Desc.writable !== undefined ? Desc.writable : firstExistingDesc ? firstExistingDesc.writable : false,
+        enumerable:
+          Desc.enumerable !== undefined ? Desc.enumerable : firstExistingDesc ? firstExistingDesc.enumerable : false,
         configurable:
-          "configurable" in Desc ? Desc.configurable : firstExistingDesc ? firstExistingDesc.configurable : false,
+          Desc.configurable !== undefined
+            ? Desc.configurable
+            : firstExistingDesc
+              ? firstExistingDesc.configurable
+              : false,
       });
       let newVal = desc.value;
       if (this.kind === "conditional") {

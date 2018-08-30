@@ -450,7 +450,7 @@ export class PropertiesImplementation {
       invariant(IsAccessorDescriptor(realm, ownDesc), "expected accessor");
 
       // 6. Let setter be ownDesc.[[Set]].
-      let setter = "set" in ownDesc ? ownDesc.set : undefined;
+      let setter = ownDesc.set;
 
       // 7. If setter is undefined, return false.
       if (!setter || setter instanceof UndefinedValue) return false;
@@ -662,44 +662,38 @@ export class PropertiesImplementation {
 
     // 4. If Desc has a [[Value]] field, then
     let success = true;
-    if ("value" in Desc) {
-      invariant(Desc.value instanceof Value);
+    if (Desc.value !== undefined) {
       // a. Perform CreateDataProperty(obj, "value", Desc.[[Value]]).
       success = Create.CreateDataProperty(realm, obj, "value", Desc.value) && success;
     }
 
     // 5. If Desc has a [[Writable]] field, then
-    if ("writable" in Desc) {
-      invariant(Desc.writable !== undefined);
+    if (Desc.writable !== undefined) {
       // a. Perform CreateDataProperty(obj, "writable", Desc.[[Writable]]).
       success = Create.CreateDataProperty(realm, obj, "writable", new BooleanValue(realm, Desc.writable)) && success;
     }
 
     // 6. If Desc has a [[Get]] field, then
-    if ("get" in Desc) {
-      invariant(Desc.get !== undefined);
+    if (Desc.get !== undefined) {
       // a. Perform CreateDataProperty(obj, "get", Desc.[[Get]]).
       success = Create.CreateDataProperty(realm, obj, "get", Desc.get) && success;
     }
 
     // 7. If Desc has a [[Set]] field, then
-    if ("set" in Desc) {
-      invariant(Desc.set !== undefined);
+    if (Desc.set !== undefined) {
       // a. Perform CreateDataProperty(obj, "set", Desc.[[Set]]).
       success = Create.CreateDataProperty(realm, obj, "set", Desc.set) && success;
     }
 
     // 8. If Desc has an [[Enumerable]] field, then
-    if ("enumerable" in Desc) {
-      invariant(Desc.enumerable !== undefined);
+    if (Desc.enumerable !== undefined) {
       // a. Perform CreateDataProperty(obj, "enumerable", Desc.[[Enumerable]]).
       success =
         Create.CreateDataProperty(realm, obj, "enumerable", new BooleanValue(realm, Desc.enumerable)) && success;
     }
 
     // 9. If Desc has a [[Configurable]] field, then
-    if ("configurable" in Desc) {
-      invariant(Desc.configurable !== undefined);
+    if (Desc.configurable !== undefined) {
       // a. Perform CreateDataProperty(obj, "configurable", Desc.[[Configurable]]).
       success =
         Create.CreateDataProperty(realm, obj, "configurable", new BooleanValue(realm, Desc.configurable)) && success;
@@ -806,22 +800,22 @@ export class PropertiesImplementation {
     // 3. If either IsGenericDescriptor(Desc) or IsDataDescriptor(Desc) is true, then
     if (IsGenericDescriptor(realm, Desc) || IsDataDescriptor(realm, Desc)) {
       // a. If Desc does not have a [[Value]] field, set Desc.[[Value]] to like.[[Value]].
-      if (!("value" in Desc)) Desc.value = like.value;
+      if (Desc.value === undefined) Desc.value = like.value;
       // b. If Desc does not have a [[Writable]] field, set Desc.[[Writable]] to like.[[Writable]].
-      if (!("writable" in Desc)) Desc.writable = like.writable;
+      if (Desc.writable === undefined) Desc.writable = like.writable;
     } else {
       // 4. Else,
       // a. If Desc does not have a [[Get]] field, set Desc.[[Get]] to like.[[Get]].
-      if (!("get" in Desc)) Desc.get = like.get;
+      if (Desc.get === undefined) Desc.get = like.get;
       // b. If Desc does not have a [[Set]] field, set Desc.[[Set]] to like.[[Set]].
-      if (!("set" in Desc)) Desc.set = like.set;
+      if (Desc.set === undefined) Desc.set = like.set;
     }
 
     // 5. If Desc does not have an [[Enumerable]] field, set Desc.[[Enumerable]] to like.[[Enumerable]].
-    if (!("enumerable" in Desc)) Desc.enumerable = like.enumerable;
+    if (Desc.enumerable === undefined) Desc.enumerable = like.enumerable;
 
     // 6. If Desc does not have a [[Configurable]] field, set Desc.[[Configurable]] to like.[[Configurable]].
-    if (!("configurable" in Desc)) Desc.configurable = like.configurable;
+    if (Desc.configurable === undefined) Desc.configurable = like.configurable;
 
     // 7. Return Desc.
     return Desc;
@@ -889,10 +883,10 @@ export class PropertiesImplementation {
             O,
             P,
             new PropertyDescriptor({
-              value: "value" in Desc ? Desc.value : realm.intrinsics.undefined,
-              writable: "writable" in Desc ? Desc.writable : false,
-              enumerable: "enumerable" in Desc ? Desc.enumerable : false,
-              configurable: "configurable" in Desc ? Desc.configurable : false,
+              value: Desc.value !== undefined ? Desc.value : realm.intrinsics.undefined,
+              writable: Desc.writable !== undefined ? Desc.writable : false,
+              enumerable: Desc.enumerable !== undefined ? Desc.enumerable : false,
+              configurable: Desc.configurable !== undefined ? Desc.configurable : false,
             })
           );
           InternalUpdatedProperty(realm, O, P, undefined);
@@ -911,10 +905,10 @@ export class PropertiesImplementation {
             O,
             P,
             new PropertyDescriptor({
-              get: "get" in Desc ? Desc.get : realm.intrinsics.undefined,
-              set: "set" in Desc ? Desc.set : realm.intrinsics.undefined,
-              enumerable: "enumerable" in Desc ? Desc.enumerable : false,
-              configurable: "configurable" in Desc ? Desc.configurable : false,
+              get: Desc.get !== undefined ? Desc.get : realm.intrinsics.undefined,
+              set: Desc.set !== undefined ? Desc.set : realm.intrinsics.undefined,
+              enumerable: Desc.enumerable !== undefined ? Desc.enumerable : false,
+              configurable: Desc.configurable !== undefined ? Desc.configurable : false,
             })
           );
           InternalUpdatedProperty(realm, O, P, undefined);
@@ -929,13 +923,20 @@ export class PropertiesImplementation {
     Desc = Desc.throwIfNotConcrete(realm);
 
     // 3. Return true, if every field in Desc is absent.
-    if (!Object.keys(Desc).length) return true;
+    let allAbsent = true;
+    for (let field in Desc) {
+      if ((Desc: any)[field] !== undefined) {
+        allAbsent = false;
+        break;
+      }
+    }
+    if (allAbsent) return true;
 
     // 4. Return true, if every field in Desc also occurs in current and the value of every field in Desc is the
     // same value as the corresponding field in current when compared using the SameValue algorithm.
     let identical = true;
     for (let field in Desc) {
-      if (!(field in current)) {
+      if ((current: any)[field] === undefined) {
         identical = false;
       } else {
         let dval = InternalDescriptorPropertyToValue(realm, (Desc: any)[field]);
@@ -966,7 +967,7 @@ export class PropertiesImplementation {
       if (Desc.configurable) return false;
 
       // b. Return false, if the [[Enumerable]] field of Desc is present and the [[Enumerable]] fields of current and Desc are the Boolean negation of each other.
-      if ("enumerable" in Desc && Desc.enumerable !== current.enumerable) {
+      if (Desc.enumerable !== undefined && Desc.enumerable !== current.enumerable) {
         return false;
       }
     }
@@ -1055,8 +1056,8 @@ export class PropertiesImplementation {
       // If the property might have been deleted, we need to ensure that either
       // the new descriptor overrides any existing values, or always results in
       // the default value.
-      let unknownEnumerable = !("enumerable" in Desc) && !!current.enumerable;
-      let unknownWritable = !("writable" in Desc) && !!current.writable;
+      let unknownEnumerable = Desc.enumerable === undefined && !!current.enumerable;
+      let unknownWritable = Desc.writable === undefined && !!current.writable;
       if (unknownEnumerable || unknownWritable) {
         let error = new CompilerDiagnostic(
           "unknown descriptor attributes on deleted property",
@@ -1091,7 +1092,11 @@ export class PropertiesImplementation {
 
       // a. For each field of Desc that is present, set the corresponding attribute of the property named P of
       //    object O to the value of the field.
-      for (let field in Desc) (current: any)[field] = (Desc: any)[field];
+      for (let field in Desc) {
+        if ((Desc: any)[field] !== undefined) {
+          (current: any)[field] = (Desc: any)[field];
+        }
+      }
       InternalUpdatedProperty(realm, O, P, oldDesc);
     }
 
@@ -1341,7 +1346,7 @@ export class PropertiesImplementation {
 
     // 12. If newLenDesc.[[Writable]] is absent or has the value true, let newWritable be true.
     let newWritable;
-    if (!("writable" in newLenDesc) || newLenDesc.writable === true) {
+    if (newLenDesc.writable === undefined || newLenDesc.writable === true) {
       newWritable = true;
     } else {
       // 13. Else,
@@ -1594,9 +1599,9 @@ export class PropertiesImplementation {
               P,
               new PropertyDescriptor({
                 value: value,
-                writable: "writable" in X ? X.writable : false,
-                enumerable: "enumerable" in X ? X.enumerable : false,
-                configurable: "configurable" in X ? X.configurable : false,
+                writable: X.writable !== undefined ? X.writable : false,
+                enumerable: X.enumerable !== undefined ? X.enumerable : false,
+                configurable: X.configurable !== undefined ? X.configurable : false,
               })
             );
           }

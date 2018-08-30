@@ -700,7 +700,7 @@ export class ResidualHeapSerializer {
 
     let descriptorsKey = [];
     for (let boolKey of boolKeys) {
-      if (boolKey in desc) {
+      if ((desc: any)[boolKey] !== undefined) {
         let b: boolean = (desc: any)[boolKey];
         invariant(b !== undefined);
         descProps.push(t.objectProperty(t.identifier(boolKey), t.booleanLiteral(b)));
@@ -720,7 +720,7 @@ export class ResidualHeapSerializer {
     invariant(descriptorId !== undefined);
 
     for (let descKey of valKeys) {
-      if (descKey in desc) {
+      if ((desc: any)[descKey] !== undefined) {
         let descValue: Value = (desc: any)[descKey];
         invariant(descValue instanceof Value);
         if (descValue instanceof UndefinedValue) {

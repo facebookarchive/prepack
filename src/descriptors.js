@@ -60,12 +60,12 @@ export class PropertyDescriptor extends Descriptor {
 
   constructor(desc: DescriptorInitializer | PropertyDescriptor) {
     super();
-    if (desc.hasOwnProperty("writable")) this.writable = desc.writable;
-    if (desc.hasOwnProperty("enumerable")) this.enumerable = desc.enumerable;
-    if (desc.hasOwnProperty("configurable")) this.configurable = desc.configurable;
-    if (desc.hasOwnProperty("value")) this.value = desc.value;
-    if (desc.hasOwnProperty("get")) this.get = desc.get;
-    if (desc.hasOwnProperty("set")) this.set = desc.set;
+    this.writable = desc.writable;
+    this.enumerable = desc.enumerable;
+    this.configurable = desc.configurable;
+    this.value = desc.value;
+    this.get = desc.get;
+    this.set = desc.set;
   }
 
   throwIfNotConcrete(realm: Realm): PropertyDescriptor {
@@ -124,28 +124,13 @@ export function cloneDescriptor(d: void | PropertyDescriptor): void | PropertyDe
 
 // does not check if the contents of value properties are the same
 export function equalDescriptors(d1: PropertyDescriptor, d2: PropertyDescriptor): boolean {
-  if (d1.hasOwnProperty("writable")) {
-    if (!d2.hasOwnProperty("writable")) return false;
-    if (d1.writable !== d2.writable) return false;
+  if (d1.writable !== d2.writable) return false;
+  if (d1.enumerable !== d2.enumerable) return false;
+  if (d1.configurable !== d2.configurable) return false;
+  if (d1.value !== undefined) {
+    if (d2.value === undefined) return false;
   }
-  if (d1.hasOwnProperty("enumerable")) {
-    if (!d2.hasOwnProperty("enumerable")) return false;
-    if (d1.enumerable !== d2.enumerable) return false;
-  }
-  if (d1.hasOwnProperty("configurable")) {
-    if (!d2.hasOwnProperty("configurable")) return false;
-    if (d1.configurable !== d2.configurable) return false;
-  }
-  if (d1.hasOwnProperty("value")) {
-    if (!d2.hasOwnProperty("value")) return false;
-  }
-  if (d1.hasOwnProperty("get")) {
-    if (!d2.hasOwnProperty("get")) return false;
-    if (d1.get !== d2.get) return false;
-  }
-  if (d1.hasOwnProperty("set")) {
-    if (!d2.hasOwnProperty("set")) return false;
-    if (d1.set !== d2.set) return false;
-  }
+  if (d1.get !== d2.get) return false;
+  if (d1.set !== d2.set) return false;
   return true;
 }

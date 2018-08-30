@@ -368,7 +368,7 @@ export class ToImplementation {
     // 15. If either desc.[[Get]] or desc.[[Set]] is present, then
     if (desc.get || desc.set) {
       // a. If either desc.[[Value]] or desc.[[Writable]] is present, throw a TypeError exception.
-      if ("value" in desc || "writable" in desc) {
+      if (desc.value !== undefined || desc.writable !== undefined) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
       }
     }

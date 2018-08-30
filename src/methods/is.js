@@ -70,7 +70,7 @@ function IsAccessorDescriptorInternal(realm: Realm, Desc: ?Descriptor): boolean 
 
   // 2. If both Desc.[[Get]] and Desc.[[Set]] are absent, return false.
   Desc = Desc.throwIfNotConcrete(realm);
-  if (!("get" in Desc) && !("set" in Desc)) return false;
+  if (Desc.get === undefined && Desc.set === undefined) return false;
 
   // 3. Return true.
   return true;
@@ -83,7 +83,7 @@ function IsDataDescriptorInternal(realm: Realm, Desc: ?Descriptor): boolean {
 
   // If both Desc.[[Value]] and Desc.[[Writable]] are absent, return false.
   Desc = Desc.throwIfNotConcrete(realm);
-  if (!("value" in Desc) && !("writable" in Desc)) return false;
+  if (Desc.value === undefined && Desc.writable === undefined) return false;
 
   // Return true.
   return true;
