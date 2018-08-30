@@ -77,6 +77,7 @@ export default class ObjectValue extends ConcreteValue {
     // as other code checks whether this.$IsClassPrototype === undefined
     // as a proxy for whether initialization is still ongoing.
     this.$IsClassPrototype = false;
+    this.$ViewedArrayBuffer = undefined;
   }
 
   static trackedPropertyNames = [
