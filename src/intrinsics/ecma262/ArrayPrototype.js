@@ -1749,7 +1749,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let elem = O.$GetOwnProperty(i.toString());
         // b.If elem is undefined, return true.
         if (elem === undefined) return true;
-        Properties.ThrowIfMightHaveBeenDeleted(elem);
+        Properties.ThrowIfMightHaveBeenDeleted(elem.value);
       }
       // 2.Return false.
       return false;
@@ -1782,8 +1782,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
       for (let j = 0; j < len; j++) {
         // is a data property whose [[Configurable]] attribute is false.
         let prop = O.$GetOwnProperty(j.toString());
-        if (prop !== undefined && !prop.throwIfNotConcrete(realm).configurable) {
-          Properties.ThrowIfMightHaveBeenDeleted(prop);
+        if (prop !== undefined && !prop.configurable) {
+          Properties.ThrowIfMightHaveBeenDeleted(prop.value);
           throw Error(
             "Implementation defined behavior :  Array is sparse and it's prototype has some numbered properties"
           );
@@ -1795,8 +1795,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
     for (let j = 0; j < len; j++) {
       //is a data property whose [[writable]] attribute is false.
       let prop = O.$GetOwnProperty(j.toString());
-      if (prop !== undefined && !prop.throwIfNotConcrete(realm).writable) {
-        Properties.ThrowIfMightHaveBeenDeleted(prop);
+      if (prop !== undefined && !prop.writable) {
+        Properties.ThrowIfMightHaveBeenDeleted(prop.value);
         throw Error("Implementation defined behavior : property " + j.toString() + "is non writable : ");
       }
     }

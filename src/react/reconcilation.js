@@ -54,7 +54,7 @@ import {
   getValueWithBranchingLogicApplied,
   wrapReactElementInBranchOrReturnValue,
 } from "./branching.js";
-import { Completion, SimpleNormalCompletion } from "../completions.js";
+import { AbruptCompletion, SimpleNormalCompletion } from "../completions.js";
 import {
   getInitialProps,
   getInitialContext,
@@ -77,7 +77,6 @@ import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
 import { handleReportedSideEffect } from "../serializer/utils.js";
 import { createOperationDescriptor } from "../utils/generator.js";
-import { PropertyDescriptor } from "../descriptors.js";
 
 type ComponentResolutionStrategy =
   | "NORMAL"
@@ -128,7 +127,6 @@ function setContextCurrentValue(contextObject: ObjectValue | AbstractObjectValue
   let binding = contextObject.properties.get("currentValue");
 
   if (binding && binding.descriptor) {
-    invariant(binding.descriptor instanceof PropertyDescriptor);
     binding.descriptor.value = value;
   } else {
     invariant(false, "setContextCurrentValue failed to set the currentValue");
@@ -179,6 +177,7 @@ export class Reconciler {
         this.statistics.optimizedTrees++;
         return result;
       } catch (error) {
+        if (error instanceof AbruptCompletion) throw error;
         this._handleComponentTreeRootFailure(error, evaluatedRootNode);
         // flow belives we can get here, when it should never be possible
         invariant(false, "resolveReactComponentTree error not handled correctly");
@@ -1224,6 +1223,7 @@ export class Reconciler {
 
       return result;
     } catch (error) {
+      if (error instanceof AbruptCompletion) throw error;
       return this._resolveComponentResolutionFailure(
         componentType,
         error,
@@ -1235,7 +1235,7 @@ export class Reconciler {
     }
   }
 
-  _handleComponentTreeRootFailure(error: Error | Completion, evaluatedRootNode: ReactEvaluatedNode): void {
+  _handleComponentTreeRootFailure(error: Error, evaluatedRootNode: ReactEvaluatedNode): void {
     if (error.name === "Invariant Violation") {
       throw error;
     } else if (error instanceof ReconcilerFatalError) {
@@ -1243,19 +1243,6 @@ export class Reconciler {
     } else if (error instanceof UnsupportedSideEffect || error instanceof DoNotOptimize) {
       throw new ReconcilerFatalError(
         `Failed to render React component root "${evaluatedRootNode.name}" due to ${error.message}`,
-        evaluatedRootNode
-      );
-    } else if (error instanceof Completion) {
-      let value = error.value;
-      invariant(value instanceof ObjectValue);
-      let message = getProperty(this.realm, value, "message");
-      let stack = getProperty(this.realm, value, "stack");
-      invariant(message instanceof StringValue);
-      invariant(stack instanceof StringValue);
-      throw new ReconcilerFatalError(
-        `Failed to render React component "${evaluatedRootNode.name}" due to a JS error: ${message.value}\n${
-          stack.value
-        }`,
         evaluatedRootNode
       );
     }
@@ -1277,7 +1264,7 @@ export class Reconciler {
 
   _resolveComponentResolutionFailure(
     componentType: Value,
-    error: Error | Completion,
+    error: Error,
     reactElement: ObjectValue,
     context: ObjectValue | AbstractObjectValue,
     evaluatedNode: ReactEvaluatedNode,
@@ -1294,17 +1281,6 @@ export class Reconciler {
       );
     } else if (error instanceof DoNotOptimize) {
       return reactElement;
-    } else if (error instanceof Completion) {
-      let value = error.value;
-      invariant(value instanceof ObjectValue);
-      let message = getProperty(this.realm, value, "message");
-      let stack = getProperty(this.realm, value, "stack");
-      invariant(message instanceof StringValue);
-      invariant(stack instanceof StringValue);
-      throw new ReconcilerFatalError(
-        `Failed to render React component "${evaluatedNode.name}" due to a JS error: ${message.value}\n${stack.value}`,
-        evaluatedNode
-      );
     }
     let typeValue = getProperty(this.realm, reactElement, "type");
     let propsValue = getProperty(this.realm, reactElement, "props");
@@ -1418,6 +1394,8 @@ export class Reconciler {
             this.realm.applyEffects(effects);
             if (result instanceof SimpleNormalCompletion) {
               result = result.value;
+            } else {
+              invariant(false, "TODO support other types of completion");
             }
             invariant(result instanceof Value);
             return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode, needsKey);
@@ -1499,18 +1477,15 @@ export class Reconciler {
         this._findReactComponentTrees(props, evaluatedNode, treatFunctionsAs, componentType, context, branchStatus);
       } else {
         for (let [propName, binding] of value.properties) {
-          if (binding && binding.descriptor) {
-            invariant(binding.descriptor instanceof PropertyDescriptor);
-            if (binding.descriptor.enumerable) {
-              this._findReactComponentTrees(
-                getProperty(this.realm, value, propName),
-                evaluatedNode,
-                treatFunctionsAs,
-                componentType,
-                context,
-                branchStatus
-              );
-            }
+          if (binding && binding.descriptor && binding.descriptor.enumerable) {
+            this._findReactComponentTrees(
+              getProperty(this.realm, value, propName),
+              evaluatedNode,
+              treatFunctionsAs,
+              componentType,
+              context,
+              branchStatus
+            );
           }
         }
       }

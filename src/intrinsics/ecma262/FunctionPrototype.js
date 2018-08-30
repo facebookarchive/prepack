@@ -30,7 +30,6 @@ import { IsCallable } from "../../methods/is.js";
 import { HasOwnProperty, HasSomeCompatibleType } from "../../methods/has.js";
 import { OrdinaryHasInstance } from "../../methods/abstract.js";
 import invariant from "../../invariant.js";
-import { PropertyDescriptor } from "../../descriptors.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.2.3
@@ -175,17 +174,12 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 8. Perform ! DefinePropertyOrThrow(F, "length", PropertyDescriptor {[[Value]]: L, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true}).
-    Properties.DefinePropertyOrThrow(
-      realm,
-      F,
-      "length",
-      new PropertyDescriptor({
-        value: new NumberValue(realm, L),
-        writable: false,
-        enumerable: false,
-        configurable: true,
-      })
-    );
+    Properties.DefinePropertyOrThrow(realm, F, "length", {
+      value: new NumberValue(realm, L),
+      writable: false,
+      enumerable: false,
+      configurable: true,
+    });
 
     // 9. Let targetName be ? Get(Target, "name").
     let targetName = Get(realm, Target, new StringValue(realm, "name"));

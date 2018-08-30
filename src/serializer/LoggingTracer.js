@@ -33,7 +33,7 @@ function describeValue(realm: Realm, v: Value): string {
   if (v instanceof NumberValue || v instanceof BooleanValue) return v.value.toString();
   if (v instanceof UndefinedValue) return "undefined";
   if (v instanceof NullValue) return "null";
-  if (v instanceof StringValue) return JSON.stringify(v.value);
+  if (v instanceof StringValue) return `"${v.value}"`; // TODO: proper escaping
   if (v instanceof FunctionValue) return To.ToStringPartial(realm, Get(realm, v, "name")) || "(anonymous function)";
   if (v instanceof ObjectValue) return "(some object)";
   if (v instanceof AbstractValue) return "(some abstract value)";

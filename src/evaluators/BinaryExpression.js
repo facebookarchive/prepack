@@ -14,6 +14,7 @@ import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import {
+  AbstractObjectValue,
   AbstractValue,
   BooleanValue,
   ConcreteValue,
@@ -21,6 +22,7 @@ import {
   NumberValue,
   IntegralValue,
   ObjectValue,
+  PrimitiveValue,
   StringValue,
   SymbolValue,
   UndefinedValue,
@@ -195,6 +197,17 @@ export function computeBinary(
   let resultType;
   const compute = () => {
     if (lval instanceof AbstractValue || rval instanceof AbstractValue) {
+      // If the left-hand side of an instanceof operation is a primitive,
+      // and the right-hand side is a simple object (it does not have [Symbol.hasInstance]),
+      // then the result should always compute to `false`.
+      if (
+        op === "instanceof" &&
+        Value.isTypeCompatibleWith(lval.getType(), PrimitiveValue) &&
+        rval instanceof AbstractObjectValue &&
+        rval.isSimpleObject()
+      ) {
+        return realm.intrinsics.false;
+      }
       try {
         // generate error if binary operation might throw or have side effects
         resultType = getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);

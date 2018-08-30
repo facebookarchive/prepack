@@ -36,7 +36,6 @@ import {
 } from "../values/index.js";
 import invariant from "../invariant.js";
 import { createOperationDescriptor } from "../utils/generator.js";
-import { PropertyDescriptor } from "../descriptors.js";
 
 type ElementConvType = {
   Int8: (Realm, numberOrValue) => number,
@@ -279,7 +278,7 @@ export class ToImplementation {
     }
 
     // 2. Let desc be a new Property Descriptor that initially has no fields.
-    let desc = new PropertyDescriptor({});
+    let desc: Descriptor = {};
 
     // 3. Let hasEnumerable be ? HasProperty(Obj, "enumerable").
     let hasEnumerable = HasProperty(realm, Obj, "enumerable");

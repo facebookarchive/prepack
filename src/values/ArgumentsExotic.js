@@ -18,7 +18,6 @@ import { SameValuePartial } from "../methods/abstract.js";
 import { Get, OrdinaryGet } from "../methods/get.js";
 import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
-import { PropertyDescriptor } from "../descriptors.js";
 
 export default class ArgumentsExotic extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {
@@ -37,8 +36,7 @@ export default class ArgumentsExotic extends ObjectValue {
 
     // 3. If desc is undefined, return desc.
     if (desc === undefined) return undefined;
-    Properties.ThrowIfMightHaveBeenDeleted(desc);
-    desc = desc.throwIfNotConcrete(this.$Realm);
+    Properties.ThrowIfMightHaveBeenDeleted(desc.value);
 
     // 4. Let map be args.[[ParameterMap]].
     let map = args.$ParameterMap;
@@ -58,9 +56,7 @@ export default class ArgumentsExotic extends ObjectValue {
   }
 
   // ECMA262 9.4.4.2
-  $DefineOwnProperty(P: PropertyKeyValue, _Desc: Descriptor): boolean {
-    let Desc = _Desc.throwIfNotConcrete(this.$Realm);
-
+  $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
     // 1. Let args be the arguments object.
     let args = this;
 
@@ -79,7 +75,7 @@ export default class ArgumentsExotic extends ObjectValue {
       // a. If Desc.[[Value]] is not present and Desc.[[Writable]] is present and its value is false, then
       if (Desc.value === undefined && Desc.writable === false) {
         // i. Let newArgDesc be a copy of Desc.
-        newArgDesc = new PropertyDescriptor(Desc);
+        newArgDesc = Object.assign({}, Desc);
 
         // ii. Set newArgDesc.[[Value]] to Get(map, P).
         newArgDesc.value = Get(this.$Realm, map, P);

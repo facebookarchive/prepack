@@ -42,6 +42,7 @@ export default class StringValue extends PrimitiveValue {
   }
 
   toDisplayString(): string {
-    return JSON.stringify(this.value);
+    // TODO: proper escaping
+    return `"${this.value}"`;
   }
 }

@@ -48,7 +48,6 @@ import PrimitiveValue from "./values/PrimitiveValue.js";
 import { createOperationDescriptor } from "./utils/generator.js";
 
 import { SourceMapConsumer, type NullableMappedPosition } from "source-map";
-import { PropertyDescriptor } from "./descriptors.js";
 
 function deriveGetBinding(realm: Realm, binding: Binding) {
   let types = TypesDomain.topVal;
@@ -449,17 +448,12 @@ export class ObjectEnvironmentRecord extends EnvironmentRecord {
     // 4. Return ? DefinePropertyOrThrow(bindings, N, PropertyDescriptor{[[Value]]: undefined, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: configValue}).
     return new BooleanValue(
       realm,
-      Properties.DefinePropertyOrThrow(
-        realm,
-        bindings,
-        N,
-        new PropertyDescriptor({
-          value: realm.intrinsics.undefined,
-          writable: true,
-          enumerable: true,
-          configurable: configValue,
-        })
-      )
+      Properties.DefinePropertyOrThrow(realm, bindings, N, {
+        value: realm.intrinsics.undefined,
+        writable: true,
+        enumerable: true,
+        configurable: configValue,
+      })
     );
   }
 
@@ -904,8 +898,7 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
 
     // 5. If existingProp is undefined, return false.
     if (!existingProp) return false;
-    Properties.ThrowIfMightHaveBeenDeleted(existingProp);
-    existingProp = existingProp.throwIfNotConcrete(globalObject.$Realm);
+    Properties.ThrowIfMightHaveBeenDeleted(existingProp.value);
 
     // 6. If existingProp.[[Configurable]] is true, return false.
     if (existingProp.configurable) return false;
@@ -955,8 +948,7 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
 
     // 5. If existingProp is undefined, return ? IsExtensible(globalObject).
     if (!existingProp) return IsExtensible(realm, globalObject);
-    Properties.ThrowIfMightHaveBeenDeleted(existingProp);
-    existingProp = existingProp.throwIfNotConcrete(globalObject.$Realm);
+    Properties.ThrowIfMightHaveBeenDeleted(existingProp.value);
 
     // 6. If existingProp.[[Configurable]] is true, return true.
     if (existingProp.configurable) return true;
@@ -1023,20 +1015,17 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
 
     // 4. Let existingProp be ? globalObject.[[GetOwnProperty]](N).
     let existingProp = globalObject.$GetOwnProperty(N);
-    if (existingProp) {
-      existingProp = existingProp.throwIfNotConcrete(globalObject.$Realm);
-    }
 
     // 5. If existingProp is undefined or existingProp.[[Configurable]] is true, then
     let desc;
     if (!existingProp || existingProp.configurable) {
       // a. Let desc be the PropertyDescriptor{[[Value]]: V, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: D}.
-      desc = new PropertyDescriptor({ value: V, writable: true, enumerable: true, configurable: D });
+      desc = { value: V, writable: true, enumerable: true, configurable: D };
     } else {
       // 6. Else,
-      Properties.ThrowIfMightHaveBeenDeleted(existingProp);
+      Properties.ThrowIfMightHaveBeenDeleted(existingProp.value);
       // a. Let desc be the PropertyDescriptor{[[Value]]: V }.
-      desc = new PropertyDescriptor({ value: V });
+      desc = { value: V };
     }
 
     // 7. Perform ? DefinePropertyOrThrow(globalObject, N, desc).

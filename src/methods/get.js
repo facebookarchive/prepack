@@ -42,7 +42,6 @@ import { Create, Environment, Join, Leak, Path, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeTemplateLiteral } from "@babel/types";
 import { createOperationDescriptor } from "../utils/generator.js";
-import { PropertyDescriptor, AbstractJoinedDescriptor } from "../descriptors.js";
 
 // ECMA262 7.3.22
 export function GetFunctionRealm(realm: Realm, obj: ObjectValue): Realm {
@@ -98,10 +97,7 @@ export function OrdinaryGet(
   let prop = O.unknownProperty;
   if (prop !== undefined && prop.descriptor !== undefined && O.$GetOwnProperty(P) === undefined) {
     let desc = prop.descriptor;
-    invariant(
-      desc instanceof PropertyDescriptor,
-      "unknown properties are only created with Set and have equal descriptors"
-    );
+    invariant(desc !== undefined);
     let val = desc.value;
     invariant(val instanceof AbstractValue);
     let propValue;
@@ -133,7 +129,7 @@ export function OrdinaryGet(
 
   // 2. Let desc be ? O.[[GetOwnProperty]](P).
   let desc = O.$GetOwnProperty(P);
-  if (desc === undefined || !(desc instanceof AbstractJoinedDescriptor)) return OrdinaryGetHelper();
+  if (desc === undefined || desc.joinCondition === undefined) return OrdinaryGetHelper();
 
   // joined descriptors need special treatment
   let joinCondition = desc.joinCondition;
@@ -426,10 +422,6 @@ export function OrdinaryGetPartial(
   if (prop !== undefined) {
     let desc = prop.descriptor;
     if (desc !== undefined) {
-      invariant(
-        desc instanceof PropertyDescriptor,
-        "unknown properties are only created with Set and have equal descriptors"
-      );
       let val = desc.value;
       invariant(val instanceof AbstractValue);
       if (val.kind === "widened numeric property") {
@@ -445,7 +437,6 @@ export function OrdinaryGetPartial(
   for (let [key, propertyBinding] of O.properties) {
     let desc = propertyBinding.descriptor;
     if (desc === undefined) continue; // deleted
-    desc = desc.throwIfNotConcrete(realm); // TODO: Join descriptor values based on condition
     invariant(desc.value !== undefined); // otherwise this is not simple
     let val = desc.value;
     invariant(val instanceof Value);
@@ -726,29 +717,23 @@ export function GetTemplateObject(realm: Realm, templateLiteral: BabelNodeTempla
     let cookedValue = new StringValue(realm, cookedStrings[index]);
 
     // c. Call template.[[DefineOwnProperty]](prop, PropertyDescriptor{[[Value]]: cookedValue, [[Writable]]: false, [[Enumerable]]: true, [[Configurable]]: false}).
-    template.$DefineOwnProperty(
-      prop,
-      new PropertyDescriptor({
-        value: cookedValue,
-        writable: false,
-        enumerable: true,
-        configurable: false,
-      })
-    );
+    template.$DefineOwnProperty(prop, {
+      value: cookedValue,
+      writable: false,
+      enumerable: true,
+      configurable: false,
+    });
 
     // d. Let rawValue be the String value rawStrings[index].
     let rawValue = new StringValue(realm, rawStrings[index]);
 
     // e. Call rawObj.[[DefineOwnProperty]](prop, PropertyDescriptor{[[Value]]: rawValue, [[Writable]]: false, [[Enumerable]]: true, [[Configurable]]: false}).
-    rawObj.$DefineOwnProperty(
-      prop,
-      new PropertyDescriptor({
-        value: rawValue,
-        writable: false,
-        enumerable: true,
-        configurable: false,
-      })
-    );
+    rawObj.$DefineOwnProperty(prop, {
+      value: rawValue,
+      writable: false,
+      enumerable: true,
+      configurable: false,
+    });
 
     // f. Let index be index+1.
     index = index + 1;
@@ -758,15 +743,12 @@ export function GetTemplateObject(realm: Realm, templateLiteral: BabelNodeTempla
   SetIntegrityLevel(realm, rawObj, "frozen");
 
   // 12. Call template.[[DefineOwnProperty]]("raw", PropertyDescriptor{[[Value]]: rawObj, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false}).
-  template.$DefineOwnProperty(
-    "raw",
-    new PropertyDescriptor({
-      value: rawObj,
-      writable: false,
-      enumerable: false,
-      configurable: false,
-    })
-  );
+  template.$DefineOwnProperty("raw", {
+    value: rawObj,
+    writable: false,
+    enumerable: false,
+    configurable: false,
+  });
 
   // 13. Perform SetIntegrityLevel(template, "frozen").
   SetIntegrityLevel(realm, template, "frozen");
@@ -799,7 +781,7 @@ export function GetFromArrayWithWidenedNumericProperty(
     if (prototypeBinding !== undefined) {
       let descriptor = prototypeBinding.descriptor;
       // ensure we are accessing a built-in native function
-      if (descriptor instanceof PropertyDescriptor && descriptor.value instanceof NativeFunctionValue) {
+      if (descriptor !== undefined && descriptor.value instanceof NativeFunctionValue) {
         return descriptor.value;
       }
     }
