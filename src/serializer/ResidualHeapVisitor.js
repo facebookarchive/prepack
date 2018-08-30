@@ -19,6 +19,7 @@ import { HashSet, IsArray, Get } from "../methods/index.js";
 import {
   AbstractObjectValue,
   AbstractValue,
+  ArrayValue,
   BoundFunctionValue,
   ECMAScriptFunctionValue,
   ECMAScriptSourceFunctionValue,
@@ -318,6 +319,7 @@ export class ResidualHeapVisitor {
       // Leaked object. Properties are set via assignments
       // TODO #2259: Make deduplication in the face of leaking work for custom accessors
       if (
+        !(obj instanceof ArrayValue) &&
         !obj.mightNotBeLeakedObject() &&
         (descriptor !== undefined && (descriptor.get === undefined && descriptor.set === undefined))
       )
