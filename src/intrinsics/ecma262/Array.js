@@ -20,7 +20,6 @@ import {
   ObjectValue,
   StringValue,
   UndefinedValue,
-  AbstractObjectValue,
 } from "../../values/index.js";
 import {
   Construct,
