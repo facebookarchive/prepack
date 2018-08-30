@@ -27,7 +27,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have an [[ArrayBufferData]] internal slot, throw a TypeError exception.
-    if (O.$ArrayBufferData !== undefined) {
+    if (O.$ArrayBufferData === undefined) {
       throw realm.createErrorThrowCompletion(
         realm.intrinsics.TypeError,
         "O does not have an [[ArrayBufferData]] internal slot"
@@ -58,7 +58,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have an [[ArrayBufferData]] internal slot, throw a TypeError exception.
-    if (O.$ArrayBufferData !== undefined) {
+    if (O.$ArrayBufferData === undefined) {
       throw realm.createErrorThrowCompletion(
         realm.intrinsics.TypeError,
         "O does not have an [[ArrayBufferData]] internal slot"

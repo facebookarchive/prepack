@@ -42,7 +42,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
-    if (O.$TypedArrayName !== undefined) {
+    if (O.$TypedArrayName === undefined) {
       throw realm.createErrorThrowCompletion(
         realm.intrinsics.TypeError,
         "O does not have a [[TypedArrayName]] internal slot"
@@ -70,7 +70,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
-    if (O.$TypedArrayName !== undefined) {
+    if (O.$TypedArrayName === undefined) {
       throw realm.createErrorThrowCompletion(
         realm.intrinsics.TypeError,
         "O does not have a [[TypedArrayName]] internal slot"
@@ -106,7 +106,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
-    if (O.$TypedArrayName !== undefined) {
+    if (O.$TypedArrayName === undefined) {
       throw realm.createErrorThrowCompletion(
         realm.intrinsics.TypeError,
         "O does not have a [[TypedArrayName]] internal slot"
@@ -781,7 +781,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
-    if (O.$TypedArrayName !== undefined) {
+    if (O.$TypedArrayName === undefined) {
       throw realm.createErrorThrowCompletion(
         realm.intrinsics.TypeError,
         "O does not have a [[TypedArrayName]] internal slot"
@@ -1666,7 +1666,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have a [[TypedArrayName]] internal slot, throw a TypeError exception.
-    if (O.$TypedArrayName !== undefined) {
+    if (O.$TypedArrayName === undefined) {
       throw realm.createErrorThrowCompletion(
         realm.intrinsics.TypeError,
         "O does not have a [[TypedArrayName]] internal slot"
