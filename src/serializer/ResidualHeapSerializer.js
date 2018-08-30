@@ -86,7 +86,6 @@ import { type Replacement, getReplacement } from "./ResidualFunctionInstantiator
 import { describeValue } from "../utils.js";
 import { getAsPropertyNameExpression } from "../utils/babelhelpers.js";
 import { ResidualOperationSerializer } from "./ResidualOperationSerializer.js";
-import { PropertyDescriptor, AbstractJoinedDescriptor } from "../descriptors.js";
 
 function commentStatement(text: string) {
   let s = t.emptyStatement();
@@ -318,8 +317,7 @@ export class ResidualHeapSerializer {
     // TODO #2259: Make deduplication in the face of leaking work for custom accessors
     let isCertainlyLeaked = !obj.mightNotBeLeakedObject();
     let shouldDropAsAssignedProp = (descriptor: Descriptor | void) =>
-      isCertainlyLeaked &&
-      (descriptor instanceof PropertyDescriptor && (descriptor.get === undefined && descriptor.set === undefined));
+      isCertainlyLeaked && (descriptor !== undefined && (descriptor.get === undefined && descriptor.set === undefined));
 
     // inject properties
     for (let [key, propertyBinding] of properties) {
@@ -350,11 +348,14 @@ export class ResidualHeapSerializer {
     if (obj.unknownProperty !== undefined) {
       let desc = obj.unknownProperty.descriptor;
       if (desc !== undefined) {
+        let val = desc.value;
+        invariant(val instanceof AbstractValue);
         let semaphore = this._acquireOneObjectSemaphore(obj);
         this.emitter.emitNowOrAfterWaitingForDependencies(
-          this._getNestedValuesFromAbstractDescriptor(desc, [obj]),
+          this._getNestedValuesFromAbstract(val, [obj]),
           () => {
-            this._emitPropertiesWithComputedNamesDescriptor(obj, desc);
+            invariant(val instanceof AbstractValue);
+            this._emitPropertiesWithComputedNames(obj, val);
             if (semaphore !== undefined) semaphore.releaseOne();
           },
           this.emitter.getBody()
@@ -443,22 +444,6 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _getNestedValuesFromAbstractDescriptor(desc: void | Descriptor, values: Array<Value>): Array<Value> {
-    if (desc === undefined) return values;
-    if (desc instanceof PropertyDescriptor) {
-      let val = desc.value;
-      invariant(val instanceof AbstractValue);
-      return this._getNestedValuesFromAbstract(val, values);
-    } else if (desc instanceof AbstractJoinedDescriptor) {
-      values.push(desc.joinCondition);
-      this._getNestedValuesFromAbstractDescriptor(desc.descriptor1, values);
-      this._getNestedValuesFromAbstractDescriptor(desc.descriptor2, values);
-      return values;
-    } else {
-      invariant(false, "unknown descriptor");
-    }
-  }
-
   _getNestedValuesFromAbstract(absVal: AbstractValue, values: Array<Value>): Array<Value> {
     if (absVal.kind === "widened property") return values;
     if (absVal.kind === "template for prototype member expression") return values;
@@ -490,60 +475,6 @@ export class ResidualHeapSerializer {
       }
     }
     return values;
-  }
-
-  _emitPropertiesWithComputedNamesDescriptor(obj: ObjectValue, desc: void | Descriptor): void {
-    if (desc === undefined) return;
-    if (desc instanceof PropertyDescriptor) {
-      let val = desc.value;
-      invariant(val instanceof AbstractValue);
-      this._emitPropertiesWithComputedNames(obj, val);
-    } else if (desc instanceof AbstractJoinedDescriptor) {
-      let serializedCond = this.serializeValue(desc.joinCondition);
-
-      let valuesToProcess = new Set();
-      let consequentStatement;
-      let alternateStatement;
-
-      if (desc.descriptor1) {
-        let oldBody = this.emitter.beginEmitting(
-          "consequent",
-          {
-            type: "ConditionalAssignmentBranch",
-            parentBody: undefined,
-            entries: [],
-            done: false,
-          },
-          /*isChild*/ true
-        );
-        this._emitPropertiesWithComputedNamesDescriptor(obj, desc.descriptor1);
-        let consequentBody = this.emitter.endEmitting("consequent", oldBody, valuesToProcess, /*isChild*/ true);
-        consequentStatement = t.blockStatement(consequentBody.entries);
-      }
-      if (desc.descriptor2) {
-        let oldBody = this.emitter.beginEmitting(
-          "alternate",
-          {
-            type: "ConditionalAssignmentBranch",
-            parentBody: undefined,
-            entries: [],
-            done: false,
-          },
-          /*isChild*/ true
-        );
-        this._emitPropertiesWithComputedNamesDescriptor(obj, desc.descriptor2);
-        let alternateBody = this.emitter.endEmitting("alternate", oldBody, valuesToProcess, /*isChild*/ true);
-        alternateStatement = t.blockStatement(alternateBody.entries);
-      }
-      if (consequentStatement) {
-        this.emitter.emit(t.ifStatement(serializedCond, consequentStatement, alternateStatement));
-      } else if (alternateStatement) {
-        this.emitter.emit(t.ifStatement(t.unaryExpression("!", serializedCond), alternateStatement));
-      }
-      this.emitter.processValues(valuesToProcess);
-    } else {
-      invariant(false, "unknown descriptor");
-    }
   }
 
   _emitPropertiesWithComputedNames(obj: ObjectValue, absVal: AbstractValue): void {
@@ -646,7 +577,7 @@ export class ResidualHeapSerializer {
     key: string | SymbolValue | AbstractValue,
     desc: Descriptor
   ): BabelNodeStatement {
-    if (desc instanceof AbstractJoinedDescriptor) {
+    if (desc.joinCondition) {
       let cond = this.serializeValue(desc.joinCondition);
       invariant(cond !== undefined);
       let trueBody;
@@ -672,7 +603,6 @@ export class ResidualHeapSerializer {
       if (falseBody) return t.ifStatement(t.unaryExpression("!", cond), falseBody);
       invariant(false);
     }
-    invariant(desc instanceof PropertyDescriptor);
     if (locationFunction !== undefined && this._canEmbedProperty(val, key, desc)) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
@@ -701,7 +631,7 @@ export class ResidualHeapSerializer {
     let descriptorsKey = [];
     for (let boolKey of boolKeys) {
       if (boolKey in desc) {
-        let b: boolean = (desc: any)[boolKey];
+        let b = desc[boolKey];
         invariant(b !== undefined);
         descProps.push(t.objectProperty(t.identifier(boolKey), t.booleanLiteral(b)));
         descriptorsKey.push(`${boolKey}:${b.toString()}`);
@@ -721,7 +651,7 @@ export class ResidualHeapSerializer {
 
     for (let descKey of valKeys) {
       if (descKey in desc) {
-        let descValue: Value = (desc: any)[descKey];
+        let descValue = desc[descKey];
         invariant(descValue instanceof Value);
         if (descValue instanceof UndefinedValue) {
           this.serializeValue(descValue);
@@ -1242,24 +1172,13 @@ export class ResidualHeapSerializer {
     }
   }
 
-  _getDescriptorValues(desc: void | Descriptor): Array<Value> {
-    if (desc === undefined) {
-      return [];
-    } else if (desc instanceof PropertyDescriptor) {
-      invariant(desc.value === undefined || desc.value instanceof Value);
-      if (desc.value !== undefined) return [desc.value];
-      invariant(desc.get !== undefined);
-      invariant(desc.set !== undefined);
-      return [desc.get, desc.set];
-    } else if (desc instanceof AbstractJoinedDescriptor) {
-      return [
-        desc.joinCondition,
-        ...this._getDescriptorValues(desc.descriptor1),
-        ...this._getDescriptorValues(desc.descriptor2),
-      ];
-    } else {
-      invariant(false, "unknown descriptor");
-    }
+  _getDescriptorValues(desc: Descriptor): Array<Value> {
+    if (desc.joinCondition !== undefined) return [desc.joinCondition];
+    invariant(desc.value === undefined || desc.value instanceof Value);
+    if (desc.value !== undefined) return [desc.value];
+    invariant(desc.get !== undefined);
+    invariant(desc.set !== undefined);
+    return [desc.get, desc.set];
   }
 
   _deleteProperty(location: BabelNodeLVal): void {
@@ -1332,7 +1251,6 @@ export class ResidualHeapSerializer {
       if (propertyBinding !== undefined) {
         let descriptor = propertyBinding.descriptor;
         // "descriptor === undefined" means this array item has been deleted.
-        invariant(descriptor === undefined || descriptor instanceof PropertyDescriptor);
         if (
           descriptor !== undefined &&
           descriptor.value !== undefined &&
@@ -1777,7 +1695,7 @@ export class ResidualHeapSerializer {
 
   // Checks whether a property can be defined via simple assignment, or using object literal syntax.
   _canEmbedProperty(obj: ObjectValue, key: string | SymbolValue | AbstractValue, prop: Descriptor): boolean {
-    if (!(prop instanceof PropertyDescriptor)) return false;
+    if (prop.joinCondition !== undefined) return false;
 
     let targetDescriptor = this.residualHeapInspector.getTargetIntegrityDescriptor(obj);
 
@@ -1826,8 +1744,7 @@ export class ResidualHeapSerializer {
 
     // TODO #2259: Make deduplication in the face of leaking work for custom accessors
     let shouldDropAsAssignedProp = (descriptor: Descriptor | void) =>
-      isCertainlyLeaked &&
-      (descriptor instanceof PropertyDescriptor && (descriptor.get === undefined && descriptor.set === undefined));
+      isCertainlyLeaked && (descriptor !== undefined && (descriptor.get === undefined && descriptor.set === undefined));
 
     if (val.temporalAlias !== undefined) {
       return t.objectExpression(props);
@@ -1840,8 +1757,7 @@ export class ResidualHeapSerializer {
 
         if (propertyBinding.pathNode !== undefined) continue; // written to inside loop
         let descriptor = propertyBinding.descriptor;
-        if (descriptor === undefined || !(descriptor instanceof PropertyDescriptor) || descriptor.value === undefined)
-          continue; // deleted
+        if (descriptor === undefined || descriptor.value === undefined) continue; // deleted
 
         let serializedKey = getAsPropertyNameExpression(key);
         if (this._canEmbedProperty(val, key, descriptor)) {

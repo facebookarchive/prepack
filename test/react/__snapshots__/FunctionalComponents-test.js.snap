@@ -8780,6 +8780,74 @@ ReactStatistics {
 }
 `;
 
+exports[`React.cloneElement 2: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`React.cloneElement 2: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`React.cloneElement 2: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
+exports[`React.cloneElement 2: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
+
 exports[`React.cloneElement: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 3,
@@ -9336,13 +9404,81 @@ ReactStatistics {
 }
 `;
 
-exports[`Runtime error: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Runtime error: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
 
-exports[`Runtime error: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Runtime error: (JSX => JSX) 2`] = `"Cannot read property 'push' of undefined"`;
 
-exports[`Runtime error: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Runtime error: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
 
-exports[`Runtime error: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Runtime error: (JSX => createElement) 2`] = `"Cannot read property 'push' of undefined"`;
+
+exports[`Runtime error: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`Runtime error: (createElement => JSX) 2`] = `"Cannot read property 'push' of undefined"`;
+
+exports[`Runtime error: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 1,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`Runtime error: (createElement => createElement) 2`] = `"Cannot read property 'push' of undefined"`;
 
 exports[`Simple 2: (JSX => JSX) 1`] = `
 ReactStatistics {
@@ -9888,13 +10024,13 @@ exports[`Simple 10: (createElement => JSX) 1`] = `"Failed to render React compon
 
 exports[`Simple 10: (createElement => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 11: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Simple 11: (JSX => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 11: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Simple 11: (JSX => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 11: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Simple 11: (createElement => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 11: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Simple 11: (createElement => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
 exports[`Simple 12: (JSX => JSX) 1`] = `
 ReactStatistics {
@@ -9992,13 +10128,101 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 13: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Simple 13: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
 
-exports[`Simple 13: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Simple 13: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
 
-exports[`Simple 13: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Simple 13: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
 
-exports[`Simple 13: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from throwing exception"`;
+exports[`Simple 13: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 2,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Child",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "App",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 1,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 1,
+}
+`;
 
 exports[`Simple 14: (JSX => JSX) 1`] = `
 ReactStatistics {

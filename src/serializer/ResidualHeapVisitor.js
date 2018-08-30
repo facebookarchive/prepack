@@ -66,7 +66,6 @@ import { createPathConditions, Environment, To } from "../singletons.js";
 import { isReactElement, isReactPropsObject, valueIsReactLibraryObject } from "../react/utils.js";
 import { ResidualReactElementVisitor } from "./ResidualReactElementVisitor.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
-import { PropertyDescriptor, AbstractJoinedDescriptor } from "../descriptors.js";
 
 type BindingState = {|
   capturedBindings: Set<ResidualFunctionBinding>,
@@ -320,17 +319,22 @@ export class ResidualHeapVisitor {
       // TODO #2259: Make deduplication in the face of leaking work for custom accessors
       if (
         !obj.mightNotBeLeakedObject() &&
-        (descriptor instanceof PropertyDescriptor && (descriptor.get === undefined && descriptor.set === undefined))
-      ) {
+        (descriptor !== undefined && (descriptor.get === undefined && descriptor.set === undefined))
+      )
         continue;
-      }
 
+      invariant(propertyBindingValue);
       this.visitObjectProperty(propertyBindingValue);
     }
 
     // inject properties with computed names
     if (obj.unknownProperty !== undefined) {
-      this.visitObjectPropertiesWithComputedNamesDescriptor(obj.unknownProperty.descriptor);
+      let desc = obj.unknownProperty.descriptor;
+      if (desc !== undefined) {
+        let val = desc.value;
+        invariant(val instanceof AbstractValue);
+        this.visitObjectPropertiesWithComputedNames(val);
+      }
     }
 
     // prototype
@@ -370,22 +374,6 @@ export class ResidualHeapVisitor {
     }
   }
 
-  visitObjectPropertiesWithComputedNamesDescriptor(desc: void | Descriptor): void {
-    if (desc !== undefined) {
-      if (desc instanceof PropertyDescriptor) {
-        let val = desc.value;
-        invariant(val instanceof AbstractValue);
-        this.visitObjectPropertiesWithComputedNames(val);
-      } else if (desc instanceof AbstractJoinedDescriptor) {
-        this.visitValue(desc.joinCondition);
-        this.visitObjectPropertiesWithComputedNamesDescriptor(desc.descriptor1);
-        this.visitObjectPropertiesWithComputedNamesDescriptor(desc.descriptor2);
-      } else {
-        invariant(false, "unknown descriptor");
-      }
-    }
-  }
-
   visitObjectPropertiesWithComputedNames(absVal: AbstractValue): void {
     if (absVal.kind === "widened property") return;
     if (absVal.kind === "template for prototype member expression") return;
@@ -417,19 +405,17 @@ export class ResidualHeapVisitor {
     }
   }
 
-  visitDescriptor(desc: void | Descriptor): void {
-    if (desc === undefined) {
-    } else if (desc instanceof PropertyDescriptor) {
-      if (desc.value !== undefined) desc.value = this.visitEquivalentValue(desc.value);
-      if (desc.get !== undefined) this.visitValue(desc.get);
-      if (desc.set !== undefined) this.visitValue(desc.set);
-    } else if (desc instanceof AbstractJoinedDescriptor) {
+  visitDescriptor(desc: Descriptor): void {
+    invariant(desc.value === undefined || desc.value instanceof Value);
+    if (desc.joinCondition !== undefined) {
       desc.joinCondition = this.visitEquivalentValue(desc.joinCondition);
       if (desc.descriptor1 !== undefined) this.visitDescriptor(desc.descriptor1);
       if (desc.descriptor2 !== undefined) this.visitDescriptor(desc.descriptor2);
-    } else {
-      invariant(false, "unknown descriptor");
+      return;
     }
+    if (desc.value !== undefined) desc.value = this.visitEquivalentValue(desc.value);
+    if (desc.get !== undefined) this.visitValue(desc.get);
+    if (desc.set !== undefined) this.visitValue(desc.set);
   }
 
   visitValueArray(val: ObjectValue): void {

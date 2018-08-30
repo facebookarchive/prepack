@@ -1,4 +1,3 @@
-// throws introspection error
 let x = global.__abstract ? __abstract("boolean", "true") : true;
 let ob1 = {};
 Object.defineProperty(ob1, "p", { writable: false, value: 1 });
