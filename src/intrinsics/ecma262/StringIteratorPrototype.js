@@ -26,7 +26,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. If O does not have all of the internal slots of an String Iterator Instance (21.1.5.3), throw a TypeError exception.
-    if (!("$IteratedString" in O && "$StringIteratorNextIndex" in O)) {
+    if (O.$IteratedString !== undefined && O.$StringIteratorNextIndex !== undefined) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Type(O) is not Object");
     }
 
