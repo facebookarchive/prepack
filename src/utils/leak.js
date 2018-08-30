@@ -758,10 +758,18 @@ export class MaterializeImplementation {
       if (!objectsToMaterialize.has(value)) objectsToMaterialize.add(value);
     }
     function computeFromDescriptor(descriptor: Descriptor): void {
-      invariant(descriptor.value === undefined || descriptor.value instanceof Value);
-      if (descriptor.value !== undefined) computeFromValue(descriptor.value);
-      if (descriptor.get !== undefined) computeFromValue(descriptor.get);
-      if (descriptor.set !== undefined) computeFromValue(descriptor.set);
+      if (descriptor === undefined) {
+      } else if (descriptor instanceof PropertyDescriptor) {
+        if (descriptor.value !== undefined) computeFromValue(descriptor.value);
+        if (descriptor.get !== undefined) computeFromValue(descriptor.get);
+        if (descriptor.set !== undefined) computeFromValue(descriptor.set);
+      } else if (descriptor instanceof AbstractJoinedDescriptor) {
+        computeFromValue(descriptor.joinCondition);
+        if (descriptor.descriptor1 !== undefined) computeFromDescriptor(descriptor.descriptor1);
+        if (descriptor.descriptor2 !== undefined) computeFromDescriptor(descriptor.descriptor2);
+      } else {
+        invariant(false, "unknown descriptor");
+      }
     }
     function computeFromObjectPropertyBinding(binding: PropertyBinding): void {
       let descriptor = binding.descriptor;
@@ -784,12 +792,8 @@ export class MaterializeImplementation {
 
       // inject properties with computed names
       if (obj.unknownProperty !== undefined) {
-        let desc = obj.unknownProperty.descriptor;
-        if (desc !== undefined) {
-          let val = desc.value;
-          invariant(val instanceof AbstractValue);
-          computeFromObjectPropertiesWithComputedNames(val);
-        }
+        let descriptor = obj.unknownProperty.descriptor;
+        computeFromObjectPropertiesWithComputedNamesDescriptor(descriptor);
       }
 
       // prototype
@@ -813,12 +817,11 @@ export class MaterializeImplementation {
         "all native function values should have already been created outside this pure function"
       );
 
-      // TODO: Add items to nonLocalReadBindings in passing
       let nonLocalReadBindings = nonLocalReadBindingsOfFunction(fn);
       computeFromBindings(fn, nonLocalReadBindings);
     }
 
-    function computeFromObjectPropertiesWithComputedNames(absVal: AbstractValue): void {
+    function computeFromObjectPropertiesWithComputedNamesDescriptor(descriptor: void | Descriptor): void {
       // TODO: #2484
       notSupportedForTransitiveMaterialization();
     }
