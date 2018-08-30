@@ -1,7 +1,11 @@
 // does not contain:instanceof
 
-function fn(x) {
-  var x = __makeSimple(Object.assign(a));
+function fn(a) {
+  var x = Object.assign(a);
+
+  if (global.__makeSimple) {
+    __makeSimple(x);
+  }
   if (undefined instanceof x) {
     return "impossible";
   }
