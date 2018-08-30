@@ -73,6 +73,7 @@ __evaluatePureFunction(function() {
   function ViewCount(props) {
     return React.createElement(
       "div",
+      null,
       fbt._({ "*": "{count} Views", _1: "{count} View" }, [
         fbt._param("count", props.feedback.viewCountReduced),
         fbt._plural(props.feedback.viewCount),
