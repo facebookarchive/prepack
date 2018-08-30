@@ -155,7 +155,7 @@ function emitResidualLoopIfSafe(
         if (key.object.unknownProperty === key) {
           targetObject = key.object;
           invariant(desc !== undefined);
-          let sourceValue = desc.throwIfNotConcrete(realm).value;
+          let sourceValue = desc.value;
           if (sourceValue instanceof AbstractValue) {
             // because sourceValue was written to key.object.unknownProperty it must be that
             let cond = sourceValue.args[0];

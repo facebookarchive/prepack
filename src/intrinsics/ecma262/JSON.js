@@ -292,10 +292,9 @@ function InternalCloneObject(realm: Realm, val: ObjectValue): ObjectValue {
   let clone = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
   for (let [key, binding] of val.properties) {
     if (binding === undefined || binding.descriptor === undefined) continue; // deleted
-    let desc = binding.descriptor;
-    invariant(desc !== undefined);
-    Properties.ThrowIfMightHaveBeenDeleted(desc);
-    let value = desc.throwIfNotConcrete(realm).value;
+    invariant(binding.descriptor !== undefined);
+    let value = binding.descriptor.value;
+    Properties.ThrowIfMightHaveBeenDeleted(value);
     if (value === undefined) {
       AbstractValue.reportIntrospectionError(val, key); // cannot handle accessors
       throw new FatalError();

@@ -37,7 +37,6 @@ import type {
 import invariant from "../invariant.js";
 import { Logger } from "./logger.js";
 import { SerializerStatistics } from "../serializer/statistics.js";
-import { PropertyDescriptor } from "../descriptors.js";
 
 function downgradeErrorsToWarnings(realm: Realm, f: () => any) {
   let savedHandler = realm.errorHandler;
@@ -239,11 +238,9 @@ export class Modules {
     for (let moduleId of globalInitializedModulesMap.properties.keys()) {
       let property = globalInitializedModulesMap.properties.get(moduleId);
       invariant(property);
-      if (property.descriptor instanceof PropertyDescriptor) {
-        let moduleValue = property.descriptor && property.descriptor.value;
-        if (moduleValue instanceof Value && !moduleValue.mightHaveBeenDeleted()) {
-          this.initializedModules.set(moduleId, moduleValue);
-        }
+      let moduleValue = property.descriptor && property.descriptor.value;
+      if (moduleValue instanceof Value && !moduleValue.mightHaveBeenDeleted()) {
+        this.initializedModules.set(moduleId, moduleValue);
       }
     }
     this.getStatistics().initializedModules = this.initializedModules.size;

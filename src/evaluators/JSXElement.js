@@ -195,10 +195,10 @@ function evaluateJSXChildren(
   return array;
 }
 
-function isObjectEmpty(realm: Realm, object: ObjectValue) {
+function isObjectEmpty(object: ObjectValue) {
   let propertyCount = 0;
   for (let [, binding] of object.properties) {
-    if (binding && binding.descriptor && binding.descriptor.throwIfNotConcrete(realm).enumerable) {
+    if (binding && binding.descriptor && binding.descriptor.enumerable) {
       propertyCount++;
     }
   }
@@ -235,7 +235,7 @@ function evaluateJSXAttributes(
 
         if (spreadValue instanceof ObjectValue && !spreadValue.isPartialObject()) {
           for (let [spreadPropKey, binding] of spreadValue.properties) {
-            if (binding && binding.descriptor && binding.descriptor.throwIfNotConcrete(realm).enumerable) {
+            if (binding && binding.descriptor && binding.descriptor.enumerable) {
               setConfigProperty(spreadPropKey, Get(realm, spreadValue, spreadPropKey));
             }
           }
@@ -249,7 +249,7 @@ function evaluateJSXAttributes(
           if (hasNoPartialKeyOrRef(realm, spreadValue)) {
             safeAbstractSpreadCount++;
           }
-          if (!isObjectEmpty(realm, config)) {
+          if (!isObjectEmpty(config)) {
             abstractPropsArgs.push(config);
           }
           abstractPropsArgs.push(spreadValue);

@@ -82,7 +82,7 @@ export function HasOwnProperty(realm: Realm, O: ObjectValue | AbstractObjectValu
 
   // 4. If desc is undefined, return false.
   if (desc === undefined) return false;
-  Properties.ThrowIfMightHaveBeenDeleted(desc);
+  Properties.ThrowIfMightHaveBeenDeleted(desc.value);
 
   // 5. Return true.
   return true;
@@ -98,7 +98,7 @@ export function OrdinaryHasProperty(realm: Realm, O: ObjectValue, P: PropertyKey
 
   // 3. If hasOwn is not undefined, return true.
   if (hasOwn !== undefined) {
-    Properties.ThrowIfMightHaveBeenDeleted(hasOwn);
+    Properties.ThrowIfMightHaveBeenDeleted(hasOwn.value);
     return true;
   }
 
