@@ -202,8 +202,8 @@ export function computeBinary(
       // then the result should always compute to `false`.
       if (
         op === "instanceof" &&
-        lval instanceof PrimitiveValue &&
-        (rval instanceof ObjectValue || rval instanceof AbstractObjectValue) &&
+        Value.isTypeCompatibleWith(lval.getType(), PrimitiveValue) &&
+        rval instanceof AbstractObjectValue &&
         rval.isSimpleObject()
       ) {
         return realm.intrinsics.false;
