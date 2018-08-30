@@ -11,7 +11,6 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { PropertyDescriptor } from "../../descriptors.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 9.2.7.1
@@ -23,15 +22,12 @@ export default function(realm: Realm): NativeFunctionValue {
   func.setExtensible(false);
 
   // ECMA262 9.2.7.1
-  func.$DefineOwnProperty(
-    "length",
-    new PropertyDescriptor({
-      value: realm.intrinsics.zero,
-      writable: false,
-      configurable: false,
-      enumerable: false,
-    })
-  );
+  func.$DefineOwnProperty("length", {
+    value: realm.intrinsics.zero,
+    writable: false,
+    configurable: false,
+    enumerable: false,
+  });
 
   return func;
 }

@@ -56,7 +56,6 @@ import { concretize, Join, Utils } from "../singletons.js";
 import type { SerializerOptions } from "../options.js";
 import type { PathConditions, ShapeInformationInterface } from "../types.js";
 import { PreludeGenerator } from "./PreludeGenerator.js";
-import { PropertyDescriptor } from "../descriptors.js";
 
 export type OperationDescriptorType =
   | "ABSTRACT_FROM_TEMPLATE"
@@ -631,16 +630,16 @@ export class Generator {
   emitPropertyModification(propertyBinding: PropertyBinding): void {
     invariant(this.effectsToApply !== undefined);
     let desc = propertyBinding.descriptor;
-    if (desc !== undefined && desc instanceof PropertyDescriptor) {
+    if (desc !== undefined) {
       let value = desc.value;
       if (value instanceof AbstractValue) {
         if (value.kind === "conditional") {
           let [c, x, y] = value.args;
           if (c instanceof AbstractValue && c.kind === "template for property name condition") {
-            let ydesc = new PropertyDescriptor(Object.assign({}, (desc: any), { value: y }));
+            let ydesc = Object.assign({}, desc, { value: y });
             let yprop = Object.assign({}, propertyBinding, { descriptor: ydesc });
             this.emitPropertyModification(yprop);
-            let xdesc = new PropertyDescriptor(Object.assign({}, (desc: any), { value: x }));
+            let xdesc = Object.assign({}, desc, { value: x });
             let key = c.args[0];
             invariant(key instanceof AbstractValue);
             let xprop = Object.assign({}, propertyBinding, { key, descriptor: xdesc });
@@ -726,14 +725,14 @@ export class Generator {
     });
   }
 
-  emitDefineProperty(object: ObjectValue, key: string, desc: PropertyDescriptor, isDescChanged: boolean = true): void {
+  emitDefineProperty(object: ObjectValue, key: string, desc: Descriptor, isDescChanged: boolean = true): void {
     if (object.refuseSerialization) return;
     if (desc.enumerable && desc.configurable && desc.writable && desc.value && !isDescChanged) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
       this.emitPropertyAssignment(object, key, descValue);
     } else {
-      desc = new PropertyDescriptor(desc);
+      desc = Object.assign({}, desc);
       let descValue = desc.value || object.$Realm.intrinsics.undefined;
       invariant(descValue instanceof Value);
       this._addEntry({

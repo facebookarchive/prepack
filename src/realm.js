@@ -54,7 +54,7 @@ import {
   DeclarativeEnvironmentRecord,
 } from "./environment.js";
 import type { Binding } from "./environment.js";
-import { Construct } from "./methods/index.js";
+import { cloneDescriptor, Construct } from "./methods/index.js";
 import {
   AbruptCompletion,
   Completion,
@@ -81,12 +81,6 @@ import {
   Widen,
 } from "./singletons.js";
 import type { ReactSymbolTypes } from "./react/utils.js";
-import {
-  cloneDescriptor,
-  AbstractJoinedDescriptor,
-  InternalSlotDescriptor,
-  PropertyDescriptor,
-} from "./descriptors.js";
 import type { BabelNode, BabelNodeSourceLocation, BabelNodeLVal } from "@babel/types";
 export type BindingEntry = { hasLeaked: boolean, value: void | Value };
 export type Bindings = Map<Binding, BindingEntry>;
@@ -647,7 +641,7 @@ export class Realm {
     invariant(globalObject instanceof ObjectValue);
     let binding = globalObject.properties.get("__checkedBindings");
     invariant(binding !== undefined);
-    let checkedBindingsObject = binding.descriptor && binding.descriptor.throwIfNotConcrete(this).value;
+    let checkedBindingsObject = binding.descriptor && binding.descriptor.value;
     invariant(checkedBindingsObject instanceof ObjectValue);
     return checkedBindingsObject;
   }
@@ -668,7 +662,7 @@ export class Realm {
     let id = `__propertyHasBeenChecked__${objectId}:${P}`;
     let binding = this._getCheckedBindings().properties.get(id);
     if (binding === undefined) return false;
-    let value = binding.descriptor && binding.descriptor.throwIfNotConcrete(this).value;
+    let value = binding.descriptor && binding.descriptor.value;
     return value instanceof Value && !value.mightNotBeTrue();
   }
 
@@ -1086,7 +1080,7 @@ export class Realm {
       if (newlyCreatedObjects.has(key.object) || key.object.refuseSerialization) {
         return;
       }
-      let value = val && val.throwIfNotConcrete(this).value;
+      let value = val && val.value;
       if (value instanceof AbstractValue) {
         invariant(value.operationDescriptor !== undefined);
         let tval = gen.deriveAbstract(
@@ -1108,7 +1102,7 @@ export class Realm {
       let path = key.pathNode;
       let tval = tvalFor.get(key);
       invariant(val !== undefined);
-      let value = val.throwIfNotConcrete(this).value;
+      let value = val.value;
       invariant(value instanceof Value);
       let keyKey = key.key;
       if (typeof keyKey === "string") {
@@ -1466,20 +1460,7 @@ export class Realm {
     }
     this.callReportPropertyAccess(binding);
     if (this.modifiedProperties !== undefined && !this.modifiedProperties.has(binding)) {
-      let clone;
-      let desc = binding.descriptor;
-      if (desc === undefined) {
-        clone = undefined;
-      } else if (desc instanceof AbstractJoinedDescriptor) {
-        clone = new AbstractJoinedDescriptor(desc.joinCondition, desc.descriptor1, desc.descriptor2);
-      } else if (desc instanceof PropertyDescriptor) {
-        clone = cloneDescriptor(desc);
-      } else if (desc instanceof InternalSlotDescriptor) {
-        clone = new InternalSlotDescriptor(desc.value);
-      } else {
-        invariant(false, "unknown descriptor");
-      }
-      this.modifiedProperties.set(binding, clone);
+      this.modifiedProperties.set(binding, cloneDescriptor(binding.descriptor));
     }
   }
 
@@ -1567,9 +1548,8 @@ export class Realm {
     for (let [key, binding] of template.properties) {
       if (binding === undefined || binding.descriptor === undefined) continue; // deleted
       invariant(binding.descriptor !== undefined);
-      let desc = binding.descriptor.throwIfNotConcrete(this);
-      let value = desc.value;
-      Properties.ThrowIfMightHaveBeenDeleted(desc);
+      let value = binding.descriptor.value;
+      Properties.ThrowIfMightHaveBeenDeleted(value);
       if (value === undefined) {
         AbstractValue.reportIntrospectionError(abstractValue, key);
         throw new FatalError();

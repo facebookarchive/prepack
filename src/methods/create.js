@@ -38,7 +38,6 @@ import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
 import traverseFast from "../utils/traverse-fast.js";
 import type { BabelNodeIdentifier, BabelNodeLVal, BabelNodeFunctionDeclaration } from "@babel/types";
-import { PropertyDescriptor } from "../descriptors.js";
 
 const allElementTypes = ["Undefined", "Null", "Boolean", "String", "Symbol", "Number", "Object"];
 
@@ -70,17 +69,12 @@ export class CreateImplementation {
     let length = value.value.length;
 
     // 10. Perform ! DefinePropertyOrThrow(S, "length", PropertyDescriptor{[[Value]]: length, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }).
-    Properties.DefinePropertyOrThrow(
-      realm,
-      S,
-      "length",
-      new PropertyDescriptor({
-        value: new NumberValue(realm, length),
-        writable: false,
-        enumerable: false,
-        configurable: false,
-      })
-    );
+    Properties.DefinePropertyOrThrow(realm, S, "length", {
+      value: new NumberValue(realm, length),
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    });
 
     // 11. Return S.
     return S;
@@ -313,17 +307,12 @@ export class CreateImplementation {
     A.setExtensible(true);
 
     // 10. Perform ! OrdinaryDefineOwnProperty(A, "length", PropertyDescriptor{[[Value]]: length, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
-    Properties.OrdinaryDefineOwnProperty(
-      realm,
-      A,
-      "length",
-      new PropertyDescriptor({
-        value: new NumberValue(realm, length),
-        writable: true,
-        enumerable: false,
-        configurable: false,
-      })
-    );
+    Properties.OrdinaryDefineOwnProperty(realm, A, "length", {
+      value: new NumberValue(realm, length),
+      writable: true,
+      enumerable: false,
+      configurable: false,
+    });
 
     // 11. Return A.
     return A;
@@ -369,17 +358,12 @@ export class CreateImplementation {
 
     // 4. Perform DefinePropertyOrThrow(obj, "length", PropertyDescriptor{[[Value]]: len,
     //    [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}).
-    Properties.DefinePropertyOrThrow(
-      realm,
-      obj,
-      "length",
-      new PropertyDescriptor({
-        value: new NumberValue(realm, len),
-        writable: true,
-        enumerable: false,
-        configurable: true,
-      })
-    );
+    Properties.DefinePropertyOrThrow(realm, obj, "length", {
+      value: new NumberValue(realm, len),
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
 
     // 5. Let index be 0.
     let index = 0;
@@ -398,31 +382,21 @@ export class CreateImplementation {
 
     // 7. Perform ! DefinePropertyOrThrow(obj, @@iterator, PropertyDescriptor {[[Value]]:
     //    %ArrayProto_values%, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}).
-    Properties.DefinePropertyOrThrow(
-      realm,
-      obj,
-      realm.intrinsics.SymbolIterator,
-      new PropertyDescriptor({
-        value: realm.intrinsics.ArrayProto_values,
-        writable: true,
-        enumerable: false,
-        configurable: true,
-      })
-    );
+    Properties.DefinePropertyOrThrow(realm, obj, realm.intrinsics.SymbolIterator, {
+      value: realm.intrinsics.ArrayProto_values,
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
 
     // 8. Perform ! DefinePropertyOrThrow(obj, "callee", PropertyDescriptor {[[Get]]:
     // %ThrowTypeError%, [[Set]]: %ThrowTypeError%, [[Enumerable]]: false, [[Configurable]]: false}).
-    Properties.DefinePropertyOrThrow(
-      realm,
-      obj,
-      "callee",
-      new PropertyDescriptor({
-        get: realm.intrinsics.ThrowTypeError,
-        set: realm.intrinsics.ThrowTypeError,
-        enumerable: false,
-        configurable: false,
-      })
-    );
+    Properties.DefinePropertyOrThrow(realm, obj, "callee", {
+      get: realm.intrinsics.ThrowTypeError,
+      set: realm.intrinsics.ThrowTypeError,
+      enumerable: false,
+      configurable: false,
+    });
 
     // 10. Return obj.
     return obj;
@@ -468,7 +442,7 @@ export class CreateImplementation {
     obj.setExtensible(true);
 
     // 12. Let map be ObjectCreate(null).
-    let map: ObjectValue = new ObjectValue(realm);
+    let map = new ObjectValue(realm);
 
     // 13. Set the [[ParameterMap]] internal slot of obj to map.
     obj.$ParameterMap = map;
@@ -499,17 +473,12 @@ export class CreateImplementation {
 
     // 18. Perform DefinePropertyOrThrow(obj, "length", PropertyDescriptor{[[Value]]: len,
     //     [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}).
-    Properties.DefinePropertyOrThrow(
-      realm,
-      obj,
-      "length",
-      new PropertyDescriptor({
-        value: new NumberValue(realm, len),
-        writable: true,
-        enumerable: false,
-        configurable: true,
-      })
-    );
+    Properties.DefinePropertyOrThrow(realm, obj, "length", {
+      value: new NumberValue(realm, len),
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
 
     // 19. Let mappedNames be an empty List.
     let mappedNames = [];
@@ -537,15 +506,12 @@ export class CreateImplementation {
 
           // 3. Perform map.[[DefineOwnProperty]](! ToString(index), PropertyDescriptor{[[Set]]: p, [[Get]]: g,
           //    [[Enumerable]]: false, [[Configurable]]: true}).
-          map.$DefineOwnProperty(
-            new StringValue(realm, index + ""),
-            new PropertyDescriptor({
-              set: p,
-              get: g,
-              enumerable: false,
-              configurable: true,
-            })
-          );
+          map.$DefineOwnProperty(new StringValue(realm, index + ""), {
+            set: p,
+            get: g,
+            enumerable: false,
+            configurable: true,
+          });
         }
       }
 
@@ -555,31 +521,21 @@ export class CreateImplementation {
 
     // 22. Perform ! DefinePropertyOrThrow(obj, @@iterator, PropertyDescriptor {[[Value]]:
     //     %ArrayProto_values%, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}).
-    Properties.DefinePropertyOrThrow(
-      realm,
-      obj,
-      realm.intrinsics.SymbolIterator,
-      new PropertyDescriptor({
-        value: realm.intrinsics.ArrayProto_values,
-        writable: true,
-        enumerable: false,
-        configurable: true,
-      })
-    );
+    Properties.DefinePropertyOrThrow(realm, obj, realm.intrinsics.SymbolIterator, {
+      value: realm.intrinsics.ArrayProto_values,
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
 
     // 23. Perform ! DefinePropertyOrThrow(obj, "callee", PropertyDescriptor {[[Value]]:
     //     func, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}).
-    Properties.DefinePropertyOrThrow(
-      realm,
-      obj,
-      "callee",
-      new PropertyDescriptor({
-        value: func,
-        writable: true,
-        enumerable: false,
-        configurable: true,
-      })
-    );
+    Properties.DefinePropertyOrThrow(realm, obj, "callee", {
+      value: func,
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
 
     // 24. Return obj.
     return obj;
@@ -593,12 +549,12 @@ export class CreateImplementation {
     invariant(IsPropertyKey(realm, P), "Not a property key");
 
     // 3. Let newDesc be the PropertyDescriptor{[[Value]]: V, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: true}.
-    let newDesc = new PropertyDescriptor({
+    let newDesc = {
       value: V,
       writable: true,
       enumerable: true,
       configurable: true,
-    });
+    };
 
     // 4. Return ? O.[[DefineOwnProperty]](P, newDesc).
     return O.$DefineOwnProperty(P, newDesc);
@@ -645,7 +601,7 @@ export class CreateImplementation {
           let desc = from.$GetOwnProperty(nextKey);
 
           // If desc is not undefined and desc.[[Enumerable]] is true, then
-          if (desc !== undefined && desc.throwIfNotConcrete(realm).enumerable === true) {
+          if (desc !== undefined && desc.enumerable === true) {
             // Let propValue be ? Get(from, nextKey).
             let propValue = Get(realm, from, nextKey);
             // Perform ! CreateDataProperty(target, nextKey, propValue).
@@ -668,12 +624,12 @@ export class CreateImplementation {
     invariant(IsPropertyKey(realm, P), "Not a property key");
 
     // 3. Let newDesc be the PropertyDescriptor{[[Value]]: V, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}.
-    let newDesc = new PropertyDescriptor({
+    let newDesc = {
       value: V,
       writable: true,
       enumerable: false,
       configurable: true,
-    });
+    };
 
     // 4. Return ? O.[[DefineOwnProperty]](P, newDesc).
     return O.$DefineOwnProperty(P, newDesc);
@@ -947,17 +903,12 @@ export class CreateImplementation {
       prototype.originalConstructor = F;
 
       // b. Perform DefinePropertyOrThrow(F, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
-      Properties.DefinePropertyOrThrow(
-        realm,
-        F,
-        "prototype",
-        new PropertyDescriptor({
-          value: prototype,
-          writable: true,
-          enumerable: false,
-          configurable: false,
-        })
-      );
+      Properties.DefinePropertyOrThrow(realm, F, "prototype", {
+        value: prototype,
+        writable: true,
+        enumerable: false,
+        configurable: false,
+      });
     } else {
       // 28. Else, perform MakeConstructor(F).
       MakeConstructor(realm, F);

@@ -74,7 +74,7 @@ it("Simple 12", () => {
 
 it("Runtime error", () => {
   runTest(__dirname + "/FunctionalComponents/runtime-error.js", {
-    expectReconcilerError: true,
+    expectRuntimeError: true,
   });
 });
 
@@ -266,6 +266,10 @@ it("Dynamic context", () => {
 
 it("React.cloneElement", () => {
   runTest(__dirname + "/FunctionalComponents/clone-element.js");
+});
+
+it("React.cloneElement 2", () => {
+  runTest(__dirname + "/FunctionalComponents/clone-element2.js");
 });
 
 it("Return text", () => {

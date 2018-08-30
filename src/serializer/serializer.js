@@ -38,7 +38,6 @@ import { Referentializer } from "./Referentializer.js";
 import { Get } from "../methods/index.js";
 import { ObjectValue, Value } from "../values/index.js";
 import { Properties } from "../singletons.js";
-import { PropertyDescriptor } from "../descriptors.js";
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
@@ -116,7 +115,7 @@ export class Serializer {
     for (let name of Properties.GetOwnPropertyKeysArray(realm, output, false, false)) {
       let property = output.properties.get(name);
       if (!property) continue;
-      let value = property.descriptor instanceof PropertyDescriptor && property.descriptor.value;
+      let value = property.descriptor && property.descriptor.value;
       if (!(value instanceof Value)) continue;
       generator.emitGlobalDeclaration(name, value);
     }

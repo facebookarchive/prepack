@@ -25,7 +25,6 @@ import { HasSomeCompatibleType } from "./has.js";
 import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 import type { BabelNodeClassMethod } from "@babel/types";
-import { PropertyDescriptor } from "../descriptors.js";
 
 // ECMA262 9.2.8
 export function MakeConstructor(
@@ -57,31 +56,21 @@ export function MakeConstructor(
     prototype.originalConstructor = F;
 
     // b. Perform ! DefinePropertyOrThrow(prototype, "constructor", PropertyDescriptor{[[Value]]: F, [[Writable]]: writablePrototype, [[Enumerable]]: false, [[Configurable]]: true }).
-    Properties.DefinePropertyOrThrow(
-      realm,
-      prototype,
-      "constructor",
-      new PropertyDescriptor({
-        value: F,
-        writable: writablePrototype,
-        enumerable: false,
-        configurable: true,
-      })
-    );
+    Properties.DefinePropertyOrThrow(realm, prototype, "constructor", {
+      value: F,
+      writable: writablePrototype,
+      enumerable: false,
+      configurable: true,
+    });
   }
 
   // 6. Perform ! DefinePropertyOrThrow(F, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: writablePrototype, [[Enumerable]]: false, [[Configurable]]: false}).
-  Properties.DefinePropertyOrThrow(
-    realm,
-    F,
-    "prototype",
-    new PropertyDescriptor({
-      value: prototype,
-      writable: writablePrototype,
-      enumerable: false,
-      configurable: false,
-    })
-  );
+  Properties.DefinePropertyOrThrow(realm, F, "prototype", {
+    value: prototype,
+    writable: writablePrototype,
+    enumerable: false,
+    configurable: false,
+  });
 
   // 7. Return NormalCompletion(undefined).
   return realm.intrinsics.undefined;

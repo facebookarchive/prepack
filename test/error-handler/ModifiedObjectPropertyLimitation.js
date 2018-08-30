@@ -1,5 +1,5 @@
 // recover-from-errors
-// expected errors: [{"severity":"Warning","errorCode":"PP1007","callStack":"Error\n    "},{"severity":"Warning","errorCode":"PP0023","callStack":"Error\n    "}]
+// expected errors: [{"severity":"Warning","errorCode":"PP0023","callStack":"Error\n    "}]
 (function() {
   let p = {};
   function f(c) {

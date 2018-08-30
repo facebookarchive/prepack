@@ -115,12 +115,6 @@ export class ThrowCompletion extends AbruptCompletion {
   constructor(value: Value, location: ?BabelNodeSourceLocation, nativeStack?: ?string) {
     super(value, location);
     this.nativeStack = nativeStack || new Error().stack;
-    let realm = value.$Realm;
-    if (realm.isInPureScope()) {
-      for (let callback of realm.reportSideEffectCallbacks) {
-        callback("EXCEPTION_THROWN", undefined, location);
-      }
-    }
   }
 
   nativeStack: string;

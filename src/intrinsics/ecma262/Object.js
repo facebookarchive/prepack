@@ -40,7 +40,6 @@ import {
 import { Create, Leak, Properties as Props, To } from "../../singletons.js";
 import { createOperationDescriptor } from "../../utils/generator.js";
 import invariant from "../../invariant.js";
-import { PropertyDescriptor } from "../../descriptors.js";
 
 function snapshotToObjectAndRemoveProperties(
   to: ObjectValue | AbstractObjectValue,
@@ -97,8 +96,8 @@ function copyKeys(realm: Realm, keys, from, to): void {
     let desc = from.$GetOwnProperty(nextKey);
 
     // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
-    if (desc && desc.throwIfNotConcrete(realm).enumerable) {
-      Props.ThrowIfMightHaveBeenDeleted(desc);
+    if (desc && desc.enumerable) {
+      Props.ThrowIfMightHaveBeenDeleted(desc.value);
 
       // 1. Let propValue be ? Get(from, nextKey).
       let propValue = Get(realm, from, nextKey);
@@ -347,37 +346,35 @@ export default function(realm: Realm): NativeFunctionValue {
     // 3. Let desc be ? obj.[[GetOwnProperty]](key).
     let desc = obj.$GetOwnProperty(key);
 
+    let getterFunc = desc && desc.get;
     // If we are returning a descriptor with a NativeFunctionValue
     // and it has no intrinsic name, then we create a temporal as this
     // can only be done at runtime
-    if (desc instanceof PropertyDescriptor) {
-      let getterFunc = desc.get;
-      if (
-        getterFunc instanceof NativeFunctionValue &&
-        getterFunc.intrinsicName === undefined &&
-        realm.useAbstractInterpretation
-      ) {
-        invariant(P instanceof Value);
-        // this will create a property descriptor at runtime
-        let result = AbstractValue.createTemporalFromBuildFunction(
-          realm,
-          ObjectValue,
-          [getOwnPropertyDescriptor, obj, P],
-          createOperationDescriptor("OBJECT_PROTO_GET_OWN_PROPERTY_DESCRIPTOR")
-        );
-        invariant(result instanceof AbstractObjectValue);
-        result.makeSimple();
-        let get = Get(realm, result, "get");
-        let set = Get(realm, result, "set");
-        invariant(get instanceof AbstractValue);
-        invariant(set instanceof AbstractValue);
-        desc = new PropertyDescriptor({
-          get,
-          set,
-          enumerable: false,
-          configurable: true,
-        });
-      }
+    if (
+      getterFunc instanceof NativeFunctionValue &&
+      getterFunc.intrinsicName === undefined &&
+      realm.useAbstractInterpretation
+    ) {
+      invariant(P instanceof Value);
+      // this will create a property descriptor at runtime
+      let result = AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        ObjectValue,
+        [getOwnPropertyDescriptor, obj, P],
+        createOperationDescriptor("OBJECT_PROTO_GET_OWN_PROPERTY_DESCRIPTOR")
+      );
+      invariant(result instanceof AbstractObjectValue);
+      result.makeSimple();
+      let get = Get(realm, result, "get");
+      let set = Get(realm, result, "set");
+      invariant(get instanceof AbstractValue);
+      invariant(set instanceof AbstractValue);
+      desc = {
+        get,
+        set,
+        enumerable: false,
+        configurable: true,
+      };
     }
 
     // 4. Return FromPropertyDescriptor(desc).
@@ -407,7 +404,7 @@ export default function(realm: Realm): NativeFunctionValue {
     for (let key of ownKeys) {
       // a. Let desc be ? obj.[[GetOwnProperty]](key).
       let desc = obj.$GetOwnProperty(key);
-      if (desc !== undefined) Props.ThrowIfMightHaveBeenDeleted(desc);
+      if (desc !== undefined) Props.ThrowIfMightHaveBeenDeleted(desc.value);
 
       // b. Let descriptor be ! FromPropertyDescriptor(desc).
       let descriptor = Props.FromPropertyDescriptor(realm, desc);
