@@ -381,6 +381,10 @@ export class PathConditions {
     return 0;
   }
 
+  getAssumedConditions(): Set<AbstractValue> {
+    return new Set();
+  }
+
   refineBaseConditons(realm: Realm, depth?: number = 0): void {}
 }
 

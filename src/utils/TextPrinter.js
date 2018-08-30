@@ -183,8 +183,10 @@ export class TextPrinter implements Printer {
   printGenerator(generator: Generator, label?: string = "(entry point)"): void {
     this._print(`${label}: ${JSON.stringify(generator.getName())}`);
     this._nest();
-    if (generator.pathConditions.length > 0)
-      this._print(`path conditions ${this.describeValues(generator.pathConditions)}`);
+    if (generator.pathConditions.getLength() > 0)
+      this._print(
+        `path conditions ${this.describeValues(Array.from(generator.pathConditions.getAssumedConditions()))}`
+      );
     generator.print(this);
     this._unnest();
   }
