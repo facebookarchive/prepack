@@ -114,6 +114,7 @@ function run(
   let externalPrepackPath: void | string;
   let diagnosticAsError: void | Set<string>;
   let noDiagnostic: void | Set<string>;
+  let warnAsError: void | true;
   let flags = {
     initializeMoreModules: false,
     trace: false,
@@ -128,7 +129,6 @@ function run(
     profile: false,
     instantRender: false,
     reactEnabled: false,
-    warnAsError: false,
   };
   let reproArguments = [];
   let reproFileNames = [];
@@ -210,6 +210,10 @@ function run(
           let noDiagnosticString = args.shift();
           noDiagnostic = new Set(noDiagnosticString.split(","));
           reproArguments.push("--noDiagnostic", noDiagnosticString);
+          break;
+        case "warnAsError":
+          warnAsError = true;
+          reproArguments.push("--warnAsError");
           break;
         case "check":
           let range = args.shift();
@@ -333,6 +337,9 @@ function run(
             "--repro reprofile.zip",
             "--cpuprofile name.cpuprofile",
             "--invariantMode " + InvariantModeValues.join(" | "),
+            "--warnAsError",
+            "--diagnosticAsError PPxxxx,PPyyyy,...",
+            "--noDiagnostic PPxxxx,PPyyyy,...",
           ];
           for (let flag of Object.keys(flags)) options.push(`--${flag}`);
 
@@ -398,7 +405,7 @@ function run(
   function errorHandler(compilerDiagnostic: CompilerDiagnostic): ErrorHandlerResult {
     if (noDiagnostic !== undefined && noDiagnostic.has(compilerDiagnostic.errorCode)) return "Recover";
     if (
-      (flags.warnAsError && compilerDiagnostic.severity === "Warning") ||
+      (warnAsError && compilerDiagnostic.severity === "Warning") ||
       (diagnosticAsError !== undefined &&
         diagnosticAsError.has(compilerDiagnostic.errorCode) &&
         compilerDiagnostic.severity !== "FatalError")
