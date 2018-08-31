@@ -642,7 +642,7 @@ export class MaterializeImplementation {
     }
 
     for (let object of objectsToMaterialize) {
-      materializeObject(realm, object);
+      if (!TestIntegrityLevel(realm, object, "frozen")) materializeObject(realm, object);
     }
 
     return;
