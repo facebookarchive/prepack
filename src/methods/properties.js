@@ -1580,6 +1580,7 @@ export class PropertiesImplementation {
             let realmGenerator = realm.generator;
             invariant(realmGenerator);
             invariant(value.operationDescriptor);
+            const functionResultType = value instanceof AbstractObjectValue ? value.functionResultType : undefined;
             value = realmGenerator.deriveAbstract(value.types, value.values, value.args, value.operationDescriptor, {
               isPure: true,
               kind: "resolved",
@@ -1591,6 +1592,10 @@ export class PropertiesImplementation {
               let args = savedUnion.args.slice(0);
               args[savedIndex] = value;
               value = AbstractValue.createAbstractConcreteUnion(realm, ...args);
+            }
+            if (functionResultType !== undefined) {
+              invariant(value instanceof AbstractObjectValue);
+              value.functionResultType = functionResultType;
             }
             if (realm.invariantLevel >= 1 && typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
               realm.markPropertyAsChecked(O, P);
