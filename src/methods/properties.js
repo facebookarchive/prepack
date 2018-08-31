@@ -936,6 +936,9 @@ export class PropertiesImplementation {
     // same value as the corresponding field in current when compared using the SameValue algorithm.
     let identical = true;
     for (let field in Desc) {
+      if (Desc[field] === undefined) {
+        continue;
+      }
       if ((current: any)[field] === undefined) {
         identical = false;
       } else {
@@ -1003,8 +1006,8 @@ export class PropertiesImplementation {
         // Preserve the existing values of the converted property's [[Configurable]] and [[Enumerable]] attributes and set the rest of the property's attributes to their default values.
         if (O !== undefined) {
           invariant(P !== undefined);
-          delete current.writable;
-          delete current.value;
+          current.writable = undefined;
+          current.value = undefined;
           current.get = realm.intrinsics.undefined;
           current.set = realm.intrinsics.undefined;
         }
@@ -1013,8 +1016,8 @@ export class PropertiesImplementation {
         // i. If O is not undefined, convert the property named P of object O from an accessor property to a data property. Preserve the existing values of the converted property's [[Configurable]] and [[Enumerable]] attributes and set the rest of the property's attributes to their default values.
         if (O !== undefined) {
           invariant(P !== undefined);
-          delete current.get;
-          delete current.set;
+          current.get = undefined;
+          current.set = undefined;
           current.writable = false;
           current.value = realm.intrinsics.undefined;
         }
