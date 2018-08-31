@@ -77,6 +77,7 @@ import { Logger } from "../utils/logger.js";
 import type { ClassComponentMetadata, ReactComponentTreeConfig, ReactHint } from "../types.js";
 import { handleReportedSideEffect } from "../serializer/utils.js";
 import { createOperationDescriptor } from "../utils/generator.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 type ComponentResolutionStrategy =
   | "NORMAL"
@@ -127,6 +128,7 @@ function setContextCurrentValue(contextObject: ObjectValue | AbstractObjectValue
   let binding = contextObject.properties.get("currentValue");
 
   if (binding && binding.descriptor) {
+    invariant(binding.descriptor instanceof PropertyDescriptor);
     binding.descriptor.value = value;
   } else {
     invariant(false, "setContextCurrentValue failed to set the currentValue");
@@ -1481,15 +1483,18 @@ export class Reconciler {
         this._findReactComponentTrees(props, evaluatedNode, treatFunctionsAs, componentType, context, branchStatus);
       } else {
         for (let [propName, binding] of value.properties) {
-          if (binding && binding.descriptor && binding.descriptor.enumerable) {
-            this._findReactComponentTrees(
-              getProperty(this.realm, value, propName),
-              evaluatedNode,
-              treatFunctionsAs,
-              componentType,
-              context,
-              branchStatus
-            );
+          if (binding && binding.descriptor) {
+            invariant(binding.descriptor instanceof PropertyDescriptor);
+            if (binding.descriptor.enumerable) {
+              this._findReactComponentTrees(
+                getProperty(this.realm, value, propName),
+                evaluatedNode,
+                treatFunctionsAs,
+                componentType,
+                context,
+                branchStatus
+              );
+            }
           }
         }
       }

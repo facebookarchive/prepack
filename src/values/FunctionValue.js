@@ -45,7 +45,7 @@ export default class FunctionValue extends ObjectValue {
     invariant(binding);
     let desc = binding.descriptor;
     invariant(desc);
-    let value = desc.value;
+    let value = desc.throwIfNotConcrete(this.$Realm).value;
     if (!(value instanceof NumberValue)) return undefined;
     return value.value;
   }

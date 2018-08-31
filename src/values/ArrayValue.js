@@ -25,6 +25,7 @@ import { Leak, Properties, To, Utils } from "../singletons.js";
 import { type OperationDescriptor } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import { NestedOptimizedFunctionSideEffect } from "../errors.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 type PossibleNestedOptimizedFunctions = [
   { func: BoundFunctionValue | ECMAScriptSourceFunctionValue, thisValue: Value },
@@ -98,9 +99,9 @@ function createArrayWithWidenedNumericProperty(
   // Add unknownProperty so we manually handle this object property access
   abstractArrayValue.unknownProperty = {
     key: undefined,
-    descriptor: {
+    descriptor: new PropertyDescriptor({
       value: AbstractValue.createFromType(realm, Value, "widened numeric property"),
-    },
+    }),
     object: abstractArrayValue,
   };
   return abstractArrayValue;
@@ -149,7 +150,8 @@ export default class ArrayValue extends ObjectValue {
         oldLenDesc !== undefined && !IsAccessorDescriptor(this.$Realm, oldLenDesc),
         "cannot be undefined or an accessor descriptor"
       );
-      Properties.ThrowIfMightHaveBeenDeleted(oldLenDesc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(oldLenDesc);
+      oldLenDesc = oldLenDesc.throwIfNotConcrete(this.$Realm);
 
       // c. Let oldLen be oldLenDesc.[[Value]].
       let oldLen = oldLenDesc.value;
@@ -211,8 +213,7 @@ export default class ArrayValue extends ObjectValue {
     if (obj instanceof ArrayValue && obj.intrinsicName) {
       const prop = obj.unknownProperty;
       if (prop !== undefined && prop.descriptor !== undefined) {
-        const desc = prop.descriptor;
-
+        const desc = prop.descriptor.throwIfNotConcrete(obj.$Realm);
         return desc.value instanceof AbstractValue && desc.value.kind === "widened numeric property";
       }
     }

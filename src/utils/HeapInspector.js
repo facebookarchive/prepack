@@ -29,8 +29,35 @@ import {
 import { To } from "../singletons.js";
 import invariant from "../invariant.js";
 import { Logger } from "./logger.js";
+import { PropertyDescriptor, AbstractJoinedDescriptor } from "../descriptors.js";
 
 type TargetIntegrityCommand = "freeze" | "seal" | "preventExtensions" | "";
+
+function hasAnyConfigurable(desc: void | Descriptor): boolean {
+  if (!desc) {
+    return false;
+  }
+  if (desc instanceof PropertyDescriptor) {
+    return !!desc.configurable;
+  }
+  if (desc instanceof AbstractJoinedDescriptor) {
+    return hasAnyConfigurable(desc.descriptor1) || hasAnyConfigurable(desc.descriptor2);
+  }
+  invariant(false, "internal slots aren't covered here");
+}
+
+function hasAnyWritable(desc: void | Descriptor): boolean {
+  if (!desc) {
+    return false;
+  }
+  if (desc instanceof PropertyDescriptor) {
+    return desc.value !== undefined && !!desc.writable;
+  }
+  if (desc instanceof AbstractJoinedDescriptor) {
+    return hasAnyWritable(desc.descriptor1) || hasAnyWritable(desc.descriptor2);
+  }
+  invariant(false, "internal slots aren't covered here");
+}
 
 export class HeapInspector {
   constructor(realm: Realm, logger: Logger) {
@@ -65,8 +92,8 @@ export class HeapInspector {
           for (let propertyBinding of val.properties.values()) {
             let desc = propertyBinding.descriptor;
             if (desc === undefined) continue; //deleted
-            if (desc.configurable) anyConfigurable = true;
-            else if (desc.value !== undefined && desc.writable) anyWritable = true;
+            if (hasAnyConfigurable(desc)) anyConfigurable = true;
+            else if (hasAnyWritable(desc)) anyWritable = true;
           }
           command = anyConfigurable ? "preventExtensions" : anyWritable ? "seal" : "freeze";
         }
@@ -135,6 +162,12 @@ export class HeapInspector {
   }
 
   _canIgnoreProperty(val: ObjectValue, key: string, desc: Descriptor): boolean {
+    if (!(desc instanceof PropertyDescriptor)) {
+      // If we have a joined descriptor, there is at least one variant that isn't the same as
+      // the target descriptor. Since the two descriptors won't be equal.
+      return false;
+    }
+
     let targetDescriptor = this.getTargetIntegrityDescriptor(val);
 
     if (IsArray(this.realm, val)) {
@@ -242,6 +275,7 @@ export class HeapInspector {
     if (prototypeBinding === undefined) return undefined;
     let prototypeDesc = prototypeBinding.descriptor;
     if (prototypeDesc === undefined) return undefined;
+    invariant(prototypeDesc instanceof PropertyDescriptor);
     invariant(prototypeDesc.value === undefined || prototypeDesc.value instanceof Value);
     return prototypeDesc.value;
   }

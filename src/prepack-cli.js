@@ -21,6 +21,7 @@ import {
   InvariantModeValues,
 } from "./options.js";
 import { type SerializedResult } from "./serializer/types.js";
+import { TextPrinter } from "./utils/TextPrinter.js";
 import { prepackStdin, prepackFileSync } from "./prepack-node.js";
 import type { BabelNodeSourceLocation } from "@babel/types";
 import fs from "fs";
@@ -67,6 +68,7 @@ function run(
     --logStatistics          Log statistics to console
     --statsFile              The name of the output file where statistics will be written to.
     --heapGraphFilePath      The name of the output file where heap graph will be written to.
+    --dumpIRFilePath         The name of the output file where the intermediate representation will be written to.
     --inlineExpressions      When generating code, tells prepack to avoid naming expressions when they are only used once,
                              and instead inline them where they are used.
     --invariantLevel         0: no invariants (default); 1: checks for abstract values; 2: checks for accessed built-ins; 3: internal consistency
@@ -94,6 +96,7 @@ function run(
   let debugIdentifiers: void | Array<string>;
   let lazyObjectsRuntime: string;
   let heapGraphFilePath: void | string;
+  let dumpIRFilePath: void | string;
   let debugInFilePath: string;
   let debugOutFilePath: string;
   let reactOutput: ReactOutputTypes = "create-element";
@@ -230,6 +233,10 @@ function run(
           heapGraphFilePath = args.shift();
           // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as path is likely not portable between environments
           break;
+        case "dumpIRFilePath":
+          dumpIRFilePath = args.shift();
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as path is likely not portable between environments
+          break;
         case "reactOutput":
           arg = args.shift();
           if (!ReactOutputValues.includes(arg)) {
@@ -306,6 +313,7 @@ function run(
             "--check [start[, number]]",
             "--lazyObjectsRuntime lazyObjectsRuntimeName",
             "--heapGraphFilePath heapGraphFilePath",
+            "--dumpIRFilePath dumpIRFilePath",
             "--reactOutput " + ReactOutputValues.join(" | "),
             "--repro reprofile.zip",
             "--cpuprofile name.cpuprofile",
@@ -355,6 +363,16 @@ function run(
     flags
   );
   if (heapGraphFilePath !== undefined) resolvedOptions.heapGraphFormat = "DotLanguage";
+  if (dumpIRFilePath !== undefined) {
+    resolvedOptions.onExecute = (realm, optimizedFunctions) => {
+      let text = "";
+      new TextPrinter(line => {
+        text += line + "\n";
+      }).print(realm, optimizedFunctions);
+      invariant(dumpIRFilePath !== undefined);
+      fs.writeFileSync(dumpIRFilePath, text);
+    };
+  }
   if (lazyObjectsRuntime !== undefined && (resolvedOptions.delayInitializations || resolvedOptions.inlineExpressions)) {
     console.error("lazy objects feature is incompatible with delayInitializations and inlineExpressions options");
     process.exit(1);
