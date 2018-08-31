@@ -517,7 +517,7 @@ class ObjectValueLeakingVisitor {
         (val.kind === "widened numeric property" || // TODO: Widened properties needs to be havocable.
           val.kind.startsWith("abstractCounted"));
       invariant(
-        whitelistedKind || val.intrinsicName || val.args.length > 0,
+        whitelistedKind !== undefined || val.intrinsicName !== undefined || val.args.length > 0,
         "Havoced unknown object requires havocable arguments"
       );
 

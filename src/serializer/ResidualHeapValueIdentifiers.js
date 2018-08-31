@@ -86,7 +86,7 @@ export class ResidualHeapValueIdentifiers {
       let valToRefCount = this.valToRefCount;
       invariant(valToRefCount !== undefined);
       let refCount = valToRefCount.get(val);
-      if (refCount) {
+      if (refCount !== undefined) {
         refCount++;
       } else {
         refCount = 1;
