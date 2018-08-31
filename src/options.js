@@ -47,7 +47,6 @@ export type RealmOptions = {
   invariantMode?: InvariantModeTypes,
   emitConcreteModel?: boolean,
   uniqueSuffix?: string,
-  residual?: boolean,
   serialize?: boolean,
   strictlyMonotonicDateNow?: boolean,
   timeout?: number,
