@@ -65,7 +65,7 @@ export function describeLocation(
   if (!locString) {
     if (loc) {
       locString = `${loc.start.line}:${loc.start.column + 1}`;
-      if (loc.source) locString = `${loc.source}:${locString}`;
+      if (loc.source !== null) locString = `${loc.source}:${locString}`;
     } else {
       locString = (loc ? loc.source : undefined) || "unknown";
       if (!displayName) return undefined;

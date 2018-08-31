@@ -226,7 +226,7 @@ while (args.length) {
   }
 }
 
-if (!inputFilename) {
+if (inputFilename === undefined) {
   console.error("Missing input file.");
   process.exit(1);
 } else {

@@ -36,7 +36,7 @@ export class Stepper {
     let filePath = loc.source;
     let line = loc.start.line;
     let column = loc.start.column;
-    if (!filePath) return false;
+    if (filePath === null) return false;
     if (this._stepStartData) {
       if (
         filePath === this._stepStartData.filePath &&

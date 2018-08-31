@@ -27,7 +27,7 @@ export default function(
   // 1. If BindingIdentifieropt is not present, let className be undefined.
   let className;
   // 2. Else, let className be StringValue of BindingIdentifier.
-  if (ast.id) {
+  if (ast.id != null) {
     className = ast.id.name;
   }
   // 3. Let value be the result of ClassDefinitionEvaluation of ClassTail with argument className.
@@ -36,7 +36,7 @@ export default function(
   // 4. ReturnIfAbrupt(value).
 
   // 5. If className is not undefined, then
-  if (className) {
+  if (className !== undefined) {
     // a. Let hasNameProperty be HasOwnProperty(value, "name").
     let hasNameProperty = HasOwnProperty(realm, value, "name");
 

@@ -59,7 +59,7 @@ export class SourceMapManager {
       let originalSourcePaths = [];
       let mapPaths = [];
       for (let map of sourceMaps) {
-        invariant(map.sourceMapContents); // Checked above.
+        invariant(map.sourceMapContents !== undefined); // Checked above.
         let parsed = JSON.parse(map.sourceMapContents);
         // Two formats for sourcemaps exist.
         if ("sections" in parsed) {

@@ -160,13 +160,13 @@ class PrepackDebugSession extends DebugSession {
     response: DebugProtocol.SetBreakpointsResponse,
     args: DebugProtocol.SetBreakpointsArguments
   ): void {
-    if (!args.source.path || !args.breakpoints) return;
+    if (args.source.path === undefined || args.breakpoints === undefined) return;
     let filePath = args.source.path;
     let breakpointInfos = [];
     for (const breakpoint of args.breakpoints) {
       let line = breakpoint.line;
       let column = 0;
-      if (breakpoint.column) {
+      if (breakpoint.column !== undefined) {
         column = breakpoint.column;
       }
       let breakpointInfo: Breakpoint = {

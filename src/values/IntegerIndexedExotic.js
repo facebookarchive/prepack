@@ -106,7 +106,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
         if (numericIndex < 0) return false;
 
         // vi. If numericIndex ≥ O.[[ArrayLength]], return false.
-        invariant(O.$ArrayLength);
+        invariant(O.$ArrayLength !== undefined);
         if (numericIndex >= O.$ArrayLength) return false;
 
         // vii. Return true.

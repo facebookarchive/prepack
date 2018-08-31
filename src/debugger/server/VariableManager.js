@@ -168,7 +168,7 @@ export class VariableManager {
   }
 
   _getAbstractValueDisplay(value: AbstractValue): string {
-    if (value.intrinsicName && !value.intrinsicName.startsWith("_")) {
+    if (value.intrinsicName !== undefined && !value.intrinsicName.startsWith("_")) {
       return value.intrinsicName;
     }
     return "Abstract " + value.types.getType().name;

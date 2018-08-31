@@ -24,6 +24,6 @@ export default function(
   return RegExpCreate(
     realm,
     new StringValue(realm, ast.pattern),
-    ast.flags ? new StringValue(realm, ast.flags) : undefined
+    ast.flags !== undefined ? new StringValue(realm, ast.flags) : undefined
   );
 }

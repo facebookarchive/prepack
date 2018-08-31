@@ -146,7 +146,7 @@ export function verboseToDisplayJson(obj: {}, depth: number): DisplayResult {
     let prop = obj[key];
     if (!prop) continue;
     let value = valueOfProp(prop);
-    if (value && value !== "[object Object]") result[key] = value;
+    if (value !== undefined && value !== "[object Object]") result[key] = value;
   }
   return result;
 }
@@ -164,7 +164,7 @@ export function createModelledFunctionCall(
   let argModel = typeof argModelInput === "string" ? (JSON.parse(argModelInput): ArgModel) : argModelInput;
   invariant(funcValue instanceof ECMAScriptSourceFunctionValue);
   let params = funcValue.$FormalParameters;
-  if (numArgs && numArgs > 0 && params) {
+  if (numArgs !== undefined && numArgs > 0 && params) {
     for (let parameterId of params) {
       if (t.isIdentifier(parameterId)) {
         // $FlowFixMe: Flow strict file does not allow for casting
