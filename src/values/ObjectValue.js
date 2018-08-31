@@ -308,6 +308,11 @@ export default class ObjectValue extends ConcreteValue {
   // never be serialized.
   refuseSerialization: boolean;
 
+  // Checks whether effects are properly applied.
+  isValid(): boolean {
+    return this._isPartial !== undefined;
+  }
+
   equals(x: Value): boolean {
     return this === x;
   }
