@@ -80,6 +80,9 @@ function run(
     --cpuprofile             Create a CPU profile file for the run that can be loaded into the Chrome JavaScript CPU Profile viewer.
     --debugDiagnosticSeverity  FatalError | RecoverableError | Warning | Information (default = FatalError). Diagnostic level at which debugger will stop.
     --debugBuckRoot          Root directory that buck assumes when creating sourcemap paths.
+    --warnAsError            Turns all warnings into errors.
+    --diagnosticAsError      A comma-separated list of non-fatal-error PPxxxx diagnostic codes that should get turned into (recoverable) errors.
+    --noDiagnostic           A comma-separated list of non-fatal-error PPxxxx diagnostic codes that should get suppressed.
   `;
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -109,6 +112,9 @@ function run(
   // Indicates where to find a zip with prepack runtime. Used in environments where
   // the `yarn pack` strategy doesn't work.
   let externalPrepackPath: void | string;
+  let diagnosticAsError: void | Set<string>;
+  let noDiagnostic: void | Set<string>;
+  let warnAsError: void | true;
   let flags = {
     initializeMoreModules: false,
     trace: false,
@@ -124,7 +130,6 @@ function run(
     instantRender: false,
     reactEnabled: false,
   };
-
   let reproArguments = [];
   let reproFileNames = [];
   let debuggerConfigArgs: DebuggerConfigArguments = {};
@@ -195,6 +200,20 @@ function run(
           let debugIdentifiersString = args.shift();
           debugIdentifiers = debugIdentifiersString.split(",");
           reproArguments.push("--debugIdentifiers", debugIdentifiersString);
+          break;
+        case "diagnosticAsError":
+          let diagnosticAsErrorString = args.shift();
+          diagnosticAsError = new Set(diagnosticAsErrorString.split(","));
+          reproArguments.push("--diagnosticAsError", diagnosticAsErrorString);
+          break;
+        case "noDiagnostic":
+          let noDiagnosticString = args.shift();
+          noDiagnostic = new Set(noDiagnosticString.split(","));
+          reproArguments.push("--noDiagnostic", noDiagnosticString);
+          break;
+        case "warnAsError":
+          warnAsError = true;
+          reproArguments.push("--warnAsError");
           break;
         case "check":
           let range = args.shift();
@@ -318,6 +337,9 @@ function run(
             "--repro reprofile.zip",
             "--cpuprofile name.cpuprofile",
             "--invariantMode " + InvariantModeValues.join(" | "),
+            "--warnAsError",
+            "--diagnosticAsError PPxxxx,PPyyyy,...",
+            "--noDiagnostic PPxxxx,PPyyyy,...",
           ];
           for (let flag of Object.keys(flags)) options.push(`--${flag}`);
 
@@ -381,6 +403,21 @@ function run(
   let compilerDiagnostics: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
   let compilerDiagnosticsList: Array<CompilerDiagnostic> = [];
   function errorHandler(compilerDiagnostic: CompilerDiagnostic): ErrorHandlerResult {
+    if (noDiagnostic !== undefined && noDiagnostic.has(compilerDiagnostic.errorCode)) return "Recover";
+    if (
+      (warnAsError && compilerDiagnostic.severity === "Warning") ||
+      (diagnosticAsError !== undefined &&
+        diagnosticAsError.has(compilerDiagnostic.errorCode) &&
+        compilerDiagnostic.severity !== "FatalError")
+    ) {
+      compilerDiagnostic = new CompilerDiagnostic(
+        compilerDiagnostic.message,
+        compilerDiagnostic.location,
+        compilerDiagnostic.errorCode,
+        "RecoverableError",
+        compilerDiagnostic.sourceFilePaths
+      );
+    }
     if (compilerDiagnostic.location) compilerDiagnostics.set(compilerDiagnostic.location, compilerDiagnostic);
     else compilerDiagnosticsList.push(compilerDiagnostic);
     return "Recover";
