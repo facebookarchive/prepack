@@ -118,7 +118,7 @@ function tryToEvaluateConstructOrLeaveAsAbstract(
   return completion;
 }
 
-function createConstruct(constructor: Value, argsList: Array<Value>, realm: Realm): ObjectValue {
+function createConstruct(constructor: Value, argsList: Array<Value>, realm: Realm): ObjectValue | AbstractObjectValue {
   // 7. If IsConstructor(constructor) is false, throw a TypeError exception.
   if (IsConstructor(realm, constructor) === false) {
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);

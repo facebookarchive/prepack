@@ -81,7 +81,7 @@ export function ProxyConstruct(
     invariant(target.$Construct, "expected construct method");
 
     // b. Return ? Construct(target, argumentsList, newTarget).
-    return Construct(realm, target, argumentsList, newTarget);
+    return Construct(realm, target, argumentsList, newTarget).throwIfNotConcreteObject();
   }
 
   // 7. Let argArray be CreateArrayFromList(argumentsList).
