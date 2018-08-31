@@ -9071,12 +9071,12 @@ v8-compile-cache@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/v8-compile-cache/-/v8-compile-cache-2.0.0.tgz#526492e35fc616864284700b7043e01baee09f0a"
 
-v8-profiler@^5.7.0:
-  version "5.7.0"
-  resolved "https://registry.yarnpkg.com/v8-profiler/-/v8-profiler-5.7.0.tgz#e8381cbebb5b5fd0ca8d2b09f6a0181a158db34d"
+v8-profiler-node8@^6.0.1:
+  version "6.0.1"
+  resolved "https://registry.yarnpkg.com/v8-profiler-node8/-/v8-profiler-node8-6.0.1.tgz#2558f5dab7622f2305213e6ccb4dde1f66cc631f"
   dependencies:
     nan "^2.5.1"
-    node-pre-gyp "^0.6.34"
+    node-pre-gyp "^0.11.0"
 
 v8flags@^3.1.1:
   version "3.1.1"

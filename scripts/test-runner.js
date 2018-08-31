@@ -726,10 +726,10 @@ function prepareReplExternalSepc(procPath) {
 function runWithCpuProfiler(args) {
   let profiler;
   try {
-    profiler = require("v8-profiler");
+    profiler = require("v8-profiler-node8");
   } catch (e) {
     // Profiler optional dependency failed
-    console.error("v8-profiler doesn't work correctly on Windows, see issue #1695");
+    console.error("v8-profiler-node8 doesn't work correctly on Windows, see issue #1695");
     throw e;
   }
   profiler.setSamplingInterval(100); // default is 1000us

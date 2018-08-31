@@ -132,7 +132,7 @@
     "webpack-cli": "^3.0.8"
   },
   "optionalDependencies": {
-    "v8-profiler": "^5.7.0"
+    "v8-profiler-node8": "^6.0.1"
   },
   "engines": {
     "node": ">=6.1.0"
