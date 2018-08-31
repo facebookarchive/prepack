@@ -14,6 +14,7 @@ import {
   AbstractObjectValue,
   AbstractValue,
   BooleanValue,
+  BoundFunctionValue,
   ConcreteValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
@@ -217,7 +218,9 @@ export default function(realm: Realm): void {
           0,
           (context, [component, config]) => {
             let hasValidComponent =
-              component instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(realm, component);
+              component instanceof ECMAScriptSourceFunctionValue ||
+              component instanceof BoundFunctionValue ||
+              valueIsKnownReactAbstraction(realm, component);
             let hasValidConfig =
               config instanceof ObjectValue || config === realm.intrinsics.undefined || config === undefined;
 

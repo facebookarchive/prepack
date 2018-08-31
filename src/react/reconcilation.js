@@ -103,7 +103,7 @@ export type BranchReactComponentTree = {
 };
 
 export type ComponentTreeState = {
-  componentType: void | ECMAScriptSourceFunctionValue,
+  componentType: void | ECMAScriptSourceFunctionValue | BoundFunctionValue,
   contextTypes: Set<string>,
   deadEnds: number,
   status: "SIMPLE" | "COMPLEX",
@@ -143,7 +143,7 @@ export class Reconciler {
   constructor(
     realm: Realm,
     componentTreeConfig: ReactComponentTreeConfig,
-    alreadyEvaluated: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>,
+    alreadyEvaluated: Map<ECMAScriptSourceFunctionValue | BoundFunctionValue, ReactEvaluatedNode>,
     statistics: ReactStatistics,
     logger?: Logger
   ) {
@@ -160,13 +160,13 @@ export class Reconciler {
   statistics: ReactStatistics;
   logger: void | Logger;
   componentTreeState: ComponentTreeState;
-  alreadyEvaluated: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>;
+  alreadyEvaluated: Map<ECMAScriptSourceFunctionValue | BoundFunctionValue, ReactEvaluatedNode>;
   componentTreeConfig: ReactComponentTreeConfig;
   currentEffectsStack: Array<Effects>;
   branchedComponentTrees: Array<BranchReactComponentTree>;
 
   resolveReactComponentTree(
-    componentType: ECMAScriptSourceFunctionValue,
+    componentType: ECMAScriptSourceFunctionValue | BoundFunctionValue,
     props: ObjectValue | AbstractObjectValue | null,
     context: ObjectValue | AbstractObjectValue | null,
     evaluatedRootNode: ReactEvaluatedNode
@@ -233,7 +233,7 @@ export class Reconciler {
   }
 
   _resolveComplexClassComponent(
-    componentType: ECMAScriptSourceFunctionValue,
+    componentType: ECMAScriptSourceFunctionValue | BoundFunctionValue,
     props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     classMetadata: ClassComponentMetadata,
@@ -268,7 +268,7 @@ export class Reconciler {
   }
 
   _resolveSimpleClassComponent(
-    componentType: ECMAScriptSourceFunctionValue,
+    componentType: ECMAScriptSourceFunctionValue | BoundFunctionValue,
     props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
@@ -284,7 +284,7 @@ export class Reconciler {
   }
 
   _resolveFunctionalComponent(
-    componentType: ECMAScriptSourceFunctionValue,
+    componentType: ECMAScriptSourceFunctionValue | BoundFunctionValue,
     props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     evaluatedNode: ReactEvaluatedNode
@@ -293,7 +293,7 @@ export class Reconciler {
   }
 
   _getClassComponentMetadata(
-    componentType: ECMAScriptSourceFunctionValue,
+    componentType: ECMAScriptSourceFunctionValue | BoundFunctionValue,
     props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue
   ): ClassComponentMetadata {
@@ -487,7 +487,7 @@ export class Reconciler {
     let evaluatedChildNode = createReactEvaluatedNode("FORWARD_REF", getComponentName(this.realm, forwardedComponent));
     evaluatedNode.children.push(evaluatedChildNode);
     invariant(
-      forwardedComponent instanceof ECMAScriptSourceFunctionValue,
+      forwardedComponent instanceof ECMAScriptSourceFunctionValue || forwardedComponent instanceof BoundFunctionValue,
       "expect React.forwardRef() to be passed function value"
     );
     let value = getValueFromFunctionCall(this.realm, forwardedComponent, this.realm.intrinsics.undefined, [
@@ -551,7 +551,7 @@ export class Reconciler {
   }
 
   _resolveClassComponent(
-    componentType: ECMAScriptSourceFunctionValue,
+    componentType: ECMAScriptSourceFunctionValue | BoundFunctionValue,
     props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
@@ -609,7 +609,7 @@ export class Reconciler {
   }
 
   _resolveClassComponentForFirstRenderOnly(
-    componentType: ECMAScriptSourceFunctionValue,
+    componentType: ECMAScriptSourceFunctionValue | BoundFunctionValue,
     props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
     branchStatus: BranchStatusEnum,
@@ -703,7 +703,7 @@ export class Reconciler {
       evaluatedNode.message = "RelayContainer";
       throw new NewComponentTreeBranch(evaluatedNode);
     }
-    invariant(componentType instanceof ECMAScriptSourceFunctionValue);
+    invariant(componentType instanceof ECMAScriptSourceFunctionValue || componentType instanceof BoundFunctionValue);
     let value;
     let childContext = context;
 
@@ -1140,7 +1140,11 @@ export class Reconciler {
       switch (componentResolutionStrategy) {
         case "NORMAL": {
           if (
-            !(typeValue instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(this.realm, typeValue))
+            !(
+              typeValue instanceof ECMAScriptSourceFunctionValue ||
+              typeValue instanceof BoundFunctionValue ||
+              valueIsKnownReactAbstraction(this.realm, typeValue)
+            )
           ) {
             return this._resolveUnknownComponentType(componentType, reactElement, context, branchStatus, evaluatedNode);
           }

@@ -10,7 +10,7 @@
 /* @flow strict-local */
 
 import { type Effects, Realm } from "../realm.js";
-import { AbstractValue, ECMAScriptSourceFunctionValue, ObjectValue } from "../values/index.js";
+import { AbstractValue, ECMAScriptSourceFunctionValue, ObjectValue, BoundFunctionValue } from "../values/index.js";
 import { createAdditionalEffects } from "../serializer/utils.js";
 import {
   convertFunctionalComponentToComplexClassComponent,
@@ -33,7 +33,7 @@ import { Logger } from "../utils/logger.js";
 
 function applyWriteEffectsForOptimizedComponent(
   realm: Realm,
-  componentType: ECMAScriptSourceFunctionValue,
+  componentType: ECMAScriptSourceFunctionValue | BoundFunctionValue,
   _effects: Effects,
   componentTreeState: ComponentTreeState,
   evaluatedNode: ReactEvaluatedNode,
@@ -66,9 +66,17 @@ function applyWriteEffectsForOptimizedComponent(
     if (componentTreeState.status === "SIMPLE") {
       // if the root component was a class and is now simple, we can convert it from a class
       // component to a functional component
-      convertSimpleClassComponentToFunctionalComponent(realm, componentType, additionalFunctionEffects);
-      normalizeFunctionalComponentParamaters(componentType);
-      writeEffects.set(componentType, additionalFunctionEffects);
+      if (componentType instanceof BoundFunctionValue) {
+        let targetFunction = componentType.$BoundTargetFunction;
+        invariant(targetFunction instanceof ECMAScriptSourceFunctionValue);
+        convertSimpleClassComponentToFunctionalComponent(realm, targetFunction, additionalFunctionEffects);
+        normalizeFunctionalComponentParamaters(targetFunction);
+        writeEffects.set(targetFunction, additionalFunctionEffects);
+      } else {
+        convertSimpleClassComponentToFunctionalComponent(realm, componentType, additionalFunctionEffects);
+        normalizeFunctionalComponentParamaters(componentType);
+        writeEffects.set(componentType, additionalFunctionEffects);
+      }
     } else {
       let prototype = Get(realm, componentType, "prototype");
       invariant(prototype instanceof ObjectValue);
@@ -90,8 +98,15 @@ function applyWriteEffectsForOptimizedComponent(
       invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
       writeEffects.set(renderMethod, additionalFunctionEffects);
     } else {
-      normalizeFunctionalComponentParamaters(componentType);
-      writeEffects.set(componentType, additionalFunctionEffects);
+      if (componentType instanceof BoundFunctionValue) {
+        let targetFunction = componentType.$BoundTargetFunction;
+        invariant(targetFunction instanceof ECMAScriptSourceFunctionValue);
+        normalizeFunctionalComponentParamaters(targetFunction);
+        writeEffects.set(targetFunction, additionalFunctionEffects);
+      } else {
+        normalizeFunctionalComponentParamaters(componentType);
+        writeEffects.set(componentType, additionalFunctionEffects);
+      }
     }
   }
   // apply contextTypes for legacy context
@@ -111,7 +126,7 @@ function optimizeReactComponentTreeBranches(
   writeEffects: WriteEffects,
   environmentRecordIdAfterGlobalCode: number,
   logger: Logger,
-  alreadyEvaluated: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>
+  alreadyEvaluated: Map<ECMAScriptSourceFunctionValue | BoundFunctionValue, ReactEvaluatedNode>
 ): void {
   if (realm.react.verbose && reconciler.branchedComponentTrees.length > 0) {
     logger.logInformation(`  Evaluating React component tree branches...`);
@@ -151,13 +166,13 @@ function optimizeReactComponentTreeBranches(
 
 export function optimizeReactComponentTreeRoot(
   realm: Realm,
-  componentRoot: ECMAScriptSourceFunctionValue | AbstractValue,
+  componentRoot: ECMAScriptSourceFunctionValue | BoundFunctionValue | AbstractValue,
   config: ReactComponentTreeConfig,
   writeEffects: WriteEffects,
   environmentRecordIdAfterGlobalCode: number,
   logger: Logger,
   statistics: ReactStatistics,
-  alreadyEvaluated: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>
+  alreadyEvaluated: Map<ECMAScriptSourceFunctionValue | BoundFunctionValue, ReactEvaluatedNode>
 ): void {
   let reconciler = new Reconciler(realm, config, alreadyEvaluated, statistics, logger);
   let componentType = getComponentTypeFromRootValue(realm, componentRoot);
