@@ -37,7 +37,7 @@ import {
   SetIntegrityLevel,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
-import { Create, Leak, Properties as Props, To } from "../../singletons.js";
+import { Create, Leak, Materialize, Properties as Props, To } from "../../singletons.js";
 import { createOperationDescriptor } from "../../utils/generator.js";
 import invariant from "../../invariant.js";
 import { PropertyDescriptor } from "../../descriptors.js";
@@ -237,8 +237,8 @@ export default function(realm: Realm): NativeFunctionValue {
           if (to instanceof ObjectValue) {
             if (materializeIfSnapshottingIsConditional && to.temporalAlias === undefined && conditionallySnapshotted) {
               // We don't really want to leak, but rather materialize the object
-              // so we assign its bindings correctly. We need #2456 to do that though.
-              Leak.value(realm, to);
+              // so we assign its bindings correctly.
+              Materialize.materializeObjectsTransitive(realm, to);
             } else if (!wasSnapshotedBeforehand && to.temporalAlias !== undefined && !conditionallySnapshotted) {
               conditionallySnapshotted = true;
             }
