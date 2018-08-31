@@ -67,6 +67,14 @@ export class UISession {
   _prepackWaiting: boolean;
   // flag whether Prepack has been launched
   _prepackLaunched: boolean;
+  // If running tests, readline is not used -- direct handlers into test runner provide I/O
+  _testMode: void | boolean;
+  // Pipes output to test runner instead of stdout
+  _testOutput: void | (string => void);
+  // Retrieves next command from test runner instead of stdin
+  _testInput: void | (() => string);
+  // Runs the actual test after the debugger has finished
+  _testRunner: void | (() => void);
 
   _startAdapter() {
     let adapterArgs = [this._adapterPath];
@@ -102,9 +110,18 @@ export class UISession {
     }
     //ask the user for the next command
     if (this._prepackLaunched && this._prepackWaiting) {
-      this._reader.question("(dbg) ", (input: string) => {
-        this._dispatch(input);
-      });
+      if (!this._testMode) {
+        this._reader.question("(dbg) ", (input: string) => {
+          this._dispatch(input);
+        });
+      } else {
+        if (this._testInput) {
+          this._dispatch(this._testInput());
+        } else {
+          console.error("Debugger testing framework did not initialize correctly.");
+          this.shutdown();
+        }
+      }
     }
   }
 
@@ -168,9 +185,18 @@ export class UISession {
     this._prepackLaunched = true;
     this._prepackWaiting = true;
     // start reading requests from the user
-    this._reader.question("(dbg) ", (input: string) => {
-      this._dispatch(input);
-    });
+    if (!this._testMode) {
+      this._reader.question("(dbg) ", (input: string) => {
+        this._dispatch(input);
+      });
+    } else {
+      if (this._testInput) {
+        this._dispatch(this._testInput());
+      } else {
+        console.error("Debugger testing framework did not initialize correctly.");
+        this.shutdown();
+      }
+    }
   }
 
   _processStackTraceResponse(response: DebugProtocol.StackTraceResponse) {
@@ -333,9 +359,18 @@ export class UISession {
         this.shutdown();
       }
       console.error("Invalid command: " + input);
-      this._reader.question("(dbg) ", (line: string) => {
-        this._dispatch(line);
-      });
+      if (!this._testMode) {
+        this._reader.question("(dbg) ", (nextInput: string) => {
+          this._dispatch(nextInput);
+        });
+      } else {
+        if (this._testInput) {
+          this._dispatch(this._testInput());
+        } else {
+          console.error("Debugger testing framework did not initialize correctly.");
+          this.shutdown();
+        }
+      }
     }
     //reset the invalid command counter
     this._invalidCount = 0;
@@ -510,10 +545,23 @@ export class UISession {
   }
 
   _uiOutput(message: string) {
-    console.log(message);
+    if (!this._testMode) {
+      console.log(message);
+    } else {
+      if (this._testOutput) {
+        this._testOutput(message);
+      } else {
+        console.error("Debugger testing framework did not initialize correctly.");
+        this.shutdown();
+      }
+    }
   }
 
-  serve() {
+  serve(testMode: boolean, responseProcessor?: string => void, commandSender?: () => string, tester?: void => void) {
+    this._testMode = testMode;
+    this._testOutput = responseProcessor;
+    this._testInput = commandSender;
+    this._testRunner = tester;
     this._uiOutput("Debugger is starting up Prepack...");
     // Set up the adapter connection
     this._startAdapter();
@@ -537,6 +585,14 @@ export class UISession {
   shutdown() {
     this._reader.close();
     this._adapterProcess.kill();
-    this._proc.exit(0);
+    if (!this._testMode) {
+      this._proc.exit(0);
+    } else {
+      if (this._testRunner) {
+        this._testRunner();
+      } else {
+        console.error("Debugger testing framework did not initialize correctly.");
+      }
+    }
   }
 }
