@@ -68,6 +68,278 @@ ReactStatistics {
 }
 `;
 
+exports[`Complex class component hoists nodes independently of functional root component: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "Epsilon",
+          "status": "NEW_TREE",
+        },
+      ],
+      "message": "",
+      "name": "Tau",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Complex class component hoists nodes independently of functional root component: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "Epsilon",
+          "status": "NEW_TREE",
+        },
+      ],
+      "message": "",
+      "name": "Tau",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Complex class component hoists nodes independently of functional root component: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "Epsilon",
+          "status": "NEW_TREE",
+        },
+      ],
+      "message": "",
+      "name": "Tau",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Complex class component hoists nodes independently of functional root component: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 4,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "React.Fragment",
+              "status": "NORMAL",
+            },
+          ],
+          "message": "",
+          "name": "Epsilon",
+          "status": "NEW_TREE",
+        },
+      ],
+      "message": "",
+      "name": "Tau",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Complex class component rendering equivalent node to functional root component: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 5,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Zeta",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Epsilon",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Zeta",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "Tau",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Complex class component rendering equivalent node to functional root component: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 5,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Zeta",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Epsilon",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Zeta",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "Tau",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Complex class component rendering equivalent node to functional root component: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 5,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Zeta",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Epsilon",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Zeta",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "Tau",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`Complex class component rendering equivalent node to functional root component: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 5,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [
+            Object {
+              "children": Array [],
+              "message": "",
+              "name": "Zeta",
+              "status": "INLINED",
+            },
+          ],
+          "message": "",
+          "name": "Epsilon",
+          "status": "NEW_TREE",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Zeta",
+          "status": "INLINED",
+        },
+      ],
+      "message": "",
+      "name": "Tau",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 2,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 2,
+}
+`;
+
 exports[`Complex class components folding into functional root component #2: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 4,

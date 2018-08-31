@@ -69,5 +69,9 @@ module.exports = {
     ActiveXObject: true,
     // CommonJS / Node
     process: true,
+    // Prepack
+    __optimize: true,
+    __optimizeReactComponentTree: true,
+    __abstract: true,
   },
 };

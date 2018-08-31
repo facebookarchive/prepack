@@ -231,7 +231,7 @@ export class CreateImplementation {
     }
 
     // 8. Return ? Construct(C, « length »).
-    return Construct(realm, C.throwIfNotConcreteObject(), [new NumberValue(realm, length)]);
+    return Construct(realm, C.throwIfNotConcreteObject(), [new NumberValue(realm, length)]).throwIfNotConcreteObject();
   }
 
   // ECMA262 7.4.7
@@ -542,9 +542,8 @@ export class CreateImplementation {
   }
 
   // ECMA262 7.3.4
-  CreateDataProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value): boolean {
+  CreateDataProperty(realm: Realm, O: ObjectValue | AbstractObjectValue, P: PropertyKeyValue, V: Value): boolean {
     // 1. Assert: Type(O) is Object.
-    invariant(O instanceof ObjectValue, "Not an object value");
 
     // 2. Assert: IsPropertyKey(P) is true.
     invariant(IsPropertyKey(realm, P), "Not a property key");

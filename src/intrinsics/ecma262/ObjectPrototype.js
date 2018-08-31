@@ -23,10 +23,9 @@ import { HasOwnProperty, HasSomeCompatibleType } from "../../methods/has.js";
 import { Invoke } from "../../methods/call.js";
 import { Properties, To } from "../../singletons.js";
 import { FatalError } from "../../errors.js";
-import type { BabelNodeExpression } from "@babel/types";
-import * as t from "@babel/types";
 import invariant from "../../invariant.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.1.3.2
@@ -45,7 +44,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (realm.isInPureScope() && x instanceof FatalError) {
         // If we're in pure scope we can try to recover from any fatals by
         // leaving the call in place which we do by default, but we don't
-        // have to havoc the state of any arguments since this function is pure.
+        // have to leak the state of any arguments since this function is pure.
         // This also lets us define the return type properly.
         const key = typeof P === "string" ? new StringValue(realm, P) : P;
         return realm.evaluateWithPossibleThrowCompletion(
@@ -54,9 +53,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
               realm,
               BooleanValue,
               [ObjectPrototypeHasOwnPrototype, context, key],
-              ([methodNode, objectNode, nameNode]: Array<BabelNodeExpression>) => {
-                return t.callExpression(t.memberExpression(methodNode, t.identifier("call")), [objectNode, nameNode]);
-              }
+              createOperationDescriptor("OBJECT_PROTO_HAS_OWN_PROPERTY")
             ),
           TypesDomain.topVal,
           ValuesDomain.topVal

@@ -24,14 +24,16 @@ import {
   Value,
 } from "../../values/index.js";
 import { To, Path } from "../../singletons.js";
+import { IsCallable } from "../../methods/index.js";
 import { ValuesDomain } from "../../domains/index.js";
-import * as t from "@babel/types";
-import type { BabelNodeExpression, BabelNodeSpreadElement } from "@babel/types";
 import invariant from "../../invariant.js";
 import { createAbstract, parseTypeNameOrTemplate } from "./utils.js";
 import { describeValue } from "../../utils.js";
 import { valueIsKnownReactAbstraction } from "../../react/utils.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
+import * as t from "@babel/types";
+import { createOperationDescriptor, type OperationDescriptor } from "../../utils/generator.js";
+import { createAndValidateArgModel } from "../../utils/ShapeInformation";
 
 export function createAbstractFunction(realm: Realm, ...additionalValues: Array<ConcreteValue>): NativeFunctionValue {
   return new NativeFunctionValue(
@@ -80,6 +82,8 @@ export default function(realm: Realm): void {
   // options is an optional object that may contain:
   // - allowDuplicateNames: boolean representing whether the name of the abstract value may be
   //   repeated, by default they must be unique
+  // - disablePlaceholders: boolean representing whether placeholders should be substituted in
+  //   the abstract value's name.
   // If the abstract value gets somehow embedded in the final heap,
   // it will be referred to by the supplied name in the generated code.
   global.$DefineOwnProperty("__abstract", {
@@ -110,68 +114,50 @@ export default function(realm: Realm): void {
     configurable: true,
   });
 
-  global.$DefineOwnProperty("__optimizedFunctions", {
-    value: new ObjectValue(
-      realm,
-      realm.intrinsics.ObjectPrototype,
-      "__optimizedFunctions",
-      /* refuseSerialization */ true
-    ),
-    writable: true,
-    enumerable: false,
-    configurable: true,
-  });
-
-  let additionalFunctionUid = 0;
   // Allows dynamically registering optimized functions.
   // WARNING: these functions will get exposed at global scope and called there.
   // NB: If we interpret one of these calls in an evaluateForEffects context
   //     that is not subsequently applied, the function will not be registered
   //     (because prepack won't have a correct value for the FunctionValue itself)
+  // If we encounter an invalid input, we will emit a warning and not optimize the function
   global.$DefineOwnProperty("__optimize", {
     value: new NativeFunctionValue(realm, "global.__optimize", "__optimize", 1, (context, [value, argModelString]) => {
-      // only optimize functions for now
+      let argModel;
       if (argModelString !== undefined) {
-        let argModelError;
-        if (argModelString instanceof StringValue) {
-          try {
-            // result here is ignored as the main point here is to
-            // check and produce error
-            JSON.parse(argModelString.value);
-          } catch (e) {
-            argModelError = new CompilerDiagnostic(
-              "Failed to parse model for arguments",
-              realm.currentLocation,
-              "PP1008",
-              "FatalError"
-            );
-          }
-        } else {
-          argModelError = new CompilerDiagnostic(
-            "String expected as a model",
-            realm.currentLocation,
-            "PP1008",
-            "FatalError"
-          );
-        }
-        if (argModelError !== undefined && realm.handleError(argModelError) !== "Recover") {
-          throw new FatalError();
-        }
+        argModel = createAndValidateArgModel(realm, argModelString);
       }
       if (value instanceof ECMAScriptSourceFunctionValue || value instanceof AbstractValue) {
-        let functionDescriptor = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
-        functionDescriptor.$Set("funcValue", value, functionDescriptor);
-        functionDescriptor.$Set("argModelString", argModelString || realm.intrinsics.undefined, functionDescriptor);
-        // add to the todo list
-        realm.assignToGlobal(
-          t.memberExpression(
-            t.memberExpression(t.identifier("global"), t.identifier("__optimizedFunctions")),
-            t.identifier("" + additionalFunctionUid++)
-          ),
-          functionDescriptor
-        );
+        let currentArgModel = realm.optimizedFunctions.get(value);
+        // Verify that if there is an existing argModel, that it is the same as the new one.
+        if (currentArgModel) {
+          let currentString = argModelString instanceof StringValue ? argModelString.value : argModelString;
+          if (JSON.stringify(currentArgModel) !== currentString) {
+            let argModelError = new CompilerDiagnostic(
+              "__optimize called twice with different argModelStrings",
+              realm.currentLocation,
+              "PP1008",
+              "Warning"
+            );
+            if (realm.handleError(argModelError) !== "Recover") throw new FatalError();
+            else return realm.intrinsics.undefined;
+          }
+        }
+        realm.optimizedFunctions.set(value, argModel);
       } else {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "Called __optimize on an invalid type");
+        let location = value.expressionLocation
+          ? `${value.expressionLocation.start.line}:${value.expressionLocation.start.column} ` +
+            `${value.expressionLocation.end.line}:${value.expressionLocation.end.line}`
+          : "location unknown";
+        let result = realm.handleError(
+          new CompilerDiagnostic(
+            `Optimized Function Value ${location} is an not a function or react element`,
+            realm.currentLocation,
+            "PP0033",
+            "Warning"
+          )
+        );
+        if (result !== "Recover") throw new FatalError();
+        else return realm.intrinsics.undefined;
       }
       return value;
     }),
@@ -245,7 +231,11 @@ export default function(realm: Realm): void {
         invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
         invariant(typeof functionValue.$Call === "function");
         let functionCall: Function = functionValue.$Call;
-        return realm.evaluatePure(() => functionCall(realm.intrinsics.undefined, []), /*reportSideEffectFunc*/ null);
+        return realm.evaluatePure(
+          () => functionCall(realm.intrinsics.undefined, []),
+          /*bubbles*/ true,
+          /*reportSideEffectFunc*/ null
+        );
       }
     ),
     writable: true,
@@ -301,8 +291,11 @@ export default function(realm: Realm): void {
         invariant(f instanceof FunctionValue);
         f.isResidual = true;
         if (unsafe) f.isUnsafeResidual = true;
-        let result = AbstractValue.createTemporalFromBuildFunction(realm, type, [f].concat(args), nodes =>
-          t.callExpression(nodes[0], ((nodes.slice(1): any): Array<BabelNodeExpression | BabelNodeSpreadElement>))
+        let result = AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          type,
+          [f].concat(args),
+          createOperationDescriptor("RESIDUAL_CALL")
         );
         if (template) {
           invariant(
@@ -312,7 +305,7 @@ export default function(realm: Realm): void {
           template.makePartial();
           result.values = new ValuesDomain(new Set([template]));
           invariant(realm.generator);
-          realm.rebuildNestedProperties(result, result.getIdentifier().name);
+          realm.rebuildNestedProperties(result, result.getIdentifier());
         }
         return result;
       }
@@ -322,13 +315,13 @@ export default function(realm: Realm): void {
   function createNativeFunctionForResidualInjection(
     name: string,
     initializeAndValidateArgs: (Array<Value>) => void,
-    buildNode_: (Array<BabelNodeExpression>) => BabelNodeStatement,
+    operationDescriptor: OperationDescriptor,
     numArgs: number
   ): NativeFunctionValue {
     return new NativeFunctionValue(realm, "global." + name, name, numArgs, (context, ciArgs) => {
       initializeAndValidateArgs(ciArgs);
       invariant(realm.generator !== undefined);
-      realm.generator.emitStatement(ciArgs, buildNode_);
+      realm.generator.emitStatement(ciArgs, operationDescriptor);
       return realm.intrinsics.undefined;
     });
   }
@@ -343,7 +336,7 @@ export default function(realm: Realm): void {
           let error = new CompilerDiagnostic(
             `Assumed condition cannot hold`,
             realm.currentLocation,
-            "PP0038",
+            "PP0040",
             "FatalError"
           );
           realm.handleError(error);
@@ -351,13 +344,7 @@ export default function(realm: Realm): void {
         }
         Path.pushAndRefine(c);
       },
-      ([c, s]: Array<BabelNodeExpression>) => {
-        let errorLiteral = s.type === "StringLiteral" ? s : t.stringLiteral("Assumption violated");
-        return t.ifStatement(
-          t.unaryExpression("!", c),
-          t.blockStatement([t.throwStatement(t.newExpression(t.identifier("Error"), [errorLiteral]))])
-        );
-      },
+      createOperationDescriptor("ASSUME_CALL"),
       2
     ),
     writable: true,
@@ -517,6 +504,42 @@ export default function(realm: Realm): void {
     value: new NativeFunctionValue(realm, "global.__describe", "__describe", 1, (context, [value]) => {
       return new StringValue(realm, describeValue(value));
     }),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__fatal", {
+    value: new NativeFunctionValue(realm, "global.__fatal", "__fatal", 0, (context, []) => {
+      throw new FatalError();
+    }),
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+
+  global.$DefineOwnProperty("__eagerlyRequireModuleDependencies", {
+    value: new NativeFunctionValue(
+      realm,
+      "global.__eagerlyRequireModuleDependencies",
+      "__eagerlyRequireModuleDependencies",
+      1,
+      (context, [functionValue]) => {
+        if (!IsCallable(realm, functionValue) || !(functionValue instanceof FunctionValue))
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "argument must be callable function");
+        let functionCall: void | ((thisArgument: Value, argumentsList: Array<Value>) => Value) = functionValue.$Call;
+        if (typeof functionCall !== "function") {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "argument must be directly callable");
+        }
+        let old = realm.eagerlyRequireModuleDependencies;
+        realm.eagerlyRequireModuleDependencies = true;
+        try {
+          return functionCall(realm.intrinsics.undefined, []);
+        } finally {
+          realm.eagerlyRequireModuleDependencies = old;
+        }
+      }
+    ),
     writable: true,
     enumerable: false,
     configurable: true,

@@ -1,8 +1,8 @@
-// Copies of _\$E\(:3
-// Copies of var _\$E = _\$D.assign;:1
+// Copies of _\$8\(:3
+// Copies of var _\$8 = _\$7.assign;:1
 // inline expressions
 
-// _$E is the variable for Object.assign. See DeadObjectAssign4.js for
+// _$8 is the variable for Object.assign. See DeadObjectAssign4.js for
 // a larger explanation.
 
 function f(o) {

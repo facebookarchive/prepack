@@ -11,10 +11,10 @@
 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor } from "../types.js";
-import { ObjectValue, NumberValue, StringValue } from "../values/index.js";
+import { ObjectValue, NumberValue, StringValue } from "./index.js";
 import { IsInteger, IsArrayIndex } from "../methods/is.js";
 import { Properties, To } from "../singletons.js";
-import invariant from "../invariant";
+import invariant from "../invariant.js";
 
 export default class StringExotic extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {
@@ -88,27 +88,28 @@ export default class StringExotic extends ObjectValue {
     // 3. Let len be the number of elements in str.
     let len = str.value.length;
 
+    let realm = this.$Realm;
     // 4. For each integer i starting with 0 such that i < len, in ascending order,
     for (let i = 0; i < len; ++i) {
       // a. Add ! ToString(i) as the last element of keys.
-      keys.push(new StringValue(this.$Realm, To.ToString(this.$Realm, new NumberValue(this.$Realm, i))));
+      keys.push(new StringValue(realm, To.ToString(realm, new NumberValue(realm, i))));
     }
 
     // 5. For each own property key P of O such that P is an integer index and ToInteger(P) ≥ len, in ascending numeric index order,
-    let properties = this.getOwnPropertyKeysArray();
+    let properties = Properties.GetOwnPropertyKeysArray(realm, this, false, false);
     for (let key of properties
-      .filter(x => IsArrayIndex(this.$Realm, x))
+      .filter(x => IsArrayIndex(realm, x))
       .map(x => parseInt(x, 10))
-      .filter(x => To.ToInteger(this.$Realm, x) >= len)
+      .filter(x => To.ToInteger(realm, x) >= len)
       .sort((x, y) => x - y)) {
       // i. Add P as the last element of keys.
-      keys.push(new StringValue(this.$Realm, key + ""));
+      keys.push(new StringValue(realm, key + ""));
     }
 
     // 6. For each own property key P of O such that Type(P) is String and P is not an integer index, in ascending chronological order of property creation,
-    for (let key of properties.filter(x => !IsArrayIndex(this.$Realm, x))) {
+    for (let key of properties.filter(x => !IsArrayIndex(realm, x))) {
       // i. Add P as the last element of keys.
-      keys.push(new StringValue(this.$Realm, key));
+      keys.push(new StringValue(realm, key));
     }
 
     // 7. For each own property key P of O such that Type(P) is Symbol, in ascending chronological order of property creation,

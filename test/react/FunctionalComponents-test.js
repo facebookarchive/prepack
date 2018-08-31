@@ -74,7 +74,7 @@ it("Simple 12", () => {
 
 it("Runtime error", () => {
   runTest(__dirname + "/FunctionalComponents/runtime-error.js", {
-    expectReconcilerError: true,
+    expectRuntimeError: true,
   });
 });
 
@@ -114,6 +114,18 @@ it("Simple 20", () => {
 
 it("Simple 21", () => {
   runTest(__dirname + "/FunctionalComponents/simple-21.js");
+});
+
+it("Simple 22", () => {
+  runTest(__dirname + "/FunctionalComponents/simple-22.js");
+});
+
+it("Simple 23", () => {
+  runTest(__dirname + "/FunctionalComponents/simple-23.js");
+});
+
+it("Simple 24", () => {
+  runTest(__dirname + "/FunctionalComponents/simple-24.js");
 });
 
 it("Two roots", () => {
@@ -156,6 +168,10 @@ it("Mutations - safe 2", () => {
 
 it("Mutations - safe 3", () => {
   runTest(__dirname + "/FunctionalComponents/safe3.js");
+});
+
+it("Mutations - safe 4", () => {
+  runTest(__dirname + "/FunctionalComponents/safe4.js");
 });
 
 it("Handle mapped arrays", () => {
@@ -202,8 +218,16 @@ it("16.3 refs 3", () => {
   runTest(__dirname + "/FunctionalComponents/refs3.js");
 });
 
+it("refs typeof", () => {
+  runTest(__dirname + "/FunctionalComponents/refs-typeof.js");
+});
+
 it("defaultProps", () => {
   runTest(__dirname + "/FunctionalComponents/default-props.js");
+});
+
+it("defaultProps 2", () => {
+  runTest(__dirname + "/FunctionalComponents/default-props2.js");
 });
 
 it("Simple with abstract props", () => {
@@ -242,6 +266,10 @@ it("Dynamic context", () => {
 
 it("React.cloneElement", () => {
   runTest(__dirname + "/FunctionalComponents/clone-element.js");
+});
+
+it("React.cloneElement 2", () => {
+  runTest(__dirname + "/FunctionalComponents/clone-element2.js");
 });
 
 it("Return text", () => {
@@ -322,4 +350,20 @@ it("Hoist Fragment", () => {
 
 it("Pathological case", () => {
   runTest(__dirname + "/FunctionalComponents/pathological-case.js");
+});
+
+it("Model props", () => {
+  runTest(__dirname + "/FunctionalComponents/model-props.js");
+});
+
+it("Inline keys", () => {
+  runTest(__dirname + "/FunctionalComponents/keyed.js");
+});
+
+it("Inline unnecessary keys", () => {
+  runTest(__dirname + "/FunctionalComponents/keyed-unnecessarily.js");
+});
+
+it("Inline key on component that does not return element", () => {
+  runTest(__dirname + "/FunctionalComponents/keyed-non-element.js");
 });

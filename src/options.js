@@ -47,7 +47,6 @@ export type RealmOptions = {
   invariantMode?: InvariantModeTypes,
   emitConcreteModel?: boolean,
   uniqueSuffix?: string,
-  residual?: boolean,
   serialize?: boolean,
   strictlyMonotonicDateNow?: boolean,
   timeout?: number,
@@ -59,13 +58,12 @@ export type RealmOptions = {
   reactOptimizeNestedFunctions?: boolean,
   stripFlow?: boolean,
   abstractValueImpliesMax?: number,
+  arrayNestedOptimizedFunctionsEnabled?: boolean,
 };
 
 export type SerializerOptions = {
   lazyObjectsRuntime?: string,
   delayInitializations?: boolean,
-  delayUnsupportedRequires?: boolean,
-  accelerateUnsupportedRequires?: boolean,
   initializeMoreModules?: boolean,
   internalDebug?: boolean,
   debugScopes?: boolean,

@@ -82,7 +82,7 @@ export function Construct(
   F: ObjectValue,
   _argumentsList?: Array<Value>,
   _newTarget?: ObjectValue
-): ObjectValue {
+): ObjectValue | AbstractObjectValue {
   let argumentsList = _argumentsList;
   let newTarget = _newTarget;
   // If newTarget was not passed, let newTarget be F.

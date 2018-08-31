@@ -15,7 +15,7 @@ import type { Realm } from "../realm.js";
 import { ThrowCompletion } from "../completions.js";
 import { StringValue } from "../values/index.js";
 import { Construct } from "../methods/construct.js";
-import traverseFast from "../utils/traverse-fast.js";
+import traverseFast from "./traverse-fast.js";
 import { parse } from "@babel/parser";
 import type { BabelNodeFile } from "@babel/types";
 
@@ -57,6 +57,7 @@ export default function(
       } else {
         error = Construct(realm, realm.intrinsics.SyntaxError, [new StringValue(realm, e.message)]);
       }
+      error = error.throwIfNotConcreteObject();
       // These constructors are currently guaranteed to produce an object with
       // built-in error data. Append location information about the syntax error
       // and the source code to it so that we can use it to print nicer errors.
@@ -67,7 +68,7 @@ export default function(
         loc: e.loc,
         stackDecorated: false,
       };
-      throw new ThrowCompletion(error, undefined, e.loc);
+      throw new ThrowCompletion(error, e.loc);
     } else {
       throw e;
     }

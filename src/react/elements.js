@@ -27,13 +27,14 @@ import {
   applyObjectAssignConfigsForReactElement,
   createInternalReactElement,
   flagPropsWithNoPartialKeyOrRef,
+  flattenChildren,
   hardModifyReactObjectPropertyBinding,
   getProperty,
   hasNoPartialKeyOrRef,
 } from "./utils.js";
-import * as t from "@babel/types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 function createPropsObject(
   realm: Realm,
@@ -130,7 +131,6 @@ function createPropsObject(
     if (children !== undefined) {
       hardModifyReactObjectPropertyBinding(realm, props, "children", children);
     }
-
     // handle default props on a partial/abstract config
     if (defaultProps !== realm.intrinsics.undefined) {
       let defaultPropsEvaluated = 0;
@@ -169,7 +169,8 @@ function createPropsObject(
         // exist
         for (let [propName, binding] of props.properties) {
           if (binding.descriptor !== undefined && binding.descriptor.value === realm.intrinsics.undefined) {
-            hardModifyReactObjectPropertyBinding(realm, props, propName, AbstractValue.createFromType(realm, Value));
+            invariant(defaultProps instanceof AbstractObjectValue || defaultProps instanceof ObjectValue);
+            hardModifyReactObjectPropertyBinding(realm, props, propName, Get(realm, defaultProps, propName));
           }
         }
         // if we have children and they are abstract, they might be undefined at runtime
@@ -194,10 +195,8 @@ function createPropsObject(
           realm,
           ObjectValue,
           temporalArgs,
-          ([methodNode, ..._args]) => {
-            return t.callExpression(methodNode, ((_args: any): Array<any>));
-          },
-          { skipInvariant: true }
+          createOperationDescriptor("REACT_DEFAULT_PROPS_HELPER"),
+          { skipInvariant: true, mutatesOnly: [snapshot] }
         );
         invariant(temporalTo instanceof AbstractObjectValue);
         if (props instanceof AbstractObjectValue) {
@@ -215,8 +214,9 @@ function createPropsObject(
     if (children !== undefined) {
       setProp("children", children);
     }
-
-    if (defaultProps instanceof ObjectValue) {
+    if (defaultProps instanceof AbstractObjectValue || defaultProps.isPartialObject()) {
+      invariant(false, "TODO: we need to eventually support this");
+    } else if (defaultProps instanceof ObjectValue) {
       for (let [propKey, binding] of defaultProps.properties) {
         if (binding && binding.descriptor && binding.descriptor.enumerable) {
           if (Get(realm, props, propKey) === realm.intrinsics.undefined) {
@@ -224,8 +224,6 @@ function createPropsObject(
           }
         }
       }
-    } else if (defaultProps instanceof AbstractObjectValue) {
-      invariant(false, "TODO: we need to eventually support this");
     }
   }
   invariant(props instanceof ObjectValue);
@@ -305,7 +303,8 @@ export function cloneReactElement(
     }
   };
 
-  applyObjectAssignConfigsForReactElement(realm, props, [config]);
+  let elementProps = getProperty(realm, reactElement, "props");
+  applyObjectAssignConfigsForReactElement(realm, props, [elementProps, config]);
   props.makeFinal();
 
   let key = getProperty(realm, reactElement, "key");
@@ -363,7 +362,6 @@ export function cloneReactElement(
   if (children !== undefined) {
     hardModifyReactObjectPropertyBinding(realm, props, "children", children);
   } else {
-    let elementProps = getProperty(realm, reactElement, "props");
     invariant(elementProps instanceof ObjectValue);
     let elementChildren = getProperty(realm, elementProps, "children");
     hardModifyReactObjectPropertyBinding(realm, props, "children", elementChildren);
@@ -391,6 +389,20 @@ export function createReactElement(
   }
   let { key, props, ref } = createPropsObject(realm, type, config, children);
   return createInternalReactElement(realm, type, key, ref, props);
+}
+
+// Wraps a React element in a `<React.Fragment key={keyValue}>` so that we can
+// add a key without mutating or cloning the element.
+export function wrapReactElementWithKeyedFragment(realm: Realm, keyValue: Value, reactElement: Value): Value {
+  const react = realm.fbLibraries.react;
+  invariant(react instanceof ObjectValue);
+  const reactFragment = getProperty(realm, react, "Fragment");
+  const fragmentConfigValue = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  Create.CreateDataPropertyOrThrow(realm, fragmentConfigValue, "key", keyValue);
+  let fragmentChildrenValue = Create.ArrayCreate(realm, 1);
+  Create.CreateDataPropertyOrThrow(realm, fragmentChildrenValue, "0", reactElement);
+  fragmentChildrenValue = flattenChildren(realm, fragmentChildrenValue);
+  return createReactElement(realm, reactFragment, fragmentConfigValue, fragmentChildrenValue);
 }
 
 type ElementTraversalVisitor = {

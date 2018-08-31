@@ -74,6 +74,9 @@ export function RequireObjectCoercible(
   arg: Value,
   argLoc?: ?BabelNodeSourceLocation
 ): AbstractValue | ObjectValue | BooleanValue | StringValue | SymbolValue | NumberValue {
+  if (!arg.mightNotBeNull() || !arg.mightNotBeUndefined()) {
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "null or undefined");
+  }
   if (arg instanceof AbstractValue && (arg.mightBeNull() || arg.mightBeUndefined())) {
     if (realm.isInPureScope()) {
       // In a pure function it is ok to throw if this happens to be null or undefined.
@@ -91,11 +94,7 @@ export function RequireObjectCoercible(
     }
     arg.throwIfNotConcrete();
   }
-  if (arg instanceof NullValue || arg instanceof UndefinedValue) {
-    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "null or undefined");
-  } else {
-    return (arg: any);
-  }
+  return (arg: any);
 }
 
 export function HasSameType(x: ConcreteValue, y: ConcreteValue): boolean {

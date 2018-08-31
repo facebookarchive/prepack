@@ -30,6 +30,7 @@ function SerialPromises(promises: Array<() => Promise<void>>) {
 }
 
 let Serializer = require("../lib/serializer/index.js").default;
+let SourceFileCollection = require("../lib/types.js").SourceFileCollection;
 let SerializerStatistics = require("../lib/serializer/statistics.js").SerializerStatistics;
 let construct_realm = require("../lib/construct_realm.js").default;
 let initializeGlobals = require("../lib/globals.js").default;
@@ -306,7 +307,7 @@ function verifyFunctionOrderings(code: string): boolean {
   return true;
 }
 
-function unescapleUniqueSuffix(code: string, uniqueSuffix?: string) {
+function unescapeUniqueSuffix(code: string, uniqueSuffix?: string) {
   return uniqueSuffix != null ? code.replace(new RegExp(uniqueSuffix, "g"), "") : code;
 }
 
@@ -328,22 +329,8 @@ function getErrorHandlerWithWarningCapture(
       errorCodeSet.add(diagnostic.errorCode);
     }
     try {
-      switch (diagnostic.severity) {
-        case "Information":
-          if (verbose && !suppressDiagnostics) console.log(`Info: ${msg}`);
-          return "Recover";
-        case "Warning":
-          if (verbose && !suppressDiagnostics) console.warn(`Warn: ${msg}`);
-          return "Recover";
-        case "RecoverableError":
-          if (verbose && !suppressDiagnostics) console.error(`Error: ${msg}`);
-          return "Recover";
-        case "FatalError":
-          if (verbose && !suppressDiagnostics) console.error(`Fatal Error: ${msg}`);
-          return "Fail";
-        default:
-          invariant(false, "Unexpected error type");
-      }
+      if (verbose && !suppressDiagnostics) console.log(`${diagnostic.severity}: ${msg}`);
+      return "Recover";
     } finally {
       if (verbose && !suppressDiagnostics) console.log(diagnostic.callStack);
     }
@@ -354,9 +341,7 @@ function runTest(name, code, options: PrepackOptions, args) {
   if (!args.fast && args.filter === "") console.log(chalk.inverse(name) + " " + JSON.stringify(options));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
   let initializeMoreModules = code.includes("// initialize more modules");
-  let delayUnsupportedRequires = code.includes("// delay unsupported requires");
   if (args.verbose || code.includes("// inline expressions")) options.inlineExpressions = true;
-  if (code.includes("// do not inline expressions")) options.inlineExpressions = false;
   options.invariantLevel = code.includes("// omit invariants") || args.verbose ? 0 : 99;
   if (code.includes("// emit concrete model")) options.emitConcreteModel = true;
   if (code.includes("// exceeds stack limit")) options.maxStackDepth = 10;
@@ -372,12 +357,15 @@ function runTest(name, code, options: PrepackOptions, args) {
     debugNames: args.debugNames,
     debugScopes: args.debugScopes,
     initializeMoreModules,
-    delayUnsupportedRequires,
     errorHandler: diag => "Fail",
     internalDebug: true,
     serialize: true,
     uniqueSuffix: "",
+    arrayNestedOptimizedFunctionsEnabled: false,
   }): any): PrepackOptions); // Since PrepackOptions is an exact type I have to cast
+  if (code.includes("// arrayNestedOptimizedFunctionsEnabled")) {
+    options.arrayNestedOptimizedFunctionsEnabled = true;
+  }
   if (code.includes("// throws introspection error")) {
     try {
       let realmOptions = {
@@ -391,13 +379,12 @@ function runTest(name, code, options: PrepackOptions, args) {
       initializeGlobals(realm);
       let serializerOptions = {
         initializeMoreModules,
-        delayUnsupportedRequires,
         internalDebug: true,
         lazyObjectsRuntime: options.lazyObjectsRuntime,
       };
       let serializer = new Serializer(realm, serializerOptions);
-      let sources = [{ filePath: name, fileContents: code }];
-      let serialized = serializer.init(sources, false);
+      let sourceFileCollection = new SourceFileCollection([{ filePath: name, fileContents: code }]);
+      let serialized = serializer.init(sourceFileCollection, false);
       if (!serialized) {
         console.error(chalk.red("Error during serialization"));
       } else {
@@ -467,9 +454,7 @@ function runTest(name, code, options: PrepackOptions, args) {
     if (code.includes(injectAtRuntime)) {
       let i = code.indexOf(injectAtRuntime);
       addedCode = code.substring(i + injectAtRuntime.length, code.indexOf("\n", i));
-      options.residual = false;
     }
-    if (delayUnsupportedRequires) options.residual = false;
     if (args.es5) {
       code = transformWithBabel(code, [], [["@babel/env", { forceAllTransforms: true, modules: false }]]);
     }
@@ -480,6 +465,9 @@ function runTest(name, code, options: PrepackOptions, args) {
     if (compileJSXWithBabel) {
       expectedCode = transformWithBabel(expectedCode, ["@babel/plugin-transform-react-jsx"]);
     }
+    // For some tests (e.g. nested optimized function definition) there is no way to pass lint due to undefined global
+    // __optimize
+    let runLint = !code.includes("// skip lint");
 
     return execInContext(
       `${addedCode}\n(function () {${expectedCode} // keep newline here as code may end with comment
@@ -506,13 +494,17 @@ function runTest(name, code, options: PrepackOptions, args) {
               let diagnosticExpectedComment = `// expected ${severity}:`;
               if (code.includes(diagnosticExpectedComment)) {
                 let idx = code.indexOf(diagnosticExpectedComment);
-                let errorCodeString = code.substring(idx + diagnosticExpectedComment.length, code.indexOf("\n", idx));
-                let errorCodeSet = new Set();
-                expectedDiagnostics.set(severity, errorCodeSet);
-                errorCodeString.split(",").forEach(errorCode => errorCodeSet.add(errorCode.trim()));
-                options.residual = false;
-                options.errorHandler = getErrorHandlerWithWarningCapture(diagnosticOutput, args.verbose);
+                let errorCodeString = code
+                  .substring(idx + diagnosticExpectedComment.length, code.indexOf("\n", idx))
+                  .trim();
+                if (errorCodeString !== "") {
+                  let errorCodeSet = new Set();
+                  expectedDiagnostics.set(severity, errorCodeSet);
+                  errorCodeString.split(",").forEach(errorCode => errorCodeSet.add(errorCode.trim()));
+                }
               }
+              if (expectedDiagnostics.size > 0)
+                options.errorHandler = getErrorHandlerWithWarningCapture(diagnosticOutput, args.verbose);
             }
 
             let serialized = prepackSources([{ filePath: name, fileContents: code, sourceMapContents: "" }], options);
@@ -592,7 +584,7 @@ function runTest(name, code, options: PrepackOptions, args) {
               codeToRun = augmentCodeWithLazyObjectSupport(codeToRun, args.lazyObjectsRuntime);
             }
             if (args.verbose) console.log(codeToRun);
-            codeIterations.push(unescapleUniqueSuffix(codeToRun, options.uniqueSuffix));
+            codeIterations.push(unescapeUniqueSuffix(codeToRun, options.uniqueSuffix));
             if (args.es5) {
               codeToRun = transformWithBabel(
                 codeToRun,
@@ -603,7 +595,7 @@ function runTest(name, code, options: PrepackOptions, args) {
             // lint output
             const lintDirectives = code.split("\n").filter(line => line.startsWith("/* eslint-"));
             const codeToLint = `${lintDirectives.join("\n")}\n${codeToRun}`;
-            lintCompiledSource(codeToLint);
+            if (runLint) lintCompiledSource(codeToLint);
             let actualPromise;
             if (execSpec) {
               actualPromise = execExternal(execSpec, codeToRun);
@@ -644,9 +636,7 @@ function runTest(name, code, options: PrepackOptions, args) {
                   }
                   if (singleIterationOnly) return Promise.reject({ type: "RETURN", value: true });
                   if (
-                    unescapleUniqueSuffix(oldCode, oldUniqueSuffix) ===
-                      unescapleUniqueSuffix(newCode, newUniqueSuffix) ||
-                    delayUnsupportedRequires
+                    unescapeUniqueSuffix(oldCode, oldUniqueSuffix) === unescapeUniqueSuffix(newCode, newUniqueSuffix)
                   ) {
                     // The generated code reached a fixed point!
                     return Promise.reject({ type: "RETURN", value: true });
@@ -690,6 +680,7 @@ function runTest(name, code, options: PrepackOptions, args) {
         });
       })
       .catch(function(err) {
+        console.log(name);
         console.error(err);
         console.error(err.stack);
       });
@@ -773,7 +764,6 @@ function run(args) {
         const isAdditionalFunctionTest = test.file.includes("__optimize");
         const isPureFunctionTest = test.name.includes("pure-functions");
         const isCaptureTest = test.name.includes("Closure") || test.name.includes("Capture");
-        const isSimpleClosureTest = test.file.includes("// simple closures");
         // Skip lazy objects mode for certain known incompatible tests, react compiler and additional-functions tests.
         const skipLazyObjects =
           test.file.includes("// skip lazy objects") ||
@@ -782,15 +772,15 @@ function run(args) {
           test.name.includes("react");
 
         let flagPermutations = [
-          [false, false, undefined, isSimpleClosureTest],
-          [true, true, undefined, isSimpleClosureTest],
-          [false, false, args.lazyObjectsRuntime, isSimpleClosureTest],
+          [false, false, undefined],
+          [true, true, undefined],
+          [false, false, args.lazyObjectsRuntime],
         ];
         if (isAdditionalFunctionTest || isCaptureTest) {
-          flagPermutations.push([false, false, undefined, true]);
-          flagPermutations.push([false, true, undefined, true]);
+          flagPermutations.push([false, false, undefined]);
+          flagPermutations.push([false, true, undefined]);
         }
-        if (args.fast) flagPermutations = [[false, false, undefined, isSimpleClosureTest]];
+        if (args.fast) flagPermutations = [[false, false, undefined]];
         return () =>
           SerialPromises(
             flagPermutations
@@ -803,7 +793,6 @@ function run(args) {
                   delayInitializations,
                   inlineExpressions,
                   lazyObjectsRuntime,
-                  residual: args && args.residual,
                 };
                 return () =>
                   runTest(test.name, test.file, options, args).then(testResult => {
@@ -841,7 +830,6 @@ class ProgramArgs {
   lazyObjectsRuntime: string;
   noLazySupport: boolean;
   fast: boolean;
-  residual: boolean;
   cpuprofilePath: string;
   constructor(
     debugNames: boolean,
@@ -853,7 +841,6 @@ class ProgramArgs {
     lazyObjectsRuntime: string,
     noLazySupport: boolean,
     fast: boolean,
-    residual: boolean,
     cpuProfilePath: string
   ) {
     this.debugNames = debugNames;
@@ -865,7 +852,6 @@ class ProgramArgs {
     this.lazyObjectsRuntime = lazyObjectsRuntime;
     this.noLazySupport = noLazySupport;
     this.fast = fast;
-    this.residual = residual;
     this.cpuprofilePath = cpuProfilePath;
   }
 }
@@ -926,11 +912,10 @@ function argsParse(): ProgramArgs {
       es5: false, // if true test marked as es6 only are not run
       filter: "",
       outOfProcessRuntime: "", // if set, assumed to be a JS runtime and is used
-      // to run tests. If not a seperate node context used.
+      // to run tests. If not a separate node context used.
       lazyObjectsRuntime: LAZY_OBJECTS_RUNTIME_NAME,
       noLazySupport: false,
       fast: false,
-      residual: false,
       cpuprofilePath: "",
     },
   });
@@ -963,9 +948,6 @@ function argsParse(): ProgramArgs {
   if (typeof parsedArgs.noLazySupport !== "boolean") {
     throw new ArgsParseError("noLazySupport must be a boolean (either --noLazySupport or not)");
   }
-  if (typeof parsedArgs.residual !== "boolean") {
-    throw new ArgsParseError("residual must be a boolean (either --residual or not)");
-  }
   if (typeof parsedArgs.cpuprofilePath !== "string") {
     throw new ArgsParseError("cpuprofilePath must be a string");
   }
@@ -979,7 +961,6 @@ function argsParse(): ProgramArgs {
     parsedArgs.lazyObjectsRuntime,
     parsedArgs.noLazySupport,
     parsedArgs.fast,
-    parsedArgs.residual,
     parsedArgs.cpuprofilePath
   );
   return programArgs;

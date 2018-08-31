@@ -525,7 +525,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 10. Let splitter be ? Construct(C, « rx, newFlags »).
-    let splitter = Construct(realm, C, [rx, new StringValue(realm, newFlags)]);
+    let splitter = Construct(realm, C, [rx, new StringValue(realm, newFlags)]).throwIfNotConcreteObject();
 
     // 11. Let A be ArrayCreate(0).
     let A = Create.ArrayCreate(realm, 0);

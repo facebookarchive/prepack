@@ -10,7 +10,7 @@
 /* @flow strict-local */
 
 import { type Effects, Realm } from "../realm.js";
-import { AbstractValue, ECMAScriptSourceFunctionValue, BoundFunctionValue, ObjectValue } from "../values/index.js";
+import { AbstractValue, ECMAScriptSourceFunctionValue, ObjectValue } from "../values/index.js";
 import { createAdditionalEffects } from "../serializer/utils.js";
 import {
   convertFunctionalComponentToComplexClassComponent,
@@ -110,7 +110,8 @@ function optimizeReactComponentTreeBranches(
   reconciler: Reconciler,
   writeEffects: WriteEffects,
   environmentRecordIdAfterGlobalCode: number,
-  logger: Logger
+  logger: Logger,
+  alreadyEvaluated: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>
 ): void {
   if (realm.react.verbose && reconciler.branchedComponentTrees.length > 0) {
     logger.logInformation(`  Evaluating React component tree branches...`);
@@ -123,10 +124,10 @@ function optimizeReactComponentTreeBranches(
       evaluatedNode.status = "UNKNOWN_TYPE";
       continue;
     }
-    // so we don't process the same component multiple times (we might change this logic later)
-    if (reconciler.hasEvaluatedRootNode(branchComponentType, evaluatedNode)) {
-      continue;
+    if (alreadyEvaluated.has(branchComponentType)) {
+      return;
     }
+    alreadyEvaluated.set(branchComponentType, evaluatedNode);
     reconciler.clearComponentTreeState();
     if (realm.react.verbose) {
       logger.logInformation(`    Evaluating ${evaluatedNode.name} (branch)`);
@@ -148,53 +149,6 @@ function optimizeReactComponentTreeBranches(
   }
 }
 
-function optimizeReactNestedClosures(
-  realm: Realm,
-  reconciler: Reconciler,
-  writeEffects: WriteEffects,
-  environmentRecordIdAfterGlobalCode: number,
-  logger: Logger
-): void {
-  if (realm.react.verbose && reconciler.nestedOptimizedClosures.length > 0) {
-    logger.logInformation(`  Evaluating nested closures...`);
-  }
-  for (let { func, evaluatedNode, nestedEffects, componentType, context } of reconciler.nestedOptimizedClosures) {
-    if (reconciler.hasEvaluatedNestedClosure(func)) {
-      continue;
-    }
-    if (func instanceof ECMAScriptSourceFunctionValue && reconciler.hasEvaluatedRootNode(func, evaluatedNode)) {
-      continue;
-    }
-    if (realm.react.verbose) {
-      logger.logInformation(`    Evaluating function "${getComponentName(realm, func)}"`);
-    }
-    let closureEffects = reconciler.resolveNestedOptimizedClosure(
-      func,
-      nestedEffects,
-      componentType,
-      context,
-      evaluatedNode
-    );
-    if (realm.react.verbose) {
-      logger.logInformation(`    ✔ function "${getComponentName(realm, func)}"`);
-    }
-    let additionalFunctionEffects = createAdditionalEffects(
-      realm,
-      closureEffects,
-      true,
-      "ReactNestedAdditionalFunctionEffects",
-      environmentRecordIdAfterGlobalCode
-    );
-    invariant(additionalFunctionEffects);
-    if (func instanceof BoundFunctionValue) {
-      invariant(func.$BoundTargetFunction instanceof ECMAScriptSourceFunctionValue);
-      writeEffects.set(func.$BoundTargetFunction, additionalFunctionEffects);
-    } else {
-      writeEffects.set(func, additionalFunctionEffects);
-    }
-  }
-}
-
 export function optimizeReactComponentTreeRoot(
   realm: Realm,
   componentRoot: ECMAScriptSourceFunctionValue | AbstractValue,
@@ -202,18 +156,20 @@ export function optimizeReactComponentTreeRoot(
   writeEffects: WriteEffects,
   environmentRecordIdAfterGlobalCode: number,
   logger: Logger,
-  statistics: ReactStatistics
+  statistics: ReactStatistics,
+  alreadyEvaluated: Map<ECMAScriptSourceFunctionValue, ReactEvaluatedNode>
 ): void {
-  let reconciler = new Reconciler(realm, config, statistics, logger);
+  let reconciler = new Reconciler(realm, config, alreadyEvaluated, statistics, logger);
   let componentType = getComponentTypeFromRootValue(realm, componentRoot);
   if (componentType === null) {
     return;
   }
-  let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(realm, componentType));
-  statistics.evaluatedRootNodes.push(evaluatedRootNode);
-  if (reconciler.hasEvaluatedRootNode(componentType, evaluatedRootNode)) {
+  if (alreadyEvaluated.has(componentType)) {
     return;
   }
+  let evaluatedRootNode = createReactEvaluatedNode("ROOT", getComponentName(realm, componentType));
+  statistics.evaluatedRootNodes.push(evaluatedRootNode);
+  alreadyEvaluated.set(componentType, evaluatedRootNode);
   if (realm.react.verbose) {
     logger.logInformation(`  Evaluating ${evaluatedRootNode.name} (root)`);
   }
@@ -231,36 +187,16 @@ export function optimizeReactComponentTreeRoot(
     writeEffects,
     environmentRecordIdAfterGlobalCode
   );
-
   let startingComponentTreeBranches = 0;
   do {
     startingComponentTreeBranches = reconciler.branchedComponentTrees.length;
-    optimizeReactComponentTreeBranches(realm, reconciler, writeEffects, environmentRecordIdAfterGlobalCode, logger);
-    if (realm.react.optimizeNestedFunctions) {
-      optimizeReactNestedClosures(realm, reconciler, writeEffects, environmentRecordIdAfterGlobalCode, logger);
-    }
-  } while (startingComponentTreeBranches !== reconciler.branchedComponentTrees.length);
-}
-
-export function applyOptimizedReactComponents(
-  realm: Realm,
-  writeEffects: WriteEffects,
-  environmentRecordIdAfterGlobalCode: number
-): void {
-  for (let { effects, func } of realm.react.optimizedNestedClosuresToWrite) {
-    let additionalFunctionEffects = createAdditionalEffects(
+    optimizeReactComponentTreeBranches(
       realm,
-      effects,
-      true,
-      "ReactNestedAdditionalFunctionEffects",
-      environmentRecordIdAfterGlobalCode
+      reconciler,
+      writeEffects,
+      environmentRecordIdAfterGlobalCode,
+      logger,
+      alreadyEvaluated
     );
-    invariant(additionalFunctionEffects);
-    if (func instanceof BoundFunctionValue) {
-      invariant(func.$BoundTargetFunction instanceof ECMAScriptSourceFunctionValue);
-      writeEffects.set(func.$BoundTargetFunction, additionalFunctionEffects);
-    } else {
-      writeEffects.set(func, additionalFunctionEffects);
-    }
-  }
+  } while (startingComponentTreeBranches !== reconciler.branchedComponentTrees.length);
 }

@@ -53,4 +53,8 @@ export default class FunctionValue extends ObjectValue {
   hasDefaultLength(): boolean {
     invariant(false, "abstract method; please override");
   }
+
+  getDebugName(): string {
+    return super.getDebugName() || this.getName();
+  }
 }

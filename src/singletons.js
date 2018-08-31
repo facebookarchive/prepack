@@ -14,26 +14,33 @@ import type {
   CreateType,
   EnvironmentType,
   FunctionType,
-  HavocType,
+  LeakType,
   JoinType,
+  MaterializeType,
   PathType,
+  PathConditions,
   PropertiesType,
   ToType,
   UtilsType,
   WidenType,
+  DebugReproManagerType,
 } from "./types.js";
 
 export let Create: CreateType = (null: any);
 export let Environment: EnvironmentType = (null: any);
 export let Functions: FunctionType = (null: any);
-export let Havoc: HavocType = (null: any);
+export let Leak: LeakType = (null: any);
+export let Materialize: MaterializeType = (null: any);
 export let Join: JoinType = (null: any);
 export let Path: PathType = (null: any);
+export let createPathConditions: () => PathConditions = (null: any);
 export let Properties: PropertiesType = (null: any);
 export let To: ToType = (null: any);
 export let Widen: WidenType = (null: any);
 export let concretize: ConcretizeType = (null: any);
+
 export let Utils: UtilsType = (null: any);
+export let DebugReproManager: DebugReproManagerType = (null: any);
 
 export function setCreate(singleton: CreateType): void {
   Create = singleton;
@@ -47,8 +54,12 @@ export function setFunctions(singleton: FunctionType): void {
   Functions = singleton;
 }
 
-export function setHavoc(singleton: HavocType): void {
-  Havoc = singleton;
+export function setLeak(singleton: LeakType): void {
+  Leak = singleton;
+}
+
+export function setMaterialize(singleton: MaterializeType): void {
+  Materialize = singleton;
 }
 
 export function setJoin(singleton: JoinType): void {
@@ -57,6 +68,10 @@ export function setJoin(singleton: JoinType): void {
 
 export function setPath(singleton: PathType): void {
   Path = singleton;
+}
+
+export function setPathConditions(f: () => PathConditions): void {
+  createPathConditions = f;
 }
 
 export function setProperties(singleton: PropertiesType): void {
@@ -77,4 +92,8 @@ export function setConcretize(singleton: ConcretizeType): void {
 
 export function setUtils(singleton: UtilsType): void {
   Utils = singleton;
+}
+
+export function setDebugReproManager(singleton: DebugReproManagerType): void {
+  DebugReproManager = singleton;
 }

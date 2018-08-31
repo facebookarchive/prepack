@@ -20,12 +20,12 @@ import {
   FunctionValue,
   type UndefinedValue,
 } from "../values/index.js";
-import { SameValue } from "../methods/abstract.js";
-import { Construct } from "../methods/construct.js";
-import { Get } from "../methods/get.js";
-import { Invoke, Call } from "../methods/call.js";
-import { IsCallable, IsConstructor, IsPromise } from "../methods/is.js";
-import { IteratorStep, IteratorValue } from "../methods/iterator.js";
+import { SameValue } from "./abstract.js";
+import { Construct } from "./construct.js";
+import { Get } from "./get.js";
+import { Invoke, Call } from "./call.js";
+import { IsCallable, IsConstructor, IsPromise } from "./is.js";
+import { IteratorStep, IteratorValue } from "./iterator.js";
 import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 
@@ -96,7 +96,7 @@ export function NewPromiseCapability(realm: Realm, C: Value): PromiseCapability 
   executor.$Capability = promiseCapability;
 
   // 6. Let promise be ? Construct(C, « executor »).
-  let promise = Construct(realm, C, [executor]);
+  let promise = Construct(realm, C, [executor]).throwIfNotConcreteObject();
 
   // 7. If IsCallable(promiseCapability.[[Resolve]]) is false, throw a TypeError exception.
   if (IsCallable(realm, promiseCapability.resolve) === false) {

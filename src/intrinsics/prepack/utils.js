@@ -19,17 +19,16 @@ import {
   ObjectValue,
   UndefinedValue,
 } from "../../values/index.js";
-import buildExpressionTemplate from "../../utils/builder.js";
+import { DisablePlaceholderSuffix } from "../../utils/PreludeGenerator.js";
 import { ValuesDomain } from "../../domains/index.js";
 import { describeLocation } from "../ecma262/Error.js";
 import { To } from "../../singletons.js";
-import AbstractObjectValue from "../../values/AbstractObjectValue";
+import AbstractObjectValue from "../../values/AbstractObjectValue.js";
 import { CompilerDiagnostic, FatalError } from "../../errors.js";
-import { Utils } from "../../singletons";
+import { Utils } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 const throwTemplateSrc = "(function(){throw new global.Error('abstract value defined at ' + A);})()";
-const throwTemplate = buildExpressionTemplate(throwTemplateSrc);
 
 export function parseTypeNameOrTemplate(
   realm: Realm,
@@ -93,10 +92,9 @@ export function createAbstract(
   }
   if (name === undefined) {
     let locVal = new StringValue(realm, locString !== undefined ? locString : "(unknown location)");
-    let kind = AbstractValue.makeKind("abstractCounted", (realm.objectCount++).toString()); // need not be an object, but must be unique
-    result = AbstractValue.createFromTemplate(realm, throwTemplate, type, [locVal], kind);
+    result = AbstractValue.createFromTemplate(realm, throwTemplateSrc, type, [locVal]);
+    result.hashValue = ++realm.objectCount; // need not be an object, but must be unique
   } else {
-    let kind = AbstractValue.makeKind("abstract", name);
     if (!optionsMap.get("allowDuplicateNames") && !realm.isNameStringUnique(name)) {
       let error = new CompilerDiagnostic("An abstract value with the same name exists", loc, "PP0019", "FatalError");
       realm.handleError(error);
@@ -104,7 +102,12 @@ export function createAbstract(
     } else {
       realm.saveNameString(name);
     }
-    result = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), type, [], kind);
+    result = AbstractValue.createFromTemplate(
+      realm,
+      optionsMap.get("disablePlaceholders") ? name + DisablePlaceholderSuffix : name,
+      type,
+      []
+    );
     result.intrinsicName = name;
   }
 

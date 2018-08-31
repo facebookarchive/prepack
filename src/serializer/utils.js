@@ -28,7 +28,8 @@ import { Logger } from "../utils/logger.js";
 import { Generator } from "../utils/generator.js";
 import type { AdditionalFunctionEffects } from "./types";
 import type { Binding } from "../environment.js";
-import { getLocationFromValue } from "../react/utils";
+import type { BabelNodeSourceLocation } from "@babel/types";
+import { optionalStringOfLocation } from "../utils/babelhelpers.js";
 
 /**
  * Get index property list length by searching array properties list for the max index key value plus 1.
@@ -37,7 +38,7 @@ import { getLocationFromValue } from "../react/utils";
  */
 export function getSuggestedArrayLiteralLength(realm: Realm, val: ObjectValue): [number, boolean] {
   invariant(IsArray(realm, val));
-
+  let instantRenderMode = realm.instantRender.enabled;
   let minLength = 0,
     maxLength = 0;
   let actualLength;
@@ -46,7 +47,7 @@ export function getSuggestedArrayLiteralLength(realm: Realm, val: ObjectValue): 
       let prevMax = maxLength;
       maxLength = Number(key) + 1;
       let elem = val._SafeGetDataPropertyValue(key);
-      if (!elem.mightHaveBeenDeleted()) minLength = maxLength;
+      if (instantRenderMode || !elem.mightHaveBeenDeleted()) minLength = maxLength;
       else if (elem instanceof AbstractValue && elem.kind === "conditional") {
         let maxLengthVal = new IntegralValue(realm, maxLength);
         let [c, x, y] = elem.args;
@@ -203,30 +204,32 @@ export function createAdditionalEffects(
 }
 
 export function handleReportedSideEffect(
-  exceptionHandler: string => void,
+  exceptionHandler: (string, ?BabelNodeSourceLocation) => void,
   sideEffectType: SideEffectType,
   binding: void | Binding | PropertyBinding,
-  expressionLocation: any
+  expressionLocation: ?BabelNodeSourceLocation
 ): void {
   // This causes an infinite recursion because creating a callstack causes internal-only side effects
   if (binding && binding.object && binding.object.intrinsicName === "__checkedBindings") return;
-  let location = getLocationFromValue(expressionLocation);
+  let location = optionalStringOfLocation(expressionLocation);
 
   if (sideEffectType === "MODIFIED_BINDING") {
     let name = binding ? `"${((binding: any): Binding).name}"` : "unknown";
-    exceptionHandler(`side-effects from mutating the binding ${name}${location}`);
+    exceptionHandler(`side-effects from mutating the binding ${name}${location}`, expressionLocation);
   } else if (sideEffectType === "MODIFIED_PROPERTY" || sideEffectType === "MODIFIED_GLOBAL") {
     let name = "";
-    let key = ((binding: any): PropertyBinding).key;
+    let pb = ((binding: any): PropertyBinding);
+    let key = pb.key;
     if (typeof key === "string") {
       name = `"${key}"`;
     }
     if (sideEffectType === "MODIFIED_PROPERTY") {
-      exceptionHandler(`side-effects from mutating a property ${name}${location}`);
+      if (!ObjectValue.refuseSerializationOnPropertyBinding(pb))
+        exceptionHandler(`side-effects from mutating a property ${name}${location}`, expressionLocation);
     } else {
-      exceptionHandler(`side-effects from mutating the global object property ${name}${location}`);
+      exceptionHandler(`side-effects from mutating the global object property ${name}${location}`, expressionLocation);
     }
   } else if (sideEffectType === "EXCEPTION_THROWN") {
-    exceptionHandler(`side-effects from throwing exception${location}`);
+    exceptionHandler(`side-effects from throwing exception${location}`, expressionLocation);
   }
 }

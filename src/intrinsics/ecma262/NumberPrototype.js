@@ -20,7 +20,6 @@ import {
 } from "../../values/index.js";
 import { To } from "../../singletons.js";
 import invariant from "../../invariant.js";
-import buildExpressionTemplate from "../../utils/builder.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 20.1.3
@@ -89,7 +88,6 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   let toLocaleStringSrc = "(A).toLocaleString()";
-  let toLocaleString = buildExpressionTemplate(toLocaleStringSrc);
 
   // ECMA262 20.1.3.4
   obj.defineNativeMethod("toLocaleString", 0, context => {
@@ -97,7 +95,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     if (realm.useAbstractInterpretation) {
       // The locale is environment-dependent and may also be time-dependent
       // so do this at runtime and at this point in time
-      return AbstractValue.createTemporalFromTemplate(realm, toLocaleString, StringValue, [x]);
+      return AbstractValue.createTemporalFromTemplate(realm, toLocaleStringSrc, StringValue, [x]);
     } else {
       return new StringValue(realm, x.toLocaleString());
     }
@@ -144,15 +142,14 @@ export default function(realm: Realm, obj: ObjectValue): void {
     return new StringValue(realm, s + x.toPrecision(p));
   });
 
-  const tsTemplateSrc = "(A).toString()";
-  const tsTemplate = buildExpressionTemplate(tsTemplateSrc);
+  const tsTemplateSrc = "('' + A)";
 
   // ECMA262 20.1.3.6
   obj.defineNativeMethod("toString", 1, (context, [radix]) => {
     if (radix instanceof UndefinedValue) {
       const target = context instanceof ObjectValue ? context.$NumberData : context;
       if (target instanceof AbstractValue && (target.getType() === NumberValue || target.getType() === IntegralValue)) {
-        return AbstractValue.createFromTemplate(realm, tsTemplate, StringValue, [target], tsTemplateSrc);
+        return AbstractValue.createFromTemplate(realm, tsTemplateSrc, StringValue, [target]);
       }
     }
     // 1. Let x be ? thisNumberValue(this value).

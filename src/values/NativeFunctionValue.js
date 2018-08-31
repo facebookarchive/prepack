@@ -119,7 +119,6 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
     }
     return new ReturnCompletion(
       this.callback(context, argsList, originalLength, newTarget),
-      undefined,
       this.$Realm.currentLocation
     );
   }

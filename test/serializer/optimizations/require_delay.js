@@ -1,5 +1,4 @@
 // es6
-// delay unsupported requires
 
 var modules = Object.create(null);
 
