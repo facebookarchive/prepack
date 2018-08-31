@@ -431,11 +431,13 @@ const skipFunctionProperties = new Set(["length", "prototype", "arguments", "nam
 
 export function convertFunctionalComponentToComplexClassComponent(
   realm: Realm,
-  functionalComponentType: ECMAScriptSourceFunctionValue,
-  complexComponentType: void | ECMAScriptSourceFunctionValue,
+  functionalComponentType: ECMAScriptSourceFunctionValue | BoundFunctionValue,
+  complexComponentType: void | ECMAScriptSourceFunctionValue | BoundFunctionValue,
   additionalFunctionEffects: AdditionalFunctionEffects
 ): void {
-  invariant(complexComponentType instanceof ECMAScriptSourceFunctionValue);
+  invariant(
+    complexComponentType instanceof ECMAScriptSourceFunctionValue || complexComponentType instanceof BoundFunctionValue
+  );
   // get all properties on the functional component that were added in user-code
   // we add defaultProps as undefined, as merging a class component's defaultProps on to
   // a differnet component isn't right, we can discard defaultProps instead via folding
@@ -517,9 +519,18 @@ export function createReactHintObject(
   };
 }
 
-export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAScriptSourceFunctionValue | null {
+export function getComponentTypeFromRootValue(
+  realm: Realm,
+  value: Value
+): ECMAScriptSourceFunctionValue | BoundFunctionValue | null {
   let _valueIsKnownReactAbstraction = valueIsKnownReactAbstraction(realm, value);
-  if (!(value instanceof ECMAScriptSourceFunctionValue || _valueIsKnownReactAbstraction)) {
+  if (
+    !(
+      value instanceof ECMAScriptSourceFunctionValue ||
+      value instanceof BoundFunctionValue ||
+      _valueIsKnownReactAbstraction
+    )
+  ) {
     return null;
   }
   if (_valueIsKnownReactAbstraction) {
@@ -535,7 +546,9 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
           invariant(Array.isArray(reactHint.args));
           // componentType is the 1st argument of a ReactRelay container
           let componentType = reactHint.args[0];
-          invariant(componentType instanceof ECMAScriptSourceFunctionValue);
+          invariant(
+            componentType instanceof ECMAScriptSourceFunctionValue || componentType instanceof BoundFunctionValue
+          );
           return componentType;
         default:
           invariant(
@@ -546,7 +559,7 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
     }
     invariant(false, "unsupported known React abstraction");
   } else {
-    invariant(value instanceof ECMAScriptSourceFunctionValue);
+    invariant(value instanceof ECMAScriptSourceFunctionValue || value instanceof BoundFunctionValue);
     return value;
   }
 }

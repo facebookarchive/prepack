@@ -34,6 +34,7 @@ import {
   AbstractObjectValue,
   AbstractValue,
   ArrayValue,
+  BoundFunctionValue,
   ConcreteValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
@@ -390,7 +391,7 @@ export class Realm {
     // we need to know what React component was passed to this AbstractObjectValue so we can visit it next)
     abstractHints: WeakMap<AbstractValue | ObjectValue, ReactHint>,
     activeReconciler: any, // inentionally "any", importing the React reconciler class increases Flow's cylic count
-    classComponentMetadata: Map<ECMAScriptSourceFunctionValue, ClassComponentMetadata>,
+    classComponentMetadata: Map<ECMAScriptSourceFunctionValue | BoundFunctionValue, ClassComponentMetadata>,
     currentOwner?: ObjectValue,
     defaultPropsHelper?: ECMAScriptSourceFunctionValue,
     emptyArray: void | ArrayValue,

@@ -19,6 +19,7 @@ import { ignoreErrorsIn } from "../utils/errors.js";
 import {
   AbstractObjectValue,
   AbstractValue,
+  BoundFunctionValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
   ObjectValue,
@@ -87,6 +88,7 @@ export class Functions {
     let validConfig = config instanceof ObjectValue || config === realm.intrinsics.undefined;
     let validRootComponent =
       rootComponent instanceof ECMAScriptSourceFunctionValue ||
+      rootComponent instanceof BoundFunctionValue ||
       (rootComponent instanceof AbstractValue && valueIsKnownReactAbstraction(this.realm, rootComponent));
 
     if (validConfig && validRootComponent) {
