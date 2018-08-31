@@ -393,7 +393,8 @@ export type LeakType = {
 };
 
 export type MaterializeType = {
-  materialize(realm: Realm, object: ObjectValue): void,
+  materializeObject(realm: Realm, object: ObjectValue): void,
+  materializeObjectsTransitive(realm: Realm, value: FunctionValue): void,
 };
 
 export type PropertiesType = {
