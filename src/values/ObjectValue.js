@@ -77,6 +77,19 @@ export default class ObjectValue extends ConcreteValue {
     // as other code checks whether this.$IsClassPrototype === undefined
     // as a proxy for whether initialization is still ongoing.
     this.$IsClassPrototype = false;
+    // These properties were possibly not defined before, but now are always defined
+    // and set to undefined as their default slot state. Furthermore, these ensure
+    // that ObjectValue has the same hidden class for these properties.
+    // TODO ensure all other properties are also defined in the constructor to ensure
+    // they make ObjectValue have the same hidden class. See #2510.
+    this.$ViewedArrayBuffer = undefined;
+    this.$DataView = undefined;
+    this.$IteratedSet = undefined;
+    this.$SetNextIndex = undefined;
+    this.$SetIterationKind = undefined;
+    this.$TypedArrayName = undefined;
+    this.$IteratedString = undefined;
+    this.$StringIteratorNextIndex = undefined;
   }
 
   static trackedPropertyNames = [

@@ -289,7 +289,7 @@ export function AllocateTypedArrayBuffer(realm: Realm, O: ObjectValue, length: n
   invariant(realm.isNewObject(O));
 
   // 1. Assert: O is an Object that has a [[ViewedArrayBuffer]] internal slot.
-  // Update: [[ViewedArrayBuffer]] will always be an internal slot, see #2512
+  // [[ViewedArrayBuffer]] will always be an internal slot, but that of undefined by default, see #2512
   invariant(O instanceof ObjectValue, "O is an Object that has a [[ViewedArrayBuffer]] internal slot");
 
   // 2. Assert: O.[[ViewedArrayBuffer]] is undefined.
