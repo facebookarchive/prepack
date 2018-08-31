@@ -131,23 +131,13 @@ let reactCode = `
       mapFunction,
       mapContext,
     ) {
-      if (traverseContextPool.length) {
-        const traverseContext = traverseContextPool.pop();
-        traverseContext.result = mapResult;
-        traverseContext.keyPrefix = keyPrefix;
-        traverseContext.func = mapFunction;
-        traverseContext.context = mapContext;
-        traverseContext.count = 0;
-        return traverseContext;
-      } else {
-        return {
-          result: mapResult,
-          keyPrefix: keyPrefix,
-          func: mapFunction,
-          context: mapContext,
-          count: 0,
-        };
-      }
+      return {
+        result: mapResult,
+        keyPrefix: keyPrefix,
+        func: mapFunction,
+        context: mapContext,
+        count: 0,
+      };
     }
 
     function releaseTraverseContext(traverseContext) {
