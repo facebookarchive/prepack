@@ -21,7 +21,7 @@ import {
   Value,
 } from "./index.js";
 import { IsAccessorDescriptor, IsPropertyKey, IsArrayIndex } from "../methods/is.js";
-import { Leak, Properties, To, Utils } from "../singletons.js";
+import { Leak, Materialize, Properties, To, Utils } from "../singletons.js";
 import { type OperationDescriptor } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import { NestedOptimizedFunctionSideEffect } from "../errors.js";
@@ -64,6 +64,28 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
       }
       throw e;
     }
+
+    // This is an incremental step from this list aimed to resolve a particular issue: #2452
+    //
+    // Assumptions:
+    // 1. We are here because the array op is pure, havocing of bindings is not needed.
+    // 2. The array op is only used once. To be enforced: #2448
+    // 3. Aliasing effects will lead to a fatal error. To be enforced: #2449
+    // 4. Indices of a widened array are not backed by locations
+    //
+    // Transitive materialization is needed to unblock this issue: #2405
+    //
+    // The bindings themselves do not have to materialize, since the values in them
+    // are used to optimize the nested optimized function. We compute the set of
+    // objects that are transitively reachable from read bindings and materialize them.
+
+    Materialize.materializeObjectsTransitive(realm, func);
+
+    // We assume that we do not have to materialize widened arrays because they are intrinsic.
+    // If somebody changes the underlying design in a major way, then materialization could be
+    // needed, and this check will fail.
+    invariant(abstractArrayValue.isIntrinsic());
+
     // Check if effects were pure then add them
     if (abstractArrayValue.nestedOptimizedFunctionEffects === undefined) {
       abstractArrayValue.nestedOptimizedFunctionEffects = new Map();
