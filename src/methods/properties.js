@@ -936,7 +936,7 @@ export class PropertiesImplementation {
     // same value as the corresponding field in current when compared using the SameValue algorithm.
     let identical = true;
     for (let field in Desc) {
-      if (Desc[field] === undefined) {
+      if ((Desc: any)[field] === undefined) {
         continue;
       }
       if ((current: any)[field] === undefined) {

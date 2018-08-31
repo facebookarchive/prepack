@@ -858,7 +858,6 @@ class ProgramArgs {
     lazyObjectsRuntime: string,
     noLazySupport: boolean,
     fast: boolean,
-    residual: boolean,
     cpuProfilePath: string,
     ir: boolean
   ) {
@@ -972,6 +971,9 @@ function argsParse(): ProgramArgs {
   if (typeof parsedArgs.cpuprofilePath !== "string") {
     throw new ArgsParseError("cpuprofilePath must be a string");
   }
+  if (typeof parsedArgs.ir !== "boolean") {
+    throw new ArgsParseError("ir must be a string");
+  }
   let programArgs = new ProgramArgs(
     parsedArgs.debugNames,
     parsedArgs.debugScopes,
@@ -982,7 +984,8 @@ function argsParse(): ProgramArgs {
     parsedArgs.lazyObjectsRuntime,
     parsedArgs.noLazySupport,
     parsedArgs.fast,
-    parsedArgs.cpuprofilePath
+    parsedArgs.cpuprofilePath,
+    parsedArgs.ir
   );
   return programArgs;
 }
