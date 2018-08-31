@@ -858,13 +858,9 @@ class ProgramArgs {
     lazyObjectsRuntime: string,
     noLazySupport: boolean,
     fast: boolean,
-<<<<<<< HEAD
     residual: boolean,
     cpuProfilePath: string,
     ir: boolean
-=======
-    cpuProfilePath: string
->>>>>>> master
   ) {
     this.debugNames = debugNames;
     this.debugScopes = debugScopes;
@@ -973,15 +969,6 @@ function argsParse(): ProgramArgs {
   if (typeof parsedArgs.noLazySupport !== "boolean") {
     throw new ArgsParseError("noLazySupport must be a boolean (either --noLazySupport or not)");
   }
-<<<<<<< HEAD
-  if (typeof parsedArgs.ir !== "boolean") {
-    throw new ArgsParseError("ir must be a boolean (either --ir or not)");
-  }
-  if (typeof parsedArgs.residual !== "boolean") {
-    throw new ArgsParseError("residual must be a boolean (either --residual or not)");
-  }
-=======
->>>>>>> master
   if (typeof parsedArgs.cpuprofilePath !== "string") {
     throw new ArgsParseError("cpuprofilePath must be a string");
   }
@@ -995,13 +982,7 @@ function argsParse(): ProgramArgs {
     parsedArgs.lazyObjectsRuntime,
     parsedArgs.noLazySupport,
     parsedArgs.fast,
-<<<<<<< HEAD
-    parsedArgs.residual,
-    parsedArgs.cpuprofilePath,
-    parsedArgs.ir
-=======
     parsedArgs.cpuprofilePath
->>>>>>> master
   );
   return programArgs;
 }
