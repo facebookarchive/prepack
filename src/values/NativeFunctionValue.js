@@ -25,6 +25,7 @@ import {
 import type { PromiseCapability } from "../types.js";
 import { ReturnCompletion } from "../completions.js";
 import { Functions } from "../singletons.js";
+import { PropertyDescriptor } from "../descriptors.js";
 export type NativeFunctionCallback = (
   context: UndefinedValue | NullValue | ObjectValue | AbstractObjectValue,
   args: Array<Value>,
@@ -64,12 +65,15 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
     this.callback = callback;
     this.length = length;
 
-    this.$DefineOwnProperty("length", {
-      value: new NumberValue(realm, length),
-      writable: false,
-      configurable: true,
-      enumerable: false,
-    });
+    this.$DefineOwnProperty(
+      "length",
+      new PropertyDescriptor({
+        value: new NumberValue(realm, length),
+        writable: false,
+        configurable: true,
+        enumerable: false,
+      })
+    );
 
     if (name !== undefined && name !== "") {
       if (name instanceof SymbolValue) {
@@ -77,12 +81,15 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
       } else {
         this.name = name;
       }
-      this.$DefineOwnProperty("name", {
-        value: new StringValue(realm, this.name),
-        writable: false,
-        configurable: true,
-        enumerable: false,
-      });
+      this.$DefineOwnProperty(
+        "name",
+        new PropertyDescriptor({
+          value: new StringValue(realm, this.name),
+          writable: false,
+          configurable: true,
+          enumerable: false,
+        })
+      );
     } else {
       this.name = "native";
     }
