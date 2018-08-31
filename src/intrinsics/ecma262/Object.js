@@ -238,7 +238,7 @@ export default function(realm: Realm): NativeFunctionValue {
             if (materializeIfSnapshottingIsConditional && to.temporalAlias === undefined && conditionallySnapshotted) {
               // We don't really want to leak, but rather materialize the object
               // so we assign its bindings correctly.
-              Materialize.materializeObjectsTransitive(realm, to);
+              Materialize.materializeObject(realm, to);
             } else if (!wasSnapshotedBeforehand && to.temporalAlias !== undefined && !conditionallySnapshotted) {
               conditionallySnapshotted = true;
             }
