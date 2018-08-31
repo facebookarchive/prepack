@@ -17,13 +17,14 @@ import {
   AbstractValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
+  NativeFunctionValue,
   NullValue,
   NumberValue,
   ObjectValue,
   Value,
 } from "../../values/index.js";
 import { Environment } from "../../singletons.js";
-import { getReactSymbol } from "../../react/utils.js";
+import { createInternalReactElement, getReactSymbol } from "../../react/utils.js";
 import { cloneReactElement, createReactElement } from "../../react/elements.js";
 import { Properties, Create, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
@@ -37,6 +38,7 @@ let reactCode = `
     REACT_FRAGMENT_TYPE,
     REACT_PORTAL_TYPE,
     REACT_FORWARD_REF_TYPE,
+    ReactElement,
     ReactCurrentOwner
   ) {
     function makeEmptyFunction(arg) {
@@ -123,30 +125,19 @@ let reactCode = `
     var SEPARATOR = '.';
     var SUBSEPARATOR = ':';
     var POOL_SIZE = 10;
-    var traverseContextPool = [];
     function getPooledTraverseContext(
       mapResult,
       keyPrefix,
       mapFunction,
       mapContext,
     ) {
-      if (traverseContextPool.length) {
-        const traverseContext = traverseContextPool.pop();
-        traverseContext.result = mapResult;
-        traverseContext.keyPrefix = keyPrefix;
-        traverseContext.func = mapFunction;
-        traverseContext.context = mapContext;
-        traverseContext.count = 0;
-        return traverseContext;
-      } else {
-        return {
-          result: mapResult,
-          keyPrefix: keyPrefix,
-          func: mapFunction,
-          context: mapContext,
-          count: 0,
-        };
-      }
+      return {
+        result: mapResult,
+        keyPrefix: keyPrefix,
+        func: mapFunction,
+        context: mapContext,
+        count: 0,
+      };
     }
 
     function releaseTraverseContext(traverseContext) {
@@ -155,9 +146,6 @@ let reactCode = `
       traverseContext.func = null;
       traverseContext.context = null;
       traverseContext.count = 0;
-      if (traverseContextPool.length < POOL_SIZE) {
-        traverseContextPool.push(traverseContext);
-      }
     }
 
     function traverseAllChildren(children, callback, traverseContext) {
@@ -268,6 +256,40 @@ let reactCode = `
       return subtreeCount;
     }
 
+    function cloneAndReplaceKey(oldElement, newKey) {
+      var newElement = ReactElement(
+        oldElement.type,
+        newKey,
+        oldElement.ref,
+        oldElement.props,
+      );
+    
+      return newElement;
+    }
+
+    function mapSingleChildIntoContext(bookKeeping, child, childKey) {
+      var {result, keyPrefix, func, context} = bookKeeping;
+    
+      let mappedChild = func.call(context, child, bookKeeping.count++);
+      if (Array.isArray(mappedChild)) {
+        mapIntoWithKeyPrefixInternal(mappedChild, result, childKey, c => c);
+      } else if (mappedChild != null) {
+        if (isValidElement(mappedChild)) {
+          mappedChild = cloneAndReplaceKey(
+            mappedChild,
+            // Keep both the (mapped) and old keys if they differ, just as
+            // traverseAllChildren used to do for objects as children
+            keyPrefix +
+              (mappedChild.key && (!child || child.key !== mappedChild.key)
+                ? escapeUserProvidedKey(mappedChild.key) + '/'
+                : '') +
+              childKey,
+          );
+        }
+        result.push(mappedChild);
+      }
+    }
+
     function mapIntoWithKeyPrefixInternal(children, array, prefix, func, context) {
       var escapedPrefix = '';
       if (prefix != null) {
@@ -284,7 +306,7 @@ let reactCode = `
     }
 
     function forEachSingleChild(bookKeeping, child, name) {
-      const {func, context} = bookKeeping;
+      var {func, context} = bookKeeping;
       func.call(context, child, bookKeeping.count++);
     }
 
@@ -409,11 +431,23 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
   let factory = reactFactory.$Call;
   invariant(factory !== undefined);
 
+  let mockReactElementBuilder = new NativeFunctionValue(
+    realm,
+    undefined,
+    "ReactElement",
+    0,
+    (context, [type, key, ref, props]) => {
+      invariant(props instanceof ObjectValue);
+      return createInternalReactElement(realm, type, key, ref, props);
+    }
+  );
+
   let reactValue = factory(realm.intrinsics.undefined, [
     getReactSymbol("react.element", realm),
     getReactSymbol("react.fragment", realm),
     getReactSymbol("react.portal", realm),
     getReactSymbol("react.forward_ref", realm),
+    mockReactElementBuilder,
     currentOwner,
   ]);
   invariant(reactValue instanceof ObjectValue);
