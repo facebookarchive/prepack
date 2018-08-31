@@ -1143,7 +1143,7 @@ export class Realm {
     if (this.savedCompletion === undefined) {
       if (completion instanceof JoinedNormalAndAbruptCompletions) {
         this.savedCompletion = completion;
-        this.pushPathConditionsLeadingToCompletionOfType(NormalCompletion, completion);
+        this.pushPathConditionsLeadingToNormalCompletions(completion);
         this.captureEffects(completion);
       }
       return completion;
@@ -1151,7 +1151,7 @@ export class Realm {
       let cc = Join.composeCompletions(this.savedCompletion, completion);
       if (cc instanceof JoinedNormalAndAbruptCompletions) {
         this.savedCompletion = cc;
-        this.pushPathConditionsLeadingToCompletionOfType(NormalCompletion, completion);
+        this.pushPathConditionsLeadingToNormalCompletions(completion);
         if (cc.savedEffects === undefined) this.captureEffects(cc);
       } else {
         this.savedCompletion = undefined;
@@ -1160,89 +1160,145 @@ export class Realm {
     }
   }
 
-  pushPathConditionsLeadingToCompletionOfType(CompletionType: typeof Completion, completion: Completion): void {
+  pushPathConditionsLeadingToNormalCompletions(completion: Completion): void {
     let realm = this;
     let bottomValue = realm.intrinsics.__bottomValue;
     // Note that if a completion of type CompletionType has a value is that is bottom, that completion is unreachable
     // and pushing its corresponding path condition would cause an InfeasiblePathError to be thrown.
+    if (completion instanceof JoinedNormalAndAbruptCompletions && completion.composedWith !== undefined)
+      this.pushPathConditionsLeadingToNormalCompletions(completion.composedWith);
     if (completion instanceof JoinedAbruptCompletions || completion instanceof JoinedNormalAndAbruptCompletions) {
-      if (completion.consequent.value === bottomValue || allPathsAreDifferent(completion.consequent)) {
-        if (completion.alternate.value === bottomValue || allPathsAreDifferent(completion.alternate)) return;
+      let jc = completion.joinCondition;
+      if (completion.consequent.value === bottomValue || allPathsAreOfType(AbruptCompletion, completion.consequent)) {
+        if (completion.alternate.value === bottomValue || allPathsAreOfType(AbruptCompletion, completion.alternate))
+          return;
         Path.pushInverseAndRefine(completion.joinCondition);
-        this.pushPathConditionsLeadingToCompletionOfType(CompletionType, completion.alternate);
-      } else if (completion.alternate.value === bottomValue || allPathsAreDifferent(completion.alternate)) {
+        this.pushPathConditionsLeadingToNormalCompletions(completion.alternate);
+      } else if (
+        completion.alternate.value === bottomValue ||
+        allPathsAreOfType(AbruptCompletion, completion.alternate)
+      ) {
         if (completion.consequent.value === bottomValue) return;
         Path.pushAndRefine(completion.joinCondition);
-        this.pushPathConditionsLeadingToCompletionOfType(CompletionType, completion.consequent);
-      } else if (allPathsAreTheSame(completion.consequent)) {
-        if (!allPathsAreTheSame(completion.alternate)) {
-          let alternatePC = getPathConditionForSame(completion.alternate);
-          let disjunct = AbstractValue.createFromLogicalOp(realm, "||", completion.joinCondition, alternatePC);
+        this.pushPathConditionsLeadingToNormalCompletions(completion.consequent);
+      } else if (allPathsAreOfType(NormalCompletion, completion.consequent)) {
+        if (!allPathsAreOfType(NormalCompletion, completion.alternate)) {
+          let alternatePC = getNormalPathConditions(completion.alternate);
+          let disjunct = AbstractValue.createFromLogicalOp(realm, "||", jc, alternatePC, undefined, true, true);
           Path.pushAndRefine(disjunct);
         }
-      } else if (allPathsAreTheSame(completion.alternate)) {
-        let consequentPC = getPathConditionForSame(completion.consequent);
-        let inverse = AbstractValue.createFromUnaryOp(realm, "!", completion.joinCondition);
-        let disjunct = AbstractValue.createFromLogicalOp(realm, "||", inverse, consequentPC);
+      } else if (allPathsAreOfType(NormalCompletion, completion.alternate)) {
+        let consequentPC = getNormalPathConditions(completion.consequent);
+        let inverse = AbstractValue.createFromUnaryOp(realm, "!", jc, true, undefined, true, true);
+        let disjunct = AbstractValue.createFromLogicalOp(realm, "||", inverse, consequentPC, undefined, true, true);
         Path.pushAndRefine(disjunct);
       } else {
-        let jc = completion.joinCondition;
-        let cpc = AbstractValue.createFromLogicalOp(realm, "&&", jc, getPathConditionForSame(completion.consequent));
-        let ijc = AbstractValue.createFromUnaryOp(realm, "!", jc);
-        let apc = AbstractValue.createFromLogicalOp(realm, "&&", ijc, getPathConditionForSame(completion.alternate));
-        let disjunct = AbstractValue.createFromLogicalOp(realm, "||", cpc, apc);
+        let cpc = AbstractValue.createFromLogicalOp(
+          realm,
+          "&&",
+          jc,
+          getNormalPathConditions(completion.consequent),
+          undefined,
+          true,
+          true
+        );
+        let ijc = AbstractValue.createFromUnaryOp(realm, "!", jc, true, undefined, true, true);
+        let apc = AbstractValue.createFromLogicalOp(
+          realm,
+          "&&",
+          ijc,
+          getNormalPathConditions(completion.alternate),
+          undefined,
+          true,
+          true
+        );
+        let disjunct = AbstractValue.createFromLogicalOp(realm, "||", cpc, apc, undefined, true, true);
         Path.pushAndRefine(disjunct);
       }
     }
     return;
 
-    function allPathsAreDifferent(c: Completion): boolean {
-      if (c instanceof JoinedAbruptCompletions || c instanceof JoinedNormalAndAbruptCompletions)
-        return allPathsAreDifferent(c.consequent) && allPathsAreDifferent(c.alternate);
-      if (c instanceof CompletionType) return false;
-      return true;
+    function allPathsAreOfType(CompletionType: typeof Completion, c: Completion): boolean {
+      if (c instanceof JoinedNormalAndAbruptCompletions) {
+        if (c.composedWith !== undefined && !allPathsAreOfType(CompletionType, c.composedWith)) return false;
+        return allPathsAreOfType(CompletionType, c.consequent) && allPathsAreOfType(CompletionType, c.alternate);
+      } else if (c instanceof JoinedAbruptCompletions) {
+        return allPathsAreOfType(CompletionType, c.consequent) && allPathsAreOfType(CompletionType, c.alternate);
+      } else {
+        return c instanceof CompletionType;
+      }
     }
 
-    function allPathsAreTheSame(c: Completion): boolean {
-      if (c instanceof JoinedAbruptCompletions || c instanceof JoinedNormalAndAbruptCompletions)
-        return allPathsAreTheSame(c.consequent) && allPathsAreTheSame(c.alternate);
-      if (c instanceof CompletionType) return true;
-      return false;
-    }
-
-    function getPathConditionForSame(c: Completion): Value {
-      invariant(c instanceof JoinedAbruptCompletions || c instanceof JoinedNormalAndAbruptCompletions);
-      if (c.consequent.value === bottomValue || allPathsAreDifferent(c.consequent)) {
-        invariant(!allPathsAreDifferent(c.alternate));
-        let inverse = AbstractValue.createFromUnaryOp(realm, "!", c.joinCondition);
-        if (allPathsAreTheSame(c.alternate)) return inverse;
-        return AbstractValue.createFromLogicalOp(realm, "&&", inverse, getPathConditionForSame(c.alternate));
-      } else if (c.alternate.value === bottomValue || allPathsAreDifferent(c.alternate)) {
-        invariant(!allPathsAreDifferent(c.consequent));
-        if (allPathsAreTheSame(c.consequent)) return c.joinCondition;
-        return AbstractValue.createFromLogicalOp(realm, "&&", c.joinCondition, getPathConditionForSame(c.consequent));
-      } else if (allPathsAreTheSame(c.consequent)) {
-        // In principle the simplifier shoud reduce the result of the else clause to this case. This does less work.
-        invariant(!allPathsAreTheSame(c.alternate));
-        invariant(!allPathsAreDifferent(c.alternate));
-        let ijc = AbstractValue.createFromUnaryOp(realm, "!", c.joinCondition);
-        let alternatePC = AbstractValue.createFromLogicalOp(realm, "&&", ijc, getPathConditionForSame(c.alternate));
-        return AbstractValue.createFromLogicalOp(realm, "||", c.joinCondition, alternatePC);
-      } else if (allPathsAreTheSame(c.alternate)) {
-        // In principle the simplifier shoud reduce the result of the else clause to this case. This does less work.
-        invariant(!allPathsAreTheSame(c.consequent));
-        invariant(!allPathsAreDifferent(c.consequent));
-        let jc = c.joinCondition;
-        let consequentPC = AbstractValue.createFromLogicalOp(realm, "&&", jc, getPathConditionForSame(c.consequent));
-        let ijc = AbstractValue.createFromUnaryOp(realm, "!", jc);
-        return AbstractValue.createFromLogicalOp(realm, "||", consequentPC, ijc);
+    function getNormalPathConditions(c: Completion): Value {
+      let pathCondToComposeWith;
+      if (c instanceof JoinedNormalAndAbruptCompletions && c.composedWith !== undefined)
+        pathCondToComposeWith = getNormalPathConditions(c.composedWith);
+      if (!(c instanceof JoinedAbruptCompletions || c instanceof JoinedNormalAndAbruptCompletions)) {
+        return c instanceof AbruptCompletion ? realm.intrinsics.false : realm.intrinsics.true;
+      }
+      let pathCond;
+      if (c.consequent.value === bottomValue || allPathsAreOfType(AbruptCompletion, c.consequent)) {
+        if (!allPathsAreOfType(AbruptCompletion, c.alternate)) {
+          let inverse = AbstractValue.createFromUnaryOp(realm, "!", c.joinCondition, true, undefined, true, true);
+          if (allPathsAreOfType(NormalCompletion, c.alternate)) pathCond = inverse;
+          else
+            pathCond = AbstractValue.createFromLogicalOp(
+              realm,
+              "&&",
+              inverse,
+              getNormalPathConditions(c.alternate),
+              undefined,
+              true,
+              true
+            );
+        }
+      } else if (c.alternate.value === bottomValue || allPathsAreOfType(AbruptCompletion, c.alternate)) {
+        if (!allPathsAreOfType(AbruptCompletion, c.consequent)) {
+          if (allPathsAreOfType(NormalCompletion, c.consequent)) {
+            pathCond = c.joinCondition;
+          } else {
+            let jc = c.joinCondition;
+            pathCond = AbstractValue.createFromLogicalOp(
+              realm,
+              "&&",
+              jc,
+              getNormalPathConditions(c.consequent),
+              undefined,
+              true,
+              true
+            );
+          }
+        }
       } else {
         let jc = c.joinCondition;
-        let consequentPC = AbstractValue.createFromLogicalOp(realm, "&&", jc, getPathConditionForSame(c.consequent));
-        let ijc = AbstractValue.createFromUnaryOp(realm, "!", jc);
-        let alternatePC = AbstractValue.createFromLogicalOp(realm, "&&", ijc, getPathConditionForSame(c.alternate));
-        return AbstractValue.createFromLogicalOp(realm, "||", consequentPC, alternatePC);
+        let consequentPC = AbstractValue.createFromLogicalOp(
+          realm,
+          "&&",
+          jc,
+          getNormalPathConditions(c.consequent),
+          undefined,
+          true,
+          true
+        );
+        let ijc = AbstractValue.createFromUnaryOp(realm, "!", jc, true, undefined, true, true);
+        let alternatePC = AbstractValue.createFromLogicalOp(
+          realm,
+          "&&",
+          ijc,
+          getNormalPathConditions(c.alternate),
+          undefined,
+          true,
+          true
+        );
+        pathCond = AbstractValue.createFromLogicalOp(realm, "||", consequentPC, alternatePC, undefined, true, true);
       }
+      if (pathCondToComposeWith === undefined && pathCond === undefined) return realm.intrinsics.false;
+      if (pathCondToComposeWith === undefined) {
+        invariant(pathCond !== undefined);
+        return pathCond;
+      }
+      if (pathCond === undefined) return pathCondToComposeWith;
+      return AbstractValue.createFromLogicalOp(realm, "&&", pathCondToComposeWith, pathCond, undefined, true, true);
     }
   }
 
