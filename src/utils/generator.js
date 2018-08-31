@@ -335,7 +335,40 @@ export class TemporalOperationEntry extends GeneratorEntry {
       return false;
     } else {
       if (this.declared) callbacks.recordDeclaration(this.declared);
-      for (let i = 0, n = this.args.length; i < n; i++) this.args[i] = callbacks.visitEquivalentValue(this.args[i]);
+      for (let i = 0, n = this.args.length; i < n; i++) {
+        let originalArg = this.args[i];
+        let visitedArg = callbacks.visitEquivalentValue(originalArg);
+        this.args[i] = visitedArg;
+        if (i === 0) {
+          switch (this.operationDescriptor.type) {
+            case "CALL_BAILOUT":
+              if (originalArg === this.operationDescriptor.data.thisArg)
+                this.operationDescriptor.data.thisArg = visitedArg;
+              break;
+            case "CONDITIONAL_THROW":
+              this.operationDescriptor.data.value = visitedArg;
+              break;
+            default:
+              break;
+          }
+        } else if (i === 1) {
+          switch (this.operationDescriptor.type) {
+            case "EMIT_PROPERTY_ASSIGNMENT":
+            case "LOGICAL_PROPERTY_ASSIGNMENT":
+              this.operationDescriptor.data.value = visitedArg;
+              break;
+            case "CONDITIONAL_PROPERTY_ASSIGNMENT":
+              if (originalArg === this.operationDescriptor.data.value) this.operationDescriptor.data.value = visitedArg;
+              break;
+            case "DEFINE_PROPERTY":
+              invariant(visitedArg instanceof ObjectValue);
+              this.operationDescriptor.data.object = visitedArg;
+              break;
+            default:
+              break;
+          }
+        }
+      }
       let dependencies = this.getDependencies();
       if (dependencies !== undefined)
         for (let dependency of dependencies) callbacks.visitGenerator(dependency, containingGenerator);

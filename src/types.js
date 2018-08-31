@@ -736,7 +736,11 @@ export type JoinType = {
     d2: void | Descriptor
   ): void | Descriptor,
 
-  joinValuesOfSelectedCompletions(selector: (Completion) => boolean, completion: Completion): Value,
+  joinValuesOfSelectedCompletions(
+    selector: (Completion) => boolean,
+    completion: Completion,
+    keepInfeasiblePaths?: boolean
+  ): Value,
 
   mapAndJoin(
     realm: Realm,
