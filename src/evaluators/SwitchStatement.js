@@ -247,7 +247,7 @@ function CaseBlockEvaluation(
 
   // Abstract interpretation of case blocks is a significantly different process
   // from regular interpretation, so we fork off early to keep things tidily separated.
-  if (input instanceof AbstractValue) {
+  if (input instanceof AbstractValue && cases.length < 6) {
     return AbstractCaseBlockEvaluation(cases, default_case_num, input, strictCode, env, realm);
   }
 

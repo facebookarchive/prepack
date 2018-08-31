@@ -62,10 +62,7 @@ function run(
     --initializeMoreModules  Enable speculative initialization of modules (for the module system Prepack has builtin
                              knowledge about). Prepack will try to execute all factory functions it is able to.
     --trace                  Traces the order of module initialization.
-    --serialize              Serializes the partially evaluated global environment as a program that recreates it.
-                             (default = true)
-    --check [start[, count]] Check residual functions for diagnostic messages. Do not serialize or produce residual code.
-    --residual               Produces the residual program that results after constant folding.
+    --check [start[, count]] Check residual functions for diagnostic messages. Do not generate code.
     --profile                Collect statistics about time and memory usage of the different internal passes
     --logStatistics          Log statistics to console
     --statsFile              The name of the output file where statistics will be written to.
@@ -120,8 +117,6 @@ function run(
     delayInitializations: false,
     internalDebug: false,
     debugScopes: false,
-    serialize: false,
-    residual: false,
     profile: false,
     instantRender: false,
     reactEnabled: false,
@@ -335,12 +330,6 @@ function run(
     }
   }
 
-  if (!flags.serialize && !flags.residual) flags.serialize = true;
-  if (check) {
-    flags.serialize = false;
-    flags.residual = false;
-  }
-
   let resolvedOptions = Object.assign(
     {},
     {
@@ -353,6 +342,7 @@ function run(
       timeout,
       debugIdentifiers,
       check,
+      serialize: !check,
       lazyObjectsRuntime,
       debugInFilePath,
       debugOutFilePath,

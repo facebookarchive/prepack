@@ -77,21 +77,23 @@ function joinTryBlockWithHandlers(
       invariant(blockRes instanceof JoinedAbruptCompletions || blockRes instanceof JoinedNormalAndAbruptCompletions);
       // put the handler under a guard that excludes normal paths from entering it.
       let joinCondition = AbstractValue.createJoinConditionForSelectedCompletions(selector, blockRes);
-      try {
-        let handlerEffects = Path.withCondition(joinCondition, () => {
-          invariant(blockRes instanceof Completion);
-          let joinedThrow = new ThrowCompletion(Join.joinValuesOfSelectedCompletions(selector, blockRes));
-          let handlerEval = () => env.evaluateCompletionDeref(handler, strictCode, joinedThrow);
-          return realm.evaluateForEffects(handlerEval, undefined, "joinTryBlockWithHandlers");
-        });
-        Completion.makeSelectedCompletionsInfeasible(selector, blockRes);
-        let emptyEffects = construct_empty_effects(realm, blockRes);
-        handlerEffects = Join.joinEffects(joinCondition, handlerEffects, emptyEffects);
-        realm.applyEffects(handlerEffects);
-        result = handlerEffects.result;
-      } catch (e) {
-        if (!(e instanceof InfeasiblePathError)) throw e;
-        // It turns out that the handler is not reachable after all so just do nothing and carry on
+      if (joinCondition.mightNotBeFalse()) {
+        try {
+          let handlerEffects = Path.withCondition(joinCondition, () => {
+            invariant(blockRes instanceof Completion);
+            let joinedThrow = new ThrowCompletion(Join.joinValuesOfSelectedCompletions(selector, blockRes));
+            let handlerEval = () => env.evaluateCompletionDeref(handler, strictCode, joinedThrow);
+            return realm.evaluateForEffects(handlerEval, undefined, "joinTryBlockWithHandlers");
+          });
+          Completion.makeSelectedCompletionsInfeasible(selector, blockRes);
+          let emptyEffects = construct_empty_effects(realm, blockRes);
+          handlerEffects = Join.joinEffects(joinCondition, handlerEffects, emptyEffects);
+          realm.applyEffects(handlerEffects);
+          result = handlerEffects.result;
+        } catch (e) {
+          if (!(e instanceof InfeasiblePathError)) throw e;
+          // It turns out that the handler is not reachable after all so just do nothing and carry on
+        }
       }
     }
   }

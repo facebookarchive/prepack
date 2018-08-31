@@ -188,7 +188,7 @@ export default class ObjectValue extends ConcreteValue {
 
   // function
   $Call: void | ((thisArgument: Value, argumentsList: Array<Value>) => Value);
-  $Construct: void | ((argumentsList: Array<Value>, newTarget: ObjectValue) => ObjectValue);
+  $Construct: void | ((argumentsList: Array<Value>, newTarget: ObjectValue) => ObjectValue | AbstractObjectValue);
 
   // promise
   $PromiseState: void | "pending" | "fulfilled" | "rejected";
@@ -307,6 +307,11 @@ export default class ObjectValue extends ConcreteValue {
   // We track some internal state as properties on the global object, these should
   // never be serialized.
   refuseSerialization: boolean;
+
+  // Checks whether effects are properly applied.
+  isValid(): boolean {
+    return this._isPartial !== undefined;
+  }
 
   equals(x: Value): boolean {
     return this === x;

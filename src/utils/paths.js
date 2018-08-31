@@ -258,6 +258,7 @@ function pushInversePathCondition(condition: Value): void {
     let right = condition.args[1];
     invariant(left instanceof AbstractValue); // it is a mistake to create an abstract value when concrete value will do
     pushInversePathCondition(left);
+    if (right instanceof AbstractValue) right = realm.simplifyAndRefineAbstractCondition(right);
     if (right.mightNotBeTrue()) pushInversePathCondition(right);
   } else {
     if (condition.kind === "!=" || condition.kind === "==") {

@@ -1,6 +1,6 @@
 {
   "name": "prepack",
-  "version": "0.2.50-alpha.0",
+  "version": "0.2.51-alpha.0",
   "description": "Execute a JS bundle, serialize global state and side effects to a snapshot that can be quickly restored.",
   "homepage": "https://github.com/facebook/prepack",
   "repository": {

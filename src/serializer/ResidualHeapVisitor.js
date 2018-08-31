@@ -19,6 +19,7 @@ import { HashSet, IsArray, Get } from "../methods/index.js";
 import {
   AbstractObjectValue,
   AbstractValue,
+  ArrayValue,
   BoundFunctionValue,
   ECMAScriptFunctionValue,
   ECMAScriptSourceFunctionValue,
@@ -318,6 +319,7 @@ export class ResidualHeapVisitor {
       // Leaked object. Properties are set via assignments
       // TODO #2259: Make deduplication in the face of leaking work for custom accessors
       if (
+        !(obj instanceof ArrayValue) &&
         !obj.mightNotBeLeakedObject() &&
         (descriptor !== undefined && (descriptor.get === undefined && descriptor.set === undefined))
       )
@@ -845,6 +847,7 @@ export class ResidualHeapVisitor {
   }
 
   visitValueObject(val: ObjectValue): void {
+    invariant(val.isValid());
     this._registerAdditionalRoot(val);
     if (isReactElement(val)) {
       this.residualReactElementVisitor.visitReactElement(val);
@@ -1036,17 +1039,20 @@ export class ResidualHeapVisitor {
       this.postProcessValue(equivalentValue);
       return (equivalentValue: any);
     }
-    if (val instanceof ObjectValue && isReactElement(val)) {
-      if (val.temporalAlias !== undefined) {
-        return this.visitEquivalentValue(val.temporalAlias);
+    if (val instanceof ObjectValue) {
+      invariant(val.isValid());
+      if (isReactElement(val)) {
+        if (val.temporalAlias !== undefined) {
+          return this.visitEquivalentValue(val.temporalAlias);
+        }
+        let equivalentReactElementValue = this.residualReactElementVisitor.reactElementEquivalenceSet.add(val);
+        if (this._mark(equivalentReactElementValue)) this.visitValueObject(equivalentReactElementValue);
+        return (equivalentReactElementValue: any);
+      } else if (isReactPropsObject(val)) {
+        let equivalentReactPropsValue = this.residualReactElementVisitor.reactPropsEquivalenceSet.add(val);
+        if (this._mark(equivalentReactPropsValue)) this.visitValueObject(equivalentReactPropsValue);
+        return (equivalentReactPropsValue: any);
       }
-      let equivalentReactElementValue = this.residualReactElementVisitor.reactElementEquivalenceSet.add(val);
-      if (this._mark(equivalentReactElementValue)) this.visitValueObject(equivalentReactElementValue);
-      return (equivalentReactElementValue: any);
-    } else if (val instanceof ObjectValue && isReactPropsObject(val)) {
-      let equivalentReactPropsValue = this.residualReactElementVisitor.reactPropsEquivalenceSet.add(val);
-      if (this._mark(equivalentReactPropsValue)) this.visitValueObject(equivalentReactPropsValue);
-      return (equivalentReactPropsValue: any);
     }
     this.visitValue(val);
     return val;

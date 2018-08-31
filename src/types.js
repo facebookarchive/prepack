@@ -547,7 +547,7 @@ export type FunctionType = {
     F: ECMAScriptFunctionValue,
     argumentsList: Array<Value>,
     newTarget: ObjectValue
-  ): ObjectValue,
+  ): ObjectValue | AbstractObjectValue,
 
   // ECMA262 9.2.3
   FunctionAllocate(
@@ -752,7 +752,11 @@ export type JoinType = {
     d2: void | Descriptor
   ): void | Descriptor,
 
-  joinValuesOfSelectedCompletions(selector: (Completion) => boolean, completion: Completion): Value,
+  joinValuesOfSelectedCompletions(
+    selector: (Completion) => boolean,
+    completion: Completion,
+    keepInfeasiblePaths?: boolean
+  ): Value,
 
   mapAndJoin(
     realm: Realm,
