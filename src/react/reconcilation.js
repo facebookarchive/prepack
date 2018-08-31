@@ -701,7 +701,7 @@ export class Reconciler {
       evaluatedNode.message = "RelayContainer";
       throw new NewComponentTreeBranch(evaluatedNode);
     }
-    invariant(componentType instanceof ECMAScriptSourceFunctionValue);
+    invariant(componentType instanceof ECMAScriptSourceFunctionValue || componentType instanceof BoundFunctionValue);
     let value;
     let childContext = context;
 
@@ -1138,7 +1138,11 @@ export class Reconciler {
       switch (componentResolutionStrategy) {
         case "NORMAL": {
           if (
-            !(typeValue instanceof ECMAScriptSourceFunctionValue || valueIsKnownReactAbstraction(this.realm, typeValue))
+            !(
+              typeValue instanceof ECMAScriptSourceFunctionValue ||
+              typeValue instanceof BoundFunctionValue ||
+              valueIsKnownReactAbstraction(this.realm, typeValue)
+            )
           ) {
             return this._resolveUnknownComponentType(componentType, reactElement, context, branchStatus, evaluatedNode);
           }
