@@ -79,6 +79,10 @@ export class PathConditionsImplementation extends PathConditions {
     return this._assumedConditions.size;
   }
 
+  getAssumedConditions(): Set<AbstractValue> {
+    return this._assumedConditions;
+  }
+
   refineBaseConditons(realm: Realm): void {
     if (realm.abstractValueImpliesMax > 0) return;
     let refine = (condition: AbstractValue) => {

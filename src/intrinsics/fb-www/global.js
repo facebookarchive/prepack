@@ -21,6 +21,7 @@ import { FatalError } from "../../errors";
 import { Get } from "../../methods/index.js";
 import invariant from "../../invariant";
 import { createDefaultPropsHelper } from "../../react/utils.js";
+import { PropertyDescriptor } from "../../descriptors.js";
 
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
@@ -42,84 +43,93 @@ export default function(realm: Realm): void {
   let moduleExportsValue = AbstractValue.createAbstractObject(realm, "module.exports");
   moduleExportsValue.kind = "resolved";
 
-  moduleValue.$DefineOwnProperty("exports", {
-    value: moduleExportsValue,
-    writable: true,
-    enumerable: false,
-    configurable: true,
-  });
-  global.$DefineOwnProperty("module", {
-    value: moduleValue,
-    writable: true,
-    enumerable: false,
-    configurable: true,
-  });
+  moduleValue.$DefineOwnProperty(
+    "exports",
+    new PropertyDescriptor({
+      value: moduleExportsValue,
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    })
+  );
+  global.$DefineOwnProperty(
+    "module",
+    new PropertyDescriptor({
+      value: moduleValue,
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    })
+  );
 
   // apply require() mock
-  global.$DefineOwnProperty("require", {
-    value: new NativeFunctionValue(realm, "require", "require", 0, (context, [requireNameVal]) => {
-      invariant(requireNameVal instanceof StringValue);
-      let requireNameValValue = requireNameVal.value;
+  global.$DefineOwnProperty(
+    "require",
+    new PropertyDescriptor({
+      value: new NativeFunctionValue(realm, "require", "require", 0, (context, [requireNameVal]) => {
+        invariant(requireNameVal instanceof StringValue);
+        let requireNameValValue = requireNameVal.value;
 
-      if (requireNameValValue === "react" || requireNameValValue === "React") {
-        if (realm.fbLibraries.react === undefined) {
-          let react = createMockReact(realm, requireNameValValue);
-          realm.fbLibraries.react = react;
-          return react;
-        }
-        return realm.fbLibraries.react;
-      } else if (requireNameValValue === "react-dom" || requireNameValValue === "ReactDOM") {
-        if (realm.fbLibraries.reactDom === undefined) {
-          let reactDom = createMockReactDOM(realm, requireNameValValue);
-          realm.fbLibraries.reactDom = reactDom;
-          return reactDom;
-        }
-        return realm.fbLibraries.reactDom;
-      } else if (requireNameValValue === "react-dom/server" || requireNameValValue === "ReactDOMServer") {
-        if (realm.fbLibraries.reactDomServer === undefined) {
-          let reactDomServer = createMockReactDOMServer(realm, requireNameValValue);
-          realm.fbLibraries.reactDomServer = reactDomServer;
-          return reactDomServer;
-        }
-        return realm.fbLibraries.reactDomServer;
-      } else if (requireNameValValue === "react-native" || requireNameValValue === "ReactNative") {
-        if (realm.fbLibraries.reactNative === undefined) {
-          let reactNative = createMockReactNative(realm, requireNameValValue);
-          realm.fbLibraries.reactNative = reactNative;
-          return reactNative;
-        }
-        return realm.fbLibraries.reactNative;
-      } else if (requireNameValValue === "react-relay" || requireNameValValue === "RelayModern") {
-        if (realm.fbLibraries.reactRelay === undefined) {
-          let reactRelay = createMockReactRelay(realm, requireNameValValue);
-          realm.fbLibraries.reactRelay = reactRelay;
-          return reactRelay;
-        }
-        return realm.fbLibraries.reactRelay;
-      } else if (requireNameValValue === "prop-types" || requireNameValValue === "PropTypes") {
-        if (realm.fbLibraries.react === undefined) {
-          throw new FatalError("unable to require PropTypes due to React not being referenced in scope");
-        }
-        let propTypes = Get(realm, realm.fbLibraries.react, "PropTypes");
-        invariant(propTypes instanceof ObjectValue);
-        return propTypes;
-      } else {
-        let requireVal;
-
-        if (realm.fbLibraries.other.has(requireNameValValue)) {
-          requireVal = realm.fbLibraries.other.get(requireNameValValue);
+        if (requireNameValValue === "react" || requireNameValValue === "React") {
+          if (realm.fbLibraries.react === undefined) {
+            let react = createMockReact(realm, requireNameValValue);
+            realm.fbLibraries.react = react;
+            return react;
+          }
+          return realm.fbLibraries.react;
+        } else if (requireNameValValue === "react-dom" || requireNameValValue === "ReactDOM") {
+          if (realm.fbLibraries.reactDom === undefined) {
+            let reactDom = createMockReactDOM(realm, requireNameValValue);
+            realm.fbLibraries.reactDom = reactDom;
+            return reactDom;
+          }
+          return realm.fbLibraries.reactDom;
+        } else if (requireNameValValue === "react-dom/server" || requireNameValValue === "ReactDOMServer") {
+          if (realm.fbLibraries.reactDomServer === undefined) {
+            let reactDomServer = createMockReactDOMServer(realm, requireNameValValue);
+            realm.fbLibraries.reactDomServer = reactDomServer;
+            return reactDomServer;
+          }
+          return realm.fbLibraries.reactDomServer;
+        } else if (requireNameValValue === "react-native" || requireNameValValue === "ReactNative") {
+          if (realm.fbLibraries.reactNative === undefined) {
+            let reactNative = createMockReactNative(realm, requireNameValValue);
+            realm.fbLibraries.reactNative = reactNative;
+            return reactNative;
+          }
+          return realm.fbLibraries.reactNative;
+        } else if (requireNameValValue === "react-relay" || requireNameValValue === "RelayModern") {
+          if (realm.fbLibraries.reactRelay === undefined) {
+            let reactRelay = createMockReactRelay(realm, requireNameValValue);
+            realm.fbLibraries.reactRelay = reactRelay;
+            return reactRelay;
+          }
+          return realm.fbLibraries.reactRelay;
+        } else if (requireNameValValue === "prop-types" || requireNameValValue === "PropTypes") {
+          if (realm.fbLibraries.react === undefined) {
+            throw new FatalError("unable to require PropTypes due to React not being referenced in scope");
+          }
+          let propTypes = Get(realm, realm.fbLibraries.react, "PropTypes");
+          invariant(propTypes instanceof ObjectValue);
+          return propTypes;
         } else {
-          requireVal = createAbstract(realm, "function", `require("${requireNameValValue}")`);
-          realm.fbLibraries.other.set(requireNameValValue, requireVal);
+          let requireVal;
+
+          if (realm.fbLibraries.other.has(requireNameValValue)) {
+            requireVal = realm.fbLibraries.other.get(requireNameValValue);
+          } else {
+            requireVal = createAbstract(realm, "function", `require("${requireNameValValue}")`);
+            realm.fbLibraries.other.set(requireNameValValue, requireVal);
+          }
+          invariant(requireVal instanceof AbstractValue);
+          return requireVal;
         }
-        invariant(requireVal instanceof AbstractValue);
-        return requireVal;
-      }
-    }),
-    writable: true,
-    enumerable: false,
-    configurable: true,
-  });
+      }),
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    })
+  );
 
   if (realm.isCompatibleWith("fb-www")) {
     createFbMocks(realm, global);

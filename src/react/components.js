@@ -11,8 +11,9 @@
 
 import { Realm } from "../realm.js";
 import {
-  ECMAScriptSourceFunctionValue,
   AbstractValue,
+  BoundFunctionValue,
+  ECMAScriptSourceFunctionValue,
   ObjectValue,
   AbstractObjectValue,
   SymbolValue,
@@ -38,6 +39,7 @@ import type { ClassComponentMetadata, ReactComponentTreeConfig } from "../types.
 import type { ReactEvaluatedNode } from "../serializer/types.js";
 import { FatalError } from "../errors.js";
 import { type ComponentModel, ShapeInformation } from "../utils/ShapeInformation.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 const lifecycleMethods = new Set([
   "componentWillUnmount",
@@ -53,7 +55,7 @@ const whitelistedProperties = new Set(["props", "context", "refs", "setState"]);
 
 export function getInitialProps(
   realm: Realm,
-  componentType: ECMAScriptSourceFunctionValue | null,
+  componentType: ECMAScriptSourceFunctionValue | BoundFunctionValue | null,
   { modelString }: ReactComponentTreeConfig
 ): AbstractObjectValue {
   let componentModel = modelString !== undefined ? (JSON.parse(modelString): ComponentModel) : undefined;
@@ -63,9 +65,16 @@ export function getInitialProps(
     if (valueIsClassComponent(realm, componentType)) {
       propsName = "this.props";
     } else {
+      let formalParameters;
+      if (componentType instanceof BoundFunctionValue) {
+        invariant(componentType.$BoundTargetFunction instanceof ECMAScriptSourceFunctionValue);
+        formalParameters = componentType.$BoundTargetFunction.$FormalParameters;
+      } else {
+        formalParameters = componentType.$FormalParameters;
+      }
       // otherwise it's a functional component, where the first paramater of the function is "props" (if it exists)
-      if (componentType.$FormalParameters.length > 0) {
-        let firstParam = componentType.$FormalParameters[0];
+      if (formalParameters.length > 0) {
+        let firstParam = formalParameters[0];
         if (t.isIdentifier(firstParam)) {
           propsName = ((firstParam: any): BabelNodeIdentifier).name;
         }
@@ -79,7 +88,10 @@ export function getInitialProps(
   return abstractPropsObject;
 }
 
-export function getInitialContext(realm: Realm, componentType: ECMAScriptSourceFunctionValue): AbstractObjectValue {
+export function getInitialContext(
+  realm: Realm,
+  componentType: ECMAScriptSourceFunctionValue | BoundFunctionValue
+): AbstractObjectValue {
   let contextName = null;
   if (valueIsClassComponent(realm, componentType)) {
     // it's a class component, so we need to check the type on for context of the component prototype
@@ -90,9 +102,16 @@ export function getInitialContext(realm: Realm, componentType: ECMAScriptSourceF
       throw new ExpectedBailOut("context on class components not yet supported");
     }
   } else {
+    let formalParameters;
+    if (componentType instanceof BoundFunctionValue) {
+      invariant(componentType.$BoundTargetFunction instanceof ECMAScriptSourceFunctionValue);
+      formalParameters = componentType.$BoundTargetFunction.$FormalParameters;
+    } else {
+      formalParameters = componentType.$FormalParameters;
+    }
     // otherwise it's a functional component, where the second paramater of the function is "context" (if it exists)
-    if (componentType.$FormalParameters.length > 1) {
-      let secondParam = componentType.$FormalParameters[1];
+    if (formalParameters.length > 1) {
+      let secondParam = formalParameters[1];
       if (t.isIdentifier(secondParam)) {
         contextName = ((secondParam: any): BabelNodeIdentifier).name;
       }
@@ -124,7 +143,7 @@ function visitClassMethodAstForThisUsage(realm: Realm, method: ECMAScriptSourceF
 
 export function createSimpleClassInstance(
   realm: Realm,
-  componentType: ECMAScriptSourceFunctionValue,
+  componentType: ECMAScriptSourceFunctionValue | BoundFunctionValue,
   props: ObjectValue | AbstractValue,
   context: ObjectValue | AbstractValue
 ): AbstractObjectValue {
@@ -195,7 +214,7 @@ function deeplyApplyInstancePrototypeProperties(
 
 export function createClassInstanceForFirstRenderOnly(
   realm: Realm,
-  componentType: ECMAScriptSourceFunctionValue,
+  componentType: ECMAScriptSourceFunctionValue | BoundFunctionValue,
   props: ObjectValue | AbstractValue,
   context: ObjectValue | AbstractValue,
   evaluatedNode: ReactEvaluatedNode
@@ -231,9 +250,12 @@ export function createClassInstanceForFirstRenderOnly(
       newState.makeFinal();
 
       for (let [key, binding] of stateToUpdate.properties) {
-        if (binding && binding.descriptor && binding.descriptor.enumerable) {
-          let value = getProperty(realm, stateToUpdate, key);
-          hardModifyReactObjectPropertyBinding(realm, newState, key, value);
+        if (binding && binding.descriptor) {
+          invariant(binding.descriptor instanceof PropertyDescriptor);
+          if (binding.descriptor.enumerable) {
+            let value = getProperty(realm, stateToUpdate, key);
+            hardModifyReactObjectPropertyBinding(realm, newState, key, value);
+          }
         }
       }
 
@@ -253,7 +275,7 @@ export function createClassInstanceForFirstRenderOnly(
 
 export function createClassInstance(
   realm: Realm,
-  componentType: ECMAScriptSourceFunctionValue,
+  componentType: ECMAScriptSourceFunctionValue | BoundFunctionValue,
   props: ObjectValue | AbstractValue,
   context: ObjectValue | AbstractValue,
   classMetadata: ClassComponentMetadata
@@ -280,7 +302,7 @@ export function createClassInstance(
 
 export function evaluateClassConstructor(
   realm: Realm,
-  constructorFunc: ECMAScriptSourceFunctionValue,
+  constructorFunc: ECMAScriptSourceFunctionValue | BoundFunctionValue,
   props: ObjectValue | AbstractValue | AbstractObjectValue,
   context: ObjectValue | AbstractObjectValue
 ): { instanceProperties: Set<string>, instanceSymbols: Set<SymbolValue> } {

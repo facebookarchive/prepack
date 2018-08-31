@@ -19,6 +19,7 @@ import { ignoreErrorsIn } from "../utils/errors.js";
 import {
   AbstractObjectValue,
   AbstractValue,
+  BoundFunctionValue,
   ECMAScriptSourceFunctionValue,
   FunctionValue,
   ObjectValue,
@@ -37,6 +38,7 @@ import { handleReportedSideEffect } from "./utils.js";
 import type { ArgModel } from "../types.js";
 import { optionalStringOfLocation } from "../utils/babelhelpers";
 import { Properties, Utils } from "../singletons.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 type AdditionalFunctionEntry = {
   value: ECMAScriptSourceFunctionValue | AbstractValue,
@@ -54,7 +56,6 @@ export class Functions {
   }
 
   realm: Realm;
-  // maps back from FunctionValue to the expression string
   moduleTracer: ModuleTracer;
   writeEffects: WriteEffects;
   _noopFunction: void | ECMAScriptSourceFunctionValue;
@@ -87,6 +88,7 @@ export class Functions {
     let validConfig = config instanceof ObjectValue || config === realm.intrinsics.undefined;
     let validRootComponent =
       rootComponent instanceof ECMAScriptSourceFunctionValue ||
+      rootComponent instanceof BoundFunctionValue ||
       (rootComponent instanceof AbstractValue && valueIsKnownReactAbstraction(this.realm, rootComponent));
 
     if (validConfig && validRootComponent) {
@@ -120,9 +122,9 @@ export class Functions {
     for (let funcId of Properties.GetOwnPropertyKeysArray(realm, globalRecordedAdditionalFunctionsMap, true, false)) {
       let property = globalRecordedAdditionalFunctionsMap.properties.get(funcId);
       if (property) {
-        let value = property.descriptor && property.descriptor.value;
+        invariant(property.descriptor instanceof PropertyDescriptor);
+        let value = property.descriptor.value;
         invariant(value !== undefined);
-        invariant(value instanceof Value);
         let entry = this._optimizedFunctionEntryOfValue(value);
         if (entry) recordedAdditionalFunctions.push(entry);
       }
@@ -175,7 +177,7 @@ export class Functions {
     }
   }
 
-  getDeclaringOptimizedFunction(functionValue: ECMAScriptSourceFunctionValue) {
+  getDeclaringOptimizedFunction(functionValue: ECMAScriptSourceFunctionValue): void | FunctionValue {
     for (let [optimizedFunctionValue, additionalEffects] of this.writeEffects) {
       // CreatedObjects is all objects created by this optimized function but not
       // nested optimized functions.
@@ -383,7 +385,7 @@ export class Functions {
       if (!location) return; // happens only when accessing an additional function property
       if (pbs.has(pb) && !conflicts.has(location)) {
         let originalLocation =
-          pb.descriptor && pb.descriptor.value && !Array.isArray(pb.descriptor.value)
+          pb.descriptor instanceof PropertyDescriptor && pb.descriptor.value && !Array.isArray(pb.descriptor.value)
             ? pb.descriptor.value.expressionLocation
             : undefined;
         let keyString = pb.key instanceof Value ? pb.key.toDisplayString() : pb.key;

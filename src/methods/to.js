@@ -36,6 +36,7 @@ import {
 } from "../values/index.js";
 import invariant from "../invariant.js";
 import { createOperationDescriptor } from "../utils/generator.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 type ElementConvType = {
   Int8: (Realm, numberOrValue) => number,
@@ -278,7 +279,7 @@ export class ToImplementation {
     }
 
     // 2. Let desc be a new Property Descriptor that initially has no fields.
-    let desc: Descriptor = {};
+    let desc = new PropertyDescriptor({});
 
     // 3. Let hasEnumerable be ? HasProperty(Obj, "enumerable").
     let hasEnumerable = HasProperty(realm, Obj, "enumerable");
@@ -367,7 +368,7 @@ export class ToImplementation {
     // 15. If either desc.[[Get]] or desc.[[Set]] is present, then
     if (desc.get || desc.set) {
       // a. If either desc.[[Value]] or desc.[[Writable]] is present, throw a TypeError exception.
-      if ("value" in desc || "writable" in desc) {
+      if (desc.value !== undefined || desc.writable !== undefined) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
       }
     }

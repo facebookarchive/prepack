@@ -31,6 +31,7 @@ import { Value } from "../values/index.js";
 import invariant from "../invariant.js";
 import { HasName, HasCompatibleType } from "./has.js";
 import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeLVal, BabelNodeClassMethod } from "@babel/types";
+import { PropertyDescriptor } from "../descriptors.js";
 
 // ECMA262 22.1.3.1.1
 export function IsConcatSpreadable(realm: Realm, _O: Value): boolean {
@@ -51,7 +52,7 @@ export function IsConcatSpreadable(realm: Realm, _O: Value): boolean {
 }
 
 // ECMA262 6.2.4.3
-export function IsGenericDescriptor(realm: Realm, Desc: ?Descriptor): boolean {
+function IsGenericDescriptorInternal(realm: Realm, Desc: ?Descriptor): boolean {
   // 1. If Desc is undefined, return false.
   if (!Desc) return false;
 
@@ -63,27 +64,45 @@ export function IsGenericDescriptor(realm: Realm, Desc: ?Descriptor): boolean {
 }
 
 // ECMA262 6.2.4.1
-export function IsAccessorDescriptor(realm: Realm, Desc: ?Descriptor): boolean {
+function IsAccessorDescriptorInternal(realm: Realm, Desc: ?Descriptor): boolean {
   // 1. If Desc is undefined, return false.
   if (!Desc) return false;
 
   // 2. If both Desc.[[Get]] and Desc.[[Set]] are absent, return false.
-  if (!("get" in Desc) && !("set" in Desc)) return false;
+  Desc = Desc.throwIfNotConcrete(realm);
+  if (Desc.get === undefined && Desc.set === undefined) return false;
 
   // 3. Return true.
   return true;
 }
 
 // ECMA262 6.2.4.2
-export function IsDataDescriptor(realm: Realm, Desc: ?Descriptor): boolean {
+function IsDataDescriptorInternal(realm: Realm, Desc: ?Descriptor): boolean {
   // If Desc is undefined, return false.
   if (!Desc) return false;
 
   // If both Desc.[[Value]] and Desc.[[Writable]] are absent, return false.
-  if (!("value" in Desc) && !("writable" in Desc)) return false;
+  Desc = Desc.throwIfNotConcrete(realm);
+  if (Desc.value === undefined && Desc.writable === undefined) return false;
 
   // Return true.
   return true;
+}
+
+// Flow wrappers that provide refinements using Predicate Functions.
+// These wrappers also assert that the type is PropertyDescriptor so that if this returns
+// true, then Flow can refine that the type of Desc as PropertyDescriptor.
+
+export function IsGenericDescriptor(realm: Realm, Desc: ?Descriptor): boolean %checks {
+  return IsGenericDescriptorInternal(realm, Desc) && Desc instanceof PropertyDescriptor;
+}
+
+export function IsAccessorDescriptor(realm: Realm, Desc: ?Descriptor): boolean %checks {
+  return IsAccessorDescriptorInternal(realm, Desc) && Desc instanceof PropertyDescriptor;
+}
+
+export function IsDataDescriptor(realm: Realm, Desc: ?Descriptor): boolean %checks {
+  return IsDataDescriptorInternal(realm, Desc) && Desc instanceof PropertyDescriptor;
 }
 
 // ECMA262 9.1.3.1

@@ -132,6 +132,14 @@ it("Simple 25", () => {
   runTest(__dirname + "/FunctionalComponents/simple-25.js");
 });
 
+it("Bound type", () => {
+  runTest(__dirname + "/FunctionalComponents/bound-type.js");
+});
+
+it("Bound type 2", () => {
+  runTest(__dirname + "/FunctionalComponents/bound-type2.js");
+});
+
 it("Two roots", () => {
   runTest(__dirname + "/FunctionalComponents/two-roots.js");
 });
