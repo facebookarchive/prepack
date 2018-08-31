@@ -454,7 +454,6 @@ function runTest(name, code, options: PrepackOptions, args) {
     if (code.includes(injectAtRuntime)) {
       let i = code.indexOf(injectAtRuntime);
       addedCode = code.substring(i + injectAtRuntime.length, code.indexOf("\n", i));
-      options.residual = false;
     }
     if (args.es5) {
       code = transformWithBabel(code, [], [["@babel/env", { forceAllTransforms: true, modules: false }]]);
@@ -503,7 +502,6 @@ function runTest(name, code, options: PrepackOptions, args) {
                   expectedDiagnostics.set(severity, errorCodeSet);
                   errorCodeString.split(",").forEach(errorCode => errorCodeSet.add(errorCode.trim()));
                 }
-                options.residual = false;
               }
               if (expectedDiagnostics.size > 0)
                 options.errorHandler = getErrorHandlerWithWarningCapture(diagnosticOutput, args.verbose);
@@ -793,7 +791,6 @@ function run(args) {
                   delayInitializations,
                   inlineExpressions,
                   lazyObjectsRuntime,
-                  residual: args && args.residual,
                 };
                 return () =>
                   runTest(test.name, test.file, options, args).then(testResult => {
@@ -831,7 +828,6 @@ class ProgramArgs {
   lazyObjectsRuntime: string;
   noLazySupport: boolean;
   fast: boolean;
-  residual: boolean;
   cpuprofilePath: string;
   constructor(
     debugNames: boolean,
@@ -843,7 +839,6 @@ class ProgramArgs {
     lazyObjectsRuntime: string,
     noLazySupport: boolean,
     fast: boolean,
-    residual: boolean,
     cpuProfilePath: string
   ) {
     this.debugNames = debugNames;
@@ -855,7 +850,6 @@ class ProgramArgs {
     this.lazyObjectsRuntime = lazyObjectsRuntime;
     this.noLazySupport = noLazySupport;
     this.fast = fast;
-    this.residual = residual;
     this.cpuprofilePath = cpuProfilePath;
   }
 }
@@ -920,7 +914,6 @@ function argsParse(): ProgramArgs {
       lazyObjectsRuntime: LAZY_OBJECTS_RUNTIME_NAME,
       noLazySupport: false,
       fast: false,
-      residual: false,
       cpuprofilePath: "",
     },
   });
@@ -953,9 +946,6 @@ function argsParse(): ProgramArgs {
   if (typeof parsedArgs.noLazySupport !== "boolean") {
     throw new ArgsParseError("noLazySupport must be a boolean (either --noLazySupport or not)");
   }
-  if (typeof parsedArgs.residual !== "boolean") {
-    throw new ArgsParseError("residual must be a boolean (either --residual or not)");
-  }
   if (typeof parsedArgs.cpuprofilePath !== "string") {
     throw new ArgsParseError("cpuprofilePath must be a string");
   }
@@ -969,7 +959,6 @@ function argsParse(): ProgramArgs {
     parsedArgs.lazyObjectsRuntime,
     parsedArgs.noLazySupport,
     parsedArgs.fast,
-    parsedArgs.residual,
     parsedArgs.cpuprofilePath
   );
   return programArgs;
