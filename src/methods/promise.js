@@ -96,7 +96,7 @@ export function NewPromiseCapability(realm: Realm, C: Value): PromiseCapability 
   executor.$Capability = promiseCapability;
 
   // 6. Let promise be ? Construct(C, « executor »).
-  let promise = Construct(realm, C, [executor]);
+  let promise = Construct(realm, C, [executor]).throwIfNotConcreteObject();
 
   // 7. If IsCallable(promiseCapability.[[Resolve]]) is false, throw a TypeError exception.
   if (IsCallable(realm, promiseCapability.resolve) === false) {

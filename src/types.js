@@ -547,7 +547,7 @@ export type FunctionType = {
     F: ECMAScriptFunctionValue,
     argumentsList: Array<Value>,
     newTarget: ObjectValue
-  ): ObjectValue,
+  ): ObjectValue | AbstractObjectValue,
 
   // ECMA262 9.2.3
   FunctionAllocate(

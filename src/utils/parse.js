@@ -57,6 +57,7 @@ export default function(
       } else {
         error = Construct(realm, realm.intrinsics.SyntaxError, [new StringValue(realm, e.message)]);
       }
+      error = error.throwIfNotConcreteObject();
       // These constructors are currently guaranteed to produce an object with
       // built-in error data. Append location information about the syntax error
       // and the source code to it so that we can use it to print nicer errors.
