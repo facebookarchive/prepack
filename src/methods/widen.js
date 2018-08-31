@@ -14,14 +14,16 @@ import { FatalError } from "../errors.js";
 import type { Bindings, BindingEntry, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
 import { Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
+import { cloneDescriptor, equalDescriptors, PropertyDescriptor } from "../descriptors.js";
 
 import { AbruptCompletion, JoinedNormalAndAbruptCompletions, SimpleNormalCompletion } from "../completions.js";
 import { Reference } from "../environment.js";
-import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComparison } from "./index.js";
+import { IsDataDescriptor, StrictEqualityComparison } from "./index.js";
 import { Generator, createOperationDescriptor } from "../utils/generator.js";
 import { AbstractValue, ArrayValue, EmptyValue, Value, StringValue } from "../values/index.js";
 
 import invariant from "../invariant.js";
+import { InternalSlotDescriptor } from "../descriptors.js";
 
 export class WidenImplementation {
   _widenArrays(
@@ -212,17 +214,18 @@ export class WidenImplementation {
       if (d1 === undefined && d2 === undefined) return undefined;
       // If the PropertyBinding object has been freshly allocated do not widen (that happens in AbstractObjectValue)
       if (d1 === undefined) {
+        invariant(d2 !== undefined);
         if (c2.has(b.object)) return d2; // no widen
         if (b.descriptor !== undefined && m1.has(b)) {
           // property was present in (n-1)th iteration and deleted in nth iteration
-          d1 = cloneDescriptor(b.descriptor);
+          d1 = cloneDescriptor(b.descriptor.throwIfNotConcrete(realm));
           invariant(d1 !== undefined);
           d1.value = realm.intrinsics.empty;
         } else {
           // no write to property in nth iteration, use the value from the (n-1)th iteration
           d1 = b.descriptor;
           if (d1 === undefined) {
-            d1 = cloneDescriptor(d2);
+            d1 = cloneDescriptor(d2.throwIfNotConcrete(realm));
             invariant(d1 !== undefined);
             d1.value = realm.intrinsics.empty;
           }
@@ -232,7 +235,7 @@ export class WidenImplementation {
         if (c1.has(b.object)) return d1; // no widen
         if (m2.has(b)) {
           // property was present in nth iteration and deleted in (n+1)th iteration
-          d2 = cloneDescriptor(d1);
+          d2 = cloneDescriptor(d1.throwIfNotConcrete(realm));
           invariant(d2 !== undefined);
           d2.value = realm.intrinsics.empty;
         } else {
@@ -277,8 +280,7 @@ export class WidenImplementation {
             // before the loop commences, otherwise the memberExpression will result in an undefined value.
             let generator = realm.generator;
             invariant(generator !== undefined);
-            let initVal = (b.descriptor && b.descriptor.value) || realm.intrinsics.empty;
-            if (!(initVal instanceof Value)) throw new FatalError("todo: handle internal properties");
+            let initVal = (b.descriptor && b.descriptor.throwIfNotConcrete(realm).value) || realm.intrinsics.empty;
             if (!(initVal instanceof EmptyValue)) {
               if (key === "length" && b.object instanceof ArrayValue) {
                 // do nothing, the array length will already be initialized
@@ -311,7 +313,8 @@ export class WidenImplementation {
     return this.widenMaps(m1, m2, widen);
   }
 
-  widenDescriptors(realm: Realm, d1: void | Descriptor, d2: Descriptor): void | Descriptor {
+  widenDescriptors(realm: Realm, d1: void | Descriptor, d2: Descriptor): void | PropertyDescriptor {
+    d2 = d2.throwIfNotConcrete(realm);
     if (d1 === undefined) {
       // d2 is a property written to only in the (n+1)th iteration
       if (!IsDataDescriptor(realm, d2)) return d2; // accessor properties need not be widened.
@@ -319,9 +322,12 @@ export class WidenImplementation {
       invariant(dc !== undefined);
       let d2value = dc.value;
       invariant(d2value !== undefined); // because IsDataDescriptor is true for d2/dc
-      dc.value = this.widenValues(realm, d2value, d2value);
+      let dcValue = this.widenValues(realm, d2value, d2value);
+      invariant(dcValue instanceof Value);
+      dc.value = dcValue;
       return dc;
     } else {
+      d1 = d1.throwIfNotConcrete(realm);
       if (equalDescriptors(d1, d2)) {
         if (!IsDataDescriptor(realm, d1)) return d1; // identical accessor properties need not be widened.
         // equalDescriptors plus IsDataDescriptor guarantee that both have value props and if you have a value prop is value is defined.
@@ -331,7 +337,9 @@ export class WidenImplementation {
         invariant(d1value !== undefined);
         let d2value = d2.value;
         invariant(d2value !== undefined);
-        dc.value = this.widenValues(realm, d1value, d2value);
+        let dcValue = this.widenValues(realm, d1value, d2value);
+        invariant(dcValue instanceof Value);
+        dc.value = dcValue;
         return dc;
       }
       //todo: #1174 if we get here, the loop body contains a call to create a property and different iterations
@@ -397,7 +405,23 @@ export class WidenImplementation {
     c2: CreatedObjects
   ): boolean {
     let containsPropertyBinding = (d1: void | Descriptor, d2: void | Descriptor) => {
-      let [v1, v2] = [d1 && d1.value, d2 && d2.value];
+      let v1, v2;
+      if (d1 instanceof InternalSlotDescriptor || d2 instanceof InternalSlotDescriptor) {
+        if (d1 !== undefined) {
+          invariant(d1 instanceof InternalSlotDescriptor);
+          v1 = d1.value;
+        }
+        if (d2 !== undefined) {
+          invariant(d2 instanceof InternalSlotDescriptor);
+          v2 = d2.value;
+        }
+      }
+      if (d1 instanceof PropertyDescriptor) {
+        v1 = d1.value;
+      }
+      if (d2 instanceof PropertyDescriptor) {
+        v2 = d2.value;
+      }
       if (v1 === undefined) {
         return v2 === undefined;
       }

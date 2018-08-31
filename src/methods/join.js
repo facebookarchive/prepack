@@ -13,6 +13,13 @@ import type { Binding } from "../environment.js";
 import type { Bindings, BindingEntry, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
 import { construct_empty_effects, Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
+import {
+  cloneDescriptor,
+  equalDescriptors,
+  PropertyDescriptor,
+  AbstractJoinedDescriptor,
+  InternalSlotDescriptor,
+} from "../descriptors.js";
 
 import {
   AbruptCompletion,
@@ -26,7 +33,7 @@ import {
   ReturnCompletion,
   ThrowCompletion,
 } from "../completions.js";
-import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
+import { IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
 import { Path } from "../singletons.js";
 import { Generator } from "../utils/generator.js";
 import { AbstractValue, ConcreteValue, EmptyValue, Value } from "../values/index.js";
@@ -366,7 +373,7 @@ export class JoinImplementation {
         if (c2.has(b.object)) return d2; // no join
         if (b.descriptor !== undefined && m1.has(b)) {
           // property was deleted
-          d1 = cloneDescriptor(b.descriptor);
+          d1 = cloneDescriptor(b.descriptor.throwIfNotConcrete(realm));
           invariant(d1 !== undefined);
           d1.value = realm.intrinsics.empty;
         } else {
@@ -378,7 +385,7 @@ export class JoinImplementation {
         if (c1.has(b.object)) return d1; // no join
         if (b.descriptor !== undefined && m2.has(b)) {
           // property was deleted
-          d2 = cloneDescriptor(b.descriptor);
+          d2 = cloneDescriptor(b.descriptor.throwIfNotConcrete(realm));
           invariant(d2 !== undefined);
           d2.value = realm.intrinsics.empty;
         } else {
@@ -403,69 +410,79 @@ export class JoinImplementation {
     let clone_with_abstract_value = (d: Descriptor) => {
       invariant(d === d1 || d === d2);
       if (!IsDataDescriptor(realm, d)) {
-        let d3: Descriptor = {};
-        d3.joinCondition = joinCondition;
-        return d3;
+        return new AbstractJoinedDescriptor(joinCondition);
       }
-      let dc = cloneDescriptor(d);
-      invariant(dc !== undefined);
-      let dcValue = dc.value;
-      if (Array.isArray(dcValue)) {
-        invariant(dcValue.length > 0);
-        let elem0 = dcValue[0];
-        if (elem0 instanceof Value) {
-          dc.value = dcValue.map(e => {
-            return d === d1
-              ? getAbstractValue((e: any), realm.intrinsics.empty)
-              : getAbstractValue(realm.intrinsics.empty, (e: any));
-          });
-        } else {
-          dc.value = dcValue.map(e => {
-            let { $Key: key1, $Value: val1 } = (e: any);
-            let key3 =
-              d === d1
-                ? getAbstractValue(key1, realm.intrinsics.empty)
-                : getAbstractValue(realm.intrinsics.empty, key1);
-            let val3 =
-              d === d1
-                ? getAbstractValue(val1, realm.intrinsics.empty)
-                : getAbstractValue(realm.intrinsics.empty, val1);
-            return { $Key: key3, $Value: val3 };
-          });
+      let dc;
+      let dcValue;
+      if (d instanceof InternalSlotDescriptor) {
+        dc = new InternalSlotDescriptor(d.value);
+        dcValue = dc.value;
+        if (Array.isArray(dcValue)) {
+          invariant(dcValue.length > 0);
+          let elem0 = dcValue[0];
+          if (elem0 instanceof Value) {
+            dc.value = dcValue.map(e => {
+              return d === d1
+                ? getAbstractValue((e: any), realm.intrinsics.empty)
+                : getAbstractValue(realm.intrinsics.empty, (e: any));
+            });
+          } else {
+            dc.value = dcValue.map(e => {
+              let { $Key: key1, $Value: val1 } = (e: any);
+              let key3 =
+                d === d1
+                  ? getAbstractValue(key1, realm.intrinsics.empty)
+                  : getAbstractValue(realm.intrinsics.empty, key1);
+              let val3 =
+                d === d1
+                  ? getAbstractValue(val1, realm.intrinsics.empty)
+                  : getAbstractValue(realm.intrinsics.empty, val1);
+              return { $Key: key3, $Value: val3 };
+            });
+          }
         }
       } else {
-        invariant(dcValue === undefined || dcValue instanceof Value);
-        dc.value =
-          d === d1
-            ? getAbstractValue(dcValue, realm.intrinsics.empty)
-            : getAbstractValue(realm.intrinsics.empty, dcValue);
+        dc = cloneDescriptor(d.throwIfNotConcrete(realm));
+        invariant(dc !== undefined);
+        dcValue = dc.value;
       }
+      invariant(dcValue === undefined || dcValue instanceof Value);
+      dc.value =
+        d === d1
+          ? getAbstractValue(dcValue, realm.intrinsics.empty)
+          : getAbstractValue(realm.intrinsics.empty, dcValue);
       return dc;
     };
     if (d1 === undefined) {
       if (d2 === undefined) return undefined;
       // d2 is a new property created in only one branch, join with empty
       let d3 = clone_with_abstract_value(d2);
-      if (!IsDataDescriptor(realm, d2)) d3.descriptor2 = d2;
+      if (d3 instanceof AbstractJoinedDescriptor) d3.descriptor2 = d2;
       return d3;
     } else if (d2 === undefined) {
       invariant(d1 !== undefined);
       // d1 is a new property created in only one branch, join with empty
       let d3 = clone_with_abstract_value(d1);
-      if (!IsDataDescriptor(realm, d1)) d3.descriptor1 = d1;
+      if (d3 instanceof AbstractJoinedDescriptor) d3.descriptor1 = d1;
       return d3;
     } else {
-      if (equalDescriptors(d1, d2) && IsDataDescriptor(realm, d1)) {
+      if (
+        d1 instanceof PropertyDescriptor &&
+        d2 instanceof PropertyDescriptor &&
+        equalDescriptors(d1, d2) &&
+        IsDataDescriptor(realm, d1)
+      ) {
         let dc = cloneDescriptor(d1);
         invariant(dc !== undefined);
-        dc.value = this.joinValues(realm, d1.value, d2.value, getAbstractValue);
+        let dcValue = this.joinValues(realm, d1.value, d2.value, getAbstractValue);
+        invariant(dcValue instanceof Value);
+        dc.value = dcValue;
         return dc;
       }
-      let d3: Descriptor = {};
-      d3.joinCondition = joinCondition;
-      d3.descriptor1 = d1;
-      d3.descriptor2 = d2;
-      return d3;
+      if (d1 instanceof InternalSlotDescriptor && d2 instanceof InternalSlotDescriptor) {
+        return new InternalSlotDescriptor(this.joinValues(realm, d1.value, d2.value, getAbstractValue));
+      }
+      return new AbstractJoinedDescriptor(joinCondition, d1, d2);
     }
   }
 
