@@ -54,7 +54,7 @@ export default function SuperProperty(
   realm: Realm
 ): Reference {
   // SuperProperty : super [ Expression ]
-  if (ast.computed) {
+  if (ast.computed === true) {
     // 1. Let propertyNameReference be the result of evaluating Expression.
     let propertyNameReference = env.evaluate(ast.property, strictCode);
 

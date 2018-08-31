@@ -91,7 +91,7 @@ export class DebugServer {
       let reason = this._stopEventManager.getDebuggeeStopReason(ast, stoppables);
       if (reason) {
         let location = ast.loc;
-        invariant(location && location.source);
+        invariant(location && location.source !== null);
         let absolutePath = this._sourceMapManager.relativeToAbsolute(location.source);
         this._channel.sendStoppedResponse(reason, absolutePath, location.start.line, location.start.column);
         this.waitForRun(location);
@@ -190,7 +190,7 @@ export class DebugServer {
     for (let i = this._realm.contextStack.length - 1; i >= 0; i--) {
       let frame = this._realm.contextStack[i];
       let functionName = "(anonymous function)";
-      if (frame.function && frame.function.__originalName) {
+      if (frame.function && frame.function.__originalName !== undefined) {
         functionName = frame.function.__originalName;
       }
 
@@ -214,7 +214,7 @@ export class DebugServer {
     let fileName = "unknown";
     let line = 0;
     let column = 0;
-    if (loc && loc.source) {
+    if (loc && loc.source !== null) {
       fileName = loc.source;
       line = loc.start.line;
       column = loc.start.column;
@@ -257,7 +257,9 @@ export class DebugServer {
       return "Global";
     } else if (envRec instanceof DeclarativeEnvironmentRecord) {
       if (envRec instanceof FunctionEnvironmentRecord) {
-        return "Local: " + (envRec.$FunctionObject.__originalName || "anonymous function");
+        let name = envRec.$FunctionObject.__originalName;
+        if (name === undefined) name = "anonymous function";
+        return "Local: " + name;
       } else {
         return "Block";
       }
@@ -288,7 +290,7 @@ export class DebugServer {
     Returns whether there are more nodes in the ast.
   */
   _checkAndUpdateLastExecuted(ast: BabelNode): boolean {
-    if (ast.loc && ast.loc.source) {
+    if (ast.loc && ast.loc.source !== null) {
       let filePath = ast.loc.source;
       let line = ast.loc.start.line;
       let column = ast.loc.start.column;
@@ -320,7 +322,7 @@ export class DebugServer {
 
   //  Displays Prepack error message, then waits for user to run the program to continue (similar to a breakpoint).
   handlePrepackError(diagnostic: CompilerDiagnostic): void {
-    invariant(diagnostic.location && diagnostic.location.source);
+    invariant(diagnostic.location && diagnostic.location.source !== null);
     // The following constructs the message and stop-instruction that is sent to the UI to actually stop the execution.
     let location = diagnostic.location;
     let absoluteSource = "";

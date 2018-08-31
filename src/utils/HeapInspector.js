@@ -171,7 +171,12 @@ export class HeapInspector {
     let targetDescriptor = this.getTargetIntegrityDescriptor(val);
 
     if (IsArray(this.realm, val)) {
-      if (key === "length" && desc.writable === targetDescriptor.writable && !desc.enumerable && !desc.configurable) {
+      if (
+        key === "length" &&
+        desc.writable === targetDescriptor.writable &&
+        desc.enumerable !== true &&
+        desc.configurable !== true
+      ) {
         // length property has the correct descriptor values
         return true;
       }
@@ -183,8 +188,8 @@ export class HeapInspector {
         }
         // length property will be inferred already by the amount of parameters
         return (
-          !desc.writable &&
-          !desc.enumerable &&
+          desc.writable !== true &&
+          desc.enumerable !== true &&
           desc.configurable === targetDescriptor.configurable &&
           val.hasDefaultLength()
         );
@@ -202,7 +207,7 @@ export class HeapInspector {
           !this.realm.isCompatibleWith("mobile") &&
           (desc.value instanceof AbstractValue ||
             (desc.value instanceof ConcreteValue &&
-              val.__originalName &&
+              val.__originalName !== undefined &&
               val.__originalName !== "" &&
               To.ToString(this.realm, desc.value) !== val.__originalName))
         )
@@ -217,7 +222,7 @@ export class HeapInspector {
         if (
           !val.$Strict &&
           desc.writable === (!val.$Strict && targetDescriptor.writable) &&
-          !desc.enumerable &&
+          desc.enumerable !== true &&
           desc.configurable === targetDescriptor.configurable &&
           desc.value instanceof UndefinedValue &&
           val.$FunctionKind === "normal"
@@ -228,8 +233,8 @@ export class HeapInspector {
       // ignore the `prototype` property when it's the right one
       if (key === "prototype") {
         if (
-          !desc.configurable &&
-          !desc.enumerable &&
+          desc.configurable !== true &&
+          desc.enumerable !== true &&
           desc.writable === targetDescriptor.writable &&
           desc.value instanceof ObjectValue &&
           desc.value.originalConstructor === val
@@ -244,8 +249,8 @@ export class HeapInspector {
           if (
             key === "lastIndex" &&
             desc.writable === targetDescriptor.writable &&
-            !desc.enumerable &&
-            !desc.configurable
+            desc.enumerable !== true &&
+            desc.configurable !== true
           ) {
             // length property has the correct descriptor values
             let v = desc.value;
@@ -260,7 +265,7 @@ export class HeapInspector {
     if (key === "constructor") {
       if (
         desc.configurable === targetDescriptor.configurable &&
-        !desc.enumerable &&
+        desc.enumerable !== true &&
         desc.writable === targetDescriptor.writable &&
         desc.value === val.originalConstructor
       )

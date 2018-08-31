@@ -66,7 +66,7 @@ export default function(
       }
     }
     Properties.PutValue(realm, expr, newAbstractValue);
-    if (ast.prefix) {
+    if (ast.prefix === true) {
       return newAbstractValue;
     } else {
       return oldExpr;
@@ -74,7 +74,7 @@ export default function(
   }
   let oldValue = To.ToNumber(realm, oldExpr);
 
-  if (ast.prefix) {
+  if (ast.prefix === true) {
     if (ast.operator === "++") {
       // ECMA262 12.4.6.1
 

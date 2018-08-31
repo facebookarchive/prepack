@@ -23,7 +23,7 @@ export class DebugReproManagerImplementation {
     if (configArgs.sourcemaps) {
       this._sourceMapNames = [];
       configArgs.sourcemaps.forEach(m => {
-        if (m.sourceMapFilename) this._sourceMapNames.push(m.sourceMapFilename);
+        if (m.sourceMapFilename !== undefined) this._sourceMapNames.push(m.sourceMapFilename);
       });
     }
     this._usedSourceFiles = new Set();

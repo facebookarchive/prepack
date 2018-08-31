@@ -541,7 +541,7 @@ export default function(realm: Realm): ObjectValue {
         kind: "JSON.parse(...)",
       });
       unfiltered.values = new ValuesDomain(new Set([parseResult]));
-      invariant(unfiltered.intrinsicName);
+      invariant(unfiltered.intrinsicName !== undefined);
       invariant(realm.generator);
       realm.rebuildNestedProperties(unfiltered, unfiltered.intrinsicName);
     } else {

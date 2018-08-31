@@ -22,7 +22,7 @@ export class BreakpointManager {
   _breakpointMaps: Map<string, PerFileBreakpointMap>;
 
   getStoppableBreakpoint(ast: BabelNode): void | Breakpoint {
-    if (ast.loc && ast.loc.source) {
+    if (ast.loc && ast.loc.source !== null) {
       let location = ast.loc;
       let filePath = location.source;
       if (filePath === null) return;

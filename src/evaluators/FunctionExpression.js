@@ -29,7 +29,7 @@ export default function(
   // ECMA262 14.1.21
 
   if (ast.id) {
-    if (ast.generator) {
+    if (ast.generator === true) {
       // 1. If the function code for this GeneratorExpression is strict mode code, let strict be true. Otherwise let strict be false.
       let strict = strictCode || IsStrict(ast.body);
 
@@ -117,7 +117,7 @@ export default function(
       return closure;
     }
   } else {
-    if (ast.generator) {
+    if (ast.generator === true) {
       // 1. If the function code for this GeneratorExpression is strict mode code, let strict be true. Otherwise let strict be false.
       let strict = strictCode || IsStrict(ast.body);
 
