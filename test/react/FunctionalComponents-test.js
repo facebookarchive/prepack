@@ -136,6 +136,10 @@ it("Bound type 2", () => {
   runTest(__dirname + "/FunctionalComponents/bound-type2.js");
 });
 
+it("React.Children.map", () => {
+  runTest(__dirname + "/FunctionalComponents/react-children-map.js");
+});
+
 it("Two roots", () => {
   runTest(__dirname + "/FunctionalComponents/two-roots.js");
 });
