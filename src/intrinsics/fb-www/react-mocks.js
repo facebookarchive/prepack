@@ -125,7 +125,6 @@ let reactCode = `
     var SEPARATOR = '.';
     var SUBSEPARATOR = ':';
     var POOL_SIZE = 10;
-    var traverseContextPool = [];
     function getPooledTraverseContext(
       mapResult,
       keyPrefix,
@@ -157,9 +156,6 @@ let reactCode = `
       traverseContext.func = null;
       traverseContext.context = null;
       traverseContext.count = 0;
-      if (traverseContextPool.length < POOL_SIZE) {
-        // traverseContextPool.push(traverseContext);
-      }
     }
 
     function traverseAllChildren(children, callback, traverseContext) {
