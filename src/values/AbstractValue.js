@@ -901,12 +901,13 @@ export default class AbstractValue extends Value {
     }
   }
 
-  static dischargeValuesFromUnion(realm: Realm, union: AbstractValue): [AbstractValue, Array<Value>] {
+  static dischargeValuesFromUnion(realm: Realm, union: AbstractValue): [AbstractValue, Array<ConcreteValue>] {
     invariant(union instanceof AbstractValue && union.kind === "abstractConcreteUnion");
-    invariant(union.args[0] instanceof AbstractValue);
-    invariant(union.args[1] instanceof ConcreteValue);
+    let abstractValue = union.args[0];
+    invariant(abstractValue instanceof AbstractValue);
 
-    let [abstractValue, ...concreteValues] = union.args;
+    let concreteValues = (union.args.filter(e => e instanceof ConcreteValue): any);
+    invariant(concreteValues.length === union.args.length - 1);
 
     if (!abstractValue.isTemporal()) {
       // We make the abstract value in an abstract concrete union temporal, as it is predicated
@@ -938,12 +939,12 @@ export default class AbstractValue extends Value {
   static createAbstractConcreteUnion(
     realm: Realm,
     abstractValue: AbstractValue,
-    concreteValues: Array<Value>
+    concreteValues: Array<ConcreteValue>
   ): AbstractValue {
     invariant(concreteValues.length > 0);
     invariant(abstractValue instanceof AbstractValue);
 
-    let checkedConcreteValues: Array<ConcreteValue> = (concreteValues.filter(e => e instanceof ConcreteValue): any);
+    let checkedConcreteValues = (concreteValues.filter(e => e instanceof ConcreteValue): any);
     invariant(checkedConcreteValues.length === concreteValues.length);
 
     let concreteSet: Set<ConcreteValue> = new Set(checkedConcreteValues);

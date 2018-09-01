@@ -10,7 +10,15 @@
 /* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
-import { Value, AbstractValue, FunctionValue, StringValue, ObjectValue, UndefinedValue } from "../../values/index.js";
+import {
+  AbstractValue,
+  ConcreteValue,
+  FunctionValue,
+  ObjectValue,
+  StringValue,
+  UndefinedValue,
+  Value,
+} from "../../values/index.js";
 import { DisablePlaceholderSuffix } from "../../utils/PreludeGenerator.js";
 import { ValuesDomain } from "../../domains/index.js";
 import { describeLocation } from "../ecma262/Error.js";
@@ -59,7 +67,7 @@ export function createAbstract(
   typeNameOrTemplate?: Value | string,
   name?: string,
   options?: ObjectValue,
-  ...additionalValues: Array<Value>
+  ...additionalValues: Array<ConcreteValue>
 ): AbstractValue | AbstractObjectValue {
   if (!realm.useAbstractInterpretation) {
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");

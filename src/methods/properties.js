@@ -1584,8 +1584,9 @@ export class PropertiesImplementation {
               skipInvariant: true,
             });
             if (savedUnion !== undefined) {
-              let concreteValues = savedUnion.args.slice(1);
               invariant(value instanceof AbstractValue);
+              let concreteValues = (savedUnion.args.filter(e => e instanceof ConcreteValue): any);
+              invariant(concreteValues.length === savedUnion.args.length - 1);
               value = AbstractValue.createAbstractConcreteUnion(realm, value, concreteValues);
             }
             if (realm.invariantLevel >= 1 && typeof P === "string" && !realm.hasBindingBeenChecked(O, P)) {
