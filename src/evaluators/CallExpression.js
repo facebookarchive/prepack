@@ -11,7 +11,7 @@
 
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
-import { type LexicalEnvironment, type BaseValue, mightBecomeAnObject } from "../environment.js";
+import { type LexicalEnvironment, type BaseValue, isValidBaseValue } from "../environment.js";
 import { EnvironmentRecord } from "../environment.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import {
@@ -29,7 +29,7 @@ import {
   Value,
 } from "../values/index.js";
 import { Reference } from "../environment.js";
-import { Environment, Functions, Leak, Join } from "../singletons.js";
+import { Environment, Functions, Leak } from "../singletons.js";
 import {
   ArgumentListEvaluation,
   EvaluateDirectCall,
@@ -97,7 +97,17 @@ function evaluateReference(
   ) {
     let base = ref.base;
     if (base.kind === "conditional") {
-      return evaluateConditionalReferenceBase(ref, ast, strictCode, env, realm);
+      let [condValue, consequentVal, alternateVal] = base.args;
+      invariant(condValue instanceof AbstractValue);
+      return evaluateConditionalReferenceBase(ref, condValue, consequentVal, alternateVal, ast, strictCode, env, realm);
+    } else if (base.kind === "||") {
+      let [leftValue, rightValue] = base.args;
+      invariant(leftValue instanceof AbstractValue);
+      return evaluateConditionalReferenceBase(ref, leftValue, leftValue, rightValue, ast, strictCode, env, realm);
+    } else if (base.kind === "&&") {
+      let [leftValue, rightValue] = base.args;
+      invariant(leftValue instanceof AbstractValue);
+      return evaluateConditionalReferenceBase(ref, leftValue, rightValue, leftValue, ast, strictCode, env, realm);
     }
     let referencedName = ref.referencedName;
 
@@ -132,27 +142,20 @@ function evaluateReference(
 
 function evaluateConditionalReferenceBase(
   ref: Reference,
+  condValue: AbstractValue,
+  consequentVal: Value,
+  alternateVal: Value,
   ast: BabelNodeCallExpression,
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
 ): Value {
-  let base = ref.base;
-  invariant(base instanceof AbstractValue);
-  invariant(base.kind === "conditional", "evaluateConditionalReferenceBase expects an abstract conditional");
-  let [condValue, consequentVal, alternateVal] = base.args;
-  invariant(condValue instanceof AbstractValue);
-
   return realm.evaluateWithAbstractConditional(
     condValue,
     () => {
       return realm.evaluateForEffects(
         () => {
-          if (
-            consequentVal instanceof AbstractObjectValue ||
-            consequentVal instanceof ObjectValue ||
-            mightBecomeAnObject(consequentVal)
-          ) {
+          if (isValidBaseValue(consequentVal)) {
             let consequentRef = new Reference(
               ((consequentVal: any): BaseValue),
               ref.referencedName,
@@ -170,11 +173,7 @@ function evaluateConditionalReferenceBase(
     () => {
       return realm.evaluateForEffects(
         () => {
-          if (
-            alternateVal instanceof AbstractObjectValue ||
-            alternateVal instanceof ObjectValue ||
-            mightBecomeAnObject(alternateVal)
-          ) {
+          if (isValidBaseValue(alternateVal)) {
             let alternateRef = new Reference(
               ((alternateVal: any): BaseValue),
               ref.referencedName,
@@ -193,32 +192,31 @@ function evaluateConditionalReferenceBase(
 }
 
 function callBothFunctionsAndJoinTheirEffects(
-  args: Array<Value>,
+  condValue: AbstractValue,
+  consequentVal: Value,
+  alternateVal: Value,
   ast: BabelNodeCallExpression,
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
 ): Value {
-  let [cond, func1, func2] = args;
-  invariant(cond instanceof AbstractValue);
-  invariant(Value.isTypeCompatibleWith(func1.getType(), FunctionValue));
-  invariant(Value.isTypeCompatibleWith(func2.getType(), FunctionValue));
-
-  const e1 = realm.evaluateForEffects(
-    () => EvaluateCall(func1, func1, ast, strictCode, env, realm),
-    undefined,
-    "callBothFunctionsAndJoinTheirEffects/1"
+  return realm.evaluateWithAbstractConditional(
+    condValue,
+    () => {
+      return realm.evaluateForEffects(
+        () => EvaluateCall(consequentVal, consequentVal, ast, strictCode, env, realm),
+        null,
+        "callBothFunctionsAndJoinTheirEffects consequent"
+      );
+    },
+    () => {
+      return realm.evaluateForEffects(
+        () => EvaluateCall(alternateVal, alternateVal, ast, strictCode, env, realm),
+        null,
+        "callBothFunctionsAndJoinTheirEffects alternate"
+      );
+    }
   );
-
-  const e2 = realm.evaluateForEffects(
-    () => EvaluateCall(func2, func2, ast, strictCode, env, realm),
-    undefined,
-    "callBothFunctionsAndJoinTheirEffects/2"
-  );
-
-  let joinedEffects = Join.joinEffects(cond, e1, e2);
-  realm.applyEffects(joinedEffects);
-  return realm.returnOrThrowCompletion(joinedEffects.result);
 }
 
 function generateRuntimeCall(
@@ -302,6 +300,45 @@ function EvaluateCall(
 ): Value {
   if (func instanceof AbstractValue) {
     let loc = ast.callee.type === "MemberExpression" ? ast.callee.property.loc : ast.callee.loc;
+    if (func.kind === "conditional") {
+      let [condValue, consequentVal, alternateVal] = func.args;
+      invariant(condValue instanceof AbstractValue);
+      // If neither values are functions than do not try and call both functions with a conditional
+      if (
+        Value.isTypeCompatibleWith(consequentVal.getType(), FunctionValue) ||
+        Value.isTypeCompatibleWith(alternateVal.getType(), FunctionValue)
+      ) {
+        return callBothFunctionsAndJoinTheirEffects(
+          condValue,
+          consequentVal,
+          alternateVal,
+          ast,
+          strictCode,
+          env,
+          realm
+        );
+      }
+    } else if (func.kind === "||") {
+      let [leftValue, rightValue] = func.args;
+      invariant(leftValue instanceof AbstractValue);
+      // If neither values are functions than do not try and call both functions with a conditional
+      if (
+        Value.isTypeCompatibleWith(leftValue.getType(), FunctionValue) ||
+        Value.isTypeCompatibleWith(rightValue.getType(), FunctionValue)
+      ) {
+        return callBothFunctionsAndJoinTheirEffects(leftValue, leftValue, rightValue, ast, strictCode, env, realm);
+      }
+    } else if (func.kind === "&&") {
+      let [leftValue, rightValue] = func.args;
+      invariant(leftValue instanceof AbstractValue);
+      // If neither values are functions than do not try and call both functions with a conditional
+      if (
+        Value.isTypeCompatibleWith(leftValue.getType(), FunctionValue) ||
+        Value.isTypeCompatibleWith(rightValue.getType(), FunctionValue)
+      ) {
+        return callBothFunctionsAndJoinTheirEffects(leftValue, rightValue, leftValue, ast, strictCode, env, realm);
+      }
+    }
     if (!Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
       if (!realm.isInPureScope()) {
         // If this is not a function, this call might throw which can change the state of the program.
@@ -309,8 +346,6 @@ function EvaluateCall(
         let error = new CompilerDiagnostic("might not be a function", loc, "PP0005", "RecoverableError");
         if (realm.handleError(error) === "Fail") throw new FatalError();
       }
-    } else if (func.kind === "conditional") {
-      return callBothFunctionsAndJoinTheirEffects(func.args, ast, strictCode, env, realm);
     } else {
       // Assume that it is a safe function. TODO #705: really?
     }
