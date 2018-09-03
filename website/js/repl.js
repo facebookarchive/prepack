@@ -159,16 +159,20 @@ function showGeneratedCode(code) {
 }
 
 function showGenerationGraph(graph) {
-  if (showGraphDiv && graph) {
-    var graphData = JSON.parse(graph);
-    var visData = {
-      nodes: graphData.nodes,
-      edges: graphData.edges,
-    };
+  drawGraphCallback = () => {
+    if (graph) {
+      var graphData = JSON.parse(graph);
+      var visData = {
+        nodes: graphData.nodes,
+        edges: graphData.edges,
+      };
 
-    var visOptions = {};
-    var boxNetwork = new vis.Network(graphBox, visData, visOptions);
-  }
+      var visOptions = {};
+      var boxNetwork = new vis.Network(graphBox, visData, visOptions);
+    }
+  };
+
+  if (showGraphDiv) drawGraphCallback();
 }
 
 function compile() {
