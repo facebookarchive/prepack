@@ -151,6 +151,27 @@ function makeDemoSharable() {
   history.replaceState(undefined, undefined, `#${encoded}`);
 }
 
+function showGeneratedCode(code) {
+  if (isEmpty.test(code) && !isEmpty.test(input.getValue())) {
+    code =
+      '// Your code was all dead code and thus eliminated.\n' + '// Try storing a property on the global object.';
+  }
+  drawGraphCallback = () => {
+    var graphData = JSON.parse(result.graph);
+    var visData = {
+      nodes: graphData.nodes,
+      edges: graphData.edges
+    }
+
+    var visOptions = {};
+    var boxNetwork = new vis.Network(graphBox, visData, visOptions);
+  }
+  if (showGraphDiv) {
+    drawGraphCallback();
+  }
+  output.setValue(code, -1);
+}
+
 function compile() {
   clearTimeout(debounce);
   terminateWorker();
@@ -167,27 +188,10 @@ function compile() {
       // turn off compiling
 
       var result = e.data;
-      if (result.type === 'success') {
+      if (result.type === 'success' || result.type === 'warning') {
         var code = result.data;
-        if (isEmpty.test(code) && !isEmpty.test(input.getValue())) {
-          code =
-            '// Your code was all dead code and thus eliminated.\n' + '// Try storing a property on the global object.';
-        }
-        drawGraphCallback = () => {
-          var graphData = JSON.parse(result.graph);
-          var visData = {
-            nodes: graphData.nodes,
-            edges: graphData.edges
-          }
-
-          var visOptions = {};
-          var boxNetwork = new vis.Network(graphBox, visData, visOptions);
-        }
-        if (showGraphDiv) {
-          drawGraphCallback();
-        }
-        output.setValue(code, -1);
-      } else if (result.type === 'error') {
+        showGeneratedCode(code);
+      }  else if (result.type === 'error') {
         let errors = result.data;
         if (typeof errors === 'string') {
           errorOutput.style.display = 'block';

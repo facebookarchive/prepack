@@ -1,5 +1,11 @@
 self.importScripts('prepack.min.js');
 
+function onlyWarnings(buffer) {
+  return buffer.every(function(error) {
+    return error.severity === "Warning";
+  });
+}
+
 onmessage = function(e) {
   let buffer = [];
 
@@ -37,8 +43,13 @@ onmessage = function(e) {
     if (result && !buffer.length) {
       postMessage({ type: 'success', data: result.code, graph: result.heapGraph });
     } else {
+      let noError = onlyWarnings(buffer);
+      if(noError) {
+        postMessage({ type: 'warning', data: result.code, warnings: buffer });
+      } else {
       // A well-defined error occurred.
       postMessage({ type: 'error', data: buffer });
+      }
     }
   } catch (err) {
     buffer.push({
