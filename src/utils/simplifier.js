@@ -267,7 +267,7 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
     case "abstractConcreteUnion": {
       // The union of an abstract value with one or more concrete values.
       if (realm.pathConditions.isEmpty()) return value;
-      let [abstractValue, ...concreteValues] = value.args;
+      let [abstractValue, concreteValues] = AbstractValue.dischargeValuesFromUnion(realm, value);
       invariant(abstractValue instanceof AbstractValue);
       let remainingConcreteValues = [];
       for (let concreteValue of concreteValues) {
@@ -277,7 +277,7 @@ function simplify(realm, value: Value, isCondition: boolean = false): Value {
       }
       if (remainingConcreteValues.length === 0) return abstractValue;
       if (remainingConcreteValues.length === concreteValues.length) return value;
-      return AbstractValue.createAbstractConcreteUnion(realm, abstractValue, ...remainingConcreteValues);
+      return AbstractValue.createAbstractConcreteUnion(realm, abstractValue, remainingConcreteValues);
     }
     default:
       return value;

@@ -11,13 +11,13 @@
 
 import type { Realm } from "../../realm.js";
 import {
-  Value,
   AbstractValue,
   ConcreteValue,
   FunctionValue,
-  StringValue,
   ObjectValue,
+  StringValue,
   UndefinedValue,
+  Value,
 } from "../../values/index.js";
 import { DisablePlaceholderSuffix } from "../../utils/PreludeGenerator.js";
 import { ValuesDomain } from "../../domains/index.js";
@@ -122,7 +122,6 @@ export function createAbstract(
     result.functionResultType = functionResultType;
   }
 
-  if (additionalValues.length > 0)
-    result = AbstractValue.createAbstractConcreteUnion(realm, result, ...additionalValues);
+  if (additionalValues.length > 0) result = AbstractValue.createAbstractConcreteUnion(realm, result, additionalValues);
   return result;
 }

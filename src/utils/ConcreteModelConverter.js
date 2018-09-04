@@ -58,7 +58,7 @@ export function concretize(realm: Realm, val: Value): ConcreteValue {
   }
   invariant(val instanceof AbstractValue);
   if (val.kind === "abstractConcreteUnion") {
-    invariant(val.args.length > 0);
+    invariant(val.args.length >= 2);
     return concretize(realm, val.args[0]);
   }
   const type = val.types.getType();

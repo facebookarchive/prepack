@@ -196,7 +196,9 @@ export function computeBinary(
 
   let resultType;
   const compute = () => {
-    if (lval instanceof AbstractValue || rval instanceof AbstractValue) {
+    let lvalIsAbstract = lval instanceof AbstractValue;
+    let rvalIsAbstract = rval instanceof AbstractValue;
+    if (lvalIsAbstract || rvalIsAbstract) {
       // If the left-hand side of an instanceof operation is a primitive,
       // and the right-hand side is a simple object (it does not have [Symbol.hasInstance]),
       // then the result should always compute to `false`.
@@ -208,10 +210,21 @@ export function computeBinary(
       ) {
         return realm.intrinsics.false;
       }
+
       try {
         // generate error if binary operation might throw or have side effects
         resultType = getPureBinaryOperationResultType(realm, op, lval, rval, lloc, rloc);
-        return AbstractValue.createFromBinaryOp(realm, op, lval, rval, loc);
+        let result = AbstractValue.createFromBinaryOp(realm, op, lval, rval, loc);
+
+        if ((op === "in" || op === "instanceof") && result instanceof AbstractValue && rvalIsAbstract)
+          // This operation is a conditional atemporal
+          // See #2327
+          result = AbstractValue.convertToTemporalIfArgsAreTemporal(
+            realm,
+            result,
+            [rval] /* throwing does not depend upon lval */
+          );
+        return result;
       } catch (x) {
         if (x instanceof FatalError) {
           // There is no need to revert any effects, because the above operation is pure.
