@@ -1,4 +1,4 @@
-// Copies of f;:1
+// Copies of f;:2
 function f() {
   return 123;
 }

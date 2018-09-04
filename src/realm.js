@@ -1599,7 +1599,8 @@ export class Realm {
   rebuildObjectProperty(object: Value, key: string, propertyValue: Value, path: string): void {
     if (!(propertyValue instanceof AbstractValue)) return;
     if (propertyValue.kind === "abstractConcreteUnion") {
-      let absVal = propertyValue.args.find(e => e instanceof AbstractValue);
+      invariant(propertyValue.args.length >= 2);
+      let absVal = propertyValue.args[0];
       invariant(absVal instanceof AbstractValue);
       propertyValue = absVal;
     }
