@@ -201,7 +201,7 @@ export class Reconciler {
             if (this.realm.react.failOnUnsupportedSideEffects) {
               handleReportedSideEffect(throwUnsupportedSideEffectError, sideEffectType, binding, expressionLocation);
             }
-          },
+          }
         )
       );
     } finally {
