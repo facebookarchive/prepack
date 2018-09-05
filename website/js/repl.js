@@ -20,61 +20,61 @@ function createEditor(elem) {
 
 var optionsConfig = [
   {
-    type: 'string',
-    name: 'mathRandomSeed',
-    defaultVal: '',
-    description: 'If you want Prepack to evaluate Math.random() calls, please provide a seed.',
+    type: "string",
+    name: "mathRandomSeed",
+    defaultVal: "",
+    description: "If you want Prepack to evaluate Math.random() calls, please provide a seed."
   },
   {
-    type: 'boolean',
-    name: 'inlineExpressions',
+    type: "boolean",
+    name: "inlineExpressions",
     defaultVal: true,
-    description: 'Avoids naming expressions when they are only used once, and instead inline them where they are used.',
+    description: "Avoids naming expressions when they are only used once, and instead inline them where they are used."
   },
   {
-    type: 'boolean',
-    name: 'delayInitializations',
+    type: "boolean",
+    name: "delayInitializations",
     defaultVal: false,
-    description: 'Delay initializations.',
+    description: "Delay initializations."
   },
   {
-    type: 'choice',
-    name: 'compatibility',
-    choices: ['browser', 'jsc-600-1-4-17', 'node-source-maps', 'node-react'],
-    defaultVal: 'node-react',
-    description: 'The target environment for Prepack',
+    type: "choice",
+    name: "compatibility",
+    choices: ["browser", "jsc-600-1-4-17", "node-source-maps", "node-react"],
+    defaultVal: "node-react",
+    description: "The target environment for Prepack"
   },
   {
-    type: 'string',
-    name: 'lazyObjectsRuntime',
-    defaultVal: '',
-    description: 'Enable lazy objects feature and specify the JS runtime that supports this feature.',
+    type: "string",
+    name: "lazyObjectsRuntime",
+    defaultVal: "",
+    description: "Enable lazy objects feature and specify the JS runtime that supports this feature."
   },
   {
-    type: 'choice',
-    name: 'invariantLevel',
+    type: "choice",
+    name: "invariantLevel",
     choices: [0, 1, 2, 3],
     defaultVal: 0,
-    description: "Whether and how many checks to generate that validate Prepack's assumptions about the environment.",
+    description: "Whether and how many checks to generate that validate Prepack's assumptions about the environment."
   },
   {
-    type: 'boolean',
-    name: 'reactEnabled',
+    type: "boolean",
+    name: "reactEnabled",
     defaultVal: true,
-    description: 'Enables support for React features, such as JSX syntax.',
+    description: "Enables support for React features, such as JSX syntax."
   },
   {
-    type: 'choice',
-    name: 'reactOutput',
-    choices: ['jsx', 'create-element'],
-    defaultVal: 'jsx',
-    description: 'Specifies the serialization output of JSX nodes when React mode is enabled.',
+    type: "choice",
+    name: "reactOutput",
+    choices: ["jsx", "create-element"],
+    defaultVal: "jsx",
+    description: "Specifies the serialization output of JSX nodes when React mode is enabled."
   },
   {
-    type: 'boolean',
-    name: 'stripFlow',
+    type: "boolean",
+    name: "stripFlow",
     defaultVal: true,
-    description: 'Removes Flow type annotations from the output.',
+    description: "Removes Flow type annotations from the output."
   },
 ];
 
@@ -141,7 +141,7 @@ function getHashedDemo(hash) {
   if (hash[0] !== '#' || hash.length < 2) return null;
   var encoded = hash.slice(1);
   if (encoded.match(/^[a-zA-Z0-9+/=_-]+$/)) {
-    return LZString.decompressFromEncodedURIComponent(encoded);
+    return LZString.decompressFromEncodedURIComponent(encoded)
   }
   return null;
 }
@@ -153,18 +153,19 @@ function makeDemoSharable() {
 
 function showGeneratedCode(code) {
   if (isEmpty.test(code) && !isEmpty.test(input.getValue())) {
-    code = '// Your code was all dead code and thus eliminated.\n' + '// Try storing a property on the global object.';
+    code =
+      '// Your code was all dead code and thus eliminated.\n' + '// Try storing a property on the global object.';
   }
   drawGraphCallback = () => {
     var graphData = JSON.parse(result.graph);
     var visData = {
       nodes: graphData.nodes,
-      edges: graphData.edges,
-    };
+      edges: graphData.edges
+    }
 
     var visOptions = {};
     var boxNetwork = new vis.Network(graphBox, visData, visOptions);
-  };
+  }
   if (showGraphDiv) {
     drawGraphCallback();
   }
@@ -190,7 +191,7 @@ function compile() {
       if (result.type === 'success' || result.type === 'warning') {
         var code = result.data;
         showGeneratedCode(code);
-      } else if (result.type === 'error') {
+      }  else if (result.type === 'error') {
         let errors = result.data;
         if (typeof errors === 'string') {
           errorOutput.style.display = 'block';
@@ -207,23 +208,24 @@ function compile() {
       terminateWorker();
     };
 
-    var options = {};
+    var options = {}
     for (var configIndex in optionsConfig) {
       var config = optionsConfig[configIndex];
-      var domE = document.querySelector('#prepack-option-' + config.name);
-      if (config.type === 'choice') {
+      var domE = document.querySelector("#prepack-option-" + config.name);
+      if (config.type === "choice") {
         options[config.name] = domE.options[domE.selectedIndex].value;
-      } else if (config.type === 'boolean') {
-        options[config.name] = domE.checked === true;
-      } else if (config.type === 'string') {
+      } else if (config.type === "boolean") {
+        options[config.name] = (domE.checked === true);
+      } else if (config.type === "string") {
         if (domE.value) {
           options[config.name] = domE.value;
         }
       }
     }
 
-    worker.postMessage({ code: input.getValue(), options: options });
+    worker.postMessage({code: input.getValue(), options: options});
   }, 500);
+
 }
 
 var output = createEditor(replOutput);
@@ -340,7 +342,7 @@ function addDefaultExamples() {
     '  define("three", function() { return require("two") + require("one"); });',
     '  define("four", function() { return require("three") + require("one"); });',
     '})();',
-    'three = require("three");',
+    'three = require("three");'
   ].join('\n');
   cache[name] = code;
 
@@ -381,8 +383,8 @@ function addOptions() {
     optionStrings.push(config.name);
     optionStrings.push("<div class='prepack-option-description'>");
     optionStrings.push(config.description);
-    optionStrings.push('</div>');
-    if (config.type === 'choice') {
+    optionStrings.push("</div>");
+    if (config.type === "choice") {
       optionStrings.push("<select id='");
       optionStrings.push(configId);
       optionStrings.push("'>");
@@ -394,16 +396,16 @@ function addOptions() {
           optionStrings.push('<option value=' + name + '>' + name + '</option>');
         }
       }
-      optionStrings.push('</select>');
-    } else if (config.type === 'boolean') {
+      optionStrings.push("</select>");
+    } else if (config.type === "boolean") {
       optionStrings.push("<input type='checkbox' id='");
       optionStrings.push(configId);
       if (config.defaultVal === true) {
-        optionStrings.push("' checked=true>");
+        optionStrings.push("' checked=true>")
       } else {
         optionStrings.push("'>");
       }
-    } else if (config.type === 'string') {
+    } else if (config.type === "string") {
       optionStrings.push("<input type='text' id='");
       optionStrings.push(configId);
       if (config.defaultVal != null) {
@@ -414,31 +416,31 @@ function addOptions() {
         optionStrings.push("'>");
       }
     }
-    optionStrings.push('</label>');
-    optionStrings.push('</div>');
+    optionStrings.push("</label>");
+    optionStrings.push("</div>");
   }
   optionsRecord.innerHTML = optionStrings.join('');
   for (var configIndex in optionsConfig) {
     var config = optionsConfig[configIndex];
-    var domE = document.querySelector('#prepack-option-' + config.name);
-    if (config.type === 'choice') {
+    var domE = document.querySelector("#prepack-option-" + config.name);
+    if (config.type === "choice") {
       var demoSelector = new Select({
         el: domE,
         className: 'select-theme-dark',
       });
       domE.addEventListener('change', compile);
-    } else if (config.type === 'boolean') {
+    } else if (config.type === "boolean") {
       domE.addEventListener('change', compile);
-    } else if (config.type === 'string') {
+    } else if (config.type === "string") {
       domE.addEventListener('input', compile);
     }
   }
 
   optionsButton.onclick = function() {
-    if (optionsRecord.style.display !== 'inline-block') {
-      optionsRecord.style.display = 'inline-block';
+    if (optionsRecord.style.display !== "inline-block") {
+      optionsRecord.style.display = "inline-block" ;
     } else {
-      optionsRecord.style.display = 'none';
+      optionsRecord.style.display = "none" ;
     }
   };
 }
@@ -486,24 +488,24 @@ saveButton.addEventListener('click', () => {
 
 graphButton.addEventListener('click', () => {
   if (!showGraphDiv) {
-    inputDiv.style.width = '33%';
-    outputDiv.style.width = '33%';
-    graphDiv.style.width = '34%';
-    outputDiv.style.left = '33%';
-    graphDiv.style.display = 'block';
+    inputDiv.style.width = "33%";
+    outputDiv.style.width = "33%";
+    graphDiv.style.width = "34%";
+    outputDiv.style.left = "33%";
+    graphDiv.style.display = "block";
     showGraphDiv = true;
-    graphButton.innerHTML = 'HIDE HEAP';
+    graphButton.innerHTML = "HIDE HEAP";
     if (drawGraphCallback !== null) {
       drawGraphCallback();
       drawGraphCallback = null;
     }
   } else {
-    inputDiv.style.width = '50%';
-    outputDiv.style.width = '50%';
-    graphDiv.style.width = '50%';
-    outputDiv.style.left = '50%';
-    graphDiv.style.display = 'none';
+    inputDiv.style.width = "50%";
+    outputDiv.style.width = "50%";
+    graphDiv.style.width = "50%";
+    outputDiv.style.left = "50%";
+    graphDiv.style.display = "none";
     showGraphDiv = false;
-    graphButton.innerHTML = 'SHOW HEAP';
+    graphButton.innerHTML = "SHOW HEAP";
   }
 });

@@ -2,7 +2,7 @@ self.importScripts('prepack.min.js');
 
 function onlyWarnings(buffer) {
   return buffer.every(function(error) {
-    return error.severity === 'Warning';
+    return error.severity === "Warning";
   });
 }
 
@@ -11,9 +11,9 @@ onmessage = function(e) {
 
   function errorHandler(error) {
     // Syntax errors contain their location at the end, remove that
-    if (error.errorCode === 'PP1004') {
+    if (error.errorCode === "PP1004") {
       let msg = error.message;
-      error.message = msg.substring(0, msg.lastIndexOf('('));
+      error.message = msg.substring(0, msg.lastIndexOf("("));
     }
     buffer.push({
       severity: error.severity,
@@ -21,17 +21,17 @@ onmessage = function(e) {
       message: error.message,
       errorCode: error.errorCode,
     });
-    return 'Recover';
+    return "Recover";
   }
 
   try {
-    let sources = [{ filePath: 'dummy', fileContents: e.data.code }];
+    let sources = [{ filePath: "dummy", fileContents: e.data.code }];
     let options = {
-      compatibility: 'browser',
-      filename: 'repl',
+      compatibility: "browser",
+      filename: "repl",
       timeout: 1000,
       serialize: true,
-      heapGraphFormat: 'VISJS',
+      heapGraphFormat: "VISJS",
       errorHandler,
     };
     for (let property in e.data.options) {
@@ -44,16 +44,16 @@ onmessage = function(e) {
       postMessage({ type: 'success', data: result.code, graph: result.heapGraph });
     } else {
       let noError = onlyWarnings(buffer);
-      if (noError) {
+      if(noError) {
         postMessage({ type: 'warning', data: result.code, warnings: buffer });
       } else {
-        // A well-defined error occurred.
-        postMessage({ type: 'error', data: buffer });
+      // A well-defined error occurred.
+      postMessage({ type: 'error', data: buffer });
       }
     }
   } catch (err) {
     buffer.push({
-      message: err.stack || 'An unknown error occurred',
+      message: err.stack || 'An unknown error occurred'
     });
     postMessage({ type: 'error', data: buffer });
   }
