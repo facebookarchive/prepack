@@ -59,6 +59,7 @@ export type RealmOptions = {
   stripFlow?: boolean,
   abstractValueImpliesMax?: number,
   arrayNestedOptimizedFunctionsEnabled?: boolean,
+  reactFailOnUnsupportedSideEffects?: boolean,
 };
 
 export type SerializerOptions = {

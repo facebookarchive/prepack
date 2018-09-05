@@ -62,6 +62,7 @@ export type PrepackOptions = {|
   onParse?: BabelNodeFile => void,
   onExecute?: (Realm, Map<FunctionValue, Generator>) => void,
   arrayNestedOptimizedFunctionsEnabled?: boolean,
+  reactFailOnUnsupportedSideEffects?: boolean,
 |};
 
 export function getRealmOptions({
@@ -88,6 +89,7 @@ export function getRealmOptions({
   debuggerConfigArgs,
   debugReproArgs,
   arrayNestedOptimizedFunctionsEnabled,
+  reactFailOnUnsupportedSideEffects,
 }: PrepackOptions): RealmOptions {
   return {
     compatibility,
@@ -113,6 +115,7 @@ export function getRealmOptions({
     debuggerConfigArgs,
     debugReproArgs,
     arrayNestedOptimizedFunctionsEnabled,
+    reactFailOnUnsupportedSideEffects,
   };
 }
 

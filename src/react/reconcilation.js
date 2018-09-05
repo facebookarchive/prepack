@@ -197,8 +197,11 @@ export class Reconciler {
               `react component: ${getComponentName(this.realm, componentType)}`
             ),
           /*bubbles*/ true,
-          (sideEffectType, binding, expressionLocation) =>
-            handleReportedSideEffect(throwUnsupportedSideEffectError, sideEffectType, binding, expressionLocation)
+          (sideEffectType, binding, expressionLocation) => {
+            if (this.realm.react.failOnUnsupportedSideEffects) {
+              handleReportedSideEffect(throwUnsupportedSideEffectError, sideEffectType, binding, expressionLocation);
+            }
+          },
         )
       );
     } finally {
