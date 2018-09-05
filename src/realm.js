@@ -299,7 +299,7 @@ export class Realm {
       emptyArray: undefined,
       emptyObject: undefined,
       enabled: opts.reactEnabled || false,
-      failOnUnsupportedSideEffects: opts.reactFailOnUnsupportedSideEffects || true,
+      failOnUnsupportedSideEffects: opts.reactFailOnUnsupportedSideEffects === false ? false : true,
       hoistableFunctions: new WeakMap(),
       hoistableReactElements: new WeakMap(),
       noopFunction: undefined,
