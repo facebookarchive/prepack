@@ -215,154 +215,178 @@ export default class AbstractValue extends Value {
   }
 
   // this => val. A false value does not imply that !(this => val).
-  implies(val: Value): boolean {
+  implies(val: AbstractValue): boolean {
     if (this.equals(val)) return true; // x => x regardless of its value
-    if (!this.mightNotBeFalse()) return true; // false => val
-    if (!val.mightNotBeTrue()) return true; // x => true regardless of the value of x
-    if (val instanceof AbstractValue) {
-      // Neither this (x) nor val (y) is a known value, so we need to do some reasoning based on the structure
-      // x => x || y
-      if (val.kind === "||") {
-        let [x, y] = val.args;
-        return this.implies(x) || this.implies(y);
+    invariant(val instanceof AbstractValue);
+    if (this.kind === "||") {
+      let [x, y] = this.args;
+      let xi = x.implies(val) || (x instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(x));
+      if (!xi) return false;
+      let yi = y.implies(val) || (y instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(y));
+      return yi;
+    } else if (this.kind === "&&") {
+      let [x, y] = this.args;
+      let xi = x.implies(val) || (x instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(x));
+      if (xi) return true;
+      let yi = y.implies(val) || (y instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(y));
+      return yi;
+    } else if (this.kind === "!") {
+      let [nx] = this.args;
+      invariant(nx instanceof AbstractValue);
+      if (nx.kind === "!") {
+        // !!x => val if x => val
+        let [x] = nx.args;
+        invariant(x instanceof AbstractValue);
+        return x.implies(val);
+      }
+    } else if (this.kind === "conditional") {
+      let [c, x, y] = this.args;
+      // (c ? x : y) => val if x is true and y is false and c = val
+      if (!x.mightNotBeTrue() && !y.mightNotBeFalse()) {
+        return c.equals(val);
       }
 
-      // x => !y if y => !x
-      if (val.kind === "!") {
-        let [y] = val.args;
-        invariant(y instanceof AbstractValue);
-        return y.impliesNot(this);
-      }
-      // x => x !== null && x !== undefined
-      // x => x != null && x != undefined
       if (val.kind === "!==" || val.kind === "!=") {
-        let [x, y] = val.args;
-        if (this.implies(x)) return y instanceof NullValue || y instanceof UndefinedValue;
-        if (this.implies(y)) return x instanceof NullValue || x instanceof UndefinedValue;
-      }
-      if (this.kind === "!") {
-        let [nx] = this.args;
-        invariant(nx instanceof AbstractValue);
-        if (nx.kind === "!") {
-          // !!x => y if x => y
-          let [x] = nx.args;
-          invariant(x instanceof AbstractValue);
-          return x.implies(val);
+        let [vx, vy] = val.args;
+        if (!x.mightNotBeFalse()) {
+          // (c ? false : y) => vx !== undefined && vx !== null if y => vx, since val is false unless y is true
+          if (vx instanceof AbstractValue && (vy instanceof NullValue || vy instanceof UndefinedValue))
+            return y.implies(vx);
+          // (c ? false : y) => undefined !== vy && null !== vy if y => vy, since val is false unless y is true
+          if ((vx instanceof NullValue || vx instanceof UndefinedValue) && vy instanceof AbstractValue)
+            return y.implies(vy);
+        } else if (!y.mightNotBeFalse()) {
+          // (c ? x : false) => vx !== undefined && vx !== null if x => vx, since val is false unless x is true
+          if (vx instanceof AbstractValue && (vy instanceof NullValue || vy instanceof UndefinedValue))
+            return x.implies(vx);
+          // (c ? x : false) => undefined !== vy && null !== vy if x => vy, since val is false unless x is true
+          if ((vx instanceof NullValue || vx instanceof UndefinedValue) && vy instanceof AbstractValue)
+            return x.implies(vy);
         }
       }
-      if (this.kind === "conditional") {
-        let [c, x, y] = this.args;
-        // (c ? x : y) => val if x is true and y is false and c = val
-        if (!x.mightNotBeTrue() && !y.mightNotBeFalse()) {
-          return c.equals(val);
-        }
 
-        // (c ? false : y) => y !== undefined && y !== null && y !== f
-        if (val.kind === "!==") {
-          let [vx, vy] = val.args;
-          if (!x.mightNotBeFalse()) {
-            if (y.implies(vx)) return vy instanceof NullValue || vy instanceof UndefinedValue;
-            if (y.implies(vy)) return vx instanceof NullValue || vx instanceof UndefinedValue;
-          } else if (!y.mightNotBeFalse()) {
-            if (x.implies(vx)) return vy instanceof NullValue || vy instanceof UndefinedValue;
-            if (x.implies(vy)) return vx instanceof NullValue || vx instanceof UndefinedValue;
-          }
-        }
-
-        // (c ? x : false) => c && x (if c or x were falsy, (c ? x : false) could not be true)
-        if (!y.mightNotBeFalse()) {
-          if (c.implies(val)) return true;
-          if (x.implies(val)) return true;
-        }
+      // (c ? x : false) => c && x (if c or x were falsy, (c ? x : false) could not be true)
+      if (!y.mightNotBeFalse()) {
+        if (c.implies(val)) return true;
+        if (x.implies(val)) return true;
       }
+    } else if (this.kind === "!==") {
       // (0 !== x) => x since undefined, null, false, 0, NaN and "" are excluded by the !== and all other values are thruthy
-      if (this.kind === "!==") {
-        let [x, y] = this.args;
-        if (x instanceof NumberValue && x.value === 0) return y.equals(val);
-        if (y instanceof NumberValue && y.value === 0) return x.equals(val);
-      }
-      if (this.kind === "===" && val.kind === "==") {
-        // x === undefined/null => y == undefined/null
-        let [x, y] = val.args;
-        if (
-          x instanceof NullValue ||
-          x instanceof UndefinedValue ||
-          y instanceof NullValue ||
-          y instanceof UndefinedValue
-        ) {
-          let [vx, vy] = val.args;
-          if (
-            vx instanceof NullValue ||
-            vx instanceof UndefinedValue ||
-            vy instanceof NullValue ||
-            vy instanceof UndefinedValue
-          ) {
-            return true;
-          }
+      let [x, y] = this.args;
+      if (x instanceof NumberValue && x.value === 0) return y.equals(val);
+      if (y instanceof NumberValue && y.value === 0) return x.equals(val);
+    } else if ((this.kind === "===" || this.kind === "==") && (val.kind === "===" || val.kind === "==")) {
+      let [x, y] = this.args;
+      let [vx, vy] = val.args;
+      if (x instanceof NullValue || x instanceof UndefinedValue) {
+        if (val.kind === "==") {
+          // null/undefined === y && null/undefined === vy && y === vy => null/undefined == vy
+          if (vx instanceof NullValue || vx instanceof UndefinedValue) return y.equals(vy);
+          // null/undefined === y && vx === null/undefined && y === vx => null/undefined == vx
+          if (vy instanceof NullValue || vy instanceof UndefinedValue) return y.equals(vx);
+        } else {
+          invariant(val.kind === "===");
+          // null === y && null === vy && y === vy => null === vy
+          // undefined === y && undefined === vy && y === vy => undefined === vy
+          if (x.equals(vx)) return y.equals(vy);
+          // null === y && vx === null && y === vx => vx === null
+          // undefined === y && vx === undefined && y === vx => vx === undefined
+          if (x.equals(vy)) return y.equals(vx);
         }
       }
-      if (this.kind === "||") {
-        let [x, y] = this.args;
-        let xi = x.implies(val) || (x instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(x));
-        if (!xi) return false;
-        let yi = y.implies(val) || (y instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(y));
-        return yi;
+      if (y instanceof NullValue || y instanceof UndefinedValue) {
+        if (val.kind === "==") {
+          // x === null/undefined && null/undefined === vy && x === vy => null/undefined == vy
+          if (vx instanceof NullValue || vx instanceof UndefinedValue) return x.equals(vy);
+          // x === null/undefined && vx === null/undefined && x === vx => null/undefined == vx
+          if (vy instanceof NullValue || vy instanceof UndefinedValue) return x.equals(vx);
+        } else {
+          invariant(val.kind === "===");
+          // x === null && null === vy && x === vy => null === vy
+          // x == undefined && undefined === vy && x === vy => undefined === vy
+          if (y.equals(vx)) return x.equals(vy);
+          // x === null && vx === null && x === vx => null == vy
+          // x === undefined && vx === undefined && x === vx => vx === undefined
+          if (y.equals(vy)) return x.equals(vx);
+        }
       }
-      if (this.kind === "&&") {
-        let [x, y] = this.args;
-        let xi = x.implies(val) || (x instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(x));
-        if (xi) return true;
-        let yi = y.implies(val) || (y instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(y));
-        return yi;
-      }
+    }
+    // x => !y if y => !x
+    if (val.kind === "!") {
+      let [y] = val.args;
+      invariant(y instanceof AbstractValue);
+      return y.impliesNot(this);
     }
     return false;
   }
 
   // this => !val. A false value does not imply that !(this => !val).
-  impliesNot(val: Value): boolean {
+  impliesNot(val: AbstractValue): boolean {
     if (this.equals(val)) return false; // x => x regardless of its value, hence x => !val is false
-    if (!this.mightNotBeFalse()) return true; // false => !val
-    if (!val.mightNotBeFalse()) return true; // x => !false regardless of the value of x
-    if (val instanceof AbstractValue) {
-      // !x => !y if y => x
-      if (this.kind === "!") {
-        let [x] = this.args;
+    invariant(val instanceof AbstractValue);
+    if (this.kind === "||") {
+      let [x, y] = this.args;
+      let xi = x.impliesNot(val);
+      if (!xi) return false;
+      let yi = y.impliesNot(val);
+      return yi;
+    } else if (this.kind === "&&") {
+      let [x, y] = this.args;
+      let xi = x.impliesNot(val);
+      if (xi) return true;
+      let yi = y.impliesNot(val);
+      return yi;
+    } else if (this.kind === "!") {
+      let [nx] = this.args;
+      invariant(nx instanceof AbstractValue);
+      if (nx.kind === "!") {
+        // !!x => !y if y => !x
+        let [x] = nx.args;
         invariant(x instanceof AbstractValue);
-        if (x.kind === "!") {
-          // !!x => !y if y => !x
-          invariant(x instanceof AbstractValue);
-          let [xx] = x.args;
-          invariant(xx instanceof AbstractValue);
-          return xx.impliesNot(val);
+        return x.impliesNot(val);
+      }
+      if (nx.kind === "abstractConcreteUnion") return false; // can't use two valued logic for this.
+      // !x => !val if val => x since if val is false x can be any value and if val is true then x must be true
+      return val.implies(nx);
+    } else if (this.kind === "conditional") {
+      let [c, x, y] = this.args;
+      // (c ? x : y) => !val if x is false and y is true and c = val
+      if (!x.mightNotBeFalse() && !y.mightNotBeTrue()) {
+        return c.equals(val);
+      }
+
+      if (val.kind === "===" || val.kind === "==") {
+        let [vx, vy] = val.args;
+        if (!x.mightNotBeFalse()) {
+          // (c ? false : y) => !(vx === undefined) && !(vx === null) if y => vx, since val is false unless y is true
+          if (vx instanceof AbstractValue && (vy instanceof NullValue || vy instanceof UndefinedValue))
+            return y.implies(vx);
+          // (c ? false : y) => !(undefined === vy) && !(null === vy) if y => vy, since val is false unless y is true
+          if ((vx instanceof NullValue || vx instanceof UndefinedValue) && vy instanceof AbstractValue)
+            return y.implies(vy);
+        } else if (!y.mightNotBeFalse()) {
+          // (c ? x : false) => !(vx === undefined) && !(vx === null) if x => vx, since val is false unless x is true
+          if (vx instanceof AbstractValue && (vy instanceof NullValue || vy instanceof UndefinedValue))
+            return x.implies(vx);
+          // (c ? x : false) => !(undefined === vy) && !(null !== vy) if x => vy, since val is false unless x is true
+          if ((vx instanceof NullValue || vx instanceof UndefinedValue) && vy instanceof AbstractValue)
+            return x.implies(vy);
         }
-        if (x.kind === "abstractConcreteUnion") return false; // can't use two valued logic for this.
-        return val.implies(x);
       }
-      if (this.kind === "conditional") {
-        let [c, x, y] = this.args;
-        // (c ? x : y) => !val if x is false and y is true and c = val
-        if (!x.mightNotBeFalse() && !y.mightNotBeTrue()) {
-          return c.equals(val);
-        }
+
+      // (c ? x : false) => c && x (if c or x were falsy, (c ? x : false) could not be true)
+      if (!y.mightNotBeFalse()) {
+        if (c.impliesNot(val)) return true;
+        if (x.impliesNot(val)) return true;
       }
-      if (this.kind === "===" && val.kind === "===") {
-        // x === y and y !== z => !(x === z)
-        let [x1, y1] = this.args;
-        let [x2, y2] = val.args;
-        if (x1.equals(x2) && y1 instanceof ConcreteValue && y2 instanceof ConcreteValue && !y1.equals(y2)) return true;
-        // x === y and x !== z => !(z === y)
-        if (y1.equals(y2) && x1 instanceof ConcreteValue && x2 instanceof ConcreteValue && !x1.equals(x2)) {
-          return true;
-        }
-      }
-      if (this.kind === "||") {
-        let [x, y] = this.args;
-        if (x.impliesNot(val) && y.impliesNot(val)) return true;
-      }
-      if (this.kind === "&&") {
-        let [x, y] = this.args;
-        if (x.impliesNot(val) || y.impliesNot(val)) return true;
+    } else if (this.kind === "===" && val.kind === "===") {
+      // x === y and y !== z => !(x === z)
+      let [x1, y1] = this.args;
+      let [x2, y2] = val.args;
+      if (x1.equals(x2) && y1 instanceof ConcreteValue && y2 instanceof ConcreteValue && !y1.equals(y2)) return true;
+      // x === y and x !== z => !(z === y)
+      if (y1.equals(y2) && x1 instanceof ConcreteValue && x2 instanceof ConcreteValue && !x1.equals(x2)) {
+        return true;
       }
     }
     return false;

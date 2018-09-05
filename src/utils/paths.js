@@ -34,41 +34,112 @@ export class PathConditionsImplementation extends PathConditions {
     this._assumedConditions.add(c);
   }
 
-  implies(e: AbstractValue): boolean {
+  implies(e: Value): boolean {
+    if (!e.mightNotBeTrue()) return true;
+    if (!e.mightNotBeFalse()) return false;
+    invariant(e instanceof AbstractValue);
     if (this._assumedConditions.has(e)) return true;
     if (this._impliedConditions !== undefined && this._impliedConditions.has(e)) return true;
     if (this._impliedNegatives !== undefined && this._impliedNegatives.has(e)) return false;
     if (this._failedImplications !== undefined && this._failedImplications.has(e)) return false;
     if (this._baseConditions !== undefined && this._baseConditions.implies(e)) return true;
     for (let assumedCondition of this._assumedConditions) {
-      if (assumedCondition.implies(e)) {
-        if (this._impliedConditions === undefined) this._impliedConditions = new Set();
-        this._impliedConditions.add(e);
-        return true;
-      }
+      if (assumedCondition.implies(e)) return this.cacheImplicationSuccess(e);
     }
+    // Do this here to prevent infinite recursion
     if (this._failedImplications === undefined) this._failedImplications = new Set();
     this._failedImplications.add(e);
+    // implication success entries trump failed implications entries
+    if (e.kind === "||") {
+      let [x, y] = e.args;
+      // this => x || true, regardless of the value of x
+      // this => true || y, regardless of the value of y
+      if (!x.mightNotBeTrue() || !y.mightNotBeTrue()) return this.cacheImplicationSuccess(e);
+      // this => false || y, if this => y
+      if (!x.mightNotBeFalse() && this.implies(y)) return this.cacheImplicationSuccess(e);
+      // this => x || false if this => x
+      if (!y.mightNotBeFalse() && this.implies(x)) return this.cacheImplicationSuccess(e);
+      // this => x || y if this => x
+      if (this.implies(x)) return this.cacheImplicationSuccess(e);
+      // this => x || y if this => y
+      if (this.implies(y)) return this.cacheImplicationSuccess(e);
+    }
+    if (e.kind === "!==" || e.kind === "!=") {
+      let [x, y] = e.args;
+      if (x instanceof AbstractValue) {
+        // this => x !== null && x !== undefined, if this => x
+        // this => x != null && x != undefined, if this => x
+        if ((y instanceof NullValue || y instanceof UndefinedValue) && this.implies(x))
+          return this.cacheImplicationSuccess(e);
+      } else {
+        invariant(y instanceof AbstractValue); // otherwise e would have been simplied
+        // this => null !== y && undefined !== y, if this => y
+        // this => null != y && undefined != y, if this => y
+        if ((x instanceof NullValue || x instanceof UndefinedValue) && this.implies(y))
+          return this.cacheImplicationSuccess(e);
+      }
+    }
     return false;
   }
 
-  impliesNot(e: AbstractValue): boolean {
+  cacheImplicationSuccess(e: AbstractValue): true {
+    if (this._impliedConditions === undefined) this._impliedConditions = new Set();
+    this._impliedConditions.add(e);
+    return true;
+  }
+
+  impliesNot(e: Value): boolean {
+    if (!e.mightNotBeTrue()) return false;
+    if (!e.mightNotBeFalse()) return true;
+    invariant(e instanceof AbstractValue);
     if (this._assumedConditions.has(e)) return false;
     if (this._impliedConditions !== undefined && this._impliedConditions.has(e)) return false;
     if (this._impliedNegatives !== undefined && this._impliedNegatives.has(e)) return true;
     if (this._failedNegativeImplications !== undefined && this._failedNegativeImplications.has(e)) return false;
     if (this._baseConditions !== undefined && this._baseConditions.impliesNot(e)) return true;
     for (let assumedCondition of this._assumedConditions) {
-      invariant(assumedCondition !== undefined);
-      if (assumedCondition.impliesNot(e)) {
-        if (this._impliedNegatives === undefined) this._impliedNegatives = new Set();
-        this._impliedNegatives.add(e);
-        return true;
-      }
+      if (assumedCondition.impliesNot(e)) return this.cacheNegativeImplicationSuccess(e);
     }
+    // Do this here to prevent infinite recursion
     if (this._failedNegativeImplications === undefined) this._failedNegativeImplications = new Set();
     this._failedNegativeImplications.add(e);
+    // negative implication success entries trump failed negative implications entries
+    if (e.kind === "&&") {
+      let [x, y] = e.args;
+      // this => !(false && y) regardless of the value of y
+      // this => !(x && false) regardless of the value of x
+      if (!x.mightNotBeFalse() || !y.mightNotBeFalse()) return this.cacheNegativeImplicationSuccess(e);
+      // this => !(true && y), if this => !y
+      if (!x.mightNotBeTrue() && this.impliesNot(y)) return this.cacheNegativeImplicationSuccess(e);
+      // this => !(x && true) if this => !x
+      if (!y.mightNotBeTrue() && this.impliesNot(x)) return this.cacheNegativeImplicationSuccess(e);
+      // this => !(x && y) if this => !x
+      if (this.impliesNot(x)) return this.cacheNegativeImplicationSuccess(e);
+      // this => !(x && y) if this => !y
+      if (this.impliesNot(y)) return this.cacheNegativeImplicationSuccess(e);
+    }
+    if (e.kind === "===" || e.kind === "==") {
+      let [x, y] = e.args;
+      if (x instanceof AbstractValue) {
+        // this => !(x === null) && !(x === undefined), if this => x
+        // this => !(x == null) && !(x == undefined), if this => x
+        if ((y instanceof NullValue || y instanceof UndefinedValue) && this.implies(x))
+          return this.cacheNegativeImplicationSuccess(e);
+      } else {
+        invariant(y instanceof AbstractValue); // otherwise e would have been simplied
+        // this => !(null === y) && !(undefined === y), if this => y
+        // this => !(null == y) && !(undefined == y), if this => y
+        if ((x instanceof NullValue || x instanceof UndefinedValue) && this.implies(y))
+          return this.cacheNegativeImplicationSuccess(e);
+      }
+    }
     return false;
+  }
+
+  cacheNegativeImplicationSuccess(e: AbstractValue): true {
+    if (this._impliedNegatives === undefined) this._impliedNegatives = new Set();
+    this._impliedNegatives.add(e);
+    return true;
   }
 
   isEmpty(): boolean {
@@ -83,15 +154,16 @@ export class PathConditionsImplementation extends PathConditions {
     return this._assumedConditions;
   }
 
-  refineBaseConditons(realm: Realm): void {
+  refineBaseConditons(realm: Realm, totalRefinements: number = 0): void {
     if (realm.abstractValueImpliesMax > 0) return;
+    let total = totalRefinements;
     let refine = (condition: AbstractValue) => {
       let refinedCondition = realm.simplifyAndRefineAbstractCondition(condition);
       if (refinedCondition !== condition) {
         if (!refinedCondition.mightNotBeFalse()) throw new InfeasiblePathError();
         if (refinedCondition instanceof AbstractValue) {
           this.add(refinedCondition);
-          // These might have different answers now that we've add another path condition
+          // These might have different answers now that we're adding another path condition
           this._failedImplications = undefined;
           this._failedNegativeImplications = undefined;
         }
@@ -103,13 +175,14 @@ export class PathConditionsImplementation extends PathConditions {
         this._baseConditions = undefined;
         for (let assumedCondition of savedBaseConditions._assumedConditions) {
           if (assumedCondition.kind === "||") {
+            if (++total > 4) break;
             refine(assumedCondition);
           }
         }
       } finally {
         this._baseConditions = savedBaseConditions;
       }
-      savedBaseConditions.refineBaseConditons(realm);
+      savedBaseConditions.refineBaseConditons(realm, total);
     }
   }
 }
