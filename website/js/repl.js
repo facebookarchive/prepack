@@ -155,12 +155,8 @@ function showGeneratedCode(code) {
   if (isEmpty.test(code) && !isEmpty.test(input.getValue())) {
     code = '// Your code was all dead code and thus eliminated.\n' + '// Try storing a property on the global object.';
   }
-  output.setValue(code, -1);
-}
-
-function showGenerationGraph(graph) {
-  if (showGraphDiv && graph) {
-    var graphData = JSON.parse(graph);
+  drawGraphCallback = () => {
+    var graphData = JSON.parse(result.graph);
     var visData = {
       nodes: graphData.nodes,
       edges: graphData.edges,
@@ -168,7 +164,11 @@ function showGenerationGraph(graph) {
 
     var visOptions = {};
     var boxNetwork = new vis.Network(graphBox, visData, visOptions);
+  };
+  if (showGraphDiv) {
+    drawGraphCallback();
   }
+  output.setValue(code, -1);
 }
 
 function compile() {
@@ -189,9 +189,7 @@ function compile() {
       var result = e.data;
       if (result.type === 'success' || result.type === 'warning') {
         var code = result.data;
-        var graph = result.graph;
         showGeneratedCode(code);
-        showGenerationGraph(graph);
       } else if (result.type === 'error') {
         let errors = result.data;
         if (typeof errors === 'string') {
@@ -238,6 +236,7 @@ input.on('change', compile);
 input.on('change', makeDemoSharable);
 
 /**record **/
+
 var selectRecord = document.querySelector('select.select-record');
 var optionsRecord = document.querySelector('#optionsMenuRecord');
 var selectInput = document.querySelector('#recordName');

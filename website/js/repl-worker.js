@@ -45,7 +45,7 @@ onmessage = function(e) {
     } else {
       let noError = onlyWarnings(buffer);
       if (noError) {
-        postMessage({ type: 'warning', data: result.code, graph: result.heapGrap, warnings: buffer });
+        postMessage({ type: 'warning', data: result.code, warnings: buffer });
       } else {
         // A well-defined error occurred.
         postMessage({ type: 'error', data: buffer });
