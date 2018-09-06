@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor } from "../types.js";
-import { ObjectValue, Value } from "./index.js";
+import { AbstractObjectValue, ObjectValue, Value } from "./index.js";
 import { IsDataDescriptor, IsAccessorDescriptor } from "../methods/is.js";
 import { HasOwnProperty } from "../methods/has.js";
 import { SameValuePartial } from "../methods/abstract.js";
@@ -58,7 +58,12 @@ export default class ArgumentsExotic extends ObjectValue {
   }
 
   // ECMA262 9.4.4.2
-  $DefineOwnProperty(P: PropertyKeyValue, _Desc: Descriptor): boolean {
+  // Note: The extra Target argument represents the Value to emit residual effects on at runtime, if any.
+  $DefineOwnProperty(
+    P: PropertyKeyValue,
+    _Desc: Descriptor,
+    Target: ObjectValue | AbstractObjectValue = this
+  ): boolean {
     let Desc = _Desc.throwIfNotConcrete(this.$Realm);
 
     // 1. Let args be the arguments object.
@@ -87,7 +92,7 @@ export default class ArgumentsExotic extends ObjectValue {
     }
 
     // 6. Let allowed be ? OrdinaryDefineOwnProperty(args, P, newArgDesc).
-    let allowed = Properties.OrdinaryDefineOwnProperty(this.$Realm, args, P, newArgDesc);
+    let allowed = Properties.OrdinaryDefineOwnProperty(this.$Realm, args, P, newArgDesc, Target);
 
     // 7. If allowed is false, return false.
     if (allowed === false) return false;
@@ -180,7 +185,8 @@ export default class ArgumentsExotic extends ObjectValue {
   }
 
   // ECMA262 9.4.4.5
-  $Delete(P: PropertyKeyValue): boolean {
+  // Note: The extra Target argument represents the Value to emit residual effects on at runtime, if any.
+  $Delete(P: PropertyKeyValue, Target: ObjectValue | AbstractObjectValue = this): boolean {
     // 1. Let args be the arguments object.
     let args = this;
 
@@ -192,7 +198,7 @@ export default class ArgumentsExotic extends ObjectValue {
     let isMapped = HasOwnProperty(this.$Realm, map, P);
 
     // 4. Let result be ? OrdinaryDelete(args, P).
-    let result = Properties.OrdinaryDelete(this.$Realm, args, P);
+    let result = Properties.OrdinaryDelete(this.$Realm, args, P, Target);
 
     // 5. If result is true and isMapped is true, then
     if (result === true && isMapped === true) {

@@ -707,7 +707,14 @@ export class PropertiesImplementation {
   }
 
   //
-  OrdinaryDelete(realm: Realm, O: ObjectValue, P: PropertyKeyValue): boolean {
+  // Note: The extra Target argument represents the Value that should receive any emitted effects,
+  // or null if none should be emitted.
+  OrdinaryDelete(
+    realm: Realm,
+    O: ObjectValue,
+    P: PropertyKeyValue,
+    Target: null | ObjectValue | AbstractObjectValue
+  ): boolean {
     // 1. Assert: IsPropertyKey(P) is true.
     invariant(IsPropertyKey(realm, P), "expected a property key");
 
@@ -1108,7 +1115,15 @@ export class PropertiesImplementation {
   }
 
   // ECMA262 9.1.6.1
-  OrdinaryDefineOwnProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, Desc: Descriptor): boolean {
+  // Note: The extra Target argument represents the Value that should receive any emitted effects,
+  // or null if none should be emitted.
+  OrdinaryDefineOwnProperty(
+    realm: Realm,
+    O: ObjectValue,
+    P: PropertyKeyValue,
+    Desc: Descriptor,
+    Target: null | AbstractObjectValue | ObjectValue
+  ): boolean {
     invariant(O instanceof ObjectValue);
 
     // 1. Let current be ? O.[[GetOwnProperty]](P).
@@ -1292,14 +1307,16 @@ export class PropertiesImplementation {
   }
 
   // ECMA262 9.4.2.4
-  ArraySetLength(realm: Realm, A: ArrayValue, _Desc: Descriptor): boolean {
+  // Note: The extra Target argument represents the Value that should receive any emitted effects,
+  // or null if none should be emitted.
+  ArraySetLength(realm: Realm, A: ArrayValue, _Desc: Descriptor, Target: ObjectValue | AbstractObjectValue): boolean {
     let Desc = _Desc.throwIfNotConcrete(realm);
 
     // 1. If the [[Value]] field of Desc is absent, then
     let DescValue = Desc.value;
     if (!DescValue) {
       // a. Return OrdinaryDefineOwnProperty(A, "length", Desc).
-      return this.OrdinaryDefineOwnProperty(realm, A, "length", Desc);
+      return this.OrdinaryDefineOwnProperty(realm, A, "length", Desc, Target);
     }
     invariant(DescValue instanceof Value);
 
@@ -1341,7 +1358,7 @@ export class PropertiesImplementation {
     // 10. If newLen ≥ oldLen, then
     if (newLen >= oldLen) {
       // a. Return OrdinaryDefineOwnProperty(A, "length", newLenDesc).
-      return this.OrdinaryDefineOwnProperty(realm, A, "length", newLenDesc);
+      return this.OrdinaryDefineOwnProperty(realm, A, "length", newLenDesc, Target);
     }
 
     // 11. If oldLenDesc.[[Writable]] is false, return false.
@@ -1363,7 +1380,7 @@ export class PropertiesImplementation {
     }
 
     // 14. Let succeeded be ! OrdinaryDefineOwnProperty(A, "length", newLenDesc).
-    let succeeded = this.OrdinaryDefineOwnProperty(realm, A, "length", newLenDesc);
+    let succeeded = this.OrdinaryDefineOwnProperty(realm, A, "length", newLenDesc, Target);
 
     // 15. If succeeded is false, return false.
     if (succeeded === false) return false;
@@ -1394,7 +1411,7 @@ export class PropertiesImplementation {
         if (newWritable === false) newLenDesc.writable = false;
 
         // iii. Let succeeded be ! OrdinaryDefineOwnProperty(A, "length", newLenDesc).
-        succeeded = this.OrdinaryDefineOwnProperty(realm, A, "length", newLenDesc);
+        succeeded = this.OrdinaryDefineOwnProperty(realm, A, "length", newLenDesc, Target);
 
         // iv. Return false.
         return false;
@@ -1410,7 +1427,8 @@ export class PropertiesImplementation {
         "length",
         new PropertyDescriptor({
           writable: false,
-        })
+        }),
+        Target
       );
     }
 
