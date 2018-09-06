@@ -412,7 +412,12 @@ export type PropertiesType = {
   FromPropertyDescriptor(realm: Realm, Desc: ?Descriptor): Value,
 
   //
-  OrdinaryDelete(realm: Realm, O: ObjectValue, P: PropertyKeyValue): boolean,
+  OrdinaryDelete(
+    realm: Realm,
+    O: ObjectValue,
+    P: PropertyKeyValue,
+    Target: null | ObjectValue | AbstractValue
+  ): boolean,
 
   // ECMA262 7.3.8
   DeletePropertyOrThrow(realm: Realm, O: ObjectValue, P: PropertyKeyValue): boolean,
@@ -434,7 +439,13 @@ export type PropertiesType = {
   ): boolean,
 
   // ECMA262 9.1.6.1
-  OrdinaryDefineOwnProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, Desc: Descriptor): boolean,
+  OrdinaryDefineOwnProperty(
+    realm: Realm,
+    O: ObjectValue,
+    P: PropertyKeyValue,
+    Desc: Descriptor,
+    Target: null | AbstractObjectValue | ObjectValue
+  ): boolean,
 
   // ECMA262 19.1.2.3.1
   ObjectDefineProperties(realm: Realm, O: Value, Properties: Value): ObjectValue | AbstractObjectValue,
@@ -454,7 +465,7 @@ export type PropertiesType = {
   PutValue(realm: Realm, V: Value | Reference, W: Value): void | boolean | Value,
 
   // ECMA262 9.4.2.4
-  ArraySetLength(realm: Realm, A: ArrayValue, Desc: Descriptor): boolean,
+  ArraySetLength(realm: Realm, A: ArrayValue, Desc: Descriptor, Target: ObjectValue | AbstractObjectValue): boolean,
 
   // ECMA262 9.1.5.1
   OrdinaryGetOwnProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue): Descriptor | void,

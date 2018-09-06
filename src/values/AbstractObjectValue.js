@@ -387,7 +387,7 @@ export default class AbstractObjectValue extends AbstractValue {
     if (elements.size === 1) {
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
-        return cv.$DefineOwnProperty(P, _Desc);
+        return cv.$DefineOwnProperty(P, _Desc, this);
       }
       invariant(false);
     } else {
@@ -477,7 +477,7 @@ export default class AbstractObjectValue extends AbstractValue {
           invariant(dval instanceof Value);
           let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", this, cv, this.expressionLocation);
           desc.value = AbstractValue.createFromConditionalOp(this.$Realm, cond, newVal, dval);
-          if (cv.$DefineOwnProperty(P, desc)) {
+          if (cv.$DefineOwnProperty(P, desc, this)) {
             sawTrue = true;
           } else sawFalse = true;
         }
@@ -961,7 +961,7 @@ export default class AbstractObjectValue extends AbstractValue {
     if (elements.size === 1) {
       for (let cv of elements) {
         invariant(cv instanceof ObjectValue);
-        return cv.$Delete(P);
+        return cv.$Delete(P, this);
       }
       invariant(false);
     } else if (this.kind === "conditional") {
@@ -1026,7 +1026,7 @@ export default class AbstractObjectValue extends AbstractValue {
         let newDesc = cloneDescriptor(d);
         invariant(newDesc);
         newDesc.value = v;
-        if (cv.$DefineOwnProperty(P, newDesc)) sawTrue = true;
+        if (cv.$DefineOwnProperty(P, newDesc, this)) sawTrue = true;
         else sawFalse = true;
       }
       if (sawTrue && sawFalse) {
