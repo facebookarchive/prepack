@@ -485,8 +485,9 @@ function run(
     for (let compilerDiagnostic of compilerDiagnosticsList) printCompilerDiagnostic(compilerDiagnostic);
     invariant(informations + warnings + recoverableErrors + fatalErrors > 0);
     let plural = (count, word) => (count === 1 ? word : `${word}s`);
+    const success = fatalErrors === 0 && recoverableErrors === 0;
     console.error(
-      `Prepack ${fatalErrors > 0 ? "failed" : "succeeded"}, reporting ${[
+      `Prepack ${success ? "succeeded" : "failed"}, reporting ${[
         fatalErrors > 0 ? `${fatalErrors} ${plural(fatalErrors, "fatal error")}` : undefined,
         recoverableErrors > 0 ? `${recoverableErrors} ${plural(recoverableErrors, "recoverable error")}` : undefined,
         warnings > 0 ? `${warnings} ${plural(warnings, "warning")}` : undefined,
@@ -496,7 +497,7 @@ function run(
         .join(", ")}.`
     );
 
-    return fatalErrors === 0;
+    return success;
   }
 
   let profiler;
