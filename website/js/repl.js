@@ -191,10 +191,10 @@ function compile() {
     worker.onmessage = function(e) {
       // turn off compiling
 
-      var result = e.data;
+      const result = e.data;
       if (result.type === 'success') {
-        const { code, graph, messages } = result.data;
-        showGeneratedCode(code);
+        const { data, graph, messages } = result;
+        showGeneratedCode(data);
         showGenerationGraph(graph);
       }  else if (result.type === 'error') {
         let errors = result.data;
