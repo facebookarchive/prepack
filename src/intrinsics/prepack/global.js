@@ -551,7 +551,7 @@ export default function(realm: Realm): void {
     })
   );
 
-  // Helper function that replaces the body of a function with source code.
+  // Helper function that replaces the body of a source function with another source function body.
   // Note that this function affects un-tracked state, so care must be taken
   // that this helper function is executed at the right time.
   global.$DefineOwnProperty(
