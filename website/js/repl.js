@@ -192,9 +192,8 @@ function compile() {
       // turn off compiling
 
       var result = e.data;
-      if (result.type === 'success' || result.type === 'warning') {
-        var code = result.data;
-        var graph = result.graph;
+      if (result.type === 'success') {
+        const { code, graph, messages } = result.data;
         showGeneratedCode(code);
         showGenerationGraph(graph);
       }  else if (result.type === 'error') {
