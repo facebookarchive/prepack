@@ -551,16 +551,25 @@ export default function(realm: Realm): void {
     })
   );
 
-  // Helper function that replaces the body of a source function with another source function body.
-  // Note that this function affects un-tracked state, so care must be taken
-  // that this helper function is executed at the right time.
+  // Helper function that replaces the implementation of a source function with
+  // the details from another source function body, including the captured
+  // environment, the actual code, etc.
+  // This realizes a form of monkey-patching, enabling mocking a function if
+  // one doesn't control all existing references to that function,
+  // or if the storage location to those references cannot be easily updated.
+  // NOTE: This function affects un-tracked state, so care must be taken
+  // that this helper function is executed at the right time; typically, one
+  // would want to execute this function before any call is executed to that
+  // function. Care must be taken not to make reachable conditionally
+  // defined values. Because of this limitations, this helper function
+  // should be considered only as a last resort.
   global.$DefineOwnProperty(
-    "__replaceFunctionBody",
+    "__replaceFunctionImplementation_unsafe",
     new PropertyDescriptor({
       value: new NativeFunctionValue(
         realm,
-        "global.__replaceFunctionBody",
-        "__replaceFunctionBody",
+        "global.__replaceFunctionImplementation_unsafe",
+        "__replaceFunctionImplementation_unsafe",
         2,
         (context, [target, source]) => {
           if (!(target instanceof ECMAScriptSourceFunctionValue)) {
