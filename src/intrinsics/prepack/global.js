@@ -551,6 +551,58 @@ export default function(realm: Realm): void {
     })
   );
 
+  // Helper function that replaces the body of a function with source code.
+  // Note that this function affects un-tracked state, so care must be taken
+  // that this helper function is executed at the right time.
+  global.$DefineOwnProperty(
+    "__replaceFunctionBody",
+    new PropertyDescriptor({
+      value: new NativeFunctionValue(
+        realm,
+        "global.__replaceFunctionBody",
+        "__replaceFunctionBody",
+        2,
+        (context, [target, source]) => {
+          if (!(target instanceof ECMAScriptSourceFunctionValue)) {
+            throw realm.createErrorThrowCompletion(
+              realm.intrinsics.TypeError,
+              "first argument is not a function with source code"
+            );
+          }
+          if (!(source instanceof ECMAScriptSourceFunctionValue)) {
+            throw realm.createErrorThrowCompletion(
+              realm.intrinsics.TypeError,
+              "second argument is not a function with source code"
+            );
+          }
+
+          // relevant properties for functionValue
+          target.$Environment = source.$Environment;
+          target.$ScriptOrModule = source.$ScriptOrModule;
+
+          // properties for ECMAScriptFunctionValue
+          target.$ConstructorKind = source.$ConstructorKind;
+          target.$ThisMode = source.$ThisMode;
+          target.$HomeObject = source.$HomeObject;
+          target.$FunctionKind = source.$FunctionKind;
+
+          // properties for ECMAScriptSourceFunctionValue
+          target.$Strict = source.$Strict;
+          target.$FormalParameters = source.$FormalParameters;
+          target.$ECMAScriptCode = source.$ECMAScriptCode;
+          target.$HasComputedName = source.$HasComputedName;
+          target.$HasEmptyConstructor = source.$HasEmptyConstructor;
+          target.loc = source.loc;
+
+          return context.$Realm.intrinsics.undefined;
+        }
+      ),
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    })
+  );
+
   global.$DefineOwnProperty(
     "__IntrospectionError",
     new PropertyDescriptor({
