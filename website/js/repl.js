@@ -94,7 +94,7 @@ function generateDemosSelect(obj, dom) {
 var worker;
 var debounce;
 
-var errorOutput = document.querySelector('.output .error');
+var messageOutput = document.querySelector('.output .message');
 var replOutput = document.querySelector('.output .repl');
 
 var isEmpty = /^\s*$/;
@@ -106,16 +106,17 @@ function terminateWorker() {
   }
 }
 
-function processError(errorOutput, error) {
+function showMessage(messageNode, data) {
   let errorWikiLink = document.createElement('a');
-  errorWikiLink.href = 'https://github.com/facebook/prepack/wiki/' + encodeURIComponent(error.errorCode);
-  errorWikiLink.text = error.errorCode;
+  errorWikiLink.href = 'https://github.com/facebook/prepack/wiki/' + encodeURIComponent(data.errorCode);
+  errorWikiLink.text = data.errorCode;
   errorWikiLink.setAttribute('target', '_blank');
+  
   // TODO: syntax errors need their location stripped
-  if (error.location) {
+  if (data.location) {
     let errorLineLink = document.createElement('a');
-    let lineNumber = error.location.start ? error.location.start.line : error.location.line;
-    let colNumber = error.location.start ? error.location.start.column : error.location.column;
+    let lineNumber = data.location.start ? data.location.start.line : data.location.line;
+    let colNumber = data.location.start ? data.location.start.column : data.location.column;
     colNumber++;
     let lineText = lineNumber + ':' + colNumber;
     errorLineLink.href = '';
@@ -124,16 +125,26 @@ function processError(errorOutput, error) {
       return false;
     };
     errorLineLink.text = lineText;
-    errorLineLink.style.color = 'red';
-    errorOutput.appendChild(errorWikiLink);
-    errorOutput.appendChild(document.createTextNode(' ('));
-    errorOutput.appendChild(errorLineLink);
-    errorOutput.appendChild(document.createTextNode('):  ' + error.message + '\n'));
-  } else if (!error.code) {
-    errorOutput.appendChild(document.createTextNode(error.message + '\n'));
+    errorLineLink.classList.add("line-link");
+
+    messageNode.appendChild(errorWikiLink);
+    messageNode.appendChild(document.createTextNode(' ('));
+    messageNode.appendChild(errorLineLink);
+    messageNode.appendChild(document.createTextNode('):  ' + data.message + '\n'));
+  } else if (!data.code) {
+    messageNode.appendChild(document.createTextNode(data.message + '\n'));
   } else {
-    errorOutput.appendChild(errorWikiLink);
-    errorOutput.appendChild(document.createTextNode(': ' + error.message + '\n'));
+    messageNode.appendChild(errorWikiLink);
+    messageNode.appendChild(document.createTextNode(': ' + data.message + '\n'));
+  }
+}
+
+function showMessages(messages, type) {
+  messageOutput.style.display = 'block';
+  messageOutput.classList.remove("warning", "error");
+  messageOutput.classList.add(type);
+  for (var i in messages) {
+    showMessage(messageOutput, messages[i]);
   }
 }
 
@@ -180,8 +191,8 @@ function compile() {
   clearTimeout(debounce);
   terminateWorker();
 
-  errorOutput.innerHTML = '';
-  errorOutput.style.display = 'none';
+  messageOutput.innerHTML = '';
+  messageOutput.style.display = 'none';
   replOutput.style.display = 'block';
 
   output.setValue('// Compiling...', -1);
@@ -196,19 +207,10 @@ function compile() {
         const { data, graph, messages } = result;
         showGeneratedCode(data);
         showGenerationGraph(graph);
+        showMessages(messages, "warning");
       } else if (result.type === 'error') {
         const errors = result.data;
-        if (typeof errors === 'string') {
-          errorOutput.style.display = 'block';
-          //replOutput.style.display = 'none';
-          errorOutput.textContent = errors;
-        } else {
-          errorOutput.style.display = 'block';
-          //replOutput.style.display = 'none';
-          for (var i in errors) {
-            processError(errorOutput, errors[i]);
-          }
-        }
+        showMessages(errors, "error");
       }
       terminateWorker();
     };

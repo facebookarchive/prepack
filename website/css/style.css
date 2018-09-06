@@ -639,23 +639,40 @@ img.nav-logo {
   border-spacing: 5%;
 }
 
-.repl, .error {
+.repl, .message {
   width: 100%;
   height: 100%;
 }
 
-.error {
+.message {
   padding: 10px;
   font-family: "Operator Mono", "Fira Code", "Ubuntu Mono", "Droid Sans Mono", "Liberation Mono", "Source Code Pro", Menlo, Monaco, Consolas, "Courier New", monospace;
-  color: #c7254e;
   white-space: pre;
   position: absolute;
   bottom: 0;
-  height: auto;
   z-index: 5; /* one more than ace_gutter */
+  overflow-x: scroll;
+}
+
+.error {
+  color: #c7254e;
   background-color:#ffefee;
   border-top: 1px solid #ffe1e0;
-  overflow-x: scroll;
+}
+
+.error > .line-link {
+  color: red;
+}
+
+.warning {
+  color: #8a6f40;
+  height: auto;
+  background-color:#fffae5;
+  border-top: 1px solid #fff6cc;
+}
+
+.warning > .line-link {
+  color: #7d7d7d;
 }
 
 .align-left {
