@@ -354,8 +354,8 @@ export type DebugServerType = {
 };
 
 export type PathType = {
-  implies(condition: Value): boolean,
-  impliesNot(condition: Value): boolean,
+  implies(condition: Value, depth?: number): boolean,
+  impliesNot(condition: Value, depth?: number): boolean,
   withCondition<T>(condition: Value, evaluate: () => T): T,
   withInverseCondition<T>(condition: Value, evaluate: () => T): T,
   pushAndRefine(condition: Value): void,
@@ -365,11 +365,11 @@ export type PathType = {
 export class PathConditions {
   add(c: AbstractValue): void {}
 
-  implies(e: AbstractValue): boolean {
+  implies(e: Value, depth: number = 0): boolean {
     return false;
   }
 
-  impliesNot(e: AbstractValue): boolean {
+  impliesNot(e: Value, depth: number = 0): boolean {
     return false;
   }
 

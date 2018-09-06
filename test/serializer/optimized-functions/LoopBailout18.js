@@ -1,6 +1,6 @@
 function fn(x) {
   for (
-    var _iterator = x.items,
+    var _iterator = x.entries(),
       _isArray = Array.isArray(_iterator),
       _i = 0,
       _iterator = _isArray ? _iterator : _iterator[Symbol.iterator]();
