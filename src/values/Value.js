@@ -63,13 +63,13 @@ export default class Value {
   expressionLocation: ?BabelNodeSourceLocation;
   $Realm: Realm;
 
-  implies(val: AbstractValue): boolean {
+  implies(val: AbstractValue, depth: number = 0): boolean {
     if (!this.mightNotBeFalse()) return true;
     if (this.equals(val)) return true;
     return false;
   }
 
-  impliesNot(val: AbstractValue): boolean {
+  impliesNot(val: AbstractValue, depth: number = 0): boolean {
     if (!this.mightNotBeFalse()) return true;
     if (this.equals(val)) return false;
     return false;

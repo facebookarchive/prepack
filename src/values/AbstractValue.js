@@ -215,20 +215,28 @@ export default class AbstractValue extends Value {
   }
 
   // this => val. A false value does not imply that !(this => val).
-  implies(val: AbstractValue): boolean {
+  implies(val: AbstractValue, depth: number = 0): boolean {
+    if (depth > 5) return false;
     if (this.equals(val)) return true; // x => x regardless of its value
-    invariant(val instanceof AbstractValue);
     if (this.kind === "||") {
       let [x, y] = this.args;
-      let xi = x.implies(val) || (x instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(x));
+      let xi =
+        x.implies(val, depth + 1) ||
+        (x instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(x, depth + 1));
       if (!xi) return false;
-      let yi = y.implies(val) || (y instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(y));
+      let yi =
+        y.implies(val, depth + 1) ||
+        (y instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(y, depth + 1));
       return yi;
     } else if (this.kind === "&&") {
       let [x, y] = this.args;
-      let xi = x.implies(val) || (x instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(x));
+      let xi =
+        x.implies(val, depth + 1) ||
+        (x instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(x, depth + 1));
       if (xi) return true;
-      let yi = y.implies(val) || (y instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(y));
+      let yi =
+        y.implies(val, depth + 1) ||
+        (y instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(y, depth + 1));
       return yi;
     } else if (this.kind === "!") {
       let [nx] = this.args;
@@ -237,7 +245,7 @@ export default class AbstractValue extends Value {
         // !!x => val if x => val
         let [x] = nx.args;
         invariant(x instanceof AbstractValue);
-        return x.implies(val);
+        return x.implies(val, depth + 1);
       }
     } else if (this.kind === "conditional") {
       let [c, x, y] = this.args;
@@ -251,24 +259,24 @@ export default class AbstractValue extends Value {
         if (!x.mightNotBeFalse()) {
           // (c ? false : y) => vx !== undefined && vx !== null if y => vx, since val is false unless y is true
           if (vx instanceof AbstractValue && (vy instanceof NullValue || vy instanceof UndefinedValue))
-            return y.implies(vx);
+            return y.implies(vx, depth + 1);
           // (c ? false : y) => undefined !== vy && null !== vy if y => vy, since val is false unless y is true
           if ((vx instanceof NullValue || vx instanceof UndefinedValue) && vy instanceof AbstractValue)
-            return y.implies(vy);
+            return y.implies(vy, depth + 1);
         } else if (!y.mightNotBeFalse()) {
           // (c ? x : false) => vx !== undefined && vx !== null if x => vx, since val is false unless x is true
           if (vx instanceof AbstractValue && (vy instanceof NullValue || vy instanceof UndefinedValue))
-            return x.implies(vx);
+            return x.implies(vx, depth + 1);
           // (c ? x : false) => undefined !== vy && null !== vy if x => vy, since val is false unless x is true
           if ((vx instanceof NullValue || vx instanceof UndefinedValue) && vy instanceof AbstractValue)
-            return x.implies(vy);
+            return x.implies(vy, depth + 1);
         }
       }
 
       // (c ? x : false) => c && x (if c or x were falsy, (c ? x : false) could not be true)
       if (!y.mightNotBeFalse()) {
-        if (c.implies(val)) return true;
-        if (x.implies(val)) return true;
+        if (c.implies(val, depth + 1)) return true;
+        if (x.implies(val, depth + 1)) return true;
       }
     } else if (this.kind === "!==") {
       // (0 !== x) => x since undefined, null, false, 0, NaN and "" are excluded by the !== and all other values are thruthy
@@ -315,26 +323,26 @@ export default class AbstractValue extends Value {
     if (val.kind === "!") {
       let [y] = val.args;
       invariant(y instanceof AbstractValue);
-      return y.impliesNot(this);
+      return y.impliesNot(this, depth + 1);
     }
     return false;
   }
 
   // this => !val. A false value does not imply that !(this => !val).
-  impliesNot(val: AbstractValue): boolean {
+  impliesNot(val: AbstractValue, depth: number = 0): boolean {
+    if (depth > 5) return false;
     if (this.equals(val)) return false; // x => x regardless of its value, hence x => !val is false
-    invariant(val instanceof AbstractValue);
     if (this.kind === "||") {
       let [x, y] = this.args;
-      let xi = x.impliesNot(val);
+      let xi = x.impliesNot(val, depth + 1);
       if (!xi) return false;
-      let yi = y.impliesNot(val);
+      let yi = y.impliesNot(val, depth + 1);
       return yi;
     } else if (this.kind === "&&") {
       let [x, y] = this.args;
-      let xi = x.impliesNot(val);
+      let xi = x.impliesNot(val, depth + 1);
       if (xi) return true;
-      let yi = y.impliesNot(val);
+      let yi = y.impliesNot(val, depth + 1);
       return yi;
     } else if (this.kind === "!") {
       let [nx] = this.args;
@@ -343,7 +351,7 @@ export default class AbstractValue extends Value {
         // !!x => !y if y => !x
         let [x] = nx.args;
         invariant(x instanceof AbstractValue);
-        return x.impliesNot(val);
+        return x.impliesNot(val, depth + 1);
       }
       if (nx.kind === "abstractConcreteUnion") return false; // can't use two valued logic for this.
       // !x => !val if val => x since if val is false x can be any value and if val is true then x must be true
@@ -360,24 +368,24 @@ export default class AbstractValue extends Value {
         if (!x.mightNotBeFalse()) {
           // (c ? false : y) => !(vx === undefined) && !(vx === null) if y => vx, since val is false unless y is true
           if (vx instanceof AbstractValue && (vy instanceof NullValue || vy instanceof UndefinedValue))
-            return y.implies(vx);
+            return y.implies(vx, depth + 1);
           // (c ? false : y) => !(undefined === vy) && !(null === vy) if y => vy, since val is false unless y is true
           if ((vx instanceof NullValue || vx instanceof UndefinedValue) && vy instanceof AbstractValue)
-            return y.implies(vy);
+            return y.implies(vy, depth + 1);
         } else if (!y.mightNotBeFalse()) {
           // (c ? x : false) => !(vx === undefined) && !(vx === null) if x => vx, since val is false unless x is true
           if (vx instanceof AbstractValue && (vy instanceof NullValue || vy instanceof UndefinedValue))
-            return x.implies(vx);
+            return x.implies(vx, depth + 1);
           // (c ? x : false) => !(undefined === vy) && !(null !== vy) if x => vy, since val is false unless x is true
           if ((vx instanceof NullValue || vx instanceof UndefinedValue) && vy instanceof AbstractValue)
-            return x.implies(vy);
+            return x.implies(vy, depth + 1);
         }
       }
 
       // (c ? x : false) => c && x (if c or x were falsy, (c ? x : false) could not be true)
       if (!y.mightNotBeFalse()) {
-        if (c.impliesNot(val)) return true;
-        if (x.impliesNot(val)) return true;
+        if (c.impliesNot(val, depth + 1)) return true;
+        if (x.impliesNot(val, depth + 1)) return true;
       }
     } else if (this.kind === "===" && val.kind === "===") {
       // x === y and y !== z => !(x === z)
