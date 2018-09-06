@@ -642,7 +642,6 @@ img.nav-logo {
 .repl, .error {
   width: 100%;
   height: 100%;
-  overflow-x: scroll;
 }
 
 .error {
@@ -650,6 +649,13 @@ img.nav-logo {
   font-family: "Operator Mono", "Fira Code", "Ubuntu Mono", "Droid Sans Mono", "Liberation Mono", "Source Code Pro", Menlo, Monaco, Consolas, "Courier New", monospace;
   color: #c7254e;
   white-space: pre;
+  position: absolute;
+  bottom: 0;
+  height: auto;
+  z-index: 5; /* one more than ace_gutter */
+  background-color:#ffefee;
+  border-top: 1px solid #ffe1e0;
+  overflow-x: scroll;
 }
 
 .align-left {

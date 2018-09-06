@@ -196,15 +196,15 @@ function compile() {
         const { data, graph, messages } = result;
         showGeneratedCode(data);
         showGenerationGraph(graph);
-      }  else if (result.type === 'error') {
-        let errors = result.data;
+      } else if (result.type === 'error') {
+        const errors = result.data;
         if (typeof errors === 'string') {
           errorOutput.style.display = 'block';
-          replOutput.style.display = 'none';
+          //replOutput.style.display = 'none';
           errorOutput.textContent = errors;
         } else {
           errorOutput.style.display = 'block';
-          replOutput.style.display = 'none';
+          //replOutput.style.display = 'none';
           for (var i in errors) {
             processError(errorOutput, errors[i]);
           }
