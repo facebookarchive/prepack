@@ -42,6 +42,7 @@ export class PathConditionsImplementation extends PathConditions {
     if (this._impliedConditions !== undefined && this._impliedConditions.has(e)) return true;
     if (this._impliedNegatives !== undefined && this._impliedNegatives.has(e)) return false;
     if (this._failedImplications !== undefined && this._failedImplications.has(e)) return false;
+    if (depth > 10) return false;
     if (this._baseConditions !== undefined && this._baseConditions.implies(e, depth + 1)) return true;
     for (let assumedCondition of this._assumedConditions) {
       if (assumedCondition.implies(e, depth + 1)) return this.cacheImplicationSuccess(e);
@@ -96,6 +97,7 @@ export class PathConditionsImplementation extends PathConditions {
     if (this._impliedConditions !== undefined && this._impliedConditions.has(e)) return false;
     if (this._impliedNegatives !== undefined && this._impliedNegatives.has(e)) return true;
     if (this._failedNegativeImplications !== undefined && this._failedNegativeImplications.has(e)) return false;
+    if (depth > 10) return false;
     if (this._baseConditions !== undefined && this._baseConditions.impliesNot(e, depth + 1)) return true;
     for (let assumedCondition of this._assumedConditions) {
       if (assumedCondition.impliesNot(e, depth + 1)) return this.cacheNegativeImplicationSuccess(e);

@@ -620,7 +620,7 @@ function runTest(name, code, options: PrepackOptions, args) {
                   // execInContext/execExternal failed
                   // always compare strings.
                   actual = "" + execError;
-                  actualStack = execError.stack;
+                  actualStack = execError && execError.stack;
                   return Promise.resolve("" + execError);
                 })
                 .then(function(_actual) {
