@@ -423,11 +423,11 @@ function run(
     return "Recover";
   }
 
-  function printDiagnostics(caughtFatalError: boolean): boolean {
+  function printDiagnostics(caughtFatalError: boolean, caughtUnexpectedError: boolean = false): boolean {
     if (compilerDiagnostics.size === 0 && compilerDiagnosticsList.length === 0) {
       // FatalErrors must have generated at least one CompilerDiagnostic.
       invariant(!caughtFatalError, "FatalError must generate at least one CompilerDiagnostic");
-      return true;
+      return !caughtUnexpectedError;
     }
 
     let informations = 0;
@@ -485,7 +485,7 @@ function run(
     for (let compilerDiagnostic of compilerDiagnosticsList) printCompilerDiagnostic(compilerDiagnostic);
     invariant(informations + warnings + recoverableErrors + fatalErrors > 0);
     let plural = (count, word) => (count === 1 ? word : `${word}s`);
-    const success = fatalErrors === 0 && recoverableErrors === 0;
+    const success = fatalErrors === 0 && recoverableErrors === 0 && !caughtUnexpectedError;
     console.error(
       `Prepack ${success ? "succeeded" : "failed"}, reporting ${[
         fatalErrors > 0 ? `${fatalErrors} ${plural(fatalErrors, "fatal error")}` : undefined,
@@ -539,10 +539,11 @@ function run(
       success = printDiagnostics(false);
       if (resolvedOptions.serialize && serialized) processSerializedCode(serialized);
     } catch (err) {
-      printDiagnostics(err instanceof FatalError);
+      success = printDiagnostics(err instanceof FatalError, !(err instanceof FatalError));
+      invariant(!success);
       if (!(err instanceof FatalError)) {
         // if it is not a FatalError, it means prepack failed, and we should display the Prepack stack trace.
-        console.error(err.stack);
+        console.error(`unexpected ${err}:\n${err.stack}`);
       }
       if (reproMode) {
         // Get largest list of original sources from all diagnostics.
@@ -564,7 +565,6 @@ function run(
           }
         });
       }
-      success = false;
     }
   } finally {
     if (profiler !== undefined) {
