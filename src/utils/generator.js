@@ -161,7 +161,7 @@ export type OperationDescriptorData = {
   path?: Value, // used by PROPERTY_ASSIGNMENT, CONDITIONAL_PROPERTY_ASSIGNMENT
   propertyGetter?: SupportedGraphQLGetters, // used by ABSTRACT_OBJECT_GET
   propRef?: ReferenceName | AbstractValue, // used by CALL_BAILOUT, and then only if string
-  object?: ObjectValue, // used by DEFINE_PROPERTY
+  object?: Value, // used by DEFINE_PROPERTY
   quasis?: Array<BabelNodeTemplateElement>, // used by REACT_SSR_TEMPLATE_LITERAL
   state?: "MISSING" | "PRESENT" | "DEFINED", // used by PROPERTY_INVARIANT
   thisArg?: BaseValue | Value, // used by CALL_BAILOUT
@@ -205,7 +205,7 @@ export type SerializationContext = {|
   ) => BabelNodeStatement,
   initGenerator: Generator => void,
   finalizeGenerator: Generator => void,
-  emitDefinePropertyBody: (ObjectValue, string | SymbolValue, Descriptor) => BabelNodeStatement,
+  emitDefinePropertyBody: (Value, string | SymbolValue, Descriptor) => BabelNodeStatement,
   emit: BabelNodeStatement => void,
   processValues: (Set<AbstractValue | ObjectValue>) => void,
   canOmit: Value => boolean,
@@ -834,8 +834,8 @@ export class Generator {
     });
   }
 
-  emitDefineProperty(object: ObjectValue, key: string, desc: PropertyDescriptor, isDescChanged: boolean = true): void {
-    if (object.refuseSerialization) return;
+  emitDefineProperty(object: Value, key: string, desc: PropertyDescriptor, isDescChanged: boolean = true): void {
+    if (object instanceof ObjectValue && object.refuseSerialization) return;
     if (desc.enumerable && desc.configurable && desc.writable && desc.value && !isDescChanged) {
       let descValue = desc.value;
       invariant(descValue instanceof Value);
@@ -857,8 +857,8 @@ export class Generator {
     }
   }
 
-  emitPropertyDelete(object: ObjectValue, key: string): void {
-    if (object.refuseSerialization) return;
+  emitPropertyDelete(object: Value, key: string): void {
+    if (object instanceof ObjectValue && object.refuseSerialization) return;
     this._addEntry({
       args: [object, new StringValue(this.realm, key)],
       operationDescriptor: createOperationDescriptor("PROPERTY_DELETE"),
