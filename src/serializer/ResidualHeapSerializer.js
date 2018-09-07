@@ -642,7 +642,7 @@ export class ResidualHeapSerializer {
   emitDefinePropertyBody(
     deleteIfMightHaveBeenDeleted: boolean,
     locationFunction: void | (() => BabelNodeLVal),
-    val: ObjectValue,
+    val: Value,
     key: string | SymbolValue | AbstractValue,
     desc: Descriptor
   ): BabelNodeStatement {
@@ -1776,8 +1776,9 @@ export class ResidualHeapSerializer {
   }
 
   // Checks whether a property can be defined via simple assignment, or using object literal syntax.
-  _canEmbedProperty(obj: ObjectValue, key: string | SymbolValue | AbstractValue, prop: Descriptor): boolean {
+  _canEmbedProperty(obj: Value, key: string | SymbolValue | AbstractValue, prop: Descriptor): boolean {
     if (!(prop instanceof PropertyDescriptor)) return false;
+    if (!(obj instanceof ObjectValue)) return false;
 
     let targetDescriptor = this.residualHeapInspector.getTargetIntegrityDescriptor(obj);
 
