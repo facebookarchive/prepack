@@ -94,7 +94,8 @@ function generateDemosSelect(obj, dom) {
 var worker;
 var debounce;
 
-var messageOutput = document.querySelector('.output .message');
+var messagesOutputContainer = document.querySelector('.output .messagesContainer');
+var messagesOutput = document.querySelector('.output .messages');
 var replOutput = document.querySelector('.output .repl');
 
 var isEmpty = /^\s*$/;
@@ -106,45 +107,80 @@ function terminateWorker() {
   }
 }
 
-function showMessage(messageNode, data) {
-  let errorWikiLink = document.createElement('a');
-  errorWikiLink.href = 'https://github.com/facebook/prepack/wiki/' + encodeURIComponent(data.errorCode);
-  errorWikiLink.text = data.errorCode;
-  errorWikiLink.setAttribute('target', '_blank');
-  
+function createWikiLink(code) {
+  const wikiLink = document.createElement('a');
+  wikiLink.href = 'https://github.com/facebook/prepack/wiki/' + encodeURIComponent(code);
+  wikiLink.text = code;
+  wikiLink.setAttribute('target', '_blank');
+
+  return wikiLink;
+}
+
+function createLineLink(location) {
+  const lineLink = document.createElement('a');
+  let lineNumber = location.start ? location.start.line : location.line;
+  let colNumber = location.start ? location.start.column : location.column;
+  colNumber++;
+  let lineText = lineNumber + ':' + colNumber;
+
+  lineLink.href = '';
+  lineLink.onclick = function() {
+    input.gotoLine(lineNumber);
+    return false;
+  };
+  lineLink.text = lineText;
+  lineLink.classList.add("line-link");
+
+  return lineLink;
+}
+
+function processMessage(messageNode, data) {
   // TODO: syntax errors need their location stripped
   if (data.location) {
-    let errorLineLink = document.createElement('a');
-    let lineNumber = data.location.start ? data.location.start.line : data.location.line;
-    let colNumber = data.location.start ? data.location.start.column : data.location.column;
-    colNumber++;
-    let lineText = lineNumber + ':' + colNumber;
-    errorLineLink.href = '';
-    errorLineLink.onclick = function() {
-      input.gotoLine(lineNumber);
-      return false;
-    };
-    errorLineLink.text = lineText;
-    errorLineLink.classList.add("line-link");
-
-    messageNode.appendChild(errorWikiLink);
+    const wikiLink = createWikiLink(data.errorCode);
+    const lineLink = createLineLink(data.location);
+    messageNode.appendChild(wikiLink);
     messageNode.appendChild(document.createTextNode(' ('));
-    messageNode.appendChild(errorLineLink);
+    messageNode.appendChild(lineLink);
     messageNode.appendChild(document.createTextNode('):  ' + data.message + '\n'));
   } else if (!data.code) {
     messageNode.appendChild(document.createTextNode(data.message + '\n'));
   } else {
-    messageNode.appendChild(errorWikiLink);
+    const wikiLink = createWikiLink(data.errorCode);
+    messageNode.appendChild(wikiLink);
     messageNode.appendChild(document.createTextNode(': ' + data.message + '\n'));
   }
 }
 
-function showMessages(messages, type) {
-  messageOutput.style.display = 'block';
-  messageOutput.classList.remove("warning", "error");
-  messageOutput.classList.add(type);
+function getMessageClassType(severity) {
+  switch(severity) {
+    case "FatalError":
+      return "error";
+    case "RecoverableError":
+      return "error";
+    case "Warning":
+      return "warning";
+    case "Information":
+      return "warning";
+    default:
+      return "error";
+  }
+}
+
+function showMessages(messages, containerType) {
+  messagesOutput.style.display = 'inline-block';
+  messagesOutputContainer.style.height = containerType === "error" ? "100%" : "auto";
+  
   for (var i in messages) {
-    showMessage(messageOutput, messages[i]);
+    const message = document.createElement('div');
+    message.classList.add("message", getMessageClassType(messages[i].severity));
+
+    const isLastMessage = i == messages.length - 1; // == because i is a string
+    if(isLastMessage) message.classList.add("last-message");
+
+    processMessage(message, messages[i]);
+
+    messagesOutput.appendChild(message);
   }
 }
 
@@ -191,8 +227,8 @@ function compile() {
   clearTimeout(debounce);
   terminateWorker();
 
-  messageOutput.innerHTML = '';
-  messageOutput.style.display = 'none';
+  messagesOutput.innerHTML = '';
+  messagesOutput.style.display = 'none';
   replOutput.style.display = 'block';
 
   output.setValue('// Compiling...', -1);
