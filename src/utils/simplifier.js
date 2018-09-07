@@ -25,6 +25,7 @@ export default function simplifyAndRefineAbstractValue(
   isCondition: boolean, // The value is only used after converting it to a Boolean
   value: AbstractValue
 ): Value {
+  if (value.intrinsicName !== undefined) return value;
   let savedHandler = realm.errorHandler;
   let savedIsReadOnly = realm.isReadOnly;
   realm.isReadOnly = true;

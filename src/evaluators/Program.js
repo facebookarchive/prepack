@@ -265,22 +265,18 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
   function emitThrowStatementsIfNeeded(completion: Completion): void {
     let generator = realm.generator;
     invariant(generator !== undefined);
-    if (
-      res instanceof ThrowCompletion &&
-      res.value !== realm.intrinsics.__bottomValue &&
-      !(res.value instanceof EmptyValue)
-    ) {
+    let selector = c =>
+      c instanceof ThrowCompletion && c.value !== realm.intrinsics.__bottomValue && !(c.value instanceof EmptyValue);
+    if (res instanceof ThrowCompletion && selector(res)) {
       generator.emitThrow(res.value);
     } else if (
       (res instanceof JoinedAbruptCompletions || res instanceof JoinedNormalAndAbruptCompletions) &&
-      res.containsSelectedCompletion(c => c instanceof ThrowCompletion)
+      res.containsSelectedCompletion(selector)
     ) {
-      let selector = c =>
-        c instanceof ThrowCompletion && c.value !== realm.intrinsics.__bottomValue && !(c.value instanceof EmptyValue);
-      generator.emitConditionalThrow(Join.joinValuesOfSelectedCompletions(selector, res));
+      generator.emitConditionalThrow(Join.joinValuesOfSelectedCompletions(selector, res, true));
       res = realm.intrinsics.undefined;
     } else {
-      invariant(res instanceof Value); // other kinds of abrupt completions should not get this far
+      // might get here for completions where all throws have already been handled.
     }
   }
 }
