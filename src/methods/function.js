@@ -1252,7 +1252,10 @@ export class FunctionImplementation {
     }
 
     // 5. Return FunctionInitialize(F, kind, ParameterList, Body, Scope).
-    return this.FunctionInitialize(realm, F, kind, ParameterList, Body, Scope);
+    let result = this.FunctionInitialize(realm, F, kind, ParameterList, Body, Scope);
+    invariant(F.pathConditionDuringDeclaration === undefined, "Function should only have one declaration site");
+    F.pathConditionDuringDeclaration = realm.pathConditions.clone();
+    return result;
   }
 
   // ECMA262 18.2.1.2

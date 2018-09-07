@@ -112,6 +112,16 @@ export class PathConditionsImplementation extends PathConditions {
       savedBaseConditions.refineBaseConditons(realm);
     }
   }
+
+  clone(): PathConditionsImplementation {
+    let newPathCondition = new PathConditionsImplementation();
+    let addAssumedConditionsRecursively = (pathCondition: PathConditionsImplementation) => {
+      pathCondition._assumedConditions.forEach(condition => newPathCondition._assumedConditions.add(condition));
+      if (pathCondition._baseConditions) addAssumedConditionsRecursively(pathCondition._baseConditions);
+    };
+    addAssumedConditionsRecursively(this);
+    return newPathCondition;
+  }
 }
 
 export class PathImplementation {

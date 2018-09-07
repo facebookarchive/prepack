@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { ObjectKind } from "../types.js";
+import type { PathConditions, ObjectKind } from "../types.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 import { ObjectValue, NumberValue } from "./index.js";
@@ -21,6 +21,7 @@ export default class FunctionValue extends ObjectValue {
     super(realm, realm.intrinsics.FunctionPrototype, intrinsicName);
   }
 
+  pathConditionDuringDeclaration: PathConditions | void;
   $Environment: LexicalEnvironment;
   $ScriptOrModule: any;
 
