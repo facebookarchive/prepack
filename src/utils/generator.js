@@ -714,7 +714,7 @@ export class Generator {
     } else if (result instanceof JoinedNormalAndAbruptCompletions) {
       let selector = c =>
         c instanceof ThrowCompletion && c.value !== realm.intrinsics.__bottomValue && !(c.value instanceof EmptyValue);
-      output.emitConditionalThrow(Join.joinValuesOfSelectedCompletions(selector, result));
+      output.emitConditionalThrow(Join.joinValuesOfSelectedCompletions(selector, result, true));
       output.emitReturnValue(result.value);
     } else {
       invariant(false);
