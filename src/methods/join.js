@@ -129,13 +129,36 @@ export class JoinImplementation {
     return rightCompletion;
   }
 
-  composeWithEffects(completion: Completion, effects: Effects): Effects {
+  composeWithEffectsWithTailDuplicaton(completion: Completion, effects: Effects): Effects {
     if (completion instanceof AbruptCompletion) return construct_empty_effects(completion.value.$Realm, completion);
     if (completion instanceof SimpleNormalCompletion) return effects.shallowCloneWithResult(effects.result);
     invariant(completion instanceof JoinedNormalAndAbruptCompletions);
     let e1 = this.composeWithEffects(completion.consequent, effects);
     let e2 = this.composeWithEffects(completion.alternate, effects);
     return this.joinEffects(completion.joinCondition, e1, e2);
+  }
+
+  composeWithEffects(completion: Completion, normalEffects: Effects): Effects {
+    if (completion.value.$Realm.abstractValueImpliesMax > 0)
+      return this.composeWithEffectsWithTailDuplicaton(completion, normalEffects);
+    if (completion instanceof JoinedNormalAndAbruptCompletions) {
+      let selectAbrupt = c => c instanceof AbruptCompletion && c.value !== c.value.$Realm.intrinsics.__bottomValue;
+      let composableCompletions = Completion.makeSelectedCompletionsInfeasibleInCopy(selectAbrupt, completion);
+      let composedNormalCompletion = this.composeCompletions(composableCompletions, normalEffects.result);
+      normalEffects.result = composedNormalCompletion;
+
+      let selectNormal = c =>
+        c instanceof SimpleNormalCompletion && c.value !== c.value.$Realm.intrinsics.__bottomValue;
+      let nonComposableCompletions = Completion.makeSelectedCompletionsInfeasibleInCopy(selectNormal, completion);
+      let nonComposedEffects = construct_empty_effects(completion.value.$Realm, nonComposableCompletions);
+
+      let joinCondition = AbstractValue.createJoinConditionForSelectedCompletions(selectNormal, completion);
+      return this.joinEffects(joinCondition, normalEffects, nonComposedEffects);
+    } else if (completion instanceof AbruptCompletion) {
+      return construct_empty_effects(completion.value.$Realm, completion);
+    } else {
+      return normalEffects;
+    }
   }
 
   _collapseSimilarCompletions(joinCondition: AbstractValue, c1: Completion, c2: Completion): void | Completion {
@@ -295,7 +318,7 @@ export class JoinImplementation {
       return jv;
     }
     if (selector(completion)) return completion.value;
-    return realm.intrinsics.empty;
+    return bottom;
   }
 
   // Creates a single map that joins together maps m1 and m2 using the given join
