@@ -94,8 +94,7 @@ function generateDemosSelect(obj, dom) {
 var worker;
 var debounce;
 
-var messagesOutputContainer = document.querySelector('.output .messagesContainer');
-var messagesOutput = document.querySelector('.output .messages');
+var messagesOutput = document.querySelector('.input .messages');
 var replOutput = document.querySelector('.output .repl');
 
 var isEmpty = /^\s*$/;
@@ -167,16 +166,12 @@ function getMessageClassType(severity) {
   }
 }
 
-function showMessages(messages, containerType) {
+function showMessages(messages) {
   messagesOutput.style.display = 'inline-block';
-  messagesOutputContainer.style.height = containerType === "error" ? "100%" : "auto";
   
   for (var i in messages) {
     const message = document.createElement('div');
     message.classList.add("message", getMessageClassType(messages[i].severity));
-
-    const isLastMessage = i == messages.length - 1; // == because i is a string
-    if(isLastMessage) message.classList.add("last-message");
 
     processMessage(message, messages[i]);
 
@@ -243,10 +238,10 @@ function compile() {
         const { data, graph, messages } = result;
         showGeneratedCode(data);
         showGenerationGraph(graph);
-        showMessages(messages, "warning");
+        showMessages(messages);
       } else if (result.type === 'error') {
         const errors = result.data;
-        showMessages(errors, "error");
+        showMessages(errors);
       }
       terminateWorker();
     };
