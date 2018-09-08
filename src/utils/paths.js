@@ -19,11 +19,16 @@ export class PathConditionsImplementation extends PathConditions {
   constructor(baseConditions?: void | PathConditions) {
     super();
     this._assumedConditions = new Set();
-    invariant(baseConditions === undefined || baseConditions instanceof PathConditionsImplementation);
-    this._baseConditions = baseConditions;
+    this._finalized = false;
+    if (baseConditions !== undefined) {
+      invariant(baseConditions instanceof PathConditionsImplementation);
+      baseConditions._finalized = true;
+      this._baseConditions = baseConditions;
+    }
   }
 
   _assumedConditions: Set<AbstractValue>;
+  _finalized: boolean;
   _baseConditions: void | PathConditionsImplementation;
   _impliedConditions: void | Set<AbstractValue>;
   _impliedNegatives: void | Set<AbstractValue>;
@@ -31,6 +36,7 @@ export class PathConditionsImplementation extends PathConditions {
   _failedNegativeImplications: void | Set<AbstractValue>;
 
   add(c: AbstractValue): void {
+    invariant(!this._finalized);
     this._assumedConditions.add(c);
   }
 
