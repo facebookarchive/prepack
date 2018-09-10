@@ -377,6 +377,10 @@ export class PathConditions {
     return false;
   }
 
+  isReadOnly(): boolean {
+    return false;
+  }
+
   getLength(): number {
     return 0;
   }
