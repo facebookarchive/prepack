@@ -386,10 +386,6 @@ export class PathConditions {
   }
 
   refineBaseConditons(realm: Realm, depth?: number = 0): void {}
-
-  clone(): PathConditions {
-    return new PathConditions();
-  }
 }
 
 export type LeakType = {

@@ -1254,7 +1254,7 @@ export class FunctionImplementation {
     // 5. Return FunctionInitialize(F, kind, ParameterList, Body, Scope).
     let result = this.FunctionInitialize(realm, F, kind, ParameterList, Body, Scope);
     invariant(F.pathConditionDuringDeclaration === undefined, "Function should only have one declaration site");
-    F.pathConditionDuringDeclaration = realm.pathConditions.clone();
+    F.pathConditionDuringDeclaration = realm.pathConditions;
     return result;
   }
 
