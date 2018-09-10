@@ -286,6 +286,11 @@ export class Functions {
 
     // check that functions are independent
     let conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
+    let isParentOrEqualTo = (fun1, fun2) => {
+      if (fun1 === fun2) return false;
+      if (fun1.parentAdditionalFunction) return isParentOrEqualTo(fun1.parentAdditionalFunction, fun2);
+      return true;
+    }
     for (let fun1 of additionalFunctions) {
       invariant(fun1 instanceof FunctionValue);
       let fun1Location = fun1.expressionLocation;
@@ -306,7 +311,7 @@ export class Functions {
         if (this.realm.handleError(error) !== "Recover") throw new FatalError();
       }
       for (let fun2 of additionalFunctions) {
-        if (fun1 === fun2) continue;
+        if (isParentOrEqualTo(fun1, fun2)) continue;
         invariant(fun2 instanceof FunctionValue);
         let fun2Location = fun2.expressionLocation;
         let fun2Name = fun2.getDebugName() || optionalStringOfLocation(fun2Location);
