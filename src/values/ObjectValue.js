@@ -401,6 +401,7 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   mightBeLeakedObject(): boolean {
+    invariant(this._isLeaked);
     return this._isLeaked.mightBeTrue();
   }
 

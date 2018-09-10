@@ -292,7 +292,7 @@ export class Functions {
       invariant(effects);
       if (effects.parentAdditionalFunction) {
         if (effects.parentAdditionalFunction === possibleParent) return true;
-        return isParentOf(fun, effects.parentAdditionalFunction);
+        return isParentOf(possibleParent, effects.parentAdditionalFunction);
       }
       return false;
     };
@@ -331,15 +331,21 @@ export class Functions {
           );
           return null;
         };
-        let fun2Effects = this.writeEffects.get(fun2);
-        invariant(fun2Effects);
-        if (fun2Effects.parentAdditionalFunction) {
-          let parentEffects = this.writeEffects.get(fun2Effects.parentAdditionalFunction);
-          invariant(parentEffects);
-          this.realm.withEffectsAppliedInGlobalEnv(reportFn, parentEffects.effects);
-        } else {
-          reportFn();
-        }
+        // Recursively apply all parent effects
+        let withPossibleParentEffectsApplied = (toExecute, optimizedFunction) => {
+          let funEffects = this.writeEffects.get(optimizedFunction);
+          invariant(funEffects);
+          let parentAdditionalFunction = funEffects.parentAdditionalFunction;
+          if (parentAdditionalFunction) {
+            let parentEffects = this.writeEffects.get(parentAdditionalFunction);
+            invariant(parentEffects);
+            let newToExecute = () => this.realm.withEffectsAppliedInGlobalEnv(toExecute, parentEffects.effects);
+            withPossibleParentEffectsApplied(newToExecute, parentAdditionalFunction);
+          } else {
+            toExecute();
+          }
+        };
+        withPossibleParentEffectsApplied(reportFn, fun2);
       }
     }
     if (conflicts.size > 0) {
