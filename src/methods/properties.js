@@ -1530,7 +1530,7 @@ export class PropertiesImplementation {
       }
       return undefined;
     }
-    realm.callReportPropertyAccess(existingBinding);
+    realm.callReportPropertyAccess(existingBinding, false);
     if (!existingBinding.descriptor) {
       if (realm.invariantLevel >= 2 && O.isIntrinsic()) {
         let realmGenerator = realm.generator;

@@ -286,11 +286,13 @@ export class Functions {
 
     // check that functions are independent
     let conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
-    let isParentOrEqualTo = (fun1, fun2) => {
-      if (fun1 === fun2) return false;
-      if (fun1.parentAdditionalFunction) return isParentOrEqualTo(fun1.parentAdditionalFunction, fun2);
-      return true;
-    }
+    let isParentOf = (fun1, fun2) => {
+      if (fun1 === fun2) return true;
+      let effects = this.writeEffects.get(fun2);
+      invariant(effects);
+      if (effects.parentAdditionalFunction) return isParentOf(fun1, effects.parentAdditionalFunction);
+      return false;
+    };
     for (let fun1 of additionalFunctions) {
       invariant(fun1 instanceof FunctionValue);
       let fun1Location = fun1.expressionLocation;
@@ -311,7 +313,7 @@ export class Functions {
         if (this.realm.handleError(error) !== "Recover") throw new FatalError();
       }
       for (let fun2 of additionalFunctions) {
-        if (isParentOrEqualTo(fun1, fun2)) continue;
+        if (fun1 === fun2) continue;
         invariant(fun2 instanceof FunctionValue);
         let fun2Location = fun2.expressionLocation;
         let fun2Name = fun2.getDebugName() || optionalStringOfLocation(fun2Location);
@@ -321,6 +323,7 @@ export class Functions {
             fun2Name,
             conflicts,
             e1.modifiedProperties,
+            isParentOf(fun1, fun2),
             Utils.createModelledFunctionCall(this.realm, fun2)
           );
           return null;
@@ -351,6 +354,7 @@ export class Functions {
     f2name: string,
     conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic>,
     pbs: PropertyBindings,
+    f1IsParentOfF2: boolean,
     call2: void => Value
   ): void {
     let reportConflict = (
@@ -384,11 +388,11 @@ export class Functions {
         reportConflict(location, ob.getDebugName(), undefined, ob.expressionLocation);
     };
     let oldReportPropertyAccess = this.realm.reportPropertyAccess;
-    this.realm.reportPropertyAccess = (pb: PropertyBinding) => {
+    this.realm.reportPropertyAccess = (pb: PropertyBinding, isWrite: boolean) => {
       if (ObjectValue.refuseSerializationOnPropertyBinding(pb)) return;
       let location = this.realm.currentLocation;
       if (!location) return; // happens only when accessing an additional function property
-      if (pbs.has(pb) && !conflicts.has(location)) {
+      if (pbs.has(pb) && (!f1IsParentOfF2 || isWrite) && !conflicts.has(location)) {
         let originalLocation =
           pb.descriptor instanceof PropertyDescriptor && pb.descriptor.value && !Array.isArray(pb.descriptor.value)
             ? pb.descriptor.value.expressionLocation

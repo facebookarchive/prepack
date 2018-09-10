@@ -368,7 +368,7 @@ export class Realm {
   reportSideEffectCallbacks: Set<
     (sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, expressionLocation: any) => void
   >;
-  reportPropertyAccess: void | (PropertyBinding => void);
+  reportPropertyAccess: void | ((PropertyBinding, boolean) => void);
   savedCompletion: void | JoinedNormalAndAbruptCompletions;
 
   activeLexicalEnvironments: Set<LexicalEnvironment>;
@@ -1486,9 +1486,9 @@ export class Realm {
     }
   }
 
-  callReportPropertyAccess(binding: PropertyBinding): void {
+  callReportPropertyAccess(binding: PropertyBinding, isWrite: boolean): void {
     if (this.reportPropertyAccess !== undefined) {
-      this.reportPropertyAccess(binding);
+      this.reportPropertyAccess(binding, isWrite);
     }
   }
 
@@ -1523,7 +1523,7 @@ export class Realm {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to modify a property in read-only realm");
     }
-    this.callReportPropertyAccess(binding);
+    this.callReportPropertyAccess(binding, true);
     if (this.modifiedProperties !== undefined && !this.modifiedProperties.has(binding)) {
       let clone;
       let desc = binding.descriptor;
