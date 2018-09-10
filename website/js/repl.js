@@ -231,8 +231,6 @@ function compile() {
   debounce = setTimeout(function() {
     worker = new Worker('js/repl-worker.js');
     worker.onmessage = function(e) {
-      // turn off compiling
-
       const result = e.data;
       if (result.type === 'success') {
         const { data, graph, messages } = result;
@@ -242,6 +240,7 @@ function compile() {
       } else if (result.type === 'error') {
         const errors = result.data;
         showMessages(errors);
+        output.setValue('// Prepack is unable to produce output for this input.\n// Please check the left pane for diagnostic information.', -1);
       }
       terminateWorker();
     };
