@@ -286,11 +286,14 @@ export class Functions {
 
     // check that functions are independent
     let conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
-    let isParentOf = (fun1, fun2) => {
-      if (fun1 === fun2) return true;
-      let effects = this.writeEffects.get(fun2);
+    let isParentOf = (possibleParent, fun) => {
+      if (fun === undefined) return false;
+      let effects = this.writeEffects.get(fun);
       invariant(effects);
-      if (effects.parentAdditionalFunction) return isParentOf(fun1, effects.parentAdditionalFunction);
+      if (effects.parentAdditionalFunction) {
+        if (effects.parentAdditionalFunction === possibleParent) return true;
+        return isParentOf(fun, effects.parentAdditionalFunction);
+      }
       return false;
     };
     for (let fun1 of additionalFunctions) {
