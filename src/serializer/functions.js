@@ -289,8 +289,8 @@ export class Functions {
     let isParentOf = (possibleParent, fun) => {
       if (fun === undefined) return false;
       let effects = this.writeEffects.get(fun);
-      invariant(effects);
-      if (effects.parentAdditionalFunction) {
+      invariant(effects !== undefined);
+      if (effects.parentAdditionalFunction !== undefined) {
         if (effects.parentAdditionalFunction === possibleParent) return true;
         return isParentOf(possibleParent, effects.parentAdditionalFunction);
       }
@@ -334,11 +334,11 @@ export class Functions {
         // Recursively apply all parent effects
         let withPossibleParentEffectsApplied = (toExecute, optimizedFunction) => {
           let funEffects = this.writeEffects.get(optimizedFunction);
-          invariant(funEffects);
+          invariant(funEffects !== undefined);
           let parentAdditionalFunction = funEffects.parentAdditionalFunction;
-          if (parentAdditionalFunction) {
+          if (parentAdditionalFunction !== undefined) {
             let parentEffects = this.writeEffects.get(parentAdditionalFunction);
-            invariant(parentEffects);
+            invariant(parentEffects !== undefined);
             let newToExecute = () => this.realm.withEffectsAppliedInGlobalEnv(toExecute, parentEffects.effects);
             withPossibleParentEffectsApplied(newToExecute, parentAdditionalFunction);
           } else {
