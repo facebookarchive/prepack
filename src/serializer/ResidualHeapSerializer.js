@@ -73,13 +73,15 @@ import {
   ClassPropertiesToIgnore,
   canIgnoreClassLengthProperty,
   getObjectPrototypeMetadata,
+  tryGetOptimizedFunctionRoot,
+  type HelperState,
 } from "./utils.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { canHoistFunction } from "../react/hoisting.js";
 import { To } from "../singletons.js";
 import { ResidualReactElementSerializer } from "./ResidualReactElementSerializer.js";
 import type { Binding } from "../environment.js";
-import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord, FunctionEnvironmentRecord } from "../environment.js";
+import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../environment.js";
 import type { Referentializer } from "./Referentializer.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
 import { type Replacement, getReplacement } from "./ResidualFunctionInstantiator.js";
@@ -120,7 +122,7 @@ export class ResidualHeapSerializer {
     residualHeapInspector: HeapInspector,
     residualHeapInfo: ResidualHeapInfo,
     options: SerializerOptions,
-    additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
+    additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>,
     referentializer: Referentializer,
     generatorDAG: GeneratorDAG
   ) {
@@ -253,7 +255,7 @@ export class ResidualHeapSerializer {
   _options: SerializerOptions;
   referencedDeclaredValues: Map<Value, void | FunctionValue>;
   activeGeneratorBodies: Map<Generator, SerializedBody>;
-  additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void;
+  additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
   rewrittenAdditionalFunctions: Map<FunctionValue, Array<BabelNodeStatement>>;
   declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>;
@@ -809,89 +811,16 @@ export class ResidualHeapSerializer {
     return Array.from(result);
   }
 
-  isDefinedInsideFunction(childFunction: FunctionValue, maybeParentFunctions: Set<FunctionValue>): boolean {
-    for (let maybeParentFunction of maybeParentFunctions) {
-      if (childFunction === maybeParentFunction) {
-        continue;
-      }
-      let additionalFVEffects = this.additionalFunctionValuesAndEffects;
-      if (additionalFVEffects) {
-        // for optimized functions, we should use created objects
-        let maybeParentFunctionInfo = additionalFVEffects.get(maybeParentFunction);
-        if (maybeParentFunctionInfo && maybeParentFunctionInfo.effects.createdObjects.has(childFunction)) return true;
-      } else {
-        // for other functions, check environment records
-        let env = childFunction.$Environment;
-        while (env.parent !== null) {
-          let envRecord = env.environmentRecord;
-          if (envRecord instanceof FunctionEnvironmentRecord && envRecord.$FunctionObject === maybeParentFunction)
-            return true;
-          env = env.parent;
-        }
-      }
-    }
-    return false;
-  }
-
-  // Check if an optimized function defines the given set of functions.
-  definesFunctions(possibleParentFunction: FunctionValue, functions: Set<FunctionValue>): boolean {
-    let additionalFVEffects = this.additionalFunctionValuesAndEffects;
-    invariant(additionalFVEffects);
-    let maybeParentFunctionInfo = additionalFVEffects.get(possibleParentFunction);
-    invariant(maybeParentFunctionInfo);
-    let createdObjects = maybeParentFunctionInfo.effects.createdObjects;
-    for (let func of functions) if (func !== possibleParentFunction && !createdObjects.has(func)) return false;
-    return true;
-  }
-
-  // Try and get the root optimized function when passed in an optimized function
-  // that may or may not be nested in the tree of said root, or is the root optimized function
-  tryGetOptimizedFunctionRoot(val: Value): void | FunctionValue {
-    let scopes = this.residualValues.get(val);
-    let functionValues = new Set();
-    invariant(scopes !== undefined);
-    for (let scope of scopes) {
-      let s = scope;
-      while (s instanceof Generator) {
-        s = this.generatorDAG.getParent(s);
-      }
-      if (s === "GLOBAL") return undefined;
-      invariant(s instanceof FunctionValue);
-      functionValues.add(s);
-    }
-    let outermostAdditionalFunctions = new Set();
-
-    // Get the set of optimized functions that may be the root
-    for (let functionValue of functionValues) {
-      if (this.additionalFunctionGenerators.has(functionValue)) {
-        if (!this.isDefinedInsideFunction(functionValue, functionValues))
-          outermostAdditionalFunctions.add(functionValue);
-      } else {
-        let f = this.tryGetOptimizedFunctionRoot(functionValue);
-        if (f === undefined) return undefined;
-        if (!this.isDefinedInsideFunction(f, functionValues)) outermostAdditionalFunctions.add(f);
-      }
-    }
-    if (outermostAdditionalFunctions.size === 1) return [...outermostAdditionalFunctions][0];
-
-    let additionalFVEffects = this.additionalFunctionValuesAndEffects;
-    invariant(additionalFVEffects);
-
-    // See if any of the outermost (or any of their parents) are the outermost optimized function
-    let possibleRoots = [...outermostAdditionalFunctions];
-    while (possibleRoots.length > 0) {
-      let possibleRoot = possibleRoots.shift();
-      if (this.definesFunctions(possibleRoot, outermostAdditionalFunctions)) return possibleRoot;
-      let additionalFunctionEffects = additionalFVEffects.get(possibleRoot);
-      invariant(additionalFunctionEffects);
-      let parent = additionalFunctionEffects.parentAdditionalFunction;
-      if (parent) possibleRoots.push(parent);
-    }
-    return undefined;
-  }
-
   _getActiveBodyOfGenerator(generator: Generator): void | SerializedBody {
     return generator === this.generator ? this.mainBody : this.activeGeneratorBodies.get(generator);
+  }
+
+  getOptimizedFunctionState(): HelperState {
+    return {
+      generatorDAG: this.generatorDAG,
+      additionalFVEffects: this.additionalFunctionValuesAndEffects,
+      residualValues: this.residualValues,
+    };
   }
 
   // Determine whether initialization code for a value should go into the main body, or a more specific initialization body.
@@ -927,7 +856,7 @@ export class ResidualHeapSerializer {
       }
     }
 
-    let optimizedFunctionRoot = this.tryGetOptimizedFunctionRoot(val);
+    let optimizedFunctionRoot = tryGetOptimizedFunctionRoot(val, this.getOptimizedFunctionState());
     if (generators.length === 0) {
       // This value is only referenced from residual functions.
       if (
@@ -1598,7 +1527,7 @@ export class ResidualHeapSerializer {
     invariant(instance !== undefined);
     let residualBindings = instance.residualFunctionBindings;
 
-    let inOptimizedFunction = this.tryGetOptimizedFunctionRoot(val);
+    let inOptimizedFunction = tryGetOptimizedFunctionRoot(val, this.getOptimizedFunctionState());
     if (inOptimizedFunction !== undefined) instance.containingAdditionalFunction = inOptimizedFunction;
     let bindingsEmittedSemaphore = new CountingSemaphore(() => {
       invariant(instance);
@@ -1639,8 +1568,7 @@ export class ResidualHeapSerializer {
     }
     bindingsEmittedSemaphore.releaseOne();
     this._emitObjectProperties(val);
-    let additionalFVEffects = this.additionalFunctionValuesAndEffects;
-    let additionalEffects = additionalFVEffects && additionalFVEffects.get(val);
+    let additionalEffects = this.additionalFunctionValuesAndEffects.get(val);
     if (additionalEffects) this._serializeAdditionalFunction(val, additionalEffects);
   }
 
@@ -2277,7 +2205,9 @@ export class ResidualHeapSerializer {
   ): Array<BabelNodeStatement> {
     let newBody = { type, parentBody: undefined, entries: [], done: false, optimizedFunction };
     let optimizedFunctionRoot =
-      optimizedFunction === undefined ? undefined : this.tryGetOptimizedFunctionRoot(optimizedFunction);
+      optimizedFunction === undefined
+        ? undefined
+        : tryGetOptimizedFunctionRoot(optimizedFunction, this.getOptimizedFunctionState());
     let isChild = !!optimizedFunctionRoot || type === "Generator";
     let oldBody = this.emitter.beginEmitting(generator, newBody, /*isChild*/ isChild);
     invariant(!this.activeGeneratorBodies.has(generator));
@@ -2504,12 +2434,10 @@ export class ResidualHeapSerializer {
   }
 
   prepareAdditionalFunctionValues(): void {
-    let additionalFVEffects = this.additionalFunctionValuesAndEffects;
-    if (additionalFVEffects)
-      for (let [additionalFunctionValue, { generator }] of additionalFVEffects.entries()) {
-        invariant(!this.additionalFunctionGenerators.has(additionalFunctionValue));
-        this.additionalFunctionGenerators.set(additionalFunctionValue, generator);
-      }
+    for (let [additionalFunctionValue, { generator }] of this.additionalFunctionValuesAndEffects.entries()) {
+      invariant(!this.additionalFunctionGenerators.has(additionalFunctionValue));
+      this.additionalFunctionGenerators.set(additionalFunctionValue, generator);
+    }
   }
 
   // Hook point for any serialization needs to be done after generator serialization is complete.

@@ -1306,8 +1306,14 @@ export class ResidualHeapVisitor {
     this._visitUntilFixpoint();
 
     let referentializer = this.referentializer;
-    if (referentializer !== undefined)
+    if (referentializer !== undefined) {
+      referentializer.generatorDAG = {
+        generatorDAG: this.generatorDAG,
+        additionalFVEffects: this.additionalFunctionValuesAndEffects,
+        residualValues: this.values,
+      };
       for (let instance of this.functionInstances.values()) referentializer.referentialize(instance);
+    }
   }
 
   _visitUntilFixpoint(): void {

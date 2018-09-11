@@ -46,7 +46,7 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     residualHeapInspector: HeapInspector,
     residualHeapInfo: ResidualHeapInfo,
     options: SerializerOptions,
-    additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects> | void,
+    additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>,
     referentializer: Referentializer,
     generatorDAG: GeneratorDAG
   ) {

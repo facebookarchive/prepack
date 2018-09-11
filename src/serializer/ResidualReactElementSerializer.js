@@ -23,6 +23,7 @@ import { traverseReactElement } from "../react/elements.js";
 import { canExcludeReactElementObjectProperty, getReactSymbol, getProperty } from "../react/utils.js";
 import type { ReactOutputTypes } from "../options.js";
 import type { LazilyHoistedNodes } from "./types.js";
+import { tryGetOptimizedFunctionRoot } from "./utils";
 
 type ReactElementAttributeType = "SPREAD" | "PROPERTY" | "PENDING";
 type ReactElementChildType = "NORMAL" | "PENDING";
@@ -82,7 +83,10 @@ export class ResidualReactElementSerializer {
   ): void {
     // if the currentHoistedReactElements is not defined, we create it an emit the function call
     // this should only occur once per additional function
-    const optimizedFunction = this.residualHeapSerializer.tryGetOptimizedFunctionRoot(reactElement);
+    const optimizedFunction = tryGetOptimizedFunctionRoot(
+      reactElement,
+      this.residualHeapSerializer.getOptimizedFunctionState()
+    );
     invariant(optimizedFunction);
     let lazilyHoistedNodes = this._lazilyHoistedNodes.get(optimizedFunction);
     if (lazilyHoistedNodes === undefined) {
@@ -130,7 +134,7 @@ export class ResidualReactElementSerializer {
     let propsValue = getProperty(this.realm, value, "props");
 
     let shouldHoist =
-      this.residualHeapSerializer.tryGetOptimizedFunctionRoot(value) !== undefined &&
+      tryGetOptimizedFunctionRoot(value, this.residualHeapSerializer.getOptimizedFunctionState()) !== undefined &&
       canHoistReactElement(this.realm, value);
 
     let id = this.residualHeapSerializer.getSerializeObjectIdentifier(value);
@@ -156,7 +160,10 @@ export class ResidualReactElementSerializer {
           originalCreateElementIdentifier = this.residualHeapSerializer.serializeValue(createElement);
 
           if (shouldHoist) {
-            const optimizedFunction = this.residualHeapSerializer.tryGetOptimizedFunctionRoot(value);
+            const optimizedFunction = tryGetOptimizedFunctionRoot(
+              value,
+              this.residualHeapSerializer.getOptimizedFunctionState()
+            );
             invariant(optimizedFunction);
             const lazilyHoistedNodes = this._lazilyHoistedNodes.get(optimizedFunction);
             // if we haven't created a lazilyHoistedNodes before, then this is the first time
