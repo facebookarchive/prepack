@@ -1307,9 +1307,9 @@ export class ResidualHeapVisitor {
 
     let referentializer = this.referentializer;
     if (referentializer !== undefined) {
-      referentializer.generatorDAG = {
+      referentializer.helperState = {
         generatorDAG: this.generatorDAG,
-        additionalFVEffects: this.additionalFunctionValuesAndEffects,
+        optimizedFunctionsAndEffects: this.additionalFunctionValuesAndEffects,
         residualValues: this.values,
       };
       for (let instance of this.functionInstances.values()) referentializer.referentialize(instance);

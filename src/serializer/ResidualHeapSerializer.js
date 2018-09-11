@@ -818,7 +818,7 @@ export class ResidualHeapSerializer {
   getOptimizedFunctionState(): HelperState {
     return {
       generatorDAG: this.generatorDAG,
-      additionalFVEffects: this.additionalFunctionValuesAndEffects,
+      optimizedFunctionsAndEffects: this.additionalFunctionValuesAndEffects,
       residualValues: this.residualValues,
     };
   }
