@@ -33,6 +33,12 @@ export const InvariantModeValues = [
   "nativeLoggingHook+2",
   "nativeLoggingHook+3",
 ];
+export const DiagnosticSeverityValues = [
+  "FatalError",
+  "RecoverableError",
+  "Warning" ,
+  "Information",
+];
 
 export type ReactOutputTypes = "create-element" | "jsx" | "bytecode";
 export const ReactOutputValues = ["create-element", "jsx", "bytecode"];
