@@ -286,6 +286,16 @@ export class Functions {
 
     // check that functions are independent
     let conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
+    let isParentOf = (possibleParent, fun) => {
+      if (fun === undefined) return false;
+      let effects = this.writeEffects.get(fun);
+      invariant(effects !== undefined);
+      if (effects.parentAdditionalFunction !== undefined) {
+        if (effects.parentAdditionalFunction === possibleParent) return true;
+        return isParentOf(possibleParent, effects.parentAdditionalFunction);
+      }
+      return false;
+    };
     for (let fun1 of additionalFunctions) {
       invariant(fun1 instanceof FunctionValue);
       let fun1Location = fun1.expressionLocation;
@@ -316,19 +326,26 @@ export class Functions {
             fun2Name,
             conflicts,
             e1.modifiedProperties,
+            isParentOf(fun1, fun2),
             Utils.createModelledFunctionCall(this.realm, fun2)
           );
           return null;
         };
-        let fun2Effects = this.writeEffects.get(fun2);
-        invariant(fun2Effects);
-        if (fun2Effects.parentAdditionalFunction) {
-          let parentEffects = this.writeEffects.get(fun2Effects.parentAdditionalFunction);
-          invariant(parentEffects);
-          this.realm.withEffectsAppliedInGlobalEnv(reportFn, parentEffects.effects);
-        } else {
-          reportFn();
-        }
+        // Recursively apply all parent effects
+        let withPossibleParentEffectsApplied = (toExecute, optimizedFunction) => {
+          let funEffects = this.writeEffects.get(optimizedFunction);
+          invariant(funEffects !== undefined);
+          let parentAdditionalFunction = funEffects.parentAdditionalFunction;
+          if (parentAdditionalFunction !== undefined) {
+            let parentEffects = this.writeEffects.get(parentAdditionalFunction);
+            invariant(parentEffects !== undefined);
+            let newToExecute = () => this.realm.withEffectsAppliedInGlobalEnv(toExecute, parentEffects.effects);
+            withPossibleParentEffectsApplied(newToExecute, parentAdditionalFunction);
+          } else {
+            toExecute();
+          }
+        };
+        withPossibleParentEffectsApplied(reportFn, fun2);
       }
     }
     if (conflicts.size > 0) {
@@ -346,6 +363,7 @@ export class Functions {
     f2name: string,
     conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic>,
     pbs: PropertyBindings,
+    f1IsParentOfF2: boolean,
     call2: void => Value
   ): void {
     let reportConflict = (
@@ -379,11 +397,11 @@ export class Functions {
         reportConflict(location, ob.getDebugName(), undefined, ob.expressionLocation);
     };
     let oldReportPropertyAccess = this.realm.reportPropertyAccess;
-    this.realm.reportPropertyAccess = (pb: PropertyBinding) => {
+    this.realm.reportPropertyAccess = (pb: PropertyBinding, isWrite: boolean) => {
       if (ObjectValue.refuseSerializationOnPropertyBinding(pb)) return;
       let location = this.realm.currentLocation;
       if (!location) return; // happens only when accessing an additional function property
-      if (pbs.has(pb) && !conflicts.has(location)) {
+      if (pbs.has(pb) && (!f1IsParentOfF2 || isWrite) && !conflicts.has(location)) {
         let originalLocation =
           pb.descriptor instanceof PropertyDescriptor && pb.descriptor.value && !Array.isArray(pb.descriptor.value)
             ? pb.descriptor.value.expressionLocation
