@@ -304,7 +304,11 @@ function run(
             console.error(`Unsupported debugDiagnosticSeverity: ${arg}`);
             process.exit(1);
           }
-          debuggerConfigArgs.diagnosticSeverity = (arg: any);
+          invariant(
+            arg === "FatalError" || arg === "RecoverableError" || arg === "Warning" || arg === "Information",
+            `Invalid debugger diagnostic severity: ${arg}`
+          );
+          debuggerConfigArgs.diagnosticSeverity = arg;
           reproArguments.push("--debugDiagnosticSeverity", arg);
           break;
         case "debugBuckRoot":
