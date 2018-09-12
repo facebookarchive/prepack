@@ -304,7 +304,7 @@ function run(
             console.error(`Unsupported debugDiagnosticSeverity: ${arg}`);
             process.exit(1);
           }
-          debuggerConfigArgs.diagnosticSeverity = arg;
+          debuggerConfigArgs.diagnosticSeverity = (arg: any);
           reproArguments.push("--debugDiagnosticSeverity", arg);
           break;
         case "debugBuckRoot":
