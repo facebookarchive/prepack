@@ -271,7 +271,6 @@ function simplify(realm, value: Value, isCondition: boolean = false, depth: numb
       // The union of an abstract value with one or more concrete values.
       if (realm.pathConditions.isEmpty()) return value;
       let [abstractValue, concreteValues] = AbstractValue.dischargeValuesFromUnion(realm, value);
-      invariant(abstractValue instanceof AbstractValue);
       let remainingConcreteValues = [];
       for (let concreteValue of concreteValues) {
         if (Path.implies(AbstractValue.createFromBinaryOp(realm, "!==", value, concreteValue), depth + 1)) continue;

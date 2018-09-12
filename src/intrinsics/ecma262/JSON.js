@@ -30,6 +30,7 @@ import { FatalError } from "../../errors.js";
 import { Create, Properties, To } from "../../singletons.js";
 import nativeToInterp from "../../utils/native-to-interp.js";
 import invariant from "../../invariant.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 type Context = {
   PropertyList?: Array<StringValue>,
@@ -315,10 +316,9 @@ const JSONParseStr = "global.JSON.parse(A)";
 function InternalJSONClone(realm: Realm, val: Value): Value {
   if (val instanceof AbstractValue) {
     if (val instanceof AbstractObjectValue) {
-      let strVal = AbstractValue.createFromTemplate(realm, JSONStringifyStr, StringValue, [val]);
-      let obVal = AbstractValue.createFromTemplate(realm, JSONParseStr, ObjectValue, [strVal]);
-      obVal.values = new ValuesDomain(new Set([InternalCloneObject(realm, val.getTemplate())]));
-      return obVal;
+      // TODO: Support conditional objects and widened object clones.
+      AbstractValue.reportIntrospectionError(val);
+      throw new FatalError();
     }
     // TODO #1010: NaN and Infinity must be mapped to null.
     return val;
@@ -526,24 +526,22 @@ export default function(realm: Realm): ObjectValue {
       let args = temporalOperationEntryArgs.args;
       invariant(args[0] instanceof Value); // since text.kind === "JSON.stringify(...)"
       let inputClone = args[0]; // A temporal copy of the object that was the argument to stringify
+      invariant(inputClone instanceof ObjectValue);
       // Clone it so that every call to parse produces a different instance from stringify's clone
-      let parseResult; // A clone of inputClone, because every call to parse produces a new object
-      if (inputClone instanceof ObjectValue) {
-        parseResult = InternalCloneObject(realm, inputClone);
-      } else {
-        invariant(inputClone instanceof AbstractObjectValue);
-        parseResult = InternalCloneObject(realm, inputClone.getTemplate());
-      }
+      let parseResult = InternalCloneObject(realm, inputClone); // A clone of inputClone, because every call to parse produces a new object
       invariant(parseResult.isPartialObject()); // Because stringify ensures it
       parseResult.makeSimple(); // because the result of JSON.parse is always simple
       // Force evaluation of the parse call
-      unfiltered = AbstractValue.createTemporalFromTemplate(realm, JSONParseStr, ObjectValue, [text], {
-        kind: "JSON.parse(...)",
-      });
-      unfiltered.values = new ValuesDomain(new Set([parseResult]));
-      invariant(unfiltered.intrinsicName !== undefined);
       invariant(realm.generator);
-      realm.rebuildNestedProperties(unfiltered, unfiltered.intrinsicName);
+      unfiltered = realm.generator.deriveConcreteObject(
+        intrinsicName => {
+          realm.rebuildNestedProperties(parseResult, intrinsicName);
+          return parseResult;
+        },
+        [text],
+        createOperationDescriptor("ABSTRACT_FROM_TEMPLATE", { templateSource: JSONParseStr }),
+        { isPure: true }
+      );
     } else {
       // 1. Let JText be ? ToString(text).
       let JText = To.ToStringPartial(realm, text);

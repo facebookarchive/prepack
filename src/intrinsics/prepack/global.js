@@ -334,23 +334,28 @@ export default function(realm: Realm): void {
         invariant(f instanceof FunctionValue);
         f.isResidual = true;
         if (unsafe) f.isUnsafeResidual = true;
-        let result = AbstractValue.createTemporalFromBuildFunction(
+
+        if (template) {
+          // Templates doesn't get an abstract value. Instead, the template itself is made into
+          // an intrinsic object whose name is derived from the residual call.
+          template.makePartial();
+          invariant(realm.generator);
+          return realm.generator.deriveConcreteObject(
+            intrinsicName => {
+              realm.rebuildNestedProperties(template, intrinsicName);
+              return template;
+            },
+            [f].concat(args),
+            createOperationDescriptor("RESIDUAL_CALL")
+          );
+        }
+
+        return AbstractValue.createTemporalFromBuildFunction(
           realm,
           type,
           [f].concat(args),
           createOperationDescriptor("RESIDUAL_CALL")
         );
-        if (template) {
-          invariant(
-            result instanceof AbstractValue,
-            "the nested properties should only be rebuilt for an abstract value"
-          );
-          template.makePartial();
-          result.values = new ValuesDomain(new Set([template]));
-          invariant(realm.generator);
-          realm.rebuildNestedProperties(result, result.getIdentifier());
-        }
-        return result;
       }
     );
   }
@@ -554,10 +559,15 @@ export default function(realm: Realm): void {
               if (!realm.neverCheckProperty(object, key)) realm.markPropertyAsChecked(object, key);
             }
             realm.generator = undefined; // don't emit code during the following $Set call
-            // casting to due to Flow workaround above
-            (object: any).$Set(key, value, object);
+            object.$Set(key, value, object);
             realm.generator = generator;
-            if (object.intrinsicName) realm.rebuildObjectProperty(object, key, value, object.intrinsicName);
+            if (object.intrinsicName) {
+              if (!(value instanceof FunctionValue)) {
+                // Function values are recursive and the rebuildObjectProperty function
+                // doesn't handle it so historically we don't rebuild function properties.
+                realm.rebuildObjectProperty(object, key, value, object.intrinsicName);
+              }
+            }
             return context.$Realm.intrinsics.undefined;
           }
 

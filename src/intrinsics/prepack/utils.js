@@ -68,12 +68,34 @@ export function createAbstract(
   name?: string,
   options?: ObjectValue,
   ...additionalValues: Array<ConcreteValue>
-): AbstractValue | AbstractObjectValue {
+): AbstractValue | AbstractObjectValue | ObjectValue {
   if (!realm.useAbstractInterpretation) {
     throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "realm is not partial");
   }
 
   let { type, template, functionResultType } = parseTypeNameOrTemplate(realm, typeNameOrTemplate);
+  if (template) {
+    // Templates doesn't get an abstract value. Instead, the template itself is made into
+    // an intrinsic object.
+    // TODO: Extract this to a separate API to make this distinction clearer.
+    if (!(template instanceof FunctionValue)) {
+      // why exclude functions?
+      template.makePartial();
+    }
+    if (name === undefined) {
+      return template;
+    }
+    if (template instanceof FunctionValue) {
+      // Function values are recursive and the rebuildObjectProperty function
+      // doesn't handle it so historically we don't rebuild function properties.
+      // We do need to give it its name though.
+      template.intrinsicName = name;
+    } else {
+      realm.rebuildNestedProperties(template, name);
+    }
+    return template;
+  }
+
   let optionsMap = options ? options.properties : new Map();
 
   let result;
@@ -111,12 +133,6 @@ export function createAbstract(
     result.intrinsicName = name;
   }
 
-  if (template) result.values = new ValuesDomain(new Set([template]));
-  if (template && !(template instanceof FunctionValue)) {
-    // why exclude functions?
-    template.makePartial();
-    if (name !== undefined) realm.rebuildNestedProperties(result, name);
-  }
   if (functionResultType) {
     invariant(result instanceof AbstractObjectValue);
     result.functionResultType = functionResultType;

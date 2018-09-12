@@ -45,6 +45,8 @@ export default class AbstractObjectValue extends AbstractValue {
   ) {
     super(realm, types, values, hashValue, args, operationDescriptor, optionalArgs);
     if (!values.isTop()) {
+      // This API should no longer be used for "templates". Only conditional (join conditions) or topVal objects.
+      invariant(optionalArgs && optionalArgs.kind === "conditional");
       for (let element of this.values.getElements()) invariant(element instanceof ObjectValue);
     }
   }
@@ -52,20 +54,7 @@ export default class AbstractObjectValue extends AbstractValue {
   cachedIsSimpleObject: void | boolean;
   functionResultType: void | typeof Value;
 
-  getTemplate(): ObjectValue {
-    for (let element of this.values.getElements()) {
-      invariant(element instanceof ObjectValue);
-      if (element.isPartialObject()) {
-        return element;
-      } else {
-        break;
-      }
-    }
-    AbstractValue.reportIntrospectionError(this);
-    throw new FatalError();
-  }
-
-  set temporalAlias(temporalValue: AbstractObjectValue) {
+  set temporalAlias(temporalValue: ObjectValue | AbstractObjectValue) {
     if (this.values.isTop()) {
       AbstractValue.reportIntrospectionError(this);
       throw new FatalError();
@@ -156,14 +145,6 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   makeSimple(option?: string | Value): void {
-    if (this.values.isTop() && this.getType() === ObjectValue) {
-      let obj = new ObjectValue(this.$Realm, this.$Realm.intrinsics.ObjectPrototype);
-      obj.intrinsicName = this.intrinsicName;
-      obj.intrinsicNameGenerated = true;
-      obj.makePartial();
-      obj._templateFor = this;
-      this.values = new ValuesDomain(obj);
-    }
     if (!this.values.isTop()) {
       for (let element of this.values.getElements()) {
         invariant(element instanceof ObjectValue);
@@ -174,7 +155,7 @@ export default class AbstractObjectValue extends AbstractValue {
   }
 
   // Use this only if it is known that only the string properties of the snapshot will be accessed.
-  getSnapshot(options?: { removeProperties: boolean }): AbstractObjectValue {
+  getSnapshot(options?: { removeProperties: boolean }): ObjectValue | AbstractObjectValue {
     if (this.isIntrinsic()) return this; // already temporal
     if (this.values.isTop()) return this; // always the same
     if (this.kind === "conditional") {

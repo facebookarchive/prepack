@@ -45,10 +45,8 @@ export default function(realm: Realm): AbstractObjectValue {
     let body = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "document.body");
     Properties.Set(realm, document, "body", body, false);
 
-    // make abstract
-    let abstractObject = createAbstract(realm, document, "document");
-    invariant(abstractObject instanceof AbstractObjectValue);
-    return abstractObject;
+    // make partial
+    document.makePartial();
   }
   return document;
 }

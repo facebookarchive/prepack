@@ -1610,28 +1610,26 @@ export class Realm {
   }
 
   rebuildObjectProperty(object: Value, key: string, propertyValue: Value, path: string): void {
-    if (!(propertyValue instanceof AbstractValue)) return;
-    if (propertyValue.kind === "abstractConcreteUnion") {
-      invariant(propertyValue.args.length >= 2);
-      let absVal = propertyValue.args[0];
-      invariant(absVal instanceof AbstractValue);
-      propertyValue = absVal;
-    }
-    if (!propertyValue.isIntrinsic()) {
-      propertyValue.intrinsicName = `${path}.${key}`;
-      propertyValue.kind = "rebuiltProperty";
-      propertyValue.args = [object, new StringValue(this, key)];
-      propertyValue.operationDescriptor = createOperationDescriptor("REBUILT_OBJECT");
-      let intrinsicName = propertyValue.intrinsicName;
-      invariant(intrinsicName !== undefined);
-      this.rebuildNestedProperties(propertyValue, intrinsicName);
+    if (propertyValue instanceof ObjectValue) {
+      this.rebuildNestedProperties(propertyValue, `${path}.${key}`);
+    } else if (propertyValue instanceof AbstractValue) {
+      if (propertyValue.kind === "abstractConcreteUnion") {
+        invariant(propertyValue.args.length >= 2);
+        let absVal = propertyValue.args[0];
+        invariant(absVal instanceof AbstractValue);
+        propertyValue = absVal;
+      }
+      if (!propertyValue.isIntrinsic()) {
+        propertyValue.intrinsicName = `${path}.${key}`;
+        propertyValue.kind = "rebuiltProperty";
+        propertyValue.args = [object, new StringValue(this, key)];
+        propertyValue.operationDescriptor = createOperationDescriptor("REBUILT_OBJECT");
+      }
     }
   }
 
-  rebuildNestedProperties(abstractValue: AbstractValue | UndefinedValue, path: string): void {
-    if (!(abstractValue instanceof AbstractObjectValue)) return;
-    if (abstractValue.values.isTop()) return;
-    let template = abstractValue.getTemplate();
+  rebuildNestedProperties(template: ObjectValue | UndefinedValue, path: string): void {
+    if (!(template instanceof ObjectValue)) return;
     invariant(!template.intrinsicName || template.intrinsicName === path);
     template.intrinsicName = path;
     template.intrinsicNameGenerated = true;
@@ -1642,11 +1640,11 @@ export class Realm {
       let value = desc.value;
       Properties.ThrowIfMightHaveBeenDeleted(desc);
       if (value === undefined) {
-        AbstractValue.reportIntrospectionError(abstractValue, key);
+        this.reportIntrospectionError("missing property " + key);
         throw new FatalError();
       }
       invariant(value instanceof Value);
-      this.rebuildObjectProperty(abstractValue, key, value, path);
+      this.rebuildObjectProperty(template, key, value, path);
     }
   }
 

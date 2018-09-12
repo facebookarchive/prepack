@@ -113,15 +113,13 @@ export default function(realm: Realm): void {
           invariant(propTypes instanceof ObjectValue);
           return propTypes;
         } else {
-          let requireVal;
+          let requireVal = realm.fbLibraries.other.get(requireNameValValue);
 
-          if (realm.fbLibraries.other.has(requireNameValValue)) {
-            requireVal = realm.fbLibraries.other.get(requireNameValValue);
-          } else {
+          if (requireVal === undefined) {
             requireVal = createAbstract(realm, "function", `require("${requireNameValValue}")`);
+            invariant(requireVal instanceof AbstractValue);
             realm.fbLibraries.other.set(requireNameValValue, requireVal);
           }
-          invariant(requireVal instanceof AbstractValue);
           return requireVal;
         }
       }),

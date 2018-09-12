@@ -54,6 +54,19 @@ function createEmptyFunction(realm: Realm) {
  */
 export function concretize(realm: Realm, val: Value): ConcreteValue {
   if (val instanceof ConcreteValue) {
+    if (val instanceof ObjectValue && val.intrinsicNameGenerated) {
+      // An intrinsic with a generated name was generated at runtime or by
+      // a call to __abstract as opposed to being part of the standard JS
+      // environment. So we emit a model for it.
+      let concreteObj = Create.ObjectCreate(realm, val.$GetPrototypeOf());
+      let keys = EnumerableOwnProperties(realm, val, "key", true);
+      for (let P of keys) {
+        invariant(P instanceof StringValue);
+        let newElement = Get(realm, val, P);
+        Create.CreateDataProperty(realm, concreteObj, P, concretize(realm, newElement));
+      }
+      return concreteObj;
+    }
     return val;
   }
   invariant(val instanceof AbstractValue);
@@ -82,15 +95,6 @@ export function concretize(realm: Realm, val: Value): ConcreteValue {
         default:
           invariant(false, "Not yet implemented");
       }
-    } else {
-      // TODO: This was broken. Is this actually used?
-      const values = val.values.getElements();
-      invariant(values.size === 1, "Concrete model should only have one value");
-      for (let value in values) {
-        invariant(value instanceof ConcreteValue, "Concrete model should only contain one concrete value");
-        return value;
-      }
-      invariant(false);
     }
   } else if (type === FunctionValue) {
     return createEmptyFunction(realm);
@@ -103,16 +107,6 @@ export function concretize(realm: Realm, val: Value): ConcreteValue {
   } else if (val instanceof AbstractObjectValue) {
     if (val.values.isTop()) {
       return new ObjectValue(realm);
-    } else {
-      let template = val.getTemplate();
-      let concreteObj = Create.ObjectCreate(realm, template.$GetPrototypeOf());
-      let keys = EnumerableOwnProperties(realm, template, "key", true);
-      for (let P of keys) {
-        invariant(P instanceof StringValue);
-        let newElement = Get(realm, template, P);
-        Create.CreateDataProperty(realm, concreteObj, P, concretize(realm, newElement));
-      }
-      return concreteObj;
     }
   }
   reportCompileError(

@@ -185,7 +185,7 @@ export class ResidualReactElementVisitor {
     return result;
   }
 
-  wasTemporalAliasDeclaredInCurrentScope(temporalAlias: AbstractObjectValue): boolean {
+  wasTemporalAliasDeclaredInCurrentScope(temporalAlias: ObjectValue | AbstractObjectValue): boolean {
     let scope = this.residualHeapVisitor.scope;
     if (scope instanceof FunctionValue) {
       return false;
