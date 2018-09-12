@@ -19,6 +19,7 @@ import {
   ReactOutputValues,
   type InvariantModeTypes,
   InvariantModeValues,
+  DiagnosticSeverityValues,
 } from "./options.js";
 import { type SerializedResult } from "./serializer/types.js";
 import { TextPrinter } from "./utils/TextPrinter.js";
@@ -299,6 +300,10 @@ function run(
           break;
         case "debugDiagnosticSeverity":
           arg = args.shift();
+          if (!DiagnosticSeverityValues.includes(arg)) {
+            console.error(`Unsupported debugDiagnosticSeverity: ${arg}`);
+            process.exit(1);
+          }
           invariant(
             arg === "FatalError" || arg === "RecoverableError" || arg === "Warning" || arg === "Information",
             `Invalid debugger diagnostic severity: ${arg}`
