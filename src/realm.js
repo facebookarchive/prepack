@@ -337,7 +337,8 @@ export class Realm {
     this.debugNames = opts.debugNames;
     this._checkedObjectIds = new Map();
     this.optimizedFunctions = new Map();
-    this.arrayNestedOptimizedFunctionsEnabled = opts.arrayNestedOptimizedFunctionsEnabled || false;
+    this.arrayNestedOptimizedFunctionsEnabled =
+      opts.arrayNestedOptimizedFunctionsEnabled || opts.instantRender || false;
   }
 
   statistics: RealmStatistics;
@@ -458,7 +459,7 @@ export class Realm {
   MOBILE_JSC_VERSION = "jsc-600-1-4-17";
 
   errorHandler: ?ErrorHandler;
-  diagnosticAsError: ?Set<string>;
+  diagnosticAsError: void | Set<string>;
   suppressDiagnostics = false;
   objectCount = 0;
   symbolCount = 867501803871088;
@@ -1657,6 +1658,14 @@ export class Realm {
     return previousValue;
   }
 
+  /* Since it makes strong assumptions, Instant Render is likely to have a large
+  number of unsupported scenarios. We group all associated compiler diagnostics here. */
+
+  instantRenderBailout(message: string, loc: ?BabelNodeSourceLocation) {
+    let error = new CompilerDiagnostic(message, loc, "PP0039", "RecoverableError");
+    if (this.handleError(error) === "Fail") throw new FatalError();
+  }
+
   reportIntrospectionError(message?: void | string | StringValue): void {
     if (message === undefined) message = "";
     if (typeof message === "string") message = new StringValue(this, message);
@@ -1768,8 +1777,8 @@ export class Realm {
     return errorHandler(diagnostic, this.suppressDiagnostics);
   }
 
-  userChangedDiagnosticToError(diagnosticCode: string):boolean {
-    return this.diagnosticAsError!==undefined && this.diagnosticAsError.has(diagnosticCode);
+  userChangedDiagnosticToError(diagnosticCode: string): boolean {
+    return this.diagnosticAsError !== undefined && this.diagnosticAsError.has(diagnosticCode);
   }
 
   saveNameString(nameString: string): void {

@@ -630,19 +630,35 @@ export class MaterializeImplementation {
     let visitedValues: Set<Value> = new Set();
     computeFromValue(outlinedFunction);
 
-    if (objectsToMaterialize.size !== 0 && realm.instantRender.enabled) {
-      let error = new CompilerDiagnostic(
-        "Instant Render does not support array operators that reference objects via non-local bindings",
-        outlinedFunction.expressionLocation,
-        "PP0042",
-        "FatalError"
-      );
-      realm.handleError(error);
-      throw new FatalError();
+    let handleMaterialization: ObjectValue => void;
+    if (realm.instantRender.enabled) {
+      // We prevent mutations to objects so that non-final
+      // values cannot occur, and hence materialization is avoided.
+      // The values of properties needed are issued via object literals.
+      // By default, we issue a warning, and enforce the guard only if the
+      // user upgrades the warning to an error.
+      handleMaterialization = o => {
+        let diagnosticCode = "PP0044";
+        if (realm.userChangedDiagnosticToError(diagnosticCode)) {
+          o.makeFinal();
+        }
+
+        let error = new CompilerDiagnostic(
+          "Object reached by optimized function may not be subsequently mutated. To enforce this condition, run with --diagnosticAsError PP0044",
+          o.expressionLocation,
+          diagnosticCode,
+          "Warning"
+        );
+        realm.handleError(error);
+      };
+    } else {
+      handleMaterialization = o => {
+        if (!TestIntegrityLevel(realm, o, "frozen")) materializeObject(realm, o);
+      };
     }
 
     for (let object of objectsToMaterialize) {
-      if (!TestIntegrityLevel(realm, object, "frozen")) materializeObject(realm, object);
+      handleMaterialization(object);
     }
 
     return;
