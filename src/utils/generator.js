@@ -57,6 +57,8 @@ import type { SerializerOptions } from "../options.js";
 import type { PathConditions, ShapeInformationInterface } from "../types.js";
 import { PreludeGenerator } from "./PreludeGenerator.js";
 import { PropertyDescriptor } from "../descriptors.js";
+import type { AdditionalFunctionEffects, AdditionalFunctionEffectsVariantArgs } from "../serializer/types.js";
+import { FunctionEnvironmentRecord } from "../environment";
 
 export type OperationDescriptorType =
   | "ABSTRACT_FROM_TEMPLATE"
@@ -680,7 +682,8 @@ export class Generator {
   static _generatorOfEffects(
     realm: Realm,
     name: string,
-    environmentRecordIdAfterGlobalCode: number,
+    additionalFunctionEffects: Map<FunctionValue, AdditionalFunctionEffects>,
+    variantArgs: AdditionalFunctionEffectsVariantArgs,
     effects: Effects
   ): Generator {
     let { result, generator, modifiedBindings, modifiedProperties, createdObjects } = effects;
@@ -699,10 +702,29 @@ export class Generator {
     }
 
     for (let modifiedBinding of modifiedBindings.keys()) {
-      // TODO #2430: Instead of looking at the environment ids, keep instead track of a createdEnvironmentRecords set,
-      // and only consider bindings here from environment records that already existed, or even better,
-      // ensure upstream that only such bindings are ever added to the modified-bindings set.
-      if (modifiedBinding.environment.id >= environmentRecordIdAfterGlobalCode) continue;
+      // TODO: Fix this logic for React Components.
+      if (variantArgs.environmentRecordIdAfterGlobalCode !== undefined) {
+        if (modifiedBinding.environment.id >= variantArgs.environmentRecordIdAfterGlobalCode) continue;
+      } else {
+        let optimizedFunctionValue = variantArgs.functionValue;
+        invariant(optimizedFunctionValue);
+        // Walks up the parent chain for the given optimized function checking if the value or any of its parents are
+        // equal to the optimized function we're currently building a generator for.
+        let valueOrParentEqualsFunction = optimizedFunction => {
+          if (optimizedFunction === optimizedFunctionValue) return true;
+          let additionalEffects = additionalFunctionEffects.get(optimizedFunction);
+          invariant(additionalEffects !== undefined);
+          let parent = additionalEffects.parentAdditionalFunction;
+          if (parent !== undefined) return valueOrParentEqualsFunction(parent);
+          return false;
+        };
+
+        let environment = modifiedBinding.environment;
+        if (environment instanceof FunctionEnvironmentRecord && environment.$FunctionObject === optimizedFunctionValue)
+          continue;
+        let creatingOptimizedFunction = environment.creatingOptimizedFunction;
+        if (creatingOptimizedFunction && valueOrParentEqualsFunction(creatingOptimizedFunction)) continue;
+      }
 
       output.emitBindingModification(modifiedBinding);
     }
@@ -729,10 +751,11 @@ export class Generator {
     effects: Effects,
     realm: Realm,
     name: string,
-    environmentRecordIdAfterGlobalCode: number = 0
+    additionalFunctionEffects: Map<FunctionValue, AdditionalFunctionEffects>,
+    variantArgs: AdditionalFunctionEffectsVariantArgs
   ): Generator {
     return realm.withEffectsAppliedInGlobalEnv(
-      this._generatorOfEffects.bind(this, realm, name, environmentRecordIdAfterGlobalCode),
+      this._generatorOfEffects.bind(this, realm, name, additionalFunctionEffects, variantArgs),
       effects
     );
   }

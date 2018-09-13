@@ -46,7 +46,9 @@ function applyWriteEffectsForOptimizedComponent(
     effects,
     false,
     "ReactAdditionalFunctionEffects",
-    environmentRecordIdAfterGlobalCode
+    writeEffects,
+    // TODO #2550: make proper parents
+    { environmentRecordIdAfterGlobalCode }
   );
   if (additionalFunctionEffects === null) {
     throw new ReconcilerFatalError(

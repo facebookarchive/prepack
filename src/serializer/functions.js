@@ -193,8 +193,11 @@ export class Functions {
         effects,
         true,
         "AdditionalFunctionEffects",
-        environmentRecordIdAfterGlobalCode,
-        this.getDeclaringOptimizedFunction(functionValue)
+        this.writeEffects,
+        {
+          functionValue,
+          parentOptimizedFunction: this.getDeclaringOptimizedFunction(functionValue),
+        }
       );
       invariant(additionalFunctionEffects !== null);
       this.writeEffects.set(functionValue, additionalFunctionEffects);
@@ -210,7 +213,10 @@ export class Functions {
     let currentOptimizedFunctionId = this._optimizedFunctionId++;
     invariant(value instanceof ECMAScriptSourceFunctionValue);
     for (let t1 of this.realm.tracers) t1.beginOptimizingFunction(currentOptimizedFunctionId, value);
+    let previousOptimizedFunction = this.realm.currentOptimizedFunction;
+    this.realm.currentOptimizedFunction = value;
     func(value, argModel);
+    this.realm.currentOptimizedFunction = previousOptimizedFunction;
     for (let t2 of this.realm.tracers) t2.endOptimizingFunction(currentOptimizedFunctionId);
     for (let [oldValue, model] of oldRealmOptimizedFunctions) this.realm.optimizedFunctions.set(oldValue, model);
   }
@@ -246,8 +252,11 @@ export class Functions {
         effects,
         true,
         "AdditionalFunctionEffects",
-        environmentRecordIdAfterGlobalCode,
-        this.getDeclaringOptimizedFunction(functionValue)
+        this.writeEffects,
+        {
+          functionValue,
+          parentOptimizedFunction: this.getDeclaringOptimizedFunction(functionValue),
+        }
       );
       invariant(additionalFunctionEffects);
       effects = additionalFunctionEffects.effects;

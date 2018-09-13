@@ -230,3 +230,13 @@ export type ResidualHeapInfo = {
   // Parents will always be a generator, optimized function value or "GLOBAL"
   additionalGeneratorRoots: Map<Generator, Set<ObjectValue>>,
 };
+
+// TODO #2550: eliminate this, react components should have parent chains
+export type AdditionalFunctionEffectsVariantArgs =
+  | {|
+      functionValue: FunctionValue,
+      parentOptimizedFunction: FunctionValue | void,
+    |}
+  | {|
+      environmentRecordIdAfterGlobalCode: number,
+    |};

@@ -205,12 +205,13 @@ export function createAdditionalEffects(
   effects: Effects,
   fatalOnAbrupt: boolean,
   name: string,
-  environmentRecordIdAfterGlobalCode: number,
-  parentAdditionalFunction: FunctionValue | void = undefined
+  additionalFunctionEffects: Map<FunctionValue, AdditionalFunctionEffects>,
+  // These are for forming a proper parent chain for optimized functions
+  variantArgs: AdditionalFunctionEffectsVariantArgs
 ): AdditionalFunctionEffects | null {
-  let generator = Generator.fromEffects(effects, realm, name, environmentRecordIdAfterGlobalCode);
+  let generator = Generator.fromEffects(effects, realm, name, additionalFunctionEffects, variantArgs);
   let retValue: AdditionalFunctionEffects = {
-    parentAdditionalFunction,
+    parentAdditionalFunction: variantArgs.parentOptimizedFunction || undefined,
     effects,
     transforms: [],
     generator,
