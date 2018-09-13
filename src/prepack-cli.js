@@ -372,6 +372,7 @@ function run(
       mathRandomSeed,
       inputSourceMapFilenames,
       errorHandler,
+      diagnosticAsError,
       sourceMaps: !!outputSourceMap,
       maxStackDepth,
       timeout,
