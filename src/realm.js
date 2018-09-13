@@ -458,7 +458,7 @@ export class Realm {
   MOBILE_JSC_VERSION = "jsc-600-1-4-17";
 
   errorHandler: ?ErrorHandler;
-  diagnosticAsError: void | Set<string>;
+  diagnosticAsError: ?Set<string>;
   suppressDiagnostics = false;
   objectCount = 0;
   symbolCount = 867501803871088;
@@ -1768,8 +1768,8 @@ export class Realm {
     return errorHandler(diagnostic, this.suppressDiagnostics);
   }
 
-  userChangedDiagnosticToError(diagnosticCode: string): boolean {
-    return this.diagnosticAsError !== undefined && this.diagnosticAsError.has(diagnosticCode);
+  userChangedDiagnosticToError(diagnosticCode: string):boolean {
+    return this.diagnosticAsError!==undefined && this.diagnosticAsError.has(diagnosticCode);
   }
 
   saveNameString(nameString: string): void {
