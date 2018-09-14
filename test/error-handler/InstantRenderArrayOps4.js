@@ -1,6 +1,5 @@
 // instant render
-// recover-from-errors
-// expected errors:[{"location":{"start":{"line":9,"column":2},"end":{"line":11,"column":3},"source":"test/error-handler/InstantRenderArrayOps4.js"},"severity":"Warning","errorCode":"PP0044"},{"location":{"start":{"line":7,"column":12},"end":{"line":7,"column":22},"source":"test/error-handler/InstantRenderArrayOps4.js"},"severity":"Warning","errorCode":"PP0044"}]
+// expected errors:[{"location":{"start":{"line":15,"column":12},"end":{"line":15,"column":13},"source":"test/error-handler/InstantRenderArrayOps4.js"},"severity":"RecoverableError","errorCode":"PP0039"}]
 
 function f(c) {
   var arr = Array.from(c);

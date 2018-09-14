@@ -635,21 +635,8 @@ export class MaterializeImplementation {
       // We prevent mutations to objects so that non-final
       // values cannot occur, and hence materialization is avoided.
       // The values of properties needed are issued via object literals.
-      // By default, we issue a warning, and enforce the guard only if the
-      // user upgrades the warning to an error.
       handleMaterialization = o => {
-        let diagnosticCode = "PP0044";
-        if (realm.userChangedDiagnosticToError(diagnosticCode)) {
-          o.makeFinal();
-        }
-
-        let error = new CompilerDiagnostic(
-          "Object reached by optimized function may not be subsequently mutated. To enforce this condition, run with --diagnosticAsError PP0044",
-          o.expressionLocation,
-          diagnosticCode,
-          "Warning"
-        );
-        realm.handleError(error);
+        o.makeFinal();
       };
     } else {
       handleMaterialization = o => {

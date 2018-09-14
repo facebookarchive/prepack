@@ -329,7 +329,6 @@ export class Realm {
     };
 
     this.errorHandler = opts.errorHandler;
-    this.diagnosticAsError = opts.diagnosticAsError;
 
     this.globalSymbolRegistry = [];
     this.activeLexicalEnvironments = new Set();
@@ -459,7 +458,6 @@ export class Realm {
   MOBILE_JSC_VERSION = "jsc-600-1-4-17";
 
   errorHandler: ?ErrorHandler;
-  diagnosticAsError: void | Set<string>;
   suppressDiagnostics = false;
   objectCount = 0;
   symbolCount = 867501803871088;
@@ -1660,8 +1658,8 @@ export class Realm {
 
   /* Since it makes strong assumptions, Instant Render is likely to have a large
   number of unsupported scenarios. We group all associated compiler diagnostics here. */
-
   instantRenderBailout(message: string, loc: ?BabelNodeSourceLocation) {
+    if (loc === undefined) loc = this.currentLocation;
     let error = new CompilerDiagnostic(message, loc, "PP0039", "RecoverableError");
     if (this.handleError(error) === "Fail") throw new FatalError();
   }
@@ -1775,10 +1773,6 @@ export class Realm {
       }
     }
     return errorHandler(diagnostic, this.suppressDiagnostics);
-  }
-
-  userChangedDiagnosticToError(diagnosticCode: string): boolean {
-    return this.diagnosticAsError !== undefined && this.diagnosticAsError.has(diagnosticCode);
   }
 
   saveNameString(nameString: string): void {

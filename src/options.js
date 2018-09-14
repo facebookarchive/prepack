@@ -43,7 +43,6 @@ export type RealmOptions = {
   compatibility?: Compatibility,
   debugNames?: boolean,
   errorHandler?: ErrorHandler,
-  diagnosticAsError?: Set<string>,
   mathRandomSeed?: string,
   invariantLevel?: number,
   invariantMode?: InvariantModeTypes,

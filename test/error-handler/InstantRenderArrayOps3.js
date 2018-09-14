@@ -1,5 +1,5 @@
 // instant render
-// expected errors:[{"location":{"start":{"line":8,"column":2},"end":{"line":10,"column":3},"source":"test/error-handler/InstantRenderArrayOps3.js"},"severity":"Warning","errorCode":"PP0044"},{"location":{"start":{"line":8,"column":2},"end":{"line":10,"column":3},"source":"test/error-handler/InstantRenderArrayOps3.js"},"severity":"RecoverableError","errorCode":"PP0039"}]
+// expected errors:[{"location":{"start":{"line":8,"column":2},"end":{"line":10,"column":3},"source":"test/error-handler/InstantRenderArrayOps3.js"},"severity":"RecoverableError","errorCode":"PP0039"}]
 
 function f(c) {
   var arr = Array.from(c);
