@@ -425,7 +425,7 @@ function run(
     }
     if (compilerDiagnostic.location) compilerDiagnostics.set(compilerDiagnostic.location, compilerDiagnostic);
     else compilerDiagnosticsList.push(compilerDiagnostic);
-    return "Recover";
+    return compilerDiagnostic.severity === "FatalError" ? "Fail" : "Recover";
   }
 
   function printDiagnostics(caughtFatalError: boolean, caughtUnexpectedError: boolean = false): boolean {
