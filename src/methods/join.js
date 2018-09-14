@@ -129,18 +129,7 @@ export class JoinImplementation {
     return rightCompletion;
   }
 
-  composeWithEffectsWithTailDuplicaton(completion: Completion, effects: Effects): Effects {
-    if (completion instanceof AbruptCompletion) return construct_empty_effects(completion.value.$Realm, completion);
-    if (completion instanceof SimpleNormalCompletion) return effects.shallowCloneWithResult(effects.result);
-    invariant(completion instanceof JoinedNormalAndAbruptCompletions);
-    let e1 = this.composeWithEffects(completion.consequent, effects);
-    let e2 = this.composeWithEffects(completion.alternate, effects);
-    return this.joinEffects(completion.joinCondition, e1, e2);
-  }
-
   composeWithEffects(completion: Completion, normalEffects: Effects): Effects {
-    if (completion.value.$Realm.abstractValueImpliesMax > 0)
-      return this.composeWithEffectsWithTailDuplicaton(completion, normalEffects);
     if (completion instanceof JoinedNormalAndAbruptCompletions) {
       let selectAbrupt = c => c instanceof AbruptCompletion && c.value !== c.value.$Realm.intrinsics.__bottomValue;
       let composableCompletions = Completion.makeSelectedCompletionsInfeasibleInCopy(selectAbrupt, completion);
