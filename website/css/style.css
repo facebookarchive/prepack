@@ -630,27 +630,61 @@ img.nav-logo {
 
 .legend-header {
   text-align: center;
-  align: center;
 }
 
 .legend-table {
   text-align: center;
-  align: center;
   margin: 0 auto;
   padding-bottom: 3%;
   border-spacing: 5%;
 }
 
-.repl, .error {
+.repl {
   width: 100%;
   height: 100%;
 }
 
-.error {
-  padding: 10px;
+.messagesContainer {
+  width: 100%;
+  height: auto;
+  position: absolute;
+  bottom: 0;
+  z-index: 5; /* one more than ace_gutter */
+  overflow-x: scroll;
+  overflow-y: hidden;
+}
+
+.messages {
+  display: inline-block;
+  min-width: 100%;
+  height: 100%;
   font-family: "Operator Mono", "Fira Code", "Ubuntu Mono", "Droid Sans Mono", "Liberation Mono", "Source Code Pro", Menlo, Monaco, Consolas, "Courier New", monospace;
-  color: #c7254e;
   white-space: pre;
+}
+
+.message {
+  width: 100%;
+  padding: 10px;
+}
+
+.message.error {
+  color: #c7254e;
+  background-color:#ffefee;
+  border-top: 1px solid #ffe1e0;
+}
+
+.message.error > .line-link {
+  color: red;
+}
+
+.message.warning {
+  color: #8a6f40;
+  background-color:#fffae5;
+  border-top: 1px solid #fff6cc;
+}
+
+.message.warning > .line-link {
+  color: #7d7d7d;
 }
 
 .align-left {
