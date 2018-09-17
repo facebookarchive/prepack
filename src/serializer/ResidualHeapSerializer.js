@@ -155,7 +155,11 @@ export class ResidualHeapSerializer {
     this.serializedValues = new Set();
     this._serializedValueWithIdentifiers = new Set();
     this.additionalFunctionValueNestedFunctions = new Set();
-    this.residualReactElementSerializer = new ResidualReactElementSerializer(this.realm, this, residualOptimizedFunctions);
+    this.residualReactElementSerializer = new ResidualReactElementSerializer(
+      this.realm,
+      this,
+      residualOptimizedFunctions
+    );
     this.residualFunctions = new ResidualFunctions(
       this.realm,
       options,

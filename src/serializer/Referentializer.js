@@ -21,9 +21,6 @@ import type { ReferentializationScope, Scope } from "./types.js";
 import { SerializerStatistics } from "./statistics.js";
 import { getOrDefault } from "./utils.js";
 import { Realm } from "../realm.js";
-import { FunctionValue, type Value } from "../values/index";
-import type { GeneratorDAG } from "./GeneratorDAG";
-import type { AdditionalFunctionEffects } from "./types";
 import type { ResidualOptimizedFunctions } from "./utils";
 
 type ReferentializationState = {|
