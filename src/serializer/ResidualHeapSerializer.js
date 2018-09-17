@@ -73,8 +73,7 @@ import {
   ClassPropertiesToIgnore,
   canIgnoreClassLengthProperty,
   getObjectPrototypeMetadata,
-  tryGetOptimizedFunctionRoot,
-  type HelperState,
+  type ResidualOptimizedFunctions,
 } from "./utils.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { canHoistFunction } from "../react/hoisting.js";
@@ -124,13 +123,15 @@ export class ResidualHeapSerializer {
     options: SerializerOptions,
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>,
     referentializer: Referentializer,
-    generatorDAG: GeneratorDAG
+    generatorDAG: GeneratorDAG,
+    residualOptimizedFunctions: ResidualOptimizedFunctions
   ) {
     this.realm = realm;
     this.logger = logger;
     this.modules = modules;
     this.residualHeapValueIdentifiers = residualHeapValueIdentifiers;
     this.referentializer = referentializer;
+    this._residualOptimizedFunctions = residualOptimizedFunctions;
 
     let realmGenerator = this.realm.generator;
     invariant(realmGenerator);
@@ -154,7 +155,7 @@ export class ResidualHeapSerializer {
     this.serializedValues = new Set();
     this._serializedValueWithIdentifiers = new Set();
     this.additionalFunctionValueNestedFunctions = new Set();
-    this.residualReactElementSerializer = new ResidualReactElementSerializer(this.realm, this);
+    this.residualReactElementSerializer = new ResidualReactElementSerializer(this.realm, this, residualOptimizedFunctions);
     this.residualFunctions = new ResidualFunctions(
       this.realm,
       options,
@@ -263,6 +264,7 @@ export class ResidualHeapSerializer {
   residualReactElementSerializer: ResidualReactElementSerializer;
   referentializer: Referentializer;
   additionalFunctionGenerators: Map<FunctionValue, Generator>;
+  _residualOptimizedFunctions: ResidualOptimizedFunctions;
 
   // function values nested in additional functions can't delay initializations
   // TODO: revisit this and fix additional functions to be capable of delaying initializations
@@ -815,14 +817,6 @@ export class ResidualHeapSerializer {
     return generator === this.generator ? this.mainBody : this.activeGeneratorBodies.get(generator);
   }
 
-  getOptimizedFunctionState(): HelperState {
-    return {
-      generatorDAG: this.generatorDAG,
-      optimizedFunctionsAndEffects: this.additionalFunctionValuesAndEffects,
-      residualValues: this.residualValues,
-    };
-  }
-
   // Determine whether initialization code for a value should go into the main body, or a more specific initialization body.
   _getTarget(
     val: Value,
@@ -856,7 +850,7 @@ export class ResidualHeapSerializer {
       }
     }
 
-    let optimizedFunctionRoot = tryGetOptimizedFunctionRoot(val, this.getOptimizedFunctionState());
+    let optimizedFunctionRoot = this._residualOptimizedFunctions.tryGetOptimizedFunctionRoot(val);
     if (generators.length === 0) {
       // This value is only referenced from residual functions.
       if (
@@ -1527,7 +1521,7 @@ export class ResidualHeapSerializer {
     invariant(instance !== undefined);
     let residualBindings = instance.residualFunctionBindings;
 
-    let inOptimizedFunction = tryGetOptimizedFunctionRoot(val, this.getOptimizedFunctionState());
+    let inOptimizedFunction = this._residualOptimizedFunctions.tryGetOptimizedFunctionRoot(val);
     if (inOptimizedFunction !== undefined) instance.containingAdditionalFunction = inOptimizedFunction;
     let bindingsEmittedSemaphore = new CountingSemaphore(() => {
       invariant(instance);
@@ -2207,7 +2201,7 @@ export class ResidualHeapSerializer {
     let optimizedFunctionRoot =
       optimizedFunction === undefined
         ? undefined
-        : tryGetOptimizedFunctionRoot(optimizedFunction, this.getOptimizedFunctionState());
+        : this._residualOptimizedFunctions.tryGetOptimizedFunctionRoot(optimizedFunction);
     let isChild = !!optimizedFunctionRoot || type === "Generator";
     let oldBody = this.emitter.beginEmitting(generator, newBody, /*isChild*/ isChild);
     invariant(!this.activeGeneratorBodies.has(generator));

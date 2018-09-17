@@ -21,7 +21,7 @@ import { Modules } from "../utils/modules.js";
 import { HeapInspector } from "../utils/HeapInspector.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
-import { getOrDefault } from "./utils.js";
+import { getOrDefault, type ResidualOptimizedFunctions } from "./utils.js";
 import type { Referentializer } from "./Referentializer.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
 
@@ -48,7 +48,8 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
     options: SerializerOptions,
     additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>,
     referentializer: Referentializer,
-    generatorDAG: GeneratorDAG
+    generatorDAG: GeneratorDAG,
+    residualOptimizedFunctions: ResidualOptimizedFunctions
   ) {
     super(
       realm,
@@ -60,7 +61,8 @@ export class LazyObjectsSerializer extends ResidualHeapSerializer {
       options,
       additionalFunctionValuesAndEffects,
       referentializer,
-      generatorDAG
+      generatorDAG,
+      residualOptimizedFunctions
     );
 
     this._lazyObjectIdSeed = 1;

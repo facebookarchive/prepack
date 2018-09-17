@@ -98,7 +98,7 @@ function checkResidualFunctions(modules: Modules, startFunc: number, totalToAnal
     else return "Recover";
   };
   modules.resolveInitializedModules();
-  let residualHeapVisitor = new ResidualHeapVisitor(realm, modules.logger, modules, new Map(), "NO_REFERENTIALIZE");
+  let residualHeapVisitor = new ResidualHeapVisitor(realm, modules.logger, modules, new Map());
   residualHeapVisitor.visitRoots();
   if (modules.logger.hasErrors()) return;
   let totalFunctions = 0;

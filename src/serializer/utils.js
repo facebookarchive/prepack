@@ -254,100 +254,100 @@ export function handleReportedSideEffect(
   }
 }
 
-function isDefinedInsideFunction(
-  childFunction: FunctionValue,
-  maybeParentFunctions: Set<FunctionValue>,
-  optimizedFunctionsAndEffects: Map<FunctionValue, AdditionalFunctionEffects>
-): boolean {
-  for (let maybeParentFunction of maybeParentFunctions) {
-    if (childFunction === maybeParentFunction) {
-      continue;
-    }
-    // for optimized functions, we should use created objects
-    let maybeParentFunctionInfo = optimizedFunctionsAndEffects.get(maybeParentFunction);
-    if (maybeParentFunctionInfo && maybeParentFunctionInfo.effects.createdObjects.has(childFunction)) return true;
-    else {
-      // for other functions, check environment records
-      let env = childFunction.$Environment;
-      while (env.parent !== null) {
-        let envRecord = env.environmentRecord;
-        if (envRecord instanceof FunctionEnvironmentRecord && envRecord.$FunctionObject === maybeParentFunction)
-          return true;
-        env = env.parent;
+export class ResidualOptimizedFunctions {
+  constructor(
+    generatorDAG: GeneratorDAG,
+    optimizedFunctionsAndEffects: Map<FunctionValue, AdditionalFunctionEffects>,
+    residualValues: Map<Value, Set<Scope>>
+  ) {
+    this._generatorDAG = generatorDAG;
+    this._optimizedFunctionsAndEffects = optimizedFunctionsAndEffects;
+    this._residualValues = residualValues;
+  }
+
+  _generatorDAG: GeneratorDAG;
+  _optimizedFunctionsAndEffects: Map<FunctionValue, AdditionalFunctionEffects>;
+  _residualValues: Map<Value, Set<Scope>>;
+
+  _isDefinedInsideFunction(childFunction: FunctionValue, maybeParentFunctions: Set<FunctionValue>): boolean {
+    for (let maybeParentFunction of maybeParentFunctions) {
+      if (childFunction === maybeParentFunction) {
+        continue;
+      }
+      // for optimized functions, we should use created objects
+      let maybeParentFunctionInfo = this._optimizedFunctionsAndEffects.get(maybeParentFunction);
+      if (maybeParentFunctionInfo && maybeParentFunctionInfo.effects.createdObjects.has(childFunction)) return true;
+      else {
+        // for other functions, check environment records
+        let env = childFunction.$Environment;
+        while (env.parent !== null) {
+          let envRecord = env.environmentRecord;
+          if (envRecord instanceof FunctionEnvironmentRecord && envRecord.$FunctionObject === maybeParentFunction)
+            return true;
+          env = env.parent;
+        }
       }
     }
+    return false;
   }
-  return false;
-}
 
-// Check if an optimized function defines the given set of functions.
-function definesFunctions(
-  possibleParentFunction: FunctionValue,
-  functions: Set<FunctionValue>,
-  optimizedFunctionsAndEffects: Map<FunctionValue, AdditionalFunctionEffects>
-): boolean {
-  let maybeParentFunctionInfo = optimizedFunctionsAndEffects.get(possibleParentFunction);
-  invariant(maybeParentFunctionInfo);
-  let createdObjects = maybeParentFunctionInfo.effects.createdObjects;
-  for (let func of functions) if (func !== possibleParentFunction && !createdObjects.has(func)) return false;
-  return true;
-}
+  // Check if an optimized function defines the given set of functions.
+  _definesFunctions(possibleParentFunction: FunctionValue, functions: Set<FunctionValue>): boolean {
+    let maybeParentFunctionInfo = this._optimizedFunctionsAndEffects.get(possibleParentFunction);
+    invariant(maybeParentFunctionInfo);
+    let createdObjects = maybeParentFunctionInfo.effects.createdObjects;
+    for (let func of functions) if (func !== possibleParentFunction && !createdObjects.has(func)) return false;
+    return true;
+  }
 
-export type HelperState = {|
-  generatorDAG: GeneratorDAG,
-  optimizedFunctionsAndEffects: Map<FunctionValue, AdditionalFunctionEffects>,
-  residualValues: Map<Value, Set<Scope>>,
-|};
+  // Try and get the root optimized function when passed in an optimized function
+  // that may or may not be nested in the tree of said root, or is the root optimized function
+  tryGetOptimizedFunctionRoot(val: Value): void | FunctionValue {
+    let scopes = this._residualValues.get(val);
+    invariant(scopes !== undefined);
+    return this.tryGetOutermostOptimizedFunction(scopes);
+  }
 
-// Try and get the root optimized function when passed in an optimized function
-// that may or may not be nested in the tree of said root, or is the root optimized function
-export function tryGetOptimizedFunctionRoot(val: Value, state: HelperState): void | FunctionValue {
-  let scopes = state.residualValues.get(val);
-  invariant(scopes !== undefined);
-  return tryGetOutermostOptimizedFunction(scopes, state);
-}
-
-// Try and get the optimized function that contains all the scopes passed in (may be one of the
-// scopes passed in)
-export function tryGetOutermostOptimizedFunction(scopes: Set<Scope>, state: HelperState): void | FunctionValue {
-  let functionValues = new Set();
-  invariant(scopes !== undefined);
-  for (let scope of scopes) {
-    let s = scope;
-    while (s instanceof Generator) {
-      s = state.generatorDAG.getParent(s);
+  // Try and get the optimized function that contains all the scopes passed in (may be one of the
+  // scopes passed in)
+  tryGetOutermostOptimizedFunction(scopes: Set<Scope>): void | FunctionValue {
+    let functionValues = new Set();
+    invariant(scopes !== undefined);
+    for (let scope of scopes) {
+      let s = scope;
+      while (s instanceof Generator) {
+        s = this._generatorDAG.getParent(s);
+      }
+      if (s === "GLOBAL") return undefined;
+      invariant(s instanceof FunctionValue);
+      functionValues.add(s);
     }
-    if (s === "GLOBAL") return undefined;
-    invariant(s instanceof FunctionValue);
-    functionValues.add(s);
-  }
-  let outermostAdditionalFunctions = new Set();
+    let outermostAdditionalFunctions = new Set();
 
-  // Get the set of optimized functions that may be the root
+    // Get the set of optimized functions that may be the root
 
-  for (let functionValue of functionValues) {
-    if (state.optimizedFunctionsAndEffects.has(functionValue)) {
-      if (!isDefinedInsideFunction(functionValue, functionValues, state.optimizedFunctionsAndEffects))
-        outermostAdditionalFunctions.add(functionValue);
-    } else {
-      let f = tryGetOptimizedFunctionRoot(functionValue, state);
-      if (f === undefined) return undefined;
-      if (!isDefinedInsideFunction(f, functionValues, state.optimizedFunctionsAndEffects))
-        outermostAdditionalFunctions.add(f);
+    for (let functionValue of functionValues) {
+      if (this._optimizedFunctionsAndEffects.has(functionValue)) {
+        if (!this._isDefinedInsideFunction(functionValue, functionValues))
+          outermostAdditionalFunctions.add(functionValue);
+      } else {
+        let f = this.tryGetOptimizedFunctionRoot(functionValue);
+        if (f === undefined) return undefined;
+        if (!this._isDefinedInsideFunction(f, functionValues)) outermostAdditionalFunctions.add(f);
+      }
     }
-  }
-  if (outermostAdditionalFunctions.size === 1) return [...outermostAdditionalFunctions][0];
+    if (outermostAdditionalFunctions.size === 1) return [...outermostAdditionalFunctions][0];
 
-  // See if any of the outermost (or any of their parents) are the outermost optimized function
-  let possibleRoots = [...outermostAdditionalFunctions];
-  while (possibleRoots.length > 0) {
-    let possibleRoot = possibleRoots.shift();
-    if (definesFunctions(possibleRoot, outermostAdditionalFunctions, state.optimizedFunctionsAndEffects))
-      return possibleRoot;
-    let additionalFunctionEffects = state.optimizedFunctionsAndEffects.get(possibleRoot);
-    invariant(additionalFunctionEffects);
-    let parent = additionalFunctionEffects.parentAdditionalFunction;
-    if (parent) possibleRoots.push(parent);
+    // See if any of the outermost (or any of their parents) are the outermost optimized function
+    let possibleRoots = [...outermostAdditionalFunctions];
+    while (possibleRoots.length > 0) {
+      let possibleRoot = possibleRoots.shift();
+      if (this._definesFunctions(possibleRoot, outermostAdditionalFunctions)) return possibleRoot;
+      let additionalFunctionEffects = this._optimizedFunctionsAndEffects.get(possibleRoot);
+      invariant(additionalFunctionEffects);
+      let parent = additionalFunctionEffects.parentAdditionalFunction;
+      if (parent) possibleRoots.push(parent);
+    }
+    return undefined;
   }
-  return undefined;
 }
