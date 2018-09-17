@@ -60,7 +60,10 @@ function runTest(name: string, config: any) {
   mkdirp.sync(`${__dirname}/../fb-www`);
 
   fs.writeFileSync(`${__dirname}/../fb-www/input.js`, sourceCode, "utf8");
-  execSync(`${__dirname}/../../third-party/node/bin/node scripts/debug-fb-www.js`, { stdio: "inherit" });
+  execSync(
+    `${__dirname}/../../third-party/node/bin/node --max_old_space_size=16384 --heap-growing-percent=50 scripts/debug-fb-www.js `,
+    { stdio: "inherit" }
+  );
   console.log("\n\n\n");
 
   console.log("-----------------------------");

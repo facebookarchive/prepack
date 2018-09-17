@@ -19,6 +19,7 @@ import {
   ReactOutputValues,
   type InvariantModeTypes,
   InvariantModeValues,
+  DiagnosticSeverityValues,
 } from "./options.js";
 import { type SerializedResult } from "./serializer/types.js";
 import { TextPrinter } from "./utils/TextPrinter.js";
@@ -299,6 +300,10 @@ function run(
           break;
         case "debugDiagnosticSeverity":
           arg = args.shift();
+          if (!DiagnosticSeverityValues.includes(arg)) {
+            console.error(`Unsupported debugDiagnosticSeverity: ${arg}`);
+            process.exit(1);
+          }
           invariant(
             arg === "FatalError" || arg === "RecoverableError" || arg === "Warning" || arg === "Information",
             `Invalid debugger diagnostic severity: ${arg}`
@@ -420,14 +425,14 @@ function run(
     }
     if (compilerDiagnostic.location) compilerDiagnostics.set(compilerDiagnostic.location, compilerDiagnostic);
     else compilerDiagnosticsList.push(compilerDiagnostic);
-    return "Recover";
+    return compilerDiagnostic.severity === "FatalError" ? "Fail" : "Recover";
   }
 
-  function printDiagnostics(caughtFatalError: boolean): boolean {
+  function printDiagnostics(caughtFatalError: boolean, caughtUnexpectedError: boolean = false): boolean {
     if (compilerDiagnostics.size === 0 && compilerDiagnosticsList.length === 0) {
       // FatalErrors must have generated at least one CompilerDiagnostic.
       invariant(!caughtFatalError, "FatalError must generate at least one CompilerDiagnostic");
-      return true;
+      return !caughtUnexpectedError;
     }
 
     let informations = 0;
@@ -485,8 +490,9 @@ function run(
     for (let compilerDiagnostic of compilerDiagnosticsList) printCompilerDiagnostic(compilerDiagnostic);
     invariant(informations + warnings + recoverableErrors + fatalErrors > 0);
     let plural = (count, word) => (count === 1 ? word : `${word}s`);
+    const success = fatalErrors === 0 && recoverableErrors === 0 && !caughtUnexpectedError;
     console.error(
-      `Prepack ${fatalErrors > 0 ? "failed" : "succeeded"}, reporting ${[
+      `Prepack ${success ? "succeeded" : "failed"}, reporting ${[
         fatalErrors > 0 ? `${fatalErrors} ${plural(fatalErrors, "fatal error")}` : undefined,
         recoverableErrors > 0 ? `${recoverableErrors} ${plural(recoverableErrors, "recoverable error")}` : undefined,
         warnings > 0 ? `${warnings} ${plural(warnings, "warning")}` : undefined,
@@ -496,7 +502,7 @@ function run(
         .join(", ")}.`
     );
 
-    return fatalErrors === 0;
+    return success;
   }
 
   let profiler;
@@ -507,10 +513,10 @@ function run(
   try {
     if (cpuprofilePath !== undefined) {
       try {
-        profiler = require("v8-profiler");
+        profiler = require("v8-profiler-node8");
       } catch (e) {
         // Profiler optional dependency failed
-        console.error("v8-profiler doesn't work correctly on Windows, see issue #1695");
+        console.error("v8-profiler-node8 doesn't work correctly on Windows, see issue #1695");
         throw e;
       }
       profiler.setSamplingInterval(100); // default is 1000us
@@ -538,10 +544,11 @@ function run(
       success = printDiagnostics(false);
       if (resolvedOptions.serialize && serialized) processSerializedCode(serialized);
     } catch (err) {
-      printDiagnostics(err instanceof FatalError);
+      success = printDiagnostics(err instanceof FatalError, !(err instanceof FatalError));
+      invariant(!success);
       if (!(err instanceof FatalError)) {
         // if it is not a FatalError, it means prepack failed, and we should display the Prepack stack trace.
-        console.error(err.stack);
+        console.error(`unexpected ${err}:\n${err.stack}`);
       }
       if (reproMode) {
         // Get largest list of original sources from all diagnostics.
@@ -563,7 +570,6 @@ function run(
           }
         });
       }
-      success = false;
     }
   } finally {
     if (profiler !== undefined) {

@@ -13,6 +13,7 @@ import type { BabelNodeSourceLocation } from "@babel/types";
 import type { Realm } from "../realm.js";
 import {
   AbstractObjectValue,
+  AbstractValue,
   BooleanValue,
   ConcreteValue,
   NumberValue,
@@ -62,17 +63,17 @@ export default class Value {
   expressionLocation: ?BabelNodeSourceLocation;
   $Realm: Realm;
 
-  implies(val: Value): boolean {
-    if (this.equals(val)) return true;
+  // this => val. A false value does not imply that !(this => val).
+  implies(val: AbstractValue, depth: number = 0): boolean {
     if (!this.mightNotBeFalse()) return true;
-    if (!val.mightNotBeTrue()) return true;
+    if (this.equals(val)) return true;
     return false;
   }
 
-  impliesNot(val: Value): boolean {
-    if (this.equals(val)) return false;
+  // this => !val. A false value does not imply that !(this => !val).
+  impliesNot(val: AbstractValue, depth: number = 0): boolean {
     if (!this.mightNotBeFalse()) return true;
-    if (!val.mightNotBeTrue()) return false;
+    if (this.equals(val)) return false;
     return false;
   }
 

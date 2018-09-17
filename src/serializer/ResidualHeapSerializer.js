@@ -1348,14 +1348,10 @@ export class ResidualHeapSerializer {
           to the __empty built-in */
           if (instantRenderMode) {
             if (this.emitter.getReasonToWaitForDependencies(elemVal)) {
-              let error = new CompilerDiagnostic(
+              this.realm.instantRenderBailout(
                 "InstantRender does not yet support cyclical arrays or objects",
-                array.expressionLocation,
-                "PP0039",
-                "FatalError"
+                array.expressionLocation
               );
-              this.realm.handleError(error);
-              throw new FatalError();
             }
             delayReason = undefined;
           } else {
@@ -1855,14 +1851,10 @@ export class ResidualHeapSerializer {
           let delayReason;
           if (instantRenderMode) {
             if (this.emitter.getReasonToWaitForDependencies(propValue)) {
-              let error = new CompilerDiagnostic(
-                "InstantRender does not yet support cyclical arays or objects",
-                val.expressionLocation,
-                "PP0039",
-                "FatalError"
+              this.realm.instantRenderBailout(
+                "InstantRender does not yet support cyclical arrays or objects",
+                val.expressionLocation
               );
-              this.realm.handleError(error);
-              throw new FatalError();
             }
             delayReason = undefined;
           } else {

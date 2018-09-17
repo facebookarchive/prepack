@@ -299,7 +299,7 @@ export class Realm {
       emptyArray: undefined,
       emptyObject: undefined,
       enabled: opts.reactEnabled || false,
-      failOnUnsupportedSideEffects: opts.reactFailOnUnsupportedSideEffects || true,
+      failOnUnsupportedSideEffects: opts.reactFailOnUnsupportedSideEffects === false ? false : true,
       hoistableFunctions: new WeakMap(),
       hoistableReactElements: new WeakMap(),
       noopFunction: undefined,
@@ -336,7 +336,8 @@ export class Realm {
     this.debugNames = opts.debugNames;
     this._checkedObjectIds = new Map();
     this.optimizedFunctions = new Map();
-    this.arrayNestedOptimizedFunctionsEnabled = opts.arrayNestedOptimizedFunctionsEnabled || false;
+    this.arrayNestedOptimizedFunctionsEnabled =
+      opts.arrayNestedOptimizedFunctionsEnabled || opts.instantRender || false;
   }
 
   statistics: RealmStatistics;
@@ -368,7 +369,7 @@ export class Realm {
   reportSideEffectCallbacks: Set<
     (sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, expressionLocation: any) => void
   >;
-  reportPropertyAccess: void | (PropertyBinding => void);
+  reportPropertyAccess: void | ((PropertyBinding, boolean) => void);
   savedCompletion: void | JoinedNormalAndAbruptCompletions;
 
   activeLexicalEnvironments: Set<LexicalEnvironment>;
@@ -1486,9 +1487,9 @@ export class Realm {
     }
   }
 
-  callReportPropertyAccess(binding: PropertyBinding): void {
+  callReportPropertyAccess(binding: PropertyBinding, isWrite: boolean): void {
     if (this.reportPropertyAccess !== undefined) {
-      this.reportPropertyAccess(binding);
+      this.reportPropertyAccess(binding, isWrite);
     }
   }
 
@@ -1523,7 +1524,7 @@ export class Realm {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to modify a property in read-only realm");
     }
-    this.callReportPropertyAccess(binding);
+    this.callReportPropertyAccess(binding, true);
     if (this.modifiedProperties !== undefined && !this.modifiedProperties.has(binding)) {
       let clone;
       let desc = binding.descriptor;
@@ -1653,6 +1654,14 @@ export class Realm {
     let previousValue = this.nextContextLocation;
     this.nextContextLocation = loc;
     return previousValue;
+  }
+
+  /* Since it makes strong assumptions, Instant Render is likely to have a large
+  number of unsupported scenarios. We group all associated compiler diagnostics here. */
+  instantRenderBailout(message: string, loc: ?BabelNodeSourceLocation) {
+    if (loc === undefined) loc = this.currentLocation;
+    let error = new CompilerDiagnostic(message, loc, "PP0039", "RecoverableError");
+    if (this.handleError(error) === "Fail") throw new FatalError();
   }
 
   reportIntrospectionError(message?: void | string | StringValue): void {

@@ -31,6 +31,10 @@ export class Completion {
     return selector(this);
   }
 
+  shallowClone(): Completion {
+    invariant(false, "abstract base method");
+  }
+
   toDisplayString(): string {
     return "[" + this.constructor.name + " value " + (this.value ? this.value.toDisplayString() : "undefined") + "]";
   }
@@ -55,6 +59,23 @@ export class Completion {
       Completion.makeSelectedCompletionsInfeasible(selector, completion.consequent);
       Completion.makeSelectedCompletionsInfeasible(selector, completion.alternate);
     }
+  }
+
+  static makeSelectedCompletionsInfeasibleInCopy(selector: Completion => boolean, completion: Completion): Completion {
+    let bottomValue = completion.value.$Realm.intrinsics.__bottomValue;
+    let clone = completion.shallowClone();
+    if (selector(clone)) clone.value = bottomValue;
+    else if (clone instanceof JoinedNormalAndAbruptCompletions || clone instanceof JoinedAbruptCompletions) {
+      clone.consequent = (Completion.makeSelectedCompletionsInfeasibleInCopy(selector, clone.consequent): any);
+      clone.alternate = (Completion.makeSelectedCompletionsInfeasibleInCopy(selector, clone.alternate): any);
+      if (clone.consequent.value === bottomValue) {
+        return clone.alternate;
+      }
+      if (clone.alternate.value === bottomValue) {
+        return clone.consequent;
+      }
+    }
+    return clone;
   }
 
   static normalizeSelectedCompletions(selector: Completion => boolean, completion: Completion): Completion {
@@ -82,8 +103,8 @@ export class Completion {
       invariant(nc instanceof AbruptCompletion || nc instanceof NormalCompletion);
       invariant(na instanceof AbruptCompletion || na instanceof NormalCompletion);
       let result = new JoinedNormalAndAbruptCompletions(completion.joinCondition, nc, na);
-      invariant(normalizedComposedWith instanceof JoinedNormalAndAbruptCompletions);
-      result.composedWith = normalizedComposedWith;
+      if (normalizedComposedWith instanceof JoinedNormalAndAbruptCompletions)
+        result.composedWith = normalizedComposedWith;
       return result;
     }
     return completion;
@@ -100,7 +121,11 @@ export class NormalCompletion extends Completion {
 
 // SimpleNormalCompletions are returned just like spec completions.
 // They chiefly exist for use in joined completions.
-export class SimpleNormalCompletion extends NormalCompletion {}
+export class SimpleNormalCompletion extends NormalCompletion {
+  shallowClone(): SimpleNormalCompletion {
+    return new SimpleNormalCompletion(this.value, this.location, this.target);
+  }
+}
 
 // Abrupt completions are thrown as exeptions, to make it a easier
 // to quickly get to the matching high level construct.
@@ -112,23 +137,35 @@ export class AbruptCompletion extends Completion {
 }
 
 export class ThrowCompletion extends AbruptCompletion {
-  constructor(value: Value, location: ?BabelNodeSourceLocation, nativeStack?: ?string) {
+  constructor(value: Value, location: ?BabelNodeSourceLocation, nativeStack?: ?string, emitWarning?: boolean = true) {
     super(value, location);
     this.nativeStack = nativeStack || new Error().stack;
   }
 
   nativeStack: string;
+
+  shallowClone(): ThrowCompletion {
+    return new ThrowCompletion(this.value, this.location, this.nativeStack, false);
+  }
 }
 
 export class ContinueCompletion extends AbruptCompletion {
   constructor(value: Value, location: ?BabelNodeSourceLocation, target: ?string) {
     super(value, location, target || null);
   }
+
+  shallowClone(): ContinueCompletion {
+    return new ContinueCompletion(this.value, this.location, this.target);
+  }
 }
 
 export class BreakCompletion extends AbruptCompletion {
   constructor(value: Value, location: ?BabelNodeSourceLocation, target: ?string) {
     super(value, location, target || null);
+  }
+
+  shallowClone(): BreakCompletion {
+    return new BreakCompletion(this.value, this.location, this.target);
   }
 }
 
@@ -138,6 +175,10 @@ export class ReturnCompletion extends AbruptCompletion {
     if (value instanceof EmptyValue) {
       this.value = value.$Realm.intrinsics.undefined;
     }
+  }
+
+  shallowClone(): ReturnCompletion {
+    return new ReturnCompletion(this.value, this.location);
   }
 }
 
@@ -165,6 +206,10 @@ export class JoinedAbruptCompletions extends AbruptCompletion {
     return false;
   }
 
+  shallowClone(): JoinedAbruptCompletions {
+    return new JoinedAbruptCompletions(this.joinCondition, this.consequent, this.alternate);
+  }
+
   toDisplayString(): string {
     let superString = super.toDisplayString().slice(0, -1);
     return (
@@ -190,6 +235,7 @@ export class JoinedNormalAndAbruptCompletions extends NormalCompletion {
   joinCondition: AbstractValue;
   consequent: AbruptCompletion | NormalCompletion;
   alternate: AbruptCompletion | NormalCompletion;
+  // A completion that precedes this one and that has one or more normal paths, as well as some abrupt paths
   composedWith: void | JoinedNormalAndAbruptCompletions;
   pathConditionsAtCreation: PathConditions;
   savedEffects: void | Effects;
@@ -211,6 +257,13 @@ export class JoinedNormalAndAbruptCompletions extends NormalCompletion {
       if (this.alternate.containsSelectedCompletion(selector)) return true;
     }
     return false;
+  }
+
+  shallowClone(): JoinedNormalAndAbruptCompletions {
+    let clone = new JoinedNormalAndAbruptCompletions(this.joinCondition, this.consequent, this.alternate);
+    clone.composedWith = this.composedWith;
+    clone.pathConditionsAtCreation = this.pathConditionsAtCreation;
+    return clone;
   }
 
   toDisplayString(): string {

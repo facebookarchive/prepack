@@ -79,7 +79,7 @@ export function getRealmOptions({
   reactOutput,
   reactVerbose,
   reactOptimizeNestedFunctions,
-  serialize,
+  serialize = true,
   check,
   strictlyMonotonicDateNow,
   stripFlow,

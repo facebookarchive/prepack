@@ -9,6 +9,7 @@
 
 /* @flow strict-local */
 
+import { SimpleNormalCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import type { LexicalEnvironment } from "../environment.js";
@@ -310,7 +311,7 @@ export function computeBinary(
 
     if (isPure && effects) {
       realm.applyEffects(effects);
-      return realm.returnOrThrowCompletion(effects.result);
+      if (effects.result instanceof SimpleNormalCompletion) return effects.result.value;
     }
 
     // If this ended up reporting an error, it might not be pure, so we'll leave it in
