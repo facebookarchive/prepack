@@ -231,16 +231,23 @@ function ensureIsNotFinal(realm: Realm, O: ObjectValue, P: void | PropertyKeyVal
     return;
   }
 
-  // We can't continue because this object is already in its final state.
-  let error = new CompilerDiagnostic(
-    "Mutating a final object, or an object with unknown properties, after some of those " +
-      "properties have already been used, is not supported.",
-    realm.currentLocation,
-    "PP0026",
-    "FatalError"
-  );
-  realm.handleError(error);
-  throw new FatalError();
+  // We can't continue because this object is already in its final state
+  if (realm.instantRender.enabled) {
+    realm.instantRenderBailout(
+      "Object mutations that require materialization are currently not supported by InstantRender",
+      realm.currentLocation
+    );
+  } else {
+    let error = new CompilerDiagnostic(
+      "Mutating a final object, or an object with unknown properties, after some of those " +
+        "properties have already been used, is not supported.",
+      realm.currentLocation,
+      "PP0026",
+      "FatalError"
+    );
+    realm.handleError(error);
+    throw new FatalError();
+  }
 }
 
 function isWidenedValue(v: void | Value) {

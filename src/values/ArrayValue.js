@@ -43,6 +43,11 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
       thisValue = func.$BoundThis;
     }
     invariant(funcToModel instanceof ECMAScriptSourceFunctionValue);
+
+    if (realm.instantRender.enabled && realm.collectedNestedOptimizedFunctionEffects.has(funcToModel)) {
+      realm.instantRenderBailout("Array operators may only be optimized once", funcToModel.expressionLocation);
+    }
+
     let funcCall = Utils.createModelledFunctionCall(realm, funcToModel, undefined, thisValue);
     // We take the modelled function and wrap it in a pure evaluation so we can check for
     // side-effects that occur when evaluating the function. If there are side-effects, then
@@ -59,6 +64,12 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
       // the default behaviour and leaked the nested functions so any bindings
       // within the function properly leak and materialize.
       if (e instanceof NestedOptimizedFunctionSideEffect) {
+        if (realm.instantRender.enabled) {
+          realm.instantRenderBailout(
+            "InstantRender does not support impure array operators",
+            funcCall.expressionLocation
+          );
+        }
         Leak.value(realm, func);
         return;
       }
@@ -69,9 +80,8 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
     //
     // Assumptions:
     // 1. We are here because the array op is pure, havocing of bindings is not needed.
-    // 2. The array op is only used once. To be enforced: #2448
-    // 3. Aliasing effects will lead to a fatal error. To be enforced: #2449
-    // 4. Indices of a widened array are not backed by locations
+    // 2. Aliasing effects will lead to a fatal error. To be enforced: #2449
+    // 3. Indices of a widened array are not backed by locations
     //
     // Transitive materialization is needed to unblock this issue: #2405
     //
