@@ -336,7 +336,8 @@ export class Realm {
     this.debugNames = opts.debugNames;
     this._checkedObjectIds = new Map();
     this.optimizedFunctions = new Map();
-    this.arrayNestedOptimizedFunctionsEnabled = opts.arrayNestedOptimizedFunctionsEnabled || false;
+    this.arrayNestedOptimizedFunctionsEnabled =
+      opts.arrayNestedOptimizedFunctionsEnabled || opts.instantRender || false;
   }
 
   statistics: RealmStatistics;
@@ -1653,6 +1654,14 @@ export class Realm {
     let previousValue = this.nextContextLocation;
     this.nextContextLocation = loc;
     return previousValue;
+  }
+
+  /* Since it makes strong assumptions, Instant Render is likely to have a large
+  number of unsupported scenarios. We group all associated compiler diagnostics here. */
+  instantRenderBailout(message: string, loc: ?BabelNodeSourceLocation) {
+    if (loc === undefined) loc = this.currentLocation;
+    let error = new CompilerDiagnostic(message, loc, "PP0039", "RecoverableError");
+    if (this.handleError(error) === "Fail") throw new FatalError();
   }
 
   reportIntrospectionError(message?: void | string | StringValue): void {
