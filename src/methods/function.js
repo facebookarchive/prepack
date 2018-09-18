@@ -69,7 +69,6 @@ import type {
 } from "@babel/types";
 import * as t from "@babel/types";
 import { PropertyDescriptor } from "../descriptors.js";
-import { createPathConditions } from "../singletons.js";
 
 function InternalCall(
   realm: Realm,
