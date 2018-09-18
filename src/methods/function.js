@@ -269,7 +269,7 @@ function InternalConstruct(
     function map(value: Value) {
       if (value === realm.intrinsics.__bottomValue) return value;
 
-      if (value instanceof AbstractValue && !(value instanceof AbstractObjectValue)) {
+      if (value instanceof AbstractValue) {
         if (value.kind === "conditional") {
           const [condition, consequent, alternate] = value.args;
           return realm.evaluateWithAbstractConditional(
@@ -278,16 +278,18 @@ function InternalConstruct(
             () => realm.evaluateForEffects(() => map(alternate), undefined, "AbstractValue/conditional/false")
           );
         }
-        if (kind === "base") {
-          invariant(thisArgument, "this wasn't initialized for some reason");
-          return AbstractValue.createFromTemplate(
-            realm,
-            "typeof A === 'object' || typeof A === 'function' ? A : B",
-            ObjectValue,
-            [value, thisArgument]
-          );
-        } else {
-          value.throwIfNotConcreteObject(); // Not yet supported.
+        if (!(value instanceof AbstractObjectValue)) {
+          if (kind === "base") {
+            invariant(thisArgument, "this wasn't initialized for some reason");
+            return AbstractValue.createFromTemplate(
+              realm,
+              "typeof A === 'object' || typeof A === 'function' ? A : B",
+              ObjectValue,
+              [value, thisArgument]
+            );
+          } else {
+            value.throwIfNotConcreteObject(); // Not yet supported.
+          }
         }
       }
 
