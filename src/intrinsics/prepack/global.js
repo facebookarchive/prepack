@@ -551,6 +551,67 @@ export default function(realm: Realm): void {
     })
   );
 
+  // Helper function that replaces the implementation of a source function with
+  // the details from another source function body, including the captured
+  // environment, the actual code, etc.
+  // This realizes a form of monkey-patching, enabling mocking a function if
+  // one doesn't control all existing references to that function,
+  // or if the storage location to those references cannot be easily updated.
+  // NOTE: This function affects un-tracked state, so care must be taken
+  // that this helper function is executed at the right time; typically, one
+  // would want to execute this function before any call is executed to that
+  // function. Care must be taken not to make reachable conditionally
+  // defined values. Because of this limitations, this helper function
+  // should be considered only as a last resort.
+  global.$DefineOwnProperty(
+    "__replaceFunctionImplementation_unsafe",
+    new PropertyDescriptor({
+      value: new NativeFunctionValue(
+        realm,
+        "global.__replaceFunctionImplementation_unsafe",
+        "__replaceFunctionImplementation_unsafe",
+        2,
+        (context, [target, source]) => {
+          if (!(target instanceof ECMAScriptSourceFunctionValue)) {
+            throw realm.createErrorThrowCompletion(
+              realm.intrinsics.TypeError,
+              "first argument is not a function with source code"
+            );
+          }
+          if (!(source instanceof ECMAScriptSourceFunctionValue)) {
+            throw realm.createErrorThrowCompletion(
+              realm.intrinsics.TypeError,
+              "second argument is not a function with source code"
+            );
+          }
+
+          // relevant properties for functionValue
+          target.$Environment = source.$Environment;
+          target.$ScriptOrModule = source.$ScriptOrModule;
+
+          // properties for ECMAScriptFunctionValue
+          target.$ConstructorKind = source.$ConstructorKind;
+          target.$ThisMode = source.$ThisMode;
+          target.$HomeObject = source.$HomeObject;
+          target.$FunctionKind = source.$FunctionKind;
+
+          // properties for ECMAScriptSourceFunctionValue
+          target.$Strict = source.$Strict;
+          target.$FormalParameters = source.$FormalParameters;
+          target.$ECMAScriptCode = source.$ECMAScriptCode;
+          target.$HasComputedName = source.$HasComputedName;
+          target.$HasEmptyConstructor = source.$HasEmptyConstructor;
+          target.loc = source.loc;
+
+          return context.$Realm.intrinsics.undefined;
+        }
+      ),
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    })
+  );
+
   global.$DefineOwnProperty(
     "__IntrospectionError",
     new PropertyDescriptor({

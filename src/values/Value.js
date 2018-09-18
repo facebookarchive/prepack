@@ -63,12 +63,14 @@ export default class Value {
   expressionLocation: ?BabelNodeSourceLocation;
   $Realm: Realm;
 
+  // this => val. A false value does not imply that !(this => val).
   implies(val: AbstractValue, depth: number = 0): boolean {
     if (!this.mightNotBeFalse()) return true;
     if (this.equals(val)) return true;
     return false;
   }
 
+  // this => !val. A false value does not imply that !(this => !val).
   impliesNot(val: AbstractValue, depth: number = 0): boolean {
     if (!this.mightNotBeFalse()) return true;
     if (this.equals(val)) return false;

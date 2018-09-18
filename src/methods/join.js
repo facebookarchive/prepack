@@ -118,17 +118,36 @@ export class JoinImplementation {
       }
       return joinedCompletion;
     }
+    if (leftCompletion instanceof Value) leftCompletion = new SimpleNormalCompletion(leftCompletion);
+    if (
+      leftCompletion instanceof Completion &&
+      leftCompletion.value === leftCompletion.value.$Realm.intrinsics.__bottomValue
+    ) {
+      return leftCompletion;
+    }
     if (rightCompletion instanceof Value) rightCompletion = new SimpleNormalCompletion(rightCompletion);
     return rightCompletion;
   }
 
-  composeWithEffects(completion: Completion, effects: Effects): Effects {
-    if (completion instanceof AbruptCompletion) return construct_empty_effects(completion.value.$Realm, completion);
-    if (completion instanceof SimpleNormalCompletion) return effects.shallowCloneWithResult(effects.result);
-    invariant(completion instanceof JoinedNormalAndAbruptCompletions);
-    let e1 = this.composeWithEffects(completion.consequent, effects);
-    let e2 = this.composeWithEffects(completion.alternate, effects);
-    return this.joinEffects(completion.joinCondition, e1, e2);
+  composeWithEffects(completion: Completion, normalEffects: Effects): Effects {
+    if (completion instanceof JoinedNormalAndAbruptCompletions) {
+      let selectAbrupt = c => c instanceof AbruptCompletion && c.value !== c.value.$Realm.intrinsics.__bottomValue;
+      let composableCompletions = Completion.makeSelectedCompletionsInfeasibleInCopy(selectAbrupt, completion);
+      let composedNormalCompletion = this.composeCompletions(composableCompletions, normalEffects.result);
+      normalEffects.result = composedNormalCompletion;
+
+      let selectNormal = c =>
+        c instanceof SimpleNormalCompletion && c.value !== c.value.$Realm.intrinsics.__bottomValue;
+      let nonComposableCompletions = Completion.makeSelectedCompletionsInfeasibleInCopy(selectNormal, completion);
+      let nonComposedEffects = construct_empty_effects(completion.value.$Realm, nonComposableCompletions);
+
+      let joinCondition = AbstractValue.createJoinConditionForSelectedCompletions(selectNormal, completion);
+      return this.joinEffects(joinCondition, normalEffects, nonComposedEffects);
+    } else if (completion instanceof AbruptCompletion) {
+      return construct_empty_effects(completion.value.$Realm, completion);
+    } else {
+      return normalEffects;
+    }
   }
 
   _collapseSimilarCompletions(joinCondition: AbstractValue, c1: Completion, c2: Completion): void | Completion {
@@ -239,19 +258,47 @@ export class JoinImplementation {
     return new Effects(c, generator, bindings, properties, createdObjects);
   }
 
-  joinValuesOfSelectedCompletions(selector: Completion => boolean, completion: Completion): Value {
+  joinValuesOfSelectedCompletions(
+    selector: Completion => boolean,
+    completion: Completion,
+    keepInfeasiblePaths: boolean = false
+  ): Value {
     let realm = completion.value.$Realm;
+    let bottom = realm.intrinsics.__bottomValue;
     if (completion instanceof JoinedAbruptCompletions || completion instanceof JoinedNormalAndAbruptCompletions) {
       let joinCondition = completion.joinCondition;
       let c = this.joinValuesOfSelectedCompletions(selector, completion.consequent);
       let a = this.joinValuesOfSelectedCompletions(selector, completion.alternate);
+      // do some simplification
+      if (c === bottom) {
+        // joinCondition will never be true when this completion is reached
+        if (a instanceof AbstractValue) {
+          a = Path.withInverseCondition(joinCondition, () => {
+            invariant(a instanceof AbstractValue);
+            return realm.simplifyAndRefineAbstractValue(a);
+          });
+        }
+        if (!keepInfeasiblePaths) return a;
+      } else if (a === bottom) {
+        // joinCondition will never be false when this completion is reached
+        if (c instanceof AbstractValue) {
+          c = Path.withCondition(joinCondition, () => {
+            invariant(c instanceof AbstractValue);
+            return realm.simplifyAndRefineAbstractValue(c);
+          });
+        }
+        if (!keepInfeasiblePaths) return c;
+      }
       let getAbstractValue = (v1: void | Value, v2: void | Value): Value => {
+        if (v1 === bottom) v1 = realm.intrinsics.empty;
+        if (v2 === bottom) v2 = realm.intrinsics.empty;
         return AbstractValue.createFromConditionalOp(realm, joinCondition, v1, v2);
       };
       let jv = this.joinValues(realm, c, a, getAbstractValue);
       invariant(jv instanceof Value);
       if (completion instanceof JoinedNormalAndAbruptCompletions && completion.composedWith !== undefined) {
         let composedWith = completion.composedWith;
+        if (!composedWith.containsSelectedCompletion(selector)) return jv;
         let cjv = this.joinValuesOfSelectedCompletions(selector, composedWith);
         joinCondition = AbstractValue.createJoinConditionForSelectedCompletions(selector, composedWith);
         jv = this.joinValues(realm, jv, cjv, getAbstractValue);
@@ -260,7 +307,7 @@ export class JoinImplementation {
       return jv;
     }
     if (selector(completion)) return completion.value;
-    return realm.intrinsics.empty;
+    return bottom;
   }
 
   // Creates a single map that joins together maps m1 and m2 using the given join

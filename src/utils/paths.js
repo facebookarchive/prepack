@@ -19,11 +19,16 @@ export class PathConditionsImplementation extends PathConditions {
   constructor(baseConditions?: void | PathConditions) {
     super();
     this._assumedConditions = new Set();
-    invariant(baseConditions === undefined || baseConditions instanceof PathConditionsImplementation);
-    this._baseConditions = baseConditions;
+    this._readonly = false;
+    if (baseConditions !== undefined) {
+      invariant(baseConditions instanceof PathConditionsImplementation);
+      baseConditions._readonly = true;
+      this._baseConditions = baseConditions;
+    }
   }
 
   _assumedConditions: Set<AbstractValue>;
+  _readonly: boolean;
   _baseConditions: void | PathConditionsImplementation;
   _impliedConditions: void | Set<AbstractValue>;
   _impliedNegatives: void | Set<AbstractValue>;
@@ -31,9 +36,17 @@ export class PathConditionsImplementation extends PathConditions {
   _failedNegativeImplications: void | Set<AbstractValue>;
 
   add(c: AbstractValue): void {
+    invariant(!this._readonly);
     this._assumedConditions.add(c);
+    this._failedImplications = undefined;
+    this._failedNegativeImplications = undefined;
   }
 
+  isReadOnly(): boolean {
+    return this._readonly;
+  }
+
+  // this => val. A false value does not imply that !(this => val).
   implies(e: Value, depth: number = 0): boolean {
     if (!e.mightNotBeTrue()) return true;
     if (!e.mightNotBeFalse()) return false;
@@ -42,14 +55,11 @@ export class PathConditionsImplementation extends PathConditions {
     if (this._impliedConditions !== undefined && this._impliedConditions.has(e)) return true;
     if (this._impliedNegatives !== undefined && this._impliedNegatives.has(e)) return false;
     if (this._failedImplications !== undefined && this._failedImplications.has(e)) return false;
+    if (depth > 10) return false;
     if (this._baseConditions !== undefined && this._baseConditions.implies(e, depth + 1)) return true;
     for (let assumedCondition of this._assumedConditions) {
       if (assumedCondition.implies(e, depth + 1)) return this.cacheImplicationSuccess(e);
     }
-    // Do this here to prevent infinite recursion
-    if (this._failedImplications === undefined) this._failedImplications = new Set();
-    this._failedImplications.add(e);
-    // implication success entries trump failed implications entries
     if (e.kind === "||") {
       let [x, y] = e.args;
       // this => x || true, regardless of the value of x
@@ -79,6 +89,12 @@ export class PathConditionsImplementation extends PathConditions {
           return this.cacheImplicationSuccess(e);
       }
     }
+    if (e.kind === "!") {
+      let [x] = e.args;
+      if (this.impliesNot(x, depth + 1)) return this.cacheImplicationSuccess(e);
+    }
+    if (this._failedImplications === undefined) this._failedImplications = new Set();
+    this._failedImplications.add(e);
     return false;
   }
 
@@ -88,6 +104,7 @@ export class PathConditionsImplementation extends PathConditions {
     return true;
   }
 
+  // this => !val. A false value does not imply that !(this => !val).
   impliesNot(e: Value, depth: number = 0): boolean {
     if (!e.mightNotBeTrue()) return false;
     if (!e.mightNotBeFalse()) return true;
@@ -96,14 +113,11 @@ export class PathConditionsImplementation extends PathConditions {
     if (this._impliedConditions !== undefined && this._impliedConditions.has(e)) return false;
     if (this._impliedNegatives !== undefined && this._impliedNegatives.has(e)) return true;
     if (this._failedNegativeImplications !== undefined && this._failedNegativeImplications.has(e)) return false;
+    if (depth > 10) return false;
     if (this._baseConditions !== undefined && this._baseConditions.impliesNot(e, depth + 1)) return true;
     for (let assumedCondition of this._assumedConditions) {
       if (assumedCondition.impliesNot(e, depth + 1)) return this.cacheNegativeImplicationSuccess(e);
     }
-    // Do this here to prevent infinite recursion
-    if (this._failedNegativeImplications === undefined) this._failedNegativeImplications = new Set();
-    this._failedNegativeImplications.add(e);
-    // negative implication success entries trump failed negative implications entries
     if (e.kind === "&&") {
       let [x, y] = e.args;
       // this => !(false && y) regardless of the value of y
@@ -123,16 +137,22 @@ export class PathConditionsImplementation extends PathConditions {
       if (x instanceof AbstractValue) {
         // this => !(x === null) && !(x === undefined), if this => x
         // this => !(x == null) && !(x == undefined), if this => x
-        if ((y instanceof NullValue || y instanceof UndefinedValue) && this.implies(x))
+        if ((y instanceof NullValue || y instanceof UndefinedValue) && this.implies(x, depth + 1))
           return this.cacheNegativeImplicationSuccess(e);
       } else {
         invariant(y instanceof AbstractValue); // otherwise e would have been simplied
         // this => !(null === y) && !(undefined === y), if this => y
         // this => !(null == y) && !(undefined == y), if this => y
-        if ((x instanceof NullValue || x instanceof UndefinedValue) && this.implies(y))
+        if ((x instanceof NullValue || x instanceof UndefinedValue) && this.implies(y, depth + 1))
           return this.cacheNegativeImplicationSuccess(e);
       }
     }
+    if (e.kind === "!") {
+      let [x] = e.args;
+      if (this.implies(x, depth + 1)) return this.cacheNegativeImplicationSuccess(e);
+    }
+    if (this._failedNegativeImplications === undefined) this._failedNegativeImplications = new Set();
+    this._failedNegativeImplications.add(e);
     return false;
   }
 
@@ -154,7 +174,11 @@ export class PathConditionsImplementation extends PathConditions {
     return this._assumedConditions;
   }
 
-  refineBaseConditons(realm: Realm, totalRefinements: number = 0): void {
+  refineBaseConditons(
+    realm: Realm,
+    totalRefinements: number = 0,
+    refinementTarget: PathConditionsImplementation = this
+  ): void {
     if (realm.abstractValueImpliesMax > 0) return;
     let total = totalRefinements;
     let refine = (condition: AbstractValue) => {
@@ -162,10 +186,8 @@ export class PathConditionsImplementation extends PathConditions {
       if (refinedCondition !== condition) {
         if (!refinedCondition.mightNotBeFalse()) throw new InfeasiblePathError();
         if (refinedCondition instanceof AbstractValue) {
-          this.add(refinedCondition);
-          // These might have different answers now that we're adding another path condition
-          this._failedImplications = undefined;
-          this._failedNegativeImplications = undefined;
+          refinementTarget._readonly = false;
+          refinementTarget.add(refinedCondition);
         }
       }
     };
@@ -182,12 +204,13 @@ export class PathConditionsImplementation extends PathConditions {
       } finally {
         this._baseConditions = savedBaseConditions;
       }
-      savedBaseConditions.refineBaseConditons(realm, total);
+      savedBaseConditions.refineBaseConditons(realm, total, refinementTarget);
     }
   }
 }
 
 export class PathImplementation {
+  // this => val. A false value does not imply that !(this => val).
   implies(condition: Value, depth: number = 0): boolean {
     if (!condition.mightNotBeTrue()) return true; // any path implies true
     if (!condition.mightNotBeFalse()) return false; // no path condition is false
@@ -195,6 +218,7 @@ export class PathImplementation {
     return condition.$Realm.pathConditions.implies(condition, depth);
   }
 
+  // this => !val. A false value does not imply that !(this => !val).
   impliesNot(condition: Value, depth: number = 0): boolean {
     if (!condition.mightNotBeFalse()) return true; // any path implies !false
     if (!condition.mightNotBeTrue()) return false; // no path condition is false, so none can imply !true
@@ -274,6 +298,7 @@ export class PathImplementation {
 // A path condition is an abstract value that must be true in this particular code path, so we want to assume as much
 function pushPathCondition(condition: Value): void {
   let realm = condition.$Realm;
+  if (realm.pathConditions.isReadOnly()) realm.pathConditions = new PathConditionsImplementation(realm.pathConditions);
   if (!condition.mightNotBeFalse()) {
     if (realm.impliesCounterOverflowed) throw new InfeasiblePathError();
     invariant(false, "assuming that false equals true is asking for trouble");
@@ -324,6 +349,7 @@ function pushPathCondition(condition: Value): void {
 // An inverse path condition is an abstract value that must be false in this particular code path, so we want to assume as much
 function pushInversePathCondition(condition: Value): void {
   let realm = condition.$Realm;
+  if (realm.pathConditions.isReadOnly()) realm.pathConditions = new PathConditionsImplementation(realm.pathConditions);
   if (!condition.mightNotBeTrue()) {
     if (realm.impliesCounterOverflowed) throw new InfeasiblePathError();
     invariant(false, "assuming that false equals true is asking for trouble");

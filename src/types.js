@@ -354,7 +354,9 @@ export type DebugServerType = {
 };
 
 export type PathType = {
+  // this => val. A false value does not imply that !(this => val).
   implies(condition: Value, depth?: number): boolean,
+  // this => !val. A false value does not imply that !(this => !val).
   impliesNot(condition: Value, depth?: number): boolean,
   withCondition<T>(condition: Value, evaluate: () => T): T,
   withInverseCondition<T>(condition: Value, evaluate: () => T): T,
@@ -365,15 +367,21 @@ export type PathType = {
 export class PathConditions {
   add(c: AbstractValue): void {}
 
+  // this => val. A false value does not imply that !(this => val).
   implies(e: Value, depth: number = 0): boolean {
     return false;
   }
 
+  // this => !val. A false value does not imply that !(this => !val).
   impliesNot(e: Value, depth: number = 0): boolean {
     return false;
   }
 
   isEmpty(): boolean {
+    return false;
+  }
+
+  isReadOnly(): boolean {
     return false;
   }
 
