@@ -276,17 +276,32 @@ function InternalConstruct(
       function map(value: Value) {
         if (value === realm.intrinsics.__bottomValue) return value;
 
-        if (value instanceof AbstractValue && value.kind === "conditional") {
-          const [condition, consequent, alternate] = value.args;
-          return realm.evaluateWithAbstractConditional(
-            condition,
-            () => realm.evaluateForEffects(() => map(consequent), undefined, "AbstractValue/conditional/true"),
-            () => realm.evaluateForEffects(() => map(alternate), undefined, "AbstractValue/conditional/false")
-          );
+        if (value instanceof AbstractValue) {
+          if (value.kind === "conditional") {
+            const [condition, consequent, alternate] = value.args;
+            return realm.evaluateWithAbstractConditional(
+              condition,
+              () => realm.evaluateForEffects(() => map(consequent), undefined, "AbstractValue/conditional/true"),
+              () => realm.evaluateForEffects(() => map(alternate), undefined, "AbstractValue/conditional/false")
+            );
+          }
+          if (!(value instanceof AbstractObjectValue)) {
+            if (kind === "base") {
+              invariant(thisArgument, "this wasn't initialized for some reason");
+              return AbstractValue.createFromTemplate(
+                realm,
+                "typeof A === 'object' || typeof A === 'function' ? A : B",
+                ObjectValue,
+                [value, thisArgument]
+              );
+            } else {
+              value.throwIfNotConcreteObject(); // Not yet supported.
+            }
+          }
         }
 
         // a. If Type(result.[[Value]]) is Object, return NormalCompletion(result.[[Value]]).
-        if (value.mightBeObject()) return value.throwIfNotConcreteObject();
+        if (value instanceof ObjectValue || value instanceof AbstractObjectValue) return value;
 
         // b. If kind is "base", return NormalCompletion(thisArgument).
         if (kind === "base") {
