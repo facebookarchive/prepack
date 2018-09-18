@@ -1256,9 +1256,8 @@ export class FunctionImplementation {
     let result = this.FunctionInitialize(realm, F, kind, ParameterList, Body, Scope);
     invariant(F.pathConditionDuringDeclaration === undefined, "Function should only have one declaration site");
     // Create a new path condition to make the saved condition readonly
-    F.pathConditionDuringDeclaration = realm.pathConditions;
-    realm.pathConditions = createPathConditions(realm.pathConditions);
-    invariant(F.pathConditionDuringDeclaration && F.pathConditionDuringDeclaration.isReadOnly());
+    F.pathConditionDuringDeclaration = realm.pathConditions.isEmpty() ? undefined : realm.pathConditions;
+    if (F.pathConditionDuringDeclaration) invariant(F.pathConditionDuringDeclaration.isReadOnly());
     return result;
   }
 

@@ -22,7 +22,6 @@ export class PathConditionsImplementation extends PathConditions {
     this._readonly = false;
     if (baseConditions !== undefined) {
       invariant(baseConditions instanceof PathConditionsImplementation);
-      baseConditions._readonly = true;
       this._baseConditions = baseConditions;
     }
   }
@@ -174,37 +173,42 @@ export class PathConditionsImplementation extends PathConditions {
     return this._assumedConditions;
   }
 
+  // Refinement may temporarily make a target non-read-only, but marks the target as read-only at the end.
   refineBaseConditons(
     realm: Realm,
     totalRefinements: number = 0,
     refinementTarget: PathConditionsImplementation = this
   ): void {
-    if (realm.abstractValueImpliesMax > 0) return;
-    let total = totalRefinements;
-    let refine = (condition: AbstractValue) => {
-      let refinedCondition = realm.simplifyAndRefineAbstractCondition(condition);
-      if (refinedCondition !== condition) {
-        if (!refinedCondition.mightNotBeFalse()) throw new InfeasiblePathError();
-        if (refinedCondition instanceof AbstractValue) {
-          refinementTarget._readonly = false;
-          refinementTarget.add(refinedCondition);
-        }
-      }
-    };
-    if (this._baseConditions !== undefined) {
-      let savedBaseConditions = this._baseConditions;
-      try {
-        this._baseConditions = undefined;
-        for (let assumedCondition of savedBaseConditions._assumedConditions) {
-          if (assumedCondition.kind === "||") {
-            if (++total > 4) break;
-            refine(assumedCondition);
+    try {
+      if (realm.abstractValueImpliesMax > 0) return;
+      let total = totalRefinements;
+      let refine = (condition: AbstractValue) => {
+        let refinedCondition = realm.simplifyAndRefineAbstractCondition(condition);
+        if (refinedCondition !== condition) {
+          if (!refinedCondition.mightNotBeFalse()) throw new InfeasiblePathError();
+          if (refinedCondition instanceof AbstractValue) {
+            refinementTarget._readonly = false;
+            refinementTarget.add(refinedCondition);
           }
         }
-      } finally {
-        this._baseConditions = savedBaseConditions;
+      };
+      if (this._baseConditions !== undefined) {
+        let savedBaseConditions = this._baseConditions;
+        try {
+          this._baseConditions = undefined;
+          for (let assumedCondition of savedBaseConditions._assumedConditions) {
+            if (assumedCondition.kind === "||") {
+              if (++total > 4) break;
+              refine(assumedCondition);
+            }
+          }
+        } finally {
+          this._baseConditions = savedBaseConditions;
+        }
+        savedBaseConditions.refineBaseConditons(realm, total, refinementTarget);
       }
-      savedBaseConditions.refineBaseConditons(realm, total, refinementTarget);
+    } finally {
+      refinementTarget._readonly = true;
     }
   }
 }
