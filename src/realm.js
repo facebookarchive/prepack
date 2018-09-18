@@ -713,7 +713,7 @@ export class Realm {
         saved_reportSideEffectCallbacks = this.reportSideEffectCallbacks;
         this.reportSideEffectCallbacks = new Set();
       }
-      this.reportSideEffectCallbacks.add(reportSideEffectFunc);
+      //this.reportSideEffectCallbacks.add(reportSideEffectFunc);
     }
     try {
       return f();

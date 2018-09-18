@@ -207,7 +207,7 @@ export default function(realm: Realm): NativeFunctionValue {
     });
 
   // ECMA262 22.1.2.1
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
+  if ((!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) || realm.instantRender) {
     let arrayFrom = func.defineNativeMethod("from", 1, (context, [items, mapfn, thisArg], argCount) => {
       // 1. Let C be the this value.
       let C = context;
