@@ -21,7 +21,8 @@ import { Modules } from "../utils/modules.js";
 import { HeapInspector } from "../utils/HeapInspector.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
-import { getOrDefault, type ResidualOptimizedFunctions } from "./utils.js";
+import { getOrDefault } from "./utils.js";
+import type { ResidualOptimizedFunctions } from "./ResidualOptimizedFunctions";
 import type { Referentializer } from "./Referentializer.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
 

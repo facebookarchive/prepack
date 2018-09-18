@@ -73,7 +73,6 @@ import {
   ClassPropertiesToIgnore,
   canIgnoreClassLengthProperty,
   getObjectPrototypeMetadata,
-  type ResidualOptimizedFunctions,
 } from "./utils.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { canHoistFunction } from "../react/hoisting.js";
@@ -88,6 +87,7 @@ import { describeValue } from "../utils.js";
 import { getAsPropertyNameExpression } from "../utils/babelhelpers.js";
 import { ResidualOperationSerializer } from "./ResidualOperationSerializer.js";
 import { PropertyDescriptor, AbstractJoinedDescriptor } from "../descriptors.js";
+import type { ResidualOptimizedFunctions } from "./ResidualOptimizedFunctions";
 
 function commentStatement(text: string) {
   let s = t.emptyStatement();

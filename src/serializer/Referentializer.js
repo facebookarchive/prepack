@@ -21,7 +21,7 @@ import type { ReferentializationScope, Scope } from "./types.js";
 import { SerializerStatistics } from "./statistics.js";
 import { getOrDefault } from "./utils.js";
 import { Realm } from "../realm.js";
-import type { ResidualOptimizedFunctions } from "./utils";
+import type { ResidualOptimizedFunctions } from "./ResidualOptimizedFunctions";
 
 type ReferentializationState = {|
   capturedScopeInstanceIdx: number,

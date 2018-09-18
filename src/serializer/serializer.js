@@ -39,7 +39,7 @@ import { Get } from "../methods/index.js";
 import { ObjectValue, Value, FunctionValue } from "../values/index.js";
 import { Properties } from "../singletons.js";
 import { PropertyDescriptor } from "../descriptors.js";
-import { ResidualOptimizedFunctions } from "./utils";
+import { ResidualOptimizedFunctions } from "./ResidualOptimizedFunctions";
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
@@ -218,7 +218,9 @@ export class Serializer {
           preludeGenerator.createNameGenerator("__leaked_"),
           residualOptimizedFunctions
         );
-        for (let instance of residualHeapInfo.functionInstances.values()) referentializer.referentialize(instance);
+        statistics.referentialization.measure(() => {
+          for (let instance of residualHeapInfo.functionInstances.values()) referentializer.referentialize(instance);
+        });
 
         if (this.realm.react.verbose) {
           this.logger.logInformation(`Serializing evaluated nodes...`);

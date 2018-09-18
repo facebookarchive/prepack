@@ -23,7 +23,7 @@ import { traverseReactElement } from "../react/elements.js";
 import { canExcludeReactElementObjectProperty, getReactSymbol, getProperty } from "../react/utils.js";
 import type { ReactOutputTypes } from "../options.js";
 import type { LazilyHoistedNodes } from "./types.js";
-import type { ResidualOptimizedFunctions } from "./utils";
+import type { ResidualOptimizedFunctions } from "./ResidualOptimizedFunctions";
 
 type ReactElementAttributeType = "SPREAD" | "PROPERTY" | "PENDING";
 type ReactElementChildType = "NORMAL" | "PENDING";
