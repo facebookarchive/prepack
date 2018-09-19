@@ -133,6 +133,9 @@ export class ResidualOperationSerializer {
       case "LOCAL_ASSIGNMENT":
         babelNode = this._serializeLocalAssignment(data, nodes, context, valuesToProcess);
         break;
+      case "NOOP":
+        babelNode = t.emptyStatement();
+        break;
       case "OBJECT_SET_PARTIAL":
         babelNode = this._serializeObjectSetPartial(data, nodes);
         break;

@@ -398,6 +398,25 @@ export default function(realm: Realm): void {
     })
   );
 
+  // Helper function for Prepack developers inspect a value
+  // when interpreting a particular node in the AST.
+  global.$DefineOwnProperty(
+    "__debugValue",
+    new PropertyDescriptor({
+      value: createNativeFunctionForResidualInjection(
+        "__debugValue",
+        ([v, s]): void => {
+          debugger; // eslint-disable-line no-debugger
+        },
+        createOperationDescriptor("NOOP"),
+        2
+      ),
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    })
+  );
+
   // Helper function that identifies a computation that must remain part of the residual program and cannot be partially evaluated,
   // e.g. because it contains a loop over abstract values.
   // __residual(typeNameOrTemplate, function, arg0, arg1, ...) creates a new abstract value
