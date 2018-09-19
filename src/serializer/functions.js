@@ -53,6 +53,7 @@ export class Functions {
     this.writeEffects = new Map();
     this._noopFunction = undefined;
     this._optimizedFunctionId = 0;
+    this.reactFunctionMap = new Map();
   }
 
   realm: Realm;
@@ -60,6 +61,7 @@ export class Functions {
   writeEffects: WriteEffects;
   _noopFunction: void | ECMAScriptSourceFunctionValue;
   _optimizedFunctionId: number;
+  reactFunctionMap: Map<FunctionValue, FunctionValue>;
 
   _unwrapAbstract(value: AbstractValue): Value {
     let elements = value.values.getElements();
@@ -172,11 +174,15 @@ export class Functions {
         environmentRecordIdAfterGlobalCode,
         logger,
         statistics,
-        alreadyEvaluated
+        alreadyEvaluated,
+        this.reactFunctionMap
       );
     }
   }
 
+  // Note: this may only be used by nested optimized functions that are known to be evaluated inside of their parent
+  // optimized function's __optimize call (e.g. array.map/filter). In this case, lexical nesting is equivalent to the
+  // nesting of __optimize calls.
   getDeclaringOptimizedFunction(functionValue: ECMAScriptSourceFunctionValue): void | FunctionValue {
     for (let [optimizedFunctionValue, additionalEffects] of this.writeEffects) {
       // CreatedObjects is all objects created by this optimized function but not
@@ -194,10 +200,9 @@ export class Functions {
         true,
         "AdditionalFunctionEffects",
         this.writeEffects,
-        {
-          functionValue,
-          parentOptimizedFunction: this.getDeclaringOptimizedFunction(functionValue),
-        }
+        this.reactFunctionMap,
+        functionValue,
+        this.getDeclaringOptimizedFunction(functionValue)
       );
       invariant(additionalFunctionEffects !== null);
       this.writeEffects.set(functionValue, additionalFunctionEffects);
@@ -213,10 +218,7 @@ export class Functions {
     let currentOptimizedFunctionId = this._optimizedFunctionId++;
     invariant(value instanceof ECMAScriptSourceFunctionValue);
     for (let t1 of this.realm.tracers) t1.beginOptimizingFunction(currentOptimizedFunctionId, value);
-    let previousOptimizedFunction = this.realm.currentOptimizedFunction;
-    this.realm.currentOptimizedFunction = value;
-    func(value, argModel);
-    this.realm.currentOptimizedFunction = previousOptimizedFunction;
+    this.realm.withNewOptimizedFunction(() => func(value, argModel), value);
     for (let t2 of this.realm.tracers) t2.endOptimizingFunction(currentOptimizedFunctionId);
     for (let [oldValue, model] of oldRealmOptimizedFunctions) this.realm.optimizedFunctions.set(oldValue, model);
   }
@@ -253,10 +255,9 @@ export class Functions {
         true,
         "AdditionalFunctionEffects",
         this.writeEffects,
-        {
-          functionValue,
-          parentOptimizedFunction: this.getDeclaringOptimizedFunction(functionValue),
-        }
+        this.reactFunctionMap,
+        functionValue,
+        this.getDeclaringOptimizedFunction(functionValue)
       );
       invariant(additionalFunctionEffects);
       effects = additionalFunctionEffects.effects;

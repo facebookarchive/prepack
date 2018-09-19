@@ -811,6 +811,18 @@ export class Realm {
     return result;
   }
 
+  withNewOptimizedFunction<T>(func: () => T, optimizedFunction: FunctionValue): T {
+    let result: T;
+    let previousOptimizedFunction = this.currentOptimizedFunction;
+    this.currentOptimizedFunction = optimizedFunction;
+    try {
+      result = func();
+    } finally {
+      this.currentOptimizedFunction = previousOptimizedFunction;
+    }
+    return result;
+  }
+
   evaluateNodeForEffectsInGlobalEnv(node: BabelNode, state?: any, generatorName?: string): Effects {
     return this.wrapInGlobalEnv(() => this.evaluateNodeForEffects(node, false, this.$GlobalEnv, state, generatorName));
   }

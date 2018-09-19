@@ -33,7 +33,7 @@ import { TemporalObjectAssignEntry } from "../utils/generator.js";
 import type { Descriptor, ReactComponentTreeConfig, ReactHint, PropertyBinding } from "../types.js";
 import { Get, IsDataDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
-import type { AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
+import type { AdditionalFunctionTransform, ReactEvaluatedNode } from "../serializer/types.js";
 import invariant from "../invariant.js";
 import { Create, Properties, To } from "../singletons.js";
 import traverse from "@babel/traverse";
@@ -294,7 +294,7 @@ function GetDescriptorForProperty(value: ObjectValue, propertyName: string): ?De
 export function convertSimpleClassComponentToFunctionalComponent(
   realm: Realm,
   complexComponentType: ECMAScriptSourceFunctionValue,
-  additionalFunctionEffects: AdditionalFunctionEffects
+  transforms: Array<AdditionalFunctionTransform>
 ): void {
   let prototype = complexComponentType.properties.get("prototype");
   invariant(prototype);
@@ -309,7 +309,7 @@ export function convertSimpleClassComponentToFunctionalComponent(
   // give the function the functional components params
   complexComponentType.$FormalParameters = [t.identifier("props"), t.identifier("context")];
   // add a transform to occur after the additional function has serialized the body of the class
-  additionalFunctionEffects.transforms.push((body: Array<BabelNodeStatement>) => {
+  transforms.push((body: Array<BabelNodeStatement>) => {
     // as this was a class before and is now a functional component, we need to replace
     // this.props and this.context to props and context, via the function arugments
     let funcNode = t.functionExpression(null, [], t.blockStatement(body));
@@ -440,7 +440,7 @@ export function convertFunctionalComponentToComplexClassComponent(
   realm: Realm,
   functionalComponentType: ECMAScriptSourceFunctionValue | BoundFunctionValue,
   complexComponentType: void | ECMAScriptSourceFunctionValue | BoundFunctionValue,
-  additionalFunctionEffects: AdditionalFunctionEffects
+  transforms: Array<AdditionalFunctionTransform>
 ): void {
   invariant(
     complexComponentType instanceof ECMAScriptSourceFunctionValue || complexComponentType instanceof BoundFunctionValue
@@ -474,7 +474,7 @@ export function convertFunctionalComponentToComplexClassComponent(
     functionalComponentType.symbols.set(symbol, binding);
   }
   // add a transform to occur after the additional function has serialized the body of the class
-  additionalFunctionEffects.transforms.push((body: Array<BabelNodeStatement>) => {
+  transforms.push((body: Array<BabelNodeStatement>) => {
     // as we've converted a functional component to a complex one, we are going to have issues with
     // "props" and "context" references, as they're now going to be "this.props" and "this.context".
     // we simply need a to add to vars to beginning of the body to get around this
