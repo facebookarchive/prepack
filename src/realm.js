@@ -258,7 +258,7 @@ export class Realm {
 
     this.start = Date.now();
     this.compatibility = opts.compatibility !== undefined ? opts.compatibility : "browser";
-    this.maxStackDepth = opts.maxStackDepth || 225;
+    this.remainingCalls = opts.maxStackDepth || 112;
     this.invariantLevel = opts.invariantLevel || 0;
     this.invariantMode = opts.invariantMode || "throw";
     this.emitConcreteModel = !!opts.emitConcreteModel;
@@ -336,7 +336,8 @@ export class Realm {
     this.debugNames = opts.debugNames;
     this._checkedObjectIds = new Map();
     this.optimizedFunctions = new Map();
-    this.arrayNestedOptimizedFunctionsEnabled = opts.arrayNestedOptimizedFunctionsEnabled || false;
+    this.arrayNestedOptimizedFunctionsEnabled =
+      opts.arrayNestedOptimizedFunctionsEnabled || opts.instantRender || false;
   }
 
   statistics: RealmStatistics;
@@ -349,7 +350,7 @@ export class Realm {
   timeout: void | number;
   mathRandomGenerator: void | (() => number);
   strictlyMonotonicDateNow: boolean;
-  maxStackDepth: number;
+  remainingCalls: number;
   invariantLevel: number;
   invariantMode: InvariantModeTypes;
   ignoreLeakLogic: boolean;
@@ -368,7 +369,7 @@ export class Realm {
   reportSideEffectCallbacks: Set<
     (sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, expressionLocation: any) => void
   >;
-  reportPropertyAccess: void | (PropertyBinding => void);
+  reportPropertyAccess: void | ((PropertyBinding, boolean) => void);
   savedCompletion: void | JoinedNormalAndAbruptCompletions;
 
   activeLexicalEnvironments: Set<LexicalEnvironment>;
@@ -572,10 +573,20 @@ export class Realm {
     lexicalEnvironment.destroy();
   }
 
-  pushContext(context: ExecutionContext): void {
-    if (this.contextStack.length >= this.maxStackDepth) {
-      throw new FatalError("Maximum stack depth exceeded");
+  startCall() {
+    if (this.remainingCalls === 0) {
+      let error = new CompilerDiagnostic("Maximum stack depth exceeded", this.currentLocation, "PP0045", "FatalError");
+      this.handleError(error);
+      throw new FatalError();
     }
+    this.remainingCalls--;
+  }
+
+  endCall() {
+    this.remainingCalls++;
+  }
+
+  pushContext(context: ExecutionContext): void {
     this.contextStack.push(context);
   }
 
@@ -1486,9 +1497,9 @@ export class Realm {
     }
   }
 
-  callReportPropertyAccess(binding: PropertyBinding): void {
+  callReportPropertyAccess(binding: PropertyBinding, isWrite: boolean): void {
     if (this.reportPropertyAccess !== undefined) {
-      this.reportPropertyAccess(binding);
+      this.reportPropertyAccess(binding, isWrite);
     }
   }
 
@@ -1523,7 +1534,7 @@ export class Realm {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to modify a property in read-only realm");
     }
-    this.callReportPropertyAccess(binding);
+    this.callReportPropertyAccess(binding, true);
     if (this.modifiedProperties !== undefined && !this.modifiedProperties.has(binding)) {
       let clone;
       let desc = binding.descriptor;
@@ -1655,6 +1666,14 @@ export class Realm {
     return previousValue;
   }
 
+  /* Since it makes strong assumptions, Instant Render is likely to have a large
+  number of unsupported scenarios. We group all associated compiler diagnostics here. */
+  instantRenderBailout(message: string, loc: ?BabelNodeSourceLocation) {
+    if (loc === undefined) loc = this.currentLocation;
+    let error = new CompilerDiagnostic(message, loc, "PP0039", "RecoverableError");
+    if (this.handleError(error) === "Fail") throw new FatalError();
+  }
+
   reportIntrospectionError(message?: void | string | StringValue): void {
     if (message === undefined) message = "";
     if (typeof message === "string") message = new StringValue(this, message);
@@ -1708,11 +1727,23 @@ export class Realm {
     );
   }
 
+  evaluateWithIncreasedMaxStackDepth<T>(increaseRemainingCallsBy: number, f: () => T): T {
+    invariant(increaseRemainingCallsBy > 0);
+    this.remainingCalls += increaseRemainingCallsBy;
+    try {
+      return f();
+    } finally {
+      this.remainingCalls -= increaseRemainingCallsBy;
+    }
+  }
+
   // Pass the error to the realm's error-handler
   // Return value indicates whether the caller should try to recover from the error or not.
   handleError(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
     if (!diagnostic.callStack && this.contextStack.length > 0) {
-      let error = this.evaluateWithoutEffects(() => Construct(this, this.intrinsics.Error).throwIfNotConcreteObject());
+      let error = this.evaluateWithIncreasedMaxStackDepth(1, () =>
+        this.evaluateWithoutEffects(() => Construct(this, this.intrinsics.Error).throwIfNotConcreteObject())
+      );
       let stack = error._SafeGetDataPropertyValue("stack");
       if (stack instanceof StringValue) diagnostic.callStack = stack.value;
     }

@@ -1,6 +1,6 @@
 {
   "name": "prepack",
-  "version": "0.2.52-alpha.0",
+  "version": "0.2.53-alpha.0",
   "description": "Execute a JS bundle, serialize global state and side effects to a snapshot that can be quickly restored.",
   "homepage": "https://github.com/facebook/prepack",
   "repository": {
@@ -67,7 +67,7 @@
     "@babel/generator": "^7.0.0",
     "@babel/node": "^7.0.0",
     "@babel/parser": "^7.0.0",
-    "@babel/preset-flow": "7.0.0",
+    "@babel/preset-flow": "^7.0.0",
     "@babel/template": "^7.0.0",
     "@babel/traverse": "^7.0.0",
     "@babel/types": "^7.0.0",
@@ -91,7 +91,7 @@
     "@babel/plugin-transform-react-display-name": "^7.0.0",
     "@babel/plugin-transform-react-jsx": "^7.0.0",
     "@babel/preset-env": "^7.0.0",
-    "@babel/preset-flow": "7.0.0",
+    "@babel/preset-flow": "^7.0.0",
     "@babel/preset-react": "^7.0.0",
     "@babel/register": "^7.0.0",
     "babel-core": "7.0.0-bridge.0",
