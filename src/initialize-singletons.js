@@ -21,6 +21,7 @@ import { ToImplementation } from "./methods/to.js";
 import { WidenImplementation } from "./methods/widen.js";
 import { concretize } from "./utils/ConcreteModelConverter.js";
 import { DebugReproManagerImplementation } from "./utils/DebugReproManager.js";
+import { PathConditions } from "./types";
 import * as utils from "./utils.js";
 
 export default function() {
@@ -31,7 +32,7 @@ export default function() {
   Singletons.setMaterialize(new MaterializeImplementation());
   Singletons.setJoin(new JoinImplementation());
   Singletons.setPath(new PathImplementation());
-  Singletons.setPathConditions(() => new PathConditionsImplementation());
+  Singletons.setPathConditions((val: PathConditions | void) => new PathConditionsImplementation(val));
   Singletons.setProperties((new PropertiesImplementation(): any));
   Singletons.setTo((new ToImplementation(): any));
   Singletons.setWiden((new WidenImplementation(): any));
