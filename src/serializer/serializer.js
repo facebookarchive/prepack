@@ -39,6 +39,7 @@ import { Get } from "../methods/index.js";
 import { ObjectValue, Value, FunctionValue } from "../values/index.js";
 import { Properties } from "../singletons.js";
 import { PropertyDescriptor } from "../descriptors.js";
+import { ResidualOptimizedFunctions } from "./ResidualOptimizedFunctions";
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
@@ -189,13 +190,6 @@ export class Serializer {
         // Deep traversal of the heap to identify the necessary scope of residual functions
         let preludeGenerator = this.realm.preludeGenerator;
         invariant(preludeGenerator !== undefined);
-        let referentializer = new Referentializer(
-          this.realm,
-          this.options,
-          preludeGenerator.createNameGenerator("__scope_"),
-          preludeGenerator.createNameGenerator("__get_scope_binding_"),
-          preludeGenerator.createNameGenerator("__leaked_")
-        );
         if (this.realm.react.verbose) {
           this.logger.logInformation(`Visiting evaluated nodes...`);
         }
@@ -204,13 +198,29 @@ export class Serializer {
             this.realm,
             this.logger,
             this.modules,
-            additionalFunctionValuesAndEffects,
-            referentializer
+            additionalFunctionValuesAndEffects
           );
           statistics.deepTraversal.measure(() => residualHeapVisitor.visitRoots());
           return [residualHeapVisitor.toInfo(), residualHeapVisitor.generatorDAG, residualHeapVisitor.inspector];
         })();
         if (this.logger.hasErrors()) return undefined;
+
+        let residualOptimizedFunctions = new ResidualOptimizedFunctions(
+          generatorDAG,
+          additionalFunctionValuesAndEffects,
+          residualHeapInfo.values
+        );
+        let referentializer = new Referentializer(
+          this.realm,
+          this.options,
+          preludeGenerator.createNameGenerator("__scope_"),
+          preludeGenerator.createNameGenerator("__get_scope_binding_"),
+          preludeGenerator.createNameGenerator("__leaked_"),
+          residualOptimizedFunctions
+        );
+        statistics.referentialization.measure(() => {
+          for (let instance of residualHeapInfo.functionInstances.values()) referentializer.referentialize(instance);
+        });
 
         if (this.realm.react.verbose) {
           this.logger.logInformation(`Serializing evaluated nodes...`);
@@ -227,8 +237,7 @@ export class Serializer {
             this.realm,
             this.logger,
             this.modules,
-            additionalFunctionValuesAndEffects,
-            referentializer
+            additionalFunctionValuesAndEffects
           );
           heapRefCounter.visitRoots();
 
@@ -238,8 +247,7 @@ export class Serializer {
             this.modules,
             additionalFunctionValuesAndEffects,
             residualHeapValueIdentifiers,
-            heapRefCounter.getResult(),
-            referentializer
+            heapRefCounter.getResult()
           );
           heapGraphGenerator.visitRoots();
           invariant(this.options.heapGraphFormat);
@@ -262,7 +270,8 @@ export class Serializer {
               this.options,
               additionalFunctionValuesAndEffects,
               referentializer,
-              generatorDAG
+              generatorDAG,
+              residualOptimizedFunctions
             ).serialize();
           });
           if (this.logger.hasErrors()) return undefined;
@@ -284,7 +293,8 @@ export class Serializer {
             this.options,
             additionalFunctionValuesAndEffects,
             referentializer,
-            generatorDAG
+            generatorDAG,
+            residualOptimizedFunctions
           ).serialize()
         );
       })();

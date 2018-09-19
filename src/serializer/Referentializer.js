@@ -17,10 +17,11 @@ import type { BabelNodeStatement, BabelNodeExpression, BabelNodeIdentifier } fro
 import { NameGenerator } from "../utils/NameGenerator";
 import invariant from "../invariant.js";
 import type { ResidualFunctionBinding, ScopeBinding, FunctionInstance } from "./types.js";
-import { type ReferentializationScope } from "./types.js";
+import type { ReferentializationScope, Scope } from "./types.js";
 import { SerializerStatistics } from "./statistics.js";
 import { getOrDefault } from "./utils.js";
 import { Realm } from "../realm.js";
+import type { ResidualOptimizedFunctions } from "./ResidualOptimizedFunctions";
 
 type ReferentializationState = {|
   capturedScopeInstanceIdx: number,
@@ -42,7 +43,8 @@ export class Referentializer {
     options: SerializerOptions,
     scopeNameGenerator: NameGenerator,
     scopeBindingNameGenerator: NameGenerator,
-    leakedNameGenerator: NameGenerator
+    leakedNameGenerator: NameGenerator,
+    residualOptimizedFunctions: ResidualOptimizedFunctions
   ) {
     this._options = options;
     this.scopeNameGenerator = scopeNameGenerator;
@@ -51,6 +53,8 @@ export class Referentializer {
     this.referentializationState = new Map();
     this._leakedNameGenerator = leakedNameGenerator;
     this.realm = realm;
+
+    this._residualOptimizedFunctions = residualOptimizedFunctions;
   }
 
   _options: SerializerOptions;
@@ -61,6 +65,7 @@ export class Referentializer {
   _newCapturedScopeInstanceIdx: number;
   referentializationState: Map<ReferentializationScope, ReferentializationState>;
   _leakedNameGenerator: NameGenerator;
+  _residualOptimizedFunctions: ResidualOptimizedFunctions;
 
   getStatistics(): SerializerStatistics {
     invariant(this.realm.statistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
@@ -161,8 +166,11 @@ export class Referentializer {
   _getReferentializationScope(residualBinding: ResidualFunctionBinding): ReferentializationScope {
     if (residualBinding.potentialReferentializationScopes.has("GLOBAL")) return "GLOBAL";
     if (residualBinding.potentialReferentializationScopes.size > 1) {
-      // TODO #2428: Revisit for nested optimized functions.
-      return "GLOBAL";
+      // Here we know potentialReferentializationScopes cannot contain "GLOBAL"; Set<FunctionValue> is
+      // compatible with Set<FunctionValue | Generator>
+      let scopes = ((residualBinding.potentialReferentializationScopes: any): Set<Scope>);
+      let parentOptimizedFunction = this._residualOptimizedFunctions.tryGetOutermostOptimizedFunction(scopes);
+      return parentOptimizedFunction || "GLOBAL";
     }
     for (let scope of residualBinding.potentialReferentializationScopes) return scope;
     invariant(false);
