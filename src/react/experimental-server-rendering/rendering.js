@@ -32,6 +32,7 @@ import {
 } from "../../values/index.js";
 import { Reconciler } from "../reconcilation.js";
 import {
+  applyObjectAssignConfigsForReactElement,
   createReactEvaluatedNode,
   forEachArrayValue,
   getComponentName,
@@ -67,7 +68,7 @@ import {
 } from "./dom-config.js";
 // $FlowFixMe: flow complains that this isn't a module but it is, and it seems to load fine
 import hyphenateStyleName from "fbjs/lib/hyphenateStyleName";
-import { To } from "../../singletons.js";
+import { Properties, To } from "../../singletons.js";
 import { createOperationDescriptor } from "../../utils/generator.js";
 
 export type ReactNode = Array<ReactNode> | string | AbstractValue | ArrayValue;
@@ -139,12 +140,12 @@ function createMarkupForProperty(
     const { type } = propertyInfo;
     if (type === BOOLEAN || (type === OVERLOADED_BOOLEAN && value === true)) {
       return attributeName + '=""';
-    } else if (value instanceof StringValue || value instanceof NumberValue) {
+    } else if (value instanceof StringValue || value instanceof NumberValue || value instanceof BooleanValue) {
       return attributeName + "=" + quoteAttributeValueForBrowser(value.value + "");
     } else if (value instanceof AbstractValue) {
       return ([attributeName + "=", renderValueWithHelper(realm, value, htmlEscapeHelper)]: Array<ReactNode>);
     }
-  } else if (value instanceof StringValue || value instanceof NumberValue) {
+  } else if (value instanceof StringValue || value instanceof NumberValue || value instanceof BooleanValue) {
     return name + "=" + quoteAttributeValueForBrowser(value.value + "");
   } else if (value instanceof AbstractValue) {
     return ([name + '="', renderValueWithHelper(realm, value, htmlEscapeHelper), '"']: Array<ReactNode>);
@@ -393,9 +394,46 @@ class ReactDOMServerRenderer {
       let tag = type.toLowerCase();
 
       if (tag === "input") {
-        invariant(false, "TODO");
+        let defaultValueProp = getProperty(this.realm, propsValue, "defaultValue");
+        let defaultCheckedProp = getProperty(this.realm, propsValue, "defaultChecked");
+        let valueProp = getProperty(this.realm, propsValue, "value");
+        let checkedProp = getProperty(this.realm, propsValue, "checked");
+
+        let newProps = new ObjectValue(this.realm, this.realm.intrinsics.ObjectPrototype);
+        Properties.Set(this.realm, newProps, "type", this.realm.intrinsics.undefined, true);
+
+        let inputProps = new ObjectValue(this.realm, this.realm.intrinsics.ObjectPrototype);
+        Properties.Set(this.realm, inputProps, "defaultChecked", this.realm.intrinsics.undefined, true);
+        Properties.Set(this.realm, inputProps, "defaultValue", this.realm.intrinsics.undefined, true);
+        Properties.Set(
+          this.realm,
+          inputProps,
+          "value",
+          valueProp !== this.realm.intrinsics.null ? valueProp : defaultValueProp,
+          true
+        );
+        Properties.Set(
+          this.realm,
+          inputProps,
+          "checked",
+          checkedProp !== this.realm.intrinsics.null ? checkedProp : defaultCheckedProp,
+          true
+        );
+        applyObjectAssignConfigsForReactElement(this.realm, newProps, [propsValue, inputProps]);
+        propsValue = newProps;
       } else if (tag === "textarea") {
-        invariant(false, "TODO");
+        let initialValue = getProperty(this.realm, propsValue, "value");
+
+        if (initialValue === this.realm.intrinsics.null) {
+          invariant(false, "TODO");
+        }
+
+        let newProps = new ObjectValue(this.realm, this.realm.intrinsics.ObjectPrototype);
+        let textareaProps = new ObjectValue(this.realm, this.realm.intrinsics.ObjectPrototype);
+        Properties.Set(this.realm, textareaProps, "value", this.realm.intrinsics.undefined, true);
+        Properties.Set(this.realm, textareaProps, "children", initialValue, true);
+        applyObjectAssignConfigsForReactElement(this.realm, newProps, [propsValue, textareaProps]);
+        propsValue = newProps;
       } else if (tag === "select") {
         invariant(false, "TODO");
       } else if (tag === "option") {
