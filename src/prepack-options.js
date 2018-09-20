@@ -11,8 +11,11 @@
 
 import type { ErrorHandler } from "./errors.js";
 import type { SerializerOptions, RealmOptions, Compatibility, ReactOutputTypes, InvariantModeTypes } from "./options";
-import { Realm } from "./realm.js";
-import type { DebuggerConfigArguments } from "./types";
+import { type Realm } from "./realm.js";
+import { type Generator } from "./utils/generator.js";
+import { type FunctionValue } from "./values/index.js";
+import type { DebuggerConfigArguments, DebugReproArguments } from "./types";
+import type { BabelNodeFile } from "@babel/types";
 
 export type PrepackOptions = {|
   additionalGlobals?: Realm => void,
@@ -21,9 +24,7 @@ export type PrepackOptions = {|
   compatibility?: Compatibility,
   debugNames?: boolean,
   delayInitializations?: boolean,
-  delayUnsupportedRequires?: boolean,
-  accelerateUnsupportedRequires?: boolean,
-  inputSourceMapFilename?: string,
+  inputSourceMapFilenames?: Array<string>,
   internalDebug?: boolean,
   debugScopes?: boolean,
   debugIdentifiers?: Array<string>,
@@ -41,7 +42,6 @@ export type PrepackOptions = {|
   reactOutput?: ReactOutputTypes,
   reactVerbose?: boolean,
   reactOptimizeNestedFunctions?: boolean,
-  residual?: boolean,
   serialize?: boolean,
   check?: Array<number>,
   inlineExpressions?: boolean,
@@ -58,6 +58,11 @@ export type PrepackOptions = {|
   debugOutFilePath?: string,
   abstractValueImpliesMax?: number,
   debuggerConfigArgs?: DebuggerConfigArguments,
+  debugReproArgs?: DebugReproArguments,
+  onParse?: BabelNodeFile => void,
+  onExecute?: (Realm, Map<FunctionValue, Generator>) => void,
+  arrayNestedOptimizedFunctionsEnabled?: boolean,
+  reactFailOnUnsupportedSideEffects?: boolean,
 |};
 
 export function getRealmOptions({
@@ -74,8 +79,7 @@ export function getRealmOptions({
   reactOutput,
   reactVerbose,
   reactOptimizeNestedFunctions,
-  residual,
-  serialize = !residual,
+  serialize = true,
   check,
   strictlyMonotonicDateNow,
   stripFlow,
@@ -83,6 +87,9 @@ export function getRealmOptions({
   maxStackDepth,
   abstractValueImpliesMax,
   debuggerConfigArgs,
+  debugReproArgs,
+  arrayNestedOptimizedFunctionsEnabled,
+  reactFailOnUnsupportedSideEffects,
 }: PrepackOptions): RealmOptions {
   return {
     compatibility,
@@ -98,7 +105,6 @@ export function getRealmOptions({
     reactOutput,
     reactVerbose,
     reactOptimizeNestedFunctions,
-    residual,
     serialize,
     check,
     strictlyMonotonicDateNow,
@@ -107,6 +113,9 @@ export function getRealmOptions({
     maxStackDepth,
     abstractValueImpliesMax,
     debuggerConfigArgs,
+    debugReproArgs,
+    arrayNestedOptimizedFunctionsEnabled,
+    reactFailOnUnsupportedSideEffects,
   };
 }
 
@@ -114,8 +123,6 @@ export function getSerializerOptions({
   lazyObjectsRuntime,
   heapGraphFormat,
   delayInitializations = false,
-  delayUnsupportedRequires = false,
-  accelerateUnsupportedRequires = true,
   internalDebug = false,
   debugScopes = false,
   debugIdentifiers,
@@ -128,8 +135,6 @@ export function getSerializerOptions({
 }: PrepackOptions): SerializerOptions {
   let result: SerializerOptions = {
     delayInitializations,
-    delayUnsupportedRequires,
-    accelerateUnsupportedRequires,
     initializeMoreModules,
     internalDebug,
     debugScopes,

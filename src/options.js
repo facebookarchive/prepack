@@ -33,6 +33,7 @@ export const InvariantModeValues = [
   "nativeLoggingHook+2",
   "nativeLoggingHook+3",
 ];
+export const DiagnosticSeverityValues = ["FatalError", "RecoverableError", "Warning", "Information"];
 
 export type ReactOutputTypes = "create-element" | "jsx" | "bytecode";
 export const ReactOutputValues = ["create-element", "jsx", "bytecode"];
@@ -47,7 +48,6 @@ export type RealmOptions = {
   invariantMode?: InvariantModeTypes,
   emitConcreteModel?: boolean,
   uniqueSuffix?: string,
-  residual?: boolean,
   serialize?: boolean,
   strictlyMonotonicDateNow?: boolean,
   timeout?: number,
@@ -59,13 +59,13 @@ export type RealmOptions = {
   reactOptimizeNestedFunctions?: boolean,
   stripFlow?: boolean,
   abstractValueImpliesMax?: number,
+  arrayNestedOptimizedFunctionsEnabled?: boolean,
+  reactFailOnUnsupportedSideEffects?: boolean,
 };
 
 export type SerializerOptions = {
   lazyObjectsRuntime?: string,
   delayInitializations?: boolean,
-  delayUnsupportedRequires?: boolean,
-  accelerateUnsupportedRequires?: boolean,
   initializeMoreModules?: boolean,
   internalDebug?: boolean,
   debugScopes?: boolean,
@@ -76,10 +76,6 @@ export type SerializerOptions = {
   inlineExpressions?: boolean,
   trace?: boolean,
   heapGraphFormat?: "DotLanguage" | "VISJS",
-};
-
-export type PartialEvaluatorOptions = {
-  sourceMaps?: boolean,
 };
 
 export const defaultOptions = {};

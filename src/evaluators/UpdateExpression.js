@@ -16,10 +16,10 @@ import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { Add } from "../methods/index.js";
 import { AbstractValue, NumberValue, IntegralValue } from "../values/index.js";
 import type { BabelNodeUpdateExpression } from "@babel/types";
-import { Environment, Havoc, Properties, To } from "../singletons.js";
+import { Environment, Leak, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
-import * as t from "@babel/types";
 import { ValuesDomain, TypesDomain } from "../domains/index.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 export default function(
   ast: BabelNodeUpdateExpression,
@@ -41,13 +41,16 @@ export default function(
     if (!To.IsToNumberPure(realm, oldExpr)) {
       if (realm.isInPureScope()) {
         // In pure scope we have to treat the ToNumber operation as temporal since it
-        // might throw or mutate something. We also need to havoc the argument due to the
+        // might throw or mutate something. We also need to leak the argument due to the
         // possible mutations.
-        Havoc.value(realm, oldExpr);
+        Leak.value(realm, oldExpr);
         newAbstractValue = realm.evaluateWithPossibleThrowCompletion(
           () =>
-            AbstractValue.createTemporalFromBuildFunction(realm, NumberValue, [oldExpr], ([oldValNode]) =>
-              t.binaryExpression(op, oldValNode, t.numericLiteral(1))
+            AbstractValue.createTemporalFromBuildFunction(
+              realm,
+              NumberValue,
+              [oldExpr],
+              createOperationDescriptor("UPDATE_INCREMENTOR", { incrementor: op })
             ),
           TypesDomain.topVal,
           ValuesDomain.topVal
@@ -63,7 +66,7 @@ export default function(
       }
     }
     Properties.PutValue(realm, expr, newAbstractValue);
-    if (ast.prefix) {
+    if (ast.prefix === true) {
       return newAbstractValue;
     } else {
       return oldExpr;
@@ -71,7 +74,7 @@ export default function(
   }
   let oldValue = To.ToNumber(realm, oldExpr);
 
-  if (ast.prefix) {
+  if (ast.prefix === true) {
     if (ast.operator === "++") {
       // ECMA262 12.4.6.1
 

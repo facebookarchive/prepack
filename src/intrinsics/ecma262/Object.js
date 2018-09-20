@@ -13,7 +13,7 @@ import { TypesDomain, ValuesDomain } from "../../domains/index.js";
 import { FatalError } from "../../errors.js";
 import { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { AbruptCompletion, PossiblyNormalCompletion } from "../../completions.js";
+//import { AbruptCompletion } from "../../completions.js";
 import {
   AbstractValue,
   AbstractObjectValue,
@@ -37,9 +37,10 @@ import {
   SetIntegrityLevel,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
-import { Create, Havoc, Properties as Props, To } from "../../singletons.js";
-import * as t from "@babel/types";
+import { Create, Leak, Materialize, Properties as Props, To } from "../../singletons.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
 import invariant from "../../invariant.js";
+import { PropertyDescriptor } from "../../descriptors.js";
 
 function snapshotToObjectAndRemoveProperties(
   to: ObjectValue | AbstractObjectValue,
@@ -63,8 +64,8 @@ function handleObjectAssignSnapshot(
     AbstractValue.reportIntrospectionError(to);
     throw new FatalError();
   } else {
-    if (frm instanceof ObjectValue && frm.mightBeHavocedObject()) {
-      // "frm" is havoced, so it might contain properties that potentially overwrite
+    if (frm instanceof ObjectValue && frm.mightBeLeakedObject()) {
+      // "frm" is leaked, so it might contain properties that potentially overwrite
       // properties already on the "to" object.
       snapshotToObjectAndRemoveProperties(to, delayedSources);
       // it's not safe to trust any of its values
@@ -96,8 +97,8 @@ function copyKeys(realm: Realm, keys, from, to): void {
     let desc = from.$GetOwnProperty(nextKey);
 
     // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
-    if (desc && desc.enumerable) {
-      Props.ThrowIfMightHaveBeenDeleted(desc.value);
+    if (desc && desc.throwIfNotConcrete(realm).enumerable) {
+      Props.ThrowIfMightHaveBeenDeleted(desc);
 
       // 1. Let propValue be ? Get(from, nextKey).
       let propValue = Get(realm, from, nextKey);
@@ -137,20 +138,11 @@ function applyObjectAssignSource(
     }
 
     to_must_be_partial = true;
-    // Make this temporarily not partial
-    // so that we can call frm.$OwnPropertyKeys below.
-    frm.makeNotPartial();
   }
 
-  try {
-    keys = frm.$OwnPropertyKeys();
-    if (to_must_be_partial) {
-      handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
-    }
-  } finally {
-    if (frm_was_partial) {
-      frm.makePartial();
-    }
+  keys = frm.$OwnPropertyKeys(true);
+  if (to_must_be_partial) {
+    handleObjectAssignSnapshot(to, frm, frm_was_partial, delayedSources);
   }
 
   // c. Repeat for each element nextKey of keys in List order,
@@ -191,27 +183,16 @@ function tryAndApplySourceOrRecover(
       if (!didSnapshot) {
         delayedSources.push(frm);
       }
-      // Havoc the frm value because it can have getters on it
-      Havoc.value(realm, frm);
+      // Leak the frm value because it can have getters on it
+      Leak.value(realm, frm);
       return to_must_be_partial;
     }
     throw e;
   } finally {
     realm.suppressDiagnostics = savedSuppressDiagnostics;
   }
-  // Note that the effects of (non joining) abrupt branches are not included
-  // in effects, but are tracked separately inside completion.
   realm.applyEffects(effects);
-  let completion = effects.result;
-  if (completion instanceof PossiblyNormalCompletion) {
-    // in this case one of the branches may complete abruptly, which means that
-    // not all control flow branches join into one flow at this point.
-    // Consequently we have to continue tracking changes until the point where
-    // all the branches come together into one.
-    completion = realm.composeWithSavedCompletion(completion);
-  }
-  // return or throw completion
-  if (completion instanceof AbruptCompletion) throw completion;
+  realm.returnOrThrowCompletion(effects.result);
   return to_must_be_partial;
 }
 
@@ -233,60 +214,134 @@ export default function(realm: Realm): NativeFunctionValue {
     return To.ToObject(realm, value);
   });
 
+  function performConditionalObjectAssign(
+    condValue: AbstractValue,
+    consequentVal: Value,
+    alternateVal: Value,
+    to: ObjectValue | AbstractObjectValue,
+    prefixSources: Array<Value>,
+    suffixSources: Array<Value>
+  ): void {
+    // After applying a Object.assign on one path of the conditional value,
+    // that path may have had snapshotting applied to the "to" value. If
+    // that is the case and the other path has not had snapshotting applied
+    // then we need to make sure we materialize out the properties of the object.
+    let conditionallySnapshotted = false;
+
+    const evaluateForEffects = (val, materializeIfSnapshottingIsConditional) =>
+      realm.evaluateForEffects(
+        () => {
+          let wasSnapshotedBeforehand = to instanceof ObjectValue && to.temporalAlias !== undefined;
+          performObjectAssign(to, [...prefixSources, val, ...suffixSources]);
+          // Check if snapshotting occured
+          if (to instanceof ObjectValue) {
+            if (materializeIfSnapshottingIsConditional && to.temporalAlias === undefined && conditionallySnapshotted) {
+              // We don't really want to leak, but rather materialize the object
+              // so we assign its bindings correctly.
+              Materialize.materializeObject(realm, to);
+            } else if (!wasSnapshotedBeforehand && to.temporalAlias !== undefined && !conditionallySnapshotted) {
+              conditionallySnapshotted = true;
+            }
+          }
+          return realm.intrinsics.undefined;
+        },
+        null,
+        "performConditionalObjectAssign consequent"
+      );
+
+    // First evaluate both sides to see if snapshotting occurs on either side
+    evaluateForEffects(consequentVal, false);
+    evaluateForEffects(alternateVal, false);
+
+    // Now evaluate both sides again, but this time materialize if snapshotting is
+    // being used conditionally.
+    realm.evaluateWithAbstractConditional(
+      condValue,
+      () => evaluateForEffects(consequentVal, true),
+      () => evaluateForEffects(alternateVal, true)
+    );
+  }
+
+  function performObjectAssign(target: Value, sources: Array<Value>): Value {
+    // 1. Let to be ? ToObject(target).
+    let to = To.ToObject(realm, target);
+    let to_must_be_partial = false;
+
+    // 2. If only one argument was passed, return to.
+    if (!sources.length) return to;
+
+    // Check if any sources are conditionals and if so, fork the work
+    // into many subsequent objectAssign calls for each branch of the conditional
+    for (let i = 0; i < sources.length; i++) {
+      let nextSource = sources[i];
+      if (nextSource instanceof AbstractValue) {
+        if (nextSource.kind === "conditional") {
+          let [condValue, consequentVal, alternateVal] = nextSource.args;
+          invariant(condValue instanceof AbstractValue);
+          let prefixSources = sources.slice(0, i);
+          let suffixSources = sources.slice(i + 1);
+          performConditionalObjectAssign(condValue, consequentVal, alternateVal, to, prefixSources, suffixSources);
+          return to;
+        } else if (nextSource.kind === "||") {
+          let [leftValue, rightValue] = nextSource.args;
+          invariant(leftValue instanceof AbstractValue);
+          let prefixSources = sources.slice(0, i);
+          let suffixSources = sources.slice(i + 1);
+          performConditionalObjectAssign(leftValue, leftValue, rightValue, to, prefixSources, suffixSources);
+          return to;
+        } else if (nextSource.kind === "&&") {
+          let [leftValue, rightValue] = nextSource.args;
+          invariant(leftValue instanceof AbstractValue);
+          let prefixSources = sources.slice(0, i);
+          let suffixSources = sources.slice(i + 1);
+          performConditionalObjectAssign(leftValue, rightValue, leftValue, to, prefixSources, suffixSources);
+          return to;
+        }
+      }
+    }
+
+    // 3. Let sources be the List of argument values starting with the second argument.
+    sources;
+    let delayedSources = [];
+
+    // 4. For each element nextSource of sources, in ascending index order,
+    for (let nextSource of sources) {
+      if (realm.isInPureScope() && !realm.instantRender.enabled) {
+        realm.evaluateWithPossibleThrowCompletion(
+          () => {
+            to_must_be_partial = tryAndApplySourceOrRecover(realm, nextSource, to, delayedSources, to_must_be_partial);
+            return realm.intrinsics.undefined;
+          },
+          TypesDomain.topVal,
+          ValuesDomain.topVal
+        );
+      } else {
+        to_must_be_partial = applyObjectAssignSource(realm, nextSource, to, delayedSources, to_must_be_partial);
+      }
+    }
+
+    // 5. Return to.
+    if (to_must_be_partial) {
+      // if to has properties, we copy and delay them (at this stage we do not need to remove them)
+      if (to.hasStringOrSymbolProperties()) {
+        let toSnapshot = to.getSnapshot();
+        delayedSources.push(toSnapshot);
+      }
+
+      to.makePartial();
+
+      // We already established above that to is simple,
+      // but now that it is partial we need to set the _isSimple flag.
+      to.makeSimple();
+
+      AbstractValue.createTemporalObjectAssign(realm, to, delayedSources);
+    }
+    return to;
+  }
+
   // ECMA262 19.1.2.1
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
-    func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => {
-      // 1. Let to be ? ToObject(target).
-      let to = To.ToObject(realm, target);
-      let to_must_be_partial = false;
-
-      // 2. If only one argument was passed, return to.
-      if (!sources.length) return to;
-
-      // 3. Let sources be the List of argument values starting with the second argument.
-      sources;
-      let delayedSources = [];
-
-      // 4. For each element nextSource of sources, in ascending index order,
-      for (let nextSource of sources) {
-        if (realm.isInPureScope() && !realm.instantRender.enabled) {
-          realm.evaluateWithPossibleThrowCompletion(
-            () => {
-              to_must_be_partial = tryAndApplySourceOrRecover(
-                realm,
-                nextSource,
-                to,
-                delayedSources,
-                to_must_be_partial
-              );
-              return realm.intrinsics.undefined;
-            },
-            TypesDomain.topVal,
-            ValuesDomain.topVal
-          );
-        } else {
-          to_must_be_partial = applyObjectAssignSource(realm, nextSource, to, delayedSources, to_must_be_partial);
-        }
-      }
-
-      // 5. Return to.
-      if (to_must_be_partial) {
-        // if to has properties, we copy and delay them (at this stage we do not need to remove them)
-        if (to.hasStringOrSymbolProperties()) {
-          let toSnapshot = to.getSnapshot();
-          delayedSources.push(toSnapshot);
-        }
-
-        to.makePartial();
-
-        // We already established above that to is simple,
-        // but now that it is partial we need to set the _isSimple flag.
-        to.makeSimple();
-
-        AbstractValue.createTemporalObjectAssign(realm, to, delayedSources);
-      }
-      return to;
-    });
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
+    func.defineNativeMethod("assign", 2, (context, [target, ...sources]) => performObjectAssign(target, sources));
   }
 
   // ECMA262 19.1.2.2
@@ -366,35 +421,37 @@ export default function(realm: Realm): NativeFunctionValue {
     // 3. Let desc be ? obj.[[GetOwnProperty]](key).
     let desc = obj.$GetOwnProperty(key);
 
-    let getterFunc = desc && desc.get;
     // If we are returning a descriptor with a NativeFunctionValue
     // and it has no intrinsic name, then we create a temporal as this
     // can only be done at runtime
-    if (
-      getterFunc instanceof NativeFunctionValue &&
-      getterFunc.intrinsicName === undefined &&
-      realm.useAbstractInterpretation
-    ) {
-      invariant(P instanceof Value);
-      // this will create a property descriptor at runtime
-      let result = AbstractValue.createTemporalFromBuildFunction(
-        realm,
-        ObjectValue,
-        [getOwnPropertyDescriptor, obj, P],
-        ([methodNode, objNode, keyNode]) => t.callExpression(methodNode, [objNode, keyNode])
-      );
-      invariant(result instanceof AbstractObjectValue);
-      result.makeSimple();
-      let get = Get(realm, result, "get");
-      let set = Get(realm, result, "set");
-      invariant(get instanceof AbstractValue);
-      invariant(set instanceof AbstractValue);
-      desc = {
-        get,
-        set,
-        enumerable: false,
-        configurable: true,
-      };
+    if (desc instanceof PropertyDescriptor) {
+      let getterFunc = desc.get;
+      if (
+        getterFunc instanceof NativeFunctionValue &&
+        getterFunc.intrinsicName === undefined &&
+        realm.useAbstractInterpretation
+      ) {
+        invariant(P instanceof Value);
+        // this will create a property descriptor at runtime
+        let result = AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          ObjectValue,
+          [getOwnPropertyDescriptor, obj, P],
+          createOperationDescriptor("OBJECT_PROTO_GET_OWN_PROPERTY_DESCRIPTOR")
+        );
+        invariant(result instanceof AbstractObjectValue);
+        result.makeSimple();
+        let get = Get(realm, result, "get");
+        let set = Get(realm, result, "set");
+        invariant(get instanceof AbstractValue);
+        invariant(set instanceof AbstractValue);
+        desc = new PropertyDescriptor({
+          get,
+          set,
+          enumerable: false,
+          configurable: true,
+        });
+      }
     }
 
     // 4. Return FromPropertyDescriptor(desc).
@@ -424,7 +481,7 @@ export default function(realm: Realm): NativeFunctionValue {
     for (let key of ownKeys) {
       // a. Let desc be ? obj.[[GetOwnProperty]](key).
       let desc = obj.$GetOwnProperty(key);
-      if (desc !== undefined) Props.ThrowIfMightHaveBeenDeleted(desc.value);
+      if (desc !== undefined) Props.ThrowIfMightHaveBeenDeleted(desc);
 
       // b. Let descriptor be ! FromPropertyDescriptor(desc).
       let descriptor = Props.FromPropertyDescriptor(realm, desc);
@@ -500,12 +557,14 @@ export default function(realm: Realm): NativeFunctionValue {
       let array = ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         [objectKeys, obj],
-        ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
       );
       return array;
     } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
-      return ArrayValue.createTemporalWithWidenedNumericProperty(realm, [objectKeys, obj], ([methodNode, objNode]) =>
-        t.callExpression(methodNode, [objNode])
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
+        realm,
+        [objectKeys, obj],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
       );
     }
 
@@ -529,14 +588,14 @@ export default function(realm: Realm): NativeFunctionValue {
           let array = ArrayValue.createTemporalWithWidenedNumericProperty(
             realm,
             [objectValues, obj],
-            ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+            createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
           );
           return array;
         } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
           return ArrayValue.createTemporalWithWidenedNumericProperty(
             realm,
             [objectValues, obj],
-            ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+            createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
           );
         }
       }
@@ -561,14 +620,14 @@ export default function(realm: Realm): NativeFunctionValue {
         let array = ArrayValue.createTemporalWithWidenedNumericProperty(
           realm,
           [objectEntries, obj],
-          ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
         );
         return array;
       } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(obj)) {
         return ArrayValue.createTemporalWithWidenedNumericProperty(
           realm,
           [objectEntries, obj],
-          ([methodNode, objNode]) => t.callExpression(methodNode, [objNode])
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
         );
       }
 

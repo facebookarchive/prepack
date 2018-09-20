@@ -11,18 +11,16 @@
 
 import type {
   BabelBinaryOperator,
-  BabelNodeExpression,
-  BabelNodeIdentifier,
-  BabelNodeLogicalOperator,
+  BabelLogicalOperator,
   BabelNodeSourceLocation,
   BabelUnaryOperator,
 } from "@babel/types";
-import { CompilerDiagnostic, FatalError } from "../errors.js";
+import { Completion, JoinedAbruptCompletions, JoinedNormalAndAbruptCompletions } from "../completions.js";
+import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
-import { PreludeGenerator, type TemporalBuildNodeType } from "../utils/generator.js";
+import { createOperationDescriptor, type OperationDescriptor } from "../utils/generator.js";
 import type { PropertyKeyValue, ShapeInformationInterface } from "../types.js";
-import buildExpressionTemplate from "../utils/builder.js";
-
+import { Placeholders } from "../utils/PreludeGenerator.js";
 import {
   AbstractObjectValue,
   BooleanValue,
@@ -34,15 +32,12 @@ import {
   StringValue,
   SymbolValue,
   UndefinedValue,
+  EmptyValue,
   Value,
 } from "./index.js";
 import { hashString, hashBinary, hashCall, hashTernary, hashUnary } from "../methods/index.js";
 import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import invariant from "../invariant.js";
-
-import * as t from "@babel/types";
-
-export type AbstractValueBuildNodeFunction = (Array<BabelNodeExpression>) => BabelNodeExpression;
 
 // In addition to the explicitly listed kinds,
 // all strings that start with `AbstractValueKindPrefix` are also legal kinds.
@@ -55,7 +50,6 @@ export type AbstractValueKind =
   | "abstractConcreteUnion"
   | "build function"
   | "widened property"
-  | "widened return result"
   | "widened numeric property"
   | "conditional"
   | "resolved"
@@ -63,6 +57,7 @@ export type AbstractValueKind =
   | "explicit conversion to object"
   | "check for known property"
   | "sentinel member expression"
+  | "environment initialization expression"
   | "template for property name condition"
   | "template for prototype member expression"
   | "this"
@@ -72,7 +67,7 @@ export type AbstractValueKind =
   | "JSResource"
   | "Bootloader"
   | "(A).length"
-  | "(A).toString()"
+  | "('' + A)"
   | "(A).slice(B,C)"
   | "(A).split(B,C)"
   | "global.JSON.stringify(A)"
@@ -100,7 +95,7 @@ export default class AbstractValue extends Value {
     values: ValuesDomain,
     hashValue: number,
     args: Array<Value>,
-    buildNode?: AbstractValueBuildNodeFunction | BabelNodeExpression,
+    operationDescriptor?: OperationDescriptor,
     optionalArgs?: {| kind?: AbstractValueKind, intrinsicName?: string, shape?: ShapeInformationInterface |}
   ) {
     invariant(realm.useAbstractInterpretation);
@@ -110,7 +105,7 @@ export default class AbstractValue extends Value {
     this.types = types;
     this.values = values;
     this.mightBeEmpty = false;
-    this._buildNode = buildNode;
+    this.operationDescriptor = operationDescriptor;
     this.args = args;
     this.hashValue = hashValue;
     this.kind = optionalArgs ? optionalArgs.kind : undefined;
@@ -124,7 +119,7 @@ export default class AbstractValue extends Value {
   mightBeEmpty: boolean;
   args: Array<Value>;
   shape: void | ShapeInformationInterface;
-  _buildNode: void | AbstractValueBuildNodeFunction | BabelNodeExpression;
+  operationDescriptor: void | OperationDescriptor;
 
   toDisplayString(): string {
     return "[Abstract " + this.hashValue.toString() + "]";
@@ -133,9 +128,6 @@ export default class AbstractValue extends Value {
   addSourceLocationsTo(locations: Array<BabelNodeSourceLocation>, seenValues?: Set<AbstractValue> = new Set()): void {
     if (seenValues.has(this)) return;
     seenValues.add(this);
-    if (this._buildNode && !(this._buildNode instanceof Function)) {
-      if (this._buildNode.loc) locations.push(this._buildNode.loc);
-    }
     for (let val of this.args) {
       if (val instanceof AbstractValue) val.addSourceLocationsTo(locations, seenValues);
     }
@@ -147,9 +139,9 @@ export default class AbstractValue extends Value {
     let realm = this.$Realm;
     function add_intrinsic(name: string) {
       if (name.startsWith("_$")) {
-        let temporalBuildNodeEntryArgs = realm.derivedIds.get(name);
-        invariant(temporalBuildNodeEntryArgs !== undefined);
-        add_args(temporalBuildNodeEntryArgs.args);
+        let temporalOperationEntryArgs = realm.derivedIds.get(name);
+        invariant(temporalOperationEntryArgs !== undefined);
+        add_args(temporalOperationEntryArgs.args);
       } else if (names.indexOf(name) < 0) {
         names.push(name);
       }
@@ -172,13 +164,6 @@ export default class AbstractValue extends Value {
       add_intrinsic(this.intrinsicName);
     }
     add_args(this.args);
-  }
-
-  buildNode(args: Array<BabelNodeExpression>): BabelNodeExpression {
-    let buildNode = this.getBuildNode();
-    return buildNode instanceof Function
-      ? ((buildNode: any): AbstractValueBuildNodeFunction)(args)
-      : ((buildNode: any): BabelNodeExpression);
   }
 
   equals(x: Value): boolean {
@@ -209,11 +194,6 @@ export default class AbstractValue extends Value {
     );
   }
 
-  getBuildNode(): AbstractValueBuildNodeFunction | BabelNodeExpression {
-    invariant(this._buildNode);
-    return this._buildNode;
-  }
-
   getHash(): number {
     return this.hashValue;
   }
@@ -222,153 +202,207 @@ export default class AbstractValue extends Value {
     return this.types.getType();
   }
 
-  getIdentifier(): BabelNodeIdentifier {
+  getIdentifier(): string {
     invariant(this.hasIdentifier());
-    return ((this._buildNode: any): BabelNodeIdentifier);
+    invariant(this.operationDescriptor !== undefined);
+    let { id } = this.operationDescriptor.data;
+    invariant(id !== undefined);
+    return id;
   }
 
   hasIdentifier(): boolean {
-    return this._buildNode ? this._buildNode.type === "Identifier" : false;
-  }
-
-  _checkAbstractValueImpliesCounter(): void {
-    let realm = this.$Realm;
-    let abstractValueImpliesMax = realm.abstractValueImpliesMax;
-    // if abstractValueImpliesMax is 0, then the counter is disabled
-    if (abstractValueImpliesMax !== 0 && realm.abstractValueImpliesCounter++ > abstractValueImpliesMax) {
-      realm.abstractValueImpliesCounter = 0;
-      let diagnostic = new CompilerDiagnostic(
-        `the implies counter has exceeded the maximum value when trying to simplify abstract values`,
-        realm.currentLocation,
-        "PP0029",
-        "FatalError"
-      );
-      realm.handleError(diagnostic);
-    }
+    return this.operationDescriptor ? this.operationDescriptor.type === "IDENTIFIER" : false;
   }
 
   // this => val. A false value does not imply that !(this => val).
-  implies(val: Value): boolean {
-    this._checkAbstractValueImpliesCounter();
+  implies(val: AbstractValue, depth: number = 0): boolean {
+    if (depth > 5) return false;
     if (this.equals(val)) return true; // x => x regardless of its value
-    if (!this.mightNotBeFalse()) return true; // false => val
-    if (!val.mightNotBeTrue()) return true; // x => true regardless of the value of x
-    if (val instanceof AbstractValue) {
-      // Neither this (x) nor val (y) is a known value, so we need to do some reasoning based on the structure
-      // x => x || y
-      if (val.kind === "||") {
-        let [x, y] = val.args;
-        return this.implies(x) || this.implies(y);
+    if (this.kind === "||") {
+      let [x, y] = this.args;
+      let xi =
+        x.implies(val, depth + 1) ||
+        (x instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(x, depth + 1));
+      if (!xi) return false;
+      let yi =
+        y.implies(val, depth + 1) ||
+        (y instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(y, depth + 1));
+      return yi;
+    } else if (this.kind === "&&") {
+      let [x, y] = this.args;
+      let xi =
+        x.implies(val, depth + 1) ||
+        (x instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(x, depth + 1));
+      if (xi) return true;
+      let yi =
+        y.implies(val, depth + 1) ||
+        (y instanceof AbstractValue && this.$Realm.pathConditions.impliesNot(y, depth + 1));
+      return yi;
+    } else if (this.kind === "!") {
+      let [nx] = this.args;
+      invariant(nx instanceof AbstractValue);
+      if (nx.kind === "!") {
+        // !!x => val if x => val
+        let [x] = nx.args;
+        invariant(x instanceof AbstractValue);
+        return x.implies(val, depth + 1);
+      }
+    } else if (this.kind === "conditional") {
+      let [c, x, y] = this.args;
+      // (c ? x : y) => val if x is true and y is false and c = val
+      if (!x.mightNotBeTrue() && !y.mightNotBeFalse()) {
+        return c.equals(val);
       }
 
-      // x => !y if y => !x
-      if (val.kind === "!") {
-        let [y] = val.args;
-        invariant(y instanceof AbstractValue);
-        return y.impliesNot(this);
-      }
-      // x => x !== null && x !== undefined
-      if (val.kind === "!==") {
-        let [x, y] = val.args;
-        if (this.implies(x)) return y instanceof NullValue || y instanceof UndefinedValue;
-        if (this.implies(y)) return x instanceof NullValue || x instanceof UndefinedValue;
-      }
-      // !!x => y if x => y
-      if (this.kind === "!") {
-        let [nx] = this.args;
-        invariant(nx instanceof AbstractValue);
-        if (nx.kind === "!") {
-          let [x] = nx.args;
-          invariant(x instanceof AbstractValue);
-          return x.implies(val);
+      if (val.kind === "!==" || val.kind === "!=") {
+        let [vx, vy] = val.args;
+        if (!x.mightNotBeFalse()) {
+          // (c ? false : y) => vx !== undefined && vx !== null if y => vx, since val is false unless y is true
+          if (vx instanceof AbstractValue && (vy instanceof NullValue || vy instanceof UndefinedValue))
+            return y.implies(vx, depth + 1);
+          // (c ? false : y) => undefined !== vy && null !== vy if y => vy, since val is false unless y is true
+          if ((vx instanceof NullValue || vx instanceof UndefinedValue) && vy instanceof AbstractValue)
+            return y.implies(vy, depth + 1);
+        } else if (!y.mightNotBeFalse()) {
+          // (c ? x : false) => vx !== undefined && vx !== null if x => vx, since val is false unless x is true
+          if (vx instanceof AbstractValue && (vy instanceof NullValue || vy instanceof UndefinedValue))
+            return x.implies(vx, depth + 1);
+          // (c ? x : false) => undefined !== vy && null !== vy if x => vy, since val is false unless x is true
+          if ((vx instanceof NullValue || vx instanceof UndefinedValue) && vy instanceof AbstractValue)
+            return x.implies(vy, depth + 1);
         }
       }
-      if (this.kind === "conditional") {
-        let [c, x, y] = this.args;
-        // (c ? x : y) => val if x is true and y is false and c = val
-        if (!x.mightNotBeTrue() && !y.mightNotBeFalse()) {
-          return c.equals(val);
-        }
 
-        // (c ? false : y) => y !== undefined && y !== null && y !== f
-        if (val.kind === "!==") {
-          let [vx, vy] = val.args;
-          if (!x.mightNotBeFalse()) {
-            if (y.implies(vx)) return vy instanceof NullValue || vy instanceof UndefinedValue;
-            if (y.implies(vy)) return vx instanceof NullValue || vx instanceof UndefinedValue;
-          } else if (!y.mightNotBeFalse()) {
-            if (x.implies(vx)) return vy instanceof NullValue || vy instanceof UndefinedValue;
-            if (x.implies(vy)) return vx instanceof NullValue || vx instanceof UndefinedValue;
-          }
-        }
-
-        // (c ? x : false) => c && x (if c or x were falsy, (c ? x : false) could not be true)
-        if (!y.mightNotBeFalse()) {
-          if (c.implies(val)) return true;
-          if (x.implies(val)) return true;
-        }
+      // (c ? x : false) => c && x (if c or x were falsy, (c ? x : false) could not be true)
+      if (!y.mightNotBeFalse()) {
+        if (c.implies(val, depth + 1)) return true;
+        if (x.implies(val, depth + 1)) return true;
       }
+    } else if (this.kind === "!==") {
       // (0 !== x) => x since undefined, null, false, 0, NaN and "" are excluded by the !== and all other values are thruthy
-      if (this.kind === "!==") {
-        let [x, y] = this.args;
-        if (x instanceof NumberValue && x.value === 0) return y.equals(val);
-        if (y instanceof NumberValue && y.value === 0) return x.equals(val);
-      }
-      if (this.kind === "===" && val.kind === "==") {
-        // x === undefined/null => y == undefined/null
-        let [x, y] = val.args;
-        if (
-          x instanceof NullValue ||
-          x instanceof UndefinedValue ||
-          y instanceof NullValue ||
-          y instanceof UndefinedValue
-        ) {
-          let [vx, vy] = val.args;
-          if (
-            vx instanceof NullValue ||
-            vx instanceof UndefinedValue ||
-            vy instanceof NullValue ||
-            vy instanceof UndefinedValue
-          ) {
-            return true;
-          }
+      let [x, y] = this.args;
+      if (x instanceof NumberValue && x.value === 0) return y.equals(val);
+      if (y instanceof NumberValue && y.value === 0) return x.equals(val);
+    } else if ((this.kind === "===" || this.kind === "==") && (val.kind === "===" || val.kind === "==")) {
+      let [x, y] = this.args;
+      let [vx, vy] = val.args;
+      if (x instanceof NullValue || x instanceof UndefinedValue) {
+        if (val.kind === "==") {
+          // null/undefined === y && null/undefined === vy && y === vy => null/undefined == vy
+          if (vx instanceof NullValue || vx instanceof UndefinedValue) return y.equals(vy);
+          // null/undefined === y && vx === null/undefined && y === vx => null/undefined == vx
+          if (vy instanceof NullValue || vy instanceof UndefinedValue) return y.equals(vx);
+        } else {
+          invariant(val.kind === "===");
+          // null === y && null === vy && y === vy => null === vy
+          // undefined === y && undefined === vy && y === vy => undefined === vy
+          if (x.equals(vx)) return y.equals(vy);
+          // null === y && vx === null && y === vx => vx === null
+          // undefined === y && vx === undefined && y === vx => vx === undefined
+          if (x.equals(vy)) return y.equals(vx);
         }
       }
+      if (y instanceof NullValue || y instanceof UndefinedValue) {
+        if (val.kind === "==") {
+          // x === null/undefined && null/undefined === vy && x === vy => null/undefined == vy
+          if (vx instanceof NullValue || vx instanceof UndefinedValue) return x.equals(vy);
+          // x === null/undefined && vx === null/undefined && x === vx => null/undefined == vx
+          if (vy instanceof NullValue || vy instanceof UndefinedValue) return x.equals(vx);
+        } else {
+          invariant(val.kind === "===");
+          // x === null && null === vy && x === vy => null === vy
+          // x == undefined && undefined === vy && x === vy => undefined === vy
+          if (y.equals(vx)) return x.equals(vy);
+          // x === null && vx === null && x === vx => null == vy
+          // x === undefined && vx === undefined && x === vx => vx === undefined
+          if (y.equals(vy)) return x.equals(vx);
+        }
+      }
+    }
+    // x => !y if y => !x
+    if (val.kind === "!") {
+      let [y] = val.args;
+      invariant(y instanceof AbstractValue);
+      return y.impliesNot(this, depth + 1);
     }
     return false;
   }
 
   // this => !val. A false value does not imply that !(this => !val).
-  impliesNot(val: Value): boolean {
+  impliesNot(val: AbstractValue, depth: number = 0): boolean {
+    if (depth > 5) return false;
     if (this.equals(val)) return false; // x => x regardless of its value, hence x => !val is false
-    if (!this.mightNotBeFalse()) return true; // false => !val
-    if (!val.mightNotBeFalse()) return true; // x => !false regardless of the value of x
-    if (val instanceof AbstractValue) {
-      // !x => !y if y => x
-      if (this.kind === "!") {
-        let [x] = this.args;
+    if (this.kind === "||") {
+      let [x, y] = this.args;
+      let xi = x.impliesNot(val, depth + 1);
+      if (!xi) return false;
+      let yi = y.impliesNot(val, depth + 1);
+      return yi;
+    } else if (this.kind === "&&") {
+      let [x, y] = this.args;
+      let xi = x.impliesNot(val, depth + 1);
+      if (xi) return true;
+      let yi = y.impliesNot(val, depth + 1);
+      return yi;
+    } else if (this.kind === "!") {
+      let [nx] = this.args;
+      invariant(nx instanceof AbstractValue);
+      if (nx.kind === "!") {
+        // !!x => !y if y => !x
+        let [x] = nx.args;
         invariant(x instanceof AbstractValue);
-        if (x.kind === "!") {
-          // !!x => !y if y => !x
-          invariant(x instanceof AbstractValue);
-          let [xx] = x.args;
-          invariant(xx instanceof AbstractValue);
-          return xx.impliesNot(val);
-        }
-        if (x.kind === "abstractConcreteUnion") return false; // can't use two valued logic for this.
-        return val.implies(x);
+        return x.impliesNot(val, depth + 1);
       }
-      if (this.kind === "conditional") {
-        let [c, x, y] = this.args;
-        // (c ? x : y) => !val if x is false and y is true and c = val
-        if (!x.mightNotBeFalse() && !y.mightNotBeTrue()) {
-          return c.equals(val);
+      if (nx.kind === "abstractConcreteUnion") return false; // can't use two valued logic for this.
+      // !x => !val if val => x since if val is false x can be any value and if val is true then x must be true
+      return val.implies(nx);
+    } else if (this.kind === "conditional") {
+      let [c, x, y] = this.args;
+      // (c ? x : y) => !val if x is false and y is true and c = val
+      if (!x.mightNotBeFalse() && !y.mightNotBeTrue()) {
+        return c.equals(val);
+      }
+
+      if (val.kind === "===" || val.kind === "==") {
+        let [vx, vy] = val.args;
+        if (!x.mightNotBeFalse()) {
+          // (c ? false : y) => !(vx === undefined) && !(vx === null) if y => vx, since val is false unless y is true
+          if (vx instanceof AbstractValue && (vy instanceof NullValue || vy instanceof UndefinedValue))
+            return y.implies(vx, depth + 1);
+          // (c ? false : y) => !(undefined === vy) && !(null === vy) if y => vy, since val is false unless y is true
+          if ((vx instanceof NullValue || vx instanceof UndefinedValue) && vy instanceof AbstractValue)
+            return y.implies(vy, depth + 1);
+        } else if (!y.mightNotBeFalse()) {
+          // (c ? x : false) => !(vx === undefined) && !(vx === null) if x => vx, since val is false unless x is true
+          if (vx instanceof AbstractValue && (vy instanceof NullValue || vy instanceof UndefinedValue))
+            return x.implies(vx, depth + 1);
+          // (c ? x : false) => !(undefined === vy) && !(null !== vy) if x => vy, since val is false unless x is true
+          if ((vx instanceof NullValue || vx instanceof UndefinedValue) && vy instanceof AbstractValue)
+            return x.implies(vy, depth + 1);
         }
+      }
+
+      // (c ? x : false) => c && x (if c or x were falsy, (c ? x : false) could not be true)
+      if (!y.mightNotBeFalse()) {
+        if (c.impliesNot(val, depth + 1)) return true;
+        if (x.impliesNot(val, depth + 1)) return true;
+      }
+    } else if (this.kind === "===" && val.kind === "===") {
+      // x === y and y !== z => !(x === z)
+      let [x1, y1] = this.args;
+      let [x2, y2] = val.args;
+      if (x1.equals(x2) && y1 instanceof ConcreteValue && y2 instanceof ConcreteValue && !y1.equals(y2)) return true;
+      // x === y and x !== z => !(z === y)
+      if (y1.equals(y2) && x1 instanceof ConcreteValue && x2 instanceof ConcreteValue && !x1.equals(x2)) {
+        return true;
       }
     }
     return false;
   }
 
+  isTemporal(): boolean {
+    return this.$Realm.getTemporalOperationEntryFromDerivedValue(this) !== undefined;
+  }
   // todo: abstract values should never be of type UndefinedValue or NullValue, assert this
   mightBeFalse(): boolean {
     let valueType = this.getType();
@@ -509,6 +543,7 @@ export default class AbstractValue extends Value {
   mightNotBeUndefined(): boolean {
     let valueType = this.getType();
     if (valueType === UndefinedValue) return false;
+    if (valueType === EmptyValue) return false;
     if (valueType !== PrimitiveValue && valueType !== Value) return true;
     if (this.kind === "abstractConcreteUnion") {
       for (let arg of this.args) if (arg.mightNotBeUndefined()) return true;
@@ -572,6 +607,52 @@ export default class AbstractValue extends Value {
     throw new FatalError();
   }
 
+  static createJoinConditionForSelectedCompletions(
+    selector: Completion => boolean,
+    completion: JoinedAbruptCompletions | JoinedNormalAndAbruptCompletions
+  ): Value {
+    let jcw;
+    let jc = completion.joinCondition;
+    let realm = jc.$Realm;
+    let njc = AbstractValue.createFromUnaryOp(realm, "!", jc, true, undefined, true);
+    if (completion instanceof JoinedNormalAndAbruptCompletions && completion.composedWith !== undefined) {
+      jcw = AbstractValue.createJoinConditionForSelectedCompletions(selector, completion.composedWith);
+      jc = AbstractValue.createFromLogicalOp(realm, "&&", jcw, jc, undefined, true);
+      njc = AbstractValue.createFromLogicalOp(realm, "&&", jcw, njc, undefined, true);
+    }
+    let c = completion.consequent;
+    let a = completion.alternate;
+    let cContainsSelectedCompletion = c.containsSelectedCompletion(selector);
+    let aContainsSelectedCompletion = a.containsSelectedCompletion(selector);
+    if (!cContainsSelectedCompletion && !aContainsSelectedCompletion) {
+      if (jcw !== undefined) return jcw;
+      return realm.intrinsics.false;
+    }
+    let cCond = jc;
+    if (cContainsSelectedCompletion) {
+      if (c instanceof JoinedAbruptCompletions || c instanceof JoinedNormalAndAbruptCompletions) {
+        let jcc = AbstractValue.createJoinConditionForSelectedCompletions(selector, c);
+        cCond = AbstractValue.createFromLogicalOp(realm, "&&", cCond, jcc, undefined, true);
+      }
+      if (!aContainsSelectedCompletion) return cCond;
+    }
+    let aCond = njc;
+    if (aContainsSelectedCompletion) {
+      if (a instanceof JoinedAbruptCompletions || a instanceof JoinedNormalAndAbruptCompletions) {
+        let jac = AbstractValue.createJoinConditionForSelectedCompletions(selector, a);
+        aCond = AbstractValue.createFromLogicalOp(realm, "&&", aCond, jac, undefined, true);
+      }
+      if (!cContainsSelectedCompletion) return aCond;
+    }
+    let or = AbstractValue.createFromLogicalOp(realm, "||", cCond, aCond, undefined, true);
+    if (completion instanceof JoinedNormalAndAbruptCompletions && completion.composedWith !== undefined) {
+      let composedCond = AbstractValue.createJoinConditionForSelectedCompletions(selector, completion.composedWith);
+      let and = AbstractValue.createFromLogicalOp(realm, "&&", composedCond, or, undefined, true);
+      return and;
+    }
+    return or;
+  }
+
   static createFromBinaryOp(
     realm: Realm,
     op: BabelBinaryOperator,
@@ -608,9 +689,8 @@ export default class AbstractValue extends Value {
         ? ValuesDomain.topVal
         : ValuesDomain.binaryOp(realm, op, leftValues, rightValues);
     let [hash, args] = kind === undefined ? hashBinary(op, left, right) : hashCall(kind, left, right);
-    let result = new AbstractValue(realm, resultTypes, resultValues, hash, args, ([x, y]) =>
-      t.binaryExpression(op, x, y)
-    );
+    let operationDescriptor = createOperationDescriptor("BINARY_EXPRESSION", { binaryOperator: op });
+    let result = new AbstractValue(realm, resultTypes, resultValues, hash, args, operationDescriptor);
     result.kind = kind || op;
     result.expressionLocation = loc;
     if (doNotSimplify) return result;
@@ -621,7 +701,7 @@ export default class AbstractValue extends Value {
 
   static createFromLogicalOp(
     realm: Realm,
-    op: BabelNodeLogicalOperator,
+    op: BabelLogicalOperator,
     left: Value,
     right: Value,
     loc?: ?BabelNodeSourceLocation,
@@ -654,9 +734,8 @@ export default class AbstractValue extends Value {
     let Constructor = Value.isTypeCompatibleWith(resultTypes.getType(), ObjectValue)
       ? AbstractObjectValue
       : AbstractValue;
-    let result = new Constructor(realm, resultTypes, resultValues, hash, args, ([x, y]) =>
-      t.logicalExpression(op, x, y)
-    );
+    let operationDescriptor = createOperationDescriptor("LOGICAL_EXPRESSION", { logicalOperator: op });
+    let result = new Constructor(realm, resultTypes, resultValues, hash, args, operationDescriptor);
     result.kind = op;
     result.expressionLocation = loc;
     if (doNotSimplify) return result;
@@ -686,9 +765,8 @@ export default class AbstractValue extends Value {
     let values = ValuesDomain.joinValues(realm, left, right);
     let [hash, args] = hashTernary(condition, left || realm.intrinsics.undefined, right || realm.intrinsics.undefined);
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let result = new Constructor(realm, types, values, hash, args, ([c, x, y]) => t.conditionalExpression(c, x, y), {
-      kind: "conditional",
-    });
+    let operationDescriptor = createOperationDescriptor("CONDITIONAL_EXPRESSION");
+    let result = new Constructor(realm, types, values, hash, args, operationDescriptor, { kind: "conditional" });
     result.expressionLocation = loc;
     if (left) result.mightBeEmpty = left.mightHaveBeenDeleted();
     if (right && !result.mightBeEmpty) result.mightBeEmpty = right.mightHaveBeenDeleted();
@@ -710,8 +788,14 @@ export default class AbstractValue extends Value {
     invariant(op !== "delete" && op !== "++" && op !== "--"); // The operation must be pure
     let resultTypes = TypesDomain.unaryOp(op, new TypesDomain(operand.getType()));
     let resultValues = ValuesDomain.unaryOp(realm, op, operand.values);
-    let result = new AbstractValue(realm, resultTypes, resultValues, hashUnary(op, operand), [operand], ([x]) =>
-      t.unaryExpression(op, x, prefix)
+    let operationDescriptor = createOperationDescriptor("UNARY_EXPRESSION", { unaryOperator: op, prefix });
+    let result = new AbstractValue(
+      realm,
+      resultTypes,
+      resultValues,
+      hashUnary(op, operand),
+      [operand],
+      operationDescriptor
     );
     result.kind = op;
     result.expressionLocation = loc;
@@ -727,27 +811,23 @@ export default class AbstractValue extends Value {
      that is incorporated into the AST produced by the serializer. */
   static createFromTemplate(
     realm: Realm,
-    template: PreludeGenerator => ({}) => BabelNodeExpression,
+    templateSource: string,
     resultType: typeof Value,
     operands: Array<Value>,
-    kindSuffix: string,
     loc?: ?BabelNodeSourceLocation
   ): AbstractValue {
-    let kind = AbstractValue.makeKind("template", kindSuffix);
+    let kind = AbstractValue.makeKind("template", templateSource);
     let resultTypes = new TypesDomain(resultType);
     let resultValues = ValuesDomain.topVal;
     let hash;
     [hash, operands] = hashCall(kind, ...operands);
     let Constructor = Value.isTypeCompatibleWith(resultType, ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    invariant(labels.length >= operands.length);
-    let result = new Constructor(realm, resultTypes, resultValues, hash, operands, args => {
-      invariant(realm.preludeGenerator !== undefined);
-      let generatorArgs = {};
-      let i = 0;
-      for (let arg of args) generatorArgs[labels.charAt(i++)] = arg;
-      return template(realm.preludeGenerator)(generatorArgs);
-    });
+    invariant(Placeholders.length >= operands.length);
+    let operationDescriptor = createOperationDescriptor("ABSTRACT_FROM_TEMPLATE", { templateSource });
+    // This doesn't mean that the function is not pure, just that it creates
+    // a new object on each call and thus is a future optimization opportunity.
+    if (Value.isTypeCompatibleWith(resultType, ObjectValue)) hash = ++realm.objectCount;
+    let result = new Constructor(realm, resultTypes, resultValues, hash, operands, operationDescriptor);
     result.kind = kind;
     result.expressionLocation = loc || realm.currentLocation;
     return result;
@@ -762,7 +842,7 @@ export default class AbstractValue extends Value {
     let types = new TypesDomain(resultType);
     let Constructor = Value.isTypeCompatibleWith(resultType, ObjectValue) ? AbstractObjectValue : AbstractValue;
     let [hash, args] = hashCall(resultType.name + (kind || ""), ...(operands || []));
-    if (resultType === ObjectValue) hash = ++realm.objectCount;
+    if (Value.isTypeCompatibleWith(resultType, ObjectValue)) hash = ++realm.objectCount;
     let result = new Constructor(realm, types, ValuesDomain.topVal, hash, args);
     if (kind) result.kind = kind;
     result.expressionLocation = realm.currentLocation;
@@ -777,7 +857,7 @@ export default class AbstractValue extends Value {
      on the native state unless the isPure option is specified.  */
   static createTemporalFromTemplate(
     realm: Realm,
-    template: PreludeGenerator => ({}) => BabelNodeExpression,
+    templateSource: string,
     resultType: typeof Value,
     operands: Array<Value>,
     optionalArgs?: {|
@@ -785,25 +865,24 @@ export default class AbstractValue extends Value {
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
-      temporalType?: TemporalBuildNodeType,
       shape?: ShapeInformationInterface,
     |}
   ): AbstractValue {
     invariant(resultType !== UndefinedValue);
-    let temp = AbstractValue.createFromTemplate(realm, template, resultType, operands, "");
+    let temp = AbstractValue.createFromTemplate(realm, templateSource, resultType, operands);
     let types = temp.types;
     let values = temp.values;
     let args = temp.args;
-    let buildNode_ = temp.getBuildNode();
     invariant(realm.generator !== undefined);
-    return realm.generator.deriveAbstract(types, values, args, buildNode_, optionalArgs);
+    invariant(temp.operationDescriptor !== undefined);
+    return realm.generator.deriveAbstract(types, values, args, temp.operationDescriptor, optionalArgs);
   }
 
   static createFromBuildFunction(
     realm: Realm,
     resultType: typeof Value,
     args: Array<Value>,
-    buildFunction: AbstractValueBuildNodeFunction,
+    operationDescriptor: OperationDescriptor,
     optionalArgs?: {| kind?: AbstractValueKind |}
   ): AbstractValue | UndefinedValue {
     let types = new TypesDomain(resultType);
@@ -812,7 +891,7 @@ export default class AbstractValue extends Value {
     let kind = (optionalArgs && optionalArgs.kind) || "build function";
     let hash;
     [hash, args] = hashCall(kind, ...args);
-    let result = new Constructor(realm, types, values, hash, args, buildFunction);
+    let result = new Constructor(realm, types, values, hash, args, operationDescriptor);
     result.kind = kind;
     return result;
   }
@@ -821,13 +900,12 @@ export default class AbstractValue extends Value {
     realm: Realm,
     resultType: typeof Value,
     args: Array<Value>,
-    buildFunction: AbstractValueBuildNodeFunction,
+    operationDescriptor: OperationDescriptor,
     optionalArgs?: {|
       kind?: AbstractValueKind,
       isPure?: boolean,
       skipInvariant?: boolean,
       mutatesOnly?: Array<Value>,
-      temporalType?: TemporalBuildNodeType,
       shape?: void | ShapeInformationInterface,
     |}
   ): AbstractValue | UndefinedValue {
@@ -835,22 +913,75 @@ export default class AbstractValue extends Value {
     let values = ValuesDomain.topVal;
     invariant(realm.generator !== undefined);
     if (resultType === UndefinedValue) {
-      return realm.generator.emitVoidExpression(types, values, args, buildFunction);
+      return realm.generator.emitVoidExpression(types, values, args, operationDescriptor);
     } else {
-      return realm.generator.deriveAbstract(types, values, args, buildFunction, optionalArgs);
+      return realm.generator.deriveAbstract(types, values, args, operationDescriptor, optionalArgs);
     }
   }
 
-  // Creates a union of an abstract value with one or more concrete values.
-  // The build node for the abstract values becomes the build node for the union.
-  // Use this only to allow instrinsic abstract objects to be null and/or undefined.
-  static createAbstractConcreteUnion(realm: Realm, ...elements: Array<Value>): AbstractValue {
-    let concreteValues: Array<ConcreteValue> = (elements.filter(e => e instanceof ConcreteValue): any);
-    invariant(concreteValues.length > 0 && concreteValues.length === elements.length - 1);
-    let concreteSet = new Set(concreteValues);
-    let abstractValue = elements.find(e => e instanceof AbstractValue);
+  static convertToTemporalIfArgsAreTemporal(realm: Realm, val: AbstractValue, condArgs?: Array<Value>): AbstractValue {
+    if (condArgs === undefined) condArgs = val.args;
+
+    let temporalArg = condArgs.find(arg => arg.isTemporal());
+    if (temporalArg !== undefined) {
+      let realmGenerator = realm.generator;
+      invariant(realmGenerator !== undefined);
+      invariant(val.operationDescriptor !== undefined);
+      return realmGenerator.deriveAbstract(val.types, val.values, val.args, val.operationDescriptor);
+    } else {
+      return val;
+    }
+  }
+
+  static dischargeValuesFromUnion(realm: Realm, union: AbstractValue): [AbstractValue, Array<ConcreteValue>] {
+    invariant(union instanceof AbstractValue && union.kind === "abstractConcreteUnion");
+    let abstractValue = union.args[0];
     invariant(abstractValue instanceof AbstractValue);
+
+    let concreteValues = (union.args.filter(e => e instanceof ConcreteValue): any);
+    invariant(concreteValues.length === union.args.length - 1);
+
+    if (!abstractValue.isTemporal()) {
+      // We make the abstract value in an abstract concrete union temporal, as it is predicated
+      // on the conditions that preclude the concrete values in the union. The type invariant
+      // also only applies in that condition, so it is skipped when deriving the value
+      // See #2327
+      let realmGenerator = realm.generator;
+
+      invariant(realmGenerator !== undefined);
+      invariant(abstractValue.operationDescriptor !== undefined);
+      abstractValue = realmGenerator.deriveAbstract(
+        abstractValue.types,
+        abstractValue.values,
+        abstractValue.args,
+        abstractValue.operationDescriptor,
+        {
+          isPure: true,
+          skipInvariant: true,
+        }
+      );
+    }
+
+    return [abstractValue, concreteValues];
+  }
+
+  // Creates a union of an abstract value with one or more concrete values.
+  // The operation descriptor for the abstract values becomes the operation descriptor for the union.
+  // Use this only to allow instrinsic abstract objects to be null and/or undefined.
+  static createAbstractConcreteUnion(
+    realm: Realm,
+    abstractValue: AbstractValue,
+    concreteValues: Array<ConcreteValue>
+  ): AbstractValue {
+    invariant(concreteValues.length > 0);
+    invariant(abstractValue instanceof AbstractValue);
+
+    let checkedConcreteValues = (concreteValues.filter(e => e instanceof ConcreteValue): any);
+    invariant(checkedConcreteValues.length === concreteValues.length);
+
+    let concreteSet: Set<ConcreteValue> = new Set(checkedConcreteValues);
     let values;
+
     if (!abstractValue.values.isTop()) {
       abstractValue.values.getElements().forEach(v => concreteSet.add(v));
       values = new ValuesDomain(concreteSet);
@@ -858,8 +989,8 @@ export default class AbstractValue extends Value {
       values = ValuesDomain.topVal;
     }
     let types = TypesDomain.topVal;
-    let [hash, operands] = hashCall("abstractConcreteUnion", abstractValue, ...concreteValues);
-    let result = new AbstractValue(realm, types, values, hash, operands, nodes => nodes[0], {
+    let [hash, operands] = hashCall("abstractConcreteUnion", abstractValue, ...checkedConcreteValues);
+    let result = new AbstractValue(realm, types, values, hash, operands, createOperationDescriptor("SINGLE_ARG"), {
       kind: "abstractConcreteUnion",
     });
     result.expressionLocation = realm.currentLocation;
@@ -870,13 +1001,13 @@ export default class AbstractValue extends Value {
     realm: Realm,
     resultTemplate: AbstractValue,
     args: Array<Value>,
-    buildFunction: AbstractValueBuildNodeFunction
+    operationDescriptor: OperationDescriptor
   ): AbstractValue {
     let types = resultTemplate.types;
     let values = resultTemplate.values;
     let [hash] = hashCall("widened property", ...args);
     let Constructor = Value.isTypeCompatibleWith(types.getType(), ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let result = new Constructor(realm, types, values, hash, args, buildFunction);
+    let result = new Constructor(realm, types, values, hash, args, operationDescriptor);
     result.kind = "widened property";
     result.mightBeEmpty = resultTemplate.mightBeEmpty;
     result.expressionLocation = resultTemplate.expressionLocation;
@@ -909,11 +1040,11 @@ export default class AbstractValue extends Value {
 
     let realmPreludeGenerator = realm.preludeGenerator;
     invariant(realmPreludeGenerator);
-    let id = t.identifier(name);
     let types = new TypesDomain(type);
     let values = ValuesDomain.topVal;
     let Constructor = Value.isTypeCompatibleWith(type, ObjectValue) ? AbstractObjectValue : AbstractValue;
-    let result = new Constructor(realm, types, values, 943586754858 + hashString(name), [], id);
+    let operationDescriptor = createOperationDescriptor("IDENTIFIER", { id: name });
+    let result = new Constructor(realm, types, values, 943586754858 + hashString(name), [], operationDescriptor);
     result.kind = AbstractValue.makeKind("abstractCounted", (realm.objectCount++).toString()); // need not be an object, but must be unique
     result.expressionLocation = location;
     result.shape = shape;
@@ -962,22 +1093,30 @@ export default class AbstractValue extends Value {
     return realm.reportIntrospectionError(message);
   }
 
-  static createAbstractObject(realm: Realm, name: string, template?: ObjectValue): AbstractObjectValue {
+  static createAbstractObject(
+    realm: Realm,
+    name: string,
+    templateOrShape?: ObjectValue | ShapeInformationInterface
+  ): AbstractObjectValue {
     let value;
-    if (template === undefined) {
-      template = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
+    if (templateOrShape === undefined) {
+      templateOrShape = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
     }
-    template.makePartial();
-    template.makeSimple();
-    value = AbstractValue.createFromTemplate(realm, buildExpressionTemplate(name), ObjectValue, [], name);
+    value = AbstractValue.createFromTemplate(realm, name, ObjectValue, []);
     if (!realm.isNameStringUnique(name)) {
       value.hashValue = ++realm.objectCount;
     } else {
       realm.saveNameString(name);
     }
     value.intrinsicName = name;
-    value.values = new ValuesDomain(new Set([template]));
-    realm.rebuildNestedProperties(value, name);
+    if (templateOrShape instanceof ObjectValue) {
+      templateOrShape.makePartial();
+      templateOrShape.makeSimple();
+      value.values = new ValuesDomain(new Set([templateOrShape]));
+      realm.rebuildNestedProperties(value, name);
+    } else {
+      value.shape = templateOrShape;
+    }
     invariant(value instanceof AbstractObjectValue);
     return value;
   }
@@ -999,14 +1138,8 @@ export default class AbstractValue extends Value {
       realm,
       ObjectValue,
       temporalArgs,
-      ([targetNode, ...sourceNodes]: Array<BabelNodeExpression>) => {
-        return t.callExpression(preludeGenerator.memoizeReference("Object.assign"), [targetNode, ...sourceNodes]);
-      },
-      {
-        skipInvariant: true,
-        mutatesOnly: [to],
-        temporalType: "OBJECT_ASSIGN",
-      }
+      createOperationDescriptor("OBJECT_ASSIGN"),
+      { skipInvariant: true, mutatesOnly: [to] }
     );
     invariant(temporalTo instanceof AbstractObjectValue);
     if (to instanceof AbstractObjectValue) {

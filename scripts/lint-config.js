@@ -48,12 +48,22 @@ module.exports = {
     fbt: true,
     requireWeak: true,
     xuiglyph: true,
+    __NUM_MODULES__: true,
+    DebuggerInternal: true,
+    define: true,
     // React
     React: true,
     __REACT_DEVTOOLS_GLOBAL_HOOK__: true,
     // Normal
     Exception: true,
     Error: true,
+    setImmediate: true,
+    clearImmediate: true,
+    DataView: true,
+    ArrayBuffer: true,
+    Uint8Array: true,
+    Float32Array: true,
+    Int32Array: true,
     // ES 6
     Promise: true,
     Map: true,
@@ -68,5 +78,10 @@ module.exports = {
     ActiveXObject: true,
     // CommonJS / Node
     process: true,
+    // Prepack
+    __optimize: true,
+    __optimizeReactComponentTree: true,
+    __abstract: true,
+    __makeFinal: true,
   },
 };

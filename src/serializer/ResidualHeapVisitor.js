@@ -19,6 +19,7 @@ import { HashSet, IsArray, Get } from "../methods/index.js";
 import {
   AbstractObjectValue,
   AbstractValue,
+  ArrayValue,
   BoundFunctionValue,
   ECMAScriptFunctionValue,
   ECMAScriptSourceFunctionValue,
@@ -46,12 +47,13 @@ import type {
   FunctionInstance,
   ResidualFunctionBinding,
   ReferentializationScope,
+  Scope,
+  ResidualHeapInfo,
 } from "./types.js";
 import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "../utils/logger.js";
 import { Modules } from "../utils/modules.js";
 import { HeapInspector } from "../utils/HeapInspector.js";
-import { Referentializer } from "./Referentializer.js";
 import {
   canIgnoreClassLengthProperty,
   ClassPropertiesToIgnore,
@@ -60,15 +62,15 @@ import {
   getSuggestedArrayLiteralLength,
   withDescriptorValue,
 } from "./utils.js";
-import { Environment, To } from "../singletons.js";
+import { createPathConditions, Environment, To } from "../singletons.js";
 import { isReactElement, isReactPropsObject, valueIsReactLibraryObject } from "../react/utils.js";
 import { ResidualReactElementVisitor } from "./ResidualReactElementVisitor.js";
 import { GeneratorDAG } from "./GeneratorDAG.js";
+import { PropertyDescriptor, AbstractJoinedDescriptor } from "../descriptors.js";
 
-export type Scope = FunctionValue | Generator;
 type BindingState = {|
   capturedBindings: Set<ResidualFunctionBinding>,
-  capturingFunctions: Set<FunctionValue>,
+  capturingScopes: Set<Scope>,
 |};
 
 /* This class visits all values that are reachable in the residual heap.
@@ -82,15 +84,12 @@ export class ResidualHeapVisitor {
     realm: Realm,
     logger: Logger,
     modules: Modules,
-    additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>,
-    // Referentializer is null if we're just checking what values exist
-    referentializer: Referentializer | "NO_REFERENTIALIZE"
+    additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>
   ) {
     invariant(realm.useAbstractInterpretation);
     this.realm = realm;
     this.logger = logger;
     this.modules = modules;
-    this.referentializer = referentializer === "NO_REFERENTIALIZE" ? undefined : referentializer;
 
     this.declarativeEnvironmentRecordsBindings = new Map();
     this.globalBindings = new Map();
@@ -120,7 +119,6 @@ export class ResidualHeapVisitor {
   realm: Realm;
   logger: Logger;
   modules: Modules;
-  referentializer: Referentializer | void;
   globalGenerator: Generator;
 
   // Caches that ensure one ResidualFunctionBinding exists per (record, name) pair
@@ -254,6 +252,14 @@ export class ResidualHeapVisitor {
 
   // Queues up an action to be later processed in some arbitrary scope.
   _enqueueWithUnrelatedScope(scope: Scope, action: () => void | boolean): void {
+    // If we are in a zone with a non-default equivalence set (we are wrapped in a `withCleanEquivalenceSet` call) then
+    // we need to save our equivalence set so that we may load it before running our action.
+    if (this.residualReactElementVisitor.defaultEquivalenceSet === false) {
+      const save = this.residualReactElementVisitor.saveEquivalenceSet();
+      const originalAction = action;
+      action = () => this.residualReactElementVisitor.loadEquivalenceSet(save, originalAction);
+    }
+
     this.delayedActions.push({ scope, action });
   }
 
@@ -278,6 +284,7 @@ export class ResidualHeapVisitor {
   }
 
   visitObjectProperties(obj: ObjectValue, kind?: ObjectKind): void {
+    // In non-instant render mode, properties of leaked objects are generated via assignments
     let { skipPrototype, constructor } = getObjectPrototypeMetadata(this.realm, obj);
     if (obj.temporalAlias !== undefined) return;
 
@@ -304,18 +311,23 @@ export class ResidualHeapVisitor {
         continue;
       }
       if (propertyBindingValue.pathNode !== undefined) continue; // property is written to inside a loop
-      invariant(propertyBindingValue);
+
+      // Leaked object. Properties are set via assignments
+      // TODO #2259: Make deduplication in the face of leaking work for custom accessors
+      if (
+        !(obj instanceof ArrayValue) &&
+        !obj.mightNotBeLeakedObject() &&
+        (descriptor instanceof PropertyDescriptor && (descriptor.get === undefined && descriptor.set === undefined))
+      ) {
+        continue;
+      }
+
       this.visitObjectProperty(propertyBindingValue);
     }
 
     // inject properties with computed names
     if (obj.unknownProperty !== undefined) {
-      let desc = obj.unknownProperty.descriptor;
-      if (desc !== undefined) {
-        let val = desc.value;
-        invariant(val instanceof AbstractValue);
-        this.visitObjectPropertiesWithComputedNames(val);
-      }
+      this.visitObjectPropertiesWithComputedNamesDescriptor(obj.unknownProperty.descriptor);
     }
 
     // prototype
@@ -355,6 +367,22 @@ export class ResidualHeapVisitor {
     }
   }
 
+  visitObjectPropertiesWithComputedNamesDescriptor(desc: void | Descriptor): void {
+    if (desc !== undefined) {
+      if (desc instanceof PropertyDescriptor) {
+        let val = desc.value;
+        invariant(val instanceof AbstractValue);
+        this.visitObjectPropertiesWithComputedNames(val);
+      } else if (desc instanceof AbstractJoinedDescriptor) {
+        this.visitValue(desc.joinCondition);
+        this.visitObjectPropertiesWithComputedNamesDescriptor(desc.descriptor1);
+        this.visitObjectPropertiesWithComputedNamesDescriptor(desc.descriptor2);
+      } else {
+        invariant(false, "unknown descriptor");
+      }
+    }
+  }
+
   visitObjectPropertiesWithComputedNames(absVal: AbstractValue): void {
     if (absVal.kind === "widened property") return;
     if (absVal.kind === "template for prototype member expression") return;
@@ -386,17 +414,19 @@ export class ResidualHeapVisitor {
     }
   }
 
-  visitDescriptor(desc: Descriptor): void {
-    invariant(desc.value === undefined || desc.value instanceof Value);
-    if (desc.joinCondition !== undefined) {
+  visitDescriptor(desc: void | Descriptor): void {
+    if (desc === undefined) {
+    } else if (desc instanceof PropertyDescriptor) {
+      if (desc.value !== undefined) desc.value = this.visitEquivalentValue(desc.value);
+      if (desc.get !== undefined) this.visitValue(desc.get);
+      if (desc.set !== undefined) this.visitValue(desc.set);
+    } else if (desc instanceof AbstractJoinedDescriptor) {
       desc.joinCondition = this.visitEquivalentValue(desc.joinCondition);
       if (desc.descriptor1 !== undefined) this.visitDescriptor(desc.descriptor1);
       if (desc.descriptor2 !== undefined) this.visitDescriptor(desc.descriptor2);
-      return;
+    } else {
+      invariant(false, "unknown descriptor");
     }
-    if (desc.value !== undefined) desc.value = this.visitEquivalentValue(desc.value);
-    if (desc.get !== undefined) this.visitValue(desc.get);
-    if (desc.set !== undefined) this.visitValue(desc.set);
   }
 
   visitValueArray(val: ObjectValue): void {
@@ -405,7 +435,7 @@ export class ResidualHeapVisitor {
     this.visitObjectProperties(val);
     const realm = this.realm;
     let lenProperty;
-    if (val.mightBeHavocedObject()) {
+    if (val.mightBeLeakedObject()) {
       lenProperty = this.realm.evaluateWithoutLeakLogic(() => Get(realm, val, "length"));
     } else {
       lenProperty = Get(realm, val, "length");
@@ -629,10 +659,10 @@ export class ResidualHeapVisitor {
   // function c() { return x.length + y.length; }
   // Here we need to make sure that a and b both initialize x and y because x and y will be in the same
   // captured scope because c captures both x and y.
-  visitBinding(val: FunctionValue, residualFunctionBinding: ResidualFunctionBinding): void {
+  visitBinding(scope: Scope, residualFunctionBinding: ResidualFunctionBinding): void {
     let environment = residualFunctionBinding.declarativeEnvironmentRecord;
     if (environment === null) return;
-    invariant(this.scope === val);
+    invariant(this.scope === scope);
 
     let refScope = this._getAdditionalFunctionOfScope() || "GLOBAL";
     residualFunctionBinding.potentialReferentializationScopes.add(refScope);
@@ -642,20 +672,20 @@ export class ResidualHeapVisitor {
     invariant(envRec !== null);
     let bindingState = getOrDefault(funcToScopes, envRec, () => ({
       capturedBindings: new Set(),
-      capturingFunctions: new Set(),
+      capturingScopes: new Set(),
     }));
     // If the binding is new for this bindingState, have all functions capturing bindings from that scope visit it
     if (!bindingState.capturedBindings.has(residualFunctionBinding)) {
-      for (let functionValue of bindingState.capturingFunctions) {
-        this._enqueueWithUnrelatedScope(functionValue, () => this._visitBindingHelper(residualFunctionBinding));
+      for (let capturingScope of bindingState.capturingScopes) {
+        this._enqueueWithUnrelatedScope(capturingScope, () => this._visitBindingHelper(residualFunctionBinding));
       }
       bindingState.capturedBindings.add(residualFunctionBinding);
     }
     // If the function is new for this bindingState, visit all existent bindings in this scope
-    if (!bindingState.capturingFunctions.has(val)) {
-      invariant(this.scope === val);
+    if (!bindingState.capturingScopes.has(scope)) {
+      invariant(this.scope === scope);
       for (let residualBinding of bindingState.capturedBindings) this._visitBindingHelper(residualBinding);
-      bindingState.capturingFunctions.add(val);
+      bindingState.capturingScopes.add(scope);
     }
   }
 
@@ -679,6 +709,21 @@ export class ResidualHeapVisitor {
       invariant(referencedName === name);
       invariant(referencedBase instanceof DeclarativeEnvironmentRecord);
       return referencedBase;
+    }
+  }
+
+  hasBinding(environment: EnvironmentRecord, name: string): boolean {
+    if (environment === this.globalEnvironmentRecord.$DeclarativeRecord) environment = this.globalEnvironmentRecord;
+
+    if (environment === this.globalEnvironmentRecord) {
+      // Global Binding
+      return this.globalBindings.get(name) !== undefined;
+    } else {
+      invariant(environment instanceof DeclarativeEnvironmentRecord);
+      // DeclarativeEnvironmentRecord binding
+      let residualFunctionBindings = this.declarativeEnvironmentRecordsBindings.get(environment);
+      if (residualFunctionBindings === undefined) return false;
+      return residualFunctionBindings.get(name) !== undefined;
     }
   }
 
@@ -811,6 +856,7 @@ export class ResidualHeapVisitor {
   }
 
   visitValueObject(val: ObjectValue): void {
+    invariant(val.isValid());
     this._registerAdditionalRoot(val);
     if (isReactElement(val)) {
       this.residualReactElementVisitor.visitReactElement(val);
@@ -896,7 +942,7 @@ export class ResidualHeapVisitor {
     let feasibleT, feasibleF;
     let savedPath = this.realm.pathConditions;
     try {
-      this.realm.pathConditions = this.scope instanceof Generator ? this.scope.pathConditions : [];
+      this.realm.pathConditions = this.scope instanceof Generator ? this.scope.pathConditions : createPathConditions();
 
       let impliesT = Path.implies(condition);
       let impliesF = Path.impliesNot(condition);
@@ -967,6 +1013,8 @@ export class ResidualHeapVisitor {
   visitAbstractValue(val: AbstractValue): void {
     if (val.kind === "sentinel member expression") {
       this.logger.logError(val, "expressions of type o[p] are not yet supported for partially known o and unknown p");
+    } else if (val.kind === "environment initialization expression") {
+      this.logger.logError(val, "reads during environment initialization should never leak to serialization");
     } else if (val.kind === "conditional") {
       this._visitAbstractValueConditional(val);
       return;
@@ -1000,17 +1048,20 @@ export class ResidualHeapVisitor {
       this.postProcessValue(equivalentValue);
       return (equivalentValue: any);
     }
-    if (val instanceof ObjectValue && isReactElement(val)) {
-      if (val.temporalAlias !== undefined) {
-        return this.visitEquivalentValue(val.temporalAlias);
+    if (val instanceof ObjectValue) {
+      invariant(val.isValid());
+      if (isReactElement(val)) {
+        if (val.temporalAlias !== undefined) {
+          return this.visitEquivalentValue(val.temporalAlias);
+        }
+        let equivalentReactElementValue = this.residualReactElementVisitor.reactElementEquivalenceSet.add(val);
+        if (this._mark(equivalentReactElementValue)) this.visitValueObject(equivalentReactElementValue);
+        return (equivalentReactElementValue: any);
+      } else if (isReactPropsObject(val)) {
+        let equivalentReactPropsValue = this.residualReactElementVisitor.reactPropsEquivalenceSet.add(val);
+        if (this._mark(equivalentReactPropsValue)) this.visitValueObject(equivalentReactPropsValue);
+        return (equivalentReactPropsValue: any);
       }
-      let equivalentReactElementValue = this.residualReactElementVisitor.reactElementEquivalenceSet.add(val);
-      if (this._mark(equivalentReactElementValue)) this.visitValueObject(equivalentReactElementValue);
-      return (equivalentReactElementValue: any);
-    } else if (val instanceof ObjectValue && isReactPropsObject(val)) {
-      let equivalentReactPropsValue = this.residualReactElementVisitor.reactPropsEquivalenceSet.add(val);
-      if (this._mark(equivalentReactPropsValue)) this.visitValueObject(equivalentReactPropsValue);
-      return (equivalentReactPropsValue: any);
     }
     this.visitValue(val);
     return val;
@@ -1099,12 +1150,9 @@ export class ResidualHeapVisitor {
         this.referencedDeclaredValues.set(value, this._getAdditionalFunctionOfScope());
       },
       recordDelayedEntry: (generator, entry: GeneratorEntry) => {
-        this.delayedActions.push({
-          scope: generator,
-          action: () => entry.visit(callbacks, generator),
-        });
+        this._enqueueWithUnrelatedScope(generator, () => entry.visit(callbacks, generator));
       },
-      visitModifiedObjectProperty: (binding: PropertyBinding) => {
+      visitModifiedProperty: (binding: PropertyBinding) => {
         let fixpoint_rerun = () => {
           if (this.values.has(binding.object)) {
             if (binding.internalSlot) {
@@ -1130,43 +1178,64 @@ export class ResidualHeapVisitor {
         fixpoint_rerun();
       },
       visitModifiedBinding: (modifiedBinding: Binding) => {
-        invariant(additionalFunctionInfo);
-        let { functionValue } = additionalFunctionInfo;
-        invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
-        let residualBinding = this.getBinding(modifiedBinding.environment, modifiedBinding.name);
-        let funcInstance = additionalFunctionInfo.instance;
-        invariant(funcInstance !== undefined);
-        funcInstance.residualFunctionBindings.set(modifiedBinding.name, residualBinding);
-        let newValue = modifiedBinding.value;
-        invariant(newValue);
-        newValue = this.visitEquivalentValue(newValue);
-        residualBinding.modified = true;
-        let otherFunc = residualBinding.additionalFunctionOverridesValue;
-        if (otherFunc !== undefined && otherFunc !== functionValue) {
-          let otherNameVal = otherFunc._SafeGetDataPropertyValue("name");
-          let otherNameStr = otherNameVal instanceof StringValue ? otherNameVal.value : "unknown function";
-          let funcNameVal = functionValue._SafeGetDataPropertyValue("name");
-          let funNameStr = funcNameVal instanceof StringValue ? funcNameVal.value : "unknown function";
-          let error = new CompilerDiagnostic(
-            `Variable ${
-              modifiedBinding.name
-            } written to in optimized function ${funNameStr} conflicts with write in another optimized function ${otherNameStr}`,
-            funcNameVal.expressionLocation,
-            "PP1001",
-            "RecoverableError"
-          );
-          if (functionValue.$Realm.handleError(error) === "Fail") throw new FatalError();
-        }
-        residualBinding.additionalFunctionOverridesValue = functionValue;
-        additionalFunctionInfo.modifiedBindings.set(modifiedBinding, residualBinding);
-        // TODO nested optimized functions: revisit adding GLOBAL as outer optimized function
-        residualBinding.potentialReferentializationScopes.add("GLOBAL");
-        return [residualBinding, newValue];
+        let fixpoint_rerun = () => {
+          if (this.hasBinding(modifiedBinding.environment, modifiedBinding.name)) {
+            invariant(additionalFunctionInfo);
+            let { functionValue } = additionalFunctionInfo;
+            invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
+            let residualBinding = this.getBinding(modifiedBinding.environment, modifiedBinding.name);
+            let funcInstance = additionalFunctionInfo.instance;
+            invariant(funcInstance !== undefined);
+            funcInstance.residualFunctionBindings.set(modifiedBinding.name, residualBinding);
+            let newValue = modifiedBinding.value;
+            invariant(newValue);
+            this.visitValue(newValue);
+            residualBinding.modified = true;
+            let otherFunc = residualBinding.additionalFunctionOverridesValue;
+            if (otherFunc !== undefined && otherFunc !== functionValue) {
+              let otherNameVal = otherFunc._SafeGetDataPropertyValue("name");
+              let otherNameStr = otherNameVal instanceof StringValue ? otherNameVal.value : "unknown function";
+              let funcNameVal = functionValue._SafeGetDataPropertyValue("name");
+              let funNameStr = funcNameVal instanceof StringValue ? funcNameVal.value : "unknown function";
+              let error = new CompilerDiagnostic(
+                `Variable ${
+                  modifiedBinding.name
+                } written to in optimized function ${funNameStr} conflicts with write in another optimized function ${otherNameStr}`,
+                funcNameVal.expressionLocation,
+                "PP1001",
+                "RecoverableError"
+              );
+              if (functionValue.$Realm.handleError(error) === "Fail") throw new FatalError();
+            }
+            residualBinding.additionalFunctionOverridesValue = functionValue;
+            additionalFunctionInfo.modifiedBindings.set(modifiedBinding, residualBinding);
+            // TODO #2430 nested optimized functions: revisit adding GLOBAL as outer optimized function
+            residualBinding.potentialReferentializationScopes.add("GLOBAL");
+            return true;
+          } else {
+            this._enqueueWithUnrelatedScope(this.scope, fixpoint_rerun);
+            return false;
+          }
+        };
+        fixpoint_rerun();
       },
       visitBindingAssignment: (binding: Binding, value: Value) => {
         let residualBinding = this.getBinding(binding.environment, binding.name);
         residualBinding.modified = true;
         residualBinding.hasLeaked = true;
+        // This may not have been referentialized if the binding is a local of an optimized function.
+        // in that case, we need to figure out which optimized function it is, and referentialize it in that scope.
+        let commonScope = this._getCommonScope();
+        if (residualBinding.potentialReferentializationScopes.size === 0) {
+          this._enqueueWithUnrelatedScope(commonScope, () => {
+            if (additionalFunctionInfo !== undefined) {
+              let funcInstance = additionalFunctionInfo.instance;
+              invariant(funcInstance !== undefined);
+              funcInstance.residualFunctionBindings.set(residualBinding.name, residualBinding);
+            }
+            this.visitBinding(commonScope, residualBinding);
+          });
+        }
         return this.visitEquivalentValue(value);
       },
     };
@@ -1201,7 +1270,7 @@ export class ResidualHeapVisitor {
     // Set Visitor state
     // Allows us to emit function declarations etc. inside of this additional
     // function instead of adding them at global scope
-    this.residualReactElementVisitor.withCleanEquivalenceSet(() => {
+    let visitor = () => {
       invariant(funcInstance !== undefined);
       invariant(functionInfo !== undefined);
       let additionalFunctionInfo = {
@@ -1215,7 +1284,13 @@ export class ResidualHeapVisitor {
       let effectsGenerator = additionalEffects.generator;
       this.generatorDAG.add(functionValue, effectsGenerator);
       this.visitGenerator(effectsGenerator, additionalFunctionInfo);
-    });
+    };
+
+    if (this.realm.react.enabled) {
+      this.residualReactElementVisitor.withCleanEquivalenceSet(visitor);
+    } else {
+      visitor();
+    }
   }
 
   visitRoots(): void {
@@ -1224,10 +1299,6 @@ export class ResidualHeapVisitor {
     for (let moduleValue of this.modules.initializedModules.values()) this.visitValue(moduleValue);
 
     this._visitUntilFixpoint();
-
-    let referentializer = this.referentializer;
-    if (referentializer !== undefined)
-      for (let instance of this.functionInstances.values()) referentializer.referentialize(instance);
   }
 
   _visitUntilFixpoint(): void {
@@ -1317,5 +1388,20 @@ export class ResidualHeapVisitor {
         this.logger.logInformation(`  (${actual} items processed)`);
       }
     }
+  }
+
+  toInfo(): ResidualHeapInfo {
+    return {
+      values: this.values,
+      functionInstances: this.functionInstances,
+      classMethodInstances: this.classMethodInstances,
+      functionInfos: this.functionInfos,
+      referencedDeclaredValues: this.referencedDeclaredValues,
+      additionalFunctionValueInfos: this.additionalFunctionValueInfos,
+      declarativeEnvironmentRecordsBindings: this.declarativeEnvironmentRecordsBindings,
+      globalBindings: this.globalBindings,
+      conditionalFeasibility: this.conditionalFeasibility,
+      additionalGeneratorRoots: this.additionalGeneratorRoots,
+    };
   }
 }

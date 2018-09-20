@@ -11,7 +11,7 @@
 
 import { Realm } from "../../realm.js";
 import { FatalError } from "../../errors.js";
-import { AbstractValue, UndefinedValue, NumberValue, ObjectValue, StringValue, NullValue } from "../../values/index.js";
+import { AbstractValue, NullValue, NumberValue, ObjectValue, StringValue, UndefinedValue } from "../../values/index.js";
 import { IsCallable, IsRegExp } from "../../methods/is.js";
 import { GetMethod, GetSubstitution } from "../../methods/get.js";
 import { Call, Invoke } from "../../methods/call.js";
@@ -20,12 +20,9 @@ import { RegExpCreate } from "../../methods/regexp.js";
 import { SplitMatch, RequireObjectCoercible } from "../../methods/abstract.js";
 import { HasSomeCompatibleType } from "../../methods/has.js";
 import invariant from "../../invariant.js";
-import buildExpressionTemplate from "../../utils/builder.js";
 
 const sliceTemplateSrc = "(A).slice(B,C)";
-const sliceTemplate = buildExpressionTemplate(sliceTemplateSrc);
 const splitTemplateSrc = "(A).split(B,C)";
-const splitTemplate = buildExpressionTemplate(splitTemplateSrc);
 
 export default function(realm: Realm, obj: ObjectValue): ObjectValue {
   // ECMA262 21.1.3
@@ -503,7 +500,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
 
     // 7. Search string for the first occurrence of searchString and
     //    let pos be the index within string of the first code unit of the matched substring and
-    let pos = string.search(searchString);
+    let pos = string.indexOf(searchString);
 
     //    let matched be searchString.
     let matched = searchString;
@@ -577,7 +574,10 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     if (O instanceof AbstractValue && O.getType() === StringValue) {
-      return AbstractValue.createFromTemplate(realm, sliceTemplate, StringValue, [O, start, end], sliceTemplateSrc);
+      // This operation is a conditional atemporal
+      // See #2327
+      let absVal = AbstractValue.createFromTemplate(realm, sliceTemplateSrc, StringValue, [O, start, end]);
+      return AbstractValue.convertToTemporalIfArgsAreTemporal(realm, absVal, [O]);
     }
 
     // 2. Let S be ? ToString(O).
@@ -611,13 +611,10 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     if (O instanceof AbstractValue && O.getType() === StringValue) {
-      return AbstractValue.createFromTemplate(
-        realm,
-        splitTemplate,
-        StringValue,
-        [O, separator, limit],
-        splitTemplateSrc
-      );
+      // This operation is a conditional atemporal
+      // See #2327
+      let absVal = AbstractValue.createFromTemplate(realm, splitTemplateSrc, ObjectValue, [O, separator, limit]);
+      return AbstractValue.convertToTemporalIfArgsAreTemporal(realm, absVal, [O]);
     }
 
     // 2. If separator is neither undefined nor null, then

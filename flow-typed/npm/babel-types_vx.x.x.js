@@ -17,9 +17,9 @@
 
 
 declare module "@babel/types" {
-  declare type BabelNodeObjectMethodKind = "get" | "set" | "method";
-  declare type BabelNodeLogicalOperator = "||" | "&&";
-  declare type BabelNodeAssignmentOperator = "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "<<=" | ">>=" | ">>>=" | "|=" | "^=" | "&=";
+  declare type BabelObjectMethodKind = "get" | "set" | "method";
+  declare type BabelLogicalOperator = "||" | "&&";
+  declare type BabelAssignmentOperator = "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "<<=" | ">>=" | ">>>=" | "|=" | "^=" | "&=";
   declare type BabelBinaryOperator = "+" | "-" | "/" | "%" | "*" | "**" | "&" | "|" | ">>" | ">>>" | "<<" | "^" | "==" | "===" | "!=" | "!==" | "in" | "instanceof" | ">" | "<" | ">=" | "<=";
   declare type BabelUnaryOperator = "void" | "delete" | "!" | "+" | "-" | "++" | "--" | "~" | "typeof";
   declare type BabelUpdateOperator = "++" | "--";
@@ -206,7 +206,7 @@ declare module "@babel/types" {
 
   declare class BabelNodeAssignmentExpression extends BabelNode {
     type: "AssignmentExpression";
-    operator: BabelNodeAssignmentOperator;
+    operator: BabelAssignmentOperator;
     left: BabelNodeLVal;
     right: BabelNodeExpression;
   }
@@ -373,7 +373,7 @@ declare module "@babel/types" {
 
   declare class BabelNodeLogicalExpression extends BabelNode {
     type: "LogicalExpression";
-    operator: BabelNodeLogicalOperator;
+    operator: BabelLogicalOperator;
     left: BabelNodeExpression;
     right: BabelNodeExpression;
   }
@@ -405,7 +405,7 @@ declare module "@babel/types" {
 
   declare class BabelNodeObjectMethod extends BabelNode {
     type: "ObjectMethod";
-    kind: BabelNodeObjectMethodKind;
+    kind: BabelObjectMethodKind;
     computed: boolean;
     key: BabelNodeExpression;
     decorators: Array<BabelNodeDecorator>;
@@ -1065,7 +1065,7 @@ declare module "@babel/types" {
   declare function arrayPattern(elements: Array<BabelNodeExpression>, typeAnnotation: any, decorators?: Array<BabelNodeDecorator>): BabelNodeArrayPattern;
   declare function arrayTypeAnnotation(elementType: any): BabelNodeArrayTypeAnnotation;
   declare function arrowFunctionExpression(params: Array<BabelNodeLVal>, body: BabelNodeBlockStatement | BabelNodeExpression, async?: boolean, returnType?: any, typeParameters?: any): BabelNodeArrowFunctionExpression;
-  declare function assignmentExpression(operator: BabelNodeAssignmentOperator, left: BabelNodeLVal, right: BabelNodeExpression): BabelNodeAssignmentExpression;
+  declare function assignmentExpression(operator: BabelAssignmentOperator, left: BabelNodeLVal, right: BabelNodeExpression): BabelNodeAssignmentExpression;
   declare function assignmentPattern(left: BabelNodeIdentifier, right: BabelNodeExpression, decorators?: any): BabelNodeAssignmentPattern;
   declare function awaitExpression(argument: BabelNodeExpression): BabelNodeAwaitExpression;
   declare function binaryExpression(operator: BabelBinaryOperator, left: BabelNodeExpression, right: BabelNodeExpression): BabelNodeBinaryExpression;
@@ -1139,7 +1139,7 @@ declare module "@babel/types" {
   declare function jSXSpreadAttribute(argument: BabelNodeExpression): BabelNodeJSXSpreadAttribute;
   declare function jSXText(value: string): BabelNodeJSXText;
   declare function labeledStatement(label: BabelNodeIdentifier, body: BabelNodeStatement): BabelNodeLabeledStatement;
-  declare function logicalExpression(operator: BabelNodeLogicalOperator, left: BabelNodeExpression, right: BabelNodeExpression): BabelNodeLogicalExpression;
+  declare function logicalExpression(operator: BabelLogicalOperator, left: BabelNodeExpression, right: BabelNodeExpression): BabelNodeLogicalExpression;
   declare function memberExpression(object: BabelNodeExpression, property: BabelNodeExpression | BabelNodeIdentifier, computed?: boolean): BabelNodeMemberExpression;
   declare function metaProperty(meta: string, property: string): BabelNodeMetaProperty;
   declare function mixedTypeAnnotation(): BabelNodeMixedTypeAnnotation;
@@ -1152,7 +1152,7 @@ declare module "@babel/types" {
   declare function numericLiteral(value: number): BabelNodeNumericLiteral;
   declare function numericLiteralTypeAnnotation(): BabelNodeNumericLiteralTypeAnnotation;
   declare function objectExpression(properties: Array<BabelNodeObjectMethod | BabelNodeObjectProperty | BabelNodeSpreadElement>): BabelNodeObjectExpression;
-  declare function objectMethod(kind: BabelNodeObjectMethodKind, key: BabelNodeExpression | BabelNodeIdentifier | BabelNodeLiteral, params: Array<BabelNodeLVal>, body: BabelNodeBlockStatement, computed?: boolean, async?: boolean, decorators?: any, generator?: boolean, returnType?: any, typeParameters?: any): BabelNodeObjectMethod;
+  declare function objectMethod(kind: BabelObjectMethodKind, key: BabelNodeExpression | BabelNodeIdentifier | BabelNodeLiteral, params: Array<BabelNodeLVal>, body: BabelNodeBlockStatement, computed?: boolean, async?: boolean, decorators?: any, generator?: boolean, returnType?: any, typeParameters?: any): BabelNodeObjectMethod;
   declare function objectPattern(properties: Array<BabelNodeRestProperty | BabelNodeProperty>, typeAnnotation: any, decorators?: Array<BabelNodeDecorator>): BabelNodeObjectPattern;
   declare function objectProperty(key: BabelNodeExpression | BabelNodeIdentifier | BabelNodeLiteral, value: BabelNodeExpression, computed?: boolean, shorthand?: boolean, decorators: ?Array<BabelNodeDecorator>): BabelNodeObjectProperty;
   declare function objectTypeAnnotation(properties: any, indexers: any, callProperties: any): BabelNodeObjectTypeAnnotation;
@@ -1175,7 +1175,7 @@ declare module "@babel/types" {
   declare function switchStatement(discriminant: BabelNodeExpression, cases: Array<BabelNodeSwitchCase>): BabelNodeSwitchStatement;
   declare function taggedTemplateExpression(tag: BabelNodeExpression, quasi: BabelNodeTemplateLiteral): BabelNodeTaggedTemplateExpression;
   declare function templateElement(value: any, tail?: boolean): BabelNodeTemplateElement;
-  declare function templateLiteral(quasis: Array<BabelNodeTemplateLiteral>, expressions: Array<BabelNodeExpression>): BabelNodeTemplateLiteral;
+  declare function templateLiteral(quasis: Array<BabelNodeTemplateElement>, expressions: Array<BabelNodeExpression>): BabelNodeTemplateLiteral;
   declare function thisExpression(): BabelNodeThisExpression;
   declare function thisTypeAnnotation(): BabelNodeThisTypeAnnotation;
   declare function throwStatement(argument: BabelNodeExpression): BabelNodeThrowStatement;
@@ -1390,9 +1390,9 @@ declare module "@babel/types" {
 }
 
 declare module "babel-types" {
-  declare type BabelNodeObjectMethodKind = "get" | "set" | "method";
-  declare type BabelNodeLogicalOperator = "||" | "&&";
-  declare type BabelNodeAssignmentOperator = "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "<<=" | ">>=" | ">>>=" | "|=" | "^=" | "&=";
+  declare type BabelObjectMethodKind = "get" | "set" | "method";
+  declare type BabelLogicalOperator = "||" | "&&";
+  declare type BabelAssignmentOperator = "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "<<=" | ">>=" | ">>>=" | "|=" | "^=" | "&=";
   declare type BabelBinaryOperator = "+" | "-" | "/" | "%" | "*" | "**" | "&" | "|" | ">>" | ">>>" | "<<" | "^" | "==" | "===" | "!=" | "!==" | "in" | "instanceof" | ">" | "<" | ">=" | "<=";
   declare type BabelUnaryOperator = "void" | "delete" | "!" | "+" | "-" | "++" | "--" | "~" | "typeof";
   declare type BabelUpdateOperator = "++" | "--";
@@ -1579,7 +1579,7 @@ declare module "babel-types" {
 
   declare class BabelNodeAssignmentExpression extends BabelNode {
     type: "AssignmentExpression";
-    operator: BabelNodeAssignmentOperator;
+    operator: BabelAssignmentOperator;
     left: BabelNodeLVal;
     right: BabelNodeExpression;
   }
@@ -1746,7 +1746,7 @@ declare module "babel-types" {
 
   declare class BabelNodeLogicalExpression extends BabelNode {
     type: "LogicalExpression";
-    operator: BabelNodeLogicalOperator;
+    operator: BabelLogicalOperator;
     left: BabelNodeExpression;
     right: BabelNodeExpression;
   }
@@ -1778,7 +1778,7 @@ declare module "babel-types" {
 
   declare class BabelNodeObjectMethod extends BabelNode {
     type: "ObjectMethod";
-    kind: BabelNodeObjectMethodKind;
+    kind: BabelObjectMethodKind;
     computed: boolean;
     key: BabelNodeExpression;
     decorators: Array<BabelNodeDecorator>;
@@ -2438,7 +2438,7 @@ declare module "babel-types" {
   declare function arrayPattern(elements: Array<BabelNodeExpression>, typeAnnotation: any, decorators?: Array<BabelNodeDecorator>): BabelNodeArrayPattern;
   declare function arrayTypeAnnotation(elementType: any): BabelNodeArrayTypeAnnotation;
   declare function arrowFunctionExpression(params: Array<BabelNodeLVal>, body: BabelNodeBlockStatement | BabelNodeExpression, async?: boolean, returnType?: any, typeParameters?: any): BabelNodeArrowFunctionExpression;
-  declare function assignmentExpression(operator: BabelNodeAssignmentOperator, left: BabelNodeLVal, right: BabelNodeExpression): BabelNodeAssignmentExpression;
+  declare function assignmentExpression(operator: BabelAssignmentOperator, left: BabelNodeLVal, right: BabelNodeExpression): BabelNodeAssignmentExpression;
   declare function assignmentPattern(left: BabelNodeIdentifier, right: BabelNodeExpression, decorators?: any): BabelNodeAssignmentPattern;
   declare function awaitExpression(argument: BabelNodeExpression): BabelNodeAwaitExpression;
   declare function binaryExpression(operator: BabelBinaryOperator, left: BabelNodeExpression, right: BabelNodeExpression): BabelNodeBinaryExpression;
@@ -2512,7 +2512,7 @@ declare module "babel-types" {
   declare function jSXSpreadAttribute(argument: BabelNodeExpression): BabelNodeJSXSpreadAttribute;
   declare function jSXText(value: string): BabelNodeJSXText;
   declare function labeledStatement(label: BabelNodeIdentifier, body: BabelNodeStatement): BabelNodeLabeledStatement;
-  declare function logicalExpression(operator: BabelNodeLogicalOperator, left: BabelNodeExpression, right: BabelNodeExpression): BabelNodeLogicalExpression;
+  declare function logicalExpression(operator: BabelLogicalOperator, left: BabelNodeExpression, right: BabelNodeExpression): BabelNodeLogicalExpression;
   declare function memberExpression(object: BabelNodeExpression, property: BabelNodeExpression | BabelNodeIdentifier, computed?: boolean): BabelNodeMemberExpression;
   declare function metaProperty(meta: string, property: string): BabelNodeMetaProperty;
   declare function mixedTypeAnnotation(): BabelNodeMixedTypeAnnotation;
@@ -2525,7 +2525,7 @@ declare module "babel-types" {
   declare function numericLiteral(value: number): BabelNodeNumericLiteral;
   declare function numericLiteralTypeAnnotation(): BabelNodeNumericLiteralTypeAnnotation;
   declare function objectExpression(properties: Array<BabelNodeObjectMethod | BabelNodeObjectProperty | BabelNodeSpreadElement>): BabelNodeObjectExpression;
-  declare function objectMethod(kind: BabelNodeObjectMethodKind, key: BabelNodeExpression | BabelNodeIdentifier | BabelNodeLiteral, params: Array<BabelNodeLVal>, body: BabelNodeBlockStatement, computed?: boolean, async?: boolean, decorators?: any, generator?: boolean, returnType?: any, typeParameters?: any): BabelNodeObjectMethod;
+  declare function objectMethod(kind: BabelObjectMethodKind, key: BabelNodeExpression | BabelNodeIdentifier | BabelNodeLiteral, params: Array<BabelNodeLVal>, body: BabelNodeBlockStatement, computed?: boolean, async?: boolean, decorators?: any, generator?: boolean, returnType?: any, typeParameters?: any): BabelNodeObjectMethod;
   declare function objectPattern(properties: Array<BabelNodeRestProperty | BabelNodeProperty>, typeAnnotation: any, decorators?: Array<BabelNodeDecorator>): BabelNodeObjectPattern;
   declare function objectProperty(key: BabelNodeExpression | BabelNodeIdentifier | BabelNodeLiteral, value: BabelNodeExpression, computed?: boolean, shorthand?: boolean, decorators: ?Array<BabelNodeDecorator>): BabelNodeObjectProperty;
   declare function objectTypeAnnotation(properties: any, indexers: any, callProperties: any): BabelNodeObjectTypeAnnotation;

@@ -1,3 +1,5 @@
+// arrayNestedOptimizedFunctionsEnabled
+
 function fn(x, y) {
   var edges = Array.from(x);
   var items = edges

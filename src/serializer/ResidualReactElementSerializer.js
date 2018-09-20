@@ -14,15 +14,16 @@ import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { canHoistReactElement } from "../react/hoisting.js";
 import * as t from "@babel/types";
 import type { BabelNode, BabelNodeExpression } from "@babel/types";
-import { AbstractValue, AbstractObjectValue, ObjectValue, SymbolValue, Value } from "../values/index.js";
+import { AbstractValue, AbstractObjectValue, ObjectValue, SymbolValue, FunctionValue, Value } from "../values/index.js";
 import { convertExpressionToJSXIdentifier, convertKeyValueToJSXAttribute } from "../react/jsx.js";
 import { Logger } from "../utils/logger.js";
 import invariant from "../invariant.js";
-import { FatalError } from "../errors";
+import { FatalError } from "../errors.js";
 import { traverseReactElement } from "../react/elements.js";
 import { canExcludeReactElementObjectProperty, getReactSymbol, getProperty } from "../react/utils.js";
 import type { ReactOutputTypes } from "../options.js";
 import type { LazilyHoistedNodes } from "./types.js";
+import type { ResidualOptimizedFunctions } from "./ResidualOptimizedFunctions";
 
 type ReactElementAttributeType = "SPREAD" | "PROPERTY" | "PENDING";
 type ReactElementChildType = "NORMAL" | "PENDING";
@@ -47,19 +48,25 @@ type ReactElement = {
 };
 
 export class ResidualReactElementSerializer {
-  constructor(realm: Realm, residualHeapSerializer: ResidualHeapSerializer) {
+  constructor(
+    realm: Realm,
+    residualHeapSerializer: ResidualHeapSerializer,
+    residualOptimizedFunctions: ResidualOptimizedFunctions
+  ) {
     this.realm = realm;
     this.residualHeapSerializer = residualHeapSerializer;
     this.logger = residualHeapSerializer.logger;
     this.reactOutput = realm.react.output || "create-element";
-    this._lazilyHoistedNodes = undefined;
+    this._lazilyHoistedNodes = new Map();
+    this._residualOptimizedFunctions = residualOptimizedFunctions;
   }
 
   realm: Realm;
   logger: Logger;
   reactOutput: ReactOutputTypes;
   residualHeapSerializer: ResidualHeapSerializer;
-  _lazilyHoistedNodes: void | LazilyHoistedNodes;
+  _lazilyHoistedNodes: Map<FunctionValue, LazilyHoistedNodes>;
+  _residualOptimizedFunctions: ResidualOptimizedFunctions;
 
   _createReactElement(value: ObjectValue): ReactElement {
     return { attributes: [], children: [], declared: false, type: undefined, value };
@@ -82,13 +89,17 @@ export class ResidualReactElementSerializer {
   ): void {
     // if the currentHoistedReactElements is not defined, we create it an emit the function call
     // this should only occur once per additional function
-    if (this._lazilyHoistedNodes === undefined) {
+    const optimizedFunction = this._residualOptimizedFunctions.tryGetOptimizedFunctionRoot(reactElement);
+    invariant(optimizedFunction);
+    let lazilyHoistedNodes = this._lazilyHoistedNodes.get(optimizedFunction);
+    if (lazilyHoistedNodes === undefined) {
       let funcId = t.identifier(this.residualHeapSerializer.functionNameGenerator.generate());
-      this._lazilyHoistedNodes = {
+      lazilyHoistedNodes = {
         id: funcId,
         createElementIdentifier: hoistedCreateElementIdentifier,
         nodes: [],
       };
+      this._lazilyHoistedNodes.set(optimizedFunction, lazilyHoistedNodes);
       let statement = t.expressionStatement(
         t.logicalExpression(
           "&&",
@@ -97,14 +108,11 @@ export class ResidualReactElementSerializer {
           t.callExpression(funcId, originalCreateElementIdentifier ? [originalCreateElementIdentifier] : [])
         )
       );
-      let optimizedFunction = this.residualHeapSerializer.tryGetOptimizedFunctionRoot(reactElement);
       this.residualHeapSerializer.getPrelude(optimizedFunction).push(statement);
     }
     // we then push the reactElement and its id into our list of elements to process after
     // the current additional function has serialzied
-    invariant(this._lazilyHoistedNodes !== undefined);
-    invariant(Array.isArray(this._lazilyHoistedNodes.nodes));
-    this._lazilyHoistedNodes.nodes.push({ id, astNode: reactElementAst });
+    lazilyHoistedNodes.nodes.push({ id, astNode: reactElementAst });
   }
 
   _getReactLibraryValue(): AbstractObjectValue | ObjectValue {
@@ -129,7 +137,7 @@ export class ResidualReactElementSerializer {
     let propsValue = getProperty(this.realm, value, "props");
 
     let shouldHoist =
-      this.residualHeapSerializer.tryGetOptimizedFunctionRoot(value) !== undefined &&
+      this._residualOptimizedFunctions.tryGetOptimizedFunctionRoot(value) !== undefined &&
       canHoistReactElement(this.realm, value);
 
     let id = this.residualHeapSerializer.getSerializeObjectIdentifier(value);
@@ -155,15 +163,18 @@ export class ResidualReactElementSerializer {
           originalCreateElementIdentifier = this.residualHeapSerializer.serializeValue(createElement);
 
           if (shouldHoist) {
-            // if we haven't created a _lazilyHoistedNodes before, then this is the first time
+            const optimizedFunction = this._residualOptimizedFunctions.tryGetOptimizedFunctionRoot(value);
+            invariant(optimizedFunction);
+            const lazilyHoistedNodes = this._lazilyHoistedNodes.get(optimizedFunction);
+            // if we haven't created a lazilyHoistedNodes before, then this is the first time
             // so we only create the hoisted identifier once
-            if (this._lazilyHoistedNodes === undefined) {
+            if (lazilyHoistedNodes === undefined) {
               // create a new unique instance
               hoistedCreateElementIdentifier = t.identifier(
                 this.residualHeapSerializer.intrinsicNameGenerator.generate()
               );
             } else {
-              hoistedCreateElementIdentifier = this._lazilyHoistedNodes.createElementIdentifier;
+              hoistedCreateElementIdentifier = lazilyHoistedNodes.createElementIdentifier;
             }
           }
 
@@ -438,10 +449,11 @@ export class ResidualReactElementSerializer {
     return reactElementChild;
   }
 
-  serializeLazyHoistedNodes(): Array<BabelNodeStatement> {
+  serializeLazyHoistedNodes(optimizedFunction: FunctionValue): Array<BabelNodeStatement> {
     const entries = [];
-    if (this._lazilyHoistedNodes !== undefined) {
-      let { id, nodes, createElementIdentifier } = this._lazilyHoistedNodes;
+    const lazilyHoistedNodes = this._lazilyHoistedNodes.get(optimizedFunction);
+    if (lazilyHoistedNodes !== undefined) {
+      let { id, nodes, createElementIdentifier } = lazilyHoistedNodes;
       // create a function that initializes all the hoisted nodes
       let func = t.functionExpression(
         null,
@@ -454,7 +466,7 @@ export class ResidualReactElementSerializer {
       // output all the empty variable declarations that will hold the nodes lazily
       entries.push(...nodes.map(node => t.variableDeclaration("var", [t.variableDeclarator(node.id)])));
       // reset the _lazilyHoistedNodes so other additional functions work
-      this._lazilyHoistedNodes = undefined;
+      this._lazilyHoistedNodes.delete(optimizedFunction);
     }
     return entries;
   }

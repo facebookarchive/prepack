@@ -21,11 +21,11 @@ import {
   NumberValue,
   UndefinedValue,
 } from "../values/index.js";
-import { GetPrototypeFromConstructor } from "../methods/get.js";
-import { AllocateArrayBuffer } from "../methods/arraybuffer.js";
-import { IsDetachedBuffer, IsInteger } from "../methods/is.js";
-import { GetValueFromBuffer, SetValueInBuffer } from "../methods/arraybuffer.js";
-import { Construct, SpeciesConstructor } from "../methods/construct.js";
+import { GetPrototypeFromConstructor } from "./get.js";
+import { AllocateArrayBuffer } from "./arraybuffer.js";
+import { IsDetachedBuffer, IsInteger } from "./is.js";
+import { GetValueFromBuffer, SetValueInBuffer } from "./arraybuffer.js";
+import { Construct, SpeciesConstructor } from "./construct.js";
 import { To } from "../singletons.js";
 import invariant from "../invariant.js";
 
@@ -332,7 +332,7 @@ export function AllocateTypedArrayBuffer(realm: Realm, O: ObjectValue, length: n
 // ECMA262 22.2.4.6
 export function TypedArrayCreate(realm: Realm, constructor: ObjectValue, argumentList: Array<Value>): ObjectValue {
   // 1. Let newTypedArray be ? Construct(constructor, argumentList).
-  let newTypedArray = Construct(realm, constructor, argumentList);
+  let newTypedArray = Construct(realm, constructor, argumentList).throwIfNotConcreteObject();
 
   // 2. Perform ? ValidateTypedArray(newTypedArray).
   ValidateTypedArray(realm, newTypedArray);

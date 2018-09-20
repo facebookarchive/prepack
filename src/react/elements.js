@@ -27,13 +27,15 @@ import {
   applyObjectAssignConfigsForReactElement,
   createInternalReactElement,
   flagPropsWithNoPartialKeyOrRef,
+  flattenChildren,
   hardModifyReactObjectPropertyBinding,
   getProperty,
   hasNoPartialKeyOrRef,
 } from "./utils.js";
-import * as t from "@babel/types";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
+import { createOperationDescriptor } from "../utils/generator.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 function createPropsObject(
   realm: Realm,
@@ -109,8 +111,11 @@ function createPropsObject(
   const applyProperties = () => {
     if (config instanceof ObjectValue) {
       for (let [propKey, binding] of config.properties) {
-        if (binding && binding.descriptor && binding.descriptor.enumerable) {
-          setProp(propKey, Get(realm, config, propKey));
+        if (binding && binding.descriptor) {
+          invariant(binding.descriptor instanceof PropertyDescriptor);
+          if (binding.descriptor.enumerable) {
+            setProp(propKey, Get(realm, config, propKey));
+          }
         }
       }
     }
@@ -130,7 +135,6 @@ function createPropsObject(
     if (children !== undefined) {
       hardModifyReactObjectPropertyBinding(realm, props, "children", children);
     }
-
     // handle default props on a partial/abstract config
     if (defaultProps !== realm.intrinsics.undefined) {
       let defaultPropsEvaluated = 0;
@@ -138,19 +142,27 @@ function createPropsObject(
       // first see if we can apply all the defaultProps without needing the helper
       if (defaultProps instanceof ObjectValue && !defaultProps.isPartialObject()) {
         for (let [propName, binding] of defaultProps.properties) {
-          if (binding.descriptor !== undefined && binding.descriptor.value !== realm.intrinsics.undefined) {
-            // see if we have this on our props object
-            let propBinding = props.properties.get(propName);
-            // if the binding exists and value is abstract, it might be undefined
-            // so in that case we need the helper, otherwise we can continue
-            if (
-              propBinding !== undefined &&
-              !(propBinding.descriptor && propBinding.descriptor.value instanceof AbstractValue)
-            ) {
-              defaultPropsEvaluated++;
-              // if the value we have is undefined, we can apply the defaultProp
-              if (propBinding.descriptor && propBinding.descriptor.value === realm.intrinsics.undefined) {
-                hardModifyReactObjectPropertyBinding(realm, props, propName, Get(realm, defaultProps, propName));
+          if (binding.descriptor !== undefined) {
+            invariant(binding.descriptor instanceof PropertyDescriptor);
+            if (binding.descriptor.value !== realm.intrinsics.undefined) {
+              // see if we have this on our props object
+              let propBinding = props.properties.get(propName);
+              // if the binding exists and value is abstract, it might be undefined
+              // so in that case we need the helper, otherwise we can continue
+              if (
+                propBinding !== undefined &&
+                !(
+                  propBinding.descriptor instanceof PropertyDescriptor &&
+                  propBinding.descriptor.value instanceof AbstractValue
+                )
+              ) {
+                defaultPropsEvaluated++;
+                // if the value we have is undefined, we can apply the defaultProp
+                if (propBinding.descriptor) {
+                  invariant(propBinding.descriptor instanceof PropertyDescriptor);
+                  if (propBinding.descriptor.value === realm.intrinsics.undefined)
+                    hardModifyReactObjectPropertyBinding(realm, props, propName, Get(realm, defaultProps, propName));
+                }
               }
             }
           }
@@ -168,8 +180,12 @@ function createPropsObject(
         // as the helper function applies defaultProps on values that are undefined or do not
         // exist
         for (let [propName, binding] of props.properties) {
-          if (binding.descriptor !== undefined && binding.descriptor.value === realm.intrinsics.undefined) {
-            hardModifyReactObjectPropertyBinding(realm, props, propName, AbstractValue.createFromType(realm, Value));
+          if (binding.descriptor !== undefined) {
+            invariant(binding.descriptor instanceof PropertyDescriptor);
+            if (binding.descriptor.value === realm.intrinsics.undefined) {
+              invariant(defaultProps instanceof AbstractObjectValue || defaultProps instanceof ObjectValue);
+              hardModifyReactObjectPropertyBinding(realm, props, propName, Get(realm, defaultProps, propName));
+            }
           }
         }
         // if we have children and they are abstract, they might be undefined at runtime
@@ -194,10 +210,8 @@ function createPropsObject(
           realm,
           ObjectValue,
           temporalArgs,
-          ([methodNode, ..._args]) => {
-            return t.callExpression(methodNode, ((_args: any): Array<any>));
-          },
-          { skipInvariant: true }
+          createOperationDescriptor("REACT_DEFAULT_PROPS_HELPER"),
+          { skipInvariant: true, mutatesOnly: [snapshot] }
         );
         invariant(temporalTo instanceof AbstractObjectValue);
         if (props instanceof AbstractObjectValue) {
@@ -215,17 +229,17 @@ function createPropsObject(
     if (children !== undefined) {
       setProp("children", children);
     }
-
-    if (defaultProps instanceof ObjectValue) {
+    if (defaultProps instanceof AbstractObjectValue || defaultProps.isPartialObject()) {
+      invariant(false, "TODO: we need to eventually support this");
+    } else if (defaultProps instanceof ObjectValue) {
       for (let [propKey, binding] of defaultProps.properties) {
-        if (binding && binding.descriptor && binding.descriptor.enumerable) {
-          if (Get(realm, props, propKey) === realm.intrinsics.undefined) {
+        if (binding && binding.descriptor) {
+          invariant(binding.descriptor instanceof PropertyDescriptor);
+          if (binding.descriptor.enumerable && Get(realm, props, propKey) === realm.intrinsics.undefined) {
             setProp(propKey, Get(realm, defaultProps, propKey));
           }
         }
       }
-    } else if (defaultProps instanceof AbstractObjectValue) {
-      invariant(false, "TODO: we need to eventually support this");
     }
   }
   invariant(props instanceof ObjectValue);
@@ -305,7 +319,8 @@ export function cloneReactElement(
     }
   };
 
-  applyObjectAssignConfigsForReactElement(realm, props, [config]);
+  let elementProps = getProperty(realm, reactElement, "props");
+  applyObjectAssignConfigsForReactElement(realm, props, [elementProps, config]);
   props.makeFinal();
 
   let key = getProperty(realm, reactElement, "key");
@@ -349,8 +364,9 @@ export function cloneReactElement(
 
     if (defaultProps instanceof ObjectValue) {
       for (let [propKey, binding] of defaultProps.properties) {
-        if (binding && binding.descriptor && binding.descriptor.enumerable) {
-          if (Get(realm, props, propKey) === realm.intrinsics.undefined) {
+        if (binding && binding.descriptor) {
+          invariant(binding.descriptor instanceof PropertyDescriptor);
+          if (binding.descriptor.enumerable && Get(realm, props, propKey) === realm.intrinsics.undefined) {
             setProp(propKey, Get(realm, defaultProps, propKey));
           }
         }
@@ -363,7 +379,6 @@ export function cloneReactElement(
   if (children !== undefined) {
     hardModifyReactObjectPropertyBinding(realm, props, "children", children);
   } else {
-    let elementProps = getProperty(realm, reactElement, "props");
     invariant(elementProps instanceof ObjectValue);
     let elementChildren = getProperty(realm, elementProps, "children");
     hardModifyReactObjectPropertyBinding(realm, props, "children", elementChildren);
@@ -391,6 +406,20 @@ export function createReactElement(
   }
   let { key, props, ref } = createPropsObject(realm, type, config, children);
   return createInternalReactElement(realm, type, key, ref, props);
+}
+
+// Wraps a React element in a `<React.Fragment key={keyValue}>` so that we can
+// add a key without mutating or cloning the element.
+export function wrapReactElementWithKeyedFragment(realm: Realm, keyValue: Value, reactElement: Value): Value {
+  const react = realm.fbLibraries.react;
+  invariant(react instanceof ObjectValue);
+  const reactFragment = getProperty(realm, react, "Fragment");
+  const fragmentConfigValue = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  Create.CreateDataPropertyOrThrow(realm, fragmentConfigValue, "key", keyValue);
+  let fragmentChildrenValue = Create.ArrayCreate(realm, 1);
+  Create.CreateDataPropertyOrThrow(realm, fragmentChildrenValue, "0", reactElement);
+  fragmentChildrenValue = flattenChildren(realm, fragmentChildrenValue);
+  return createReactElement(realm, reactFragment, fragmentConfigValue, fragmentChildrenValue);
 }
 
 type ElementTraversalVisitor = {

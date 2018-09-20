@@ -12,20 +12,18 @@
 import type { Realm } from "../../realm.js";
 import { ObjectValue, StringValue, AbstractValue, BooleanValue } from "../../values/index.js";
 import { To } from "../../singletons.js";
-import buildExpressionTemplate from "../../utils/builder.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.3.1
   obj.$BooleanData = realm.intrinsics.false;
 
-  const tsTemplateSrc = "(A).toString()";
-  const tsTemplate = buildExpressionTemplate(tsTemplateSrc);
+  const tsTemplateSrc = "('' + A)";
 
   // ECMA262 19.3.3.3
   obj.defineNativeMethod("toString", 0, context => {
     const target = context instanceof ObjectValue ? context.$BooleanData : context;
     if (target instanceof AbstractValue && target.getType() === BooleanValue) {
-      return AbstractValue.createFromTemplate(realm, tsTemplate, StringValue, [target], tsTemplateSrc);
+      return AbstractValue.createFromTemplate(realm, tsTemplateSrc, StringValue, [target]);
     }
     // 1. Let b be ? thisBooleanValue(this value).
     let b = To.thisBooleanValue(realm, context);

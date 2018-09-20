@@ -12,7 +12,7 @@
 import { EnvironmentRecord } from "../environment.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import type { SourceFile } from "../types.js";
+import { SourceFileCollection } from "../types.js";
 import { AbruptCompletion } from "../completions.js";
 import { Generator } from "../utils/generator.js";
 import generate from "@babel/generator";
@@ -31,11 +31,15 @@ import { ResidualHeapSerializer } from "./ResidualHeapSerializer.js";
 import { ResidualHeapValueIdentifiers } from "./ResidualHeapValueIdentifiers.js";
 import { LazyObjectsSerializer } from "./LazyObjectsSerializer.js";
 import * as t from "@babel/types";
+import type { BabelNodeFile } from "@babel/types";
 import { ResidualHeapRefCounter } from "./ResidualHeapRefCounter";
 import { ResidualHeapGraphGenerator } from "./ResidualHeapGraphGenerator";
 import { Referentializer } from "./Referentializer.js";
 import { Get } from "../methods/index.js";
-import { ObjectValue, Value } from "../values/index.js";
+import { ObjectValue, Value, FunctionValue } from "../values/index.js";
+import { Properties } from "../singletons.js";
+import { PropertyDescriptor } from "../descriptors.js";
+import { ResidualOptimizedFunctions } from "./ResidualOptimizedFunctions";
 
 export class Serializer {
   constructor(realm: Realm, serializerOptions: SerializerOptions = {}) {
@@ -45,13 +49,7 @@ export class Serializer {
 
     this.realm = realm;
     this.logger = new Logger(this.realm, !!serializerOptions.internalDebug);
-    this.modules = new Modules(
-      this.realm,
-      this.logger,
-      !!serializerOptions.logModules,
-      !!serializerOptions.delayUnsupportedRequires,
-      !!serializerOptions.accelerateUnsupportedRequires
-    );
+    this.modules = new Modules(this.realm, this.logger, !!serializerOptions.logModules);
     this.functions = new Functions(this.realm, this.modules.moduleTracer);
     if (serializerOptions.trace) {
       let loggingTracer = new LoggingTracer(this.realm);
@@ -67,9 +65,13 @@ export class Serializer {
   modules: Modules;
   options: SerializerOptions;
 
-  _execute(sources: Array<SourceFile>, sourceMaps?: boolean = false): { [string]: string } {
+  _execute(
+    sourceFileCollection: SourceFileCollection,
+    sourceMaps?: boolean = false,
+    onParse?: BabelNodeFile => void
+  ): { [string]: string } {
     let realm = this.realm;
-    let [res, code] = realm.$GlobalEnv.executeSources(sources, "script", ast => {
+    let [res, code] = realm.$GlobalEnv.executeSources(sourceFileCollection.toArray(), "script", ast => {
       let realmPreludeGenerator = realm.preludeGenerator;
       invariant(realmPreludeGenerator);
       let forbiddenNames = realmPreludeGenerator.nameGenerator.forbiddenNames;
@@ -79,7 +81,11 @@ export class Serializer {
         forbiddenNames.add(((node: any): BabelNodeIdentifier).name);
         return true;
       });
+      if (onParse) onParse(ast);
     });
+
+    // Release memory of source files and their source maps
+    sourceFileCollection.destroy();
 
     if (res instanceof AbruptCompletion) {
       let context = new ExecutionContext();
@@ -108,17 +114,22 @@ export class Serializer {
     if (generator === undefined || preludeGenerator === undefined) return false;
     generator._entries.length = 0;
     preludeGenerator.declaredGlobals.clear();
-    for (let name of output.getOwnPropertyKeysArray()) {
+    for (let name of Properties.GetOwnPropertyKeysArray(realm, output, false, false)) {
       let property = output.properties.get(name);
       if (!property) continue;
-      let value = property.descriptor && property.descriptor.value;
+      let value = property.descriptor instanceof PropertyDescriptor && property.descriptor.value;
       if (!(value instanceof Value)) continue;
       generator.emitGlobalDeclaration(name, value);
     }
     return true;
   }
 
-  init(sources: Array<SourceFile>, sourceMaps?: boolean = false): void | SerializedResult {
+  init(
+    sourceFileCollection: SourceFileCollection,
+    sourceMaps?: boolean = false,
+    onParse?: BabelNodeFile => void,
+    onExecute?: (Realm, Map<FunctionValue, Generator>) => void
+  ): void | SerializedResult {
     let realmStatistics = this.realm.statistics;
     invariant(realmStatistics instanceof SerializerStatistics, "serialization requires SerializerStatistics");
     let statistics: SerializerStatistics = realmStatistics;
@@ -129,7 +140,7 @@ export class Serializer {
         this.logger.logInformation(`Evaluating initialization path...`);
       }
 
-      let code = this._execute(sources);
+      let code = this._execute(sourceFileCollection, sourceMaps, onParse);
       let environmentRecordIdAfterGlobalCode = EnvironmentRecord.nextId;
 
       if (this.logger.hasErrors()) return undefined;
@@ -150,6 +161,19 @@ export class Serializer {
         });
       }
 
+      statistics.dumpIR.measure(() => {
+        if (onExecute !== undefined) {
+          let optimizedFunctions = new Map();
+          for (let [functionValue, additionalFunctionEffects] of this.functions.writeEffects)
+            optimizedFunctions.set(functionValue, additionalFunctionEffects.generator);
+          onExecute(this.realm, optimizedFunctions);
+        }
+      });
+
+      statistics.processCollectedNestedOptimizedFunctions.measure(() =>
+        this.functions.processCollectedNestedOptimizedFunctions(environmentRecordIdAfterGlobalCode)
+      );
+
       if (this.options.initializeMoreModules) {
         statistics.initializeMoreModules.measure(() => this.modules.initializeMoreModules());
         if (this.logger.hasErrors()) return undefined;
@@ -166,25 +190,37 @@ export class Serializer {
         // Deep traversal of the heap to identify the necessary scope of residual functions
         let preludeGenerator = this.realm.preludeGenerator;
         invariant(preludeGenerator !== undefined);
+        if (this.realm.react.verbose) {
+          this.logger.logInformation(`Visiting evaluated nodes...`);
+        }
+        let [residualHeapInfo, generatorDAG, inspector] = (() => {
+          let residualHeapVisitor = new ResidualHeapVisitor(
+            this.realm,
+            this.logger,
+            this.modules,
+            additionalFunctionValuesAndEffects
+          );
+          statistics.deepTraversal.measure(() => residualHeapVisitor.visitRoots());
+          return [residualHeapVisitor.toInfo(), residualHeapVisitor.generatorDAG, residualHeapVisitor.inspector];
+        })();
+        if (this.logger.hasErrors()) return undefined;
+
+        let residualOptimizedFunctions = new ResidualOptimizedFunctions(
+          generatorDAG,
+          additionalFunctionValuesAndEffects,
+          residualHeapInfo.values
+        );
         let referentializer = new Referentializer(
           this.realm,
           this.options,
           preludeGenerator.createNameGenerator("__scope_"),
           preludeGenerator.createNameGenerator("__get_scope_binding_"),
-          preludeGenerator.createNameGenerator("__leaked_")
+          preludeGenerator.createNameGenerator("__leaked_"),
+          residualOptimizedFunctions
         );
-        if (this.realm.react.verbose) {
-          this.logger.logInformation(`Visiting evaluated nodes...`);
-        }
-        let residualHeapVisitor = new ResidualHeapVisitor(
-          this.realm,
-          this.logger,
-          this.modules,
-          additionalFunctionValuesAndEffects,
-          referentializer
-        );
-        statistics.deepTraversal.measure(() => residualHeapVisitor.visitRoots());
-        if (this.logger.hasErrors()) return undefined;
+        statistics.referentialization.measure(() => {
+          for (let instance of residualHeapInfo.functionInstances.values()) referentializer.referentialize(instance);
+        });
 
         if (this.realm.react.verbose) {
           this.logger.logInformation(`Serializing evaluated nodes...`);
@@ -192,7 +228,7 @@ export class Serializer {
         const realmPreludeGenerator = this.realm.preludeGenerator;
         invariant(realmPreludeGenerator);
         const residualHeapValueIdentifiers = new ResidualHeapValueIdentifiers(
-          residualHeapVisitor.values.keys(),
+          residualHeapInfo.values.keys(),
           realmPreludeGenerator
         );
 
@@ -201,8 +237,7 @@ export class Serializer {
             this.realm,
             this.logger,
             this.modules,
-            additionalFunctionValuesAndEffects,
-            referentializer
+            additionalFunctionValuesAndEffects
           );
           heapRefCounter.visitRoots();
 
@@ -212,8 +247,7 @@ export class Serializer {
             this.modules,
             additionalFunctionValuesAndEffects,
             residualHeapValueIdentifiers,
-            heapRefCounter.getResult(),
-            referentializer
+            heapRefCounter.getResult()
           );
           heapGraphGenerator.visitRoots();
           invariant(this.options.heapGraphFormat);
@@ -231,20 +265,13 @@ export class Serializer {
               this.logger,
               this.modules,
               residualHeapValueIdentifiers,
-              residualHeapVisitor.inspector,
-              residualHeapVisitor.values,
-              residualHeapVisitor.functionInstances,
-              residualHeapVisitor.classMethodInstances,
-              residualHeapVisitor.functionInfos,
+              inspector,
+              residualHeapInfo,
               this.options,
-              residualHeapVisitor.referencedDeclaredValues,
               additionalFunctionValuesAndEffects,
-              residualHeapVisitor.additionalFunctionValueInfos,
-              residualHeapVisitor.declarativeEnvironmentRecordsBindings,
               referentializer,
-              residualHeapVisitor.generatorDAG,
-              residualHeapVisitor.conditionalFeasibility,
-              residualHeapVisitor.additionalGeneratorRoots
+              generatorDAG,
+              residualOptimizedFunctions
             ).serialize();
           });
           if (this.logger.hasErrors()) return undefined;
@@ -261,20 +288,13 @@ export class Serializer {
             this.logger,
             this.modules,
             residualHeapValueIdentifiers,
-            residualHeapVisitor.inspector,
-            residualHeapVisitor.values,
-            residualHeapVisitor.functionInstances,
-            residualHeapVisitor.classMethodInstances,
-            residualHeapVisitor.functionInfos,
+            inspector,
+            residualHeapInfo,
             this.options,
-            residualHeapVisitor.referencedDeclaredValues,
             additionalFunctionValuesAndEffects,
-            residualHeapVisitor.additionalFunctionValueInfos,
-            residualHeapVisitor.declarativeEnvironmentRecordsBindings,
             referentializer,
-            residualHeapVisitor.generatorDAG,
-            residualHeapVisitor.conditionalFeasibility,
-            residualHeapVisitor.additionalGeneratorRoots
+            generatorDAG,
+            residualOptimizedFunctions
           ).serialize()
         );
       })();

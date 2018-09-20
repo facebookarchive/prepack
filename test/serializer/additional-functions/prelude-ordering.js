@@ -1,4 +1,3 @@
-// simple closures
 function additional1() {
   var obj = { x: 42 };
   return function() {

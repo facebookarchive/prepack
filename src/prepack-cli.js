@@ -19,18 +19,19 @@ import {
   ReactOutputValues,
   type InvariantModeTypes,
   InvariantModeValues,
+  DiagnosticSeverityValues,
 } from "./options.js";
 import { type SerializedResult } from "./serializer/types.js";
+import { TextPrinter } from "./utils/TextPrinter.js";
 import { prepackStdin, prepackFileSync } from "./prepack-node.js";
 import type { BabelNodeSourceLocation } from "@babel/types";
 import fs from "fs";
 import v8 from "v8";
 import { version } from "../package.json";
 import invariant from "./invariant";
-import zipFactory from "node-zip";
-import path from "path";
 import JSONTokenizer from "./utils/JSONTokenizer.js";
-import type { DebuggerConfigArguments } from "./types";
+import type { DebuggerConfigArguments, DebugReproArguments } from "./types";
+import { DebugReproPackager } from "./utils/DebugReproPackager.js";
 
 // Prepack helper
 declare var __residual: any;
@@ -63,24 +64,26 @@ function run(
     --initializeMoreModules  Enable speculative initialization of modules (for the module system Prepack has builtin
                              knowledge about). Prepack will try to execute all factory functions it is able to.
     --trace                  Traces the order of module initialization.
-    --serialize              Serializes the partially evaluated global environment as a program that recreates it.
-                             (default = true)
-    --check [start[, count]] Check residual functions for diagnostic messages. Do not serialize or produce residual code.
-    --residual               Produces the residual program that results after constant folding.
+    --check [start[, count]] Check residual functions for diagnostic messages. Do not generate code.
     --profile                Collect statistics about time and memory usage of the different internal passes
     --logStatistics          Log statistics to console
     --statsFile              The name of the output file where statistics will be written to.
     --heapGraphFilePath      The name of the output file where heap graph will be written to.
+    --dumpIRFilePath         The name of the output file where the intermediate representation will be written to.
     --inlineExpressions      When generating code, tells prepack to avoid naming expressions when they are only used once,
                              and instead inline them where they are used.
     --invariantLevel         0: no invariants (default); 1: checks for abstract values; 2: checks for accessed built-ins; 3: internal consistency
     --invariantMode          Whether to throw an exception or call a console function to log an invariant violation; default = throw.
     --emitConcreteModel      Synthesize concrete model values for abstract models(defined by __assumeDataProperty).
     --version                Output the version number.
-    --repro                  Create a zip file with all information needed to reproduce a Prepack run.
+    --reproOnFatalError      Create a zip file with all information needed to reproduce a Prepack run if Prepacking fails with a FatalError.
+    --reproUnconditionally   Create a zip file with all information needed to reproduce a Prepack run, regardless of success of Prepack.
     --cpuprofile             Create a CPU profile file for the run that can be loaded into the Chrome JavaScript CPU Profile viewer.
     --debugDiagnosticSeverity  FatalError | RecoverableError | Warning | Information (default = FatalError). Diagnostic level at which debugger will stop.
     --debugBuckRoot          Root directory that buck assumes when creating sourcemap paths.
+    --warnAsError            Turns all warnings into errors.
+    --diagnosticAsError      A comma-separated list of non-fatal-error PPxxxx diagnostic codes that should get turned into (recoverable) errors.
+    --noDiagnostic           A comma-separated list of non-fatal-error PPxxxx diagnostic codes that should get suppressed.
   `;
   let args = Array.from(process.argv);
   args.splice(0, 2);
@@ -89,7 +92,7 @@ function run(
   let check: void | Array<number>;
   let compatibility: Compatibility;
   let mathRandomSeed;
-  let inputSourceMap;
+  let inputSourceMapFilenames = [];
   let outputSourceMap;
   let statsFileName;
   let maxStackDepth: number;
@@ -97,6 +100,7 @@ function run(
   let debugIdentifiers: void | Array<string>;
   let lazyObjectsRuntime: string;
   let heapGraphFilePath: void | string;
+  let dumpIRFilePath: void | string;
   let debugInFilePath: string;
   let debugOutFilePath: string;
   let reactOutput: ReactOutputTypes = "create-element";
@@ -104,6 +108,14 @@ function run(
   let cpuprofilePath: void | string;
   let invariantMode: void | InvariantModeTypes;
   let invariantLevel: void | number;
+  let reproMode: void | "reproUnconditionally" | "reproOnFatalError";
+  let debugReproPackager: void | DebugReproPackager;
+  // Indicates where to find a zip with prepack runtime. Used in environments where
+  // the `yarn pack` strategy doesn't work.
+  let externalPrepackPath: void | string;
+  let diagnosticAsError: void | Set<string>;
+  let noDiagnostic: void | Set<string>;
+  let warnAsError: void | true;
   let flags = {
     initializeMoreModules: false,
     trace: false,
@@ -113,31 +125,24 @@ function run(
     logStatistics: false,
     logModules: false,
     delayInitializations: false,
-    delayUnsupportedRequires: false,
-    accelerateUnsupportedRequires: true,
     internalDebug: false,
     debugScopes: false,
-    serialize: false,
-    residual: false,
     profile: false,
     instantRender: false,
     reactEnabled: false,
   };
-
   let reproArguments = [];
   let reproFileNames = [];
-  let inputFile = fileName => {
-    reproFileNames.push(fileName);
-    return path.basename(fileName);
-  };
   let debuggerConfigArgs: DebuggerConfigArguments = {};
+  let debugReproArgs: void | DebugReproArguments;
   while (args.length) {
     let arg = args.shift();
     if (!arg.startsWith("--")) {
       let inputs = arg.trim().split(/\s+/g); // Split on all whitespace
       for (let input of inputs) {
         inputFilenames.push(input);
-        reproArguments.push(inputFile(input));
+        if (!input.includes(".map")) reproFileNames.push(input);
+        // Don't include sourcemaps in reproFiles because they will be captured later on in prepack-node
       }
     } else {
       arg = arg.slice(2);
@@ -145,7 +150,7 @@ function run(
         case "out":
           arg = args.shift();
           outputFilename = arg;
-          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as path is likely not portable between environments
           break;
         case "compatibility":
           arg = args.shift();
@@ -161,16 +166,18 @@ function run(
           reproArguments.push("--mathRandomSeed", mathRandomSeed);
           break;
         case "srcmapIn":
-          inputSourceMap = args.shift();
-          reproArguments.push("--srcmapIn", inputFile(inputSourceMap));
+          let inputSourceMap = args.shift();
+          inputSourceMapFilenames.push(inputSourceMap);
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as path is likely not portable between environments
+          // Furthermore, this is covered when sourcemaps are discovered in prepack-node
           break;
         case "srcmapOut":
           outputSourceMap = args.shift();
-          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as path is likely not portable between environments
           break;
         case "statsFile":
           statsFileName = args.shift();
-          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as path is likely not portable between environments
           break;
         case "maxStackDepth":
           let value = args.shift();
@@ -195,6 +202,20 @@ function run(
           debugIdentifiers = debugIdentifiersString.split(",");
           reproArguments.push("--debugIdentifiers", debugIdentifiersString);
           break;
+        case "diagnosticAsError":
+          let diagnosticAsErrorString = args.shift();
+          diagnosticAsError = new Set(diagnosticAsErrorString.split(","));
+          reproArguments.push("--diagnosticAsError", diagnosticAsErrorString);
+          break;
+        case "noDiagnostic":
+          let noDiagnosticString = args.shift();
+          noDiagnostic = new Set(noDiagnosticString.split(","));
+          reproArguments.push("--noDiagnostic", noDiagnosticString);
+          break;
+        case "warnAsError":
+          warnAsError = true;
+          reproArguments.push("--warnAsError");
+          break;
         case "check":
           let range = args.shift();
           if (range.startsWith("--")) {
@@ -218,11 +239,11 @@ function run(
           break;
         case "debugInFilePath":
           debugInFilePath = args.shift();
-          // do not include this in reproArguments needed by --repro, as debugger behavior is not currently supported for repros
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally] as the field is not visable to the user
           break;
         case "debugOutFilePath":
           debugOutFilePath = args.shift();
-          // do not include this in reproArguments needed by --repro, as debugger behavior is not currently supported for repros
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally] as the field is not visable to the user
           break;
         case "lazyObjectsRuntime":
           lazyObjectsRuntime = args.shift();
@@ -230,7 +251,11 @@ function run(
           break;
         case "heapGraphFilePath":
           heapGraphFilePath = args.shift();
-          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as path is likely not portable between environments
+          break;
+        case "dumpIRFilePath":
+          dumpIRFilePath = args.shift();
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as path is likely not portable between environments
           break;
         case "reactOutput":
           arg = args.shift();
@@ -241,13 +266,19 @@ function run(
           reactOutput = (arg: any);
           reproArguments.push("--reactOutput", reactOutput);
           break;
-        case "repro":
+        case "reproOnFatalError":
+        case "reproUnconditionally":
+          debugReproPackager = new DebugReproPackager();
+          reproMode = arg;
           reproFilePath = args.shift();
-          // do not include this in reproArguments needed by --repro, as we don't need to create a repro from the repro...
+          debugReproArgs = {};
+          debugReproArgs.sourcemaps = [];
+          if (debuggerConfigArgs.buckRoot) debugReproArgs.buckRoot = debuggerConfigArgs.buckRoot;
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as we don't need to create a repro from the repro...
           break;
         case "cpuprofile":
           cpuprofilePath = args.shift();
-          // do not include this in reproArguments needed by --repro, as path is likely not portable between environments
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally], as path is likely not portable between environments
           break;
         case "invariantMode":
           arg = args.shift();
@@ -269,14 +300,28 @@ function run(
           break;
         case "debugDiagnosticSeverity":
           arg = args.shift();
+          if (!DiagnosticSeverityValues.includes(arg)) {
+            console.error(`Unsupported debugDiagnosticSeverity: ${arg}`);
+            process.exit(1);
+          }
           invariant(
             arg === "FatalError" || arg === "RecoverableError" || arg === "Warning" || arg === "Information",
             `Invalid debugger diagnostic severity: ${arg}`
           );
           debuggerConfigArgs.diagnosticSeverity = arg;
+          reproArguments.push("--debugDiagnosticSeverity", arg);
           break;
         case "debugBuckRoot":
-          debuggerConfigArgs.buckRoot = args.shift();
+          let buckRoot = args.shift();
+          debuggerConfigArgs.buckRoot = buckRoot;
+          if (debugReproArgs) debugReproArgs.buckRoot = buckRoot;
+          // Use $(pwd)  instead of argument so repro script can be run from
+          // any computer, not just the one it was generated on.
+          // All sourcefiles are placed directly in the repro, so the repro folder is the buckRoot.
+          reproArguments.push("--debugBuckRoot", "$(pwd)");
+          break;
+        case "externalPrepackPath":
+          externalPrepackPath = args.shift();
           break;
         case "help":
           const options = [
@@ -292,10 +337,14 @@ function run(
             "--check [start[, number]]",
             "--lazyObjectsRuntime lazyObjectsRuntimeName",
             "--heapGraphFilePath heapGraphFilePath",
+            "--dumpIRFilePath dumpIRFilePath",
             "--reactOutput " + ReactOutputValues.join(" | "),
             "--repro reprofile.zip",
             "--cpuprofile name.cpuprofile",
             "--invariantMode " + InvariantModeValues.join(" | "),
+            "--warnAsError",
+            "--diagnosticAsError PPxxxx,PPyyyy,...",
+            "--noDiagnostic PPxxxx,PPyyyy,...",
           ];
           for (let flag of Object.keys(flags)) options.push(`--${flag}`);
 
@@ -316,44 +365,19 @@ function run(
     }
   }
 
-  if (reproFilePath !== undefined) {
-    const zip = zipFactory();
-    for (let fileName of reproFileNames) {
-      let content = fs.readFileSync(fileName, "utf8");
-      zip.file(path.basename(fileName), content);
-    }
-    zip.file(
-      "repro.sh",
-      `#!/bin/bash
-if [ -z "$PREPACK" ]; then
-  echo "Set environment variable PREPACK to bin/prepack.js in your Prepack directory."
-else
-  node "$PREPACK" ${reproArguments.map(a => `"${a}"`).join(" ")}
-fi
-`
-    );
-    const data = zip.generate({ base64: false, compression: "DEFLATE" });
-    fs.writeFileSync(reproFilePath, data, "binary");
-  }
-
-  if (!flags.serialize && !flags.residual) flags.serialize = true;
-  if (check) {
-    flags.serialize = false;
-    flags.residual = false;
-  }
-
   let resolvedOptions = Object.assign(
     {},
     {
       compatibility,
       mathRandomSeed,
-      inputSourceMapFilename: inputSourceMap,
+      inputSourceMapFilenames,
       errorHandler,
       sourceMaps: !!outputSourceMap,
       maxStackDepth,
       timeout,
       debugIdentifiers,
       check,
+      serialize: !check,
       lazyObjectsRuntime,
       debugInFilePath,
       debugOutFilePath,
@@ -361,10 +385,21 @@ fi
       invariantMode,
       invariantLevel,
       debuggerConfigArgs,
+      debugReproArgs,
     },
     flags
   );
   if (heapGraphFilePath !== undefined) resolvedOptions.heapGraphFormat = "DotLanguage";
+  if (dumpIRFilePath !== undefined) {
+    resolvedOptions.onExecute = (realm, optimizedFunctions) => {
+      let text = "";
+      new TextPrinter(line => {
+        text += line + "\n";
+      }).print(realm, optimizedFunctions);
+      invariant(dumpIRFilePath !== undefined);
+      fs.writeFileSync(dumpIRFilePath, text);
+    };
+  }
   if (lazyObjectsRuntime !== undefined && (resolvedOptions.delayInitializations || resolvedOptions.inlineExpressions)) {
     console.error("lazy objects feature is incompatible with delayInitializations and inlineExpressions options");
     process.exit(1);
@@ -373,16 +408,31 @@ fi
   let compilerDiagnostics: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
   let compilerDiagnosticsList: Array<CompilerDiagnostic> = [];
   function errorHandler(compilerDiagnostic: CompilerDiagnostic): ErrorHandlerResult {
+    if (noDiagnostic !== undefined && noDiagnostic.has(compilerDiagnostic.errorCode)) return "Recover";
+    if (
+      (warnAsError && compilerDiagnostic.severity === "Warning") ||
+      (diagnosticAsError !== undefined &&
+        diagnosticAsError.has(compilerDiagnostic.errorCode) &&
+        compilerDiagnostic.severity !== "FatalError")
+    ) {
+      compilerDiagnostic = new CompilerDiagnostic(
+        compilerDiagnostic.message,
+        compilerDiagnostic.location,
+        compilerDiagnostic.errorCode,
+        "RecoverableError",
+        compilerDiagnostic.sourceFilePaths
+      );
+    }
     if (compilerDiagnostic.location) compilerDiagnostics.set(compilerDiagnostic.location, compilerDiagnostic);
     else compilerDiagnosticsList.push(compilerDiagnostic);
-    return "Recover";
+    return compilerDiagnostic.severity === "FatalError" ? "Fail" : "Recover";
   }
 
-  function printDiagnostics(caughtFatalError: boolean): boolean {
+  function printDiagnostics(caughtFatalError: boolean, caughtUnexpectedError: boolean = false): boolean {
     if (compilerDiagnostics.size === 0 && compilerDiagnosticsList.length === 0) {
       // FatalErrors must have generated at least one CompilerDiagnostic.
       invariant(!caughtFatalError, "FatalError must generate at least one CompilerDiagnostic");
-      return true;
+      return !caughtUnexpectedError;
     }
 
     let informations = 0;
@@ -440,8 +490,9 @@ fi
     for (let compilerDiagnostic of compilerDiagnosticsList) printCompilerDiagnostic(compilerDiagnostic);
     invariant(informations + warnings + recoverableErrors + fatalErrors > 0);
     let plural = (count, word) => (count === 1 ? word : `${word}s`);
+    const success = fatalErrors === 0 && recoverableErrors === 0 && !caughtUnexpectedError;
     console.error(
-      `Prepack ${fatalErrors > 0 ? "failed" : "succeeded"}, reporting ${[
+      `Prepack ${success ? "succeeded" : "failed"}, reporting ${[
         fatalErrors > 0 ? `${fatalErrors} ${plural(fatalErrors, "fatal error")}` : undefined,
         recoverableErrors > 0 ? `${recoverableErrors} ${plural(recoverableErrors, "recoverable error")}` : undefined,
         warnings > 0 ? `${warnings} ${plural(warnings, "warning")}` : undefined,
@@ -451,18 +502,21 @@ fi
         .join(", ")}.`
     );
 
-    return fatalErrors === 0;
+    return success;
   }
 
   let profiler;
   let success;
+  let debugReproSourceFiles = [];
+  let debugReproSourceMaps = [];
+
   try {
     if (cpuprofilePath !== undefined) {
       try {
-        profiler = require("v8-profiler");
+        profiler = require("v8-profiler-node8");
       } catch (e) {
         // Profiler optional dependency failed
-        console.error("v8-profiler doesn't work correctly on Windows, see issue #1695");
+        console.error("v8-profiler-node8 doesn't work correctly on Windows, see issue #1695");
         throw e;
       }
       profiler.setSamplingInterval(100); // default is 1000us
@@ -475,15 +529,47 @@ fi
         return;
       }
       let serialized = prepackFileSync(inputFilenames, resolvedOptions);
+      if (reproMode === "reproUnconditionally") {
+        if (serialized.sourceFilePaths) {
+          debugReproSourceFiles = serialized.sourceFilePaths.sourceFiles;
+          debugReproSourceMaps = serialized.sourceFilePaths.sourceMaps;
+        } else {
+          // An input can have no sourcemap/sourcefiles, but we can still package
+          // the input files, prepack runtime, and generate the script.
+          debugReproSourceFiles = [];
+          debugReproSourceMaps = [];
+        }
+      }
+
       success = printDiagnostics(false);
       if (resolvedOptions.serialize && serialized) processSerializedCode(serialized);
     } catch (err) {
-      printDiagnostics(err instanceof FatalError);
+      success = printDiagnostics(err instanceof FatalError, !(err instanceof FatalError));
+      invariant(!success);
       if (!(err instanceof FatalError)) {
         // if it is not a FatalError, it means prepack failed, and we should display the Prepack stack trace.
-        console.error(err.stack);
+        console.error(`unexpected ${err}:\n${err.stack}`);
       }
-      success = false;
+      if (reproMode) {
+        // Get largest list of original sources from all diagnostics.
+        // Must iterate through both because maps are ordered so we can't tell which diagnostic is most recent.
+        let largestLength = 0;
+
+        let allDiagnostics = Array.from(compilerDiagnostics.values()).concat(compilerDiagnosticsList);
+        allDiagnostics.forEach(diagnostic => {
+          if (
+            diagnostic.sourceFilePaths &&
+            diagnostic.sourceFilePaths.sourceFiles &&
+            diagnostic.sourceFilePaths.sourceMaps
+          ) {
+            if (diagnostic.sourceFilePaths.sourceFiles.length > largestLength) {
+              debugReproSourceFiles = diagnostic.sourceFilePaths.sourceFiles;
+              largestLength = diagnostic.sourceFilePaths.sourceFiles.length;
+              debugReproSourceMaps = diagnostic.sourceFilePaths.sourceMaps;
+            }
+          }
+        });
+      }
     }
   } finally {
     if (profiler !== undefined) {
@@ -541,7 +627,28 @@ fi
     }
   }
 
-  if (!success) process.exit(1);
+  // If there will be a repro going on, don't exit.
+  // The repro involves an async directory zip, so exiting here will cause the repro
+  // to not complete. Instead, all calls to repro include a flag to indicate
+  // whether or not it should process.exit() upon completion.
+  if (!success && reproMode === undefined) {
+    process.exit(1);
+  } else if ((!success && reproMode === "reproOnFatalError") || reproMode === "reproUnconditionally") {
+    if (debugReproPackager) {
+      debugReproPackager.generateDebugRepro(
+        !success,
+        debugReproSourceFiles,
+        debugReproSourceMaps,
+        reproFilePath,
+        reproFileNames,
+        reproArguments,
+        externalPrepackPath
+      );
+    } else {
+      console.error("Debug Repro Packager was not initialized.");
+      process.exit(1);
+    }
+  }
 }
 
 if (typeof __residual === "function") {

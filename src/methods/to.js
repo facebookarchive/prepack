@@ -35,7 +35,8 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
-import * as t from "@babel/types";
+import { createOperationDescriptor } from "../utils/generator.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 type ElementConvType = {
   Int8: (Realm, numberOrValue) => number,
@@ -278,7 +279,7 @@ export class ToImplementation {
     }
 
     // 2. Let desc be a new Property Descriptor that initially has no fields.
-    let desc: Descriptor = {};
+    let desc = new PropertyDescriptor({});
 
     // 3. Let hasEnumerable be ? HasProperty(Obj, "enumerable").
     let hasEnumerable = HasProperty(realm, Obj, "enumerable");
@@ -367,7 +368,7 @@ export class ToImplementation {
     // 15. If either desc.[[Get]] or desc.[[Set]] is present, then
     if (desc.get || desc.set) {
       // a. If either desc.[[Value]] or desc.[[Writable]] is present, throw a TypeError exception.
-      if ("value" in desc || "writable" in desc) {
+      if (desc.value !== undefined || desc.writable !== undefined) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
       }
     }
@@ -713,43 +714,42 @@ export class ToImplementation {
     }
   }
 
+  IsToStringPure(realm: Realm, input: string | Value): boolean {
+    if (input instanceof Value) {
+      if (this.IsToPrimitivePure(realm, input)) {
+        let type = input.getType();
+        return type !== SymbolValue && type !== PrimitiveValue && type !== Value;
+      }
+    }
+    return true;
+  }
+
   ToStringPartial(realm: Realm, val: string | Value): string {
     return this.ToString(realm, typeof val === "string" ? val : val.throwIfNotConcrete());
   }
 
   ToStringValue(realm: Realm, val: Value): Value {
     if (val.getType() === StringValue) return val;
-    let str;
-    if (typeof val === "string") {
-      str = val;
-    } else if (val instanceof NumberValue) {
-      str = val.value + "";
-    } else if (val instanceof UndefinedValue) {
-      str = "undefined";
-    } else if (val instanceof NullValue) {
-      str = "null";
-    } else if (val instanceof SymbolValue) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
-    } else if (val instanceof BooleanValue) {
-      str = val.value ? "true" : "false";
-    } else if (val instanceof ObjectValue) {
+    if (val instanceof ObjectValue) {
       let primValue = this.ToPrimitiveOrAbstract(realm, val, "string");
       if (primValue.getType() === StringValue) return primValue;
-      str = this.ToStringPartial(realm, primValue);
+      return this.ToStringValue(realm, primValue);
+    } else if (val instanceof ConcreteValue) {
+      let str = this.ToString(realm, val);
+      return new StringValue(realm, str);
     } else if (val instanceof AbstractValue) {
       return this.ToStringAbstract(realm, val);
     } else {
       invariant(false, "unknown value type, can't coerce to string");
     }
-    return new StringValue(realm, str);
   }
 
   ToStringAbstract(realm: Realm, value: AbstractValue): AbstractValue {
     if (value.mightNotBeString()) {
-      // If the property is not a string we need to coerce it.
-      let coerceToString = ([p]) => t.binaryExpression("+", t.stringLiteral(""), p);
       let result;
-      if (value.mightNotBeNumber() && !value.isSimpleObject()) {
+      // If the property is not a string we need to coerce it.
+      let coerceToString = createOperationDescriptor("COERCE_TO_STRING");
+      if (value.mightBeObject() && !value.isSimpleObject()) {
         // If this might be a non-simple object, we need to coerce this at a
         // temporal point since it can have side-effects.
         // We can't rely on comparison to do it later, even if

@@ -10,11 +10,17 @@
 /* @flow */
 
 import type { LexicalEnvironment } from "../environment.js";
-import type { PropertyKeyValue, FunctionBodyAstNode } from "../types.js";
+import type { PropertyKeyValue } from "../types.js";
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
-import { Completion, ReturnCompletion, AbruptCompletion, NormalCompletion } from "../completions.js";
+import {
+  AbruptCompletion,
+  Completion,
+  JoinedNormalAndAbruptCompletions,
+  ReturnCompletion,
+  SimpleNormalCompletion,
+} from "../completions.js";
 import { GlobalEnvironmentRecord, ObjectEnvironmentRecord } from "../environment.js";
 import {
   AbstractValue,
@@ -41,7 +47,6 @@ import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
 import parse from "../utils/parse.js";
 import IsStrict from "../utils/strict.js";
-import * as t from "@babel/types";
 import type {
   BabelNode,
   BabelNodeBlockStatement,
@@ -62,6 +67,8 @@ import type {
   BabelNodeWhileStatement,
   BabelNodeWithStatement,
 } from "@babel/types";
+import * as t from "@babel/types";
+import { PropertyDescriptor } from "../descriptors.js";
 
 function InternalCall(
   realm: Realm,
@@ -70,64 +77,69 @@ function InternalCall(
   argsList: Array<Value>,
   tracerIndex: number
 ): Value {
-  // 1. Assert: F is an ECMAScript function object.
-  invariant(F instanceof FunctionValue, "expected function value");
-
-  // Tracing: Give all registered tracers a chance to detour, wrapping around each other if needed.
-  while (tracerIndex < realm.tracers.length) {
-    let tracer = realm.tracers[tracerIndex];
-    let nextIndex = ++tracerIndex;
-    let detourResult = tracer.detourCall(F, thisArgument, argsList, undefined, () =>
-      InternalCall(realm, F, thisArgument, argsList, nextIndex)
-    );
-    if (detourResult instanceof Value) return detourResult;
-  }
-
-  // 2. If F's [[FunctionKind]] internal slot is "classConstructor", throw a TypeError exception.
-  if (F.$FunctionKind === "classConstructor")
-    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
-
-  // 3. Let callerContext be the running execution context.
-  let callerContext = realm.getRunningContext();
-
-  // 4. Let calleeContext be PrepareForOrdinaryCall(F, undefined).
-  let calleeContext = PrepareForOrdinaryCall(realm, F, undefined);
-  let calleeEnv = calleeContext.lexicalEnvironment;
-
-  let result;
+  realm.startCall();
   try {
-    for (let t1 of realm.tracers) t1.beforeCall(F, thisArgument, argsList, undefined);
+    // 1. Assert: F is an ECMAScript function object.
+    invariant(F instanceof FunctionValue, "expected function value");
 
-    // 5. Assert: calleeContext is now the running execution context.
-    invariant(realm.getRunningContext() === calleeContext, "calleeContext should be current execution context");
+    // Tracing: Give all registered tracers a chance to detour, wrapping around each other if needed.
+    while (tracerIndex < realm.tracers.length) {
+      let tracer = realm.tracers[tracerIndex];
+      let nextIndex = ++tracerIndex;
+      let detourResult = tracer.detourCall(F, thisArgument, argsList, undefined, () =>
+        InternalCall(realm, F, thisArgument, argsList, nextIndex)
+      );
+      if (detourResult instanceof Value) return detourResult;
+    }
 
-    // 6. Perform OrdinaryCallBindThis(F, calleeContext, thisArgument).
-    OrdinaryCallBindThis(realm, F, calleeContext, thisArgument);
+    // 2. If F's [[FunctionKind]] internal slot is "classConstructor", throw a TypeError exception.
+    if (F.$FunctionKind === "classConstructor")
+      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not callable");
 
-    // 7. Let result be OrdinaryCallEvaluateBody(F, argumentsList).
-    result = OrdinaryCallEvaluateBody(realm, F, argsList);
+    // 3. Let callerContext be the running execution context.
+    let callerContext = realm.getRunningContext();
+
+    // 4. Let calleeContext be PrepareForOrdinaryCall(F, undefined).
+    let calleeContext = PrepareForOrdinaryCall(realm, F, undefined);
+    let calleeEnv = calleeContext.lexicalEnvironment;
+
+    let result;
+    try {
+      for (let t1 of realm.tracers) t1.beforeCall(F, thisArgument, argsList, undefined);
+
+      // 5. Assert: calleeContext is now the running execution context.
+      invariant(realm.getRunningContext() === calleeContext, "calleeContext should be current execution context");
+
+      // 6. Perform OrdinaryCallBindThis(F, calleeContext, thisArgument).
+      OrdinaryCallBindThis(realm, F, calleeContext, thisArgument);
+
+      // 7. Let result be OrdinaryCallEvaluateBody(F, argumentsList).
+      result = OrdinaryCallEvaluateBody(realm, F, argsList);
+    } finally {
+      // 8. Remove calleeContext from the execution context stack and restore callerContext as the running execution context.
+      realm.popContext(calleeContext);
+      realm.onDestroyScope(calleeContext.lexicalEnvironment);
+      if (calleeContext.lexicalEnvironment !== calleeEnv) realm.onDestroyScope(calleeEnv);
+      invariant(realm.getRunningContext() === callerContext);
+
+      for (let t2 of realm.tracers) t2.afterCall(F, thisArgument, argsList, undefined, (result: any));
+    }
+
+    // 9. If result.[[Type]] is return, return NormalCompletion(result.[[Value]]).
+    if (result instanceof ReturnCompletion) {
+      return result.value;
+    }
+
+    // 10. ReturnIfAbrupt(result).
+    if (result instanceof AbruptCompletion) {
+      throw result;
+    }
+
+    // 11. Return NormalCompletion(undefined).
+    return realm.intrinsics.undefined;
   } finally {
-    // 8. Remove calleeContext from the execution context stack and restore callerContext as the running execution context.
-    realm.popContext(calleeContext);
-    realm.onDestroyScope(calleeContext.lexicalEnvironment);
-    if (calleeContext.lexicalEnvironment !== calleeEnv) realm.onDestroyScope(calleeEnv);
-    invariant(realm.getRunningContext() === callerContext);
-
-    for (let t2 of realm.tracers) t2.afterCall(F, thisArgument, argsList, undefined, (result: any));
+    realm.endCall();
   }
-
-  // 9. If result.[[Type]] is return, return NormalCompletion(result.[[Value]]).
-  if (result instanceof ReturnCompletion) {
-    return result.value;
-  }
-
-  // 10. ReturnIfAbrupt(result).  or if possibly abrupt
-  if (result instanceof Completion) {
-    throw result;
-  }
-
-  // 11. Return NormalCompletion(undefined).
-  return realm.intrinsics.undefined;
 }
 
 // ECMA262 9.4.1.1
@@ -155,7 +167,7 @@ function $BoundConstruct(
   F: BoundFunctionValue,
   argumentsList: Array<Value>,
   newTarget: ObjectValue
-): ObjectValue {
+): ObjectValue | AbstractObjectValue {
   // 1. Let target be the value of F's [[BoundTargetFunction]] internal slot.
   let target = F.$BoundTargetFunction;
 
@@ -183,102 +195,144 @@ function InternalConstruct(
   newTarget: ObjectValue,
   thisArgument: void | ObjectValue,
   tracerIndex: number
-): ObjectValue {
-  // 1. Assert: F is an ECMAScript function object.
-  invariant(F instanceof FunctionValue, "expected function");
-
-  // 2. Assert: Type(newTarget) is Object.
-  invariant(newTarget instanceof ObjectValue, "expected object");
-
-  if (!realm.hasRunningContext()) {
-    invariant(realm.useAbstractInterpretation);
-    throw new FatalError("no running context");
-  }
-
-  // 3. Let callerContext be the running execution context.
-  let callerContext = realm.getRunningContext();
-
-  // 4. Let kind be F's [[ConstructorKind]] internal slot.
-  let kind = F.$ConstructorKind;
-
-  // 5. If kind is "base", then
-  if (thisArgument === undefined && kind === "base") {
-    // a. Let thisArgument be ? OrdinaryCreateFromConstructor(newTarget, "%ObjectPrototype%").
-    thisArgument = Create.OrdinaryCreateFromConstructor(realm, newTarget, "ObjectPrototype");
-  }
-
-  // Tracing: Give all registered tracers a chance to detour, wrapping around each other if needed.
-  while (tracerIndex < realm.tracers.length) {
-    let tracer = realm.tracers[tracerIndex];
-    let nextIndex = ++tracerIndex;
-    let detourResult = tracer.detourCall(F, thisArgument, argumentsList, newTarget, () =>
-      InternalConstruct(realm, F, argumentsList, newTarget, thisArgument, nextIndex)
-    );
-    if (detourResult instanceof ObjectValue) return detourResult;
-    invariant(detourResult === undefined);
-  }
-
-  // 6. Let calleeContext be PrepareForOrdinaryCall(F, newTarget).
-  let calleeContext = PrepareForOrdinaryCall(realm, F, newTarget);
-  let calleeEnv = calleeContext.lexicalEnvironment;
-
-  // 7. Assert: calleeContext is now the running execution context.
-  invariant(realm.getRunningContext() === calleeContext, "expected calleeContext to be running context");
-
-  let result, envRec;
+): ObjectValue | AbstractObjectValue {
+  realm.startCall();
   try {
-    for (let t1 of realm.tracers) t1.beforeCall(F, thisArgument, argumentsList, newTarget);
+    // 1. Assert: F is an ECMAScript function object.
+    invariant(F instanceof FunctionValue, "expected function");
 
-    // 8. If kind is "base", perform OrdinaryCallBindThis(F, calleeContext, thisArgument).
-    if (kind === "base") {
-      invariant(thisArgument, "this wasn't initialized for some reason");
-      OrdinaryCallBindThis(realm, F, calleeContext, thisArgument);
+    // 2. Assert: Type(newTarget) is Object.
+    invariant(newTarget instanceof ObjectValue, "expected object");
+
+    if (!realm.hasRunningContext()) {
+      invariant(realm.useAbstractInterpretation);
+      throw new FatalError("no running context");
     }
 
-    // 9. Let constructorEnv be the LexicalEnvironment of calleeContext.
-    let constructorEnv = calleeContext.lexicalEnvironment;
+    // 3. Let callerContext be the running execution context.
+    let callerContext = realm.getRunningContext();
 
-    // 10. Let envRec be constructorEnv's EnvironmentRecord.
-    envRec = constructorEnv.environmentRecord;
+    // 4. Let kind be F's [[ConstructorKind]] internal slot.
+    let kind = F.$ConstructorKind;
 
-    // 11. Let result be OrdinaryCallEvaluateBody(F, argumentsList).
-    result = OrdinaryCallEvaluateBody(realm, F, argumentsList);
+    // 5. If kind is "base", then
+    if (thisArgument === undefined && kind === "base") {
+      // a. Let thisArgument be ? OrdinaryCreateFromConstructor(newTarget, "%ObjectPrototype%").
+      thisArgument = Create.OrdinaryCreateFromConstructor(realm, newTarget, "ObjectPrototype");
+    }
+
+    // Tracing: Give all registered tracers a chance to detour, wrapping around each other if needed.
+    while (tracerIndex < realm.tracers.length) {
+      let tracer = realm.tracers[tracerIndex];
+      let nextIndex = ++tracerIndex;
+      let detourResult = tracer.detourCall(F, thisArgument, argumentsList, newTarget, () =>
+        InternalConstruct(realm, F, argumentsList, newTarget, thisArgument, nextIndex)
+      );
+      if (detourResult instanceof ObjectValue) return detourResult;
+      invariant(detourResult === undefined);
+    }
+
+    // 6. Let calleeContext be PrepareForOrdinaryCall(F, newTarget).
+    let calleeContext = PrepareForOrdinaryCall(realm, F, newTarget);
+    let calleeEnv = calleeContext.lexicalEnvironment;
+
+    // 7. Assert: calleeContext is now the running execution context.
+    invariant(realm.getRunningContext() === calleeContext, "expected calleeContext to be running context");
+
+    let result, envRec;
+    try {
+      for (let t1 of realm.tracers) t1.beforeCall(F, thisArgument, argumentsList, newTarget);
+
+      // 8. If kind is "base", perform OrdinaryCallBindThis(F, calleeContext, thisArgument).
+      if (kind === "base") {
+        invariant(thisArgument, "this wasn't initialized for some reason");
+        OrdinaryCallBindThis(realm, F, calleeContext, thisArgument);
+      }
+
+      // 9. Let constructorEnv be the LexicalEnvironment of calleeContext.
+      let constructorEnv = calleeContext.lexicalEnvironment;
+
+      // 10. Let envRec be constructorEnv's EnvironmentRecord.
+      envRec = constructorEnv.environmentRecord;
+
+      // 11. Let result be OrdinaryCallEvaluateBody(F, argumentsList).
+      result = OrdinaryCallEvaluateBody(realm, F, argumentsList);
+    } finally {
+      // 12. Remove calleeContext from the execution context stack and restore callerContext as the running execution context.
+      realm.popContext(calleeContext);
+      realm.onDestroyScope(calleeContext.lexicalEnvironment);
+      if (calleeContext.lexicalEnvironment !== calleeEnv) realm.onDestroyScope(calleeEnv);
+      invariant(realm.getRunningContext() === callerContext);
+
+      for (let t2 of realm.tracers) t2.afterCall(F, thisArgument, argumentsList, newTarget, result);
+    }
+
+    // 13. If result.[[Type]] is return, then
+    if (result instanceof ReturnCompletion) {
+      const v = map(result.value);
+      invariant(v instanceof ObjectValue || v instanceof AbstractObjectValue);
+      return v;
+
+      function map(value: Value) {
+        if (value === realm.intrinsics.__bottomValue) return value;
+
+        if (value instanceof AbstractValue) {
+          if (value.kind === "conditional") {
+            const [condition, consequent, alternate] = value.args;
+            return realm.evaluateWithAbstractConditional(
+              condition,
+              () => realm.evaluateForEffects(() => map(consequent), undefined, "AbstractValue/conditional/true"),
+              () => realm.evaluateForEffects(() => map(alternate), undefined, "AbstractValue/conditional/false")
+            );
+          }
+          if (!(value instanceof AbstractObjectValue)) {
+            if (kind === "base") {
+              invariant(thisArgument, "this wasn't initialized for some reason");
+              return AbstractValue.createFromTemplate(
+                realm,
+                "typeof A === 'object' || typeof A === 'function' ? A : B",
+                ObjectValue,
+                [value, thisArgument]
+              );
+            } else {
+              value.throwIfNotConcreteObject(); // Not yet supported.
+            }
+          }
+        }
+
+        // a. If Type(result.[[Value]]) is Object, return NormalCompletion(result.[[Value]]).
+        if (value instanceof ObjectValue || value instanceof AbstractObjectValue) return value;
+
+        // b. If kind is "base", return NormalCompletion(thisArgument).
+        if (kind === "base") {
+          invariant(thisArgument, "this wasn't initialized for some reason");
+          return thisArgument;
+        }
+
+        // c. If result.[[Value]] is not undefined, throw a TypeError exception.
+        if (!value.mightBeUndefined()) {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "constructor must return Object");
+        }
+
+        value.throwIfNotConcrete();
+
+        // 15. Return ? envRec.GetThisBinding().
+        let envRecThisBinding = envRec.GetThisBinding();
+        invariant(envRecThisBinding instanceof ObjectValue);
+        return envRecThisBinding;
+      }
+    } else if (result instanceof AbruptCompletion) {
+      // 14. Else, ReturnIfAbrupt(result).
+      throw result;
+    }
+
+    // 15. Return ? envRec.GetThisBinding().
+    let envRecThisBinding = envRec.GetThisBinding();
+    invariant(envRecThisBinding instanceof ObjectValue);
+    return envRecThisBinding;
   } finally {
-    // 12. Remove calleeContext from the execution context stack and restore callerContext as the running execution context.
-    realm.popContext(calleeContext);
-    realm.onDestroyScope(calleeContext.lexicalEnvironment);
-    if (calleeContext.lexicalEnvironment !== calleeEnv) realm.onDestroyScope(calleeEnv);
-    invariant(realm.getRunningContext() === callerContext);
-
-    for (let t2 of realm.tracers) t2.afterCall(F, thisArgument, argumentsList, newTarget, result);
+    realm.endCall();
   }
-
-  // 13. If result.[[Type]] is return, then
-  if (result instanceof ReturnCompletion) {
-    // a. If Type(result.[[Value]]) is Object, return NormalCompletion(result.[[Value]]).
-    if (result.value.mightBeObject()) {
-      return result.value.throwIfNotConcreteObject();
-    }
-
-    // b. If kind is "base", return NormalCompletion(thisArgument).
-    if (kind === "base") {
-      invariant(thisArgument, "this wasn't initialized for some reason");
-      return thisArgument;
-    }
-
-    // c. If result.[[Value]] is not undefined, throw a TypeError exception.
-    if (!result.value.mightBeUndefined())
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "constructor must return Object");
-    result.value.throwIfNotConcrete();
-  } else if (result instanceof AbruptCompletion) {
-    // 14. Else, ReturnIfAbrupt(result).
-    throw result;
-  }
-
-  // 15. Return ? envRec.GetThisBinding().
-  let envRecThisBinding = envRec.GetThisBinding();
-  invariant(envRecThisBinding instanceof ObjectValue);
-  return envRecThisBinding;
 }
 
 export class FunctionImplementation {
@@ -728,12 +782,17 @@ export class FunctionImplementation {
     }
 
     // 6. Return ! DefinePropertyOrThrow(F, "name", PropertyDescriptor{[[Value]]: name, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true}).
-    return Properties.DefinePropertyOrThrow(realm, F, "name", {
-      value: name,
-      enumerable: false,
-      writable: false,
-      configurable: true,
-    });
+    return Properties.DefinePropertyOrThrow(
+      realm,
+      F,
+      "name",
+      new PropertyDescriptor({
+        value: name,
+        enumerable: false,
+        writable: false,
+        configurable: true,
+      })
+    );
   }
 
   // ECMA262 9.2.3
@@ -764,33 +823,39 @@ export class FunctionImplementation {
     }
 
     // 3. Perform ! DefinePropertyOrThrow(F, "length", PropertyDescriptor{[[Value]]: len, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true}).
-    Properties.DefinePropertyOrThrow(realm, F, "length", {
-      value: new NumberValue(realm, len),
-      writable: false,
-      enumerable: false,
-      configurable: true,
-    });
+    Properties.DefinePropertyOrThrow(
+      realm,
+      F,
+      "length",
+      new PropertyDescriptor({
+        value: new NumberValue(realm, len),
+        writable: false,
+        enumerable: false,
+        configurable: true,
+      })
+    );
 
     // 4. Let Strict be the value of the [[Strict]] internal slot of F.
     let Strict = F.$Strict;
     if (!Strict) {
-      Properties.DefinePropertyOrThrow(realm, F, "caller", {
-        value: new UndefinedValue(realm),
-        writable: true,
-        enumerable: false,
-        configurable: true,
-      });
+      Properties.DefinePropertyOrThrow(
+        realm,
+        F,
+        "caller",
+        new PropertyDescriptor({
+          value: new UndefinedValue(realm),
+          writable: true,
+          enumerable: false,
+          configurable: true,
+        })
+      );
     }
 
     // 5. Set the [[Environment]] internal slot of F to the value of Scope.
     F.$Environment = Scope;
 
-    // 6. Set the [[FormalParameters]] internal slot of F to ParameterList.
-    F.$FormalParameters = ParameterList;
-
-    // 7. Set the [[ECMAScriptCode]] internal slot of F to Body.
-    ((Body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
-    F.$ECMAScriptCode = Body;
+    // 6. Set the [[FormalParameters]] internal slot of F to ParameterList. + 7. Set the [[ECMAScriptCode]] internal slot of F to Body.
+    F.initialize(ParameterList, Body);
 
     // 8. Set the [[ScriptOrModule]] internal slot of F to GetActiveScriptOrModule().
     F.$ScriptOrModule = Environment.GetActiveScriptOrModule(realm);
@@ -836,12 +901,12 @@ export class FunctionImplementation {
     let thrower = realm.intrinsics.ThrowTypeError;
     invariant(thrower);
 
-    let desc = {
+    let desc = new PropertyDescriptor({
       get: thrower,
       set: thrower,
       enumerable: false,
       configurable: true,
-    };
+    });
     // 3. Perform ! DefinePropertyOrThrow(F, "caller", PropertyDescriptor {[[Get]]: thrower, [[Set]]: thrower, [[Enumerable]]: false, [[Configurable]]: true}).
     Properties.DefinePropertyOrThrow(realm, F, "caller", desc);
     // 4. Return ! DefinePropertyOrThrow(F, "arguments", PropertyDescriptor {[[Get]]: thrower, [[Set]]: thrower, [[Enumerable]]: false, [[Configurable]]: true}).
@@ -859,7 +924,7 @@ export class FunctionImplementation {
     F: ECMAScriptFunctionValue,
     argumentsList: Array<Value>,
     newTarget: ObjectValue
-  ): ObjectValue {
+  ): ObjectValue | AbstractObjectValue {
     return InternalConstruct(realm, F, argumentsList, newTarget, undefined, 0);
   }
 
@@ -1117,31 +1182,25 @@ export class FunctionImplementation {
     }
   }
 
-  // If c is an abrupt completion and realm.savedCompletion is defined, the result is an instance of
-  // ForkedAbruptCompletion and the effects that have been captured since the PossiblyNormalCompletion instance
-  // in realm.savedCompletion has been created, becomes the effects of the branch that terminates in c.
-  // If c is a normal completion, the result is realm.savedCompletion, with its value updated to c.
-  // If c is undefined, the result is just realm.savedCompletion.
+  // Composes realm.savedCompletion with c, clears realm.savedCompletion and return the composition.
   // Call this only when a join point has been reached.
-  incorporateSavedCompletion(realm: Realm, c: void | AbruptCompletion | Value): void | Completion | Value {
+  incorporateSavedCompletion(realm: Realm, c: void | Completion | Value): void | Completion | Value {
     let savedCompletion = realm.savedCompletion;
     if (savedCompletion !== undefined) {
-      if (savedCompletion.savedPathConditions) {
-        // Since we are joining several control flow paths, we need the curent path conditions to reflect
-        // only the refinements that applied at the corresponding fork point.
-        realm.pathConditions = savedCompletion.savedPathConditions;
-        savedCompletion.savedPathConditions = [];
-      }
       realm.savedCompletion = undefined;
-      if (c === undefined) return savedCompletion;
-      if (c instanceof Value) {
-        Join.updatePossiblyNormalCompletionWithValue(realm, savedCompletion, c);
-        return savedCompletion;
-      } else {
-        let e = realm.getCapturedEffects();
+      realm.pathConditions = savedCompletion.pathConditionsAtCreation;
+      if (c === undefined) c = realm.intrinsics.empty;
+      if (c instanceof Value) c = new SimpleNormalCompletion(c);
+      if (savedCompletion instanceof JoinedNormalAndAbruptCompletions) {
+        let subsequentEffects = realm.getCapturedEffects(c);
         realm.stopEffectCaptureAndUndoEffects(savedCompletion);
-        return Join.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, savedCompletion, c, e);
+        let joinedEffects = Join.composeWithEffects(savedCompletion, subsequentEffects);
+        realm.applyEffects(joinedEffects);
+        realm.savedCompletion = savedCompletion.composedWith;
+        if (realm.savedCompletion !== undefined) return this.incorporateSavedCompletion(realm, joinedEffects.result);
+        return joinedEffects.result;
       }
+      return Join.composeCompletions(savedCompletion, c);
     }
     return c;
   }
@@ -1167,34 +1226,6 @@ export class FunctionImplementation {
 
     // 7. Return blockValue.
     return blockValue || realm.intrinsics.empty;
-  }
-
-  PartiallyEvaluateStatements(
-    body: Array<BabelNodeStatement>,
-    blockValue: void | NormalCompletion | Value,
-    strictCode: boolean,
-    blockEnv: LexicalEnvironment,
-    realm: Realm
-  ): [Completion | Value, Array<BabelNodeStatement>] {
-    let statementAsts = [];
-    for (let node of body) {
-      if (node.type !== "FunctionDeclaration") {
-        let [res, nast, nio] = blockEnv.partiallyEvaluateCompletionDeref(node, strictCode);
-        for (let ioAst of nio) statementAsts.push(ioAst);
-        statementAsts.push((nast: any));
-        if (!(res instanceof EmptyValue)) {
-          if (blockValue === undefined || blockValue instanceof Value) {
-            if (res instanceof AbruptCompletion)
-              return [UpdateEmpty(realm, res, blockValue || realm.intrinsics.empty), statementAsts];
-            invariant(res instanceof NormalCompletion || res instanceof Value);
-            blockValue = res;
-          }
-        }
-      }
-    }
-
-    // 7. Return blockValue.
-    return [blockValue || realm.intrinsics.empty, statementAsts];
   }
 
   // ECMA262 9.2.5
@@ -1232,16 +1263,26 @@ export class FunctionImplementation {
     // Note: "arguments" ***MUST NOT*** be set if the function is in strict mode or is an arrow, method, constructor, or generator function.
     //   See 16.2 "Forbidden Extensions"
     if (!Strict && kind === "normal") {
-      Properties.DefinePropertyOrThrow(realm, F, "arguments", {
-        value: realm.intrinsics.undefined,
-        enumerable: false,
-        writable: true,
-        configurable: true,
-      });
+      Properties.DefinePropertyOrThrow(
+        realm,
+        F,
+        "arguments",
+        new PropertyDescriptor({
+          value: realm.intrinsics.undefined,
+          enumerable: false,
+          writable: true,
+          configurable: true,
+        })
+      );
     }
 
     // 5. Return FunctionInitialize(F, kind, ParameterList, Body, Scope).
-    return this.FunctionInitialize(realm, F, kind, ParameterList, Body, Scope);
+    let result = this.FunctionInitialize(realm, F, kind, ParameterList, Body, Scope);
+    invariant(F.pathConditionDuringDeclaration === undefined, "Function should only have one declaration site");
+    // Create a new path condition to make the saved condition readonly
+    F.pathConditionDuringDeclaration = realm.pathConditions.isEmpty() ? undefined : realm.pathConditions;
+    if (F.pathConditionDuringDeclaration) invariant(F.pathConditionDuringDeclaration.isReadOnly());
+    return result;
   }
 
   // ECMA262 18.2.1.2

@@ -1127,7 +1127,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
   // ECMA262 22.2.3.23
   obj.defineNativeMethod("set", 1, (context, [overloaded, offset]) => {
-    if (!overloaded.$TypedArrayName) {
+    if (overloaded.$TypedArrayName === undefined) {
       let array = overloaded;
 
       // 1. Assert: array is any ECMAScript language value other than an Object with a [[TypedArrayName]] internal slot. If it is such an Object, the definition in 22.2.3.23.2 applies.

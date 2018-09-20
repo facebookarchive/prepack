@@ -14,16 +14,16 @@ import { FatalError } from "../errors.js";
 import type { Bindings, BindingEntry, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
 import { Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
+import { cloneDescriptor, equalDescriptors, PropertyDescriptor } from "../descriptors.js";
 
-import { AbruptCompletion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
+import { AbruptCompletion, JoinedNormalAndAbruptCompletions, SimpleNormalCompletion } from "../completions.js";
 import { Reference } from "../environment.js";
-import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
-import { Generator } from "../utils/generator.js";
-import { AbstractValue, ArrayValue, EmptyValue, Value } from "../values/index.js";
+import { IsDataDescriptor, StrictEqualityComparison } from "./index.js";
+import { Generator, createOperationDescriptor } from "../utils/generator.js";
+import { AbstractValue, ArrayValue, EmptyValue, Value, StringValue } from "../values/index.js";
 
 import invariant from "../invariant.js";
-import * as t from "@babel/types";
-import { memberExpressionHelper } from "../utils/babelhelpers.js";
+import { InternalSlotDescriptor } from "../descriptors.js";
 
 export class WidenImplementation {
   _widenArrays(
@@ -105,7 +105,7 @@ export class WidenImplementation {
     realm: Realm,
     result1: EvaluationResult,
     result2: EvaluationResult
-  ): PossiblyNormalCompletion | SimpleNormalCompletion {
+  ): JoinedNormalAndAbruptCompletions | SimpleNormalCompletion {
     invariant(!(result1 instanceof Reference || result2 instanceof Reference), "loop bodies should not result in refs");
     invariant(
       !(result1 instanceof AbruptCompletion || result2 instanceof AbruptCompletion),
@@ -116,7 +116,7 @@ export class WidenImplementation {
       invariant(val instanceof Value);
       return new SimpleNormalCompletion(val);
     }
-    if (result1 instanceof PossiblyNormalCompletion || result2 instanceof PossiblyNormalCompletion) {
+    if (result1 instanceof JoinedNormalAndAbruptCompletions || result2 instanceof JoinedNormalAndAbruptCompletions) {
       //todo: #1174 figure out how to deal with loops that have embedded conditional exits
       // widen join pathConditions
       // widen normal result and Effects
@@ -143,6 +143,9 @@ export class WidenImplementation {
 
   widenBindings(realm: Realm, m1: Bindings, m2: Bindings): Bindings {
     let widen = (b: Binding, b1: void | BindingEntry, b2: void | BindingEntry) => {
+      let l1 = b1 === undefined ? b.hasLeaked : b1.hasLeaked;
+      let l2 = b2 === undefined ? b.hasLeaked : b2.hasLeaked;
+      let hasLeaked = l1 || l2; // If either has leaked, then this binding has leaked.
       let v1 = b1 === undefined || b1.value === undefined ? b.value : b1.value;
       invariant(b2 !== undefined); // Local variables are not going to get deleted as a result of widening
       let v2 = b2.value;
@@ -158,7 +161,7 @@ export class WidenImplementation {
             result.types,
             result.values,
             [b.value || realm.intrinsics.undefined],
-            ([n]) => n,
+            createOperationDescriptor("SINGLE_ARG"),
             { skipInvariant: true }
           );
           b.phiNode = phiNode;
@@ -167,17 +170,10 @@ export class WidenImplementation {
         invariant(phiNode.intrinsicName !== undefined);
         let phiName = phiNode.intrinsicName;
         result.intrinsicName = phiName;
-        result._buildNode = args => t.identifier(phiName);
+        result.operationDescriptor = createOperationDescriptor("WIDENED_IDENTIFIER", { id: phiName });
       }
       invariant(result instanceof Value);
-      let previousHasLeaked = b2.previousHasLeaked;
-      let previousValue = b2.previousValue;
-      return {
-        hasLeaked: previousHasLeaked,
-        value: result,
-        previousHasLeaked,
-        previousValue,
-      };
+      return { hasLeaked, value: result };
     };
     return this.widenMaps(m1, m2, widen);
   }
@@ -218,17 +214,18 @@ export class WidenImplementation {
       if (d1 === undefined && d2 === undefined) return undefined;
       // If the PropertyBinding object has been freshly allocated do not widen (that happens in AbstractObjectValue)
       if (d1 === undefined) {
+        invariant(d2 !== undefined);
         if (c2.has(b.object)) return d2; // no widen
         if (b.descriptor !== undefined && m1.has(b)) {
           // property was present in (n-1)th iteration and deleted in nth iteration
-          d1 = cloneDescriptor(b.descriptor);
+          d1 = cloneDescriptor(b.descriptor.throwIfNotConcrete(realm));
           invariant(d1 !== undefined);
           d1.value = realm.intrinsics.empty;
         } else {
           // no write to property in nth iteration, use the value from the (n-1)th iteration
           d1 = b.descriptor;
           if (d1 === undefined) {
-            d1 = cloneDescriptor(d2);
+            d1 = cloneDescriptor(d2.throwIfNotConcrete(realm));
             invariant(d1 !== undefined);
             d1.value = realm.intrinsics.empty;
           }
@@ -238,7 +235,7 @@ export class WidenImplementation {
         if (c1.has(b.object)) return d1; // no widen
         if (m2.has(b)) {
           // property was present in nth iteration and deleted in (n+1)th iteration
-          d2 = cloneDescriptor(d1);
+          d2 = cloneDescriptor(d1.throwIfNotConcrete(realm));
           invariant(d2 !== undefined);
           d2.value = realm.intrinsics.empty;
         } else {
@@ -253,7 +250,7 @@ export class WidenImplementation {
         let pathNode = b.pathNode;
         if (pathNode === undefined) {
           //Since properties already have mutable storage locations associated with them, we do not
-          //need phi nodes. What we need is an abstract value with a build node that results in a memberExpression
+          //need phi nodes. What we need is an abstract value with a operation descriptor that results in a memberExpression
           //that resolves to the storage location of the property.
 
           // For now, we only handle loop invariant properties
@@ -264,33 +261,43 @@ export class WidenImplementation {
             (key instanceof AbstractValue && !(key.mightNotBeString() && key.mightNotBeNumber()))
           ) {
             if (typeof key === "string") {
-              pathNode = AbstractValue.createFromWidenedProperty(realm, rval, [b.object], ([o]) =>
-                memberExpressionHelper(o, key)
+              pathNode = AbstractValue.createFromWidenedProperty(
+                realm,
+                rval,
+                [b.object, new StringValue(realm, key)],
+                createOperationDescriptor("WIDEN_PROPERTY")
               );
             } else {
               invariant(key instanceof AbstractValue);
-              pathNode = AbstractValue.createFromWidenedProperty(realm, rval, [b.object, key], ([o, p]) => {
-                return memberExpressionHelper(o, p);
-              });
+              pathNode = AbstractValue.createFromWidenedProperty(
+                realm,
+                rval,
+                [b.object, key],
+                createOperationDescriptor("WIDEN_PROPERTY")
+              );
             }
             // The value of the property at the start of the loop needs to be written to the property
             // before the loop commences, otherwise the memberExpression will result in an undefined value.
             let generator = realm.generator;
             invariant(generator !== undefined);
-            let initVal = (b.descriptor && b.descriptor.value) || realm.intrinsics.empty;
-            if (!(initVal instanceof Value)) throw new FatalError("todo: handle internal properties");
+            let initVal = (b.descriptor && b.descriptor.throwIfNotConcrete(realm).value) || realm.intrinsics.empty;
             if (!(initVal instanceof EmptyValue)) {
               if (key === "length" && b.object instanceof ArrayValue) {
                 // do nothing, the array length will already be initialized
               } else if (typeof key === "string") {
-                generator.emitVoidExpression(rval.types, rval.values, [b.object, initVal], ([o, v]) => {
-                  invariant(typeof key === "string");
-                  return t.assignmentExpression("=", memberExpressionHelper(o, key), v);
-                });
+                generator.emitVoidExpression(
+                  rval.types,
+                  rval.values,
+                  [b.object, new StringValue(realm, key), initVal],
+                  createOperationDescriptor("WIDEN_PROPERTY_ASSIGNMENT")
+                );
               } else {
                 invariant(key instanceof AbstractValue);
-                generator.emitVoidExpression(rval.types, rval.values, [b.object, key, initVal], ([o, p, v]) =>
-                  t.assignmentExpression("=", memberExpressionHelper(o, p), v)
+                generator.emitVoidExpression(
+                  rval.types,
+                  rval.values,
+                  [b.object, key, initVal],
+                  createOperationDescriptor("WIDEN_PROPERTY_ASSIGNMENT")
                 );
               }
             }
@@ -306,7 +313,8 @@ export class WidenImplementation {
     return this.widenMaps(m1, m2, widen);
   }
 
-  widenDescriptors(realm: Realm, d1: void | Descriptor, d2: Descriptor): void | Descriptor {
+  widenDescriptors(realm: Realm, d1: void | Descriptor, d2: Descriptor): void | PropertyDescriptor {
+    d2 = d2.throwIfNotConcrete(realm);
     if (d1 === undefined) {
       // d2 is a property written to only in the (n+1)th iteration
       if (!IsDataDescriptor(realm, d2)) return d2; // accessor properties need not be widened.
@@ -314,9 +322,12 @@ export class WidenImplementation {
       invariant(dc !== undefined);
       let d2value = dc.value;
       invariant(d2value !== undefined); // because IsDataDescriptor is true for d2/dc
-      dc.value = this.widenValues(realm, d2value, d2value);
+      let dcValue = this.widenValues(realm, d2value, d2value);
+      invariant(dcValue instanceof Value);
+      dc.value = dcValue;
       return dc;
     } else {
+      d1 = d1.throwIfNotConcrete(realm);
       if (equalDescriptors(d1, d2)) {
         if (!IsDataDescriptor(realm, d1)) return d1; // identical accessor properties need not be widened.
         // equalDescriptors plus IsDataDescriptor guarantee that both have value props and if you have a value prop is value is defined.
@@ -326,7 +337,9 @@ export class WidenImplementation {
         invariant(d1value !== undefined);
         let d2value = d2.value;
         invariant(d2value !== undefined);
-        dc.value = this.widenValues(realm, d1value, d2value);
+        let dcValue = this.widenValues(realm, d1value, d2value);
+        invariant(dcValue instanceof Value);
+        dc.value = dcValue;
         return dc;
       }
       //todo: #1174 if we get here, the loop body contains a call to create a property and different iterations
@@ -392,7 +405,23 @@ export class WidenImplementation {
     c2: CreatedObjects
   ): boolean {
     let containsPropertyBinding = (d1: void | Descriptor, d2: void | Descriptor) => {
-      let [v1, v2] = [d1 && d1.value, d2 && d2.value];
+      let v1, v2;
+      if (d1 instanceof InternalSlotDescriptor || d2 instanceof InternalSlotDescriptor) {
+        if (d1 !== undefined) {
+          invariant(d1 instanceof InternalSlotDescriptor);
+          v1 = d1.value;
+        }
+        if (d2 !== undefined) {
+          invariant(d2 instanceof InternalSlotDescriptor);
+          v2 = d2.value;
+        }
+      }
+      if (d1 instanceof PropertyDescriptor) {
+        v1 = d1.value;
+      }
+      if (d2 instanceof PropertyDescriptor) {
+        v2 = d2.value;
+      }
       if (v1 === undefined) {
         return v2 === undefined;
       }

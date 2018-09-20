@@ -94,7 +94,7 @@ function generateDemosSelect(obj, dom) {
 var worker;
 var debounce;
 
-var errorOutput = document.querySelector('.output .error');
+var messagesOutput = document.querySelector('.input .messages');
 var replOutput = document.querySelector('.output .repl');
 
 var isEmpty = /^\s*$/;
@@ -106,34 +106,76 @@ function terminateWorker() {
   }
 }
 
-function processError(errorOutput, error) {
-  let errorWikiLink = document.createElement('a');
-  errorWikiLink.href = 'https://github.com/facebook/prepack/wiki/' + encodeURIComponent(error.errorCode);
-  errorWikiLink.text = error.errorCode;
-  errorWikiLink.setAttribute('target', '_blank');
+function createWikiLink(code) {
+  const wikiLink = document.createElement('a');
+  wikiLink.href = 'https://github.com/facebook/prepack/wiki/' + encodeURIComponent(code);
+  wikiLink.text = code;
+  wikiLink.setAttribute('target', '_blank');
+
+  return wikiLink;
+}
+
+function createLineLink(location) {
+  const lineLink = document.createElement('a');
+  let lineNumber = location.start ? location.start.line : location.line;
+  let colNumber = location.start ? location.start.column : location.column;
+  colNumber++;
+  let lineText = lineNumber + ':' + colNumber;
+
+  lineLink.href = '';
+  lineLink.onclick = function() {
+    input.gotoLine(lineNumber);
+    return false;
+  };
+  lineLink.text = lineText;
+  lineLink.classList.add("line-link");
+
+  return lineLink;
+}
+
+function processMessage(messageNode, data) {
   // TODO: syntax errors need their location stripped
-  if (error.location) {
-    let errorLineLink = document.createElement('a');
-    let lineNumber = error.location.start ? error.location.start.line : error.location.line;
-    let colNumber = error.location.start ? error.location.start.column : error.location.column;
-    colNumber++;
-    let lineText = lineNumber + ':' + colNumber;
-    errorLineLink.href = '';
-    errorLineLink.onclick = function() {
-      input.gotoLine(lineNumber);
-      return false;
-    };
-    errorLineLink.text = lineText;
-    errorLineLink.style.color = 'red';
-    errorOutput.appendChild(errorWikiLink);
-    errorOutput.appendChild(document.createTextNode(' ('));
-    errorOutput.appendChild(errorLineLink);
-    errorOutput.appendChild(document.createTextNode('):  ' + error.message + '\n'));
-  } else if (!error.code) {
-    errorOutput.appendChild(document.createTextNode(error.message + '\n'));
+  if (data.location) {
+    const wikiLink = createWikiLink(data.errorCode);
+    const lineLink = createLineLink(data.location);
+    messageNode.appendChild(wikiLink);
+    messageNode.appendChild(document.createTextNode(' ('));
+    messageNode.appendChild(lineLink);
+    messageNode.appendChild(document.createTextNode('):  ' + data.message + '\n'));
+  } else if (!data.code) {
+    messageNode.appendChild(document.createTextNode(data.message + '\n'));
   } else {
-    errorOutput.appendChild(errorWikiLink);
-    errorOutput.appendChild(document.createTextNode(': ' + error.message + '\n'));
+    const wikiLink = createWikiLink(data.errorCode);
+    messageNode.appendChild(wikiLink);
+    messageNode.appendChild(document.createTextNode(': ' + data.message + '\n'));
+  }
+}
+
+function getMessageClassType(severity) {
+  switch(severity) {
+    case "FatalError":
+      return "error";
+    case "RecoverableError":
+      return "error";
+    case "Warning":
+      return "warning";
+    case "Information":
+      return "warning";
+    default:
+      return "error";
+  }
+}
+
+function showMessages(messages) {
+  messagesOutput.style.display = 'inline-block';
+  
+  for (var i in messages) {
+    const message = document.createElement('div');
+    message.classList.add("message", getMessageClassType(messages[i].severity));
+
+    processMessage(message, messages[i]);
+
+    messagesOutput.appendChild(message);
   }
 }
 
@@ -151,12 +193,37 @@ function makeDemoSharable() {
   history.replaceState(undefined, undefined, `#${encoded}`);
 }
 
+function showGeneratedCode(code) {
+  if (isEmpty.test(code) && !isEmpty.test(input.getValue())) {
+    code =
+      '// Your code was all dead code and thus eliminated.\n' + '// Try storing a property on the global object.';
+  }
+  output.setValue(code, -1);
+}
+
+function showGenerationGraph(graph) {
+  drawGraphCallback = () => {
+    if (graph) {
+      var graphData = JSON.parse(graph);
+      var visData = {
+        nodes: graphData.nodes,
+        edges: graphData.edges,
+      };
+
+      var visOptions = {};
+      var boxNetwork = new vis.Network(graphBox, visData, visOptions);
+    }
+  };
+
+  if (showGraphDiv) drawGraphCallback();
+}
+
 function compile() {
   clearTimeout(debounce);
   terminateWorker();
 
-  errorOutput.innerHTML = '';
-  errorOutput.style.display = 'none';
+  messagesOutput.innerHTML = '';
+  messagesOutput.style.display = 'none';
   replOutput.style.display = 'block';
 
   output.setValue('// Compiling...', -1);
@@ -164,42 +231,16 @@ function compile() {
   debounce = setTimeout(function() {
     worker = new Worker('js/repl-worker.js');
     worker.onmessage = function(e) {
-      // turn off compiling
-
-      var result = e.data;
+      const result = e.data;
       if (result.type === 'success') {
-        var code = result.data;
-        if (isEmpty.test(code) && !isEmpty.test(input.getValue())) {
-          code =
-            '// Your code was all dead code and thus eliminated.\n' + '// Try storing a property on the global object.';
-        }
-        drawGraphCallback = () => {
-          var graphData = JSON.parse(result.graph);
-          var visData = {
-            nodes: graphData.nodes,
-            edges: graphData.edges
-          }
-
-          var visOptions = {};
-          var boxNetwork = new vis.Network(graphBox, visData, visOptions);
-        }
-        if (showGraphDiv) {
-          drawGraphCallback();
-        }
-        output.setValue(code, -1);
+        const { data, graph, messages } = result;
+        showGeneratedCode(data);
+        showGenerationGraph(graph);
+        showMessages(messages);
       } else if (result.type === 'error') {
-        let errors = result.data;
-        if (typeof errors === 'string') {
-          errorOutput.style.display = 'block';
-          replOutput.style.display = 'none';
-          errorOutput.textContent = errors;
-        } else {
-          errorOutput.style.display = 'block';
-          replOutput.style.display = 'none';
-          for (var i in errors) {
-            processError(errorOutput, errors[i]);
-          }
-        }
+        const errors = result.data;
+        showMessages(errors);
+        output.setValue('// Prepack is unable to produce output for this input.\n// Please check the left pane for diagnostic information.', -1);
       }
       terminateWorker();
     };
@@ -234,7 +275,6 @@ input.on('change', compile);
 input.on('change', makeDemoSharable);
 
 /**record **/
-
 var selectRecord = document.querySelector('select.select-record');
 var optionsRecord = document.querySelector('#optionsMenuRecord');
 var selectInput = document.querySelector('#recordName');
@@ -282,7 +322,7 @@ function addDefaultExamples() {
   code = [
     '(function () {',
     '  var self = this;',
-    '    ["A", "B", 42].forEach(function(x) {',
+    '  ["A", "B", 42].forEach(function(x) {',
     '    var name = "_" + x.toString()[0].toLowerCase();',
     '    var y = parseInt(x);',
     '    self[name] = y ? y : x;',

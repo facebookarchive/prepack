@@ -133,6 +133,7 @@ ${source}
       reactEnabled: true,
       reactOutput: useJSXOutput ? "jsx" : "create-element",
       reactOptimizeNestedFunctions: true,
+      arrayNestedOptimizedFunctionsEnabled: true,
       inlineExpressions: true,
       invariantLevel: 0,
       stripFlow: true,
@@ -160,6 +161,8 @@ ${source}
 
   function runSource(source) {
     let transformedSource = `
+      // Add global variable for spec compliance.
+      let global = this;
       // Inject React since compiled JSX would reference it.
       let React = require('react');
       (function() {
@@ -236,6 +239,7 @@ ${source}
       // We do the same in debug-fb-www script.
       shouldRecover = errorCode => errorCode === "PP0025",
       expectReconcilerError = false,
+      expectRuntimeError = false,
       expectedCreateElementCalls,
       data,
     } = options;
@@ -268,7 +272,7 @@ ${source}
       let B = runSource(compiledSource);
 
       expect(typeof A).toBe(typeof B);
-      if (typeof A !== "function") {
+      if (A == null || B == null) {
         // Test without exports just verifies that the file compiles.
         return;
       }
@@ -280,16 +284,23 @@ ${source}
       };
       let rendererA = ReactTestRenderer.create(null, config);
       let rendererB = ReactTestRenderer.create(null, config);
-      if (A == null || B == null) {
-        throw new Error("React test runner issue");
-      }
 
       // Use the original version of the test in case transforming messes it up.
       let { getTrials: getTrialsA, independent } = A;
       let { getTrials: getTrialsB } = B;
       // Run tests that assert the rendered output matches.
-      let resultA = getTrialsA(rendererA, A, data, false);
-      let resultB = independent ? getTrialsB(rendererB, B, data, true) : getTrialsA(rendererB, B, data, false);
+      let resultA;
+      let resultB;
+      try {
+        resultA = getTrialsA(rendererA, A, data, false);
+        resultB = independent ? getTrialsB(rendererB, B, data, true) : getTrialsA(rendererB, B, data, false);
+      } catch (err) {
+        if (expectRuntimeError) {
+          expect(err.message).toMatchSnapshot(snapshotName);
+          return;
+        }
+        throw err;
+      }
 
       // The test has returned many values for us to check
       for (let i = 0; i < resultA.length; i++) {
@@ -319,6 +330,7 @@ ${source}
     firstRenderOnly?: boolean,
     data?: mixed,
     expectReconcilerError?: boolean,
+    expectRuntimeError?: boolean,
     expectedCreateElementCalls?: number,
     shouldRecover?: (errorCode: string) => boolean,
   };

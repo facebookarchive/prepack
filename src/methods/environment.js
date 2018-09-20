@@ -10,31 +10,32 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import * as t from "@babel/types";
 import invariant from "../invariant.js";
 import type { PropertyKeyValue } from "../types.js";
 import {
+  AbstractObjectValue,
   AbstractValue,
-  UndefinedValue,
+  BooleanValue,
+  ECMAScriptFunctionValue,
+  IntegralValue,
   NullValue,
   NumberValue,
-  IntegralValue,
-  BooleanValue,
-  SymbolValue,
-  ECMAScriptFunctionValue,
   ObjectValue,
   StringValue,
+  SymbolValue,
   Value,
-  AbstractObjectValue,
+  UndefinedValue,
 } from "../values/index.js";
 import {
-  ObjectEnvironmentRecord,
-  FunctionEnvironmentRecord,
-  EnvironmentRecord,
   DeclarativeEnvironmentRecord,
+  EnvironmentRecord,
+  FunctionEnvironmentRecord,
   GlobalEnvironmentRecord,
-  Reference,
+  isValidBaseValue,
   LexicalEnvironment,
+  ObjectEnvironmentRecord,
+  Reference,
+  type BaseValue,
 } from "../environment.js";
 import { AbruptCompletion, SimpleNormalCompletion } from "../completions.js";
 import { FatalError } from "../errors.js";
@@ -64,6 +65,7 @@ import type {
   BabelNodeLVal,
   BabelNodePattern,
 } from "@babel/types";
+import * as t from "@babel/types";
 
 export class EnvironmentImplementation {
   // 2.6 RestBindingInitialization (please suggest an appropriate section name)
@@ -205,7 +207,55 @@ export class EnvironmentImplementation {
     return val;
   }
 
-  _dereference(realm: Realm, V: Reference | Value): Value {
+  _dereferenceConditional(
+    realm: Realm,
+    ref: Reference,
+    condValue: AbstractValue,
+    consequentVal: Value,
+    alternateVal: Value
+  ): Value {
+    return realm.evaluateWithAbstractConditional(
+      condValue,
+      () => {
+        return realm.evaluateForEffects(
+          () => {
+            if (isValidBaseValue(consequentVal)) {
+              let consequentRef = new Reference(
+                ((consequentVal: any): BaseValue),
+                ref.referencedName,
+                ref.strict,
+                ref.thisValue
+              );
+              return this._dereference(realm, consequentRef);
+            }
+            return this._dereference(realm, ref, false);
+          },
+          null,
+          "_dereferenceConditional consequent"
+        );
+      },
+      () => {
+        return realm.evaluateForEffects(
+          () => {
+            if (isValidBaseValue(alternateVal)) {
+              let alternateRef = new Reference(
+                ((alternateVal: any): BaseValue),
+                ref.referencedName,
+                ref.strict,
+                ref.thisValue
+              );
+              return this._dereference(realm, alternateRef);
+            }
+            return this._dereference(realm, ref, false);
+          },
+          null,
+          "_dereferenceConditional alternate"
+        );
+      }
+    );
+  }
+
+  _dereference(realm: Realm, V: Reference | Value, deferenceConditionals?: boolean = true): Value {
     // This step is not necessary as we propagate completions with exceptions.
     // 1. ReturnIfAbrupt(V).
 
@@ -226,6 +276,23 @@ export class EnvironmentImplementation {
     // 5. If IsPropertyReference(V) is true, then
     if (this.IsPropertyReference(realm, V)) {
       if (base instanceof AbstractValue) {
+        if (deferenceConditionals && !(base instanceof AbstractObjectValue)) {
+          if (base.kind === "conditional") {
+            let [condValue, consequentVal, alternateVal] = base.args;
+            invariant(condValue instanceof AbstractValue);
+            if (isValidBaseValue(consequentVal) || isValidBaseValue(alternateVal)) {
+              return this._dereferenceConditional(realm, V, condValue, consequentVal, alternateVal);
+            }
+          } else if (base.kind === "||") {
+            let [leftValue, rightValue] = base.args;
+            invariant(leftValue instanceof AbstractValue);
+            return this._dereferenceConditional(realm, V, leftValue, leftValue, rightValue);
+          } else if (base.kind === "&&") {
+            let [leftValue, rightValue] = base.args;
+            invariant(leftValue instanceof AbstractValue);
+            return this._dereferenceConditional(realm, V, leftValue, rightValue, leftValue);
+          }
+        }
         // Ensure that abstract values are coerced to objects. This might yield
         // an operation that might throw.
         base = To.ToObject(realm, base);

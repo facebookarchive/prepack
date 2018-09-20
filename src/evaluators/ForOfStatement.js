@@ -14,7 +14,14 @@ import type { LexicalEnvironment } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { Reference } from "../environment.js";
-import { BreakCompletion, AbruptCompletion, ContinueCompletion, ForkedAbruptCompletion } from "../completions.js";
+import {
+  AbruptCompletion,
+  BreakCompletion,
+  Completion,
+  ContinueCompletion,
+  JoinedAbruptCompletions,
+  NormalCompletion,
+} from "../completions.js";
 import {
   AbstractObjectValue,
   AbstractValue,
@@ -33,7 +40,7 @@ import {
   DestructuringAssignmentEvaluation,
   GetIterator,
 } from "../methods/index.js";
-import { Environment, Join, Properties, To } from "../singletons.js";
+import { Environment, Properties, To } from "../singletons.js";
 import type {
   BabelNode,
   BabelNodeForOfStatement,
@@ -45,37 +52,23 @@ import type {
 export type IterationKind = "iterate" | "enumerate";
 export type LhsKind = "lexicalBinding" | "varBinding" | "assignment";
 
-export function InternalGetResultValue(realm: Realm, result: Value | AbruptCompletion): Value {
-  if (result instanceof AbruptCompletion) {
+export function InternalGetResultValue(realm: Realm, result: Value | Completion): Value {
+  if (result instanceof Completion) {
     return result.value;
   } else {
     return result;
   }
 }
 
-export function TryToApplyEffectsOfJoiningBranches(realm: Realm, c: ForkedAbruptCompletion): AbruptCompletion {
-  let joinedEffects = Join.joinNestedEffects(realm, c);
-  let jr = joinedEffects.result;
-  invariant(jr instanceof AbruptCompletion);
-  if (jr instanceof ContinueCompletion || jr instanceof BreakCompletion) {
-    // The end of a loop body is join point for these.
-    realm.applyEffects(joinedEffects, "end of loop body");
-  } else if (jr instanceof ForkedAbruptCompletion) {
-    if (jr.containsBreakOrContinue()) {
-      // todo: extract the continue completions, apply those while stashing the other completions
-      // in realm.savedCompletion. This may need customization depending on the caller.
-      AbstractValue.reportIntrospectionError(jr.joinCondition);
-      throw new FatalError();
-    }
-  }
-  return jr;
-}
-
 // ECMA262 13.7.1.2
-export function LoopContinues(realm: Realm, completion: Value | AbruptCompletion, labelSet: ?Array<string>): boolean {
+export function LoopContinues(realm: Realm, completion: Value | Completion, labelSet: ?Array<string>): boolean {
   // 1. If completion.[[Type]] is normal, return true.
-  if (completion instanceof Value) return true;
-  invariant(completion instanceof AbruptCompletion);
+  if (completion instanceof Value || completion instanceof NormalCompletion) return true;
+  if (completion instanceof JoinedAbruptCompletions) {
+    return (
+      LoopContinues(realm, completion.consequent, labelSet) || LoopContinues(realm, completion.alternate, labelSet)
+    );
+  }
 
   // 2. If completion.[[Type]] is not continue, return false.
   if (!(completion instanceof ContinueCompletion)) return false;
@@ -167,7 +160,7 @@ export function ForInOfHeadEvaluation(
     // a. If exprValue.[[Value]] is null or undefined, then
     if (exprValue instanceof NullValue || exprValue instanceof UndefinedValue) {
       // i. Return Completion{[[Type]]: break, [[Value]]: empty, [[Target]]: empty}.
-      throw new BreakCompletion(realm.intrinsics.empty, undefined, expr.loc, null);
+      throw new BreakCompletion(realm.intrinsics.empty, expr.loc, null);
     }
 
     // b. Let obj be ToObject(exprValue).
@@ -346,7 +339,6 @@ export function ForInOfBodyEvaluation(
     // i. Let result be the result of evaluating stmt.
     let result = env.evaluateCompletion(stmt, strictCode);
     invariant(result instanceof Value || result instanceof AbruptCompletion);
-    if (result instanceof ForkedAbruptCompletion) result = TryToApplyEffectsOfJoiningBranches(realm, result);
 
     // j. Set the running execution context's LexicalEnvironment to oldEnv.
 

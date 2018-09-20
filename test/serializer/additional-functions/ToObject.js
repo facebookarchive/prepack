@@ -1,4 +1,3 @@
-// does not contain:(props).x
 (function() {
   function URIBase(uri) {
     if (uri instanceof URIBase) {

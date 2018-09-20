@@ -10,39 +10,38 @@
 /* @flow */
 
 import type { Binding } from "../environment.js";
-import { FatalError } from "../errors.js";
-import type { Bindings, BindingEntry, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
-import { Effects } from "../realm.js";
+import type { Bindings, BindingEntry, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
+import { construct_empty_effects, Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
+import {
+  cloneDescriptor,
+  equalDescriptors,
+  PropertyDescriptor,
+  AbstractJoinedDescriptor,
+  InternalSlotDescriptor,
+} from "../descriptors.js";
 
 import {
   AbruptCompletion,
   BreakCompletion,
   Completion,
   ContinueCompletion,
-  PossiblyNormalCompletion,
-  ForkedAbruptCompletion,
+  JoinedAbruptCompletions,
+  JoinedNormalAndAbruptCompletions,
   SimpleNormalCompletion,
   NormalCompletion,
   ReturnCompletion,
   ThrowCompletion,
 } from "../completions.js";
-import { Reference } from "../environment.js";
-import { cloneDescriptor, equalDescriptors, IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
-import { construct_empty_effects } from "../realm.js";
+import { IsDataDescriptor, StrictEqualityComparison } from "../methods/index.js";
 import { Path } from "../singletons.js";
 import { Generator } from "../utils/generator.js";
 import { AbstractValue, ConcreteValue, EmptyValue, Value } from "../values/index.js";
 
 import invariant from "../invariant.js";
 
-function joinGenerators(
-  realm: Realm,
-  joinCondition: AbstractValue,
-  generator1: Generator,
-  generator2: Generator
-): Generator {
-  // TODO #2222: Check if `realm.pathConditions` is correct here.
+function joinGenerators(joinCondition: AbstractValue, generator1: Generator, generator2: Generator): Generator {
+  let realm = joinCondition.$Realm;
   let result = new Generator(realm, "joined", realm.pathConditions);
   if (!generator1.empty() || !generator2.empty()) {
     result.joinGenerators(joinCondition, generator1, generator2);
@@ -99,417 +98,147 @@ function joinArraysOfValues(
 }
 
 export class JoinImplementation {
-  stopEffectCaptureJoinApplyAndReturnCompletion(
-    c1: PossiblyNormalCompletion,
-    c2: AbruptCompletion,
-    realm: Realm
-  ): ForkedAbruptCompletion {
-    let e = realm.getCapturedEffects();
-    realm.stopEffectCaptureAndUndoEffects(c1);
-    return this.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, c1, c2, e);
-  }
-
-  unbundleNormalCompletion(
-    completionOrValue: Completion | Value | Reference
-  ): [void | NormalCompletion, Value | Reference] {
-    let completion, value;
-    if (completionOrValue instanceof PossiblyNormalCompletion) {
-      completion = completionOrValue;
-      value = completionOrValue.value;
-    } else {
-      invariant(completionOrValue instanceof Value || completionOrValue instanceof Reference);
-      value = completionOrValue;
-    }
-    return [completion, value];
-  }
-
-  composeNormalCompletions(
-    leftCompletion: void | NormalCompletion,
-    rightCompletion: void | NormalCompletion,
-    resultValue: Value,
-    realm: Realm
-  ): PossiblyNormalCompletion | Value {
-    if (leftCompletion instanceof PossiblyNormalCompletion) {
-      if (rightCompletion instanceof PossiblyNormalCompletion) {
-        this.updatePossiblyNormalCompletionWithValue(realm, rightCompletion, resultValue);
-        return this.composePossiblyNormalCompletions(realm, leftCompletion, rightCompletion);
+  composeCompletions(leftCompletion: void | Completion | Value, rightCompletion: Completion | Value): Completion {
+    if (leftCompletion instanceof AbruptCompletion) return leftCompletion;
+    if (leftCompletion instanceof JoinedNormalAndAbruptCompletions) {
+      if (rightCompletion instanceof JoinedNormalAndAbruptCompletions) {
+        rightCompletion.composedWith = leftCompletion;
+        rightCompletion.pathConditionsAtCreation = leftCompletion.pathConditionsAtCreation;
+        return rightCompletion;
       }
-      this.updatePossiblyNormalCompletionWithValue(realm, leftCompletion, resultValue);
+      let c = this.composeCompletions(leftCompletion.consequent, rightCompletion);
+      if (c instanceof Value) c = new SimpleNormalCompletion(c);
+      let a = this.composeCompletions(leftCompletion.alternate, rightCompletion);
+      if (a instanceof Value) a = new SimpleNormalCompletion(a);
+      let joinedCompletion = this.joinCompletions(leftCompletion.joinCondition, c, a);
+      if (joinedCompletion instanceof JoinedNormalAndAbruptCompletions) {
+        joinedCompletion.composedWith = leftCompletion.composedWith;
+        joinedCompletion.pathConditionsAtCreation = leftCompletion.pathConditionsAtCreation;
+        joinedCompletion.savedEffects = leftCompletion.savedEffects;
+      }
+      return joinedCompletion;
+    }
+    if (leftCompletion instanceof Value) leftCompletion = new SimpleNormalCompletion(leftCompletion);
+    if (
+      leftCompletion instanceof Completion &&
+      leftCompletion.value === leftCompletion.value.$Realm.intrinsics.__bottomValue
+    ) {
       return leftCompletion;
-    } else if (rightCompletion instanceof PossiblyNormalCompletion) {
-      this.updatePossiblyNormalCompletionWithValue(realm, rightCompletion, resultValue);
-      return rightCompletion;
+    }
+    if (rightCompletion instanceof Value) rightCompletion = new SimpleNormalCompletion(rightCompletion);
+    return rightCompletion;
+  }
+
+  composeWithEffects(completion: Completion, normalEffects: Effects): Effects {
+    if (completion instanceof JoinedNormalAndAbruptCompletions) {
+      let selectAbrupt = c => c instanceof AbruptCompletion && c.value !== c.value.$Realm.intrinsics.__bottomValue;
+      let composableCompletions = Completion.makeSelectedCompletionsInfeasibleInCopy(selectAbrupt, completion);
+      let composedNormalCompletion = this.composeCompletions(composableCompletions, normalEffects.result);
+      normalEffects.result = composedNormalCompletion;
+
+      let selectNormal = c =>
+        c instanceof SimpleNormalCompletion && c.value !== c.value.$Realm.intrinsics.__bottomValue;
+      let nonComposableCompletions = Completion.makeSelectedCompletionsInfeasibleInCopy(selectNormal, completion);
+      let nonComposedEffects = construct_empty_effects(completion.value.$Realm, nonComposableCompletions);
+
+      let joinCondition = AbstractValue.createJoinConditionForSelectedCompletions(selectNormal, completion);
+      return this.joinEffects(joinCondition, normalEffects, nonComposedEffects);
+    } else if (completion instanceof AbruptCompletion) {
+      return construct_empty_effects(completion.value.$Realm, completion);
     } else {
-      invariant(leftCompletion === undefined && rightCompletion === undefined);
-      return resultValue;
+      return normalEffects;
     }
   }
 
-  composePossiblyNormalCompletions(
-    realm: Realm,
-    pnc: PossiblyNormalCompletion,
-    c: PossiblyNormalCompletion,
-    priorEffects?: Effects
-  ): PossiblyNormalCompletion {
-    invariant(c.savedEffects === undefined); // the caller should ensure this
-    let savedPathConditions = pnc.savedPathConditions;
-    if (pnc.consequent instanceof AbruptCompletion) {
-      let na;
-      if (pnc.alternate instanceof SimpleNormalCompletion) {
-        let { generator, modifiedBindings, modifiedProperties, createdObjects } = pnc.alternateEffects;
-        na = c.shallowCloneWithoutEffects();
-        let newAlternateEffects = new Effects(na, generator, modifiedBindings, modifiedProperties, createdObjects);
-        if (priorEffects) newAlternateEffects = realm.composeEffects(priorEffects, newAlternateEffects);
-        return new PossiblyNormalCompletion(
-          c.value,
-          pnc.joinCondition,
-          pnc.consequent,
-          pnc.consequentEffects,
-          newAlternateEffects.result,
-          newAlternateEffects,
-          savedPathConditions,
-          pnc.savedEffects
-        );
-      }
-      invariant(pnc.alternate instanceof PossiblyNormalCompletion);
-      na = this.composePossiblyNormalCompletions(realm, pnc.alternate, c, priorEffects);
-      let { generator, modifiedBindings, modifiedProperties, createdObjects } = pnc.alternateEffects;
-      let newAlternateEffects = new Effects(na, generator, modifiedBindings, modifiedProperties, createdObjects);
-      return new PossiblyNormalCompletion(
-        c.value,
-        pnc.joinCondition,
-        pnc.consequent,
-        pnc.consequentEffects,
-        na,
-        newAlternateEffects,
-        savedPathConditions,
-        pnc.savedEffects
-      );
-    } else {
-      let nc;
-      if (pnc.consequent instanceof SimpleNormalCompletion) {
-        let { generator, modifiedBindings, modifiedProperties, createdObjects } = pnc.consequentEffects;
-        nc = c.shallowCloneWithoutEffects();
-        let newConsequentEffects = new Effects(nc, generator, modifiedBindings, modifiedProperties, createdObjects);
-        if (priorEffects) newConsequentEffects = realm.composeEffects(priorEffects, newConsequentEffects);
-        return new PossiblyNormalCompletion(
-          c.value,
-          pnc.joinCondition,
-          newConsequentEffects.result,
-          newConsequentEffects,
-          pnc.alternate,
-          pnc.alternateEffects,
-          savedPathConditions,
-          pnc.savedEffects
-        );
-      }
-      invariant(pnc.consequent instanceof PossiblyNormalCompletion);
-      nc = this.composePossiblyNormalCompletions(realm, pnc.consequent, c);
-      let { generator, modifiedBindings, modifiedProperties, createdObjects } = pnc.consequentEffects;
-      let newConsequentEffects = new Effects(nc, generator, modifiedBindings, modifiedProperties, createdObjects);
-      return new PossiblyNormalCompletion(
-        c.value,
-        pnc.joinCondition,
-        nc,
-        newConsequentEffects,
-        pnc.alternate,
-        pnc.alternateEffects,
-        savedPathConditions,
-        pnc.savedEffects
-      );
-    }
-  }
-
-  updatePossiblyNormalCompletionWithSubsequentEffects(
-    realm: Realm,
-    pnc: PossiblyNormalCompletion,
-    subsequentEffects: Effects
-  ): void {
-    let v = subsequentEffects.result;
-    invariant(v instanceof SimpleNormalCompletion);
-    pnc.value = v.value;
-    if (pnc.consequent instanceof AbruptCompletion) {
-      if (pnc.alternate instanceof SimpleNormalCompletion) {
-        let ce = realm.composeEffects(pnc.alternateEffects, subsequentEffects);
-        pnc.alternate = ce.result;
-      } else {
-        invariant(pnc.alternate instanceof PossiblyNormalCompletion);
-        this.updatePossiblyNormalCompletionWithSubsequentEffects(realm, pnc.alternate, subsequentEffects);
-      }
-    } else {
-      if (pnc.consequent instanceof SimpleNormalCompletion) {
-        let ce = realm.composeEffects(pnc.consequentEffects, subsequentEffects);
-        pnc.consequent = ce.result;
-      } else {
-        invariant(pnc.consequent instanceof PossiblyNormalCompletion);
-        this.updatePossiblyNormalCompletionWithSubsequentEffects(realm, pnc.consequent, subsequentEffects);
-      }
-      if (pnc.alternate instanceof SimpleNormalCompletion) {
-        let ce = realm.composeEffects(pnc.alternateEffects, subsequentEffects);
-        pnc.alternate = ce.result;
-      } else if (pnc.alternate instanceof PossiblyNormalCompletion) {
-        this.updatePossiblyNormalCompletionWithSubsequentEffects(realm, pnc.alternate, subsequentEffects);
-      }
-    }
-  }
-
-  updatePossiblyNormalCompletionWithValue(realm: Realm, pnc: PossiblyNormalCompletion, v: Value): void {
-    let updateNonAbruptCompletionWithValue = (c: Completion, val: Value) => {
-      if (c instanceof SimpleNormalCompletion) {
-        c.value = v;
-      } else if (c instanceof PossiblyNormalCompletion) {
-        this.updatePossiblyNormalCompletionWithValue(realm, c, val);
-      } else {
-        invariant(false);
-      }
-    };
-    pnc.value = v;
-    let pncc = pnc.consequent;
-    let pnca = pnc.alternate;
-    if (pncc instanceof AbruptCompletion) {
-      Path.withInverseCondition(pnc.joinCondition, () => {
-        let sv = v instanceof AbstractValue ? realm.simplifyAndRefineAbstractValue(v) : v;
-        updateNonAbruptCompletionWithValue(pnca, sv);
-      });
-    } else {
-      Path.withCondition(pnc.joinCondition, () => {
-        let sv = v instanceof AbstractValue ? realm.simplifyAndRefineAbstractValue(v) : v;
-        updateNonAbruptCompletionWithValue(pncc, sv);
-      });
-      if (!(pnca instanceof AbruptCompletion)) {
-        Path.withInverseCondition(pnc.joinCondition, () => {
-          let sv = v instanceof AbstractValue ? realm.simplifyAndRefineAbstractValue(v) : v;
-          updateNonAbruptCompletionWithValue(pnca, sv);
-        });
-      }
-    }
-  }
-
-  replacePossiblyNormalCompletionWithForkedAbruptCompletion(
-    realm: Realm,
-    // a forked path with a non abrupt (normal) component
-    pnc: PossiblyNormalCompletion,
-    // an abrupt completion that completes the normal path
-    ac: AbruptCompletion,
-    // effects collected after pnc was constructed
-    e: Effects
-  ): ForkedAbruptCompletion {
-    let recurse = (xpnc, xe, nac, ne): [ForkedAbruptCompletion, Effects] => {
-      let nx = this.replacePossiblyNormalCompletionWithForkedAbruptCompletion(realm, xpnc, nac, ne);
-      let nxe = new Effects(nx, xe.generator, xe.modifiedBindings, xe.modifiedProperties, xe.createdObjects);
-      return [nx, nxe];
-    };
-
-    let cloneEffects = () => {
-      let nac = ac.shallowCloneWithoutEffects();
-      let ne = new Effects(nac, e.generator, e.modifiedBindings, e.modifiedProperties, e.createdObjects);
-      return [nac, ne];
-    };
-
-    ac = ac.shallowCloneWithoutEffects();
-    e.result = ac;
-    ac.effects = e;
-
-    // # match (pncc, pnca)
-    let pncc = pnc.consequent;
-    let pnca = pnc.alternate;
-
-    // * case (AbruptCompletion, SimpleNormalCompletion)
-    // * case (AbruptCompletion, PossiblyNormalCompletion)
-    if (pncc instanceof AbruptCompletion) {
-      if (pnca instanceof SimpleNormalCompletion) {
-        // todo: simplify with implied path condition
-        e = realm.composeEffects(pnc.alternateEffects, e);
-        invariant(e.result instanceof AbruptCompletion);
-        ac = e.result;
-        return new ForkedAbruptCompletion(realm, pnc.joinCondition, pncc, pnc.consequentEffects, ac, e);
-      }
-      invariant(pnca instanceof PossiblyNormalCompletion);
-      let [na, nae] = recurse(pnca, pnc.alternateEffects, ac, e);
-      return new ForkedAbruptCompletion(realm, pnc.joinCondition, pncc, pnc.consequentEffects, na, nae);
-    }
-
-    // * case (SimpleNormalCompletion, AbruptCompletion)
-    // * case (PossiblyNormalCompletion, AbruptCompletion)
-    if (pnca instanceof AbruptCompletion) {
-      if (pncc instanceof SimpleNormalCompletion) {
-        // todo: simplify with implied path condition
-        e = realm.composeEffects(pnc.consequentEffects, e);
-        invariant(e.result instanceof AbruptCompletion);
-        ac = e.result;
-        return new ForkedAbruptCompletion(realm, pnc.joinCondition, ac, e, pnca, pnc.alternateEffects);
-      }
-      invariant(pncc instanceof PossiblyNormalCompletion);
-      let [nc, nce] = recurse(pncc, pnc.consequentEffects, ac, e);
-      return new ForkedAbruptCompletion(realm, pnc.joinCondition, nc, nce, pnca, pnc.alternateEffects);
-    }
-
-    // * case (SimpleNormalCompletion, SimpleNormalCompletion)
-    // * case (SimpleNormalCompletion, PossibleNormalCompletion)
-    if (pncc instanceof SimpleNormalCompletion) {
-      let nce = realm.composeEffects(pnc.consequentEffects, e);
-      invariant(nce.result instanceof AbruptCompletion);
-      let nc = nce.result;
-      [ac, e] = cloneEffects();
-      let na, nae;
-      if (pnca instanceof SimpleNormalCompletion) {
-        nae = realm.composeEffects(pnc.alternateEffects, e);
-        invariant(nae.result instanceof AbruptCompletion);
-        na = nae.result;
-      } else {
-        invariant(pnca instanceof PossiblyNormalCompletion);
-        [na, nae] = recurse(pnca, pnc.alternateEffects, ac, e);
-      }
-      return new ForkedAbruptCompletion(realm, pnc.joinCondition, nc, nce, na, nae);
-    }
-
-    // * case (PossibleNormalCompletion, SimpleNormalCompletion)
-    if (pnca instanceof SimpleNormalCompletion) {
-      let nae = realm.composeEffects(pnc.alternateEffects, e);
-      invariant(nae.result instanceof AbruptCompletion);
-      let na = nae.result;
-      invariant(pncc instanceof PossiblyNormalCompletion);
-      [ac, e] = cloneEffects();
-      let [nc, nce] = recurse(pncc, pnc.consequentEffects, ac, e);
-      return new ForkedAbruptCompletion(realm, pnc.joinCondition, nc, nce, na, nae);
-    }
-
-    // * case (PossibleNormalCompletion, PossibleNormalCompletion)
-    invariant(pncc instanceof PossiblyNormalCompletion);
-    invariant(pnca instanceof PossiblyNormalCompletion);
-    let [nc, nce] = recurse(pncc, pnc.consequentEffects, ac, e);
-    [ac, e] = cloneEffects();
-    let [na, nae] = recurse(pnca, pnc.alternateEffects, ac, e);
-    return new ForkedAbruptCompletion(realm, pnc.joinCondition, nc, nce, na, nae);
-
-    // Impossible cases:
-    // * case (AbruptCompletion, AbruptCompletion)
-  }
-
-  joinNormalCompletions(
-    realm: Realm,
-    joinCondition: AbstractValue,
-    c: NormalCompletion,
-    ce: Effects,
-    a: NormalCompletion,
-    ae: Effects
-  ): PossiblyNormalCompletion {
+  _collapseSimilarCompletions(joinCondition: AbstractValue, c1: Completion, c2: Completion): void | Completion {
+    let realm = joinCondition.$Realm;
     let getAbstractValue = (v1: void | Value, v2: void | Value): Value => {
       if (v1 instanceof EmptyValue) return v2 || realm.intrinsics.undefined;
       if (v2 instanceof EmptyValue) return v1 || realm.intrinsics.undefined;
       return AbstractValue.createFromConditionalOp(realm, joinCondition, v1, v2);
     };
-    let rv = this.joinValues(realm, c.value, a.value, getAbstractValue);
-    invariant(rv instanceof Value);
-    a.value = rv;
-    return new PossiblyNormalCompletion(rv, joinCondition, c, ce, a, ae, []);
+    if (c1 instanceof BreakCompletion && c2 instanceof BreakCompletion && c1.target === c2.target) {
+      let val = this.joinValues(realm, c1.value, c2.value, getAbstractValue);
+      invariant(val instanceof Value);
+      return new BreakCompletion(val, joinCondition.expressionLocation, c1.target);
+    }
+    if (c1 instanceof ContinueCompletion && c2 instanceof ContinueCompletion && c1.target === c2.target) {
+      return new ContinueCompletion(realm.intrinsics.empty, joinCondition.expressionLocation, c1.target);
+    }
+    if (c1 instanceof ReturnCompletion && c2 instanceof ReturnCompletion) {
+      let val = this.joinValues(realm, c1.value, c2.value, getAbstractValue);
+      invariant(val instanceof Value);
+      return new ReturnCompletion(val, joinCondition.expressionLocation);
+    }
+    if (c1 instanceof ThrowCompletion && c2 instanceof ThrowCompletion) {
+      getAbstractValue = (v1: void | Value, v2: void | Value) => {
+        return AbstractValue.createFromConditionalOp(realm, joinCondition, v1, v2);
+      };
+      let val = this.joinValues(realm, c1.value, c2.value, getAbstractValue);
+      invariant(val instanceof Value);
+      return new ThrowCompletion(val, c1.location);
+    }
+    if (c1 instanceof SimpleNormalCompletion && c2 instanceof SimpleNormalCompletion) {
+      return new SimpleNormalCompletion(getAbstractValue(c1.value, c2.value));
+    }
+    return undefined;
   }
 
-  // Join all effects that result in completions of type CompletionType.
-  // Erase all completions of type Completion type from c, so that we never join them again.
-  // Also erase any generators that appears in branches resulting in completions of type CompletionType.
-  // Note that c is modified in place and should be replaced with a PossiblyNormalCompletion by the caller
-  // if either of its branches cease to be an AbruptCompletion.
-  extractAndJoinCompletionsOfType(CompletionType: typeof AbruptCompletion, realm: Realm, c: AbruptCompletion): Effects {
-    let emptyEffects = construct_empty_effects(realm);
-    if (c instanceof CompletionType) {
-      emptyEffects.result = c.shallowCloneWithoutEffects();
-      return emptyEffects;
-    }
-    if (!(c instanceof ForkedAbruptCompletion)) {
-      return emptyEffects;
-    }
-    // Join up the consequent and alternate completions and compose them with their prefix effects
-    let ce = this.extractAndJoinCompletionsOfType(CompletionType, realm, c.consequent);
-    // ce will be applied to the global state before any non joining branches in c.consequent, so move
-    // the generator from c.consequentEffects to ce.generator so that all branches will see its effects.
-    ce = realm.composeEffects(c.consequentEffects, ce);
-    // ce now incorporates c.consequentEffects.generator, so remove it from there.
-    c.consequentEffects.generator = emptyEffects.generator;
-    if (ce.result instanceof CompletionType) {
-      // Erase completions of type CompletionType and prepare for transformation of c to a possibly normal completion
-      if (c.consequent instanceof CompletionType) {
-        c.updateConsequentKeepingCurrentEffects(new SimpleNormalCompletion(realm.intrinsics.empty, undefined));
-      } else if (c.consequent instanceof ForkedAbruptCompletion && c.consequent.containsCompletion(NormalCompletion)) {
-        c.updateConsequentKeepingCurrentEffects((c.consequent.transferChildrenToPossiblyNormalCompletion(): any));
-      }
-    } else {
-      ce.result = new CompletionType(realm.intrinsics.empty);
-    }
-    let ae = this.extractAndJoinCompletionsOfType(CompletionType, realm, c.alternate);
-    // ae will be applied to the global state before any non joining branches in c.alternate, so move
-    // the generator from c.alternateEffects to ae.generator so that all branches will see its effects.
-    ae = realm.composeEffects(c.alternateEffects, ae);
-    // ae now incorporates c.alternateEffects.generator, so remove it from there.
-    c.alternateEffects.generator = emptyEffects.generator;
-    if (ae.result instanceof CompletionType) {
-      // Erase completions of type CompletionType and prepare for transformation of c to a possibly normal completion
-      if (c.alternate instanceof CompletionType) {
-        c.updateAlternateKeepingCurrentEffects(new SimpleNormalCompletion(realm.intrinsics.empty, undefined));
-      } else if (c.alternate instanceof ForkedAbruptCompletion && c.alternate.containsCompletion(NormalCompletion)) {
-        c.updateAlternateKeepingCurrentEffects((c.alternate.transferChildrenToPossiblyNormalCompletion(): any));
-      }
-    } else {
-      ae.result = new CompletionType(realm.intrinsics.empty);
-    }
+  joinCompletions(joinCondition: Value, c1: Completion, c2: Completion): Completion {
+    if (!joinCondition.mightNotBeTrue()) return c1;
+    if (!joinCondition.mightNotBeFalse()) return c2;
+    invariant(joinCondition instanceof AbstractValue);
 
-    let e = this.joinForkOrChoose(realm, c.joinCondition, ce, ae);
-    if (e.result instanceof ForkedAbruptCompletion) {
-      if (e.result.consequent instanceof CompletionType && e.result.alternate instanceof CompletionType) {
-        let result = this.collapseResults(realm, e.result.joinCondition, e, e.result.consequent, e.result.alternate);
-        e = result.effects;
-        invariant(e !== undefined);
+    let c = this._collapseSimilarCompletions(joinCondition, c1, c2);
+    if (c === undefined) {
+      if (c1 instanceof AbruptCompletion && c2 instanceof AbruptCompletion)
+        c = new JoinedAbruptCompletions(joinCondition, c1, c2);
+      else {
+        invariant(c1 instanceof AbruptCompletion || c1 instanceof NormalCompletion);
+        invariant(c2 instanceof AbruptCompletion || c2 instanceof NormalCompletion);
+        c = new JoinedNormalAndAbruptCompletions(joinCondition, c1, c2);
       }
     }
-    return e;
+    return c;
   }
 
-  joinForkOrChoose(realm: Realm, joinCondition: Value, e1: Effects, e2: Effects): Effects {
+  joinEffects(joinCondition: Value, e1: Effects, e2: Effects): Effects {
+    invariant(e1.canBeApplied);
+    invariant(e2.canBeApplied);
     if (!joinCondition.mightNotBeTrue()) return e1;
     if (!joinCondition.mightNotBeFalse()) return e2;
     invariant(joinCondition instanceof AbstractValue);
 
     let {
-      result: result1,
+      result: c1,
       generator: generator1,
       modifiedBindings: modifiedBindings1,
       modifiedProperties: modifiedProperties1,
       createdObjects: createdObjects1,
     } = e1;
-    invariant(result1.effects === e1);
 
     let {
-      result: result2,
+      result: c2,
       generator: generator2,
       modifiedBindings: modifiedBindings2,
       modifiedProperties: modifiedProperties2,
       createdObjects: createdObjects2,
     } = e2;
-    invariant(result2.effects === e2);
 
-    let emptyEffects = construct_empty_effects(realm);
+    let realm = joinCondition.$Realm;
 
-    let result = this.joinOrForkResults(realm, joinCondition, result1, result2, e1, e2);
-    if (result1 instanceof AbruptCompletion) {
-      if (!(result2 instanceof AbruptCompletion)) {
-        invariant(result instanceof PossiblyNormalCompletion);
-        e2.generator = emptyEffects.generator;
-        return new Effects(result, generator2, modifiedBindings2, modifiedProperties2, createdObjects2);
-      }
-    } else if (result2 instanceof AbruptCompletion) {
-      invariant(result instanceof PossiblyNormalCompletion);
-      e1.generator = emptyEffects.generator;
-      return new Effects(result, generator1, modifiedBindings1, modifiedProperties1, createdObjects1);
-    }
+    let c = this.joinCompletions(joinCondition, c1, c2);
 
-    let [modifiedGenerator1, modifiedGenerator2, bindings] = this.joinBindings(
-      realm,
+    let [modifiedGenerator1, modifiedGenerator2, bindings] = this._joinBindings(
       joinCondition,
       generator1,
       modifiedBindings1,
       generator2,
       modifiedBindings2
     );
+
+    let generator = joinGenerators(joinCondition, modifiedGenerator1, modifiedGenerator2);
+
     let properties = this.joinPropertyBindings(
       realm,
       joinCondition,
@@ -526,160 +255,59 @@ export class JoinImplementation {
       createdObjects.add(o);
     });
 
-    let generator = joinGenerators(realm, joinCondition, modifiedGenerator1, modifiedGenerator2);
-
-    return new Effects(result, generator, bindings, properties, createdObjects);
+    return new Effects(c, generator, bindings, properties, createdObjects);
   }
 
-  joinNestedEffects(realm: Realm, c: Completion, precedingEffects?: Effects): Effects {
-    if (c instanceof PossiblyNormalCompletion || c instanceof ForkedAbruptCompletion) {
-      let e1 = this.joinNestedEffects(realm, c.consequent, c.consequentEffects);
-      let e2 = this.joinNestedEffects(realm, c.alternate, c.alternateEffects);
-      let e3 = this.joinForkOrChoose(realm, c.joinCondition, e1, e2);
-      let r = this.collapseResults(realm, c.joinCondition, e3, e1.result, e2.result);
-      let re = r.effects;
-      invariant(re !== undefined);
-      return re;
-    }
-    if (precedingEffects !== undefined) return precedingEffects;
-    let result = construct_empty_effects(realm);
-    result.result = c;
-    return result;
-  }
-
-  collapseResults(
-    realm: Realm,
-    joinCondition: AbstractValue,
-    precedingEffects: Effects,
-    result1: EvaluationResult,
-    result2: EvaluationResult
-  ): Completion {
-    let getAbstractValue = (v1: void | Value, v2: void | Value): Value => {
-      if (v1 instanceof EmptyValue) return v2 || realm.intrinsics.undefined;
-      if (v2 instanceof EmptyValue) return v1 || realm.intrinsics.undefined;
-      return AbstractValue.createFromConditionalOp(realm, joinCondition, v1, v2);
-    };
-    if (result1 instanceof BreakCompletion && result2 instanceof BreakCompletion && result1.target === result2.target) {
-      let val = this.joinValues(realm, result1.value, result2.value, getAbstractValue);
-      invariant(val instanceof Value);
-      return new BreakCompletion(val, precedingEffects, joinCondition.expressionLocation, result1.target);
-    }
-    if (
-      result1 instanceof ContinueCompletion &&
-      result2 instanceof ContinueCompletion &&
-      result1.target === result2.target
-    ) {
-      return new ContinueCompletion(
-        realm.intrinsics.empty,
-        precedingEffects,
-        joinCondition.expressionLocation,
-        result1.target
-      );
-    }
-    if (result1 instanceof ReturnCompletion && result2 instanceof ReturnCompletion) {
-      let val = this.joinValues(realm, result1.value, result2.value, getAbstractValue);
-      invariant(val instanceof Value);
-      return new ReturnCompletion(val, precedingEffects, joinCondition.expressionLocation);
-    }
-    if (result1 instanceof ThrowCompletion && result2 instanceof ThrowCompletion) {
-      getAbstractValue = (v1: void | Value, v2: void | Value) => {
+  joinValuesOfSelectedCompletions(
+    selector: Completion => boolean,
+    completion: Completion,
+    keepInfeasiblePaths: boolean = false
+  ): Value {
+    let realm = completion.value.$Realm;
+    let bottom = realm.intrinsics.__bottomValue;
+    if (completion instanceof JoinedAbruptCompletions || completion instanceof JoinedNormalAndAbruptCompletions) {
+      let joinCondition = completion.joinCondition;
+      let c = this.joinValuesOfSelectedCompletions(selector, completion.consequent);
+      let a = this.joinValuesOfSelectedCompletions(selector, completion.alternate);
+      // do some simplification
+      if (c === bottom) {
+        // joinCondition will never be true when this completion is reached
+        if (a instanceof AbstractValue) {
+          a = Path.withInverseCondition(joinCondition, () => {
+            invariant(a instanceof AbstractValue);
+            return realm.simplifyAndRefineAbstractValue(a);
+          });
+        }
+        if (!keepInfeasiblePaths) return a;
+      } else if (a === bottom) {
+        // joinCondition will never be false when this completion is reached
+        if (c instanceof AbstractValue) {
+          c = Path.withCondition(joinCondition, () => {
+            invariant(c instanceof AbstractValue);
+            return realm.simplifyAndRefineAbstractValue(c);
+          });
+        }
+        if (!keepInfeasiblePaths) return c;
+      }
+      let getAbstractValue = (v1: void | Value, v2: void | Value): Value => {
+        if (v1 === bottom) v1 = realm.intrinsics.empty;
+        if (v2 === bottom) v2 = realm.intrinsics.empty;
         return AbstractValue.createFromConditionalOp(realm, joinCondition, v1, v2);
       };
-      let val = this.joinValues(realm, result1.value, result2.value, getAbstractValue);
-      invariant(val instanceof Value);
-      return new ThrowCompletion(val, precedingEffects, result1.location);
-    }
-    if (result1 instanceof SimpleNormalCompletion && result2 instanceof SimpleNormalCompletion) {
-      return new SimpleNormalCompletion(getAbstractValue(result1.value, result2.value), precedingEffects);
-    }
-    AbstractValue.reportIntrospectionError(joinCondition);
-    throw new FatalError();
-  }
-
-  joinOrForkResults(
-    realm: Realm,
-    joinCondition: AbstractValue,
-    result1: EvaluationResult,
-    result2: EvaluationResult,
-    e1: Effects,
-    e2: Effects
-  ): Completion {
-    invariant(result1.effects === e1);
-    invariant(e1.result === result1);
-    invariant(result2.effects === e2);
-    invariant(e2.result === result2);
-    let getAbstractValue = (v1: void | Value, v2: void | Value) => {
-      return AbstractValue.createFromConditionalOp(realm, joinCondition, v1, v2);
-    };
-    if (result1 instanceof Reference || result2 instanceof Reference) {
-      AbstractValue.reportIntrospectionError(joinCondition);
-      throw new FatalError();
-    }
-    if (result1 instanceof SimpleNormalCompletion && result2 instanceof SimpleNormalCompletion) {
-      let val = this.joinValues(realm, result1.value, result2.value, getAbstractValue);
-      invariant(val instanceof Value);
-      return new SimpleNormalCompletion(val);
-    }
-    if (result1 instanceof AbruptCompletion && result2 instanceof AbruptCompletion) {
-      return new ForkedAbruptCompletion(realm, joinCondition, result1, e1, result2, e2);
-    }
-    if (result1 instanceof NormalCompletion && result2 instanceof NormalCompletion) {
-      return this.joinNormalCompletions(realm, joinCondition, result1, e1, result2, e2);
-    }
-    if (result1 instanceof AbruptCompletion) {
-      let completion = result2;
-      let savedEffects;
-      let savedPathConditions = [];
-      if (result2 instanceof PossiblyNormalCompletion) {
-        completion = result2.getNormalCompletion();
-        savedEffects = result2.savedEffects;
-        savedPathConditions = result2.savedPathConditions;
+      let jv = this.joinValues(realm, c, a, getAbstractValue);
+      invariant(jv instanceof Value);
+      if (completion instanceof JoinedNormalAndAbruptCompletions && completion.composedWith !== undefined) {
+        let composedWith = completion.composedWith;
+        if (!composedWith.containsSelectedCompletion(selector)) return jv;
+        let cjv = this.joinValuesOfSelectedCompletions(selector, composedWith);
+        joinCondition = AbstractValue.createJoinConditionForSelectedCompletions(selector, composedWith);
+        jv = this.joinValues(realm, jv, cjv, getAbstractValue);
+        invariant(jv instanceof Value);
       }
-      invariant(completion instanceof SimpleNormalCompletion);
-      return new PossiblyNormalCompletion(
-        completion.value,
-        joinCondition,
-        result1,
-        e1,
-        result2,
-        e2,
-        savedPathConditions,
-        savedEffects
-      );
+      return jv;
     }
-    if (result2 instanceof AbruptCompletion) {
-      let completion = result1;
-      let savedEffects;
-      let savedPathConditions = [];
-      if (result1 instanceof PossiblyNormalCompletion) {
-        completion = result1.getNormalCompletion();
-        savedEffects = result1.savedEffects;
-        savedPathConditions = result1.savedPathConditions;
-      }
-      invariant(completion instanceof SimpleNormalCompletion);
-      return new PossiblyNormalCompletion(
-        completion.value,
-        joinCondition,
-        result1,
-        e1,
-        result2,
-        e2,
-        savedPathConditions,
-        savedEffects
-      );
-    }
-    invariant(false);
-  }
-
-  composeGenerators(realm: Realm, generator1: Generator, generator2: Generator): Generator {
-    // TODO #2222: The path condition of the resulting generator should really just be generator2.pathConditions,
-    // and we shouldn't have to bring in generator1.pathConditions. We have observed that this causes an issue
-    // in InstantRender.
-    let result = new Generator(realm, "composed", generator1.pathConditions.concat(generator2.pathConditions));
-    // We copy the entries here because actually composing the generators breaks the serializer
-    if (!generator1.empty()) result.appendGenerator(generator1, "");
-    if (!generator2.empty()) result.appendGenerator(generator2, "");
-    return result;
+    if (selector(completion)) return completion.value;
+    return bottom;
   }
 
   // Creates a single map that joins together maps m1 and m2 using the given join
@@ -704,21 +332,21 @@ export class JoinImplementation {
   // sets of m1 and m2. The value of a pair is the join of m1[key] and m2[key]
   // where the join is defined to be just m1[key] if m1[key] === m2[key] and
   // and abstract value with expression "joinCondition ? m1[key] : m2[key]" if not.
-  joinBindings(
-    realm: Realm,
+  _joinBindings(
     joinCondition: AbstractValue,
     g1: Generator,
     m1: Bindings,
     g2: Generator,
     m2: Bindings
   ): [Generator, Generator, Bindings] {
+    let realm = joinCondition.$Realm;
     let getAbstractValue = (v1: void | Value, v2: void | Value) => {
-      return AbstractValue.createFromConditionalOp(realm, joinCondition, v1, v2);
+      return AbstractValue.createFromConditionalOp(realm, joinCondition, v1, v2, undefined, true, true);
     };
     let rewritten1 = false;
     let rewritten2 = false;
     let leak = (b: Binding, g: Generator, v: void | Value, rewritten: boolean) => {
-      // just like to what happens in havocBinding, we are going to append a
+      // just like to what happens in leakBinding, we are going to append a
       // binding-assignment generator entry; however, we play it safe and don't
       // mutate the generator; instead, we create a new one that wraps around the old one.
       if (!rewritten) {
@@ -744,18 +372,7 @@ export class JoinImplementation {
       // In that case, we reset the value to undefined to prevent any use of the last known value.
       let value = hasLeaked ? undefined : this.joinValues(realm, v1, v2, getAbstractValue);
       invariant(value === undefined || value instanceof Value);
-      let previousHasLeaked, previousValue;
-      if (b1 !== undefined) {
-        previousHasLeaked = b1.previousHasLeaked;
-        previousValue = b1.previousValue;
-        invariant(
-          b2 === undefined || (previousHasLeaked === b2.previousHasLeaked && previousValue === b2.previousValue)
-        );
-      } else if (b2 !== undefined) {
-        previousHasLeaked = b2.previousHasLeaked;
-        previousValue = b2.previousValue;
-      }
-      return { hasLeaked, value, previousHasLeaked, previousValue };
+      return { hasLeaked, value };
     };
     let joinedBindings = this.joinMaps(m1, m2, join);
     return [g1, g2, joinedBindings];
@@ -803,7 +420,7 @@ export class JoinImplementation {
         if (c2.has(b.object)) return d2; // no join
         if (b.descriptor !== undefined && m1.has(b)) {
           // property was deleted
-          d1 = cloneDescriptor(b.descriptor);
+          d1 = cloneDescriptor(b.descriptor.throwIfNotConcrete(realm));
           invariant(d1 !== undefined);
           d1.value = realm.intrinsics.empty;
         } else {
@@ -815,7 +432,7 @@ export class JoinImplementation {
         if (c1.has(b.object)) return d1; // no join
         if (b.descriptor !== undefined && m2.has(b)) {
           // property was deleted
-          d2 = cloneDescriptor(b.descriptor);
+          d2 = cloneDescriptor(b.descriptor.throwIfNotConcrete(realm));
           invariant(d2 !== undefined);
           d2.value = realm.intrinsics.empty;
         } else {
@@ -840,69 +457,79 @@ export class JoinImplementation {
     let clone_with_abstract_value = (d: Descriptor) => {
       invariant(d === d1 || d === d2);
       if (!IsDataDescriptor(realm, d)) {
-        let d3: Descriptor = {};
-        d3.joinCondition = joinCondition;
-        return d3;
+        return new AbstractJoinedDescriptor(joinCondition);
       }
-      let dc = cloneDescriptor(d);
-      invariant(dc !== undefined);
-      let dcValue = dc.value;
-      if (Array.isArray(dcValue)) {
-        invariant(dcValue.length > 0);
-        let elem0 = dcValue[0];
-        if (elem0 instanceof Value) {
-          dc.value = dcValue.map(e => {
-            return d === d1
-              ? getAbstractValue((e: any), realm.intrinsics.empty)
-              : getAbstractValue(realm.intrinsics.empty, (e: any));
-          });
-        } else {
-          dc.value = dcValue.map(e => {
-            let { $Key: key1, $Value: val1 } = (e: any);
-            let key3 =
-              d === d1
-                ? getAbstractValue(key1, realm.intrinsics.empty)
-                : getAbstractValue(realm.intrinsics.empty, key1);
-            let val3 =
-              d === d1
-                ? getAbstractValue(val1, realm.intrinsics.empty)
-                : getAbstractValue(realm.intrinsics.empty, val1);
-            return { $Key: key3, $Value: val3 };
-          });
+      let dc;
+      let dcValue;
+      if (d instanceof InternalSlotDescriptor) {
+        dc = new InternalSlotDescriptor(d.value);
+        dcValue = dc.value;
+        if (Array.isArray(dcValue)) {
+          invariant(dcValue.length > 0);
+          let elem0 = dcValue[0];
+          if (elem0 instanceof Value) {
+            dc.value = dcValue.map(e => {
+              return d === d1
+                ? getAbstractValue((e: any), realm.intrinsics.empty)
+                : getAbstractValue(realm.intrinsics.empty, (e: any));
+            });
+          } else {
+            dc.value = dcValue.map(e => {
+              let { $Key: key1, $Value: val1 } = (e: any);
+              let key3 =
+                d === d1
+                  ? getAbstractValue(key1, realm.intrinsics.empty)
+                  : getAbstractValue(realm.intrinsics.empty, key1);
+              let val3 =
+                d === d1
+                  ? getAbstractValue(val1, realm.intrinsics.empty)
+                  : getAbstractValue(realm.intrinsics.empty, val1);
+              return { $Key: key3, $Value: val3 };
+            });
+          }
         }
       } else {
-        invariant(dcValue === undefined || dcValue instanceof Value);
-        dc.value =
-          d === d1
-            ? getAbstractValue(dcValue, realm.intrinsics.empty)
-            : getAbstractValue(realm.intrinsics.empty, dcValue);
+        dc = cloneDescriptor(d.throwIfNotConcrete(realm));
+        invariant(dc !== undefined);
+        dcValue = dc.value;
       }
+      invariant(dcValue === undefined || dcValue instanceof Value);
+      dc.value =
+        d === d1
+          ? getAbstractValue(dcValue, realm.intrinsics.empty)
+          : getAbstractValue(realm.intrinsics.empty, dcValue);
       return dc;
     };
     if (d1 === undefined) {
       if (d2 === undefined) return undefined;
       // d2 is a new property created in only one branch, join with empty
       let d3 = clone_with_abstract_value(d2);
-      if (!IsDataDescriptor(realm, d2)) d3.descriptor2 = d2;
+      if (d3 instanceof AbstractJoinedDescriptor) d3.descriptor2 = d2;
       return d3;
     } else if (d2 === undefined) {
       invariant(d1 !== undefined);
       // d1 is a new property created in only one branch, join with empty
       let d3 = clone_with_abstract_value(d1);
-      if (!IsDataDescriptor(realm, d1)) d3.descriptor1 = d1;
+      if (d3 instanceof AbstractJoinedDescriptor) d3.descriptor1 = d1;
       return d3;
     } else {
-      if (equalDescriptors(d1, d2) && IsDataDescriptor(realm, d1)) {
+      if (
+        d1 instanceof PropertyDescriptor &&
+        d2 instanceof PropertyDescriptor &&
+        equalDescriptors(d1, d2) &&
+        IsDataDescriptor(realm, d1)
+      ) {
         let dc = cloneDescriptor(d1);
         invariant(dc !== undefined);
-        dc.value = this.joinValues(realm, d1.value, d2.value, getAbstractValue);
+        let dcValue = this.joinValues(realm, d1.value, d2.value, getAbstractValue);
+        invariant(dcValue instanceof Value);
+        dc.value = dcValue;
         return dc;
       }
-      let d3: Descriptor = {};
-      d3.joinCondition = joinCondition;
-      d3.descriptor1 = d1;
-      d3.descriptor2 = d2;
-      return d3;
+      if (d1 instanceof InternalSlotDescriptor && d2 instanceof InternalSlotDescriptor) {
+        return new InternalSlotDescriptor(this.joinValues(realm, d1.value, d2.value, getAbstractValue));
+      }
+      return new AbstractJoinedDescriptor(joinCondition, d1, d2);
     }
   }
 
@@ -926,28 +553,10 @@ export class JoinImplementation {
         undefined,
         "mapAndJoin"
       );
-      joinedEffects =
-        joinedEffects === undefined ? effects : this.joinForkOrChoose(realm, condition, effects, joinedEffects);
+      joinedEffects = joinedEffects === undefined ? effects : this.joinEffects(condition, effects, joinedEffects);
     }
     invariant(joinedEffects !== undefined);
-    let completion = joinedEffects.result;
-    if (completion instanceof PossiblyNormalCompletion) {
-      // in this case one of the branches may complete abruptly, which means that
-      // not all control flow branches join into one flow at this point.
-      // Consequently we have to continue tracking changes until the point where
-      // all the branches come together into one.
-      completion = realm.composeWithSavedCompletion(completion);
-    }
-    // Note that the effects of (non joining) abrupt branches are not included
-    // in joinedEffects, but are tracked separately inside completion.
     realm.applyEffects(joinedEffects);
-
-    // return or throw completion
-    if (completion instanceof AbruptCompletion) throw completion;
-    if (completion instanceof SimpleNormalCompletion) {
-      completion = completion.value;
-    }
-    invariant(completion instanceof Value);
-    return completion;
+    return realm.returnOrThrowCompletion(joinedEffects.result);
   }
 }

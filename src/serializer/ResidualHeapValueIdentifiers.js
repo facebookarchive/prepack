@@ -12,7 +12,8 @@
 import { Value } from "../values/index.js";
 import type { BabelNodeIdentifier } from "@babel/types";
 import invariant from "../invariant.js";
-import type { NameGenerator, PreludeGenerator } from "../utils/generator";
+import type { PreludeGenerator } from "../utils/PreludeGenerator.js";
+import type { NameGenerator } from "../utils/NameGenerator.js";
 import * as t from "@babel/types";
 
 // This class maintains a map of values to babel identifiers.
@@ -85,7 +86,7 @@ export class ResidualHeapValueIdentifiers {
       let valToRefCount = this.valToRefCount;
       invariant(valToRefCount !== undefined);
       let refCount = valToRefCount.get(val);
-      if (refCount) {
+      if (refCount !== undefined) {
         refCount++;
       } else {
         refCount = 1;

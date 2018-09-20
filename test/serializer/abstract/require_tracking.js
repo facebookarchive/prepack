@@ -1,5 +1,5 @@
 // es6
-// delay unsupported requires
+// throws introspection error
 
 var modules = Object.create(null);
 

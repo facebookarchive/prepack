@@ -15,16 +15,14 @@ import type {
   BabelNodeFile,
   BabelNodeLVal,
   BabelNodePosition,
-  BabelNodeStatement,
   BabelNodeSourceLocation,
 } from "@babel/types";
 import type { Realm } from "./realm.js";
-import type { SourceFile, SourceMap, SourceType } from "./types.js";
+import type { SourceFile, SourceType } from "./types.js";
+import * as t from "@babel/types";
 
 import { AbruptCompletion, Completion, ThrowCompletion } from "./completions.js";
 import { CompilerDiagnostic, FatalError } from "./errors.js";
-import { defaultOptions } from "./options";
-import type { PartialEvaluatorOptions } from "./options";
 import { ExecutionContext } from "./realm.js";
 import {
   AbstractValue,
@@ -40,40 +38,47 @@ import {
   UndefinedValue,
   Value,
 } from "./values/index.js";
-import generate from "@babel/generator";
 import parse from "./utils/parse.js";
 import invariant from "./invariant.js";
 import traverseFast from "./utils/traverse-fast.js";
 import { HasProperty, Get, IsExtensible, HasOwnProperty, IsDataDescriptor } from "./methods/index.js";
-import { Environment, Havoc, Properties, To } from "./singletons.js";
-import * as t from "@babel/types";
+import { Environment, Leak, Properties, To } from "./singletons.js";
 import { TypesDomain, ValuesDomain } from "./domains/index.js";
-import PrimitiveValue from "./values/PrimitiveValue";
+import PrimitiveValue from "./values/PrimitiveValue.js";
+import { createOperationDescriptor } from "./utils/generator.js";
 
-const sourceMap = require("source-map");
+import { SourceMapConsumer, type NullableMappedPosition } from "source-map";
+import { PropertyDescriptor } from "./descriptors.js";
 
 function deriveGetBinding(realm: Realm, binding: Binding) {
   let types = TypesDomain.topVal;
   let values = ValuesDomain.topVal;
   invariant(realm.generator !== undefined);
-  return realm.generator.deriveAbstract(types, values, [], (_, context) => context.serializeBinding(binding));
+  return realm.generator.deriveAbstract(types, values, [], createOperationDescriptor("GET_BINDING", { binding }));
 }
 
-export function havocBinding(binding: Binding): void {
-  let realm = binding.environment.realm;
+export function materializeBinding(realm: Realm, binding: Binding): void {
+  let realmGenerator = realm.generator;
+  invariant(realmGenerator !== undefined);
   let value = binding.value;
+  if (value !== undefined && value !== realm.intrinsics.undefined) realmGenerator.emitBindingAssignment(binding, value);
+}
+export function leakBinding(binding: Binding): void {
+  let realm = binding.environment.realm;
   if (!binding.hasLeaked) {
-    realm.recordModifiedBinding(binding).hasLeaked = true;
-    if (value !== undefined) {
-      let realmGenerator = realm.generator;
-      if (realmGenerator !== undefined && value !== realm.intrinsics.undefined)
-        realmGenerator.emitBindingAssignment(binding, value);
-      if (binding.mutable === true) {
-        // For mutable, i.e. non-const bindings, the actual value is no longer directly available.
-        // Thus, we reset the value to undefined to prevent any use of the last known value.
-        binding.value = undefined;
-      }
+    if (binding.mutable) {
+      realm.recordModifiedBinding(binding).hasLeaked = true;
+    } else {
+      binding.hasLeaked = true;
     }
+    materializeBinding(realm, binding);
+  }
+
+  // Havoc the binding
+  if (binding.mutable === true) {
+    // For mutable, i.e. non-const bindings, the actual value is no longer directly available.
+    // Thus, we reset the value to undefined to prevent any use of the last known value.
+    binding.value = undefined;
   }
 }
 
@@ -298,7 +303,7 @@ export class DeclarativeEnvironmentRecord extends EnvironmentRecord {
     } else if (binding.mutable) {
       // 5. Else if the binding for N in envRec is a mutable binding, change its bound value to V.
       if (binding.hasLeaked) {
-        Havoc.value(realm, V);
+        Leak.value(realm, V);
         invariant(realm.generator);
         realm.generator.emitBindingAssignment(binding, V);
       } else {
@@ -444,12 +449,17 @@ export class ObjectEnvironmentRecord extends EnvironmentRecord {
     // 4. Return ? DefinePropertyOrThrow(bindings, N, PropertyDescriptor{[[Value]]: undefined, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: configValue}).
     return new BooleanValue(
       realm,
-      Properties.DefinePropertyOrThrow(realm, bindings, N, {
-        value: realm.intrinsics.undefined,
-        writable: true,
-        enumerable: true,
-        configurable: configValue,
-      })
+      Properties.DefinePropertyOrThrow(
+        realm,
+        bindings,
+        N,
+        new PropertyDescriptor({
+          value: realm.intrinsics.undefined,
+          writable: true,
+          enumerable: true,
+          configurable: configValue,
+        })
+      )
     );
   }
 
@@ -894,7 +904,8 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
 
     // 5. If existingProp is undefined, return false.
     if (!existingProp) return false;
-    Properties.ThrowIfMightHaveBeenDeleted(existingProp.value);
+    Properties.ThrowIfMightHaveBeenDeleted(existingProp);
+    existingProp = existingProp.throwIfNotConcrete(globalObject.$Realm);
 
     // 6. If existingProp.[[Configurable]] is true, return false.
     if (existingProp.configurable) return false;
@@ -944,7 +955,8 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
 
     // 5. If existingProp is undefined, return ? IsExtensible(globalObject).
     if (!existingProp) return IsExtensible(realm, globalObject);
-    Properties.ThrowIfMightHaveBeenDeleted(existingProp.value);
+    Properties.ThrowIfMightHaveBeenDeleted(existingProp);
+    existingProp = existingProp.throwIfNotConcrete(globalObject.$Realm);
 
     // 6. If existingProp.[[Configurable]] is true, return true.
     if (existingProp.configurable) return true;
@@ -1011,17 +1023,20 @@ export class GlobalEnvironmentRecord extends EnvironmentRecord {
 
     // 4. Let existingProp be ? globalObject.[[GetOwnProperty]](N).
     let existingProp = globalObject.$GetOwnProperty(N);
+    if (existingProp) {
+      existingProp = existingProp.throwIfNotConcrete(globalObject.$Realm);
+    }
 
     // 5. If existingProp is undefined or existingProp.[[Configurable]] is true, then
     let desc;
     if (!existingProp || existingProp.configurable) {
       // a. Let desc be the PropertyDescriptor{[[Value]]: V, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: D}.
-      desc = { value: V, writable: true, enumerable: true, configurable: D };
+      desc = new PropertyDescriptor({ value: V, writable: true, enumerable: true, configurable: D });
     } else {
       // 6. Else,
-      Properties.ThrowIfMightHaveBeenDeleted(existingProp.value);
+      Properties.ThrowIfMightHaveBeenDeleted(existingProp);
       // a. Let desc be the PropertyDescriptor{[[Value]]: V }.
-      desc = { value: V };
+      desc = new PropertyDescriptor({ value: V });
     }
 
     // 7. Perform ? DefinePropertyOrThrow(globalObject, N, desc).
@@ -1076,35 +1091,6 @@ export class LexicalEnvironment {
     Properties.PutValue(this.realm, globalValue, rvalue);
   }
 
-  partiallyEvaluateCompletionDeref(
-    ast: BabelNode,
-    strictCode: boolean,
-    metadata?: any
-  ): [Completion | Value, BabelNode, Array<BabelNodeStatement>] {
-    let [result, partial_ast, partial_io] = this.partiallyEvaluateCompletion(ast, strictCode, metadata);
-    if (result instanceof Reference) {
-      result = Environment.GetValue(this.realm, result);
-    }
-    return [result, partial_ast, partial_io];
-  }
-
-  partiallyEvaluateCompletion(
-    ast: BabelNode,
-    strictCode: boolean,
-    metadata?: any
-  ): [Completion | Reference | Value, BabelNode, Array<BabelNodeStatement>] {
-    try {
-      return this.partiallyEvaluate(ast, strictCode, metadata);
-    } catch (err) {
-      if (err instanceof Completion) return [err, ast, []];
-      if (err instanceof Error)
-        // rethrowing Error should preserve stack trace
-        throw err;
-      // let's wrap into a proper Error to create stack trace
-      throw new FatalError(err);
-    }
-  }
-
   evaluateCompletionDeref(ast: BabelNode, strictCode: boolean, metadata?: any): AbruptCompletion | Value {
     let result = this.evaluateCompletion(ast, strictCode, metadata);
     if (result instanceof Reference) result = Environment.GetValue(this.realm, result);
@@ -1153,12 +1139,10 @@ export class LexicalEnvironment {
 
         let sourceMapContents = source.sourceMapContents;
         if (sourceMapContents && sourceMapContents.length > 0) {
-          this.realm.statistics.fixupSourceLocations.measure(() =>
-            this.fixup_source_locations(node, sourceMapContents)
-          );
+          this.realm.statistics.fixupSourceLocations.measure(() => this.fixupSourceLocations(node, sourceMapContents));
         }
 
-        this.realm.statistics.fixupFilenames.measure(() => this.fixup_filenames(node));
+        this.realm.statistics.fixupFilenames.measure(() => this.fixupFilenames(node));
 
         asts = asts.concat(node.program.body);
         code[source.filePath] = source.fileContents;
@@ -1217,37 +1201,6 @@ export class LexicalEnvironment {
     return [Environment.GetValue(this.realm, res), code];
   }
 
-  executePartialEvaluator(
-    sources: Array<SourceFile>,
-    options: PartialEvaluatorOptions = defaultOptions,
-    sourceType: SourceType = "script"
-  ): AbruptCompletion | { code: string, map?: SourceMap } {
-    let [ast, code] = this.concatenateAndParse(sources, sourceType);
-    let context = new ExecutionContext();
-    context.lexicalEnvironment = this;
-    context.variableEnvironment = this;
-    context.realm = this.realm;
-    this.realm.pushContext(context);
-    let partialAST;
-    try {
-      [, partialAST] = this.partiallyEvaluateCompletionDeref(ast, false);
-    } finally {
-      this.realm.popContext(context);
-      this.realm.onDestroyScope(context.lexicalEnvironment);
-      if (!this.destroyed) this.realm.onDestroyScope(this);
-      invariant(
-        this.realm.activeLexicalEnvironments.size === 0,
-        `expected 0 active lexical environments, got ${this.realm.activeLexicalEnvironments.size}`
-      );
-    }
-    invariant(partialAST.type === "File");
-    let fileAst = ((partialAST: any): BabelNodeFile);
-    let prog = t.program(fileAst.program.body, ast.program.directives);
-    this.fixup_filenames(prog);
-    // The type signature for generate is not complete, hence the any
-    return generate(prog, { sourceMaps: options.sourceMaps }, (code: any));
-  }
-
   execute(
     code: string,
     filename: string,
@@ -1271,8 +1224,8 @@ export class LexicalEnvironment {
         throw e;
       }
       if (onParse) onParse(ast);
-      if (map.length > 0) this.fixup_source_locations(ast, map);
-      this.fixup_filenames(ast);
+      if (map.length > 0) this.fixupSourceLocations(ast, map);
+      this.fixupFilenames(ast);
       res = this.evaluateCompletion(ast, false);
     } finally {
       this.realm.popContext(context);
@@ -1288,71 +1241,129 @@ export class LexicalEnvironment {
     return Environment.GetValue(this.realm, res);
   }
 
-  fixup_source_locations(ast: BabelNode, map: string): void {
-    const smc = new sourceMap.SourceMapConsumer(map);
+  fixupSourceLocations(ast: BabelNode, map: string): void {
+    invariant(ast.loc);
+    const source = ast.loc.source;
+    invariant(source !== undefined);
+    const positionInfos = new Map();
+
+    const smc = new SourceMapConsumer(map);
     traverseFast(ast, node => {
-      let loc = node.loc;
-      if (!loc) return false;
-      fixup(loc, loc.start);
-      fixup(loc, loc.end);
-      fixup_comments(node.leadingComments);
-      fixup_comments(node.innerComments);
-      fixup_comments(node.trailingComments);
+      fixupLocation(node.loc);
+      fixupComments(node.leadingComments);
+      fixupComments(node.innerComments);
+      fixupComments(node.trailingComments);
       return false;
-
-      function fixup(new_loc: BabelNodeSourceLocation, new_pos: BabelNodePosition) {
-        let old_pos = smc.originalPositionFor({ line: new_pos.line, column: new_pos.column });
-        if (old_pos.source === null) return;
-        new_pos.line = old_pos.line;
-        new_pos.column = old_pos.column;
-        new_loc.source = old_pos.source;
-      }
-
-      function fixup_comments(comments: ?Array<BabelNodeComment>) {
-        if (!comments) return;
-        for (let c of comments) {
-          let cloc = c.loc;
-          if (!cloc) continue;
-          fixup(cloc, cloc.start);
-          fixup(cloc, cloc.end);
-        }
-      }
     });
+
+    type PositionInfo = {
+      originalPosition: NullableMappedPosition,
+      newLine: number,
+      newColumn: number,
+      rewritten: boolean,
+    };
+    function getPositionInfo(position: BabelNodePosition): PositionInfo {
+      let info = positionInfos.get(position);
+      if (info === undefined)
+        positionInfos.set(
+          position,
+          (info = {
+            originalPosition: smc.originalPositionFor(position),
+            newLine: position.line,
+            newColumn: position.column,
+            rewritten: false,
+          })
+        );
+      return info;
+    }
+    function fixupPosition(pos: BabelNodePosition, posInfo: PositionInfo, otherInfo: PositionInfo): void {
+      if (posInfo.rewritten) return;
+      let posOriginalPosition = posInfo.originalPosition;
+      if (posOriginalPosition.source == null) {
+        invariant(otherInfo.originalPosition.source != null);
+
+        let deltaLine = posInfo.newLine - otherInfo.newLine;
+        pos.line = Math.max(1, otherInfo.originalPosition.line + deltaLine);
+
+        let deltaColumn = posInfo.newColumn - otherInfo.newColumn;
+        pos.column = Math.max(0, otherInfo.originalPosition.column + deltaColumn);
+      } else {
+        invariant(typeof posOriginalPosition.line === "number");
+        pos.line = posOriginalPosition.line;
+        invariant(typeof posOriginalPosition.column === "number");
+        pos.column = posOriginalPosition.column;
+      }
+      posInfo.rewritten = true;
+    }
+    function fixupLocation(loc: ?BabelNodeSourceLocation): void {
+      if (loc == null) return;
+      // Bail out when location already got fixed up or doesn't have source
+      if (loc.source === undefined || loc.source !== source) return;
+
+      let locStart = loc.start;
+      let locEnd = loc.end;
+      let startInfo = getPositionInfo(locStart);
+      let endInfo = getPositionInfo(locEnd);
+      let startOriginalPosition = startInfo.originalPosition;
+      let endOriginalPosition = endInfo.originalPosition;
+
+      // Sanity checks on the positions supplied directly by the Babel parser
+      invariant(startInfo.newLine <= endInfo.newLine);
+      invariant(startInfo.newLine !== endInfo.newLine || startInfo.newColumn <= endInfo.newColumn);
+
+      let originalSource = startOriginalPosition.source || endOriginalPosition.source;
+      if (originalSource) {
+        fixupPosition(locStart, startInfo, endInfo);
+        fixupPosition(locEnd, endInfo, startInfo);
+
+        // NOTE: Babel only persists the start position of most nodes in source maps
+        // (only block statements also get their end positions persisted).
+        // Thus, end positions tend to be mostly wrong (in fact often so wrong
+        // that they point before the start position).
+        // The best way to deal with that is to never print end positions in user-facing
+        // messages, or use them for any reason.
+
+        invariant(loc.source !== originalSource);
+        loc.source = originalSource;
+      }
+    }
+    function fixupComments(comments: ?Array<BabelNodeComment>) {
+      if (!comments) return;
+      for (let c of comments) fixupLocation(c.loc);
+    }
   }
 
-  fixup_filenames(ast: BabelNode): void {
+  fixupFilenames(ast: BabelNode): void {
     traverseFast(ast, node => {
       let loc = node.loc;
-      if (!loc || !loc.source) {
-        node.leadingComments = null;
-        node.innerComments = null;
-        node.trailingComments = null;
-        node.loc = null;
-      } else {
-        let filename = loc.source;
-        (loc: any).filename = filename;
-        fixup_comments(node.leadingComments, filename);
-        fixup_comments(node.innerComments, filename);
-        fixup_comments(node.trailingComments, filename);
-      }
+      if (loc && loc.source) (loc: any).filename = loc.source;
+      else node.loc = null;
+      fixupComments(node.leadingComments);
+      fixupComments(node.innerComments);
+      fixupComments(node.trailingComments);
       return false;
-
-      function fixup_comments(comments: ?Array<BabelNodeComment>, filename: string) {
-        if (!comments) return;
-        for (let c of comments) {
-          if (c.loc) {
-            (c.loc: any).filename = filename;
-            c.loc.source = filename;
-          }
-        }
-      }
     });
+
+    function fixupComments(comments: ?Array<BabelNodeComment>): void {
+      if (!comments) return;
+      for (let c of comments) {
+        let loc = c.loc;
+        if (loc && loc.source) (loc: any).filename = loc.source;
+        else (c: any).loc = null;
+      }
+    }
   }
 
   evaluate(ast: BabelNode, strictCode: boolean, metadata?: any): Value | Reference {
     if (this.realm.debuggerInstance) {
       this.realm.debuggerInstance.checkForActions(ast);
     }
+    if (this.realm.debugReproManager) {
+      if (ast.loc !== undefined && ast.loc !== null && ast.loc.source) {
+        this.realm.debugReproManager.addSourceFile(ast.loc.source);
+      }
+    }
+
     let res = this.evaluateAbstract(ast, strictCode, metadata);
     invariant(res instanceof Value || res instanceof Reference, ast.type);
     return res;
@@ -1377,20 +1388,6 @@ export class LexicalEnvironment {
     if (result instanceof Reference) result = Environment.GetValue(this.realm, result);
     return result;
   }
-
-  partiallyEvaluate(
-    ast: BabelNode,
-    strictCode: boolean,
-    metadata?: any
-  ): [Completion | Reference | Value, BabelNode, Array<BabelNodeStatement>] {
-    let partialEvaluator = this.realm.partialEvaluators[(ast.type: string)];
-    if (partialEvaluator) {
-      return partialEvaluator(ast, strictCode, this, this.realm, metadata);
-    }
-
-    let err = new TypeError(`Unsupported node type ${ast.type}`);
-    throw err;
-  }
 }
 
 // ECMA262 6.2.3
@@ -1408,6 +1405,10 @@ export type BaseValue =
   | IntegralValue
   | EnvironmentRecord;
 export type ReferenceName = string | SymbolValue;
+
+export function isValidBaseValue(val: Value) {
+  return val instanceof AbstractValue || val instanceof ObjectValue || mightBecomeAnObject(val);
+}
 
 export function mightBecomeAnObject(base: Value): boolean {
   let type = base.getType();

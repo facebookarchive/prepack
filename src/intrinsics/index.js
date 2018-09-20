@@ -9,18 +9,20 @@
 
 /* @flow strict-local */
 
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import type { Intrinsics } from "../types.js";
 import type { Realm } from "../realm.js";
 import {
-  NumberValue,
-  StringValue,
-  NullValue,
-  UndefinedValue,
-  EmptyValue,
-  ObjectValue,
-  SymbolValue,
+  AbstractValue,
   BooleanValue,
+  EmptyValue,
   NativeFunctionValue,
+  NullValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
+  SymbolValue,
+  UndefinedValue,
 } from "../values/index.js";
 import { Functions } from "../singletons.js";
 
@@ -156,6 +158,7 @@ import initializeThrowTypeError from "./ecma262/ThrowTypeError.js";
 
 import initialize__IntrospectionError from "./prepack/__IntrospectionError.js";
 import initialize__IntrospectionErrorPrototype from "./prepack/__IntrospectionErrorPrototype.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.undefined = new UndefinedValue(realm);
@@ -399,26 +402,35 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
     let fn = i[name];
     let proto = i[`${name}Prototype`];
 
-    proto.$DefineOwnProperty("constructor", {
-      value: fn,
-      writable: true,
-      enumerable: false,
-      configurable: true,
-    });
+    proto.$DefineOwnProperty(
+      "constructor",
+      new PropertyDescriptor({
+        value: fn,
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      })
+    );
 
-    fn.$DefineOwnProperty("prototype", {
-      value: proto,
-      writable: false,
-      enumerable: false,
-      configurable: false,
-    });
+    fn.$DefineOwnProperty(
+      "prototype",
+      new PropertyDescriptor({
+        value: proto,
+        writable: false,
+        enumerable: false,
+        configurable: false,
+      })
+    );
 
-    fn.$DefineOwnProperty("constructor", {
-      value: i.Function,
-      writable: true,
-      enumerable: false,
-      configurable: true,
-    });
+    fn.$DefineOwnProperty(
+      "constructor",
+      new PropertyDescriptor({
+        value: i.Function,
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      })
+    );
   }
 
   //
@@ -428,31 +440,43 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   initializeGenerator(realm, i.Generator);
   i.GeneratorFunction = initializeGeneratorFunction(realm);
 
-  i.Generator.$DefineOwnProperty("prototype", {
-    value: i.GeneratorPrototype,
-    writable: false,
-    enumerable: false,
-    configurable: true,
-  });
-  i.GeneratorPrototype.$DefineOwnProperty("constructor", {
-    value: i.Generator,
-    writable: false,
-    enumerable: false,
-    configurable: true,
-  });
+  i.Generator.$DefineOwnProperty(
+    "prototype",
+    new PropertyDescriptor({
+      value: i.GeneratorPrototype,
+      writable: false,
+      enumerable: false,
+      configurable: true,
+    })
+  );
+  i.GeneratorPrototype.$DefineOwnProperty(
+    "constructor",
+    new PropertyDescriptor({
+      value: i.Generator,
+      writable: false,
+      enumerable: false,
+      configurable: true,
+    })
+  );
 
-  i.GeneratorFunction.$DefineOwnProperty("prototype", {
-    value: i.Generator,
-    writable: false,
-    enumerable: false,
-    configurable: false,
-  });
-  i.Generator.$DefineOwnProperty("constructor", {
-    value: i.GeneratorFunction,
-    writable: false,
-    enumerable: false,
-    configurable: true,
-  });
+  i.GeneratorFunction.$DefineOwnProperty(
+    "prototype",
+    new PropertyDescriptor({
+      value: i.Generator,
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    })
+  );
+  i.Generator.$DefineOwnProperty(
+    "constructor",
+    new PropertyDescriptor({
+      value: i.GeneratorFunction,
+      writable: false,
+      enumerable: false,
+      configurable: true,
+    })
+  );
 
   //
   i.isNaN = initializeIsNaN(realm);
@@ -466,6 +490,22 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
 
   // 8.2.2, step 12
   Functions.AddRestrictedFunctionProperties(i.FunctionPrototype, realm);
+
+  //
+  if (realm.useAbstractInterpretation) {
+    TypesDomain.topVal = new TypesDomain(undefined);
+    ValuesDomain.topVal = new ValuesDomain(undefined);
+    i.__topValue = new AbstractValue(realm, TypesDomain.topVal, ValuesDomain.topVal, Number.MAX_SAFE_INTEGER, []);
+    TypesDomain.bottomVal = new TypesDomain(EmptyValue);
+    ValuesDomain.bottomVal = new ValuesDomain(new Set());
+    i.__bottomValue = new AbstractValue(
+      realm,
+      TypesDomain.bottomVal,
+      ValuesDomain.bottomVal,
+      Number.MIN_SAFE_INTEGER,
+      []
+    );
+  }
 
   return i;
 }

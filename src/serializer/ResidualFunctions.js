@@ -28,7 +28,7 @@ import type {
   BabelNodeArrowFunctionExpression,
 } from "@babel/types";
 import type { FunctionBodyAstNode } from "../types.js";
-import type { NameGenerator } from "../utils/generator.js";
+import type { NameGenerator } from "../utils/NameGenerator.js";
 import invariant from "../invariant.js";
 import type {
   ResidualFunctionBinding,
@@ -661,6 +661,7 @@ export class ResidualFunctions {
           }
           let funcNode;
           let firstUsage = this.firstFunctionUsages.get(functionValue);
+          // todo: why can this be undefined?
           invariant(insertionPoint !== undefined);
           if (
             // The same free variables in shared instances may refer to objects with different initialization values
@@ -668,7 +669,7 @@ export class ResidualFunctions {
             this.residualFunctionInitializers.hasInitializerStatement(functionValue) ||
             usesThis ||
             hasFunctionArg ||
-            (firstUsage !== undefined && !firstUsage.isNotEarlierThan(insertionPoint)) ||
+            (firstUsage === undefined || !firstUsage.isNotEarlierThan(insertionPoint)) ||
             this.functionPrototypes.get(functionValue) !== undefined ||
             hasAnyLeakedIds
           ) {

@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { ObjectKind } from "../types.js";
+import type { PathConditions, ObjectKind } from "../types.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 import { ObjectValue, NumberValue } from "./index.js";
@@ -21,6 +21,7 @@ export default class FunctionValue extends ObjectValue {
     super(realm, realm.intrinsics.FunctionPrototype, intrinsicName);
   }
 
+  pathConditionDuringDeclaration: PathConditions | void;
   $Environment: LexicalEnvironment;
   $ScriptOrModule: any;
 
@@ -45,12 +46,16 @@ export default class FunctionValue extends ObjectValue {
     invariant(binding);
     let desc = binding.descriptor;
     invariant(desc);
-    let value = desc.value;
+    let value = desc.throwIfNotConcrete(this.$Realm).value;
     if (!(value instanceof NumberValue)) return undefined;
     return value.value;
   }
 
   hasDefaultLength(): boolean {
     invariant(false, "abstract method; please override");
+  }
+
+  getDebugName(): string {
+    return super.getDebugName() || this.getName();
   }
 }

@@ -28,9 +28,36 @@ import {
 } from "../values/index.js";
 import { To } from "../singletons.js";
 import invariant from "../invariant.js";
-import { Logger } from "../utils/logger.js";
+import { Logger } from "./logger.js";
+import { PropertyDescriptor, AbstractJoinedDescriptor } from "../descriptors.js";
 
 type TargetIntegrityCommand = "freeze" | "seal" | "preventExtensions" | "";
+
+function hasAnyConfigurable(desc: void | Descriptor): boolean {
+  if (!desc) {
+    return false;
+  }
+  if (desc instanceof PropertyDescriptor) {
+    return !!desc.configurable;
+  }
+  if (desc instanceof AbstractJoinedDescriptor) {
+    return hasAnyConfigurable(desc.descriptor1) || hasAnyConfigurable(desc.descriptor2);
+  }
+  invariant(false, "internal slots aren't covered here");
+}
+
+function hasAnyWritable(desc: void | Descriptor): boolean {
+  if (!desc) {
+    return false;
+  }
+  if (desc instanceof PropertyDescriptor) {
+    return desc.value !== undefined && !!desc.writable;
+  }
+  if (desc instanceof AbstractJoinedDescriptor) {
+    return hasAnyWritable(desc.descriptor1) || hasAnyWritable(desc.descriptor2);
+  }
+  invariant(false, "internal slots aren't covered here");
+}
 
 export class HeapInspector {
   constructor(realm: Realm, logger: Logger) {
@@ -65,8 +92,8 @@ export class HeapInspector {
           for (let propertyBinding of val.properties.values()) {
             let desc = propertyBinding.descriptor;
             if (desc === undefined) continue; //deleted
-            if (desc.configurable) anyConfigurable = true;
-            else if (desc.value !== undefined && desc.writable) anyWritable = true;
+            if (hasAnyConfigurable(desc)) anyConfigurable = true;
+            else if (hasAnyWritable(desc)) anyWritable = true;
           }
           command = anyConfigurable ? "preventExtensions" : anyWritable ? "seal" : "freeze";
         }
@@ -135,10 +162,21 @@ export class HeapInspector {
   }
 
   _canIgnoreProperty(val: ObjectValue, key: string, desc: Descriptor): boolean {
+    if (!(desc instanceof PropertyDescriptor)) {
+      // If we have a joined descriptor, there is at least one variant that isn't the same as
+      // the target descriptor. Since the two descriptors won't be equal.
+      return false;
+    }
+
     let targetDescriptor = this.getTargetIntegrityDescriptor(val);
 
     if (IsArray(this.realm, val)) {
-      if (key === "length" && desc.writable === targetDescriptor.writable && !desc.enumerable && !desc.configurable) {
+      if (
+        key === "length" &&
+        desc.writable === targetDescriptor.writable &&
+        desc.enumerable !== true &&
+        desc.configurable !== true
+      ) {
         // length property has the correct descriptor values
         return true;
       }
@@ -150,8 +188,8 @@ export class HeapInspector {
         }
         // length property will be inferred already by the amount of parameters
         return (
-          !desc.writable &&
-          !desc.enumerable &&
+          desc.writable !== true &&
+          desc.enumerable !== true &&
           desc.configurable === targetDescriptor.configurable &&
           val.hasDefaultLength()
         );
@@ -169,7 +207,7 @@ export class HeapInspector {
           !this.realm.isCompatibleWith("mobile") &&
           (desc.value instanceof AbstractValue ||
             (desc.value instanceof ConcreteValue &&
-              val.__originalName &&
+              val.__originalName !== undefined &&
               val.__originalName !== "" &&
               To.ToString(this.realm, desc.value) !== val.__originalName))
         )
@@ -184,7 +222,7 @@ export class HeapInspector {
         if (
           !val.$Strict &&
           desc.writable === (!val.$Strict && targetDescriptor.writable) &&
-          !desc.enumerable &&
+          desc.enumerable !== true &&
           desc.configurable === targetDescriptor.configurable &&
           desc.value instanceof UndefinedValue &&
           val.$FunctionKind === "normal"
@@ -195,8 +233,8 @@ export class HeapInspector {
       // ignore the `prototype` property when it's the right one
       if (key === "prototype") {
         if (
-          !desc.configurable &&
-          !desc.enumerable &&
+          desc.configurable !== true &&
+          desc.enumerable !== true &&
           desc.writable === targetDescriptor.writable &&
           desc.value instanceof ObjectValue &&
           desc.value.originalConstructor === val
@@ -211,8 +249,8 @@ export class HeapInspector {
           if (
             key === "lastIndex" &&
             desc.writable === targetDescriptor.writable &&
-            !desc.enumerable &&
-            !desc.configurable
+            desc.enumerable !== true &&
+            desc.configurable !== true
           ) {
             // length property has the correct descriptor values
             let v = desc.value;
@@ -227,7 +265,7 @@ export class HeapInspector {
     if (key === "constructor") {
       if (
         desc.configurable === targetDescriptor.configurable &&
-        !desc.enumerable &&
+        desc.enumerable !== true &&
         desc.writable === targetDescriptor.writable &&
         desc.value === val.originalConstructor
       )
@@ -242,6 +280,7 @@ export class HeapInspector {
     if (prototypeBinding === undefined) return undefined;
     let prototypeDesc = prototypeBinding.descriptor;
     if (prototypeDesc === undefined) return undefined;
+    invariant(prototypeDesc instanceof PropertyDescriptor);
     invariant(prototypeDesc.value === undefined || prototypeDesc.value instanceof Value);
     return prototypeDesc.value;
   }

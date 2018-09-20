@@ -28,7 +28,9 @@ import { Logger } from "../utils/logger.js";
 import { Generator } from "../utils/generator.js";
 import type { AdditionalFunctionEffects } from "./types";
 import type { Binding } from "../environment.js";
-import { getLocationFromValue } from "../react/utils";
+import type { BabelNodeSourceLocation } from "@babel/types";
+import { optionalStringOfLocation } from "../utils/babelhelpers.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 /**
  * Get index property list length by searching array properties list for the max index key value plus 1.
@@ -37,7 +39,7 @@ import { getLocationFromValue } from "../react/utils";
  */
 export function getSuggestedArrayLiteralLength(realm: Realm, val: ObjectValue): [number, boolean] {
   invariant(IsArray(realm, val));
-
+  let instantRenderMode = realm.instantRender.enabled;
   let minLength = 0,
     maxLength = 0;
   let actualLength;
@@ -46,7 +48,7 @@ export function getSuggestedArrayLiteralLength(realm: Realm, val: ObjectValue): 
       let prevMax = maxLength;
       maxLength = Number(key) + 1;
       let elem = val._SafeGetDataPropertyValue(key);
-      if (!elem.mightHaveBeenDeleted()) minLength = maxLength;
+      if (instantRenderMode || !elem.mightHaveBeenDeleted()) minLength = maxLength;
       else if (elem instanceof AbstractValue && elem.kind === "conditional") {
         let maxLengthVal = new IntegralValue(realm, maxLength);
         let [c, x, y] = elem.args;
@@ -125,6 +127,7 @@ export function withDescriptorValue(
   func: Function
 ): void {
   if (descriptor !== undefined) {
+    invariant(descriptor instanceof PropertyDescriptor); // TODO: Handle joined descriptors.
     if (descriptor.value !== undefined) {
       func(propertyNameOrSymbol, descriptor.value, "value");
     } else {
@@ -141,8 +144,17 @@ export function withDescriptorValue(
 export const ClassPropertiesToIgnore: Set<string> = new Set(["arguments", "name", "caller"]);
 
 export function canIgnoreClassLengthProperty(val: ObjectValue, desc: void | Descriptor, logger: Logger): boolean {
-  if (desc && desc.value === undefined) {
-    logger.logError(val, "Functions with length accessor properties are not supported in residual heap.");
+  if (desc) {
+    if (desc instanceof PropertyDescriptor) {
+      if (desc.value === undefined) {
+        logger.logError(val, "Functions with length accessor properties are not supported in residual heap.");
+      }
+    } else {
+      logger.logError(
+        val,
+        "Functions with length properties with different attributes are not supported in residual heap."
+      );
+    }
   }
   return true;
 }
@@ -168,6 +180,11 @@ export function getObjectPrototypeMetadata(
       // evluated and thus visited
       if (_constructor.descriptor === undefined) {
         throw new FatalError("TODO #1024: implement object prototype serialization with deleted constructor");
+      }
+      if (!(_constructor.descriptor instanceof PropertyDescriptor)) {
+        throw new FatalError(
+          "TODO #1024: implement object prototype serialization with multiple constructor attributes"
+        );
       }
       let classFunc = _constructor.descriptor.value;
       if (classFunc instanceof ECMAScriptSourceFunctionValue) {
@@ -203,18 +220,18 @@ export function createAdditionalEffects(
 }
 
 export function handleReportedSideEffect(
-  exceptionHandler: string => void,
+  exceptionHandler: (string, ?BabelNodeSourceLocation) => void,
   sideEffectType: SideEffectType,
   binding: void | Binding | PropertyBinding,
-  expressionLocation: any
+  expressionLocation: ?BabelNodeSourceLocation
 ): void {
   // This causes an infinite recursion because creating a callstack causes internal-only side effects
   if (binding && binding.object && binding.object.intrinsicName === "__checkedBindings") return;
-  let location = getLocationFromValue(expressionLocation);
+  let location = optionalStringOfLocation(expressionLocation);
 
   if (sideEffectType === "MODIFIED_BINDING") {
     let name = binding ? `"${((binding: any): Binding).name}"` : "unknown";
-    exceptionHandler(`side-effects from mutating the binding ${name}${location}`);
+    exceptionHandler(`side-effects from mutating the binding ${name}${location}`, expressionLocation);
   } else if (sideEffectType === "MODIFIED_PROPERTY" || sideEffectType === "MODIFIED_GLOBAL") {
     let name = "";
     let pb = ((binding: any): PropertyBinding);
@@ -224,11 +241,11 @@ export function handleReportedSideEffect(
     }
     if (sideEffectType === "MODIFIED_PROPERTY") {
       if (!ObjectValue.refuseSerializationOnPropertyBinding(pb))
-        exceptionHandler(`side-effects from mutating a property ${name}${location}`);
+        exceptionHandler(`side-effects from mutating a property ${name}${location}`, expressionLocation);
     } else {
-      exceptionHandler(`side-effects from mutating the global object property ${name}${location}`);
+      exceptionHandler(`side-effects from mutating the global object property ${name}${location}`, expressionLocation);
     }
   } else if (sideEffectType === "EXCEPTION_THROWN") {
-    exceptionHandler(`side-effects from throwing exception${location}`);
+    exceptionHandler(`side-effects from throwing exception${location}`, expressionLocation);
   }
 }

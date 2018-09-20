@@ -60,6 +60,10 @@ let prepackOptions = {
         // recover from `unable to evaluate "key" and "ref" on a ReactElement
         return "Recover";
       }
+      if (diag.errorCode === "PP0021") {
+        // recover from "Possible throw inside try/catch is not yet supported"
+        return "Recover";
+      }
       return "Fail";
     }
     return "Recover";
@@ -68,12 +72,14 @@ let prepackOptions = {
   internalDebug: true,
   serialize: true,
   uniqueSuffix: "",
-  maxStackDepth: 100,
+  maxStackDepth: 200,
   instantRender: false,
   reactEnabled: true,
   reactOutput: "jsx",
   reactVerbose: true,
-  reactOptimizeNestedFunctions: false,
+  reactFailOnUnsupportedSideEffects: false,
+  reactOptimizeNestedFunctions: true,
+  arrayNestedOptimizedFunctionsEnabled: true,
   inlineExpressions: true,
   invariantLevel: 0,
   abstractValueImpliesMax: 1000,

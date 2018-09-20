@@ -29,10 +29,13 @@ export class SerializerStatistics extends RealmStatistics {
     this.initializeMoreModules = new PerformanceTracker(getTime, getMemory);
     this.optimizeReactComponentTreeRoots = new PerformanceTracker(getTime, getMemory);
     this.checkThatFunctionsAreIndependent = new PerformanceTracker(getTime, getMemory);
+    this.processCollectedNestedOptimizedFunctions = new PerformanceTracker(getTime, getMemory);
     this.deepTraversal = new PerformanceTracker(getTime, getMemory);
+    this.referentialization = new PerformanceTracker(getTime, getMemory);
     this.referenceCounts = new PerformanceTracker(getTime, getMemory);
     this.serializePass = new PerformanceTracker(getTime, getMemory);
     this.babelGenerate = new PerformanceTracker(getTime, getMemory);
+    this.dumpIR = new PerformanceTracker(getTime, getMemory);
   }
 
   resetBeforePass(): void {
@@ -94,10 +97,13 @@ export class SerializerStatistics extends RealmStatistics {
   initializeMoreModules: PerformanceTracker;
   optimizeReactComponentTreeRoots: PerformanceTracker;
   checkThatFunctionsAreIndependent: PerformanceTracker;
+  processCollectedNestedOptimizedFunctions: PerformanceTracker;
   deepTraversal: PerformanceTracker;
   referenceCounts: PerformanceTracker;
+  referentialization: PerformanceTracker;
   serializePass: PerformanceTracker;
   babelGenerate: PerformanceTracker;
+  dumpIR: PerformanceTracker;
 
   log(): void {
     super.log();
@@ -134,14 +140,14 @@ export class SerializerStatistics extends RealmStatistics {
         this.optimizeReactComponentTreeRoots
       )} optimizing react component tree roots, ${format(
         this.checkThatFunctionsAreIndependent
-      )} evaluating functions to optimize`
+      )} evaluating functions to optimize, ${format(this.dumpIR)} dumping IR`
     );
     console.log(
       `${format(this.deepTraversal)} visiting residual heap, ${format(
-        this.referenceCounts
-      )} reference counting, ${format(this.serializePass)} generating AST, ${format(
-        this.babelGenerate
-      )} generating source code`
+        this.referentialization
+      )} referentializing functions, ${format(this.referenceCounts)} reference counting, ${format(
+        this.serializePass
+      )} generating AST, ${format(this.babelGenerate)} generating source code`
     );
   }
 }

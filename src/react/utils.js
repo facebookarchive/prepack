@@ -9,8 +9,8 @@
 
 /* @flow */
 
-import { Realm, Effects } from "../realm.js";
-import { AbruptCompletion, Completion, PossiblyNormalCompletion, SimpleNormalCompletion } from "../completions.js";
+import { Realm } from "../realm.js";
+import { AbruptCompletion, SimpleNormalCompletion } from "../completions.js";
 import type { BabelNode, BabelNodeJSXIdentifier } from "@babel/types";
 import { parseExpression } from "@babel/parser";
 import {
@@ -29,15 +29,9 @@ import {
   UndefinedValue,
   Value,
 } from "../values/index.js";
-import { Generator, TemporalObjectAssignEntry } from "../utils/generator.js";
-import type {
-  Descriptor,
-  FunctionBodyAstNode,
-  ReactComponentTreeConfig,
-  ReactHint,
-  PropertyBinding,
-} from "../types.js";
-import { Get, cloneDescriptor } from "../methods/index.js";
+import { TemporalObjectAssignEntry } from "../utils/generator.js";
+import type { Descriptor, ReactComponentTreeConfig, ReactHint, PropertyBinding } from "../types.js";
+import { Get, IsDataDescriptor } from "../methods/index.js";
 import { computeBinary } from "../evaluators/BinaryExpression.js";
 import type { AdditionalFunctionEffects, ReactEvaluatedNode } from "../serializer/types.js";
 import invariant from "../invariant.js";
@@ -46,6 +40,7 @@ import traverse from "@babel/traverse";
 import * as t from "@babel/types";
 import type { BabelNodeStatement } from "@babel/types";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
+import { cloneDescriptor, PropertyDescriptor } from "../descriptors.js";
 
 export type ReactSymbolTypes =
   | "react.element"
@@ -54,7 +49,8 @@ export type ReactSymbolTypes =
   | "react.fragment"
   | "react.portal"
   | "react.return"
-  | "react.call";
+  | "react.call"
+  | "react.forward_ref";
 
 export function isReactElement(val: Value): boolean {
   if (!(val instanceof ObjectValue)) {
@@ -114,6 +110,7 @@ export function getReactSymbol(symbolKey: ReactSymbolTypes, realm: Realm): Symbo
     let SymbolForDescriptor = SymbolFor.descriptor;
 
     if (SymbolForDescriptor !== undefined) {
+      invariant(SymbolForDescriptor instanceof PropertyDescriptor);
       let SymbolForValue = SymbolForDescriptor.value;
       if (SymbolForValue instanceof ObjectValue && typeof SymbolForValue.$Call === "function") {
         reactSymbol = SymbolForValue.$Call(realm.intrinsics.Symbol, [new StringValue(realm, symbolKey)]);
@@ -248,6 +245,7 @@ export function forEachArrayValue(
     let elementProperty = array.properties.get("" + i);
     let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
     if (elementPropertyDescriptor) {
+      invariant(elementPropertyDescriptor instanceof PropertyDescriptor);
       let elementValue = elementPropertyDescriptor.value;
       if (elementValue instanceof Value) {
         mapFunc(elementValue, i);
@@ -271,6 +269,7 @@ export function mapArrayValue(
     let elementProperty = array.properties.get("" + i);
     let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
     if (elementPropertyDescriptor) {
+      invariant(elementPropertyDescriptor instanceof PropertyDescriptor);
       let elementValue = elementPropertyDescriptor.value;
       if (elementValue instanceof Value) {
         let newElement = mapFunc(elementValue, elementPropertyDescriptor);
@@ -299,7 +298,7 @@ export function convertSimpleClassComponentToFunctionalComponent(
 ): void {
   let prototype = complexComponentType.properties.get("prototype");
   invariant(prototype);
-  invariant(prototype.descriptor);
+  invariant(prototype.descriptor instanceof PropertyDescriptor);
   prototype.descriptor.configurable = true;
   Properties.DeletePropertyOrThrow(realm, complexComponentType, "prototype");
 
@@ -354,7 +353,10 @@ function createBinding(descriptor: void | Descriptor, key: string | SymbolValue,
 function cloneProperties(realm: Realm, properties: Map<string, any>, object: ObjectValue): Map<string, any> {
   let newProperties = new Map();
   for (let [propertyName, { descriptor }] of properties) {
-    newProperties.set(propertyName, createBinding(cloneDescriptor(descriptor), propertyName, object));
+    newProperties.set(
+      propertyName,
+      createBinding(cloneDescriptor(descriptor.throwIfNotConcrete(realm)), propertyName, object)
+    );
   }
   return newProperties;
 }
@@ -362,7 +364,7 @@ function cloneProperties(realm: Realm, properties: Map<string, any>, object: Obj
 function cloneSymbols(realm: Realm, symbols: Map<SymbolValue, any>, object: ObjectValue): Map<SymbolValue, any> {
   let newSymbols = new Map();
   for (let [symbol, { descriptor }] of symbols) {
-    newSymbols.set(symbol, createBinding(cloneDescriptor(descriptor), symbol, object));
+    newSymbols.set(symbol, createBinding(cloneDescriptor(descriptor.throwIfNotConcrete(realm)), symbol, object));
   }
   return newSymbols;
 }
@@ -436,11 +438,13 @@ const skipFunctionProperties = new Set(["length", "prototype", "arguments", "nam
 
 export function convertFunctionalComponentToComplexClassComponent(
   realm: Realm,
-  functionalComponentType: ECMAScriptSourceFunctionValue,
-  complexComponentType: void | ECMAScriptSourceFunctionValue,
+  functionalComponentType: ECMAScriptSourceFunctionValue | BoundFunctionValue,
+  complexComponentType: void | ECMAScriptSourceFunctionValue | BoundFunctionValue,
   additionalFunctionEffects: AdditionalFunctionEffects
 ): void {
-  invariant(complexComponentType instanceof ECMAScriptSourceFunctionValue);
+  invariant(
+    complexComponentType instanceof ECMAScriptSourceFunctionValue || complexComponentType instanceof BoundFunctionValue
+  );
   // get all properties on the functional component that were added in user-code
   // we add defaultProps as undefined, as merging a class component's defaultProps on to
   // a differnet component isn't right, we can discard defaultProps instead via folding
@@ -487,7 +491,7 @@ export function convertFunctionalComponentToComplexClassComponent(
 export function normalizeFunctionalComponentParamaters(func: ECMAScriptSourceFunctionValue): void {
   // fix the length as we may change the arguments
   let lengthProperty = GetDescriptorForProperty(func, "length");
-  invariant(lengthProperty);
+  invariant(lengthProperty instanceof PropertyDescriptor);
   lengthProperty.writable = false;
   lengthProperty.enumerable = false;
   lengthProperty.configurable = true;
@@ -522,9 +526,18 @@ export function createReactHintObject(
   };
 }
 
-export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAScriptSourceFunctionValue | null {
+export function getComponentTypeFromRootValue(
+  realm: Realm,
+  value: Value
+): ECMAScriptSourceFunctionValue | BoundFunctionValue | null {
   let _valueIsKnownReactAbstraction = valueIsKnownReactAbstraction(realm, value);
-  if (!(value instanceof ECMAScriptSourceFunctionValue || _valueIsKnownReactAbstraction)) {
+  if (
+    !(
+      value instanceof ECMAScriptSourceFunctionValue ||
+      value instanceof BoundFunctionValue ||
+      _valueIsKnownReactAbstraction
+    )
+  ) {
     return null;
   }
   if (_valueIsKnownReactAbstraction) {
@@ -540,7 +553,9 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
           invariant(Array.isArray(reactHint.args));
           // componentType is the 1st argument of a ReactRelay container
           let componentType = reactHint.args[0];
-          invariant(componentType instanceof ECMAScriptSourceFunctionValue);
+          invariant(
+            componentType instanceof ECMAScriptSourceFunctionValue || componentType instanceof BoundFunctionValue
+          );
           return componentType;
         default:
           invariant(
@@ -549,12 +564,9 @@ export function getComponentTypeFromRootValue(realm: Realm, value: Value): ECMAS
           );
       }
     }
-    if (reactHint.object === realm.fbLibraries.react && reactHint.propertyName === "forwardRef") {
-      return null;
-    }
     invariant(false, "unsupported known React abstraction");
   } else {
-    invariant(value instanceof ECMAScriptSourceFunctionValue);
+    invariant(value instanceof ECMAScriptSourceFunctionValue || value instanceof BoundFunctionValue);
     return value;
   }
 }
@@ -609,48 +621,6 @@ export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
   return flattenedChildren;
 }
 
-export function evaluateWithNestedParentEffects(
-  realm: Realm,
-  nestedEffects: Array<Effects>,
-  f: () => Effects
-): Effects {
-  let nextEffects = nestedEffects.slice();
-  let modifiedBindings;
-  let modifiedProperties;
-  let createdObjects;
-  let value;
-
-  if (nextEffects.length !== 0) {
-    let effects = nextEffects.shift();
-    value = effects.result;
-    if (value instanceof Completion) value = value.shallowCloneWithoutEffects();
-    createdObjects = effects.createdObjects;
-    modifiedBindings = effects.modifiedBindings;
-    modifiedProperties = effects.modifiedProperties;
-    realm.applyEffects(
-      new Effects(
-        value,
-        new Generator(realm, "evaluateWithNestedEffects", effects.generator.pathConditions),
-        modifiedBindings,
-        modifiedProperties,
-        createdObjects
-      )
-    );
-  }
-  try {
-    if (nextEffects.length === 0) {
-      return f();
-    } else {
-      return evaluateWithNestedParentEffects(realm, nextEffects, f);
-    }
-  } finally {
-    if (modifiedBindings && modifiedProperties) {
-      realm.undoBindings(modifiedBindings);
-      realm.restoreProperties(modifiedProperties);
-    }
-  }
-}
-
 // This function is mainly use to get internal properties
 // on objects that we know are safe to access internally
 // such as ReactElements. Getting properties here does
@@ -687,6 +657,7 @@ export function getProperty(
   if (!descriptor) {
     return realm.intrinsics.undefined;
   }
+  invariant(descriptor instanceof PropertyDescriptor);
   let value = descriptor.value;
   if (value === undefined) {
     AbstractValue.reportIntrospectionError(object, `react/utils/getProperty unsupported getter/setter property`);
@@ -754,11 +725,10 @@ export function getComponentName(realm: Realm, componentType: Value): string {
       return boundText + name.value;
     }
   }
-  if (realm.react.abstractHints.has(componentType)) {
-    let reactHint = realm.react.abstractHints.get(componentType);
+  if (componentType instanceof ObjectValue) {
+    let $$typeof = getProperty(realm, componentType, "$$typeof");
 
-    invariant(reactHint !== undefined);
-    if (reactHint.object === realm.fbLibraries.react && reactHint.propertyName === "forwardRef") {
+    if ($$typeof === getReactSymbol("react.forward_ref", realm)) {
       return "forwarded ref";
     }
   }
@@ -775,6 +745,7 @@ export function convertConfigObjectToReactComponentTreeConfig(
   // defaults
   let firstRenderOnly = false;
   let isRoot = false;
+  let modelString;
 
   if (!(config instanceof UndefinedValue)) {
     for (let [key] of config.properties) {
@@ -782,12 +753,32 @@ export function convertConfigObjectToReactComponentTreeConfig(
       if (propValue instanceof StringValue || propValue instanceof NumberValue || propValue instanceof BooleanValue) {
         let value = propValue.value;
 
-        // boolean options
         if (typeof value === "boolean") {
+          // boolean options
           if (key === "firstRenderOnly") {
             firstRenderOnly = value;
           } else if (key === "isRoot") {
             isRoot = value;
+          }
+        } else if (typeof value === "string") {
+          try {
+            // result here is ignored as the main point here is to
+            // check and produce error
+            JSON.parse(value);
+          } catch (e) {
+            let componentModelError = new CompilerDiagnostic(
+              "Failed to parse model for component",
+              realm.currentLocation,
+              "PP1008",
+              "FatalError"
+            );
+            if (realm.handleError(componentModelError) !== "Recover") {
+              throw new FatalError();
+            }
+          }
+          // string options
+          if (key === "model") {
+            modelString = value;
           }
         }
       } else {
@@ -805,6 +796,7 @@ export function convertConfigObjectToReactComponentTreeConfig(
   return {
     firstRenderOnly,
     isRoot,
+    modelString,
   };
 }
 
@@ -820,12 +812,14 @@ export function getValueFromFunctionCall(
   let newCall = func.$Construct;
   let completion;
   try {
+    let value;
     if (isConstructor) {
       invariant(newCall);
-      completion = newCall(args, func);
+      value = newCall(args, func);
     } else {
-      completion = funcCall(funcThis, args);
+      value = funcCall(funcThis, args);
     }
+    completion = new SimpleNormalCompletion(value);
   } catch (error) {
     if (error instanceof AbruptCompletion) {
       completion = error;
@@ -833,31 +827,11 @@ export function getValueFromFunctionCall(
       throw error;
     }
   }
-  if (completion instanceof PossiblyNormalCompletion) {
-    // in this case one of the branches may complete abruptly, which means that
-    // not all control flow branches join into one flow at this point.
-    // Consequently we have to continue tracking changes until the point where
-    // all the branches come together into one.
-    completion = realm.composeWithSavedCompletion(completion);
-  }
-  // return or throw completion
-  if (completion instanceof AbruptCompletion) throw completion;
-  if (completion instanceof SimpleNormalCompletion) completion = completion.value;
-  invariant(completion instanceof Value);
-  return completion;
+  return realm.returnOrThrowCompletion(completion);
 }
 
 function isEventProp(name: string): boolean {
   return name.length > 2 && name[0].toLowerCase() === "o" && name[1].toLowerCase() === "n";
-}
-
-export function getLocationFromValue(expressionLocation: any): string {
-  // if we can't get a value, then it's likely that the source file was not given
-  // (this happens in React tests) so instead don't print any location
-  return expressionLocation
-    ? ` at location: ${expressionLocation.start.line}:${expressionLocation.start.column} ` +
-        `- ${expressionLocation.end.line}:${expressionLocation.end.line}`
-    : "";
 }
 
 export function createNoopFunction(realm: Realm): ECMAScriptSourceFunctionValue {
@@ -865,10 +839,7 @@ export function createNoopFunction(realm: Realm): ECMAScriptSourceFunctionValue 
     return realm.react.noopFunction;
   }
   let noOpFunc = new ECMAScriptSourceFunctionValue(realm);
-  let body = t.blockStatement([]);
-  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
-  noOpFunc.$FormalParameters = [];
-  noOpFunc.$ECMAScriptCode = body;
+  noOpFunc.initialize([], t.blockStatement([]));
   realm.react.noopFunction = noOpFunc;
   return noOpFunc;
 }
@@ -898,10 +869,7 @@ export function createDefaultPropsHelper(realm: Realm): ECMAScriptSourceFunction
 
   let escapeHelperAst = parseExpression(defaultPropsHelper, { plugins: ["flow"] });
   let helper = new ECMAScriptSourceFunctionValue(realm);
-  let body = escapeHelperAst.body;
-  ((body: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
-  helper.$ECMAScriptCode = body;
-  helper.$FormalParameters = escapeHelperAst.params;
+  helper.initialize(escapeHelperAst.params, escapeHelperAst.body);
   return helper;
 }
 
@@ -948,12 +916,12 @@ function applyClonedTemporalAlias(realm: Realm, props: ObjectValue, clonedProps:
     // be a better option.
     invariant(false, "TODO applyClonedTemporalAlias conditional");
   }
-  let temporalBuildNodeEntry = realm.getTemporalBuildNodeEntryFromDerivedValue(temporalAlias);
-  if (!(temporalBuildNodeEntry instanceof TemporalObjectAssignEntry)) {
+  let temporalOperationEntry = realm.getTemporalOperationEntryFromDerivedValue(temporalAlias);
+  if (!(temporalOperationEntry instanceof TemporalObjectAssignEntry)) {
     invariant(false, "TODO nont TemporalObjectAssignEntry");
   }
-  invariant(temporalBuildNodeEntry !== undefined);
-  let temporalArgs = temporalBuildNodeEntry.args;
+  invariant(temporalOperationEntry !== undefined);
+  let temporalArgs = temporalOperationEntry.args;
   // replace the original props with the cloned one
   let [to, ...sources] = temporalArgs.map(arg => (arg === props ? clonedProps : arg));
 
@@ -965,11 +933,14 @@ export function cloneProps(realm: Realm, props: ObjectValue, newChildren?: Value
   let clonedProps = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
 
   for (let [propName, binding] of props.properties) {
-    if (binding && binding.descriptor && binding.descriptor.enumerable) {
-      if (newChildren !== undefined && propName === "children") {
-        Properties.Set(realm, clonedProps, propName, newChildren, true);
-      } else {
-        Properties.Set(realm, clonedProps, propName, getProperty(realm, props, propName), true);
+    if (binding && binding.descriptor) {
+      invariant(binding.descriptor instanceof PropertyDescriptor);
+      if (binding.descriptor.enumerable) {
+        if (newChildren !== undefined && propName === "children") {
+          Properties.Set(realm, clonedProps, propName, newChildren, true);
+        } else {
+          Properties.Set(realm, clonedProps, propName, getProperty(realm, props, propName), true);
+        }
       }
     }
   }
@@ -1052,20 +1023,19 @@ export function hardModifyReactObjectPropertyBinding(
   if (binding === undefined) {
     binding = {
       object,
-      descriptor: {
+      descriptor: new PropertyDescriptor({
         configurable: true,
         enumerable: true,
         value: undefined,
         writable: true,
-      },
+      }),
       key: propName,
     };
   }
   let descriptor = binding.descriptor;
-  invariant(descriptor !== undefined);
-  let newDescriptor = Object.assign({}, descriptor, {
-    value,
-  });
+  invariant(descriptor instanceof PropertyDescriptor && IsDataDescriptor(realm, descriptor));
+  let newDescriptor = new PropertyDescriptor(descriptor);
+  newDescriptor.value = value;
   let newBinding = Object.assign({}, binding, {
     descriptor: newDescriptor,
   });

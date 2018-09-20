@@ -9,13 +9,13 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
+          "name": "Bar",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
           "message": "",
-          "name": "Bar",
+          "name": "Foo",
           "status": "INLINED",
         },
       ],
@@ -39,13 +39,13 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
+          "name": "Bar",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
           "message": "",
-          "name": "Bar",
+          "name": "Foo",
           "status": "INLINED",
         },
       ],
@@ -69,13 +69,13 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
+          "name": "Bar",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
           "message": "",
-          "name": "Bar",
+          "name": "Foo",
           "status": "INLINED",
         },
       ],
@@ -99,13 +99,13 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
+          "name": "Bar",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
           "message": "",
-          "name": "Bar",
+          "name": "Foo",
           "status": "INLINED",
         },
       ],
@@ -417,18 +417,6 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "Foo",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
           "name": "Bar",
           "status": "INLINED",
         },
@@ -436,6 +424,18 @@ ReactStatistics {
           "children": Array [],
           "message": "",
           "name": "Bar",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
           "status": "INLINED",
         },
       ],
@@ -459,18 +459,6 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "Foo",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
           "name": "Bar",
           "status": "INLINED",
         },
@@ -478,6 +466,18 @@ ReactStatistics {
           "children": Array [],
           "message": "",
           "name": "Bar",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
           "status": "INLINED",
         },
       ],
@@ -501,18 +501,6 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "Foo",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
           "name": "Bar",
           "status": "INLINED",
         },
@@ -520,6 +508,18 @@ ReactStatistics {
           "children": Array [],
           "message": "",
           "name": "Bar",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
           "status": "INLINED",
         },
       ],
@@ -543,18 +543,6 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "Foo",
-          "status": "INLINED",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
           "name": "Bar",
           "status": "INLINED",
         },
@@ -562,6 +550,18 @@ ReactStatistics {
           "children": Array [],
           "message": "",
           "name": "Bar",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
+          "status": "INLINED",
+        },
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Foo",
           "status": "INLINED",
         },
       ],
@@ -825,13 +825,13 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Bar",
+          "name": "Foo",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
+          "name": "Bar",
           "status": "INLINED",
         },
       ],
@@ -855,13 +855,13 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Bar",
+          "name": "Foo",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
+          "name": "Bar",
           "status": "INLINED",
         },
       ],
@@ -885,13 +885,13 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Bar",
+          "name": "Foo",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
+          "name": "Bar",
           "status": "INLINED",
         },
       ],
@@ -915,13 +915,13 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Bar",
+          "name": "Foo",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
+          "name": "Bar",
           "status": "INLINED",
         },
       ],
@@ -1065,13 +1065,13 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
+          "name": "Bar",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
           "message": "",
-          "name": "Bar",
+          "name": "Foo",
           "status": "INLINED",
         },
       ],
@@ -1095,13 +1095,13 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
+          "name": "Bar",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
           "message": "",
-          "name": "Bar",
+          "name": "Foo",
           "status": "INLINED",
         },
       ],
@@ -1125,13 +1125,13 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
+          "name": "Bar",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
           "message": "",
-          "name": "Bar",
+          "name": "Foo",
           "status": "INLINED",
         },
       ],
@@ -1155,13 +1155,13 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
+          "name": "Bar",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
           "message": "",
-          "name": "Bar",
+          "name": "Foo",
           "status": "INLINED",
         },
       ],
@@ -1185,13 +1185,13 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
+          "name": "Bar",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
           "message": "",
-          "name": "Bar",
+          "name": "Foo",
           "status": "INLINED",
         },
       ],
@@ -1215,13 +1215,13 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
+          "name": "Bar",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
           "message": "",
-          "name": "Bar",
+          "name": "Foo",
           "status": "INLINED",
         },
       ],
@@ -1245,13 +1245,13 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
+          "name": "Bar",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
           "message": "",
-          "name": "Bar",
+          "name": "Foo",
           "status": "INLINED",
         },
       ],
@@ -1275,13 +1275,13 @@ ReactStatistics {
         Object {
           "children": Array [],
           "message": "",
-          "name": "Foo",
+          "name": "Bar",
           "status": "INLINED",
         },
         Object {
           "children": Array [],
           "message": "",
-          "name": "Bar",
+          "name": "Foo",
           "status": "INLINED",
         },
       ],
@@ -1312,7 +1312,7 @@ ReactStatistics {
             },
           ],
           "message": "",
-          "name": "MessagePane",
+          "name": "SettingsPane",
           "status": "INLINED",
         },
         Object {
@@ -1325,7 +1325,7 @@ ReactStatistics {
             },
           ],
           "message": "",
-          "name": "SettingsPane",
+          "name": "MessagePane",
           "status": "INLINED",
         },
       ],
@@ -1356,7 +1356,7 @@ ReactStatistics {
             },
           ],
           "message": "",
-          "name": "MessagePane",
+          "name": "SettingsPane",
           "status": "INLINED",
         },
         Object {
@@ -1369,7 +1369,7 @@ ReactStatistics {
             },
           ],
           "message": "",
-          "name": "SettingsPane",
+          "name": "MessagePane",
           "status": "INLINED",
         },
       ],
@@ -1400,7 +1400,7 @@ ReactStatistics {
             },
           ],
           "message": "",
-          "name": "MessagePane",
+          "name": "SettingsPane",
           "status": "INLINED",
         },
         Object {
@@ -1413,7 +1413,7 @@ ReactStatistics {
             },
           ],
           "message": "",
-          "name": "SettingsPane",
+          "name": "MessagePane",
           "status": "INLINED",
         },
       ],
@@ -1444,7 +1444,7 @@ ReactStatistics {
             },
           ],
           "message": "",
-          "name": "MessagePane",
+          "name": "SettingsPane",
           "status": "INLINED",
         },
         Object {
@@ -1457,7 +1457,7 @@ ReactStatistics {
             },
           ],
           "message": "",
-          "name": "SettingsPane",
+          "name": "MessagePane",
           "status": "INLINED",
         },
       ],
@@ -1599,6 +1599,12 @@ ReactStatistics {
     Object {
       "children": Array [
         Object {
+          "children": Array [],
+          "message": "",
+          "name": "Stateful",
+          "status": "NEW_TREE",
+        },
+        Object {
           "children": Array [
             Object {
               "children": Array [],
@@ -1610,12 +1616,6 @@ ReactStatistics {
           "message": "",
           "name": "React.Fragment",
           "status": "NORMAL",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "Stateful",
-          "status": "NEW_TREE",
         },
       ],
       "message": "",
@@ -1636,6 +1636,12 @@ ReactStatistics {
     Object {
       "children": Array [
         Object {
+          "children": Array [],
+          "message": "",
+          "name": "Stateful",
+          "status": "NEW_TREE",
+        },
+        Object {
           "children": Array [
             Object {
               "children": Array [],
@@ -1647,12 +1653,6 @@ ReactStatistics {
           "message": "",
           "name": "React.Fragment",
           "status": "NORMAL",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "Stateful",
-          "status": "NEW_TREE",
         },
       ],
       "message": "",
@@ -1673,6 +1673,12 @@ ReactStatistics {
     Object {
       "children": Array [
         Object {
+          "children": Array [],
+          "message": "",
+          "name": "Stateful",
+          "status": "NEW_TREE",
+        },
+        Object {
           "children": Array [
             Object {
               "children": Array [],
@@ -1684,12 +1690,6 @@ ReactStatistics {
           "message": "",
           "name": "React.Fragment",
           "status": "NORMAL",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "Stateful",
-          "status": "NEW_TREE",
         },
       ],
       "message": "",
@@ -1710,6 +1710,12 @@ ReactStatistics {
     Object {
       "children": Array [
         Object {
+          "children": Array [],
+          "message": "",
+          "name": "Stateful",
+          "status": "NEW_TREE",
+        },
+        Object {
           "children": Array [
             Object {
               "children": Array [],
@@ -1721,12 +1727,6 @@ ReactStatistics {
           "message": "",
           "name": "React.Fragment",
           "status": "NORMAL",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "Stateful",
-          "status": "NEW_TREE",
         },
       ],
       "message": "",
@@ -2716,7 +2716,7 @@ ReactStatistics {
             },
           ],
           "message": "",
-          "name": "MessagePane",
+          "name": "SettingsPane",
           "status": "INLINED",
         },
         Object {
@@ -2729,7 +2729,7 @@ ReactStatistics {
             },
           ],
           "message": "",
-          "name": "SettingsPane",
+          "name": "MessagePane",
           "status": "INLINED",
         },
       ],
@@ -2760,7 +2760,7 @@ ReactStatistics {
             },
           ],
           "message": "",
-          "name": "MessagePane",
+          "name": "SettingsPane",
           "status": "INLINED",
         },
         Object {
@@ -2773,7 +2773,7 @@ ReactStatistics {
             },
           ],
           "message": "",
-          "name": "SettingsPane",
+          "name": "MessagePane",
           "status": "INLINED",
         },
       ],
@@ -2804,7 +2804,7 @@ ReactStatistics {
             },
           ],
           "message": "",
-          "name": "MessagePane",
+          "name": "SettingsPane",
           "status": "INLINED",
         },
         Object {
@@ -2817,7 +2817,7 @@ ReactStatistics {
             },
           ],
           "message": "",
-          "name": "SettingsPane",
+          "name": "MessagePane",
           "status": "INLINED",
         },
       ],
@@ -2848,7 +2848,7 @@ ReactStatistics {
             },
           ],
           "message": "",
-          "name": "MessagePane",
+          "name": "SettingsPane",
           "status": "INLINED",
         },
         Object {
@@ -2861,7 +2861,7 @@ ReactStatistics {
             },
           ],
           "message": "",
-          "name": "SettingsPane",
+          "name": "MessagePane",
           "status": "INLINED",
         },
       ],
@@ -2883,6 +2883,12 @@ ReactStatistics {
     Object {
       "children": Array [
         Object {
+          "children": Array [],
+          "message": "",
+          "name": "Stateful",
+          "status": "NEW_TREE",
+        },
+        Object {
           "children": Array [
             Object {
               "children": Array [],
@@ -2894,12 +2900,6 @@ ReactStatistics {
           "message": "",
           "name": "React.Fragment",
           "status": "NORMAL",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "Stateful",
-          "status": "NEW_TREE",
         },
       ],
       "message": "",
@@ -2920,6 +2920,12 @@ ReactStatistics {
     Object {
       "children": Array [
         Object {
+          "children": Array [],
+          "message": "",
+          "name": "Stateful",
+          "status": "NEW_TREE",
+        },
+        Object {
           "children": Array [
             Object {
               "children": Array [],
@@ -2931,12 +2937,6 @@ ReactStatistics {
           "message": "",
           "name": "React.Fragment",
           "status": "NORMAL",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "Stateful",
-          "status": "NEW_TREE",
         },
       ],
       "message": "",
@@ -2957,6 +2957,12 @@ ReactStatistics {
     Object {
       "children": Array [
         Object {
+          "children": Array [],
+          "message": "",
+          "name": "Stateful",
+          "status": "NEW_TREE",
+        },
+        Object {
           "children": Array [
             Object {
               "children": Array [],
@@ -2968,12 +2974,6 @@ ReactStatistics {
           "message": "",
           "name": "React.Fragment",
           "status": "NORMAL",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "Stateful",
-          "status": "NEW_TREE",
         },
       ],
       "message": "",
@@ -2994,6 +2994,12 @@ ReactStatistics {
     Object {
       "children": Array [
         Object {
+          "children": Array [],
+          "message": "",
+          "name": "Stateful",
+          "status": "NEW_TREE",
+        },
+        Object {
           "children": Array [
             Object {
               "children": Array [],
@@ -3005,12 +3011,6 @@ ReactStatistics {
           "message": "",
           "name": "React.Fragment",
           "status": "NORMAL",
-        },
-        Object {
-          "children": Array [],
-          "message": "",
-          "name": "Stateful",
-          "status": "NEW_TREE",
         },
       ],
       "message": "",

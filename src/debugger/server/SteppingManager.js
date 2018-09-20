@@ -39,7 +39,7 @@ export class SteppingManager {
   }
 
   _processStepIn(loc: BabelNodeSourceLocation): void {
-    invariant(loc && loc.source);
+    invariant(loc && loc.source !== null);
     if (!this._keepOldSteppers) {
       this._steppers = [];
     }
@@ -49,7 +49,7 @@ export class SteppingManager {
   }
 
   _processStepOver(loc: BabelNodeSourceLocation): void {
-    invariant(loc && loc.source);
+    invariant(loc && loc.source !== null);
     if (!this._keepOldSteppers) {
       this._steppers = [];
     }
@@ -59,7 +59,7 @@ export class SteppingManager {
   }
 
   _processStepOut(loc: BabelNodeSourceLocation): void {
-    invariant(loc && loc.source);
+    invariant(loc && loc.source !== null);
     if (!this._keepOldSteppers) {
       this._steppers = [];
     }

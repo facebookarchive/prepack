@@ -36,7 +36,7 @@ export default function(
   let baseValue = Environment.GetValue(realm, baseReference);
 
   let propertyNameValue;
-  if (ast.computed) {
+  if (ast.computed === true) {
     // 3. Let propertyNameReference be the result of evaluating Expression.
     let propertyNameReference = env.evaluate(ast.property, strictCode);
 

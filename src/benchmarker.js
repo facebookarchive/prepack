@@ -10,6 +10,7 @@
 /* @flow strict-local */
 
 import type { Compatibility } from "./options.js";
+import { SourceFileCollection } from "./types.js";
 import Serializer from "./serializer/index.js";
 import construct_realm from "./construct_realm.js";
 import initializeGlobals from "./globals.js";
@@ -161,8 +162,8 @@ function dump(
   let realm = construct_realm({ serialize: true, compatibility });
   initializeGlobals(realm);
   let serializer = new Serializer(realm);
-  let sources = [{ filePath: name, fileContents: raw }];
-  let serialized = serializer.init(sources);
+  let sourceFileCollection = new SourceFileCollection([{ filePath: name, fileContents: raw }]);
+  let serialized = serializer.init(sourceFileCollection);
   if (!serialized) {
     process.exit(1);
     invariant(false);
@@ -225,7 +226,7 @@ while (args.length) {
   }
 }
 
-if (!inputFilename) {
+if (inputFilename === undefined) {
   console.error("Missing input file.");
   process.exit(1);
 } else {

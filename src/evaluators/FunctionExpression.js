@@ -18,6 +18,7 @@ import { StringValue } from "../values/index.js";
 import IsStrict from "../utils/strict.js";
 import type { BabelNodeFunctionExpression } from "@babel/types";
 import invariant from "../invariant.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 export default function(
   ast: BabelNodeFunctionExpression,
@@ -28,7 +29,7 @@ export default function(
   // ECMA262 14.1.21
 
   if (ast.id) {
-    if (ast.generator) {
+    if (ast.generator === true) {
       // 1. If the function code for this GeneratorExpression is strict mode code, let strict be true. Otherwise let strict be false.
       let strict = strictCode || IsStrict(ast.body);
 
@@ -57,12 +58,17 @@ export default function(
       prototype.originalConstructor = closure;
 
       // 9. Perform DefinePropertyOrThrow(closure, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
-      Properties.DefinePropertyOrThrow(realm, closure, "prototype", {
-        value: prototype,
-        writable: true,
-        enumerable: false,
-        configurable: false,
-      });
+      Properties.DefinePropertyOrThrow(
+        realm,
+        closure,
+        "prototype",
+        new PropertyDescriptor({
+          value: prototype,
+          writable: true,
+          enumerable: false,
+          configurable: false,
+        })
+      );
 
       // 10. Perform SetFunctionName(closure, name).
       Functions.SetFunctionName(realm, closure, new StringValue(realm, name));
@@ -111,7 +117,7 @@ export default function(
       return closure;
     }
   } else {
-    if (ast.generator) {
+    if (ast.generator === true) {
       // 1. If the function code for this GeneratorExpression is strict mode code, let strict be true. Otherwise let strict be false.
       let strict = strictCode || IsStrict(ast.body);
 
@@ -126,12 +132,17 @@ export default function(
       prototype.originalConstructor = closure;
 
       // 5. Perform DefinePropertyOrThrow(closure, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false}).
-      Properties.DefinePropertyOrThrow(realm, closure, "prototype", {
-        value: prototype,
-        writable: true,
-        enumerable: false,
-        configurable: false,
-      });
+      Properties.DefinePropertyOrThrow(
+        realm,
+        closure,
+        "prototype",
+        new PropertyDescriptor({
+          value: prototype,
+          writable: true,
+          enumerable: false,
+          configurable: false,
+        })
+      );
 
       // 6. Return closure.
       return closure;

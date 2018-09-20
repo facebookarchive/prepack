@@ -34,7 +34,6 @@ import {
 } from "../values/index.js";
 import * as t from "@babel/types";
 import invariant from "../invariant.js";
-import type { FunctionBodyAstNode } from "../types.js";
 import { CompilerDiagnostic } from "../errors.js";
 import { EnumerableOwnProperties, Get } from "../methods/index.js";
 import { Create } from "../singletons.js";
@@ -46,9 +45,7 @@ function reportCompileError(realm: Realm, message: string, loc: ?BabelNodeSource
 
 function createEmptyFunction(realm: Realm) {
   const concreteFunction = new ECMAScriptSourceFunctionValue(realm);
-  concreteFunction.$ECMAScriptCode = t.blockStatement([]);
-  concreteFunction.$FormalParameters = [];
-  ((concreteFunction.$ECMAScriptCode: any): FunctionBodyAstNode).uniqueOrderedTag = realm.functionBodyUniqueTagSeed++;
+  concreteFunction.initialize([], t.blockStatement([]));
   return concreteFunction;
 }
 
@@ -61,7 +58,7 @@ export function concretize(realm: Realm, val: Value): ConcreteValue {
   }
   invariant(val instanceof AbstractValue);
   if (val.kind === "abstractConcreteUnion") {
-    invariant(val.args.length > 0);
+    invariant(val.args.length >= 2);
     return concretize(realm, val.args[0]);
   }
   const type = val.types.getType();
@@ -108,23 +105,12 @@ export function concretize(realm: Realm, val: Value): ConcreteValue {
       return new ObjectValue(realm);
     } else {
       let template = val.getTemplate();
-      let valIsPartial = false;
-      if (val.isPartialObject()) {
-        valIsPartial = true;
-        val.makeNotPartial();
-      }
       let concreteObj = Create.ObjectCreate(realm, template.$GetPrototypeOf());
-      try {
-        let keys = EnumerableOwnProperties(realm, template, "key");
-        for (let P of keys) {
-          invariant(P instanceof StringValue);
-          let newElement = Get(realm, template, P);
-          Create.CreateDataProperty(realm, concreteObj, P, concretize(realm, newElement));
-        }
-      } finally {
-        if (valIsPartial) {
-          val.makePartial();
-        }
+      let keys = EnumerableOwnProperties(realm, template, "key", true);
+      for (let P of keys) {
+        invariant(P instanceof StringValue);
+        let newElement = Get(realm, template, P);
+        Create.CreateDataProperty(realm, concreteObj, P, concretize(realm, newElement));
       }
       return concreteObj;
     }

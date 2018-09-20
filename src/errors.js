@@ -22,18 +22,27 @@ export type ErrorCode = "PP0001";
 // This is the error format used to report errors to the caller-supplied
 // error-handler
 export class CompilerDiagnostic extends Error {
-  constructor(message: string, location: ?BabelNodeSourceLocation, errorCode: string, severity: Severity) {
+  constructor(
+    message: string,
+    location: ?BabelNodeSourceLocation,
+    errorCode: string,
+    severity: Severity,
+    sourceFilePaths?: { sourceMaps: Array<string>, sourceFiles: Array<{ absolute: string, relative: string }> }
+  ) {
     super(message);
 
     this.location = location;
     this.severity = severity;
     this.errorCode = errorCode;
+    this.sourceFilePaths = sourceFilePaths;
   }
 
   callStack: void | string;
   location: ?BabelNodeSourceLocation;
   severity: Severity;
   errorCode: string;
+  // For repro bundles, we need to pass the names of all sourcefiles/sourcemaps touched by Prepack back to the CLI.
+  sourceFilePaths: void | { sourceMaps: Array<string>, sourceFiles: Array<{ absolute: string, relative: string }> };
 }
 
 // This error is thrown to exit Prepack when an ErrorHandler returns 'FatalError'
@@ -61,3 +70,10 @@ export class InvariantError extends Error {
 }
 
 export type ErrorHandler = (error: CompilerDiagnostic, suppressDiagnostics: boolean) => ErrorHandlerResult;
+
+// When a side-effect occurs when evaluating a pure nested optimized function, we stop execution of that function
+// and catch the error to properly handle the according logic (either bail-out or report the error).
+// Ideally this should extend FatalError, but that will mean re-working every call-site that catches FatalError
+// and make it treat NestedOptimizedFunctionSideEffect errors differently, which isn't ideal so maybe a better
+// FatalError catching/handling process is needed throughout the codebase at some point.
+export class NestedOptimizedFunctionSideEffect extends Error {}

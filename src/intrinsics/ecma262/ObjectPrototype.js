@@ -23,10 +23,10 @@ import { HasOwnProperty, HasSomeCompatibleType } from "../../methods/has.js";
 import { Invoke } from "../../methods/call.js";
 import { Properties, To } from "../../singletons.js";
 import { FatalError } from "../../errors.js";
-import type { BabelNodeExpression } from "@babel/types";
-import * as t from "@babel/types";
 import invariant from "../../invariant.js";
 import { TypesDomain, ValuesDomain } from "../../domains/index.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
+import { PropertyDescriptor } from "../../descriptors.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 19.1.3.2
@@ -45,7 +45,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (realm.isInPureScope() && x instanceof FatalError) {
         // If we're in pure scope we can try to recover from any fatals by
         // leaving the call in place which we do by default, but we don't
-        // have to havoc the state of any arguments since this function is pure.
+        // have to leak the state of any arguments since this function is pure.
         // This also lets us define the return type properly.
         const key = typeof P === "string" ? new StringValue(realm, P) : P;
         return realm.evaluateWithPossibleThrowCompletion(
@@ -54,9 +54,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
               realm,
               BooleanValue,
               [ObjectPrototypeHasOwnPrototype, context, key],
-              ([methodNode, objectNode, nameNode]: Array<BabelNodeExpression>) => {
-                return t.callExpression(t.memberExpression(methodNode, t.identifier("call")), [objectNode, nameNode]);
-              }
+              createOperationDescriptor("OBJECT_PROTO_HAS_OWN_PROPERTY")
             ),
           TypesDomain.topVal,
           ValuesDomain.topVal
@@ -103,7 +101,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
     // 4. If desc is undefined, return false.
     if (!desc) return realm.intrinsics.false;
-    Properties.ThrowIfMightHaveBeenDeleted(desc.value);
+    Properties.ThrowIfMightHaveBeenDeleted(desc);
+    desc = desc.throwIfNotConcrete(realm);
 
     // 5. Return the value of desc.[[Enumerable]].
     return desc.enumerable === undefined ? realm.intrinsics.undefined : new BooleanValue(realm, desc.enumerable);
@@ -127,38 +126,41 @@ export default function(realm: Realm, obj: ObjectValue): void {
     return To.ToObject(realm, context);
   });
 
-  obj.$DefineOwnProperty("__proto__", {
-    // B.2.2.1.1
-    get: new NativeFunctionValue(realm, undefined, "get __proto__", 0, context => {
-      // 1. Let O be ? ToObject(this value).
-      let O = To.ToObject(realm, context);
+  obj.$DefineOwnProperty(
+    "__proto__",
+    new PropertyDescriptor({
+      // B.2.2.1.1
+      get: new NativeFunctionValue(realm, undefined, "get __proto__", 0, context => {
+        // 1. Let O be ? ToObject(this value).
+        let O = To.ToObject(realm, context);
 
-      // 2. Return ? O.[[GetPrototypeOf]]().
-      return O.$GetPrototypeOf();
-    }),
+        // 2. Return ? O.[[GetPrototypeOf]]().
+        return O.$GetPrototypeOf();
+      }),
 
-    // B.2.2.1.2
-    set: new NativeFunctionValue(realm, undefined, "set __proto__", 1, (context, [proto]) => {
-      // 1. Let O be ? RequireObjectCoercible(this value).
-      let O = RequireObjectCoercible(realm, context);
+      // B.2.2.1.2
+      set: new NativeFunctionValue(realm, undefined, "set __proto__", 1, (context, [proto]) => {
+        // 1. Let O be ? RequireObjectCoercible(this value).
+        let O = RequireObjectCoercible(realm, context);
 
-      // 2. If Type(proto) is neither Object nor Null, return undefined.
-      if (!HasSomeCompatibleType(proto, ObjectValue, NullValue)) return realm.intrinsics.undefined;
+        // 2. If Type(proto) is neither Object nor Null, return undefined.
+        if (!HasSomeCompatibleType(proto, ObjectValue, NullValue)) return realm.intrinsics.undefined;
 
-      // 3. If Type(O) is not Object, return undefined.
-      if (!O.mightBeObject()) return realm.intrinsics.undefined;
-      O = O.throwIfNotConcreteObject();
+        // 3. If Type(O) is not Object, return undefined.
+        if (!O.mightBeObject()) return realm.intrinsics.undefined;
+        O = O.throwIfNotConcreteObject();
 
-      // 4. Let status be ? O.[[SetPrototypeOf]](proto).
-      let status = O.$SetPrototypeOf(((proto.throwIfNotConcrete(): any): ObjectValue | NullValue));
+        // 4. Let status be ? O.[[SetPrototypeOf]](proto).
+        let status = O.$SetPrototypeOf(((proto.throwIfNotConcrete(): any): ObjectValue | NullValue));
 
-      // 5. If status is false, throw a TypeError exception.
-      if (!status) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "couldn't set proto");
-      }
+        // 5. If status is false, throw a TypeError exception.
+        if (!status) {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "couldn't set proto");
+        }
 
-      // 6. Return undefined.
-      return realm.intrinsics.undefined;
-    }),
-  });
+        // 6. Return undefined.
+        return realm.intrinsics.undefined;
+      }),
+    })
+  );
 }

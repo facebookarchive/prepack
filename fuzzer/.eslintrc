@@ -1,0 +1,8 @@
+{
+  "env": {
+    "node": true
+  },
+  "rules": {
+    "flow-header/flow-header": "off"
+  }
+}

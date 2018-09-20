@@ -11,11 +11,19 @@
 
 import type { Realm } from "../../realm.js";
 import type { LexicalEnvironment } from "../../environment.js";
-import { ObjectValue, FunctionValue, NativeFunctionValue, StringValue } from "../../values/index.js";
+import {
+  AbstractValue,
+  ObjectValue,
+  FunctionValue,
+  NativeFunctionValue,
+  StringValue,
+  Value,
+} from "../../values/index.js";
 import { Get } from "../../methods/index.js";
 import { Create, Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
 import type { BabelNodeSourceLocation } from "@babel/types";
+import { PropertyDescriptor } from "../../descriptors.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   return build("Error", realm, false);
@@ -57,7 +65,7 @@ export function describeLocation(
   if (!locString) {
     if (loc) {
       locString = `${loc.start.line}:${loc.start.column + 1}`;
-      if (loc.source) locString = `${loc.source}:${locString}`;
+      if (loc.source !== null) locString = `${loc.source}:${locString}`;
     } else {
       locString = (loc ? loc.source : undefined) || "unknown";
       if (!displayName) return undefined;
@@ -76,23 +84,22 @@ export function describeLocation(
   return location;
 }
 
-function buildStack(realm: Realm, context: ObjectValue) {
+const buildStackTemplateSrc = 'A + (B ? ": " + B : "") + C';
+
+function buildStack(realm: Realm, context: ObjectValue): Value {
   invariant(context.$ErrorData);
 
   let stack = context.$ErrorData.contextStack;
   if (!stack) return realm.intrinsics.undefined;
 
   let lines = [];
-  let header = "";
+  let header = To.ToStringPartial(realm, Get(realm, context, "name"));
 
-  header += To.ToStringPartial(realm, Get(realm, context, "name"));
-
-  let msg = Get(realm, context, "message");
-  if (!msg.mightBeUndefined()) {
-    msg = To.ToStringPartial(realm, msg);
-    if (msg) header += `: ${msg}`;
+  let message = Get(realm, context, "message");
+  if (!message.mightBeUndefined()) {
+    message = To.ToStringValue(realm, message);
   } else {
-    msg.throwIfNotConcrete();
+    message.throwIfNotConcrete();
   }
 
   for (let executionContext of stack.reverse()) {
@@ -106,8 +113,15 @@ function buildStack(realm: Realm, context: ObjectValue) {
     );
     if (locString !== undefined) lines.push(locString);
   }
+  let footer = `\n    ${lines.join("\n    ")}`;
 
-  return new StringValue(realm, `${header}\n    ${lines.join("\n    ")}`);
+  return message instanceof StringValue
+    ? new StringValue(realm, `${header}${message.value ? `: ${message.value}` : ""}${footer}`)
+    : AbstractValue.createFromTemplate(realm, buildStackTemplateSrc, StringValue, [
+        new StringValue(realm, header),
+        message,
+        new StringValue(realm, footer),
+      ]);
 }
 
 export function build(name: string, realm: Realm, inheritError?: boolean = true): NativeFunctionValue {
@@ -122,33 +136,33 @@ export function build(name: string, realm: Realm, inheritError?: boolean = true)
       locationData: undefined,
     };
 
-    // Build a text description of the stack.
-    let stackDesc = {
-      value: buildStack(realm, O),
-      enumerable: false,
-      configurable: true,
-      writable: true,
-    };
-    Properties.DefinePropertyOrThrow(realm, O, "stack", stackDesc);
-
     // 3. If message is not undefined, then
     if (!message.mightBeUndefined()) {
       // a. Let msg be ? ToString(message).
       let msg = message.getType() === StringValue ? message : To.ToStringValue(realm, message);
 
       // b. Let msgDesc be the PropertyDescriptor{[[Value]]: msg, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}.
-      let msgDesc = {
+      let msgDesc = new PropertyDescriptor({
         value: msg,
         writable: true,
         enumerable: false,
         configurable: true,
-      };
+      });
 
       // c. Perform ! DefinePropertyOrThrow(O, "message", msgDesc).
       Properties.DefinePropertyOrThrow(realm, O, "message", msgDesc);
     } else {
       message.throwIfNotConcrete();
     }
+
+    // Build a text description of the stack.
+    let stackDesc = new PropertyDescriptor({
+      value: buildStack(realm, O),
+      enumerable: false,
+      configurable: true,
+      writable: true,
+    });
+    Properties.DefinePropertyOrThrow(realm, O, "stack", stackDesc);
 
     // 4. Return O.
     return O;
