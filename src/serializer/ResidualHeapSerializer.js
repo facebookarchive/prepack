@@ -441,7 +441,7 @@ export class ResidualHeapSerializer {
     let prototype = HeapInspector.getPropertyValue(func, "prototype");
     if (prototype instanceof ObjectValue && this.residualValues.has(prototype)) {
       this.emitter.emitNowOrAfterWaitingForDependencies(
-        [func],
+        [prototype],
         () => {
           invariant(prototype instanceof Value);
           this.serializeValue(prototype);
