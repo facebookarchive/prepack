@@ -1,5 +1,11 @@
 self.importScripts('prepack.min.js');
 
+function onlyWarnings(buffer) {
+  return buffer.every(function(error) {
+    return error.severity === "Warning" || error.severity === "Information";
+  });
+}
+
 onmessage = function(e) {
   let buffer = [];
 
@@ -33,9 +39,11 @@ onmessage = function(e) {
         options[property] = e.data.options[property];
       }
     }
+
     let result = Prepack.prepackSources(sources, options);
-    if (result && !buffer.length) {
-      postMessage({ type: 'success', data: result.code, graph: result.heapGraph });
+    let noErrors = onlyWarnings(buffer);
+    if (result && noErrors) {
+      postMessage({ type: 'success', data: result.code, graph: result.heapGraph, messages: buffer });
     } else {
       // A well-defined error occurred.
       postMessage({ type: 'error', data: buffer });
