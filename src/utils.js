@@ -197,5 +197,15 @@ export function createModelledFunctionCall(
     thisValue !== undefined
       ? thisValue
       : AbstractValue.createAbstractArgument(realm, "this", funcValue.expressionLocation, ObjectValue);
-  return () => call(thisArg, args);
+  return () => {
+    let savedPathConditions = realm.pathConditions;
+    let newPathConditions = funcValue.pathConditionDuringDeclaration || savedPathConditions;
+    realm.pathConditions = newPathConditions;
+    try {
+      let result = call(thisArg, args);
+      return result;
+    } finally {
+      realm.pathConditions = savedPathConditions;
+    }
+  };
 }

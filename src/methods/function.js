@@ -1277,7 +1277,12 @@ export class FunctionImplementation {
     }
 
     // 5. Return FunctionInitialize(F, kind, ParameterList, Body, Scope).
-    return this.FunctionInitialize(realm, F, kind, ParameterList, Body, Scope);
+    let result = this.FunctionInitialize(realm, F, kind, ParameterList, Body, Scope);
+    invariant(F.pathConditionDuringDeclaration === undefined, "Function should only have one declaration site");
+    // Create a new path condition to make the saved condition readonly
+    F.pathConditionDuringDeclaration = realm.pathConditions.isEmpty() ? undefined : realm.pathConditions;
+    if (F.pathConditionDuringDeclaration) invariant(F.pathConditionDuringDeclaration.isReadOnly());
+    return result;
   }
 
   // ECMA262 18.2.1.2
