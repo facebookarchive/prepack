@@ -65,7 +65,7 @@ import {
 import { createPathConditions, Environment, To } from "../singletons.js";
 import { isReactElement, isReactPropsObject, valueIsReactLibraryObject } from "../react/utils.js";
 import { ResidualReactElementVisitor } from "./ResidualReactElementVisitor.js";
-import { GeneratorDAG } from "./GeneratorDAG.js";
+import { GeneratorTree } from "./GeneratorTree.js";
 import { PropertyDescriptor, AbstractJoinedDescriptor } from "../descriptors.js";
 
 type BindingState = {|
@@ -113,7 +113,7 @@ export class ResidualHeapVisitor {
     this.globalEnvironmentRecord = environment;
     this.additionalGeneratorRoots = new Map();
     this.residualReactElementVisitor = new ResidualReactElementVisitor(this.realm, this);
-    this.generatorDAG = new GeneratorDAG();
+    this.generatorTree = new GeneratorTree();
   }
 
   realm: Realm;
@@ -142,7 +142,7 @@ export class ResidualHeapVisitor {
   classMethodInstances: Map<FunctionValue, ClassMethodInstance>;
   // Parents will always be a generator, optimized function value or "GLOBAL"
   additionalGeneratorRoots: Map<Generator, Set<ObjectValue>>;
-  generatorDAG: GeneratorDAG;
+  generatorTree: GeneratorTree;
   globalEnvironmentRecord: GlobalEnvironmentRecord;
   residualReactElementVisitor: ResidualReactElementVisitor;
 
@@ -151,13 +151,13 @@ export class ResidualHeapVisitor {
   _getCommonScope(): FunctionValue | Generator {
     let s = this.scope;
     while (true) {
-      if (s instanceof Generator) s = this.generatorDAG.getParent(s);
+      if (s instanceof Generator) s = this.generatorTree.getParent(s);
       else if (s instanceof FunctionValue) {
         // Did we find an additional function?
         if (this.additionalFunctionValuesAndEffects.has(s)) return s;
 
         // Did the function itself get created by a generator we can chase?
-        s = this.generatorDAG.getCreator(s) || "GLOBAL";
+        s = this.generatorTree.getCreator(s) || "GLOBAL";
       } else {
         invariant(s === "GLOBAL");
         let generator = this.globalGenerator;
@@ -179,7 +179,7 @@ export class ResidualHeapVisitor {
   // created --- this causes the value later to be serialized in its
   // creation scope, ensuring that the value has the right creation / life time.
   _registerAdditionalRoot(value: ObjectValue): void {
-    let creationGenerator = this.generatorDAG.getCreator(value) || this.globalGenerator;
+    let creationGenerator = this.generatorTree.getCreator(value) || this.globalGenerator;
 
     let additionalFunction = this._getAdditionalFunctionOfScope() || "GLOBAL";
     let targetAdditionalFunction;
@@ -188,7 +188,7 @@ export class ResidualHeapVisitor {
     } else {
       let s = creationGenerator;
       while (s instanceof Generator) {
-        s = this.generatorDAG.getParent(s);
+        s = this.generatorTree.getParent(s);
         invariant(s !== undefined);
       }
       invariant(s === "GLOBAL" || s instanceof FunctionValue);
@@ -206,7 +206,7 @@ export class ResidualHeapVisitor {
       additionalFVEffects.additionalRoots.add(value);
 
       this._visitInUnrelatedScope(creationGenerator, value);
-      usageScope = this.generatorDAG.getCreator(value) || this.globalGenerator;
+      usageScope = this.generatorTree.getCreator(value) || this.globalGenerator;
     }
 
     usageScope = this.scope;
@@ -215,7 +215,7 @@ export class ResidualHeapVisitor {
       // applying effects; if so, store additional information that the serializer
       // can use to proactive serialize such objects from within the right generator
       let anyRelevantEffects = false;
-      for (let g = usageScope; g instanceof Generator; g = this.generatorDAG.getParent(g)) {
+      for (let g = usageScope; g instanceof Generator; g = this.generatorTree.getParent(g)) {
         if (g === creationGenerator) {
           if (anyRelevantEffects) {
             let s = this.additionalGeneratorRoots.get(g);
@@ -1098,7 +1098,7 @@ export class ResidualHeapVisitor {
       if (this.preProcessValue(val)) this.visitValueProxy(val);
       this.postProcessValue(val);
     } else if (val instanceof FunctionValue) {
-      let creationGenerator = this.generatorDAG.getCreator(val) || this.globalGenerator;
+      let creationGenerator = this.generatorTree.getCreator(val) || this.globalGenerator;
 
       // 1. Visit function in its creation scope
       this._enqueueWithUnrelatedScope(creationGenerator, () => {
@@ -1132,7 +1132,7 @@ export class ResidualHeapVisitor {
     let callbacks = {
       visitEquivalentValue: this.visitEquivalentValue.bind(this),
       visitGenerator: (generator, parent) => {
-        invariant(this.generatorDAG.isParent(parent, generator));
+        invariant(this.generatorTree.getParent(generator) === parent);
         this.visitGenerator(generator, additionalFunctionInfo);
       },
       canOmit: (value: Value): boolean => {
@@ -1282,7 +1282,7 @@ export class ResidualHeapVisitor {
       this.additionalFunctionValueInfos.set(functionValue, additionalFunctionInfo);
 
       let effectsGenerator = additionalEffects.generator;
-      this.generatorDAG.add(functionValue, effectsGenerator);
+      this.generatorTree.add(functionValue, effectsGenerator);
       this.visitGenerator(effectsGenerator, additionalFunctionInfo);
     };
 
@@ -1294,7 +1294,7 @@ export class ResidualHeapVisitor {
   }
 
   visitRoots(): void {
-    this.generatorDAG.add("GLOBAL", this.globalGenerator);
+    this.generatorTree.add("GLOBAL", this.globalGenerator);
     this.visitGenerator(this.globalGenerator);
     for (let moduleValue of this.modules.initializedModules.values()) this.visitValue(moduleValue);
 
@@ -1316,7 +1316,7 @@ export class ResidualHeapVisitor {
       let expected = 0;
       for (let { scope, action } of this.delayedActions) {
         let generator;
-        if (scope instanceof FunctionValue) generator = this.generatorDAG.getCreator(scope) || this.globalGenerator;
+        if (scope instanceof FunctionValue) generator = this.generatorTree.getCreator(scope) || this.globalGenerator;
         else if (scope === "GLOBAL") generator = this.globalGenerator;
         else {
           invariant(scope instanceof Generator);
@@ -1370,10 +1370,10 @@ export class ResidualHeapVisitor {
               info.nestedEffectsRunners.push(runGeneratorAction);
               runGeneratorAction = undefined;
             }
-            s = this.generatorDAG.getParent(s);
+            s = this.generatorTree.getParent(s);
           } else if (s instanceof FunctionValue) {
             invariant(this.additionalFunctionValuesAndEffects.has(s));
-            s = this.generatorDAG.getCreator(s) || "GLOBAL";
+            s = this.generatorTree.getCreator(s) || "GLOBAL";
           }
           invariant(s instanceof Generator || s instanceof FunctionValue || s === "GLOBAL");
         }

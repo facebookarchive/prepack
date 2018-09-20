@@ -13,14 +13,13 @@ import invariant from "../invariant.js";
 import { FunctionValue, ObjectValue } from "../values/index.js";
 import { Generator } from "../utils/generator.js";
 
-// This class maintains a DAG containing all generators known so far,
+// This class maintains a tree containing all generators known so far,
 // and information about the most specific generator that created any
 // particular object.
-// New sub-DAGs are added in chunks, at the beginning for the global generator,
+// New sub-trees are added in chunks, at the beginning for the global generator,
 // and every time the visitor handles another additional function.
-// NOTE: The serializer can only properly handle Generator trees, not actual DAGs.
-export class GeneratorDAG {
-  parents: Map<Generator, Array<Generator | FunctionValue | "GLOBAL">>;
+export class GeneratorTree {
+  parents: Map<Generator, Generator | FunctionValue | "GLOBAL">;
   createdObjects: Map<ObjectValue, Generator>;
 
   constructor() {
@@ -28,16 +27,10 @@ export class GeneratorDAG {
     this.createdObjects = new Map();
   }
 
-  // DAG TODO: This function is dubious in the presence of actual dags.
   getParent(generator: Generator): Generator | FunctionValue | "GLOBAL" {
-    let a = this.parents.get(generator);
-    invariant(a !== undefined && a.length >= 1);
-    return a[0];
-  }
-
-  isParent(parent: Generator | FunctionValue | "GLOBAL", generator: Generator): boolean {
-    let a = this.parents.get(generator);
-    return a !== undefined && a.includes(parent);
+    let parent = this.parents.get(generator);
+    invariant(parent !== undefined);
+    return parent;
   }
 
   getCreator(value: ObjectValue): Generator | void {
@@ -49,9 +42,8 @@ export class GeneratorDAG {
   }
 
   _add(parent: Generator | FunctionValue | "GLOBAL", generator: Generator): void {
-    let a = this.parents.get(generator);
-    if (a === undefined) this.parents.set(generator, (a = []));
-    if (!a.includes(parent)) a.push(parent);
+    invariant(!this.parents.has(generator));
+    this.parents.set(generator, parent);
     let effects = generator.effectsToApply;
     if (effects !== undefined) {
       invariant(parent instanceof FunctionValue);
