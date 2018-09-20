@@ -141,11 +141,13 @@ function createMarkupForProperty(
     if (type === BOOLEAN || (type === OVERLOADED_BOOLEAN && value === true)) {
       return attributeName + '=""';
     } else if (value instanceof StringValue || value instanceof NumberValue || value instanceof BooleanValue) {
+      // $FlowFixMe: Flow complains about booleans being converted to strings, which is the intention
       return attributeName + "=" + quoteAttributeValueForBrowser(value.value + "");
     } else if (value instanceof AbstractValue) {
       return ([attributeName + "=", renderValueWithHelper(realm, value, htmlEscapeHelper)]: Array<ReactNode>);
     }
   } else if (value instanceof StringValue || value instanceof NumberValue || value instanceof BooleanValue) {
+    // $FlowFixMe: Flow complains about booleans being converted to strings, which is the intention
     return name + "=" + quoteAttributeValueForBrowser(value.value + "");
   } else if (value instanceof AbstractValue) {
     return ([name + '="', renderValueWithHelper(realm, value, htmlEscapeHelper), '"']: Array<ReactNode>);
