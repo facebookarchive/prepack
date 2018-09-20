@@ -12,7 +12,7 @@
 import { FunctionValue } from "../values/index.js";
 import type { AdditionalFunctionEffects } from "./types";
 import invariant from "../invariant.js";
-import { GeneratorDAG } from "./GeneratorDAG";
+import { GeneratorTree } from "./GeneratorTree";
 import type { Scope } from "./types.js";
 import { FunctionEnvironmentRecord } from "../environment";
 import type { Value } from "../values/index";
@@ -20,16 +20,16 @@ import { Generator } from "../utils/generator";
 
 export class ResidualOptimizedFunctions {
   constructor(
-    generatorDAG: GeneratorDAG,
+    generatorTree: GeneratorTree,
     optimizedFunctionsAndEffects: Map<FunctionValue, AdditionalFunctionEffects>,
     residualValues: Map<Value, Set<Scope>>
   ) {
-    this._generatorDAG = generatorDAG;
+    this._generatorTree = generatorTree;
     this._optimizedFunctionsAndEffects = optimizedFunctionsAndEffects;
     this._residualValues = residualValues;
   }
 
-  _generatorDAG: GeneratorDAG;
+  _generatorTree: GeneratorTree;
   _optimizedFunctionsAndEffects: Map<FunctionValue, AdditionalFunctionEffects>;
   _residualValues: Map<Value, Set<Scope>>;
 
@@ -80,7 +80,7 @@ export class ResidualOptimizedFunctions {
     for (let scope of scopes) {
       let s = scope;
       while (s instanceof Generator) {
-        s = this._generatorDAG.getParent(s);
+        s = this._generatorTree.getParent(s);
       }
       if (s === "GLOBAL") return undefined;
       invariant(s instanceof FunctionValue);
