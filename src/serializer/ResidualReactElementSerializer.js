@@ -23,6 +23,7 @@ import { traverseReactElement } from "../react/elements.js";
 import { canExcludeReactElementObjectProperty, getReactSymbol, getProperty } from "../react/utils.js";
 import type { ReactOutputTypes } from "../options.js";
 import type { LazilyHoistedNodes } from "./types.js";
+import type { ResidualOptimizedFunctions } from "./ResidualOptimizedFunctions";
 
 type ReactElementAttributeType = "SPREAD" | "PROPERTY" | "PENDING";
 type ReactElementChildType = "NORMAL" | "PENDING";
@@ -47,12 +48,17 @@ type ReactElement = {
 };
 
 export class ResidualReactElementSerializer {
-  constructor(realm: Realm, residualHeapSerializer: ResidualHeapSerializer) {
+  constructor(
+    realm: Realm,
+    residualHeapSerializer: ResidualHeapSerializer,
+    residualOptimizedFunctions: ResidualOptimizedFunctions
+  ) {
     this.realm = realm;
     this.residualHeapSerializer = residualHeapSerializer;
     this.logger = residualHeapSerializer.logger;
     this.reactOutput = realm.react.output || "create-element";
     this._lazilyHoistedNodes = new Map();
+    this._residualOptimizedFunctions = residualOptimizedFunctions;
   }
 
   realm: Realm;
@@ -60,6 +66,7 @@ export class ResidualReactElementSerializer {
   reactOutput: ReactOutputTypes;
   residualHeapSerializer: ResidualHeapSerializer;
   _lazilyHoistedNodes: Map<FunctionValue, LazilyHoistedNodes>;
+  _residualOptimizedFunctions: ResidualOptimizedFunctions;
 
   _createReactElement(value: ObjectValue): ReactElement {
     return { attributes: [], children: [], declared: false, type: undefined, value };
@@ -82,7 +89,7 @@ export class ResidualReactElementSerializer {
   ): void {
     // if the currentHoistedReactElements is not defined, we create it an emit the function call
     // this should only occur once per additional function
-    const optimizedFunction = this.residualHeapSerializer.tryGetOptimizedFunctionRoot(reactElement);
+    const optimizedFunction = this._residualOptimizedFunctions.tryGetOptimizedFunctionRoot(reactElement);
     invariant(optimizedFunction);
     let lazilyHoistedNodes = this._lazilyHoistedNodes.get(optimizedFunction);
     if (lazilyHoistedNodes === undefined) {
@@ -130,7 +137,7 @@ export class ResidualReactElementSerializer {
     let propsValue = getProperty(this.realm, value, "props");
 
     let shouldHoist =
-      this.residualHeapSerializer.tryGetOptimizedFunctionRoot(value) !== undefined &&
+      this._residualOptimizedFunctions.tryGetOptimizedFunctionRoot(value) !== undefined &&
       canHoistReactElement(this.realm, value);
 
     let id = this.residualHeapSerializer.getSerializeObjectIdentifier(value);
@@ -156,7 +163,7 @@ export class ResidualReactElementSerializer {
           originalCreateElementIdentifier = this.residualHeapSerializer.serializeValue(createElement);
 
           if (shouldHoist) {
-            const optimizedFunction = this.residualHeapSerializer.tryGetOptimizedFunctionRoot(value);
+            const optimizedFunction = this._residualOptimizedFunctions.tryGetOptimizedFunctionRoot(value);
             invariant(optimizedFunction);
             const lazilyHoistedNodes = this._lazilyHoistedNodes.get(optimizedFunction);
             // if we haven't created a lazilyHoistedNodes before, then this is the first time

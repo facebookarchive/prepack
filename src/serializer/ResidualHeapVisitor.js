@@ -54,7 +54,6 @@ import { ClosureRefVisitor } from "./visitors.js";
 import { Logger } from "../utils/logger.js";
 import { Modules } from "../utils/modules.js";
 import { HeapInspector } from "../utils/HeapInspector.js";
-import { Referentializer } from "./Referentializer.js";
 import {
   canIgnoreClassLengthProperty,
   ClassPropertiesToIgnore,
@@ -85,15 +84,12 @@ export class ResidualHeapVisitor {
     realm: Realm,
     logger: Logger,
     modules: Modules,
-    additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>,
-    // Referentializer is null if we're just checking what values exist
-    referentializer: Referentializer | "NO_REFERENTIALIZE"
+    additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>
   ) {
     invariant(realm.useAbstractInterpretation);
     this.realm = realm;
     this.logger = logger;
     this.modules = modules;
-    this.referentializer = referentializer === "NO_REFERENTIALIZE" ? undefined : referentializer;
 
     this.declarativeEnvironmentRecordsBindings = new Map();
     this.globalBindings = new Map();
@@ -123,7 +119,6 @@ export class ResidualHeapVisitor {
   realm: Realm;
   logger: Logger;
   modules: Modules;
-  referentializer: Referentializer | void;
   globalGenerator: Generator;
 
   // Caches that ensure one ResidualFunctionBinding exists per (record, name) pair
@@ -1304,10 +1299,6 @@ export class ResidualHeapVisitor {
     for (let moduleValue of this.modules.initializedModules.values()) this.visitValue(moduleValue);
 
     this._visitUntilFixpoint();
-
-    let referentializer = this.referentializer;
-    if (referentializer !== undefined)
-      for (let instance of this.functionInstances.values()) referentializer.referentialize(instance);
   }
 
   _visitUntilFixpoint(): void {
