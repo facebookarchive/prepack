@@ -10,7 +10,7 @@
 /* @flow strict-local */
 
 import type { Effects, Realm } from "../realm.js";
-import type { PropertyKeyValue, Descriptor, ObjectKind } from "../types.js";
+import type { PropertyBinding, PropertyKeyValue, Descriptor, ObjectKind } from "../types.js";
 import {
   AbstractValue,
   BoundFunctionValue,
@@ -26,9 +26,15 @@ import { type OperationDescriptor } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import { NestedOptimizedFunctionSideEffect } from "../errors.js";
 import { PropertyDescriptor } from "../descriptors.js";
+import { SimpleNormalCompletion } from "../completions.js";
 
+type ArrayNestedOptimizedFunctionType = "map" | "filter";
 type PossibleNestedOptimizedFunctions = [
-  { func: BoundFunctionValue | ECMAScriptSourceFunctionValue, thisValue: Value },
+  {
+    func: BoundFunctionValue | ECMAScriptSourceFunctionValue,
+    thisValue: Value,
+    kind: ArrayNestedOptimizedFunctionType,
+  },
 ];
 
 function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
@@ -44,8 +50,17 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
     }
     invariant(funcToModel instanceof ECMAScriptSourceFunctionValue);
 
-    if (realm.instantRender.enabled && realm.collectedNestedOptimizedFunctionEffects.has(funcToModel)) {
-      realm.instantRenderBailout("Array operators may only be optimized once", funcToModel.expressionLocation);
+    if (funcToModel.isCalledInMultipleContexts) return;
+
+    let previouslyComputedEffects = realm.collectedNestedOptimizedFunctionEffects.get(funcToModel);
+    if (previouslyComputedEffects !== undefined) {
+      if (realm.instantRender.enabled) {
+        realm.instantRenderBailout("Array operators may only be optimized once", funcToModel.expressionLocation);
+      } else {
+        funcToModel.isCalledInMultipleContexts = true;
+        Leak.value(realm, func);
+        return;
+      }
     }
 
     let funcCall = Utils.createModelledFunctionCall(realm, funcToModel, undefined, thisValue);
@@ -76,26 +91,6 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
       throw e;
     }
 
-    // This is an incremental step from this list aimed to resolve a particular issue: #2452
-    //
-    // Assumptions:
-    // 1. We are here because the array op is pure, havocing of bindings is not needed.
-    // 2. Aliasing effects will lead to a fatal error. To be enforced: #2449
-    // 3. Indices of a widened array are not backed by locations
-    //
-    // Transitive materialization is needed to unblock this issue: #2405
-    //
-    // The bindings themselves do not have to materialize, since the values in them
-    // are used to optimize the nested optimized function. We compute the set of
-    // objects that are transitively reachable from read bindings and materialize them.
-
-    Materialize.materializeObjectsTransitive(realm, func);
-
-    // We assume that we do not have to materialize widened arrays because they are intrinsic.
-    // If somebody changes the underlying design in a major way, then materialization could be
-    // needed, and this check will fail.
-    invariant(abstractArrayValue.isIntrinsic());
-
     // Check if effects were pure then add them
     if (abstractArrayValue.nestedOptimizedFunctionEffects === undefined) {
       abstractArrayValue.nestedOptimizedFunctionEffects = new Map();
@@ -105,14 +100,91 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
   }
 }
 
+/*
+  We track aliases explicitly, because we currently do not have the primitives to model objects created
+inside of the loop. TODO: Revisit when #2543 and subsequent modeling work
+lands. At that point, instead of of a mayAliasSet, we can return a widened
+abstract value.
+*/
+function modelUnknownPropertyOfSpecializedArray(
+  realm: Realm,
+  args: Array<Value>,
+  array: ArrayValue,
+  possibleNestedOptimizedFunctions: ?PossibleNestedOptimizedFunctions
+): PropertyBinding {
+  let sentinelProperty = {
+    key: undefined,
+    descriptor: new PropertyDescriptor({
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    }),
+    object: array,
+  };
+
+  let mayAliasedObjects: Set<ObjectValue> = new Set();
+
+  if (realm.arrayNestedOptimizedFunctionsEnabled && possibleNestedOptimizedFunctions) {
+    invariant(possibleNestedOptimizedFunctions.length > 0);
+    if (possibleNestedOptimizedFunctions[0].kind === "map") {
+      for (let { func } of possibleNestedOptimizedFunctions) {
+        let funcToModel;
+        if (func instanceof BoundFunctionValue) {
+          funcToModel = func.$BoundTargetFunction;
+        } else {
+          funcToModel = func;
+        }
+        invariant(funcToModel instanceof ECMAScriptSourceFunctionValue);
+        if (array.nestedOptimizedFunctionEffects !== undefined) {
+          let effects = array.nestedOptimizedFunctionEffects.get(funcToModel);
+          if (effects !== undefined) {
+            invariant(effects.result instanceof SimpleNormalCompletion);
+            let reachableObjects = Materialize.computeReachableObjects(realm, effects.result.value);
+            for (let reachableObject of reachableObjects) {
+              if (!effects.createdObjects.has(reachableObject)) mayAliasedObjects.add(reachableObject);
+            }
+          }
+        }
+      }
+    }
+    // For filter, we just collect the may alias set of the mapped array
+    if (args.length > 0) {
+      let mappedArray = args[0];
+      if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(mappedArray)) {
+        invariant(mappedArray instanceof ArrayValue);
+        invariant(mappedArray.unknownProperty !== undefined);
+        invariant(mappedArray.unknownProperty.descriptor instanceof PropertyDescriptor);
+
+        let unknownPropertyValue = mappedArray.unknownProperty.descriptor.value;
+        invariant(unknownPropertyValue instanceof AbstractValue);
+
+        let aliasSet = unknownPropertyValue.args[0];
+        invariant(aliasSet instanceof AbstractValue && aliasSet.kind === "mayAliasSet");
+        for (let aliasedObject of aliasSet.args) {
+          invariant(aliasedObject instanceof ObjectValue);
+          mayAliasedObjects.add(aliasedObject);
+        }
+      }
+    }
+  }
+
+  let aliasSet = AbstractValue.createFromType(realm, Value, "mayAliasSet", [...mayAliasedObjects]);
+  sentinelProperty.descriptor.value = AbstractValue.createFromType(realm, Value, "widened numeric property", [
+    aliasSet,
+  ]);
+
+  return sentinelProperty;
+}
+
 function createArrayWithWidenedNumericProperty(
   realm: Realm,
+  args: Array<Value>,
   intrinsicName: string,
   possibleNestedOptimizedFunctions?: PossibleNestedOptimizedFunctions
 ): ArrayValue {
   let abstractArrayValue = new ArrayValue(realm, intrinsicName);
 
-  if (possibleNestedOptimizedFunctions !== undefined) {
+  if (possibleNestedOptimizedFunctions !== undefined && possibleNestedOptimizedFunctions.length > 0) {
     if (realm.arrayNestedOptimizedFunctionsEnabled && (!realm.react.enabled || realm.react.optimizeNestedFunctions)) {
       evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
         realm,
@@ -129,13 +201,12 @@ function createArrayWithWidenedNumericProperty(
     }
   }
   // Add unknownProperty so we manually handle this object property access
-  abstractArrayValue.unknownProperty = {
-    key: undefined,
-    descriptor: new PropertyDescriptor({
-      value: AbstractValue.createFromType(realm, Value, "widened numeric property"),
-    }),
-    object: abstractArrayValue,
-  };
+  abstractArrayValue.unknownProperty = modelUnknownPropertyOfSpecializedArray(
+    realm,
+    args,
+    abstractArrayValue,
+    possibleNestedOptimizedFunctions
+  );
   return abstractArrayValue;
 }
 
@@ -231,8 +302,10 @@ export default class ArrayValue extends ObjectValue {
     possibleNestedOptimizedFunctions?: PossibleNestedOptimizedFunctions
   ): ArrayValue {
     invariant(realm.generator !== undefined);
+
     let value = realm.generator.deriveConcreteObject(
-      intrinsicName => createArrayWithWidenedNumericProperty(realm, intrinsicName, possibleNestedOptimizedFunctions),
+      intrinsicName =>
+        createArrayWithWidenedNumericProperty(realm, args, intrinsicName, possibleNestedOptimizedFunctions),
       args,
       operationDescriptor,
       { isPure: true }

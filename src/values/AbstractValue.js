@@ -48,6 +48,7 @@ export type AbstractValueKind =
   | "!=="
   | "rebuiltProperty"
   | "abstractConcreteUnion"
+  | "mayAliasSet"
   | "build function"
   | "widened property"
   | "widened numeric property"
