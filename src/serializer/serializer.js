@@ -161,18 +161,18 @@ export class Serializer {
         });
       }
 
+      statistics.processCollectedNestedOptimizedFunctions.measure(() =>
+        this.functions.processCollectedNestedOptimizedFunctions(environmentRecordIdAfterGlobalCode)
+      );
+
       statistics.dumpIR.measure(() => {
         if (onExecute !== undefined) {
           let optimizedFunctions = new Map();
-          for (let [functionValue, additionalFunctionEffects] of this.functions.writeEffects)
+          for (let [functionValue, additionalFunctionEffects] of this.functions.getAdditionalFunctionValuesToEffects())
             optimizedFunctions.set(functionValue, additionalFunctionEffects.generator);
           onExecute(this.realm, optimizedFunctions);
         }
       });
-
-      statistics.processCollectedNestedOptimizedFunctions.measure(() =>
-        this.functions.processCollectedNestedOptimizedFunctions(environmentRecordIdAfterGlobalCode)
-      );
 
       if (this.options.initializeMoreModules) {
         statistics.initializeMoreModules.measure(() => this.modules.initializeMoreModules());
