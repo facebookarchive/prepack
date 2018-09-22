@@ -14,7 +14,15 @@
 // security holes in the string escaping because of this.
 
 import type { Realm } from "../../realm.js";
-import { AbstractValue, BooleanValue, FunctionValue, NumberValue, SymbolValue, Value } from "../../values/index.js";
+import {
+  AbstractValue,
+  BooleanValue,
+  FunctionValue,
+  NumberValue,
+  StringValue,
+  SymbolValue,
+  Value,
+} from "../../values/index.js";
 import invariant from "../../invariant.js";
 
 type PropertyType = 0 | 1 | 2 | 3 | 4 | 5 | 6;
@@ -389,12 +397,12 @@ export function shouldRemoveAttribute(
         }
         return invariant(false, "TODO");
       case NUMERIC:
-        if (value instanceof NumberValue) {
+        if (value instanceof NumberValue || value instanceof StringValue) {
           return isNaN(value.value);
         }
         return invariant(false, "TODO");
       case POSITIVE_NUMERIC:
-        if (value instanceof NumberValue) {
+        if (value instanceof NumberValue || value instanceof StringValue) {
           return isNaN(value.value) || (value.value: any) < 1;
         }
         return invariant(false, "TODO");
