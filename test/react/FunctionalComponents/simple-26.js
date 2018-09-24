@@ -1,8 +1,8 @@
 var React = require("react");
 
 function App(props) {
-  var arr = [1,2,3];
-  
+  var arr = [1, 2, 3];
+
   if (props.cond) {
     arr.push(4);
   } else {

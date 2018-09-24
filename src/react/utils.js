@@ -257,7 +257,9 @@ export function forEachArrayValue(
 
   if (lengthValue instanceof AbstractValue && lengthValue.kind === "conditional") {
     let [condValue, consequentVal, alternateVal] = lengthValue.args;
+    invariant(consequentVal instanceof NumberValue, "TODO: support other types of array length value");
     forEachArray(consequentVal);
+    invariant(alternateVal instanceof NumberValue, "TODO: support other types of array length value");
     forEachArray(alternateVal);
   } else if (lengthValue instanceof NumberValue) {
     forEachArray(lengthValue);
@@ -652,7 +654,7 @@ export function hasNoPartialKeyOrRef(realm: Realm, props: ObjectValue | Abstract
   return false;
 }
 
-function getMaxLength(value: Value, maxLength: number): number {
+export function getMaxLength(value: Value, maxLength: number): number {
   if (value instanceof NumberValue) {
     if (value.value > maxLength) {
       return value.value;
@@ -673,20 +675,25 @@ function getMaxLength(value: Value, maxLength: number): number {
   invariant(false, "TODO: support other types of array length value");
 }
 
-function recursivelyFlattenArray(realm: Realm, array, targetArray: ArrayValue, startingIndex: number): void {
+function recursivelyFlattenArray(realm: Realm, array, targetArray: ArrayValue, startingIndex: number): number {
+  // forEachArrayValue can also deal with abstract lengths, which means that it doesn't iterate through
+  // arrays in a sequential order, the order might change. However, the callback tells us the current index
+  // that of the element in the array, so we can use that to know where to place elements in our flattened array.
+  // We do this now with math arithmetic and pass around integer from recursive recursivelyFlattenArray calls
+  // so that we can move around the "baseIndex" accordingly.
   let length = getProperty(realm, array, "length");
   let baseIndex = startingIndex;
-  let index = baseIndex;
 
-  forEachArrayValue(realm, array, (item, i) => {
-    index = baseIndex + i;
+  forEachArrayValue(realm, array, (item: Value, i: number) => {
+    let index = baseIndex + i;
     if (item instanceof ArrayValue && !item.intrinsicName) {
       baseIndex = recursivelyFlattenArray(realm, item, targetArray, index) - i;
     } else {
       Properties.Set(realm, targetArray, "" + index, item, true);
     }
   });
-  return baseIndex + getMaxLength(length, 0);
+  let newBaseIndexToReturn = baseIndex + getMaxLength(length, 0);
+  return newBaseIndexToReturn;
 }
 
 export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {

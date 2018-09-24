@@ -247,6 +247,7 @@ export class ReactEquivalenceSet {
     if (result.value === null) {
       result.value = array;
     }
+    invariant(result.value instanceof ArrayValue);
     return result.value;
   }
 
