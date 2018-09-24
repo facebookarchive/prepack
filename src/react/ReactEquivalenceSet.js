@@ -222,15 +222,21 @@ export class ReactEquivalenceSet {
     if (array.intrinsicName) return array;
     visitedValues.add(array);
     let lengthValue = getProperty(this.realm, array, "length");
-    invariant(lengthValue instanceof NumberValue);
-    let length = lengthValue.value;
     let currentMap = this.arrayRoot;
     let result;
 
-    for (let i = 0; i < length; i++) {
-      currentMap = this.getKey(i, currentMap, visitedValues);
-      result = this.getEquivalentPropertyValue(array, "" + i, currentMap, visitedValues);
-      currentMap = result.map;
+    if (lengthValue instanceof AbstractValue) {
+      currentMap = this.getKey("length", currentMap, visitedValues);
+      result = this.getEquivalentPropertyValue(array, "length", currentMap, visitedValues);
+    } else {
+      invariant(lengthValue instanceof NumberValue);
+      let length = lengthValue.value;
+
+      for (let i = 0; i < length; i++) {
+        currentMap = this.getKey(i, currentMap, visitedValues);
+        result = this.getEquivalentPropertyValue(array, "" + i, currentMap, visitedValues);
+        currentMap = result.map;
+      }
     }
     if (result === undefined) {
       if (this.realm.react.emptyArray !== undefined) {
