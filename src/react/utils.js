@@ -256,7 +256,7 @@ export function forEachArrayValue(
   let lengthValue = Get(realm, array, "length");
 
   if (lengthValue instanceof AbstractValue && lengthValue.kind === "conditional") {
-    let [condValue, consequentVal, alternateVal] = lengthValue.args;
+    let [, consequentVal, alternateVal] = lengthValue.args;
     invariant(consequentVal instanceof NumberValue, "TODO: support other types of array length value");
     forEachArray(consequentVal);
     invariant(alternateVal instanceof NumberValue, "TODO: support other types of array length value");
@@ -662,7 +662,7 @@ export function getMaxLength(value: Value, maxLength: number): number {
       return maxLength;
     }
   } else if (value instanceof AbstractValue && value.kind === "conditional") {
-    let [condValue, consequentVal, alternateVal] = value.args;
+    let [, consequentVal, alternateVal] = value.args;
     let consequentMaxVal = getMaxLength(consequentVal, maxLength);
     let alternateMaxVal = getMaxLength(alternateVal, maxLength);
     if (consequentMaxVal > maxLength && consequentMaxVal >= alternateMaxVal) {
