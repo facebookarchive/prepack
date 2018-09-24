@@ -441,7 +441,9 @@ export class ResidualReactElementSerializer {
   _serializeReactElementChild(child: Value, reactElement: ReactElement): ReactElementChild {
     let reactElementChild = this._createReactElementChild();
     this._serializeNowOrAfterWaitingForDependencies(child, reactElement, () => {
+      this.residualHeapSerializer.emptySerializesToEmptyString = true;
       let expr = this.residualHeapSerializer.serializeValue(child);
+      this.residualHeapSerializer.emptySerializesToEmptyString = false;
 
       reactElementChild.expr = expr;
       reactElementChild.type = "NORMAL";

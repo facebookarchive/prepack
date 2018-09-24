@@ -28,6 +28,7 @@ import {
   createInternalReactElement,
   flagPropsWithNoPartialKeyOrRef,
   flattenChildren,
+  getMaxLength,
   hardModifyReactObjectPropertyBinding,
   getProperty,
   hasNoPartialKeyOrRef,
@@ -449,6 +450,13 @@ export function traverseReactElement(
     traversalVisitor.visitRef(refValue);
   }
 
+  const loopArrayElements = (childrenValue: ArrayValue, length: number): void => {
+    for (let i = 0; i < length; i++) {
+      let child = getProperty(realm, childrenValue, "" + i);
+      traversalVisitor.visitChildNode(child);
+    }
+  };
+
   const handleChildren = () => {
     // handle children
     invariant(propsValue instanceof ObjectValue);
@@ -457,13 +465,12 @@ export function traverseReactElement(
       if (childrenValue !== realm.intrinsics.undefined && childrenValue !== realm.intrinsics.null) {
         if (childrenValue instanceof ArrayValue && !childrenValue.intrinsicName) {
           let childrenLength = getProperty(realm, childrenValue, "length");
-          let childrenLengthValue = 0;
           if (childrenLength instanceof NumberValue) {
-            childrenLengthValue = childrenLength.value;
-            for (let i = 0; i < childrenLengthValue; i++) {
-              let child = getProperty(realm, childrenValue, "" + i);
-              traversalVisitor.visitChildNode(child);
-            }
+            loopArrayElements(childrenValue, childrenLength.value);
+          } else if (childrenLength instanceof AbstractValue && childrenLength.kind === "conditional") {
+            loopArrayElements(childrenValue, getMaxLength(childrenLength, 0));
+          } else {
+            invariant(false, "TODO: support other types of array length value");
           }
         } else {
           traversalVisitor.visitChildNode(childrenValue);
