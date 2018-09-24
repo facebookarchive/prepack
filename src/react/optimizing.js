@@ -153,7 +153,6 @@ function optimizeReactComponentTreeBranches(
   realm: Realm,
   reconciler: Reconciler,
   writeEffects: WriteEffects,
-  environmentRecordIdAfterGlobalCode: number,
   logger: Logger,
   alreadyEvaluated: Map<ECMAScriptSourceFunctionValue | BoundFunctionValue, ReactEvaluatedNode>,
   preEvaluationComponentToWriteEffectFunction: Map<FunctionValue, FunctionValue>
@@ -206,7 +205,6 @@ export function optimizeReactComponentTreeRoot(
   componentRoot: ECMAScriptSourceFunctionValue | BoundFunctionValue | AbstractValue,
   config: ReactComponentTreeConfig,
   writeEffects: WriteEffects,
-  environmentRecordIdAfterGlobalCode: number,
   logger: Logger,
   statistics: ReactStatistics,
   alreadyEvaluated: Map<ECMAScriptSourceFunctionValue | BoundFunctionValue, ReactEvaluatedNode>,
@@ -252,7 +250,6 @@ export function optimizeReactComponentTreeRoot(
       realm,
       reconciler,
       writeEffects,
-      environmentRecordIdAfterGlobalCode,
       logger,
       alreadyEvaluated,
       preEvaluationComponentToWriteEffectFunction

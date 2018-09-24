@@ -156,7 +156,7 @@ export class Functions {
     return recordedAdditionalFunctions;
   }
 
-  optimizeReactComponentTreeRoots(statistics: ReactStatistics, environmentRecordIdAfterGlobalCode: number): void {
+  optimizeReactComponentTreeRoots(statistics: ReactStatistics): void {
     let logger = this.moduleTracer.modules.logger;
     let recordedReactRootValues = this._generateInitialAdditionalFunctions("__reactComponentTrees");
     // Get write effects of the components
@@ -171,7 +171,6 @@ export class Functions {
         componentRoot,
         config,
         this.writeEffects,
-        environmentRecordIdAfterGlobalCode,
         logger,
         statistics,
         alreadyEvaluated,
@@ -192,7 +191,7 @@ export class Functions {
     }
   }
 
-  processCollectedNestedOptimizedFunctions(environmentRecordIdAfterGlobalCode: number): void {
+  processCollectedNestedOptimizedFunctions(): void {
     for (let [functionValue, effects] of this.realm.collectedNestedOptimizedFunctionEffects) {
       let additionalFunctionEffects = createAdditionalEffects(
         this.realm,
@@ -223,7 +222,7 @@ export class Functions {
     for (let [oldValue, model] of oldRealmOptimizedFunctions) this.realm.optimizedFunctions.set(oldValue, model);
   }
 
-  checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode: number): void {
+  checkThatFunctionsAreIndependent(): void {
     let additionalFunctionsToProcess = this._generateOptimizedFunctionsFromRealm();
     // When we find declarations of nested optimized functions, we need to apply the parent
     // effects.
