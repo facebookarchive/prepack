@@ -216,21 +216,27 @@ export class ReactEquivalenceSet {
     return ((map.get(result): any): ReactSetNode);
   }
 
-  // for arrays: [0] -> [1] -> [2]... as nodes
+  // for arrays: [length] -> ([length] is numeric) -> [0] -> [1] -> [2]... as nodes
   _getArrayValue(array: ArrayValue, visitedValues: Set<Value>): ArrayValue {
     if (visitedValues.has(array)) return array;
     if (array.intrinsicName) return array;
     visitedValues.add(array);
-    let lengthValue = getProperty(this.realm, array, "length");
-    invariant(lengthValue instanceof NumberValue);
-    let length = lengthValue.value;
     let currentMap = this.arrayRoot;
-    let result;
+    currentMap = this.getKey("length", currentMap, visitedValues);
+    let result = this.getEquivalentPropertyValue(array, "length", currentMap, visitedValues);
+    currentMap = result.map;
 
-    for (let i = 0; i < length; i++) {
-      currentMap = this.getKey(i, currentMap, visitedValues);
-      result = this.getEquivalentPropertyValue(array, "" + i, currentMap, visitedValues);
-      currentMap = result.map;
+    let lengthValue = getProperty(this.realm, array, "length");
+    // If we have a numeric lenth that is not abstract, then also check all the array elements
+    if (lengthValue instanceof NumberValue) {
+      invariant(lengthValue instanceof NumberValue);
+      let length = lengthValue.value;
+
+      for (let i = 0; i < length; i++) {
+        currentMap = this.getKey(i, currentMap, visitedValues);
+        result = this.getEquivalentPropertyValue(array, "" + i, currentMap, visitedValues);
+        currentMap = result.map;
+      }
     }
     if (result === undefined) {
       if (this.realm.react.emptyArray !== undefined) {
@@ -241,6 +247,7 @@ export class ReactEquivalenceSet {
     if (result.value === null) {
       result.value = array;
     }
+    invariant(result.value instanceof ArrayValue);
     return result.value;
   }
 
