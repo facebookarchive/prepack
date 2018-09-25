@@ -224,7 +224,6 @@ export class ResidualHeapSerializer {
     let environment = realm.$GlobalEnv.environmentRecord;
     invariant(environment instanceof GlobalEnvironmentRecord);
     this.globalEnvironmentRecord = environment;
-    this.emptySerializesToEmptyString = false;
   }
 
   emitter: Emitter;
@@ -270,7 +269,6 @@ export class ResidualHeapSerializer {
   referentializer: Referentializer;
   additionalFunctionGenerators: Map<FunctionValue, Generator>;
   _residualOptimizedFunctions: ResidualOptimizedFunctions;
-  emptySerializesToEmptyString: boolean;
 
   // function values nested in additional functions can't delay initializations
   // TODO: revisit this and fix additional functions to be capable of delaying initializations
@@ -2049,10 +2047,6 @@ export class ResidualHeapSerializer {
   }
 
   _serializeEmptyValue(): BabelNodeExpression {
-    if (this.emptySerializesToEmptyString) {
-      invariant(this.realm.react.enabled, "emptySerializesToEmptyString is a React optimization");
-      return t.stringLiteral("");
-    }
     this.needsEmptyVar = !this.realm.instantRender.enabled;
     return emptyExpression;
   }

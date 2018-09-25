@@ -140,6 +140,14 @@ it("Simple 27", () => {
   runTest(__dirname + "/FunctionalComponents/simple-27.js");
 });
 
+it("Simple 28", () => {
+  runTest(__dirname + "/FunctionalComponents/simple-28.js");
+});
+
+it("Simple 29", () => {
+  runTest(__dirname + "/FunctionalComponents/simple-29.js");
+});
+
 it("Bound type", () => {
   runTest(__dirname + "/FunctionalComponents/bound-type.js");
 });

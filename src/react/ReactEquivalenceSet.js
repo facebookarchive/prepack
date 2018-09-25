@@ -224,6 +224,7 @@ export class ReactEquivalenceSet {
     let currentMap = this.arrayRoot;
     currentMap = this.getKey("length", currentMap, visitedValues);
     let result = this.getEquivalentPropertyValue(array, "length", currentMap, visitedValues);
+    currentMap = result.map;
 
     let lengthValue = getProperty(this.realm, array, "length");
     // If we have a numeric lenth that is not abstract, then also check all the array elements
