@@ -419,7 +419,7 @@ export function wrapReactElementWithKeyedFragment(realm: Realm, keyValue: Value,
   Create.CreateDataPropertyOrThrow(realm, fragmentConfigValue, "key", keyValue);
   let fragmentChildrenValue = Create.ArrayCreate(realm, 1);
   Create.CreateDataPropertyOrThrow(realm, fragmentChildrenValue, "0", reactElement);
-  fragmentChildrenValue = flattenChildren(realm, fragmentChildrenValue);
+  fragmentChildrenValue = flattenChildren(realm, fragmentChildrenValue, true);
   return createReactElement(realm, reactFragment, fragmentConfigValue, fragmentChildrenValue);
 }
 

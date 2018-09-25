@@ -21,6 +21,7 @@ import {
   BoundFunctionValue,
   ECMAScriptFunctionValue,
   ECMAScriptSourceFunctionValue,
+  EmptyValue,
   FunctionValue,
   NumberValue,
   ObjectValue,
@@ -238,33 +239,33 @@ export function forEachArrayValue(
   array: ArrayValue,
   mapFunc: (element: Value, index: number) => void
 ): void {
-  const forEachArray = (lengthValue: NumberValue): void => {
-    let length = lengthValue.value;
-    for (let i = 0; i < length; i++) {
-      let elementProperty = array.properties.get("" + i);
-      let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
-      if (elementPropertyDescriptor) {
-        invariant(elementPropertyDescriptor instanceof PropertyDescriptor);
-        let elementValue = elementPropertyDescriptor.value;
-        if (elementValue instanceof Value) {
-          mapFunc(elementValue, i);
-        }
-      }
-    }
-  };
-
   let lengthValue = Get(realm, array, "length");
-
-  if (lengthValue instanceof AbstractValue && lengthValue.kind === "conditional") {
-    let [, consequentVal, alternateVal] = lengthValue.args;
-    invariant(consequentVal instanceof NumberValue, "TODO: support other types of array length value");
-    forEachArray(consequentVal);
-    invariant(alternateVal instanceof NumberValue, "TODO: support other types of array length value");
-    forEachArray(alternateVal);
-  } else if (lengthValue instanceof NumberValue) {
-    forEachArray(lengthValue);
+  let isConditionalLength = lengthValue instanceof AbstractValue && lengthValue.kind === "conditional";
+  let length;
+  if (isConditionalLength) {
+    length = getMaxLength(lengthValue, 0);
   } else {
-    invariant(false, "TODO: support other types of array length value");
+    invariant(lengthValue instanceof NumberValue, "TODO: support other types of array length value");
+    length = lengthValue.value;
+  }
+  for (let i = 0; i < length; i++) {
+    let elementProperty = array.properties.get("" + i);
+    let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
+    if (elementPropertyDescriptor) {
+      invariant(elementPropertyDescriptor instanceof PropertyDescriptor);
+      let elementValue = elementPropertyDescriptor.value;
+      // If we are in an array with conditional length, the element might be a conditional join
+      // of the same type as the length of the array
+      if (isConditionalLength && elementValue instanceof AbstractValue && elementValue.kind === "conditional") {
+        invariant(lengthValue instanceof AbstractValue);
+        let lengthCondition = lengthValue.args[0];
+        let elementCondition = elementValue.args[0];
+        // If they are the same condition
+        invariant(lengthCondition.equals(elementCondition), "TODO: support cases where the condition is not the same");
+      }
+      invariant(elementValue instanceof Value);
+      mapFunc(elementValue, i);
+    }
   }
 }
 
@@ -675,30 +676,47 @@ export function getMaxLength(value: Value, maxLength: number): number {
   invariant(false, "TODO: support other types of array length value");
 }
 
-function recursivelyFlattenArray(realm: Realm, array, targetArray: ArrayValue, startingIndex: number): number {
-  // forEachArrayValue can also deal with abstract lengths, which means that it doesn't iterate through
-  // arrays in a sequential order, the order might change. However, the callback tells us the current index
-  // that of the element in the array, so we can use that to know where to place elements in our flattened array.
-  // We do this now with math arithmetic and pass around integer from recursive recursivelyFlattenArray calls
-  // so that we can move around the "baseIndex" accordingly.
-  let length = getProperty(realm, array, "length");
-  let baseIndex = startingIndex;
-
-  forEachArrayValue(realm, array, (item: Value, i: number) => {
-    let index = baseIndex + i;
-    if (item instanceof ArrayValue && !item.intrinsicName) {
-      baseIndex = recursivelyFlattenArray(realm, item, targetArray, index) - i;
+function recursivelyFlattenArray(realm: Realm, array, targetArray: ArrayValue, noHoles: boolean): void {
+  forEachArrayValue(realm, array, _item => {
+    let element = _item;
+    if (element instanceof ArrayValue && !element.intrinsicName) {
+      recursivelyFlattenArray(realm, element, targetArray, noHoles);
     } else {
-      Properties.Set(realm, targetArray, "" + index, item, true);
+      let lengthValue = Get(realm, targetArray, "length");
+      invariant(lengthValue instanceof NumberValue);
+      if (noHoles && element instanceof EmptyValue) {
+        // We skip holely elements
+        return;
+      } else if (noHoles && element instanceof AbstractValue && element.kind === "conditional") {
+        let [condValue, consequentVal, alternateVal] = element.args;
+        invariant(condValue instanceof AbstractValue);
+        let consquentIsHolely = consequentVal instanceof EmptyValue;
+        let alternateIsHolely = alternateVal instanceof EmptyValue;
+
+        if (consquentIsHolely && alternateIsHolely) {
+          // We skip holely elements
+          return;
+        }
+        if (consquentIsHolely) {
+          element = AbstractValue.createFromLogicalOp(
+            realm,
+            "&&",
+            AbstractValue.createFromUnaryOp(realm, "!", condValue),
+            alternateVal
+          );
+        }
+        if (alternateIsHolely) {
+          element = AbstractValue.createFromLogicalOp(realm, "&&", condValue, consequentVal);
+        }
+      }
+      Properties.Set(realm, targetArray, "" + lengthValue.value, element, true);
     }
   });
-  let newBaseIndexToReturn = baseIndex + getMaxLength(length, 0);
-  return newBaseIndexToReturn;
 }
 
-export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
+export function flattenChildren(realm: Realm, array: ArrayValue, noHoles: boolean): ArrayValue {
   let flattenedChildren = Create.ArrayCreate(realm, 0);
-  recursivelyFlattenArray(realm, array, flattenedChildren, 0);
+  recursivelyFlattenArray(realm, array, flattenedChildren, noHoles);
   flattenedChildren.makeFinal();
   return flattenedChildren;
 }
