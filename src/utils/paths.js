@@ -336,13 +336,24 @@ function pushPathCondition(condition: Value): void {
       let right = condition.args[1];
       if (left instanceof ConcreteValue && right instanceof AbstractValue) [left, right] = [right, left];
       if (left instanceof AbstractValue && (right instanceof UndefinedValue || right instanceof NullValue)) {
-        let op = condition.kind === "!=" ? "!==" : "===";
-        if (op === "!==") pushPathCondition(left);
-        else pushInversePathCondition(left);
-        let leftNeNull = AbstractValue.createFromBinaryOp(realm, op, left, realm.intrinsics.null);
-        if (leftNeNull.mightNotBeFalse()) pushPathCondition(leftNeNull);
-        let leftNeUndefined = AbstractValue.createFromBinaryOp(realm, op, left, realm.intrinsics.undefined);
-        if (leftNeUndefined.mightNotBeFalse()) pushPathCondition(leftNeUndefined);
+        if (condition.kind === "!=") {
+          // x != null => x!==null && x!==undefined
+          pushPathCondition(left);
+          let leftNeNull = AbstractValue.createFromBinaryOp(realm, "!==", left, realm.intrinsics.null);
+          let leftNeUndefined = AbstractValue.createFromBinaryOp(realm, "!==", left, realm.intrinsics.undefined);
+          pushPathCondition(leftNeNull);
+          pushPathCondition(leftNeUndefined);
+        } else if (condition.kind === "==") {
+          // x == null => x===null || x===undefined
+          pushInversePathCondition(left);
+          let leftEqNull = AbstractValue.createFromBinaryOp(realm, "===", left, realm.intrinsics.null);
+          let leftEqUndefined = AbstractValue.createFromBinaryOp(realm, "===", left, realm.intrinsics.undefined);
+          let c;
+          if (!leftEqNull.mightNotBeFalse()) c = leftEqUndefined;
+          else if (!leftEqUndefined.mightNotBeFalse()) c = leftEqNull;
+          else c = AbstractValue.createFromLogicalOp(realm, "||", leftEqNull, leftEqUndefined);
+          pushPathCondition(c);
+        }
         return;
       }
     }
