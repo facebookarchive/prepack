@@ -50,14 +50,14 @@ export class Functions {
   constructor(realm: Realm, moduleTracer: ModuleTracer) {
     this.realm = realm;
     this.moduleTracer = moduleTracer;
-    this.writeEffects = new Map();
+    this._writeEffects = new Map();
     this._noopFunction = undefined;
     this._optimizedFunctionId = 0;
   }
 
   realm: Realm;
   moduleTracer: ModuleTracer;
-  writeEffects: WriteEffects;
+  _writeEffects: WriteEffects;
   _noopFunction: void | ECMAScriptSourceFunctionValue;
   _optimizedFunctionId: number;
 
@@ -168,7 +168,7 @@ export class Functions {
         this.realm,
         componentRoot,
         config,
-        this.writeEffects,
+        this._writeEffects,
         environmentRecordIdAfterGlobalCode,
         logger,
         statistics,
@@ -178,7 +178,7 @@ export class Functions {
   }
 
   getDeclaringOptimizedFunction(functionValue: ECMAScriptSourceFunctionValue): void | FunctionValue {
-    for (let [optimizedFunctionValue, additionalEffects] of this.writeEffects) {
+    for (let [optimizedFunctionValue, additionalEffects] of this._writeEffects) {
       // CreatedObjects is all objects created by this optimized function but not
       // nested optimized functions.
       let createdObjects = additionalEffects.effects.createdObjects;
@@ -197,7 +197,7 @@ export class Functions {
         this.getDeclaringOptimizedFunction(functionValue)
       );
       invariant(additionalFunctionEffects !== null);
-      this.writeEffects.set(functionValue, additionalFunctionEffects);
+      this._writeEffects.set(functionValue, additionalFunctionEffects);
     }
   }
 
@@ -251,7 +251,7 @@ export class Functions {
       );
       invariant(additionalFunctionEffects);
       effects = additionalFunctionEffects.effects;
-      if (this.writeEffects.has(functionValue)) {
+      if (this._writeEffects.has(functionValue)) {
         let error = new CompilerDiagnostic(
           "Trying to optimize a function with two parent optimized functions, which is not currently allowed.",
           functionValue.expressionLocation,
@@ -261,7 +261,7 @@ export class Functions {
         // we can recover by assuming one set of effects to show further diagnostics
         if (realm.handleError(error) !== "Recover") throw new FatalError();
       } else {
-        this.writeEffects.set(functionValue, additionalFunctionEffects);
+        this._writeEffects.set(functionValue, additionalFunctionEffects);
       }
 
       // Conceptually this will ensure that the nested additional function is defined
@@ -288,7 +288,7 @@ export class Functions {
     let conflicts: Map<BabelNodeSourceLocation, CompilerDiagnostic> = new Map();
     let isParentOf = (possibleParent, fun) => {
       if (fun === undefined) return false;
-      let effects = this.writeEffects.get(fun);
+      let effects = this._writeEffects.get(fun);
       invariant(effects !== undefined);
       if (effects.parentAdditionalFunction !== undefined) {
         if (effects.parentAdditionalFunction === possibleParent) return true;
@@ -301,7 +301,7 @@ export class Functions {
       let fun1Location = fun1.expressionLocation;
       let fun1Name = fun1.getDebugName() || optionalStringOfLocation(fun1Location);
       // Also do argument validation here
-      let additionalFunctionEffects = this.writeEffects.get(fun1);
+      let additionalFunctionEffects = this._writeEffects.get(fun1);
       invariant(additionalFunctionEffects !== undefined);
       let e1 = additionalFunctionEffects.effects;
       invariant(e1 !== undefined);
@@ -333,11 +333,11 @@ export class Functions {
         };
         // Recursively apply all parent effects
         let withPossibleParentEffectsApplied = (toExecute, optimizedFunction) => {
-          let funEffects = this.writeEffects.get(optimizedFunction);
+          let funEffects = this._writeEffects.get(optimizedFunction);
           invariant(funEffects !== undefined);
           let parentAdditionalFunction = funEffects.parentAdditionalFunction;
           if (parentAdditionalFunction !== undefined) {
-            let parentEffects = this.writeEffects.get(parentAdditionalFunction);
+            let parentEffects = this._writeEffects.get(parentAdditionalFunction);
             invariant(parentEffects !== undefined);
             let newToExecute = () => this.realm.withEffectsAppliedInGlobalEnv(toExecute, parentEffects.effects);
             withPossibleParentEffectsApplied(newToExecute, parentAdditionalFunction);
@@ -355,7 +355,7 @@ export class Functions {
   }
 
   getAdditionalFunctionValuesToEffects(): Map<FunctionValue, AdditionalFunctionEffects> {
-    return this.writeEffects;
+    return this._writeEffects;
   }
 
   reportWriteConflicts(
