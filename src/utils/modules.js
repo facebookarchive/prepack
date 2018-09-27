@@ -431,10 +431,11 @@ export class Modules {
     });
   }
 
-  initializeMoreModules(): void {
+  initializeMoreModules(modulesToInitialize: Set<string> | "ALL"): void {
     // partially evaluate all factory methods by calling require
     let count = 0;
     for (let moduleId of this.moduleIds) {
+      if (modulesToInitialize !== "ALL" && !modulesToInitialize.has("" + moduleId)) continue;
       if (this.initializedModules.has(moduleId)) continue;
       let effects = this.tryInitializeModule(moduleId, `Speculative initialization of module ${moduleId}`);
       if (effects === undefined) continue;
