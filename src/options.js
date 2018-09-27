@@ -66,7 +66,7 @@ export type RealmOptions = {
 export type SerializerOptions = {
   lazyObjectsRuntime?: string,
   delayInitializations?: boolean,
-  initializeMoreModules?: boolean,
+  modulesToInitialize?: Set<string> | "ALL",
   internalDebug?: boolean,
   debugScopes?: boolean,
   debugIdentifiers?: Array<string>,
