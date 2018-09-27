@@ -45,6 +45,7 @@ import type {
 import type { BindingEntry, Effects, Realm, SideEffectCallback } from "./realm.js";
 import { CompilerDiagnostic } from "./errors.js";
 import type { Severity } from "./errors.js";
+import type { Binding } from "./environment.js";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
 import invariant from "./invariant.js";
 
@@ -403,9 +404,16 @@ export type LeakType = {
 
 export type MaterializeType = {
   materializeObject(realm: Realm, object: ObjectValue): void,
-  computeReachableObjects(realm: Realm, value: Value): Set<ObjectValue>,
 };
 
+export type ReachabilityType = {
+  computeReachableObjectsAndBindings(
+    realm: Realm,
+    rootValue: Value,
+    filterValue: (Value) => boolean,
+    readOnly?: boolean
+  ): [Set<ObjectValue>, Set<Binding>],
+};
 export type PropertiesType = {
   // ECMA262 9.1.9.1
   OrdinarySet(realm: Realm, O: ObjectValue, P: PropertyKeyValue, V: Value, Receiver: Value): boolean,

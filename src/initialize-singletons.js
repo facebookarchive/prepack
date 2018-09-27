@@ -14,6 +14,7 @@ import { CreateImplementation } from "./methods/create.js";
 import { EnvironmentImplementation } from "./methods/environment.js";
 import { FunctionImplementation } from "./methods/function.js";
 import { LeakImplementation, MaterializeImplementation } from "./utils/leak.js";
+import { ReachabilityImplementation } from "./utils/reachability.js";
 import { JoinImplementation } from "./methods/join.js";
 import { PathConditionsImplementation, PathImplementation } from "./utils/paths.js";
 import { PropertiesImplementation } from "./methods/properties.js";
@@ -30,6 +31,7 @@ export default function() {
   Singletons.setFunctions(new FunctionImplementation());
   Singletons.setLeak(new LeakImplementation());
   Singletons.setMaterialize(new MaterializeImplementation());
+  Singletons.setReachability(new ReachabilityImplementation());
   Singletons.setJoin(new JoinImplementation());
   Singletons.setPath(new PathImplementation());
   Singletons.setPathConditions((val: PathConditions | void) => new PathConditionsImplementation(val));
