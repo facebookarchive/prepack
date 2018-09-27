@@ -341,7 +341,20 @@ function getErrorHandlerWithWarningCapture(
 function runTest(name, code, options: PrepackOptions, args) {
   if (!args.fast && args.filter === "") console.log(chalk.inverse(name) + " " + JSON.stringify(options));
   let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
-  let initializeMoreModules = code.includes("// initialize more modules");
+  let modulesToInitializeMarker = "// initialize more modules:";
+  let modulesToInitializeLoc = code.indexOf(modulesToInitializeMarker);
+  let modulesToInitialize;
+  if (modulesToInitializeLoc > 0)
+    modulesToInitialize = new Set(
+      code
+        .substring(
+          modulesToInitializeLoc + modulesToInitializeMarker.length,
+          code.indexOf("\n", modulesToInitializeLoc)
+        )
+        .trim()
+        .split(",")
+    );
+  else if (code.includes("// initialize more modules")) modulesToInitialize = "ALL";
   if (args.verbose || code.includes("// inline expressions")) options.inlineExpressions = true;
   options.invariantLevel = code.includes("// omit invariants") || args.verbose ? 0 : 99;
   if (code.includes("// emit concrete model")) options.emitConcreteModel = true;
@@ -357,12 +370,12 @@ function runTest(name, code, options: PrepackOptions, args) {
     compatibility,
     debugNames: args.debugNames,
     debugScopes: args.debugScopes,
-    initializeMoreModules,
     errorHandler: diag => "Fail",
     internalDebug: true,
     serialize: true,
     uniqueSuffix: "",
     arrayNestedOptimizedFunctionsEnabled: false,
+    modulesToInitialize,
   }): any): PrepackOptions); // Since PrepackOptions is an exact type I have to cast
   if (code.includes("// arrayNestedOptimizedFunctionsEnabled")) {
     options.arrayNestedOptimizedFunctionsEnabled = true;
@@ -379,7 +392,7 @@ function runTest(name, code, options: PrepackOptions, args) {
       let realm = construct_realm(realmOptions, undefined, new SerializerStatistics());
       initializeGlobals(realm);
       let serializerOptions = {
-        initializeMoreModules,
+        modulesToInitialize,
         internalDebug: true,
         lazyObjectsRuntime: options.lazyObjectsRuntime,
       };

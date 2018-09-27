@@ -46,7 +46,7 @@ export type PrepackOptions = {|
   check?: Array<number>,
   inlineExpressions?: boolean,
   sourceMaps?: boolean,
-  initializeMoreModules?: boolean,
+  modulesToInitialize?: Set<string> | "ALL",
   statsFile?: string,
   strictlyMonotonicDateNow?: boolean,
   stripFlow?: boolean,
@@ -130,12 +130,12 @@ export function getSerializerOptions({
   logModules = false,
   profile = false,
   inlineExpressions = false,
-  initializeMoreModules = false,
+  modulesToInitialize,
   trace = false,
 }: PrepackOptions): SerializerOptions {
   let result: SerializerOptions = {
     delayInitializations,
-    initializeMoreModules,
+    modulesToInitialize,
     internalDebug,
     debugScopes,
     debugIdentifiers,

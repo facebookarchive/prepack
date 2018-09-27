@@ -174,8 +174,9 @@ export class Serializer {
         }
       });
 
-      if (this.options.initializeMoreModules) {
-        statistics.initializeMoreModules.measure(() => this.modules.initializeMoreModules());
+      let modulesToInitialize = this.options.modulesToInitialize;
+      if (modulesToInitialize) {
+        statistics.modulesToInitialize.measure(() => this.modules.initializeMoreModules(modulesToInitialize));
         if (this.logger.hasErrors()) return undefined;
       }
 
