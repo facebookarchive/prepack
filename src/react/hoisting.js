@@ -61,13 +61,17 @@ function canHoistArray(
 ): boolean {
   if (array.intrinsicName) return false;
   let lengthValue = Get(realm, array, "length");
-  invariant(lengthValue instanceof NumberValue);
-  let length = lengthValue.value;
-  for (let i = 0; i < length; i++) {
-    let element = Get(realm, array, "" + i);
+  if (!canHoistValue(realm, lengthValue, residualHeapVisitor, visitedValues)) {
+    return false;
+  }
+  if (lengthValue instanceof NumberValue) {
+    let length = lengthValue.value;
+    for (let i = 0; i < length; i++) {
+      let element = Get(realm, array, "" + i);
 
-    if (!canHoistValue(realm, element, residualHeapVisitor, visitedValues)) {
-      return false;
+      if (!canHoistValue(realm, element, residualHeapVisitor, visitedValues)) {
+        return false;
+      }
     }
   }
   return true;
