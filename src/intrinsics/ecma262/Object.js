@@ -500,12 +500,14 @@ export default function(realm: Realm): NativeFunctionValue {
       if (O instanceof AbstractValue && realm.isInPureScope()) {
         let obj = O instanceof AbstractObjectValue ? O : To.ToObject(realm, O);
 
+        realm.callReportObjectGetOwnProperties(obj);
         return ArrayValue.createTemporalWithWidenedNumericProperty(
           realm,
           [getOwnPropertySymbols, obj],
           createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
         );
       } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O)) {
+        realm.callReportObjectGetOwnProperties(O);
         return ArrayValue.createTemporalWithWidenedNumericProperty(
           realm,
           [getOwnPropertySymbols, O],
