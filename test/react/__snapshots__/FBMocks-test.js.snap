@@ -16400,6 +16400,102 @@ ReactStatistics {
 }
 `;
 
+exports[`js-framework-benchmark: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Row",
+          "status": "NEW_TREE",
+        },
+      ],
+      "message": "",
+      "name": "Main",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`js-framework-benchmark: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Row",
+          "status": "NEW_TREE",
+        },
+      ],
+      "message": "",
+      "name": "Main",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`js-framework-benchmark: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Row",
+          "status": "NEW_TREE",
+        },
+      ],
+      "message": "",
+      "name": "Main",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 2,
+}
+`;
+
+exports[`js-framework-benchmark: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 3,
+  "evaluatedRootNodes": Array [
+    Object {
+      "children": Array [
+        Object {
+          "children": Array [],
+          "message": "",
+          "name": "Row",
+          "status": "NEW_TREE",
+        },
+      ],
+      "message": "",
+      "name": "Main",
+      "status": "ROOT",
+    },
+  ],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 1,
+  "optimizedTrees": 2,
+}
+`;
+
 exports[`repl example: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 7,
