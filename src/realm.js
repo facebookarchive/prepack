@@ -365,7 +365,7 @@ export class Realm {
   modifiedProperties: void | PropertyBindings;
   createdObjects: void | CreatedObjects;
   createdObjectsTrackedForLeaks: void | CreatedObjects;
-  reportObjectGetOwnProperties: void | (ObjectValue => void);
+  reportObjectGetOwnProperties: void | ((ObjectValue | AbstractObjectValue) => void);
   reportSideEffectCallbacks: Set<
     (sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, expressionLocation: any) => void
   >;
@@ -1491,7 +1491,7 @@ export class Realm {
     return binding;
   }
 
-  callReportObjectGetOwnProperties(ob: ObjectValue): void {
+  callReportObjectGetOwnProperties(ob: ObjectValue | AbstractObjectValue): void {
     if (this.reportObjectGetOwnProperties !== undefined) {
       this.reportObjectGetOwnProperties(ob);
     }

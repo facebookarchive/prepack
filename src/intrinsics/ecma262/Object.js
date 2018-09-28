@@ -495,11 +495,29 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 19.1.2.9
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
-    func.defineNativeMethod("getOwnPropertySymbols", 1, (context, [O]) => {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
+    let getOwnPropertySymbols = func.defineNativeMethod("getOwnPropertySymbols", 1, (context, [O]) => {
+      if (O instanceof AbstractValue && realm.isInPureScope()) {
+        let obj = O instanceof AbstractObjectValue ? O : To.ToObject(realm, O);
+
+        realm.callReportObjectGetOwnProperties(obj);
+        return ArrayValue.createTemporalWithWidenedNumericProperty(
+          realm,
+          [getOwnPropertySymbols, obj],
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
+        );
+      } else if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O)) {
+        realm.callReportObjectGetOwnProperties(O);
+        return ArrayValue.createTemporalWithWidenedNumericProperty(
+          realm,
+          [getOwnPropertySymbols, O],
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_CALL")
+        );
+      }
       // Return ? GetOwnPropertyKeys(O, Symbol).
       return GetOwnPropertyKeys(realm, O, SymbolValue);
     });
+  }
 
   // ECMA262 19.1.2.10
   func.defineNativeMethod("getPrototypeOf", 1, (context, [O]) => {
