@@ -160,7 +160,7 @@ function materializeObject(realm: Realm, object: ObjectValue, getCachingHeapInsp
                 descriptor.configurable !== targetDescriptor.configurable
               ) {
                 generator.emitDefineProperty(object, name, descriptor);
-              } else {
+              } else if (!object.$IsClassPrototype) {
                 generator.emitPropertyAssignment(object, name, value);
               }
             }

@@ -339,7 +339,7 @@ export class ResidualHeapSerializer {
       if (shouldDropAsAssignedProp(desc)) continue;
 
       if (desc === undefined) continue; //deleted
-      if (this.residualHeapInspector.canIgnoreProperty(obj, key)) continue;
+      if (this.residualHeapInspector.canIgnoreProperty(obj, key) || obj.$IsClassPrototype) continue;
       invariant(desc !== undefined);
       let semaphore = this._acquireOneObjectSemaphore(obj);
       let body = this.emitter.getBody();
@@ -1085,7 +1085,6 @@ export class ResidualHeapSerializer {
           "PP0022",
           "FatalError"
         );
-        this.realm.handleError(error);
         throw new FatalError();
       }
     }

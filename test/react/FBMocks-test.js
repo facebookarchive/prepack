@@ -151,3 +151,7 @@ it("Function bind", () => {
 it("PE Functional Components benchmark", () => {
   runTest(__dirname + "/FBMocks/pe-functional-benchmark.js");
 });
+
+it("js-framework-benchmark", () => {
+  runTest(__dirname + "/FBMocks/js-framework-benchmark.js");
+});
