@@ -1085,6 +1085,7 @@ export class ResidualHeapSerializer {
           "PP0022",
           "FatalError"
         );
+        this.realm.handleError(error);
         throw new FatalError();
       }
     }
