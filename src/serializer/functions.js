@@ -390,7 +390,7 @@ export class Functions {
       writtenObjects.add(key.object);
     });
     let oldReportObjectGetOwnProperties = this.realm.reportObjectGetOwnProperties;
-    this.realm.reportObjectGetOwnProperties = (ob: ObjectValue) => {
+    this.realm.reportObjectGetOwnProperties = (ob: ObjectValue | AbstractObjectValue) => {
       let location = this.realm.currentLocation;
       invariant(location);
       if (writtenObjects.has(ob) && !conflicts.has(location))
