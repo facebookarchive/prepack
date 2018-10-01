@@ -350,7 +350,7 @@ export class Emitter {
         result = recurse(val.$Description);
         if (result !== undefined) return result;
       }
-    } else if (val instanceof ObjectValue && ObjectValue.isIntrinsicDerviedObject(val)) {
+    } else if (val instanceof ObjectValue && ObjectValue.isIntrinsicDerivedObject(val)) {
       result = callbacks.onIntrinsicDerivedObject ? callbacks.onIntrinsicDerivedObject(val) : undefined;
       if (result !== undefined) return result;
     } else if (val instanceof ObjectValue) {

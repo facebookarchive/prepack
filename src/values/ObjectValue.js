@@ -719,7 +719,7 @@ export default class ObjectValue extends ConcreteValue {
     return false;
   }
 
-  static isIntrinsicDerviedObject(obj: Value): boolean {
+  static isIntrinsicDerivedObject(obj: Value): boolean {
     return obj instanceof ObjectValue && obj.intrinsicName !== undefined && obj.isScopedTemplate !== undefined;
   }
 }
