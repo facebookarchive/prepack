@@ -11,7 +11,6 @@
 
 import {
   AbstractValue,
-  ArrayValue,
   BoundFunctionValue,
   FunctionValue,
   ObjectValue,
