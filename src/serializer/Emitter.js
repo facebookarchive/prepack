@@ -78,7 +78,7 @@ export class Emitter {
     this._activeValues = new Set();
     this._activeGeneratorStack = [this._mainBody];
     this._finalized = false;
-    let mustWaitForValue = (val: AbstractValue | ArrayValue) => {
+    let mustWaitForValue = (val: AbstractValue | ObjectValue) => {
       if (this.cannotDeclare()) return false;
       if (this.hasBeenDeclared(val)) return false;
       let activeOptimizedFunction = this.getActiveOptimizedFunction();
