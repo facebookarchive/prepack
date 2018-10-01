@@ -267,7 +267,7 @@ export class Reconciler {
     let renderMethod = Get(this.realm, instance, "render");
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
     // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    return getValueFromFunctionCall(this.realm, renderMethod, instance, []);
+    return getValueFromFunctionCall(this.realm, renderMethod, instance, [], false, branchStatus === "ROOT");
   }
 
   _resolveSimpleClassComponent(
@@ -283,16 +283,24 @@ export class Reconciler {
     let renderMethod = Get(this.realm, instance, "render");
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
     // the render method doesn't have any arguments, so we just assign the context of "this" to be the instance
-    return getValueFromFunctionCall(this.realm, renderMethod, instance, []);
+    return getValueFromFunctionCall(this.realm, renderMethod, instance, [], false, branchStatus === "ROOT");
   }
 
   _resolveFunctionalComponent(
     componentType: ECMAScriptSourceFunctionValue | BoundFunctionValue,
     props: ObjectValue | AbstractObjectValue,
     context: ObjectValue | AbstractObjectValue,
+    branchStatus: BranchStatusEnum,
     evaluatedNode: ReactEvaluatedNode
   ) {
-    return getValueFromFunctionCall(this.realm, componentType, this.realm.intrinsics.undefined, [props, context]);
+    return getValueFromFunctionCall(
+      this.realm,
+      componentType,
+      this.realm.intrinsics.undefined,
+      [props, context],
+      false,
+      branchStatus === "ROOT"
+    );
   }
 
   _getClassComponentMetadata(
@@ -441,9 +449,14 @@ export class Reconciler {
               // if the value is abstract, we need to keep the render prop as unless
               // we are in firstRenderOnly mode, where we can just inline the abstract value
               if (!(valueProp instanceof AbstractValue) || this.componentTreeConfig.firstRenderOnly) {
-                let result = getValueFromFunctionCall(this.realm, renderProp, this.realm.intrinsics.undefined, [
-                  valueProp,
-                ]);
+                let result = getValueFromFunctionCall(
+                  this.realm,
+                  renderProp,
+                  this.realm.intrinsics.undefined,
+                  [valueProp],
+                  false,
+                  branchStatus === "ROOT"
+                );
                 this.statistics.inlinedComponents++;
                 this.statistics.componentsEvaluated++;
                 evaluatedChildNode.status = "INLINED";
@@ -493,10 +506,14 @@ export class Reconciler {
       forwardedComponent instanceof ECMAScriptSourceFunctionValue || forwardedComponent instanceof BoundFunctionValue,
       "expect React.forwardRef() to be passed function value"
     );
-    let value = getValueFromFunctionCall(this.realm, forwardedComponent, this.realm.intrinsics.undefined, [
-      propsValue,
-      refValue,
-    ]);
+    let value = getValueFromFunctionCall(
+      this.realm,
+      forwardedComponent,
+      this.realm.intrinsics.undefined,
+      [propsValue, refValue],
+      false,
+      branchStatus === "ROOT"
+    );
     return this._resolveDeeply(componentType, value, context, branchStatus, evaluatedChildNode);
   }
 
@@ -648,7 +665,7 @@ export class Reconciler {
     let renderMethod = Get(this.realm, instance, "render");
 
     invariant(renderMethod instanceof ECMAScriptSourceFunctionValue);
-    return getValueFromFunctionCall(this.realm, renderMethod, instance, []);
+    return getValueFromFunctionCall(this.realm, renderMethod, instance, [], false, branchStatus === "ROOT");
   }
 
   _resolveRelayContainer(
@@ -726,7 +743,7 @@ export class Reconciler {
         value = this._resolveClassComponent(componentType, props, context, branchStatus, evaluatedNode);
       }
     } else {
-      value = this._resolveFunctionalComponent(componentType, props, context, evaluatedNode);
+      value = this._resolveFunctionalComponent(componentType, props, context, branchStatus, evaluatedNode);
       if (valueIsFactoryClassComponent(this.realm, value)) {
         invariant(value instanceof ObjectValue);
         if (branchStatus !== "ROOT") {

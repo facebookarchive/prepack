@@ -905,7 +905,8 @@ export function getValueFromFunctionCall(
   func: ECMAScriptSourceFunctionValue | BoundFunctionValue,
   funcThis: ObjectValue | AbstractObjectValue | UndefinedValue,
   args: Array<Value>,
-  isConstructor?: boolean = false
+  isConstructor: boolean,
+  alwaysInline: boolean
 ): Value {
   invariant(func.$Call, "Expected function to be a FunctionValue with $Call method");
   let funcCall = func.$Call;

@@ -9,28 +9,37 @@
 
 /* @flow */
 
-import type { LexicalEnvironment } from "../environment.js";
+import {
+  DeclarativeEnvironmentRecord,
+  GlobalEnvironmentRecord,
+  LexicalEnvironment,
+  ObjectEnvironmentRecord,
+} from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
 import { FatalError } from "../errors.js";
-import type { Realm } from "../realm.js";
+import type { Realm, Effects } from "../realm.js";
 import type { ECMAScriptFunctionValue } from "../values/index.js";
 import {
   AbruptCompletion,
   Completion,
   JoinedNormalAndAbruptCompletions,
+  NormalCompletion,
   ReturnCompletion,
   SimpleNormalCompletion,
+  ThrowCompletion,
 } from "../completions.js";
-import { GlobalEnvironmentRecord, ObjectEnvironmentRecord } from "../environment.js";
 import {
   AbstractValue,
   AbstractObjectValue,
   BoundFunctionValue,
+  ConcreteValue,
   ECMAScriptSourceFunctionValue,
   EmptyValue,
   FunctionValue,
+  NativeFunctionValue,
   NumberValue,
   ObjectValue,
+  PrimitiveValue,
   StringValue,
   SymbolValue,
   UndefinedValue,
@@ -69,6 +78,8 @@ import type {
 } from "@babel/types";
 import * as t from "@babel/types";
 import { PropertyDescriptor } from "../descriptors.js";
+import { NestedOptimizedFunctionSideEffect } from "../errors.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 function InternalCall(
   realm: Realm,
@@ -140,6 +151,125 @@ function InternalCall(
   } finally {
     realm.endCall();
   }
+}
+
+function effectsArePure(realm: Realm, effects: Effects, F: ECMAScriptFunctionValue): boolean {
+  if (realm.createdObjects === undefined) {
+    return false;
+  }
+  for (let [binding] of effects.modifiedProperties) {
+    let obj = binding.object;
+    if (!effects.createdObjects.has(obj)) {
+      return false;
+    }
+  }
+  const baseEnv = F.$Environment;
+  const bindingWasMutated = binding => {
+    let env = baseEnv;
+    let bindingName = binding.name;
+    if (bindingName === "arguments") {
+      return false;
+    }
+    if (env instanceof LexicalEnvironment) {
+      while (env !== null) {
+        let envRecord = env.environmentRecord;
+
+        if (envRecord instanceof GlobalEnvironmentRecord) {
+          for (let name of envRecord.$VarNames) {
+            if (name === bindingName) {
+              return true;
+            }
+          }
+        } else if (envRecord instanceof DeclarativeEnvironmentRecord) {
+          if (envRecord.bindings[bindingName] === binding) {
+            return true;
+          }
+        }
+        env = env.parent;
+      }
+    }
+    return false;
+  };
+
+  for (let [binding] of effects.modifiedBindings) {
+    if (bindingWasMutated(binding)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function OptionallyInlineInternalCall(
+  realm: Realm,
+  F: ECMAScriptFunctionValue,
+  thisArgument: Value,
+  argsList: Array<Value>,
+  incorporateSavedCompletion: (realm: Realm, c: void | Completion | Value) => void | Completion | Value
+): Value {
+  let effects = realm.evaluateForEffects(
+    () => InternalCall(realm, F, thisArgument, argsList, 0),
+    null,
+    "possiblePureFuncCall $Call"
+  );
+  let result = effects.result;
+  if (result instanceof AbruptCompletion) {
+    realm.applyEffects(effects);
+    throw result;
+  } else if (result instanceof JoinedNormalAndAbruptCompletions) {
+    let c = result;
+    invariant(c.containsSelectedCompletion(r => r instanceof NormalCompletion));
+    let rv = Join.joinValuesOfSelectedCompletions(r => r instanceof NormalCompletion, c);
+    if (c.containsSelectedCompletion(r => r instanceof ThrowCompletion)) {
+      // For some tests, this line makes them work. For example:
+      // - test/serializer/abstract/Throw6b it needs this line
+      // - test/serializer/abstract/Throw8 it fails with this line
+      // - test/serializer/abstract/SimpleObject2.js it fails with this line
+      // - test/serializer/abstract/PathConditions3 it needs this line
+      realm.composeWithSavedCompletion(c);
+      if (rv instanceof AbstractValue) {
+        rv = realm.simplifyAndRefineAbstractValue(rv);
+      }
+    }
+    result = rv;
+  } else if (result instanceof SimpleNormalCompletion) {
+    result = result.value;
+  }
+  if (effectsArePure(realm, effects, F)) {
+    let generator = effects.generator;
+
+    if (generator._entries.length > 3) {
+      if (result instanceof PrimitiveValue) {
+        // TODO
+      } else if (result instanceof ConcreteValue) {
+        if (result instanceof ObjectValue) {
+          // TODO support not inlining object values
+          // debugger;
+        }
+      } else if (result instanceof AbstractValue) {
+        if (result instanceof AbstractObjectValue) {
+          // TODO support not inlining object values
+        } else if (result.kind === "conditional") {
+          // TODO
+        } else if (result.kind === "||") {
+          // TODO
+        } else if (result.kind === "&&") {
+          // TODO
+        } else {
+          // debugger;
+          // let absVal = AbstractValue.createTemporalFromBuildFunction(
+          //   realm,
+          //   Value,
+          //   [F, ...argsList],
+          //   createOperationDescriptor("CALL_BAILOUT", { propRef: undefined, thisArg: undefined }),
+          //   { isPure: true }
+          // );
+          // return absVal;
+        }
+      }
+    }
+  }
+  realm.applyEffects(effects);
+  return result;
 }
 
 // ECMA262 9.4.1.1
@@ -914,8 +1044,19 @@ export class FunctionImplementation {
   }
 
   // ECMA262 9.2.1
-  $Call(realm: Realm, F: ECMAScriptFunctionValue, thisArgument: Value, argsList: Array<Value>): Value {
-    return InternalCall(realm, F, thisArgument, argsList, 0);
+  $Call(
+    realm: Realm,
+    F: ECMAScriptFunctionValue,
+    thisArgument: Value,
+    argsList: Array<Value>,
+    alwaysInline: boolean
+  ): Value {
+    if (F instanceof NativeFunctionValue || thisArgument !== realm.intrinsics.undefined || alwaysInline) {
+      return InternalCall(realm, F, thisArgument, argsList, 0);
+    }
+    return OptionallyInlineInternalCall(realm, F, thisArgument, argsList, (...args) =>
+      this.incorporateSavedCompletion(...args)
+    );
   }
 
   // ECMA262 9.2.2
@@ -964,8 +1105,8 @@ export class FunctionImplementation {
     // 7. Set F's essential internal methods to the default ordinary object definitions specified in 9.1.
 
     // 8. Set F's [[Call]] internal method to the definition specified in 9.2.1.
-    F.$Call = (thisArgument, argsList) => {
-      return this.$Call(realm, F, thisArgument, argsList);
+    F.$Call = (thisArgument, argsList, alwaysInline) => {
+      return this.$Call(realm, F, thisArgument, argsList, alwaysInline);
     };
 
     // 9. If needsConstruct is true, then

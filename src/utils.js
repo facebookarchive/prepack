@@ -202,7 +202,7 @@ export function createModelledFunctionCall(
     let newPathConditions = funcValue.pathConditionDuringDeclaration || savedPathConditions;
     realm.pathConditions = newPathConditions;
     try {
-      let result = call(thisArg, args);
+      let result = call(thisArg, args, true);
       return result;
     } finally {
       realm.pathConditions = savedPathConditions;

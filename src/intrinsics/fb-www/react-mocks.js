@@ -140,14 +140,6 @@ let reactCode = `
       };
     }
 
-    function releaseTraverseContext(traverseContext) {
-      traverseContext.result = null;
-      traverseContext.keyPrefix = null;
-      traverseContext.func = null;
-      traverseContext.context = null;
-      traverseContext.count = 0;
-    }
-
     function traverseAllChildren(children, callback, traverseContext) {
       if (children == null) {
         return 0;
@@ -270,7 +262,7 @@ let reactCode = `
     function mapSingleChildIntoContext(bookKeeping, child, childKey) {
       var {result, keyPrefix, func, context} = bookKeeping;
     
-      let mappedChild = func.call(context, child, bookKeeping.count++);
+      let mappedChild = func.call(context, child);
       if (Array.isArray(mappedChild)) {
         mapIntoWithKeyPrefixInternal(mappedChild, result, childKey, c => c);
       } else if (mappedChild != null) {
@@ -302,12 +294,11 @@ let reactCode = `
         context,
       );
       traverseAllChildren(children, mapSingleChildIntoContext, traverseContext);
-      releaseTraverseContext(traverseContext);
     }
 
     function forEachSingleChild(bookKeeping, child, name) {
       var {func, context} = bookKeeping;
-      func.call(context, child, bookKeeping.count++);
+      func.call(context, child);
     }
 
     function forEachChildren(children, forEachFunc, forEachContext) {
@@ -321,7 +312,6 @@ let reactCode = `
         forEachContext,
       );
       traverseAllChildren(children, forEachSingleChild, traverseContext);
-      releaseTraverseContext(traverseContext);
     }
 
     function mapChildren(children, func, context) {
