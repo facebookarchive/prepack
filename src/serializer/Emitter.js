@@ -37,7 +37,7 @@ type EmitterDependenciesVisitorCallbacks<T> = {
   // Callback invoked whenever a dependency is visited that is an abstract value with an identifier.
   // A return value that is not undefined indicates that the visitor should stop, and return the value as the overall result.
   onAbstractValueWithIdentifier?: AbstractValue => void | T,
-  // Callback invoked whenever a dependency is visited that is an intrinsic object that was dervied
+  // Callback invoked whenever a dependency is visited that is an intrinsic object that was derived
   // A return value that is not undefined indicates that the visitor should stop, and return the value as the overall result.
   onIntrinsicDerivedObject?: ObjectValue => void | T,
 };
