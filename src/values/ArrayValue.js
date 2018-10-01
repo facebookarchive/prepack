@@ -242,7 +242,7 @@ export default class ArrayValue extends ObjectValue {
   }
 
   static isIntrinsicAndHasWidenedNumericProperty(obj: Value): boolean {
-    if (obj instanceof ArrayValue && obj.intrinsicName !== undefined) {
+    if (obj instanceof ArrayValue && obj.intrinsicName !== undefined && obj.isScopedTemplate !== undefined) {
       const prop = obj.unknownProperty;
       if (prop !== undefined && prop.descriptor !== undefined) {
         const desc = prop.descriptor.throwIfNotConcrete(obj.$Realm);

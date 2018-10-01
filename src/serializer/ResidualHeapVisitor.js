@@ -1087,7 +1087,7 @@ export class ResidualHeapVisitor {
     } else if (val.isIntrinsic()) {
       // All intrinsic values exist from the beginning of time...
       // ...except for a few that come into existence as templates for abstract objects via executable code.
-      if (val instanceof ObjectValue && val._isScopedTemplate) {
+      if (val instanceof ObjectValue && val.isScopedTemplate) {
         this.preProcessValue(val);
         this.postProcessValue(val);
       } else

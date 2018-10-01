@@ -279,7 +279,7 @@ export default class ObjectValue extends ConcreteValue {
 
   // Specifies whether the object is a template that needs to be created in a scope
   // If set, this happened during object initialization and the value is never changed again, so not tracked.
-  _isScopedTemplate: void | true;
+  isScopedTemplate: void | true;
 
   // If true, then unknown properties should return transitively simple abstract object values
   _simplicityIsTransitive: AbstractValue | BooleanValue;
@@ -717,5 +717,9 @@ export default class ObjectValue extends ConcreteValue {
     if (pb.object.refuseSerialization) return true;
     if (pb.internalSlot && typeof pb.key === "string" && pb.key[0] === "_") return true;
     return false;
+  }
+
+  static isIntrinsicDerviedObject(obj: Value): boolean {
+    return obj instanceof ObjectValue && obj.intrinsicName !== undefined && obj.isScopedTemplate !== undefined;
   }
 }

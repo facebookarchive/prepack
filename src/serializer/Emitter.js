@@ -38,9 +38,9 @@ type EmitterDependenciesVisitorCallbacks<T> = {
   // Callback invoked whenever a dependency is visited that is an abstract value with an identifier.
   // A return value that is not undefined indicates that the visitor should stop, and return the value as the overall result.
   onAbstractValueWithIdentifier?: AbstractValue => void | T,
-  // Callback invoked whenever a dependency is visited that is an array value with a widened numeric property.
+  // Callback invoked whenever a dependency is visited that is an intrinsic object that was dervied
   // A return value that is not undefined indicates that the visitor should stop, and return the value as the overall result.
-  onArrayWithWidenedNumericProperty?: ArrayValue => void | T,
+  onIntrinsicDerivedObject?: ObjectValue => void | T,
 };
 
 // The emitter keeps track of a stack of what's currently being emitted.
@@ -95,7 +95,7 @@ export class Emitter {
       },
       onAbstractValueWithIdentifier: val =>
         derivedIds.has(val.getIdentifier()) && mustWaitForValue(val) ? val : undefined,
-      onArrayWithWidenedNumericProperty: val => (mustWaitForValue(val) ? val : undefined),
+      onIntrinsicDerivedObject: val => (mustWaitForValue(val) ? val : undefined),
     };
     this._conditionalFeasibility = conditionalFeasibility;
   }
@@ -351,10 +351,8 @@ export class Emitter {
         result = recurse(val.$Description);
         if (result !== undefined) return result;
       }
-    } else if (val instanceof ArrayValue && ArrayValue.isIntrinsicAndHasWidenedNumericProperty(val)) {
-      result = callbacks.onArrayWithWidenedNumericProperty
-        ? callbacks.onArrayWithWidenedNumericProperty(val)
-        : undefined;
+    } else if (val instanceof ObjectValue && ObjectValue.isIntrinsicDerviedObject(val)) {
+      result = callbacks.onIntrinsicDerivedObject ? callbacks.onIntrinsicDerivedObject(val) : undefined;
       if (result !== undefined) return result;
     } else if (val instanceof ObjectValue) {
       let kind = val.getKind();
