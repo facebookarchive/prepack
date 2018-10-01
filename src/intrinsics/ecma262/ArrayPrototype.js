@@ -17,6 +17,7 @@ import {
   BoundFunctionValue,
   ConcreteValue,
   ECMAScriptSourceFunctionValue,
+  NativeFunctionValue,
   NullValue,
   NumberValue,
   ObjectValue,
@@ -418,10 +419,25 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (thisArg) {
         args.push(thisArg);
       }
+      let possibleNestedOptimizedFunctions;
+
+      // If callbackfn is a native function, it cannot be optimized, and cannot alias locations
+      // other than ones accesible via global, which leaked value analysis disregards.
+      if (!(callbackfn instanceof NativeFunctionValue)) {
+        invariant(callbackfn instanceof ECMAScriptSourceFunctionValue || callbackfn instanceof BoundFunctionValue);
+        possibleNestedOptimizedFunctions = [
+          {
+            func: callbackfn,
+            thisValue: thisArg || realm.intrinsics.undefined,
+            kind: "filter",
+          },
+        ];
+      }
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         args,
-        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL"),
+        possibleNestedOptimizedFunctions
       );
     }
 
