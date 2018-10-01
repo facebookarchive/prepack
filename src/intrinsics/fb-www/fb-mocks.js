@@ -124,6 +124,7 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
         if (obj instanceof ObjectValue) {
           let template = createObjectWithoutProperties(obj, keys);
           value.values = new ValuesDomain(template);
+          throw new Error("TODO");
         }
         // as we are returning an abstract object, we mark it as simple
         value.makeSimple();

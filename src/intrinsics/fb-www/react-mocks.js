@@ -552,6 +552,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
       );
       invariant(consumer instanceof AbstractObjectValue);
       consumer.values = new ValuesDomain(new Set([consumerObject]));
+      throw new Error("TODO");
 
       let provider = AbstractValue.createTemporalFromBuildFunction(
         realm,
@@ -562,6 +563,7 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
       );
       invariant(provider instanceof AbstractObjectValue);
       provider.values = new ValuesDomain(new Set([providerObject]));
+      throw new Error("TODO");
 
       Properties.Set(realm, consumerObject, "$$typeof", getReactSymbol("react.context", realm), true);
       Properties.Set(realm, consumerObject, "currentValue", defaultValue, true);

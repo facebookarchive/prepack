@@ -249,6 +249,7 @@ export function wrapReactElementInBranchOrReturnValue(realm: Realm, value: Value
     );
     invariant(temporal instanceof AbstractObjectValue);
     temporal.values = new ValuesDomain(value);
+    throw new Error("TODO");
     value.temporalAlias = temporal;
   }
   return value;

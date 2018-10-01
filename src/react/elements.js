@@ -217,9 +217,11 @@ function createPropsObject(
         invariant(temporalTo instanceof AbstractObjectValue);
         if (props instanceof AbstractObjectValue) {
           temporalTo.values = props.values;
+          throw new Error("TODO");
         } else {
           invariant(props instanceof ObjectValue);
           temporalTo.values = new ValuesDomain(props);
+          throw new Error("TODO");
         }
         props.temporalAlias = temporalTo;
       }
