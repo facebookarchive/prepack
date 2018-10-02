@@ -18,6 +18,7 @@ import type { BabelNodeSourceLocation } from "@babel/types";
 export default class ECMAScriptFunctionValue extends FunctionValue {
   constructor(realm: Realm, intrinsicName?: string) {
     super(realm, intrinsicName);
+    this.isCalledInMultipleContexts = false;
   }
 
   $ConstructorKind: "base" | "derived";
@@ -26,4 +27,5 @@ export default class ECMAScriptFunctionValue extends FunctionValue {
   $FunctionKind: "normal" | "classConstructor" | "generator";
   activeArguments: void | Map<BabelNodeSourceLocation, [number, Array<Value>]>;
   isSelfRecursive: boolean;
+  isCalledInMultipleContexts: boolean;
 }

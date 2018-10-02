@@ -43,6 +43,7 @@ import invariant from "../invariant.js";
 import type { BabelNodeTemplateLiteral } from "@babel/types";
 import { createOperationDescriptor } from "../utils/generator.js";
 import { PropertyDescriptor, AbstractJoinedDescriptor } from "../descriptors.js";
+import { IsArrayIndex } from "./is.js";
 
 // ECMA262 7.3.22
 export function GetFunctionRealm(realm: Realm, obj: ObjectValue): Realm {
@@ -120,6 +121,28 @@ export function OrdinaryGet(
         propName = P;
       }
       invariant(Receiver instanceof ObjectValue || Receiver instanceof AbstractObjectValue);
+
+      if (IsArrayIndex(realm, P)) {
+        // Deal with aliasing effects
+        invariant(val.args.length === 1);
+        let aliasSet = val.args[0];
+
+        invariant(aliasSet instanceof AbstractValue && aliasSet.kind === "mayAliasSet");
+        for (let object of aliasSet.args) {
+          // This explicit handling of aliasing should become unnecessary
+          // when we unify arrays with widened numeric properties. We have effectively
+          // pushed this leaking decision as far out as we possibly can, for now.
+          // and objects with widened properties. TODO #2569.
+          invariant(object instanceof ObjectValue);
+          // TODO: Deal with nested Array.map, in which the following
+          // pessimistic leaking call may fail because object is not tracked
+          // for leaking
+          invariant(realm.createdObjectsTrackedForLeaks !== undefined);
+          invariant(realm.createdObjectsTrackedForLeaks.has(object));
+          Leak.value(realm, object);
+        }
+      }
+
       return GetFromArrayWithWidenedNumericProperty(realm, Receiver, propName);
     } else if (!propValue) {
       AbstractValue.reportIntrospectionError(val, "abstract computed property name");

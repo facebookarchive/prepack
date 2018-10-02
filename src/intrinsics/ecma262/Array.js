@@ -243,7 +243,9 @@ export default function(realm: Realm): NativeFunctionValue {
           if (thisArg) {
             args.push(thisArg);
           }
-          possibleNestedOptimizedFunctions = [{ func: mapfn, thisValue: thisArg || realm.intrinsics.undefined }];
+          possibleNestedOptimizedFunctions = [
+            { func: mapfn, thisValue: thisArg || realm.intrinsics.undefined, kind: "map" },
+          ];
         }
         Leak.value(realm, items);
         return ArrayValue.createTemporalWithWidenedNumericProperty(
