@@ -610,7 +610,11 @@ export class LeakImplementation {
 export class MaterializeImplementation {
   // TODO: Understand relation to snapshots: #2441
   materializeObject(realm: Realm, val: ObjectValue): void {
-    materializeObject(realm, val);
+    if (realm.instantRender.enabled)
+      // Materialization leads to runtime code that mutates objects
+      // this is at best undesirable in InstantRender
+      val.makeFinal();
+    else materializeObject(realm, val);
   }
 
   // This routine materializes objects reachable from non-local bindings read
@@ -624,31 +628,15 @@ export class MaterializeImplementation {
   // - Previously havoced locations (#2446) should be reloaded, but are currently rejected.
   // - Specialization depends on the assumption that the Array op will only be used once.
   // First, we will enforce it: #2448. Later we will relax it: #2454
-  materializeObjectsTransitive(realm: Realm, outlinedFunction: FunctionValue): void {
+  computeReachableObjects(realm: Realm, rootValue: Value): Set<ObjectValue> {
     invariant(realm.isInPureScope());
-    let objectsToMaterialize: Set<ObjectValue> = new Set();
+
+    let reachableObjects: Set<ObjectValue> = new Set();
     let visitedValues: Set<Value> = new Set();
-    computeFromValue(outlinedFunction);
+    computeFromValue(rootValue);
 
-    let handleMaterialization: ObjectValue => void;
-    if (realm.instantRender.enabled) {
-      // We prevent mutations to objects so that non-final
-      // values cannot occur, and hence materialization is avoided.
-      // The values of properties needed are issued via object literals.
-      handleMaterialization = o => {
-        o.makeFinal();
-      };
-    } else {
-      handleMaterialization = o => {
-        if (!TestIntegrityLevel(realm, o, "frozen")) materializeObject(realm, o);
-      };
-    }
+    return reachableObjects;
 
-    for (let object of objectsToMaterialize) {
-      handleMaterialization(object);
-    }
-
-    return;
     function computeFromBindings(func: FunctionValue, nonLocalReadBindings: Set<string>): void {
       invariant(func instanceof ECMAScriptSourceFunctionValue);
       let environment = func.$Environment;
@@ -697,6 +685,7 @@ export class MaterializeImplementation {
       computeFromValue(value.$ProxyHandler);
     }
     function computeFromValue(value: Value): void {
+      invariant(value !== undefined);
       if (value.isIntrinsic() || value instanceof EmptyValue || value instanceof PrimitiveValue) {
         visit(value);
       } else if (value instanceof AbstractValue) {
@@ -758,7 +747,7 @@ export class MaterializeImplementation {
           );
           break;
       }
-      if (!objectsToMaterialize.has(value)) objectsToMaterialize.add(value);
+      if (!reachableObjects.has(value)) reachableObjects.add(value);
     }
     function computeFromDescriptor(descriptor: Descriptor): void {
       if (descriptor === undefined) {
@@ -803,7 +792,7 @@ export class MaterializeImplementation {
       computeFromObjectPrototype(obj);
     }
     function computeFromObjectPrototype(obj: ObjectValue) {
-      computeFromValue(obj.$Prototype);
+      if (obj.$Prototype !== undefined) computeFromValue(obj.$Prototype);
     }
     function computeFromFunctionValue(fn: FunctionValue) {
       computeFromObjectProperties(fn);
@@ -912,7 +901,7 @@ export class MaterializeImplementation {
     function notSupportedForTransitiveMaterialization() {
       let error = new CompilerDiagnostic(
         "Not supported for transitive materialization",
-        outlinedFunction.expressionLocation,
+        rootValue.expressionLocation,
         "PP0041",
         "FatalError"
       );

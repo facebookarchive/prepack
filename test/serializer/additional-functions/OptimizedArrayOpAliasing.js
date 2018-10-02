@@ -1,25 +1,20 @@
 // arrayNestedOptimizedFunctionsEnabled
 
-function f(c, b) {
+function f(c) {
   var arr = Array.from(c);
   let obj = { foo: 1 };
 
-  function nested(x) {
-    return b ? x : undefined;
-  }
-
   function op(x) {
-    return nested(x);
+    return obj;
   }
 
   let mapped = arr.map(op);
   let val = arr[0].foo;
-  let ret = mapped[0].foo;
   obj.foo = 2;
+  let ret = mapped[0].foo;
 
   return ret;
 }
-
 global.__optimize && __optimize(f);
 
-inspect = () => f([0], true);
+inspect = () => f([0]);
