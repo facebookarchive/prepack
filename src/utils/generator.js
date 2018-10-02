@@ -1067,7 +1067,7 @@ export class Generator {
     let id = this.preludeGenerator.nameGenerator.generate("derived");
     let value = buildValue(id);
     value.intrinsicNameGenerated = true;
-    value._isScopedTemplate = true; // because this object doesn't exist ahead of time, and the visitor would otherwise declare it in the common scope
+    value.isScopedTemplate = true; // because this object doesn't exist ahead of time, and the visitor would otherwise declare it in the common scope
     invariant(value.intrinsicName === id);
     this._addDerivedEntry({
       isPure: optionalArgs ? optionalArgs.isPure : undefined,

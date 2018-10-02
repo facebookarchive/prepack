@@ -940,11 +940,9 @@ export class ResidualHeapSerializer {
     // which is related to one of the scopes this value is used by.
     let notYetDoneBodies = new Set();
     this.emitter.dependenciesVisitor(val, {
-      onArrayWithWidenedNumericProperty: dependency => {
+      onIntrinsicDerivedObject: dependency => {
         if (trace) {
-          console.log(
-            `  depending on array with widened numeric properties and an identifier ${dependency.intrinsicName || "?"}`
-          );
+          console.log(`  depending on intrinsic derived object and an identifier ${dependency.intrinsicName || "?"}`);
         }
         invariant(
           optimizedFunctionRoot === undefined || !!this.emitter.getActiveOptimizedFunction(),
