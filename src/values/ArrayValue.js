@@ -57,6 +57,10 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
       if (realm.instantRender.enabled) {
         realm.instantRenderBailout("Array operators may only be optimized once", funcToModel.expressionLocation);
       } else {
+        // We currently do not support context-sensitive specialization,
+        // where the calls we specialize depend on the specialization context.
+        // TODO: #2454
+        // TODO: Implement context-sensitive specialization instead of giving up
         funcToModel.isCalledInMultipleContexts = true;
         Leak.value(realm, func);
         return;

@@ -789,10 +789,10 @@ export class MaterializeImplementation {
       }
 
       // prototype
-      if (obj.$Prototype !== undefined) computeFromObjectPrototype(obj);
+      computeFromObjectPrototype(obj);
     }
     function computeFromObjectPrototype(obj: ObjectValue) {
-      computeFromValue(obj.$Prototype);
+      if (obj.$Prototype !== undefined) computeFromValue(obj.$Prototype);
     }
     function computeFromFunctionValue(fn: FunctionValue) {
       computeFromObjectProperties(fn);
