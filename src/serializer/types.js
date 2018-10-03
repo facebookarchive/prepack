@@ -45,13 +45,15 @@ export type SerializedBody = {
   optimizedFunction?: FunctionValue, // defined if any only if type is OptimizedFunction
 };
 
+export type AdditionalFunctionTransform = (body: Array<BabelNodeStatement>) => void;
+
 export type AdditionalFunctionEffects = {
   // All of these effects must be applied for this additional function
   // to be properly setup
   parentAdditionalFunction: FunctionValue | void,
   effects: Effects,
   generator: Generator,
-  transforms: Array<(body: Array<BabelNodeStatement>) => void>,
+  transforms: Array<AdditionalFunctionTransform>,
   additionalRoots: Set<ObjectValue>,
 };
 
