@@ -57,6 +57,8 @@ import type { SerializerOptions } from "../options.js";
 import type { PathConditions, ShapeInformationInterface } from "../types.js";
 import { PreludeGenerator } from "./PreludeGenerator.js";
 import { PropertyDescriptor } from "../descriptors.js";
+import type { AdditionalFunctionEffects } from "../serializer/types.js";
+import { FunctionEnvironmentRecord } from "../environment";
 
 export type OperationDescriptorType =
   | "ABSTRACT_FROM_TEMPLATE"
@@ -680,7 +682,9 @@ export class Generator {
   static _generatorOfEffects(
     realm: Realm,
     name: string,
-    environmentRecordIdAfterGlobalCode: number,
+    additionalFunctionEffects: Map<FunctionValue, AdditionalFunctionEffects>,
+    optimizedFunction: FunctionValue,
+    preEvaluationComponentToWriteEffectFunction: Map<FunctionValue, FunctionValue>,
     effects: Effects
   ): Generator {
     let { result, generator, modifiedBindings, modifiedProperties, createdObjects } = effects;
@@ -698,13 +702,36 @@ export class Generator {
       output.emitPropertyModification(propertyBinding);
     }
 
-    for (let modifiedBinding of modifiedBindings.keys()) {
-      // TODO #2430: Instead of looking at the environment ids, keep instead track of a createdEnvironmentRecords set,
-      // and only consider bindings here from environment records that already existed, or even better,
-      // ensure upstream that only such bindings are ever added to the modified-bindings set.
-      if (modifiedBinding.environment.id >= environmentRecordIdAfterGlobalCode) continue;
+    for (let [modifiedBinding, previousValue] of modifiedBindings.entries()) {
+      let cannonicalize = functionValue =>
+        preEvaluationComponentToWriteEffectFunction.get(functionValue) || functionValue;
+      let optimizedFunctionValue = optimizedFunction;
+      invariant(optimizedFunctionValue);
+      invariant(
+        cannonicalize(optimizedFunctionValue) === optimizedFunctionValue,
+        "These values should be canonical already"
+      );
+      // Walks up the parent chain for the given optimized function checking if the value or any of its parents are
+      // equal to the optimized function we're currently building a generator for.
+      let valueOrParentEqualsFunction = functionValue => {
+        let canonicalOptimizedFunction = cannonicalize(functionValue);
+        if (canonicalOptimizedFunction === optimizedFunctionValue) return true;
+        let additionalEffects = additionalFunctionEffects.get(canonicalOptimizedFunction);
+        invariant(additionalEffects !== undefined);
+        let parent = additionalEffects.parentAdditionalFunction;
+        if (parent !== undefined) return valueOrParentEqualsFunction(parent);
+        return false;
+      };
 
-      output.emitBindingModification(modifiedBinding);
+      let environment = modifiedBinding.environment;
+      if (environment instanceof FunctionEnvironmentRecord && environment.$FunctionObject === optimizedFunctionValue)
+        continue;
+      let creatingOptimizedFunction = environment.creatingOptimizedFunction;
+      if (creatingOptimizedFunction && valueOrParentEqualsFunction(creatingOptimizedFunction)) continue;
+      // TODO #2586: modifiedBinding.value should always exist
+      if (modifiedBinding.value || previousValue.value) {
+        output.emitBindingModification(modifiedBinding);
+      }
     }
 
     if (result instanceof UndefinedValue) return output;
@@ -729,10 +756,19 @@ export class Generator {
     effects: Effects,
     realm: Realm,
     name: string,
-    environmentRecordIdAfterGlobalCode: number = 0
+    additionalFunctionEffects: Map<FunctionValue, AdditionalFunctionEffects>,
+    preEvaluationComponentToWriteEffectFunction: Map<FunctionValue, FunctionValue>,
+    optimizedFunction: FunctionValue
   ): Generator {
     return realm.withEffectsAppliedInGlobalEnv(
-      this._generatorOfEffects.bind(this, realm, name, environmentRecordIdAfterGlobalCode),
+      this._generatorOfEffects.bind(
+        this,
+        realm,
+        name,
+        additionalFunctionEffects,
+        optimizedFunction,
+        preEvaluationComponentToWriteEffectFunction
+      ),
       effects
     );
   }
@@ -1067,7 +1103,7 @@ export class Generator {
     let id = this.preludeGenerator.nameGenerator.generate("derived");
     let value = buildValue(id);
     value.intrinsicNameGenerated = true;
-    value._isScopedTemplate = true; // because this object doesn't exist ahead of time, and the visitor would otherwise declare it in the common scope
+    value.isScopedTemplate = true; // because this object doesn't exist ahead of time, and the visitor would otherwise declare it in the common scope
     invariant(value.intrinsicName === id);
     this._addDerivedEntry({
       isPure: optionalArgs ? optionalArgs.isPure : undefined,

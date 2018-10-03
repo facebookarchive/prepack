@@ -9,7 +9,6 @@
 
 /* @flow */
 
-import { EnvironmentRecord } from "../environment.js";
 import { Realm, ExecutionContext } from "../realm.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { SourceFileCollection } from "../types.js";
@@ -141,7 +140,6 @@ export class Serializer {
       }
 
       let code = this._execute(sourceFileCollection, sourceMaps, onParse);
-      let environmentRecordIdAfterGlobalCode = EnvironmentRecord.nextId;
 
       if (this.logger.hasErrors()) return undefined;
 
@@ -149,20 +147,18 @@ export class Serializer {
         statistics.resolveInitializedModules.measure(() => this.modules.resolveInitializedModules());
       }
 
-      statistics.checkThatFunctionsAreIndependent.measure(() =>
-        this.functions.checkThatFunctionsAreIndependent(environmentRecordIdAfterGlobalCode)
-      );
+      statistics.checkThatFunctionsAreIndependent.measure(() => this.functions.checkThatFunctionsAreIndependent());
 
       let reactStatistics;
       if (this.realm.react.enabled) {
         statistics.optimizeReactComponentTreeRoots.measure(() => {
           reactStatistics = new ReactStatistics();
-          this.functions.optimizeReactComponentTreeRoots(reactStatistics, environmentRecordIdAfterGlobalCode);
+          this.functions.optimizeReactComponentTreeRoots(reactStatistics);
         });
       }
 
       statistics.processCollectedNestedOptimizedFunctions.measure(() =>
-        this.functions.processCollectedNestedOptimizedFunctions(environmentRecordIdAfterGlobalCode)
+        this.functions.processCollectedNestedOptimizedFunctions()
       );
 
       statistics.dumpIR.measure(() => {

@@ -994,7 +994,9 @@ export default function(realm: Realm, obj: ObjectValue): void {
         args.push(thisArg);
       }
       invariant(callbackfn instanceof ECMAScriptSourceFunctionValue || callbackfn instanceof BoundFunctionValue);
-      let possibleNestedOptimizedFunctions = [{ func: callbackfn, thisValue: thisArg || realm.intrinsics.undefined }];
+      let possibleNestedOptimizedFunctions = [
+        { func: callbackfn, thisValue: thisArg || realm.intrinsics.undefined, kind: "map" },
+      ];
       return ArrayValue.createTemporalWithWidenedNumericProperty(
         realm,
         args,

@@ -88,6 +88,7 @@ export class EnvironmentRecord {
   isReadOnly: boolean;
   $NewTarget: void | ObjectValue;
   id: number;
+  creatingOptimizedFunction: FunctionValue | void;
 
   static nextId: number = 0;
 
@@ -96,6 +97,7 @@ export class EnvironmentRecord {
     this.realm = realm;
     this.isReadOnly = false;
     this.id = EnvironmentRecord.nextId++;
+    this.creatingOptimizedFunction = realm.currentOptimizedFunction;
   }
 
   HasBinding(N: string): boolean {

@@ -477,6 +477,7 @@ export class Realm {
 
   optimizedFunctions: Map<FunctionValue | AbstractValue, ArgModel | void>;
   arrayNestedOptimizedFunctionsEnabled: boolean;
+  currentOptimizedFunction: FunctionValue | void;
 
   eagerlyRequireModuleDependencies: void | boolean;
 
@@ -723,8 +724,13 @@ export class Realm {
       } else {
         // Add any created objects from the child evaluatePure's tracked objects set to the
         // current tracked objects set.
+<<<<<<< HEAD
         for (let obj of this.createdObjectsTrackedForLeaks) {
           if (this.createdObjects.has(obj)) {
+=======
+        if (this.createdObjectsTrackedForLeaks !== undefined) {
+          for (let obj of this.createdObjectsTrackedForLeaks) {
+>>>>>>> master
             saved_createdObjectsTrackedForLeaks.add(obj);
           }
         }
@@ -819,6 +825,18 @@ export class Realm {
       }
     });
     invariant(result !== undefined, "If we get here, func must have returned undefined.");
+    return result;
+  }
+
+  withNewOptimizedFunction<T>(func: () => T, optimizedFunction: FunctionValue): T {
+    let result: T;
+    let previousOptimizedFunction = this.currentOptimizedFunction;
+    this.currentOptimizedFunction = optimizedFunction;
+    try {
+      result = func();
+    } finally {
+      this.currentOptimizedFunction = previousOptimizedFunction;
+    }
     return result;
   }
 
