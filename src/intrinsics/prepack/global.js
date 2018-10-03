@@ -272,7 +272,12 @@ export default function(realm: Realm): void {
             /*bubbles*/ true,
             /*reportSideEffectFunc*/ callback === undefined || callback === realm.intrinsics.undefined
               ? null
-              : () => callback.$Call(realm.intrinsics.undefined, [])
+              : () => {
+                  invariant(callback instanceof ECMAScriptSourceFunctionValue);
+                  let call = callback.$Call;
+                  invariant(call !== undefined);
+                  call(realm.intrinsics.undefined, []);
+                }
           );
         }
       ),
