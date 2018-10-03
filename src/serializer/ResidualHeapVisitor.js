@@ -1155,6 +1155,18 @@ export class ResidualHeapVisitor {
           let temporalAlias = value.temporalAlias;
           return !this.referencedDeclaredValues.has(temporalAlias) && !this.values.has(temporalAlias);
         }
+        if (value.isIntrinsic() && this.realm.optionallyInlinedDerivedValues.has(value)) {
+          let setOfInlinedObjectProperties = this.realm.optionallyInlinedDerivedValues.get(value);
+
+          if (setOfInlinedObjectProperties !== undefined) {
+            for (let propVal of setOfInlinedObjectProperties) {
+              canOmit = !this.referencedDeclaredValues.has(propVal) && !this.values.has(propVal);
+              if (!canOmit) {
+                return false;
+              }
+            }
+          }
+        }
         return canOmit;
       },
       recordDeclaration: (value: Value) => {

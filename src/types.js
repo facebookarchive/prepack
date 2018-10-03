@@ -125,7 +125,7 @@ export type ElementType =
 //
 
 declare class _CallableObjectValue extends ObjectValue {
-  $Call: void | ((thisArgument: Value, argsList: Array<Value>) => Value);
+  $Call: void | ((thisArgument: Value, argsList: Array<Value>, alwaysInline: boolean) => Value);
 }
 export type CallableObjectValue = _CallableObjectValue | FunctionValue | NativeFunctionValue;
 
@@ -532,7 +532,13 @@ export type FunctionType = {
   AddRestrictedFunctionProperties(F: FunctionValue, realm: Realm): boolean,
 
   // ECMA262 9.2.1
-  $Call(realm: Realm, F: ECMAScriptFunctionValue, thisArgument: Value, argsList: Array<Value>): Value,
+  $Call(
+    realm: Realm,
+    F: ECMAScriptFunctionValue,
+    thisArgument: Value,
+    argsList: Array<Value>,
+    alwaysInline: boolean
+  ): Value,
 
   // ECMA262 9.2.2
   $Construct(

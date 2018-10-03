@@ -84,6 +84,7 @@ let prepackOptions = {
   invariantLevel: 0,
   abstractValueImpliesMax: 1000,
   stripFlow: true,
+  optionallyInlineFunctionCalls: true,
 };
 let inputPath = path.resolve("fb-www/input.js");
 let outputPath = path.resolve("fb-www/output.js");

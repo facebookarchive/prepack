@@ -276,7 +276,7 @@ export default function(realm: Realm): void {
                   invariant(callback instanceof ECMAScriptSourceFunctionValue);
                   let call = callback.$Call;
                   invariant(call !== undefined);
-                  call(realm.intrinsics.undefined, []);
+                  call(realm.intrinsics.undefined, [], true);
                 }
           );
         }
@@ -695,14 +695,17 @@ export default function(realm: Realm): void {
         (context, [functionValue]) => {
           if (!IsCallable(realm, functionValue) || !(functionValue instanceof FunctionValue))
             throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "argument must be callable function");
-          let functionCall: void | ((thisArgument: Value, argumentsList: Array<Value>) => Value) = functionValue.$Call;
+          let functionCall:
+            | void
+            | ((thisArgument: Value, argumentsList: Array<Value>, alwaysInline: boolean) => Value) =
+            functionValue.$Call;
           if (typeof functionCall !== "function") {
             throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "argument must be directly callable");
           }
           let old = realm.eagerlyRequireModuleDependencies;
           realm.eagerlyRequireModuleDependencies = true;
           try {
-            return functionCall(realm.intrinsics.undefined, []);
+            return functionCall(realm.intrinsics.undefined, [], true);
           } finally {
             realm.eagerlyRequireModuleDependencies = old;
           }

@@ -114,7 +114,7 @@ export function getReactSymbol(symbolKey: ReactSymbolTypes, realm: Realm): Symbo
       invariant(SymbolForDescriptor instanceof PropertyDescriptor);
       let SymbolForValue = SymbolForDescriptor.value;
       if (SymbolForValue instanceof ObjectValue && typeof SymbolForValue.$Call === "function") {
-        reactSymbol = SymbolForValue.$Call(realm.intrinsics.Symbol, [new StringValue(realm, symbolKey)]);
+        reactSymbol = SymbolForValue.$Call(realm.intrinsics.Symbol, [new StringValue(realm, symbolKey)], true);
         invariant(reactSymbol instanceof SymbolValue);
         realm.react.symbols.set(symbolKey, reactSymbol);
       }
@@ -918,7 +918,7 @@ export function getValueFromFunctionCall(
       invariant(newCall);
       value = newCall(args, func);
     } else {
-      value = funcCall(funcThis, args);
+      value = funcCall(funcThis, args, alwaysInline);
     }
     completion = new SimpleNormalCompletion(value);
   } catch (error) {
@@ -1073,7 +1073,7 @@ export function applyObjectAssignConfigsForReactElement(realm: Realm, to: Object
   invariant(objectAssignCall !== undefined);
 
   // Use the existing internal Prepack Object.assign model
-  objectAssignCall(realm.intrinsics.undefined, [to, ...sources]);
+  objectAssignCall(realm.intrinsics.undefined, [to, ...sources], false);
 }
 
 // In firstRenderOnly mode, we strip off onEventHanlders and any props

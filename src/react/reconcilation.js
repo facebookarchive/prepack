@@ -654,12 +654,12 @@ export class Reconciler {
       let componentWillMount = Get(this.realm, instance, "componentWillMount");
 
       if (componentWillMount instanceof ECMAScriptSourceFunctionValue && componentWillMount.$Call) {
-        componentWillMount.$Call(instance, []);
+        componentWillMount.$Call(instance, [], true);
       }
       let unsafeComponentWillMount = Get(this.realm, instance, "UNSAFE_componentWillMount");
 
       if (unsafeComponentWillMount instanceof ECMAScriptSourceFunctionValue && unsafeComponentWillMount.$Call) {
-        unsafeComponentWillMount.$Call(instance, []);
+        unsafeComponentWillMount.$Call(instance, [], true);
       }
     }
     let renderMethod = Get(this.realm, instance, "render");

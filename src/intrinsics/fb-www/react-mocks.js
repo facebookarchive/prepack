@@ -432,14 +432,18 @@ export function createMockReact(realm: Realm, reactRequireName: string): ObjectV
     }
   );
 
-  let reactValue = factory(realm.intrinsics.undefined, [
-    getReactSymbol("react.element", realm),
-    getReactSymbol("react.fragment", realm),
-    getReactSymbol("react.portal", realm),
-    getReactSymbol("react.forward_ref", realm),
-    mockReactElementBuilder,
-    currentOwner,
-  ]);
+  let reactValue = factory(
+    realm.intrinsics.undefined,
+    [
+      getReactSymbol("react.element", realm),
+      getReactSymbol("react.fragment", realm),
+      getReactSymbol("react.portal", realm),
+      getReactSymbol("react.forward_ref", realm),
+      mockReactElementBuilder,
+      currentOwner,
+    ],
+    true
+  );
   invariant(reactValue instanceof ObjectValue);
   reactValue.refuseSerialization = true;
 

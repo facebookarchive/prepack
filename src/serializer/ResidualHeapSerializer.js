@@ -1216,6 +1216,19 @@ export class ResidualHeapSerializer {
       let serializedValue = this.serializeValue(value);
       let condition;
       if (value instanceof AbstractValue && value.kind === "conditional") {
+        let cf = this.conditionalFeasibility.get(value);
+        invariant(cf !== undefined);
+        let conditionalSerializedValue;
+        if (cf.t && !cf.f) {
+          conditionalSerializedValue = this.serializeValue(value.args[1]);
+        } else if (!cf.t && cf.f) {
+          conditionalSerializedValue = this.serializeValue(value.args[2]);
+        } else {
+          invariant(cf.t && cf.f);
+        }
+        if (conditionalSerializedValue !== undefined) {
+          return t.expressionStatement(t.assignmentExpression("=", location, conditionalSerializedValue));
+        }
         let [c, x, y] = value.args;
         if (x instanceof EmptyValue) {
           if (c instanceof AbstractValue && c.kind === "!") condition = this.serializeValue(c.args[0]);
@@ -2274,6 +2287,18 @@ export class ResidualHeapSerializer {
         if (value instanceof ObjectValue && value.temporalAlias !== undefined) {
           let temporalAlias = value.temporalAlias;
           return !this.referencedDeclaredValues.has(temporalAlias) && !this.residualValues.has(temporalAlias);
+        }
+        if (value.isIntrinsic() && this.realm.optionallyInlinedDerivedValues.has(value)) {
+          let setOfInlinedObjectProperties = this.realm.optionallyInlinedDerivedValues.get(value);
+
+          if (setOfInlinedObjectProperties !== undefined) {
+            for (let propVal of setOfInlinedObjectProperties) {
+              canOmit = !this.referencedDeclaredValues.has(propVal) && !this.residualValues.has(propVal);
+              if (!canOmit) {
+                return false;
+              }
+            }
+          }
         }
         return canOmit;
       },

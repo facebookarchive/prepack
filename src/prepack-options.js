@@ -63,6 +63,7 @@ export type PrepackOptions = {|
   onExecute?: (Realm, Map<FunctionValue, Generator>) => void,
   arrayNestedOptimizedFunctionsEnabled?: boolean,
   reactFailOnUnsupportedSideEffects?: boolean,
+  optionallyInlineFunctionCalls?: boolean,
 |};
 
 export function getRealmOptions({
@@ -90,6 +91,7 @@ export function getRealmOptions({
   debugReproArgs,
   arrayNestedOptimizedFunctionsEnabled,
   reactFailOnUnsupportedSideEffects,
+  optionallyInlineFunctionCalls,
 }: PrepackOptions): RealmOptions {
   return {
     compatibility,
@@ -116,6 +118,7 @@ export function getRealmOptions({
     debugReproArgs,
     arrayNestedOptimizedFunctionsEnabled,
     reactFailOnUnsupportedSideEffects,
+    optionallyInlineFunctionCalls,
   };
 }
 

@@ -1,4 +1,4 @@
-// Copies of _\$0 = _\$1.Date.now():1
+// Copies of _\$1 = _\$2.Date.now():1
 let x = global.__abstract ? __abstract("boolean", "true") : true;
 
 function foo(b) {
@@ -10,3 +10,4 @@ let z = foo(!x);
 inspect = function() {
   return z;
 };
+  

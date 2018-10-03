@@ -1094,16 +1094,37 @@ export class Generator {
     });
   }
 
-  deriveConcreteObject(
+  deriveConcreteObjectFromBuildFunction(
     buildValue: (intrinsicName: string) => ObjectValue,
     args: Array<Value>,
     operationDescriptor: OperationDescriptor,
     optionalArgs?: {| isPure?: boolean |}
-  ): ConcreteValue {
+  ): ObjectValue {
     let id = this.preludeGenerator.nameGenerator.generate("derived");
     let value = buildValue(id);
-    value.intrinsicNameGenerated = true;
-    value.isScopedTemplate = true; // because this object doesn't exist ahead of time, and the visitor would otherwise declare it in the common scope
+    if (value instanceof ObjectValue) {
+      value.intrinsicNameGenerated = true;
+      value.isScopedTemplate = true; // because this object doesn't exist ahead of time, and the visitor would otherwise declare it in the common scope
+    }
+    invariant(value.intrinsicName === id);
+    this._addDerivedEntry({
+      isPure: optionalArgs ? optionalArgs.isPure : undefined,
+      declared: value,
+      args,
+      operationDescriptor,
+    });
+    return value;
+  }
+
+  deriveAbstractFromBuildFunction(
+    buildValue: (intrinsicName: string) => AbstractValue,
+    args: Array<Value>,
+    operationDescriptor: OperationDescriptor,
+    optionalArgs?: {| isPure?: boolean |}
+  ): AbstractValue {
+    let id = this.preludeGenerator.nameGenerator.generate("derived");
+    let value = buildValue(id);
+    invariant(value instanceof AbstractValue);
     invariant(value.intrinsicName === id);
     this._addDerivedEntry({
       isPure: optionalArgs ? optionalArgs.isPure : undefined,

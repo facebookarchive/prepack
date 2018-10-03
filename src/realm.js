@@ -314,6 +314,9 @@ export class Realm {
       verbose: opts.reactVerbose || false,
     };
 
+    this.optionallyInlineFunctionCalls = opts.optionallyInlineFunctionCalls || false;
+    this.optionallyInlinedDerivedValues = new Map();
+    this.optionallyInlinedDerivedPropertyDependencies = new Map();
     this.reportSideEffectCallbacks = new Set();
 
     this.alreadyDescribedLocations = new WeakMap();
@@ -360,6 +363,10 @@ export class Realm {
   abstractValueImpliesCounter: number;
   impliesCounterOverflowed: boolean;
   inSimplificationPath: boolean;
+
+  optionallyInlineFunctionCalls: boolean;
+  optionallyInlinedDerivedValues: Map<Value, Set<Value>>;
+  optionallyInlinedDerivedPropertyDependencies: Map<Value, Value>;
 
   modifiedBindings: void | Bindings;
   modifiedProperties: void | PropertyBindings;
@@ -724,13 +731,8 @@ export class Realm {
       } else {
         // Add any created objects from the child evaluatePure's tracked objects set to the
         // current tracked objects set.
-<<<<<<< HEAD
-        for (let obj of this.createdObjectsTrackedForLeaks) {
-          if (this.createdObjects.has(obj)) {
-=======
         if (this.createdObjectsTrackedForLeaks !== undefined) {
           for (let obj of this.createdObjectsTrackedForLeaks) {
->>>>>>> master
             saved_createdObjectsTrackedForLeaks.add(obj);
           }
         }

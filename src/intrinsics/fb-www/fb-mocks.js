@@ -58,14 +58,14 @@ function createBabelHelpers(realm: Realm, global: ObjectValue | AbstractObjectVa
     invariant(objectAssign instanceof NativeFunctionValue);
     let objectAssignCall = objectAssign.$Call;
     invariant(objectAssignCall !== undefined);
-    objectAssignCall(realm.intrinsics.undefined, [subClass, superClass]);
+    objectAssignCall(realm.intrinsics.undefined, [subClass, superClass], false);
 
     invariant(superClass instanceof ObjectValue);
     let superClassPrototype = Get(realm, superClass, "prototype");
     invariant(objectCreate instanceof NativeFunctionValue);
     let objectCreateCall = objectCreate.$Call;
     invariant(typeof objectCreateCall === "function");
-    let newPrototype = objectCreateCall(realm.intrinsics.undefined, [superClassPrototype]);
+    let newPrototype = objectCreateCall(realm.intrinsics.undefined, [superClassPrototype], false);
 
     invariant(subClass instanceof ObjectValue);
     invariant(newPrototype instanceof ObjectValue);

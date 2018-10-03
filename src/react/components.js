@@ -249,11 +249,11 @@ export function createClassInstanceForFirstRenderOnly(
     invariant(prevState instanceof ObjectValue);
 
     if (stateToUpdate instanceof ECMAScriptSourceFunctionValue && stateToUpdate.$Call) {
-      stateToUpdate = stateToUpdate.$Call(instance, [prevState]);
+      stateToUpdate = stateToUpdate.$Call(instance, [prevState], true);
     }
     if (stateToUpdate instanceof ObjectValue) {
       let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
-      objectAssignCall(realm.intrinsics.undefined, [newState, prevState]);
+      objectAssignCall(realm.intrinsics.undefined, [newState, prevState], false);
       newState.makeFinal();
 
       for (let [key, binding] of stateToUpdate.properties) {
@@ -269,7 +269,7 @@ export function createClassInstanceForFirstRenderOnly(
       Properties.Set(realm, instance, "state", newState, true);
     }
     if (callback instanceof ECMAScriptSourceFunctionValue && callback.$Call) {
-      callback.$Call(instance, []);
+      callback.$Call(instance, [], true);
     }
     return realm.intrinsics.undefined;
   });
@@ -354,7 +354,7 @@ export function applyGetDerivedStateFromProps(
   let prevState = Get(realm, instance, "state");
   let getDerivedStateFromPropsCall = getDerivedStateFromProps.$Call;
   invariant(getDerivedStateFromPropsCall !== undefined);
-  let partialState = getDerivedStateFromPropsCall(realm.intrinsics.null, [props, prevState]);
+  let partialState = getDerivedStateFromPropsCall(realm.intrinsics.null, [props, prevState], true);
 
   const deriveState = state => {
     let objectAssign = Get(realm, realm.intrinsics.Object, "assign");
@@ -419,7 +419,7 @@ export function applyGetDerivedStateFromProps(
     } else if (state !== realm.intrinsics.null && state !== realm.intrinsics.undefined) {
       let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
       try {
-        objectAssignCall(realm.intrinsics.undefined, [newState, prevState, state]);
+        objectAssignCall(realm.intrinsics.undefined, [newState, prevState, state], false);
       } catch (e) {
         if (realm.isInPureScope() && e instanceof FatalError) {
           let preludeGenerator = realm.preludeGenerator;
