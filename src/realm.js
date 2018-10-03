@@ -723,7 +723,7 @@ export class Realm {
       } else {
         // Add any created objects from the child evaluatePure's tracked objects set to the
         // current tracked objects set.
-        if (this.createdObjectsTrackedForLeaks !== undefined && this.createdObjects !== undefined) {
+        if (this.createdObjectsTrackedForLeaks !== undefined) {
           for (let obj of this.createdObjectsTrackedForLeaks) {
             saved_createdObjectsTrackedForLeaks.add(obj);
           }
