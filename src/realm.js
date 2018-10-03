@@ -725,9 +725,7 @@ export class Realm {
         // current tracked objects set.
         if (this.createdObjectsTrackedForLeaks !== undefined && this.createdObjects !== undefined) {
           for (let obj of this.createdObjectsTrackedForLeaks) {
-            if (this.createdObjects.has(obj)) {
-              saved_createdObjectsTrackedForLeaks.add(obj);
-            }
+            saved_createdObjectsTrackedForLeaks.add(obj);
           }
         }
         this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
