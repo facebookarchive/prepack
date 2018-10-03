@@ -702,7 +702,7 @@ export class Generator {
       output.emitPropertyModification(propertyBinding);
     }
 
-    for (let modifiedBinding of modifiedBindings.keys()) {
+    for (let [modifiedBinding, previousValue] of modifiedBindings.entries()) {
       let cannonicalize = functionValue =>
         preEvaluationComponentToWriteEffectFunction.get(functionValue) || functionValue;
       let optimizedFunctionValue = optimizedFunction;
@@ -728,8 +728,10 @@ export class Generator {
         continue;
       let creatingOptimizedFunction = environment.creatingOptimizedFunction;
       if (creatingOptimizedFunction && valueOrParentEqualsFunction(creatingOptimizedFunction)) continue;
-
-      output.emitBindingModification(modifiedBinding);
+      // TODO #2586: modifiedBinding.value should always exist
+      if (modifiedBinding.value || previousValue.value) {
+        output.emitBindingModification(modifiedBinding);
+      }
     }
 
     if (result instanceof UndefinedValue) return output;
